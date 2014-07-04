@@ -1785,6 +1785,8 @@ VirtualGPU::submitKernelInternalHSA(
                     for (j = 0; j < child->numArguments(); ++j) {
                         print << "\t" << child->argument(j)->name_ << ": ";
                         for (int s = child->argument(j)->size_ - 1; s >= 0; --s) {
+                            print.width(2);
+                            print.fill('0');
                             print << (uint32_t)(argum[s]);
                         }
                         argum += child->argument(j)->size_;
