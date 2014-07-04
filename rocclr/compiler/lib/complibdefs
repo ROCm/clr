@@ -1,0 +1,84 @@
+include $(OPENCL_DEPTH)/opencldefs
+COMPLIB_DEPTH = $(OPENCL_DEPTH)/compiler/lib
+
+ifdef GONE_TO_BUILD_DIR
+ifeq ($(BUILD_HSA_TARGET),yes)
+override BUILD_CPU_DEVICE = no
+override BUILD_GPU_DEVICE = no
+endif
+endif
+
+ifneq ($(BUILD_GPU_DEVICE),no)
+GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_AMDIL
+endif
+
+ifneq ($(BUILD_HSA_DEVICE),no)
+GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_HSAIL
+ifneq ($(BUILD_GPU_DEVICE),no)
+GCPPFLAGS += $(DEFSWITCH) DYNAMIC_HSAIL
+endif
+endif
+
+ifneq ($(BUILD_CPU_DEVICE),no)
+ifdef ATI_ARCH_ARM
+GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_ARM
+endif
+
+ifdef ATI_ARCH_X86
+ifneq ($(BUILD_CPU_DEVICE),no)
+GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_X86
+endif
+endif
+endif
+
+GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers"
+GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers/inc/asic_reg"
+GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)"
+GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/promotions/oclutils"
+GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/utils"
+
+# Do we build the 0.9 version?
+ifeq ($(BUILD_VERSION_0_9), 1)
+GCPPFLAGS += $(DEFSWITCH) WITH_VERSION_0_9
+CLVER_SUBDIR = v0_9
+else
+# Otherwise we build v0.8
+GCPPFLAGS += $(DEFSWITCH) WITH_VERSION_0_8
+CLVER_SUBDIR = v0_8
+endif
+
+GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/utils/$(CLVER_SUBDIR)"
+GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/include/$(CLVER_SUBDIR)"
+GCPPFLAGS += $(DEFSWITCH) "BREAK_ON_LOG_WARNING=0"
+GCPPFLAGS += $(DEFSWITCH) "BREAK_ON_LOG_ERROR=0"
+GCPPFLAGS += $(DEFSWITCH) "LOG_LEVEL=2"
+
+export CAL_INCLUDES = $(OPENCL_DEPTH)/runtime/device/gpu/gslbe/src/include/cal
+GCPPFLAGS += $(INCSWITCH) "$(CAL_INCLUDES)"
+GCPPFLAGS += $(INCSWITCH) "$(CAL_INCLUDES)/private"
+GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/pele/include/asic"
+GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/evergreen/include/asic"
+GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/si/include/asic"
+export BRIG_ENABLE=1
+
+ifdef ATI_OS_WINDOWS
+    GCPPFLAGS += $(INCSWITCH) "$(DK_ROOT)/$(DK_DX_SDK)/inc"
+
+    ifeq ($(BUILD_TYPE),dbg)
+        GCXXOPTS += /Ob1
+    endif
+    
+    GCXXOPTS += -wd4985 -wd4355 -wd4800
+
+    GCPPFLAGS += $(DEFSWITCH) _SCL_SECURE_NO_WARNINGS
+    
+    GCXXOPTS += /GR- # Disable Run-Time Type Information
+endif
+
+ifdef ATI_OS_LINUX
+    GCPPFLAGS += $(DEFSWITCH) __STDC_LIMIT_MACROS
+    GCPPFLAGS += $(DEFSWITCH) __STDC_CONSTANT_MACROS
+
+    GCXXOPTS += -fno-rtti
+endif    
+

@@ -1,0 +1,16 @@
+COMPLIB_DEPTH = $(OPENCL_DEPTH)/compiler/lib
+ifdef GONE_TO_BUILD_DIR
+ifdef ATI_OS_LINUX
+*$(OBJ_EXT): $(COMPLIB_DEPTH)/complibdefs $(COMPLIB_DEPTH)/complibrules
+endif
+endif
+
+%.v08:
+	@$(MAKENOISE) "Setting BUILD_VERSION_0_8=1"
+	@$(MAKE) BUILD_VERSION_0_8=1 $*
+
+%.v09:
+	@$(MAKENOISE) "Setting BUILD_VERSION_0_9=1"
+	@$(MAKE) BUILD_VERSION_0_9=1 $*
+
+include $(OPENCL_DEPTH)/openclrules

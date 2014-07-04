@@ -1,0 +1,1 @@
+include $(OPENCL_DEPTH)/runtime/runtimerules
