@@ -1,0 +1,2 @@
+OPENCL_DEPTH = $(CAL_DEPTH)/../../../..
+include $(OPENCL_DEPTH)/runtime/runtimedefs
