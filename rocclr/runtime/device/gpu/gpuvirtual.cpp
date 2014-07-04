@@ -17,6 +17,7 @@
 #include "newcore.h"
 #include "sc-hsa/Interface/SCHSAInterface.h"
 #include <fstream>
+#include <sstream>
 
 #ifdef _WIN32
 #include <d3d10_1.h>
@@ -290,7 +291,9 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
     allocSize += amd::alignUp(numSlots, 32) / 32;
 
     virtualQueue_ = new Memory(dev(), allocSize);
-    if ((virtualQueue_ == NULL) || !virtualQueue_->create(Resource::Local)) {
+    Resource::MemoryType type = (GPU_PRINT_CHILD_KERNEL == 0) ?
+        Resource::Local : Resource::Remote;
+    if  ((virtualQueue_ == NULL) || !virtualQueue_->create(type)) {
         return false;
     }
     address ptr  = reinterpret_cast<address>(
@@ -325,7 +328,9 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
         slots[i].wait_list = argStart + dev().info().maxParameterSize_ + 64;
     }
     // Upload data back to local memory
-    virtualQueue_->unmap(this);
+    if (GPU_PRINT_CHILD_KERNEL == 0) {
+        virtualQueue_->unmap(this);
+    }
 
     schedParams_ = new Memory(dev(), 64 * Ki);
     if ((schedParams_ == NULL) || !schedParams_->create(Resource::RemoteUSWC)) {
@@ -1717,6 +1722,78 @@ VirtualGPU::submitKernelInternalHSA(
         amd::ScopedLock(defQueue->lock());
         //! \todo Remove flush. We start parent earlier.
         flushDMA(MainEngine);
+
+        if (GPU_PRINT_CHILD_KERNEL != 0) {
+            waitForEvent(&gpuEvent);
+
+            AmdAqlWrap* wraps =  (AmdAqlWrap*)(&((AmdVQueueHeader*)gpuDefQueue->virtualQueue_->data())[1]);
+            uint p = 0;
+            for (uint i = 0; i < gpuDefQueue->vqHeader_->aql_slot_num; ++i) {
+                if (wraps[i].state != 0) {
+                    if (p == GPU_PRINT_CHILD_KERNEL) {
+                        break;
+                    }
+                    p++;
+                    std::stringstream print;
+                    print.flags(std::ios::right | std::ios_base::hex | std::ios_base::uppercase);
+                    print << "Slot#: "  << i << "\n";
+                    print << "\tenqueue_flags: "  << wraps[i].enqueue_flags   << "\n";
+                    print << "\tcommand_id: "     << wraps[i].command_id      << "\n";
+                    print << "\tchild_counter: "  << wraps[i].child_counter   << "\n";
+                    print << "\tcompletion: "     << wraps[i].completion      << "\n";
+                    print << "\tparent_wrap: "    << wraps[i].parent_wrap     << "\n";
+                    print << "\twait_list: "      << wraps[i].wait_list       << "\n";
+                    print << "\twait_num: "       << wraps[i].wait_num        << "\n";
+                    print << "WorkGroupSize[ " << wraps[i].aql.workgroup_size[0] << ", ";
+                    print << wraps[i].aql.workgroup_size[1] << ", ";
+                    print << wraps[i].aql.workgroup_size[2] << "]\n";
+                    print << "GridSize[ " << wraps[i].aql.grid_size[0] << ", ";
+                    print << wraps[i].aql.grid_size[1] << ", ";
+                    print << wraps[i].aql.grid_size[2] << "]\n";
+
+                    uint64_t* kernels = (uint64_t*)(
+                        const_cast<Memory*>(hsaKernel.prog().kernelTable())->map(this));
+                    uint j;
+                    for (j = 0; j < hsaKernel.prog().kernels().size(); ++j) {
+                        if (kernels[j] == wraps[i].aql.kernel_object_address) {
+                            break;
+                        }
+                    }
+                    const_cast<Memory*>(hsaKernel.prog().kernelTable())->unmap(this);
+                    HSAILKernel* child = NULL;
+                    for (auto it = hsaKernel.prog().kernels().begin();
+                         it != hsaKernel.prog().kernels().end(); ++it) {
+                        if (j == static_cast<HSAILKernel*>(it->second)->index()) {
+                            child = static_cast<HSAILKernel*>(it->second);
+                        }
+                    }
+                    if (child == NULL) {
+                        printf("Error: couldn't find child kernel!\n");
+                        continue;
+                    }
+                    uint offsArg = wraps[i].aql.kernel_arg_address -
+                        gpuDefQueue->virtualQueue_->vmAddress();
+                    address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
+                    print << "Kernel: " << child->name() << "\n";
+                    static const char* Names[HSAILKernel::ExtraArguments] = {
+                    "Offset0: ", "Offset1: ","Offset2: ","PrintfBuf: ", "VqueuePtr: ", "AqlWarap: "};
+                    for (j = 0; j < HSAILKernel::ExtraArguments; ++j) {
+                        print << "\t" << Names[j] << *(size_t*)argum;
+                        print << "\n";
+                        argum += sizeof(size_t);
+                    }
+                    for (j = 0; j < child->numArguments(); ++j) {
+                        print << "\t" << child->argument(j)->name_ << ": ";
+                        for (int s = child->argument(j)->size_ - 1; s >= 0; --s) {
+                            print << (uint32_t)(argum[s]);
+                        }
+                        argum += child->argument(j)->size_;
+                        print << "\n";
+                    }
+                    printf("%s", print.str().c_str());
+                }
+            }
+        }
 
         // Get the global loop start before the scheduler
         mcaddr loopStart = gpuDefQueue->virtualQueueDispatcherStart();
