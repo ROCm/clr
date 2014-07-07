@@ -284,11 +284,11 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 
     uint    eventMaskOffs = allocSize;
     // Add mask array for events
-    allocSize += amd::alignUp(dev().settings().numDeviceEvents_, 32) / 32;
+    allocSize += amd::alignUp(dev().settings().numDeviceEvents_, 32) / 8;
 
     uint    slotMaskOffs = allocSize;
     // Add mask array for AmdAqlWrap slots
-    allocSize += amd::alignUp(numSlots, 32) / 32;
+    allocSize += amd::alignUp(numSlots, 32) / 8;
 
     virtualQueue_ = new Memory(dev(), allocSize);
     Resource::MemoryType type = (GPU_PRINT_CHILD_KERNEL == 0) ?
@@ -1680,6 +1680,10 @@ VirtualGPU::submitKernelInternalHSA(
             gpuDefQueue = static_cast<VirtualGPU*>(defQueue->vDev());
         }
         vmDefQueue = gpuDefQueue->virtualQueue_->vmAddress();
+        if (gpuDefQueue->hwRing() == hwRing()) {
+            LogError("Can't submit the child kernels to the same HW ring as the host queue!");
+            return false;
+        }
 
         // Add memory handles before the actual dispatch
         memList.push_back(gpuDefQueue->virtualQueue_);
@@ -1811,7 +1815,8 @@ VirtualGPU::submitKernelInternalHSA(
         SchedulerParam* param = &reinterpret_cast<SchedulerParam*>
             (gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
         param->signal = 1;
-        param->eng_clk = dev().info().maxClockFrequency_;
+        // Scale clock to 1024 to avoid 64 bit div in the scheduler
+        param->eng_clk = (1000 * 1024) / dev().info().maxClockFrequency_;
         param->hw_queue = patchStart + sizeof(uint32_t)/* Rewind packet*/;
         param->hsa_queue = gpuDefQueue->hsaQueueMem()->vmAddress();
         param->launch = 0;
