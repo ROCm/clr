@@ -488,17 +488,10 @@ PrintfDbg::outputDbgBuffer(const PrintfInfo& info, const uint32_t* workitemData,
                 i += amd::alignUp(length, sizeof(uint32_t)) / sizeof(uint32_t);
             }
             else {
-                size_t  elemSize;
+                // 3-component vector's size is defined as 4 * size of each scalar component
+                size_t  elemSize = info.arguments_[j] / (vectorSize == 3 ? 4 : vectorSize);
                 size_t  k = i * sizeof(uint32_t);
                 std::string elementStr = fmt.substr(idPos, fmt.size());
-
-                if (vectorSize == 3) {
-                    // 3-component vector's size is defined as 4 * size of each scalar component
-                    elemSize = info.arguments_[j] / 4;
-                }
-                else {
-                    elemSize = info.arguments_[j] / vectorSize;
-                }
 
                 // Print first element with full string
                 if  (0 == outputArgument(fmt, printFloat, elemSize, &s[i])) {
