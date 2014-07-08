@@ -10,7 +10,7 @@ struct clk_builtins_t;
 // This must be a multiple of sizeof(cl_ulong16)
 #define __CPU_SCRATCH_SIZE 128
 
-#define CLK_PRIVATE_MEMORY_SIZE (8*1024)
+#define CLK_PRIVATE_MEMORY_SIZE (16*1024)
 
 struct clk_thread_info_block_t
 {
