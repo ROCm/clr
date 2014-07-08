@@ -388,15 +388,12 @@ scheduler(
                             continue;
                         }
 
-                        // Check if the command has any the wait events
-                        if (disp->wait_num != 0) {
-                            // Check if the wait list is COMPLETE
-                            launch = checkWaitEvents(
-                                (__global AmdEvent**)(disp->wait_list), disp->wait_num);
-                        }
-                        else {
-                            launch = 1;
-                        }
+                        // Check if the wait list is COMPLETE
+                        launch = checkWaitEvents(
+                            (__global AmdEvent**)(disp->wait_list), disp->wait_num);
+
+                        if (launch == 0) continue;
+
                         uint tmp = 0;
                         if (atomic_compare_exchange_strong_explicit(
                             (__global atomic_uint*)&param->launch, &tmp, launch,
