@@ -417,7 +417,7 @@ Settings::create(
         disablePersistent_ = true;
     }
 
-    if (calAttr.priSupport) {
+    if (calAttr.priSupport && ENABLE_PLATFORM_ATOMICS) {
         svmAtomics_ = true;
     }
 

@@ -160,8 +160,8 @@ release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
         "Enable HSA device local memory usage")                               \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
-release_on_stg(bool, GPU_ENABLE_HIGH_PERFORMANCE_STATE, false,                \
-        "Enable high performance state")
+release(bool, ENABLE_PLATFORM_ATOMICS, false,                \
+        "Enable platform atomics")
 
 namespace amd {
 
