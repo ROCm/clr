@@ -1734,6 +1734,7 @@ VirtualGPU::submitKernelInternalHSA(
             uint p = 0;
             for (uint i = 0; i < gpuDefQueue->vqHeader_->aql_slot_num; ++i) {
                 if (wraps[i].state != 0) {
+                    uint j;
                     if (p == GPU_PRINT_CHILD_KERNEL) {
                         break;
                     }
@@ -1748,6 +1749,18 @@ VirtualGPU::submitKernelInternalHSA(
                     print << "\tparent_wrap: "    << wraps[i].parent_wrap     << "\n";
                     print << "\twait_list: "      << wraps[i].wait_list       << "\n";
                     print << "\twait_num: "       << wraps[i].wait_num        << "\n";
+                    uint offsEvents = wraps[i].wait_list -
+                        gpuDefQueue->virtualQueue_->vmAddress();
+                    size_t* events = reinterpret_cast<size_t*>(
+                        gpuDefQueue->virtualQueue_->data() + offsEvents);
+                    for (j = 0; j < wraps[i].wait_num; ++j) {
+                        uint offs = static_cast<uint64_t>(events[j]) -
+                            gpuDefQueue->virtualQueue_->vmAddress();
+                        AmdEvent* eventD = (AmdEvent*)(gpuDefQueue->virtualQueue_->data() + offs);
+                        print << "Wait Event#: " << j << "\n";
+                        print << "\tState: " << eventD->state <<
+                                 "; Counter: " << eventD->counter << "\n";
+                    }
                     print << "WorkGroupSize[ " << wraps[i].aql.workgroup_size[0] << ", ";
                     print << wraps[i].aql.workgroup_size[1] << ", ";
                     print << wraps[i].aql.workgroup_size[2] << "]\n";
@@ -1757,7 +1770,6 @@ VirtualGPU::submitKernelInternalHSA(
 
                     uint64_t* kernels = (uint64_t*)(
                         const_cast<Memory*>(hsaKernel.prog().kernelTable())->map(this));
-                    uint j;
                     for (j = 0; j < hsaKernel.prog().kernels().size(); ++j) {
                         if (kernels[j] == wraps[i].aql.kernel_object_address) {
                             break;
