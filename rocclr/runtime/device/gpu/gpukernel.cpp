@@ -3850,6 +3850,7 @@ HSAILKernel::loadArguments(
                     mem = amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(paramaddr));
                     if (mem != NULL) {
                         gpuMem = dev().getGpuMemory(mem);
+                        gpuMem->wait(gpu, WaitOnBusyEngine);
                         memList.push_back(gpuMem);
                     }
                     else {
@@ -3861,10 +3862,10 @@ HSAILKernel::loadArguments(
                     gpuMem = *reinterpret_cast<Memory* const*>(paramaddr);
                 }
                 else {
-                    mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
-                    if (mem != NULL) {
-                        gpuMem = dev().getGpuMemory(mem);
-                    }
+                        mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
+                        if (mem != NULL) {
+                             gpuMem = dev().getGpuMemory(mem);
+                        }
                 }
                 if (gpuMem == NULL) {
                     WriteAqlArg(&aqlArgBuf, &gpuMem, sizeof(void*));

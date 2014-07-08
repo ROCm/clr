@@ -3280,13 +3280,18 @@ VirtualGPU::processMemObjectsHSA(
         const HSAILKernel::Argument*  arg = hsaKernel.argument(i);
         Memory* memory = NULL;
         bool    readOnly = false;
+        amd::Memory* svmMem = NULL;
 
         // Find if current argument is a buffer
         if ((desc.type_ == T_POINTER) && (arg->addrQual_ != HSAIL_ADDRESS_LOCAL)) {
             if (kernelParams.boundToSvmPointer(dev(), params, i)) {
-                //!\todo Do we have to sync cache coherency or wait for SDMA?
-                flushL1Cache();
-                break;
+                svmMem = amd::SvmManager::FindSvmBuffer(
+                    *reinterpret_cast<void* const*>(params + desc.offset_));
+                if (!svmMem) {
+                    //!\todo Do we have to sync cache coherency or wait for SDMA?
+                    flushL1Cache();
+                    break;
+                }
             }
 
             if (nativeMem) {
@@ -3294,8 +3299,6 @@ VirtualGPU::processMemObjectsHSA(
             }
             else if (*reinterpret_cast<amd::Memory* const*>
                     (params + desc.offset_) != NULL) {
-                amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(
-                    *reinterpret_cast<void* const*>(params + desc.offset_));
                 if (NULL == svmMem) {
                     memory = dev().getGpuMemory(*reinterpret_cast<amd::Memory* const*>
                             (params + desc.offset_));
