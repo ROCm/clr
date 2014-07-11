@@ -39,6 +39,7 @@
 #include <cstdlib>
 #include <cstdio> // for tempnam
 #include <limits.h>
+#include <memory>
 
 
 
@@ -91,7 +92,7 @@ divisionErrorHandler(int sig, siginfo_t* info, void* ptr)
 #if defined(ATI_ARCH_X86)
     insn = (address)uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)];
 #else
-    assert(!"Unimplemented"); 
+    assert(!"Unimplemented");
 #endif
 
     // Call the chained signal handler
@@ -110,7 +111,7 @@ divisionErrorHandler(int sig, siginfo_t* info, void* ptr)
 #if defined(ATI_ARCH_X86)
             uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)] = (greg_t)insn;
 #else
-            assert(!"Unimplemented"); 
+            assert(!"Unimplemented");
 #endif
             return;
         }
@@ -865,16 +866,14 @@ size_t Os::getPhysicalMemSize()
 
 std::string Os::getAppFileName()
 {
-    std::string strFileName;
-    char* buff = new char[FILE_PATH_MAX_LENGTH];
+    std::unique_ptr<char[]> buff(new char[FILE_PATH_MAX_LENGTH]());
 
-    if (readlink("/proc/self/exe", buff, FILE_PATH_MAX_LENGTH) > 0) {
+    if (readlink("/proc/self/exe", buff.get(), FILE_PATH_MAX_LENGTH) > 0) {
         // Get filename without path and extension.
-        strFileName = strrchr(buff, '/') ? strrchr(buff, '/') + 1 : buff;
+        return std::string(basename(buff.get()));
     }
 
-    delete buff;
-    return strFileName;
+    return "";
 }
 
 } // namespace amd
