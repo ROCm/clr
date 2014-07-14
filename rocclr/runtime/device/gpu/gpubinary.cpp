@@ -183,8 +183,8 @@ ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled)
         }
     }
 
+    std::string programil;
     if (usedebugil) {
-        std::string programil;
         char *section;
         size_t sz;
 
@@ -298,7 +298,7 @@ ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled)
             // TODO:  global data recompilation as well.
             // 1) parse IL; 2) parse metadata to set up kernel header
             size_t pos;
-            if (!program.findAllILFuncs(ilSource, pos)) {
+            if (!program.findAllILFuncs((programil.size() ? programil : ilSource), pos)) {
                 program.freeAllILFuncs();
                 return false;
             }
