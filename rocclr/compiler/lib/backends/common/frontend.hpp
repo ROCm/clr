@@ -31,6 +31,7 @@ namespace amdcl
       // This function generates a command string for clc to execute.
       virtual int compileCommand(const std::string& singleSrc) = 0;
 
+      virtual std::string getClassName() = 0;
   }; // class Frontend
   /*@}*/
 
@@ -68,6 +69,7 @@ namespace amdcl
       // This function generates a command string for clc to execute.
       virtual int compileCommand(const std::string& singleSrc);
 
+      virtual std::string getClassName() {return "OCLFrontend";}
   }; // class OCLFrontend
   /*@}*/
 
@@ -93,6 +95,7 @@ namespace amdcl
       //! This function generates a command string for ClangOCLFE to execute.
       virtual int compileCommand(const std::string& singleSrc);
 
+      virtual std::string getClassName() {return "ClangOCLFrontend";}
   }; // class Frontend
   /*@}*/
 } // namespac amdcl
