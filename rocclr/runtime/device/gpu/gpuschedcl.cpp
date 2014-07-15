@@ -353,16 +353,23 @@ scheduler(
     __global AmdAqlWrap*    wraps = (__global AmdAqlWrap*)&queue[1];
     __global uint*          amask = (__global uint *)queue->aql_slot_mask;
 
-    uint launch = 0;
-    uint loop;  
+    uint launch;
+    do {
+        launch = atomic_load_explicit((__global atomic_uint*)&param->launch,
+            memory_order_acquire, memory_scope_device);
+    } while (launch != 0);
+    uint loop;
 
     do {
-        uint mask = atomic_load_explicit((__global atomic_uint*)(&amask[get_group_id(0)]),
-              memory_order_acquire, memory_scope_device);
+        for (uint m = 0; m < (queue->aql_slot_num >> 5); ++m) {
+            uint mask = atomic_load_explicit((__global atomic_uint*)(&amask[m]),
+                  memory_order_acquire, memory_scope_device);
 
-        if (mask != 0) {
-            int baseIdx = get_group_id(0) * 32;
-            for (int idx = baseIdx + 31 - clz(mask); (idx >= baseIdx) && (launch == 0); --idx) {
+            int baseIdx = m * 32;
+            while (mask != 0) {
+                uint sIdx = ctz(mask);
+                uint idx = baseIdx + sIdx;
+                mask &= ~(1 << sIdx);
                 __global AmdAqlWrap* disp = (__global AmdAqlWrap*)&wraps[idx];
                 uint slotState = atomic_load_explicit((__global atomic_uint*)(&disp->state),
                     memory_order_acquire, memory_scope_device);
@@ -435,7 +442,7 @@ scheduler(
                         // Decrement the child execution counter on the parent
                         atomic_fetch_sub_explicit(
                             (__global atomic_uint*)&parent->child_counter,
-                             1, memory_order_acq_rel, memory_scope_device);
+                            1, memory_order_acq_rel, memory_scope_device);
                         event->state = CL_COMPLETE;
                         disp->state = AQL_WRAP_FREE;
                         release_slot(amask, idx);
@@ -465,7 +472,7 @@ scheduler(
                         // Decrement the child execution counter on the parent
                         atomic_fetch_sub_explicit(
                             (__global atomic_uint*)&parent->child_counter,
-                             1, memory_order_acq_rel, memory_scope_device);
+                            1, memory_order_acq_rel, memory_scope_device);
                         disp->state = AQL_WRAP_FREE;
                         release_slot(amask, idx);
                     }
@@ -474,6 +481,7 @@ scheduler(
                     disp->state = AQL_WRAP_DONE;
                 }
             }
+            if (launch == 1) break;
         }
         barrier(CLK_GLOBAL_MEM_FENCE);
 

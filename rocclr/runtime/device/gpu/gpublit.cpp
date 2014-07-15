@@ -2730,7 +2730,7 @@ KernelBlitManager::runScheduler(
 
     size_t  dim = 1;
     size_t  globalWorkOffset[1] = { 0 };
-    size_t  globalWorkSize[1] = { numSlots / 32 };
+    size_t  globalWorkSize[1] = { 1 };
     size_t  localWorkSize[1] = { 1 };
 
     // Program kernels arguments
