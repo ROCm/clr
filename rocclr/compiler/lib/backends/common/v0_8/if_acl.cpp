@@ -176,6 +176,7 @@ LOADER_FUNCS(Codegen, amdcl::CLCodeGen);
 LOADER_FUNCS(SPIR, amdcl::SPIR);
 #undef LOADER_FUNCS
 
+
 // CLC Frontend phase
 aclModule* ACL_API_ENTRY
 OCLFEToLLVMIR(
