@@ -1072,10 +1072,6 @@ FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
     "limit-scalar-registers", OptLimitScalarRegisters, 0, \
     "Maximum number of scalar registers that are available to the compiler.")
 
-// -workaround-UBTS502672=0|1 (default is 1)
-FLAG(OT_BOOL, OVIS_SUPPORT, "workaround-UBTS502672", WorkaroundUBTS502672, 1,\
-    "Enable/disable workaround for Iceland/Tonga SGPR issue UBTS 502672")
-
 // -lower-atomics=0|1 (default is 1)
 FLAG(OT_BOOL, OVIS_SUPPORT, "lower-atomics", LowerAtomics, 1,\
     "Enable/disable pass lowering OCL atomics to LLVM intrinsics (only for x86/x64)")
