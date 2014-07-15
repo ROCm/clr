@@ -989,6 +989,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Enable timing for Kernel build.")
 
+// -print-compile-phases
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
+       "print-compile-phases", NULL, \
+       PrintCompilePhases, \
+       false, 0, 0, NULL, \
+       "Print compile phases info.")
+
 //  -fforce-llvm, -fno-force-llvm
 OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
