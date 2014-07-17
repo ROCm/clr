@@ -8,7 +8,6 @@ namespace gpu {
 
 const char* SchedulerSourceCode = SCHEDULER_KERNEL(
 \n
-
 //! AmdAqlWrap slot state
 enum AqlWrapState {
     AQL_WRAP_FREE = 0,
@@ -90,7 +89,7 @@ typedef struct _SchedulerParam {
     uint    scratchSize;    //!< Scratch buffer size
     ulong   scratch;        //!< GPU address to the scratch buffer
     uint    numMaxWaves;    //!< Num max waves on the asic
-    uint    reserved;       //!< Reserved
+    uint    releaseHostCP;  //!< Releases CP on the host queue
 } SchedulerParam;
 
 typedef struct _HwDispatch {
@@ -353,11 +352,14 @@ scheduler(
     __global AmdAqlWrap*    wraps = (__global AmdAqlWrap*)&queue[1];
     __global uint*          amask = (__global uint *)queue->aql_slot_mask;
 
-    uint launch;
-    do {
-        launch = atomic_load_explicit((__global atomic_uint*)&param->launch,
-            memory_order_acquire, memory_scope_device);
-    } while (launch != 0);
+    //! @todo This is an unexplained behavior.
+    //! The scheduler can be launched one more time after termination.
+    if (1 == atomic_load_explicit((__global atomic_uint*)&param->releaseHostCP,
+        memory_order_acquire, memory_scope_device)) {
+        return;
+    }
+
+    uint launch = 0;
     uint loop;
 
     do {
@@ -494,7 +496,18 @@ scheduler(
     } while ((launch == 0) && (loop == 1));
 
     if (loop == 0) {
-        atomic_or(&hwDisp->startExe, ResumeExecution);
+        //! \todo Write deadcode to the template, but somehow
+        //! the scheduler will be launched one more time.
+        hwDisp->packet0 = 0xdeadc0de;
+        hwDisp[1].condExe0 = 0xdeadc0de;
+        hwDisp[1].condExe1 = 0xdeadc0de;
+        hwDisp[1].condExe2 = 0xdeadc0de;
+        hwDisp[1].condExe3 = 0xdeadc0de;
+        barrier(CLK_GLOBAL_MEM_FENCE);
+        atomic_store_explicit((__global atomic_uint*)&hwDisp->startExe,
+            ResumeExecution, memory_order_release, memory_scope_device);
+        atomic_store_explicit((__global atomic_uint*)&param->releaseHostCP,
+            1, memory_order_release, memory_scope_device);
     }
 }
 \n

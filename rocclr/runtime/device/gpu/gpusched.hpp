@@ -65,7 +65,7 @@ struct SchedulerParam {
     uint32_t    scratchSize;    //!< Scratch buffer size
     uint64_t    scratch;        //!< GPU address to the scratch buffer
     uint32_t    numMaxWaves;    //!< The max number of possible waves
-    uint32_t    reserved;       //!< reserved
+    uint32_t    releaseHostCP;  //!< Releases CP on the host queue
 };
 
 } // namespace gpu

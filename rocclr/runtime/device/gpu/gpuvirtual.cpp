@@ -1792,7 +1792,7 @@ VirtualGPU::submitKernelInternalHSA(
                     address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
                     print << "Kernel: " << child->name() << "\n";
                     static const char* Names[HSAILKernel::ExtraArguments] = {
-                    "Offset0: ", "Offset1: ","Offset2: ","PrintfBuf: ", "VqueuePtr: ", "AqlWarap: "};
+                    "Offset0: ", "Offset1: ","Offset2: ","PrintfBuf: ", "VqueuePtr: ", "AqlWrap: "};
                     for (j = 0; j < HSAILKernel::ExtraArguments; ++j) {
                         print << "\t" << Names[j] << *(size_t*)argum;
                         print << "\n";
@@ -1832,6 +1832,7 @@ VirtualGPU::submitKernelInternalHSA(
         param->hw_queue = patchStart + sizeof(uint32_t)/* Rewind packet*/;
         param->hsa_queue = gpuDefQueue->hsaQueueMem()->vmAddress();
         param->launch = 0;
+        param->releaseHostCP = 0;
         // Fill the scratch buffer information
         if (hsaKernel.prog().maxScratchRegs() > 0) {
             gpu::Memory* scratchBuf = dev().scratch(gpuDefQueue->hwRing())->memObjs_[0];
