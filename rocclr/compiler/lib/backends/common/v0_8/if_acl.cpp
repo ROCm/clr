@@ -1275,6 +1275,23 @@ internal_compile_failure:
 
 #define CONDITIONAL_CMP_ASSIGN(A, B, C) A = (A && B != A) ? (A) : (C)
 
+acl_error
+IsValidCompilationOptions(aclBinary *bin)
+{
+#if defined(WITH_TARGET_HSAIL) && defined(WITH_TARGET_AMDIL)
+  amd::option::Options* opts = reinterpret_cast<amd::option::Options*>(bin->options);
+  std::string major = std::string(opts->oVariables->CLStd).substr(2,1);
+  if (isHSAILTarget(bin->target) && major == "1") {
+    std::cout << "Error: HSAIL doesn't support OpenCL version < 2.0" << std::endl;
+    return ACL_INVALID_OPTION;
+  }
+  if (isAMDILTarget(bin->target) && major == "2") {
+    std::cout << "Error: AMDIL doesn't support OpenCL version >= 2.0" << std::endl;
+    return ACL_INVALID_OPTION;
+  }
+#endif
+  return ACL_SUCCESS;
+}
 
 acl_error  ACL_API_ENTRY
 if_aclCompile(aclCompiler *cl,
@@ -1284,9 +1301,12 @@ if_aclCompile(aclCompiler *cl,
     aclType to,
     aclLogFunction compile_callback)
 {
-  acl_error error_code = ACL_SUCCESS;
   if (bin == NULL || cl == NULL) {
     return ACL_INVALID_ARG;
+  }
+  acl_error error_code = IsValidCompilationOptions(bin);
+  if (error_code != ACL_SUCCESS) {
+    return error_code;
   }
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(bin->target)) {
