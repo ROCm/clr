@@ -258,7 +258,8 @@ typedef enum _acl_arg_type_enum_0_8 {
   ARG_TYPE_VALUE     = 4,
   ARG_TYPE_POINTER   = 5,
   ARG_TYPE_SEMAPHORE = 6,
-  ARG_TYPE_LAST      = 7
+  ARG_TYPE_QUEUE     = 7, // enum for device enqueue
+  ARG_TYPE_LAST      = 8
 } aclArgType_0_8;
 
 // Enumerations of the valid data types for pass by value and

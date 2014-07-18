@@ -66,6 +66,13 @@ typedef struct _acl_md_arg_type_0_8 {
       bool isRestrict;
       bool isPipe;
     } pointer;
+    struct { // Struct for queue arguments
+      unsigned numElements;
+      unsigned cbNum;
+      unsigned cbOffset;
+      aclArgDataType data;
+      aclMemoryType memory;
+    } queue;
   } arg;
   aclArgType type;
   bool isConst;

@@ -3055,10 +3055,9 @@ GetHSAILArgType(const aclArgData* argInfo)
 {
     switch (argInfo->type) {
         case ARG_TYPE_POINTER:
-            if (argInfo->arg.pointer.memory == PTR_MT_SCRATCH_EMU) {
-                return HSAIL_ARGTYPE_QUEUE;
-            }
             return HSAIL_ARGTYPE_POINTER;
+        case ARG_TYPE_QUEUE:
+            return HSAIL_ARGTYPE_QUEUE;
         case ARG_TYPE_VALUE:
             return HSAIL_ARGTYPE_VALUE;
         case ARG_TYPE_IMAGE:
@@ -3105,6 +3104,9 @@ GetHSAILAddrQual(const aclArgData* argInfo)
     }
     else if ((argInfo->type == ARG_TYPE_IMAGE) ||
              (argInfo->type == ARG_TYPE_SAMPLER)) {
+        return HSAIL_ADDRESS_GLOBAL;
+    }
+    else if (argInfo->type == ARG_TYPE_QUEUE) {
         return HSAIL_ADDRESS_GLOBAL;
     }
     return HSAIL_ADDRESS_ERROR;
@@ -3195,6 +3197,7 @@ GetHSAILArgSize(const aclArgData *argInfo)
         case ARG_TYPE_POINTER:
         case ARG_TYPE_IMAGE:
         case ARG_TYPE_SAMPLER:
+        case ARG_TYPE_QUEUE:
             return sizeof(void*);
         default:
             return -1;
@@ -3214,8 +3217,7 @@ GetOclType(const aclArgData* argInfo)
     };
 
     uint sizeType;
-    if ((argInfo->type == ARG_TYPE_POINTER) &&
-        (argInfo->arg.pointer.memory == PTR_MT_SCRATCH_EMU)) {
+    if (argInfo->type == ARG_TYPE_QUEUE) {
         return T_QUEUE;
     }
     if ((argInfo->type == ARG_TYPE_POINTER) || (argInfo->type == ARG_TYPE_IMAGE)) {
