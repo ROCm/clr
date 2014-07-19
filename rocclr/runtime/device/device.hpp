@@ -146,7 +146,7 @@ OclExtensionsString[] = {
     "cl_amd_bus_addressable_memory ",
     "cl_amd_c11_atomics ",
     "cl_khr_spir ",
-    "",
+    "cl_khr_subgroups ",
     "cl_khr_gl_event ",
     NULL
 };
