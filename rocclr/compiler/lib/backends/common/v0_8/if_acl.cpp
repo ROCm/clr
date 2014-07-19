@@ -171,6 +171,7 @@ LOADER_FUNCS_ERROR(X86Opt, amdcl::CPUOptimizer);
 #endif
 
 LOADER_FUNCS(OCL, amdcl::OCLFrontend);
+LOADER_FUNCS(OCLClang, amdcl::ClangOCLFrontend);
 LOADER_FUNCS(Link, amdcl::OCLLinker);
 LOADER_FUNCS(Codegen, amdcl::CLCodeGen);
 LOADER_FUNCS(SPIR, amdcl::SPIR);
