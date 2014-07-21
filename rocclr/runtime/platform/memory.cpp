@@ -760,6 +760,8 @@ Image::Format::getElementSize() const
         break;
 
     case CL_UNORM_INT_101010:
+        bytesPerPixel = 4;
+        break;
     case CL_SIGNED_INT32:
     case CL_UNSIGNED_INT32:
     case CL_FLOAT:
@@ -915,6 +917,9 @@ Image::supportedFormats[] = {
     {CL_RG, CL_UNSIGNED_INT16},     {CL_RG, CL_UNSIGNED_INT32},
 
     {CL_RG, CL_HALF_FLOAT},         {CL_RG, CL_FLOAT},
+
+    // RGB
+    {CL_RGB, CL_UNORM_INT_101010},
 
     // RGBA
     {CL_RGBA, CL_SNORM_INT8},       {CL_RGBA, CL_SNORM_INT16},
@@ -1334,9 +1339,9 @@ Image::Format::formatColor(const void* colorRGBA, void* colorFormat) const
 
     union t101010 {
         struct {
-            uint32_t    r_: 10;
-            uint32_t    g_: 10;
             uint32_t    b_: 10;
+            uint32_t    g_: 10;
+            uint32_t    r_: 10;
             uint32_t    a_: 2;
         };
         uint32_t    rgba_;

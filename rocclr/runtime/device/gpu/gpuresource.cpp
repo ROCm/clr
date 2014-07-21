@@ -197,6 +197,9 @@ static uint32_t GetHSAILImageFormatType(cmSurfFmt format)
         formatType = 6;
         break;
 */
+    case CM_SURF_FMT_BGR10_X2:
+        formatType = 7;
+        break;
     case CM_SURF_FMT_sR8:
     case CM_SURF_FMT_sRG8:
     case CM_SURF_FMT_sRGBA8:
@@ -285,6 +288,9 @@ static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder)
     case HSA_IMAGE_FMT_R10G10B10_UNORM:
         orderType = 6;
         break;*/
+    case GSL_CHANNEL_ORDER_RGB:
+        orderType = 7;
+        break;
     case GSL_CHANNEL_ORDER_RGBA:
         orderType = 8;
         break;
