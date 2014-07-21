@@ -180,8 +180,14 @@ NullDevice::create(CALtarget target)
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
         AMD_BUILD_STRING);
-    info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
-    info_.oclcVersion_ = "OpenCL C 2.0 ";
+    if (gpuSettings->ciPlus_) {
+        info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
+        info_.oclcVersion_ = "OpenCL C 2.0 ";
+    }
+    else {
+        info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
+        info_.oclcVersion_ = "OpenCL C 1.2 ";
+    }
 
     return true;
 }
