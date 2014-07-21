@@ -3374,6 +3374,7 @@ GetOclSize(const aclArgData* argInfo)
             }
         case ARG_TYPE_IMAGE: return sizeof(cl_mem);
         case ARG_TYPE_SAMPLER: return sizeof(cl_sampler);
+        case ARG_TYPE_QUEUE: return sizeof(cl_command_queue);
         default: return -1;
     }
 }
