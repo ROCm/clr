@@ -917,6 +917,7 @@ static const FormatConvertion RejectedData[] =
     { CL_FLOAT,                 CL_UNSIGNED_INT32 },
     { CL_SIGNED_INT8,           CL_UNSIGNED_INT8  },
     { CL_SIGNED_INT16,          CL_UNSIGNED_INT16 },
+    { CL_UNORM_INT_101010,      CL_UNSIGNED_INT8 },
     { CL_SIGNED_INT32,          CL_UNSIGNED_INT32 }
 };
 
@@ -927,6 +928,7 @@ static const FormatConvertion RejectedOrder[] =
     { CL_RA,                    CL_RG },
     { CL_LUMINANCE,             CL_R  },
     { CL_INTENSITY,             CL_R },
+    { CL_RGB,                   CL_RGBA },
     { CL_BGRA,                  CL_RGBA },
     { CL_ARGB,                  CL_RGBA },
     { CL_sRGB,                  CL_RGBA },

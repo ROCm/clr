@@ -259,6 +259,12 @@ MemoryFormatMap[] = {
     { { CL_RA,                      CL_FLOAT },
       { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG32F } },
 
+    // RGB
+    { { CL_RGB,                     CL_UNORM_INT_101010 },
+      { GSL_CHANNEL_ORDER_RGB,      CM_SURF_FMT_BGR10_X2 } },
+    { { CL_RGB,                     CL_UNSIGNED_INT8 },             // This is used only by blit kernel
+      { GSL_CHANNEL_ORDER_RGBA,     CM_SURF_FMT_RGBA8UI } },
+
     // RGBA
     { { CL_RGBA,                    CL_UNORM_INT8 },
       { GSL_CHANNEL_ORDER_RGBA,     CM_SURF_FMT_RGBA8 } },
@@ -427,6 +433,7 @@ MemoryFormatSize[] = {
     { CM_SURF_FMT_RG16F,    4,   2 }, /**< A 2 component, 16-bit float value per component */
     { CM_SURF_FMT_RGBA16F,  8,   4 }, /**< A 4 component, 16-bit float value per component */
 
+    { CM_SURF_FMT_BGR10_X2, 4,   4 }, /**< 4 component, unnormalized signed 10-bit integer value per component packed as (@c XXRRRRRRRRRRGGGGGGGGGGBBBBBBBBBB)*/
     { CM_SURF_FMT_DEPTH32F, 4,   1 }, /**< A one component, 32 float value per component */
     { CM_SURF_FMT_DEPTH16 , 2,   1 }, /**< A one component, 16 unsigned int value per component */
     { CM_SURF_FMT_DEPTH24_STEN8 , 4 ,1}, /**< A one component, 32 float value per component */
