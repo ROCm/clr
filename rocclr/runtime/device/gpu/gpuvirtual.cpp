@@ -87,7 +87,7 @@ VirtualGPU::MemoryDependency::validate(
 
     if (flushL1Cache) {
         // Flush cache
-        gpu.flushL1Cache();
+        gpu.flushCUCaches();
 
         // Clear memory dependency state
         const static bool All = true;
@@ -1724,8 +1724,6 @@ VirtualGPU::submitKernelInternalHSA(
     if (hsaKernel.dynamicParallelism()) {
         // Make sure exculsive access to the device queue
         amd::ScopedLock(defQueue->lock());
-        //! \todo Remove flush. We start parent earlier.
-        flushDMA(MainEngine);
 
         if (GPU_PRINT_CHILD_KERNEL != 0) {
             waitForEvent(&gpuEvent);
@@ -1819,6 +1817,8 @@ VirtualGPU::submitKernelInternalHSA(
             *gpuDefQueue->virtualQueue_,
             *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
             gpuDefQueue->vqHeader_->aql_slot_num);
+        const static bool FlushL2 = true;
+        gpuDefQueue->flushCUCaches(FlushL2);
 
         // Get the address of PM4 template and add write it to params
         //! @note DMA flush must not occur between patch and the scheduler
@@ -3290,7 +3290,7 @@ VirtualGPU::processMemObjectsHSA(
                     *reinterpret_cast<void* const*>(params + desc.offset_));
                 if (!svmMem) {
                     //!\todo Do we have to sync cache coherency or wait for SDMA?
-                    flushL1Cache();
+                    flushCUCaches();
                     break;
                 }
             }

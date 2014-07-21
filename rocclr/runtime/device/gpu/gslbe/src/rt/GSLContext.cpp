@@ -464,9 +464,9 @@ CALGSLContext::flushIOCaches() const
 }
 
 void
-CALGSLContext::flushL1Cache() const
+CALGSLContext::flushCUCaches(bool flushL2) const
 {
-    m_cs->FlushL1Cache();
+    m_cs->FlushCUCaches(flushL2);
 }
 
 gslProgramObject

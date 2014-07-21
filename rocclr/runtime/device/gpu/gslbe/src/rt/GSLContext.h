@@ -51,7 +51,7 @@ public:
     bool             isDone(GpuEvent* event);
     void             waitForEvent(GpuEvent* event);
     void             flushIOCaches() const;
-    void             flushL1Cache() const;
+    void             flushCUCaches(bool flushL2 = false) const;
     void             eventBegin(EngineType engId)
     {
         m_eventQueue[engId].begin();
