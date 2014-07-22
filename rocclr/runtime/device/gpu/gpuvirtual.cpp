@@ -453,8 +453,22 @@ VirtualGPU::create(
 #endif // !cl_amd_open_video
     {
         if (dev().engines().numComputeRings()) {
-            //!@note: Add 1 to account the device queue for transfers
-            uint idx = (index() + 1) % dev().engines().numComputeRings();
+            uint    idx;
+
+            //! @todo Temporary workaround for Linux, because 2 HW queues only
+            //! Fixes conformance failures with multi queues
+            if ((0 == deviceQueueSize) || IS_WINDOWS) {
+                idx = index() % (dev().engines().numComputeRings() -
+                    gpuDevice_.numDeviceQueues_);
+            }
+            else {
+                gpuDevice_.numDeviceQueues_++;
+                if (gpuDevice_.numDeviceQueues_ >= dev().engines().numComputeRings()) {
+                    return false;
+                }
+                idx = (dev().engines().numComputeRings() - gpuDevice_.numDeviceQueues_)
+                    % dev().engines().numComputeRings();
+            }
 
             // hwRing_ should be set 0 if forced to have single scratch buffer
             hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
@@ -582,6 +596,10 @@ VirtualGPU::~VirtualGPU()
     // Not safe to remove a queue. So lock the device
     amd::ScopedLock k(dev().lockAsyncOps());
     amd::ScopedLock lock(dev().vgpusAccess());
+
+    if ((NULL != virtualQueue_) && IS_LINUX) {
+        gpuDevice_.numDeviceQueues_--;
+    }
 
     uint    i;
     // Destroy all kernels
