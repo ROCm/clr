@@ -683,6 +683,20 @@ HostBlitManager::fillImage(
     // rowPitch and slicePitch in bytes
     size_t  devRowPitch;
     size_t  devSlicePitch;
+
+    void *newpattern = const_cast<void *>(pattern);
+    cl_float4 fFillColor;
+
+    // Converting a linear RGB floating-point color value to a normalized 8-bit unsigned integer sRGB value so that the cpu path can treat sRGB as RGB for host transfer.
+    if (memory.owner()->asImage()->getImageFormat().image_channel_order == CL_sRGBA) {
+        float *fColor = static_cast<float *>(newpattern);
+        fFillColor.s[0] = sRGBmap(fColor[0]) / 255.0f;
+        fFillColor.s[1] = sRGBmap(fColor[1]) / 255.0f;
+        fFillColor.s[2] = sRGBmap(fColor[2]) / 255.0f;
+        fFillColor.s[3] = fColor[3];
+        newpattern = static_cast<void *>(&fFillColor);
+    }
+
     // Map memory
     void* fillMem = memory.cpuMap(vDev_, (entire) ? Memory::CpuWriteOnly : 0,
         startLayer, numLayers, &devRowPitch, &devSlicePitch);
@@ -693,7 +707,7 @@ HostBlitManager::fillImage(
 
     float fillValue[4];
     memset(fillValue, 0, sizeof(fillValue));
-    memory.owner()->asImage()->getImageFormat().formatColor(pattern, fillValue);
+    memory.owner()->asImage()->getImageFormat().formatColor(newpattern, fillValue);
 
     size_t  elementSize = memory.owner()->asImage()->getImageFormat().getElementSize();
     size_t  offset  = origin[0] * elementSize;
@@ -734,4 +748,28 @@ HostBlitManager::fillImage(
     return true;
 }
 
+cl_uint
+HostBlitManager::sRGBmap(float fc) const
+{
+    double c = (double)fc;
+
+#ifdef ATI_OS_LINUX
+    if (isnan(c))
+        c = 0.0;
+#else
+    if (_isnan(c))
+        c = 0.0;
+#endif
+
+    if (c > 1.0)
+        c = 1.0;
+    else if (c < 0.0)
+        c = 0.0;
+    else if (c < 0.0031308)
+        c = 12.92 * c;
+    else
+        c = (1055.0/1000.0) * pow(c, 5.0/12.0) - (55.0/1000.0);
+
+    return (cl_uint)(c * 255.0 + 0.5);
+}
 } // namespace gpu

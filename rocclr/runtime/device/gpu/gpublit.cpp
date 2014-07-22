@@ -2583,6 +2583,9 @@ KernelBlitManager::fillImage(
     fillType = FillImage;
     dim = 3;
 
+    void *newpattern = const_cast<void *>(pattern);
+    cl_uint4  iFillColor;
+
     bool rejected = false;
     bool    releaseView = false;
     // For depth, we need to create a view
@@ -2605,6 +2608,13 @@ KernelBlitManager::fillImage(
         }
 
         if (gpuMem(memory).cal()->format_ == CM_SURF_FMT_RGBA8_SRGB) {
+            // Converting a linear RGB floating-point color value to a 8-bit unsigned integer sRGB value because hw is not support write_imagef for sRGB.
+            float *fColor = static_cast<float *>(newpattern);
+            iFillColor.s[0] = sRGBmap(fColor[0]);
+            iFillColor.s[1] = sRGBmap(fColor[1]);
+            iFillColor.s[2] = sRGBmap(fColor[2]);
+            iFillColor.s[3] = (cl_uint)(fColor[3]*255.0f);
+            newpattern = static_cast<void*>(&iFillColor);
             for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
                 if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
                     newFormat.image_channel_order = RejectedOrder[i].clNewType_;
@@ -2657,9 +2667,9 @@ KernelBlitManager::fillImage(
     // Program kernels arguments for the blit operation
     Memory*  mem = memView;
     setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-    setArgument(kernels_[fillType], 1, sizeof(cl_float4), pattern);
-    setArgument(kernels_[fillType], 2, sizeof(cl_int4), pattern);
-    setArgument(kernels_[fillType], 3, sizeof(cl_uint4), pattern);
+    setArgument(kernels_[fillType], 1, sizeof(cl_float4), newpattern);
+    setArgument(kernels_[fillType], 2, sizeof(cl_int4), newpattern);
+    setArgument(kernels_[fillType], 3, sizeof(cl_uint4), newpattern);
 
     cl_int fillOrigin[4] = { (cl_int)origin[0],
                              (cl_int)origin[1],

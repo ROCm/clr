@@ -352,6 +352,8 @@ public:
         bool        entire = false      //!< Entire buffer will be updated
         ) const;
 
+    cl_uint sRGBmap(float fc) const;
+
 protected:
     VirtualDevice&      vDev_;  //!< Virtual device object
     const amd::Device&  dev_;   //!< Physical device
