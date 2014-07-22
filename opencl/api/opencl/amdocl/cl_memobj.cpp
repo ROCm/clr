@@ -4454,31 +4454,6 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer, (
 }
 RUNTIME_EXIT
 
-static cl_uint
-sRGBmap(float fc)
-{
-    double c = (double)fc;
-
-#ifdef ATI_OS_LINUX
-    if (isnan(c))
-        c = 0.0;
-#else
-    if (_isnan(c))
-        c = 0.0;
-#endif
-
-    if (c > 1.0)
-        c = 1.0;
-    else if (c < 0.0)
-        c = 0.0;
-    else if (c < 0.0031308)
-        c = 12.92 * c;
-    else
-        c = (1055.0/1000.0) * pow(c, 5.0/12.0) - (55.0/1000.0);
-
-    return (cl_uint)(c * 255.0 + 0.5);
-}
-
 /*! \brief enqueues a command to fill an image object with
  *  a specified color.
  *
@@ -4615,35 +4590,12 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillImage, (
         return err;
     }
 
-    void *new_fill_color = const_cast<void *>(fill_color);
-    cl_uint4  i_fill_color;
-    cl_float4 f_fill_color;
-
-    // Convert int to float for sRGBA because hw is not supporting this conversion yet.
-    if (fillImage->getImageFormat().image_channel_order == CL_sRGBA) {
-        float *f_color = (float *)(new_fill_color);
-        if (hostQueue.device().info().type_ == CL_DEVICE_TYPE_CPU) {
-            f_fill_color.s[0] = sRGBmap(f_color[0]) / 255.0;
-            f_fill_color.s[1] = sRGBmap(f_color[1]) / 255.0;
-            f_fill_color.s[2] = sRGBmap(f_color[2]) / 255.0;
-            f_fill_color.s[3] = f_color[3];
-            new_fill_color = (void *)&f_fill_color;
-        }
-        else {
-            i_fill_color.s[0] = sRGBmap(f_color[0]);
-            i_fill_color.s[1] = sRGBmap(f_color[1]);
-            i_fill_color.s[2] = sRGBmap(f_color[2]);
-            i_fill_color.s[3] = (cl_uint)(f_color[3]*255.0);
-            new_fill_color = (void *)&i_fill_color;
-        }
-    }
-
     amd::FillMemoryCommand *command = new amd::FillMemoryCommand(
         hostQueue,
         CL_COMMAND_FILL_IMAGE,
         eventWaitList,
         *fillImage,
-        const_cast<const void *>(new_fill_color),
+        fill_color,
         sizeof(cl_float4),  // @note color size is always 16 bytes value
         fillOrigin,
         fillRegion);
