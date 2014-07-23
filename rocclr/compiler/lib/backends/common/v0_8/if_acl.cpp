@@ -1277,26 +1277,21 @@ internal_compile_failure:
 #define CONDITIONAL_CMP_ASSIGN(A, B, C) A = (A && B != A) ? (A) : (C)
 
 acl_error
-IsValidCompilationOptions(aclBinary *bin, aclLogFunction compile_callback)
+IsValidCompilationOptions(aclBinary *bin)
 {
-  acl_error error_code = ACL_SUCCESS;
 #if defined(WITH_TARGET_HSAIL) && defined(WITH_TARGET_AMDIL)
   amd::option::Options* opts = reinterpret_cast<amd::option::Options*>(bin->options);
   std::string major = std::string(opts->oVariables->CLStd).substr(2,1);
-  std::string error_msg;
   if (isHSAILTarget(bin->target) && major == "1") {
-    error_msg = "Error: HSAIL doesn't support OpenCL version < 2.0.";
-    error_code = ACL_INVALID_OPTION;
+    std::cout << "Error: HSAIL doesn't support OpenCL version < 2.0" << std::endl;
+    return ACL_INVALID_OPTION;
   }
   if (isAMDILTarget(bin->target) && major == "2") {
-    error_msg = "Error: AMDIL doesn't support OpenCL version >= 2.0.";
-    error_code = ACL_INVALID_OPTION;
-  }
-  if (ACL_SUCCESS != error_code && compile_callback) {
-    compile_callback(error_msg.c_str(), error_msg.size());
+    std::cout << "Error: AMDIL doesn't support OpenCL version >= 2.0" << std::endl;
+    return ACL_INVALID_OPTION;
   }
 #endif
-  return error_code;
+  return ACL_SUCCESS;
 }
 
 acl_error  ACL_API_ENTRY
@@ -1310,7 +1305,7 @@ if_aclCompile(aclCompiler *cl,
   if (bin == NULL || cl == NULL) {
     return ACL_INVALID_ARG;
   }
-  acl_error error_code = IsValidCompilationOptions(bin, compile_callback);
+  acl_error error_code = IsValidCompilationOptions(bin);
   if (error_code != ACL_SUCCESS) {
     return error_code;
   }
