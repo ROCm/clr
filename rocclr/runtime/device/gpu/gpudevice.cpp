@@ -618,11 +618,8 @@ void Device::fillDeviceInfo(
 
     info_.executionCapabilities_     = CL_EXEC_KERNEL;
     if (settings().oclVersion_ >= OpenCL20) {
-        info_.svmCapabilities_       = 
-        CL_DEVICE_SVM_COARSE_GRAIN_BUFFER;
-        if (settings().svmAtomics_) {
-            info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
-        }
+        info_.svmCapabilities_       = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER;
+
     }
     info_.preferredPlatformAtomicAlignment_ = 0;
     info_.preferredGlobalAtomicAlignment_ = 0;
