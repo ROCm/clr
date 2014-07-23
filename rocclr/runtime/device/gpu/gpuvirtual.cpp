@@ -458,7 +458,8 @@ VirtualGPU::create(
             //! @todo Temporary workaround for Linux, because 2 HW queues only
             //! Fixes conformance failures with multi queues
             if ((0 == deviceQueueSize) || IS_WINDOWS) {
-                idx = index() % (dev().engines().numComputeRings() -
+                //! @note: Add 1 to account the device queue for transfers
+                idx = (index() + 1) % (dev().engines().numComputeRings() -
                     gpuDevice_.numDeviceQueues_);
             }
             else {
