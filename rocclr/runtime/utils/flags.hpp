@@ -159,9 +159,7 @@ release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
         "Enable HSA device local memory usage")                               \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
-        "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
-release(bool, ENABLE_PLATFORM_ATOMICS, false,                \
-        "Enable platform atomics")
+        "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.")
 
 namespace amd {
 
