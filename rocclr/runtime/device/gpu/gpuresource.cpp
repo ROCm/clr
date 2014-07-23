@@ -577,6 +577,9 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         if (gslResource != 0) {
             calRes = true;
         }
+        else {
+            pinOffset_ = 0;
+        }
     }
         break;
     case View: {
