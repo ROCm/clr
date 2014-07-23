@@ -186,7 +186,7 @@ HSAILKernel::aqlCreateHWInfo(const void* shader, size_t shaderSize)
     assert((akc->workitem_private_segment_byte_size & 3) == 0 &&
         "Scratch must be DWORD aligned");
     workGroupInfo_.scratchRegs_ =
-        akc->workitem_private_segment_byte_size / sizeof(uint);
+        amd::alignUp(akc->workitem_private_segment_byte_size, 16) / sizeof(uint);
     workGroupInfo_.availableSGPRs_ = dev().gslCtx()->getNumSGPRsAvailable();
     workGroupInfo_.availableVGPRs_ = dev().gslCtx()->getNumVGPRsAvailable();
     workGroupInfo_.preferredSizeMultiple_ = dev().getAttribs().wavefrontSize;
