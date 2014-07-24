@@ -289,7 +289,7 @@ static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder)
         orderType = 6;
         break;*/
     case GSL_CHANNEL_ORDER_RGB:
-        orderType = 7;
+        orderType = 6;
         break;
     case GSL_CHANNEL_ORDER_RGBA:
         orderType = 8;
