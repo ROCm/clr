@@ -48,6 +48,19 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
       argsToClang.push_back((*it).c_str());
     }
   }
+  if (Options()->oVariables->ImageSupport) {
+    argsToClang.push_back ("-D__IMAGE_SUPPORT__=1 ");
+  }
+
+  if (Options()->oVariables->FastFMA) {
+    argsToClang.push_back ("-DFP_FAST_FMA=1 ");
+  }
+
+  if (Options()->oVariables->FastFMAF) {
+    argsToClang.push_back ("-DFP_FAST_FMAF=1 ");
+  }
+
+  argsToClang.push_back ("-D__AMD__=1 ");
 
   // Other options are passed using OptionsInfo structure.
   clc2::OptionsInfo ClangOptions;
