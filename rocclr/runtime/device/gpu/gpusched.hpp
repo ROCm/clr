@@ -66,6 +66,9 @@ struct SchedulerParam {
     uint64_t    scratch;        //!< GPU address to the scratch buffer
     uint32_t    numMaxWaves;    //!< The max number of possible waves
     uint32_t    releaseHostCP;  //!< Releases CP on the host queue
+    uint64_t    parentAQL;      //!< Host parent AmdAqlWrap packet
+    uint32_t    dedicatedQueue; //!< Scheduler uses a dedicated queue
+    uint32_t    reserved;       //!< Reserved field
 };
 
 } // namespace gpu

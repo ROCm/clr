@@ -90,6 +90,9 @@ typedef struct _SchedulerParam {
     ulong   scratch;        //!< GPU address to the scratch buffer
     uint    numMaxWaves;    //!< Num max waves on the asic
     uint    releaseHostCP;  //!< Releases CP on the host queue
+    ulong   parentAQL;      //!< Host parent AmdAqlWrap packet
+    uint    dedicatedQueue; //!< Scheduler uses a dedicated queue
+    uint    reserved;       //!< Reserved field
 } SchedulerParam;
 
 typedef struct _HwDispatch {
@@ -276,7 +279,9 @@ static inline bool
 checkWaitEvents(__global AmdEvent** events, uint numEvents)
 {
     for (uint i = 0; i < numEvents; ++i) {
-        if (atomic_and(&events[i]->state, 0xffffffff) != CL_COMPLETE) {
+        if (atomic_load_explicit(
+            (__global atomic_uint*)(&events[i]->state),
+            memory_order_acquire, memory_scope_device) != CL_COMPLETE) {
             return false;
         }
     }
@@ -348,6 +353,8 @@ scheduler(
     __global  SchedulerParam* param = &params[paramIdx];
     volatile __global HwDispatch* hwDisp =
             (volatile __global HwDispatch*)param->hw_queue;
+    __global AmdAqlWrap*    hostParent = (__global AmdAqlWrap*)(param->parentAQL);
+    __global uint*          counter = (__global uint*)(&hostParent->child_counter);
     __global uint*          signal = (__global uint*)(&param->signal);
     __global AmdAqlWrap*    wraps = (__global AmdAqlWrap*)&queue[1];
     __global uint*          amask = (__global uint *)queue->aql_slot_mask;
@@ -360,7 +367,7 @@ scheduler(
     }
 
     uint launch = 0;
-    uint loop;
+    uint loop = 1;
 
     do {
         uint mask = atomic_load_explicit((__global atomic_uint*)(&amask[get_group_id(0)]),
@@ -491,10 +498,16 @@ scheduler(
         launch = atomic_load_explicit((__global atomic_uint*)&param->launch,
             memory_order_acquire, memory_scope_device);
 
-        loop = atomic_load_explicit((__global atomic_uint*)signal,
-            memory_order_acquire, memory_scope_device);
+        if (param->dedicatedQueue) {
+            loop = atomic_load_explicit((__global atomic_uint*)signal,
+                memory_order_acquire, memory_scope_device);
+        }
+        else {
+            loop = atomic_load_explicit((__global atomic_uint*)counter,
+                memory_order_acquire, memory_scope_device);
+        }
 
-    } while ((launch == 0) && (loop == 1));
+    } while ((launch == 0) && (loop != 0));
 
     if (loop == 0) {
         //! \todo Write deadcode to the template, but somehow
@@ -504,6 +517,8 @@ scheduler(
         hwDisp[1].condExe1 = 0xdeadc0de;
         hwDisp[1].condExe2 = 0xdeadc0de;
         hwDisp[1].condExe3 = 0xdeadc0de;
+        atomic_store_explicit((__global atomic_uint*)signal,
+            0, memory_order_release, memory_scope_device);
         barrier(CLK_GLOBAL_MEM_FENCE);
         atomic_store_explicit((__global atomic_uint*)&hwDisp->startExe,
             ResumeExecution, memory_order_release, memory_scope_device);

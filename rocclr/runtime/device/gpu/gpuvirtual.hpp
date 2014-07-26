@@ -387,6 +387,11 @@ public:
     //! Update virtual queue header
     void writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable);
 
+    //! Returns TRUE if virtual queue was successfully allocatted
+    bool createVirtualQueue(
+        uint deviceQueueSize            //!< Device queue size
+        );
+
     EngineType      engineID_;  //!< Engine ID for this VirtualGPU
     ResourceSlots   slots_;     //!< Resource slots for kernel arguments
     State           state_;     //!< virtual GPU current state
@@ -488,11 +493,6 @@ private:
         const amd::BufferRect& dstRect      //!< region of destination for copy
         );
 
-    //! Returns TRUE if virtual queue was successfully allocatted
-    bool createVirtualQueue(
-        uint deviceQueueSize            //!< Device queue size
-        );
-
     GslKernels      gslKernels_;        //!< GSL kernel descriptors
     GslKernelDesc*  activeKernelDesc_;  //!< active GSL kernel descriptors
     GpuEvents       gpuEvents_;         //!< GPU events
@@ -529,6 +529,7 @@ private:
     Memory*         virtualQueue_;  //!< Virtual device queue
     Memory*         schedParams_;   //!< The scheduler parameters
     uint            schedParamIdx_; //!< Index in the scheduler parameters buffer
+    uint            deviceQueueSize_;   //!< Device queue size
 
     Memory*         hsaQueueMem_;   //!< Memory for the amd_queue_t object
 };

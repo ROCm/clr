@@ -1290,9 +1290,9 @@ CALGSLContext::virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* me
 
 void
 CALGSLContext::virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mcaddr parentState,
-    uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal)
+    uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal, bool dedicatedQueue)
 {
     eventBegin(MainEngine);
-    m_cs->VirtualQueueHandshake(mem, parentState, newStateValue, parentChildCounter, signal);
+    m_cs->VirtualQueueHandshake(mem, parentState, newStateValue, parentChildCounter, signal, dedicatedQueue);
     eventEnd(MainEngine, event);
 }
