@@ -264,6 +264,24 @@ VirtualGPU::releasePinnedMem()
 bool
 VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 {
+    if (deviceQueueSize_ == deviceQueueSize) {
+        return true;
+    }
+    else {
+        //! @todo Temporarily keep the buffer mapped for debug purpose
+        if (NULL != schedParams_) {
+            schedParams_->unmap(this);
+        }
+        delete vqHeader_;
+        delete virtualQueue_;
+        delete schedParams_;
+        vqHeader_ = NULL;
+        virtualQueue_ = NULL;
+        schedParams_ = NULL;
+        schedParamIdx_ = 0;
+        deviceQueueSize_ = 0;
+    }
+
     uint    numSlots = deviceQueueSize / sizeof(AmdAqlWrap);
     uint    allocSize = deviceQueueSize;
 
@@ -339,6 +357,8 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 
     ptr  = reinterpret_cast<address>(schedParams_->map(this));
 
+    deviceQueueSize_ = deviceQueueSize;
+
     return true;
 }
 
@@ -365,6 +385,7 @@ VirtualGPU::VirtualGPU(
     , virtualQueue_(NULL)
     , schedParams_(NULL)
     , schedParamIdx_(0)
+    , deviceQueueSize_(0)
     , hsaQueueMem_(NULL)
 {
     memset(&cal_, 0, sizeof(CalVirtualDesc));
@@ -453,23 +474,7 @@ VirtualGPU::create(
 #endif // !cl_amd_open_video
     {
         if (dev().engines().numComputeRings()) {
-            uint    idx;
-
-            //! @todo Temporary workaround for Linux, because 2 HW queues only
-            //! Fixes conformance failures with multi queues
-            if ((0 == deviceQueueSize) || IS_WINDOWS) {
-                //! @note: Add 1 to account the device queue for transfers
-                idx = (index() + 1) % (dev().engines().numComputeRings() -
-                    gpuDevice_.numDeviceQueues_);
-            }
-            else {
-                gpuDevice_.numDeviceQueues_++;
-                if (gpuDevice_.numDeviceQueues_ >= dev().engines().numComputeRings()) {
-                    return false;
-                }
-                idx = (dev().engines().numComputeRings() - gpuDevice_.numDeviceQueues_)
-                    % dev().engines().numComputeRings();
-            }
+            uint    idx = index() % dev().engines().numComputeRings();
 
             // hwRing_ should be set 0 if forced to have single scratch buffer
             hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
@@ -558,10 +563,9 @@ VirtualGPU::create(
         return false;
     }
 
-    //! @todo for testing only
-    //deviceQueueSize = (deviceQueueSize == 0) ? (128 * Ki) : deviceQueueSize;
     // Check if the app requested a device queue creation
-    if ((0 != deviceQueueSize) && !createVirtualQueue(deviceQueueSize)) {
+    if (dev().settings().useDeviceQueue_ &&
+        (0 != deviceQueueSize) && !createVirtualQueue(deviceQueueSize)) {
         LogError("Could not create a virtual queue!");
         return false;
     }
@@ -597,10 +601,6 @@ VirtualGPU::~VirtualGPU()
     // Not safe to remove a queue. So lock the device
     amd::ScopedLock k(dev().lockAsyncOps());
     amd::ScopedLock lock(dev().vgpusAccess());
-
-    if ((NULL != virtualQueue_) && IS_LINUX) {
-        gpuDevice_.numDeviceQueues_--;
-    }
 
     uint    i;
     // Destroy all kernels
@@ -1696,13 +1696,19 @@ VirtualGPU::submitKernelInternalHSA(
             return false;
         }
         else {
-            gpuDefQueue = static_cast<VirtualGPU*>(defQueue->vDev());
+            if (dev().settings().useDeviceQueue_) {
+                gpuDefQueue = static_cast<VirtualGPU*>(defQueue->vDev());
+                if (gpuDefQueue->hwRing() == hwRing()) {
+                    LogError("Can't submit the child kernels to the same HW ring as the host queue!");
+                    return false;
+                }
+            }
+            else {
+                createVirtualQueue(defQueue->size());
+                gpuDefQueue = this;
+            }
         }
         vmDefQueue = gpuDefQueue->virtualQueue_->vmAddress();
-        if (gpuDefQueue->hwRing() == hwRing()) {
-            LogError("Can't submit the child kernels to the same HW ring as the host queue!");
-            return false;
-        }
 
         // Add memory handles before the actual dispatch
         memList.push_back(gpuDefQueue->virtualQueue_);
@@ -1830,6 +1836,14 @@ VirtualGPU::submitKernelInternalHSA(
             }
         }
 
+        if (!dev().settings().useDeviceQueue_) {
+            // Add the termination handshake to the host queue
+            virtualQueueHandshake(gpuEvent, gpuDefQueue->schedParams_->gslResource(),
+                vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                0, dev().settings().useDeviceQueue_);
+        }
+
         // Get the global loop start before the scheduler
         mcaddr loopStart = gpuDefQueue->virtualQueueDispatcherStart();
         static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
@@ -1842,6 +1856,7 @@ VirtualGPU::submitKernelInternalHSA(
         // Get the address of PM4 template and add write it to params
         //! @note DMA flush must not occur between patch and the scheduler
         mcaddr patchStart = gpuDefQueue->virtualQueueDispatcherStart();
+
         // Program parameters for the scheduler
         SchedulerParam* param = &reinterpret_cast<SchedulerParam*>
             (gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
@@ -1852,6 +1867,9 @@ VirtualGPU::submitKernelInternalHSA(
         param->hsa_queue = gpuDefQueue->hsaQueueMem()->vmAddress();
         param->launch = 0;
         param->releaseHostCP = 0;
+        param->parentAQL = vmParentWrap;
+        param->dedicatedQueue = dev().settings().useDeviceQueue_;
+
         // Fill the scratch buffer information
         if (hsaKernel.prog().maxScratchRegs() > 0) {
             gpu::Memory* scratchBuf = dev().scratch(gpuDefQueue->hwRing())->memObjs_[0];
@@ -1880,16 +1898,20 @@ VirtualGPU::submitKernelInternalHSA(
         gpuDefQueue->virtualQueueDispatcherEnd(gpuEvent,
             gpuDefQueue->vmMems(), gpuDefQueue->cal_.memCount_,
             signalAddr, loopStart);
+
         // Set GPU event for the used resources
         for (uint i = 0; i < memList.size(); ++i) {
             memList[i]->setBusy(*gpuDefQueue, gpuEvent);
         }
 
-        // Add the termination handshake to the host queue
-        virtualQueueHandshake(gpuEvent, gpuDefQueue->schedParams_->gslResource(),
-            vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
-            vmParentWrap + offsetof(AmdAqlWrap, child_counter),
-            signalAddr);
+        if (dev().settings().useDeviceQueue_) {
+            // Add the termination handshake to the host queue
+            virtualQueueHandshake(gpuEvent, gpuDefQueue->schedParams_->gslResource(),
+                vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                signalAddr, dev().settings().useDeviceQueue_);
+        }
+
         ++gpuDefQueue->schedParamIdx_ %=
             gpuDefQueue->schedParams_->size() / sizeof(SchedulerParam);
         //! \todo optimize the wrap around

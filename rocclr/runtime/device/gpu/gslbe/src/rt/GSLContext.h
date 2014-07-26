@@ -47,7 +47,8 @@ public:
                         uint32 numMems, gslMemObject scratch, const void* cpuKernelCode, uint64 hsaQueueVA);
     mcaddr           virtualQueueDispatcherStart();
     void             virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems, uint32 numMems, mcaddr signal, mcaddr loopStart);
-    void             virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mcaddr parentState, uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal);
+    void             virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mcaddr parentState,
+                        uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal, bool dedicatedQueue);
     bool             isDone(GpuEvent* event);
     void             waitForEvent(GpuEvent* event);
     void             flushIOCaches() const;

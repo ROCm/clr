@@ -468,7 +468,6 @@ public:
     //! Returns the number of virtual GPUs allocated on this device
     uint    numOfVgpus() const { return numOfVgpus_; }
     uint    numOfVgpus_;        //!< The number of virtual GPUs (lock protected)
-    uint    numDeviceQueues_;   //!< Number of device queues
 
     typedef std::vector<VirtualGPU*> VirtualGPUs;
 

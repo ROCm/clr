@@ -73,7 +73,8 @@ public:
             uint    apuSystem_: 1;      //!< Device is APU system with shared memory
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
-            uint    reserved_: 2;
+            uint    useDeviceQueue_: 1; //!< Submit to separate device queue
+            uint    reserved_: 1;
         };
         uint    value_;
     };

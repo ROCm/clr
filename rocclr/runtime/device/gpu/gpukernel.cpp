@@ -3975,7 +3975,17 @@ HSAILKernel::loadArguments(
             const amd::DeviceQueue* queue =
                 *reinterpret_cast<amd::DeviceQueue* const*>(paramaddr);
             VirtualGPU* gpuQueue = static_cast<VirtualGPU*>(queue->vDev());
-            uint64_t vmQueue = gpuQueue->vQueue()->vmAddress();
+            uint64_t vmQueue;
+            if (dev().settings().useDeviceQueue_) {
+                vmQueue = gpuQueue->vQueue()->vmAddress();
+            }
+            else {
+                if (!gpu.createVirtualQueue(queue->size())) {
+                    LogError( "Virtual queue creaiton failed!");
+                    return false;
+                }
+                vmQueue = gpu.vQueue()->vmAddress();
+            }
             WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(void*));
             break;
         }

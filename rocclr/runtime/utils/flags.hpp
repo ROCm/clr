@@ -150,6 +150,8 @@ release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
 release(bool, GPU_DIRECT_SRD, true,                                           \
         "Use indirect SRD access in HSAIL")                                   \
+release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
+        "Use a dedicated device queue for the actual submissions")            \
 release(bool, AMD_DEPTH_MSAA_INTEROP, false,                                  \
         "Enable depth stencil and MSAA buffer interop")                       \
 release(bool, AMD_THREAD_TRACE_ENABLE, false,                                 \
