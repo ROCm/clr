@@ -721,11 +721,14 @@ VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd)
         }
     }
         break;
-    case CL_COMMAND_READ_BUFFER_RECT:
-        // Runtime can't use accelerated copy if offset isn't 0 for the rect copy
-        if ((hostMemory != NULL) && (offset == 0)) {
+    case CL_COMMAND_READ_BUFFER_RECT: {
+        amd::BufferRect hostbufferRect;
+        amd::Coord3D    region(0);
+        amd::Coord3D hostOrigin(vcmd.hostRect().start_+ offset);
+        hostbufferRect.create(hostOrigin.c, vcmd.size().c , vcmd.hostRect().rowPitch_, vcmd.hostRect().slicePitch_);
+        if (hostMemory != NULL) {
             result = blitMgr().copyBufferRect(*memory, *hostMemory,
-                vcmd.bufRect(), vcmd.hostRect(), vcmd.size(),
+                vcmd.bufRect(), hostbufferRect, vcmd.size(),
                 vcmd.isEntireMemory());
         }
         else {
@@ -733,6 +736,7 @@ VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd)
                 vcmd.destination(), vcmd.bufRect(), vcmd.hostRect(), vcmd.size(),
                 vcmd.isEntireMemory());
         }
+    }
         break;
     case CL_COMMAND_READ_IMAGE:
         if (hostMemory != NULL) {
@@ -826,11 +830,14 @@ VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd)
         }
     }
         break;
-    case CL_COMMAND_WRITE_BUFFER_RECT:
-        // Runtime can't use accelerated copy if offset isn't 0 for the rect copy
+    case CL_COMMAND_WRITE_BUFFER_RECT: {
+        amd::BufferRect hostbufferRect;
+        amd::Coord3D    region(0);
+        amd::Coord3D hostOrigin(vcmd.hostRect().start_+ offset);
+        hostbufferRect.create(hostOrigin.c, vcmd.size().c , vcmd.hostRect().rowPitch_, vcmd.hostRect().slicePitch_);
         if ((hostMemory != NULL) && (offset == 0)) {
             result = blitMgr().copyBufferRect(*hostMemory, *memory,
-                vcmd.hostRect(), vcmd.bufRect(), vcmd.size(),
+                hostbufferRect, vcmd.bufRect(), vcmd.size(),
                 vcmd.isEntireMemory());
         }
         else {
@@ -838,6 +845,7 @@ VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd)
                 vcmd.hostRect(), vcmd.bufRect(), vcmd.size(),
                 vcmd.isEntireMemory());
         }
+    }
         break;
     case CL_COMMAND_WRITE_IMAGE:
         if (hostMemory != NULL) {
