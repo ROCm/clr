@@ -1942,13 +1942,6 @@ HSAILProgram::getNextCompilationStageFromBinary()
     if (errorCode != ACL_SUCCESS) {
         isBrigStrtab = false;
     }
-    // Checking BRIG DIRECTIVES in .brig_directives section
-    bool isBrigDirs = true;
-    const void *brigDirs = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclBRIGdirs, &errorCode);
-    if (errorCode != ACL_SUCCESS) {
-        isBrigDirs = false;
-    }
     // Checking BRIG CODE in .brig_code section
     bool isBrigCode = true;
     const void *brigCode = aclExtractSection(dev().hsaCompiler(),
@@ -1964,10 +1957,10 @@ HSAILProgram::getNextCompilationStageFromBinary()
         isBrigOps = false;
     }
 
-    if (isHsailText && isBrigStrtab && isBrigDirs && isBrigCode && isBrigOps) {
+    if (isHsailText && isBrigStrtab && isBrigCode && isBrigOps) {
         from = ACL_TYPE_HSAIL_BINARY;
     }
-    else if (!isHsailText && !isBrigStrtab && !isBrigDirs && !isBrigCode && !isBrigOps) {
+    else if (!isHsailText && !isBrigStrtab && !isBrigCode && !isBrigOps) {
         from = ACL_TYPE_LLVMIR_BINARY;
     }
     else {
@@ -1978,10 +1971,6 @@ HSAILProgram::getNextCompilationStageFromBinary()
         if (!isBrigStrtab) {
             buildLog_ +="Error while linking : \
                         Invalid binary (Missing BRIG_STRTAB section)\n" ;
-        }
-        if (!isBrigDirs) {
-            buildLog_ +="Error while linking : \
-                        Invalid binary (Missing BRIG_DIRECTIVES section)\n" ;
         }
         if (!isBrigCode) {
             buildLog_ +="Error while linking : \

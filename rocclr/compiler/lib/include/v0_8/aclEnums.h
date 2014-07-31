@@ -178,7 +178,7 @@ typedef enum _bif_sections_enum_0_8 {
   aclSPIR           = 28,
   aclHEADER         = 29,
   aclBRIGcode       = 30,
-  aclBRIGdirs       = 31,
+  aclBRIGxxxx       = 31,
   aclBRIGoprs       = 32,
   aclBRIGstrs       = 33,
   aclHSADEBUG       = 34,
