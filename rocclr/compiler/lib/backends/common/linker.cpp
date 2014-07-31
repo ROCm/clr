@@ -780,8 +780,28 @@ static bool fixUpModule(llvm::Module *M,
   return true;
 }
 
+static bool isSPIRTriple(const llvm::Triple &Triple) {
+  return Triple.getArch() == llvm::Triple::spir
+    || Triple.getArch() == llvm::Triple::spir64;
+}
+
+static bool isAMDILTriple(const llvm::Triple &Triple) {
+  return Triple.getArch() == llvm::Triple::amdil
+    || Triple.getArch() == llvm::Triple::amdil64;
+}
+
+static bool isX86Triple(const llvm::Triple &Triple) {
+  return Triple.getArch() == llvm::Triple::x86
+    || Triple.getArch() == llvm::Triple::x86_64;
+}
+
+static bool isHSAILTriple(const llvm::Triple &Triple) {
+  return Triple.getArch() == llvm::Triple::hsail
+    || Triple.getArch() == llvm::Triple::hsail_64;
+}
+
 static void CheckSPIRVersion(const llvm::Module *M,
-                             const aclTargetInfo& Target) {
+                             const llvm::Triple &TargetTriple) {
   const llvm::NamedMDNode *SPIRVersion
     = M->getNamedMetadata("opencl.spir.version");
   assert(SPIRVersion);
@@ -789,9 +809,8 @@ static void CheckSPIRVersion(const llvm::Module *M,
   // Metadata's of llvm modules are added into destination module and
   // it results in a more than one SPIR MDNode value.
   // Marking this fix as temporary and it will be tracked in bugzilla id 9775
-  if (SPIRVersion->getNumOperands() > 1)
-    LogWarning("\nIncorrect SPIR MDNode value");
-  assert(SPIRVersion->getNumOperands() >= 1);
+  // FIXME: Uncomment the line below
+  // assert(SPIRVersion->getNumOperands() == 1);
 
   const llvm::MDNode *VersionMD = SPIRVersion->getOperand(0);
   assert(VersionMD->getNumOperands() == 2);
@@ -805,7 +824,7 @@ static void CheckSPIRVersion(const llvm::Module *M,
   case 1:
     break;
   case 2:
-    assert(!isAMDILTarget(Target));
+    assert(!isAMDILTriple(TargetTriple));
     break;
   default:
     llvm_unreachable("Unknown SPIR version");
@@ -1055,18 +1074,16 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   bool LowerToPreciseFunctions = false;
 
   llvm::Triple ModuleTriple(LLVMBinary()->getTargetTriple());
+  llvm::Triple TargetTriple(LibTargetTriple);
 
-  bool isSPIRModuleTriple = ((ModuleTriple.getArch() == llvm::Triple::spir) ||
-                            (ModuleTriple.getArch() == llvm::Triple::spir64));
 
-  if(isSPIRModuleTriple) {
-
-    CheckSPIRVersion(LLVMBinary(), Elf()->target);
+  if (isSPIRTriple(ModuleTriple)) {
+    CheckSPIRVersion(LLVMBinary(), TargetTriple);
     RunSPIRLoader = true;
 #if OPENCL_MAJOR >= 2 // this will become default
-    DemangleBuiltins |= isAMDILTarget(Elf()->target);
+    DemangleBuiltins |= isAMDILTriple(TargetTriple);
 #ifdef BUILD_HSA_TARGET // special case for HSA build
-    DemangleBuiltins |= isHSAILTarget(Elf()->target);
+    DemangleBuiltins |= isHSAILTriple(TargetTriple);
 #endif
     // Never demangle for x86 target on 200 build.
 #else // OpenCL 1.2 build (this will go away)
@@ -1084,14 +1101,14 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
     // On an HSA build, the HSAIL library is always built with EDG.
     // This assumption must match the settings in
     // "opencl/library/hsa/hsail/build/Makefile.hsail"
-    RunEDGAdapter |= isHSAILTarget(Elf()->target);
+    RunEDGAdapter |= isHSAILTriple(TargetTriple);
 #endif
     // HSAIL requires SPIR calling conventions since the library is in
     // SPIR format. This doesn't matter if the EDGAdapter is not run.
-    SetSPIRCallingConv = isHSAILTarget(Elf()->target);
+    SetSPIRCallingConv = isHSAILTriple(TargetTriple);
 
     // Run the EDG Adapter if OPENCL_MAJOR >= 2 and for x86 target.
-    RunEDGAdapter |= isCpuTarget(Elf()->target);
+    RunEDGAdapter |= isX86Triple(TargetTriple);
 #endif // OPENCL_MAJOR >= 2
   }
 
@@ -1099,23 +1116,21 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 // FIXME: Remove the #ifdef when x86 is always built by Clang on
 // OpenCL 1.2 builds.
 #if OPENCL_MAJOR >=2
-  RunX86Adapter = isCpuTarget(Elf()->target);
-  RunLowerEnqueueKernel = isSPIRModuleTriple;
+  RunX86Adapter = isX86Triple(TargetTriple);
+  RunLowerEnqueueKernel = isSPIRTriple(TargetTriple);
   // For HSAIL targets, when the option -cl-fp32-correctly-rounded-divide-sqrt
   // lower divide and sqrt functions to precise HSAIL builtin library functions.
-  LowerToPreciseFunctions = (isHSAILTarget(Elf()->target)
+  LowerToPreciseFunctions = (isHSAILTriple(TargetTriple)
 		  && Options()->oVariables->FP32RoundDivideSqrt);
 #endif
   if (strcmp(Options()->oVariables->CLStd, "CL2.0") == 0) {
-    if (isHSAILTarget(Elf()->target)) {
+    if (isHSAILTriple(TargetTriple)) {
       RunPrintfRuntimeBinding = true;
-    } else if (isCpuTarget(Elf()->target)) {
+    } else if (isX86Triple(TargetTriple)) {
       RunPrintfCpuLowering = true;
     }
   }
 
-  // The first member in the list of libraries is assumed to be
-  // representative of the target device.
   if(!fixUpModule(LLVMBinary(), LibTargetTriple, LibDataLayout,
               RunSPIRLoader, DemangleBuiltins,
               RunEDGAdapter, SetSPIRCallingConv,
