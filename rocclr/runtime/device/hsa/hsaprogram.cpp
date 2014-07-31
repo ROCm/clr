@@ -230,16 +230,6 @@ namespace oclhsa {
         if (errorCode != ACL_SUCCESS) {
             isBrigStrtab = false;
         }
-        // Checking BRIG DIRECTIVES in .brig_directives section
-        bool isBrigDirs = true;
-        const void *brigDirs = g_complibApi._aclExtractSection(device().compiler(),
-            binaryElf_,
-            &secSize,
-            aclBRIGdirs,
-            &errorCode);
-        if (errorCode != ACL_SUCCESS) {
-            isBrigDirs = false;
-        }
         // Checking BRIG CODE in .brig_code section
         bool isBrigCode = true;
         const void *brigCode = g_complibApi._aclExtractSection(device().compiler(),
@@ -260,9 +250,9 @@ namespace oclhsa {
         if (errorCode != ACL_SUCCESS) {
             isBrigOps = false;
         }
-        if (isHsailText && isBrigStrtab && isBrigDirs && isBrigCode && isBrigOps) {
+        if (isHsailText && isBrigStrtab && isBrigCode && isBrigOps) {
             from = ACL_TYPE_HSAIL_BINARY;
-        } else if (!isHsailText && !isBrigStrtab && !isBrigDirs && !isBrigCode && !isBrigOps) {
+        } else if (!isHsailText && !isBrigStrtab && !isBrigCode && !isBrigOps) {
             from = ACL_TYPE_LLVMIR_BINARY;
         } else {
             if (!isHsailText) {
@@ -272,10 +262,6 @@ namespace oclhsa {
             if (!isBrigStrtab) {
                 buildLog_ +="Error while linking : \
                             Invalid binary (Missing BRIG_STRTAB section)\n" ;
-            }
-            if (!isBrigDirs) {
-                buildLog_ +="Error while linking : \
-                            Invalid binary (Missing BRIG_DIRECTIVES section)\n" ;
             }
             if (!isBrigCode) {
                 buildLog_ +="Error while linking : \
@@ -528,12 +514,6 @@ namespace oclhsa {
             &brig_.operand_section_byte_size,
             true
             );
-        bool dirStatus = ExtractSymbolAndCopy(aclBRIGdirs,
-            "__BRIG__directives",
-            &brig_.directive_section,
-            &brig_.directive_section_byte_size,
-            true
-            );
         bool strStatus = ExtractSymbolAndCopy(aclBRIGstrs,
             "__BRIG__strtab",
             &brig_.string_section,
@@ -546,7 +526,7 @@ namespace oclhsa {
             &brig_.debug_section_byte_size,
             false
             );
-        if (!codeStatus || !oprStatus || !dirStatus || !strStatus || !dbgStatus) {
+        if (!codeStatus || !oprStatus || !strStatus || !dbgStatus) {
             LogError("Failed to Extract one or more BRIG sections");
             buildLog_ += "Error: Failed to Extract one or more BRIG sections";
             return false;
@@ -567,7 +547,6 @@ namespace oclhsa {
             }
             //Destroy the BRIG
             free(brig_.code_section);
-            free(brig_.directive_section);
             free(brig_.operand_section);
             free(brig_.string_section);
             free(brig_.debug_section);

@@ -27,7 +27,7 @@ typedef enum {
   symAMDILFMeta,
   symISAText,
   symBRIGOperands,
-  symBRIGDirectives,
+  symBRIGxxxx,
   symBRIGStrtab,
   symX86Barrier,
   symAMDILHeader,
@@ -89,8 +89,8 @@ static const oclBIFSymbolStruct BIF30[26] =
   {symISAText, { "__ISA_",    "_text" }, {aclINTERNAL, aclLAST}},
   // 16: BIF 3.0 BRIG operands declarations, .brig section via -fbin-brig.
   {symBRIGOperands, { "__BRIG__operands","" }, {aclBRIGoprs, aclLAST}},
-  // 17: BIF 3.0 BRIG directives declarations, .brig section via -fbin-brig.
-  {symBRIGDirectives, { "__BRIG__directives","" }, {aclBRIGdirs, aclLAST}},
+  // 17: Unused after changes in HSAIL PRM
+  {symBRIGxxxx, { "","" }, {aclLAST, aclLAST}},
   // 18: BIF 3.0 BRIG strtab declarations, .brig section via -fbin-brig.
   {symBRIGStrtab, { "__BRIG__strtab","" }, {aclBRIGstrs, aclLAST}},
   // 19: BIF 3.0 per kernel barrier metadata, only valid for X86.
