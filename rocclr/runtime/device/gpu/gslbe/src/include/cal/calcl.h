@@ -145,6 +145,7 @@ typedef struct CALresourceDescRec {
     CALuint64       busAddress[2];
     mcaddr          vaBase;
     gslMemObjectAttribSection section;
+    CALuint         minAlignment;
 } CALresourceDesc;
 
 typedef enum CALresallocsliceviewflagsRec {

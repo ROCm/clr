@@ -346,6 +346,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     bool useRowPitch = false;
 
     desc.vaBase = 0;
+    desc.minAlignment = 0;
     desc.section = GSL_SECTION_REGULAR;
     if (NULL != params && NULL != params->owner_) {   //make sure params not NULL
         mcaddr svmPtr = reinterpret_cast<mcaddr>(params->owner_->getSvmPtr());
@@ -453,7 +454,12 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             // Check resource cache first for an appropriate resource
             gslRef_ = dev().resourceCache().findCalResource(&cal_);
             if (memType == Scratch) {
-                desc.vaBase = static_cast<mcaddr>(0x100000000ULL);
+                if ((dev().settings().hsail_) || (dev().settings().oclVersion_ >= OpenCL20)) {
+                    desc.minAlignment = 64 * Ki;
+                }
+                else {
+                    desc.vaBase = static_cast<mcaddr>(0x100000000ULL);
+                }
             }
             else if ((gslRef_ != NULL) && (!dev().settings().use64BitPtr_)) {
                 // Make sure runtime didn't pick a resource with > 4GB address

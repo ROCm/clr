@@ -2289,9 +2289,8 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
             ScopedLockVgpus lock(*this);
             std::vector<Memory*>& mems = scratch_[s]->memObjs_;
 
-            // Calculate the size of the new buffer +
-            // (64 Ki) for alignment with generic address space
-            size_t size = calcScratchBufferSize(regNum) + 64 * Ki;
+            // Calculate the size of the new buffer
+            size_t size = calcScratchBufferSize(regNum);
 
             scratch_[s]->destroyMemory();
 

@@ -741,6 +741,7 @@ CALGSLDevice::resAlloc(const CALresourceDesc* desc) const
     attribs.location = desc->type;
     attribs.vaBase   = desc->vaBase;
     attribs.section = desc->section;
+    attribs.minAlignment = desc->minAlignment;
 
     //!@note GSL asserts with tiled 1D images of any type.
     if ((desc->dimension == GSL_MOA_BUFFER) ||
