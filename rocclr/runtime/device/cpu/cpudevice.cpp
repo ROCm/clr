@@ -54,6 +54,10 @@ Device::tearDown()
 bool
 Device::init()
 {
+    // Allow disabling of the CPU device
+    if (CPU_MAX_COMPUTE_UNITS == 0)
+        return false;
+
     const char *library = getenv("COMPILER_LIBRARY");
     aclCompilerOptions opts = {
         sizeof(aclCompilerOptions_0_8),
