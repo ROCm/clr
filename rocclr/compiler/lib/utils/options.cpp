@@ -1047,9 +1047,22 @@ parseAllOptions(std::string& options, Options& Opts, bool linkOptsOnly)
             size_t sPos1 = (isShortName ? sPos - 1 : sPos - 2);
             std::string oStr = options.substr(sPos1, pos - sPos1);
             if (OPTION_info(od) & OA_CLC) {
-                Opts.clcOptions.append(" " + oStr);
-                if (!oStr.compare(0, 2, "-D"))
-                  Opts.clangOptions.push_back(oStr);
+               Opts.clcOptions.append(" " + oStr);
+               if (!oStr.compare(0, 2, "-D") ||
+                   !oStr.compare(0, 2, "-I")) {
+                 //  strip off the leading whitespaces in macro
+                 //  definition and include path. Clang treats
+                 //  whitespaces as part of macro and include paths.
+                 size_t vPos1 = oStr.find_first_not_of(" ", 2);
+                 if (vPos1 == std::string::npos) {
+                   // Do not allow blank macro and include directories
+                   logInvalidOption(options, bpos, Opts.optionsLog(),
+                                 "  (expected value)");
+                   return false;
+                 }
+                 std::string vStr = oStr.substr(vPos1, std::string::npos);
+                 Opts.clangOptions.push_back(oStr.substr(0,2) + vStr);
+               }
             }
         }
 
