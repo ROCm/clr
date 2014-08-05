@@ -695,6 +695,41 @@ void amdcl::OCLLinker::fixupOldTriple(llvm::Module *module)
   }
 }
 
+static unsigned getSPIRVersion(const llvm::Module *M) {
+  const llvm::NamedMDNode *SPIRVersion
+    = M->getNamedMetadata("opencl.spir.version");
+
+  if (!SPIRVersion) return 0; // not SPIR
+
+  // When multiple llvm modules are linked together to create a single module
+  // Metadata's of llvm modules are added into destination module and
+  // it results in a more than one SPIR MDNode value.
+  // Marking this fix as temporary and it will be tracked in bugzilla id 9775
+  // FIXME: Uncomment the line below
+  // assert(SPIRVersion->getNumOperands() == 1);
+  assert(SPIRVersion->getNumOperands() > 0);
+  if (SPIRVersion->getNumOperands() > 1) {
+    DEBUG_WITH_TYPE("linkTriple",
+                    llvm::dbgs() << "[CheckSPIRVersion] "
+                    "Too many arguments to SPIR version MDNode\n");
+  }
+
+  const llvm::MDNode *VersionMD = SPIRVersion->getOperand(0);
+  assert(VersionMD->getNumOperands() == 2);
+
+  const llvm::ConstantInt *CMajor
+    = llvm::cast<llvm::ConstantInt>(VersionMD->getOperand(0));
+  assert(CMajor->getType()->getIntegerBitWidth() == 32);
+  unsigned VersionMajor = CMajor->getZExtValue();
+
+  const llvm::ConstantInt *CMinor
+    = llvm::cast<llvm::ConstantInt>(VersionMD->getOperand(1));
+  assert(CMinor->getType()->getIntegerBitWidth() == 32);
+  unsigned VersionMinor = CMinor->getZExtValue();
+
+  return (VersionMajor * 100) + (VersionMinor * 10);
+}
+
 //Modify module for targets before linking.
 //Report error by buildLog.
 //Return false on error.
@@ -705,12 +740,7 @@ static bool fixUpModule(llvm::Module *M,
                         bool DemangleBuiltins,
                         bool RunEDGAdapter,
                         bool SetSPIRCallingConv,
-                        bool RunX86Adpater,
-                        bool RunPrintfRuntimeBinding,
-                        bool RunPrintfCpuLowering,
-                        bool RunLowerEnqueueKernel,
-                        const amd::option::OptionVariables *oVariables,
-                        std::string& buildLog) {
+                        bool RunX86Adpater) {
   llvm::PassManager Passes;
 
   DEBUG_WITH_TYPE("linkTriple", llvm::dbgs() <<
@@ -734,11 +764,10 @@ static bool fixUpModule(llvm::Module *M,
     //which causes regressions in ocltst if the following check is enabled.
     //Fix the bugs then enable the following check
   #if 0
-    assert(0 && "Inconsistent module and library target");
-    buildLog += "Internal Error: failed to link modules correctly.\n";
+    llvm::dbgs() << "Internal Error: Inconsistent module and library target\n";
     return false;
   #else
-    LogWarning("Inconsistent module and library target");
+    llvm::dbgs() << "WARNING: Inconsistent module and library target\n";
     return true;
   #endif
   }
@@ -746,14 +775,14 @@ static bool fixUpModule(llvm::Module *M,
 
   Passes.add(new llvm::DataLayout(M));
 
-  if (RunPrintfRuntimeBinding == true || RunPrintfCpuLowering == true)
-    Passes.add(llvm::createAMDPrintfRuntimeBinding(RunPrintfCpuLowering));
+  Passes.add(llvm::createAMDLowerAtomicsPass());
 
-  if (oVariables->LowerAtomics)
-    Passes.add(llvm::createAMDLowerAtomicsPass());
-
-  if (oVariables->LowerPipeBuiltins)
+  if (getSPIRVersion(M) >= 200) {
+    Passes.add(llvm::createAMDPrintfRuntimeBinding());
     Passes.add(llvm::createAMDLowerPipeBuiltinsPass());
+    Passes.add(llvm::createAMDLowerEnqueueKernelPass());
+    Passes.add(llvm::createAMDGenerateDevEnqMetadataPass());
+  }
 
   if (RunEDGAdapter) {
     assert(!RunSPIRLoader);
@@ -769,11 +798,6 @@ static bool fixUpModule(llvm::Module *M,
     // One of them should run before the AMDX86Adapter Pass.
     assert(RunSPIRLoader || RunEDGAdapter);
     Passes.add(llvm::createAMDX86AdapterPass());
-  }
-
-  if (RunLowerEnqueueKernel) {
-    Passes.add(llvm::createAMDLowerEnqueueKernelPass());
-    Passes.add(llvm::createAMDGenerateDevEnqMetadataPass());
   }
 
   Passes.run(*M);
@@ -800,36 +824,13 @@ static bool isHSAILTriple(const llvm::Triple &Triple) {
     || Triple.getArch() == llvm::Triple::hsail_64;
 }
 
-static void CheckSPIRVersion(const llvm::Module *M,
-                             const llvm::Triple &TargetTriple) {
-  const llvm::NamedMDNode *SPIRVersion
-    = M->getNamedMetadata("opencl.spir.version");
-  assert(SPIRVersion);
-  // When multiple llvm modules are linked together to create a single module
-  // Metadata's of llvm modules are added into destination module and
-  // it results in a more than one SPIR MDNode value.
-  // Marking this fix as temporary and it will be tracked in bugzilla id 9775
-  // FIXME: Uncomment the line below
-  // assert(SPIRVersion->getNumOperands() == 1);
-
-  const llvm::MDNode *VersionMD = SPIRVersion->getOperand(0);
-  assert(VersionMD->getNumOperands() == 2);
-
-  const llvm::ConstantInt *CMajor
-    = llvm::cast<llvm::ConstantInt>(VersionMD->getOperand(0));
-  assert(CMajor->getType()->getIntegerBitWidth() == 32);
-
-  unsigned VersionMajor = CMajor->getZExtValue();
-  switch (VersionMajor) {
-  case 1:
-    break;
-  case 2:
+static void CheckSPIRVersionForTarget(const llvm::Module *M,
+                                      const llvm::Triple &TargetTriple) {
+  unsigned SPIRVersion = getSPIRVersion(M);
+  if (SPIRVersion >= 200)
     assert(!isAMDILTriple(TargetTriple));
-    break;
-  default:
-    llvm_unreachable("Unknown SPIR version");
-    break;
-  }
+  else
+    assert(SPIRVersion == 120);
 }
 
 // On 64 bit device, aclBinary target is set to 64 bit by default. When 32 bit
@@ -916,6 +917,7 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
   return true;
 #endif
 }
+
   int
 amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 {
@@ -1068,9 +1070,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   bool RunEDGAdapter = false;       // EDG      -> x86/HSAIL
   bool SetSPIRCallingConv = false;  // EDG      -> HSAIL
   bool RunX86Adapter = false;       // SPIR/EDG -> x86
-  bool RunLowerEnqueueKernel = false;
-  bool RunPrintfRuntimeBinding = false;
-  bool RunPrintfCpuLowering = false;
   bool LowerToPreciseFunctions = false;
 
   llvm::Triple ModuleTriple(LLVMBinary()->getTargetTriple());
@@ -1078,7 +1077,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 
 
   if (isSPIRTriple(ModuleTriple)) {
-    CheckSPIRVersion(LLVMBinary(), TargetTriple);
+    CheckSPIRVersionForTarget(LLVMBinary(), TargetTriple);
     RunSPIRLoader = true;
 #if OPENCL_MAJOR >= 2 // this will become default
     DemangleBuiltins |= isAMDILTriple(TargetTriple);
@@ -1112,31 +1111,21 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 #endif // OPENCL_MAJOR >= 2
   }
 
-// It should run for both EDG generated LLVM IR and SPIR for x86 path.
+// X86Adapter should run for both EDG generated LLVM IR and SPIR for x86 path.
 // FIXME: Remove the #ifdef when x86 is always built by Clang on
 // OpenCL 1.2 builds.
 #if OPENCL_MAJOR >=2
   RunX86Adapter = isX86Triple(TargetTriple);
-  RunLowerEnqueueKernel = isSPIRTriple(TargetTriple);
   // For HSAIL targets, when the option -cl-fp32-correctly-rounded-divide-sqrt
   // lower divide and sqrt functions to precise HSAIL builtin library functions.
   LowerToPreciseFunctions = (isHSAILTriple(TargetTriple)
 		  && Options()->oVariables->FP32RoundDivideSqrt);
 #endif
-  if (strcmp(Options()->oVariables->CLStd, "CL2.0") == 0) {
-    if (isHSAILTriple(TargetTriple)) {
-      RunPrintfRuntimeBinding = true;
-    } else if (isX86Triple(TargetTriple)) {
-      RunPrintfCpuLowering = true;
-    }
-  }
 
-  if(!fixUpModule(LLVMBinary(), LibTargetTriple, LibDataLayout,
-              RunSPIRLoader, DemangleBuiltins,
-              RunEDGAdapter, SetSPIRCallingConv,
-              RunX86Adapter, RunPrintfRuntimeBinding, RunPrintfCpuLowering,
-              RunLowerEnqueueKernel, Options()->oVariables,
-              BuildLog()))
+  if (!fixUpModule(LLVMBinary(), LibTargetTriple, LibDataLayout,
+                   RunSPIRLoader, DemangleBuiltins,
+                   RunEDGAdapter, SetSPIRCallingConv,
+                   RunX86Adapter))
     return 1;
 
   // Before doing anything else, quickly optimize Module
