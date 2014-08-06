@@ -35,8 +35,8 @@ static const TargetMapping AMDIL64TargetMapping_0_8[] = {
   { "SI", "Oland",     "oland",     amd::GPU64_Library_SI, SI_OLAND_M_A0,      F_SI_64BIT_PTR, true,  true,  FAMILY_SI },
   { "CI", "Bonaire",   "bonaire",   amd::GPU64_Library_CI, CI_BONAIRE_M_A0,    F_SI_64BIT_PTR, true,  false, FAMILY_CI },
   { "SI", "Hainan",    "hainan",    amd::GPU64_Library_SI, SI_HAINAN_V_A0,     F_SI_64BIT_PTR, true,  true,  FAMILY_SI },
+  { "CZ", "Carrizo",   "peacock",   amd::GPU64_Library_CI, CARRIZO_A0,         F_SI_64BIT_PTR, true,  true,  FAMILY_CZ },
 
-  UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
