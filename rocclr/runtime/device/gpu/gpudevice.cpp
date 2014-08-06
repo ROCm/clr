@@ -744,7 +744,8 @@ Device::create(CALuint ordinal)
     appProfile_.init();
 
     // Open GSL device
-    if (!open(ordinal, appProfile_.enableHighPerformanceState(), appProfile_.reportAsOCL12Device())) {
+    if (!open(ordinal, appProfile_.enableHighPerformanceState(),
+        (appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200)))) {
         return false;
     }
 

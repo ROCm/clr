@@ -291,7 +291,7 @@ Settings::create(
                 force32BitOcl20_ = true;
                 oclVersion_ = reportAsOCL12Device ? OpenCL12 : XCONCAT(OpenCL,XCONCAT(OPENCL_MAJOR,OPENCL_MINOR));
             }
-            if (hsail_) {
+            if (hsail_ || (OPENCL_VERSION < 200)) {
                 oclVersion_ = OpenCL12;
             }
             numComputeRings_ = 8;

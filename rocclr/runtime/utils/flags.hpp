@@ -156,6 +156,8 @@ release(bool, AMD_DEPTH_MSAA_INTEROP, false,                                  \
         "Enable depth stencil and MSAA buffer interop")                       \
 release(bool, AMD_THREAD_TRACE_ENABLE, false,                                 \
         "Enable thread trace extension")                                      \
+release(uint, OPENCL_VERSION, 200,                                            \
+        "Force opencl verison")                                               \
 release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
         "Determines if Hsa runtime should use polling scheme")                \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
