@@ -9,42 +9,33 @@
 
 namespace gpu {
 
-AppProfile::AppProfile():amd::AppProfile(),
-                          enableHighPerformanceState_(true),
-                          reportAsOCL12Device_(false)
+AppProfile::AppProfile()
+    : amd::AppProfile()
+    , enableHighPerformanceState_(true)
+    , reportAsOCL12Device_(false)
 {
-    propertyDatatypeMap_.insert(DatatypeMap::value_type("HighPerfState",
-                                                        DataType_Boolean));
-    boolPropertyMap_.insert(BoolMap::value_type("HighPerfState",
-                                                &enableHighPerformanceState_));
+    propertyDataMap_.insert(DataMap::value_type("HighPerfState",
+        PropertyData(DataType_Boolean, &enableHighPerformanceState_)));
 
-    propertyDatatypeMap_.insert(DatatypeMap::value_type("OCL12Device",
-                                                        DataType_Boolean));
-    boolPropertyMap_.insert(BoolMap::value_type("OCL12Device",
-                                                &reportAsOCL12Device_));
+    propertyDataMap_.insert(DataMap::value_type("OCL12Device",
+        PropertyData(DataType_Boolean, &reportAsOCL12Device_)));
 }
 
 bool AppProfile::ParseApplicationProfile()
 {
-    amd::ADL *adl = new amd::ADL;
+    amd::ADL* adl = new amd::ADL;
 
-    if (!adl->init()) {
+    if ((adl == NULL) || !adl->init()) {
         delete adl;
         return false;
     }
 
-    int result = ADL_ERR_NOT_INIT;
-    ADLApplicationProfile *pProfile = NULL;
+    ADLApplicationProfile* pProfile = NULL;
 
-    //
     // Apply blb configurations
-    //
-    result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(adl->adlContext(),
-                                                                       wsAppFileName_.c_str(),
-                                                                       NULL,
-                                                                       NULL,
-                                                                       L"OCL",
-                                                                       &pProfile);
+    int result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(
+        adl->adlContext(), wsAppFileName_.c_str(), NULL, NULL,
+        L"OCL", &pProfile);
 
     delete adl;
 
@@ -52,36 +43,27 @@ bool AppProfile::ParseApplicationProfile()
         return false;
     }
 
-    PropertyRecord *firstProperty = pProfile->record;
-    PropertyRecord *profileProperty = NULL;
+    PropertyRecord* firstProperty = pProfile->record;
     uint32_t valueOffset = 0;
-    for (int index = 0; index < pProfile->iCount; index++) {
-        profileProperty = reinterpret_cast<PropertyRecord*>
-                            ((reinterpret_cast<char*>(firstProperty)) + valueOffset);
 
-        //
+    for (int index = 0; index < pProfile->iCount; index++) {
+        PropertyRecord* profileProperty = reinterpret_cast<PropertyRecord*>
+            ((reinterpret_cast<char*>(firstProperty)) + valueOffset);
+
         // Get property name
-        //
         char* propertyName = profileProperty->strName;
-        DatatypeMap::const_iterator propertyDatatypeMapIt =
-                                        propertyDatatypeMap_.find(std::string(propertyName));
-        if (propertyDatatypeMapIt == propertyDatatypeMap_.end())
-        {
+        auto entry = propertyDataMap_.find(std::string(propertyName));
+        if (entry == propertyDataMap_.end()) {
+            // unexpected name
             valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
-            continue; // unexpected name.
+            continue;
         }
 
-        DataTypes dataType = propertyDatatypeMapIt->second;
-        switch(dataType) {
+        // Get the property value
+        switch (entry->second.type_) {
         case DataType_Boolean:
-            {
-                unsigned char propertyValue = profileProperty->uData[0];
-                BoolMap::iterator boolPropertyMapIt =
-                                    boolPropertyMap_.find(std::string(propertyName));
-                if (boolPropertyMapIt != boolPropertyMap_.end()) {
-                    *(boolPropertyMapIt->second) = propertyValue ? true : false;
-                }
-            }
+            *(reinterpret_cast<bool*>(entry->second.data_)) =
+                profileProperty->uData[0] ? true : false;
             break;
         default:
             break;
@@ -90,7 +72,6 @@ bool AppProfile::ParseApplicationProfile()
     }
 
     free(pProfile);
-    pProfile = NULL;
     return true;
 }
 
