@@ -1381,7 +1381,7 @@ if_aclCompile(aclCompiler *cl,
 
   bool stages[5] = {false};
   uint8_t sectable[ACL_TYPE_LAST] =
-    { 0, 0, 1, 1, 1, 1, 0, 6, 0, 6, 4, 4, 4, 0, 5, 0, 1 };
+    { 0, 0, 1, 1, 1, 1, 0, 6, 0, 4, 4, 4, 4, 0, 5, 0, 1 };
   aclSections d_section[7] =
   { aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE, aclCODEGEN, aclTEXT, aclINTERNAL };
   uint8_t start = sectable[from];
@@ -2734,7 +2734,7 @@ bool aclRenderscriptCompile(
 
 #if 1
   // Dump HSAIL and ISA to a temporary file in the working directory.
-  error_code = aclCompile(aoc, aoe, "-save-temps=tmp", ACL_TYPE_RSLLVMIR_BINARY, ACL_TYPE_ISA, myLogFunc);
+  error_code = aclCompile(aoc, aoe, "-save-temps=tmp", ACL_TYPE_RSLLVMIR_BINARY, ACL_TYPE_HSAIL_BINARY, myLogFunc);
 #else
   error_code = aclCompile(aoc, aoe, NULL, ACL_TYPE_RSLLVMIR_BINARY, ACL_TYPE_ISA, myLogFunc);
 #endif
