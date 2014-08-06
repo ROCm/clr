@@ -412,11 +412,9 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     case GSL_ATIASIC_ID_CAPEVERDE_M:
     case GSL_ATIASIC_ID_OLAND_M:
     case GSL_ATIASIC_ID_HAINAN_M:
-    case GSL_ATIASIC_ID_TIRAN_P:
     case GSL_ATIASIC_ID_BONAIRE_M:
     case GSL_ATIASIC_ID_KALINDI:
     case GSL_ATIASIC_ID_HAWAII_P:
-    case GSL_ATIASIC_ID_MAUI_P:
     case GSL_ATIASIC_ID_ICELAND_M:
     case GSL_ATIASIC_ID_TONGA_P:
     case GSL_ATIASIC_ID_GODAVARI:
@@ -474,10 +472,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
     case GSL_ATIASIC_ID_CAYMAN:
         m_target = CAL_TARGET_CAYMAN;
         m_elfmachine = ED_ATI_CAL_MACHINE_CAYMAN_ISA;
-        break;
-    case GSL_ATIASIC_ID_KAUAI:
-        m_target = CAL_TARGET_KAUAI;
-        m_elfmachine = ED_ATI_CAL_MACHINE_KAUAI_ISA;
         break;
     case GSL_ATIASIC_ID_BARTS:
         m_target = CAL_TARGET_BARTS;
