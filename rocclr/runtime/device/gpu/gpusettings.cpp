@@ -294,6 +294,9 @@ Settings::create(
             if (hsail_ || (OPENCL_VERSION < 200)) {
                 oclVersion_ = OpenCL12;
             }
+            if (target == CAL_TARGET_CARRIZO) {
+                oclVersion_ = OpenCL12;
+            }
             numComputeRings_ = 8;
         }
         else {
