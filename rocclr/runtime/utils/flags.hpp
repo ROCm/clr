@@ -16,7 +16,7 @@ debug(bool, BREAK_ON_LOG_ERROR, false,                                        \
         "Break each time an error is logged")                                 \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \
-debug(uint, GPU_MAX_COMMAND_QUEUES, 80,                                       \
+debug(uint, GPU_MAX_COMMAND_QUEUES, 70,                                       \
         "The maximum number of concurrent Virtual GPUs")                      \
 release(size_t, CQ_THREAD_STACK_SIZE, 256*Ki, /* @todo: that much! */         \
         "The default command queue thread stack size")                        \
