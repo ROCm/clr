@@ -83,12 +83,12 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "SI", "Oland",      "oland",   amd::GPU_Library_SI,        SI_OLAND_M_A0,           F_SI_BASE, true, true, FAMILY_SI },
   { "CI", "Bonaire",    "bonaire", amd::GPU_Library_CI,        CI_BONAIRE_M_A0,         F_SI_BASE, true, false, FAMILY_CI },
   { "SI", "Hainan",     "hainan",  amd::GPU_Library_SI,        SI_HAINAN_V_A0,          F_SI_BASE, true, true, FAMILY_SI },
-  { "CZ", "Carrizo",    "peacock", amd::GPU_Library_CI,        CARRIZO_A0,              F_SI_BASE, true,  true, FAMILY_CZ },
 
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
+  { "CZ", "Peacock",    "peacock", amd::GPU_Library_CI,        CARRIZO_A0,              F_SI_BASE, true,  true, FAMILY_CZ },
   { "TN", "Devastator", "trinity", amd::GPU_Library_Evergreen, TN_DEVASTATOR_W_A0,       F_NI_EXT, true, false, FAMILY_TN },
   { "TN", "Devastator", "trinity", amd::GPU_Library_Evergreen, TN_DEVASTATOR_W_A1,       F_NI_EXT, true, false, FAMILY_TN },
   { "TN", "Scrapper",   "trinity", amd::GPU_Library_Evergreen, TN_SCRAPPER_LV_A0,        F_NI_EXT, true, false, FAMILY_TN },
