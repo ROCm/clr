@@ -918,9 +918,6 @@ Image::supportedFormats[] = {
 
     {CL_RG, CL_HALF_FLOAT},         {CL_RG, CL_FLOAT},
 
-    // RGB
-    {CL_RGB, CL_UNORM_INT_101010},
-
     // RGBA
     {CL_RGBA, CL_SNORM_INT8},       {CL_RGBA, CL_SNORM_INT16},
     {CL_RGBA, CL_UNORM_INT8},       {CL_RGBA, CL_UNORM_INT16},
@@ -949,10 +946,17 @@ Image::supportedFormats[] = {
     {CL_INTENSITY, CL_UNORM_INT8},  {CL_INTENSITY, CL_UNORM_INT16},
     {CL_INTENSITY, CL_HALF_FLOAT},  {CL_INTENSITY, CL_FLOAT},
 
+    // RGB
+    {CL_RGB, CL_UNORM_INT_101010},
+
+    // sRGB
     {CL_sRGBA, CL_UNORM_INT8},
+
+    // DEPTH
     {CL_DEPTH, CL_UNORM_INT16},     {CL_DEPTH, CL_FLOAT},
 };
 
+const cl_uint NUM_CHANNEL_ORDER_OF_RGB = 1;   // The number of channel orders of RGB at the end of the table supportedFormats above and before sRGB and depth.
 const cl_uint NUM_CHANNEL_ORDER_OF_sRGB = 1;  // The number of channel orders of sRGB at the end of the table supportedFormats above and before depth.
 const cl_uint NUM_CHANNEL_ORDER_OF_DEPTH = 2; // The number of channel orders of DEPTH at the end of the table supportedFormats above.
 
@@ -1005,7 +1009,8 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
         }
     }
     else {
-         numFormats -= NUM_CHANNEL_ORDER_OF_sRGB;   // substract channel order of DEPTH type.
+         numFormats -= NUM_CHANNEL_ORDER_OF_RGB;     // substract channel order of RGB type.
+         numFormats -= NUM_CHANNEL_ORDER_OF_sRGB;    // substract channel order of sRGB type.
          numFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;   // substract channel order of DEPTH type.
     }
 
@@ -1057,8 +1062,9 @@ Image::getSupportedFormats(
         }
     }
     else {
-        numSupportedFormats -= NUM_CHANNEL_ORDER_OF_sRGB;
-        numSupportedFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;
+         numSupportedFormats -= NUM_CHANNEL_ORDER_OF_RGB;     // substract channel order of RGB type.
+         numSupportedFormats -= NUM_CHANNEL_ORDER_OF_sRGB;    // substract channel order of sRGB type.
+         numSupportedFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;   // substract channel order of DEPTH type.
     }
 
     for (size_t i = 0; i < numSupportedFormats; i++) {
