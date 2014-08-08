@@ -163,7 +163,11 @@ release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
         "Enable HSA device local memory usage")                               \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
-        "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.")
+        "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
+release(bool, GPU_IFH_MODE, false,                                  \
+        "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
+
+
 
 namespace amd {
 
