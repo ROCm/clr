@@ -297,9 +297,11 @@ public:
     {
         uint    regNum_;    //!< The number of used scratch registers
         std::vector<Memory*>   memObjs_;   //!< Memory objects for scratch buffers
+        uint    offset_;    //!< Offset from the global scratch store
+        uint    size_;      //!< Scratch buffer size on this queue
 
         //! Default constructor
-        ScratchBuffer(uint numMems): regNum_(0), memObjs_(numMems) {}
+        ScratchBuffer(uint numMems): regNum_(0), memObjs_(numMems), offset_(0) {}
 
         //! Default constructor
         ~ScratchBuffer();
@@ -524,6 +526,9 @@ public:
 
     const ScratchBuffer* scratch(uint idx) const { return scratch_[idx]; }
 
+    //! Returns the global scratch buffer
+    Memory* globalScratchBuf() const { return globalScratchBuf_; };
+
     //! Destroys scratch buffer memory
     void destroyScratchBuffers();
 
@@ -613,9 +618,10 @@ private:
     std::vector<amd::Memory*>*  mapCache_;  //!< Map cache info structure
     ResourceCache*  resourceCache_; //!< CAL resource cache
     Engines         engines_;       //!< Available engines on device
-    bool            heapInitComplete_; //!< Keep track of initialization status of heap resources
+    bool            heapInitComplete_;  //!< Keep track of initialization status of heap resources
     VirtualGPU*     xferQueue_;     //!< Transfer queue
     std::vector<ScratchBuffer*> scratch_;   //!< Scratch buffers for kernels
+    Memory*         globalScratchBuf_;  //!< Global scratch buffer
     SrdManager*     srdManager_;    //!< SRD manager object
 
     static AppProfile appProfile_; //!< application profile

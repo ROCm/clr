@@ -519,7 +519,6 @@ private:
     CommandBatchList    cbList_;        //!< List of command batches
 
     ConstBuffer*    numGrpCb_;      //!< Constant buffer for 8xx workaround
-    uint            scratchRegNum_; //!< Number of scratch registers used in this queue
     uint            hwRing_;        //!< HW ring used on this virtual device
 
     uint64_t        readjustTimeGPU_;   //!< Readjust time between GPU and CPU timestamps

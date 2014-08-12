@@ -1266,10 +1266,11 @@ CALGSLContext::writeTimer(bool sdma, const gslMemObject mem, uint32 offset) cons
 
 void
 CALGSLContext::runAqlDispatch(GpuEvent& event, const void* aqlPacket,
-     const gslMemObject* mems, uint32 numMems, gslMemObject scratch, const void* cpuKernelCode, uint64 hsaQueueVA)
+    const gslMemObject* mems, uint32 numMems, gslMemObject scratch, uint32 scratchOffset,
+    const void* cpuKernelCode, uint64 hsaQueueVA)
 {
     eventBegin(MainEngine);
-    m_cs->AqlDispatch(aqlPacket, mems, numMems, scratch, cpuKernelCode, hsaQueueVA);
+    m_cs->AqlDispatch(aqlPacket, mems, numMems, scratch, scratchOffset, cpuKernelCode, hsaQueueVA);
     eventEnd(MainEngine, event);
 }
 

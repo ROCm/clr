@@ -68,7 +68,7 @@ struct SchedulerParam {
     uint32_t    releaseHostCP;  //!< Releases CP on the host queue
     uint64_t    parentAQL;      //!< Host parent AmdAqlWrap packet
     uint32_t    dedicatedQueue; //!< Scheduler uses a dedicated queue
-    uint32_t    reserved;       //!< Reserved field
+    uint32_t    scratchOffset;  //!< Scratch buffer offset
 };
 
 } // namespace gpu
