@@ -373,6 +373,7 @@ Device::Device()
     , resourceCache_(NULL)
     , heapInitComplete_(false)
     , xferQueue_(NULL)
+    , globalScratchBuf_(NULL)
     , srdManager_(NULL)
 {
 }
@@ -388,6 +389,8 @@ Device::~Device()
         delete scratch_[s];
         scratch_[s] = NULL;
     }
+
+    delete globalScratchBuf_;
 
     // Destroy transfer queue
     delete xferQueue_;
@@ -2273,7 +2276,6 @@ Device::ScratchBuffer::destroyMemory()
         delete memObjs_[i];
         memObjs_[i] = NULL;
     }
-    regNum_ = 0;
 }
 
 bool
@@ -2282,30 +2284,63 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
     if (regNum > 0) {
         // Serialize the scratch buffer allocation code
         amd::ScopedLock lk(*lockAsyncOps_);
-        uint    s = vgpu->hwRing();
+        uint    sb = vgpu->hwRing();
 
         // Check if the current buffer isn't big enough
-        if (regNum > scratch_[s]->regNum_) {
+        if (regNum > scratch_[sb]->regNum_) {
             // Stall all command queues, since runtime will reallocate memory
             ScopedLockVgpus lock(*this);
-            std::vector<Memory*>& mems = scratch_[s]->memObjs_;
 
-            // Calculate the size of the new buffer
-            size_t size = calcScratchBufferSize(regNum);
+            scratch_[sb]->regNum_ = regNum;
+            size_t size = 0;
+            uint offset = 0;
 
-            scratch_[s]->destroyMemory();
-
-            // Loop through all memory objects and reallocate them
-            for (uint i = 0; i < mems.size(); ++i) {
-                // Allocate new buffer
-                mems[i] = new gpu::Memory(*this, size);
-                if ((mems[i] == NULL) || !mems[i]->create(Resource::Scratch)) {
-                    LogError("Couldn't allocate scratch memory");
-                    scratch_[s]->regNum_ = 0;
-                    return false;
+            // Destroy all views
+            for (uint s = 0; s < scratch_.size(); ++s) {
+                ScratchBuffer*  scratchBuf = scratch_[s];
+                if (scratchBuf->regNum_ > 0) {
+                    scratchBuf->destroyMemory();
+                    // Calculate the size of the scratch buffer for a queue
+                    scratchBuf->size_ = calcScratchBufferSize(scratchBuf->regNum_);
+                    scratchBuf->offset_ = offset;
+                    size += scratchBuf->size_ * scratchBuf->memObjs_.size();
+                    offset += scratchBuf->size_;
                 }
             }
-            scratch_[s]->regNum_ = regNum;
+
+            delete globalScratchBuf_;
+
+            // Allocate new buffer.
+            globalScratchBuf_ = new gpu::Memory(*this, size);
+            if ((globalScratchBuf_ == NULL) ||
+                !globalScratchBuf_->create(Resource::Scratch)) {
+                LogError("Couldn't allocate scratch memory");
+                for (uint s = 0; s < scratch_.size(); ++s) {
+                    scratch_[s]->regNum_ = 0;
+                }
+                return false;
+            }
+
+            for (uint s = 0; s < scratch_.size(); ++s) {
+                std::vector<Memory*>& mems = scratch_[s]->memObjs_;
+
+                // Loop through all memory objects and reallocate them
+                for (uint i = 0; i < mems.size(); ++i) {
+                    if (scratch_[s]->regNum_ > 0) {
+                        // Allocate new buffer
+                        mems[i] = new gpu::Memory(*this, scratch_[s]->size_);
+                        Resource::ViewParams    view;
+                        view.resource_ = globalScratchBuf_;
+                        view.offset_ = scratch_[s]->offset_ + i * scratch_[s]->size_;
+                        view.size_ = scratch_[s]->size_;
+                        if ((mems[i] == NULL) || !mems[i]->create(Resource::View, &view)) {
+                            LogError("Couldn't allocate a scratch view");
+                            scratch_[s]->regNum_ = 0;
+                            return false;
+                        }
+                    }
+                }
+            }
         }
     }
     return true;
@@ -2341,8 +2376,13 @@ Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* v
 void
 Device::destroyScratchBuffers()
 {
-    for (uint s = 0; s < scratch_.size(); ++s) {
-        scratch_[s]->destroyMemory();
+    if (globalScratchBuf_ != NULL) {
+        for (uint s = 0; s < scratch_.size(); ++s) {
+            scratch_[s]->destroyMemory();
+            scratch_[s]->regNum_ = 0;
+        }
+        delete globalScratchBuf_;
+        globalScratchBuf_ = NULL;
     }
 }
 

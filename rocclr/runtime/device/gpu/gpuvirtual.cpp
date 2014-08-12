@@ -377,7 +377,6 @@ VirtualGPU::VirtualGPU(
     , numVmMems_(0)
     , dmaFlushMgmt_(device)
     , numGrpCb_(NULL)
-    , scratchRegNum_(0)
     , hwRing_(0)
     , readjustTimeGPU_(0)
     , currTs_(NULL)
@@ -645,7 +644,7 @@ VirtualGPU::~VirtualGPU()
     //!@note OCLtst uses single device with multiple tests
     //! Release memory only if it's the last command queue.
     //! The first queue is reserved for the transfers on device
-    if ((scratchRegNum_ > 0) && (gpuDevice_.numOfVgpus_ <= 1)) {
+    if (gpuDevice_.numOfVgpus_ <= 1) {
         gpuDevice_.destroyScratchBuffers();
     }
 
@@ -1736,12 +1735,14 @@ VirtualGPU::submitKernelInternalHSA(
     }
 
     gslMemObject    scratch = NULL;
+    uint            scratchOffset = 0;
     // Check if the device allocated more registers than the old setup
     if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
-        const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
+        const Device::ScratchBuffer* scratchObj = dev().scratch(hwRing());
+        const std::vector<Memory*>& mems = scratchObj->memObjs_;
         scratch = mems[0]->gslResource();
         memList.push_back(mems[0]);
-        scratchRegNum_ = dev().scratch(hwRing())->regNum_;
+        scratchOffset = scratchObj->offset_;
     }
 
     // Add GSL handle to the memory list for VidMM
@@ -1752,7 +1753,7 @@ VirtualGPU::submitKernelInternalHSA(
     GpuEvent    gpuEvent;
     // Run AQL dispatch in HW
     runAqlDispatch(gpuEvent, aqlPkt, vmMems(), cal_.memCount_,
-        scratch, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress());
+        scratch, scratchOffset, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress());
 
     if (hsaKernel.dynamicParallelism()) {
         // Make sure exculsive access to the device queue
@@ -1884,12 +1885,14 @@ VirtualGPU::submitKernelInternalHSA(
             param->scratchSize = scratchBuf->size();
             param->scratch = scratchBuf->vmAddress();
             param->numMaxWaves = 32 * dev().info().maxComputeUnits_;
+            param->scratchOffset = dev().scratch(gpuDefQueue->hwRing())->offset_;
             memList.push_back(scratchBuf);
         }
         else {
             param->numMaxWaves = 0;
             param->scratchSize = 0;
             param->scratch = 0;
+            param->scratchOffset = 0;
         }
 
         // Add all kernels in the program to the mem list.
@@ -2180,7 +2183,6 @@ VirtualGPU::releaseMemory(gslMemObject gslResource, bool wait)
         for (uint i = 0; i < mems.size(); ++i) {
             if ((mems[i] != NULL) && (mems[i]->gslResource() == gslResource)) {
                 setScratchBuffer(NULL, i);
-                scratchRegNum_ = 0;
             }
         }
     }
@@ -2986,14 +2988,13 @@ VirtualGPU::waitEventLock(CommandBatch* cb)
 void
 VirtualGPU::validateScratchBuffer(const Kernel* kernel)
 {
-    // Check if the device allocated more registers than the old setup
-    if (dev().scratch(hwRing())->regNum_ > scratchRegNum_) {
+    // Check if a scratch buffer is required
+    if (dev().scratch(hwRing())->regNum_ > 0) {
         const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
         for (uint i = 0; i < mems.size(); ++i) {
             // Setup scratch buffer
             setScratchBuffer(mems[i]->gslResource(), i);
         }
-        scratchRegNum_ = dev().scratch(hwRing())->regNum_;
     }
 }
 

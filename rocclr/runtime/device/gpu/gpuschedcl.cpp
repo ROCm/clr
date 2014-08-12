@@ -92,7 +92,7 @@ typedef struct _SchedulerParam {
     uint    releaseHostCP;  //!< Releases CP on the host queue
     ulong   parentAQL;      //!< Host parent AmdAqlWrap packet
     uint    dedicatedQueue; //!< Scheduler uses a dedicated queue
-    uint    reserved;       //!< Reserved field
+    uint    scratchOffset;  //!< Scratch buffer offset
 } SchedulerParam;
 
 typedef struct _HwDispatch {
@@ -152,7 +152,7 @@ typedef struct _HwDispatch {
     uint    shPrivateHi;    // 0x00000000 ---- dstAddressHi
     uint    user4;          // 0xC0027602 -- TYPE 3, SET_SH_REG, TYPE:COMPUTE (2 values)
     uint    offsUser4;      // 0x00000248 ---- OFFSET
-    uint    privOffs;       // 0x00000000 ---- COMPUTE_USER_DATA_10: DATA = 0x0
+    uint    scratchOffs;    // 0x00000000 ---- COMPUTE_USER_DATA_10: DATA = 0x0
     uint    privSize;       // 0x00000030 ---- COMPUTE_USER_DATA_11: DATA = 0x30
     uint    packet4;        // 0xC0031502 -- TYPE 3, DISPATCH_DIRECT, TYPE:COMPUTE
     uint    glbSizeX;       // 0x00000000
@@ -170,10 +170,11 @@ static inline void
 dispatch(
     volatile __global HwDispatch*   dispatch,
     __global HsaAqlDispatchPacket*  aqlPkt,
-    uint                            scratchSize,
-    uint                            numMaxWaves,
-    ulong                           scratch,
-    ulong                           hsaQueue)
+    ulong   scratch,
+    ulong   hsaQueue,
+    uint    scratchSize,
+    uint    scratchOffset,
+    uint    numMaxWaves)
 {
     const uint UsrRegOffset = 0x240;
     const uint Pm4Nop = 0xC0001002;
@@ -258,8 +259,9 @@ dispatch(
     // flatScratchEna = (flags & 0x20);
     if (flags & 0x20) {
         dispatch->copyData = Pm4CopyReg;
-        dispatch->scratchAddrLo = (uint)(scratch >> 16);
+        dispatch->scratchAddrLo = (uint)((scratch - scratchOffset) >> 16);
         dispatch->offsUser4 = UsrRegOffset + usrRegCnt;
+        dispatch->scratchOffs = scratchOffset;
         dispatch->privSize = privateSize;
     }
     else {
@@ -421,8 +423,8 @@ scheduler(
                                 (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
                         }
                         // Launch child kernel ....
-                        dispatch(hwDisp, &disp->aql, param->scratchSize, param->numMaxWaves,
-                            param->scratch, param->hsa_queue);
+                        dispatch(hwDisp, &disp->aql, param->scratch, param->hsa_queue,
+                            param->scratchSize, param->scratchOffset, param->numMaxWaves);
                         disp->state = AQL_WRAP_BUSY;
                         releaseWaitEvents((__global AmdEvent**)(disp->wait_list),
                             disp->wait_num, (__global uint*)queue->event_slot_mask,
