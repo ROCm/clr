@@ -86,6 +86,7 @@ Resource::Resource(
     cal_.imageArray_ = false;
     cal_.imageType_  = 0;
     cal_.SVMRes_ = false;
+    cal_.scratch_ = false;
 }
 
 Resource::Resource(
@@ -127,6 +128,7 @@ Resource::Resource(
     cal_.imageArray_    = false;
     cal_.imageType_     = imageType;
     cal_.SVMRes_ = false;
+    cal_.scratch_ = false;
 
     switch (imageType) {
     case CL_MEM_OBJECT_IMAGE2D:
@@ -366,6 +368,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     cal_.type_ = memType;
     if (memType == Scratch) {
         cal_.type_ = Local;
+        cal_.scratch_ = true;
     }
 
     // Force remote allocation if it was requested in the settings
@@ -937,7 +940,8 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     }
     hbSize_ = static_cast<uint64_t>(gslResource->getSurfaceSize());
 
-    if (!dev().settings().use64BitPtr_ && (memType != Scratch)) {
+    if (!dev().settings().use64BitPtr_ &&
+        !((memType == Scratch) || ((memType == View) && viewOwner_->cal()->scratch_))) {
         // Make sure runtime doesn't go over the address space limit for buffers
         if ((memoryType() != Heap) &&
             (cal()->dimension_ == GSL_MOA_BUFFER) &&
