@@ -172,6 +172,7 @@ public:
                 uint    buffer_     : 1;    //!< GSL resource is a buffer
                 uint    tiled_      : 1;    //!< GSL resource is tiled
                 uint    SVMRes_     : 1;    //!< SVM flag to the cal resource
+                uint    scratch_    : 1;    //!< Scratch buffer
             };
             uint    state_;
         };
