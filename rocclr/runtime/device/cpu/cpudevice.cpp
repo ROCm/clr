@@ -173,7 +173,7 @@ Device::init()
         for (ptr = buffer; ptr < limit; ++ptr) {
             PCACHE_DESCRIPTOR cache = &ptr->Cache;
             if (ptr->Relationship == RelationCache && cache->Type != CacheInstruction) {
-                info.affinityDomain_.value_ |= 
+                info.affinityDomain_.value_ |=
                     (device::AffinityDomain::AFFINITY_DOMAIN_L1_CACHE << 1) >>
                     cache->Level;
 
@@ -225,9 +225,9 @@ Device::init()
         (uintptr_t) std::min(statex.ullTotalPageFile, statex.ullTotalVirtual);
 #endif
 
-    maxWorkerThreads_ = (size_t) (virtualMemSize / 
-        (uintptr_t) ((CPU_WORKER_THREAD_STACK_SIZE + 
-        CLK_PRIVATE_MEMORY_SIZE * (CPU_MAX_WORKGROUP_SIZE + 1))) * 
+    maxWorkerThreads_ = (size_t) (virtualMemSize /
+        (uintptr_t) ((CPU_WORKER_THREAD_STACK_SIZE +
+        CLK_PRIVATE_MEMORY_SIZE * (CPU_MAX_WORKGROUP_SIZE + 1))) *
         7 / 10);
 
 #if defined(_LP64)
@@ -377,8 +377,14 @@ Device::init()
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 
     info.profile_ = "FULL_PROFILE";
-    info.version_ = "OpenCL " OPENCL_VERSION_STR " " AMD_PLATFORM_INFO;
-    info.oclcVersion_ = "OpenCL C " OPENCL_VERSION_STR " ";
+    if (CPU_OPENCL_VERSION < 200) {
+        info.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
+        info.oclcVersion_ = "OpenCL C 1.2 ";
+    }
+    else {
+        info.version_ = "OpenCL " OPENCL_VERSION_STR " " AMD_PLATFORM_INFO;
+        info.oclcVersion_ = "OpenCL C " OPENCL_VERSION_STR " ";
+    }
     info.spirVersions_ = "1.2";
 
 #if cl_amd_open_video
@@ -495,8 +501,8 @@ Device::create()
 
 bool
 Device::initSubDevice(
-    device::Info& info, 
-    cl_uint maxComputeUnits, 
+    device::Info& info,
+    cl_uint maxComputeUnits,
     const device::CreateSubDevicesInfo& create_info)
 {
     if (workerThreadsAffinity_ == NULL) {
@@ -530,7 +536,7 @@ Device::initSubDevice(
 
 void
 Device::setWorkerThreadsAffinity(
-    cl_uint numWorkerThreads, 
+    cl_uint numWorkerThreads,
     const amd::Os::ThreadAffinityMask* threadsAffinityMask,
     uint& baseCoreId)
 {
@@ -641,7 +647,7 @@ Device::partitionEqually(
             *devices++ = as_cl(static_cast<amd::Device*>(device));
         }
     }
-    
+
     return CL_SUCCESS;
 }
 
@@ -806,7 +812,7 @@ Device::partitionByAffinityDomainNUMA(
                 return CL_OUT_OF_HOST_MEMORY;
             }
 
-            if (!device->create() || !device->initSubDevice(info_, 
+            if (!device->create() || !device->initSubDevice(info_,
                 (cl_uint)amd::countBitsSet(numaNodeMask.Mask), create_info)) {
                     device->release();
                     return CL_OUT_OF_HOST_MEMORY;
@@ -873,7 +879,7 @@ parseSharedCpuMap(const char* cpuMap, cpu_set_t& mask)
     CPU_ZERO(&mask);
     uint32_t* bits = (uint32_t*)mask.__bits;
     const char* s = cpuMap + strlen(cpuMap);
-    while (true) { 
+    while (true) {
         s = (const char*)memrchr(cpuMap, ',', s - cpuMap);
         if (!s) {
             s = cpuMap;
@@ -936,12 +942,12 @@ Device::partitionByAffinityDomainCacheLevel(
 
     amd::Os::ThreadAffinityMask currentMask;
     char buf[1024];
-    for (uint cpuId = affinityMask.getFirstSet(); 
-         cpuId != (uint)-1; 
+    for (uint cpuId = affinityMask.getFirstSet();
+         cpuId != (uint)-1;
          cpuId = affinityMask.getNextSet(cpuId)) {
 
-        sprintf(buf, 
-            "/sys/devices/system/cpu/cpu%u/cache/index%u/shared_cpu_map", 
+        sprintf(buf,
+            "/sys/devices/system/cpu/cpu%u/cache/index%u/shared_cpu_map",
             cpuId, cacheLevel);
 
         if (!readFileString(buf, buf, sizeof(buf))) {
@@ -959,12 +965,12 @@ Device::partitionByAffinityDomainCacheLevel(
             maxComputeUnits = 0;
             amd::Os::ThreadAffinityMask currentMaskSub;
             cl_uint cacheLevelSub = cacheLevel - 1;
-            for (uint cpuIdSub = affinityMask.getFirstSet(); 
-                 cpuIdSub != (uint)-1; 
+            for (uint cpuIdSub = affinityMask.getFirstSet();
+                 cpuIdSub != (uint)-1;
                  cpuIdSub = affinityMask.getNextSet(cpuIdSub)) {
 
-                sprintf(buf, 
-                    "/sys/devices/system/cpu/cpu%u/cache/index%u/shared_cpu_map", 
+                sprintf(buf,
+                    "/sys/devices/system/cpu/cpu%u/cache/index%u/shared_cpu_map",
                     cpuIdSub, cacheLevelSub);
 
                 if (!readFileString(buf, buf, sizeof(buf))) {
@@ -1062,7 +1068,7 @@ Device::partitionByAffinityDomainCacheLevel(
                             return CL_OUT_OF_HOST_MEMORY;
                         }
 
-                        if (!device->create() || !device->initSubDevice(info_, 
+                        if (!device->create() || !device->initSubDevice(info_,
                             maxComputeUnits, create_info)) {
                             free(buffer);
                             device->release();

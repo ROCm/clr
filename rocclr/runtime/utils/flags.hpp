@@ -157,7 +157,9 @@ release(bool, AMD_DEPTH_MSAA_INTEROP, false,                                  \
 release(bool, AMD_THREAD_TRACE_ENABLE, false,                                 \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, 200,                                            \
-        "Force opencl verison")                                               \
+        "Force GPU opencl verison")                                           \
+release(uint, CPU_OPENCL_VERSION, 120,                                        \
+        "Force CPU opencl verison")                                           \
 release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
         "Determines if Hsa runtime should use polling scheme")                \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
