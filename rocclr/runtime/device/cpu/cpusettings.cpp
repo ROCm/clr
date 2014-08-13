@@ -39,8 +39,8 @@ Settings::create()
     enableExtension(ClAmdPrintf);
 
     // enableExtension(ClKhrSelectFpRoundingMode);
-    enableExtension(ClKhr3DImageWrites); 
-	
+    enableExtension(ClKhr3DImageWrites);
+
     // enableExtension(ClKhrFp16);
 
 #if defined(_WIN32)
@@ -49,7 +49,7 @@ Settings::create()
     enableExtension(ClKhrSpir);
 
     // Enable some OpenCL 2.0 extensions
-    if (OPENCL_MAJOR >= 2) {
+    if ((OPENCL_MAJOR >= 2) && (CPU_OPENCL_VERSION >= 200)) {
         partialDispatch_ = true;
         enableExtension(ClKhrSubGroups);
         supportDepthsRGB_ = true;
