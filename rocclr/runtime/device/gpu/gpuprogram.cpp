@@ -4,6 +4,8 @@
 
 #include "os/os.hpp"
 #include "utils/flags.hpp"
+#include "include/aclTypes.h"
+#include "utils/bif_section_labels.hpp"
 #include "device/gpu/gpuprogram.hpp"
 #include "device/gpu/gpublit.hpp"
 #include "macrodata.h"
@@ -2059,10 +2061,14 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     }
 
     size_t fsailSize;
-    const void *hsailText = aclExtractSection(dev().hsaCompiler(),
+    const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
+    assert(symbol && "symbol not found");
+    std::string symName = symbol->str[PRE] + std::string("main") + symbol->str[POST];
+    const void *hsailText = aclExtractSymbol(dev().hsaCompiler(),
         binaryElf_,
         &fsailSize,
         aclCODEGEN,
+        symName.c_str(),
         &errorCode);
     if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Error while reading out the HSAIL from the ELF" ;
