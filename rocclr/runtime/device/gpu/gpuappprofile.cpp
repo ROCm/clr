@@ -11,7 +11,7 @@ namespace gpu {
 
 AppProfile::AppProfile()
     : amd::AppProfile()
-    , enableHighPerformanceState_(true)
+    , enableHighPerformanceState_(IS_LINUX ? false : true)
     , reportAsOCL12Device_(false)
 {
     propertyDataMap_.insert(DataMap::value_type("HighPerfState",
