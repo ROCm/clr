@@ -1113,7 +1113,7 @@ aclCompileInternal(
     if (error_code != ACL_SUCCESS) {
       goto internal_compile_failure;
     }
-  } else if (useLinker || useOpt || useCG) {
+  } else if (useLinker || useOpt) {
     // Load a temp frontend object to convert from string LLVM-IR to LLVM Module.
     ald = cl->feAPI.init(cl, bin, compile_callback, &error_code);
     module = cl->feAPI.toModule(ald, data, data_size, context, &error_code);
@@ -1155,23 +1155,39 @@ aclCompileInternal(
         bHsailTextInput = true;
         if (bin && bin->options) {
           amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
-          // Verify that the internal (blit) kernel is not being compiled 
+          // Verify that the internal (blit) kernel is not being compiled
           size_t ifind = Opts->origOptionStr.find("-cl-internal-kernel");
           if (ifind != std::string::npos)
             bHsailTextInput = false;
         }
       }
-      if (!bHsailTextInput)
-      {
-        std::string* output = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
-
-        if (error_code != ACL_SUCCESS) {
-          goto internal_compile_failure;
-        } 
-
+      if (!bHsailTextInput) {
         amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
-        if (acl == NULL || !acl->insertBRIG(*output)) {
-          assert(!"Inserting BRIG failed\n");
+        assert(acl && "Inserting BRIG failed\n");
+        // from ACL_TYPE_HSAIL_BINARY
+        if (!useFE && !useLinker && !useOpt) {
+          int result = 0;
+          HSAIL_ASM::BrigContainer c;
+          // BRIG is in aclSOURCE section
+          if (data) {
+            result = HSAIL_ASM::BrigStreamer::load(c, data, data_size);
+          // BRIG is in its corresponding BIF sections
+          } else {
+            if (!acl->extractBRIG(c)) {
+              error_code = ACL_CODEGEN_ERROR;
+              goto internal_compile_failure;
+            }
+          }
+          if (result != 0 || !acl->insertBRIG(c)) {
+            error_code = ACL_CODEGEN_ERROR;
+            goto internal_compile_failure;
+          }
+        } else {
+          std::string* output = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
+          if (error_code != ACL_SUCCESS || !acl->insertBRIG(*output)) {
+            error_code = ACL_CODEGEN_ERROR;
+            goto internal_compile_failure;
+          }
         }
       }
       else
@@ -1371,17 +1387,32 @@ if_aclCompile(aclCompiler *cl,
 
   if ((from == ACL_TYPE_AMDIL_TEXT
     || from == ACL_TYPE_AMDIL_BINARY
-    || from == ACL_TYPE_HSAIL_TEXT
-    || from == ACL_TYPE_HSAIL_BINARY
     || from == ACL_TYPE_X86_TEXT
     || from == ACL_TYPE_X86_BINARY)
     && to != ACL_TYPE_ISA) {
     return ACL_INVALID_ARG;
   }
 
+  if ((from == ACL_TYPE_HSAIL_TEXT
+    || from == ACL_TYPE_HSAIL_BINARY)
+    && (to != ACL_TYPE_CG && to != ACL_TYPE_ISA)) {
+    return ACL_INVALID_ARG;
+  }
+
+  if (from == ACL_TYPE_HSAIL_TEXT) {
+    amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
+    const char *kernel = Opts->oVariables->Kernel;
+    error_code = aclConvertType(cl, bin, kernel, from);
+    if (error_code != ACL_SUCCESS)
+      return error_code;
+    if (to == ACL_TYPE_CG)
+      return ACL_SUCCESS;
+    from = ACL_TYPE_CG;
+  }
+
   bool stages[5] = {false};
   uint8_t sectable[ACL_TYPE_LAST] =
-    { 0, 0, 1, 1, 1, 1, 0, 6, 0, 4, 4, 4, 4, 0, 5, 0, 1 };
+    { 0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1 };
   aclSections d_section[7] =
   { aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE, aclCODEGEN, aclTEXT, aclINTERNAL };
   uint8_t start = sectable[from];
@@ -1410,6 +1441,14 @@ if_aclCompile(aclCompiler *cl,
     }
     else if (from == ACL_TYPE_RSLLVMIR_BINARY) {
       data = cl->clAPI.extSec(cl, bin, &data_size, aclLLVMIR, &error_code);
+    }
+    else if (from == ACL_TYPE_HSAIL_BINARY) {
+      data = cl->clAPI.extSec(cl, bin, &data_size, aclSOURCE, &error_code);
+    // if for ACL_TYPE_HSAIL_BINARY stage BRIG (data) is not presented in aclSOURCE (.source) section of BIF,
+    // then it should be in multiple corresponding .brig_ sections in BIF, so continue to compile
+      if (error_code == ACL_ELF_ERROR) {
+        error_code = ACL_SUCCESS;
+      }
     }
     else {
       data = cl->clAPI.extSec(cl, bin, &data_size, d_section[start], &error_code);
@@ -1799,11 +1838,75 @@ if_aclConvertType(aclCompiler *cl,
       break;
     }
     case ACL_TYPE_HSAIL_TEXT:
+    {
       to = ACL_TYPE_HSAIL_BINARY;
+      const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
+      assert(symbol && "symbol not found");
+      std::string symbolName = symbol->str[PRE] + std::string("main") + symbol->str[POST];
+      from_data = cl->clAPI.extSym(cl, bin, &from_data_size,
+                                   symbol->sections[0],
+                                   symbolName.c_str(), &error_code);
+      // HSAIL was inserted into bif as section only without corresponding symbol
+      if (!from_data) {
+        from_data = cl->clAPI.extSec(cl, bin, &from_data_size,
+                                     symbol->sections[0], &error_code);
+      }
       break;
+    }
     case ACL_TYPE_HSAIL_BINARY:
-      to = ACL_TYPE_HSAIL_TEXT;
+    {
+#if defined(WITH_TARGET_HSAIL)
+      // BRIG to HSAIL disassembling
+      if (isHSAILTarget(bin->target)) {
+        amdcl::HSAIL *acl = new amdcl::HSAIL(cl, bin, NULL);
+        if (acl == NULL)  {
+          return ACL_OUT_OF_MEM;
+        }
+        std::string hsail = acl->disassembleBRIG();
+        // If HSAIL was not disassembled from multiple .brig_ sections in BIF, then:
+        // 1. try to extract BRIG from aclSOURCE section
+        if (hsail.empty()) {
+          from_data = cl->clAPI.extSec(cl, bin, &from_data_size, aclSOURCE, &error_code);
+          HSAIL_ASM::BrigContainer c;
+          // 2. load BRIG in BrigContainer
+          int result = HSAIL_ASM::BrigStreamer::load(c,
+              reinterpret_cast<const char*>(from_data), from_data_size);
+          if (result != 0) {
+            error_code = ACL_INVALID_BINARY;
+            delete acl;
+            return error_code;
+          }
+          // 3. insert BRIG into multiple .brig_ sections in BIF +
+          // insert matadata symbols for every kernel
+          if (!acl->insertBRIG(c)) {
+            assert(!"Inserting BRIG failed\n");
+            error_code = ACL_INVALID_BINARY;
+            delete acl;
+            return error_code;
+          }
+          // 4. second attempt to disassemble BRIG
+          hsail = acl->disassembleBRIG();
+        }
+        delete acl;
+        if (hsail.empty()) {
+            return ACL_ELF_ERROR;
+        }
+        const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
+        assert(symbol && "symbol not found");
+        std::string symbolName = symbol->str[PRE] + std::string("main") +
+                            symbol->str[POST];
+        return cl->clAPI.insSym(cl, bin, hsail.data(), hsail.size(),
+                                symbol->sections[0], symbolName.c_str());
+      } else {
+        assert(!"Unsupported architecture, expect hsail.");
+        return ACL_SYS_ERROR;
+      }
+#else
+      assert(!"Cannot go down this path without HSAIL support!");
+      return ACL_SYS_ERROR;
+#endif
       break;
+    }
     case ACL_TYPE_X86_TEXT:
       to = ACL_TYPE_X86_BINARY;
       break;
@@ -1925,6 +2028,32 @@ if_aclConvertType(aclCompiler *cl,
 #endif
       }
       break;
+    case ACL_TYPE_HSAIL_BINARY:
+      {
+#if defined(WITH_TARGET_HSAIL)
+        if (isHSAILTarget(bin->target)) {
+          amdcl::HSAIL *acl = new amdcl::HSAIL(cl, bin, NULL);
+          if (acl == NULL)  {
+            return ACL_OUT_OF_MEM;
+          }
+          // while assembling BRIG insertion into BIF (bin) performs,
+          // so no need in any symbol/section insertion here
+          bool bRet = acl->assemble(std::string(reinterpret_cast<const char*>(from_data)));
+          delete acl;
+          if (!bRet) {
+            return ACL_CODEGEN_ERROR;
+          }
+          return ACL_SUCCESS;
+        } else {
+          assert(!"Unsupported architecture, expect hsail.");
+          return ACL_SYS_ERROR;
+        }
+#else
+        assert(!"Cannot go down this path without HSAIL support!");
+        return ACL_SYS_ERROR;
+#endif
+      }
+      break;
   }
 
   if (name == NULL || !need_name) {
@@ -1963,7 +2092,7 @@ if_aclDisassemble(aclCompiler *cl,
       if (!hsail_be) {
         goto internal_disasm_failure;
       }
-      hsail_be->disassembleBRIG(cl, bin);
+      hsail_be->disassembleBRIG();
     }
   }
 #endif

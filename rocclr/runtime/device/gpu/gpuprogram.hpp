@@ -419,7 +419,10 @@ protected:
         amd::option::Options* options   //!< compile options's object
         );
 
-    aclType getNextCompilationStageFromBinary();
+    /* \brief Return the next stage to compile from, based on sections in binary,
+    *  also return completed stages in vector, which contains at least ACL_TYPE_DEFAULT
+    */
+    aclType getNextCompilationStageFromBinary(std::vector<aclType>& complete_stages);
 
     /*! \brief Compiles LLVM binary to FSAIL code (compiler backend: link+opt+codegen)
     *
