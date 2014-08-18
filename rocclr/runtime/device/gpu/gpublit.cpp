@@ -613,7 +613,41 @@ DmaBlitManager::copyBufferRect(
         size_t  srcOffset;
         size_t  dstOffset;
 
-        if (!dev().settings().rectLinearDMA_) {
+        bool subWindowRectCopy = dev().settings().rectLinearDMA_;
+        // 19 bit limit in HW in SI and 16 bit limit in CI+(we adjust the ElementSize to 4bytes but the packet still has 14bits)
+        size_t pitchLimit = dev().settings().ciPlus_ ? 0xFFFF : 0x7FFFF;
+
+        srcOffset   = srcRect.offset(0, 0, 0);
+        dstOffset   = dstRect.offset(0, 0, 0);
+
+        if (subWindowRectCopy &&
+            (((srcOffset % 4) != 0) ||
+            ((dstOffset % 4) != 0) ||
+            ((size[0] % 4) != 0) ||
+            ((srcRect.rowPitch_ % 4) != 0) ||
+            ((srcRect.slicePitch_ % 4) != 0) ||
+            ((dstRect.rowPitch_ % 4) != 0) ||
+            ((dstRect.slicePitch_ % 4) != 0) ||
+            (srcRect.rowPitch_ > pitchLimit) ||
+            (dstRect.rowPitch_ > pitchLimit) ||
+            (size[0] > 0x3fff) ||   // 14 bits limit in HW
+            (size[1] > 0x3fff) ||   // 14 bits limit in HW
+            (size[2] > 0x7ff))) {    // 11 bits limit in HW
+            // Restriction with rectLinearDRMDMA packet
+            subWindowRectCopy = false;
+        }
+
+        if (subWindowRectCopy) {
+            // Copy data with subwindow copy packet
+            if (!gpuMem(srcMemory).partialMemCopyTo(gpu(),
+                amd::Coord3D(srcOffset, srcRect.rowPitch_, srcRect.slicePitch_),
+                amd::Coord3D(dstOffset, dstRect.rowPitch_, dstRect.slicePitch_),
+                size, gpuMem(dstMemory), true)) {
+                LogError("copyBufferRect failed!");
+                return false;
+            }
+        }
+        else {
             for (size_t z = 0; z < size[2]; ++z) {
                 for (size_t y = 0; y < size[1]; ++y) {
                     srcOffset   = srcRect.offset(0, y, z);
@@ -630,37 +664,6 @@ DmaBlitManager::copyBufferRect(
                         return false;
                     }
                 }
-            }
-        }
-        else {
-            srcOffset   = srcRect.offset(0, 0, 0);
-            dstOffset   = dstRect.offset(0, 0, 0);
-
-            // 19 bit limit in HW in SI and 16 bit limit in CI+(we adjust the ElementSize to 4bytes but the packet still has 14bits)
-            size_t pitchLimit = dev().settings().ciPlus_ ? 0xFFFF : 0x7FFFF;
-
-            if (((srcOffset % 4) != 0) ||
-                ((dstOffset % 4) != 0) ||
-                ((size[0] % 4) != 0) ||
-                ((srcRect.rowPitch_ % 4) != 0) ||
-                ((srcRect.slicePitch_ % 4) != 0) ||
-                ((dstRect.rowPitch_ % 4) != 0) ||
-                ((dstRect.slicePitch_ % 4) != 0) ||
-                (srcRect.rowPitch_ > pitchLimit) ||
-                (dstRect.rowPitch_ > pitchLimit) ||
-                (size[0] > 0x3fff) ||   // 14 bits limit in HW
-                (size[1] > 0x3fff) ||   // 14 bits limit in HW
-                (size[2] > 0x7ff)) {    // 11 bits limit in HW
-                // Restriction with rectLinearDRMDMA packet
-                return false;
-            }
-            // Copy data
-            if (!gpuMem(srcMemory).partialMemCopyTo(gpu(),
-                amd::Coord3D(srcOffset, srcRect.rowPitch_, srcRect.slicePitch_),
-                amd::Coord3D(dstOffset, dstRect.rowPitch_, dstRect.slicePitch_),
-                size, gpuMem(dstMemory), true)) {
-                LogError("copyBufferRect failed!");
-                return false;
             }
         }
     }
