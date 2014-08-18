@@ -834,7 +834,7 @@ VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd)
         amd::Coord3D    region(0);
         amd::Coord3D hostOrigin(vcmd.hostRect().start_+ offset);
         hostbufferRect.create(hostOrigin.c, vcmd.size().c , vcmd.hostRect().rowPitch_, vcmd.hostRect().slicePitch_);
-        if ((hostMemory != NULL) && (offset == 0)) {
+        if (hostMemory != NULL) {
             result = blitMgr().copyBufferRect(*hostMemory, *memory,
                 hostbufferRect, vcmd.bufRect(), vcmd.size(),
                 vcmd.isEntireMemory());
