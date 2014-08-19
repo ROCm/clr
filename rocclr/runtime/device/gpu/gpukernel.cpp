@@ -3941,9 +3941,24 @@ HSAILKernel::loadArguments(
                     HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
             }
             else {
-                uint64_t srd = image->hwSrd();
-                WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-                srdResource = true;
+                //! \note Special case for the image views.
+                //! Copy SRD to CB1, so blit manager will be able to release
+                //! this view without a wait for SRD resource.
+                if (image->memoryType() == Resource::ImageView) {
+                    // Copy the current structre into CB1
+                    memcpy(aqlStruct, image->hwState(), HSA_IMAGE_OBJECT_SIZE);
+                    ConstBuffer* cb = gpu.constBufs_[1];
+                    cb->uploadDataToHw(HSA_IMAGE_OBJECT_SIZE);
+                    // Then use a pointer in aqlArgBuffer to CB1
+                    uint64_t srd = cb->vmAddress() + cb->wrtOffset();
+                    WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+                    memList.push_back(cb);
+                }
+                else {
+                    uint64_t srd = image->hwSrd();
+                    WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+                    srdResource = true;
+                }
             }
 
             //! @todo Compiler has to return read/write attributes
