@@ -424,9 +424,6 @@ public:
     //! Returns GPU device object, associated with this kernel
     const NullProgram& nullProg() const { return prog_; }
 
-    //! Returns the kernel's build log
-    const std::string& buildLog() const { return buildLog_; }
-
     //! Returns the kernel's build error
     const cl_int buildError() const { return buildError_; }
 
@@ -477,7 +474,6 @@ protected:
     //! Returns UAV arena index for this kernel
     uint uavArena() const { return uavArena_; }
 
-    std::string     buildLog_;      //!< Kernel's build log
     cl_int          buildError_;    //!< Kernel's build error
     std::string     ilSource_;      //!< IL source code of this kernel
 

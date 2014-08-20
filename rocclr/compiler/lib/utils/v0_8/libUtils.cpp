@@ -459,20 +459,23 @@ appendLogToCL(aclCompiler *cl, const std::string &logStr)
   if (logStr.empty()) {
     return;
   }
-  unsigned size = logStr.size() + cl->logSize;
+  std::string log = logStr;
+  if ('\n' != log[log.size()-1]) {
+    log.append("\n");
+  }
+  unsigned size = cl->logSize + log.size();
   if (!size) {
     return;
   }
   char *tmpBuildLog = reinterpret_cast<char*>(aclutAlloc(cl)(size + 2));
   memset(tmpBuildLog, 0, size + 2);
   if (cl->logSize) {
-    std::copy(cl->buildLog,cl->buildLog + cl->logSize, tmpBuildLog);
-    std::copy(logStr.begin(), logStr.end(), tmpBuildLog + cl->logSize + 1);
-    tmpBuildLog[cl->logSize] = '\n';
+    std::copy(cl->buildLog, cl->buildLog + cl->logSize, tmpBuildLog);
+    std::copy(log.begin(), log.end(), tmpBuildLog + cl->logSize);
   } else {
-    std::copy(logStr.begin(), logStr.end(), tmpBuildLog);
+    std::copy(log.begin(), log.end(), tmpBuildLog);
   }
-  cl->logSize += (unsigned int)logStr.size();
+  cl->logSize += (unsigned int)log.size();
   if (cl->buildLog) {
     aclutFree(cl)(cl->buildLog);
   }
