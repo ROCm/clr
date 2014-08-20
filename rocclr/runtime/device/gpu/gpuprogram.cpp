@@ -2049,6 +2049,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
           std::string curOptions = options->origOptionStr + hsailOptions();
           errorCode = aclCompile(dev().hsaCompiler(), binaryElf_,
               curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, NULL);
+          buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
           break;
       }
     }
@@ -2108,6 +2109,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             if (!aKernel->init() ) {
                 return false;
             }
+            buildLog_ += aKernel->buildLog();
             aKernel->setUniformWorkGroupSize(options
               ->oVariables->UniformWorkGroupSize);
             kernels()[kernelName] = aKernel;

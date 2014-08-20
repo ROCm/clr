@@ -3524,6 +3524,7 @@ HSAILKernel::init()
     void*   shader_isa = NULL;
     error = aclCompile(dev().hsaCompiler(), prog().binaryElf(),
         options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
+    buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
     if (error != ACL_SUCCESS) {
         LogError("Failed to finalize");
         return false;

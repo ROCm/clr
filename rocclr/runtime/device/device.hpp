@@ -918,12 +918,15 @@ public:
         workGroupInfo_.preferredSizeMultiple_ = size;
     }
 
+    //! Return the build log
+    const std::string& buildLog() const { return buildLog_; }
+
 protected:
     std::string     name_;              //!< kernel name
     WorkGroupInfo   workGroupInfo_;     //!< device kernel info structure
     amd::KernelSignature*   signature_; //!< kernel signature
     bool            hsa_;               //!< True if HSA kernel on GPU
-
+    std::string buildLog_;              //!< build log
 private:
     //! Disable default copy constructor
     Kernel(const Kernel&);
