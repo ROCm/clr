@@ -417,7 +417,7 @@ scheduler(
                     uint tmp = 0;
                     if (atomic_compare_exchange_strong_explicit(
                         (__global atomic_uint*)&param->launch, &tmp, launch,
-                        memory_order_acq_rel, memory_order_acq_rel, memory_scope_device)) {
+                        memory_order_acq_rel, memory_order_acquire, memory_scope_device)) {
                         if (event != 0) {
                             event->timer[PROFILING_COMMAND_START] =
                                 (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
