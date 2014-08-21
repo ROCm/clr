@@ -610,6 +610,7 @@ private:
     amd::Monitor*   lockAsyncOpsForInitHeap_;  //!< Lock to serialise all async ops on initialization heap operation
     amd::Monitor*   vgpusAccess_;   //!< Lock to serialise virtual gpu list access
     amd::Monitor*   scratchAlloc_;  //!< Lock to serialise scratch allocation
+    amd::Monitor*   mapCacheOps_;   //!< Lock to serialise cache for the map resources
 
     XferBuffers*    xferRead_;      //!< Transfer buffers read
     XferBuffers*    xferWrite_;     //!< Transfer buffers write
