@@ -2782,6 +2782,12 @@ VirtualGPU::awaitCompletion(CommandBatch* cb, const amd::Event* waitingEvent)
 void
 VirtualGPU::flush(amd::Command* list, bool wait)
 {
+    //! @note: Even flush() requires a lock, because GSL can
+    //! defer destruction of internal memory objects and releases them
+    //! on GSL flush. If runtime calls another GSL flush at the same time,
+    //! then double release can occur.
+    amd::ScopedLock lock(execution());
+
     CommandBatch* cb = NULL;
     bool    gpuCommand = false;
 
@@ -2805,8 +2811,8 @@ VirtualGPU::flush(amd::Command* list, bool wait)
         flushDMA(i);
         // Reset event so we won't try to wait again,
         // if runtime didn't submit any commands
-        // @note: it's safe to invalidate events, since
-        // we already saved them with the batch creation step above
+        //! @note: it's safe to invalidate events, since
+        //! we already saved them with the batch creation step above
         cal_.events_[i].invalidate();
     }
 

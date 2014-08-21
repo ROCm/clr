@@ -365,6 +365,7 @@ Device::Device()
     , lockAsyncOps_(NULL)
     , lockAsyncOpsForInitHeap_(NULL)
     , vgpusAccess_(NULL)
+    , scratchAlloc_(NULL)
     , xferRead_(NULL)
     , xferWrite_(NULL)
     , vaCacheAccess_(NULL)
@@ -425,6 +426,7 @@ Device::~Device()
     delete lockAsyncOps_;
     delete lockAsyncOpsForInitHeap_;
     delete vgpusAccess_;
+    delete scratchAlloc_;
     delete vaCacheAccess_;
     delete vaCacheList_;
 
@@ -793,6 +795,12 @@ Device::create(CALuint ordinal)
     if (NULL == vgpusAccess_) {
         return false;
     }
+    
+    scratchAlloc_ = new amd::Monitor("Scratch Allocation Lock", true);
+    if (NULL == scratchAlloc_) {
+        return false;
+    }
+
     vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
     if (NULL == vaCacheAccess_) {
         return false;
@@ -2283,7 +2291,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
 {
     if (regNum > 0) {
         // Serialize the scratch buffer allocation code
-        amd::ScopedLock lk(*lockAsyncOps_);
+        amd::ScopedLock lk(*scratchAlloc_);
         uint    sb = vgpu->hwRing();
 
         // Check if the current buffer isn't big enough
