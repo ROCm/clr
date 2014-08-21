@@ -366,6 +366,7 @@ Device::Device()
     , lockAsyncOpsForInitHeap_(NULL)
     , vgpusAccess_(NULL)
     , scratchAlloc_(NULL)
+    , mapCacheOps_(NULL)
     , xferRead_(NULL)
     , xferWrite_(NULL)
     , vaCacheAccess_(NULL)
@@ -427,6 +428,7 @@ Device::~Device()
     delete lockAsyncOpsForInitHeap_;
     delete vgpusAccess_;
     delete scratchAlloc_;
+    delete mapCacheOps_;
     delete vaCacheAccess_;
     delete vaCacheList_;
 
@@ -797,6 +799,11 @@ Device::create(CALuint ordinal)
     }
     
     scratchAlloc_ = new amd::Monitor("Scratch Allocation Lock", true);
+    if (NULL == scratchAlloc_) {
+        return false;
+    }
+
+    mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
     if (NULL == scratchAlloc_) {
         return false;
     }
@@ -2190,8 +2197,8 @@ Device::findMemoryFromVA(const void* ptr, size_t* offset) const
 amd::Memory*
 Device::findMapTarget(size_t size) const
 {
-    // Must be serialised. Global async is too conservative
-    amd::ScopedLock lk(*lockAsyncOps_);
+    // Must be serialised for access
+    amd::ScopedLock lk(*mapCacheOps_);
 
     amd::Memory*    map = NULL;
     size_t          minSize = 0;
@@ -2250,8 +2257,8 @@ Device::findMapTarget(size_t size) const
 bool
 Device::addMapTarget(amd::Memory* memory) const
 {
-    // Must be serialised. Global async is too conservative
-    amd::ScopedLock lk(*lockAsyncOps_);
+    // Must be serialised for access
+    amd::ScopedLock lk(*mapCacheOps_);
 
     //the svm memory shouldn't be cached
     if (!memory->canBeCached()) {
