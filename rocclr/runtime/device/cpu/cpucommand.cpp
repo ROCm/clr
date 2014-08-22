@@ -28,8 +28,7 @@ WorkerThread::WorkerThread(const cpu::Device& device) :
 {
     localDataSize_ = (size_t) device.info().localMemSize_;
     localDataStorage_ = (address) amd::AlignedMemory::allocate(
-        localDataSize_ + __CPU_SCRATCH_SIZE, sizeof(cl_long16)) +
-	__CPU_SCRATCH_SIZE;
+        localDataSize_ + __CPU_SCRATCH_SIZE, sizeof(cl_long16));
 
 #if defined(__linux__) && defined(NUMA_SUPPORT)
     const nodemask_t* numaMask = device.getNumaMask();
@@ -42,7 +41,7 @@ WorkerThread::WorkerThread(const cpu::Device& device) :
 WorkerThread::~WorkerThread()
 {
     guarantee(Thread::current() != this && "thread suicide!");
-    amd::AlignedMemory::deallocate(localDataStorage_ - __CPU_SCRATCH_SIZE);
+    amd::AlignedMemory::deallocate(localDataStorage_);
 }
 
 bool
@@ -392,15 +391,16 @@ NDRangeKernelBatch::execute()
     const size_t numWorkItems = command.sizes().local().product();
 
     address params = thread.baseWorkItemsStack();
-    address localMemPtr = thread.localDataStorage();
-    if (!patchParameters(kernel,
-        params, localMemPtr, localMemPtr + thread.localDataSize(),
+    address baseLocalMemPtr = thread.localDataStorage();
+    address patchedLocalMemPtr = thread.localDataStorage() + __CPU_SCRATCH_SIZE;
+    if (!patchParameters(kernel, params,
+        patchedLocalMemPtr, patchedLocalMemPtr + thread.localDataSize(),
         kernel.workGroupInfo()->localMemSize_)) {
         return;
     }
 
     WorkItem* workItem0 = ::new((WorkItem*)params - 1) WorkItem(
-        command.sizes(), localMemPtr);
+        command.sizes(), baseLocalMemPtr, patchedLocalMemPtr);
 
     WorkGroup wg(command, kernel, thread, params, workItem0, numWorkItems);
 
@@ -549,7 +549,9 @@ WorkGroup::callKernelRange(kernelentrypoint_t entryPoint,
     }
 }
 
-WorkItem::WorkItem(const amd::NDRangeContainer& sizes, void* localMemPtr)
+WorkItem::WorkItem(const amd::NDRangeContainer& sizes,
+                   void* scratchMemPtr,
+                   void* localMemPtr)
 {
     const amd::NDRange& local = sizes.local();
     const amd::NDRange& global = sizes.global();
@@ -557,9 +559,11 @@ WorkItem::WorkItem(const amd::NDRangeContainer& sizes, void* localMemPtr)
     const size_t dims = sizes.dimensions();
 
     tib_.builtins = &Builtins::dispatchTable_;
-    tib_.work_dim = (cl_uint) sizes.dimensions();
     tib_.local_mem_base = localMemPtr;
+    tib_.local_scratch = scratchMemPtr;
     tib_.table_base = (const void *)cpuTables;
+    tib_.work_dim = (cl_uint) sizes.dimensions();
+
     for (size_t i = 0; i < dims; ++i) {
         tib_.global_offset[i] = offset[i];
         tib_.global_size[i] = global[i];
@@ -568,6 +572,7 @@ WorkItem::WorkItem(const amd::NDRangeContainer& sizes, void* localMemPtr)
         tib_.local_id[i] = 0;
         tib_.group_id[i] = 0;
     }
+
     // Fill the remaining dimensions.
     for (size_t i = dims; i < sizeof(tib_.global_size)/sizeof(size_t); ++i) {
         tib_.global_offset[i] =  0;

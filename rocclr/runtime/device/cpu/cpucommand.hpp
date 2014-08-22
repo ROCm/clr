@@ -101,7 +101,7 @@ public:
     };
 
 protected:
-	amd::Command& command_; 
+    amd::Command& command_; 
 
 public:
     Operation(amd::Command& command) : command_(command)
@@ -113,7 +113,7 @@ public:
 
     void cleanup();
 
-	amd::Command& command() { return command_;}
+    amd::Command& command() { return command_;}
 
     virtual void execute() = 0;
 };
@@ -136,7 +136,10 @@ private:
 
 public:
     //! Initialize this workgroup.
-    WorkItem(const amd::NDRangeContainer& size, void* localMemPtr);
+    WorkItem(
+        const amd::NDRangeContainer& size,
+        void* scratchMemPtr,
+        void* localMemPtr);
 
     //! Return the current WorkItem (based of the current stack pointer).
     static WorkItem* current() {
@@ -303,59 +306,59 @@ public:
 class WorkerThread : public amd::Thread
 {
 private:
-	Fiber mainFiber_; //!< main fiber for this worker thread.
+    Fiber mainFiber_; //!< main fiber for this worker thread.
 
-	amd::Monitor queueLock_; //!< lock protecting the queue.
+    amd::Monitor queueLock_; //!< lock protecting the queue.
     volatile int waitingOp_;
-	bool terminated_; //!< true if the thread is shutting down.
-	
-	//! Local memory storage
-	address localDataStorage_;
-	//! Size of the local memory.
-	size_t localDataSize_;
+    bool terminated_; //!< true if the thread is shutting down.
+    
+    //! Local memory storage
+    address localDataStorage_;
+    //! Size of the local memory.
+    size_t localDataSize_;
 
     char operation_[MAX_OPERATION_ALLOC_SIZE];
 
     address baseWorkItemsStack_;
 private:
-	//! Awaits operations and execute them as they become ready.
-	void loop();
+    //! Awaits operations and execute them as they become ready.
+    void loop();
 
 public:
-	//! Construct a new WorkerThread.
-	WorkerThread(const cpu::Device& device);
-	//! Destroy the worker thread.
-	virtual ~WorkerThread();
-	//! Cleanup the thread before termination.
-	bool terminate();
+    //! Construct a new WorkerThread.
+    WorkerThread(const cpu::Device& device);
+    //! Destroy the worker thread.
+    virtual ~WorkerThread();
+    //! Cleanup the thread before termination.
+    bool terminate();
 
-	//! Return the main fiber for this thread.
-	Fiber& mainFiber() { return mainFiber_; }
-	//! Return the LDS for this thread
-	address localDataStorage() const { return localDataStorage_; }
-	//! Return the size of the local memory for this thread.
-	size_t localDataSize() const { return localDataSize_; }
+    //! Return the main fiber for this thread.
+    Fiber& mainFiber() { return mainFiber_; }
+    //! Return the LDS for this thread
+    address localDataStorage() const { return localDataStorage_; }
+    //! Return the size of the local memory for this thread.
+    size_t localDataSize() const { return localDataSize_; }
 
     address baseWorkItemsStack() { return baseWorkItemsStack_; }
 
     Operation* operation() { return reinterpret_cast<Operation*>(operation_); }
     bool isOperationValid() { return waitingOp_ > 0; }
 
-	//! Enqueue a new operation to execute in this thread.
-	void enqueue(Operation& op);
-	//! Signal to start processing the commands in the queue.
-	void flush() { amd::ScopedLock sl(queueLock_); queueLock_.notify(); }
+    //! Enqueue a new operation to execute in this thread.
+    void enqueue(Operation& op);
+    //! Signal to start processing the commands in the queue.
+    void flush() { amd::ScopedLock sl(queueLock_); queueLock_.notify(); }
 
-	//! This thread's execution engine.
-	void run(void* data) {
-		loop();
-	}
+    //! This thread's execution engine.
+    void run(void* data) {
+        loop();
+    }
 
-	//! Return the currently executing WorkerThread's instance.
-	static WorkerThread* current()
-	{
-		return static_cast<WorkerThread*>(Thread::current());
-	}
+    //! Return the currently executing WorkerThread's instance.
+    static WorkerThread* current()
+    {
+        return static_cast<WorkerThread*>(Thread::current());
+    }
 };
 
 /*! @}
