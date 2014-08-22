@@ -546,54 +546,14 @@ CodegenPhase(aclLoaderData *data,
     if (error != NULL) (*error) = ACL_CODEGEN_ERROR;
     return NULL;
   }
-#ifdef WITH_TARGET_HSAIL
-  if (isHSAILTarget(aclCG->Elf()->target)) {
-    if (checkFlag(&aclCG->Elf()->caps, capSaveCG)) {
-      const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
-      assert(symbol && "symbol not found");
-      std::string name = symbol->str[PRE] + std::string("main") + 
-                         symbol->str[POST];
-
-      /*@todo r=Leonid, modify hsa\drivers\opencl\runtime\device\hsa\hsaprogram.cpp to parse BRIG section
-       * for kernel names instead searching for "kernel &" in text HSAIL.
-       */
-      HSAIL_ASM::BrigContainer c;
-
-      int result=HSAIL_ASM::BrigStreamer::load(c, aclCG->Source().data(), aclCG->Source().length());
-      if (result!=0)
-      {
-        (*error) = ACL_CODEGEN_ERROR;
-        return NULL;
-      }
-
-      HSAIL_ASM::Disassembler disasm(c);
-      std::ostringstream hsail_stream;
-      int ret = disasm.run(hsail_stream);
-      if (ret) {
-        (*error) = ACL_CODEGEN_ERROR;
-        return NULL;
-      }
-      hsail_stream.flush();
-      // TBD extra string copy
-      const std::string& hsail = hsail_stream.str();
-      amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(data);
-      // Dumping of HSAIL to file if needed
-      if (acl)
-        acl->dumpHSAIL(hsail, Opts, ".hsail");
-      aclCG->CL()->clAPI.insSym(aclCG->CL(), aclCG->Elf(),
-        hsail.data(), hsail.size(), aclCODEGEN, name.c_str());
-    }
-    return reinterpret_cast<const void*>(&(aclCG->Source()));
-  } else
-#endif
-  {
+  if (!isHSAILTarget(aclCG->Elf()->target)) {
     if (checkFlag(aclutGetCaps(aclCG->Elf()), capSaveCG)) {
       aclCG->CL()->clAPI.insSec(aclCG->CL(), aclCG->Elf(),
           aclCG->Source().data(),
           aclCG->Source().size(), aclCODEGEN);
     }
-    return reinterpret_cast<const void*>(aclCG->Source().c_str());
   }
+  return reinterpret_cast<const void*>(&(aclCG->Source()));
 }
 
 acl_error ACL_API_ENTRY
@@ -1147,8 +1107,8 @@ aclCompileInternal(
   if (useCG) {
     ald = cl->cgAPI.init(cl, bin, compile_callback, &error_code);
 #ifdef WITH_TARGET_HSAIL
-    amdcl::CompilerStage *cs = reinterpret_cast<amdcl::CompilerStage*>(ald);
-    if (isHSAILTarget(cs->Elf()->target)) {
+    amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
+    if (isHSAILTarget(acl->Elf()->target)) {
       bool bHsailTextInput = false;
       const char *hsail_text_input = getenv("AMD_DEBUG_HSAIL_TEXT_INPUT");
       if (hsail_text_input != NULL && strcmp(hsail_text_input, "") != 0) {
@@ -1162,95 +1122,93 @@ aclCompileInternal(
         }
       }
       if (!bHsailTextInput) {
-        amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
-        assert(acl && "Inserting BRIG failed\n");
         // from ACL_TYPE_HSAIL_BINARY
         if (!useFE && !useLinker && !useOpt) {
           int result = 0;
           HSAIL_ASM::BrigContainer c;
           // BRIG is in aclSOURCE section
           if (data) {
-            result = HSAIL_ASM::BrigStreamer::load(c, data, data_size);
+            if (0 != HSAIL_ASM::BrigStreamer::load(c, data, data_size)) {
+              appendLogToCL(cl, "ERROR: BRIG loading failed.");
+              error_code = ACL_CODEGEN_ERROR;
+              goto internal_compile_failure;
+            }
           // BRIG is in its corresponding BIF sections
           } else {
             if (!acl->extractBRIG(c)) {
+              appendLogToCL(cl, "ERROR: BRIG extracting failed.");
               error_code = ACL_CODEGEN_ERROR;
               goto internal_compile_failure;
             }
           }
-          if (result != 0 || !acl->insertBRIG(c)) {
+          if (!acl->insertBRIG(c)) {
+            appendLogToCL(cl, "ERROR: BRIG inserting failed.");
             error_code = ACL_CODEGEN_ERROR;
             goto internal_compile_failure;
           }
+          if (!acl->insertHSAIL(c)) {
+            appendLogToCL(cl, "ERROR: HSAIL inserting failed.");
+            error_code = ACL_CODEGEN_ERROR;
+            goto internal_compile_failure;
+          }
+        // from ACL_TYPE_LLVMIR_BINARY
         } else {
-          std::string* output = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
-          if (error_code != ACL_SUCCESS || !acl->insertBRIG(*output)) {
+          std::string* cg = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
+          if (!cg || error_code != ACL_SUCCESS) {
+            goto internal_compile_failure;
+          }
+          if (!acl->insertBRIG(*cg)) {
+            appendLogToCL(cl, "ERROR: BRIG inserting failed.");
+            error_code = ACL_CODEGEN_ERROR;
+            goto internal_compile_failure;
+          }
+          if (!acl->insertHSAIL()) {
+            appendLogToCL(cl, "ERROR: HSAIL inserting failed.");
             error_code = ACL_CODEGEN_ERROR;
             goto internal_compile_failure;
           }
         }
       }
-      else
-      {
-        if (bHsailTextInput) {
-          static std::string sHsailFileNames;
-          if (sHsailFileNames.empty())
-            sHsailFileNames = hsail_text_input;
-          std::string sCurHsailFileName;
-          size_t iFind = sHsailFileNames.find_first_not_of(";");
-          if (iFind == std::string::npos) {
-            sCurHsailFileName = sHsailFileNames;
+      // HSAIL substitution from AMD_DEBUG_HSAIL_TEXT_INPUT
+      else {
+        static std::string sHsailFileNames;
+        if (sHsailFileNames.empty())
+          sHsailFileNames = hsail_text_input;
+        std::string sCurHsailFileName;
+        size_t iFind = sHsailFileNames.find_first_not_of(";");
+        if (iFind == std::string::npos) {
+          sCurHsailFileName = sHsailFileNames;
+          sHsailFileNames.clear();
+        }
+        else {
+          size_t iFindEnd = sHsailFileNames.find_first_of(";", iFind+1);
+          size_t iCount = sHsailFileNames.size();
+          if (iFindEnd == std::string::npos) {
+            sCurHsailFileName = sHsailFileNames.substr(iFind, iCount-iFind);
             sHsailFileNames.clear();
           }
           else {
-            size_t iFindEnd = sHsailFileNames.find_first_of(";", iFind+1);
-            size_t iCount = sHsailFileNames.size();
-            if (iFindEnd == std::string::npos) {
-              sCurHsailFileName = sHsailFileNames.substr(iFind, iCount-iFind);
-              sHsailFileNames.clear();
-            }
-            else {
-              sCurHsailFileName = sHsailFileNames.substr(iFind, iFindEnd-iFind);
-              sHsailFileNames = sHsailFileNames.substr(iFindEnd+1, iCount-iFindEnd-1);
-            }
-          }
-          size_t size = 0;
-          char * str = readFile(sCurHsailFileName.c_str(), size);
-          dataStr = (str == NULL) ? "" : str;
-          if (size == 0 || dataStr.length() == 0) {
-            const char* error = "ERROR: AMD_DEBUG_HSAIL_TEXT_INPUT file does not exist.";
-            appendLogToCL(cl, error);
-            error_code = ACL_ERROR;
-            goto internal_compile_failure;
-          }
-          // adding symHSAILText section to binary
-          // TODO_HSA: remove it after changing RT's hsaprogram.cpp to parse BRIG section
-          // for kernel names instead searching for "kernel &" in text HSAIL. 
-          amdcl::CLCodeGen *aclCG = reinterpret_cast<amdcl::CLCodeGen*>(ald);
-          if (checkFlag(&aclCG->Elf()->caps, capSaveCG)) {
-            const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
-            assert(symbol && "symbol not found");
-            std::string name = symbol->str[PRE] + std::string("main") + 
-                               symbol->str[POST];
-            aclCG->CL()->clAPI.insSym(aclCG->CL(), aclCG->Elf(),
-                dataStr.data(), dataStr.size(), aclCODEGEN, name.c_str());
+            sCurHsailFileName = sHsailFileNames.substr(iFind, iFindEnd-iFind);
+            sHsailFileNames = sHsailFileNames.substr(iFindEnd+1, iCount-iFindEnd-1);
           }
         }
-        else {
-          const char *ptr = reinterpret_cast<const char*>(
-              cl->cgAPI.codegen(ald, module, context, &error_code));
-          if (error_code == ACL_SUCCESS) {
-            dataStr = ptr;
-          } 
-          else {
-            goto internal_compile_failure;
-          }
+        size_t size = 0;
+        char * str = readFile(sCurHsailFileName.c_str(), size);
+        dataStr = (str == NULL) ? "" : str;
+        if (size == 0 || dataStr.length() == 0) {
+          appendLogToCL(cl, "ERROR: AMD_DEBUG_HSAIL_TEXT_INPUT file does not exist.");
+          error_code = ACL_CODEGEN_ERROR;
+          goto internal_compile_failure;
+        }
+        if (!acl->insertHSAIL(dataStr)) {
+          appendLogToCL(cl, "ERROR: HSAIL inserting failed.");
+          error_code = ACL_CODEGEN_ERROR;
+          goto internal_compile_failure;
         }
         // Use the assembler to generate the binary format of the IL string.
         if (HSAILAssemble(ald, dataStr.c_str(), dataStr.length()) != ACL_SUCCESS) {
-          const char* error = "ASSEMBLER_FAILURE";
-          appendLogToCL(cl, error);
-          error_code = ACL_ERROR;
+          appendLogToCL(cl, "ERROR: HSAIL assembling failed.");
+          error_code = ACL_CODEGEN_ERROR;
           goto internal_compile_failure;
         }
       }
@@ -1259,11 +1217,11 @@ aclCompileInternal(
     } else
 #endif
     {
-      const char *ptr = reinterpret_cast<const char*>(
-          cl->cgAPI.codegen(ald, module, context, &error_code));
-      if (error_code == ACL_SUCCESS) {
-        dataStr = ptr;
+      std::string* cg = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
+      if (!cg || error_code != ACL_SUCCESS) {
+        goto internal_compile_failure;
       }
+      dataStr = *cg;
     }
 
     cl->cgAPI.fini(ald);
