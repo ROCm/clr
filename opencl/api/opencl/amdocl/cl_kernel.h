@@ -18,8 +18,10 @@ struct clk_thread_info_block_t
     // of 16 when compiling 64 bit
 
     struct clk_builtins_t const * builtins;
-    void* local_mem_base;
+    void * local_mem_base;
+    void * local_scratch;
     const void * table_base;
+    size_t pad;
 
     uint work_dim;
     size_t  global_offset[4]; /*dim0,dim1,dim2,invalid(dim<0||dim>2)*/
