@@ -1158,7 +1158,8 @@ Resource::partialMemCopyTo(
     const amd::Coord3D& size,
     Resource& dstResource,
     bool enableCopyRect,
-    bool flushDMA) const
+    bool flushDMA,
+    uint bytesPerElement) const
 {
     GpuEvent    event;
     bool        result;
@@ -1198,7 +1199,7 @@ Resource::partialMemCopyTo(
     result = gpu.copyPartial(event,
         gslResource(), calSrcOrigin,
         dstResource.gslResource(), calDstOrigin,
-        calSize, static_cast<CALmemcopyflags>(syncFlags), enableCopyRect);
+        calSize, static_cast<CALmemcopyflags>(syncFlags), enableCopyRect, bytesPerElement);
 
     if (result) {
         // Mark source and destination as busy

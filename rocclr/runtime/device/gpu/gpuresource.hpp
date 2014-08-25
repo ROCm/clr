@@ -232,7 +232,8 @@ public:
         const amd::Coord3D& size,       //!< Size of the region to copy
         Resource& dstResource,          //!< Destination resource
         bool enableRectCopy = false,    //!< Rectangular DMA support
-        bool flushDMA = false           //!< Flush DMA if requested
+        bool flushDMA = false,          //!< Flush DMA if requested
+        uint bytesPerElement = 1        //!< Bytes Per Element
         ) const;
 
     /*! \brief Copies size/4 DWORD of memory to a surface
