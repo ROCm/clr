@@ -513,7 +513,8 @@ CALGSLContext::copyPartial(GpuEvent&      event,
                            size_t*          destOffset,
                            size_t*          size,
                            CALmemcopyflags  flags,
-                           bool             enableRectCopy)
+                           bool             enableRectCopy,
+                           uint32           bytesPerElement)
 {
     uint64      surfaceSize;
     uint32      mode = GSL_SYNCUPLOAD_IGNORE_ELEMENTSIZE;
@@ -563,7 +564,7 @@ CALGSLContext::copyPartial(GpuEvent&      event,
             }
             m_cs->syncUploadRawRect(srcMem, srcOffset[0], (uint32)srcOffset[1], (uint32)srcOffset[2],
                                     destMem, destOffset[0], (uint32)destOffset[1], (uint32)destOffset[2],
-                                    size[0], (uint32)size[1], (uint32)size[2], mode);
+                                    size[0], (uint32)size[1], (uint32)size[2], mode, bytesPerElement);
         }
         else
         {
