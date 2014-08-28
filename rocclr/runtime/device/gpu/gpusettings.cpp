@@ -435,6 +435,7 @@ Settings::create(
     // Enable some OpenCL 2.0 extensions
     if (oclVersion_ >= OpenCL20) {
         enableExtension(ClKhrSubGroups);
+        enableExtension(ClKhrDepthImages);
     }
 
     // Override current device settings

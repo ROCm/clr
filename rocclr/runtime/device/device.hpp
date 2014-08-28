@@ -108,6 +108,7 @@ enum OclExtensions {
     ClKhrSpir,
     ClKhrSubGroups,
     ClKhrGlEvent,
+    ClKhrDepthImages,
     ClExtTotal
 };
 
@@ -148,6 +149,7 @@ OclExtensionsString[] = {
     "cl_khr_spir ",
     "cl_khr_subgroups ",
     "cl_khr_gl_event ",
+    "cl_khr_depth_images ",
     NULL
 };
 
