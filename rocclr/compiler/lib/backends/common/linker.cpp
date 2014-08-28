@@ -20,8 +20,10 @@
 #include "llvm/GlobalValue.h"
 #include "llvm/GlobalVariable.h"
 
+#include "llvm/AMDFixupKernelModule.h"
 #include "llvm/AMDResolveLinker.h"
 #include "llvm/AMDPrelinkOpt.h"
+#include "llvm/AMDUtils.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
@@ -695,144 +697,6 @@ void amdcl::OCLLinker::fixupOldTriple(llvm::Module *module)
   }
 }
 
-static unsigned getSPIRVersion(const llvm::Module *M) {
-  const llvm::NamedMDNode *SPIRVersion
-    = M->getNamedMetadata("opencl.spir.version");
-
-  if (!SPIRVersion) return 0; // not SPIR
-
-  // When multiple llvm modules are linked together to create a single module
-  // Metadata's of llvm modules are added into destination module and
-  // it results in a more than one SPIR MDNode value.
-  // Marking this fix as temporary and it will be tracked in bugzilla id 9775
-  // FIXME: Uncomment the line below
-  // assert(SPIRVersion->getNumOperands() == 1);
-  assert(SPIRVersion->getNumOperands() > 0);
-  if (SPIRVersion->getNumOperands() > 1) {
-    DEBUG_WITH_TYPE("linkTriple",
-                    llvm::dbgs() << "[CheckSPIRVersion] "
-                    "Too many arguments to SPIR version MDNode\n");
-  }
-
-  const llvm::MDNode *VersionMD = SPIRVersion->getOperand(0);
-  assert(VersionMD->getNumOperands() == 2);
-
-  const llvm::ConstantInt *CMajor
-    = llvm::cast<llvm::ConstantInt>(VersionMD->getOperand(0));
-  assert(CMajor->getType()->getIntegerBitWidth() == 32);
-  unsigned VersionMajor = CMajor->getZExtValue();
-
-  const llvm::ConstantInt *CMinor
-    = llvm::cast<llvm::ConstantInt>(VersionMD->getOperand(1));
-  assert(CMinor->getType()->getIntegerBitWidth() == 32);
-  unsigned VersionMinor = CMinor->getZExtValue();
-
-  return (VersionMajor * 100) + (VersionMinor * 10);
-}
-
-//Modify module for targets before linking.
-//Report error by buildLog.
-//Return false on error.
-static bool fixUpModule(llvm::Module *M,
-                        llvm::StringRef TargetTriple,
-                        llvm::StringRef TargetLayout,
-                        bool RunSPIRLoader,
-                        bool DemangleBuiltins,
-                        bool RunEDGAdapter,
-                        bool SetSPIRCallingConv,
-                        bool RunX86Adpater) {
-  llvm::PassManager Passes;
-
-  DEBUG_WITH_TYPE("linkTriple", llvm::dbgs() <<
-      "[fixUpModule] module triple: " << M->getTargetTriple() <<
-      " target triple: " << TargetTriple);
-  llvm::Triple triple(M->getTargetTriple());
-#if OPENCL_MAJOR < 2
-  if (triple.getArch() == llvm::Triple::spir ||
-      triple.getArch() == llvm::Triple::spir64 ||
-      triple.getArch() == llvm::Triple::x86 ||
-      triple.getArch() == llvm::Triple::x86_64 ||
-      M->getTargetTriple().empty())
-#endif
-  {
-    M->setTargetTriple(TargetTriple);
-    M->setDataLayout(TargetLayout);
-  }
-#if OPENCL_MAJOR < 2
-  if (M->getTargetTriple() != TargetTriple) {
-    //ToDo: There is bug 9996 in compiler library about converting BIF30 to BIF21
-    //which causes regressions in ocltst if the following check is enabled.
-    //Fix the bugs then enable the following check
-  #if 0
-    llvm::dbgs() << "Internal Error: Inconsistent module and library target\n";
-    return false;
-  #else
-    llvm::dbgs() << "WARNING: Inconsistent module and library target\n";
-    return true;
-  #endif
-  }
-#endif
-
-  Passes.add(new llvm::DataLayout(M));
-
-  Passes.add(llvm::createAMDLowerAtomicsPass());
-
-  if (getSPIRVersion(M) >= 200) {
-    Passes.add(llvm::createAMDPrintfRuntimeBinding());
-    Passes.add(llvm::createAMDLowerPipeBuiltinsPass());
-    Passes.add(llvm::createAMDLowerEnqueueKernelPass());
-    Passes.add(llvm::createAMDGenerateDevEnqMetadataPass());
-  }
-
-  if (RunEDGAdapter) {
-    assert(!RunSPIRLoader);
-    Passes.add(llvm::createAMDEDGToIA64TranslatorPass(SetSPIRCallingConv));
-  }
-
-  if (RunSPIRLoader) {
-    assert(!RunEDGAdapter);
-    Passes.add(llvm::createSPIRLoader(DemangleBuiltins));
-  }
-
-  if (RunX86Adpater) {
-    // One of them should run before the AMDX86Adapter Pass.
-    assert(RunSPIRLoader || RunEDGAdapter);
-    Passes.add(llvm::createAMDX86AdapterPass());
-  }
-
-  Passes.run(*M);
-  return true;
-}
-
-static bool isSPIRTriple(const llvm::Triple &Triple) {
-  return Triple.getArch() == llvm::Triple::spir
-    || Triple.getArch() == llvm::Triple::spir64;
-}
-
-static bool isAMDILTriple(const llvm::Triple &Triple) {
-  return Triple.getArch() == llvm::Triple::amdil
-    || Triple.getArch() == llvm::Triple::amdil64;
-}
-
-static bool isX86Triple(const llvm::Triple &Triple) {
-  return Triple.getArch() == llvm::Triple::x86
-    || Triple.getArch() == llvm::Triple::x86_64;
-}
-
-static bool isHSAILTriple(const llvm::Triple &Triple) {
-  return Triple.getArch() == llvm::Triple::hsail
-    || Triple.getArch() == llvm::Triple::hsail_64;
-}
-
-static void CheckSPIRVersionForTarget(const llvm::Module *M,
-                                      const llvm::Triple &TargetTriple) {
-  unsigned SPIRVersion = getSPIRVersion(M);
-  if (SPIRVersion >= 200)
-    assert(!isAMDILTriple(TargetTriple));
-  else
-    assert(SPIRVersion == 120);
-}
-
 // On 64 bit device, aclBinary target is set to 64 bit by default. When 32 bit
 // LLVM or SPIR binary is loaded, aclBinary target needs to be modified to
 // match LLVM or SPIR bitness.
@@ -918,7 +782,7 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
 #endif
 }
 
-  int
+int
 amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 {
   bool IsGPUTarget = isGpuTarget(Elf()->target);
@@ -1037,96 +901,13 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 #endif
 
 
-  // Under various situations, the LLVM dialect used in the kernel
-  // module does not match the dialect used in the builtin library. We
-  // need to fix-up the kernel module to eliminate this mismatch.
-  //
-  // SPIRLoader is required to consume a SPIR kernel:
-  // SPIR 1.2 on all targets.
-  // SPIR 2.0 on x86 and HSAIL only.
-  //
-  // The AMDIL libary is compiled by EDG, and hence it does not use
-  // the SPIR mangling scheme. To allow a SPIR 1.2 kernel to link with
-  // this library, the SPIRLoader must fix the mangling in the kernel.
-  //
-  // EDGAdapter is required to consume a non-SPIR (EDG) kernel on x86
-  // and HSAIL targets. The builtins library for these targets are
-  // built by Clang, but OpenCL 1.2 kernels are compiled by EDG.
-  //
-  // A non-SPIR kernel module is not expected on the HSAIL target in a
-  // normal OpenCL 2.0 build. We should actually flag an error if this
-  // occurs, but we let it through to facilitate custom builds created
-  // to test this combination. In this situation, the EDGAdapter must
-  // additionally set the calling conventions correctly, because the
-  // HSAIL library is in SPIR format.
-  //
-  // RunX86Adpater is required to run only on the CPU path. It is
-  // expected to the solve the link issues between the user kernel
-  // (SPIR/EDG) vs. Clang compiled x86 builtins library.
+  if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
+    return 1;
 
-                                    // Enabled for:
-  bool RunSPIRLoader = false;       // SPIR     -> x86/HSAIL/AMDIL
-  bool DemangleBuiltins = false;    // SPIR     -> AMDIL
-  bool RunEDGAdapter = false;       // EDG      -> x86/HSAIL
-  bool SetSPIRCallingConv = false;  // EDG      -> HSAIL
-  bool RunX86Adapter = false;       // SPIR/EDG -> x86
-  bool LowerToPreciseFunctions = false;
-
-  llvm::Triple ModuleTriple(LLVMBinary()->getTargetTriple());
-  llvm::Triple TargetTriple(LibTargetTriple);
-
-
-  if (isSPIRTriple(ModuleTriple)) {
-    CheckSPIRVersionForTarget(LLVMBinary(), TargetTriple);
-    RunSPIRLoader = true;
-#if OPENCL_MAJOR >= 2 // this will become default
-    DemangleBuiltins |= isAMDILTriple(TargetTriple);
-#ifdef BUILD_HSA_TARGET // special case for HSA build
-    DemangleBuiltins |= isHSAILTriple(TargetTriple);
-#endif
-    // Never demangle for x86 target on 200 build.
-#else // OpenCL 1.2 build (this will go away)
-    DemangleBuiltins = true;
-#endif
-  } else {
-#if OPENCL_MAJOR >= 2
-    // Decide if we need to adapt the non-SPIR (EDG) kernel module.
-    //
-    // FIXME: Remove the #ifdef when x86 and HSAIL libraries are
-    // always built by Clang.
-#ifndef BUILD_HSA_TARGET
-    // Run the adapter for HSAIL, only if this is an ORCA build!
-    //
-    // On an HSA build, the HSAIL library is always built with EDG.
-    // This assumption must match the settings in
-    // "opencl/library/hsa/hsail/build/Makefile.hsail"
-    RunEDGAdapter |= isHSAILTriple(TargetTriple);
-#endif
-    // HSAIL requires SPIR calling conventions since the library is in
-    // SPIR format. This doesn't matter if the EDGAdapter is not run.
-    SetSPIRCallingConv = isHSAILTriple(TargetTriple);
-
-    // Run the EDG Adapter if OPENCL_MAJOR >= 2 and for x86 target.
-    RunEDGAdapter |= isX86Triple(TargetTriple);
-#endif // OPENCL_MAJOR >= 2
-  }
-
-// X86Adapter should run for both EDG generated LLVM IR and SPIR for x86 path.
-// FIXME: Remove the #ifdef when x86 is always built by Clang on
-// OpenCL 1.2 builds.
-#if OPENCL_MAJOR >=2
-  RunX86Adapter = isX86Triple(TargetTriple);
   // For HSAIL targets, when the option -cl-fp32-correctly-rounded-divide-sqrt
   // lower divide and sqrt functions to precise HSAIL builtin library functions.
-  LowerToPreciseFunctions = (isHSAILTriple(TargetTriple)
-		  && Options()->oVariables->FP32RoundDivideSqrt);
-#endif
-
-  if (!fixUpModule(LLVMBinary(), LibTargetTriple, LibDataLayout,
-                   RunSPIRLoader, DemangleBuiltins,
-                   RunEDGAdapter, SetSPIRCallingConv,
-                   RunX86Adapter))
-    return 1;
+  bool LowerToPreciseFunctions = (isHSAILTriple(llvm::Triple(LibTargetTriple)) &&
+                                  Options()->oVariables->FP32RoundDivideSqrt);
 
   // Before doing anything else, quickly optimize Module
   if (Options()->oVariables->OptLevel) {
