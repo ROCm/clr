@@ -53,6 +53,7 @@ Settings::create()
         partialDispatch_ = true;
         enableExtension(ClKhrSubGroups);
         supportDepthsRGB_ = true;
+        enableExtension(ClKhrDepthImages);
     }
 
     // Map CPUID feature bits to our own feature bits
