@@ -54,6 +54,7 @@ struct AmdEvent {
     uint32_t state;         //!< [LRO/SRW] Event state: START, END, COMPLETE
     uint32_t counter;       //!< [LRW] Event retain/release counter. 0 means the event is free
     uint64_t timer[3];      //!< [LRO/SWO] Timer values for profiling for each state
+    uint64_t captureInfo;   //!< [LRW/SRO] Profiling capture info for CLK_PROFILING_COMMAND_EXEC_TIME
 };
 
 struct SchedulerParam {

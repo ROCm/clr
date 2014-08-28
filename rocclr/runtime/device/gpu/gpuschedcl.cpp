@@ -78,6 +78,7 @@ typedef struct _AmdEvent {
     uint state;             //!< [LRO/SRW] Event state: START, END, COMPLETE
     uint counter;           //!< [LRW] Event retain/release counter. 0 means the event is free
     ulong timer[3];         //!< [LRO/SWO] Timer values for profiling for each state
+    ulong capture_info;     //!< [LRW/SRO] Profiling capture info for CLK_PROFILING_COMMAND_EXEC_TIME
 } AmdEvent;
 
 typedef struct _SchedulerParam {
@@ -165,6 +166,7 @@ const uint ResumeExecution = 0x80000000; // 0x81000000
 const uint StallExecution = 0x00000000; // 0x01000000
 const uint WavefrontSize = 64;
 const uint MaxWaveSize = 0x400;
+const uint CL_DONE = 0xffff;
 
 static inline void
 dispatch(
@@ -466,19 +468,27 @@ scheduler(
             else if (slotState == AQL_WRAP_DONE) {
                 // Was CL_EVENT requested?
                 if (event != 0) {
+                    // If state isn't DONE yet
+                    if (event->state != CL_DONE) {
+                        event->timer[PROFILING_COMMAND_END] =
+                            (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
+                        event->state = CL_DONE;
+                    }
                     // The current dispatch doesn't have any outstanding children
                     if (disp->child_counter == 0) {
-                        event->state = CL_COMPLETE;
-                        event->timer[PROFILING_COMMAND_END] =
                         event->timer[PROFILING_COMMAND_COMPLETE] =
                             (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
+                        event->state = CL_COMPLETE;
+                        if (event->capture_info != 0) {
+                            __global ulong* values = (__global ulong*)event->capture_info;
+                            values[0] = event->timer[PROFILING_COMMAND_END] -
+                                event->timer[PROFILING_COMMAND_START];
+                            values[1] = event->timer[PROFILING_COMMAND_COMPLETE] -
+                                event->timer[PROFILING_COMMAND_START];
+                        }
+                        releaseEvent(event, (__global uint *)queue->event_slot_mask,
+                            (__global AmdEvent *)queue->event_slots);
                     }
-                    else {
-                        event->timer[PROFILING_COMMAND_END] =
-                            (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
-                    }
-                    releaseEvent(event, (__global uint *)queue->event_slot_mask,
-                        (__global AmdEvent *)queue->event_slots);
                 }
                 // The current dispatch doesn't have any outstanding children
                 if (disp->child_counter == 0) {
