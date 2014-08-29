@@ -623,13 +623,6 @@ void Device::fillDeviceInfo(
     info_.linkerAvailable_           = CL_TRUE;
 
     info_.executionCapabilities_     = CL_EXEC_KERNEL;
-    if (settings().oclVersion_ >= OpenCL20) {
-        info_.svmCapabilities_       = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER
-                                     | CL_DEVICE_SVM_FINE_GRAIN_BUFFER;
-        if (settings().svmAtomics_) {
-            info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
-        }
-    }
     info_.preferredPlatformAtomicAlignment_ = 0;
     info_.preferredGlobalAtomicAlignment_ = 0;
     info_.preferredLocalAtomicAlignment_ = 0;
@@ -713,6 +706,11 @@ void Device::fillDeviceInfo(
     info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;
 
     if (settings().oclVersion_ >= OpenCL20) {
+        info_.svmCapabilities_ = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER
+            | CL_DEVICE_SVM_FINE_GRAIN_BUFFER;
+        if (settings().svmAtomics_) {
+            info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
+        }
         // OpenCL2.0 device info fields
         info_.maxWriteImageArgs_        = MaxReadWriteImage;    //!< For compatibility
         info_.maxReadWriteImageArgs_    = MaxReadWriteImage;
@@ -749,13 +747,14 @@ void Device::fillDeviceInfo(
 extern const char* SchedulerSourceCode;
 
 bool
-Device::create(CALuint ordinal)
+Device::create(CALuint ordinal, CALuint numOfDevices)
 {
     appProfile_.init();
 
     // Open GSL device
+    bool reportOCL12Device = numOfDevices < 2 ? (OPENCL_VERSION < 200) : true;
     if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-        (appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200)))) {
+        appProfile_.reportAsOCL12Device() || reportOCL12Device)) {
         return false;
     }
 
@@ -770,7 +769,7 @@ Device::create(CALuint ordinal)
 #if cl_amd_open_video
           , getVideoAttribs()
 #endif // cl_amd_open_video
-          , appProfile_.reportAsOCL12Device()
+          , appProfile_.reportAsOCL12Device() || reportOCL12Device
         )) {
         return false;
     }
@@ -1249,7 +1248,7 @@ Device::init()
     for (; ordinal < numDevices; ++ordinal) {
         // Create the GPU device object
         Device *d = new Device();
-        result = (NULL != d) && d->create(ordinal);
+        result = (NULL != d) && d->create(ordinal, numDevices);
         if (useDeviceList) {
             result &= (requestedDevices.find(ordinal) != requestedDevices.end());
         }

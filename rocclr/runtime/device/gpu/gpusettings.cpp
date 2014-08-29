@@ -287,6 +287,9 @@ Settings::create(
 #if defined(_LP64)
             oclVersion_ = reportAsOCL12Device ? OpenCL12 : XCONCAT(OpenCL,XCONCAT(OPENCL_MAJOR,OPENCL_MINOR));
 #endif
+            if (calAttr.numOfVpu > 1) {
+                oclVersion_ = OpenCL12;
+            }
             if (GPU_FORCE_OCL20_32BIT) {
                 force32BitOcl20_ = true;
                 oclVersion_ = reportAsOCL12Device ? OpenCL12 : XCONCAT(OpenCL,XCONCAT(OPENCL_MAJOR,OPENCL_MINOR));

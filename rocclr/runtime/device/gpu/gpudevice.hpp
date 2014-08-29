@@ -363,7 +363,8 @@ public:
     //! Initialise a device (i.e. all parts of the constructor that could
     //! potentially fail)
     bool create(
-        CALuint ordinal     //!< GPU device ordinal index. Starts from 0
+        CALuint ordinal,     //!< GPU device ordinal index. Starts from 0
+        CALuint numOfDevices //!< number of GPU devices in the system
         );
 
     //! Destructor for the physical GPU device
