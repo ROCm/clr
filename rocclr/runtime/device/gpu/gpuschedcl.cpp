@@ -166,7 +166,6 @@ const uint ResumeExecution = 0x80000000; // 0x81000000
 const uint StallExecution = 0x00000000; // 0x01000000
 const uint WavefrontSize = 64;
 const uint MaxWaveSize = 0x400;
-const uint CL_DONE = 0xffff;
 
 static inline void
 dispatch(
@@ -465,15 +464,17 @@ scheduler(
                         (__global AmdEvent*)queue->event_slots);
                 }
             }
-            else if (slotState == AQL_WRAP_DONE) {
-                // Was CL_EVENT requested?
-                if (event != 0) {
-                    // If state isn't DONE yet
-                    if (event->state != CL_DONE) {
+            else if ((slotState == AQL_WRAP_BUSY) ||
+                     (slotState == AQL_WRAP_DONE)) {
+                if (slotState == AQL_WRAP_BUSY) {
+                    disp->state = AQL_WRAP_DONE;
+                    if (event != 0) {
                         event->timer[PROFILING_COMMAND_END] =
                             (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
-                        event->state = CL_DONE;
                     }
+                }
+                // Was CL_EVENT requested?
+                if (event != 0) {
                     // The current dispatch doesn't have any outstanding children
                     if (disp->child_counter == 0) {
                         event->timer[PROFILING_COMMAND_COMPLETE] =
@@ -499,9 +500,6 @@ scheduler(
                     disp->state = AQL_WRAP_FREE;
                     release_slot(amask, idx);
                 }
-            }
-            else if (slotState == AQL_WRAP_BUSY) {
-                disp->state = AQL_WRAP_DONE;
             }
         }
 
