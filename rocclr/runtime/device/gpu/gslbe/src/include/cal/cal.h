@@ -237,6 +237,7 @@ typedef struct CALdeviceattribsRec {
     CALuint64  vaStart;                             /**< VA start address */
     CALuint64  vaEnd;                               /**< VA end address */
     bool       isWorkstation;                       /**< Whether Device is a Workstation/Server part */
+    CALuint    numOfVpu;                            /**< number of vpu in the device*/
 } CALdeviceattribs;
 
 /** CAL device status */
