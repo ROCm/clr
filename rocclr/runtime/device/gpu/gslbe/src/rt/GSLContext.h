@@ -46,7 +46,8 @@ public:
     void             runAqlDispatch(GpuEvent& event, const void* aqlPacket, const gslMemObject* mems,
                         uint32 numMems, gslMemObject scratch, uint32 scratchOffset, const void* cpuKernelCode, uint64 hsaQueueVA);
     mcaddr           virtualQueueDispatcherStart();
-    void             virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems, uint32 numMems, mcaddr signal, mcaddr loopStart);
+    void             virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems, uint32 numMems,
+                        mcaddr signal, mcaddr loopStart, uint32 numTemplates);
     void             virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mcaddr parentState,
                         uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal, bool dedicatedQueue);
     bool             isDone(GpuEvent* event);
