@@ -1283,10 +1283,10 @@ CALGSLContext::virtualQueueDispatcherStart()
 
 void
 CALGSLContext::virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems,
-        uint32 numMems, mcaddr signal, mcaddr loopStart)
+        uint32 numMems, mcaddr signal, mcaddr loopStart, uint32 numTemplates)
 {
     eventBegin(MainEngine);
-    m_cs->VirtualQueueDispatcherEnd(mems, numMems, signal, loopStart);
+    m_cs->VirtualQueueDispatcherEnd(mems, numMems, signal, loopStart, numTemplates);
     eventEnd(MainEngine, event);
 }
 

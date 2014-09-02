@@ -86,7 +86,7 @@ typedef struct _SchedulerParam {
     uint    eng_clk;        //!< Engine clock in Mhz
     ulong   hw_queue;       //!< Address to HW queue
     ulong   hsa_queue;      //!< Address to HSA dummy queue
-    uint    launch;         //!< Child launch status
+    uint    reserved;       //!< reserved
     uint    scratchSize;    //!< Scratch buffer size
     ulong   scratch;        //!< GPU address to the scratch buffer
     uint    numMaxWaves;    //!< Num max waves on the asic
@@ -96,13 +96,25 @@ typedef struct _SchedulerParam {
     uint    scratchOffset;  //!< Scratch buffer offset
 } SchedulerParam;
 
-typedef struct _HwDispatch {
-    uint    startExe;       // REWIND execution
+typedef struct _HwDispatchHeader {
+    uint    pad00;
+    uint    pad01;
+    uint    pad02;
+    uint    pad03;
+    uint    pad04;
+    uint    pad05;
+    uint    pad06;
+    uint    pad07;
+    uint    rewind;         // REWIND execution
+    uint    startExe;       // valid bit
     uint    condExe0;       // 0xC0032200 -- TYPE 3, COND_EXEC
     uint    condExe1;       // 0x00000204 ----
     uint    condExe2;       // 0x00000000 ----
     uint    condExe3;       // 0x00000000 ----
     uint    condExe4;       // 0x00000000 ----
+} HwDispatchHeader;
+
+typedef struct _HwDispatch {
     uint    packet0;        // 0xC0067602 -- TYPE 3, SET_SH_REG, TYPE:COMPUTE (6 values)
     uint    offset0;        // 0x00000204 ---- OFFSET
     uint    startX;         // 0x00000000 ---- COMPUTE_START_X: START = 0x0
@@ -181,9 +193,6 @@ dispatch(
     const uint Pm4Nop = 0xC0001002;
     const uint Pm4UserRegs = 0xC0007602;
     const uint Pm4CopyReg = 0xC0044000;
-
-    // Wait for CP idle isn't necessary if CP waits for child
-    // while (atomic_and(&dispatch->startExe, 0xffffffff) != StallExecution) {}
 
     uint    usrRegCnt = 0;
 
@@ -272,10 +281,6 @@ dispatch(
     dispatch->glbSizeX  = aqlPkt->grid_size[0];
     dispatch->glbSizeY  = aqlPkt->grid_size[1];
     dispatch->glbSizeZ  = aqlPkt->grid_size[2];
-    barrier(CLK_GLOBAL_MEM_FENCE);
-
-    // Resume the execution
-    dispatch->startExe = ResumeExecution;
 }
 
 static inline bool
@@ -354,8 +359,8 @@ scheduler(
     uint                            paramIdx)
 {
     __global  SchedulerParam* param = &params[paramIdx];
-    volatile __global HwDispatch* hwDisp =
-            (volatile __global HwDispatch*)param->hw_queue;
+    volatile __global HwDispatch* hwDisp = (volatile __global HwDispatch*)
+            &((__global HwDispatchHeader*)param->hw_queue)[1];
     __global AmdAqlWrap*    hostParent = (__global AmdAqlWrap*)(param->parentAQL);
     __global uint*          counter = (__global uint*)(&hostParent->child_counter);
     __global uint*          signal = (__global uint*)(&param->signal);
@@ -372,166 +377,148 @@ scheduler(
     uint launch = 0;
     uint loop = 1;
 
-    do {
-        uint mask = atomic_load_explicit((__global atomic_uint*)(&amask[get_group_id(0)]),
-                memory_order_acquire, memory_scope_device);
+    uint mask = atomic_load_explicit((__global atomic_uint*)(&amask[get_group_id(0)]),
+            memory_order_acquire, memory_scope_device);
 
-        int baseIdx = get_group_id(0) * 32;
-        while (mask != 0) {
-            uint sIdx = ctz(mask);
-            uint idx = baseIdx + sIdx;
-            mask &= ~(1 << sIdx);
-            __global AmdAqlWrap* disp = (__global AmdAqlWrap*)&wraps[idx];
-            uint slotState = atomic_load_explicit((__global atomic_uint*)(&disp->state),
-                memory_order_acquire, memory_scope_device);
-            __global AmdAqlWrap* parent = (__global AmdAqlWrap*)(disp->parent_wrap);
-            __global AmdEvent* event = (__global AmdEvent*)(disp->completion);
+    int baseIdx = get_group_id(0) * 32;
+    while (mask != 0) {
+        uint sIdx = ctz(mask);
+        uint idx = baseIdx + sIdx;
+        mask &= ~(1 << sIdx);
+        __global AmdAqlWrap* disp = (__global AmdAqlWrap*)&wraps[idx];
+        uint slotState = atomic_load_explicit((__global atomic_uint*)(&disp->state),
+            memory_order_acquire, memory_scope_device);
+        __global AmdAqlWrap* parent = (__global AmdAqlWrap*)(disp->parent_wrap);
+        __global AmdEvent* event = (__global AmdEvent*)(disp->completion);
 
-            // Check if the current slot is ready for processing
-            if (slotState == AQL_WRAP_READY) {
-                if (launch == 0) {
-                    launch = atomic_load_explicit((__global atomic_uint*)&param->launch,
-                        memory_order_acquire, memory_scope_device);
+        // Check if the current slot is ready for processing
+        if (slotState == AQL_WRAP_READY) {
+            if (launch == 0) {
+                // Attempt to find a new disaptch if nothing was launched yet
+                uint parentState = atomic_load_explicit(
+                    (__global atomic_uint*)(&parent->state),
+                    memory_order_acquire, memory_scope_device);
+                uint enqueueFlags = atomic_load_explicit(
+                    (__global atomic_uint*)(&disp->enqueue_flags),
+                    memory_order_acquire, memory_scope_device);
+
+                // Check the launch flags
+                if (((enqueueFlags == CLK_ENQUEUE_FLAGS_WAIT_KERNEL) ||
+                        (enqueueFlags == CLK_ENQUEUE_FLAGS_WAIT_WORK_GROUP)) &&
+                    (parentState != AQL_WRAP_DONE)) {
+                    continue;
                 }
-                if (launch == 0) {
-                    // Attempt to find a new disaptch if nothing was launched yet
-                    uint parentState = atomic_load_explicit(
-                        (__global atomic_uint*)(&parent->state),
-                        memory_order_acquire, memory_scope_device);
-                    uint enqueueFlags = atomic_load_explicit(
-                        (__global atomic_uint*)(&disp->enqueue_flags),
-                        memory_order_acquire, memory_scope_device);
 
-                    // Check the launch flags
-                    if (((enqueueFlags == CLK_ENQUEUE_FLAGS_WAIT_KERNEL) ||
-                         (enqueueFlags == CLK_ENQUEUE_FLAGS_WAIT_WORK_GROUP)) &&
-                        (parentState != AQL_WRAP_DONE)) {
-                        continue;
+                // Check if the wait list is COMPLETE
+                launch = checkWaitEvents(
+                    (__global AmdEvent**)(disp->wait_list), disp->wait_num);
+
+                if (launch) {
+                    if (event != 0) {
+                        event->timer[PROFILING_COMMAND_START] =
+                            (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
                     }
-
-                    // Check if the wait list is COMPLETE
-                    launch = checkWaitEvents(
-                        (__global AmdEvent**)(disp->wait_list), disp->wait_num);
-
-                    if (launch == 0) continue;
-
-                    uint tmp = 0;
-                    if (atomic_compare_exchange_strong_explicit(
-                        (__global atomic_uint*)&param->launch, &tmp, launch,
-                        memory_order_acq_rel, memory_order_acquire, memory_scope_device)) {
-                        if (event != 0) {
-                            event->timer[PROFILING_COMMAND_START] =
-                                (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
-                        }
-                        // Launch child kernel ....
-                        dispatch(hwDisp, &disp->aql, param->scratch, param->hsa_queue,
-                            param->scratchSize, param->scratchOffset, param->numMaxWaves);
-                        disp->state = AQL_WRAP_BUSY;
-                        releaseWaitEvents((__global AmdEvent**)(disp->wait_list),
-                            disp->wait_num, (__global uint*)queue->event_slot_mask,
-                            (__global AmdEvent*)queue->event_slots);
-                        break;
-                    }
+                    // Launch child kernel ....
+                    dispatch(&hwDisp[get_group_id(0)], &disp->aql, param->scratch, param->hsa_queue,
+                        param->scratchSize, param->scratchOffset, param->numMaxWaves);
+                    disp->state = AQL_WRAP_BUSY;
+                    releaseWaitEvents((__global AmdEvent**)(disp->wait_list),
+                        disp->wait_num, (__global uint*)queue->event_slot_mask,
+                        (__global AmdEvent*)queue->event_slots);
+                    break;
                 }
             }
-            else if (slotState == AQL_WRAP_MARKER) {
-                bool complete = false;
-                if (disp->wait_num == 0) {
-                    uint minCommand = min_command(queue->aql_slot_num, wraps);
-                    if (disp->command_id == minCommand) {
-                        complete = true;
-                    }
+        }
+        else if (slotState == AQL_WRAP_MARKER) {
+            bool complete = false;
+            if (disp->wait_num == 0) {
+                uint minCommand = min_command(queue->aql_slot_num, wraps);
+                if (disp->command_id == minCommand) {
+                    complete = true;
                 }
-                else {
-                    // Check if the wait list is COMPLETE
-                    if (checkWaitEvents(
-                        (__global AmdEvent**)(disp->wait_list), disp->wait_num)) {
-                        complete = true;
-                        releaseWaitEvents((__global AmdEvent**)(disp->wait_list),
-                            disp->wait_num, (__global uint*)queue->event_slot_mask,
-                            (__global AmdEvent*)queue->event_slots);
-                    }
-                }
-                if (complete) {
-                    // Decrement the child execution counter on the parent
-                    atomic_fetch_sub_explicit(
-                        (__global atomic_uint*)&parent->child_counter,
-                        1, memory_order_acq_rel, memory_scope_device);
-                    event->state = CL_COMPLETE;
-                    disp->state = AQL_WRAP_FREE;
-                    release_slot(amask, idx);
-                    releaseEvent(event, (__global uint*)queue->event_slot_mask,
+            }
+            else {
+                // Check if the wait list is COMPLETE
+                if (checkWaitEvents(
+                    (__global AmdEvent**)(disp->wait_list), disp->wait_num)) {
+                    complete = true;
+                    releaseWaitEvents((__global AmdEvent**)(disp->wait_list),
+                        disp->wait_num, (__global uint*)queue->event_slot_mask,
                         (__global AmdEvent*)queue->event_slots);
                 }
             }
-            else if ((slotState == AQL_WRAP_BUSY) ||
-                     (slotState == AQL_WRAP_DONE)) {
-                if (slotState == AQL_WRAP_BUSY) {
-                    disp->state = AQL_WRAP_DONE;
-                    if (event != 0) {
-                        event->timer[PROFILING_COMMAND_END] =
-                            (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
-                    }
-                }
-                // Was CL_EVENT requested?
-                if (event != 0) {
-                    // The current dispatch doesn't have any outstanding children
-                    if (disp->child_counter == 0) {
-                        event->timer[PROFILING_COMMAND_COMPLETE] =
-                            (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
-                        event->state = CL_COMPLETE;
-                        if (event->capture_info != 0) {
-                            __global ulong* values = (__global ulong*)event->capture_info;
-                            values[0] = event->timer[PROFILING_COMMAND_END] -
-                                event->timer[PROFILING_COMMAND_START];
-                            values[1] = event->timer[PROFILING_COMMAND_COMPLETE] -
-                                event->timer[PROFILING_COMMAND_START];
-                        }
-                        releaseEvent(event, (__global uint *)queue->event_slot_mask,
-                            (__global AmdEvent *)queue->event_slots);
-                    }
-                }
-                // The current dispatch doesn't have any outstanding children
-                if (disp->child_counter == 0) {
-                    // Decrement the child execution counter on the parent
-                    atomic_fetch_sub_explicit(
-                        (__global atomic_uint*)&parent->child_counter,
-                        1, memory_order_acq_rel, memory_scope_device);
-                    disp->state = AQL_WRAP_FREE;
-                    release_slot(amask, idx);
-                }
+            if (complete) {
+                // Decrement the child execution counter on the parent
+                atomic_fetch_sub_explicit(
+                    (__global atomic_uint*)&parent->child_counter,
+                    1, memory_order_acq_rel, memory_scope_device);
+                event->state = CL_COMPLETE;
+                disp->state = AQL_WRAP_FREE;
+                release_slot(amask, idx);
+                releaseEvent(event, (__global uint*)queue->event_slot_mask,
+                    (__global AmdEvent*)queue->event_slots);
             }
         }
+        else if ((slotState == AQL_WRAP_BUSY) ||
+                    (slotState == AQL_WRAP_DONE)) {
+            if (slotState == AQL_WRAP_BUSY) {
+                disp->state = AQL_WRAP_DONE;
+                if (event != 0) {
+                    event->timer[PROFILING_COMMAND_END] =
+                        (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
+                }
+            }
+            // Was CL_EVENT requested?
+            if (event != 0) {
+                // The current dispatch doesn't have any outstanding children
+                if (disp->child_counter == 0) {
+                    event->timer[PROFILING_COMMAND_COMPLETE] =
+                        (__hsail_get_clock() * (ulong)param->eng_clk) >> 10;
+                    event->state = CL_COMPLETE;
+                    if (event->capture_info != 0) {
+                        __global ulong* values = (__global ulong*)event->capture_info;
+                        values[0] = event->timer[PROFILING_COMMAND_END] -
+                            event->timer[PROFILING_COMMAND_START];
+                        values[1] = event->timer[PROFILING_COMMAND_COMPLETE] -
+                            event->timer[PROFILING_COMMAND_START];
+                    }
+                    releaseEvent(event, (__global uint *)queue->event_slot_mask,
+                        (__global AmdEvent *)queue->event_slots);
+                }
+            }
+            // The current dispatch doesn't have any outstanding children
+            if (disp->child_counter == 0) {
+                // Decrement the child execution counter on the parent
+                atomic_fetch_sub_explicit(
+                    (__global atomic_uint*)&parent->child_counter,
+                    1, memory_order_acq_rel, memory_scope_device);
+                disp->state = AQL_WRAP_FREE;
+                release_slot(amask, idx);
+            }
+        }
+    }
 
-        barrier(CLK_GLOBAL_MEM_FENCE);
+    if (launch == 0) {
+        hwDisp[get_group_id(0)].glbSizeX = 0;
+        hwDisp[get_group_id(0)].glbSizeY = 0;
+        hwDisp[get_group_id(0)].glbSizeZ = 0;
+    }
 
-        launch = atomic_load_explicit((__global atomic_uint*)&param->launch,
+    if (param->dedicatedQueue) {
+        loop = atomic_load_explicit((__global atomic_uint*)signal,
             memory_order_acquire, memory_scope_device);
-
-        if (param->dedicatedQueue) {
-            loop = atomic_load_explicit((__global atomic_uint*)signal,
-                memory_order_acquire, memory_scope_device);
-        }
-        else {
-            loop = atomic_load_explicit((__global atomic_uint*)counter,
-                memory_order_acquire, memory_scope_device);
-        }
-
-    } while ((launch == 0) && (loop != 0));
+    }
+    else {
+        loop = atomic_load_explicit((__global atomic_uint*)counter,
+            memory_order_acquire, memory_scope_device);
+    }
 
     if (loop == 0) {
         //! \todo Write deadcode to the template, but somehow
         //! the scheduler will be launched one more time.
         hwDisp->packet0 = 0xdeadc0de;
-        hwDisp[1].condExe0 = 0xdeadc0de;
-        hwDisp[1].condExe1 = 0xdeadc0de;
-        hwDisp[1].condExe2 = 0xdeadc0de;
-        hwDisp[1].condExe3 = 0xdeadc0de;
         atomic_store_explicit((__global atomic_uint*)signal,
             0, memory_order_release, memory_scope_device);
-        barrier(CLK_GLOBAL_MEM_FENCE);
-        atomic_store_explicit((__global atomic_uint*)&hwDisp->startExe,
-            ResumeExecution, memory_order_release, memory_scope_device);
         atomic_store_explicit((__global atomic_uint*)&param->releaseHostCP,
             1, memory_order_release, memory_scope_device);
     }

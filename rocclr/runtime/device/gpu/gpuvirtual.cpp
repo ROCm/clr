@@ -1874,7 +1874,6 @@ VirtualGPU::submitKernelInternalHSA(
         param->eng_clk = (1000 * 1024) / dev().info().maxClockFrequency_;
         param->hw_queue = patchStart + sizeof(uint32_t)/* Rewind packet*/;
         param->hsa_queue = gpuDefQueue->hsaQueueMem()->vmAddress();
-        param->launch = 0;
         param->releaseHostCP = 0;
         param->parentAQL = vmParentWrap;
         param->dedicatedQueue = dev().settings().useDeviceQueue_;
@@ -1908,7 +1907,7 @@ VirtualGPU::submitKernelInternalHSA(
             gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
         gpuDefQueue->virtualQueueDispatcherEnd(gpuEvent,
             gpuDefQueue->vmMems(), gpuDefQueue->cal_.memCount_,
-            signalAddr, loopStart);
+            signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num / 32);
 
         // Set GPU event for the used resources
         for (uint i = 0; i < memList.size(); ++i) {
