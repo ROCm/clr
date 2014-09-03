@@ -262,7 +262,7 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_scfg.bEnableHighPerformanceState.value = enableHighPerformanceState;
 
     m_dcfg.disableMarkUsedInCmdBuf.hasValue = true;
-    m_dcfg.disableMarkUsedInCmdBuf.value    = true;
+    m_dcfg.disableMarkUsedInCmdBuf.value    = false;
 
     // Enable immediate memory release
     m_dcfg.immediateMemoryRelease.hasValue = true;
