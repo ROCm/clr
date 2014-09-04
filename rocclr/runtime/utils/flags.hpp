@@ -148,7 +148,7 @@ release(bool, GPU_ASSUME_ALIASES, false,                                      \
         "Assume memory aliases in the compilation process")                   \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
-release(bool, GPU_DIRECT_SRD, true,                                           \
+release(bool, GPU_DIRECT_SRD, false,                                          \
         "Use indirect SRD access in HSAIL")                                   \
 release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
         "Use a dedicated device queue for the actual submissions")            \
@@ -168,7 +168,8 @@ release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
 release(bool, GPU_IFH_MODE, false,                                  \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
-
+release(bool, HSAIL_IMAGE_HANDLE_ENABLE, false,                               \
+        "Pass image/sampler SRD as pointer instead of blob")                  \
 
 
 namespace amd {
