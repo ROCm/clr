@@ -1237,12 +1237,6 @@ init()
 bool
 teardown()
 {
-    OptionNameMap[0].clear();
-    OptionNameMap[1].clear();
-    NoneSeparatorOptionMap[0].clear();
-    NoneSeparatorOptionMap[1].clear();
-    FOptionMap.clear();
-    MOptionMap.clear();
     return true;
 }
 
