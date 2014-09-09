@@ -97,14 +97,10 @@ typedef struct _SchedulerParam {
 } SchedulerParam;
 
 typedef struct _HwDispatchHeader {
-    uint    pad00;
+    uint    pad00;          // CP WRITE_DATA write to rewind for memory
     uint    pad01;
     uint    pad02;
     uint    pad03;
-    uint    pad04;
-    uint    pad05;
-    uint    pad06;
-    uint    pad07;
     uint    rewind;         // REWIND execution
     uint    startExe;       // valid bit
     uint    condExe0;       // 0xC0032200 -- TYPE 3, COND_EXEC
