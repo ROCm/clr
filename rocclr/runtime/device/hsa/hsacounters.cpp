@@ -40,7 +40,7 @@ PerfCounter::create(HsaPmu hsaPmu)
 {
     HsaStatus status;
     hsaPmu_ = hsaPmu;
-    HsaCounterBlockId blockIndex = static_cast<HsaCounterBlockId>(info()->blockIndex_);
+    uint32_t blockIndex = static_cast<uint32_t>(info()->blockIndex_);
     status = servicesapi->HsaPmuGetCounterBlockById(hsaPmu_, blockIndex, &counter_block_);
     if (status != kHsaStatusSuccess) {
         LogError("HsaPmuGetCounterBlockById, failed");
