@@ -560,12 +560,12 @@ OPTION(OT_UINT32, \
        "Set loop unroll count to <number> for all loops")
 
 // -unroll-threshold=<positive integer> : loop unroll threshold
-// default is 200.
+// default is 150.
 OPTION(OT_UINT32, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "unroll-threshold", NULL, \
        LUThreshold, \
-       200, 0, 0x3FFFFFFF, NULL, \
+       150, 0, 0x3FFFFFFF, NULL, \
        "Set loop unroll threshold to <number> for all loops")
 
 // -unroll-allow-partial : allow partial unroll
