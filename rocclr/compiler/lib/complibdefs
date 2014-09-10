@@ -82,3 +82,6 @@ ifdef ATI_OS_LINUX
     GCXXOPTS += -fno-rtti
 endif    
 
+ifeq ($(OPENCL_USE_ONE_SC),1)
+    GCPPFLAGS += $(DEFSWITCH) OPENCL_USE_ONE_SC
+endif
