@@ -747,7 +747,7 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
       triple.getArch() == llvm::Triple::spir))
     return true;
   if (elf->target.arch_id == aclHSAIL64 &&
-      (triple.getArch() == llvm::Triple::hsail_64 ||
+      (triple.getArch() == llvm::Triple::hsail64 ||
       triple.getArch() == llvm::Triple::spir64))
     return true;
   if (elf->target.arch_id == aclHSAIL &&

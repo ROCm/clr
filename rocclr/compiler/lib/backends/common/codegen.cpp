@@ -102,7 +102,7 @@ llvmCodeGen(
   Triple::ArchType arch = TheTriple.getArch();
 
   bool isGPU = (arch == Triple::amdil || arch == Triple::amdil64 || 
-                arch == Triple::hsail || arch == Triple::hsail_64);
+                arch == Triple::hsail || arch == Triple::hsail64);
 
   if (isGPU) {
     TheTriple.setOS(Triple::UnknownOS);
