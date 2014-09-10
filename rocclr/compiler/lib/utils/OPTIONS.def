@@ -732,6 +732,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Scheduler: turn off instruction reordering")
 
+//  -fsc-use-buffer-for-hsa-global
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
+       "sc-use-buffer-for-hsa-global", NULL, \
+       SCUseBufferForHsaGlobal, \
+       false, 0, 0, NULL, \
+       "HSA: use buffer instructions instead of flat for global memory")
+
 //  -fuser-no-inline  -fno-user-no-inline
 OPTION(OT_BOOL, \
        OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
