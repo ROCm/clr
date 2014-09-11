@@ -211,7 +211,8 @@ Memory::create(
             // Check if parent was allocated in system memory
             if ((view->resource_->memoryType() == Resource::Pinned) ||
             // @todo Enable unconditional optimization for remote memory
-                ((view->resource_->memoryType() == Resource::Remote) &&
+                (((view->resource_->memoryType() == Resource::Remote) ||
+                  (view->resource_->memoryType() == Resource::RemoteUSWC)) &&
                  (owner() != NULL) &&
                  (owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR))) {
                 // Marks memory object for direct GPU access to the host memory
@@ -518,6 +519,7 @@ Memory::~Memory()
     }
 
     if ((owner() != NULL) && isHostMemDirectAccess() &&
+        !(flags_ & SubMemoryObject) &&
         (memoryType() != Resource::ExternalPhysical)) {
         // Unmap memory if direct access was requested
         unmap(NULL);
