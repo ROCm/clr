@@ -1355,8 +1355,12 @@ Image::allocMapTarget(
 
         // Update the row and slice pitches value
         *rowPitch = region[0] * elementSize();
-        slicePitchTmp = *rowPitch * region[1];
-
+        if (cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) {
+            slicePitchTmp = *rowPitch ;
+        }
+        else    {
+            slicePitchTmp = *rowPitch * region[1];
+        }
         // Use start of the indirect buffer
         offset = 0;
     }
