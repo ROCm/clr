@@ -5,6 +5,7 @@
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 #include "include/aclTypes.h"
+#include "utils/amdilUtils.hpp"
 #include "utils/bif_section_labels.hpp"
 #include "device/gpu/gpuprogram.hpp"
 #include "device/gpu/gpublit.hpp"
@@ -230,6 +231,21 @@ NullProgram::isCalled(const ILFunc* base, const ILFunc* func)
         }
     }
     return false;
+}
+
+uint
+ILFunc::totalHwPrivateUsage() {
+  if (totalHwPrivateSize_ >= 0)
+    return totalHwPrivateSize_;
+
+  uint maxChildUsage = 0;
+  for (size_t i = 0; i < calls_.size(); ++i) {
+    uint childUsage = calls_[i]->totalHwPrivateUsage();
+    if (childUsage > maxChildUsage)
+      maxChildUsage = childUsage;
+  }
+  totalHwPrivateSize_ = hwPrivateSize_ + maxChildUsage;
+  return totalHwPrivateSize_;
 }
 
 void
@@ -540,7 +556,6 @@ NullProgram::linkImpl(amd::option::Options* options)
                     // Accumulate all emulated local and private sizes,
                     // necessary for the kernel execution
                     initData.localSize_   += func->localSize_;
-                    initData.privateSize_ += func->privateSize_;
 
                     // Accumulate all HW local and private sizes,
                     // necessary for the kernel execution
@@ -548,6 +563,9 @@ NullProgram::linkImpl(amd::option::Options* options)
                     initData.hwPrivateSize_ += func->hwPrivateSize_;
                     initData.flags_         |= func->flags_;
                 }
+                initData.privateSize_ = baseFunc->totalHwPrivateUsage();
+                amdilUtils::changePrivateUAVLength(kernel,
+                    initData.privateSize_);
 
                 // Create a GPU kernel
                 bool    created;
@@ -913,7 +931,6 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                     // Accumulate all emulated local and private sizes,
                     // necessary for the kernel execution
                     initData.localSize_   += func->localSize_;
-                    initData.privateSize_ += func->privateSize_;
 
                     // Accumulate all HW local and private sizes,
                     // necessary for the kernel execution
@@ -921,6 +938,9 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                     initData.hwPrivateSize_ += func->hwPrivateSize_;
                     initData.flags_         |= func->flags_;
                 }
+                initData.privateSize_ = baseFunc->totalHwPrivateUsage();
+                amdilUtils::changePrivateUAVLength(kernel,
+                    initData.privateSize_);
 
                 // Create a GPU kernel
                 bool    created;

@@ -50,6 +50,7 @@ public:
         , hwPrivateSize_(0)
         , hwLocalSize_(0)
         , flags_(0)
+        , totalHwPrivateSize_(-1)
     {
         code_.begin_ = code_.end_ = 0;
         metadata_.begin_ = metadata_.end_ = 0;
@@ -74,6 +75,7 @@ public:
         hwPrivateSize_  = func.hwPrivateSize_;
         hwLocalSize_    = func.hwLocalSize_;
         flags_          = func.flags_;
+        totalHwPrivateSize_ = func.totalHwPrivateSize_;
 
         // Note: we don't copy calls_ and macros_
         return *this;
@@ -89,9 +91,11 @@ public:
     uint        hwPrivateSize_; //!< HW private ring allocation by the function
     uint        hwLocalSize_;   //!< HW local ring allocation by the function
     uint        flags_;         //!< The IL func flags/properties
-
-    std::vector<const ILFunc*>  calls_; //! Functions called from the current
+    long long   totalHwPrivateSize_; //!< total HW private usage including called functions
+    std::vector<ILFunc*>  calls_; //! Functions called from the current
     std::vector<uint>  macros_;         //! Macros, used in the IL function
+
+    uint totalHwPrivateUsage();   //!< total HW private usage including called functions
 };
 
 //! \class empty program
