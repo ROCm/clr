@@ -24,18 +24,6 @@
 using namespace amdcl;
 using namespace llvm;
 
-#ifdef WITH_TARGET_HSAIL
-// Variable FileType are checked by HSAILTargetMachine, but only
-// created in llc.exe. Create it here for online compilation path.
-llvm::cl::opt<TargetMachine::CodeGenFileType>
-FileType("filetype", cl::init(TargetMachine::CGFT_ObjectFile),
-  cl::values(
-             clEnumValN(TargetMachine::CGFT_AssemblyFile, "asm", ""),
-             clEnumValN(TargetMachine::CGFT_ObjectFile, "obj", ""),
-             clEnumValN(TargetMachine::CGFT_Null, "null", ""),
-             clEnumValEnd));
-#endif
-
 static std::string aclGetCodegenName(const aclTargetInfo &tgtInfo)
 {
   assert(tgtInfo.arch_id <= aclLast && "Unknown device id!");
