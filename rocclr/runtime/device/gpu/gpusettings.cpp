@@ -77,9 +77,6 @@ Settings::Settings()
     // GPU device by default
     apuSystem_  = false;
 
-    // Save resource cache size
-    resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
-
     // Disable 64 bit pointers support by default
     use64BitPtr_ = false;
 
@@ -156,6 +153,9 @@ Settings::create(
 
     // Disable thread trace by default for all devices
     threadTraceEnable_ = false;
+
+    // Save resource cache size
+    resourceCacheSize_ = std::max((calAttr.localRAM / 8) * Mi, GPU_RESOURCE_CACHE_SIZE * Mi);
 
     if (calAttr.doublePrecision) {
         // Report FP_FAST_FMA define if double precision HW
@@ -484,6 +484,9 @@ Settings::override()
 
     if (!flagIsDefault(GPU_ASSUME_ALIASES)) {
         assumeAliases_ = GPU_ASSUME_ALIASES;
+    }
+    if (!flagIsDefault(GPU_RESOURCE_CACHE_SIZE)) {
+        resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
     }
 }
 
