@@ -435,6 +435,7 @@ HSAILProgram::compileImpl(
         return false;
     }
 
+    clBinary()->storeCompileOptions(compileOptions_);
     // Save the binary in the interface class
     size_t size = 0;
     void* mem = NULL;

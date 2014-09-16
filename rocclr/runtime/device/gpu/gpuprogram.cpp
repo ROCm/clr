@@ -1913,14 +1913,13 @@ HSAILProgram::linkImpl(
 }
 
 aclType
-HSAILProgram::getNextCompilationStageFromBinary(std::vector<aclType>& complete_stages)
+HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stages)
 {
     acl_error errorCode;
     size_t secSize = 0;
     complete_stages.clear();
     aclType from = ACL_TYPE_DEFAULT;
-    //@TODO_HSA: r=emankov: Should we also check here for 
-    // ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
+    //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
 
     // Checking llvmir in .llvmir section
     bool isLlvmirText = true;
@@ -1976,10 +1975,7 @@ HSAILProgram::getNextCompilationStageFromBinary(std::vector<aclType>& complete_s
         // 1. matadata symbols symOpenclKernel for every kernel.
         // 2. HSAIL text in aclCODEGEN section.
         // Unfortunately there is no appropriate way in Compiler Lib to check 1.
-        // because kernel names are unknown here, therefore 2.
-
-        //@TODO_HSA: r=emankov: Change the HSAIL section check,
-        // when the solution with kernel names appears in Compiler Lib.
+        // because kernel names are unknown here, therefore only 2.
         if (isHsailText) {
             complete_stages.push_back(from);
             from = ACL_TYPE_CG;
@@ -1996,9 +1992,21 @@ HSAILProgram::getNextCompilationStageFromBinary(std::vector<aclType>& complete_s
     if (errorCode != ACL_SUCCESS) {
         isShaderIsa = false;
     }
-    if (isShaderIsa && from == ACL_TYPE_LLVMIR_BINARY) {
-        complete_stages.clear();
-        from = ACL_TYPE_DEFAULT;
+    if (isShaderIsa) {
+        switch (from) {
+        case ACL_TYPE_LLVMIR_BINARY:
+            complete_stages.clear();
+            from = ACL_TYPE_DEFAULT;
+            break;
+        case ACL_TYPE_HSAIL_BINARY:
+        case ACL_TYPE_CG:
+            complete_stages.push_back(from);
+            from = ACL_TYPE_ISA;
+            break;
+        case ACL_TYPE_HSAIL_TEXT:
+        default:
+            break;
+        }
     }
     if (complete_stages.empty()) {
         complete_stages.push_back(from);
@@ -2006,101 +2014,139 @@ HSAILProgram::getNextCompilationStageFromBinary(std::vector<aclType>& complete_s
     return from;
 }
 
+aclType
+HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
+    aclType continueCompileFrom = ACL_TYPE_DEFAULT;
+    binary_t binary = this->binary();
+    // If the binary already exists
+    if ((binary.first != NULL) && (binary.second > 0)) {
+        void *mem = const_cast<void *>(binary.first);
+        acl_error errorCode;
+        binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
+        if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
+            LogWarning("aclReadFromMem failed");
+            return continueCompileFrom;
+      }
+      // Calculate the next stage to compile from, based on sections in binaryElf_;
+      // No any validity checks here
+      std::vector<aclType> complete_stages;
+      continueCompileFrom = getCompilationStagesFromBinary(complete_stages);
+      // Saving binary in the interface class,
+      // which also load compile & link options from binary
+      setBinary(static_cast<char*>(mem), binary.second);
+      if (!options) {
+          return continueCompileFrom;
+      }
+      bool recompile = false;
+      //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
+      switch (continueCompileFrom) {
+      case ACL_TYPE_HSAIL_BINARY:
+      case ACL_TYPE_CG:
+      case ACL_TYPE_ISA: {
+          // Compare options loaded from binary with current ones, recompile if differ;
+          // If compile options are absent in binary, do not compare and recompile
+          if (compileOptions_.empty())
+              break;
+          const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
+          assert(symbol && "symbol not found");
+          std::string symName = std::string(symbol->str[PRE]) + std::string(symbol->str[POST]);
+          size_t symSize = 0;
+          const void *opts = aclExtractSymbol(dev().hsaCompiler(),
+              binaryElf_, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
+          if (errorCode != ACL_SUCCESS) {
+              recompile = true;
+              break;
+          }
+          std::string sBinOptions = std::string((char*)opts, symSize);
+          std::string sCurOptions = compileOptions_ + linkOptions_;
+          amd::option::Options curOptions, binOptions;
+          amd::option::parseAllOptions(sBinOptions, binOptions);
+          amd::option::parseAllOptions(sCurOptions, curOptions);
+          if (!curOptions.equals(binOptions)) {
+              recompile = true;
+          }
+          break;
+      }
+      default:
+          break;
+      }
+      if (recompile) {
+          while (!complete_stages.empty()) {
+              continueCompileFrom = complete_stages.back();
+              if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+                  continueCompileFrom == ACL_TYPE_DEFAULT) {
+                  break;
+              }
+              complete_stages.pop_back();
+          }
+      }
+    }
+    return continueCompileFrom;
+}
+
 bool
 HSAILProgram::linkImpl(amd::option::Options* options)
 {
     acl_error errorCode;
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
+    bool finalize = true;
     // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
     if (!binaryElf_) {
-        binary_t binary = this->binary();
-        // If the binary already exists
-        if ((binary.first != NULL) && (binary.second > 0)) {
-            void *mem = const_cast<void *>(binary.first);
-            binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
-            if (errorCode != ACL_SUCCESS) {
-                buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
-                LogWarning("aclReadFromMem failed");
-                return false;
-            }
-            // Calculate the next stage to compile from, based on sections in binaryElf_;
-            // No any validity checks here
-            std::vector<aclType> complete_stages;
-            continueCompileFrom = getNextCompilationStageFromBinary(complete_stages);
-            //@TODO_HSA: r=emankov: Should we also check here for 
-            // ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT to recompile from?
-            if (ACL_TYPE_DEFAULT == continueCompileFrom) {
-                buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
-                return false;
-            }
-            if (ACL_TYPE_HSAIL_BINARY == continueCompileFrom) {
-                // Saving binary in the interface class,
-                // which also load compile & link options from binary
-                setBinary(static_cast<char*>(mem), binary.second);
-                // Check the previous completed stage
-                if (ACL_TYPE_LLVMIR_BINARY == complete_stages.back()) {
-                    // Compare options loaded from binary with current ones
-                    // If they differ then recompile from ACL_TYPE_LLVMIR_BINARY
-                    //@TODO_HSA: r=emankov: Should we need to check options at all?
-                    std::string curOptions = options->origOptionStr + hsailOptions();
-                    if (compileOptions_ + linkOptions_ != curOptions) {
-                       continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
-                    }
-                }
-            }
-        }
+        continueCompileFrom = getNextCompilationStageFromBinary(options);
     }
     switch (continueCompileFrom) {
-      default:
+    // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
+    // 1. if the program is not created with binary;
+    // 2. if the program is created with binary and contains only .llvmir & .comment
+    // 3. if the program is created with binary, contains .llvmir, .comment, brig sections,
+    //    but the binary's compile & link options differ from current ones (recompilation);
+    case ACL_TYPE_LLVMIR_BINARY:
+    // Compilation from ACL_TYPE_HSAIL_BINARY to ACL_TYPE_CG in cases:
+    // 1. if the program is created with binary and contains only brig sections
+    case ACL_TYPE_HSAIL_BINARY:
+    // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
+    // 1. if the program is created with binary and contains only hsail text
+    case ACL_TYPE_HSAIL_TEXT: {
+        std::string curOptions = options->origOptionStr + hsailOptions();
+        errorCode = aclCompile(dev().hsaCompiler(), binaryElf_,
+            curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, NULL);
+        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+        if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error while BRIG Codegen phase: compilation error \n" ;
+            return false;
+        }
         break;
-      // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
-      // 1. if the program is not created with binary;
-      // 2. if the program is created with binary and contains only .llvmir & .comment
-      // 3. if the program is created with binary, contains .llvmir, .comment, brig sections,
-      //    but the binary's compile & link options differ from current ones (recompilation);
-      case ACL_TYPE_LLVMIR_BINARY:
-      // Compilation from ACL_TYPE_HSAIL_BINARY to ACL_TYPE_CG in cases:
-      // 1. if the program is created with binary and contains only brig sections
-      case ACL_TYPE_HSAIL_BINARY:
-      // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
-      // 1. if the program is created with binary and contains only hsail text
-      case ACL_TYPE_HSAIL_TEXT:
-      {
-          std::string curOptions = options->origOptionStr + hsailOptions();
-          errorCode = aclCompile(dev().hsaCompiler(), binaryElf_,
-              curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, NULL);
-          buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-          break;
-      }
     }
-    if (errorCode != ACL_SUCCESS) {
-        buildLog_ += "Error while BRIG Codegen phase: compilation error \n" ;
+    case ACL_TYPE_CG:
+        break;
+    case ACL_TYPE_ISA:
+        finalize = false;
+        break;
+    default:
+        buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
         return false;
     }
-
+    // ACL_TYPE_CG stage is always being performed
     if (!aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
         &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
         buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
         return false;
     }
     // We need to pull out kernels' names for finalizing kernels
-    //@TODO_HSA: r=emankov: rewrite the below code,
-    // if another way to obtain kernel names appears in the compiler library
-    size_t fsailSize;
+    //! @todo Rewrite the below code, if another way to obtain kernel names
+    //! appears in the compiler library
+    size_t hsailSize = 0;
     const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
     assert(symbol && "symbol not found");
     std::string symName = symbol->str[PRE] + std::string("main") + symbol->str[POST];
-    const void *hsailText = aclExtractSymbol(dev().hsaCompiler(),
-        binaryElf_,
-        &fsailSize,
-        aclCODEGEN,
-        symName.c_str(),
-        &errorCode);
+    const void *hsailText = aclExtractSymbol(dev().hsaCompiler(), binaryElf_,
+        &hsailSize, aclCODEGEN, symName.c_str(), &errorCode);
     if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Error while reading out the HSAIL from the ELF \n" ;
         return false;
     }
-    std::string hsailProgram((char *)hsailText);
+    std::string hsailProgram((char *)hsailText, hsailSize);
     HSAILProgram_ = hsailProgram;
     if (!HSAILProgram_.empty()) {
         bool    dynamicParallelism = false;
@@ -2126,7 +2172,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
                 (kernelNPos + 8 + 9) - 6);
             HSAILKernel *aKernel = new HSAILKernel(kernelName, this,
                 options->origOptionStr + hsailOptions());
-            if (!aKernel->init() ) {
+            if (!aKernel->init(finalize)) {
                 return false;
             }
             buildLog_ += aKernel->buildLog();
@@ -2162,7 +2208,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
 bool
 HSAILProgram::createBinary(amd::option::Options *options)
 {
-    return false;
+    return true;
 }
 
 bool
