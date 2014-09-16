@@ -11,13 +11,13 @@ const char* BlitSourceCode = BLIT_KERNELS(
 __kernel void copyBufferToImage(
     __global    uint*       src,
     __write_only image2d_array_t  dst,
-    int4        srcOrigin,
+    ulong4      srcOrigin,
     int4        dstOrigin,
     int4        size,
-    int4        format,
-    int4        pitch)
+    uint4       format,
+    ulong4      pitch)
 {
-    uint     idxSrc;
+    ulong    idxSrc;
     int4     coordsDst;
     uint4    pixel;
     __global uint*   srcUInt = src;
@@ -49,61 +49,55 @@ __kernel void copyBufferToImage(
     switch (format.x) {
     case 1:
         // Check size
-        switch (format.y) {
-        case 1:
+        if (format.y == 1) {
             pixel.x = (uint)srcUChar[idxSrc];
-            break;
-        case 2:
+        }
+        else if (format.y == 2) {
             pixel.x = (uint)srcUShort[idxSrc];
-            break;
-        case 4:
+        }
+        else {
             pixel.x = srcUInt[idxSrc];
-            break;
         }
     break;
     case 2:
         // Check size
-        switch (format.y) {
-        case 1:
+        if (format.y == 1) {
             tmpUShort = srcUShort[idxSrc];
             pixel.x = (uint)(tmpUShort & 0xff);
             pixel.y = (uint)(tmpUShort >> 8);
-            break;
-        case 2:
+        }
+        else if (format.y == 2) {
             tmpUInt = srcUInt[idxSrc];
             pixel.x = (tmpUInt & 0xffff);
             pixel.y = (tmpUInt >> 16);
-            break;
-        case 4:
+        }
+        else {
             pixel.x = srcUInt[idxSrc++];
             pixel.y = srcUInt[idxSrc];
-            break;
         }
     break;
     case 4:
         // Check size
-        switch (format.y) {
-        case 1:
+        if (format.y == 1) {
             tmpUInt = srcUInt[idxSrc];
             pixel.x = tmpUInt & 0xff;
             pixel.y = (tmpUInt >> 8) & 0xff;
             pixel.z = (tmpUInt >> 16) & 0xff;
             pixel.w = (tmpUInt >> 24) & 0xff;
-            break;
-        case 2:
+        }
+        else if (format.y == 2) {
             tmpUInt = srcUInt[idxSrc++];
             pixel.x = tmpUInt & 0xffff;
             pixel.y = (tmpUInt >> 16);
             tmpUInt = srcUInt[idxSrc];
             pixel.z = tmpUInt & 0xffff;
             pixel.w = (tmpUInt >> 16);
-            break;
-        case 4:
+        }
+        else {
             pixel.x = srcUInt[idxSrc++];
             pixel.y = srcUInt[idxSrc++];
             pixel.z = srcUInt[idxSrc++];
             pixel.w = srcUInt[idxSrc];
-            break;
         }
     break;
     }
@@ -117,12 +111,12 @@ __kernel void copyImageToBuffer(
     __global    ushort*     dstUShort,
     __global    uchar*      dstUChar,
     int4        srcOrigin,
-    int4        dstOrigin,
+    ulong4      dstOrigin,
     int4        size,
-    int4        format,
-    int4        pitch)
+    uint4       format,
+    ulong4      pitch)
 {
-    uint     idxDst;
+    ulong    idxDst;
     int4     coordsSrc;
     uint4    texel;
 
@@ -205,12 +199,12 @@ __kernel void copyImageToBuffer(
 __kernel void copyImage(
     __read_only  image2d_array_t src,
     __write_only image2d_array_t dst,
-    int4       srcOrigin,
-    int4       dstOrigin,
-    int4       size)
+    int4    srcOrigin,
+    int4    dstOrigin,
+    int4    size)
 {
-    int4  coordsDst;
-    int4  coordsSrc;
+    int4    coordsDst;
+    int4    coordsSrc;
 
     coordsDst.x = get_global_id(0);
     coordsDst.y = get_global_id(1);
@@ -234,12 +228,12 @@ __kernel void copyImage(
 __kernel void copyImage1DA(
     __read_only  image2d_array_t  src,
     __write_only image2d_array_t  dst,
-    int4       srcOrigin,
-    int4       dstOrigin,
-    int4       size)
+    int4    srcOrigin,
+    int4    dstOrigin,
+    int4    size)
 {
-    int4  coordsDst;
-    int4  coordsSrc;
+    int4    coordsDst;
+    int4    coordsSrc;
 
     coordsDst.x = get_global_id(0);
     coordsDst.y = get_global_id(1);
@@ -271,13 +265,13 @@ __kernel void copyImage1DA(
 __kernel void copyBufferRect(
     __global   uchar*  src,
     __global   uchar*  dst,
-    uint4      srcRect,
-    uint4      dstRect,
-    uint4      size)
+    ulong4  srcRect,
+    ulong4  dstRect,
+    ulong4  size)
 {
-    uint x = (uint)get_global_id(0);
-    uint y = (uint)get_global_id(1);
-    uint z = (uint)get_global_id(2);
+    ulong x = get_global_id(0);
+    ulong y = get_global_id(1);
+    ulong z = get_global_id(2);
 
     if ((x >= size.x) ||
         (y >= size.y) ||
@@ -285,8 +279,8 @@ __kernel void copyBufferRect(
         return;
     }
 
-    uint offsSrc = srcRect.z + x + y * srcRect.x + z * srcRect.y;
-    uint offsDst = dstRect.z + x + y * dstRect.x + z * dstRect.y;
+    ulong offsSrc = srcRect.z + x + y * srcRect.x + z * srcRect.y;
+    ulong offsDst = dstRect.z + x + y * dstRect.x + z * dstRect.y;
 
     dst[offsDst] = src[offsSrc];
 }
@@ -294,13 +288,13 @@ __kernel void copyBufferRect(
 __kernel void copyBufferRectAligned(
     __global   uint*  src,
     __global   uint*  dst,
-    uint4      srcRect,
-    uint4      dstRect,
-    uint4      size)
+    ulong4  srcRect,
+    ulong4  dstRect,
+    ulong4  size)
 {
-    uint x = (uint)get_global_id(0);
-    uint y = (uint)get_global_id(1);
-    uint z = (uint)get_global_id(2);
+    ulong x = get_global_id(0);
+    ulong y = get_global_id(1);
+    ulong z = get_global_id(2);
 
     if ((x >= size.x) ||
         (y >= size.y) ||
@@ -308,8 +302,8 @@ __kernel void copyBufferRectAligned(
         return;
     }
 
-    uint offsSrc = srcRect.z + x + y * srcRect.x + z * srcRect.y;
-    uint offsDst = dstRect.z + x + y * dstRect.x + z * dstRect.y;
+    ulong offsSrc = srcRect.z + x + y * srcRect.x + z * srcRect.y;
+    ulong offsDst = dstRect.z + x + y * dstRect.x + z * dstRect.y;
 
     if (size.w == 16) {
         __global uint4* src4 = (__global uint4*)src;
@@ -324,18 +318,18 @@ __kernel void copyBufferRectAligned(
 __kernel void copyBuffer(
     __global   uchar*  src,
     __global   uchar*  dst,
-    int       srcOrigin,
-    int       dstOrigin,
-    uint      size)
+    ulong   srcOrigin,
+    ulong   dstOrigin,
+    ulong   size)
 {
-    uint id = (uint)get_global_id(0);
+    ulong   id = get_global_id(0);
 
     if (id >= size) {
         return;
     }
 
-    uint offsSrc = id + srcOrigin;
-    uint offsDst = id + dstOrigin;
+    ulong   offsSrc = id + srcOrigin;
+    ulong   offsDst = id + dstOrigin;
 
     dst[offsDst] = src[offsSrc];
 }
@@ -343,19 +337,19 @@ __kernel void copyBuffer(
 __kernel void copyBufferAligned(
     __global   uint*  src,
     __global   uint*  dst,
-    int       srcOrigin,
-    int       dstOrigin,
-    uint      size,
-    uint      alignment)
+    ulong   srcOrigin,
+    ulong   dstOrigin,
+    ulong   size,
+    uint    alignment)
 {
-    uint id = (uint)get_global_id(0);
+    ulong   id = get_global_id(0);
 
     if (id >= size) {
         return;
     }
 
-    uint offsSrc = id + srcOrigin;
-    uint offsDst = id + dstOrigin;
+    ulong   offsSrc = id + srcOrigin;
+    ulong   offsDst = id + dstOrigin;
 
     if (alignment == 16) {
         __global uint4* src4 = (__global uint4*)src;
@@ -371,11 +365,11 @@ __kernel void fillBuffer(
     __global   uchar*  bufUChar,
     __global   uint*   bufUInt,
     __constant uchar*  pattern,
-    uint       patternSize,
-    uint       offset,
-    uint       size)
+    uint    patternSize,
+    ulong   offset,
+    ulong   size)
 {
-    uint id = (uint)get_global_id(0);
+    ulong   id = get_global_id(0);
 
     if (id >= size) {
         return;

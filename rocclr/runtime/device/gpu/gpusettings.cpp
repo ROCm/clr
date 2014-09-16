@@ -320,7 +320,12 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            maxAllocSize_   = 4048 * Mi;
+            if (GPU_ENABLE_LARGE_ALLOCATION) {
+                maxAllocSize_   = 16ULL * Gi;
+            }
+            else {
+                maxAllocSize_   = 4048 * Mi;
+            }
         }
         else {
             maxAllocSize_   = 3ULL * Gi;
