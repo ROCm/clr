@@ -263,7 +263,7 @@ public:
     std::string getDumpFileName(const std::string& ext);
 
     void setPerBuildInfo(const char* val, int encrypt, bool device);
-    bool isCStrEqual(const char *cs1, const char* cs2);
+    bool isCStrOptionsEqual(const char *cs1, const char* cs2) const;
 
 
     bool useDefaultWGS() { return UseDefaultWGS; }
