@@ -566,7 +566,7 @@ HsaBlitManager::importExportImage(
 
 static void
 CalcRowSlicePitches(
-    cl_int* pitch, const cl_int* copySize,
+    cl_ulong* pitch, const cl_int* copySize,
     size_t rowPitch, size_t slicePitch, const Memory& mem)
 {
     const oclhsa::Image &hsaImage = static_cast< const oclhsa::Image &>(mem);
@@ -1067,14 +1067,14 @@ KernelBlitManager::copyBuffer(
     clmem = ((cl_mem) as_cl<amd::Memory>(dstMemory.owner()));
     kernels_[blitType]->parameters().set(1, sizeof(cl_mem), &clmem);
     // Program source origin
-    cl_int  srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
+    cl_ulong  srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
     kernels_[blitType]->parameters().set(2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
-    cl_int  dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
+    cl_ulong  dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
     kernels_[blitType]->parameters().set(3, sizeof(dstOffset), &dstOffset);
 
-    cl_int  copySize = size[0];
+    cl_ulong  copySize = size[0];
     kernels_[blitType]->parameters().set(4, sizeof(copySize), &copySize);
 
     if (blitType == BlitCopyBufferAligned) {
@@ -1187,18 +1187,18 @@ KernelBlitManager::copyBufferRect(
     kernels_[blitType]->parameters().set(0, sizeof(cl_mem), &clmem);
     clmem = ((cl_mem) as_cl<amd::Memory>(dstMemory.owner()));
     kernels_[blitType]->parameters().set(1, sizeof(cl_mem), &clmem);
-    cl_uint  src[4] = { (cl_uint)srcRect.rowPitch_,
-                        (cl_uint)srcRect.slicePitch_,
-                        (cl_uint)srcRect.start_, 0 };
+    cl_ulong    src[4] = { srcRect.rowPitch_,
+                           srcRect.slicePitch_,
+                           srcRect.start_, 0 };
     kernels_[blitType]->parameters().set(2, sizeof(src), src);
-    cl_uint  dst[4] = { (cl_uint)dstRect.rowPitch_,
-                        (cl_uint)dstRect.slicePitch_,
-                        (cl_uint)dstRect.start_, 0 };
+    cl_ulong    dst[4] = { dstRect.rowPitch_,
+                           dstRect.slicePitch_,
+                           dstRect.start_, 0 };
     kernels_[blitType]->parameters().set(3, sizeof(dst), dst);
-    cl_int  copySize[4] = { (cl_int)size[0],
-                            (cl_int)size[1],
-                            (cl_int)size[2],
-                            (cl_int)CopyRectAlignment[i] };
+    cl_ulong    copySize[4] = { size[0],
+                                size[1],
+                                size[2],
+                                CopyRectAlignment[i] };
     kernels_[blitType]->parameters().set(4, sizeof(copySize), copySize);
 
     // Create ND range object for the kernel's execution
@@ -1311,23 +1311,23 @@ KernelBlitManager::copyImageToBuffer(
         granularity = 4;
     }
     CondLog(((dstOrigin[0] % granularity) != 0), "Unaligned offset in blit!");
-    cl_int  dstOrg[4] = { (cl_int)dstOrigin[0] / granularity,
-                          (cl_int)dstOrigin[1],
-                          (cl_int)dstOrigin[2],
-                          0 };
+    cl_ulong    dstOrg[4] = { dstOrigin[0] / granularity,
+                              dstOrigin[1],
+                              dstOrigin[2],
+                              0 };
     kernels_[blitType]->parameters().set(5, sizeof(dstOrg), dstOrg);
     kernels_[blitType]->parameters().set(6, sizeof(copySize), copySize);
 
     // Program memory format
     uint multiplier = elementSize / sizeof(uint32_t);
     multiplier = (multiplier == 0) ? 1 : multiplier;
-    cl_int  format[4] = { (cl_int)numChannels,
-                          (cl_int)elementSize / (cl_int)numChannels,
-                          (cl_int)multiplier, 0 };
+    cl_uint format[4] = { (cl_uint)numChannels,
+                          (cl_uint)(elementSize / numChannels),
+                          multiplier, 0 };
     kernels_[blitType]->parameters().set(7, sizeof(format), format);
 
     // Program row and slice pitches
-    cl_int  pitch[4] = { 0 };
+    cl_ulong    pitch[4] = { 0 };
     CalcRowSlicePitches(pitch, copySize, rowPitch, slicePitch, srcImage);
     kernels_[blitType]->parameters().set(8, sizeof(pitch), pitch);
 
@@ -1429,9 +1429,9 @@ KernelBlitManager::copyBufferToImage(
         granularity = 4;
     }
     CondLog(((srcOrigin[0] % granularity) != 0), "Unaligned offset in blit!");
-    cl_int  srcOrg[4] = { (cl_int)srcOrigin[0] / granularity,
-                          (cl_int)srcOrigin[1],
-                          (cl_int)srcOrigin[2], 0 };
+    cl_ulong    srcOrg[4] = { srcOrigin[0] / granularity,
+                              srcOrigin[1],
+                              srcOrigin[2], 0 };
     kernels_[blitType]->parameters().set(2, sizeof(srcOrg), srcOrg);
 
     cl_int   dstOrg[4] = { (cl_int)dstOrigin[0],
@@ -1447,13 +1447,13 @@ KernelBlitManager::copyBufferToImage(
     // Program memory format
     uint multiplier = elementSize / sizeof(uint32_t);
     multiplier = (multiplier == 0) ? 1 : multiplier;
-    cl_int  format[4] = { (cl_int)numChannels,
-                          (cl_int)elementSize / (cl_int)numChannels,
-                          (cl_int)multiplier, 0 };
+    cl_uint  format[4] = { (cl_uint)numChannels,
+                           (cl_uint)(elementSize / numChannels),
+                           multiplier, 0 };
     kernels_[blitType]->parameters().set(5, sizeof(format), format);
 
     // Program row and slice pitches
-    cl_int  pitch[4] = { 0 };
+    cl_ulong    pitch[4] = { 0 };
     CalcRowSlicePitches(pitch, copySize, rowPitch, slicePitch, dstImage);
     kernels_[blitType]->parameters().set(6, sizeof(pitch), pitch);
 
@@ -1617,7 +1617,7 @@ KernelBlitManager::fillBuffer(
 
     uint    fillType = FillBuffer;
     size_t  globalWorkOffset[3] = { 0, 0, 0 };
-    cl_int  fillSize = size[0] / patternSize;
+    cl_ulong    fillSize = size[0] / patternSize;
     size_t  globalWorkSize = amd::alignUp(fillSize, 256);
     size_t  localWorkSize = 256;
     bool    dwordAligned =
@@ -1650,14 +1650,14 @@ KernelBlitManager::fillBuffer(
 
     cl_mem clmem = ((cl_mem) as_cl<amd::Memory>(fillMemory));
     kernels_[fillType]->parameters().set(2, sizeof(cl_mem), &clmem);
-    cl_int  offset = origin[0];
+    cl_ulong    offset = origin[0];
     if (dwordAligned) {
         patternSize /= sizeof(uint32_t);
         offset /= sizeof(uint32_t);
     }
     kernels_[fillType]->parameters().set(3, sizeof(cl_uint), &patternSize);
     kernels_[fillType]->parameters().set(4, sizeof(offset), &offset);
-    kernels_[fillType]->parameters().set(5, sizeof(cl_mem), &fillSize);
+    kernels_[fillType]->parameters().set(5, sizeof(fillSize), &fillSize);
 
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(1,
