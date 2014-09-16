@@ -2457,10 +2457,10 @@ if_aclQueryInfo(aclCompiler *cl,
            }
     case RT_DEVICE_ENQUEUE: {
            if (size != NULL && ptr == NULL) {
-             (*size) = sizeof(uint32_t);
-           } else if (ptr != NULL && (*size) >= (sizeof(uint32_t))) {
+             (*size) = sizeof(aclMetadata().enqueue_kernel);
+           } else if (ptr != NULL && (*size) >= (sizeof(aclMetadata().enqueue_kernel))) {
                const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-              (*reinterpret_cast<uint32_t*>(ptr)) = md->enqueue_kernel;
+               memcpy(ptr, &md->enqueue_kernel, sizeof(md->enqueue_kernel));
            } else {
              success = false;
            }
@@ -2469,10 +2469,10 @@ if_aclQueryInfo(aclCompiler *cl,
     // Temporary approach till the "ldk" instruction is supported.
     case RT_KERNEL_INDEX: {
            if (size != NULL && ptr == NULL) {
-             (*size) = sizeof(uint32_t);
-           } else if (ptr != NULL && (*size) >= (sizeof(uint32_t))) {
+             (*size) = sizeof(aclMetadata().kernel_index);
+           } else if (ptr != NULL && (*size) >= (sizeof(aclMetadata().kernel_index))) {
                const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-              (*reinterpret_cast<uint32_t*>(ptr)) = md->kernel_index;
+               memcpy(ptr, &md->kernel_index, sizeof(md->kernel_index));
            } else {
              success = false;
            }
