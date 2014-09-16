@@ -1300,7 +1300,7 @@ NullProgram::parseAllILFuncs(const std::string& source)
 {
     bool doPatch = true;
     amd::option::Options *opts = getCompilerOptions();
-    if (opts->isCStrEqual(opts->oVariables->XLang, "il")) {
+    if (opts->isCStrOptionsEqual(opts->oVariables->XLang, "il")) {
         doPatch = false;
     }
     // Find the patch position

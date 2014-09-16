@@ -1489,10 +1489,14 @@ Options::getDumpFileName(const std::string& ext)
 }
 
 bool
-Options::isCStrEqual(const char *cs1, const char* cs2)
+Options::isCStrOptionsEqual(const char *cs1, const char* cs2) const
 {
     if ((cs1 != NULL) && (cs2 != NULL)) {
         return (strcmp(cs1, cs2) == 0);
+    } else if ((cs1 == NULL || strcmp(cs1,"") == 0) &&
+               (cs2 == NULL || strcmp(cs2,"") == 0)) {
+        // consider empty string and NULL ptr (no string) as equal
+        return true;
     }
     return false;
 }
@@ -1527,7 +1531,7 @@ bool Options::equals(const Options& other, bool ignoreClcOptions) const
         else if (OPTION_type(od) == OT_CSTRING) {
             OT_CSTRING_t* o = reinterpret_cast<OT_CSTRING_t*>(addr);
             OT_CSTRING_t* o2 = reinterpret_cast<OT_CSTRING_t*>(addr2);
-            if (*o != *o2) return false;
+            if (!isCStrOptionsEqual(*o,*o2)) return false;
         }
         else {
             return false;
