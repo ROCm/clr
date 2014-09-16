@@ -835,8 +835,9 @@ public:
 
     virtual ~HSAILKernel();
 
-    //! Initializes the metadata required for this kernel
-    bool init();
+    //! Initializes the metadata required for this kernel,
+    //! finalizes the kernel if needed
+    bool init(bool finalize = true);
 
     //! Returns true if memory is valid for execution
     virtual bool validateMemory(uint idx, amd::Memory* amdMem) const;

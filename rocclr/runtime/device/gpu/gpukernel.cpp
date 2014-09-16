@@ -3510,26 +3510,26 @@ HSAILKernel::~HSAILKernel()
 }
 
 bool
-HSAILKernel::init()
+HSAILKernel::init(bool finalize)
 {
     acl_error error;
     //compile kernel down to ISA
     std::string openClKernelName("&__OpenCL_" + name() + "_kernel");
-
-    std::string options(compileOptions_.c_str());
-    options.append(" -just-kernel=");
-    options.append(openClKernelName.c_str());
+    if (finalize) {
+        std::string options(compileOptions_.c_str());
+        options.append(" -just-kernel=");
+        options.append(openClKernelName.c_str());
+        error = aclCompile(dev().hsaCompiler(), prog().binaryElf(),
+            options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
+        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+        if (error != ACL_SUCCESS) {
+            LogError("Failed to finalize");
+            return false;
+        }
+    }
     // Get the ISA out
     size_t  size_isa;
     void*   shader_isa = NULL;
-    error = aclCompile(dev().hsaCompiler(), prog().binaryElf(),
-        options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
-    buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-    if (error != ACL_SUCCESS) {
-        LogError("Failed to finalize");
-        return false;
-    }
-
     shader_isa = const_cast<void *>(aclGetDeviceBinary(dev().hsaCompiler(),
         prog().binaryElf(), openClKernelName.c_str(), &size_isa, &error));
     if (shader_isa == NULL) {
