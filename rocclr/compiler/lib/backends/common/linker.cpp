@@ -98,7 +98,7 @@
 
 static const char* OptionMaskFName = "__option_mask";
 extern  llvm::Module*
-clpVectorExpansion(llvm::Module *srcModules[], std::string &errorMsg);
+clpVectorExpansion(llvm::Module *srcModules[], std::string &errorMsg, bool IsGPU);
 namespace amd {
 
 namespace {
@@ -938,7 +938,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   clp_inputs[0] = LLVMBinary();
   clp_inputs[1] = NULL;
   std::string clp_errmsg;
-  llvm::Module *OnFlyLib = clpVectorExpansion (clp_inputs, clp_errmsg);
+  llvm::Module *OnFlyLib = clpVectorExpansion (clp_inputs, clp_errmsg, IsGPUTarget);
   if (clp_errmsg.empty() == false) {
     delete LLVMBinary();
     for (unsigned int i = 0; i < LibMs.size(); ++ i) {
