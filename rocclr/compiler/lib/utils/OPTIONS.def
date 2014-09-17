@@ -700,6 +700,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "SC does not unroll loops")
 
+//  -fsc-disable-merge-memory
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
+       "sc-disable-merge-memory", NULL, \
+       SCDisableMergeMemory, \
+       false, 0, 0, NULL, \
+       "SC does not merge memory loads and stores")
+
 //  -fsc-bias-schedule-to-minimize-regs
 OPTION(OT_BOOL, \
        OA_RUNTIME|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
