@@ -1915,10 +1915,12 @@ void
 Resource::warmUpRenames(VirtualGPU& gpu)
 {
     for (uint i = 0; i < dev().settings().maxRenames_; ++i) {
-        uint    dummy = 0;
-        const bool NoWait = false;
-        // Write 0 for the buffer paging by VidMM
-        writeRawData(gpu, sizeof(dummy), &dummy, NoWait);
+        if (dev().settings().siPlus_) {
+            uint    dummy = 0;
+            const bool NoWait = false;
+            // Write 0 for the buffer paging by VidMM
+            writeRawData(gpu, sizeof(dummy), &dummy, NoWait);
+        }
         const bool Force = true;
         rename(gpu, Force);
     }
