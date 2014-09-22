@@ -3612,25 +3612,26 @@ HSAILKernel::init(bool finalize)
         delete [] aclPrintfList;
     }
 
-    bool hasKernelEnqueue = false;
-    size_t sizeOfDeviceEnqueue = sizeof(hasKernelEnqueue);
+    aclMetadata md;
+    md.enqueue_kernel = false;
+    size_t sizeOfDeviceEnqueue = sizeof(md.enqueue_kernel);
     error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
         RT_DEVICE_ENQUEUE, openClKernelName.c_str(),
-        &hasKernelEnqueue, &sizeOfDeviceEnqueue);
+        &md.enqueue_kernel, &sizeOfDeviceEnqueue);
     if (error != ACL_SUCCESS) {
         return false;
     }
-    flags_.dynamicParallelism_ = hasKernelEnqueue;
+    flags_.dynamicParallelism_ = md.enqueue_kernel;
 
-    int index = -1;
-    size_t sizeOfIndex = sizeof(index);
+    md.kernel_index = -1;
+    size_t sizeOfIndex = sizeof(md.kernel_index);
     error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
         RT_KERNEL_INDEX, openClKernelName.c_str(),
-        &index, &sizeOfIndex);
+        &md.kernel_index, &sizeOfIndex);
     if (error != ACL_SUCCESS) {
         return false;
     }
-    index_ = static_cast<uint>(index);
+    index_ = md.kernel_index;
 
     return true;
 }
