@@ -242,17 +242,15 @@ Settings::create(
         }
         enableExtension(ClAmdImage2dFromBufferReadOnly);
         break;
+    case CAL_TARGET_CARRIZO:
+        apuSystem_ = true;
     case CAL_TARGET_ICELAND:
     case CAL_TARGET_TONGA:
     case CAL_TARGET_BERMUDA:
     case CAL_TARGET_FIJI:
-    case CAL_TARGET_CARRIZO:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
         viPlus_ = true;
-        if (target == CAL_TARGET_CARRIZO) {
-            apuSystem_ = true;
-        }
         // Fall through to CI ...
     case CAL_TARGET_KALINDI:
     case CAL_TARGET_SPECTRE:
