@@ -101,22 +101,24 @@ typedef struct _acl_md_printf_fmt_0_8 {
 typedef struct _acl_metadata_0_8 {
   ACL_STRUCT_HEADER; // This holds the size of the structure itself for versioning.
   size_t data_size; // This holds the size of all the memory allocated for this structure.
-  uint32_t major, minor, revision, gpuCaps, funcID;
-  uint32_t gpuRes[5];
-  size_t wgs[3];
-  uint32_t wrs[3];
+  uint32_t major, minor, revision; // RT_ABI_VERSION
+  uint32_t gpuCaps; // RT_GPU_FUNC_CAPS
+  uint32_t funcID; // RT_GPU_FUNC_ID
+  uint32_t gpuRes[5]; // RT_GPU_DEFAULT_ID
+  size_t wgs[3]; // RT_WORK_GROUP_SIZE
+  uint32_t wrs[3]; // RT_WORK_REGION_SIZE
   size_t kernelNameSize;
   size_t deviceNameSize;
-  size_t mem[6];
+  size_t mem[6]; // RT_MEM_SIZES
   size_t numArgs;
   size_t numPrintf;
 
-  aclArgData_0_8 *args;
-  aclPrintfFmt_0_8 *printf;
-  const char *kernelName;
-  const char *deviceName;
-  bool enqueue_kernel;
-  uint32_t kernel_index;
+  aclArgData_0_8 *args; // RT_ARGUMENT_ARRAY
+  aclPrintfFmt_0_8 *printf; // RT_GPU_PRINTF_ARRAY
+  const char *kernelName; // RT_KERNEL_NAME
+  const char *deviceName; // RT_DEVICE_NAME
+  bool enqueue_kernel; // RT_DEVICE_ENQUEUE
+  uint32_t kernel_index; // RT_KERNEL_INDEX
 } aclMetadata_0_8;
 
 //! An structure that holds information on the capabilities of the bif device.

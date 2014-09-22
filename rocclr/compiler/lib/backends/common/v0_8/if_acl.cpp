@@ -2256,6 +2256,8 @@ if_aclQueryInfo(aclCompiler *cl,
     void *ptr,
     size_t *size)
 {
+  if (!size)
+    return ACL_ERROR;
   const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
   assert(sym && "symbol not found");
   std::string symbol = sym->str[PRE] + std::string(kernel) + sym->str[POST];
@@ -2267,217 +2269,237 @@ if_aclQueryInfo(aclCompiler *cl,
   if (roSec == NULL || roSize == 0) {
     return ACL_ELF_ERROR;
   }
-  bool success = true;
+  const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
+  bool success = false;
 
   switch (query) {
     default: break;
     case RT_CPU_BARRIER_NAMES:
-             if (size != NULL && ptr == NULL) {
-               (*size) = 0;
-             } else if (ptr != NULL && size != NULL) {
-               assert(!"Not implemented!");
-               success = false;
-             } else {
-               success = false;
-             }
-             break;
-    case RT_ABI_VERSION:
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(uint32_t) * 3;
-             } else if (ptr != NULL && (*size) >= (sizeof(uint32_t) * 3)) {
-               uint32_t *tmp = reinterpret_cast<uint32_t*>(ptr);
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               tmp[0] = md->major;
-               tmp[1] = md->minor;
-               tmp[2] = md->revision;
-             } else {
-               success = false;
-             }
-             break;
+            if (!ptr) {
+              *size = 0;
+              success = true;
+            } else {
+              assert(!"Not implemented");
+            }
+            break;
+    case RT_ABI_VERSION: {
+            size_t majorSize = sizeof(md->major);
+            size_t minorSize = sizeof(md->minor);
+            size_t revisionSize = sizeof(md->revision);
+            size_t verSize = majorSize + minorSize + revisionSize;
+            if (!ptr) {
+              *size = verSize;
+              success = true;
+            } else if (*size >= verSize) {
+              char *tmp = reinterpret_cast<char*>(ptr);
+              memcpy(tmp, &md->major, majorSize);
+              tmp += majorSize;
+              memcpy(tmp, &md->minor, minorSize);
+              tmp += minorSize;
+              memcpy(tmp, &md->revision, revisionSize);
+              success = true;
+            }
+            break;
+          }
     case RT_DEVICE_NAME:
-             if (size != NULL && ptr == NULL) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               (*size) = md->deviceNameSize;
-             } else if (ptr != NULL) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               success = false;
-               if ((*size) >= md->deviceNameSize) {
-                 strncpy(reinterpret_cast<char*>(ptr), reinterpret_cast<const char*>(roSec)
-                     + md->struct_size + md->kernelNameSize + 1, md->deviceNameSize);
-                 success = true;
-               }
-             } else {
-               success = false;
-             }
-             break;
-    case RT_MEM_SIZES:
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(size_t) * RT_MEM_LAST;
-             } else if (ptr != NULL && (*size) >= (sizeof(size_t) * RT_MEM_LAST)) {
-               size_t *tmp = reinterpret_cast<size_t*>(ptr);
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(tmp, md->mem, sizeof(size_t) * RT_MEM_LAST);
-             } else {
-               success = false;
-             }
-             break;
-    case RT_GPU_FUNC_CAPS:
-             if (binary->target.arch_id == aclX86) success = false;
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(uint32_t);
-             } else if (ptr != NULL && (*size) >= sizeof(uint32_t)) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               (*reinterpret_cast<uint32_t*>(ptr)) = md->gpuCaps;
-             } else {
-               success = false;
-             }
-             break;
-    case RT_GPU_FUNC_ID:
-             if (binary->target.arch_id == aclX86) success = false;
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(uint32_t);
-             } else if (ptr != NULL && (*size) >= sizeof(uint32_t)) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               (*reinterpret_cast<uint32_t*>(ptr)) = md->funcID;
-             } else {
-               success = false;
-             }
-             break;
-    case RT_GPU_DEFAULT_ID:
-             if (binary->target.arch_id == aclX86) success = false;
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(uint32_t) * RT_RES_LAST;
-             } else if (ptr != NULL && (*size) >= (sizeof(uint32_t) * RT_RES_LAST)) {
-               uint32_t *tmp = reinterpret_cast<uint32_t*>(ptr);
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(tmp, md->gpuRes, sizeof(uint32_t) * RT_RES_LAST);
-             } else {
-               success = false;
-             }
-             break;
-    case RT_WORK_GROUP_SIZE:
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(size_t) * 3;
-             } else if (ptr != NULL && (*size) >= (sizeof(size_t) * 3)) {
-               size_t *tmp = reinterpret_cast<size_t*>(ptr);
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(tmp, md->wgs, 3 * sizeof(size_t));
-             } else {
-               success = false;
-             }
-             break;
-    case RT_WORK_REGION_SIZE:
-             if (size != NULL && ptr == NULL) {
-               (*size) = sizeof(uint32_t) * 3;
-             } else if (ptr != NULL && (*size) >= (sizeof(uint32_t) * 3)) {
-               uint32_t *tmp = reinterpret_cast<uint32_t*>(ptr);
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(tmp, md->wrs, 3 * sizeof(uint32_t));
-             } else {
-               success = false;
-             }
-             break;
+            if (!ptr) {
+              *size = md->deviceNameSize;
+              success = true;
+            } else if (*size >= md->deviceNameSize) {
+              // deviceName is a pointer, which is serialized by serializeMetadata() to NULL
+              // in binary; to get the data deserializeCLMetadata() is needed
+              aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+              deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+              if (deserializedMd->deviceName && deserializedMd->deviceNameSize == md->deviceNameSize) {
+                strncpy(reinterpret_cast<char*>(ptr), deserializedMd->deviceName, deserializedMd->deviceNameSize);
+                success = true;
+              }
+            }
+            break;
+    case RT_KERNEL_NAME:
+            if (!ptr) {
+              *size = md->kernelNameSize;
+              success = true;
+            } else if (*size >= md->kernelNameSize) {
+              // kernelName is a pointer, which is serialized by serializeMetadata() to NULL
+              // in binary; to get the data deserializeCLMetadata() is needed
+              aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+              deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+              if (deserializedMd->kernelName && deserializedMd->kernelNameSize == md->kernelNameSize) {
+                strncpy(reinterpret_cast<char*>(ptr), deserializedMd->kernelName, deserializedMd->kernelNameSize);
+                success = true;
+              }
+            }
+            break;
+    case RT_MEM_SIZES: {
+            size_t memSize = sizeof(md->mem);
+            if (!ptr) {
+              *size = memSize;
+              success = true;
+            } else if (*size >= memSize) {
+              memcpy(ptr, md->mem, memSize);
+              success = true;
+            }
+            break;
+          }
+    case RT_GPU_FUNC_CAPS: {
+            if (binary->target.arch_id == aclX86) {
+              break;
+            }
+            size_t gpuCapsSize = sizeof(md->gpuCaps);
+            if (!ptr) {
+              *size = gpuCapsSize;
+              success = true;
+            } else if (*size >= gpuCapsSize) {
+              memcpy(ptr, &md->gpuCaps, gpuCapsSize);
+              success = true;
+            }
+            break;
+          }
+    case RT_GPU_FUNC_ID: {
+            if (binary->target.arch_id == aclX86) {
+              break;
+            }
+            size_t funcIDSize = sizeof(md->funcID);
+            if (!ptr) {
+              *size = funcIDSize;
+              success = true;
+            } else if (*size >= funcIDSize) {
+              memcpy(ptr, &md->funcID, funcIDSize);
+              success = true;
+            }
+            break;
+          }
+    case RT_GPU_DEFAULT_ID: {
+            if (binary->target.arch_id == aclX86) {
+              break;
+            }
+            size_t gpuResSize = sizeof(md->gpuRes);
+            if (!ptr) {
+              *size = gpuResSize;
+              success = true;
+            } else if (*size >= gpuResSize) {
+              memcpy(ptr, &md->gpuRes, gpuResSize);
+              success = true;
+            }
+            break;
+          }
+    case RT_WORK_GROUP_SIZE: {
+            size_t wgsSize = sizeof(md->wgs);
+            if (!ptr) {
+              *size = wgsSize;
+              success = true;
+            } else if (md->wgs && *size >= wgsSize) {
+              memcpy(ptr, md->wgs, wgsSize);
+              success = true;
+            }
+            break;
+          }
+    case RT_WORK_REGION_SIZE: {
+            size_t wrsSize = sizeof(md->wrs);
+            if (!ptr) {
+              *size = wrsSize;
+              success = true;
+            } else if (md->wrs && *size >= wrsSize) {
+              memcpy(ptr, md->wrs, wrsSize);
+              success = true;
+            }
+            break;
+          }
     case RT_ARGUMENT_ARRAY: {
-             aclMetadata *md = static_cast<aclMetadata*>(malloc(roSize));
-             if (size != NULL && ptr == NULL) {
-               deserializeCLMetadata(reinterpret_cast<const char*>(roSec), md, roSize);
-               (*size) = sizeof(aclArgData) * (md->numArgs + 1);
-               for (unsigned x = 0; x < md->numArgs; ++x) {
-                 (*size) += md->args[x].typeStrSize + md->args[x].argNameSize + 2;
-               }
-             } else if (ptr) {
-               deserializeCLMetadata(reinterpret_cast<const char*>(roSec), md, roSize);
-               unsigned totSize = sizeof(aclArgData) * (md->numArgs + 1);
-               for (unsigned x = 0; x < md->numArgs; ++x) {
-                 totSize += md->args[x].typeStrSize + md->args[x].argNameSize + 2;
-               }
-               if ((*size) >= totSize) {
-                 char *tmp = reinterpret_cast<char*>(ptr);
-                 memset(ptr, 0, (*size));
-                 memcpy(ptr, md->args, sizeof(aclArgData) * (md->numArgs + 1));
-                 tmp += (sizeof(aclArgData) * (md->numArgs + 1));
-                 for (unsigned x = 0; x < md->numArgs; ++x) {
-                   memcpy(tmp, md->args[x].argStr, md->args[x].argNameSize);
-                   reinterpret_cast<aclArgData*>(ptr)[x].argStr = tmp;
-                   tmp += md->args[x].argNameSize + 1;
-                   tmp[-1] = '\0';
-                   memcpy(tmp, md->args[x].typeStr, md->args[x].typeStrSize);
-                   reinterpret_cast<aclArgData*>(ptr)[x].typeStr = tmp;
-                   tmp += md->args[x].typeStrSize + 1;
-                   tmp[-1] = '\0';
-                 }
-               } else {
-                 success = false;
-               }
-             } else {
-               success = false;
-             }
-             free(md);
-             break;
-           }
+            // args is a pointer, which is serialized by serializeMetadata() to NULL
+            // in binary; to get the data deserializeCLMetadata() is needed
+            aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+            deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+            size_t totSize = sizeof(aclArgData) * (deserializedMd->numArgs + 1);
+            for (unsigned x = 0; x < deserializedMd->numArgs; ++x) {
+              totSize += deserializedMd->args[x].typeStrSize + deserializedMd->args[x].argNameSize + 2;
+            }
+            if (!ptr) {
+              *size = totSize;
+              success = true;
+            } else if (*size >= totSize) {
+              char *tmp = reinterpret_cast<char*>(ptr);
+              memset(ptr, 0, *size);
+              size_t sizeToCopy = sizeof(aclArgData) * (deserializedMd->numArgs + 1);
+              memcpy(ptr, deserializedMd->args, sizeToCopy);
+              tmp += sizeToCopy;
+              for (unsigned x = 0; x < deserializedMd->numArgs; ++x) {
+                sizeToCopy = deserializedMd->args[x].argNameSize;
+                memcpy(tmp, deserializedMd->args[x].argStr, sizeToCopy);
+                reinterpret_cast<aclArgData*>(ptr)[x].argStr = tmp;
+                tmp += sizeToCopy;
+                *(tmp++) = '\0';
+                sizeToCopy = deserializedMd->args[x].typeStrSize;
+                memcpy(tmp, deserializedMd->args[x].typeStr, sizeToCopy);
+                reinterpret_cast<aclArgData*>(ptr)[x].typeStr = tmp;
+                tmp += sizeToCopy;
+                *(tmp++) = '\0';
+                success = true;
+              }
+            }
+            break;
+          }
     case RT_GPU_PRINTF_ARRAY: {
-             aclMetadata *md = static_cast<aclMetadata*>(malloc(roSize));
-             if (size != NULL && ptr == NULL) {
-               deserializeCLMetadata(reinterpret_cast<const char*>(roSec), md, roSize);
-               (*size) = 0;
-               if (md->numPrintf > 0) {
-                 (*size) = sizeof(aclPrintfFmt) * (md->numPrintf + 1);
-                 for (unsigned x = 0; x < md->numPrintf; ++x) {
-                   (*size) += sizeof(uint32_t) * md->printf[x].numSizes;
-                   (*size) += md->printf[x].fmtStrSize + 1;
-                 }
-               }
-             } else if (ptr != NULL) {
-               deserializeCLMetadata(reinterpret_cast<const char*>(roSec), md, roSize);
-               unsigned totSize = sizeof(aclPrintfFmt) * (md->numPrintf + 1);
-               for (unsigned x = 0; x < md->numPrintf; ++ x) {
-                 totSize += sizeof(uint32_t) + md->printf[x].fmtStrSize + 1;
-               }
-               if ((*size) >= totSize) {
-                 char *tmp = reinterpret_cast<char*>(ptr);
-                 memcpy(ptr, md->printf, sizeof(aclPrintfFmt) * (md->numPrintf + 1));
-                 tmp += (sizeof(aclPrintfFmt) * (md->numPrintf + 1));
-                 for (unsigned x = 0; x < md->numPrintf; ++x) {
-                   memcpy(tmp, md->printf[x].argSizes, sizeof(uint32_t) * md->printf[x].numSizes);
-                   reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes = reinterpret_cast<uint32_t*>(tmp);
-                   tmp += sizeof(uint32_t) * md->printf[x].numSizes;
-                   memcpy(tmp, md->printf[x].fmtStr, md->printf[x].fmtStrSize);
-                   reinterpret_cast<aclPrintfFmt*>(ptr)[x].fmtStr = tmp;
-                   tmp += md->printf[x].fmtStrSize + 1;
-                   tmp[-1] = '\0';
-                 }
-               } else {
-                 success = false;
-               }
-             } else {
-               success = false;
-             }
-             free(md);
-             break;
-           }
+            // Printf is a pointer, which is serialized by serializeMetadata() to NULL
+            // in binary; to get the data deserializeCLMetadata() is needed
+            aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+            deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+            size_t totSize = 0;
+            if (deserializedMd->numPrintf > 0) {
+              totSize = sizeof(aclPrintfFmt) * (deserializedMd->numPrintf + 1);
+              for (unsigned x = 0; x < deserializedMd->numPrintf; ++x) {
+                totSize += sizeof(*aclPrintfFmt().argSizes) * deserializedMd->printf[x].numSizes;
+                totSize += deserializedMd->printf[x].fmtStrSize + 1;
+              }
+            }
+            if (!ptr) {
+              *size = totSize;
+              success = true;
+            } else if (*size >= totSize) {
+              char *tmp = reinterpret_cast<char*>(ptr);
+              size_t sizeToCopy = sizeof(aclPrintfFmt) * (deserializedMd->numPrintf + 1);
+              memcpy(ptr, deserializedMd->printf, sizeToCopy);
+              tmp += sizeToCopy;
+              for (unsigned x = 0; x < deserializedMd->numPrintf; ++x) {
+                sizeToCopy = sizeof(*aclPrintfFmt().argSizes) * deserializedMd->printf[x].numSizes;
+                memcpy(tmp, deserializedMd->printf[x].argSizes, sizeToCopy);
+                memcpy(reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes, tmp, sizeof(*aclPrintfFmt().argSizes));
+                // reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes = reinterpret_cast<uint32_t*>(tmp);
+                tmp += sizeToCopy;
+                sizeToCopy = deserializedMd->printf[x].fmtStrSize;
+                memcpy(tmp, deserializedMd->printf[x].fmtStr, sizeToCopy);
+                reinterpret_cast<aclPrintfFmt*>(ptr)[x].fmtStr = tmp;
+                tmp += sizeToCopy;
+                *(tmp++) = '\0';
+              }
+              success = true;
+            }
+            break;
+          }
     case RT_DEVICE_ENQUEUE: {
-           if (size != NULL && ptr == NULL) {
-             (*size) = sizeof(aclMetadata().enqueue_kernel);
-           } else if (ptr != NULL && (*size) >= (sizeof(aclMetadata().enqueue_kernel))) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(ptr, &md->enqueue_kernel, sizeof(md->enqueue_kernel));
-           } else {
-             success = false;
-           }
-           break;
-        }
+            size_t enqueue_kernelSize = sizeof(md->enqueue_kernel);
+            if (!ptr) {
+              *size = enqueue_kernelSize;
+              success = true;
+            } else if (*size >= enqueue_kernelSize) {
+              memcpy(ptr, &md->enqueue_kernel, enqueue_kernelSize);
+              success = true;
+            }
+            break;
+          }
     // Temporary approach till the "ldk" instruction is supported.
     case RT_KERNEL_INDEX: {
-           if (size != NULL && ptr == NULL) {
-             (*size) = sizeof(aclMetadata().kernel_index);
-           } else if (ptr != NULL && (*size) >= (sizeof(aclMetadata().kernel_index))) {
-               const aclMetadata *md = reinterpret_cast<const aclMetadata*>(roSec);
-               memcpy(ptr, &md->kernel_index, sizeof(md->kernel_index));
-           } else {
-             success = false;
-           }
-           break;
-        }
+            size_t kernel_indexSize = sizeof(md->kernel_index);
+            if (!ptr) {
+              *size = kernel_indexSize;
+              success = true;
+            } else if (*size >= kernel_indexSize) {
+              memcpy(ptr, &md->kernel_index, kernel_indexSize);
+              success = true;
+            }
+            break;
+          }
   }
   return (success) ? ACL_SUCCESS : ACL_ERROR;
 }
