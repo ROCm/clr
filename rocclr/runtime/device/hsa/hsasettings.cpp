@@ -45,7 +45,7 @@ Settings::create(bool doublePrecision)
     enableExtension(ClKhrLocalInt32BaseAtomics);
     enableExtension(ClKhrLocalInt32ExtendedAtomics);
     enableExtension(ClExtAtomicCounters32);
-    enableExtension(ClKhr3DImageWrites);
+    //enableExtension(ClKhr3DImageWrites);
     enableExtension(ClKhrGlSharing);
     enableExtension(ClAmdMediaOps);
     enableExtension(ClAmdMediaOps2);
@@ -53,8 +53,8 @@ Settings::create(bool doublePrecision)
     enableExtension(ClKhrD3d10Sharing);
     enableExtension(ClKhrD3d11Sharing);
 #endif // _WIN32
-	enableExtension(ClKhrImage2dFromBuffer);
-	enableExtension(ClAmdImage2dFromBufferReadOnly);
+    //enableExtension(ClKhrImage2dFromBuffer);
+    //enableExtension(ClAmdImage2dFromBufferReadOnly);
     // Make sure device supports doubles
     doublePrecision_ &= doublePrecision;
 

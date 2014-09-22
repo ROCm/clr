@@ -490,7 +490,8 @@ Device::mapHSADeviceToOpenCLDevice(const HsaDevice *dev)
 
     info_.maxWorkGroupSize_ = dev->wave_front_size * dev->max_waves_per_simd;
     info_.maxClockFrequency_ = dev->max_clock_rate_of_f_compute;
-    info_.imageSupport_ = dev->is_image_support;
+    //info_.imageSupport_ = dev->is_image_support;
+    info_.imageSupport_ = false;
 
     info_.localMemSizePerCU_ = dev->group_memory_size;
 
