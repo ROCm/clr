@@ -250,6 +250,9 @@ Settings::create(
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
         viPlus_ = true;
+        if (target == CAL_TARGET_CARRIZO) {
+            apuSystem_ = true;
+        }
         // Fall through to CI ...
     case CAL_TARGET_KALINDI:
     case CAL_TARGET_SPECTRE:
