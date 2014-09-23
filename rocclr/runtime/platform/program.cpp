@@ -1,7 +1,8 @@
 //
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
-
+#include "top.hpp"
+#include "device/appprofile.hpp"
 #include "platform/program.hpp"
 #include "platform/context.hpp"
 #include "utils/options.hpp"
@@ -173,6 +174,10 @@ Program::compile(
         if (AMD_OCL_BUILD_OPTIONS != NULL) {
             // Override options.
             cppstr = AMD_OCL_BUILD_OPTIONS;
+        }
+        if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
+          cppstr.append(" ");
+          cppstr.append(Device::appProfile()->GetBuildOptsAppend());
         }
         if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
             cppstr.append(" ");
@@ -426,6 +431,10 @@ Program::build(
             // Override options.
             cppstr = AMD_OCL_BUILD_OPTIONS;
         }
+        if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
+          cppstr.append(" ");
+          cppstr.append(Device::appProfile()->GetBuildOptsAppend());
+        }
         if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
             cppstr.append(" ");
             cppstr.append(AMD_OCL_BUILD_OPTIONS_APPEND);
@@ -542,6 +551,10 @@ Program::buildNoOpt(const Device& device, const std::string& kernelName)
     if (AMD_OCL_BUILD_OPTIONS != NULL) {
       // Override options.
       cppstr = AMD_OCL_BUILD_OPTIONS;
+    }
+    if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
+      cppstr.append(" ");
+      cppstr.append(Device::appProfile()->GetBuildOptsAppend());
     }
     if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
       cppstr.append(" ");
