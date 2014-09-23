@@ -2411,27 +2411,36 @@ if_aclQueryInfo(aclCompiler *cl,
             // in binary; to get the data deserializeCLMetadata() is needed
             aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
             deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
-            size_t totSize = sizeof(aclArgData) * (deserializedMd->numArgs + 1);
-            for (unsigned x = 0; x < deserializedMd->numArgs; ++x) {
-              totSize += deserializedMd->args[x].typeStrSize + deserializedMd->args[x].argNameSize + 2;
+            size_t totSize = 0;
+            if (deserializedMd->numArgs > 0) {
+              // 1 additional elemet is the array's end marker,
+              // which points to the structure with struct_size == 0
+              totSize = sizeof(aclArgData) * (deserializedMd->numArgs + 1);
+              for (unsigned x = 0; x < deserializedMd->numArgs; ++x) {
+                totSize += deserializedMd->args[x].typeStrSize + deserializedMd->args[x].argNameSize + 2;
+              }
             }
             if (!ptr) {
               *size = totSize;
               success = true;
             } else if (*size >= totSize) {
               char *tmp = reinterpret_cast<char*>(ptr);
-              memset(ptr, 0, *size);
               size_t sizeToCopy = sizeof(aclArgData) * (deserializedMd->numArgs + 1);
               memcpy(ptr, deserializedMd->args, sizeToCopy);
+              // shift pointer at the end of the POD struct aclArgData
               tmp += sizeToCopy;
               for (unsigned x = 0; x < deserializedMd->numArgs; ++x) {
                 sizeToCopy = deserializedMd->args[x].argNameSize;
+                // copying argStr data
                 memcpy(tmp, deserializedMd->args[x].argStr, sizeToCopy);
+                // copying pointer to argStr data
                 reinterpret_cast<aclArgData*>(ptr)[x].argStr = tmp;
                 tmp += sizeToCopy;
                 *(tmp++) = '\0';
                 sizeToCopy = deserializedMd->args[x].typeStrSize;
+                // copying typeStr data
                 memcpy(tmp, deserializedMd->args[x].typeStr, sizeToCopy);
+                // copying pointer to typeStr data
                 reinterpret_cast<aclArgData*>(ptr)[x].typeStr = tmp;
                 tmp += sizeToCopy;
                 *(tmp++) = '\0';
@@ -2447,6 +2456,8 @@ if_aclQueryInfo(aclCompiler *cl,
             deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
             size_t totSize = 0;
             if (deserializedMd->numPrintf > 0) {
+              // 1 additional elemet is the array's end marker,
+              // which points to the structure with struct_size == 0
               totSize = sizeof(aclPrintfFmt) * (deserializedMd->numPrintf + 1);
               for (unsigned x = 0; x < deserializedMd->numPrintf; ++x) {
                 totSize += sizeof(*aclPrintfFmt().argSizes) * deserializedMd->printf[x].numSizes;
@@ -2460,15 +2471,19 @@ if_aclQueryInfo(aclCompiler *cl,
               char *tmp = reinterpret_cast<char*>(ptr);
               size_t sizeToCopy = sizeof(aclPrintfFmt) * (deserializedMd->numPrintf + 1);
               memcpy(ptr, deserializedMd->printf, sizeToCopy);
+              // shift pointer at the end of the POD struct aclPrintfFmt
               tmp += sizeToCopy;
               for (unsigned x = 0; x < deserializedMd->numPrintf; ++x) {
                 sizeToCopy = sizeof(*aclPrintfFmt().argSizes) * deserializedMd->printf[x].numSizes;
+                // copying argSizes data
                 memcpy(tmp, deserializedMd->printf[x].argSizes, sizeToCopy);
-                memcpy(reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes, tmp, sizeof(*aclPrintfFmt().argSizes));
-                // reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes = reinterpret_cast<uint32_t*>(tmp);
+                // copying pointer to argSizes data
+                memcpy(&reinterpret_cast<aclPrintfFmt*>(ptr)[x].argSizes, &tmp, sizeof(void*));
                 tmp += sizeToCopy;
                 sizeToCopy = deserializedMd->printf[x].fmtStrSize;
+                // copying fmtStr data
                 memcpy(tmp, deserializedMd->printf[x].fmtStr, sizeToCopy);
+                // copying pointer to fmtStr data
                 reinterpret_cast<aclPrintfFmt*>(ptr)[x].fmtStr = tmp;
                 tmp += sizeToCopy;
                 *(tmp++) = '\0';
