@@ -155,7 +155,12 @@ Settings::create(
     threadTraceEnable_ = false;
 
     // Save resource cache size
+#ifdef ATI_OS_LINUX
+    // Due to EPR#406216, set the default value for Linux for now
+    resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
+#else
     resourceCacheSize_ = std::max((calAttr.localRAM / 8) * Mi, GPU_RESOURCE_CACHE_SIZE * Mi);
+#endif
 
     if (calAttr.doublePrecision) {
         // Report FP_FAST_FMA define if double precision HW
