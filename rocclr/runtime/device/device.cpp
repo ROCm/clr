@@ -51,6 +51,7 @@ namespace amd {
 std::vector<Device*> *Device::devices_ = NULL;
 bool Device::isHsaDeviceAvailable_ = false;
 bool Device::isGpuDeviceAvailable_ = false;
+AppProfile Device::appProfile_;
 
 #if defined(WITH_HSA_DEVICE)
 AppProfile* Device::oclhsaAppProfile_ = NULL;
@@ -150,6 +151,8 @@ Device::init()
     assert(!Runtime::initialized() && "initialize only once");
     bool ret = false;
     devices_ = NULL;
+    appProfile_.init();
+
 
 // IMPORTANT: Note that we are initialiing HSA stack first and then
 // GPU stack. The order of initialization is signiicant and if changed

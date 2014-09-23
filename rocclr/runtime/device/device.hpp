@@ -1675,6 +1675,9 @@ public:
     //! RTTI internal implementation
     virtual ObjectType objectType() const {return ObjectTypeDevice;}
 
+    //! Returns app profile
+    static const AppProfile* appProfile() {return &appProfile_;}
+
 protected:
     //! Enable the specified extension
     char* getExtensionString();
@@ -1683,6 +1686,7 @@ protected:
     device::Settings*   settings_;  //!< Device settings
     bool                online_;    //!< The device in online
     BlitProgram*    blitProgram_;   //!< Blit program info
+    static AppProfile appProfile_;  //!< application profile
 
 private:
     bool IsHsaCapableDevice();

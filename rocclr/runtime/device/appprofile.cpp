@@ -6,6 +6,7 @@
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 #include "appprofile.hpp"
+#include <cstdlib>
 
 static void* __stdcall adlMallocCallback(int n)
 {
@@ -91,6 +92,8 @@ AppProfile::AppProfile(): hsaDeviceHint_(0),
                           profileOverridesAllSettings_(false)
 {
     appFileName_ = amd::Os::getAppFileName();
+    propertyDataMap_.insert(DataMap::value_type("BuildOptsAppend",
+        PropertyData(DataType_String, &buildOptsAppend_)));
 }
 
 AppProfile::~AppProfile()
@@ -144,6 +147,73 @@ cl_device_type AppProfile::ApplyHsaDeviceHintFlag(const cl_device_type& type)
 
     // Do not apply app profile hsa device hint.
     return type;
+}
+
+bool AppProfile::ParseApplicationProfile()
+{
+    amd::ADL* adl = new amd::ADL;
+
+    if ((adl == NULL) || !adl->init()) {
+        delete adl;
+        return false;
+    }
+
+    ADLApplicationProfile* pProfile = NULL;
+
+    // Apply blb configurations
+    int result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(
+        adl->adlContext(), wsAppFileName_.c_str(), NULL, NULL,
+        L"OCL", &pProfile);
+
+    delete adl;
+
+    if (pProfile == NULL) {
+        return false;
+    }
+
+    PropertyRecord* firstProperty = pProfile->record;
+    uint32_t valueOffset = 0;
+    const int BUFSIZE = 1024;
+    wchar_t wbuffer[BUFSIZE];
+    char buffer[2 * BUFSIZE];
+
+    for (int index = 0; index < pProfile->iCount; index++) {
+        PropertyRecord* profileProperty = reinterpret_cast<PropertyRecord*>
+            ((reinterpret_cast<char*>(firstProperty)) + valueOffset);
+
+        // Get property name
+        char* propertyName = profileProperty->strName;
+        auto entry = propertyDataMap_.find(std::string(propertyName));
+        if (entry == propertyDataMap_.end()) {
+            // unexpected name
+            valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
+            continue;
+        }
+
+        // Get the property value
+        switch (entry->second.type_) {
+        case DataType_Boolean:
+            *(reinterpret_cast<bool*>(entry->second.data_)) =
+                profileProperty->uData[0] ? true : false;
+            break;
+        case DataType_String: {
+            assert((size_t)(profileProperty->iDataSize) < sizeof(wbuffer) - 2 &&
+                "app profile string too long");
+            memcpy(wbuffer, profileProperty->uData, profileProperty->iDataSize);
+            wbuffer[profileProperty->iDataSize / 2] = L'\0';
+            size_t len = wcstombs(buffer, wbuffer, sizeof(buffer));
+            assert(len < sizeof(buffer) - 1 && "app profile string too long");
+            *(reinterpret_cast<std::string*>(entry->second.data_)) = buffer;
+            break;
+        }
+        default:
+            break;
+        }
+        valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
+    }
+
+    free(pProfile);
+    return true;
 }
 
 }

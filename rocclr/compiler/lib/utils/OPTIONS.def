@@ -809,6 +809,14 @@ OPTION(OT_UINT32, \
        100000, 0, 0xFFFFFFFF, NULL, \
        "Set kernel size threshold for inliner (default 200000).")
 
+// -wokth=int or --waves-opt-kernel-threshold (default 0)
+OPTION(OT_UINT32, \
+       OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
+       "wokth", "waves-opt-kernel-threshold", \
+       WavesOptKernelThreshold, \
+       0xFFFFFFFF, 0, 0xFFFFFFFF, NULL, \
+       "Enable waves optimization when kernel size is greater than this threshold.")
+
 //  -fdef-res-id  -fno-def-res-id
 OPTION(OT_BOOL, \
        OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
