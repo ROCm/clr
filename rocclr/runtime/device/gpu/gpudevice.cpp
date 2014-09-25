@@ -538,12 +538,6 @@ void Device::fillDeviceInfo(
             cl_ulong(calStatus.largestBlockVisibleHeap * Mi),
             cl_ulong(calStatus.largestBlockInvisibleHeap * Mi));
 
-        if (settings().apuSystem_) {
-            info_.maxMemAllocSize_ = std::max(
-                ((static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi) / 2),
-                info_.maxMemAllocSize_);
-        }
-
         info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
             std::min(GPU_MAX_ALLOC_PERCENT, 100u) / 100u);
 
