@@ -1913,12 +1913,13 @@ HSAILProgram::linkImpl(
 }
 
 aclType
-HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stages)
+HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStages, bool& needOptionsCheck)
 {
     acl_error errorCode;
     size_t secSize = 0;
-    complete_stages.clear();
+    completeStages.clear();
     aclType from = ACL_TYPE_DEFAULT;
+    needOptionsCheck = true;
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
 
     // Checking llvmir in .llvmir section
@@ -1936,7 +1937,7 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stag
         isOpts = false;
     }
     if (isLlvmirText && isOpts) {
-        complete_stages.push_back(from);
+        completeStages.push_back(from);
         from = ACL_TYPE_LLVMIR_BINARY;
     }
     bool isHsailText = true;
@@ -1967,8 +1968,10 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stag
     if (errorCode != ACL_SUCCESS) {
         isBrigOps = false;
     }
+    bool isBrig = false;
     if (isBrigStrtab && isBrigCode && isBrigOps) {
-        complete_stages.push_back(from);
+        isBrig = true;
+        completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_BINARY;
         // Here we should check that CG stage was done.
         // Right now there are 2 criterions to check it (besides BRIG itself):
@@ -1977,12 +1980,12 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stag
         // Unfortunately there is no appropriate way in Compiler Lib to check 1.
         // because kernel names are unknown here, therefore only 2.
         if (isHsailText) {
-            complete_stages.push_back(from);
+            completeStages.push_back(from);
             from = ACL_TYPE_CG;
         }
     }
     else if (isHsailText) {
-        complete_stages.push_back(from);
+        completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_TEXT;
     }
     // Checking ISA in .text section
@@ -1993,23 +1996,45 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& complete_stag
         isShaderIsa = false;
     }
     if (isShaderIsa) {
-        switch (from) {
-        case ACL_TYPE_LLVMIR_BINARY:
-            complete_stages.clear();
-            from = ACL_TYPE_DEFAULT;
-            break;
-        case ACL_TYPE_HSAIL_BINARY:
-        case ACL_TYPE_CG:
-            complete_stages.push_back(from);
-            from = ACL_TYPE_ISA;
-            break;
-        case ACL_TYPE_HSAIL_TEXT:
-        default:
-            break;
-        }
+        completeStages.push_back(from);
+        from = ACL_TYPE_ISA;
     }
-    if (complete_stages.empty()) {
-        complete_stages.push_back(from);
+    std::string sCurOptions = compileOptions_ + linkOptions_;
+    amd::option::Options curOptions;
+    amd::option::parseAllOptions(sCurOptions, curOptions);
+    switch (from) {
+    // compile from HSAIL text, no matter prev. stages and options
+    case ACL_TYPE_HSAIL_TEXT:
+        needOptionsCheck = false;
+        break;
+    case ACL_TYPE_HSAIL_BINARY:
+    case ACL_TYPE_CG:
+        // do not check options, if LLVMIR is absent or might be absent
+        if (curOptions.oVariables->BinLLVMIR || !isLlvmirText) {
+            needOptionsCheck = false;
+        }
+        break;
+    case ACL_TYPE_ISA:
+        // do not check options, if LLVMIR is absent or might be absent
+        if (curOptions.oVariables->BinLLVMIR || !isLlvmirText) {
+            needOptionsCheck = false;
+        }
+        if (isBrig && isHsailText) {
+          if (curOptions.oVariables->BinHSAIL) {
+              needOptionsCheck = false;
+          }
+        // recompile from prev. stage, if BRIG || HSAIL are absent
+        } else {
+          from = completeStages.back();
+          completeStages.pop_back();
+          needOptionsCheck = true;
+        }
+        break;
+    // recompilation might be needed
+    case ACL_TYPE_LLVMIR_BINARY:
+    case ACL_TYPE_DEFAULT:
+    default:
+        break;
     }
     return from;
 }
@@ -2030,12 +2055,13 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
       }
       // Calculate the next stage to compile from, based on sections in binaryElf_;
       // No any validity checks here
-      std::vector<aclType> complete_stages;
-      continueCompileFrom = getCompilationStagesFromBinary(complete_stages);
+      std::vector<aclType> completeStages;
+      bool needOptionsCheck = true;
+      continueCompileFrom = getCompilationStagesFromBinary(completeStages, needOptionsCheck);
       // Saving binary in the interface class,
       // which also load compile & link options from binary
       setBinary(static_cast<char*>(mem), binary.second);
-      if (!options) {
+      if (!options || !needOptionsCheck) {
           return continueCompileFrom;
       }
       bool recompile = false;
@@ -2072,13 +2098,13 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
           break;
       }
       if (recompile) {
-          while (!complete_stages.empty()) {
-              continueCompileFrom = complete_stages.back();
+          while (!completeStages.empty()) {
+              continueCompileFrom = completeStages.back();
               if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
                   continueCompileFrom == ACL_TYPE_DEFAULT) {
                   break;
               }
-              complete_stages.pop_back();
+              completeStages.pop_back();
           }
       }
     }
