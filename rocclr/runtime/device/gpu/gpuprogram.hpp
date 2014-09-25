@@ -424,9 +424,10 @@ protected:
         );
 
     /* \brief Returns the next stage to compile from, based on sections in binary,
-    *  also returns completed stages in vector, which contains at least ACL_TYPE_DEFAULT
+    *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
+    *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
     */
-    aclType getCompilationStagesFromBinary(std::vector<aclType>& complete_stages);
+    aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages, bool& needOptionsCheck);
 
     /* \brief Returns the next stage to compile from, based on sections and options in binary
     */
