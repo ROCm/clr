@@ -6,9 +6,9 @@
 #define CONCURRENT_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "os/alloc.hpp"
 
+#include <atomic>
 #include <new>
 
 //! \addtogroup Utils
@@ -69,8 +69,8 @@ class ConcurrentLinkedQueue : public HeapObject
         typedef details::TaggedPointerHelper<Node,N> TaggedPointerHelper;
         typedef TaggedPointerHelper* Ptr;
 
-        T value_;          //!< The value stored in that node.
-        Atomic<Ptr> next_; //!< Pointer to the next node
+        T value_;               //!< The value stored in that node.
+        std::atomic<Ptr> next_; //!< Pointer to the next node
 
         //! Create a Node::Ptr
         static inline Ptr ptr(Node* ptr, size_t counter = 0)
@@ -80,8 +80,8 @@ class ConcurrentLinkedQueue : public HeapObject
     };
 
 private:
-    Atomic<typename Node::Ptr> head_; //! Pointer to the oldest element.
-    Atomic<typename Node::Ptr> tail_; //! Pointer to the most recent element.
+    std::atomic<typename Node::Ptr> head_; //! Pointer to the oldest element.
+    std::atomic<typename Node::Ptr> tail_; //! Pointer to the most recent element.
 
 private:
     //! \brief Allocate a free node.
@@ -152,20 +152,24 @@ ConcurrentLinkedQueue<T,N>::enqueue(T elem)
     node->next_ = NULL;
 
     while (true) {
-        typename Node::Ptr tail = tail_;
-        typename Node::Ptr next = tail->ptr()->next_;
-        MemoryOrder::lfence();
-        if (tail == tail_) {
+        typename Node::Ptr tail = tail_.load(std::memory_order_acquire);
+        typename Node::Ptr next =
+            tail->ptr()->next_.load(std::memory_order_acquire);
+        if (tail == tail_.load(std::memory_order_acquire)) {
             if (next->ptr() == NULL) {
-                if (tail->ptr()->next_.compareAndSet(
-                        next, Node::ptr(node, next->tag()+1))) {
-                    tail_.compareAndSet(tail, Node::ptr(node, tail->tag()+1));
+                if (tail->ptr()->next_.compare_exchange_weak(
+                        next, Node::ptr(node, next->tag()+1),
+                        std::memory_order_acq_rel, std::memory_order_acquire)) {
+                    tail_.compare_exchange_strong(
+                        tail, Node::ptr(node, tail->tag()+1),
+                        std::memory_order_acq_rel, std::memory_order_acquire);
                     return;
                 }
             }
             else {
-                tail_.compareAndSet(
-                    tail, Node::ptr(next->ptr(), tail->tag()+1));
+                tail_.compare_exchange_strong(
+                    tail, Node::ptr(next->ptr(), tail->tag()+1),
+                    std::memory_order_acq_rel, std::memory_order_acquire);
             }
         }
     }
@@ -176,22 +180,24 @@ inline T
 ConcurrentLinkedQueue<T,N>::dequeue()
 {
     while (true) {
-        typename Node::Ptr head = head_;
-        typename Node::Ptr tail = tail_;
-        typename Node::Ptr next = head->ptr()->next_;
-        MemoryOrder::lfence();
-        if (head == head_) {
+        typename Node::Ptr head = head_.load(std::memory_order_acquire);
+        typename Node::Ptr tail = tail_.load(std::memory_order_acquire);
+        typename Node::Ptr next =
+            head->ptr()->next_.load(std::memory_order_acquire);
+        if (head == head_.load(std::memory_order_acquire)) {
             if (head->ptr() == tail->ptr()) {
                 if (next->ptr() == NULL) {
                     return NULL;
                 }
-                tail_.compareAndSet(
-                    tail, Node::ptr(next->ptr(), tail->tag()+1));
+                tail_.compare_exchange_strong(
+                    tail, Node::ptr(next->ptr(), tail->tag()+1),
+                    std::memory_order_acq_rel, std::memory_order_acquire);
             }
             else {
                 T value = next->ptr()->value_;
-                if (head_.compareAndSet(
-                        head, Node::ptr(next->ptr(), head->tag()+1))) {
+                if (head_.compare_exchange_weak(
+                        head, Node::ptr(next->ptr(), head->tag()+1),
+                        std::memory_order_acq_rel, std::memory_order_acquire)) {
                     // we can reclaim head now
                     reclaimNode(head->ptr());
                     return value;
