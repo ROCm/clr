@@ -726,7 +726,11 @@ void Device::fillDeviceInfo(
         info_.maxOnDeviceQueues_ = 1;
         info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
         info_.globalVariablePreferredTotalSize_ = static_cast<size_t>(info_.globalMemSize_);
-        info_.maxGlobalVariableSize_ = static_cast<size_t>(info_.maxMemAllocSize_);
+        //! \todo Remove % calculation.
+        //! Use 90% of max single alloc size.
+        //! Boards with max single alloc size around 4GB will fail allocations
+        info_.maxGlobalVariableSize_ = static_cast<size_t>(
+            amd::alignDown(info_.maxMemAllocSize_ * 9 / 10, 256));
     }
 
     if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
