@@ -3,7 +3,6 @@
 //
 
 #include "platform/runtime.hpp"
-#include "thread/atomic.hpp"
 #include "os/os.hpp"
 #include "thread/thread.hpp"
 #include "device/device.hpp"
@@ -24,13 +23,9 @@
 #include <intrin.h>
 #endif
 
+#include <atomic>
 #include <cstdlib>
 #include <iostream>
-
-#ifdef TIMEBOMB
-# include <cstdio>
-# include <time.h>
-#endif // TIMEBOMB
 
 namespace amd {
 
@@ -60,42 +55,25 @@ Runtime::init()
     // from concurrently executing the init() routines. We can't use a
     // Monitor since the system is not yet initialized.
 
-    static Atomic<int> lock = 0;
+    static std::atomic_flag lock = ATOMIC_FLAG_INIT;
     struct CriticalRegion
     {
-        Atomic<int>& lock_;
-        CriticalRegion(Atomic<int>& lock) : lock_(lock)
+        std::atomic_flag& lock_;
+        CriticalRegion(std::atomic_flag& lock) : lock_(lock)
         {
-            while (true) {
-                if (lock == 0 && lock.swap(1) == 0) {
-                    break;
-                }
+            while (lock.test_and_set(std::memory_order_acquire)) {
                 Os::yield();
             }
         }
         ~CriticalRegion()
         {
-            lock_.storeRelease(0);
+            lock_.clear(std::memory_order_release);
         }
     } region(lock);
 
     if (initialized_) {
         return true;
     }
-
-#ifdef TIMEBOMB
-    time_t current = time(NULL);
-    time_t expiration = TIMEBOMB;
-
-    if (current > expiration) {
-        fprintf(stderr, "Expired on %s", asctime(gmtime(&expiration)));
-        return false;
-    }
-    else {
-        fprintf(stderr, "For test only: Expires on %s",
-            asctime(gmtime(&expiration)));
-    }
-#endif // TIMEBOMB
 
     if (   !Flag::init()
         || !option::init()

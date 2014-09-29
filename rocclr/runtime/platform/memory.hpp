@@ -7,13 +7,13 @@
 
 #include "top.hpp"
 #include "utils/flags.hpp"
-#include "thread/atomic.hpp"
 #include "thread/monitor.hpp"
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/interop.hpp"
 #include "device/device.hpp"
 
+#include <atomic>
 #include <utility>
 #include <vector>
 #include <list>
@@ -155,7 +155,7 @@ protected:
     std::map<const Device*, AllocState> deviceAlloced_;
 
     //! Linked list of destructor callbacks.
-    Atomic<DestructorCallBackEntry*> destructorCallbacks_;
+    std::atomic<DestructorCallBackEntry*> destructorCallbacks_;
 
     SharedReference<Context>    context_;       //!< Owning context
     Memory*     parent_;
@@ -170,7 +170,7 @@ protected:
     bool        isParent_;      //!< This object is a parent
     device::VirtualDevice* vDev_;   //!< Memory object belongs to a virtual device only
     bool        forceSysMemAlloc_;  //!< Forces system memory allocation
-    Atomic<uint>  mapCount_;	//!< Keep track of number of mappings for a memory object
+    std::atomic_uint  mapCount_;	//!< Keep track of number of mappings for a memory object
     void *  svmHostAddress_;    //!< svm host address;
     bool    svmPtrCommited_;    //!< svm host address committed flag;
     bool    canBeCached_;         //!< flag to if the object can be cached;

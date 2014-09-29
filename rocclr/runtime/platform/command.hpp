@@ -13,7 +13,6 @@
 #define COMMAND_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "thread/monitor.hpp"
 #include "thread/thread.hpp"
 #include "platform/agent.hpp"
@@ -28,6 +27,7 @@
 #include "CL/cl_ext.h"
 
 #include <algorithm>
+#include <atomic>
 #include <functional>
 #include <vector>
 
@@ -58,7 +58,7 @@ class Event : public RuntimeObject
     {
         struct CallBackEntry* next_; //!< the next entry in the callback list.
 
-        Atomic<CallBackFunction> callback_; //!< callback function pointer.
+        std::atomic<CallBackFunction> callback_; //!< callback function pointer.
         void* data_;     //!< user data passed to the callback function.
         cl_int status_;  //!< execution status triggering the callback.
 
@@ -76,9 +76,9 @@ private:
     Monitor lock_;
 
     SharedReference<Context> context_; //!< context associated with this event.
-    Atomic<CallBackEntry*> callbacks_; //!< linked list of callback entries.
-    volatile cl_int status_;    //!< current execution status.
-    Atomic<uint>    notified_;  //!< Command queue was notified
+    std::atomic<CallBackEntry*> callbacks_; //!< linked list of callback entries.
+    volatile cl_int  status_;    //!< current execution status.
+    std::atomic_flag notified_;  //!< Command queue was notified
 
 protected:
 

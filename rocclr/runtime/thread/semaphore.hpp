@@ -6,9 +6,9 @@
 #define SEMAPHORE_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "utils/util.hpp"
 
+#include <atomic>
 #if defined(__linux__)
 # include <semaphore.h>
 #endif /*linux*/
@@ -29,14 +29,14 @@ class Thread;
 class Semaphore : public HeapObject
 {
 private:
-    Atomic<int> state_; //!< This semaphore's value.
+    std::atomic_int state_; //!< This semaphore's value.
 
 #ifdef _WIN32
     void* handle_; //!< The semaphore object's handle.
-    char padding_[64-sizeof(void*)-sizeof(Atomic<int>)];
+    char padding_[64-sizeof(void*)-sizeof(std::atomic_int)];
 #else // !_WIN32
     sem_t sem_; //!< The semaphore object's identifier.
-    char padding_[64-sizeof(sem_t)-sizeof(Atomic<int>)];
+    char padding_[64-sizeof(sem_t)-sizeof(std::atomic_int)];
 #endif /*!_WIN32*/
 
 public:
@@ -52,7 +52,7 @@ public:
     //! \brief Reset this semaphore.
     void reset()
     {
-        state_.swap(0);
+        state_.store(0, std::memory_order_release);
     }
 };
 

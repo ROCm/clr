@@ -87,12 +87,12 @@ Memory::Memory(
         , isParent_(false)
         , vDev_(NULL)
         , forceSysMemAlloc_(false)
-        , mapCount_(0)
         , svmHostAddress_(svmPtr)
         , svmPtrCommited_(false)
         , canBeCached_(true)
         , lockMemoryOps_("Memory Ops Lock", true)
 {
+    std::atomic_init(&mapCount_, 0u);
 }
 
 Memory::Memory(
@@ -117,7 +117,6 @@ Memory::Memory(
         , isParent_(false)
         , vDev_(NULL)
         , forceSysMemAlloc_(false)
-        , mapCount_(0)
         , svmHostAddress_(parent.getSvmPtr())
         , svmPtrCommited_(parent.isSvmPtrCommited())
         , canBeCached_(true)
@@ -142,6 +141,8 @@ Memory::Memory(
             (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_WRITE_ONLY |
              CL_MEM_HOST_NO_ACCESS);
     }
+
+    std::atomic_init(&mapCount_, 0u);
 }
 
 void
@@ -438,7 +439,7 @@ Memory::setDestructorCallback(DestructorCallBackFunction callback, void* data)
     }
 
     entry->next_ = destructorCallbacks_;
-    while (!destructorCallbacks_.compareAndSet(entry->next_, entry)) {
+    while (!destructorCallbacks_.compare_exchange_weak(entry->next_, entry)) {
         // Someone else is also updating the head of the linked list! reload.
         entry->next_ = destructorCallbacks_;
     }

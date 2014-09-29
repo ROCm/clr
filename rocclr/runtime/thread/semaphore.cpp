@@ -3,7 +3,6 @@
 //
 
 #include "thread/semaphore.hpp"
-#include "thread/atomic.hpp"
 #include "thread/thread.hpp"
 
 #if defined(_WIN32) || defined(__CYGWIN__)
@@ -16,8 +15,8 @@
 namespace amd {
 
 Semaphore::Semaphore()
-  : state_(0)
 {
+    std::atomic_init(&state_, 0);
 #ifdef _WIN32
     handle_ = static_cast<void*>(CreateSemaphore(NULL, 0, LONG_MAX, NULL));
     assert(handle_ != NULL && "CreateSemaphore failed");
@@ -48,14 +47,13 @@ Semaphore::post()
     while (true) {
         state = state_;
         if (state > 0) {
-            // Do a load acquire.
-            MemoryOrder::fence();
-            if (state == state_) {
+            if (state == state_.load(std::memory_order_acquire)) {
                 return;
             }
             continue;
         }
-        if (state_.compareAndSet(state, state+1)) {
+        if (state_.compare_exchange_weak(state, state+1,
+                std::memory_order_acq_rel, std::memory_order_acquire)) {
             break;
         }
     }

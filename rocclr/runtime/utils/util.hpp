@@ -6,8 +6,8 @@
 #define UTIL_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 
+#include <atomic>
 #include <string>
 
 namespace amd {
@@ -186,95 +186,6 @@ inline bool isMultipleOf(T* value, size_t alignment)
     intptr_t ptr  = reinterpret_cast<intptr_t>(value);
     return isMultipleOf(ptr, alignment);
 }
-
-template <class T, class AllocClass = HeapObject>
-struct SimplyLinkedNode : public AllocClass
-{
-    typedef SimplyLinkedNode<T, AllocClass> Node;
-
-protected:
-    Atomic<Node*> next_; /*!< \brief The next element. */
-    T volatile item_;
-
-public:
-    //! \brief Return the next element in the linked-list.
-    Node* next() const { return next_; }
-    //! \brief Return the item.
-    T item() const { return item_; }
-
-    //! \brief Set the next element pointer.
-    void setNext(Node* next) { next_ = next; }
-    //! \brief Set the item.
-    void setItem(T item) { item_ = item; }
-
-    //! \brief Swap the next element pointer.
-    Node* swapNext(Node* next) { return next_.swap(next); }
-
-    //! \brief Compare and set the next element pointer.
-    bool compareAndSetNext(Node* compare, Node* next)
-    {
-        return next_.compareAndSet(compare, next);
-    }
-};
-
-/* For the implementation of a doubly-linked list, check:
- *        Lock-Free and Practical
- *        Deques and Doubly Linked
- *        Lists using Single-Word
- *        Compare-And-Swap
- *
- *        Hakan Sundell, Philippas Tsigas
- *        Department of Computing Science
- *        Chalmers Univ. of Technol. and Goteborg Univ.
- */
-
-template <class T, class AllocClass = HeapObject>
-struct DoublyLinkedNode
-{
-    typedef SimplyLinkedNode<T, AllocClass> Node;
-
-protected:
-    Atomic<Node*> prev_; //!< The previous element.
-    Atomic<Node*> next_; //!< The next element.
-    T volatile item_;
-
-public:
-    //! \brief Return the previous element in the linked-list.
-    Node* prev() const { return prev_; }
-    //! \brief Return the next element in the linked-list.
-    Node* next() const { return next_; }
-    //! \brief Return the item.
-    T item() const { return item_; }
-
-    //! \brief Set the previous element pointer.
-    void setPrev(Node* prev) { prev_ = prev; }
-    //! \brief Set the next element pointer.
-    void setNext(Node* next) { next_ = next; }
-    //! \brief Set the item.
-    void setItem(T item) { item_ = item; }
-
-    //! \brief Swap the previous element pointer.
-    Node* swapPrev(Node* prev)
-    {
-        return prev_.swap(prev);
-    }
-    //! \brief Swap the next element pointer.
-    Node*  swapNext( Node* next)
-    {
-        return next_.swap(next);
-    }
-
-    //! \brief Compare and set the previous element pointer.
-    bool compareAndSetPrev(Node* compare, Node* prev)
-    {
-        return prev_.compareAndSet(compare, prev, false, false);
-    }
-    //! \brief Compare and set the next element pointer.
-    bool compareAndSetNext(Node* compare, Node* next)
-    {
-        return next_.compareAndSet(compare, next, false, false);
-    }
-};
 
 template <class Reference, class Value>
 struct DeviceMap {

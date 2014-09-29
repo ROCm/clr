@@ -6,10 +6,11 @@
 #define MONITOR_HPP_
 
 #include "top.hpp"
-#include "atomic.hpp"
+#include "thread/atomic.hpp"
 #include "thread/semaphore.hpp"
 #include "thread/thread.hpp"
 
+#include <atomic>
 #include <tuple>
 #include <utility>
 
@@ -22,9 +23,43 @@ namespace amd {
  *  @{
  */
 
+namespace details {
+
+template <class T, class AllocClass = HeapObject>
+struct SimplyLinkedNode : public AllocClass
+{
+    typedef SimplyLinkedNode<T, AllocClass> Node;
+
+protected:
+    std::atomic<Node*> next_; /*!< \brief The next element. */
+    T volatile item_;
+
+public:
+    //! \brief Return the next element in the linked-list.
+    Node* next() const { return next_; }
+    //! \brief Return the item.
+    T item() const { return item_; }
+
+    //! \brief Set the next element pointer.
+    void setNext(Node* next) { next_ = next; }
+    //! \brief Set the item.
+    void setItem(T item) { item_ = item; }
+
+    //! \brief Swap the next element pointer.
+    Node* swapNext(Node* next) { return next_.swap(next); }
+
+    //! \brief Compare and set the next element pointer.
+    bool compareAndSetNext(Node* compare, Node* next)
+    {
+        return next_.compare_exchange_strong(compare, next);
+    }
+};
+
+} // namespace details
+
 class Monitor : public HeapObject
 {
-    typedef SimplyLinkedNode<Semaphore*,StackObject> LinkedNode;
+    typedef details::SimplyLinkedNode<Semaphore*,StackObject> LinkedNode;
 
 private:
     static const bool kUnlocked = false;
