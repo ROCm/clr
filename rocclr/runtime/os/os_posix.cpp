@@ -32,6 +32,7 @@
 # define DT_GNU_HASH 0x6ffffef5
 #endif // DT_GNU_HASH
 
+#include <atomic>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -753,7 +754,7 @@ Os::getTempPath()
 std::string
 Os::getTempFileName()
 {
-  static amd::Atomic<size_t> counter = 0;
+  static std::atomic_size_t counter(0);
 
   std::string tempPath = getTempPath();
   std::stringstream tempFileName;

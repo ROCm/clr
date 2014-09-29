@@ -29,18 +29,16 @@ Event::Event(HostQueue& queue)
     : context_(queue.context())
     , callbacks_(NULL)
     , status_(CL_INT_MAX)
-    , notified_(0)
     , profilingInfo_(
         queue.properties().test(CL_QUEUE_PROFILING_ENABLE)
         || Agent::shouldPostEventEvents())
-{ }
+{ notified_.clear(); }
 
 Event::Event(Context& context)
     : context_(context)
     , callbacks_(NULL)
     , status_(CL_SUBMITTED)
-    , notified_(0)
-{ }
+{ notified_.clear(); }
 
 Event::~Event()
 {
@@ -95,7 +93,7 @@ Event::setStatus(cl_int status, uint64_t timeStamp)
         return false;
     }
 
-    if (callbacks_ != NULL) {
+    if (callbacks_ != (CallBackEntry*)0) {
         processCallbacks(status);
     }
 
@@ -131,14 +129,14 @@ Event::setCallback(cl_int status, Event::CallBackFunction callback, void* data)
     }
 
     entry->next_ = callbacks_;
-    while (!callbacks_.compareAndSet(entry->next_, entry)) {
+    while (!callbacks_.compare_exchange_weak(entry->next_, entry)) {
         // Someone else is also updating the head of the linked list! reload.
         entry->next_ = callbacks_;
     }
 
     // Check if the event has already reached 'status'
-    if (status_ <= status && entry->callback_ != NULL) {
-        if (entry->callback_.swap(NULL) != NULL) {
+    if (status_ <= status && entry->callback_ != CallBackFunction(0)) {
+        if (entry->callback_.exchange(NULL) != NULL) {
             callback(as_cl(this), status, entry->data_);
         }
     }
@@ -157,9 +155,9 @@ Event::processCallbacks(cl_int status) const
     CallBackEntry* entry;
     for (entry = callbacks_; entry != NULL; entry = entry->next_) {
         // If the entry's status matches the mask,
-        if (entry->status_ == mask && entry->callback_ != NULL) {
+        if (entry->status_ == mask && entry->callback_ != CallBackFunction(0)) {
             // invoke the callback function.
-            CallBackFunction callback = entry->callback_.swap(NULL);
+            CallBackFunction callback = entry->callback_.exchange(NULL);
             if (callback != NULL) {
                 callback(event, status, entry->data_);
             }
@@ -190,14 +188,12 @@ Event::awaitCompletion()
 bool
 Event::notifyCmdQueue()
 {
-    static uint Notifed = 1;
-    static uint Empty = 0;
     HostQueue* queue = command().queue();
-    if ((NULL != queue) && notified_.compareAndSet(Empty, Notifed)) {
+    if ((NULL != queue) && !notified_.test_and_set()) {
         // Make sure the queue is draining the enqueued commands.
         amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
         if (command == NULL) {
-            notified_.compareAndSet(Notifed, Empty);
+            notified_.clear();
             return false;
         }
         command->enqueue();

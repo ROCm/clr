@@ -731,7 +731,7 @@ Os::getTempPath()
 std::string
 Os::getTempFileName()
 {
-  static amd::Atomic<size_t> counter = 0;
+  static std::atomic_size_t counter(0);
 
   std::string tempPath = getTempPath();
   std::stringstream tempFileName;
