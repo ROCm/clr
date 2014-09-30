@@ -35,14 +35,14 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
   } else if (isGPU) {
 #ifdef WITH_TARGET_HSAIL
     if (Options()->libraryType_ == amd::GPU_Library_HSAIL) {
-      if (HLC_Experimental_Enable_Calls) {
+      if (HLC_HSAIL_Enable_Calls) {
         HLC_Disable_Amd_Inline_All = true;
       }
       // Always create Inliner regardless of OptLevel
       if (HLC_Force_Always_Inliner_Pass) {
         Builder.Inliner = createAlwaysInlinerPass();
       } else {
-        Builder.Inliner = createFunctionInliningPass(500);
+        Builder.Inliner = createFunctionInliningPass(HLC_HSAIL_Inline_Threshold);
       }
     } else 
 #endif
