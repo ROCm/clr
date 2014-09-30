@@ -43,9 +43,8 @@ Semaphore::~Semaphore()
 void
 Semaphore::post()
 {
-    int state;
-    while (true) {
-        state = state_;
+    int state = state_;
+    for (;;) {
         if (state > 0) {
             if (state == state_.load(std::memory_order_acquire)) {
                 return;
