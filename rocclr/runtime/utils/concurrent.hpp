@@ -151,11 +151,11 @@ ConcurrentLinkedQueue<T,N>::enqueue(T elem)
     node->value_ = elem;
     node->next_ = NULL;
 
-    while (true) {
+    for (;;) {
         typename Node::Ptr tail = tail_.load(std::memory_order_acquire);
         typename Node::Ptr next =
             tail->ptr()->next_.load(std::memory_order_acquire);
-        if (tail == tail_.load(std::memory_order_acquire)) {
+        if (likely(tail == tail_.load(std::memory_order_acquire))) {
             if (next->ptr() == NULL) {
                 if (tail->ptr()->next_.compare_exchange_weak(
                         next, Node::ptr(node, next->tag()+1),
@@ -179,12 +179,12 @@ template <typename T, int N>
 inline T
 ConcurrentLinkedQueue<T,N>::dequeue()
 {
-    while (true) {
+    for (;;) {
         typename Node::Ptr head = head_.load(std::memory_order_acquire);
         typename Node::Ptr tail = tail_.load(std::memory_order_acquire);
         typename Node::Ptr next =
             head->ptr()->next_.load(std::memory_order_acquire);
-        if (head == head_.load(std::memory_order_acquire)) {
+        if (likely(head == head_.load(std::memory_order_acquire))) {
             if (head->ptr() == tail->ptr()) {
                 if (next->ptr() == NULL) {
                     return NULL;

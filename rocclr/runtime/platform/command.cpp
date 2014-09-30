@@ -129,10 +129,8 @@ Event::setCallback(cl_int status, Event::CallBackFunction callback, void* data)
     }
 
     entry->next_ = callbacks_;
-    while (!callbacks_.compare_exchange_weak(entry->next_, entry)) {
-        // Someone else is also updating the head of the linked list! reload.
-        entry->next_ = callbacks_;
-    }
+    while (!callbacks_.compare_exchange_weak(entry->next_, entry))
+        ; // Someone else is also updating the head of the linked list! reload.
 
     // Check if the event has already reached 'status'
     if (status_ <= status && entry->callback_ != CallBackFunction(0)) {

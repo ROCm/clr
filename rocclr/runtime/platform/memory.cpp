@@ -439,10 +439,8 @@ Memory::setDestructorCallback(DestructorCallBackFunction callback, void* data)
     }
 
     entry->next_ = destructorCallbacks_;
-    while (!destructorCallbacks_.compare_exchange_weak(entry->next_, entry)) {
-        // Someone else is also updating the head of the linked list! reload.
-        entry->next_ = destructorCallbacks_;
-    }
+    while (!destructorCallbacks_.compare_exchange_weak(entry->next_, entry))
+        ; // Someone else is also updating the head of the linked list! reload.
 
     return true;
 }
