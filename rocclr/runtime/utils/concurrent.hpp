@@ -126,7 +126,7 @@ ConcurrentLinkedQueue<T,N>::ConcurrentLinkedQueue()
 
     // Make sure the instance is fully initialized before it becomes
     // globally visible.
-    MemoryOrder::sfence();
+    std::atomic_thread_fence(std::memory_order_release);
 }
 
 template <typename T, int N>

@@ -23,6 +23,7 @@
 # include <xmmintrin.h>
 #endif // !_WIN32
 
+#include <atomic>
 #include <utility>
 
 namespace amd {
@@ -30,59 +31,6 @@ namespace amd {
 /*! \addtogroup Threads
  *  @{
  *
- *  \defgroup MemOrder Memory ordering
- *  @{
- */
-
-/*! \brief Memory order access operations.
- */
-class MemoryOrder : AllStatic
-{
-public:
-    /*! \brief Execute a memory fence.
-     *
-     *  Perform a serializing operation on loads and stores which guarantees
-     *  that all memory operations dispatched prior to the fence will be
-     *  globally visible before any other memory operation following the fence.
-     */
-    static void fence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_mfence();
-#   else // !ATI_ARCH_X86
-        __sync_synchronize();
-#   endif // !ATI_ARCH_X86
-    }
-
-    /*! \brief Execute a loads fence.
-     *
-     *  Perform a serializing operation on loads which guarantees that all
-     *  load from memory operations dispatched prior to the lfence will be
-     *  globally visible before any other load following the lfence.
-     */
-    static void lfence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_lfence();
-#   else // !ATI_ARCH_X86
-        fence();
-#   endif // !ATI_ARCH_X86
-    }
-
-    /*! \brief Execute a stores fence.
-     *
-     *  Perform a serializing operation on stores which guarantees that all
-     *  store to memory operations dispatched prior to the sfence will be
-     *  globally visible before any other store following the sfence.
-     */
-    static void sfence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_sfence();
-#   else // !ATI_ARCH_X86
-        fence();
-#   endif // !ATI_ARCH_X86
-    }
-};
-
-/*! @}
  *  \addtogroup Atomic Atomic Operations
  *  @{
  */
@@ -564,7 +512,7 @@ public:
      */
     void storeRelease(T value)
     {
-        MemoryOrder::fence();
+        std::atomic_thread_fence(std::memory_order_release);
         value_ = value;
     }
 
@@ -577,7 +525,7 @@ public:
     T loadAcquire() const
     {
         T value = value_;
-        MemoryOrder::fence();
+        std::atomic_thread_fence(std::memory_order_acquire);
         return value;
     }
 };
@@ -590,83 +538,6 @@ make_atomic(T& t)
     return Atomic<T&>(t);
 }
 
-
-template <typename T>
-class AtomicMarkableReference
-{
-private:
-    static const intptr_t kMarkBitMask = 0x1;
-
-private:
-    Atomic<T*> reference_;
-
-private:
-    static intptr_t markMask(bool mark)
-    {
-        return mark ? kMarkBitMask : intptr_t(0);
-    }
-
-public:
-    AtomicMarkableReference()
-        : reference_(NULL)
-    { }
-
-    AtomicMarkableReference(T* ptr, bool mark = false)
-        : reference_((T*)((intptr_t) ptr | markMask(mark)))
-    { }
-
-    bool compareAndSet(
-        T* expectedPtr, T* newPtr,
-        bool expectedMark, bool newMark)
-    {
-        return reference_.compareAndSet(
-            (T*)((intptr_t) expectedPtr | markMask(expectedMark)),
-            (T*)((intptr_t) newPtr | markMask(newMark)));
-    }
-
-    std::pair<T*,bool> swap(T* newPtr, bool newMark)
-    {
-        T* prev = reference_.swap(
-            (T*)((intptr_t) newPtr | markMask(newMark)));
-        return std::make_pair(
-            (T*) ((intptr_t) prev & ~kMarkBitMask),
-            ((intptr_t) prev & kMarkBitMask) != 0);
-    }
-
-    bool tryMark(T* expectedPtr, bool newMark)
-    {
-        T* current = reference_;
-        if (((intptr_t) current & ~kMarkBitMask) != (intptr_t) expectedPtr) {
-            return false;
-        }
-        bool currentMark = ((intptr_t) current & kMarkBitMask) != 0;
-        return currentMark == newMark || reference_.compareAndSet(current,
-            (T*)((intptr_t) expectedPtr | markMask(newMark)));
-    }
-
-    bool isMarked() const
-    {
-        return ((intptr_t)(T*) reference_ & kMarkBitMask) != 0;
-    }
-
-    std::pair<T*,bool> get() const
-    {
-        T* current = reference_;
-        return std::make_pair(
-            (T*) ((intptr_t) current & ~kMarkBitMask),
-            ((intptr_t) current & kMarkBitMask) != 0);
-    }
-
-    T* getReference() const
-    {
-        return (T*) ((intptr_t)(T*) reference_ & ~kMarkBitMask);
-    }
-
-    void set(T* ptr, bool mark)
-    {
-        reference_ = (T*)((intptr_t) ptr | markMask(mark));
-    }
-};
 
 /*! @}
  *  @}
