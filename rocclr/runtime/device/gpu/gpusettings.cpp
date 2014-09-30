@@ -31,7 +31,7 @@ Settings::Settings()
     // By Default persistent writes will be disabled.
     stagingWritePersistent_ = GPU_STAGING_WRITE_PERSISTENT;
 
-    maxRenames_         = 32;
+    maxRenames_         = 16;
     maxRenameSize_      = 4 * Mi;
 
     // The global heap settings

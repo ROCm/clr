@@ -3066,12 +3066,19 @@ bool
 VirtualGPU::allocConstantBuffers()
 {
     // Allocate/reallocate constant buffers
-    const static size_t MinCbSize = 64 * Ki;
+    size_t minCbSize;
+    if (dev().settings().siPlus_) {
+        // GCN doesn't really have a limit
+        minCbSize = 128 * Ki;
+    }
+    else {
+        minCbSize = 64 * Ki;
+    }
     uint    i;
 
     // Create/reallocate constant buffer resources
     for (i = 0; i < MaxConstBuffersArguments; ++i) {
-        ConstBuffer* constBuf = new ConstBuffer(*this, ((MinCbSize +
+        ConstBuffer* constBuf = new ConstBuffer(*this, ((minCbSize +
             ConstBuffer::VectorSize - 1) / ConstBuffer::VectorSize));
 
         if ((constBuf != NULL) && constBuf->create()) {
@@ -3086,7 +3093,7 @@ VirtualGPU::allocConstantBuffers()
 
     // 8xx workaround for num workgroups
     if (!dev().settings().siPlus_) {
-        numGrpCb_ = new ConstBuffer(*this, ((MinCbSize +
+        numGrpCb_ = new ConstBuffer(*this, ((minCbSize +
                 ConstBuffer::VectorSize - 1) / ConstBuffer::VectorSize));
         if ((numGrpCb_ == NULL) || !numGrpCb_->create()) {
             LogError("Could not allocate num groups constant buffer!");
