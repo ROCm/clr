@@ -223,8 +223,7 @@ AddNoInlineAttr(llvm::Module* M)
 {
   LLVMContext &Context = M->getContext();
   for (llvm::Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-    if (I->hasName() &&
-        !I->isDeclaration() &&
+    if (!I->isDeclaration() &&
         !I->isIntrinsic() &&
         !I->getName().startswith("__amdil") &&
         !I->getFnAttributes().hasAttribute(Attributes::AlwaysInline) &&
