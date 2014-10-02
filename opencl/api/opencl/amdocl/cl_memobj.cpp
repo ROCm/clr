@@ -43,18 +43,25 @@
 
 /*! \brief Helper function to validate cl_mem_flags
  *
+ * chkReadWrite: true: check the flag CL_MEM_KERNEL_READ_AND_WRITE
+ *              false: don't check the falg CL_MEM_KERNEL_READ_AND_WRITE
  *  \return true of flags are valid, otherwise - false
 */
 static bool
-validateFlags( cl_mem_flags flags)
+validateFlags( cl_mem_flags flags, bool chkReadWrite=false)
 {
     // check flags for validity
     cl_bitfield temp = flags
         & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY);
+    if (chkReadWrite) {
+        temp |= (flags & CL_MEM_KERNEL_READ_AND_WRITE) ;
+    }
 
     if(temp
         && !(CL_MEM_READ_WRITE == temp
         || CL_MEM_WRITE_ONLY == temp
+        || (chkReadWrite && (CL_MEM_KERNEL_READ_AND_WRITE == temp 
+                         || (CL_MEM_KERNEL_READ_AND_WRITE | CL_MEM_READ_WRITE) == temp))
         || CL_MEM_READ_ONLY == temp)) {
         return false;
     }
@@ -2139,7 +2146,7 @@ RUNTIME_ENTRY(cl_int, clGetSupportedImageFormats, (
         return CL_INVALID_CONTEXT;
     }
     // check flags for validity
-    if(!validateFlags(flags)) {
+    if(!validateFlags(flags, true)) {
         LogWarning("invalid parameter \"flags\"");
         return CL_INVALID_VALUE;
     }
