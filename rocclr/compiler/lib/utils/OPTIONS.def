@@ -755,9 +755,9 @@ OPTION(OT_UINT32, \
       OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
       "scras", "sc-si-opt-reg-alloc-strategy", \
       SCSIOptRegAllocStrategy, \
-      0, 0, 3, NULL, \
-      "Set SI+ shader compiler register allocation strategy 0-default, "
-      "1-balanced, 2-minimize GPRs, 3-minimize moves (default 0).")
+      2, 0, 3, NULL, \
+      "Set SI+ shader compiler register allocation strategy 0-SC default, "
+      "1-balanced, 2-minimize GPRs, 3-minimize moves (default 2).")
 
 //  -fuser-no-inline  -fno-user-no-inline
 OPTION(OT_BOOL, \
