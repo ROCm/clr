@@ -4836,11 +4836,6 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBufferFromImageAMD, (
     }
 
     amd::Context& amdContext = *as_amd(context);
-    if (amdContext.devices().size() > 1) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter: context");
-        return (cl_mem) 0;
-    }
 
     const std::vector<amd::Device*>& devices = amdContext.devices();
     std::vector<amd::Device*>::const_iterator it;
