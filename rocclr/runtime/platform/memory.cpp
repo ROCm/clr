@@ -1056,7 +1056,7 @@ Image::getSupportedFormats(
         }
         // Currently we are not supported sRGB for write_imagef (extension cl_khr_srgb_image_writes)
         if ((image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER) ||
-            ((flags & (CL_MEM_WRITE_ONLY | CL_MEM_READ_WRITE)) != 0)) {
+            ((flags & (CL_MEM_WRITE_ONLY | CL_MEM_READ_WRITE | CL_MEM_KERNEL_READ_AND_WRITE)) != 0)) {
             srgbWriteSupported = false;
         }
     }
