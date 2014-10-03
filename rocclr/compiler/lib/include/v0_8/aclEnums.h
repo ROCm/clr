@@ -201,7 +201,8 @@ typedef enum _rt_query_types_enum_0_8 {
   RT_DEVICE_ENQUEUE   = 11,
   RT_KERNEL_INDEX     = 12,
   RT_KERNEL_NAME      = 13,
-  RT_LAST_TYPE        = 14
+  RT_KERNEL_NAMES     = 14,
+  RT_LAST_TYPE        = 15
 } aclQueryType_0_8;
 
 //! An enumeration for the various GPU capabilities

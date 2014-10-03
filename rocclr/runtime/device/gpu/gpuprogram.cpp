@@ -15,6 +15,7 @@
 #include <sstream>
 #include <cstdio>
 #include "utils/options.hpp"
+#include "utils/libUtils.h"
 #include "newcore.h"
 
 extern "C" bool
@@ -2159,76 +2160,50 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
         return false;
     }
-    // We need to pull out kernels' names for finalizing kernels
-    //! @todo Rewrite the below code, if another way to obtain kernel names
-    //! appears in the compiler library
-    size_t hsailSize = 0;
-    const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symHSAILText);
-    assert(symbol && "symbol not found");
-    std::string symName = symbol->str[PRE] + std::string("main") + symbol->str[POST];
-    const void *hsailText = aclExtractSymbol(dev().hsaCompiler(), binaryElf_,
-        &hsailSize, aclCODEGEN, symName.c_str(), &errorCode);
+    size_t kernelNamesSize = 0;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
-        buildLog_ += "Error while reading out the HSAIL from the ELF \n" ;
+        buildLog_ += "Error while Finalization phase: kernel names query from the ELF failed\n";
         return false;
     }
-    std::string hsailProgram((char *)hsailText, hsailSize);
-    HSAILProgram_ = hsailProgram;
-    if (!HSAILProgram_.empty()) {
-        bool    dynamicParallelism = false;
-        // Find out the name of the kernel. Works for multiple kernels
-        int pos = 0;
-        while (true) {
-            std::string findString = "kernel &";
-            size_t kernelNPos = HSAILProgram_.find(findString, pos);
-            if (kernelNPos == std::string::npos) {
-                break;
-            }
-            size_t kernelEndNPos = HSAILProgram_.find("l(", kernelNPos);
-            pos = kernelEndNPos + 1;
-            if (kernelEndNPos == std::string::npos) {
-                break;
-            }
-            // "kernel &" is 8
-            // "__OpenCL_" is 9
-            // "_kerne" is 6
-            // We can drop all this with a compiler tweak later
-            std::string kernelName = HSAILProgram_.substr(kernelNPos + 8 + 9,
-                kernelEndNPos -
-                (kernelNPos + 8 + 9) - 6);
-            HSAILKernel *aKernel = new HSAILKernel(kernelName, this,
-                options->origOptionStr + hsailOptions());
+    if (kernelNamesSize > 0) {
+        char* kernelNames = new char[kernelNamesSize];
+        errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
+        if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error while Finalization phase: kernel's Metadata is corrupted in the ELF\n";
+            delete kernelNames;
+            return false;
+        }
+        std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
+        delete kernelNames;
+        std::vector<std::string>::iterator it = vKernels.begin();
+        bool dynamicParallelism = false;
+        for (it; it != vKernels.end(); ++it) {
+            std::string kernelName = *it;
+            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions());
             if (!aKernel->init(finalize)) {
                 return false;
             }
             buildLog_ += aKernel->buildLog();
-            aKernel->setUniformWorkGroupSize(options
-              ->oVariables->UniformWorkGroupSize);
+            aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
             kernels()[kernelName] = aKernel;
             dynamicParallelism |= aKernel->dynamicParallelism();
-            // Find max scratch regs used in the program
-            // It's used for scratch buffer preallocation with
-            // dynamic parallelism, since runtime doesn't know
-            // which child kernel will be called
-            maxScratchRegs_ = std::max(
-                static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_),
-                maxScratchRegs_);
+            // Find max scratch regs used in the program. It's used for scratch buffer preallocation
+            // with dynamic parallelism, since runtime doesn't know which child kernel will be called
+            maxScratchRegs_ = std::max(static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
         }
-
         // Allocate kernel table for device enqueuing
         if (dynamicParallelism && !allocKernelTable()) {
             return false;
         }
-
-        // Save the binary in the interface class
-        size_t size = 0;
-        void *mem = NULL;
-        aclWriteToMem(binaryElf_, &mem, &size);
-        setBinary(static_cast<char*>(mem), size);
-        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-        return true;
     }
-    return false;
+    // Save the binary in the interface class
+    size_t size = 0;
+    void *mem = NULL;
+    aclWriteToMem(binaryElf_, &mem, &size);
+    setBinary(static_cast<char*>(mem), size);
+    buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+    return true;
 }
 
 bool
