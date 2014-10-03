@@ -191,7 +191,7 @@ static const char* calTargetMapping[] = {
       "Oland", "Bonaire",
       "Spectre", "Spooky", "Kalindi",
       "Hainan", "Hawaii",
-      "Iceland", "Tonga", "Mullins", "", "",
+      "Iceland", "Tonga", "Mullins", "", "Hoatzin",
       "Peacock",
     };
 
