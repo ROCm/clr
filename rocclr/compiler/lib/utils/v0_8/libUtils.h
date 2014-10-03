@@ -6,6 +6,7 @@
 #include "v0_8/aclTypes.h"
 #include <string>
 #include <sstream>
+#include <iterator>
 #include "library.hpp"
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
