@@ -316,11 +316,12 @@ __kernel void copyBufferRectAligned(
 }
 \n
 __kernel void copyBuffer(
-    __global   uchar*  src,
-    __global   uchar*  dst,
+    __global   uchar*  srcI,
+    __global   uchar*  dstI,
     ulong   srcOrigin,
     ulong   dstOrigin,
-    ulong   size)
+    ulong   size,
+    uint    remain)
 {
     ulong   id = get_global_id(0);
 
@@ -328,10 +329,24 @@ __kernel void copyBuffer(
         return;
     }
 
-    ulong   offsSrc = id + srcOrigin;
-    ulong   offsDst = id + dstOrigin;
+    __global uchar* src = srcI + srcOrigin;
+    __global uchar* dst = dstI + dstOrigin;
 
-    dst[offsDst] = src[offsSrc];
+    if (remain == 8) {
+        dst[id] = src[id];
+    }
+    else {
+        if (id < (size - 1)) {
+            __global uint* srcD = (__global uint*)(src);
+            __global uint* dstD = (__global uint*)(dst);
+            dstD[id] = srcD[id];
+        }
+        else {
+            for (uint i = 0; i < remain; ++i) {
+                dst[id * 4 + i] = src[id * 4 + i];
+            }
+        }
+    }
 }
 \n
 __kernel void copyBufferAligned(

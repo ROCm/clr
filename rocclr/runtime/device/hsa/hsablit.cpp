@@ -1055,7 +1055,15 @@ KernelBlitManager::copyBuffer(
         }
     }
 
-    size.c[0] /= CopyBuffAlignment[i];
+    cl_uint remain;
+    if (blitType == BlitCopyBufferAligned) {
+        size.c[0] /= CopyBuffAlignment[i];
+    }
+    else {
+        remain = size[0] % 4;
+        size.c[0] /= 4;
+        size.c[0] += 1;
+    }
 
     // Program the dispatch dimensions
     localWorkSize = 256;
@@ -1080,6 +1088,9 @@ KernelBlitManager::copyBuffer(
     if (blitType == BlitCopyBufferAligned) {
         cl_int  alignment = CopyBuffAlignment[i];
         kernels_[blitType]->parameters().set(5, sizeof(alignment), &alignment);
+    }
+    else {
+        kernels_[blitType]->parameters().set(5, sizeof(remain), &remain);
     }
 
     // Create ND range object for the kernel's execution
