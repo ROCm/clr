@@ -5,6 +5,7 @@
 #define _CL_LIB_UTILS_0_8_H_
 #include "v0_8/aclTypes.h"
 #include <string>
+#include <sstream>
 #include "library.hpp"
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -175,5 +176,14 @@ enum scId {
   SC_HSAIL = 1,
   SC_LAST,
 };
+
+inline std::vector<std::string> splitSpaceSeparatedString(char *str)
+{
+  std::string s(str);
+  std::stringstream ss(s);
+  std::istream_iterator<std::string> beg(ss), end;
+  std::vector<std::string> vec(beg, end);
+  return vec;
+}
 
 #endif // _CL_LIB_UTILS_0_8_H_

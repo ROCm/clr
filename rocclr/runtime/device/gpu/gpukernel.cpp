@@ -9,6 +9,7 @@
 #include "device/gpu/gpusched.hpp"
 #include "platform/commandqueue.hpp"
 #include "utils/options.hpp"
+#include "utils/bif_section_labels.hpp"
 
 #include "acl.h"
 #include "SCShadersR678XXCommon.h"
@@ -3513,8 +3514,10 @@ bool
 HSAILKernel::init(bool finalize)
 {
     acl_error error;
+    const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclKernel);
+    assert(sym && "symbol not found");
+    std::string openClKernelName(std::string("&") + sym->str[PRE] + name() + sym->str[POST]);
     //compile kernel down to ISA
-    std::string openClKernelName("&__OpenCL_" + name() + "_kernel");
     if (finalize) {
         std::string options(compileOptions_.c_str());
         options.append(" -just-kernel=");
