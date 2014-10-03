@@ -2513,7 +2513,30 @@ KernelBlitManager::copyBuffer(
             }
         }
 
-        size.c[0] /= CopyBuffAlignment[i];
+        cl_uint remain;
+        if (blitType == BlitCopyBufferAligned) {
+            size.c[0] /= CopyBuffAlignment[i];
+        }
+        else {
+            if (dev().settings().ciPlus_) {
+                remain = size[0] % 4;
+                size.c[0] /= 4;
+                size.c[0] += 1;
+            }
+            else {
+                // Check if offsets are aligned
+                aligned = ((srcOrigin[0] % sizeof(uint32_t)) == 0);
+                aligned &= ((dstOrigin[0] % sizeof(uint32_t)) == 0);
+                if (aligned) {
+                    remain = size[0] % 4;
+                    size.c[0] /= 4;
+                    size.c[0] += 1;
+                }
+                else {
+                    remain = 8;
+                }
+            }
+        }
 
         // Program the dispatch dimensions
         localWorkSize = 256;
@@ -2538,6 +2561,9 @@ KernelBlitManager::copyBuffer(
         if (blitType == BlitCopyBufferAligned) {
             cl_int  alignment = CopyBuffAlignment[i];
             setArgument(kernels_[blitType], 5, sizeof(alignment), &alignment);
+        }
+        else {
+            setArgument(kernels_[blitType], 5, sizeof(remain), &remain);
         }
 
         // Create ND range object for the kernel's execution
