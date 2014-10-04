@@ -155,6 +155,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.vaStart = static_cast<CALuint64>(m_adp->pAsicInfo->vaStart);
     m_attribs.vaEnd   = static_cast<CALuint64>(m_adp->pAsicInfo->vaEnd);
     m_attribs.numOfVpu = m_adp->pAsicInfo->numberOfVPU;
+    m_attribs.isOpenCL200Device = m_adp->pAsicInfo->bIsOpen2Device;
 }
 
 void

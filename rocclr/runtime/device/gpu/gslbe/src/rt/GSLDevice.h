@@ -209,6 +209,7 @@ private:
     CALdevicestatus       m_deviceStatus;
     gslTextureResourceObject m_textureResource;
     gslSamplerObject      m_textureSampler;
+    bool                  m_isOpenCL200Device;
 
     union {
         struct {
