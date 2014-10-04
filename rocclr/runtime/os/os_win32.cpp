@@ -720,7 +720,7 @@ Os::getTempPath()
     char winPath[MAX_PATH];
     ret = GetWindowsDirectory(winPath, MAX_PATH);
     if (ret > 0) {
-        if (_stricmp(tempPath, winPath) == 0) {
+        if (_memicmp(tempPath, winPath, ret) == 0) {
             return std::string(".");
         }
     }
