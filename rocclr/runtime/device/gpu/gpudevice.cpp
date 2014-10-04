@@ -756,11 +756,8 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     appProfile_.init();
 
     // Open GSL device
-    bool reportOCL12Device = (OPENCL_VERSION < 200);
-
-    reportOCL12Device = (numOfDevices < 2) ? (OPENCL_VERSION < 200) : true;
     if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-        appProfile_.reportAsOCL12Device() || reportOCL12Device)) {
+        appProfile_.reportAsOCL12Device())) {
         return false;
     }
 
@@ -775,7 +772,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
 #if cl_amd_open_video
           , getVideoAttribs()
 #endif // cl_amd_open_video
-          , appProfile_.reportAsOCL12Device() || reportOCL12Device
+          , appProfile_.reportAsOCL12Device()
         )) {
         return false;
     }

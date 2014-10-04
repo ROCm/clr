@@ -291,14 +291,11 @@ Settings::create(
         if (ciPlus_) {
             libSelector_ = amd::GPU_Library_CI;
 #if defined(_LP64)
-            oclVersion_ = reportAsOCL12Device ? OpenCL12 : XCONCAT(OpenCL,XCONCAT(OPENCL_MAJOR,OPENCL_MINOR));
+            oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
 #endif
-            if (calAttr.numOfVpu > 1) {
-                oclVersion_ = OpenCL12;
-            }
             if (GPU_FORCE_OCL20_32BIT) {
                 force32BitOcl20_ = true;
-                oclVersion_ = reportAsOCL12Device ? OpenCL12 : XCONCAT(OpenCL,XCONCAT(OPENCL_MAJOR,OPENCL_MINOR));
+                oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
             }
             if (hsail_ || (OPENCL_VERSION < 200)) {
                 oclVersion_ = OpenCL12;
