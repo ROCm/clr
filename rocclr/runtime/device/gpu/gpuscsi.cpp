@@ -7,7 +7,7 @@
 #include "device/gpu/gpukernel.hpp"
 #include "acl.h"
 #include "SCShadersSi.h"
-#include "si_ci_merged_offset.h"
+#include "si_ci_vi_merged_offset.h"
 #include <string>
 #include <fstream>
 #include <sstream>
