@@ -202,7 +202,12 @@ typedef enum _rt_query_types_enum_0_8 {
   RT_KERNEL_INDEX     = 12,
   RT_KERNEL_NAME      = 13,
   RT_KERNEL_NAMES     = 14,
-  RT_LAST_TYPE        = 15
+  RT_CONTAINS_LLVMIR  = 15,
+  RT_CONTAINS_OPTIONS = 16,
+  RT_CONTAINS_BRIG    = 17,
+  RT_CONTAINS_HSAIL   = 18,
+  RT_CONTAINS_ISA     = 19,
+  RT_LAST_TYPE        = 20
 } aclQueryType_0_8;
 
 //! An enumeration for the various GPU capabilities

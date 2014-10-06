@@ -1921,57 +1921,37 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     completeStages.clear();
     aclType from = ACL_TYPE_DEFAULT;
     needOptionsCheck = true;
+    size_t boolSize = sizeof(bool);
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
-
     // Checking llvmir in .llvmir section
-    bool isLlvmirText = true;
-    const void *llvmirText = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclLLVMIR, &errorCode);
+    bool containsLlvmirText = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_LLVMIR, NULL, &containsLlvmirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
-        isLlvmirText = false;
+        containsLlvmirText = false;
     }
     // Checking compile & link options in .comment section
-    bool isOpts = true;
-    const void* opts = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclCOMMENT, &errorCode);
+    bool containsOpts = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_OPTIONS, NULL, &containsOpts, &boolSize);
     if (errorCode != ACL_SUCCESS) {
-        isOpts = false;
+      containsOpts = false;
     }
-    if (isLlvmirText && isOpts) {
+    if (containsLlvmirText && containsOpts) {
         completeStages.push_back(from);
         from = ACL_TYPE_LLVMIR_BINARY;
     }
-    bool isHsailText = true;
     // Checking HSAIL in .cg section
-    const void *hsailText = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclCODEGEN, &errorCode);
+    bool containsHsailText = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_HSAIL, NULL, &containsHsailText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
-        isHsailText = false;
+        containsHsailText = false;
     }
-    // Checking BRIG STRTAB in .brig_strtab section
-    bool isBrigStrtab = true;
-    const void *brigStrtab = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclBRIGstrs, &errorCode);
+    // Checking BRIG sections
+    bool containsBrig = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_BRIG, NULL, &containsBrig, &boolSize);
     if (errorCode != ACL_SUCCESS) {
-        isBrigStrtab = false;
+        containsBrig = false;
     }
-    // Checking BRIG CODE in .brig_code section
-    bool isBrigCode = true;
-    const void *brigCode = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclBRIGcode, &errorCode);
-    if (errorCode != ACL_SUCCESS) {
-        isBrigCode = false;
-    }
-    // Checking BRIG OPERANDS in .brig_operands section
-    bool isBrigOps = true;
-    const void *brigOps = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclBRIGoprs, &errorCode);
-    if (errorCode != ACL_SUCCESS) {
-        isBrigOps = false;
-    }
-    bool isBrig = false;
-    if (isBrigStrtab && isBrigCode && isBrigOps) {
-        isBrig = true;
+    if (containsBrig) {
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_BINARY;
         // Here we should check that CG stage was done.
@@ -1980,23 +1960,22 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         // 2. HSAIL text in aclCODEGEN section.
         // Unfortunately there is no appropriate way in Compiler Lib to check 1.
         // because kernel names are unknown here, therefore only 2.
-        if (isHsailText) {
+        if (containsHsailText) {
             completeStages.push_back(from);
             from = ACL_TYPE_CG;
         }
     }
-    else if (isHsailText) {
+    else if (containsHsailText) {
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_TEXT;
     }
     // Checking ISA in .text section
-    bool isShaderIsa = true;
-    const void *shaderIsa = aclExtractSection(dev().hsaCompiler(),
-        binaryElf_, &secSize, aclTEXT, &errorCode);
+    bool containsShaderIsa = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_ISA, NULL, &containsShaderIsa, &boolSize);
     if (errorCode != ACL_SUCCESS) {
-        isShaderIsa = false;
+        containsShaderIsa = false;
     }
-    if (isShaderIsa) {
+    if (containsShaderIsa) {
         completeStages.push_back(from);
         from = ACL_TYPE_ISA;
     }
@@ -2010,25 +1989,23 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         break;
     case ACL_TYPE_HSAIL_BINARY:
     case ACL_TYPE_CG:
-        // do not check options, if LLVMIR is absent or might be absent
-        if (curOptions.oVariables->BinLLVMIR || !isLlvmirText) {
+        // do not check options, if LLVMIR is absent or might be absent or options are absent
+        if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
             needOptionsCheck = false;
         }
         break;
     case ACL_TYPE_ISA:
-        // do not check options, if LLVMIR is absent or might be absent
-        if (curOptions.oVariables->BinLLVMIR || !isLlvmirText) {
+        // do not check options, if LLVMIR is absent or might be absent or options are absent
+        if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
             needOptionsCheck = false;
         }
-        if (isBrig && isHsailText) {
-          if (curOptions.oVariables->BinHSAIL) {
-              needOptionsCheck = false;
-          }
+        if (containsBrig && containsHsailText && curOptions.oVariables->BinHSAIL) {
+            needOptionsCheck = false;
         // recompile from prev. stage, if BRIG || HSAIL are absent
         } else {
-          from = completeStages.back();
-          completeStages.pop_back();
-          needOptionsCheck = true;
+            from = completeStages.back();
+            completeStages.pop_back();
+            needOptionsCheck = true;
         }
         break;
     // recompilation might be needed
