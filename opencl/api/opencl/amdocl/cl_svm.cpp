@@ -142,6 +142,9 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (
     for (it = devices.begin(); it != devices.end(); ++it) {
         cl_device_svm_capabilities svmCapabilities =
                (*it)->info().svmCapabilities_;
+        if (svmCapabilities == 0) {
+            continue;
+        }
         combinedSvmCapabilities |= svmCapabilities;
 
         if (((*it)->info().maxMemAllocSize_ >= size) ||
