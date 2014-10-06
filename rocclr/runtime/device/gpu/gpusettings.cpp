@@ -321,6 +321,7 @@ Settings::create(
 
         if (oclVersion_ >= OpenCL20) {
             supportDepthsRGB_ = true;
+            customSvmAllocator_ = true;
         }
         if (use64BitPtr_) {
             if (GPU_ENABLE_LARGE_ALLOCATION) {
@@ -387,7 +388,6 @@ Settings::create(
 
     imageSupport_       = true;
     singleHeap_         = true;
-    customSvmAllocator_ = true;
 
     // Use kernels for blit if appropriate
     blitEngine_     = BlitEngineKernel;
