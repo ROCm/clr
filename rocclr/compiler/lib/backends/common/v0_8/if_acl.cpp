@@ -2259,61 +2259,120 @@ if_aclQueryInfo(aclCompiler *cl,
   if (!size) {
     return ACL_ERROR;
   }
+  bifbase *elfBin = reinterpret_cast<bifbase*>(binary->bin);
+  if (!elfBin) {
+    return ACL_ELF_ERROR;
+  }
   const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
   assert(sym && "symbol not found");
   aclSections secID = sym->sections[0];
   std::string pre = std::string(sym->str[PRE]);
   std::string post = std::string(sym->str[POST]);
-  if (RT_KERNEL_NAMES == query) {
-    bifbase *elfBin = reinterpret_cast<bifbase*>(binary->bin);
-    if (!elfBin) {
-      return ACL_ELF_ERROR;
-    }
-    bifbase::SymbolVector symbols, kernels;
-    elfBin->getSectionSymbols(secID, symbols);
-    size_t totSize = 0;
-    if (!symbols.empty()) {
-      std::size_t beg = 0, begKernel = 0, end = 0, endKernel = 0, endSize = 0;
-      const oclBIFSymbolStruct* symKernel = findBIF30SymStruct(symOpenclKernel);
-      assert(symKernel && "symbol not found");
-      std::string preKernel = std::string(symKernel->str[PRE]);
-      std::string postKernel = std::string(symKernel->str[POST]);
-      for (bifbase::SymbolVector::iterator it = symbols.begin(); it != symbols.end(); ++it) {
-        beg = (*it).find(pre);
-        if (std::string::npos == beg) continue;
-        beg += pre.size();
-        begKernel = (*it).find(preKernel, beg);
-        if (std::string::npos != begKernel) {
-          beg = begKernel + preKernel.size();
-          end = (*it).rfind(postKernel);
-          endSize = postKernel.size();
-        } else {
-          end = (*it).rfind(post);
+  switch (query) {
+    default:
+      break;
+    case RT_CONTAINS_LLVMIR:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclLLVMIR);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_OPTIONS:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclCOMMENT);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_HSAIL:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclCODEGEN);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_BRIG:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclBRIGcode) &&
+                  elfBin->isSection(aclBRIGoprs) &&
+                  elfBin->isSection(aclBRIGstrs);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_ISA:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclTEXT);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_KERNEL_NAMES:{
+      bifbase::SymbolVector symbols, kernels;
+      elfBin->getSectionSymbols(secID, symbols);
+      size_t totSize = 0;
+      if (!symbols.empty()) {
+        std::size_t beg = 0, begKernel = 0, end = 0, endKernel = 0, endSize = 0;
+        const oclBIFSymbolStruct* symKernel = findBIF30SymStruct(symOpenclKernel);
+        assert(symKernel && "symbol not found");
+        std::string preKernel = std::string(symKernel->str[PRE]);
+        std::string postKernel = std::string(symKernel->str[POST]);
+        for (bifbase::SymbolVector::iterator it = symbols.begin(); it != symbols.end(); ++it) {
+          beg = (*it).find(pre);
+          if (std::string::npos == beg) continue;
+          beg += pre.size();
+          begKernel = (*it).find(preKernel, beg);
+          if (std::string::npos != begKernel) {
+            beg = begKernel + preKernel.size();
+            end = (*it).rfind(postKernel);
+            endSize = postKernel.size();
+          } else {
+            end = (*it).rfind(post);
+          }
+          if (std::string::npos == end) continue;
+          endSize += post.size();
+          if (end <= beg || end != (*it).size() - endSize) continue;
+          std::string kernel((*it).substr(beg, (*it).size() - beg - endSize) + " ");
+          totSize += kernel.size();
+          kernels.push_back(kernel);
         }
-        if (std::string::npos == end) continue;
-        endSize += post.size();
-        if (end <= beg || end != (*it).size() - endSize) continue;
-        std::string kernel((*it).substr(beg, (*it).size() - beg - endSize) + " ");
-        totSize += kernel.size();
-        kernels.push_back(kernel);
       }
-    }
-    if (!ptr) {
-      *size = totSize > 0 ? totSize + 1 : 0;
-      return ACL_SUCCESS;
-    } else if (*size >= totSize && totSize > 0) {
-      char* tmp = reinterpret_cast<char*>(ptr);
-      for (bifbase::SymbolVector::iterator it = kernels.begin(); it != kernels.end(); ++it) {
-        memcpy(tmp, (*it).c_str(), (*it).size());
-        tmp += (*it).size();
+      if (!ptr) {
+        *size = totSize > 0 ? totSize + 1 : 0;
+        return ACL_SUCCESS;
+      } else if (*size >= totSize && totSize > 0) {
+        char* tmp = reinterpret_cast<char*>(ptr);
+        for (bifbase::SymbolVector::iterator it = kernels.begin(); it != kernels.end(); ++it) {
+          memcpy(tmp, (*it).c_str(), (*it).size());
+          tmp += (*it).size();
+        }
+        *(tmp++) = '\0';
+        return ACL_SUCCESS;
       }
-      *(tmp++) = '\0';
-      return ACL_SUCCESS;
+      return ACL_ERROR;
     }
-    return ACL_ERROR;
   }
   size_t roSize;
   acl_error error_code;
+  if (!kernel) {
+    return ACL_INVALID_ARG;
+  }
   std::string symbol = pre + std::string(kernel) + post;
   const void* roSec = cl->clAPI.extSym(cl, binary, &roSize, secID, symbol.c_str(), &error_code);
   if (error_code != ACL_SUCCESS) return error_code;
