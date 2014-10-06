@@ -39,7 +39,9 @@ Context::Context(
                     "is allowed per context");
             customHostAllocDevice_ = device;
         }
-        if (device->customSvmAllocator()) {
+        if (device->customSvmAllocator()
+            && (customSvmAllocDevice_ == NULL))
+        {
             customSvmAllocDevice_ = device;
         }
     }
