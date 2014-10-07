@@ -102,8 +102,6 @@ release(bool, GPU_FORCE_64BIT_PTR, 0,                                         \
         "Forces 64 bit pointers on GPU")                                      \
 release(bool, GPU_FORCE_OCL20_32BIT, 0,                                       \
         "Forces 32 bit apps to take CLANG\HSAIL path")                        \
-release(bool, GPU_PREALLOC_ADDR_SPACE, 0,                                     \
-        "Preallocates 4GB address space. Valid for boards > 4GB")             \
 release(bool, GPU_RAW_TIMESTAMP, 0,                                           \
         "Reports GPU raw timestamps in GPU timeline")                         \
 release(bool, CPU_IMAGE_SUPPORT, true,                                        \

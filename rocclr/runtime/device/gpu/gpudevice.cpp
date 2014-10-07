@@ -520,14 +520,6 @@ void Device::fillDeviceInfo(
             info_.globalMemSize_   +=
                 (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi) / 2;
         }
-        // Check if runtime has to reserve address space for testing
-        if (settings().use64BitPtr_ && settings().preallocAddrSpace_ &&
-            (info_.globalMemSize_ > ReservedAdressSpaceSize)) {
-            info_.globalMemSize_ -= ReservedAdressSpaceSize;
-        }
-        else {
-            reinterpret_cast<gpu::Settings*>(settings_)->preallocAddrSpace_ = false;
-        }
 
         // We try to calculate the largest available memory size from
         // the largest available block in either heap.  In theory this
@@ -954,9 +946,6 @@ Device::initializeHeapResources()
         }
 
         size_t dummySize = amd::Os::pageSize();
-        if (heap()->isVirtual() && settings().preallocAddrSpace_) {
-            dummySize = static_cast<size_t>(ReservedAdressSpaceSize - Mi);
-        }
 
         // Allocate a dummy page for NULL pointer processing
         dummyPage_ = new(*context_) amd::Buffer(*context_, 0, dummySize);

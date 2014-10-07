@@ -110,9 +110,6 @@ Settings::Settings()
     minWorkloadTime_ = 1;       // 0.1 ms
     maxWorkloadTime_ = 5000;    // 500 ms
 
-    // Preallocates address space
-    preallocAddrSpace_ = GPU_PREALLOC_ADDR_SPACE;
-
     // Controls tiled images in persistent
     //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
     linearPersistentImage_ = false;

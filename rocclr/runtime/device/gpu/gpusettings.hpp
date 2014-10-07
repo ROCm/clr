@@ -63,7 +63,6 @@ public:
             uint    viPlus_: 1;         //!< VI and post VI features
             uint    rectLinearDMA_: 1;  //!< Rectangular linear DRMDMA support
             uint    threadTraceEnable_: 1;  //!< Thread trace enable
-            uint    preallocAddrSpace_: 1;  //!< Preallocates address space
             uint    linearPersistentImage_: 1;  //!< Allocates linear images in persistent
             uint    useSingleScratch_: 1;   //!< Allocates single scratch per device
             uint    sdmaProfiling_: 1;  //!< Enables SDMA profiling
@@ -74,7 +73,7 @@ public:
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
-            uint    reserved_: 1;
+            uint    reserved_: 2;
         };
         uint    value_;
     };

@@ -57,9 +57,6 @@ const static uint CalOfflineImpl = 0xffffffff;
 //! Alignment restriciton for the pinned memory
 const static size_t PinnedMemoryAlignment = 4 * Ki;
 
-//! Reserved address space
-const static cl_ulong ReservedAdressSpaceSize = static_cast<cl_ulong>(4) * Gi;
-
 //! Defines all supported ASIC families
 enum AsicFamilies {
     Family7xx,
