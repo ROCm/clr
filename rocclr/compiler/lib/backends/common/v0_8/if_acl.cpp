@@ -2296,7 +2296,10 @@ if_aclQueryInfo(aclCompiler *cl,
         *size = sizeof(bool);
         return ACL_SUCCESS;
       } else if (*size >= sizeof(bool)) {
-        bool contains = elfBin->isSection(aclCODEGEN);
+        const oclBIFSymbolStruct* sym = findBIF30SymStruct(symHSAILText);
+        assert(sym && "symbol not found");
+        std::string symbolName = sym->str[PRE] + std::string("main") + sym->str[POST];
+        bool contains = elfBin->isSymbol(aclCODEGEN, symbolName.c_str());
         memcpy(ptr, &contains, sizeof(bool));
         return ACL_SUCCESS;
       }
