@@ -749,7 +749,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
 
     // Open GSL device
     if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-        appProfile_.reportAsOCL12Device())) {
+        appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200))) {
         return false;
     }
 
