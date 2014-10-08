@@ -450,36 +450,36 @@ typedef CL_API_ENTRY cl_int
 #endif /* CL_VERSION_1_2 */
 
 #ifdef CL_VERSION_2_0
-/******************************
- * cl_khr_subgroups extension *
- ******************************/
-#define cl_khr_subgroups 1
+/*********************************
+* cl_khr_sub_groups extension
+*********************************/
+#define cl_khr_sub_groups 1
 
 typedef cl_uint  cl_kernel_sub_group_info;
 
 /* cl_khr_sub_group_info */
-#define CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE    0x2033
-#define CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE       0x2034
+#define CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR	0x2033
+#define CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR		0x2034
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clGetKernelSubGroupInfoKHR(cl_kernel /* kernel */,
-                           cl_device_id /* device */,
-                           cl_kernel_sub_group_info /* param_name */,
-                           size_t /* input_value_size */,
-                           const void * /* input_value */,
-                           size_t /* param_value_size */,
-                           void * /* param_value */,
-                           size_t * /* param_value_size_ret */) CL_API_SUFFIX__VERSION_2_0;
-
+clGetKernelSubGroupInfoKHR(cl_kernel /* in_kernel */,
+						   cl_device_id /*in_device*/,
+						   const cl_kernel_sub_group_info /* param_name */,
+						   size_t /*input_value_size*/,
+						   const void * /*input_value*/,
+						   size_t * /*param_value_size*/,
+						   void* /*param_value*/,
+						   size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
+						   
 typedef CL_API_ENTRY cl_int
-    (CL_API_CALL *clGetKernelSubGroupInfoKHR_fn)(cl_kernel /* kernel */,
-                                                 cl_device_id /* device */,
-                                                 cl_kernel_sub_group_info /* param_name */,
-                                                 size_t /* input_value_size */,
-                                                 const void * /* input_value */,
-                                                 size_t /* param_value_size */,
-                                                 void * /* param_value */,
-                                                 size_t * /* param_value_size_ret */) CL_API_SUFFIX__VERSION_2_0;
+     ( CL_API_CALL * clGetKernelSubGroupInfoKHR_fn)(cl_kernel /* in_kernel */,
+						      cl_device_id /*in_device*/,
+						      const cl_kernel_sub_group_info /* param_name */,
+						      size_t /*input_value_size*/,
+						      const void * /*input_value*/,
+						      size_t * /*param_value_size*/,
+						      void* /*param_value*/,
+						      size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
 #endif /* CL_VERSION_2_0 */
 
 #ifdef __cplusplus
