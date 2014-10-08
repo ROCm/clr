@@ -1854,8 +1854,8 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR, (
 
     // Get the corresponded parameters
     switch (param_name) {
-    case CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE:
-    case CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE: {
+    case CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR:
+    case CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR: {
 
         // Infer the number of dimensions from 'input_value_size'
         size_t dims = input_value_size / sizeof(size_t);
@@ -1878,7 +1878,7 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR, (
 
 
         return amd::clGetInfo(
-            (param_name == CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE)
+            (param_name == CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR)
                 ? subGroupSize : numSubGroups,
             param_value_size, param_value, param_value_size_ret);
     }
