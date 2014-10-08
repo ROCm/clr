@@ -1281,8 +1281,13 @@ if_aclCompile(aclCompiler *cl,
     aclType to,
     aclLogFunction compile_callback)
 {
-  if (bin == NULL || cl == NULL) {
+  if (!bin || !cl) {
     return ACL_INVALID_ARG;
+  }
+  if (((from == ACL_TYPE_X86_TEXT   || from == ACL_TYPE_X86_BINARY)   && !isCpuTarget(bin->target))   ||
+      ((from == ACL_TYPE_AMDIL_TEXT || from == ACL_TYPE_AMDIL_BINARY) && !isAMDILTarget(bin->target)) ||
+      ((from == ACL_TYPE_HSAIL_TEXT || from == ACL_TYPE_HSAIL_BINARY) && !isHSAILTarget(bin->target))) {
+    return ACL_INVALID_BINARY;
   }
   acl_error error_code = IsValidCompilationOptions(bin, compile_callback);
   if (error_code != ACL_SUCCESS) {
@@ -1296,7 +1301,7 @@ if_aclCompile(aclCompiler *cl,
 #else
     llvm::sys::PrintStackTraceOnErrorSignal();
 #endif
-  } else 
+  } else
 #endif
   {
     llvm::InitializeAllAsmParsers();
@@ -1304,113 +1309,88 @@ if_aclCompile(aclCompiler *cl,
     llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
     llvm::initializeSPIRVerifierPass(Registry);
   }
-  // Default 'to' is ISA.
+  // Default 'to' is ACL_TYPE_ISA
   if (to == ACL_TYPE_DEFAULT) {
     to = ACL_TYPE_ISA;
   }
- if ((from == ACL_TYPE_X86_TEXT
-    || from == ACL_TYPE_X86_BINARY)
-      && (bin->target.arch_id != aclX86
-        && bin->target.arch_id != aclX64)) {
-    return ACL_INVALID_BINARY;
-  }
-
-  if ((from == ACL_TYPE_AMDIL_TEXT
-    || from == ACL_TYPE_AMDIL_BINARY)
-      && !isAMDILTarget(bin->target)) {
-    return ACL_INVALID_BINARY;
-  }
-
-  if ((from == ACL_TYPE_HSAIL_TEXT
-    || from == ACL_TYPE_HSAIL_BINARY)
-      && bin->target.arch_id != aclHSAIL
-      && bin->target.arch_id != aclHSAIL64) {
-    return ACL_INVALID_BINARY;
-  }
-  if ((from == ACL_TYPE_HSAIL_TEXT && to == ACL_TYPE_HSAIL_BINARY)
-      || (from == ACL_TYPE_HSAIL_BINARY && to == ACL_TYPE_HSAIL_TEXT)
-      || (from == ACL_TYPE_AMDIL_TEXT && to == ACL_TYPE_AMDIL_BINARY)
-      || (from == ACL_TYPE_AMDIL_BINARY && to == ACL_TYPE_AMDIL_TEXT)
-      || (from == ACL_TYPE_SPIR_TEXT && to == ACL_TYPE_SPIR_BINARY)
-      || (from == ACL_TYPE_SPIR_BINARY && to == ACL_TYPE_SPIR_TEXT)
-      || (from == ACL_TYPE_LLVMIR_TEXT && to == ACL_TYPE_LLVMIR_BINARY)
-      || (from == ACL_TYPE_LLVMIR_BINARY && to == ACL_TYPE_LLVMIR_TEXT)
-      || (from == ACL_TYPE_X86_TEXT && to == ACL_TYPE_X86_BINARY)
-      || (from == ACL_TYPE_X86_BINARY && to == ACL_TYPE_X86_TEXT)
-      ) {
-    amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
-    const char *kernel = Opts->oVariables->Kernel;
-    return aclConvertType(cl, bin, kernel, from);
-  }
-
-  if ((from == ACL_TYPE_AMDIL_TEXT
-    || from == ACL_TYPE_AMDIL_BINARY
-    || from == ACL_TYPE_X86_TEXT
-    || from == ACL_TYPE_X86_BINARY)
-    && to != ACL_TYPE_ISA) {
-    return ACL_INVALID_ARG;
-  }
-
-  if ((from == ACL_TYPE_HSAIL_TEXT
-    || from == ACL_TYPE_HSAIL_BINARY)
-    && (to != ACL_TYPE_CG && to != ACL_TYPE_ISA)) {
-    return ACL_INVALID_ARG;
-  }
-
-  if (from == ACL_TYPE_HSAIL_TEXT) {
+  if ((from == ACL_TYPE_HSAIL_TEXT    && (to == ACL_TYPE_HSAIL_BINARY ||
+                                          to == ACL_TYPE_CG           ||
+                                          to == ACL_TYPE_ISA))        ||
+      (from == ACL_TYPE_HSAIL_BINARY  && (to == ACL_TYPE_HSAIL_TEXT   ||
+                                          to == ACL_TYPE_CG           ||
+                                          to == ACL_TYPE_ISA))        ||
+      (from == ACL_TYPE_AMDIL_TEXT    && to == ACL_TYPE_AMDIL_BINARY) ||
+      (from == ACL_TYPE_AMDIL_BINARY  && to == ACL_TYPE_AMDIL_TEXT)   ||
+      (from == ACL_TYPE_SPIR_TEXT     && to == ACL_TYPE_SPIR_BINARY)  ||
+      (from == ACL_TYPE_SPIR_BINARY   && to == ACL_TYPE_SPIR_TEXT)    ||
+      (from == ACL_TYPE_LLVMIR_TEXT   && to == ACL_TYPE_LLVMIR_BINARY)||
+      (from == ACL_TYPE_LLVMIR_BINARY && to == ACL_TYPE_LLVMIR_TEXT)  ||
+      (from == ACL_TYPE_X86_TEXT      && to == ACL_TYPE_X86_BINARY)   ||
+      (from == ACL_TYPE_X86_BINARY    && to == ACL_TYPE_X86_TEXT)) {
     amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
     const char *kernel = Opts->oVariables->Kernel;
     error_code = aclConvertType(cl, bin, kernel, from);
-    if (error_code != ACL_SUCCESS)
+    // if compilation to ACL_TYPE_ISA, then continue from ACL_TYPE_CG
+    if (to == ACL_TYPE_ISA && error_code == ACL_SUCCESS) {
+      from = ACL_TYPE_CG;
+    } else {
       return error_code;
-    if (to == ACL_TYPE_CG)
-      return ACL_SUCCESS;
-    from = ACL_TYPE_CG;
+    }
   }
-
-  bool stages[5] = {false};
-  uint8_t sectable[ACL_TYPE_LAST] =
-    { 0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1 };
-  aclSections d_section[7] =
-  { aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE, aclCODEGEN, aclTEXT, aclINTERNAL };
+  if ((from == ACL_TYPE_AMDIL_TEXT || from == ACL_TYPE_AMDIL_BINARY  ||
+       from == ACL_TYPE_X86_TEXT   || from == ACL_TYPE_X86_BINARY    ||
+       from == ACL_TYPE_HSAIL_TEXT || from == ACL_TYPE_HSAIL_BINARY) &&
+       to != ACL_TYPE_ISA) {
+    return ACL_INVALID_ARG;
+  }
+  uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1};
+  aclSections d_section[7] = {aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE, aclCODEGEN, aclTEXT, aclINTERNAL};
   uint8_t start = sectable[from];
   uint8_t stop = sectable[to];
   const void* data = NULL;
   size_t data_size = 0;
-  if (from == ACL_TYPE_DEFAULT) {
-    aclSections sections[] = { aclSOURCE, aclSPIR, aclLLVMIR, aclCODEGEN, aclTEXT };
-    uint8_t table[] = { 0, 1, 1, 4, 5 };
-    aclType type[] = { ACL_TYPE_SOURCE, ACL_TYPE_SPIR_BINARY, ACL_TYPE_LLVMIR_BINARY,
-      ACL_TYPE_CG, ACL_TYPE_ISA };
-    for (int y = 0, x = sizeof(sections) / sizeof(sections[0]) - 1;
-        x >= y; --x) {
-      data = (const char*)cl->clAPI.extSec(cl, bin, &data_size,
-          sections[x], &error_code);
-      if (data != NULL && data_size > 0 && error_code == ACL_SUCCESS) {
+  switch (from) {
+  default:
+    data = cl->clAPI.extSec(cl, bin, &data_size, d_section[start], &error_code);
+    break;
+  case ACL_TYPE_DEFAULT: {
+    aclSections sections[] = {aclSOURCE, aclSPIR, aclLLVMIR, aclCODEGEN, aclTEXT};
+    uint8_t table[] = {0, 1, 1, 4, 5};
+    aclType type[] = {ACL_TYPE_SOURCE, ACL_TYPE_SPIR_BINARY, ACL_TYPE_LLVMIR_BINARY, ACL_TYPE_CG, ACL_TYPE_ISA};
+    for (int y = 0, x = sizeof(sections) / sizeof(sections[0]) - 1; x >= y; --x) {
+      data = (const char*)cl->clAPI.extSec(cl, bin, &data_size, sections[x], &error_code);
+      if (data && data_size > 0 && error_code == ACL_SUCCESS) {
         start = table[x];
         from = type[x];
         break;
       }
     }
-  } else {
-    if (from == ACL_TYPE_SPIR_BINARY ||
-        from == ACL_TYPE_SPIR_TEXT) {
-      data = cl->clAPI.extSec(cl, bin, &data_size, aclSPIR, &error_code);
-    }
-    else if (from == ACL_TYPE_RSLLVMIR_BINARY) {
-      data = cl->clAPI.extSec(cl, bin, &data_size, aclLLVMIR, &error_code);
-    }
-    else if (from == ACL_TYPE_HSAIL_BINARY) {
-      data = cl->clAPI.extSec(cl, bin, &data_size, aclSOURCE, &error_code);
+    break;
+  }
+  case ACL_TYPE_SPIR_BINARY:
+  case ACL_TYPE_SPIR_TEXT:
+    data = cl->clAPI.extSec(cl, bin, &data_size, aclSPIR, &error_code);
+    break;
+  case ACL_TYPE_RSLLVMIR_BINARY:
+    data = cl->clAPI.extSec(cl, bin, &data_size, aclLLVMIR, &error_code);
+    break;
+  case ACL_TYPE_HSAIL_BINARY:
+    data = cl->clAPI.extSec(cl, bin, &data_size, aclSOURCE, &error_code);
     // if for ACL_TYPE_HSAIL_BINARY stage BRIG (data) is not presented in aclSOURCE (.source) section of BIF,
-    // then it should be in multiple corresponding .brig_ sections in BIF, so continue to compile
-      if (error_code == ACL_ELF_ERROR) {
-        error_code = ACL_SUCCESS;
-      }
+    // then it should be in multiple corresponding .brig_ sections in BIF, so continue to compile (data might be NULL)
+    if (error_code == ACL_ELF_ERROR) {
+      error_code = ACL_SUCCESS;
     }
-    else {
+    break;
+  case ACL_TYPE_CG:
+    // there is no data for codegen phase (data might be NULL),
+    // BRIG should be in its multiple corresponding .brig_ sections in BIF
+    if (isHSAILTarget(bin->target)) {
+      from = ACL_TYPE_CG;
+    } else {
       data = cl->clAPI.extSec(cl, bin, &data_size, d_section[start], &error_code);
     }
+    break;
   }
   if (error_code != ACL_SUCCESS) {
     return error_code;
@@ -1419,16 +1399,12 @@ if_aclCompile(aclCompiler *cl,
   // the correct pointers unless they are custom loaded, then we should
   // not modify them. This code is ugly and needs to be designed better.
   if (start == 0) {
-    if (from == ACL_TYPE_OPENCL
-        || from == ACL_TYPE_SOURCE
-        || from == ACL_TYPE_DEFAULT) {
-      const oclBIFSymbolStruct* symbol
-        = findBIF30SymStruct(symOpenclCompilerOptions);
-      assert(symbol && "symbol not found");
-      std::string optSec = std::string(symbol->str[PRE]) + std::string(symbol->str[POST]);
-      assert(symbol->sections[0] == aclCOMMENT
-             && symbol->sections[0] == symbol->sections[1]
-             && "not in comment section");
+    if (from == ACL_TYPE_OPENCL || from == ACL_TYPE_SOURCE || from == ACL_TYPE_DEFAULT) {
+      const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclCompilerOptions);
+      assert(sym && "symbol not found");
+      assert(sym->sections[0] == aclCOMMENT && sym->sections[0] == sym->sections[1] &&
+             "not in comment section");
+      std::string optSec = std::string(sym->str[PRE]) + std::string(sym->str[POST]);
       saveOptionsToComments(cl, bin, options, optSec);
       CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &SPIRInit, &OCLInit);
       CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &AMDILInit, &OCLInit);
@@ -1438,52 +1414,34 @@ if_aclCompile(aclCompiler *cl,
       CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &HSAILFEFini, &OCLFini);
       CONDITIONAL_CMP_ASSIGN(cl->feAPI.toISA, &AMDILFEToISA, NULL);
       CONDITIONAL_CMP_ASSIGN(cl->feAPI.toISA, &HSAILFEToISA, NULL);
-      if (to == ACL_TYPE_LLVMIR_BINARY
-          || to == ACL_TYPE_LLVMIR_TEXT) {
+      if (to == ACL_TYPE_LLVMIR_BINARY || to == ACL_TYPE_LLVMIR_TEXT) {
         cl->feAPI.toISA = NULL;
         cl->feAPI.toIR = &OCLFEToLLVMIR;
-      } else if(to == ACL_TYPE_SPIR_BINARY
-          || to == ACL_TYPE_SPIR_TEXT) {
+      } else if(to == ACL_TYPE_SPIR_BINARY || to == ACL_TYPE_SPIR_TEXT) {
         cl->feAPI.toISA = NULL;
         cl->feAPI.toIR = &OCLFEToSPIR;
       }
-    } else if (from == ACL_TYPE_AMDIL_TEXT) {
+    } else if (from == ACL_TYPE_AMDIL_TEXT || from == ACL_TYPE_HSAIL_TEXT) {
+      const oclBIFSymbolStruct* sym = findBIF30SymStruct(symAMDILCompilerOptions);
+      assert(sym && "symbol not found");
+      assert(sym->sections[0] == aclCOMMENT && "not in comment section");
       amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
       const char *kernel = Opts->oVariables->Kernel;
-      const oclBIFSymbolStruct* symbol
-        = findBIF30SymStruct(symAMDILCompilerOptions);
-      assert(symbol && "symbol not found");
-      std::string optSec = std::string(symbol->str[PRE])
-        + std::string((kernel == NULL) ? "main" : kernel)
-        + std::string(symbol->str[POST]);
-      assert(symbol->sections[0] == aclCOMMENT && "not in comment section");
+      std::string optSec = std::string(sym->str[PRE]) +
+                           std::string((!kernel) ? "main" : kernel) +
+                           std::string(sym->str[POST]);
       saveOptionsToComments(cl, bin, options, optSec);
       if (to == ACL_TYPE_ISA || to == ACL_TYPE_DEFAULT) {
         stop = 1;
-        cl->feAPI.init = &AMDILInit;
-        cl->feAPI.fini = &AMDILFini;
-        cl->feAPI.toISA = &AMDILFEToISA;
-        cl->feAPI.toIR = NULL;
-        cl->feAPI.toModule = NULL;
-      } else {
-        return ACL_UNSUPPORTED;
-      }
-    } else if (from == ACL_TYPE_HSAIL_TEXT) {
-      amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
-      const char *kernel = Opts->oVariables->Kernel;
-      const oclBIFSymbolStruct* symbol
-        = findBIF30SymStruct(symHSACompilerOptions);
-      assert(symbol && "symbol not found");
-      std::string optSec = std::string(symbol->str[PRE])
-        + std::string((kernel == NULL) ? "main" : kernel)
-        + std::string(symbol->str[POST]);
-      assert(symbol->sections[0] == aclCOMMENT && "not in comment section");
-      saveOptionsToComments(cl, bin, options, optSec);
-      if (to == ACL_TYPE_ISA || to == ACL_TYPE_DEFAULT) {
-        stop = 1;
-        CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &OCLInit, &HSAILFEInit);
-        CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &OCLFini, &HSAILFEFini);
-        CONDITIONAL_CMP_ASSIGN(cl->feAPI.toISA, &OCLFEToISA, &HSAILFEToISA);
+        if (from == ACL_TYPE_AMDIL_TEXT) {
+          cl->feAPI.init = &AMDILInit;
+          cl->feAPI.fini = &AMDILFini;
+          cl->feAPI.toISA = &AMDILFEToISA;
+        } else {
+          CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &OCLInit, &HSAILFEInit);
+          CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &OCLFini, &HSAILFEFini);
+          CONDITIONAL_CMP_ASSIGN(cl->feAPI.toISA, &OCLFEToISA, &HSAILFEToISA);
+        }
         cl->feAPI.toIR = NULL;
         cl->feAPI.toModule = NULL;
       } else {
@@ -1501,27 +1459,26 @@ if_aclCompile(aclCompiler *cl,
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &HSAILFEFini, &SPIRFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.toModule, &OCLFEToModule, &SPIRToModule);
       } else if (from == ACL_TYPE_LLVMIR_BINARY || from == ACL_TYPE_LLVMIR_TEXT ||
-          from == ACL_TYPE_SPIR_BINARY || from == ACL_TYPE_SPIR_TEXT ||
-          from == ACL_TYPE_RSLLVMIR_BINARY) {
+                 from == ACL_TYPE_SPIR_BINARY   || from == ACL_TYPE_SPIR_TEXT   ||
+                 from == ACL_TYPE_RSLLVMIR_BINARY) {
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &SPIRInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &AMDILInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &HSAILFEInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &SPIRFini, &OCLFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &AMDILFini, &OCLFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &HSAILFEFini, &OCLFini);
-
-	if (from == ACL_TYPE_RSLLVMIR_BINARY) {
-	  cl->feAPI.toModule = &RSLLVMIRToModule;
-	}
+        if (from == ACL_TYPE_RSLLVMIR_BINARY) {
+          cl->feAPI.toModule = &RSLLVMIRToModule;
+        }
       }
   }
-
   if (start > stop) {
     return ACL_INVALID_ARG;
   }
   if (start == stop) {
     return ACL_SUCCESS;
   }
+  bool stages[5] = {false};
   for (uint8_t x = start; x < stop; ++x) {
     stages[x] = true;
   }
@@ -1808,6 +1765,10 @@ if_aclConvertType(aclCompiler *cl,
       if (!from_data) {
         from_data = cl->clAPI.extSec(cl, bin, &from_data_size,
                                      symbol->sections[0], &error_code);
+      }
+      // HSAIL is in aclSOURCE section (might be used while compiling from HSAIL by -hsail option)
+      if (!from_data) {
+        from_data = cl->clAPI.extSec(cl, bin, &from_data_size, aclSOURCE, &error_code);
       }
       break;
     }
