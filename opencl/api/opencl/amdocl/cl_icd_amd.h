@@ -831,7 +831,7 @@ typedef cl_int (CL_API_CALL * clGetPipeInfo_fn)(
 typedef cl_int (CL_API_CALL * clGetKernelSubGroupInfoKHR_fn)(
     cl_kernel                /* kernel */,
     cl_device_id             /* device */,
-    cl_kernel_sub_group_info /* param_name */,
+    const cl_kernel_sub_group_info /* param_name */,
     size_t                   /* input_value_size */,
     const void *             /* input_value */,
     size_t                   /* param_value_size */,
