@@ -1111,15 +1111,9 @@ aclCompileInternal(
     if (isHSAILTarget(acl->Elf()->target)) {
       bool bHsailTextInput = false;
       const char *hsail_text_input = getenv("AMD_DEBUG_HSAIL_TEXT_INPUT");
-      if (hsail_text_input != NULL && strcmp(hsail_text_input, "") != 0) {
+      // Verify that the internal (blit) kernel is not being compiled
+      if (hsail_text_input && strcmp(hsail_text_input, "") != 0 && !acl->Options()->oVariables->clInternalKernel) {
         bHsailTextInput = true;
-        if (bin && bin->options) {
-          amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
-          // Verify that the internal (blit) kernel is not being compiled
-          size_t ifind = Opts->origOptionStr.find("-cl-internal-kernel");
-          if (ifind != std::string::npos)
-            bHsailTextInput = false;
-        }
       }
       if (!bHsailTextInput) {
         // from ACL_TYPE_HSAIL_BINARY
@@ -1133,23 +1127,21 @@ aclCompileInternal(
               error_code = ACL_CODEGEN_ERROR;
               goto internal_compile_failure;
             }
-          // BRIG is in its corresponding BIF sections
-          } else {
-            if (!acl->extractBRIG(c)) {
-              appendLogToCL(cl, "ERROR: BRIG extracting failed.");
+            if (!acl->insertBRIG(c)) {
+              appendLogToCL(cl, "ERROR: BRIG inserting failed.");
               error_code = ACL_CODEGEN_ERROR;
               goto internal_compile_failure;
             }
-          }
-          if (!acl->insertBRIG(c)) {
-            appendLogToCL(cl, "ERROR: BRIG inserting failed.");
-            error_code = ACL_CODEGEN_ERROR;
-            goto internal_compile_failure;
-          }
-          if (!acl->insertHSAIL(c)) {
-            appendLogToCL(cl, "ERROR: HSAIL inserting failed.");
-            error_code = ACL_CODEGEN_ERROR;
-            goto internal_compile_failure;
+          // Only check that BRIG is in the binary
+          } else {
+            bool containsBRIG = false;
+            size_t boolSise = sizeof(bool);
+            error_code = aclQueryInfo(cl, bin, RT_CONTAINS_BRIG, NULL, &containsBRIG, &boolSise);
+            if (!containsBRIG || error_code != ACL_SUCCESS) {
+              appendLogToCL(cl, "ERROR: BRIG is absent or incomplete.");
+              error_code = ACL_CODEGEN_ERROR;
+              goto internal_compile_failure;
+            }
           }
         // from ACL_TYPE_LLVMIR_BINARY
         } else {
@@ -1162,11 +1154,9 @@ aclCompileInternal(
             error_code = ACL_CODEGEN_ERROR;
             goto internal_compile_failure;
           }
-          if (!acl->insertHSAIL()) {
-            appendLogToCL(cl, "ERROR: HSAIL inserting failed.");
-            error_code = ACL_CODEGEN_ERROR;
-            goto internal_compile_failure;
-          }
+        }
+        if (acl->Options()->isDumpFlagSet(amd::option::DUMP_CGIL)) {
+          acl->dumpHSAIL(acl->disassembleBRIG(), ".hsail");
         }
       }
       // HSAIL substitution from AMD_DEBUG_HSAIL_TEXT_INPUT
@@ -1316,9 +1306,7 @@ if_aclCompile(aclCompiler *cl,
   if ((from == ACL_TYPE_HSAIL_TEXT    && (to == ACL_TYPE_HSAIL_BINARY ||
                                           to == ACL_TYPE_CG           ||
                                           to == ACL_TYPE_ISA))        ||
-      (from == ACL_TYPE_HSAIL_BINARY  && (to == ACL_TYPE_HSAIL_TEXT   ||
-                                          to == ACL_TYPE_CG           ||
-                                          to == ACL_TYPE_ISA))        ||
+      (from == ACL_TYPE_HSAIL_BINARY  && to == ACL_TYPE_HSAIL_TEXT)   ||
       (from == ACL_TYPE_AMDIL_TEXT    && to == ACL_TYPE_AMDIL_BINARY) ||
       (from == ACL_TYPE_AMDIL_BINARY  && to == ACL_TYPE_AMDIL_TEXT)   ||
       (from == ACL_TYPE_SPIR_TEXT     && to == ACL_TYPE_SPIR_BINARY)  ||
@@ -1337,10 +1325,10 @@ if_aclCompile(aclCompiler *cl,
       return error_code;
     }
   }
-  if ((from == ACL_TYPE_AMDIL_TEXT || from == ACL_TYPE_AMDIL_BINARY  ||
-       from == ACL_TYPE_X86_TEXT   || from == ACL_TYPE_X86_BINARY    ||
-       from == ACL_TYPE_HSAIL_TEXT || from == ACL_TYPE_HSAIL_BINARY) &&
-       to != ACL_TYPE_ISA) {
+  if (((from == ACL_TYPE_AMDIL_TEXT   || from == ACL_TYPE_AMDIL_BINARY  ||
+        from == ACL_TYPE_X86_TEXT     || from == ACL_TYPE_X86_BINARY    ||
+        from == ACL_TYPE_HSAIL_TEXT   || from == ACL_TYPE_HSAIL_BINARY) && to != ACL_TYPE_ISA) ||
+                                        (from == ACL_TYPE_HSAIL_BINARY  && to != ACL_TYPE_CG)) {
     return ACL_INVALID_ARG;
   }
   uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1};
