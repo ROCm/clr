@@ -13,7 +13,7 @@
 #include "runtime/device/hsa/hsacompilerlib.hpp"
 #include "runtime/device/hsa/oclhsa_common.hpp"
 #include "utils/bif_section_labels.hpp"
-
+#include "utils/libUtils.h"
 
 #include <string>
 #include <vector>
@@ -625,50 +625,32 @@ namespace oclhsa {
             return true;
         }
 
-        size_t fsailSize;
-        const void *hsailText = g_complibApi._aclExtractSection(device().compiler(),
-            binaryElf_,
-            &fsailSize,
-            aclCODEGEN,
-            &errorCode);
-        if (errorCode != ACL_SUCCESS) {
-            buildLog_ += "Error while reading out the HSAIL from the ELF" ;
-            return false;
-        }
         const HsaDevice *hsaDevice = dev().getBackendDevice();
         if (!loadBrig()) {
             buildLog_ += "Error while loading BRIG" ;
             return false;
         }
 
-        std::string hsailProgram((char*)hsailText, fsailSize);
-        fsailProgram_ = hsailProgram;
-        // We pull out all the kernel names in a very ugly manner
-        //Todo(sramalin) : check if this has been fixed in the compiler library
-        // If not file an EPR
-        if (!fsailProgram_.empty()) {
-            // Find out the name of the kernel. Works for multiple kernels
-            std::vector<std::string> kernelNames;
-            int pos = 0;
-            while (true) {
-                std::string findString = "kernel &";
-                size_t kernelNPos = fsailProgram_.find(findString, pos);
-                if (kernelNPos == std::string::npos) {
-                    break;
-                }
-                size_t kernelEndNPos = fsailProgram_.find("l(", kernelNPos);
-                pos = kernelEndNPos + 1;
-                if (kernelEndNPos == std::string::npos) {
-                    break;
-                }
-                // "kernel &" is 8
-                // "__OpenCL_" is 9
-                // "_kerne" is 6
-                // We can drop all this with a compiler tweak later
-                std::string kernelName = fsailProgram_.substr(kernelNPos + 8 + 9,
-                    kernelEndNPos -
-                    (kernelNPos + 8 + 9) - 6);
-                kernelNames.push_back(kernelName);
+        size_t kernelNamesSize = 0;
+        errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
+        if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error while Finalization phase: kernel names query from the ELF failed\n";
+            return false;
+        }
+        if (kernelNamesSize > 0) {
+            char* kernelNames = new char[kernelNamesSize];
+            errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
+            if (errorCode != ACL_SUCCESS) {
+                buildLog_ += "Error while Finalization phase: kernel's Metadata is corrupted in the ELF\n";
+                delete kernelNames;
+                return false;
+            }
+            std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
+            delete kernelNames;
+            std::vector<std::string>::iterator it = vKernels.begin();
+            bool dynamicParallelism = false;
+            for (it; it != vKernels.end(); ++it) {
+                std::string kernelName = *it;
                 Kernel *aKernel = new oclhsa::Kernel(kernelName,
                     this,
                     &brig_,
@@ -676,21 +658,18 @@ namespace oclhsa {
                 if (!aKernel->init() ) {
                     return false;
                 }
-                aKernel->setUniformWorkGroupSize(options
-                 ->oVariables->UniformWorkGroupSize);
-                //Update the binary in the FSAILProgram to save the ISA and debug
-                // information. This is so the debugger and the profiler can use the
-                // a single aclBinary for all their needs.
+                aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+                // Update the binary in the FSAILProgram to save the ISA and debug information.
+                // This is so the debugger and the profiler can use the a single aclBinary for all their needs.
                 if (!updateAclBinaryWithKernelIsaAndDebug(kernelName)) {
-                  return false;
+                    return false;
                 }
                 kernels()[kernelName] = aKernel;
             }
-            saveBinaryAndSetType(TYPE_EXECUTABLE);
-            buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
-            return true;
         }
-        return false;
+        saveBinaryAndSetType(TYPE_EXECUTABLE);
+        buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
+        return true;
     }
 
     bool FSAILProgram::createBinary(amd::option::Options *options) {
