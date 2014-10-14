@@ -97,8 +97,10 @@
 #define DEBUG_TYPE "ocl_linker"
 
 static const char* OptionMaskFName = "__option_mask";
-extern  llvm::Module*
-clpVectorExpansion(llvm::Module *srcModules[], std::string &errorMsg, bool IsGPUTarget);
+
+namespace AMDSpir {
+  extern void replaceTrivialConversionFunc(llvm::Module& M);
+}
 namespace amd {
 
 namespace {
@@ -900,6 +902,8 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 #endif
 
 
+  AMDSpir::replaceTrivialConversionFunc(*LLVMBinary());
+
   if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
     return 1;
 
@@ -909,36 +913,19 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
                                   Options()->oVariables->FP32RoundDivideSqrt);
 
   // Before doing anything else, quickly optimize Module
-  if (Options()->oVariables->OptLevel) {
-    if (Options()->oVariables->EnableBuildTiming) {
-      time_prelinkopt = amd::Os::timeNanos();
-    }
-
-    AMDPrelinkOpt(LLVMBinary(), true /*Whole*/,
-      !Options()->oVariables->OptSimplifyLibCall,
-      Options()->oVariables->UnsafeMathOpt,
-      Options()->oVariables->OptUseNative,
-      LowerToPreciseFunctions);
-
-    if (Options()->oVariables->EnableBuildTiming) {
-      time_prelinkopt = amd::Os::timeNanos() - time_prelinkopt;
-    }
-  }
-  // Now, do linking by extracting from the builtins library only those
-  // functions that are used in the kernel(s).
   if (Options()->oVariables->EnableBuildTiming) {
-    time_link = amd::Os::timeNanos();
+    time_prelinkopt = amd::Os::timeNanos();
   }
-
-  std::string ErrorMessage;
-
-  // CL pre-link processing
-  llvm::Module *clp_inputs[2];
-  clp_inputs[0] = LLVMBinary();
-  clp_inputs[1] = NULL;
   std::string clp_errmsg;
-  llvm::Module *OnFlyLib = clpVectorExpansion (clp_inputs, clp_errmsg, IsGPUTarget);
-  if (clp_errmsg.empty() == false) {
+  llvm::Module *OnFlyLib = AMDPrelinkOpt(LLVMBinary(), true /*Whole*/,
+    !Options()->oVariables->OptSimplifyLibCall,
+    Options()->oVariables->UnsafeMathOpt,
+    Options()->oVariables->OptUseNative,
+    Options()->oVariables->OptLevel,
+    LowerToPreciseFunctions,
+    IsGPUTarget, clp_errmsg);
+
+  if (!clp_errmsg.empty()) {
     delete LLVMBinary();
     for (unsigned int i = 0; i < LibMs.size(); ++ i) {
       delete LibMs[i];
@@ -949,12 +936,21 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
     return 1;
   }
 
-  unsigned int offset = (unsigned int)LibMs.size();
-
   if (OnFlyLib) {
     // OnFlyLib must be the last!
     LibMs.push_back(OnFlyLib);
   }
+
+  if (Options()->oVariables->EnableBuildTiming) {
+    time_prelinkopt = amd::Os::timeNanos() - time_prelinkopt;
+  }
+  // Now, do linking by extracting from the builtins library only those
+  // functions that are used in the kernel(s).
+  if (Options()->oVariables->EnableBuildTiming) {
+    time_link = amd::Os::timeNanos();
+  }
+
+  std::string ErrorMessage;
 
   // build the reference map
   llvm::ReferenceMapBuilder RefMapBuilder(LLVMBinary(), LibMs);
