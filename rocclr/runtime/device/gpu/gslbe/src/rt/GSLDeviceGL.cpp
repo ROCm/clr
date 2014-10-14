@@ -761,20 +761,23 @@ CALGSLDevice::resGLAcquire(CALvoid* GLplatformContext,
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    GLResource hRes;
+    GLResource hRes = {0};
     osAssert(mbResHandle);
     hRes.mbResHandle = (GLuintp)mbResHandle;
-     switch(type)
+    switch(type)
     {
     case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
         hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-    break;
+        break;
     case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
         hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
         break;
-    break;
+    case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
+        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
+        break;
     default:
-        return false;
+        // @note: No acquire for GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD
+        return true;
     }
     bool status = false;
 #ifdef ATI_OS_LINUX
@@ -796,15 +799,31 @@ CALGSLDevice::resGLAcquire(CALvoid* GLplatformContext,
 
 bool
 CALGSLDevice::resGLRelease(CALvoid* GLplatformContext,
-    CALvoid* mbResHandle) const
+    CALvoid* mbResHandle,
+    CALuint type) const
 {
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    GLResource hRes;
+    GLResource hRes = {0};
     osAssert(mbResHandle);
     bool status = false;
     hRes.mbResHandle = (GLuintp)mbResHandle;
+    switch(type)
+    {
+    case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
+        hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
+        break;
+    case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
+        hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
+        break;
+    case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
+        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
+        break;
+    default:
+        // @note: No release for GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD
+        return true;
+    }
 
 #ifdef ATI_OS_LINUX
     //TODO : make sure the application GL context is current. if not no
@@ -836,7 +855,7 @@ CALGSLDevice::resGLFree (
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    GLResource hRes;
+    GLResource hRes = {0};
 
     osAssert(mbResHandle);
     hRes.mbResHandle = (GLuintp)mbResHandle;
