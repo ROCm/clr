@@ -1446,17 +1446,8 @@ bool
 Resource::gslGLAcquire()
 {
     bool retVal = true;
-
     if (cal()->type_ == OGLInterop) {
-       //release is required only for depth resources
-      switch ((int)cal()->format_) {
-      case CM_SURF_FMT_DEPTH24_STEN8:
-      case CM_SURF_FMT_DEPTH32F_X24_STEN8:
-      case CM_SURF_FMT_DEPTH32F:
-      case CM_SURF_FMT_DEPTH16:
-            retVal = dev().resGLAcquire(glPlatformContext_,glInteropMbRes_, glType_);
-            break;
-        }
+        retVal = dev().resGLAcquire(glPlatformContext_,glInteropMbRes_, glType_);
     }
     return retVal;
 }
@@ -1465,17 +1456,8 @@ bool
 Resource::gslGLRelease()
 {
     bool retVal = true;
-
     if (cal()->type_ == OGLInterop) {
-       //release is required only for depth resources
-      switch ((int)cal()->format_) {
-      case CM_SURF_FMT_DEPTH24_STEN8:
-      case CM_SURF_FMT_DEPTH32F_X24_STEN8:
-      case CM_SURF_FMT_DEPTH32F:
-      case   CM_SURF_FMT_DEPTH16:
-            retVal = dev().resGLRelease(glPlatformContext_,glInteropMbRes_);
-            break;
-        }
+        retVal = dev().resGLRelease(glPlatformContext_,glInteropMbRes_, glType_);
     }
     return retVal;
 }

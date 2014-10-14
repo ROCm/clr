@@ -86,9 +86,9 @@ public:
         CALvoid* GLdeviceContext, gslMemObject mem, gslMemObject mem_base,
         CALvoid* mbResHandle, CALuint type) const;
     //! @brief Decompresses depth/MSAA surfaces.This function is called on every 'clEnqeueuAcquireGLObject'.
-    bool             resGLAcquire( CALvoid* GLplatformContext,CALvoid* mbResHandle, CALuint type) const;
+    bool             resGLAcquire( CALvoid* GLplatformContext, CALvoid* mbResHandle, CALuint type) const;
     //! @brief This function is called on every 'clEnqeueuReleaseGLObject'.
-    bool             resGLRelease(CALvoid* GLplatformContext,CALvoid* mbResHandle) const;
+    bool             resGLRelease(CALvoid* GLplatformContext, CALvoid* mbResHandle, CALuint type) const;
 
     gsl::gsAdaptor*  getNative() const;
     CALuint          getElfMachine() const { return m_elfmachine; };
