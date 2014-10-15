@@ -7,6 +7,14 @@
 #include "os/os.hpp"
 #include "jit/src/jit.hpp"
 #include "utils/target_mappings.h"
+#ifdef _MSC_VER
+/* for disabling warning in llvm/ADT/Statistic.h */
+#pragma warning(disable:4146)
+#endif
+#include "llvm/ADT/Statistic.h"
+#ifdef _MSC_VER
+#pragma warning(default:4146)
+#endif
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -315,7 +323,7 @@ llvmCodeGen(
   }
 
   Passes.run(mod);
-
+  llvm::PrintStatistics();
   delete Out;
   return 0;
 }
