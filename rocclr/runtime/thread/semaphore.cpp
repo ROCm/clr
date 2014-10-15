@@ -43,12 +43,14 @@ Semaphore::~Semaphore()
 void
 Semaphore::post()
 {
-    int state = state_;
+    int state = state_.load(std::memory_order_relaxed);
     for (;;) {
         if (state > 0) {
-            if (state == state_.load(std::memory_order_acquire)) {
+            int newstate = state_.load(std::memory_order_acquire);
+            if (state == newstate) {
                 return;
             }
+            state = newstate;
             continue;
         }
         if (state_.compare_exchange_weak(state, state+1,
