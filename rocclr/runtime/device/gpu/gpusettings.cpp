@@ -443,6 +443,11 @@ Settings::create(
         enableExtension(ClKhrDepthImages);
     }
 
+    if (apuSystem_ &&
+       ((calAttr.totalVisibleHeap + calAttr.totalInvisibleHeap) < 150)) {
+	    remoteAlloc_ = true;
+    }
+
     // Override current device settings
     override();
 
