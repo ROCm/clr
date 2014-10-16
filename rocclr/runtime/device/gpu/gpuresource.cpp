@@ -12,6 +12,8 @@
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gputimestamp.hpp"
 #include "thread/atomic.hpp"
+#include <GL/gl.h>
+#include "GL/glATIInternal.h"
 
 #include <string>
 #include <fstream>
@@ -668,15 +670,15 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             "We don't have OGL context!");
         switch (oglRes->type_) {
         case InteropVertexBuffer:
-            glType_ = CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER;
+            glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
             break;
         case InteropRenderBuffer:
-            glType_ = CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER;
+            glType_ = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
             break;
         case InteropTexture:
         case InteropTextureViewLevel:
         case InteropTextureViewCube:
-            glType_ = CAL_RES_GL_BUFFER_TYPE_TEXTURE;
+            glType_ = GL_RESOURCE_ATTACH_TEXTURE_AMD;
             break;
         default:
             LogError("Unknown OGL interop type!");

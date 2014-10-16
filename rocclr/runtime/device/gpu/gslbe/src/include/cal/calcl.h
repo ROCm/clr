@@ -640,13 +640,6 @@ typedef enum CALmemcopyflagsEnum
     CAL_MEMCOPY_ASYNC   = 2, /**< used to indicate completely asynchronous behavior */
 } CALmemcopyflags;
 
-typedef enum CALResGLBufferTypeEnum{
-    CAL_RES_GL_BUFFER_TYPE_TEXTURE      = 0,
-    CAL_RES_GL_BUFFER_TYPE_FRAMEBUFFER  = 1,
-    CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER = 2,
-    CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER = 3
-}CALResGLBufferType;
-
 typedef  struct CALDeviceGLParamsRec {
     CALvoid            *GLplatformContext;
     CALvoid            *GLdeviceContext;

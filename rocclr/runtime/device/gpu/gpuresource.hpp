@@ -440,7 +440,7 @@ private:
     Resource*       shortView_;     //!< Short view memory object
     gslMemObject    glInterop_;     //!< Original GL interop object
     void*           glInteropMbRes_;//!< Mb Res handle
-    CALResGLBufferType  glType_;    //!< GL interop type
+    uint32_t        glType_;        //!< GL interop type
     void*           glPlatformContext_;
     void*           glDeviceContext_;
 

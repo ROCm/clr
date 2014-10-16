@@ -203,7 +203,7 @@ static const   cmFormatXlateParams cmFormatXlateTable [] = {
     {CM_SURF_FMT_R5_G6_B5UI,             (cmSurfFmt)500,        GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_DEPTH32F_X24_STEN8_UNCLAMPED, CM_SURF_FMT_RG32I, GSL_CHANNEL_ORDER_REPLICATE_R},
     {CM_SURF_FMT_DEPTH32F_UNCLAMPED,    CM_SURF_FMT_R32F,       GSL_CHANNEL_ORDER_REPLICATE_R},
-	{CM_SURF_FMT_L8_X16_A8_SRGB,         (cmSurfFmt)500,        GSL_CHANNEL_ORDER_RGBA},
+    {CM_SURF_FMT_L8_X16_A8_SRGB,         (cmSurfFmt)500,        GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_L8_X24_SRGB,            (cmSurfFmt)500,        GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_STENCIL8,               CM_SURF_FMT_R8I,       GSL_CHANNEL_ORDER_R},
     };
@@ -406,7 +406,7 @@ dummyAssertIfCmSurfFmtChanges(void)
     COMPILE_TIME_ASSERT(188 == CM_SURF_FMT_R5_G6_B5UI);
     COMPILE_TIME_ASSERT(189 == CM_SURF_FMT_DEPTH32F_X24_STEN8_UNCLAMPED);
     COMPILE_TIME_ASSERT(190 == CM_SURF_FMT_DEPTH32F_UNCLAMPED);
-	COMPILE_TIME_ASSERT(191 == CM_SURF_FMT_L8_X16_A8_SRGB);
+    COMPILE_TIME_ASSERT(191 == CM_SURF_FMT_L8_X16_A8_SRGB);
     COMPILE_TIME_ASSERT(192 == CM_SURF_FMT_L8_X24_SRGB);
     COMPILE_TIME_ASSERT(193 == CM_SURF_FMT_STENCIL8);
 
@@ -434,7 +434,7 @@ static PFNWGLRESOURCEDETACHAMD wglResourceDetachAMD = NULL;
 static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = NULL;
 #endif
 
-void
+bool
 CALGSLDevice::initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdeviceContext) const
 {
 #ifdef ATI_OS_LINUX
@@ -442,15 +442,16 @@ CALGSLDevice::initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdev
     void * pModule = dlopen("libGL.so.1",RTLD_NOW);
 
     if(NULL == pModule){
-        return;
+        return false;
     }
     pfnGlxGetProcAddress = (PFNGlxGetProcAddress) dlsym(pModule,"glXGetProcAddress");
 
     if (NULL == pfnGlxGetProcAddress){
-        return;
+        return false;
     }
 
-    if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD || !glXResourceDetachAMD || !glXGetContextMVPUInfoAMD)
+    if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD ||
+        !glXResourceDetachAMD || !glXGetContextMVPUInfoAMD)
     {
         glXBeginCLInteropAMD = (PFNGLXBEGINCLINTEROPAMD) pfnGlxGetProcAddress ((const GLubyte *)"glXBeginCLInteroperabilityAMD");
         glXEndCLInteropAMD = (PFNGLXENDCLINTEROPAMD) pfnGlxGetProcAddress ((const GLubyte *)"glXEndCLInteroperabilityAMD");
@@ -460,8 +461,15 @@ CALGSLDevice::initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdev
         glXResourceDetachAMD = (PFNGLXRESOURCEDETACHAMD) pfnGlxGetProcAddress ((const GLubyte *)"glXResourceDetachAMD");
         glXGetContextMVPUInfoAMD = (PFNGLXGETCONTEXTMVPUINFOAMD) pfnGlxGetProcAddress ((const GLubyte *)"glXGetContextMVPUInfoAMD");
     }
+
+    if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD ||
+        !glXResourceDetachAMD || !glXGetContextMVPUInfoAMD)
+    {
+        return false;
+    }
 #else
-    if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD || !wglResourceDetachAMD || !wglGetContextGPUInfoAMD)
+    if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
+        !wglResourceDetachAMD || !wglGetContextGPUInfoAMD)
     {
         HGLRC fakeRC = NULL;
 
@@ -485,7 +493,13 @@ CALGSLDevice::initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdev
             wglDeleteContext(fakeRC);
         }
     }
+    if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
+        !wglResourceDetachAMD || !wglGetContextGPUInfoAMD)
+    {
+        return false;
+    }
 #endif
+    return true;
 }
 
 bool
@@ -503,7 +517,7 @@ CALGSLDevice::glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
     HGLRC hRC = (HGLRC)GLplatformContext;
 
     //get GL context's LUID and chainBitMask from UGL
-    if (wglGetContextGPUInfoAMD && wglGetContextGPUInfoAMD(hRC, &glAdapterLuid, &glChainBitMask))
+    if (wglGetContextGPUInfoAMD(hRC, &glAdapterLuid, &glChainBitMask))
     {
         //now check against the CAL device' LUID and chainBitMask.
         if (m_adp->getMVPUinfo(&calAdapterLuid, &calChainBitMask))
@@ -514,23 +528,19 @@ CALGSLDevice::glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
         }
     }
 #elif defined (ATI_OS_LINUX)
-    //if the extension is supported by the base driver
-    if (NULL != glXGetContextMVPUInfoAMD)
-    {
-        GLuint glDeviceId = 0 ;
-        GLuint glChainMask = 0 ;
-        GLXContext ctx = (GLXContext)GLplatformContext;
-        if ( glXGetContextMVPUInfoAMD(ctx,&glDeviceId,&glChainMask)){
-            GLuint deviceId = 0 ;
-            GLuint chainMask = 0 ;
+    GLuint glDeviceId = 0 ;
+    GLuint glChainMask = 0 ;
+    GLXContext ctx = (GLXContext)GLplatformContext;
+    if (glXGetContextMVPUInfoAMD(ctx,&glDeviceId,&glChainMask)){
+        GLuint deviceId = 0 ;
+        GLuint chainMask = 0 ;
 
-            if (m_adp->getMVPUinfo(&deviceId, &chainMask))
-            {
-            // we allow intoperability only with GL context
-            // reside on a single GPU
-                if (deviceId == glDeviceId && chainMask == glChainMask){
-                        canInteroperate = true;
-                }
+        if (m_adp->getMVPUinfo(&deviceId, &chainMask))
+        {
+        // we allow intoperability only with GL context
+        // reside on a single GPU
+            if (deviceId == glDeviceId && chainMask == glChainMask){
+                    canInteroperate = true;
             }
         }
     }
@@ -542,49 +552,31 @@ bool
 CALGSLDevice::glAssociate(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
 {
     //initialize pointers to the gl extension that supports interoperability
-    initGLInteropPrivateExt(GLplatformContext, GLdeviceContext);
-
-    bool canInterop = glCanInterop(GLplatformContext, GLdeviceContext);
+    if (!initGLInteropPrivateExt(GLplatformContext, GLdeviceContext) ||
+        !glCanInterop(GLplatformContext, GLdeviceContext))
+    {
+        return false;
+    }
 
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)GLplatformContext;
-
-    if (canInterop && glXBeginCLInteropAMD && glXBeginCLInteropAMD(ctx, 0))
-    {
-        return true;
-    }
+    return (glXBeginCLInteropAMD(ctx, 0)) ? true : false;
 #else
     HGLRC hRC = (HGLRC)GLplatformContext;
-
-    if (canInterop && wglBeginCLInteropAMD && wglBeginCLInteropAMD(hRC, 0))
-    {
-        return true;
-    }
+    return (wglBeginCLInteropAMD(hRC, 0)) ? true : false;
 #endif
-
-    return false;
 }
 
 bool
 CALGSLDevice::glDissociate(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
 {
-    initGLInteropPrivateExt(GLplatformContext, GLdeviceContext);
-
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)GLplatformContext;
-    if(glXEndCLInteropAMD && glXEndCLInteropAMD(ctx, 0))
-    {
-        return true;
-    }
+    return (glXEndCLInteropAMD(ctx, 0)) ? true : false;
 #else
     HGLRC hRC = (HGLRC)GLplatformContext;
-    if (wglEndCLInteropAMD && wglEndCLInteropAMD(hRC, 0))
-    {
-        return true;
-    }
+    return (wglEndCLInteropAMD(hRC, 0)) ? true : false;
 #endif
-
-    return false;
 }
 
 bool
@@ -612,23 +604,7 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
         GSL_ALLOCATION_INSTANCED // alloc_type
     );
 
-    switch(resData.type)
-    {
-    case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
-        hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-    break;
-    case CAL_RES_GL_BUFFER_TYPE_FRAMEBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD;
-    break;
-    case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-        break;
-        case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-    break;
-    default:
-        return false;
-    }
+    hRes.type = resData.type;
 
     GLResourceData* hData = new GLResourceData;
     if (NULL == hData)
@@ -641,18 +617,16 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
     hRes.flags = resData.flags;
     hData->version = GL_RESOURCE_DATA_VERSION;
 
-    initGLInteropPrivateExt(resData.GLContext, resData.GLdeviceContext);
-
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)resData.GLContext;
-    if (glXResourceAttachAMD && glXResourceAttachAMD(ctx, &hRes, hData))
+    if (glXResourceAttachAMD(ctx, &hRes, hData))
     {
-        attribs.dynamicSharedBufferID = hData->sharedBufferID ;
+        attribs.dynamicSharedBufferID = hData->sharedBufferID;
         status = true;
     }
 #else
     HGLRC hRC = (HGLRC)resData.GLContext;
-    if (wglResourceAttachAMD && wglResourceAttachAMD(hRC, &hRes, hData))
+    if (wglResourceAttachAMD(hRC, &hRes, hData))
     {
         status =  true;
     }
@@ -748,7 +722,7 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
     }
     free (attribs.alias_swizzles);
     resData.mbResHandle = (CALvoid*)hData->mbResHandle;
-	resData.memObject = mem;
+    resData.memObject = mem;
     delete hData;
     return mem != 0;
 }
@@ -764,37 +738,19 @@ CALGSLDevice::resGLAcquire(CALvoid* GLplatformContext,
     GLResource hRes = {0};
     osAssert(mbResHandle);
     hRes.mbResHandle = (GLuintp)mbResHandle;
-    switch(type)
-    {
-    case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
-        hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-        break;
-    case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-        break;
-    case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-        break;
-    default:
-        // @note: No acquire for GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD
-        return true;
-    }
-    bool status = false;
+    hRes.type = type;
+
 #ifdef ATI_OS_LINUX
-     GLXContext ctx = (GLXContext) GLplatformContext;
-    if (glxResourceAcquireAMD && glxResourceAcquireAMD(ctx, &hRes))
-    {
-       status = true;
-    }
+    GLXContext ctx = (GLXContext) GLplatformContext;
+    return (glxResourceAcquireAMD(ctx, &hRes)) ? true : false;
 #else
     HGLRC hRC = wglGetCurrentContext();
-    if ( wglResourceAcquireAMD && wglResourceAcquireAMD(hRC, &hRes))
-    {
-        status = true;
+    //! @todo A temporary workaround for MT issue in conformance fence_sync
+    if (0 == hRC) {
+        return true;
     }
+    return (wglResourceAcquireAMD(hRC, &hRes)) ? true : false;
 #endif
-
-    return status;
 }
 
 bool
@@ -807,42 +763,25 @@ CALGSLDevice::resGLRelease(CALvoid* GLplatformContext,
 
     GLResource hRes = {0};
     osAssert(mbResHandle);
-    bool status = false;
     hRes.mbResHandle = (GLuintp)mbResHandle;
-    switch(type)
-    {
-    case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
-        hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-        break;
-    case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-        break;
-    case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-        break;
-    default:
-        // @note: No release for GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD
-        return true;
-    }
+    hRes.type = type;
 
 #ifdef ATI_OS_LINUX
     //TODO : make sure the application GL context is current. if not no
     // point calling into the GL RT.
-     GLXContext ctx = (GLXContext) GLplatformContext;
-    if ((0 != ctx) && glxResourceReleaseAMD && glxResourceReleaseAMD(ctx, &hRes))
-    {
-         status =  true;
-    }
+    GLXContext ctx = (GLXContext) GLplatformContext;
+    return (glxResourceReleaseAMD(ctx, &hRes)) ? true : false;
 #else
-    //make the call into the GL driver only if the application GL context is current
+    // Make the call into the GL driver only if the application GL context is current
     HGLRC hRC = wglGetCurrentContext();
-    if ( (0 != hRC) && wglResourceReleaseAMD && wglResourceReleaseAMD(hRC, &hRes))
-    {
-        status =  true;
+    //! @todo A temporary workaround for MT issue in conformance fence_sync
+    if (0 == hRC) {
+        return true;
     }
+    return (wglResourceReleaseAMD(hRC, &hRes)) ? true : false;
 #endif
-    return status;
 }
+
 bool
 CALGSLDevice::resGLFree (
     CALvoid* GLplatformContext,
@@ -859,44 +798,19 @@ CALGSLDevice::resGLFree (
 
     osAssert(mbResHandle);
     hRes.mbResHandle = (GLuintp)mbResHandle;
-    switch(type)
-    {
-    case CAL_RES_GL_BUFFER_TYPE_TEXTURE:
-        hRes.type = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-    break;
-    case CAL_RES_GL_BUFFER_TYPE_FRAMEBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD;
-    break;
-    case CAL_RES_GL_BUFFER_TYPE_RENDERBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-    break;
-        case CAL_RES_GL_BUFFER_TYPE_VERTEXBUFFER:
-        hRes.type = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-    break;
-    default:
-        return false;
-    }
+    hRes.type = type;
 
-    initGLInteropPrivateExt(GLplatformContext, GLdeviceContext);
-
-#ifdef ATI_OS_LINUX
-    GLXContext ctx = (GLXContext)GLplatformContext;
-    if (!glXResourceDetachAMD || !glXResourceDetachAMD(ctx, &hRes))
-    {
-        return true;
-    }
-#else
-    HGLRC hRC = (HGLRC)GLplatformContext;
-    if (!wglResourceDetachAMD || !wglResourceDetachAMD(hRC, &hRes))
-    {
-        return false;
-    }
-#endif
-    m_cs->Flush();
     if (mem_base)
     {
         m_cs->destroyMemObject(mem_base);
     }
     m_cs->destroyMemObject(mem);
-    return true;
+
+#ifdef ATI_OS_LINUX
+    GLXContext ctx = (GLXContext)GLplatformContext;
+    return (glXResourceDetachAMD(ctx, &hRes)) ? true : false;
+#else
+    HGLRC hRC = (HGLRC)GLplatformContext;
+    return (wglResourceDetachAMD(hRC, &hRes)) ? true : false;
+#endif
 };

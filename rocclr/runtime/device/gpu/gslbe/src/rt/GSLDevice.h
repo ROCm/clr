@@ -42,7 +42,7 @@ public:
         void*   GLContext;          //(IN) handle to HGLRC or GLXContext
         void*   GLdeviceContext;    //(IN) a handle to device context
         uint    name;               //(IN) gl identifier of the object
-        CALResGLBufferType type;    // (IN) type of the interop object .
+        uint    type;               // (IN) type of the interop object .
         uint    flags;              // (IN) flags assigned  to 'GLResource' struct
         void*   mbResHandle;        // (OUT) Internal GL driver handle for the resource
         gslMemObject  mem_base;     // (OUT) Base memory object for the resource
@@ -188,7 +188,7 @@ private:
     gslDynamicRuntimeConfig m_dcfg;
 
     //GL Extension specific
-    void             initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdeviceContext) const;
+    bool             initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdeviceContext) const;
     bool             glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext);
 
     bool             PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags);
