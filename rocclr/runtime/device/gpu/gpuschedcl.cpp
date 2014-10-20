@@ -8,7 +8,7 @@ namespace gpu {
 
 const char* SchedulerSourceCode = SCHEDULER_KERNEL(
 \n
-extern void __amdrt_scheduler(__global void *, __global void *, uint);
+extern void __amd_scheduler(__global void *, __global void *, uint);
 \n
 __kernel void
 scheduler(
