@@ -15,7 +15,7 @@
 #include "device/gpu/gpuvirtual.hpp"
 #include "sc-hsa/Interface/SCHSAInterface.h"
 #include "device/gpu/gpuprintf.hpp"
-#include "newcore.h"
+#include "hsa.h"
 //! \namespace gpu GPU Device Implementation
 namespace gpu {
 
@@ -885,7 +885,7 @@ public:
 
     //! Returns AQL packet in CPU memory 
     //! if the kerenl arguments were successfully loaded, otherwise NULL
-    HsaAqlDispatchPacket* loadArguments(
+    hsa_dispatch_packet_t* loadArguments(
         VirtualGPU&                     gpu,        //!< Running GPU context
         const amd::Kernel&              kernel,     //!< AMD kernel object
         const amd::NDRangeContainer&    sizes,      //!< NDrange container

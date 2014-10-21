@@ -909,7 +909,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
 
     // Allocate SRD manager
     srdManager_ = new SrdManager(*this,
-        std::max(HSA_IMAGE_OBJECT_SIZE, HSA_SAMPLER_OBJECT_SIZE), 64 * Ki);
+        std::max(HsaImageObjectSize, HsaSamplerObjectSize), 64 * Ki);
     if (srdManager_ == NULL) {
         return false;
     }
@@ -2509,7 +2509,7 @@ Sampler::create(
     if (0 == hwSrd_) {
         return false;
     }
-    dev_.fillHwSampler(oclSamplerState, hwState_, HSA_SAMPLER_OBJECT_SIZE);
+    dev_.fillHwSampler(oclSamplerState, hwState_, HsaSamplerObjectSize);
     return true;
 }
 

@@ -4,7 +4,7 @@
 #ifndef GPUSCHED_HPP_
 #define GPUSCHED_HPP_
 
-#include "newcore.h"
+#include "hsa.h"
 
 namespace gpu {
 
@@ -47,7 +47,7 @@ struct AmdAqlWrap {
     uint64_t wait_list;     //!< [LRO/SRO] Pointer to an array of clk_event_t objects (64 bytes default)
     uint32_t wait_num;      //!< [LWO/SRO] The number of cl_event_wait objects    
     uint32_t reserved[5];   //!< For the future usage
-    HsaAqlDispatchPacket aql;  //!< [LWO/SRO] AQL packet – 64 bytes AQL packet
+    hsa_dispatch_packet_t aql;  //!< [LWO/SRO] AQL packet – 64 bytes AQL packet
 };
 
 struct AmdEvent {

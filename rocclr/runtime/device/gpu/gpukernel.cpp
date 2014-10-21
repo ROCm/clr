@@ -3791,7 +3791,10 @@ WriteAqlArg(
     *dst += size;
 }
 
-HsaAqlDispatchPacket*
+const hsa_packet_header_t DISPATCH_PACKET_HEADER = {
+    HSA_PACKET_TYPE_DISPATCH, 1, HSA_FENCE_SCOPE_SYSTEM, HSA_FENCE_SCOPE_COMPONENT, 0 };
+
+hsa_dispatch_packet_t*
 HSAILKernel::loadArguments(
     VirtualGPU&                     gpu,
     const amd::Kernel&              kernel,
@@ -3944,7 +3947,7 @@ HSAILKernel::loadArguments(
             if (dev().settings().hsailDirectSRD_) {
                 // Image arguments are of size 48 bytes and aligned to 16 bytes
                 WriteAqlArg(&aqlArgBuf, image->hwState(),
-                    HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
+                    HsaImageObjectSize, HsaImageObjectAlignment);
             }
             else {
                 //! \note Special case for the image views.
@@ -3952,9 +3955,9 @@ HSAILKernel::loadArguments(
                 //! this view without a wait for SRD resource.
                 if (image->memoryType() == Resource::ImageView) {
                     // Copy the current structre into CB1
-                    memcpy(aqlStruct, image->hwState(), HSA_IMAGE_OBJECT_SIZE);
+                    memcpy(aqlStruct, image->hwState(), HsaImageObjectSize);
                     ConstBuffer* cb = gpu.constBufs_[1];
-                    cb->uploadDataToHw(HSA_IMAGE_OBJECT_SIZE);
+                    cb->uploadDataToHw(HsaImageObjectSize);
                     // Then use a pointer in aqlArgBuffer to CB1
                     uint64_t srd = cb->vmAddress() + cb->wrtOffset();
                     WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
@@ -3983,7 +3986,7 @@ HSAILKernel::loadArguments(
                     (sampler->getDeviceSampler(dev()));
             if (dev().settings().hsailDirectSRD_) {
                 WriteAqlArg(&aqlArgBuf, gpuSampler->hwState(),
-                    HSA_SAMPLER_OBJECT_SIZE, HSA_SAMPLER_OBJECT_ALIGNMENT);
+                    HsaSamplerObjectSize, HsaSamplerObjectAlignment);
             }
             else {
                 uint64_t srd = gpuSampler->hwSrd();
@@ -4025,46 +4028,41 @@ HSAILKernel::loadArguments(
         "Size and the number of arguments don't match!");
     uint  argBufSize = amd::alignUp(
         static_cast<uint>(argsBufferSize()), sizeof(uint32_t));
-    HsaAqlDispatchPacket*   aqlPkt = reinterpret_cast<HsaAqlDispatchPacket*>(
+    hsa_dispatch_packet_t*   hsaDisp = reinterpret_cast<hsa_dispatch_packet_t*>(
         gpu.cb(0)->sysMemCopy() + argBufSize);
 
-    amd::NDRange    local(sizes.local());
-    amd::NDRange    global(sizes.global());
-
-    // Initialize the Global, Local and Offset values
-    aqlPkt->dimensions = sizes.dimensions();
-    // Initialize the work grid parameter
-    for (uint idx = 0; idx < 3; idx++) {
-        aqlPkt->grid_size[idx] = 1;
-        aqlPkt->workgroup_size[idx] = 1;
-    }
+    amd::NDRange        local(sizes.local());
+    const amd::NDRange& global = sizes.global();
 
     // Check if runtime has to find local workgroup size
-    findLocalWorkSize(aqlPkt->dimensions, global, local);
-    for (uint idx = 0; idx < aqlPkt->dimensions; idx++) {
-        aqlPkt->grid_size[idx] = global[idx];
-        aqlPkt->workgroup_size[idx] = local[idx];
-    }
+    findLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
-    // Initialize if dispatch should enable profiling
-    aqlPkt->reserved2 = 0;  //config->profile ? 1:0;
+    hsaDisp->header = DISPATCH_PACKET_HEADER;
+    hsaDisp->dimensions = sizes.dimensions();
+    hsaDisp->reserved = 0;
+
+    hsaDisp->workgroup_size_x = local[0];
+    hsaDisp->workgroup_size_y = (sizes.dimensions() > 1) ? local[1] : 1;
+    hsaDisp->workgroup_size_z = (sizes.dimensions() > 2) ? local[2] : 1;
+
+    hsaDisp->grid_size_x = global[0];
+    hsaDisp->grid_size_y = (sizes.dimensions() > 1) ? global[1] : 1;
+    hsaDisp->grid_size_z = (sizes.dimensions() > 2) ? global[2] : 1;
+    hsaDisp->reserved2 = 0;
 
     // Initialize kernel ISA and execution buffer requirements
-    aqlPkt->kernel_object_address = gpuAqlCode()->vmAddress();
-    aqlPkt->group_segment_size_bytes = ldsAddress - ldsSize();
-    aqlPkt->private_segment_size_bytes = spillSegSize();
-
-    // Initialize cache flush configuration for the dispatch
-    //! @todo Currently not used in emulation
-    aqlPkt->barrier = 1;
-    aqlPkt->release_fence_scope = 1;
-    aqlPkt->acquire_fence_scope = 2;
-    aqlPkt->invalidate_instruction_cache = 1;
+    hsaDisp->private_segment_size   = spillSegSize();
+    hsaDisp->group_segment_size     = ldsAddress - ldsSize();
+    hsaDisp->kernel_object_address  = gpuAqlCode()->vmAddress();
 
     ConstBuffer* cb = gpu.constBufs_[0];
-    cb->uploadDataToHw(argBufSize + sizeof(HsaAqlDispatchPacket));
+    cb->uploadDataToHw(argBufSize + sizeof(hsa_dispatch_packet_t));
     uint64_t argList = cb->vmAddress() + cb->wrtOffset();
-    aqlPkt->kernel_arg_address = argList;
+
+    hsaDisp->kernarg_address = argList;
+    hsaDisp->reserved3 = 0;
+    hsaDisp->completion_signal = 0;
+
     memList.push_back(cb);
     memList.push_back(gpuAqlCode());
     if (NULL != prog().globalStore()) {
@@ -4078,7 +4076,7 @@ HSAILKernel::loadArguments(
         dev().srds().fillResourceList(memList);
     }
 
-    return aqlPkt;
+    return hsaDisp;
 }
 
 } // namespace gpu
