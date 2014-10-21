@@ -57,6 +57,12 @@ const static uint CalOfflineImpl = 0xffffffff;
 //! Alignment restriciton for the pinned memory
 const static size_t PinnedMemoryAlignment = 4 * Ki;
 
+//! HSA path specific defines for images
+const static uint HsaImageObjectSize = 48;
+const static uint HsaImageObjectAlignment = 16;
+const static uint HsaSamplerObjectSize = 32;
+const static uint HsaSamplerObjectAlignment = 16;
+
 //! Defines all supported ASIC families
 enum AsicFamilies {
     Family7xx,

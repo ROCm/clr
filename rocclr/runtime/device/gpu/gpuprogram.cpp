@@ -16,7 +16,8 @@
 #include <cstdio>
 #include "utils/options.hpp"
 #include "utils/libUtils.h"
-#include "newcore.h"
+#include "hsa.h"
+#include "hsa_ext_image.h"
 
 extern "C" bool
 ACL_API_ENTRY aclHsaLoader(
@@ -80,8 +81,8 @@ void
 GetSamplerObjectParams(uint32_t* size, uint32_t* alignment)
 {
     if (GPU_DIRECT_SRD) {
-        *size = HSA_SAMPLER_OBJECT_SIZE;
-        *alignment = HSA_SAMPLER_OBJECT_ALIGNMENT;
+        *size = gpu::HsaSamplerObjectSize;
+        *alignment = gpu::HsaSamplerObjectAlignment;
     }
     else {
         *size = sizeof(uint64_t);
@@ -94,45 +95,46 @@ InitializeSamplerObject(void* userData, uint64_t offset, bool unnormalize,
     uint8_t fltr, uint8_t addrU, uint8_t addrV, uint8_t addrW)
 {
     assert((addrU == addrV && addrV == addrW) && "GSL supports single address mode");
-    HsaSamplerFilterType filter = static_cast<HsaSamplerFilterType>(fltr);
-    HsaSamplerAddressMode boundaryU = static_cast<HsaSamplerAddressMode>(addrU);
+    hsa_ext_sampler_filter_mode_t filter =
+        static_cast<hsa_ext_sampler_filter_mode_t>(fltr);
+    hsa_ext_sampler_addressing_mode_t boundaryU =
+        static_cast<hsa_ext_sampler_addressing_mode_t>(addrU);
 
     uint32_t    state = (unnormalize) ?
         amd::Sampler::StateNormalizedCoordsFalse : amd::Sampler::StateNormalizedCoordsTrue;
-    if (filter == HSA_SAMP_FILTER_NEAREST) {
+    if (filter == HSA_EXT_SAMPLER_FILTER_LINEAR) {
         state |= amd::Sampler::StateFilterNearest;
     }
-    else if (filter == HSA_SAMP_FILTER_LINEAR) {
+    else if (filter == HSA_EXT_SAMPLER_FILTER_LINEAR) {
         state |= amd::Sampler::StateFilterLinear;
     }
     switch (boundaryU) {
-    case HSA_SAMP_ADDRESS_CLAMPEDGE:
+    case HSA_EXT_SAMPLER_ADDRESSING_CLAMP_TO_EDGE:
         state |= amd::Sampler::StateAddressClampToEdge;
         break;
-    case HSA_SAMP_ADDRESS_CLAMPBORDER:
+    case HSA_EXT_SAMPLER_ADDRESSING_CLAMP_TO_BORDER:
         state |= amd::Sampler::StateAddressClamp;
         break;
-    case HSA_SAMP_ADDRESS_WRAP:
+    case HSA_EXT_SAMPLER_ADDRESSING_REPEAT:
         state |= amd::Sampler::StateAddressRepeat;
         break;
-    case HSA_SAMP_ADDRESS_MIRROR:
+    case HSA_EXT_SAMPLER_ADDRESSING_MIRRORED_REPEAT:
         state |= amd::Sampler::StateAddressMirroredRepeat;
         break;
-    case HSA_SAMP_ADDRESS_MIRRORONCE:
-    case HSA_SAMP_ADDRESS_NONE:
+    case HSA_EXT_SAMPLER_ADDRESSING_UNDEFINED:
     default:
         break;
     }
 
     gpu::HSAILProgram* prog = reinterpret_cast<gpu::HSAILProgram*>(userData);
     if (prog->dev().settings().hsailDirectSRD_) {
-        char *pCPUbuf = new char[HSA_SAMPLER_OBJECT_SIZE];
+        char *pCPUbuf = new char[gpu::HsaSamplerObjectSize];
         if (!pCPUbuf) {
           assert(false);
           return;
         }
-        prog->dev().fillHwSampler(state, pCPUbuf, HSA_SAMPLER_OBJECT_SIZE);
-        DmaMemoryCopy(userData, offset, pCPUbuf, HSA_SAMPLER_OBJECT_SIZE);
+        prog->dev().fillHwSampler(state, pCPUbuf, gpu::HsaSamplerObjectSize);
+        DmaMemoryCopy(userData, offset, pCPUbuf, gpu::HsaSamplerObjectSize);
         delete pCPUbuf;
     }
     else {

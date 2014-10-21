@@ -14,7 +14,7 @@
 #include "device/gpu/gputhreadtrace.hpp"
 #include "device/gpu/gputimestamp.hpp"
 #include "device/gpu/gpublit.hpp"
-#include "newcore.h"
+#include "hsa.h"
 #include "sc-hsa/Interface/SCHSAInterface.h"
 #include <fstream>
 #include <sstream>
@@ -342,7 +342,7 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
     AmdAqlWrap* slots = reinterpret_cast<AmdAqlWrap*>(&header[1]);
     for (uint i = 0; i < numSlots; ++i) {
         uint64_t argStart = vaBase + argOffs + i * singleArgSize;
-        slots[i].aql.kernel_arg_address = argStart;
+        slots[i].aql.kernarg_address = argStart;
         slots[i].wait_list = argStart + dev().info().maxParameterSize_ + 64;
     }
     // Upload data back to local memory
@@ -576,7 +576,8 @@ VirtualGPU::create(
 bool
 VirtualGPU::allocHsaQueueMem()
 {
-    amd_queue_t queue = {0};
+    amd_queue_t queue;
+    memset(&queue, 0, sizeof(queue));
     hsaQueueMem_ = new gpu::Memory(dev(), sizeof(queue));
     if (hsaQueueMem_ == NULL) {
         return false;
@@ -1726,7 +1727,7 @@ VirtualGPU::submitKernelInternalHSA(
     }
 
     // Program the kernel arguments for the GPU execution
-    HsaAqlDispatchPacket*   aqlPkt =
+    hsa_dispatch_packet_t*  aqlPkt =
         hsaKernel.loadArguments(*this, kernel, sizes, parameters, nativeMem,
         vmDefQueue, &vmParentWrap, memList);
     if (NULL == aqlPkt) {
@@ -1793,12 +1794,12 @@ VirtualGPU::submitKernelInternalHSA(
                         print << "\tState: " << eventD->state <<
                                  "; Counter: " << eventD->counter << "\n";
                     }
-                    print << "WorkGroupSize[ " << wraps[i].aql.workgroup_size[0] << ", ";
-                    print << wraps[i].aql.workgroup_size[1] << ", ";
-                    print << wraps[i].aql.workgroup_size[2] << "]\n";
-                    print << "GridSize[ " << wraps[i].aql.grid_size[0] << ", ";
-                    print << wraps[i].aql.grid_size[1] << ", ";
-                    print << wraps[i].aql.grid_size[2] << "]\n";
+                    print << "WorkGroupSize[ " << wraps[i].aql.workgroup_size_x << ", ";
+                    print << wraps[i].aql.workgroup_size_y << ", ";
+                    print << wraps[i].aql.workgroup_size_z << "]\n";
+                    print << "GridSize[ " << wraps[i].aql.grid_size_x << ", ";
+                    print << wraps[i].aql.grid_size_y << ", ";
+                    print << wraps[i].aql.grid_size_z << "]\n";
 
                     uint64_t* kernels = (uint64_t*)(
                         const_cast<Memory*>(hsaKernel.prog().kernelTable())->map(this));
@@ -1819,7 +1820,7 @@ VirtualGPU::submitKernelInternalHSA(
                         printf("Error: couldn't find child kernel!\n");
                         continue;
                     }
-                    uint offsArg = wraps[i].aql.kernel_arg_address -
+                    uint offsArg = wraps[i].aql.kernarg_address -
                         gpuDefQueue->virtualQueue_->vmAddress();
                     address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
                     print << "Kernel: " << child->name() << "\n";
