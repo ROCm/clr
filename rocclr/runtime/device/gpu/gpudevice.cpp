@@ -698,8 +698,10 @@ void Device::fillDeviceInfo(
     info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;
 
     if (settings().oclVersion_ >= OpenCL20) {
-        info_.svmCapabilities_ = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER
-            | CL_DEVICE_SVM_FINE_GRAIN_BUFFER;
+        info_.svmCapabilities_ =
+
+            calAttr.target == CAL_TARGET_CARRIZO ? CL_DEVICE_SVM_COARSE_GRAIN_BUFFER :
+            (CL_DEVICE_SVM_COARSE_GRAIN_BUFFER | CL_DEVICE_SVM_FINE_GRAIN_BUFFER);
         if (settings().svmAtomics_) {
             info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
         }
