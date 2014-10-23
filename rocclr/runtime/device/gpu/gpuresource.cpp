@@ -12,6 +12,7 @@
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gputimestamp.hpp"
 #include "thread/atomic.hpp"
+#include "hsa_ext_image.h"
 #include <GL/gl.h>
 #include "GL/glATIInternal.h"
 
@@ -173,87 +174,76 @@ Resource::~Resource()
 
 static uint32_t GetHSAILImageFormatType(cmSurfFmt format)
 {
-    uint32_t formatType = 0;
+    uint32_t formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT8;
 
     switch (format)
     {
+    case CM_SURF_FMT_sR8:
+    case CM_SURF_FMT_sRG8:
+    case CM_SURF_FMT_sRGBA8:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT8;
+        break;
+    case CM_SURF_FMT_sU16:
+    case CM_SURF_FMT_sUV16:
+    case CM_SURF_FMT_sUVWQ16:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT16;
+        break;
     case CM_SURF_FMT_INTENSITY8:
     case CM_SURF_FMT_RG8:
     case CM_SURF_FMT_RGBA8:
     case CM_SURF_FMT_RGBX8UI:
     case CM_SURF_FMT_RGBA8_SRGB:
-        formatType = 2;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_INT8;
         break;
     case CM_SURF_FMT_R16:
     case CM_SURF_FMT_RG16:
     case CM_SURF_FMT_RGBA16:
     case CM_SURF_FMT_DEPTH16:
-        formatType = 3;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_INT16;
         break;
-/*
-    case HSA_IMAGE_FMT_R5G6B5_UNORM:
-        formatType = 4;
-        break;
-    case HSA_IMAGE_FMT_R5G5B5_UNORM:
-        formatType = 5;
-        break;
-    case HSA_IMAGE_FMT_R10G10B10_UNORM:
-        formatType = 6;
-        break;
-*/
     case CM_SURF_FMT_BGR10_X2:
-        formatType = 7;
-        break;
-    case CM_SURF_FMT_sR8:
-    case CM_SURF_FMT_sRG8:
-    case CM_SURF_FMT_sRGBA8:
-        formatType = 0;
-        break;
-    case CM_SURF_FMT_sU16:
-    case CM_SURF_FMT_sUV16:
-    case CM_SURF_FMT_sUVWQ16:
-        formatType = 1;
-        break;
-    case CM_SURF_FMT_R8I:
-    case CM_SURF_FMT_RG8I:
-    case CM_SURF_FMT_RGBA8UI:
-        formatType = 11;
-        break;
-    case CM_SURF_FMT_R16I:
-    case CM_SURF_FMT_RG16I:
-    case CM_SURF_FMT_RGBA16UI:
-        formatType = 12;
-        break;
-    case CM_SURF_FMT_R32I:
-    case CM_SURF_FMT_RG32I:
-    case CM_SURF_FMT_RGBA32UI:
-        formatType = 13;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_SHORT_101010;
         break;
     case CM_SURF_FMT_sR8I:
     case CM_SURF_FMT_sRG8I:
     case CM_SURF_FMT_sRGBA8I:
-        formatType = 8;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SIGNED_INT8;
         break;
     case CM_SURF_FMT_sR16I:
     case CM_SURF_FMT_sRG16I:
     case CM_SURF_FMT_sRGBA16I:
-        formatType = 9;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SIGNED_INT16;
         break;
     case CM_SURF_FMT_sR32I:
     case CM_SURF_FMT_sRG32I:
     case CM_SURF_FMT_sRGBA32I:
-        formatType = 10;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_SIGNED_INT32;
+        break;
+    case CM_SURF_FMT_R8I:
+    case CM_SURF_FMT_RG8I:
+    case CM_SURF_FMT_RGBA8UI:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNSIGNED_INT8;
+        break;
+    case CM_SURF_FMT_R16I:
+    case CM_SURF_FMT_RG16I:
+    case CM_SURF_FMT_RGBA16UI:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNSIGNED_INT16;
+        break;
+    case CM_SURF_FMT_R32I:
+    case CM_SURF_FMT_RG32I:
+    case CM_SURF_FMT_RGBA32UI:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNSIGNED_INT32;
+        break;
+    case CM_SURF_FMT_R16F:
+    case CM_SURF_FMT_RG16F:
+    case CM_SURF_FMT_RGBA16F:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_HALF_FLOAT;
         break;
     case CM_SURF_FMT_R32F:
     case CM_SURF_FMT_RG32F:
     case CM_SURF_FMT_RGBA32F:
     case CM_SURF_FMT_DEPTH32F:
-        formatType = 15;
-        break;
-    case CM_SURF_FMT_R16F:
-    case CM_SURF_FMT_RG16F:
-    case CM_SURF_FMT_RGBA16F:
-        formatType = 14;
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_FLOAT;
         break;
     default:
         assert(false);
@@ -264,60 +254,54 @@ static uint32_t GetHSAILImageFormatType(cmSurfFmt format)
 
 static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder)
 {
-    uint32_t orderType = 0;
+    uint32_t orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_A;
 
     switch (chOrder)
     {
     case GSL_CHANNEL_ORDER_R:
-        orderType = 1;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_R;
         break;
     case GSL_CHANNEL_ORDER_A:
-        orderType = 0;
-        break;
-    case GSL_CHANNEL_ORDER_LUMINANCE:
-        orderType = 17;
-        break;
-    case GSL_CHANNEL_ORDER_INTENSITY:
-        orderType = 16;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_A;
         break;
     case GSL_CHANNEL_ORDER_RG:
-        orderType = 3;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_RG;
         break;
     case GSL_CHANNEL_ORDER_RA:
-        orderType = 5;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_RA;
         break;
-/*
-    case HSA_IMAGE_FMT_R5G6B5_UNORM:
-    case HSA_IMAGE_FMT_R5G5B5_UNORM:
-    case HSA_IMAGE_FMT_R10G10B10_UNORM:
-        orderType = 6;
-        break;*/
     case GSL_CHANNEL_ORDER_RGB:
-        orderType = 6;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_RGB;
         break;
     case GSL_CHANNEL_ORDER_RGBA:
-        orderType = 8;
-        break;
-    case GSL_CHANNEL_ORDER_ARGB:
-        orderType = 10;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_RGBA;
         break;
     case GSL_CHANNEL_ORDER_BGRA:
-        orderType = 9;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_BGRA;
+        break;
+    case GSL_CHANNEL_ORDER_ARGB:
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_ARGB;
         break;
     case GSL_CHANNEL_ORDER_SRGB:
-        orderType = 12;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_SRGB;
         break;
     case GSL_CHANNEL_ORDER_SRGBX:
-        orderType = 13;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_SRGBX;
         break;
     case GSL_CHANNEL_ORDER_SRGBA:
-        orderType = 14;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_SRGBA;
         break;
     case GSL_CHANNEL_ORDER_SBGRA:
-        orderType = 15;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_SBGRA;
+        break;
+    case GSL_CHANNEL_ORDER_INTENSITY:
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_INTENSITY;
+        break;
+    case GSL_CHANNEL_ORDER_LUMINANCE:
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_LUMINANCE;
         break;
     case GSL_CHANNEL_ORDER_REPLICATE_R:
-        orderType = 18;
+        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_DEPTH;
         break;
     default:
         assert(false);
@@ -666,8 +650,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         break;
     case OGLInterop: {
         OGLInteropParams* oglRes = reinterpret_cast<OGLInteropParams*>(params);
-        assert(oglRes->glPlatformContext_ &&
-            "We don't have OGL context!");
+        assert(oglRes->glPlatformContext_ && "We don't have OGL context!");
         switch (oglRes->type_) {
         case InteropVertexBuffer:
             glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;

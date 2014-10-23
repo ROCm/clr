@@ -576,22 +576,25 @@ VirtualGPU::create(
 bool
 VirtualGPU::allocHsaQueueMem()
 {
-    amd_queue_t queue;
-    memset(&queue, 0, sizeof(queue));
-    hsaQueueMem_ = new gpu::Memory(dev(), sizeof(queue));
-    if (hsaQueueMem_ == NULL) {
-        return false;
-    }
-    if (!hsaQueueMem_->create(gpu::Resource::Local)) {
+    // Allocate a dummy HSA queue
+    hsaQueueMem_ = new gpu::Memory(dev(), sizeof(amd_queue_t));
+    if ((hsaQueueMem_ == NULL) ||
+        (!hsaQueueMem_->create(gpu::Resource::Local))) {
         delete hsaQueueMem_;
         return false;
     }
-    void* cpuPtr = hsaQueueMem_->map(NULL, gpu::Resource::WriteOnly);
-    queue.private_segment_aperture_base_hi =
+    amd_queue_t* queue = reinterpret_cast<amd_queue_t*>
+        (hsaQueueMem_->map(NULL, gpu::Resource::WriteOnly));
+    if (NULL == queue) {
+        delete hsaQueueMem_;
+        return false;
+    }
+    memset(queue, 0, sizeof(amd_queue_t));
+    // Provide private and local heap addresses
+    queue->private_segment_aperture_base_hi =
         static_cast<uint32>(dev().gslCtx()->getPrivateApertureBase()>>32);
-    queue.group_segment_aperture_base_hi =
+    queue->group_segment_aperture_base_hi =
         static_cast<uint32>(dev().gslCtx()->getSharedApertureBase()>>32);
-    memcpy(cpuPtr, &queue, sizeof(queue));
     hsaQueueMem_->unmap(NULL);
     return true;
 }
