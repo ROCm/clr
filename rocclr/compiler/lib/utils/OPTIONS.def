@@ -547,7 +547,7 @@ OPTION(OT_UINT32, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "apt", "ap-threshold", \
        APThreshold, \
-       3, 0, 0x3FFFFFFF, NULL, \
+       1024, 0, 0x3FFFFFFF, NULL, \
        "Set argument promotion threshold to <number>")
 
 // -unroll-count=<positive integer> : loop unroll count
