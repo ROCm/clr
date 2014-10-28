@@ -2165,7 +2165,6 @@ clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue,
             LogWarning("\"amdContext\" is not created from GL context or share list");
             return CL_INVALID_CONTEXT;
         }
-        hostQueue.context().glenv()->glFlush_();
     }
 
     std::vector<amd::Memory*> memObjects;
