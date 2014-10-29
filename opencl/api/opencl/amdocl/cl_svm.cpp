@@ -133,7 +133,7 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (
         return NULL;
     }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+    const std::vector<amd::Device*>& devices = as_amd(context)->svmDevices();
     bool sizePass = false;
     cl_device_svm_capabilities combinedSvmCapabilities = 0;
     const cl_uint hostAddressBits = LP64_SWITCH(32, 64);
