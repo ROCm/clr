@@ -54,6 +54,7 @@ Settings::create()
         enableExtension(ClKhrSubGroups);
         supportDepthsRGB_ = true;
         enableExtension(ClKhrDepthImages);
+        customSvmAllocator_ = true;
     }
 
     // Map CPUID feature bits to our own feature bits
