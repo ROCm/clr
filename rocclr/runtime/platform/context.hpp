@@ -142,6 +142,9 @@ public:
     //! Return the devices associated with this context.
     const std::vector<Device*>& devices() const { return devices_; }
 
+    //! Return the SVM capable devices associated with this context.
+    const std::vector<Device*>& svmDevices() const { return customSvmAllocDevice_; }
+
     //! Returns true if the given device is associated with this context.
     bool containsDevice(const Device* device) const;
 
@@ -184,7 +187,7 @@ private:
     cl_context_properties* properties_; //!< Original properties
     GLFunctions* glenv_;                //!< OpenGL context
     Device* customHostAllocDevice_;     //!< Device responsible for host allocations
-    Device* customSvmAllocDevice_;      //!< Device responsible for SVM allocations
+    std::vector<Device*> customSvmAllocDevice_;      //!< Devices can support SVM allocations
     std::map<const Device*, DeviceQueueInfo> deviceQueues_; //!< Device queues mapping
     Monitor     ctxLock_;               //!< Lock for the context access
 };
