@@ -170,6 +170,8 @@ release(bool, GPU_IFH_MODE, false,                                  \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, HSAIL_IMAGE_HANDLE_ENABLE, false,                               \
         "Pass image/sampler SRD as pointer instead of blob")                  \
+debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
+        "Forces reporting CL_FP_DENORM bit for single precision")             \
 
 
 namespace amd {
