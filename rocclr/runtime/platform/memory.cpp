@@ -459,7 +459,12 @@ Memory::cacheWriteBack()
 {
     if (NULL != lastWriter_) {
         device::Memory* dmem = getDeviceMemory(*lastWriter_);
-        dmem->syncHostFromCache();
+        //! @note It's a special condition, when a subbuffer was created,
+        //! but never used. Thus dev memory is still NULL and lastWriter_
+        //! was passed from the parent.
+        if (NULL != dmem) {
+            dmem->syncHostFromCache();
+        }
     }
     else if (isParent()) {
         // On CPU parent can't be synchronized, because lastWriter_ could be NULL
