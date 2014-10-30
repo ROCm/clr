@@ -529,14 +529,14 @@ void Device::fillDeviceInfo(
         info_.maxMemAllocSize_ = std::max(
             cl_ulong(calStatus.largestBlockVisibleHeap * Mi),
             cl_ulong(calStatus.largestBlockInvisibleHeap * Mi));
-        
+
 #if defined(ATI_OS_WIN)
         if (settings().apuSystem_) {
             info_.maxMemAllocSize_ = std::max(
                 ((static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi) / 2),
                 info_.maxMemAllocSize_);
         }
-#endif        
+#endif
         info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
             std::min(GPU_MAX_ALLOC_PERCENT, 100u) / 100u);
 
@@ -722,7 +722,7 @@ void Device::fillDeviceInfo(
 
         info_.queueOnDeviceProperties_ =
             CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
-        info_.queueOnDevicePreferredSize_ = 16 * Ki;
+        info_.queueOnDevicePreferredSize_ = 256 * Ki;
         info_.queueOnDeviceMaxSize_ = 512 * Ki;
         info_.maxOnDeviceQueues_ = 1;
         info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
@@ -803,14 +803,14 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     if (NULL == vgpusAccess_) {
         return false;
     }
-    
+
     scratchAlloc_ = new amd::Monitor("Scratch Allocation Lock", true);
     if (NULL == scratchAlloc_) {
         return false;
     }
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
-    if (NULL == scratchAlloc_) {
+    if (NULL == mapCacheOps_) {
         return false;
     }
 
