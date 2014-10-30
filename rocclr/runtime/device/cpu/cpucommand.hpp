@@ -12,7 +12,6 @@
 #include "thread/thread.hpp"
 #include "os/os.hpp"
 #include "amdocl/cl_kernel.h"
-#include "device/cpu/ring.hpp"
 
 #if defined(ATI_ARCH_ARM)
 #include <setjmp.h>
