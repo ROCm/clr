@@ -748,16 +748,16 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "HSA: use buffer instructions instead of flat for global memory")
        
-// -scras=int or --sc-si-opt-reg-alloc-strategy (default 0)
-// 0 let shader compiler choose reg alloc strategy
+// -scras=int or --sc-si-opt-reg-alloc-strategy (default 4)
+// 4 let OCL compiler choose SC reg alloc strategy by heuristic
 // keep this updated with SCShaderSi.h
 OPTION(OT_UINT32, \
       OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
       "scras", "sc-si-opt-reg-alloc-strategy", \
       SCSIOptRegAllocStrategy, \
-      0, 0, 3, NULL, \
-      "Set SI+ shader compiler register allocation strategy 0-default, "
-      "1-balanced, 2-minimize GPRs, 3-minimize moves (default 0).")
+      4, 0, 4, NULL, \
+      "Set SI+ shader compiler register allocation strategy 0-SC default, "
+      "1-balanced, 2-minimize GPRs, 3-minimize moves, 4-heuristic(default 4).")
 
 //  -fuser-no-inline  -fno-user-no-inline
 OPTION(OT_BOOL, \

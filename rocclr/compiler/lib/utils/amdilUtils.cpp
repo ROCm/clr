@@ -12,3 +12,15 @@ void amdilUtils::changePrivateUAVLength(std::string& kernel, unsigned length) {
       ")_access(private)";
   kernel = std::regex_replace(kernel, pattern, ss.str());
 }
+
+bool amdilUtils::isKernelMemoryBound(const std::string& kernel) {
+  std::istringstream is(kernel);
+  std::regex pattern("\\s*;\\s*membound\\s*:\\s*1\\s*");
+  while (is) {
+    std::string line;
+    is >> line;
+    if (std::regex_match(line, pattern))
+      return true;
+  }
+  return false;
+}
