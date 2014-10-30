@@ -264,6 +264,12 @@ VirtualGPU::releasePinnedMem()
 bool
 VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 {
+    uint MinDeviceQueueSize = 16 * 1024;
+    deviceQueueSize = std::max(deviceQueueSize, MinDeviceQueueSize);
+    // Align the queue size for the multiple dispatch scheduler.
+    // Each thread works with 32 entries
+    deviceQueueSize = amd::alignUp(deviceQueueSize, sizeof(AmdAqlWrap) * 32);
+
     if (deviceQueueSize_ == deviceQueueSize) {
         return true;
     }
@@ -281,19 +287,18 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
         schedParamIdx_ = 0;
         deviceQueueSize_ = 0;
     }
-
     uint    numSlots = deviceQueueSize / sizeof(AmdAqlWrap);
     uint    allocSize = deviceQueueSize;
 
     // Add the virtual queue header
     allocSize += sizeof(AmdVQueueHeader);
-    allocSize = amd::alignUp(allocSize, 128);
+    allocSize = amd::alignUp(allocSize, sizeof(AmdAqlWrap));
 
     uint    argOffs = allocSize;
 
     // Add the kernel arguments and wait events
     uint singleArgSize = amd::alignUp(dev().info().maxParameterSize_ + 64 +
-        dev().settings().numWaitEvents_ * sizeof(uint64_t), 128);
+        dev().settings().numWaitEvents_ * sizeof(uint64_t), sizeof(AmdAqlWrap));
     allocSize += singleArgSize * numSlots;
 
     uint    eventsOffs = allocSize;
