@@ -2125,6 +2125,10 @@ Device::globalFreeMemory(size_t* freeMemory) const
             memInfo.cardExtMemAvailableBytes) / Ki;
         freeMemory[LargestFreeBlock] = std::max(memInfo.cardLargestFreeBlockBytes,
            memInfo.cardExtLargestFreeBlockBytes) / Ki;
+        if (settings().apuSystem_) {
+            freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
+            freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
+        }
     }
     else {
         freeMemory[TotalFreeMemory] = static_cast<size_t>((info().globalMemSize_ -
