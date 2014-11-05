@@ -1873,7 +1873,7 @@ clCreateFromGLTextureAMD(
                 LogWarning("Cannot get  numbers of samples of GL \"texture\" object");
                 return static_cast<cl_mem>(0);
             }
-            if (numSamples > 1 && ! (amdContext.devices()[0]->settings().depthMSAAInterop_) ) {
+            if (numSamples > 1) {
                 *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
                 LogWarning("MSAA \"texture\" object is not suppoerted for the device");
                 return static_cast<cl_mem>(0);

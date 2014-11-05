@@ -2302,6 +2302,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
         return CL_INVALID_OPERATION;
     }
 
+    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
+    }
+
     amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
     if (NULL == queue) {
         return CL_INVALID_COMMAND_QUEUE;
@@ -2481,6 +2485,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage, (
         return CL_INVALID_OPERATION;
     }
 
+    if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
+    }
+
     amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
     if (NULL == queue) {
         return CL_INVALID_COMMAND_QUEUE;
@@ -2646,8 +2654,12 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyImage, (
         return CL_INVALID_CONTEXT;
     }
 
-    if(srcImage->getImageFormat() != dstImage->getImageFormat()) {
+    if (srcImage->getImageFormat() != dstImage->getImageFormat()) {
         return CL_IMAGE_FORMAT_MISMATCH;
+    }
+
+    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
     }
 
     amd::Coord3D    srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
@@ -2824,6 +2836,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyImageToBuffer, (
         return CL_INVALID_CONTEXT;
     }
 
+    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
+    }
+
     amd::Coord3D    srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
     amd::Coord3D    dstOffset(dst_offset, 0, 0);
     amd::Coord3D    srcRegion(region[0], region[1], region[2]);
@@ -2969,6 +2985,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferToImage, (
     if (hostQueue.context() != srcBuffer->getContext()
         || hostQueue.context() != dstImage->getContext()) {
         return CL_INVALID_CONTEXT;
+    }
+
+    if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
     }
 
     amd::Coord3D    dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
@@ -3389,6 +3409,11 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
     amd::Image* srcImage = as_amd(image)->asImage();
     if (srcImage == NULL) {
         *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+        return NULL;
+    }
+
+    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        *not_null(errcode_ret) = CL_INVALID_OPERATION;
         return NULL;
     }
 
@@ -4582,6 +4607,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillImage, (
 
     if (hostQueue.context() != fillImage->getContext()) {
         return CL_INVALID_CONTEXT;
+    }
+
+    if (fillImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+        return CL_INVALID_OPERATION;
     }
 
     amd::Coord3D    fillOrigin(origin[0], origin[1], origin[2]);
