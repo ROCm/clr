@@ -584,13 +584,12 @@ public:
             uint    supportRA_: 1;          //!< Support RA channel order format
             uint    largeHostMemAlloc_: 1;  //!< Allow large host mem allocations (> maxSingleAlloc)
             uint    waitCommand_: 1;        //!< Enables a wait for every submitted command
-            uint    depthMSAAInterop_: 1;   //!< Enable depth-stencil and MSAA interop CL-GL inteorp
             uint    customHostAllocator_: 1;//!< True if device has custom host allocator
                                             //  that replaces generic OS allocation routines
             uint    customSvmAllocator_: 1; //!< True if device has custom SVM allocator
             uint    supportDepthsRGB_: 1;   //!< Support DEPTH and sRGB channel order format
             uint    assumeAliases_: 1;      //!< Assume aliases in the compilation process
-            uint    reserved_: 23;
+            uint    reserved_: 24;
         };
         uint    value_;
     };

@@ -345,9 +345,8 @@ Settings::create(
 
         rectLinearDMA_  = true;
 
-        if (AMD_DEPTH_MSAA_INTEROP) {
-            enableExtension(ClKhrGLDepthImages);
-            depthMSAAInterop_ = true;
+        if (oclVersion_ >= OpenCL20) {
+            //enableExtension(ClKhrGLDepthImages);
         }
         if (AMD_THREAD_TRACE_ENABLE) {
             threadTraceEnable_ = true;
@@ -445,7 +444,7 @@ Settings::create(
 
     if (apuSystem_ &&
        ((calAttr.totalVisibleHeap + calAttr.totalInvisibleHeap) < 150)) {
-	    remoteAlloc_ = true;
+        remoteAlloc_ = true;
     }
 
     // Override current device settings

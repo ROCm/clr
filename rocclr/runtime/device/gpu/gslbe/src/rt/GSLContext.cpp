@@ -300,6 +300,7 @@ CALGSLContext::setInput(uint32 physUnit, gslMemObject mem)
             m_textureResources[physUnit], physUnit);
     }
 
+    m_textureResources[physUnit]->updateDepthTextureParam(mem);
     m_textureResources[physUnit]->setMemObject(m_cs, GSL_COMPUTE_PROGRAM, mem);
 
     if (mem != NULL)
