@@ -1701,6 +1701,7 @@ CALGSLDevice::fillImageHwState(gslMemObject mem, void* hwState, uint32 hwStateSi
     amd::ScopedLock k(gslDeviceOps());
     intp channelOrder = mem->getAttribs().channelOrder;
     convertInputChannelOrder(&channelOrder);
+    m_textureResource->updateDepthTextureParam(mem);
     m_textureResource->getTextureSrd(m_cs, mem, reinterpret_cast<const char*>(&channelOrder),
         hwState, hwStateSize);
 }

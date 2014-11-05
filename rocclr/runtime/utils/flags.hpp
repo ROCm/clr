@@ -152,8 +152,6 @@ release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
         "Use a dedicated device queue for the actual submissions")            \
 release(bool, GPU_ENABLE_LARGE_ALLOCATION, false,                             \
         "Enable >4GB single allocations")                                     \
-release(bool, AMD_DEPTH_MSAA_INTEROP, false,                                  \
-        "Enable depth stencil and MSAA buffer interop")                       \
 release(bool, AMD_THREAD_TRACE_ENABLE, false,                                 \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, 200,                                            \

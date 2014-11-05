@@ -1102,11 +1102,11 @@ Image::getSupportedFormats(
 bool
 Image::Format::isSupported(const Context& context, cl_mem_object_type image_type) const
 {
-    bool supportDepthMSAA = true;
+    bool supportDepth = true;
     const std::vector<amd::Device*>& devices = context.devices();
     for (size_t i = 0; i < devices.size(); i++) {
-        if (!devices[i]->settings().depthMSAAInterop_) {
-            supportDepthMSAA = false;
+        if (!devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
+            supportDepth = false;
         }
     }
 
@@ -1129,7 +1129,7 @@ Image::Format::isSupported(const Context& context, cl_mem_object_type image_type
 
     delete image_formats;
 
-    if (supportDepthMSAA) {
+    if (supportDepth) {
         for (cl_uint i = 0; i < sizeof(depthFormats) / sizeof(cl_image_format); i++) {
             if (*this == depthFormats[i]) {
                return true;

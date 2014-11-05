@@ -243,7 +243,11 @@ static uint32_t GetHSAILImageFormatType(cmSurfFmt format)
     case CM_SURF_FMT_RG32F:
     case CM_SURF_FMT_RGBA32F:
     case CM_SURF_FMT_DEPTH32F:
+    case CM_SURF_FMT_DEPTH32F_X24_STEN8:
         formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_FLOAT;
+        break;
+    case CM_SURF_FMT_DEPTH24_STEN8:
+        formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_INT24;
         break;
     default:
         assert(false);
@@ -252,7 +256,7 @@ static uint32_t GetHSAILImageFormatType(cmSurfFmt format)
     return formatType;
 }
 
-static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder)
+static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder, cmSurfFmt format)
 {
     uint32_t orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_A;
 
@@ -301,7 +305,13 @@ static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder)
         orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_LUMINANCE;
         break;
     case GSL_CHANNEL_ORDER_REPLICATE_R:
-        orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_DEPTH;
+        if ((format == CM_SURF_FMT_DEPTH32F_X24_STEN8) ||
+            (format == CM_SURF_FMT_DEPTH24_STEN8)) {
+            orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_DEPTH_STENCIL;
+        }
+        else {
+            orderType = HSA_EXT_IMAGE_CHANNEL_ORDER_DEPTH;
+        }
         break;
     default:
         assert(false);
@@ -976,7 +986,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         }
         dev().fillImageHwState(gslResource, hwState_, 8 * sizeof(uint32_t));
         hwState_[8] = GetHSAILImageFormatType(cal()->format_);
-        hwState_[9] = GetHSAILImageOrderType(cal()->channelOrder_);
+        hwState_[9] = GetHSAILImageOrderType(cal()->channelOrder_, cal()->format_);
         hwState_[10] = static_cast<uint32_t>(cal()->width_);
         // Workaround for depth view, change tileIndex to 0 for depth view
         if ((memoryType() == ImageView) &&
