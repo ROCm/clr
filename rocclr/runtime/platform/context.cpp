@@ -36,14 +36,14 @@ Context::Context(
                     "is allowed per context");
             customHostAllocDevice_ = device;
         }
-        if (device->customSvmAllocator()) {
-            customSvmAllocDevice_.push_back(device);
+        if (device->svmSupport()) {
+            svmAllocDevice_.push_back(device);
         }
     }
     //make sure the first device is GPU
-    if ((customSvmAllocDevice_.size() > 1)
-        && (customSvmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)) {
-        std::swap(customSvmAllocDevice_.front(), customSvmAllocDevice_.back());
+    if ((svmAllocDevice_.size() > 1)
+        && (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)) {
+        std::swap(svmAllocDevice_.front(), svmAllocDevice_.back());
     }
 
 }
@@ -293,22 +293,22 @@ Context::hostFree(void* ptr) const
 void*
 Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags)
 {
-    unsigned int numSVMDev = customSvmAllocDevice_.size();
+    unsigned int numSVMDev = svmAllocDevice_.size();
     if (numSVMDev < 1) {
         return NULL;
     }
 
-    if (customSvmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU) {
+    if (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU) {
         return AlignedMemory::allocate(size, alignment);
     }
     else {
         void* svmPtrAlloced = NULL;
         void* tempPtr = NULL;
 
-        for (const auto& dev : customSvmAllocDevice_) {
+        for (const auto& dev : svmAllocDevice_) {
             if (dev->type() == CL_DEVICE_TYPE_GPU) {
                 tempPtr = dev->svmAlloc(*this, size, alignment, flags);
-                if (dev == customSvmAllocDevice_.front()) {
+                if (dev == svmAllocDevice_.front()) {
                     svmPtrAlloced = tempPtr;
                 }
                 if ((svmPtrAlloced != tempPtr) || (NULL == tempPtr)) {
@@ -323,12 +323,12 @@ Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags)
 void
 Context::svmFree(void* ptr) const
 {
-    if (customSvmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)  {
+    if (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)  {
         AlignedMemory::deallocate(ptr);
         return;
     }
 
-    for (const auto& dev : customSvmAllocDevice_) {
+    for (const auto& dev : svmAllocDevice_) {
         if (dev->type() == CL_DEVICE_TYPE_GPU) {
             dev->svmFree(ptr);
         }

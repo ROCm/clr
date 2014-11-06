@@ -518,7 +518,6 @@ Settings::Settings()
     supportRA_           = true;
     largeHostMemAlloc_   = false;
     customHostAllocator_ = false;
-    customSvmAllocator_  = false;
     waitCommand_         = AMD_OCL_WAIT_COMMAND;
     supportDepthsRGB_    = false;
     assumeAliases_       = false;

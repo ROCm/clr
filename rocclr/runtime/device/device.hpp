@@ -586,10 +586,9 @@ public:
             uint    waitCommand_: 1;        //!< Enables a wait for every submitted command
             uint    customHostAllocator_: 1;//!< True if device has custom host allocator
                                             //  that replaces generic OS allocation routines
-            uint    customSvmAllocator_: 1; //!< True if device has custom SVM allocator
             uint    supportDepthsRGB_: 1;   //!< Support DEPTH and sRGB channel order format
             uint    assumeAliases_: 1;      //!< Assume aliases in the compilation process
-            uint    reserved_: 24;
+            uint    reserved_: 25;
         };
         uint    value_;
     };
@@ -1515,6 +1514,14 @@ public:
 
     const device::Info& info() const { return info_; }
 
+    //! Return svm support capability.
+    bool svmSupport() const {
+        return (info().svmCapabilities_ &
+            (CL_DEVICE_SVM_COARSE_GRAIN_BUFFER |
+            CL_DEVICE_SVM_FINE_GRAIN_BUFFER |
+            CL_DEVICE_SVM_FINE_GRAIN_SYSTEM)) != 0 ? true : false;
+    }
+
     //! Return this device's type.
     cl_device_type type() const {
         return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT | CL_HSA_ENABLED_AMD
@@ -1612,13 +1619,6 @@ public:
     virtual void hostFree(void* ptr, size_t size = 0) const
     {
         ShouldNotCallThis();
-    }
-
-    /**
-     * @return True if the device has its own custom SVM allocator
-     */
-    bool customSvmAllocator() const {
-        return settings().customSvmAllocator_ == 1;
     }
 
     /**

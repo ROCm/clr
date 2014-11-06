@@ -36,7 +36,6 @@ Settings::create(bool doublePrecision)
 {
     largeHostMemAlloc_ = true;
     customHostAllocator_ = true;
-    customSvmAllocator_ = true;
 
     // Enable extensions
     enableExtension(ClKhrByteAddressableStore);
