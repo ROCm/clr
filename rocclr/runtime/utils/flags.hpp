@@ -170,6 +170,9 @@ release(bool, HSAIL_IMAGE_HANDLE_ENABLE, false,                               \
         "Pass image/sampler SRD as pointer instead of blob")                  \
 debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
         "Forces reporting CL_FP_DENORM bit for single precision")             \
+debug(bool, OCL_FORCE_CPU_SVM, false, \
+        "force svm support for CPU")                                          \
+
 
 
 namespace amd {
