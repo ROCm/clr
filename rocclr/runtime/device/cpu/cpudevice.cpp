@@ -266,7 +266,7 @@ Device::init()
 
     info.executionCapabilities_ = CL_EXEC_KERNEL | CL_EXEC_NATIVE_KERNEL;
     // Enable SVM only for OpenCL 2.0
-    if ((OPENCL_MAJOR >= 2) && (CPU_OPENCL_VERSION >= 200)) {
+    if (((OPENCL_MAJOR >= 2) && (CPU_OPENCL_VERSION >= 200)) || OCL_FORCE_CPU_SVM) {
         info.svmCapabilities_ = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER |
                 CL_DEVICE_SVM_FINE_GRAIN_BUFFER |
                 CL_DEVICE_SVM_FINE_GRAIN_SYSTEM |
