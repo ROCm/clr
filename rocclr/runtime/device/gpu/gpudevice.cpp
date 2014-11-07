@@ -1565,7 +1565,8 @@ Device::createBuffer(
         }
         else if (directAccess || (type == Resource::Remote)) {
             // Check for system memory allocations
-            if (owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_HOST_PTR)) {
+            if ((owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_HOST_PTR))
+                || (settings().remoteAlloc_)) {
                 // Allocate remote memory if AHP allocation and context has just 1 device
                 if ((owner.getMemFlags() & CL_MEM_ALLOC_HOST_PTR) &&
                     (owner.getContext().devices().size() == 1)) {
