@@ -884,7 +884,7 @@ Device::hostFree(void* ptr, size_t size) const
 }
 
 void*
-Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const
+Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const
 {
     bool atomics = (flags & CL_MEM_SVM_ATOMICS) != 0;
     return hostAlloc(size, alignment, atomics);

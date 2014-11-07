@@ -1624,7 +1624,7 @@ public:
     /**
      * @copydoc amd::Context::svmAlloc
      */
-    virtual void* svmAlloc(Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const = 0;
+    virtual void* svmAlloc(Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const = 0;
     /**
      * @copydoc amd::Context::svmFree
      */

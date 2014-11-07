@@ -175,7 +175,7 @@ public:
         return workerThreadsAffinity_;
     }
     //! host memory alloc
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const
+    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const
     {
         return NULL;
     }
