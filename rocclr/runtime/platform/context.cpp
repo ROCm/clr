@@ -307,11 +307,8 @@ Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags)
 
         for (const auto& dev : svmAllocDevice_) {
             if (dev->type() == CL_DEVICE_TYPE_GPU) {
-                tempPtr = dev->svmAlloc(*this, size, alignment, flags);
-                if (dev == svmAllocDevice_.front()) {
-                    svmPtrAlloced = tempPtr;
-                }
-                if ((svmPtrAlloced != tempPtr) || (NULL == tempPtr)) {
+                svmPtrAlloced = dev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
+                if (svmPtrAlloced == NULL) {
                     return NULL;
                 }
             }

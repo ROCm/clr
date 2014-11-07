@@ -2467,7 +2467,7 @@ Device::hostFree(void* ptr, size_t size) const
 }
 
 void*
-Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const
+Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const
 {
     alignment = std::max(alignment, static_cast<size_t>(info_.memBaseAddrAlign_));
 
@@ -2476,24 +2476,33 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
     alignment =  (alignment < vmBigK) ? vmBigK : alignment;
 
     size = amd::alignUp(size, alignment);
+    amd::Memory* mem = NULL;
+    if (NULL == svmPtr) {
+        //create a hidden buffer, which will allocated on the device later
+        mem = new (context)amd::Buffer(context, flags, size, reinterpret_cast<void*>(1));
+        if (mem == NULL) {
+            LogError("failed to create a svm mem object!");
+            return NULL;
+        }
 
-    //create a hidden buffer, which will allocated on the device later
-    amd::Memory* mem = new (context) amd::Buffer(context, flags, size, reinterpret_cast<void*>(1));
-    if (mem == NULL) {
-        LogError("failed to create a svm mem object!");
-        return NULL;
+        if (!mem->create(NULL, false)) {
+            LogError("failed to create a svm hidden buffer!");
+            mem->release();
+            return NULL;
+        }
+        gpu::Memory* gpuMem = getGpuMemory(mem);
+        //add the information to context so that we can use it later.
+        amd::SvmManager::AddSvmBuffer(mem->getSvmPtr(), mem);
+
     }
-
-    if (!mem->create(NULL, false)) {
-        LogError("failed to create a svm hidden buffer!");
-        mem->release();
-        return NULL;
+    else {
+        //find the existing amd::mem object
+        mem = amd::SvmManager::FindSvmBuffer(svmPtr);
+        if (NULL == mem) {
+            return NULL;
+        }
+        gpu::Memory* gpuMem = getGpuMemory(mem);
     }
-
-    gpu::Memory* gpuMem = getGpuMemory(mem);
-
-    //add the information to context so that we can use it later.
-    amd::SvmManager::AddSvmBuffer(mem->getSvmPtr(), mem);
 
     return mem->getSvmPtr();
 }

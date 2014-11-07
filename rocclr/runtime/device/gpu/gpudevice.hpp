@@ -128,7 +128,7 @@ public:
     //! Get GPU device settings
     const gpu::Settings& settings() const
         { return reinterpret_cast<gpu::Settings&>(*settings_); }
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const {return NULL;}
+    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const { return NULL; }
     virtual void svmFree(void* ptr) const {return;}
 
 protected:
@@ -547,7 +547,7 @@ public:
     virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const;
 
     //! SVM allocation
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags) const;
+    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const;
 
     //! Free host SVM memory
     void hostFree(void* ptr, size_t size) const;

@@ -149,7 +149,8 @@ public:
         amd::Context& context,          //!< The context used to create a buffer
         size_t size,                    //!< size of svm spaces
         size_t alignment,               //!< alignment requirement of svm spaces
-        cl_svm_mem_flags flags          //!< flags of creation svm spaces
+        cl_svm_mem_flags flags,         //!< flags of creation svm spaces
+        void* svmPtr                    //!< existing svm pointer for mGPU case
         ) const {
             ShouldNotReachHere();
             return NULL;
@@ -333,7 +334,7 @@ public:
 
     virtual void hostFree(void* ptr, size_t size = 0) const;
 
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE) const;
+    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = NULL) const;
 
     virtual void svmFree(void* ptr) const;
 
