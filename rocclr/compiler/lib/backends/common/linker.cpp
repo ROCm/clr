@@ -799,6 +799,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 
   int ret = 0;
   if (Options()->oVariables->UseJIT) {
+    delete hookup_.amdrtFunctions;
     hookup_.amdrtFunctions = amd::getAmdRtFunctions();
   } else {
     hookup_.amdrtFunctions = NULL;
