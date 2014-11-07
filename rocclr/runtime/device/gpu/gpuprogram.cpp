@@ -1796,6 +1796,7 @@ HSAILProgram::~HSAILProgram()
             LogWarning( "Error while destroying the acl binary \n" );
         }
     }
+    releaseClBinary();
     delete globalStore_;
     delete kernels_;
 }
