@@ -1327,8 +1327,8 @@ if_aclCompile(aclCompiler *cl,
   }
   if (((from == ACL_TYPE_AMDIL_TEXT   || from == ACL_TYPE_AMDIL_BINARY  ||
         from == ACL_TYPE_X86_TEXT     || from == ACL_TYPE_X86_BINARY    ||
-        from == ACL_TYPE_HSAIL_TEXT   || from == ACL_TYPE_HSAIL_BINARY) && to != ACL_TYPE_ISA) ||
-                                        (from == ACL_TYPE_HSAIL_BINARY  && to != ACL_TYPE_CG)) {
+        from == ACL_TYPE_HSAIL_TEXT)  && to != ACL_TYPE_ISA) ||
+       (from == ACL_TYPE_HSAIL_BINARY && to != ACL_TYPE_ISA && to != ACL_TYPE_CG)) {
     return ACL_INVALID_ARG;
   }
   uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1};
