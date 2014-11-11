@@ -347,7 +347,7 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
     AmdAqlWrap* slots = reinterpret_cast<AmdAqlWrap*>(&header[1]);
     for (uint i = 0; i < numSlots; ++i) {
         uint64_t argStart = vaBase + argOffs + i * singleArgSize;
-        slots[i].aql.kernarg_address = argStart;
+        slots[i].aql.kernarg_address = reinterpret_cast<void*>(argStart);
         slots[i].wait_list = argStart + dev().info().maxParameterSize_ + 64;
     }
     // Upload data back to local memory
@@ -1735,7 +1735,7 @@ VirtualGPU::submitKernelInternalHSA(
     }
 
     // Program the kernel arguments for the GPU execution
-    hsa_dispatch_packet_t*  aqlPkt =
+    hsa_kernel_dispatch_packet_t*  aqlPkt =
         hsaKernel.loadArguments(*this, kernel, sizes, parameters, nativeMem,
         vmDefQueue, &vmParentWrap, memList);
     if (NULL == aqlPkt) {
@@ -1812,7 +1812,7 @@ VirtualGPU::submitKernelInternalHSA(
                     uint64_t* kernels = (uint64_t*)(
                         const_cast<Memory*>(hsaKernel.prog().kernelTable())->map(this));
                     for (j = 0; j < hsaKernel.prog().kernels().size(); ++j) {
-                        if (kernels[j] == wraps[i].aql.kernel_object_address) {
+                        if (kernels[j] == wraps[i].aql.kernel_object) {
                             break;
                         }
                     }
@@ -1828,7 +1828,9 @@ VirtualGPU::submitKernelInternalHSA(
                         printf("Error: couldn't find child kernel!\n");
                         continue;
                     }
-                    uint offsArg = wraps[i].aql.kernarg_address -
+                    const uint64_t kernarg_address =
+                      static_cast<uint64_t>(reinterpret_cast<uintptr_t>(wraps[i].aql.kernarg_address));
+                    uint offsArg = kernarg_address -
                         gpuDefQueue->virtualQueue_->vmAddress();
                     address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
                     print << "Kernel: " << child->name() << "\n";

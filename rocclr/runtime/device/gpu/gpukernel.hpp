@@ -885,7 +885,7 @@ public:
 
     //! Returns AQL packet in CPU memory 
     //! if the kerenl arguments were successfully loaded, otherwise NULL
-    hsa_dispatch_packet_t* loadArguments(
+    hsa_kernel_dispatch_packet_t* loadArguments(
         VirtualGPU&                     gpu,        //!< Running GPU context
         const amd::Kernel&              kernel,     //!< AMD kernel object
         const amd::NDRangeContainer&    sizes,      //!< NDrange container
