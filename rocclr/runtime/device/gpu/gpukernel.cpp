@@ -3791,10 +3791,13 @@ WriteAqlArg(
     *dst += size;
 }
 
-const hsa_packet_header_t DISPATCH_PACKET_HEADER = {
-    HSA_PACKET_TYPE_DISPATCH, 1, HSA_FENCE_SCOPE_SYSTEM, HSA_FENCE_SCOPE_COMPONENT, 0 };
+const uint16_t kDispatchPacketHeader =
+    (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+    (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_COMPONENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
-hsa_dispatch_packet_t*
+hsa_kernel_dispatch_packet_t*
 HSAILKernel::loadArguments(
     VirtualGPU&                     gpu,
     const amd::Kernel&              kernel,
@@ -4028,7 +4031,8 @@ HSAILKernel::loadArguments(
         "Size and the number of arguments don't match!");
     uint  argBufSize = amd::alignUp(
         static_cast<uint>(argsBufferSize()), sizeof(uint32_t));
-    hsa_dispatch_packet_t*   hsaDisp = reinterpret_cast<hsa_dispatch_packet_t*>(
+    hsa_kernel_dispatch_packet_t* hsaDisp =
+        reinterpret_cast<hsa_kernel_dispatch_packet_t*>(
         gpu.cb(0)->sysMemCopy() + argBufSize);
 
     amd::NDRange        local(sizes.local());
@@ -4037,9 +4041,8 @@ HSAILKernel::loadArguments(
     // Check if runtime has to find local workgroup size
     findLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
-    hsaDisp->header = DISPATCH_PACKET_HEADER;
-    hsaDisp->dimensions = sizes.dimensions();
-    hsaDisp->reserved = 0;
+    hsaDisp->header = kDispatchPacketHeader;
+    hsaDisp->setup = sizes.dimensions();
 
     hsaDisp->workgroup_size_x = local[0];
     hsaDisp->workgroup_size_y = (sizes.dimensions() > 1) ? local[1] : 1;
@@ -4053,14 +4056,14 @@ HSAILKernel::loadArguments(
     // Initialize kernel ISA and execution buffer requirements
     hsaDisp->private_segment_size   = spillSegSize();
     hsaDisp->group_segment_size     = ldsAddress - ldsSize();
-    hsaDisp->kernel_object_address  = gpuAqlCode()->vmAddress();
+    hsaDisp->kernel_object  = gpuAqlCode()->vmAddress();
 
     ConstBuffer* cb = gpu.constBufs_[0];
-    cb->uploadDataToHw(argBufSize + sizeof(hsa_dispatch_packet_t));
+    cb->uploadDataToHw(argBufSize + sizeof(hsa_kernel_dispatch_packet_t));
     uint64_t argList = cb->vmAddress() + cb->wrtOffset();
 
-    hsaDisp->kernarg_address = argList;
-    hsaDisp->reserved3 = 0;
+    hsaDisp->kernarg_address = reinterpret_cast<void*>(argList);
+    hsaDisp->reserved2 = 0;
     hsaDisp->completion_signal = 0;
 
     memList.push_back(cb);
