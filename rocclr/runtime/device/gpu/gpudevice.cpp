@@ -1693,11 +1693,7 @@ Device::createImage(amd::Memory& owner, bool directAccess) const
             return NULL;
         }
         // Create a view on the specified device
-        gpuImage = (gpu::Memory*)createView(owner, *devParent);
-        if ((gpuImage != NULL) && (gpuImage->owner() != NULL)) {
-            gpuImage->owner()->setHostMem((address)(owner.parent()->getHostMem()) + gpuImage->owner()->getOrigin());
-        }
-        return gpuImage ;
+        return (gpu::Memory*)createView(owner, *devParent);
     }
 
     gpuImage = new gpu::Image(*this, owner,
