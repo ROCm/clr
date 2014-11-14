@@ -542,7 +542,7 @@ void Device::fillDeviceInfo(
         }
 #endif
         info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
-            std::min(GPU_MAX_ALLOC_PERCENT, 100u) / 100u);
+            std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
         //! \note Force max single allocation size.
         //! 4GB limit for the blit kernels and 64 bit optimizations.
@@ -554,7 +554,7 @@ void Device::fillDeviceInfo(
         info_.globalMemSize_   = (std::min(maxHeapSize, 100u)
             * calAttr.localRAM / 100u) * Mi;
 
-        uint    maxAllocSize = flagIsDefault(GPU_MAX_ALLOC_PERCENT) ? 25 : GPU_MAX_ALLOC_PERCENT;
+        uint    maxAllocSize = flagIsDefault(GPU_SINGLE_ALLOC_PERCENT) ? 25 : GPU_SINGLE_ALLOC_PERCENT;
         info_.maxMemAllocSize_ = cl_ulong(info_.globalMemSize_ *
             std::min(maxAllocSize, 100u) / 100u);
     }
