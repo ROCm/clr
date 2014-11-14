@@ -342,6 +342,9 @@ public:
     //! Release pinned memory objects
     void releasePinnedMem();
 
+    //! Finds if pinned memory is cached
+    amd::Memory* findPinnedMem(void* addr, size_t size);
+
     //! Returns gsl memory object for VM
     const gslMemObject* vmMems() const { return vmMems_; }
 

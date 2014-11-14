@@ -229,9 +229,8 @@ VirtualGPU::addXferWrite(Resource& resource)
 void
 VirtualGPU::releaseXferWrite()
 {
-    for (std::list<Resource*>::iterator it = xferWriteBuffers_.begin();
-            it != xferWriteBuffers_.end(); ++it) {
-        dev().xferWrite().release(*this, *(*it));
+    for (auto& resource : xferWriteBuffers_) {
+        dev().xferWrite().release(*this, *resource);
     }
     xferWriteBuffers_.clear();
 }
@@ -244,21 +243,33 @@ VirtualGPU::addPinnedMem(amd::Memory* mem)
         pinnedMems_.pop_front();
     }
 
-    // Start operation, since we should release mem object
-    flushDMA(getGpuEvent(dev().getGpuMemory(mem))->engineId_);
+    if (NULL == findPinnedMem(mem->getHostMem(), mem->getSize())) {
+        // Start operation, since we should release mem object
+        flushDMA(getGpuEvent(dev().getGpuMemory(mem))->engineId_);
 
-    // Delay destruction
-    pinnedMems_.push_back(mem);
+        // Delay destruction
+        pinnedMems_.push_back(mem);
+    }
 }
 
 void
 VirtualGPU::releasePinnedMem()
 {
-    for (std::list<amd::Memory*>::iterator it = pinnedMems_.begin();
-            it != pinnedMems_.end(); ++it) {
-        (*it)->release();
+    for (auto& amdMemory : pinnedMems_) {
+        amdMemory->release();
     }
     pinnedMems_.clear();
+}
+
+amd::Memory*
+VirtualGPU::findPinnedMem(void* addr, size_t size)
+{
+    for (auto& amdMemory : pinnedMems_) {
+        if ((amdMemory->getHostMem() == addr) && (size <= amdMemory->getSize())) {
+            return amdMemory;
+        }
+    }
+    return NULL;
 }
 
 bool
@@ -486,10 +497,10 @@ VirtualGPU::create(
             engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE0 + idx));
             if (dev().canDMA()) {
                 if (idx & 0x1) {
-                    engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA1);
+                    engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
                 }
                 else {
-                    engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
+                    engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA1);
                 }
             }
         }
