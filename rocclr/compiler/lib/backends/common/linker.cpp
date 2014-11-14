@@ -99,7 +99,7 @@
 static const char* OptionMaskFName = "__option_mask";
 
 namespace AMDSpir {
-  extern void replaceTrivialConversionFunc(llvm::Module& M);
+  extern void replaceTrivialFunc(llvm::Module& M);
 }
 namespace amd {
 
@@ -903,7 +903,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 #endif
 
 
-  AMDSpir::replaceTrivialConversionFunc(*LLVMBinary());
+  AMDSpir::replaceTrivialFunc(*LLVMBinary());
 
   if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
     return 1;
