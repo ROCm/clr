@@ -168,8 +168,16 @@ protected:
 
     inline Memory& gpuMem(device::Memory& mem) const;
 
+    //! Pins host memory for GPU access
+    amd::Memory* pinHostMemory(
+        const void*     hostMem,        //!< Host memory pointer
+        size_t          pinSize,        //!< Host memory size
+        size_t&         partial         //!< Extra offset for memory alignment
+        ) const;
+
     const size_t MinSizeForPinnedTransfer;
     bool completeOperation_;    //!< DMA blit manager must complete operation
+    amd::Context*   context_;           //!< A dummy context
 
 private:
 
@@ -406,13 +414,6 @@ private:
         Device& device                  //!< Device object
         );
 
-    //! Pins host memory for GPU access
-    amd::Memory* pinHostMemory(
-        const void*     hostMem,        //!< Host memory pointer
-        size_t          pinSize,        //!< Host memory size
-        size_t&         partial         //!< Extra offset for memory alignment
-        ) const;
-
     //! Creates a view memory object
     Memory* createView(
         const Memory&       parent,     //!< Parent memory object
@@ -427,7 +428,6 @@ private:
 
     amd::Program*   program_;               //!< GPU program obejct
     amd::Kernel*    kernels_[BlitTotal];    //!< GPU kernels for blit
-    amd::Context*   context_;               //!< A dummy context
     amd::Memory*    constantBuffer_;        //!< An internal CB for blits
     amd::Memory*    xferBuffers_[MaxXferBuffers];   //!< Transfer buffers for images
     size_t          xferBufferSize_;        //!< Transfer buffer size

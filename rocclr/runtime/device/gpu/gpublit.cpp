@@ -15,6 +15,7 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup)
     , MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_)
     , completeOperation_(false)
+    , context_(NULL)
 {
 }
 
@@ -143,9 +144,7 @@ DmaBlitManager::readBuffer(
             // Find the partial size for unaligned copy
             size_t partial = reinterpret_cast<const char*>(dstHost) - tmpHost;
 
-            Resource* pin[MaxPinnedBuffers];
-            memset(pin, 0, sizeof(Resource*) * MaxPinnedBuffers);
-            uint    pinIdx = 0;
+            amd::Memory* pinned = NULL;
             bool    first = true;
             size_t  tmpSize;
             size_t  pinAllocSize;
@@ -167,35 +166,23 @@ DmaBlitManager::readBuffer(
                 }
                 amd::Coord3D dst(partial, 0, 0);
                 amd::Coord3D srcPin(origin[0] + offset, 0, 0);
-                amd::HostMemoryReference hostMem(tmpHost);
                 amd::Coord3D copySizePin(tmpSize, 0, 0);
+                size_t partial2;
 
                 // Allocate a GPU resource for pinning
-                pin[pinIdx] = new Resource(
-                    dev(), pinAllocSize / Heap::ElementSize, Heap::ElementType);
+                pinned = pinHostMemory(tmpHost, pinAllocSize, partial2);
 
-                if (pin[pinIdx] != NULL) {
-                    Resource::PinnedParams params;
-                    params.owner_       = NULL;
-                    params.gpu_         = &gpu();
-                    params.hostMemRef_  = &hostMem;
-                    params.size_        = pinAllocSize;
+                if (pinned != NULL) {
+                    // Get device memory for this virtual device
+                    Memory* dstMemory = dev().getGpuMemory(pinned);
 
-                    // Create memory object
-                    if (pin[pinIdx]->create(Resource::Pinned, &params)) {
-                        if (!gpuMem(srcMemory).partialMemCopyTo(
-                            gpu(), srcPin, dst, copySizePin, *pin[pinIdx])) {
-                            LogWarning("DmaBlitManager::readBuffer failed a pinned copy!");
-                            break;
-                        }
-                    }
-                    else {
-                        LogWarning("DmaBlitManager::readBuffer failed to pin a resource!");
+                    if (!gpuMem(srcMemory).partialMemCopyTo(
+                        gpu(), srcPin, dst, copySizePin, *dstMemory)) {
+                        LogWarning("DmaBlitManager::readBuffer failed a pinned copy!");
+                        gpu().addPinnedMem(pinned);
                         break;
                     }
-                    pinIdx = (pinIdx + 1) % MaxPinnedBuffers;
-                    delete pin[pinIdx];
-                    pin[pinIdx] = NULL;
+                    gpu().addPinnedMem(pinned);
                 }
                 else {
                     LogWarning("DmaBlitManager::readBuffer failed to pin a resource!");
@@ -204,10 +191,6 @@ DmaBlitManager::readBuffer(
                 srcSize -= tmpSize;
                 offset += tmpSize;
                 tmpHost = reinterpret_cast<char*>(tmpHost) + tmpSize + partial;
-            }
-
-            for (uint idx = 0; idx < MaxPinnedBuffers; ++idx) {
-                delete pin[idx];
             }
         }
 
@@ -398,9 +381,7 @@ DmaBlitManager::writeBuffer(
             // Find the partial size for unaligned copy
             size_t partial = reinterpret_cast<const char*>(srcHost) - tmpHost;
 
-            Resource* pin[MaxPinnedBuffers];
-            memset(pin, 0, sizeof(Resource*) * MaxPinnedBuffers);
-            uint    pinIdx = 0;
+            amd::Memory* pinned = NULL;
             bool    first = true;
             size_t  tmpSize;
             size_t  pinAllocSize;
@@ -422,35 +403,23 @@ DmaBlitManager::writeBuffer(
                 }
                 amd::Coord3D src(partial, 0, 0);
                 amd::Coord3D dstPin(origin[0] + offset, 0, 0);
-                amd::HostMemoryReference hostMem(tmpHost);
                 amd::Coord3D copySizePin(tmpSize, 0, 0);
+                size_t partial2;
 
                 // Allocate a GPU resource for pinning
-                pin[pinIdx] = new Resource(
-                    dev(), pinAllocSize / Heap::ElementSize, Heap::ElementType);
+                pinned = pinHostMemory(tmpHost, pinAllocSize, partial2);
 
-                if (pin[pinIdx] != NULL) {
-                    Resource::PinnedParams params;
-                    params.owner_       = NULL;
-                    params.gpu_         = &gpu();
-                    params.hostMemRef_  = &hostMem;
-                    params.size_        = pinAllocSize;
+                if (pinned != NULL) {
+                    // Get device memory for this virtual device
+                    Memory* srcMemory = dev().getGpuMemory(pinned);
 
-                    // Create memory object
-                    if (pin[pinIdx]->create(Resource::Pinned, &params)) {
-                        if (!pin[pinIdx]->partialMemCopyTo(
-                            gpu(), src, dstPin, copySizePin, gpuMem(dstMemory))) {
-                            LogWarning("DmaBlitManager::writeBuffer failed a pinned copy!");
-                            break;
-                        }
-                    }
-                    else {
-                        LogWarning("DmaBlitManager::writeBuffer failed to pin a resource!");
+                    if (!srcMemory->partialMemCopyTo(
+                        gpu(), src, dstPin, copySizePin, gpuMem(dstMemory))) {
+                        LogWarning("DmaBlitManager::writeBuffer failed a pinned copy!");
+                        gpu().addPinnedMem(pinned);
                         break;
                     }
-                    pinIdx = (pinIdx + 1) % MaxPinnedBuffers;
-                    delete pin[pinIdx];
-                    pin[pinIdx] = NULL;
+                    gpu().addPinnedMem(pinned);
                 }
                 else {
                     LogWarning("DmaBlitManager::writeBuffer failed to pin a resource!");
@@ -459,10 +428,6 @@ DmaBlitManager::writeBuffer(
                 dstSize -= tmpSize;
                 offset += tmpSize;
                 tmpHost = reinterpret_cast<char*>(tmpHost) + tmpSize + partial;
-            }
-
-            for (uint idx = 0; idx < MaxPinnedBuffers; ++idx) {
-                delete pin[idx];
             }
         }
 
@@ -774,7 +739,6 @@ KernelBlitManager::KernelBlitManager(
     VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup)
     , program_(NULL)
-    , context_(NULL)
     , constantBuffer_(NULL)
     , xferBufferSize_(0)
     , lockXferOps_(NULL)
@@ -2202,11 +2166,6 @@ KernelBlitManager::readBuffer(
             gpu().addPinnedMem(amdMemory);
         }
         else {
-            // Check if runtime has to pin a big allocation and
-            // release all pinned memory
-            if (pinSize > dev().settings().pinnedXferSize_) {
-                gpu().releasePinnedMem();
-            }
             result = DmaBlitManager::readBuffer(
                 srcMemory, dstHost, origin, size, entire);
         }
@@ -2324,11 +2283,6 @@ KernelBlitManager::writeBuffer(
             gpu().addPinnedMem(amdMemory);
         }
         else {
-            // Check if runtime has to pin a big allocation and
-            // release all pinned memory
-            if (pinSize > dev().settings().pinnedXferSize_) {
-                gpu().releasePinnedMem();
-            }
             result =  DmaBlitManager::writeBuffer(
                 srcHost, dstMemory, origin, size, entire);
         }
@@ -2804,7 +2758,7 @@ KernelBlitManager::runScheduler(
 }
 
 amd::Memory*
-KernelBlitManager::pinHostMemory(
+DmaBlitManager::pinHostMemory(
     const void* hostMem,
     size_t      pinSize,
     size_t&     partial) const
@@ -2823,6 +2777,12 @@ KernelBlitManager::pinHostMemory(
 
     // Recalculate pin memory size
     pinAllocSize = amd::alignUp(pinSize + partial, PinnedMemoryAlignment);
+
+    amdMemory = gpu().findPinnedMem(tmpHost, pinAllocSize);
+
+    if (NULL != amdMemory) {
+        return amdMemory;
+    }
 
     amdMemory = new(*context_)
         amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
