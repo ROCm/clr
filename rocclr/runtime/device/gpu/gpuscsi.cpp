@@ -8,6 +8,7 @@
 #include "acl.h"
 #include "SCShadersSi.h"
 #include "si_ci_vi_merged_offset.h"
+#include "si_ci_vi_merged_registers.h"
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -112,8 +113,11 @@ NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
     newInfos[i].value = 32*1024;    //options.LDSSize;
     i++;
 
+    COMPUTE_PGM_RSRC2 computePgmRsrc2;
+    computePgmRsrc2.u32All = cShader->computePgmRsrc2.u32All;
+
     newInfos[i].address = AMU_ABI_LDS_SIZE_USED;
-    newInfos[i].value = 64 * 4 * cShader->computePgmRsrc2.bits.LDS_SIZE;
+    newInfos[i].value = 64 * 4 * computePgmRsrc2.bits.LDS_SIZE;
     i++;
 
     infoCount = i;
