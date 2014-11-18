@@ -739,7 +739,7 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
         size_t size = 0;
         const void* llvmir = aclExtractSection(dev().compiler(), libs[0],
-            &size, aclLLVMIR, &err);
+            &size, llvmBinaryIsSpir[0]?aclSPIR:aclLLVMIR, &err);
         if (err != ACL_SUCCESS) {
             LogWarning("aclExtractSection failed");
             break;
