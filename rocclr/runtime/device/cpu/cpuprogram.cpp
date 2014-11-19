@@ -1066,7 +1066,9 @@ Program::linkImpl(
     }
 
     if (libs.size() > 0 && err == ACL_SUCCESS) do {
-        if (libs.size() > 1) {
+        unsigned int numLibs = libs.size() - 1;
+        bool resultIsSPIR = (llvmBinaryIsSpir[0] && numLibs == 0);
+        if (numLibs > 0) {
             err = aclLink(compiler(), libs[0], libs.size() - 1, &libs[1],
                 ACL_TYPE_LLVMIR_BINARY, "-create-library", NULL);
 
@@ -1080,7 +1082,7 @@ Program::linkImpl(
 
         size_t size = 0;
         const void* llvmir = aclExtractSection(compiler(), libs[0],
-            &size, aclLLVMIR, &err);
+            &size, resultIsSPIR?aclSPIR:aclLLVMIR, &err);
         if (err != ACL_SUCCESS) {
             LogWarning("aclExtractSection failed");
             break;
