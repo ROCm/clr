@@ -725,6 +725,8 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
     if (libs.size() > 0 && err == ACL_SUCCESS) do {
         unsigned int numLibs = libs.size() - 1;
+        bool resultIsSPIR = (llvmBinaryIsSpir[0] && numLibs == 0);
+
         if (numLibs > 0) {
             err = aclLink(dev().compiler(), libs[0], numLibs, &libs[1],
                 ACL_TYPE_LLVMIR_BINARY, "-create-library", NULL);
@@ -739,7 +741,7 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
         size_t size = 0;
         const void* llvmir = aclExtractSection(dev().compiler(), libs[0],
-            &size, llvmBinaryIsSpir[0]?aclSPIR:aclLLVMIR, &err);
+            &size, resultIsSPIR?aclSPIR:aclLLVMIR, &err);
         if (err != ACL_SUCCESS) {
             LogWarning("aclExtractSection failed");
             break;
