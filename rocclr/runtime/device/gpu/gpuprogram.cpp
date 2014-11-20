@@ -20,7 +20,7 @@
 #include "hsa_ext_image.h"
 
 extern "C" bool
-ACL_API_ENTRY aclHsaLoader(
+ACL_API_ENTRY _aclHsaLoader(
     aclCompiler* compiler_handle,
     aclBinary* bin,
     void* userData,
@@ -2137,7 +2137,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         return false;
     }
     // ACL_TYPE_CG stage is always being performed
-    if (!aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
+    if (!_aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
         &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
         buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
         return false;

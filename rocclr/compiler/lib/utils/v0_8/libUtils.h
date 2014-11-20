@@ -187,4 +187,30 @@ inline std::vector<std::string> splitSpaceSeparatedString(char *str)
   return vec;
 }
 
+// Helper function that allocates an aligned memory.
+inline void*
+alignedMalloc(size_t size, size_t alignment)
+{
+#if defined(_WIN32)
+  return ::_aligned_malloc(size, alignment);
+#else
+  void * ptr = NULL;
+  if (0 == ::posix_memalign(&ptr, alignment, size)) {
+    return ptr;
+  }
+  return NULL;
+#endif
+}
+
+// Helper function that frees an aligned memory.
+inline void
+alignedFree(void *ptr)
+{
+#if defined(_WIN32)
+  ::_aligned_free(ptr);
+#else
+  free(ptr);
+#endif
+}
+
 #endif // _CL_LIB_UTILS_0_8_H_
