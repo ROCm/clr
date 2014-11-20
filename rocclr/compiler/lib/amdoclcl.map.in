@@ -95,7 +95,7 @@ global:
   aclJITObjectImageIterateSymbols;
   aclJITObjectImageGetGlobalsSize;
 #if defined(WITH_TARGET_HSAIL)
-  aclHsaLoader;
+  _aclHsaLoader;
 #endif
 #if defined(OPENCL_MAINLINE)
 local:
