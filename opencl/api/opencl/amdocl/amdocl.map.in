@@ -115,6 +115,7 @@ global:
     aclRemoveSymbol;
     aclCompile;
     aclDisassemble;
+    _aclHsaLoader;
 } OPENCL_1.0;
 #endif
 
@@ -242,4 +243,5 @@ global:
     aclDisassemble;
     aclGetDeviceBinary;
     aclDumpBinary;
+    _aclHsaLoader;
 };
