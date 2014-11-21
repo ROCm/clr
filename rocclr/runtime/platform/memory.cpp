@@ -975,9 +975,8 @@ Image::supportedFormatsRA[] = {
     {CL_RA, CL_HALF_FLOAT},         {CL_RA, CL_FLOAT},
 };
 
-cl_image_format depthFormats[] = {
-    //DEPTH
-    {CL_DEPTH, CL_FLOAT},           {CL_DEPTH, CL_UNORM_INT16},
+cl_image_format
+Image::supportedDepthStencilFormats[] = {
     //DEPTH STENCIL
     {CL_DEPTH_STENCIL, CL_FLOAT},   {CL_DEPTH_STENCIL, CL_UNORM_INT24}
 };
@@ -986,24 +985,29 @@ cl_uint
 Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type, cl_mem_flags flags)
 {
     const std::vector<amd::Device*>& devices = context.devices();
-    cl_uint numFormats = sizeof(supportedFormats) / sizeof(cl_image_format);
+    uint numFormats = sizeof(supportedFormats) / sizeof(cl_image_format);
 
     bool supportRA = false;
     bool supportDepthsRGB = false;
+    bool supportDepthStencil = false;
  
     // Add RA if RA is supported.
-    for (size_t i = 0; i < devices.size(); i++) {
+    for (uint i = 0; i < devices.size(); i++) {
         if (devices[i]->settings().supportRA_) {
             supportRA = true;
         }
         if (devices[i]->settings().supportDepthsRGB_) {
             supportDepthsRGB = true;
         }
+        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
+            supportDepthStencil = true;
+        }
     }
 
     if (supportDepthsRGB) {
         if ((image_type != CL_MEM_OBJECT_IMAGE2D) &&
-            (image_type != CL_MEM_OBJECT_IMAGE2D_ARRAY)) {
+            (image_type != CL_MEM_OBJECT_IMAGE2D_ARRAY) &&
+            (image_type != 0)) {
              numFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;   // substract channel order of DEPTH type.
         }
         // Currently we are not supported sRGB for write_imagef (extension cl_khr_srgb_image_writes)
@@ -1023,6 +1027,10 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
         numFormats += sizeof(supportedFormatsRA) / sizeof(cl_image_format);   // Add channel order of RA type.
     }
 
+    if (supportDepthStencil) {
+        numFormats += sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format);
+    }
+
     return numFormats;
 }
 
@@ -1035,28 +1043,33 @@ Image::getSupportedFormats(
     cl_mem_flags flags)
 {
     const std::vector<amd::Device*>& devices = context.devices();
-    cl_uint numFormats = 0;
+    uint numFormats = 0;
 
     bool supportRA = false;
     bool supportDepthsRGB = false;
+    bool supportDepthStencil = false;
  
     // Add RA if RA is supported.
-    for (size_t i = 0; i < devices.size(); i++) {
+    for (uint i = 0; i < devices.size(); i++) {
         if (devices[i]->settings().supportRA_) {
             supportRA = true;
         }
         if (devices[i]->settings().supportDepthsRGB_) {
             supportDepthsRGB = true;
         }
+        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
+            supportDepthStencil = true;
+        }
     }
 
     cl_image_format *format = image_formats;
-    cl_uint numSupportedFormats = sizeof(supportedFormats) / sizeof(cl_image_format);
+    uint numSupportedFormats = sizeof(supportedFormats) / sizeof(cl_image_format);
 
     bool srgbWriteSupported = true;
     if (supportDepthsRGB) {
         if ((image_type != CL_MEM_OBJECT_IMAGE2D) &&
-            (image_type != CL_MEM_OBJECT_IMAGE2D_ARRAY)) {
+            (image_type != CL_MEM_OBJECT_IMAGE2D_ARRAY) &&
+            (image_type != 0)) {
             numSupportedFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;
         }
         // Currently we are not supported sRGB for write_imagef (extension cl_khr_srgb_image_writes)
@@ -1071,9 +1084,10 @@ Image::getSupportedFormats(
          numSupportedFormats -= NUM_CHANNEL_ORDER_OF_DEPTH;   // substract channel order of DEPTH type.
     }
 
-    for (size_t i = 0; i < numSupportedFormats; i++) {
-        if (numFormats == num_entries)
+    for (uint i = 0; i < numSupportedFormats; i++) {
+        if (numFormats == num_entries) {
             break;
+        }
         if (!srgbWriteSupported) {
             if ((amd::Image::supportedFormats[i].image_channel_order == CL_sRGBA) ||
                 (amd::Image::supportedFormats[i].image_channel_order == CL_sRGB)  ||
@@ -1088,29 +1102,30 @@ Image::getSupportedFormats(
 
     // Add RA if RA is supported.
     if (supportRA) {
-        for (size_t i = 0; i < sizeof(supportedFormatsRA) / sizeof(cl_image_format); i++) {
-            if (numFormats == num_entries)
+        for (uint i = 0; i < sizeof(supportedFormatsRA) / sizeof(cl_image_format); i++) {
+            if (numFormats == num_entries) {
                 break;
+            }
             *format++ = amd::Image::supportedFormatsRA[i];
             numFormats++;
         }
     }
 
+    if (supportDepthStencil) {
+        for (uint i = 0; i < sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format); i++) {
+            if (numFormats == num_entries) {
+                break;
+            }
+            *format++ = amd::Image::supportedDepthStencilFormats[i];
+        }
+    }
     return numFormats;
 }
 
 bool
 Image::Format::isSupported(const Context& context, cl_mem_object_type image_type) const
 {
-    bool supportDepth = true;
-    const std::vector<amd::Device*>& devices = context.devices();
-    for (size_t i = 0; i < devices.size(); i++) {
-        if (!devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
-            supportDepth = false;
-        }
-    }
-
-    cl_uint numFormats = numSupportedFormats(context, image_type) ;
+    uint numFormats = numSupportedFormats(context, image_type) ;
 
     cl_image_format *image_formats = new cl_image_format[numFormats];
 
@@ -1120,7 +1135,7 @@ Image::Format::isSupported(const Context& context, cl_mem_object_type image_type
 
     getSupportedFormats(context, image_type, numFormats, image_formats) ;
 
-    for (cl_uint i = 0; i < numFormats; i++) {
+    for (uint i = 0; i < numFormats; i++) {
         if (*this == image_formats[i]) {
             delete image_formats;
             return true;
@@ -1129,13 +1144,6 @@ Image::Format::isSupported(const Context& context, cl_mem_object_type image_type
 
     delete image_formats;
 
-    if (supportDepth) {
-        for (cl_uint i = 0; i < sizeof(depthFormats) / sizeof(cl_image_format); i++) {
-            if (*this == depthFormats[i]) {
-               return true;
-            }
-        }
-    }
     return false;
 }
 

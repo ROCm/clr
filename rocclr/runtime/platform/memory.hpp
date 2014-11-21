@@ -443,6 +443,7 @@ public:
     // declaration of list of supported formats
     static cl_image_format supportedFormats[];
     static cl_image_format supportedFormatsRA[];
+    static cl_image_format supportedDepthStencilFormats[];
     static cl_uint numSupportedFormats(const Context& context, cl_mem_object_type image_type, cl_mem_flags flags = 0);
     static cl_uint getSupportedFormats(
         const Context& context,
