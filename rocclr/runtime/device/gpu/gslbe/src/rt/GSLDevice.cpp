@@ -427,6 +427,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     case GSL_ATIASIC_ID_BERMUDA_P:
     case GSL_ATIASIC_ID_FIJI_P:
     case GSL_ATIASIC_ID_CARRIZO:
+    case GSL_ATIASIC_ID_ELLESMERE_P:
         m_computeRing = true;
         break;
     default:
@@ -574,6 +575,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
     case GSL_ATIASIC_ID_CARRIZO:
         m_target = CAL_TARGET_CARRIZO;
         m_elfmachine = ED_ATI_CAL_MACHINE_CARRIZO_ISA;
+        break;
+    case GSL_ATIASIC_ID_ELLESMERE_P:
+        m_target = CAL_TARGET_ELLESMERE;
+        m_elfmachine = ED_ATI_CAL_MACHINE_ELLESMERE_ISA;
         break;
     default:
         // 6XX is not supported

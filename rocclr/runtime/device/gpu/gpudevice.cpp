@@ -153,6 +153,7 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_FIJI:
     case CAL_TARGET_GODAVARI:
     case CAL_TARGET_CARRIZO:
+    case CAL_TARGET_ELLESMERE:
         calAttr.doublePrecision = CAL_TRUE;
         break;
     default:

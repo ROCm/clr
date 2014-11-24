@@ -250,6 +250,7 @@ Settings::create(
     case CAL_TARGET_TONGA:
     case CAL_TARGET_BERMUDA:
     case CAL_TARGET_FIJI:
+    case CAL_TARGET_ELLESMERE:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
         viPlus_ = true;
