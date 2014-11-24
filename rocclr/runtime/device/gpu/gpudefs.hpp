@@ -124,6 +124,7 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_BERMUDA */    { ED_ATI_CAL_MACHINE_BERMUDA_ISA,   "",    "",   4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_FIJI */       { ED_ATI_CAL_MACHINE_FIJI_ISA,      "Hoatzin",      "hoatzin",     4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_CARRIZO */    { ED_ATI_CAL_MACHINE_CARRIZO_ISA,   "Carrizo" ,     "carrizo",      4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_ELLESMERE */  { ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "",  "",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
 // Supported OpenCL versions
