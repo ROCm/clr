@@ -84,6 +84,8 @@ release(cstring, AMD_OCL_LINK_OPTIONS, 0,                                     \
         "Set clLinkProgram()'s options (override)")                           \
 release(cstring, AMD_OCL_LINK_OPTIONS_APPEND, 0,                              \
         "Append clLinkProgram()'s options")                                   \
+release(cstring, AMD_OCL_SC_LIB, 0,                                           \
+        "Set shader compiler shared library name or path")                    \
 debug(bool, AMD_OCL_SUPPRESS_MESSAGE_BOX, false,                              \
         "Suppress the error dialog on Windows")                               \
 debug(bool, OCL_STRESS_BINARY_IMAGE, false,                                   \

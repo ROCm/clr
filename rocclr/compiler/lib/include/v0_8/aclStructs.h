@@ -270,7 +270,7 @@ typedef struct _acl_compiler_opts_rec_0_8_1 {
   const char *linkLib;
   const char *cgLib;
   const char *beLib;
-  const char *scLib;
+  const char *scLib; // Name or path to the shader compiler shared library
   AllocFunc alloc;
   FreeFunc dealloc;
 } aclCompilerOptions_0_8_1;
