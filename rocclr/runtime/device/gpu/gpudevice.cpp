@@ -897,7 +897,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
                 NULL,
                 NULL,
                 NULL,
-                NULL,
+                AMD_OCL_SC_LIB,
                 &::malloc,
                 &::free
             };
@@ -1203,7 +1203,7 @@ Device::init()
         NULL,
         NULL,
         NULL,
-        NULL,
+        AMD_OCL_SC_LIB,
         &::malloc,
         &::free
     };
