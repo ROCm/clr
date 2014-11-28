@@ -906,6 +906,7 @@ void*
 Memory::allocMapTarget(
     const amd::Coord3D& origin,
     const amd::Coord3D& region,
+    uint                mapFlags,
     size_t*             rowPitch,
     size_t*             slicePitch)
 {
@@ -921,7 +922,8 @@ Memory::allocMapTarget(
     incIndMapCount();
 
     // If host memory exists, use it
-    if (owner()->getHostMem() != NULL) {
+    if ((owner()->getHostMem() != NULL) &&
+        (isCacheable() || !isHostMemDirectAccess() || !(mapFlags & CL_MAP_READ))) {
         mapAddress = reinterpret_cast<address>(owner()->getHostMem());
     }
     // If resource is a persistent allocation, we can use it directly
@@ -1226,6 +1228,7 @@ void*
 Image::allocMapTarget(
     const amd::Coord3D& origin,
     const amd::Coord3D& region,
+    uint                mapFlags,
     size_t*             rowPitch,
     size_t*             slicePitch)
 {
@@ -1245,7 +1248,8 @@ Image::allocMapTarget(
     incIndMapCount();
 
     // If host memory exists, use it
-    if (owner()->getHostMem() != NULL) {
+    if ((owner()->getHostMem() != NULL) &&
+        (isCacheable() || !isHostMemDirectAccess() || !(mapFlags & CL_MAP_READ))) {
         useRemoteResource = false;
         mapAddress = reinterpret_cast<address>(owner()->getHostMem());
         amd::Image* amdImage = owner()->asImage();

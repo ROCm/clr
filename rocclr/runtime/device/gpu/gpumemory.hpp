@@ -121,6 +121,7 @@ public:
     virtual void* allocMapTarget(
         const amd::Coord3D& origin, //!< The map location in memory
         const amd::Coord3D& region, //!< The map region in memory
+        uint    mapFlags,           //!< Map flags
         size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
         size_t* slicePitch = NULL   //!< Slice for the mapped memory
         );
@@ -288,6 +289,7 @@ public:
     virtual void* allocMapTarget(
         const amd::Coord3D& origin, //!< The map location in memory
         const amd::Coord3D& region, //!< The map region in memory
+        uint    mapFlags,           //!< Map flags
         size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
         size_t* slicePitch = NULL   //!< Slice for the mapped memory
         );

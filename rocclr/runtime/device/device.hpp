@@ -727,19 +727,23 @@ public:
     //! Saves map info for this object
     //! @note: It's not a thread safe operation, the app must implement
     //! synchronization for the multiple write maps if necessary
-    void saveWriteMapInfo(
+    void saveMapInfo(
         const amd::Coord3D  origin, //!< Origin of the map location
         const amd::Coord3D  region, //!< Mapped region
+        uint                mapFlags,   //< Map flags
         bool                entire  //!< True if the enitre memory was mapped
         );
 
     const WriteMapInfo* writeMapInfo() const { return &writeMapInfo_; }
 
     //! Clear memory object as mapped read only
-    void clearUnmapWrite() { flags_ &= ~UnmapWrite; }
+    void clearUnmapFlags() { flags_ &= ~(UnmapWrite | UnmapRead); }
 
-    //! Returns state of map read only flag
+    //! Returns state of map write flag
     bool isUnmapWrite() const { return (flags_ & UnmapWrite) ? true : false; }
+
+    //! Returns state of map read flag
+    bool isUnmapRead() const { return (flags_ & UnmapRead) ? true : false; }
 
     //! Returns state of memory direct access flag
     bool isHostMemDirectAccess() const
@@ -754,9 +758,10 @@ protected:
         HostMemoryDirectAccess  = 0x00000001,   //!< GPU has direct access to the host memory
         MapResourceAlloced      = 0x00000002,   //!< Map resource was allocated
         PinnedMemoryAlloced     = 0x00000004,   //!< An extra pinned resource was allocated
-        UnmapWrite              = 0x00000008,   //!< Memory was mapped read-only
+        UnmapWrite              = 0x00000008,   //!< Memory was mapped for write
         SubMemoryObject         = 0x00000010,   //!< Memory is sub-memory
         HostMemoryRegistered    = 0x00000020,   //!< Host memory was registered
+        UnmapRead               = 0x00000040,   //!< Memory was mapped for read
     };
     uint        flags_;         //!< Memory object flags
 
@@ -1587,6 +1592,7 @@ public:
         amd::Memory&    mem,        //!< Abstraction layer memory object
         const amd::Coord3D& origin, //!< The map location in memory
         const amd::Coord3D& region, //!< The map region in memory
+        uint    mapFlags,           //!< Map flags
         size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
         size_t* slicePitch = NULL   //!< Slice for the mapped memory
         ) = 0;

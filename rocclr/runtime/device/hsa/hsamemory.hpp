@@ -35,6 +35,7 @@ class Memory : public device::Memory {
   // of an indirect map for a given memory object
   virtual void *allocMapTarget(const amd::Coord3D &origin,
                                const amd::Coord3D &region,
+                               uint mapFlags,
                                size_t *rowPitch,
                                size_t *slicePitch);
 
@@ -168,6 +169,7 @@ public:
     //! of an indirect map for a given memory object
     virtual void* allocMapTarget(const amd::Coord3D& origin,
         const amd::Coord3D& region,
+        uint    mapFlags,
         size_t* rowPitch,
         size_t* slicePitch);
 

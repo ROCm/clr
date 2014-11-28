@@ -589,9 +589,8 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
 
     // Save map write requirement.
     if (mapFlag & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-        devMemory->saveWriteMapInfo(cmd.origin(),
-                                    cmd.size(),
-                                    cmd.isEntireMemory());
+        devMemory->saveMapInfo(cmd.origin(), cmd.size(),
+            mapFlag, cmd.isEntireMemory());
     }
 
     // Sync to the map target.
@@ -686,7 +685,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
             }
         }
 
-        devMemory->clearUnmapWrite();
+        devMemory->clearUnmapFlags();
 
         cmd.memory().signalWrite(&dev());
     }

@@ -2098,6 +2098,7 @@ Device::allocMapTarget(
     amd::Memory&        mem,
     const amd::Coord3D& origin,
     const amd::Coord3D& region,
+    uint                mapFlags,
     size_t*             rowPitch,
     size_t*             slicePitch)
 {
@@ -2109,7 +2110,7 @@ Device::allocMapTarget(
     }
 
     // Pass request over to memory
-    return memory->allocMapTarget(origin, region, rowPitch, slicePitch);
+    return memory->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
 }
 
 bool
