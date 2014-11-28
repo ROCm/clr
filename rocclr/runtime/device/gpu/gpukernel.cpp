@@ -3868,7 +3868,9 @@ HSAILKernel::loadArguments(
                         gpuMem->wait(gpu, WaitOnBusyEngine);
                         memList.push_back(gpuMem);
                     }
-                    else {
+                    // If finegrainsystem is present then the pointer can be malloced by the app and
+                    // passed to kernel directly. If so copy the pointer location to aqlArgBuf
+                    else if ((dev().info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) == 0) {
                         return NULL;
                     }
                     break;
