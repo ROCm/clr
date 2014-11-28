@@ -411,28 +411,15 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     }
 #endif
 
-    switch (asic_id)
+    if (asic_id < GSL_ATIASIC_ID_TAHITI_P ||
+        asic_id == GSL_ATIASIC_ID_DEVASTATOR ||
+        asic_id == GSL_ATIASIC_ID_SCRAPPER)
     {
-    case GSL_ATIASIC_ID_TAHITI_P:
-    case GSL_ATIASIC_ID_PITCAIRN_PM:
-    case GSL_ATIASIC_ID_CAPEVERDE_M:
-    case GSL_ATIASIC_ID_OLAND_M:
-    case GSL_ATIASIC_ID_HAINAN_M:
-    case GSL_ATIASIC_ID_BONAIRE_M:
-    case GSL_ATIASIC_ID_KALINDI:
-    case GSL_ATIASIC_ID_HAWAII_P:
-    case GSL_ATIASIC_ID_ICELAND_M:
-    case GSL_ATIASIC_ID_TONGA_P:
-    case GSL_ATIASIC_ID_GODAVARI:
-    case GSL_ATIASIC_ID_BERMUDA_P:
-    case GSL_ATIASIC_ID_FIJI_P:
-    case GSL_ATIASIC_ID_CARRIZO:
-    case GSL_ATIASIC_ID_ELLESMERE_P:
-        m_computeRing = true;
-        break;
-    default:
         m_computeRing = false;
-        break;
+    }
+    else
+    {   
+        m_computeRing = true;
     }
 
     if (!flagIsDefault(GPU_NUM_COMPUTE_RINGS))
