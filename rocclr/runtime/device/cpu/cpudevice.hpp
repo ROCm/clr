@@ -143,6 +143,7 @@ public:
         amd::Memory&    mem,        //!< Abstraction layer memory object
         const amd::Coord3D& origin, //!< The map location in memory
         const amd::Coord3D& region, //!< The map region in memory
+        uint    mapFlags,           //!< Map flags
         size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
         size_t* slicePitch = NULL   //!< Slice for the mapped memory
         );

@@ -1123,6 +1123,7 @@ Device::allocMapTarget(
     amd::Memory&        mem,
     const amd::Coord3D& origin,
     const amd::Coord3D& region,
+    uint                mapFlags,
     size_t*             rowPitch,
     size_t*             slicePitch)
 {

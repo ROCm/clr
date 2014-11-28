@@ -1085,14 +1085,15 @@ VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd)
 
     gpu::Memory* memory = dev().getGpuMemory(&vcmd.memory());
 
-    // Save write map info for unmap copy
-    if (vcmd.mapFlags() & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-        memory->saveWriteMapInfo(vcmd.origin(),
-            vcmd.size(), vcmd.isEntireMemory());
-    }
+    // Save map info for unmap operation
+    memory->saveMapInfo(vcmd.origin(), vcmd.size(),
+        vcmd.mapFlags(), vcmd.isEntireMemory());
 
     // If we have host memory, use it
-    if (memory->owner()->getHostMem() != NULL) {
+    if ((memory->owner()->getHostMem() != NULL) &&
+        (memory->isCacheable() ||
+         !memory->isHostMemDirectAccess() ||
+         !(vcmd.mapFlags() & CL_MAP_READ))) {
         if (!memory->isHostMemDirectAccess()) {
             // Make sure GPU finished operation before
             // synchronization with the backing store
@@ -1177,7 +1178,10 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
     amd::Memory* owner = memory->owner();
 
     // We used host memory
-    if (owner->getHostMem() != NULL) {
+    if ((owner->getHostMem() != NULL) &&
+        (memory->isCacheable() ||
+         !memory->isHostMemDirectAccess() ||
+         !memory->isUnmapRead())) {
         if (memory->isUnmapWrite()) {
             // Target is the backing store, so sync
             owner->signalWrite(NULL);
@@ -1254,8 +1258,8 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
         vcmd.setStatus(CL_INVALID_VALUE);
     }
 
-    // Clear read only flag
-    memory->clearUnmapWrite();
+    // Clear unmap flags
+    memory->clearUnmapFlags();
 
     profilingEnd(vcmd);
 }
@@ -1357,31 +1361,20 @@ VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd)
 
     profilingBegin(vcmd, true);
 
-    //check if the ptr is in the svm space
-    amd::Memory* svmMem = vcmd.getSvmMem();
-    if (NULL == svmMem) {
-        LogWarning("wrong svm address ");
-        vcmd.setStatus(CL_INVALID_VALUE);
-        return;
-    }
-
     // Make sure we have memory for the command execution
-    gpu::Memory* memory = dev().getGpuMemory(svmMem);
+    gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
 
-    if (vcmd.mapFlags() & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-        memory->saveWriteMapInfo(vcmd.origin(), vcmd.size(), vcmd.isEntireMemory());
-    }
+    memory->saveMapInfo(vcmd.origin(), vcmd.size(),
+        vcmd.mapFlags(), vcmd.isEntireMemory());
 
     if (memory->mapMemory() != NULL) {
         if (vcmd.mapFlags() & (CL_MAP_READ | CL_MAP_WRITE)) {
             amd::Coord3D dstOrigin(0, 0, 0);
-            if (memory->cal()->buffer_) {
-                if (!blitMgr().copyBuffer(*memory,
-                    *memory->mapMemory(), vcmd.origin(), dstOrigin,
-                    vcmd.size(), vcmd.isEntireMemory())) {
-                    LogError("submitSVMMapMemory() - copy failed");
-                    vcmd.setStatus(CL_MAP_FAILURE);
-                }
+            assert(memory->cal()->buffer_ && "SVM memory can't be an image");
+            if (!blitMgr().copyBuffer(*memory, *memory->mapMemory(),
+                vcmd.origin(), dstOrigin, vcmd.size(), vcmd.isEntireMemory())) {
+                LogError("submitSVMMapMemory() - copy failed");
+                vcmd.setStatus(CL_MAP_FAILURE);
             }
         }
     }
@@ -1399,30 +1392,18 @@ VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& vcmd)
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd, true);
 
-    amd::Memory* svmMem = vcmd.getSvmMem();
-    if (NULL == svmMem) {
-        LogWarning("wrong svm address ");
-        vcmd.setStatus(CL_INVALID_VALUE);
-        return;
-    }
-
-    gpu::Memory* memory = dev().getGpuMemory(svmMem);
+    gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
 
     if (memory->mapMemory() != NULL) {
         if (memory->isUnmapWrite()) {
             amd::Coord3D srcOrigin(0, 0, 0);
             // Target is a remote resource, so copy
-            assert(memory->mapMemory() != NULL);
-            if (memory->cal()->buffer_) {
-                if (!blitMgr().copyBuffer(
-                    *memory->mapMemory(), *memory,
-                    srcOrigin,
-                    memory->writeMapInfo()->origin_,
-                    memory->writeMapInfo()->region_,
-                    memory->writeMapInfo()->entire_)) {
-                    LogError("submitUnmapMemory() - copy failed");
-                    vcmd.setStatus(CL_OUT_OF_RESOURCES);
-                }
+            assert(memory->cal()->buffer_ && "SVM memory can't be an image");
+            if (!blitMgr().copyBuffer(*memory->mapMemory(), *memory, srcOrigin,
+                memory->writeMapInfo()->origin_, memory->writeMapInfo()->region_,
+                memory->writeMapInfo()->entire_)) {
+                LogError("submitSvmUnmapMemory() - copy failed");
+                vcmd.setStatus(CL_OUT_OF_RESOURCES);
             }
         }
     }

@@ -79,6 +79,7 @@ Memory::freeMapMemory()
 void *
 Memory::allocMapTarget(const amd::Coord3D &origin,
                        const amd::Coord3D &region,
+                       uint mapFlags,
                        size_t *rowPitch,
                        size_t *slicePitch) 
 {
@@ -146,7 +147,7 @@ Memory::cpuMap(
 {
     // Create the map target.
     void * mapTarget =
-        allocMapTarget(amd::Coord3D(0), amd::Coord3D(0), rowPitch, slicePitch);
+        allocMapTarget(amd::Coord3D(0), amd::Coord3D(0), 0, rowPitch, slicePitch);
 
     // Sync to map target if no direct access.
     if (!isHostMemDirectAccess()) {
@@ -862,6 +863,7 @@ Image::createView(Image &parent)
 
 void* Image::allocMapTarget(const amd::Coord3D& origin,
     const amd::Coord3D& region,
+    uint    mapFlags,
     size_t* rowPitch,
     size_t* slicePitch)
 {
