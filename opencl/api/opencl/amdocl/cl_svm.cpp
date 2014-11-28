@@ -780,7 +780,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap, (
             return CL_OUT_OF_RESOURCES;
         }
         // Attempt to allocate the map target now (whether blocking or non-blocking)
-        void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize);
+        void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
         if (NULL == mapPtr || mapPtr != svm_ptr) {
             return CL_OUT_OF_RESOURCES;
         }

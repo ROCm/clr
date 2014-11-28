@@ -3236,7 +3236,7 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
 
     // Attempt to allocate the map target now (whether blocking or non-blocking)
     void* mapPtr = hostQueue.device().allocMapTarget(
-        *srcBuffer, srcOffset, srcSize);
+        *srcBuffer, srcOffset, srcSize, map_flags);
     if (NULL == mapPtr) {
         delete command;
         *not_null(errcode_ret) = CL_MAP_FAILURE;
@@ -3500,7 +3500,7 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
 
     // Attempt to allocate the map target now (whether blocking or non-blocking)
     void *mapPtr = hostQueue.device().allocMapTarget(
-        *srcImage, srcOrigin, srcRegion, image_row_pitch, image_slice_pitch);
+        *srcImage, srcOrigin, srcRegion, map_flags, image_row_pitch, image_slice_pitch);
     if (NULL == mapPtr) {
         delete command;
         *not_null(errcode_ret) = CL_MAP_FAILURE;
