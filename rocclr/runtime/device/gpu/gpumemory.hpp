@@ -200,6 +200,15 @@ public:
     //! Returns the interop resource for this memory object
     const Memory* parent() const { return parent_; }
 
+    //! Returns TRUE if direct map is acceaptable
+    //! The method detects forced USWC memory on APU and
+    //! will cause a switch to indirect map for MAP_READ operations
+    bool isDirectMap(uint mapFlags)
+    {
+        return (isCacheable() || (owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) ||
+            !isHostMemDirectAccess() || !(mapFlags & CL_MAP_READ));
+    }
+
 protected:
     //! Decrement map count
     void decIndMapCount();
