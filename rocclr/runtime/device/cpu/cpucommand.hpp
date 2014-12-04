@@ -353,6 +353,8 @@ public:
         loop();
     }
 
+    bool isWorkerThread() const { return true; }
+
     //! Return the currently executing WorkerThread's instance.
     static WorkerThread* current()
     {
