@@ -450,15 +450,11 @@ divExceptionFilter(struct _EXCEPTION_POINTERS* ep)
 {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
 
-    if (code == EXCEPTION_INT_DIVIDE_BY_ZERO
-            || code == EXCEPTION_INT_OVERFLOW) {
-        // @todo: only handle exception in the generated code.
-        //
-        //if (!isKernelCode(insn)) {
-        //    return;
-        //}
+    if (code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
+        code == EXCEPTION_INT_OVERFLOW) {
 
         address insn = (address)ep->ContextRecord->LP64_SWITCH(Eip,Rip);
+
         if (Os::skipIDIV(insn)) {
             ep->ContextRecord->LP64_SWITCH(Eip,Rip) = (uintptr_t)insn;
             return EXCEPTION_CONTINUE_EXECUTION;
@@ -471,9 +467,8 @@ void*
 Thread::entry(Thread* thread)
 {
     void* ret = NULL;
-    // @todo: We only need this for CPU worker threads.
 #if !defined(_WIN64)
-    if (true /*thread->isWorkerThread()*/) {
+    if (thread->isWorkerThread()) {
         __try {
             ret = thread->main();
         }

@@ -131,6 +131,9 @@ public:
     //! Return true is this is the host thread.
     virtual bool isHostThread() const { return false; }
 
+    //! Return true if this is a worker thread.
+    virtual bool isWorkerThread() const { return false; }
+
     //! Get the current thread state.
     ThreadState state() const { return state_; }
 

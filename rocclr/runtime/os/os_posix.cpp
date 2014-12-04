@@ -96,18 +96,7 @@ divisionErrorHandler(int sig, siginfo_t* info, void* ptr)
     assert(!"Unimplemented");
 #endif
 
-    // Call the chained signal handler
-    if (callOldSignalHandler(sig, info, ptr)) {
-        return;
-    }
-
-    // @todo: only handle exception in the generated code.
-    //
-    //if (!isKernelCode(insn)) {
-    //    return;
-    //}
-
-    if (sig == SIGFPE && info->si_code == FPE_INTDIV) {
+    if(Thread::current()->isWorkerThread()) {
         if (Os::skipIDIV(insn)) {
 #if defined(ATI_ARCH_X86)
             uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)] = (greg_t)insn;
@@ -117,6 +106,12 @@ divisionErrorHandler(int sig, siginfo_t* info, void* ptr)
             return;
         }
     }
+
+    // Call the chained signal handler
+    if (callOldSignalHandler(sig, info, ptr)) {
+        return;
+    }
+
 
     std::cerr << "Unhandled signal in divisionErrorHandler()" << std::endl;
     ::abort();
