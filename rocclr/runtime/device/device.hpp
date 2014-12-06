@@ -17,6 +17,7 @@
 #include "appprofile.hpp"
 
 #include "acl.h"
+#include "hwdebug.hpp"
 
 #include <cstdio>
 #include <cstring>
@@ -61,6 +62,8 @@ class SvmCopyMemoryCommand;
 class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
+class HwDebugManager;
+class RunHwDbgCommand;
 class Device;
 struct KernelParameterDescriptor;
 struct Coord3D;
@@ -571,6 +574,9 @@ struct Info : public amd::EmbeddedObject
     //! The maximum size of global scope variables
     size_t      maxGlobalVariableSize_;
     size_t      globalVariablePreferredTotalSize_;
+
+    //! Enable HW Debug support
+    cl_bool     enableHwDebug_;
 };
 
 //! Device settings
@@ -986,7 +992,7 @@ public:
     //! Destroy this binary image.
     virtual ~Program();
 
-    //! Destory all the kernels
+    //! Destroy all the kernels
     void clear();
 
     //! Return the compiler options passed to build this program
@@ -1407,6 +1413,9 @@ public:
     virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) = 0;
     virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) = 0;
     virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) = 0;
+#if 0  // exclude this until more HW DEBUG codes are submitted 
+    virtual void submitHwDbgCommand(amd::RunHwDbgCommand& cmd) = 0;
+#endif
 
     //! Get the blit manager object
     device::BlitManager& blitMgr() const { return *blitMgr_; }
@@ -1683,6 +1692,12 @@ public:
     //! Returns app profile
     static const AppProfile* appProfile() {return &appProfile_;}
 
+    //! Register a hardware debugger manager
+    HwDebugManager*  hwDebugMgr() const { return hwDebugMgr_; }
+
+    //! Initialize the Hardware Debug Manager
+    virtual cl_int hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage) { return CL_SUCCESS; }
+
 protected:
     //! Enable the specified extension
     char* getExtensionString();
@@ -1692,6 +1707,7 @@ protected:
     bool                online_;    //!< The device in online
     BlitProgram*    blitProgram_;   //!< Blit program info
     static AppProfile appProfile_;  //!< application profile
+    HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
 
 private:
     bool IsHsaCapableDevice();

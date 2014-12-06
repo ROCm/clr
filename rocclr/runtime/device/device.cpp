@@ -208,7 +208,7 @@ Device::tearDown()
 }
 
 Device::Device(Device* parent)
-  : settings_(NULL), online_(true), blitProgram_(NULL), parent_(parent)
+  : settings_(NULL), online_(true), blitProgram_(NULL), hwDebugMgr_(NULL), parent_(parent)
 {
     memset(&info_, '\0', sizeof(info_));
     if (parent_ != NULL) {
