@@ -1115,6 +1115,21 @@ FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
     "limit-scalar-registers", OptLimitScalarRegisters, 0, \
     "Maximum number of scalar registers that are available to the compiler.")
 
+// -set-vector-registers=<value> (default 0 = no change)
+FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
+    "set-vector-registers", OptSetVecRegisters, 0, \
+    "Set the number of vector registers used in ISA (no effect if less than actual value).")
+
+// -set-scalar-registers=<value> (default 0 = no change)
+FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
+    "set-scalar-registers", OptSetScalarRegisters, 0, \
+    "Set the number of scalar registers used in ISA (no effect if less than actual value).")
+
+// -set-lds=<value> (default 0 = no change)
+FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
+    "set-lds", OptSetLDS, 0, \
+    "Set LDS usage in bytes in ISA (no effect if less than actual value).")
+
 // -lower-atomics=0|1 (default is 1)
 FLAG(OT_BOOL, OVIS_SUPPORT, "lower-atomics", LowerAtomics, 1,\
     "Enable/disable pass lowering OCL atomics to LLVM intrinsics (only for x86/x64)")
