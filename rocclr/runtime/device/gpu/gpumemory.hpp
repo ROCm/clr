@@ -200,20 +200,14 @@ public:
     //! Returns the interop resource for this memory object
     const Memory* parent() const { return parent_; }
 
-    //! Returns TRUE if direct map is acceaptable
-    //! The method detects forced USWC memory on APU and
-    //! will cause a switch to indirect map for MAP_READ operations
-    bool isDirectMap(uint mapFlags)
+    //! Returns TRUE if direct map is acceaptable. The method detects
+    //! forced USWC memory on APU and will cause a switch to
+    //! indirect map for allocations with a possibility of host read
+    bool isDirectMap()
     {
-        return (((isCacheable() || (owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) ||
-            !isHostMemDirectAccess() || !(mapFlags & CL_MAP_READ)) &&
-            // If map(indirect) memory isn't NULL,
-            // then it's a double map from the app with different map flags.
-            // If runtime will provide different regions,
-            // then it won't be able to guarantee coherency
-            (mapMemory_ == NULL)) ||
-            // Keep direct map always if the first map was direct already
-            ((indirectMapCount_ > 1) && (mapMemory_ == NULL)));
+        return (isCacheable() || !isHostMemDirectAccess() ||
+            (owner()->getMemFlags() &
+             (CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_ONLY)));
     }
 
 protected:
