@@ -922,8 +922,7 @@ Memory::allocMapTarget(
     incIndMapCount();
 
     // If host memory exists, use it
-    if ((owner()->getHostMem() != NULL) &&
-        isDirectMap(mapFlags)) {
+    if ((owner()->getHostMem() != NULL) && isDirectMap()) {
         mapAddress = reinterpret_cast<address>(owner()->getHostMem());
     }
     // If resource is a persistent allocation, we can use it directly
@@ -1248,8 +1247,7 @@ Image::allocMapTarget(
     incIndMapCount();
 
     // If host memory exists, use it
-    if ((owner()->getHostMem() != NULL) &&
-        isDirectMap(mapFlags)) {
+    if ((owner()->getHostMem() != NULL) && isDirectMap()) {
         useRemoteResource = false;
         mapAddress = reinterpret_cast<address>(owner()->getHostMem());
         amd::Image* amdImage = owner()->asImage();

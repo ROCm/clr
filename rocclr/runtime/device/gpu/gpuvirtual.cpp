@@ -1090,8 +1090,7 @@ VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd)
         vcmd.mapFlags(), vcmd.isEntireMemory());
 
     // If we have host memory, use it
-    if ((memory->owner()->getHostMem() != NULL) &&
-        memory->isDirectMap(vcmd.mapFlags())) {
+    if ((memory->owner()->getHostMem() != NULL) && memory->isDirectMap()) {
         if (!memory->isHostMemDirectAccess()) {
             // Make sure GPU finished operation before
             // synchronization with the backing store
@@ -1176,8 +1175,7 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
     amd::Memory* owner = memory->owner();
 
     // We used host memory
-    if ((owner->getHostMem() != NULL) &&
-        memory->isDirectMap(memory->isUnmapRead() ? CL_MAP_READ : 0)) {
+    if ((owner->getHostMem() != NULL) && memory->isDirectMap()) {
         if (memory->isUnmapWrite()) {
             // Target is the backing store, so sync
             owner->signalWrite(NULL);
