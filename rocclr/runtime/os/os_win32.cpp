@@ -450,9 +450,9 @@ divExceptionFilter(struct _EXCEPTION_POINTERS* ep)
 {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
 
-    if (code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
-        code == EXCEPTION_INT_OVERFLOW) {
-
+    if ((code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
+         code == EXCEPTION_INT_OVERFLOW) &&
+        Thread::current()->isWorkerThread()) {
         address insn = (address)ep->ContextRecord->LP64_SWITCH(Eip,Rip);
 
         if (Os::skipIDIV(insn)) {
@@ -468,20 +468,16 @@ Thread::entry(Thread* thread)
 {
     void* ret = NULL;
 #if !defined(_WIN64)
-    if (thread->isWorkerThread()) {
-        __try {
-            ret = thread->main();
-        }
-        __except(divExceptionFilter(GetExceptionInformation())) {
-            // nothing to do here.
-        }
-    }
-    else {
-#else // _WIN64
-    {
-#endif // _WIN64
+    __try {
         ret = thread->main();
     }
+    __except(divExceptionFilter(GetExceptionInformation())) {
+        // nothing to do here.
+    }
+#else // _WIN64
+    ret = thread->main();
+#endif // _WIN64
+
     // The current thread exits, thus clear the pointer
 #if defined(USE_DECLSPEC_THREAD)
     details::thread_ = NULL;
