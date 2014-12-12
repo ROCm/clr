@@ -122,14 +122,13 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR, (
 }
 RUNTIME_EXIT
 
-CL_API_ENTRY cl_mem CL_API_CALL                                                 \
-clCreateFromDX9MediaSurfaceKHR(
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromDX9MediaSurfaceKHR, (
     cl_context                    context,
     cl_mem_flags                  flags,
     cl_dx9_media_adapter_type_khr adapter_type,
     void *                        surface_info,
     cl_uint                       plane,
-    cl_int *                      errcode_ret)
+    cl_int *                      errcode_ret))
 {
     cl_mem clMemObj = NULL;
 
@@ -207,6 +206,7 @@ clCreateFromDX9MediaSurfaceKHR(
             plane,
             errcode_ret);
 }
+RUNTIME_EXIT
 
 RUNTIME_ENTRY(cl_int, clEnqueueAcquireDX9MediaSurfacesKHR, (
     cl_command_queue command_queue,
@@ -256,13 +256,13 @@ Monitor D3D9Object::resLock_;
 //
 //      clCreateImage2DFromD3D9ResourceAMD
 //
-cl_mem clCreateImage2DFromD3D9ResourceAMD(
+RUNTIME_ENTRY_RET(cl_mem, clCreateImage2DFromD3D9ResourceAMD, (
     Context& amdContext,
     cl_mem_flags flags,
     cl_dx9_media_adapter_type_khr adapter_type,
     cl_dx9_surface_info_khr* surface_info,
     cl_uint plane,
-    int* errcode_ret)
+    int* errcode_ret))
 {
     cl_dx9_surface_info_khr* cl_surf_info =
         reinterpret_cast<cl_dx9_surface_info_khr*>(surface_info);
@@ -292,6 +292,7 @@ cl_mem clCreateImage2DFromD3D9ResourceAMD(
     *not_null(errcode_ret) = CL_SUCCESS;
     return as_cl<Memory>(pImage2DD3D9);
 }
+RUNTIME_EXIT
 
 //
 // Helper function SyncD3D9Objects
