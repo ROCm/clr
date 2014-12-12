@@ -1162,11 +1162,15 @@ Kernel::findLocalWorkSize(
                         lclWorkSize[d] = div;
                         tmp /= div;
                     }
+                    // Assuming DWORD access
+                    const uint cacheLineMatch = dev().settings().cacheLineSize_ >> 2;
 
                     // Check if partial dispatch is enabled and
                     if (dev().settings().partialDispatch_ &&
-                         // we couldn't find optimal workload
-                        (lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) {
+                        // we couldn't find optimal workload
+                        (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
+                          // or size is too small for the cache line
+                          (lclWorkSize[0] < cacheLineMatch))) {
                         size_t  maxSize = 0;
                         size_t  maxDim = 0;
                         for (uint d = 0; d < workDim; ++d) {
@@ -1175,16 +1179,30 @@ Kernel::findLocalWorkSize(
                                 maxDim = d;
                             }
                         }
-                        // Check if a local workgroup has the most optimal size
-                        if (thrPerGrp > maxSize) {
-                            thrPerGrp = maxSize;
-                        }
-                        lclWorkSize[maxDim] = thrPerGrp;
-                        for (uint d = 0; d < workDim; ++d) {
-                            if (d != maxDim) {
-                                lclWorkSize[d] = 1;
+                        // Use X dimension as high priority. Runtime will assume that
+                        // X dimension is more important for the address calculation
+                        if ((maxDim != 0) && (gblWorkSize[0] >= (cacheLineMatch / 2))) {
+                            lclWorkSize[0] = cacheLineMatch;
+                            thrPerGrp /= cacheLineMatch;
+                            lclWorkSize[maxDim] = thrPerGrp;
+                            for (uint d = 1; d < workDim; ++d) {
+                                if (d != maxDim) {
+                                    lclWorkSize[d] = 1;
+                                }
                             }
                         }
+                        else {
+                            // Check if a local workgroup has the most optimal size
+                            if (thrPerGrp > maxSize) {
+                                thrPerGrp = maxSize;
+                            }
+                            lclWorkSize[maxDim] = thrPerGrp;
+                            for (uint d = 0; d < workDim; ++d) {
+                                if (d != maxDim) {
+                                    lclWorkSize[d] = 1;
+                                }
+                           }
+                       }
                     }
                 }
             }
