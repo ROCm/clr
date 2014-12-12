@@ -496,7 +496,7 @@ VirtualGPU::create(
 
             engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE0 + idx));
             if (dev().canDMA()) {
-                if (idx & 0x1) {
+                if (index() & 0x1) {
                     engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
                 }
                 else {
