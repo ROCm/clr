@@ -311,4 +311,24 @@ typedef struct _acl_compiler_rec_0_8_1 {
   aclLoaderData *apiData; // pointer to data store for the compiler API loader.
 } aclCompilerHandle_0_8_1;
 
+//! Structure to hold kernel statistics obtained from kernel
+typedef struct _acl_kernel_stats_0_8_1 {
+  unsigned int scratchRegs;
+  unsigned int scratchSize;
+  unsigned int availablevgprs;
+  unsigned int availablesgprs;
+  unsigned int usedvgprs;
+  unsigned int usedsgprs;
+  unsigned int availableldssize;
+  unsigned int usedldssize;
+  unsigned int availablestacksize;
+  unsigned int usedstacksize;
+  unsigned int wavefrontsize;
+  unsigned int wavefrontpersimd;
+  unsigned int threadsperworkgroup;
+  unsigned int reqdworkgroup_x;
+  unsigned int reqdworkgroup_y;
+  unsigned int reqdworkgroup_z;
+} aclKernelStats;
+
 #endif // _ACL_STRUCTS_0_8_H_

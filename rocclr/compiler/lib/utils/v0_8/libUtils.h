@@ -108,6 +108,10 @@ aclutCopyBinOpts(aclBinaryOptions *dst,
     const aclBinaryOptions *src,
     bool is64bit);
 
+// Retrieve kernel statistics from binary
+// and insert to elf as symbol
+acl_error aclutInsertKernelStatistics(aclCompiler*, aclBinary*);
+
 // Helper function that returns the
 // allocation function from the binary.
 AllocFunc

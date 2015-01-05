@@ -82,6 +82,7 @@ global:
   aclSetType;
   aclConvertType;
   aclDisassemble;
+  aclInsertKernelStatistics;
   aclGetDeviceBinary;
   aclLoader_OnLoad;
   aclLoader_OnUnload;

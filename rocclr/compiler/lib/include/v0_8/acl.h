@@ -7,7 +7,6 @@
 extern "C" {
 #endif
 #include "aclTypes.h"
-
 //!--------------------------------------------------------------------------!//
 // Functions that deal with aclCompiler objects.
 //!--------------------------------------------------------------------------!//
@@ -235,7 +234,18 @@ const void* ACL_API_ENTRY
 // Debug functionality
 //!--------------------------------------------------------------------------!//
 void aclDumpBinary(const aclBinary *bin);
-
+// Functions to retrieve kernel information
+void aclGetKstatsR800(const void* shader,
+       aclKernelStats &kstats, const char* chip_id);
+void aclGetKstatsSI(const void* shader,
+       aclKernelStats &kstats);
+acl_error
+  aclInsertKernelStatistics(aclCompiler *cl,
+    aclBinary *bin);
+//! Define hardware info constants for SI and above devices
+const static unsigned SI_sgprs_avail = 102;
+const static unsigned SI_vgprs_avail = 256;
+const static unsigned SI_ldssize_avail = 32*1024;
 
 //!--------------------------------------------------------------------------!//
 // Functions that deal with memory.
