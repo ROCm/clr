@@ -4084,7 +4084,7 @@ HSAILKernel::loadArguments(
 
     hsaDisp->kernarg_address = reinterpret_cast<void*>(argList);
     hsaDisp->reserved2 = 0;
-    hsaDisp->completion_signal = 0;
+    hsaDisp->completion_signal.handle = 0;
 
     memList.push_back(cb);
     memList.push_back(gpuAqlCode());
