@@ -102,26 +102,26 @@ InitializeSamplerObject(void* userData, uint64_t offset, bool unnormalize,
 
     uint32_t    state = (unnormalize) ?
         amd::Sampler::StateNormalizedCoordsFalse : amd::Sampler::StateNormalizedCoordsTrue;
-    if (filter == HSA_EXT_SAMPLER_FILTER_LINEAR) {
+    if (filter == HSA_EXT_SAMPLER_FILTER_MODE_LINEAR) {
         state |= amd::Sampler::StateFilterNearest;
     }
-    else if (filter == HSA_EXT_SAMPLER_FILTER_LINEAR) {
+    else if (filter == HSA_EXT_SAMPLER_FILTER_MODE_LINEAR) {
         state |= amd::Sampler::StateFilterLinear;
     }
     switch (boundaryU) {
-    case HSA_EXT_SAMPLER_ADDRESSING_CLAMP_TO_EDGE:
+    case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE:
         state |= amd::Sampler::StateAddressClampToEdge;
         break;
-    case HSA_EXT_SAMPLER_ADDRESSING_CLAMP_TO_BORDER:
+    case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER:
         state |= amd::Sampler::StateAddressClamp;
         break;
-    case HSA_EXT_SAMPLER_ADDRESSING_REPEAT:
+    case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:
         state |= amd::Sampler::StateAddressRepeat;
         break;
-    case HSA_EXT_SAMPLER_ADDRESSING_MIRRORED_REPEAT:
+    case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT:
         state |= amd::Sampler::StateAddressMirroredRepeat;
         break;
-    case HSA_EXT_SAMPLER_ADDRESSING_UNDEFINED:
+    case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED:
     default:
         break;
     }
