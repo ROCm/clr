@@ -114,6 +114,7 @@ global:
     aclInsertSymbol;
     aclRemoveSymbol;
     aclCompile;
+    aclInsertKernelStatistics;
     aclDisassemble;
     _aclHsaLoader;
 } OPENCL_1.0;
@@ -241,6 +242,7 @@ global:
     aclSetType;
     aclConvertType;
     aclDisassemble;
+    aclInsertKernelStatistics;
     aclGetDeviceBinary;
     aclDumpBinary;
     _aclHsaLoader;

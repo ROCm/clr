@@ -153,6 +153,7 @@ aclRetrieveType
 aclSetType
 aclConvertType
 aclDisassemble
+aclInsertKernelStatistics
 aclGetDeviceBinary
 aclDumpBinary
 _aclHsaLoader
