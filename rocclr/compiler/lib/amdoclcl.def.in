@@ -37,6 +37,7 @@ aclSetType
 aclConvertType
 aclDisassemble
 aclGetDeviceBinary
+aclInsertKernelStatistics
 oclCompilerInit
 oclCompilerFini
 oclCompilerVersion

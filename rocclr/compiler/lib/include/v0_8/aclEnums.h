@@ -182,7 +182,8 @@ typedef enum _bif_sections_enum_0_8 {
   aclBRIGoprs       = 32,
   aclBRIGstrs       = 33,
   aclHSADEBUG       = 34,
-  aclLAST           = 35
+  aclKSTATS         = 35, // For storing kernel statistics
+  aclLAST           = 36
 } aclSections_0_8;
 
 //! An enumeration that defines what are valid queries for aclQueryInfo.

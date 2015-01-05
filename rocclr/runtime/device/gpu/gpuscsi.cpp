@@ -56,10 +56,10 @@ NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
     newInfos[i].value = cShader->common.numSgprs;
     i++;
     newInfos[i].address = AMU_ABI_SI_NUM_SGPRS_AVAIL;
-    newInfos[i].value = 104-2; //512;//options.NumSGPRsAvailable;
+    newInfos[i].value = SI_sgprs_avail; //512;//options.NumSGPRsAvailable;
     i++;
     newInfos[i].address = AMU_ABI_SI_NUM_VGPRS_AVAIL;
-    newInfos[i].value = 256;//options.NumVGPRsAvailable;
+    newInfos[i].value = SI_vgprs_avail;//options.NumVGPRsAvailable;
     i++;
 
     newInfos[i].address = AMU_ABI_SI_FLOAT_MODE;
@@ -110,7 +110,7 @@ NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
     i++;
 
     newInfos[i].address = AMU_ABI_LDS_SIZE_AVAIL;
-    newInfos[i].value = 32*1024;    //options.LDSSize;
+    newInfos[i].value = SI_ldssize_avail;    //options.LDSSize;
     i++;
 
     COMPUTE_PGM_RSRC2 computePgmRsrc2;

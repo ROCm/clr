@@ -3,6 +3,7 @@
 //
 #include "acl.h"
 #include "aclTypes.h"
+#include "api/v0_8/aclValidation.h"
 #include "v0_7/clTypes.h"
 #include "v0_7/clCompiler.h"
 #include "libUtils.h"
@@ -10,6 +11,7 @@
 #include "utils/target_mappings.h"
 #include "utils/versions.hpp"
 #include "utils/options.hpp"
+#include "backends/gpu/scwrapper/devState.h"
 #include <cassert>
 #include <cstring>
 #include "bif/bif.hpp"
@@ -371,6 +373,43 @@ aclutCopyBinOpts(aclBinaryOptions *dst, const aclBinaryOptions *src, bool is64)
       assert(!"aclBinary format is not supported!");
       memcpy(dst, src, src->struct_size);
   }
+}
+
+acl_error
+aclutInsertKernelStatistics(aclCompiler *cl, aclBinary *bin)
+{
+    if (!aclValidateCompiler(cl, true)) {
+        return ACL_INVALID_COMPILER;
+    }
+    if (!aclValidateBinary(bin)) {
+        return ACL_INVALID_BINARY;
+    }
+    size_t len = 0;
+    acl_error err = ACL_SUCCESS;
+    const void *isa = aclExtractSection(cl, bin, &len, aclTEXT, &err);
+    if (err != ACL_SUCCESS)
+        return err;
+    aclTargetInfo *tgtInfo = aclutGetTargetInfo(bin);
+    const char* chipName = aclGetChip(*tgtInfo);
+    unsigned family = getFamilyEnum(tgtInfo);
+    unsigned chip = getChipEnum(tgtInfo);
+    // Non-GPU devices have family_enum set to 1 and do not qualify. Need to update.
+    if (family >= FAMILY_R600 &&
+	    family <= FAMILY_CZ) {
+	  aclKernelStats kstats = {0};
+      if (family < FAMILY_SI) {
+        aclGetKstatsR800(isa, kstats, chipName);
+      }
+      else {
+        aclGetKstatsSI(isa, kstats);
+      }
+	  kstats.wavefrontsize = amdcl::GetWavefrontSize(family, chip);
+	  const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symKernelStats);
+	  assert(symbol && "symbol not found");
+	  std::string symName = std::string(symbol->str[PRE]) + std::string(symbol->str[POST]);
+	  err = aclInsertSymbol(cl, bin, reinterpret_cast<void*>(&kstats), sizeof(kstats), aclKSTATS, symName.c_str());
+    }
+    return err;
 }
 
 void initElfDeviceCaps(aclBinary *elf)
