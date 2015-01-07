@@ -3558,7 +3558,10 @@ HSAILKernel::init(bool finalize)
         return false;
     }
 
-    aqlCreateHWInfo(shader_isa, size_isa);
+    // Allocate HW resources for the real program only
+    if (!prog().isNull()) {
+        aqlCreateHWInfo(shader_isa, size_isa);
+    }
 
     // Pull out metadata from the ELF
     size_t sizeOfArgList;

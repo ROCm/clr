@@ -1772,6 +1772,25 @@ HSAILProgram::HSAILProgram(Device& device)
     , globalStore_(NULL)
     , kernels_(NULL)
     , maxScratchRegs_(0)
+    , isNull_(false)
+{
+    memset(&binOpts_, 0, sizeof(binOpts_));
+    binOpts_.struct_size = sizeof(binOpts_);
+    binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
+    binOpts_.bitness = ELFDATA2LSB;
+    binOpts_.alloc = &::malloc;
+    binOpts_.dealloc = &::free;
+}
+
+HSAILProgram::HSAILProgram(NullDevice& device)
+    : Program(device)
+    , llvmBinary_()
+    , binaryElf_(NULL)
+    , rawBinary_(NULL)
+    , globalStore_(NULL)
+    , kernels_(NULL)
+    , maxScratchRegs_(0)
+    , isNull_(true)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
     binOpts_.struct_size = sizeof(binOpts_);
@@ -1784,11 +1803,11 @@ HSAILProgram::HSAILProgram(Device& device)
 HSAILProgram::~HSAILProgram()
 {
     // Destroy internal static samplers
-    for (auto it = staticSamplers_.begin(); it != staticSamplers_.end(); ++it) {
-        delete *it;
+    for (auto& it : staticSamplers_) {
+        delete it;
     }
     if (rawBinary_ != NULL) {
-        free( rawBinary_ );
+        free(rawBinary_);
     }
     acl_error error;
     // Free the elf binary
@@ -2137,11 +2156,14 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         return false;
     }
     // ACL_TYPE_CG stage is always being performed
-    if (!_aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
-        &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
-        buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
-        return false;
+    if (!isNull()) {
+        if (!_aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
+            &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
+            buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
+            return false;
+        }
     }
+
     size_t kernelNamesSize = 0;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
@@ -2175,7 +2197,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             maxScratchRegs_ = std::max(static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
         }
         // Allocate kernel table for device enqueuing
-        if (dynamicParallelism && !allocKernelTable()) {
+        if (!isNull() && dynamicParallelism && !allocKernelTable()) {
             return false;
         }
     }
@@ -2259,8 +2281,8 @@ HSAILProgram::allocKernelTable()
     else {
         size_t* table = reinterpret_cast<size_t*>(
             kernels_->map(NULL, gpu::Resource::WriteOnly));
-        for (auto it = kernels().begin(); it != kernels().end(); ++it) {
-            HSAILKernel* kernel = static_cast<HSAILKernel*>(it->second);
+        for (auto& it : kernels()) {
+            HSAILKernel* kernel = static_cast<HSAILKernel*>(it.second);
             table[kernel->index()] = static_cast<size_t>(
                 kernel->gpuAqlCode()->vmAddress());
         }
@@ -2273,9 +2295,9 @@ void
 HSAILProgram::fillResListWithKernels(
     std::vector<const Resource*>& memList) const
 {
-    for (auto it = kernels().begin(); it != kernels().end(); ++it) {
+    for (auto& it : kernels()) {
         memList.push_back(
-            static_cast<HSAILKernel*>(it->second)->gpuAqlCode());
+            static_cast<HSAILKernel*>(it.second)->gpuAqlCode());
     }
 }
 

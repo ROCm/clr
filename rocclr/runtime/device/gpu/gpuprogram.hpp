@@ -377,6 +377,7 @@ class HSAILProgram : public device::Program
 public:
     //! Default constructor
     HSAILProgram(Device& device);
+    HSAILProgram(NullDevice& device);
     //! Default destructor
     ~HSAILProgram();
 
@@ -404,6 +405,9 @@ public:
 
     //! Add internal static sampler
     void addSampler(Sampler* sampler) { staticSamplers_.push_back(sampler); }
+
+    //! Returns TRUE if the program just compiled
+    bool isNull() const { return isNull_; }
 
 protected:
     //! pre-compile setup for GPU
@@ -499,6 +503,7 @@ private:
     Memory*         kernels_;       //!< Table with kernel object pointers
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
     std::list<Sampler*>   staticSamplers_;    //!< List od internal static samplers
+    bool            isNull_;        //!< Null program no memory allocations
 };
 
 /*@}*/} // namespace gpu
