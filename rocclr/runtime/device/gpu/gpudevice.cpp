@@ -142,6 +142,8 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_HAINAN:
     case CAL_TARGET_DEVASTATOR:
     case CAL_TARGET_SCRAPPER:
+        calAttr.doublePrecision = CAL_TRUE;
+        break;
     case CAL_TARGET_BONAIRE:
     case CAL_TARGET_SPECTRE:
     case CAL_TARGET_SPOOKY:
@@ -155,6 +157,7 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_CARRIZO:
     case CAL_TARGET_ELLESMERE:
         calAttr.doublePrecision = CAL_TRUE;
+        calAttr.isOpenCL200Device = CAL_TRUE;
         break;
     default:
         break;
@@ -181,9 +184,34 @@ NullDevice::create(CALtarget target)
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
         AMD_BUILD_STRING);
-    if (gpuSettings->ciPlus_) {
+    if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
         info_.oclcVersion_ = "OpenCL C 2.0 ";
+        // Runtime doesn't know what local size could be on the real board
+        info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
+
+        if (NULL == hsaCompiler_) {
+            const char* library = getenv("HSA_COMPILER_LIBRARY");
+            aclCompilerOptions opts = {
+                sizeof(aclCompilerOptions_0_8),
+                library,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                AMD_OCL_SC_LIB,
+                &::malloc,
+                &::free
+            };
+            // Initialize the compiler handle
+            acl_error   error;
+            hsaCompiler_ = aclCompilerInit(&opts, &error);
+            if (error != ACL_SUCCESS) {
+                 LogError("Error initializing the compiler");
+                 return false;
+            }
+        }
     }
     else {
         info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
@@ -196,7 +224,13 @@ NullDevice::create(CALtarget target)
 device::Program*
 NullDevice::createProgram(int oclVer)
 {
-    NullProgram* nullProgram = new NullProgram(*this);
+    device::Program* nullProgram;
+    if (settings().hsail_ || (oclVer == 200)) {
+        nullProgram = new HSAILProgram(*this);
+    }
+    else {
+        nullProgram = new NullProgram(*this);
+    }
     if (nullProgram == NULL) {
         LogError("Memory allocation has failed!");
     }
