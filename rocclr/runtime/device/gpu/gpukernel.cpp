@@ -3510,6 +3510,7 @@ HSAILKernel::HSAILKernel(std::string name,
     , prog_(*prog)
     , index_(0)
     , code_(NULL)
+    , codeSize_(0)
     , hwMetaData_(NULL)
 {
     hsa_ = true;
@@ -3924,6 +3925,11 @@ HSAILKernel::loadArguments(
                     mem->signalWrite(&dev());
                 }
                 memList.push_back(gpuMem);
+
+                // save the memory object pointer to allow global memory access
+                if (NULL != dev().hwDebugMgr())  {
+                    dev().hwDebugMgr()->assignKernelParamMem(i, gpuMem->owner());
+                }
             }
             // If it is a local pointer
             else {

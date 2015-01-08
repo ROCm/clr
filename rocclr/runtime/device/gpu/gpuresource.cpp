@@ -363,7 +363,8 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     elementSize_ = static_cast<CALuint>(memoryFormatSize(cal()->format_).size_);
     cal_.type_ = memType;
     if (memType == Scratch) {
-        cal_.type_ = Local;
+        // use local memory for scratch buffer unless it is using HW DEBUG
+        cal_.type_ = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
         cal_.scratch_ = true;
     }
 
@@ -463,7 +464,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             else if ((gslRef_ != NULL) && (!dev().settings().use64BitPtr_)) {
                 // Make sure runtime didn't pick a resource with > 4GB address
                 if ((cal()->dimension_ == GSL_MOA_BUFFER) &&
-                    (static_cast<uint64_t>(gslRef_->gslResource()->getSurfaceAddress() + 
+                    (static_cast<uint64_t>(gslRef_->gslResource()->getSurfaceAddress() +
                      gslRef_->gslResource()->getSurfaceSize()) > (uint64_t(4) * Gi))) {
                     gslRef_->release();
                     gslRef_ = NULL;
