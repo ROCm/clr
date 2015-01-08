@@ -63,7 +63,6 @@ class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
 class HwDebugManager;
-class RunHwDbgCommand;
 class Device;
 struct KernelParameterDescriptor;
 struct Coord3D;
@@ -500,7 +499,7 @@ struct Info : public amd::EmbeddedObject
     //! List of supported video attributes (profile/format pairs)
     cl_video_attrib_amd* videoAttribs_;
     cl_uint     numVideoAttribs_;
-    //Encoder 
+    //Encoder
     cl_video_attrib_encode_amd* videoEncAttribs_;
     cl_uint     numVideoEncAttribs_;
 #endif //cl_amd_open_video
@@ -574,9 +573,6 @@ struct Info : public amd::EmbeddedObject
     //! The maximum size of global scope variables
     size_t      maxGlobalVariableSize_;
     size_t      globalVariablePreferredTotalSize_;
-
-    //! Enable HW Debug support
-    cl_bool     enableHwDebug_;
 };
 
 //! Device settings
@@ -586,7 +582,7 @@ public:
     uint64_t    extensions_;    //!< Supported OCL extensions
     union {
         struct {
-            uint    partialDispatch_: 1;    //!< Enables partial dispatch 
+            uint    partialDispatch_: 1;    //!< Enables partial dispatch
             uint    supportRA_: 1;          //!< Support RA channel order format
             uint    largeHostMemAlloc_: 1;  //!< Allow large host mem allocations (> maxSingleAlloc)
             uint    waitCommand_: 1;        //!< Enables a wait for every submitted command
@@ -594,7 +590,8 @@ public:
                                             //  that replaces generic OS allocation routines
             uint    supportDepthsRGB_: 1;   //!< Support DEPTH and sRGB channel order format
             uint    assumeAliases_: 1;      //!< Assume aliases in the compilation process
-            uint    reserved_: 25;
+            uint    enableHwDebug_: 1;      //!< Enable HW debug support
+            uint    reserved_: 24;
         };
         uint    value_;
     };
@@ -776,8 +773,8 @@ protected:
 
     volatile size_t version_;   //!< The version we're currently shadowing
 
-    //! NB, the map data below is for an API-level map (from clEnqueueMapBuffer), 
-    //! not a physical map. When a memory object does not use USE_HOST_PTR we 
+    //! NB, the map data below is for an API-level map (from clEnqueueMapBuffer),
+    //! not a physical map. When a memory object does not use USE_HOST_PTR we
     //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
     amd::Memory*    mapMemory_;         //!< Memory used as map target buffer
     volatile size_t indirectMapCount_;  //!< Number of maps
@@ -898,7 +895,7 @@ public:
         workGroupInfo_.compileSize_[1] = y;
         workGroupInfo_.compileSize_[2] = z;
     }
-   
+
     size_t getReqdWorkGroupSize(int dim) {
       return workGroupInfo_.compileSize_[dim];
     }
@@ -1139,11 +1136,11 @@ public:
         never called in storing routines */
     bool setBinary(char* theBinary, size_t theBinarySize, bool allocated=false);
 
-    //! setin elfIn_ 
+    //! setin elfIn_
     bool setElfIn(unsigned char eclass);
     void resetElfIn();
 
-    //! set out elf 
+    //! set out elf
     bool setElfOut(unsigned char eclass, const char* outFile);
     void resetElfOut();
 
@@ -1232,7 +1229,7 @@ public:
 
     // Return the encrypt code for this input binary ( "> 0" means encrypted)
     int getEncryptCode() { return encryptCode_; }
-        
+
     // Returns TRUE of binary file is SPIR
     bool isSPIR() const;
 protected:
@@ -1413,9 +1410,6 @@ public:
     virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) = 0;
     virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) = 0;
     virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) = 0;
-#if 0  // exclude this until more HW DEBUG codes are submitted 
-    virtual void submitHwDbgCommand(amd::RunHwDbgCommand& cmd) = 0;
-#endif
 
     //! Get the blit manager object
     device::BlitManager& blitMgr() const { return *blitMgr_; }
@@ -1697,6 +1691,9 @@ public:
 
     //! Initialize the Hardware Debug Manager
     virtual cl_int hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage) { return CL_SUCCESS; }
+
+    //! Remove the Hardware Debug Manager
+    virtual void hwDebugManagerRemove() {}
 
 protected:
     //! Enable the specified extension

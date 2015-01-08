@@ -440,7 +440,7 @@ CALGSLContext::isDone(GpuEvent* event)
         if (m_eventQueue[event->engineId_].isDone(event->id))
         {
             event->invalidate();
-            return true;   
+            return true;
         }
         return false;
     }
@@ -1269,10 +1269,10 @@ CALGSLContext::writeTimer(bool sdma, const gslMemObject mem, uint32 offset) cons
 void
 CALGSLContext::runAqlDispatch(GpuEvent& event, const void* aqlPacket,
     const gslMemObject* mems, uint32 numMems, gslMemObject scratch, uint32 scratchOffset,
-    const void* cpuKernelCode, uint64 hsaQueueVA)
+    const void* cpuKernelCode, uint64 hsaQueueVA, const void* kernelInfo)
 {
     eventBegin(MainEngine);
-    m_cs->AqlDispatch(aqlPacket, mems, numMems, scratch, scratchOffset, cpuKernelCode, hsaQueueVA);
+    m_cs->AqlDispatch(aqlPacket, mems, numMems, scratch, scratchOffset, cpuKernelCode, hsaQueueVA, kernelInfo);
     eventEnd(MainEngine, event);
 }
 
@@ -1299,3 +1299,30 @@ CALGSLContext::virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mc
     m_cs->VirtualQueueHandshake(mem, parentState, newStateValue, parentChildCounter, signal, dedicatedQueue);
     eventEnd(MainEngine, event);
 }
+
+bool
+CALGSLContext::RegisterHwDebugger(uint64 debugMessages)
+{
+    return m_cs->registerHwDebugger(debugMessages);
+}
+
+bool
+CALGSLContext::ExceptionNotification(osEventHandle debugEvent)
+{
+    return m_cs->exceptionNotification(debugEvent);
+}
+
+void
+CALGSLContext::InvalidateSqCaches(bool instInvalidate, bool dataInvalidate, bool tcL1, bool tcL2)
+{
+    // invalidating instruction/data L1 caches using Escape
+    if (instInvalidate || dataInvalidate) {
+        m_cs->invalidateSqCaches(instInvalidate, dataInvalidate);
+    }
+
+    if (tcL1) {
+        flushCUCaches(tcL2);
+    }
+
+}
+
