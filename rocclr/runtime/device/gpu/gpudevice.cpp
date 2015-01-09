@@ -38,6 +38,8 @@
 #include <iostream>
 #include <ctype.h>
 
+#include "gpudebugmanager.hpp"
+
 bool DeviceLoad()
 {
     bool    ret = false;
@@ -890,6 +892,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
         }
     }
 
+
 #ifdef DEBUG
     std::stringstream  message;
     if (settings().remoteAlloc_) {
@@ -1225,7 +1228,7 @@ Device::init()
 {
     CALuint     numDevices = 0;
     bool        result = false;
-    bool	useDeviceList = false;
+    bool    useDeviceList = false;
     requestedDevices_t requestedDevices;
 
     const char *library = getenv("COMPILER_LIBRARY");
@@ -2660,6 +2663,29 @@ Device::SrdManager::fillResourceList(std::vector<const Resource*>&   memList)
     for (uint i = 0; i < pool_.size(); ++i) {
         memList.push_back(pool_[i].buf_);
     }
+}
+
+cl_int
+Device::hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage)
+{
+    hwDebugMgr_ = new GpuDebugManager(this);
+    cl_int status = hwDebugMgr_->registerDebugger(context, messageStorage);
+
+    if (CL_SUCCESS != status) {
+        delete hwDebugMgr_;
+        hwDebugMgr_ = NULL;
+    }
+
+    return status;
+}
+
+void
+Device::hwDebugManagerRemove()
+{
+    hwDebugMgr_->unregisterDebugger();
+
+    delete hwDebugMgr_;
+    hwDebugMgr_ = NULL;
 }
 
 } // namespace gpu
