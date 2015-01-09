@@ -44,8 +44,7 @@ public:
     bool             runProgramGrid(GpuEvent& event, const ProgramGrid* pProgramGrid, const gslMemObject* mems, uint32 numMems);
     bool             runProgramVideoDecode(GpuEvent& event, gslMemObject mo, const CALprogramVideoDecode& decode);
     void             runAqlDispatch(GpuEvent& event, const void* aqlPacket, const gslMemObject* mems,
-                        uint32 numMems, gslMemObject scratch, uint32 scratchOffset, const void* cpuKernelCode,
-                        uint64 hsaQueueVA, const void* kernelInfo);
+                        uint32 numMems, gslMemObject scratch, uint32 scratchOffset, const void* cpuKernelCode, uint64 hsaQueueVA);
     mcaddr           virtualQueueDispatcherStart();
     void             virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems, uint32 numMems,
                         mcaddr signal, mcaddr loopStart, uint32 numTemplates);
@@ -140,11 +139,6 @@ public:
     void            resumeThreadTrace(uint32) const;
     void            writeTimer(bool sdma, const gslMemObject mem, uint32 offset) const;
     void            writeSurfRaw(GpuEvent& event, gslMemObject mem, size_t size, const void* data);
-
-    /// HW Debug support functions
-    bool            RegisterHwDebugger(uint64 debugMessages);
-    bool            ExceptionNotification(osEventHandle debugEvent);
-    void            InvalidateSqCaches(bool instInvalidate = true, bool dataInvalidate = true, bool tcL1 = true, bool tcL2 = true);
 
 protected:
     void setScratchBuffer(gslMemObject mem, int32 engineId);

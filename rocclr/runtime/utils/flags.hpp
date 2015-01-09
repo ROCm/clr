@@ -174,8 +174,6 @@ debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
         "Forces reporting CL_FP_DENORM bit for single precision")             \
 debug(bool, OCL_FORCE_CPU_SVM, false, \
         "force svm support for CPU")                                          \
-debug(bool, GPU_ENABLE_HW_DEBUG, false,                                       \
-        "Enable HW DEBUG for GPU")
 
 
 

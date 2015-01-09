@@ -12,9 +12,6 @@
 #include "device/gpu/gpusched.hpp"
 #include "device/blit.hpp"
 
-#include "device/gpu/gpudebugger.hpp"
-
-
 /*! \addtogroup GPU GPU Resource Implementation
  *  @{
  */
@@ -31,7 +28,6 @@ class VirtualGPU;
 class Program;
 class BlitManager;
 class ThreadTrace;
-class HSAILKernel;
 
 //! Virtual GPU
 class VirtualGPU : public device::VirtualDevice, public CALGSLContext
@@ -404,8 +400,6 @@ public:
     State           state_;     //!< virtual GPU current state
     CalVirtualDesc  cal_;       //!< CAL virtual device descriptor
 
-    void flushCuCaches(HwDbgGpuCacheMask cache_mask);   //!< flush/invalidate SQ cache
-
 protected:
     virtual void profileEvent(EngineType engine, bool type) const;
 
@@ -502,17 +496,6 @@ private:
         const amd::BufferRect& dstRect      //!< region of destination for copy
         );
 
-    void buildKernelInfo(
-        const HSAILKernel& hsaKernel,       //!< hsa kernel
-        hsa_kernel_dispatch_packet_t* aqlPkt,   //!< aql packet for dispatch
-        HwDbgKernelInfo& kernelInfo         //!< kernel info for the dispatch
-        );
-
-    void assignTrapHandler(
-        const DebugToolInfo& dbgSetting,  //!< debug settings
-        HwDbgKernelInfo& kernelInfo         //!< kernel info for the dispatch
-        );
-
     GslKernels      gslKernels_;        //!< GSL kernel descriptors
     GslKernelDesc*  activeKernelDesc_;  //!< active GSL kernel descriptors
     GpuEvents       gpuEvents_;         //!< GPU events
@@ -551,8 +534,6 @@ private:
     uint            deviceQueueSize_;   //!< Device queue size
 
     Memory*         hsaQueueMem_;   //!< Memory for the amd_queue_t object
-
-    bool            useHwDebug_;    //!< Flag of using HW debug
 };
 
 /*@}*/} // namespace gpu

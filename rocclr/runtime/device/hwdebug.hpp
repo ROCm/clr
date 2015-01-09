@@ -5,67 +5,42 @@
 #ifndef HWDEBUG_H_
 #define HWDEBUG_H_
 
-#include "device.hpp"
 #include "amdocl/cl_debugger_amd.h"
 
-static const int TbaStartOffset = 256;
+#define TBA_START_OFFSET 256
 
-static const int RtTrapBufferWaveSize = 64;
-static const int RtTrapBufferSeNum    =  4;
-static const int RtTrapBufferShNum    =  2;
-static const int RtTrapBufferCuNum    = 16;
-static const int RtTrapBufferSimdNum  =  4;
-static const int RtTrapBufferWaveNum  = 16;
-static const int RtTrapBufferTotalWaveNum =
-                            ((RtTrapBufferSeNum) * \
-                             (RtTrapBufferShNum) * \
-                             (RtTrapBufferCuNum) * \
-                             (RtTrapBufferSimdNum) * \
-                             (RtTrapBufferWaveNum));
-
-
-/*!  \brief Debug trap handler location in the runtime trap buffer
- *
- *   This enumeration is used to indicate the location where the debug
- *   trap handler and debug trap buffer are set in the device trap buffer.
+/**
+ *******************************************************************************
+ * @brief Debug information required by the AMD debugger
+ *        This might have to be moved to a private header. We could provide
+ *        these services as a seperate dll.
+ * @details The information is populated by the function oclGetDebugInfo
+ *******************************************************************************
  */
-enum DebugTrapLocation
+struct PacketAmdInfo
 {
-    kDebugTrapHandlerLocation = 0,  //! Debug Trap handler location, this location must be 0
-    kDebugTrapBufferLocation = 1,   //! Debug Trap buffer location, this location must be 1
-    kDebugTrapLocationMax = 2
+    uint32_t trapReservedVgprIndex;   //!< reserved VGPR index, -1 when they are not valid
+    uint32_t scratchBufferWaveOffset; //!< scratch buffer wave offset, -1 when no scratch buffer
+    void *pointerToIsaBuffer;         //!< pointer to the buffer containing ISA
+    size_t sizeOfIsaBuffer;           //!< size of the ISA buffer
+    uint32_t numberOfVgprs;           //!< number of VGPRs used by the kernel
+    uint32_t numberOfSgprs;           //!< number of SGPRs used by the kernel
+    size_t sizeOfStaticGroupMemory;   //!< Static local memory used by the kernel
 };
 
-
-/*!  \brief This structure is for the debug info in each kernel dispatch.
- *
- *   Contains the memory descriptor information of the scratch memory and the global
- *   memory
- */
-struct DispatchDebugInfo
+//! Cache mask for invalidation
+struct HwDbgGpuCacheMask
 {
-    uint32_t scratchMemoryDescriptor_[4];    //! Scratch memory descriptor
-    uint32_t globalMemoryDescriptor_[4];     //! Global memory descriptor
-};
-
-/*!  \brief Trap handler descriptor
- *
- *   The trap handler descriptor contains the details of a given trap handler.
- */
-struct TrapHandlerInfo {
-    amd::Memory* trapHandler_;       //!< Device memory for the trap handler
-    amd::Memory* trapBuffer_;        //!< Device memory for the trap buffer
-};
-
-/*!  \brief Structure of the runtime trap handler buffer, which includes the following
- *   information: information of the runtime trap handler and buffer, information of
- *   the level-2 trap handlers and buffers.
- */
-struct RuntimeTrapInfo {
-    TrapHandlerInfo trap_;     //!< Structure of the address of all trap handlers
-    uint32_t dispatchId_;      //!< Dispatch ID that signals the shader event
-    uint32_t vgpr_backup_[RtTrapBufferTotalWaveNum][RtTrapBufferWaveSize];
-                              //!< Buffer to backup the VGPR used by the runtime trap handler
+    union {
+        struct {
+            uint32_t sqICache   : 1;    //!< Instruction cache
+            uint32_t sqKCache   : 1;    //!< Data cache
+            uint32_t tcL1       : 1;    //!< tcL1 cache
+            uint32_t tcL2       : 1;    //!< tcL2 cache
+            uint32_t reserved   : 28;
+        };
+        uint32_t ui32All;
+    };
 };
 
 
@@ -73,15 +48,9 @@ struct RuntimeTrapInfo {
 /**
  * Opaque pointer to trap event
  */
-typedef uintptr_t DebugEvent;
+typedef uint64_t DebugEvent;        //! opaque pointer to trap event
 
 namespace amd {
-
-
-class Context;
-class Device;
-class HostQueue;
-
 
 /*! \class HwDebugManager
  *
@@ -92,73 +61,32 @@ class HwDebugManager
 public:
 
     //! Constructor for the Hardware Debug Manager
-    HwDebugManager(amd::Device* device);
+    HwDebugManager() : isRegistered_(false), useHwDebug_(false) {}
 
     //! Destructor for Hardware Debug Manager
-    virtual ~HwDebugManager();
+    ~HwDebugManager() {};
 
     //!  Setup the call back function pointer
-    void setCallBackFunctions(cl_PreDispatchCallBackFunctionAMD  preDispatchFn,
-                              cl_PostDispatchCallBackFunctionAMD postDispatchFn);
+    virtual void setCallBackFunctions(cl_PreDispatchCallBackFunctionAMD  preDispatchFn,
+                                      cl_PostDispatchCallBackFunctionAMD postDispatchFn) = 0;
 
     //!  Setup the call back argument pointers
-    void setCallBackArguments(void* preDispatchArgs, void* postDispatchArgs);
-
-    //!  Get dispatch debug info
-    void getDispatchDebugInfo(void* debugInfo) const;
-
-    //!  Set the kernel code address and its size
-    void setKernelCodeInfo(address aqlCodeAddr, uint32_t aqlCodeSize);
-
-    //!  Get the scratch ring
-    void setScratchRing(address scratchRingAddr, uint32_t scratchRingSize);
-
-    //!  Map the shader (AQL code) for host access
-    void mapKernelCode(uint64_t* aqlCodeAddr, uint32_t* aqlCodeSize) const;
-
-    //!  Map the scratch ring for host access
-    void mapScratchRing(uint64_t* scratchRingAddr, uint32_t* scratchRingSize) const;
-
-    //!  Retrieve the pre-dispatch callback function
-    cl_PreDispatchCallBackFunctionAMD preDispatchCallBackFunc() const
-                                                { return preDispatchCallBackFunc_; }
-
-    //!  Retrieve the post-dispatch callback function
-    cl_PostDispatchCallBackFunctionAMD postDispatchCallBackFunc() const
-                                                { return postDispatchCallBackFunc_; }
-
-    //!  Retrieve the pre-dispatch callback function arguments
-    void* preDispatchCallBackArgs() const { return preDispatchCallBackArgs_;  }
-
-    //!  Retrieve the post-dispatch callback function arguments
-    void* postDispatchCallBackArgs() const { return postDispatchCallBackArgs_; }
-
-    //!  Set exception policy
-    void setExceptionPolicy(void* policy);
-
-    //!  Get exception policy
-    void getExceptionPolicy(void* policy) const;
-
-    //!  Set the kernel execution mode
-    void setKernelExecutionMode(void* mode);
-
-    //!  Get the kernel execution mode
-    void getKernelExecutionMode(void* mode) const;
-
-    //!  Setup the pointer to the aclBinary within the debug manager
-    void setAclBinary(void* aclBinary);
-
-    //!  Allocate storage to keep the memory pointers of the kernel parameters
-    void allocParamMemList(uint32_t numParams);
-
-    //!  Assign the kernel parameter memory
-    void assignKernelParamMem(uint32_t paramIdx, amd::Memory* mem);
-
-    //!  Get kernel parameter memory object
-    cl_mem getKernelParamMem(uint32_t paramIdx) const;
+    virtual void setCallBackArguments(void *preDispatchArgs, void *postDispatchArgs) = 0;
 
     //!  Flush cache
-    virtual void flushCache(uint32_t mask) = 0;
+    virtual cl_int flushCache(uint32_t mask) = 0;
+
+    //!  Set exception policy
+    virtual cl_int setExceptionPolicy(void *policy) = 0;
+
+    //!  Get exception policy
+    virtual cl_int getExceptionPolicy(void *policy) const = 0;
+
+    //!  Set the kernel execution mode
+    virtual cl_int setKernelExecutionMode(void *mode) = 0;
+
+    //!  Get the kernel execution mode
+    virtual cl_int getKernelExecutionMode(void *mode) const = 0;
 
     //!  Create the debug event
     virtual DebugEvent createDebugEvent(const bool autoReset) = 0;
@@ -167,97 +95,93 @@ public:
     virtual cl_int waitDebugEvent(DebugEvent pEvent, uint32_t  timeOut) const = 0;
 
     //!  Destroy the debug event
-    virtual void destroyDebugEvent(DebugEvent* pEvent) = 0;
+    virtual cl_int destroyDebugEvent(DebugEvent pEvent) = 0;
 
     //!  Register the debugger
-    virtual cl_int registerDebugger(amd::Context* context, uintptr_t pMessageStorage) = 0;
+    virtual cl_int registerDebugger(amd::Context *context, uintptr_t pMessageStorage) = 0;
 
     //!  Call KMD to register the debugger
-    virtual cl_int registerDebuggerOnQueue(device::VirtualDevice* vDevice) = 0;
+    virtual cl_int registerDebuggerOnQueue(device::VirtualDevice *vDevice) = 0;
 
     //!  Unregister the debugger
-    virtual void unregisterDebugger() = 0;
+    virtual cl_int unregisterDebugger() = 0;
 
+    //!  Setup the pointer to the aclBinary within the debug manager
+    virtual void setAclBinary(void *aclBinary) = 0;
 
     //!  Send the wavefront control cmmand
-    virtual void wavefrontControl(uint32_t waveAction,
+    virtual cl_int wavefrontControl(uint32_t waveAction,
                                     uint32_t waveMode,
                                     uint32_t trapId,
-                                    void*    waveAddr) const = 0;
+                                    void * waveAddr) const = 0;
 
     //!  Set address watching point
-    virtual void setAddressWatch(uint32_t     numWatchPoints,
-                                 void**       watchAddress,
-                                 uint64_t*    watchMask,
-                                 uint64_t*    watchMode,
-                                 DebugEvent*  event) = 0;
+    virtual cl_int setAddressWatch(uint32_t numWatchPoints,
+                                   void ** watchAddress,
+                                   uint64_t * watchMask,
+                                   uint64_t * watchMode,
+                                   DebugEvent * event) = 0;
 
     //!  Get the packet information for dispatch
-    virtual void getPacketAmdInfo(const void* aqlCodeInfo,
-                                  void*       packetInfo) const = 0;
+    virtual cl_int getPacketAmdInfo(const void * aqlCodeInfo,
+                                    void * packetInfo) const = 0;
+
+    //!  Get dispatch debug info
+    virtual cl_int getDispatchDebugInfo(void * debugInfo) const = 0;
+
+    //!  Map the AQL code for host access
+    virtual cl_int mapKernelCode(uint64_t *aqlCode, uint32_t *aqlCodeSize) const = 0;
+
+    //!  Map the scratch ring for host access
+    virtual cl_int mapScratchRing(uint64_t *scratchRingAddr, uint32_t *scratchRingSize) const = 0;
 
     //!  Set global memory values
-    virtual void setGlobalMemory(amd::Memory*   memObj,
-                                 uint32_t       offset,
-                                 void*          srcPtr,
-                                 uint32_t       size) = 0;
+    virtual cl_int setGlobalMemory(void * memObj,
+                                   uint32_t offset,
+                                   void * srcPtr,
+                                   uint32_t size) = 0;
 
-    //!  Execute the post-dispatch callback function
-    virtual void executePostDispatchCallBack() = 0;
+    //!  Set kernel parameter memory object list
+    virtual cl_int setKernelParamMemList(void ** paramMem, uint32_t numParams) = 0;
 
-    //!  Execute the pre-dispatch callback function
-    virtual void executePreDispatchCallBack(void*   aqlPacket,
-                                              void*   toolInfo) = 0;
+    //!  Get kernel parameter memory object
+    virtual uint64_t getKernelParamMem(uint32_t paramIdx) const = 0;
 
-    //!  Return the use of HW DEBUG flag
-    bool isMsgBufferReady() const { return dbgMsgBufferReady_; }
+    //!  Set the kernel code address and its size
+    virtual void setKernelCodeInfo(address aqlCodeAddr, uint32_t aqlCodeSize) = 0;
 
-protected:
-    //!  Return the context
-    const amd::Context*  context() const { return context_; }
+    //!  Get the scratch ring
+    virtual void setScratchRing(address scratchRingAddr, uint32_t scratchRingSize) = 0;
 
-    //!  Get the debug device
-    const amd::Device*   device() const { return device_; }
+    //!  Retrieve the pre-dispatch callback function
+    virtual cl_PreDispatchCallBackFunctionAMD getPreDispatchCallBackFunction() const = 0;
+
+    //!  Retrieve the post-dispatch callback function
+    virtual void * getPreDispatchCallBackArguments() const = 0;
+
+    //!  Retrieve the pre-dispatch callback function arguments
+    virtual cl_PostDispatchCallBackFunctionAMD getPostDispatchCallBackFunction() const = 0;
+
+    //!  Retrieve the post-dispatch callback function arguments
+    virtual void * getPostDispatchCallBackArguments() const = 0;
+
+    //!  Set the register flag
+    void setRegisterFlag(bool regFlag) { isRegistered_ = regFlag; }
+
+    //!  Set the use of HW DEBUG flag
+    void setUseHwDebugFlag(bool flag) { useHwDebug_ = flag; }
 
     //!  Return the register flag
     bool isRegistered() const { return isRegistered_; }
 
-    //!  Return the device trap handler information
-    const uint64_t* deviceTrapInfo() const { return deviceTrapInfo_; }
+    //!  Return the use of HW DEBUG flag
+    bool useHwDebug() const { return useHwDebug_; }
+
 
 protected:
-
-    const amd::Context* context_;          ///< context that used to create host queue for the debugger
-    amd::Device*        device_;           ///< Device to run the debugger
-
-    cl_PreDispatchCallBackFunctionAMD   preDispatchCallBackFunc_;   //!< pre-dispatch callback function
-    cl_PostDispatchCallBackFunctionAMD  postDispatchCallBackFunc_;  //!< post-dispatch callback function
-    void* preDispatchCallBackArgs_;         //!< pre-dispatch callback function arguments
-    void* postDispatchCallBackArgs_;        //!< post-dispatch callback function arguments
-
-    DispatchDebugInfo   debugInfo_;         //!< Debug setting/information for kernel dispatch
-    uint64_t    deviceTrapInfo_[kDebugTrapLocationMax];    //!< Device trap buffer, to store various trap handlers on the device
-
-    amd::Memory**    paramMemory_;          //!< list of memory pointers for kernel parameters
-    uint32_t         numParams_;            //!< number of kernel parameters
-
-    void*       aclBinary_;                 //!< ACL binary
-
-    address     aqlCodeAddr_;               //!< The mapped AQL code to allow host access
-    uint32_t    aqlCodeSize_;               //!< The size of the AQL code info
-
-    address     scratchRingAddr_;           //!< The mapped address of the scratch buffer
-    uint32_t    scratchRingSize_;           //!< The size of the scratch ring
-
-    bool isRegistered_;                     //! flag to indicate the debugger has been registered
-    bool dbgMsgBufferReady_;                //! flag to indicate the HW DEBUG is using
-
-    cl_dbg_exception_policy_amd     excpPolicy_;         //!< exception policy
-    cl_dbg_kernel_exec_mode_amd     execMode_;           //!< kernel execution mode
-    RuntimeTrapInfo                 rtTrapHandlerInfo_;  //!< Runtime trap information
-
+    bool isRegistered_;     //! flag to indicate the debugger has been registered
+    bool useHwDebug_;       //! flag to indicate the HW DEBUG is using
 };
-
 
 
 /**@}*/

@@ -14,7 +14,6 @@
 #include "device/gpu/gputhreadtrace.hpp"
 #include "device/gpu/gputimestamp.hpp"
 #include "device/gpu/gpublit.hpp"
-#include "device/gpu/gpudebugger.hpp"
 #include "hsa.h"
 #include "sc-hsa/Interface/SCHSAInterface.h"
 #include <fstream>
@@ -403,7 +402,6 @@ VirtualGPU::VirtualGPU(
     , schedParamIdx_(0)
     , deviceQueueSize_(0)
     , hsaQueueMem_(NULL)
-    , useHwDebug_(false)
 {
     memset(&cal_, 0, sizeof(CalVirtualDesc));
     for (uint i = 0; i < AllEngines; ++i) {
@@ -587,14 +585,6 @@ VirtualGPU::create(
         return false;
     }
 
-    // Check if HW Debug is used and register the debugger if not done yet
-    amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
-
-    if ( dbgManager && dbgManager->isMsgBufferReady() ) {
-        if ( dbgManager->registerDebuggerOnQueue(this) == CL_SUCCESS ) {
-            useHwDebug_ = true;
-        }
-    }
 
     return true;
 }
@@ -1730,12 +1720,6 @@ VirtualGPU::submitKernelInternalHSA(
             hsaKernel.prog().kernelTable()->vmAddress());
     }
 
-    //  setup the storage for the memory pointers of the kernel parameters
-    uint numParams = kernel.signature().numParameters();
-    if (useHwDebug_) {
-        dev().hwDebugMgr()->allocParamMemList(numParams);
-    }
-
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t*  aqlPkt =
         hsaKernel.loadArguments(*this, kernel, sizes, parameters, nativeMem,
@@ -1761,25 +1745,10 @@ VirtualGPU::submitKernelInternalHSA(
         addVmMemory(memList[i]);
     }
 
-    // HW Debug for the kernel?
-    HwDbgKernelInfo kernelInfo;
-    HwDbgKernelInfo *pKernelInfo = NULL;
-
-    if (useHwDebug_) {
-        buildKernelInfo(hsaKernel, aqlPkt, kernelInfo);
-        pKernelInfo = &kernelInfo;
-    }
-
     GpuEvent    gpuEvent;
     // Run AQL dispatch in HW
     runAqlDispatch(gpuEvent, aqlPkt, vmMems(), cal_.memCount_,
-        scratch, scratchOffset, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo);
-
-    if (useHwDebug_) {
-        if (NULL != dev().hwDebugMgr()->postDispatchCallBackFunc()) {
-            dev().hwDebugMgr()->executePostDispatchCallBack();
-        }
-    }
+        scratch, scratchOffset, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress());
 
     if (hsaKernel.dynamicParallelism()) {
         // Make sure exculsive access to the device queue
@@ -3439,157 +3408,6 @@ VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable)
     const static bool Wait = true;
     vqHeader_->kernel_table = kernelTable;
     virtualQueue_->writeRawData(hostQ, sizeof(AmdVQueueHeader), vqHeader_, !Wait);
-}
-
-void
-VirtualGPU::flushCuCaches(HwDbgGpuCacheMask cache_mask)
-{
-    //! @todo:  fix issue of no event available for the flush/invalidate cache command
-    InvalidateSqCaches(cache_mask.sqICache_,
-                       cache_mask.sqKCache_,
-                       cache_mask.tcL1_,
-                       cache_mask.tcL2_);
-
-    flushDMA(engineID_);
-
-    return;
-}
-
-void
-VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
-                            hsa_kernel_dispatch_packet_t* aqlPkt,
-                            HwDbgKernelInfo& kernelInfo)
-{
-    amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
-    assert (dbgManager && "No HW Debug Manager!");
-
-    // Initialize structure with default values
-
-    if (hsaKernel.prog().maxScratchRegs() > 0) {
-        gpu::Memory* scratchBuf = dev().scratch(hwRing())->memObjs_[0];
-        kernelInfo.scratchBufAddr = scratchBuf->vmAddress();
-        kernelInfo.scratchBufferSizeInBytes = scratchBuf->size();
-
-        // Get the address of the scratch buffer and its size for CPU access
-        address scratchRingAddr = NULL;
-        scratchRingAddr = static_cast<address>(scratchBuf->map(NULL, 0));
-        dbgManager->setScratchRing(scratchRingAddr,scratchBuf->size());
-        scratchBuf->unmap(NULL);
-    }
-    else {
-        kernelInfo.scratchBufAddr = 0;
-        kernelInfo.scratchBufferSizeInBytes = 0;
-        dbgManager->setScratchRing(NULL, 0);
-    }
-
-
-    //! @todo:  need to verify what is wanted for the global memory
-    kernelInfo.heapBufAddr = (dev().globalMem()).vmAddress();
-
-    kernelInfo.pAqlDispatchPacket = aqlPkt;
-    kernelInfo.pAqlQueuePtr = reinterpret_cast<void*>(hsaQueueMem_->vmAddress());
-
-    // Get the address of the kernel code and its size for CPU access
-    gpu::Memory* aqlCode = hsaKernel.gpuAqlCode();
-    if (NULL != aqlCode) {
-        address aqlCodeAddr = static_cast<address>(aqlCode->map(NULL, 0));
-        dbgManager->setKernelCodeInfo(aqlCodeAddr, hsaKernel.aqlCodeSize());
-        aqlCode->unmap(NULL);
-    }
-    else {
-        dbgManager->setKernelCodeInfo(NULL, 0);
-    }
-
-    kernelInfo.trapPresent = false;
-    kernelInfo.trapHandler = NULL;
-    kernelInfo.trapHandlerBuffer = NULL;
-
-    kernelInfo.excpEn = 0;
-    kernelInfo.cacheDisableMask = 0;
-    kernelInfo.sqDebugMode = 0;
-
-    kernelInfo.mgmtSe0Mask = 0xFFFFFFFF;
-    kernelInfo.mgmtSe1Mask = 0xFFFFFFFF;
-
-    // set kernel info for HW debug and call the callback function
-    if (NULL != dbgManager->preDispatchCallBackFunc()) {
-        DebugToolInfo dbgSetting;
-        dbgSetting.scratchAddress_ = kernelInfo.scratchBufAddr;
-        dbgSetting.scratchSize_ = kernelInfo.scratchBufferSizeInBytes;
-        dbgSetting.globalAddress_ = kernelInfo.heapBufAddr;
-
-        // Call the predispatch callback function & set the trap info
-        AqlCodeInfo  aqlCodeInfo;
-        aqlCodeInfo.aqlCode_ = (amd_kernel_code_t *) hsaKernel.cpuAqlCode();
-        aqlCodeInfo.aqlCodeSize_ = hsaKernel.aqlCodeSize();
-
-        // Execute the pre-dispatch call back function
-        dbgManager->executePreDispatchCallBack(reinterpret_cast<void*>(aqlPkt), &dbgSetting);
-
-        // assign the TMA and TBA for kernel dispatch
-        if (NULL != dbgSetting.trapHandler_ && NULL != dbgSetting.trapBuffer_) {
-            assignTrapHandler(dbgSetting, kernelInfo);
-        }
-
-        kernelInfo.trapPresent = (kernelInfo.trapHandler) ? true : false;
-
-        // Execption policy
-        kernelInfo.excpEn = dbgSetting.exceptionMask_;
-        kernelInfo.cacheDisableMask = dbgSetting.cacheDisableMask_;
-        kernelInfo.sqDebugMode = dbgSetting.gpuSingleStepMode_;
-
-        // Compute the mask for reserved CUs. These two dwords correspond to
-        // two registers used for reserving CUs for display. In the current
-        // implementation, the number of CUs reserved can be 0 to 7, and it
-        // is set by debugger users.
-        if (dbgSetting.monitorMode_) {
-            uint32_t i = dbgSetting.reservedCuNum_ / 2;
-            kernelInfo.mgmtSe0Mask <<= i;
-            i = dbgSetting.reservedCuNum_ - i;
-            kernelInfo.mgmtSe1Mask <<= i;
-        }
-
-        // flush/invalidate the instruction, data, L1 and L2 caches
-        InvalidateSqCaches();
-    }
-}
-
-void
-VirtualGPU::assignTrapHandler(const DebugToolInfo& dbgSetting,
-                              HwDbgKernelInfo& kernelInfo)
-{
-
-    Memory * trapHandlerMem = dev().getGpuMemory(dbgSetting.trapHandler_);
-    Memory * trapBufferMem = dev().getGpuMemory(dbgSetting.trapBuffer_);
-
-    addVmMemory(trapHandlerMem);
-    addVmMemory(trapBufferMem);
-
-    // Handle TMA corruption hw bug workaround -
-    //   The trap handler buffer has extra 256 bytes allocated, the TMA address
-    //   is stored in the first two DWORDs and the actual trap handler code
-    //   is stored starting at the location of 256 bytes.
-    //
-    //   - kernelInfo.trapHandler points directly to the trap handler code
-    //   - kernelInfo.trapHandlerBuffer points directly to the trap buffer (TMA)
-    //
-    kernelInfo.trapHandler = reinterpret_cast<void *>(trapHandlerMem->vmAddress() + TbaStartOffset);
-    kernelInfo.trapHandlerBuffer = reinterpret_cast<void *>(trapBufferMem->vmAddress());
-
-    // Address of the trap handler code/buffer should be 256-byte aligned
-    uint64_t tmaAddress = reinterpret_cast<uint64_t>(kernelInfo.trapHandlerBuffer);
-    if ((reinterpret_cast<uint64_t>(kernelInfo.trapHandler) & 0xFF) != 0
-           || (tmaAddress & 0xFF) != 0) {
-        assert(false && "Trap handler/buffer is not 256-byte aligned");
-    }
-
-    // map the trap handler buffer address for host access, and store the trap
-    // buffer address at the beginning of the allocated buffer
-    address trapHandlerAddress = static_cast<address>(trapHandlerMem->map(NULL,0));
-    uint32_t * tmaStorage = reinterpret_cast<uint32_t *>(trapHandlerAddress);
-    tmaStorage[0] = tmaAddress & 0xFFFFFFFF;
-    tmaStorage[1] = (tmaAddress >> 32) & 0xFFFFFFFF;
-    trapHandlerMem->unmap(NULL);
 }
 
 } // namespace gpu

@@ -862,10 +862,7 @@ public:
     const void* cpuAqlCode() const { return cpuAqlCode_; }
 
     //! Returns memory object with AQL code
-    gpu::Memory* gpuAqlCode() const { return code_; }
-
-    //! Returns size of AQL code
-    size_t aqlCodeSize() const { return codeSize_; }
+    const gpu::Memory* gpuAqlCode() const { return code_; }
 
     //! Returns the size of argument buffer
     size_t argsBufferSize() const
@@ -886,7 +883,7 @@ public:
         amd::NDRange& lclWorkSize       //!< Local work size
         ) const;
 
-    //! Returns AQL packet in CPU memory
+    //! Returns AQL packet in CPU memory 
     //! if the kerenl arguments were successfully loaded, otherwise NULL
     hsa_kernel_dispatch_packet_t* loadArguments(
         VirtualGPU&                     gpu,        //!< Running GPU context
@@ -942,8 +939,6 @@ private:
     uint    index_;                     //!< Kernel index in the program
 
     gpu::Memory*    code_;      //!< Memory object with ISA code
-    size_t          codeSize_;  //!< Size of ISA code
-
     char*       hwMetaData_;    //!< SI metadata
 
     union Flags {
