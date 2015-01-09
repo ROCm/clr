@@ -107,9 +107,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgFlushCacheAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->flushCache(mask.ui32All);
-
-    return CL_SUCCESS;
+    return debugManager->flushCache(mask.ui32All);
 }
 RUNTIME_EXIT
 
@@ -144,9 +142,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgSetExceptionPolicyAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->setExceptionPolicy(policy);
-
-    return CL_SUCCESS;
+    return debugManager->setExceptionPolicy(policy);
 }
 RUNTIME_EXIT
 
@@ -180,9 +176,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgGetExceptionPolicyAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->getExceptionPolicy(policy);
-
-    return CL_SUCCESS;
+    return debugManager->getExceptionPolicy(policy);
 }
 RUNTIME_EXIT
 
@@ -216,9 +210,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgSetKernelExecutionModeAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->setKernelExecutionMode(mode);
-
-    return CL_SUCCESS;
+    return debugManager->setKernelExecutionMode(mode);
 }
 RUNTIME_EXIT
 
@@ -252,9 +244,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgGetKernelExecutionModeAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->getKernelExecutionMode(mode);
-
-    return CL_SUCCESS;
+    return debugManager->getKernelExecutionMode(mode);
 }
 RUNTIME_EXIT
 
@@ -375,9 +365,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgDestroyEventAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->destroyDebugEvent(pDebugEvent);
-
-    return CL_SUCCESS;
+    return debugManager->destroyDebugEvent(*pDebugEvent);
 }
 RUNTIME_EXIT
 
@@ -415,11 +403,6 @@ RUNTIME_ENTRY(cl_int, clHwDbgRegisterDebuggerAMD, (
         return CL_INVALID_VALUE;
     }
 
-    // check if the debugger has already registered
-    if (NULL != as_amd(device)->hwDebugMgr()) {
-        return CL_INVALID_VALUE;
-    }
-
     return as_amd(device)->hwDebugManagerInit(as_amd(context),
                                               reinterpret_cast<uintptr_t>(pMessageStorage));
 }
@@ -447,10 +430,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgUnregisterDebuggerAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    as_amd(device)->hwDebugManagerRemove();
-
-    return CL_SUCCESS;
-
+    return debugManager->unregisterDebugger();
 }
 RUNTIME_EXIT
 
@@ -539,9 +519,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgWaveControlAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->wavefrontControl(action, mode, trapId, (void *) &waveAddress);
-
-    return CL_SUCCESS;
+    return debugManager->wavefrontControl(action, mode, trapId, (void *) &waveAddress);
 }
 RUNTIME_EXIT
 
@@ -606,11 +584,9 @@ RUNTIME_ENTRY(cl_int, clHwDbgAddressWatchAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->setAddressWatch(numWatchPoints, watchAddress, watchMask,
-                                  reinterpret_cast<cl_ulong *>(watchMode),
-                                  watchEvent);
-
-    return CL_SUCCESS;
+    return debugManager->setAddressWatch(numWatchPoints, watchAddress, watchMask,
+                                         reinterpret_cast<cl_ulong *>(watchMode),
+                                         watchEvent);
 }
 RUNTIME_EXIT
 
@@ -644,9 +620,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgGetAqlPacketInfoAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->getPacketAmdInfo(aqlCodeInfo, packetInfo);
-
-    return CL_SUCCESS;
+    return debugManager->getPacketAmdInfo(aqlCodeInfo, packetInfo);
 }
 RUNTIME_EXIT
 
@@ -670,19 +644,12 @@ RUNTIME_ENTRY(cl_int, clHwDbgGetDispatchDebugInfoAMD, (
         return CL_INVALID_DEVICE;
     }
 
-    if (NULL == debugInfo) {
-        LogWarning("clHwDbgGetDispatchDebugInfoAMD: Invalid debug information pointer.");
-        return CL_INVALID_VALUE;
-    }
-
     amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
     if (NULL == debugManager) {
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->getDispatchDebugInfo((void *) debugInfo);
-
-    return CL_SUCCESS;
+    return debugManager->getDispatchDebugInfo((void *) debugInfo);
 }
 RUNTIME_EXIT
 
@@ -713,9 +680,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgMapKernelCodeAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->mapKernelCode(aqlCodeAddress, aqlCodeSize);
-
-    return CL_SUCCESS;
+    return debugManager->mapKernelCode(aqlCodeAddress, aqlCodeSize);
 }
 RUNTIME_EXIT
 
@@ -778,9 +743,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgMapScratchRingAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->mapScratchRing(scratchRingAddr, scratchRingSize);
-
-    return CL_SUCCESS;
+    return debugManager->mapScratchRing(scratchRingAddr, scratchRingSize);
 }
 RUNTIME_EXIT
 
@@ -833,9 +796,9 @@ RUNTIME_EXIT
  *  - CL_INVALID_KERNEL_ARGS if it fails to get the memory object for the kernel argument
  */
 RUNTIME_ENTRY(cl_int, clHwDbgGetKernelParamMemAMD, (
-    cl_device_id    device,
-    cl_uint         paramIdx,
-    cl_mem *        paramMem))
+    cl_device_id                device,
+    cl_uint                     paramIdx,
+    cl_ulong *                  paramMem))
 {
     if (!is_valid(device)) {
         return CL_INVALID_DEVICE;
@@ -884,7 +847,7 @@ RUNTIME_EXIT
  */
 RUNTIME_ENTRY(cl_int, clHwDbgSetGlobalMemoryAMD, (
     cl_device_id                device,
-    cl_mem                      memObject,
+    void *                      memObject,
     cl_uint                     offset,
     void *                      srcMem,
     cl_uint                     size))
@@ -899,14 +862,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgSetGlobalMemoryAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    if (0 > offset || 0 >= size) {
-        return CL_INVALID_VALUE;
-    }
-
-    amd::Memory* globalMem = as_amd(memObject);
-    debugManager->setGlobalMemory(globalMem, offset, srcMem, size);
-
-    return CL_SUCCESS;
+    return debugManager->setGlobalMemory(memObject, offset, srcMem, size);
 }
 RUNTIME_EXIT
 
