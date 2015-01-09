@@ -560,12 +560,6 @@ public:
     //! Returns SRD manger object
     SrdManager& srds() const { return *srdManager_; }
 
-    //! Initial the Hardware Debug Manager
-    cl_int hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage);
-
-    //! Remove the Hardware Debug Manager
-    void hwDebugManagerRemove();
-
 private:
     //! Disable copy constructor
     Device(const Device&);

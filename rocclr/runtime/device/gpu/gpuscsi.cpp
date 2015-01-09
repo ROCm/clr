@@ -172,17 +172,13 @@ HSAILKernel::aqlCreateHWInfo(const void* shader, size_t shaderSize)
 
     address codeStartAddress = reinterpret_cast<address>(akc);
     address codeEndAddress = reinterpret_cast<address>(hcd) + siMetaData->common.codeLenInByte;
-    codeSize_ = codeEndAddress - codeStartAddress;
-    code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, gpu::ConstBuffer::VectorSize));
-
-    // force to use remote memory for HW DEBUG
-    Resource::MemoryType resMemType = (!dev().settings().enableHwDebug_) ? Resource::Local : Resource::RemoteUSWC;
-
+    uint64_t codeSize = codeEndAddress - codeStartAddress;
+    code_ = new gpu::Memory(dev(), amd::alignUp(codeSize, gpu::ConstBuffer::VectorSize));
     // Initialize kernel ISA code
-    if ((code_ != NULL) && code_->create(resMemType)) {
+    if ((code_ != NULL) && code_->create(Resource::Local)) {
         address cpuCodePtr = static_cast<address>(code_->map(NULL, Resource::WriteOnly));
         // Copy only amd_kernel_code_t
-        memcpy(cpuCodePtr, codeStartAddress, codeSize_);
+        memcpy(cpuCodePtr, codeStartAddress, codeSize);
         code_->unmap(NULL);
     }
     else {
