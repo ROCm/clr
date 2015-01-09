@@ -112,7 +112,7 @@ extern "C" {
 #define CL_EVENT_TIMEOUT_AMD                            -83
 
 
-typedef cl_ulong     cl_dbg_event_amd;  //! debug event
+typedef uintptr_t     cl_dbg_event_amd;  //! debug event
 
 /*!  \brief  Wave actions used to control the wave execution on the hardware
  *
@@ -732,7 +732,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgUnmapScratchRingAMD(
 extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgGetKernelParamMemAMD(
     cl_device_id                        /* devicepointer */,
     cl_uint                             /* paramIdx */,
-    cl_ulong *                          /* paramMem */
+    cl_mem *                            /* paramMem */
 ) CL_API_SUFFIX__VERSION_2_0;
 
 /*! \brief Set value of a global memory object
@@ -755,7 +755,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgGetKernelParamMemAMD(
  */
 extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgSetGlobalMemoryAMD(
     cl_device_id                        /* device */,
-    void *                              /* memObject */,
+    cl_mem                              /* memObject */,
     cl_uint                             /* offset */,
     void *                              /* srcMem */,
     cl_uint                             /* size */
