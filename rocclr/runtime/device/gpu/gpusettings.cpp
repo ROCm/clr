@@ -134,6 +134,7 @@ Settings::Settings()
 
     // Use host queue for device enqueuing by default
     useDeviceQueue_ = GPU_USE_DEVICE_QUEUE;
+
 }
 
 bool
@@ -311,7 +312,7 @@ Settings::create(
                 calAttr.isWorkstation || hsail_) : GPU_FORCE_64BIT_PTR;
         }
         else {
-            if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, (hsail_ 
+            if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, (hsail_
                 || (oclVersion_ >= OpenCL20)))) {
                 use64BitPtr_    = true;
             }
@@ -440,6 +441,11 @@ Settings::create(
     if (oclVersion_ >= OpenCL20) {
         enableExtension(ClKhrSubGroups);
         enableExtension(ClKhrDepthImages);
+
+        // Enable HW debug
+        if (GPU_ENABLE_HW_DEBUG) {
+            enableHwDebug_ = true;
+        }
     }
 
     if (apuSystem_ &&
