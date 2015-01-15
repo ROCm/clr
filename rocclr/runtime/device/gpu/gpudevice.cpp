@@ -357,11 +357,11 @@ Device::XferBuffers::acquire()
 void
 Device::XferBuffers::release(VirtualGPU& gpu, Resource& buffer)
 {
-    // Lock the operations with the staged buffer list
-    amd::ScopedLock  l(lock_);
     // Make sure buffer isn't busy on the current VirtualGPU, because
     // the next aquire can come from different queue
     buffer.wait(gpu);
+    // Lock the operations with the staged buffer list
+    amd::ScopedLock  l(lock_);
     freeBuffers_.push_back(&buffer);
     --acquiredCnt_;
 }
