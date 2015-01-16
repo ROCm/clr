@@ -152,14 +152,6 @@ Settings::create(
     // Disable thread trace by default for all devices
     threadTraceEnable_ = false;
 
-    // Save resource cache size
-#ifdef ATI_OS_LINUX
-    // Due to EPR#406216, set the default value for Linux for now
-    resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
-#else
-    resourceCacheSize_ = std::max((calAttr.localRAM / 8) * Mi, GPU_RESOURCE_CACHE_SIZE * Mi);
-#endif
-
     if (calAttr.doublePrecision) {
         // Report FP_FAST_FMA define if double precision HW
         reportFMA_ = true;
@@ -452,6 +444,22 @@ Settings::create(
        ((calAttr.totalVisibleHeap + calAttr.totalInvisibleHeap) < 150)) {
         remoteAlloc_ = true;
     }
+
+    // Save resource cache size
+#ifdef ATI_OS_LINUX
+    // Due to EPR#406216, set the default value for Linux for now
+    resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
+#else
+    if (remoteAlloc_) {
+        resourceCacheSize_ = std::max((calAttr.uncachedRemoteRAM / 8) * Mi,
+            GPU_RESOURCE_CACHE_SIZE * Mi);
+    }
+    else {
+        resourceCacheSize_ = std::max((calAttr.localRAM / 8) * Mi,
+            GPU_RESOURCE_CACHE_SIZE * Mi);
+    }
+    resourceCacheSize_ = std::min(resourceCacheSize_, 512 * Mi);
+#endif
 
     // Override current device settings
     override();
