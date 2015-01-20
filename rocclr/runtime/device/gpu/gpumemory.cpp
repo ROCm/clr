@@ -210,11 +210,14 @@ Memory::create(
                 reinterpret_cast<Resource::ViewParams*>(params);
             // Check if parent was allocated in system memory
             if ((view->resource_->memoryType() == Resource::Pinned) ||
-            // @todo Enable unconditional optimization for remote memory
                 (((view->resource_->memoryType() == Resource::Remote) ||
                   (view->resource_->memoryType() == Resource::RemoteUSWC)) &&
+                // @todo Enable unconditional optimization for remote memory
+                // Check for external allocation, to avoid the optimization
+                // for non-VM (double copy) mode
                  (owner() != NULL) &&
-                 (owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR))) {
+                 ((owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) ||
+                  dev().settings().remoteAlloc_))) {
                 // Marks memory object for direct GPU access to the host memory
                 flags_ |= HostMemoryDirectAccess;
             }
