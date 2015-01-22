@@ -223,13 +223,15 @@ public:
         const amd::NDRangeContainer& sizes, //!< Workload sizes
         const amd::Kernel&  kernel,         //!< Kernel for execution
         const_address parameters,           //!< Parameters for the kernel
-        bool    nativeMem = true            //!< Native memory objects
+        bool     nativeMem = true,          //!< Native memory objects
+        amd::Event* enqueueEvent = NULL     //!< Event provided in the enqueue kernel command
         );
     bool submitKernelInternalHSA(
         const amd::NDRangeContainer& sizes, //!< Workload sizes
         const amd::Kernel&  kernel,         //!< Kernel for execution
         const_address parameters,           //!< Parameters for the kernel
-        bool    nativeMem = true            //!< Native memory objects
+        bool    nativeMem = true,           //!< Native memory objects
+        amd::Event* enqueueEvent = NULL     //!< Event provided in the enqueue kernel command
         );
     void submitNativeFn(amd::NativeFnCommand& vcmd);
     void submitFillMemory(amd::FillMemoryCommand& vcmd);
@@ -505,7 +507,8 @@ private:
     void buildKernelInfo(
         const HSAILKernel& hsaKernel,       //!< hsa kernel
         hsa_kernel_dispatch_packet_t* aqlPkt,   //!< aql packet for dispatch
-        HwDbgKernelInfo& kernelInfo         //!< kernel info for the dispatch
+        HwDbgKernelInfo& kernelInfo,        //!< kernel info for the dispatch
+        amd::Event* enqueueEvent            //!< Event provided in the enqueue kernel command
         );
 
     void assignTrapHandler(

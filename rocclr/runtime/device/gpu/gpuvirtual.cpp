@@ -1627,7 +1627,8 @@ VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd)
     profilingBegin(vcmd);
 
     // Submit kernel to HW
-    if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false)) {
+    if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
+                              &vcmd.event())) {
         vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -1639,7 +1640,8 @@ VirtualGPU::submitKernelInternalHSA(
     const amd::NDRangeContainer& sizes,
     const amd::Kernel&  kernel,
     const_address parameters,
-    bool    nativeMem)
+    bool    nativeMem,
+    amd::Event* enqueueEvent)
 {
     uint64_t    vmParentWrap = 0;
     uint64_t    vmDefQueue = 0;
@@ -1766,7 +1768,7 @@ VirtualGPU::submitKernelInternalHSA(
     HwDbgKernelInfo *pKernelInfo = NULL;
 
     if (useHwDebug_) {
-        buildKernelInfo(hsaKernel, aqlPkt, kernelInfo);
+        buildKernelInfo(hsaKernel, aqlPkt, kernelInfo, enqueueEvent);
         pKernelInfo = &kernelInfo;
     }
 
@@ -1982,7 +1984,8 @@ VirtualGPU::submitKernelInternal(
     const amd::NDRangeContainer& sizes,
     const amd::Kernel&  kernel,
     const_address parameters,
-    bool    nativeMem)
+    bool    nativeMem,
+    amd::Event* enqueueEvent)
 {
     bool            result = true;
     uint            i;
@@ -1999,7 +2002,7 @@ VirtualGPU::submitKernelInternal(
     Kernel& gpuKernelOpt = static_cast<gpu::Kernel&>(*devKernel);
 
     if (gpuKernelOpt.hsa()) {
-        return submitKernelInternalHSA(sizes, kernel, parameters, nativeMem);
+        return submitKernelInternalHSA(sizes, kernel, parameters, nativeMem, enqueueEvent);
     }
     else if (state_.hsailKernel_) {
         // Reload GSL state to HW, so runtime could run AMDIL kernel
@@ -3458,7 +3461,8 @@ VirtualGPU::flushCuCaches(HwDbgGpuCacheMask cache_mask)
 void
 VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
                             hsa_kernel_dispatch_packet_t* aqlPkt,
-                            HwDbgKernelInfo& kernelInfo)
+                            HwDbgKernelInfo& kernelInfo,
+                            amd::Event* enqueueEvent)
 {
     amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
     assert (dbgManager && "No HW Debug Manager!");
@@ -3517,6 +3521,8 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
         dbgSetting.scratchAddress_ = kernelInfo.scratchBufAddr;
         dbgSetting.scratchSize_ = kernelInfo.scratchBufferSizeInBytes;
         dbgSetting.globalAddress_ = kernelInfo.heapBufAddr;
+        dbgSetting.aclBinary_ = hsaKernel.prog().binaryElf();
+        dbgSetting.event_ = enqueueEvent;
 
         // Call the predispatch callback function & set the trap info
         AqlCodeInfo  aqlCodeInfo;

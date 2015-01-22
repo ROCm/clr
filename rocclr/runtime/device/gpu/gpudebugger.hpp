@@ -18,6 +18,7 @@
 #include "sc-hsa/Interface/SCHSAInterface.h"
 #include "device/device.hpp"
 #include "device/hwdebug.hpp"
+#include "acl.h"
 
 static const int NumberReserveVgprs = 4;
 
@@ -93,6 +94,8 @@ struct DebugToolInfo
     amd::Memory*   trapHandler_;       //! Trap handler address
     amd::Memory*   trapBuffer_;        //! Trap buffer address
     bool     sqPerfcounterEnable_;     //! whether SQ perf counters are enabled
+    aclBinary*     aclBinary_;         //! pointer of the kernel ACL binary
+    amd::Event*    event_;             //! pointer of the kernel event in the enqueue command
 };
 
 /*!  \brief Message used by the KFD wave control for CI
