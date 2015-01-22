@@ -85,6 +85,9 @@ GpuDebugManager::executePreDispatchCallBack(void*  aqlPacket,
 //      // for invalidate cache (BuildEndOfKernelNotifyCommands)
 //        aqlPacket->release_fence_scope = 2;
 
+        aclBinary_ = reinterpret_cast<void*>(info->aclBinary_);
+        oclEventHandle_ = reinterpret_cast<void*>(as_cl(info->event_));
+
         cl_device_id clDeviceId = as_cl(device_);
         preDispatchCallBackFunc_(clDeviceId,
                                  oclEventHandle_,
