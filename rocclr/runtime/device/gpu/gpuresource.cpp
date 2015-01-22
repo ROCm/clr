@@ -1065,7 +1065,11 @@ Resource::free()
             if (gslResource() != 0) {
                 // Release all virtual memory objects on all virtual GPUs
                 for (uint idx = 0; idx < dev().vgpus().size(); ++idx) {
-                    dev().vgpus()[idx]->releaseMemory(gslResource(), wait);
+                    // Ignore the transfer queue,
+                    // since it releases resources after every operation
+                    if (dev().vgpus()[idx] != dev().xferQueue()) {
+                        dev().vgpus()[idx]->releaseMemory(gslResource(), wait);
+                    }
                 }
 
                 //! @note: This is a workaround for bad applications that
@@ -1088,7 +1092,11 @@ Resource::free()
                 if (gslResource() != 0) {
                     // Release all virtual memory objects on all virtual GPUs
                     for (uint idx = 0; idx < dev().vgpus().size(); ++idx) {
-                        dev().vgpus()[idx]->releaseMemory(gslResource());
+                        // Ignore the transfer queue,
+                        // since it releases resources after every operation
+                        if (dev().vgpus()[idx] != dev().xferQueue()) {
+                            dev().vgpus()[idx]->releaseMemory(gslResource());
+                        }
                     }
                     gslFree();
                 }
