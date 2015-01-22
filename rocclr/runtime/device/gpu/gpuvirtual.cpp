@@ -2915,6 +2915,17 @@ VirtualGPU::releaseMemObjects()
     if (numGrpCb_ != NULL) {
         setConstantBuffer(SC_INFO_CONSTANTBUFFER, NULL, 0, 0);
     }
+
+    if ((dev().scratch(hwRing()) != NULL) &&
+        (dev().scratch(hwRing())->regNum_ > 0)) {
+        // Unbind scratch memory
+        const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
+        for (uint i = 0; i < mems.size(); ++i) {
+            if (mems[i] != NULL) {
+                setScratchBuffer(NULL, i);
+            }
+        }
+    }
     gpuEvents_.clear();
 }
 
