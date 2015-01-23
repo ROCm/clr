@@ -269,19 +269,8 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   if (!llvmbinary_) {
     ret |= 1;
   }
-  if (!ret &&
-#if WITH_VERSION_0_8
-      checkFlag(aclutGetCaps(Elf()), capSaveLLVMIR)
-#elif WITH_VERSION_0_9
-      Options()->oVariables->BinLLVMIR
-#else
-#error "The current version was not handled correctly here."
-#endif
-      ) {
-    CL()->clAPI.insSec(CL(), Elf(), Source().data(),
-        Source().size(), aclLLVMIR);
-  } else {
-    CL()->clAPI.remSec(CL(), Elf(), aclLLVMIR);
+  if (!ret) {
+    CL()->clAPI.insSec(CL(), Elf(), Source().data(), Source().size(), aclLLVMIR);
   }
   log_ += loadFileToStr(logFile);
   amd::Os::unlink(logFile.c_str());
