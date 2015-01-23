@@ -190,19 +190,8 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
     ret |= 1;
   }
 
-  if (!ret &&
-#if WITH_VERSION_0_8
-      checkFlag(aclutGetCaps(Elf()), capSaveLLVMIR)
-#elif WITH_VERSION_0_9
-      Options()->oVariables->BinLLVMIR
-#else
-#error "The current version was not handled correctly here."
-#endif
-      ) {
-    CL()->clAPI.insSec(CL(), Elf(), Source().data(),
-        Source().size(), aclLLVMIR);
-  } else {
-    CL()->clAPI.remSec(CL(), Elf(), aclLLVMIR);
+  if (!ret) {
+    CL()->clAPI.insSec(CL(), Elf(), Source().data(), Source().size(), aclLLVMIR);
   }
   log_ += logFromClang;
   if (isCpuTarget(Elf()->target)

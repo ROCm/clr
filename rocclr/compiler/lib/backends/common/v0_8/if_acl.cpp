@@ -1214,7 +1214,10 @@ aclCompileInternal(
       }
       dataStr = *cg;
     }
-
+    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) ||
+        !(reinterpret_cast<amdcl::CompilerStage*>(ald))->Options()->oVariables->BinLLVMIR) {
+      cl->clAPI.remSec(cl, bin, aclLLVMIR);
+    }
     cl->cgAPI.fini(ald);
     if (error_code != ACL_SUCCESS) {
       goto internal_compile_failure;
