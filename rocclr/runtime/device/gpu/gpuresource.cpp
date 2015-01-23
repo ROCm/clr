@@ -1901,7 +1901,10 @@ void
 Resource::warmUpRenames(VirtualGPU& gpu)
 {
     for (uint i = 0; i < dev().settings().maxRenames_; ++i) {
-        if (dev().settings().siPlus_) {
+        // EPR #411675 - On Kaveri, benchmark "photo editing" of PCMarks takes longer time
+        // if writing 0 for the buffer paging by VidMM is excuted. Not sure how PCMarks measures it.
+        // Disable this code for apu
+        if (dev().settings().siPlus_ && !dev().settings().apuSystem_) {
             uint    dummy = 0;
             const bool NoWait = false;
             // Write 0 for the buffer paging by VidMM
