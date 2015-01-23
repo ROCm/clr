@@ -382,7 +382,7 @@ public:
     const DmaFlushMgmt& dmaFlushMgmt() const { return dmaFlushMgmt_; }
 
     //! Releases GSL memory objects allocated on this queue
-    void releaseMemObjects();
+    void releaseMemObjects(bool scratch = true);
 
     //! Returns the HW ring used on this virtual device
     uint hwRing() const { return hwRing_; }
