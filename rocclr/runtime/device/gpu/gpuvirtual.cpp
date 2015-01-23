@@ -642,7 +642,8 @@ VirtualGPU::~VirtualGPU()
     gslKernels_.clear();
 
     // Destroy all memories
-    releaseMemObjects();
+    static const bool SkipScratch = false;
+    releaseMemObjects(SkipScratch);
 
     // Destroy printf object
     delete printfDbg_;
@@ -2885,7 +2886,7 @@ VirtualGPU::enableSyncedBlit() const
 }
 
 void
-VirtualGPU::releaseMemObjects()
+VirtualGPU::releaseMemObjects(bool scratch)
 {
     for (GpuEvents::const_iterator it = gpuEvents_.begin();
             it != gpuEvents_.end(); ++it) {
@@ -2916,16 +2917,13 @@ VirtualGPU::releaseMemObjects()
         setConstantBuffer(SC_INFO_CONSTANTBUFFER, NULL, 0, 0);
     }
 
-    if ((dev().scratch(hwRing()) != NULL) &&
-        (dev().scratch(hwRing())->regNum_ > 0)) {
-        // Unbind scratch memory
-        const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
-        for (uint i = 0; i < mems.size(); ++i) {
-            if (mems[i] != NULL) {
-                setScratchBuffer(NULL, i);
-            }
+    if (scratch) {
+        uint numBufs = (dev().settings().siPlus_) ? 1 : dev().info().numberOfShaderEngines;
+        for (uint i = 0; i < numBufs; ++i) {
+            setScratchBuffer(NULL, i);
         }
     }
+
     gpuEvents_.clear();
 }
 
