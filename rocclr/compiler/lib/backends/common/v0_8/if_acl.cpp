@@ -1155,9 +1155,6 @@ aclCompileInternal(
             goto internal_compile_failure;
           }
         }
-        if (acl->Options()->isDumpFlagSet(amd::option::DUMP_CGIL)) {
-          acl->dumpHSAIL(acl->disassembleBRIG(), ".hsail");
-        }
       }
       // HSAIL substitution from AMD_DEBUG_HSAIL_TEXT_INPUT
       else {
@@ -1201,6 +1198,10 @@ aclCompileInternal(
           error_code = ACL_CODEGEN_ERROR;
           goto internal_compile_failure;
         }
+      }
+      char* dumpFileName = ::getenv("AMD_DEBUG_DUMP_HSAIL_ALL_KERNELS");
+      if (acl->Options()->isDumpFlagSet(amd::option::DUMP_CGIL) || dumpFileName) {
+        acl->dumpHSAIL(acl->disassembleBRIG(), ".hsail");
       }
       bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
       elfBin->setType(ET_EXEC);
