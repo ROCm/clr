@@ -406,6 +406,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         // Fall through ...
     case RemoteUSWC:
     case Remote:
+    case Shader:
     case BusAddressable:
     case ExternalPhysical:
         // Fall through to process the memory allocation ...
@@ -436,6 +437,15 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             }
             else if (memoryType() == RemoteUSWC) {
                 desc.type = GSL_MOA_MEMORY_AGP;
+            }
+            else if (memoryType() == Shader){
+                if(dev().settings().svmFineGrainSystem_) {
+                    desc.isAllocExecute = true;
+                }
+                // force to use remote memory for HW DEBUG or use
+                // local memory once we determine if FGS is supported
+                memType = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
+                cal_.type_ = memType;
             }
             else if (memoryType() == BusAddressable){
                 desc.type = GSL_MOA_MEMORY_CARD_BUS_ADDRESSABLE;

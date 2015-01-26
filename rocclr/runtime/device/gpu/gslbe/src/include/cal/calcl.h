@@ -146,6 +146,7 @@ typedef struct CALresourceDescRec {
     mcaddr          vaBase;
     gslMemObjectAttribSection section;
     CALuint         minAlignment;
+    bool            isAllocExecute;
 } CALresourceDesc;
 
 typedef enum CALresallocsliceviewflagsRec {

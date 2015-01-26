@@ -137,7 +137,8 @@ public:
         BusAddressable,     //!< resource is a bus addressable memory
         ExternalPhysical,   //!< resource is an external physical memory
         D3D9Interop,        //!< resource is a D3D9 memory object
-        Scratch             //!< resource is scratch memory
+        Scratch,            //!< resource is scratch memory
+        Shader,             //!< resource is a shader
     };
 
     //! Resource map flags

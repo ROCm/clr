@@ -69,11 +69,12 @@ public:
             uint    hsail_: 1;          //!< Enables HSAIL compilation
             uint    stagingWritePersistent_: 1; //!< Enables persistent writes
             uint    svmAtomics_: 1;     //!< SVM device atomics
+            uint    svmFineGrainSystem_: 1;     //!< SVM fine grain system support
             uint    apuSystem_: 1;      //!< Device is APU system with shared memory
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
-            uint    reserved_: 2;
+            uint    reserved_: 1;
         };
         uint    value_;
     };
