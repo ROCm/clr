@@ -156,6 +156,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.vaEnd   = static_cast<CALuint64>(m_adp->pAsicInfo->vaEnd);
     m_attribs.numOfVpu = m_adp->pAsicInfo->numberOfVPU;
     m_attribs.isOpenCL200Device = m_adp->pAsicInfo->bIsOpen2Device;
+    m_attribs.isSVMFineGrainSystem = m_adp->pAsicInfo->svmFineGrainSystem;
 }
 
 void
@@ -733,6 +734,7 @@ CALGSLDevice::resAlloc(const CALresourceDesc* desc) const
     attribs.location = desc->type;
     attribs.vaBase   = desc->vaBase;
     attribs.section = desc->section;
+    attribs.isAllocExecute = desc->isAllocExecute;
     attribs.minAlignment = desc->minAlignment;
 
     //!@note GSL asserts with tiled 1D images of any type.
@@ -837,6 +839,7 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offse
     );
     attribs.bytePitch = bytePitch;
     attribs.section = res->getAttribs().section;
+    attribs.isAllocExecute = res->getAttribs().isAllocExecute;
 
     // Need to get the alignment info from hwl.
     // Not sure hwl is correct though. Linear aligned 256b, tiled 8kb according to the address library.

@@ -239,7 +239,8 @@ typedef struct CALdeviceattribsRec {
     CALuint64  vaEnd;                               /**< VA end address */
     bool       isWorkstation;                       /**< Whether Device is a Workstation/Server part */
     CALuint    numOfVpu;                            /**< number of vpu in the device*/
-    bool       isOpenCL200Device;                    /**< the flag to mark if the device is OpenCL 200*/
+    bool       isOpenCL200Device;                   /**< the flag to mark if the device is OpenCL 200 */
+    bool       isSVMFineGrainSystem;                /**< check if SVM finegrainsystem */
 } CALdeviceattribs;
 
 /** CAL device status */
