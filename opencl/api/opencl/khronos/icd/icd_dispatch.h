@@ -392,6 +392,16 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clSetKernelExecInfo)(
     size_t               /* param_value_size */,
     const void *         /* param_value */) CL_API_SUFFIX__VERSION_2_0;
 
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clGetKernelSubGroupInfoKHR)(
+    cl_kernel                /* in_kernel */,
+    cl_device_id             /*in_device*/,
+    cl_kernel_sub_group_info /* param_name */,
+    size_t                   /*input_value_size*/,
+    const void *             /*input_value*/,
+    size_t                   /*param_value_size*/,
+    void*                    /*param_value*/,
+    size_t*                  /*param_value_size_ret*/) CL_EXT_SUFFIX__VERSION_2_0;
+
 // Event Object APIs
 typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clWaitForEvents)(
     cl_uint             num_events,
@@ -1023,7 +1033,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clEnqueueAcquireDX9MediaSurface
 typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clEnqueueReleaseDX9MediaSurfacesKHR)(
     cl_command_queue command_queue,
     cl_uint          num_objects,
-    cl_mem *         mem_objects,
+    const cl_mem *   mem_objects,
     cl_uint num_events_in_wait_list,
     const cl_event * event_wait_list,
     cl_event *       event) CL_API_SUFFIX__VERSION_1_2;
@@ -1114,7 +1124,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueReleaseDX9MediaSurfacesKHR(
     cl_command_queue command_queue,
     cl_uint          num_objects,
-    cl_mem *         mem_objects,
+    const cl_mem *   mem_objects,
     cl_uint          num_events_in_wait_list,
     const cl_event * event_wait_list,
     cl_event *       event);
@@ -1217,16 +1227,6 @@ typedef CL_API_ENTRY cl_event (CL_API_CALL *KHRpfn_clCreateEventFromEGLSyncKHR)(
     CLeglSyncKHR sync,
     CLeglDisplayKHR display,
     cl_int *errcode_ret);
-
-typedef CL_API_ENTRY cl_int (CL_API_CALL * KHRpfn_clGetKernelSubGroupInfoKHR)(
-    cl_kernel                kernel,
-    cl_device_id             device,
-    cl_kernel_sub_group_info param_name,
-    size_t                   input_value_size,
-    const void *             input_value,
-    size_t                   param_value_size,
-    void *                   param_value,
-    size_t *                 param_value_size_ret) CL_API_SUFFIX__VERSION_2_0;
 
 typedef CL_API_ENTRY cl_int (CL_API_CALL * KHRpfn_clTerminateContextKHR)(
     cl_context context) CL_API_SUFFIX__VERSION_2_0;
@@ -1403,7 +1403,9 @@ struct KHRicdVendorDispatchRec
     KHRpfn_clSetKernelArgSVMPointer                 clSetKernelArgSVMPointer;
     KHRpfn_clSetKernelExecInfo                      clSetKernelExecInfo;
 
+    /* cl_khr_sub_groups */
     KHRpfn_clGetKernelSubGroupInfoKHR               clGetKernelSubGroupInfoKHR;
+
     KHRpfn_clTerminateContextKHR                    clTerminateContextKHR;
 };
 

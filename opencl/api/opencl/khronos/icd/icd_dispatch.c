@@ -276,20 +276,6 @@ clCreateCommandQueue(cl_context                     context,
         errcode_ret);
 }
 
-CL_API_ENTRY cl_command_queue CL_API_CALL
-clCreateCommandQueueWithProperties(cl_context                  context,
-                                   cl_device_id                device,
-                                   const cl_queue_properties * properties,
-                                   cl_int *                    errcode_ret) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreateCommandQueueWithProperties(
-        context,
-        device,
-        properties,
-        errcode_ret);
-}
-
 CL_API_ENTRY cl_int CL_API_CALL
 clRetainCommandQueue(cl_command_queue command_queue) CL_API_SUFFIX__VERSION_1_0
 {
@@ -434,18 +420,6 @@ clCreateSampler(cl_context          context,
         normalized_coords, 
         addressing_mode, 
         filter_mode,
-        errcode_ret);
-}
-
-CL_API_ENTRY cl_sampler CL_API_CALL
-clCreateSamplerWithProperties(cl_context                    context,
-                              const cl_sampler_properties * properties,
-                              cl_int *                      errcode_ret) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreateSamplerWithProperties(
-        context,
-        properties,
         errcode_ret);
 }
 
@@ -1440,6 +1414,11 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
     /* cl_khr_egl_event */
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clCreateEventFromEGLSyncKHR);
 
+    /* cl_khr_sub_groups */
+    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clGetKernelSubGroupInfoKHR);
+
+    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clTerminateContextKHR);
+
     // fall back to vendor extension detection
 
     // FIXME Now that we have a platform id here, we need to validate that it isn't NULL, so shouldn't we have an errcode_ret
@@ -1642,6 +1621,11 @@ clGetExtensionFunctionAddress(const char *function_name) CL_EXT_SUFFIX__VERSION_
 
     /* cl_khr_egl_event */
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clCreateEventFromEGLSyncKHR);
+
+    /* cl_khr_sub_groups */
+    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clGetKernelSubGroupInfoKHR);
+
+    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clTerminateContextKHR);
 
     // fall back to vendor extension detection
     for (vendor = khrIcdState.vendors; vendor; vendor = vendor->next)
@@ -2142,7 +2126,7 @@ CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueReleaseDX9MediaSurfacesKHR(
     cl_command_queue command_queue,
     cl_uint          num_objects,
-    cl_mem *         mem_objects,
+    const cl_mem *   mem_objects,
     cl_uint          num_events_in_wait_list,
     const cl_event * event_wait_list,
     cl_event *       event)
@@ -2226,229 +2210,6 @@ clSetUserEventStatus(
         execution_status);
 }
 
-CL_API_ENTRY void * CL_API_CALL
-clSVMAlloc(cl_context       context,
-           cl_svm_mem_flags flags,
-           size_t           size,
-           cl_uint          alignment) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(context, NULL);
-    return context->dispatch->clSVMAlloc(
-        context,
-        flags,
-        size,
-        alignment);
-}
-
-CL_API_ENTRY void CL_API_CALL
-clSVMFree(cl_context       context,
-          void *           svm_pointer) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE(context);
-    context->dispatch->clSVMFree(
-        context,
-        svm_pointer);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clSetKernelArgSVMPointer(cl_kernel    kernel,
-                         cl_uint      arg_index,
-                         const void * arg_value) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
-    return kernel->dispatch->clSetKernelArgSVMPointer(
-        kernel,
-        arg_index,
-        arg_value);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clSetKernelExecInfo(cl_kernel            kernel,
-                    cl_kernel_exec_info  param_name,
-                    size_t               param_value_size,
-                    const void *         param_value) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
-    return kernel->dispatch->clSetKernelExecInfo(
-        kernel,
-        param_name,
-        param_value_size,
-        param_value);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueSVMFree(cl_command_queue  command_queue,
-                 cl_uint           num_svm_pointers,
-                 void *            svm_pointers[],
-                 void (CL_CALLBACK * pfn_free_func)(cl_command_queue queue,
-                                                    cl_uint          num_svm_pointers,
-                                                    void *           svm_pointers[],
-                                                    void *           user_data),
-                 void *            user_data,
-                 cl_uint           num_events_in_wait_list,
-                 const cl_event *  event_wait_list,
-                 cl_event *        event) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
-    return command_queue->dispatch->clEnqueueSVMFree(
-        command_queue,
-        num_svm_pointers,
-        svm_pointers,
-        pfn_free_func,
-        user_data,
-        num_events_in_wait_list,
-        event_wait_list,
-        event);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueSVMMemcpy(cl_command_queue  command_queue,
-                   cl_bool           blocking_copy,
-                   void *            dst_ptr,
-                   const void *      src_ptr,
-                   size_t            size,
-                   cl_uint           num_events_in_wait_list,
-                   const cl_event *  event_wait_list,
-                   cl_event *        event) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
-    return command_queue->dispatch->clEnqueueSVMMemcpy(
-        command_queue,
-        blocking_copy,
-        dst_ptr,
-        src_ptr,
-        size,
-        num_events_in_wait_list,
-        event_wait_list,
-        event);
-}
-
-
-CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueSVMMemFill(cl_command_queue  command_queue,
-                    void *            svm_ptr,
-                    const void *      pattern,
-                    size_t            pattern_size,
-                    size_t            size,
-                    cl_uint           num_events_in_wait_list,
-                    const cl_event *  event_wait_list,
-                    cl_event *        event) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
-    return command_queue->dispatch->clEnqueueSVMMemFill(
-        command_queue,
-        svm_ptr,
-        pattern,
-        pattern_size,
-        size,
-        num_events_in_wait_list,
-        event_wait_list,
-        event);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueSVMMap(cl_command_queue  command_queue,
-                cl_bool           blocking_map,
-                cl_map_flags      flags,
-                void *            svm_ptr,
-                size_t            size,
-                cl_uint           num_events_in_wait_list,
-                const cl_event *  event_wait_list,
-                cl_event *        event) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
-    return command_queue->dispatch->clEnqueueSVMMap(
-        command_queue,
-        blocking_map,
-        flags,
-        svm_ptr,
-        size,
-        num_events_in_wait_list,
-        event_wait_list,
-        event);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueSVMUnmap(cl_command_queue  command_queue,
-                  void *            svm_ptr,
-                  cl_uint           num_events_in_wait_list,
-                  const cl_event *  event_wait_list,
-                  cl_event *        event) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
-    return command_queue->dispatch->clEnqueueSVMUnmap(
-        command_queue,
-        svm_ptr,
-        num_events_in_wait_list,
-        event_wait_list,
-        event);
-}
-
-CL_API_ENTRY cl_mem CL_API_CALL
-clCreatePipe(cl_context                 context,
-             cl_mem_flags               flags,
-             cl_uint                    pipe_packet_size,
-             cl_uint                    pipe_max_packets,
-             const cl_pipe_properties * properties,
-             cl_int *                   errcode_ret) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreatePipe(
-        context,
-        flags,
-        pipe_packet_size,
-        pipe_max_packets,
-        properties,
-        errcode_ret);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clGetPipeInfo(cl_mem           pipe,
-              cl_image_info    param_name,
-              size_t           param_value_size,
-              void *           param_value,
-              size_t *         param_value_size_ret) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(pipe, CL_INVALID_MEM_OBJECT);
-    return pipe->dispatch->clGetPipeInfo(
-        pipe,
-        param_name,
-        param_value_size,
-        param_value,
-        param_value_size_ret);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clGetKernelSubGroupInfoKHR(
-    cl_kernel kernel,
-    cl_device_id device,
-    cl_kernel_sub_group_info param_name,
-    size_t input_value_size,
-    const void * input_value,
-    size_t param_value_size,
-    void * param_value,
-    size_t * param_value_size_ret) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
-    return kernel->dispatch->clGetKernelSubGroupInfoKHR(
-        kernel,
-        device,
-        param_name,
-        input_value_size,
-        input_value,
-        param_value_size,
-        param_value,
-        param_value_size_ret);
-}
-
-CL_API_ENTRY cl_int CL_API_CALL
-clTerminateContextKHR(
-    cl_context context) CL_API_SUFFIX__VERSION_2_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clTerminateContextKHR(context);
-}
-
 CL_API_ENTRY cl_mem CL_API_CALL
 clCreateFromEGLImageKHR(
     cl_context context,
@@ -2520,5 +2281,271 @@ clCreateEventFromEGLSyncKHR(
         sync,
         display,
         errcode_ret);
+}
+
+CL_API_ENTRY cl_command_queue CL_API_CALL
+clCreateCommandQueueWithProperties(
+    cl_context                  context,
+    cl_device_id                device,
+    const cl_queue_properties * properties,
+    cl_int *                    errcode_ret) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreateCommandQueueWithProperties(
+        context,
+        device,
+        properties,
+        errcode_ret);
+}
+
+CL_API_ENTRY cl_mem CL_API_CALL
+clCreatePipe(
+    cl_context                 context,
+    cl_mem_flags               flags,
+    cl_uint                    pipe_packet_size,
+    cl_uint                    pipe_max_packets,
+    const cl_pipe_properties * properties,
+    cl_int *                   errcode_ret) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreatePipe(
+        context,
+        flags,
+        pipe_packet_size,
+        pipe_max_packets,
+        properties,
+        errcode_ret);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clGetPipeInfo(
+    cl_mem       pipe,
+    cl_pipe_info param_name,
+    size_t       param_value_size,
+    void *       param_value,
+    size_t *     param_value_size_ret) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(pipe, CL_INVALID_MEM_OBJECT);
+    return pipe->dispatch->clGetPipeInfo(
+        pipe,
+        param_name,
+        param_value_size,
+        param_value,
+        param_value_size_ret);
+}
+
+CL_API_ENTRY void * CL_API_CALL
+clSVMAlloc(
+    cl_context       context,
+    cl_svm_mem_flags flags,
+    size_t           size,
+    cl_uint          alignment) CL_API_SUFFIX__VERSION_2_0
+{
+    if (!context) {
+        return NULL;
+    }
+    return context->dispatch->clSVMAlloc(
+        context,
+        flags,
+        size,
+        alignment);
+}
+
+CL_API_ENTRY void CL_API_CALL
+clSVMFree(
+    cl_context context,
+    void *     svm_pointer) CL_API_SUFFIX__VERSION_2_0
+{
+    if (!context || !svm_pointer) {
+        return;
+    }
+    context->dispatch->clSVMFree(
+        context,
+        svm_pointer);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMFree(
+    cl_command_queue command_queue,
+    cl_uint num_svm_pointers,
+    void* svm_pointers[],
+    void (CL_CALLBACK* pfn_free_func)(
+        cl_command_queue queue,
+        cl_uint num_svm_pointers,
+        void* svm_pointers[],
+        void* user_data),
+    void* user_data,
+    cl_uint num_events_in_wait_list,
+    const cl_event* event_wait_list,
+    cl_event* event) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMFree(
+        command_queue,
+        num_svm_pointers,
+        svm_pointers,
+        pfn_free_func,
+        user_data,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMemcpy(
+    cl_command_queue  command_queue,
+    cl_bool           blocking_copy,
+    void *            dst_ptr,
+    const void *      src_ptr,
+    size_t            size,
+    cl_uint           num_events_in_wait_list,
+    const cl_event *  event_wait_list,
+    cl_event *        event) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMMemcpy(
+        command_queue,
+        blocking_copy,
+        dst_ptr,
+        src_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMemFill(
+    cl_command_queue command_queue,
+    void *           svm_ptr,
+    const void *     pattern,
+    size_t           pattern_size,
+    size_t           size,
+    cl_uint          num_events_in_wait_list,
+    const cl_event * event_wait_list,
+    cl_event *       event) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMMemFill(
+        command_queue,
+        svm_ptr,
+        pattern,
+        pattern_size,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMap(
+    cl_command_queue  command_queue,
+    cl_bool           blocking_map,
+    cl_map_flags      flags,
+    void *            svm_ptr,
+    size_t            size,
+    cl_uint           num_events_in_wait_list,
+    const cl_event *  event_wait_list,
+    cl_event *        event) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMMap(
+        command_queue,
+        blocking_map,
+        flags,
+        svm_ptr,
+        size,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMUnmap(
+    cl_command_queue command_queue,
+    void *           svm_ptr,
+    cl_uint          num_events_in_wait_list,
+    const cl_event * event_wait_list,
+    cl_event *       event) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMUnmap(
+        command_queue,
+        svm_ptr,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
+}
+
+CL_API_ENTRY cl_sampler CL_API_CALL
+clCreateSamplerWithProperties(
+    cl_context                     context,
+    const cl_sampler_properties *  sampler_properties,
+    cl_int *                       errcode_ret) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreateSamplerWithProperties(
+        context,
+        sampler_properties,
+        errcode_ret);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clSetKernelArgSVMPointer(
+    cl_kernel    kernel,
+    cl_uint      arg_index,
+    const void * arg_value) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
+    return kernel->dispatch->clSetKernelArgSVMPointer(
+        kernel,
+        arg_index,
+        arg_value);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clSetKernelExecInfo(
+    cl_kernel            kernel,
+    cl_kernel_exec_info  param_name,
+    size_t               param_value_size,
+    const void *         param_value) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
+    return kernel->dispatch->clSetKernelExecInfo(
+        kernel,
+        param_name,
+        param_value_size,
+        param_value);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clGetKernelSubGroupInfoKHR(
+    cl_kernel                in_kernel,
+    cl_device_id             in_device,
+    cl_kernel_sub_group_info param_name,
+    size_t                   input_value_size,
+    const void *             input_value,
+    size_t                   param_value_size,
+    void *                   param_value,
+    size_t *                 param_value_size_ret) CL_EXT_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(in_kernel, CL_INVALID_KERNEL);
+    return in_kernel->dispatch->clGetKernelSubGroupInfoKHR(
+            in_kernel,
+            in_device,
+            param_name,
+            input_value_size,
+            input_value,
+            param_value_size,
+            param_value,
+            param_value_size_ret);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clTerminateContextKHR(
+    cl_context context) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clTerminateContextKHR(context);
 }
 

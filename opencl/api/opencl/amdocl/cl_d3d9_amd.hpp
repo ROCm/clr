@@ -144,7 +144,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueReleaseDX9MediaSurfacesKHR(
     cl_command_queue,
     cl_uint,
-    cl_mem *,
+    const cl_mem *,
     cl_uint,
     const cl_event *,
     cl_event *);
