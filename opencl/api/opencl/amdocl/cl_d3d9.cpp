@@ -225,7 +225,7 @@ RUNTIME_EXIT
 RUNTIME_ENTRY(cl_int, clEnqueueReleaseDX9MediaSurfacesKHR, (
     cl_command_queue command_queue,
     cl_uint          num_objects,
-    cl_mem *         mem_objects,
+    const cl_mem *   mem_objects,
     cl_uint          num_events_in_wait_list,
     const cl_event * event_wait_list,
     cl_event *       event))
