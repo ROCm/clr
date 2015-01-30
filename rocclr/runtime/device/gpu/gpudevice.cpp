@@ -430,6 +430,7 @@ Device::~Device()
     }
 
     delete globalScratchBuf_;
+    globalScratchBuf_ = NULL;
 
     // Destroy transfer queue
     delete xferQueue_;
