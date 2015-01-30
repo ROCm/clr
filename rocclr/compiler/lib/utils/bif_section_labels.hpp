@@ -37,7 +37,8 @@ typedef enum {
   symAsmText,
   symDLL,
   symLast,
-  symKernelStats
+  symKernelStats,
+  symBRIGLoaderMap
 } oclBIFSymbolID;
 
 struct oclBIFSymbolStruct {
@@ -49,7 +50,7 @@ struct oclBIFSymbolStruct {
 };
 
 // These are the symbols that are defined by the BIF 3.0 spec
-static const oclBIFSymbolStruct BIF30[27] =
+static const oclBIFSymbolStruct BIF30[28] =
 {
   // 0: BIF 3.0 compiler options, .comment section via library support.
   {symOpenclCompilerOptions,
@@ -109,6 +110,8 @@ static const oclBIFSymbolStruct BIF30[27] =
   {symDLL, {"", ""}, {aclLAST, aclTEXT}},
   // 26: BIF 3.0 HSAIL kernel statistics
   {symKernelStats, { "__HSAIL_", "_kernel_statistics" }, {aclKSTATS, aclLAST}},
+  // 27: BIF 3.0 BRIG loader map
+  {symBRIGLoaderMap, { "__Loader_Map", "" }, {aclCODEGEN, aclLAST}},
 }; // BIF30
 
 
