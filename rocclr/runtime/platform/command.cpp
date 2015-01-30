@@ -88,10 +88,7 @@ Event::setStatus(cl_int status, uint64_t timeStamp)
         timeStamp = recordProfilingInfo(status, timeStamp);
     }
 
-    if (!make_atomic(status_).compareAndSet(currentStatus, status)) {
-        // Somebody else beat us to it, let them deal with the release/signal.
-        return false;
-    }
+    status_ = status;
 
     if (callbacks_ != (CallBackEntry*)0) {
         processCallbacks(status);
