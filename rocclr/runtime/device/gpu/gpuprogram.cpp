@@ -1978,20 +1978,19 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     if (containsBrig) {
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_BINARY;
-        // Here we should check that CG stage was done.
-        // Right now there are 2 criterions to check it (besides BRIG itself):
-        // 1. matadata symbols symOpenclKernel for every kernel.
-        // 2. HSAIL text in aclCODEGEN section.
-        // Unfortunately there is no appropriate way in Compiler Lib to check 1.
-        // because kernel names are unknown here, therefore only 2.
-        if (containsHsailText) {
-            completeStages.push_back(from);
-            from = ACL_TYPE_CG;
-        }
-    }
-    else if (containsHsailText) {
+    } else if (containsHsailText) {
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_TEXT;
+    }
+    // Checking Loader Map symbol from CG section
+    bool containsLoaderMap = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_LOADER_MAP, NULL, &containsLoaderMap, &boolSize);
+    if (errorCode != ACL_SUCCESS) {
+        containsLoaderMap = false;
+    }
+    if (containsLoaderMap) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_CG;
     }
     // Checking ISA in .text section
     bool containsShaderIsa = true;
@@ -2012,24 +2011,20 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         needOptionsCheck = false;
         break;
     case ACL_TYPE_HSAIL_BINARY:
-    case ACL_TYPE_CG:
         // do not check options, if LLVMIR is absent or might be absent or options are absent
-        if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
+        if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
             needOptionsCheck = false;
         }
         break;
+    case ACL_TYPE_CG:
     case ACL_TYPE_ISA:
         // do not check options, if LLVMIR is absent or might be absent or options are absent
-        if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
+        if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
             needOptionsCheck = false;
         }
-        if (containsBrig && containsHsailText && curOptions.oVariables->BinHSAIL) {
+        // do not check options, if BRIG is absent or might be absent or LoaderMap is absent
+        if (!curOptions.oVariables->BinCG || !containsBrig || !containsLoaderMap) {
             needOptionsCheck = false;
-        // recompile from prev. stage, if BRIG || HSAIL are absent
-        } else {
-            from = completeStages.back();
-            completeStages.pop_back();
-            needOptionsCheck = true;
         }
         break;
     // recompilation might be needed
@@ -2119,6 +2114,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     acl_error errorCode;
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
     bool finalize = true;
+    bool hsaLoad = true;
     // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
     if (!binaryElf_) {
         continueCompileFrom = getNextCompilationStageFromBinary(options);
@@ -2147,23 +2143,24 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         break;
     }
     case ACL_TYPE_CG:
+        hsaLoad = false;
         break;
     case ACL_TYPE_ISA:
+        hsaLoad = false;
         finalize = false;
         break;
     default:
         buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
         return false;
     }
-    // ACL_TYPE_CG stage is always being performed
-    if (!isNull()) {
+    // ACL_TYPE_CG stage is not performed for offline compilation
+    if (!isNull() && hsaLoad) {
         if (!_aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
             &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
             buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
             return false;
         }
     }
-
     size_t kernelNamesSize = 0;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {

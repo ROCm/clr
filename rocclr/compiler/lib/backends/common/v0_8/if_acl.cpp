@@ -1228,6 +1228,20 @@ aclCompileInternal(
   if (useISA) {
     ald = cl->beAPI.init(cl, bin, compile_callback, &error_code);
     error_code = cl->beAPI.finalize(ald, dataStr.data(), dataStr.length());
+#ifdef WITH_TARGET_HSAIL
+    if (isHSAILTarget(bin->target) && error_code == ACL_SUCCESS) {
+      amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(cl->cgAPI.init(cl, bin, compile_callback, &error_code));
+      if ((!checkFlag(aclutGetCaps(bin), capSaveCG) || !acl->Options()->oVariables->BinCG) && !acl->IsGlobalVarInBRIG()) {
+        oclBIFSymbolID brigSectionSymbolId[] = {symBRIGStrtab, symHSABinary, symBRIGOperands, symDebugInfo};
+        int symCount = sizeof(brigSectionSymbolId) / sizeof(brigSectionSymbolId[PRE]);
+        for(int i=0; i<symCount; ++i) {
+          const oclBIFSymbolStruct* sym = findBIF30SymStruct(brigSectionSymbolId[i]);
+          assert(sym && "symbol not found");
+          cl->clAPI.remSym(cl, bin, sym->sections[PRE], sym->str[PRE]);
+        }
+      }
+    }
+#endif
     cl->beAPI.fini(ald);
     if (error_code != ACL_SUCCESS) {
       goto internal_compile_failure;
@@ -2265,6 +2279,19 @@ if_aclQueryInfo(aclCompiler *cl,
         bool contains = elfBin->isSection(aclBRIGcode) &&
                   elfBin->isSection(aclBRIGoprs) &&
                   elfBin->isSection(aclBRIGstrs);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_LOADER_MAP:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        const oclBIFSymbolStruct* sym = findBIF30SymStruct(symBRIGLoaderMap);
+        assert(sym && "symbol not found");
+        std::string symbolName = sym->str[PRE];
+        bool contains = elfBin->isSymbol(aclCODEGEN, symbolName.c_str());
         memcpy(ptr, &contains, sizeof(bool));
         return ACL_SUCCESS;
       }
