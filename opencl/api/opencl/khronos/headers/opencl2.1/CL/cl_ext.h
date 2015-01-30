@@ -482,6 +482,25 @@ typedef CL_API_ENTRY cl_int
 						      size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
 #endif /* CL_VERSION_2_0 */
 
+#ifdef CL_VERSION_2_1
+/*********************************
+* cl_khr_priority_hints extension
+*********************************/
+#define cl_khr_priority_hints 1
+
+/* cl_command_queue_properties */
+#define CL_QUEUE_PRIORITY_KHR 0x0000
+#define CL_QUEUE_PRIORITY_HIGH_KHR (3 << 16)
+#define CL_QUEUE_PRIORITY_MED_KHR  (2 << 16)
+#define CL_QUEUE_PRIORITY_LOW_KHR  (1 << 16)
+
+#define CL_QUEUE_THROTTLE_KHR 0x0000
+#define CL_QUEUE_THROTTLE_HIGH_KHR (3 << 16)
+#define CL_QUEUE_THROTTLE_MED_KHR  (2 << 16)
+#define CL_QUEUE_THROTTLE_LOW_KHR  (1 << 16)
+
+#endif /* CL_VERSION_2_1 */
+
 #ifdef __cplusplus
 }
 #endif

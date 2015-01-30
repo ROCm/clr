@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008 - 2013 The Khronos Group Inc.
+ * Copyright (c) 2008 - 2015 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -196,6 +196,7 @@ typedef struct _cl_buffer_region {
 #define CL_VERSION_1_1                              1
 #define CL_VERSION_1_2                              1
 #define CL_VERSION_2_0                              1
+#define CL_VERSION_2_1                              1
 
 /* cl_bool */
 #define CL_FALSE                                    0
@@ -662,6 +663,15 @@ clGetDeviceInfo(cl_device_id    /* device */,
                 size_t          /* param_value_size */, 
                 void *          /* param_value */,
                 size_t *        /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetDeviceAndHostTimer(cl_device_id /* device */,
+                        cl_ulong * /* device_timestamp */,
+                        cl_ulong * /* host_timestamp */) CL_API_SUFFIX__VERSION_2_1;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clGetHostTimer(cl_device_id /* device */,
+               cl_ulong *   /* host_timestamp */) CL_API_SUFFIX__VERSION_2_1;
     
 extern CL_API_ENTRY cl_int CL_API_CALL
 clCreateSubDevices(cl_device_id                         /* in_device */,
@@ -940,6 +950,10 @@ clSetKernelExecInfo(cl_kernel            /* kernel */,
                     cl_kernel_exec_info  /* param_name */,
                     size_t               /* param_value_size */,
                     const void *         /* param_value */) CL_API_SUFFIX__VERSION_2_0;
+
+extern CL_API_ENTRY cl_kernel CL_API_CALL
+clCloneKernel(const cl_kernel /* source_kernel */,
+              cl_int *        /* errcode_ret */) CL_API_SUFFIX__VERSION_2_1;
     
 extern CL_API_ENTRY cl_int CL_API_CALL
 clGetKernelInfo(cl_kernel       /* kernel */,
@@ -1300,6 +1314,15 @@ clEnqueueSVMUnmap(cl_command_queue  /* command_queue */,
                   const cl_event *  /* event_wait_list */,
                   cl_event *        /* event */) CL_API_SUFFIX__VERSION_2_0;
     
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMigrateMem(cl_command_queue /* command_queue */,
+                       cl_uint          /* num_svm_pointers */,
+                       const void **    /* svm_pointers */,
+                       const size_t *   /* sizes */,
+                       cl_mem_migration_flags /* flags */,
+                       cl_uint          /* num_events_in_wait_list */,
+                       const cl_event * /* event_wait_list */,
+                       cl_event *       /* event */) CL_API_SUFFIX__VERSION_2_1;
 
 /* Extension function access
  *
