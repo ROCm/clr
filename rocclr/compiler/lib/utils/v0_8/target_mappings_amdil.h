@@ -87,7 +87,6 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
-  { "VI", "Hoatzin",    "hoatzin", amd::GPU_Library_CI,        VI_FIJI_P_A0,            F_SI_BASE, true,  true, FAMILY_VI },
   UnknownTarget,
   { "CZ", "Carrizo",    "carrizo", amd::GPU_Library_CI,        CARRIZO_A0,              F_SI_BASE, true,  true, FAMILY_CZ },
   { "TN", "Devastator", "trinity", amd::GPU_Library_Evergreen, TN_DEVASTATOR_W_A0,       F_NI_EXT, true, false, FAMILY_TN },
@@ -98,6 +97,7 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "VI", "Iceland",    "iceland", amd::GPU_Library_CI,        VI_ICELAND_M_A0,         F_SI_BASE, true,  true, FAMILY_VI },
   { "VI", "Tonga",      "tonga",   amd::GPU_Library_CI,        VI_TONGA_P_A0,           F_SI_BASE, true,  true, FAMILY_VI },
   { "CI", "Bonaire",    "bonaire", amd::GPU_Library_CI,        CI_BONAIRE_M_A1,         F_SI_BASE, true, true, FAMILY_CI },
+  { "VI", "Fiji",       "fiji",    amd::GPU_Library_CI,        VI_FIJI_P_A0,            F_SI_BASE, true,  true, FAMILY_VI },
   InvalidTarget
 };
 
