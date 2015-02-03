@@ -308,6 +308,8 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
         return false;
     }
 
+    m_adp->queryAvailableEngines(&m_nEngines, m_engines);
+
     if (m_PerformLazyDeviceInit)
     {
         // close the adaptor
@@ -1403,14 +1405,6 @@ CALGSLDevice::resCopy(gslMemObject srcRes, gslMemObject dstRes, uint32 flags) co
     {
         assert(0 && "No copy engine is being used");
     }
-}
-
-void
-CALGSLDevice::queryDeviceEngines(uint32 *nEngines, gslEngineDescriptor *engines)
-{
-    PerformFullInitialization();
-
-    m_adp->queryAvailableEngines(nEngines, engines);
 }
 
 #define CPDMA_THRESHOLD 131072

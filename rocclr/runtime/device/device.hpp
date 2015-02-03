@@ -535,7 +535,10 @@ struct Info : public amd::EmbeddedObject
     cl_uint     localMemSizePerCU_;
     //! Number of banks of local memory
     cl_uint     localMemBanks_;
-    cl_uint     gfxipVersion_;  //!< The core engine GFXIP version
+    //! The core engine GFXIP version
+    cl_uint     gfxipVersion_;
+    //! Number of available async queues
+    cl_uint     numAsyncQueues_;
     //! Thread trace enable
     cl_bool     threadTraceEnable_;
 

@@ -787,6 +787,7 @@ void Device::fillDeviceInfo(
         info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
         info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
+        info_.numAsyncQueues_       = engines().numComputeRings();
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
 }
@@ -819,6 +820,8 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
         )) {
         return false;
     }
+
+    engines_.create(m_nEngines, m_engines, settings().numComputeRings_);
 
     amd::Context::Info  info = {0};
     std::vector<amd::Device*> devices;
@@ -975,10 +978,8 @@ Device::initializeHeapResources()
     amd::ScopedLock k(lockAsyncOpsForInitHeap_);
     if (!heapInitComplete_) {
         heapInitComplete_ = true;
-        uint nEngines;
-        gslEngineDescriptor engines[GSL_ENGINEID_MAX];
-        queryDeviceEngines(&nEngines, engines);
-        engines_.create(nEngines, engines, settings().numComputeRings_);
+
+        PerformFullInitialization();
 
         uint numComputeRings = engines_.numComputeRings();
         scratch_.resize((settings().useSingleScratch_) ? 1 : (numComputeRings ? numComputeRings : 1));
