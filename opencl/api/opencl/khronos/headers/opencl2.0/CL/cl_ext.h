@@ -200,6 +200,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clTerminateContextKHR_fn)(cl_context /
 #define CL_DEVICE_THREAD_TRACE_SUPPORTED_AMD        0x4049
 #define CL_DEVICE_GFXIP_MAJOR_AMD                   0x404A
 #define CL_DEVICE_GFXIP_MINOR_AMD                   0x404B
+#define CL_DEVICE_AVAILABLE_ASYNC_QUEUES_AMD        0x404C
 
 typedef union
 {
