@@ -115,7 +115,6 @@ public:
 
     void             PerformAdapterInitialization() const;
     void             PerformFullInitialization() const;
-    void             queryDeviceEngines(uint32* nEngines, gslEngineDescriptor* engines);
 
     CopyType         GetCopyType(gslMemObject srcMem, gslMemObject destMem, size_t* srcOffset,
                                      size_t* destOffset, bool allowDMA, uint32 flags, uint64& surfaceSize,
@@ -159,6 +158,9 @@ protected:
         channelSwizzleMode b : 8;  ///< Blue channel of texture
         channelSwizzleMode a : 8;  ///< Alpha channel of texture
     } channelSwizzle;
+
+    uint                m_nEngines;
+    gslEngineDescriptor m_engines[GSL_ENGINEID_MAX];
 
 private:
     gsl::gsAdaptor*  m_adp;
