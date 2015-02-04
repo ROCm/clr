@@ -3888,6 +3888,9 @@ HSAILKernel::loadArguments(
                     if (mem != NULL) {
                         gpuMem = dev().getGpuMemory(mem);
                         gpuMem->wait(gpu, WaitOnBusyEngine);
+                        if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
+                            mem->signalWrite(&dev());
+                        }
                         memList.push_back(gpuMem);
                     }
                     // If finegrainsystem is present then the pointer can be malloced by the app and
