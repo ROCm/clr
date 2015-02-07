@@ -923,22 +923,6 @@ Memory::allocMapTarget(
     size_t  offset = origin[0];
 
     incIndMapCount();
-    void *initHostPtr = NULL;
-    bool    failed = false;
-
-    if (!owner()->getSvmPtr()) {
-        initHostPtr = owner()->getHostMem();
-        static const bool forceAllocHostMem = true;
-        if (NULL == initHostPtr) {
-            if (!owner()->allocHostMemory(NULL, forceAllocHostMem)) {
-                failed = true;
-            }
-        }
-    }
-    else {
-        owner()->commitSvmMemory();
-        initHostPtr = owner()->getSvmPtr();
-    }
 
     // If host memory exists, use it
     if ((owner()->getHostMem() != NULL) && isDirectMap()) {
@@ -970,7 +954,7 @@ Memory::allocMapTarget(
             amd::Memory*   memory = NULL;
             // Search for a possible indirect resource
             //For SVM implementation, we cannot use cached map. if svm space, use the svm host pointer
-
+            void *initHostPtr = owner()->getSvmPtr();
             cl_mem_flags flag = 0;
             bool canBeCached = true;
             if (NULL != initHostPtr) {
