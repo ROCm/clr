@@ -1224,22 +1224,15 @@ aclCompileInternal(
     }
   }
 
-  // Convert the input string into the device ISA binary.
   if (useISA) {
     ald = cl->beAPI.init(cl, bin, compile_callback, &error_code);
+    // AMDIL: Convert the input string into the device ISA binary.
+    // HSAIL: Converting BRIG in bin into the device ISA binary; input string isn't used.
     error_code = cl->beAPI.finalize(ald, dataStr.data(), dataStr.length());
 #ifdef WITH_TARGET_HSAIL
     if (isHSAILTarget(bin->target) && error_code == ACL_SUCCESS) {
       amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(cl->cgAPI.init(cl, bin, compile_callback, &error_code));
-      if ((!checkFlag(aclutGetCaps(bin), capSaveCG) || !acl->Options()->oVariables->BinCG) && !acl->IsGlobalVarInBRIG()) {
-        oclBIFSymbolID brigSectionSymbolId[] = {symBRIGStrtab, symHSABinary, symBRIGOperands, symDebugInfo};
-        int symCount = sizeof(brigSectionSymbolId) / sizeof(brigSectionSymbolId[PRE]);
-        for(int i=0; i<symCount; ++i) {
-          const oclBIFSymbolStruct* sym = findBIF30SymStruct(brigSectionSymbolId[i]);
-          assert(sym && "symbol not found");
-          cl->clAPI.remSym(cl, bin, sym->sections[PRE], sym->str[PRE]);
-        }
-      }
+      acl->deleteBRIG();
     }
 #endif
     cl->beAPI.fini(ald);
