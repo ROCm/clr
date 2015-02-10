@@ -1187,7 +1187,7 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
 
     // We used host memory
     if ((owner->getHostMem() != NULL) && memory->isDirectMap()) {
-        if (memory->isUnmapWrite()) {
+        if (memory->isUnmapWrite() && !owner->usesSvmPointer()) {
             // Target is the backing store, so sync
             owner->signalWrite(NULL);
             memory->syncCacheFromHost(*this);
