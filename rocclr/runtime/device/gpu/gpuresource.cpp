@@ -345,6 +345,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
 
     desc.vaBase = 0;
     desc.minAlignment = 0;
+    desc.isAllocExecute = false;
     desc.section = GSL_SECTION_REGULAR;
     if (NULL != params && NULL != params->owner_) {   //make sure params not NULL
         mcaddr svmPtr = reinterpret_cast<mcaddr>(params->owner_->getSvmPtr());
