@@ -3817,7 +3817,7 @@ const uint16_t kDispatchPacketHeader =
     (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
     (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_COMPONENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
 hsa_kernel_dispatch_packet_t*
 HSAILKernel::loadArguments(
@@ -4096,7 +4096,7 @@ HSAILKernel::loadArguments(
 
     hsaDisp->kernarg_address = reinterpret_cast<void*>(argList);
     hsaDisp->reserved2 = 0;
-    hsaDisp->completion_signal = 0;
+    hsaDisp->completion_signal.handle = 0;
 
     memList.push_back(cb);
     memList.push_back(gpuAqlCode());
