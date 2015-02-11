@@ -107,7 +107,7 @@ GpuDebugManager::executePostDispatchCallBack()
     if (NULL != postDispatchCallBackFunc_) {
         cl_device_id clDeviceId = as_cl(device_);
         postDispatchCallBackFunc_(clDeviceId,
-                                  aqlPacket_->completion_signal.handle,
+                                  0,
                                   postDispatchCallBackArgs_);
     }
 }
