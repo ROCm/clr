@@ -554,10 +554,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
         m_target = CAL_TARGET_GODAVARI;
         m_elfmachine = ED_ATI_CAL_MACHINE_GODAVARI_ISA;
         break;
-    case GSL_ATIASIC_ID_BERMUDA_P:
-        m_target = CAL_TARGET_BERMUDA;
-        m_elfmachine = ED_ATI_CAL_MACHINE_BERMUDA_ISA;
-        break;
     case GSL_ATIASIC_ID_FIJI_P:
         m_target = CAL_TARGET_FIJI;
         m_elfmachine = ED_ATI_CAL_MACHINE_FIJI_ISA;
@@ -566,7 +562,7 @@ CALGSLDevice::SetupContext(int32 &asic_id)
         m_target = CAL_TARGET_CARRIZO;
         m_elfmachine = ED_ATI_CAL_MACHINE_CARRIZO_ISA;
         break;
-    case GSL_ATIASIC_ID_ELLESMERE_P:
+    case GSL_ATIASIC_ID_ELLESMERE:
         m_target = CAL_TARGET_ELLESMERE;
         m_elfmachine = ED_ATI_CAL_MACHINE_ELLESMERE_ISA;
         break;
