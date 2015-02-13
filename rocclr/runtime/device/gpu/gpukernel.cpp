@@ -3902,6 +3902,9 @@ HSAILKernel::loadArguments(
                 }
                 if (nativeMem) {
                     gpuMem = *reinterpret_cast<Memory* const*>(paramaddr);
+                    if (NULL != gpuMem) {
+                        mem = gpuMem->owner();
+                    }
                 }
                 else {
                         mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
