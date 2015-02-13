@@ -3221,11 +3221,6 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
         *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
         return NULL;
     }
-    // Make sure the svm host memory is commited if the buffer is SVM buffer
-    void* svmPtr = srcBuffer->getSvmPtr();
-    if (NULL != svmPtr) {
-        srcBuffer->commitSvmMemory();
-    }
 
     if (srcBuffer->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
         // [Windows VidMM restriction]

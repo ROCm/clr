@@ -756,7 +756,6 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap, (
             return CL_INVALID_CONTEXT;
         }
 
-        svmMem->commitSvmMemory();
         offset = static_cast<address>(svm_ptr) - static_cast<address>(svmMem->getSvmPtr());
         if (offset < 0 || offset + size > svmMem->getSize()) {
             LogWarning("wrong svm address ");
