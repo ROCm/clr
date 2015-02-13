@@ -420,7 +420,7 @@ Settings::create(
         disablePersistent_ = true;
     }
 
-    if (calAttr.priSupport && target != CAL_TARGET_CARRIZO) {
+    if (calAttr.priSupport) {
         svmAtomics_ = true;
     }
 
