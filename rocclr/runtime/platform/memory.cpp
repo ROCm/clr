@@ -251,7 +251,7 @@ Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy)
         pipe->end_idx = asPipe()->getMaxNumPackets();
     }
 
-    if (flags_ & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
+    if ((flags_ & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) && (NULL == lastWriter_)) {
         // Signal write, so coherency mechanism will initialize
         // memory on all devices
         signalWrite(NULL);
