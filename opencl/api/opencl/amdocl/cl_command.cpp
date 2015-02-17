@@ -105,6 +105,11 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
         ++p;
     }
 
+    if (queueSize > amdDevice.info().queueOnDeviceMaxSize_) {
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        return (cl_command_queue) 0;
+    }
+
     amd::CommandQueue* queue = NULL;
     {
         amd::ScopedLock  lock(amdContext.lock());
