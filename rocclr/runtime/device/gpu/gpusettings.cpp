@@ -420,11 +420,9 @@ Settings::create(
         disablePersistent_ = true;
     }
 
-    if (calAttr.priSupport) {
-        svmAtomics_ = true;
-    }
-
     svmFineGrainSystem_ = calAttr.isSVMFineGrainSystem;
+
+    svmAtomics_ = (calAttr.priSupport || calAttr.isSVMFineGrainSystem) ? true : false;
 
     // Enable some platform extensions
     enableExtension(ClAmdDeviceAttributeQuery);
