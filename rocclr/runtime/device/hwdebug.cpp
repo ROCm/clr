@@ -45,7 +45,9 @@ HwDebugManager::HwDebugManager(amd::Device* device)
 {
     memset(&debugInfo_, 0, sizeof(debugInfo_));
 
-    memset(deviceTrapInfo_, 0, sizeof(uint64_t) * kDebugTrapLocationMax);
+    for (int i = 0; i < kDebugTrapLocationMax; i++) {
+        rtTrapInfo_[i] = NULL;
+    }
 }
 
 HwDebugManager::~HwDebugManager()
@@ -171,5 +173,15 @@ HwDebugManager::assignKernelParamMem(uint32_t paramIdx, amd::Memory* mem)
 
     paramMemory_[paramIdx] = mem;
 }
+
+void
+HwDebugManager::installTrap(cl_dbg_trap_type_amd  trapType,
+                            amd::Memory*          trapHandler,
+                            amd::Memory*          trapBuffer)
+{
+    rtTrapInfo_[trapType<<2] = trapHandler;
+    rtTrapInfo_[(trapType<<2)+1] = trapBuffer;
+}
+
 
 } // namespace amd

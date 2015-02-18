@@ -93,7 +93,6 @@ GpuDebugManager::executePreDispatchCallBack(void*  aqlPacket,
                                  oclEventHandle_,
                                  aqlPacket_,
                                  aclBinary_,
-                                 deviceTrapInfo_,
                                  preDispatchCallBackArgs_);
     }
 
@@ -107,7 +106,7 @@ GpuDebugManager::executePostDispatchCallBack()
     if (NULL != postDispatchCallBackFunc_) {
         cl_device_id clDeviceId = as_cl(device_);
         postDispatchCallBackFunc_(clDeviceId,
-                                  0,
+                                  aqlPacket_->completion_signal.handle,
                                   postDispatchCallBackArgs_);
     }
 }
@@ -202,10 +201,8 @@ GpuDebugManager::setupTrapInformation(DebugToolInfo* toolInfo)
 
     toolInfo->reservedCuNum_ = execMode_.reservedCuNum;
 
-    toolInfo->trapHandler_ =
-                as_amd(reinterpret_cast<cl_mem>(deviceTrapInfo_[kDebugTrapHandlerLocation]));
-    toolInfo->trapBuffer_ =
-                as_amd(reinterpret_cast<cl_mem>(deviceTrapInfo_[kDebugTrapBufferLocation]));
+    toolInfo->trapHandler_ = rtTrapInfo_[kDebugTrapHandlerLocation];
+    toolInfo->trapBuffer_ = rtTrapInfo_[kDebugTrapBufferLocation];
 }
 
 
