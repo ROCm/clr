@@ -114,6 +114,16 @@ extern "C" {
 
 typedef uintptr_t     cl_dbg_event_amd;  //! debug event
 
+/*!  \brief  Trap Handler Type
+ *
+ *   The trap handler for each support type.
+ */
+enum cl_dbg_trap_type_amd
+{
+    CL_DBG_DEBUG_TRAP  = 0,    //! HW debug
+    CL_DBG_MAX_TRAP
+};
+
 /*!  \brief  Wave actions used to control the wave execution on the hardware
  *
  *   The wave action enumerations are used to specify the desired
@@ -245,7 +255,7 @@ typedef struct _cl_dispatch_debug_info_amd
  */
 typedef struct _cl_aql_packet_info_amd
 {
-    unsigned int trapReservedVgprIndex;     //! VGPR index reserved for trap
+    cl_uint trapReservedVgprIndex;          //! VGPR index reserved for trap
                                             //!   value is -1 when kernel was not compiled
                                             //!   in debug mode.
     cl_uint scratchBufferWaveOffset;        //! scratch buffer wave offset
@@ -285,7 +295,6 @@ typedef void * (*cl_PreDispatchCallBackFunctionAMD) ( cl_device_id device,
                                                       void *ocl_event_handle,
                                                       const void *aql_packet,
                                                       void *acl_binary,
-                                                      cl_ulong *device_trap_buffer,
                                                       void *user_args);
 
 /*!  \brief Post-dispatch call back function signature
@@ -760,6 +769,36 @@ extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgSetGlobalMemoryAMD(
     void *                              /* srcMem */,
     cl_uint                             /* size */
 ) CL_API_SUFFIX__VERSION_2_0;
+
+
+/*! \brief Install the trap handler of a given type
+ *
+ *  \param device      specifies the device to be used
+ *
+ *  \param trapType    is the type of trap handler
+ *
+ *  \param trapHandler is the pointer of trap handler (TBA)
+ *
+ *  \param trapBuffer  is the pointer of trap handler buffer (TMA)
+ *
+ *  \param trapHandlerSize   size (in bytes) of the trap handler
+ *
+ *  \param trapBufferSize    size (in bytes) of the trap handler buffer
+ *
+ *  \return One of the following values:
+ *  - CL_SUCCESS if the event occurs before the timeout
+ *  - CL_INVALID_DEVICE if the device is not valid
+ *  - CL_INVALID_VALUE if trapHandler is NULL or trapHandlerSize <= 0
+ *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
+ */
+extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgInstallTrapAMD(
+    cl_device_id                        /* device */,
+    cl_dbg_trap_type_amd                /* trapType */,
+    cl_mem                              /* trapHandler */,
+    cl_mem                              /* trapBuffer */
+) CL_API_SUFFIX__VERSION_2_0;
+
+
 
 #ifdef __cplusplus
 } /*extern "C"*/
