@@ -157,6 +157,11 @@ public:
     //!  Get kernel parameter memory object
     cl_mem getKernelParamMem(uint32_t paramIdx) const;
 
+    //!  Install trap handler
+    void installTrap(cl_dbg_trap_type_amd  trapType,
+                     amd::Memory*          pTrapHandler,
+                     amd::Memory*          pTrapBuffer);
+
     //!  Flush cache
     virtual void flushCache(uint32_t mask) = 0;
 
@@ -207,7 +212,7 @@ public:
 
     //!  Execute the pre-dispatch callback function
     virtual void executePreDispatchCallBack(void*   aqlPacket,
-                                              void*   toolInfo) = 0;
+                                            void*   toolInfo) = 0;
 
     //!  Return the use of HW DEBUG flag
     bool isMsgBufferReady() const { return dbgMsgBufferReady_; }
@@ -222,9 +227,6 @@ protected:
     //!  Return the register flag
     bool isRegistered() const { return isRegistered_; }
 
-    //!  Return the device trap handler information
-    const uint64_t* deviceTrapInfo() const { return deviceTrapInfo_; }
-
 protected:
 
     const amd::Context* context_;          ///< context that used to create host queue for the debugger
@@ -236,7 +238,7 @@ protected:
     void* postDispatchCallBackArgs_;        //!< post-dispatch callback function arguments
 
     DispatchDebugInfo   debugInfo_;         //!< Debug setting/information for kernel dispatch
-    uint64_t    deviceTrapInfo_[kDebugTrapLocationMax];    //!< Device trap buffer, to store various trap handlers on the device
+    amd::Memory*        rtTrapInfo_[kDebugTrapLocationMax];    //!< Device trap buffer, to store various trap handlers on the device
 
     amd::Memory**    paramMemory_;          //!< list of memory pointers for kernel parameters
     uint32_t         numParams_;            //!< number of kernel parameters
@@ -255,7 +257,6 @@ protected:
     cl_dbg_exception_policy_amd     excpPolicy_;         //!< exception policy
     cl_dbg_kernel_exec_mode_amd     execMode_;           //!< kernel execution mode
     RuntimeTrapInfo                 rtTrapHandlerInfo_;  //!< Runtime trap information
-
 };
 
 
