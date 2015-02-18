@@ -419,7 +419,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         }
         return CL_SUCCESS;
     }
-    case CL_CONTEXT_ADAPTER_D3D9EX_KHR: { 
+    case CL_CONTEXT_ADAPTER_D3D9EX_KHR: {
         if (param_value != NULL && param_value_size < sizeof(void*)) {
             return CL_INVALID_VALUE;
         }
@@ -534,7 +534,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireD3D10ObjectsKHR);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseD3D10ObjectsKHR);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireDX9MediaSurfacesKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseDX9MediaSurfacesKHR);        
+        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseDX9MediaSurfacesKHR);
 #endif //_WIN32
 #if cl_amd_open_video
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueRunVideoProgramAMD);
@@ -590,6 +590,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapScratchRingAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelParamMemAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetGlobalMemoryAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgInstallTrapAMD);
 #endif //_WIN32
         break;
     case 'I':

@@ -911,6 +911,46 @@ RUNTIME_ENTRY(cl_int, clHwDbgSetGlobalMemoryAMD, (
 RUNTIME_EXIT
 
 
+/*! \brief Install the trap handler of a given type
+ *
+ *  \param device      specifies the device to be used
+ *
+ *  \param trapType    is the type of trap handler
+ *
+ *  \param trapHandler is the pointer of trap handler (TBA)
+ *
+ *  \param trapBuffer  is the pointer of trap handler buffer (TMA)
+ *
+ *  \return One of the following values:
+ *  - CL_SUCCESS if the event occurs before the timeout
+ *  - CL_INVALID_DEVICE if the device is not valid
+ *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
+ */
+RUNTIME_ENTRY(cl_int, clHwDbgInstallTrapAMD, (
+    cl_device_id            device,
+    cl_dbg_trap_type_amd    trapType,
+    cl_mem                  trapHandler,
+    cl_mem                  trapBuffer))
+{
+    if (!is_valid(device)) {
+        return CL_INVALID_DEVICE;
+    }
+
+    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
+    if (NULL == debugManager) {
+        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+    }
+
+    amd::Memory* pTrapHandler = as_amd(trapHandler);
+    amd::Memory* pTrapBuffer = as_amd(trapBuffer);
+    debugManager->installTrap(trapType, pTrapHandler, pTrapBuffer);
+
+    return CL_SUCCESS;
+}
+
+RUNTIME_EXIT
+
+
 /*! @}
  *  @}
  */
