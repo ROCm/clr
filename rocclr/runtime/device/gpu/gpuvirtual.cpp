@@ -16,7 +16,7 @@
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gpudebugger.hpp"
 #include "hsa.h"
-#include "sc-hsa/Interface/SCHSAInterface.h"
+#include "sc/Interface/SCHSAInterface.h"
 #include <fstream>
 #include <sstream>
 

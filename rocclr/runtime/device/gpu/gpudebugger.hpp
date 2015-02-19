@@ -15,7 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "hsa.h"
-#include "sc-hsa/Interface/SCHSAInterface.h"
+#include "sc/Interface/SCHSAInterface.h"
 #include "device/device.hpp"
 #include "device/hwdebug.hpp"
 #include "acl.h"
