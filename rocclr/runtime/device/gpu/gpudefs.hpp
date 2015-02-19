@@ -121,10 +121,10 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_ICELAND */    { ED_ATI_CAL_MACHINE_ICELAND_ISA,   "Iceland",      "iceland",      4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_TONGA */      { ED_ATI_CAL_MACHINE_TONGA_ISA,     "Tonga",        "tonga",        4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_MULLINS */    { ED_ATI_CAL_MACHINE_GODAVARI_ISA,  "Mullins",      "mullins",      4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* CAL_TARGET_BERMUDA */    { ED_ATI_CAL_MACHINE_BERMUDA_ISA,   "",    "",   4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_FIJI */       { ED_ATI_CAL_MACHINE_FIJI_ISA,      "Fiji",         "fiji",         4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_CARRIZO */    { ED_ATI_CAL_MACHINE_CARRIZO_ISA,   "Carrizo" ,     "carrizo",      4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_ELLESMERE */  { ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "",  "",    4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_BAFFIN */     { ED_ATI_CAL_MACHINE_BAFFIN_ISA,    "",     "",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
 // Supported OpenCL versions

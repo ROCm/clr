@@ -174,11 +174,11 @@ typedef enum CALtargetEnum {
     CAL_TARGET_ICELAND,             /**< ICELAND GPU ISA*/
     CAL_TARGET_TONGA,               /**< TONGA GPU ISA*/
     CAL_TARGET_GODAVARI,            /**< MULLINS GPU ISA*/
-    CAL_TARGET_BERMUDA,             /**< BERMUDA GPU ISA*/
     CAL_TARGET_FIJI,                /**< FIJI GPU ISA*/
     CAL_TARGET_CARRIZO,             /**< CARRIZO GPU ISA*/
     CAL_TARGET_ELLESMERE,           /**< ELLESMERE GPU ISA*/
-    CAL_TARGET_LAST = CAL_TARGET_ELLESMERE, /**< last */
+    CAL_TARGET_BAFFIN,             /**< BAFFIN GPU ISA*/
+    CAL_TARGET_LAST = CAL_TARGET_BAFFIN, /**< last */
 //##END_PRIVATE##
 } CALtarget;
 

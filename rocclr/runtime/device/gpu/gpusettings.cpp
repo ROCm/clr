@@ -241,9 +241,9 @@ Settings::create(
         apuSystem_ = true;
     case CAL_TARGET_ICELAND:
     case CAL_TARGET_TONGA:
-    case CAL_TARGET_BERMUDA:
     case CAL_TARGET_FIJI:
     case CAL_TARGET_ELLESMERE:
+    case CAL_TARGET_BAFFIN:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
         viPlus_ = true;
