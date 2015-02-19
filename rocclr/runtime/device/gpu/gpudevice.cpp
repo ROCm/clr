@@ -153,11 +153,11 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_HAWAII:
     case CAL_TARGET_ICELAND:
     case CAL_TARGET_TONGA:
-    case CAL_TARGET_BERMUDA:
     case CAL_TARGET_FIJI:
     case CAL_TARGET_GODAVARI:
     case CAL_TARGET_CARRIZO:
     case CAL_TARGET_ELLESMERE:
+    case CAL_TARGET_BAFFIN:
         calAttr.doublePrecision = CAL_TRUE;
         calAttr.isOpenCL200Device = CAL_TRUE;
         break;
