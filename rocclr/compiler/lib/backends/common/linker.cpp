@@ -582,7 +582,8 @@ void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
                         chip == "Cypress"
                      || chip == "Cayman"
                      || chip == "Tahiti"
-                     || chip == "Hawaii",
+                     || chip == "Hawaii"
+                     || chip == "Carrizo",
                      module);
   createConstIntFunc("__amdil_have_bitalign", !!(features & F_EG_BASE), module);
   createConstIntFunc("__amdil_is_cypress", chip == "Cypress", module);
