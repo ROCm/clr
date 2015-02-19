@@ -13,7 +13,7 @@
 #include "platform/sampler.hpp"
 #include "device/gpu/gpudevice.hpp"
 #include "device/gpu/gpuvirtual.hpp"
-#include "sc-hsa/Interface/SCHSAInterface.h"
+#include "sc/Interface/SCHSAInterface.h"
 #include "device/gpu/gpuprintf.hpp"
 #include "hsa.h"
 //! \namespace gpu GPU Device Implementation
