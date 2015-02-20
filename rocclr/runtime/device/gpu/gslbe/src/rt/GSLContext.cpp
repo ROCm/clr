@@ -1300,18 +1300,6 @@ CALGSLContext::virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mc
     eventEnd(MainEngine, event);
 }
 
-bool
-CALGSLContext::RegisterHwDebugger(uint64 debugMessages)
-{
-    return m_cs->registerHwDebugger(debugMessages);
-}
-
-bool
-CALGSLContext::ExceptionNotification(osEventHandle debugEvent)
-{
-    return m_cs->exceptionNotification(debugEvent);
-}
-
 void
 CALGSLContext::InvalidateSqCaches(bool instInvalidate, bool dataInvalidate, bool tcL1, bool tcL2)
 {

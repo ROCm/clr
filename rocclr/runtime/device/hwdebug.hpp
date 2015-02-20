@@ -68,8 +68,6 @@ struct RuntimeTrapInfo {
                               //!< Buffer to backup the VGPR used by the runtime trap handler
 };
 
-
-
 /**
  * Opaque pointer to trap event
  */
@@ -112,9 +110,6 @@ public:
 
     //!  Get the scratch ring
     void setScratchRing(address scratchRingAddr, uint32_t scratchRingSize);
-
-    //!  Map the shader (AQL code) for host access
-    void mapKernelCode(uint64_t* aqlCodeAddr, uint32_t* aqlCodeSize) const;
 
     //!  Map the scratch ring for host access
     void mapScratchRing(uint64_t* scratchRingAddr, uint32_t* scratchRingSize) const;
@@ -177,9 +172,6 @@ public:
     //!  Register the debugger
     virtual cl_int registerDebugger(amd::Context* context, uintptr_t pMessageStorage) = 0;
 
-    //!  Call KMD to register the debugger
-    virtual cl_int registerDebuggerOnQueue(device::VirtualDevice* vDevice) = 0;
-
     //!  Unregister the debugger
     virtual void unregisterDebugger() = 0;
 
@@ -197,6 +189,9 @@ public:
                                  uint64_t*    watchMode,
                                  DebugEvent*  event) = 0;
 
+    //!  Map the shader (AQL code) for host access
+    virtual void mapKernelCode(void* aqlCodeInfo) const = 0;
+
     //!  Get the packet information for dispatch
     virtual void getPacketAmdInfo(const void* aqlCodeInfo,
                                   void*       packetInfo) const = 0;
@@ -213,9 +208,6 @@ public:
     //!  Execute the pre-dispatch callback function
     virtual void executePreDispatchCallBack(void*   aqlPacket,
                                             void*   toolInfo) = 0;
-
-    //!  Return the use of HW DEBUG flag
-    bool isMsgBufferReady() const { return dbgMsgBufferReady_; }
 
 protected:
     //!  Return the context
@@ -252,7 +244,6 @@ protected:
     uint32_t    scratchRingSize_;           //!< The size of the scratch ring
 
     bool isRegistered_;                     //! flag to indicate the debugger has been registered
-    bool dbgMsgBufferReady_;                //! flag to indicate the HW DEBUG is using
 
     cl_dbg_exception_policy_amd     excpPolicy_;         //!< exception policy
     cl_dbg_kernel_exec_mode_amd     execMode_;           //!< kernel execution mode

@@ -111,6 +111,15 @@ GpuDebugManager::executePostDispatchCallBack()
     }
 }
 
+//!  Map the kernel code for host access
+void
+GpuDebugManager::mapKernelCode(void* aqlCodeInfo) const
+{
+    AqlCodeInfo* codeInfo = reinterpret_cast<AqlCodeInfo*>(aqlCodeInfo);
+
+    codeInfo->aqlCode_ = reinterpret_cast<amd_kernel_code_t*>(aqlCodeAddr_);
+    codeInfo->aqlCodeSize_ = aqlCodeSize_;
+}
 
 cl_int
 GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorage)
@@ -125,8 +134,11 @@ GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorag
     // first time register - set the message storage, flush queue and enable hw debug
     if (!isRegistered()) {
         debugMessages_ = messageStorage;
-        dbgMsgBufferReady_ = true;
-        isRegistered_ = false;
+        if (!device()->gslCtx()->registerHwDebugger(debugMessages_)) {
+            return CL_OUT_OF_RESOURCES;
+        }
+
+        isRegistered_ = true;
     }
 
     context_ = context;
@@ -142,33 +154,8 @@ GpuDebugManager::unregisterDebugger()
 
         // reset the debugger registration flag
         isRegistered_ = false;
-        dbgMsgBufferReady_ = false;
-
         context_ = NULL;
     }
-}
-
-cl_int
-GpuDebugManager::registerDebuggerOnQueue(device::VirtualDevice* vDevice)
-{
-    if (!isMsgBufferReady()) {
-        return CL_DEBUGGER_REGISTER_FAILURE_AMD;
-    }
-
-    if (isRegistered()) {               // The debugger has already been registered,
-        return CL_SUCCESS;              //   nothing to be done
-    }
-
-    VirtualGPU* vGpu = reinterpret_cast<gpu::VirtualGPU*>(vDevice);
-
-    //  populate the fields in the debugMessages structure used by the GPU exception notification
-    if (vGpu->RegisterHwDebugger(debugMessages_)) {
-        vGpu_ = vGpu;
-        isRegistered_ = true;
-        return CL_SUCCESS;
-    }
-
-    return CL_DEBUGGER_REGISTER_FAILURE_AMD;
 }
 
 void
@@ -204,7 +191,6 @@ GpuDebugManager::setupTrapInformation(DebugToolInfo* toolInfo)
     toolInfo->trapHandler_ = rtTrapInfo_[kDebugTrapHandlerLocation];
     toolInfo->trapBuffer_ = rtTrapInfo_[kDebugTrapBufferLocation];
 }
-
 
 void
 GpuDebugManager::getPacketAmdInfo(
@@ -259,8 +245,7 @@ GpuDebugManager::createDebugEvent(
 
         osEventReset(shaderEvent);   // initial state is non-signaled
 
-        if (vGpu_->ExceptionNotification(shaderEvent)) {
-            isRegistered_ = true;
+        if (device()->gslCtx()->exceptionNotification(shaderEvent)) {
             return shaderEvent;
         }
     }
@@ -287,7 +272,7 @@ GpuDebugManager::destroyDebugEvent(DebugEvent* pEvent)
     osEventDestroy(*pEvent);
     *pEvent = 0;
 
-    vGpu_->ExceptionNotification(0);
+    device()->gslCtx()->exceptionNotification(0);
 
 }
 

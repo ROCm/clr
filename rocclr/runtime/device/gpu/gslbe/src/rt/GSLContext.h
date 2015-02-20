@@ -142,8 +142,6 @@ public:
     void            writeSurfRaw(GpuEvent& event, gslMemObject mem, size_t size, const void* data);
 
     /// HW Debug support functions
-    bool            RegisterHwDebugger(uint64 debugMessages);
-    bool            ExceptionNotification(osEventHandle debugEvent);
     void            InvalidateSqCaches(bool instInvalidate = true, bool dataInvalidate = true, bool tcL1 = true, bool tcL2 = true);
 
 protected:
