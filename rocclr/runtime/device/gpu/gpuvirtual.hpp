@@ -554,8 +554,6 @@ private:
     uint            deviceQueueSize_;   //!< Device queue size
 
     Memory*         hsaQueueMem_;   //!< Memory for the amd_queue_t object
-
-    bool            useHwDebug_;    //!< Flag of using HW debug
 };
 
 /*@}*/} // namespace gpu

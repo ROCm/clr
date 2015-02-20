@@ -403,7 +403,6 @@ VirtualGPU::VirtualGPU(
     , schedParamIdx_(0)
     , deviceQueueSize_(0)
     , hsaQueueMem_(NULL)
-    , useHwDebug_(false)
 {
     memset(&cal_, 0, sizeof(CalVirtualDesc));
     for (uint i = 0; i < AllEngines; ++i) {
@@ -585,15 +584,6 @@ VirtualGPU::create(
         (0 != deviceQueueSize) && !createVirtualQueue(deviceQueueSize)) {
         LogError("Could not create a virtual queue!");
         return false;
-    }
-
-    // Check if HW Debug is used and register the debugger if not done yet
-    amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
-
-    if ( dbgManager && dbgManager->isMsgBufferReady() ) {
-        if ( dbgManager->registerDebuggerOnQueue(this) == CL_SUCCESS ) {
-            useHwDebug_ = true;
-        }
     }
 
     return true;
@@ -1648,6 +1638,7 @@ VirtualGPU::submitKernelInternalHSA(
     uint64_t    vmDefQueue = 0;
     amd::DeviceQueue*  defQueue = kernel.program().context().defDeviceQueue(dev());
     VirtualGPU*  gpuDefQueue = NULL;
+    amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
 
     // Get the HSA kernel object
     const HSAILKernel& hsaKernel =
@@ -1735,8 +1726,8 @@ VirtualGPU::submitKernelInternalHSA(
 
     //  setup the storage for the memory pointers of the kernel parameters
     uint numParams = kernel.signature().numParameters();
-    if (useHwDebug_) {
-        dev().hwDebugMgr()->allocParamMemList(numParams);
+    if (dbgManager) {
+        dbgManager->allocParamMemList(numParams);
     }
 
     // Program the kernel arguments for the GPU execution
@@ -1768,7 +1759,7 @@ VirtualGPU::submitKernelInternalHSA(
     HwDbgKernelInfo kernelInfo;
     HwDbgKernelInfo *pKernelInfo = NULL;
 
-    if (useHwDebug_) {
+    if (dbgManager) {
         buildKernelInfo(hsaKernel, aqlPkt, kernelInfo, enqueueEvent);
         pKernelInfo = &kernelInfo;
     }
@@ -1778,10 +1769,8 @@ VirtualGPU::submitKernelInternalHSA(
     runAqlDispatch(gpuEvent, aqlPkt, vmMems(), cal_.memCount_,
         scratch, scratchOffset, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo);
 
-    if (useHwDebug_) {
-        if (NULL != dev().hwDebugMgr()->postDispatchCallBackFunc()) {
-            dev().hwDebugMgr()->executePostDispatchCallBack();
-        }
+    if (dbgManager && (NULL != dbgManager->postDispatchCallBackFunc())) {
+        dbgManager->executePostDispatchCallBack();
     }
 
     if (hsaKernel.dynamicParallelism()) {

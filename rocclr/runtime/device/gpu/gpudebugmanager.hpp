@@ -65,9 +65,6 @@ public:
     //!  Register the debugger
     cl_int registerDebugger(amd::Context*context, uintptr_t messageStorage);
 
-    //!  Register the debugger with KMD after command queue has been created
-    cl_int registerDebuggerOnQueue(device::VirtualDevice* vDevice);
-
     //!  Unregister the debugger
     void unregisterDebugger();
 
@@ -83,6 +80,9 @@ public:
                            uint64_t* watchMask,
                            uint64_t* watchMode,
                            DebugEvent* pEvent);
+
+    //!  Map the kernel code for host access
+    void mapKernelCode(void* aqlCodeInfo) const;
 
     //!  Get the packet information for dispatch
     void getPacketAmdInfo(const void* aqlCodeInfo, void* packetInfo) const;

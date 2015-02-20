@@ -41,7 +41,6 @@ HwDebugManager::HwDebugManager(amd::Device* device)
     , scratchRingAddr_(NULL)
     , scratchRingSize_(0)
     , isRegistered_(false)
-    , dbgMsgBufferReady_(false)
 {
     memset(&debugInfo_, 0, sizeof(debugInfo_));
 
@@ -81,7 +80,6 @@ HwDebugManager::getDispatchDebugInfo(void* debugInfo) const
     memcpy(debugInfo, (void*) &debugInfo_, sizeof(DispatchDebugInfo));
 }
 
-
 //!  Set the kernel code address and its size
 void
 HwDebugManager::setKernelCodeInfo(address aqlCodeAddr, uint32_t aqlCodeSize)
@@ -96,14 +94,6 @@ HwDebugManager::setScratchRing(address scratchRingAddr, uint32_t scratchRingSize
 {
     scratchRingAddr_ = scratchRingAddr;
     scratchRingSize_ = scratchRingSize;
-}
-
-//!  Map the shader (AQL code) for host access
-void
-HwDebugManager::mapKernelCode(uint64_t* aqlCodeAddr, uint32_t* aqlCodeSize) const
-{
-    *aqlCodeAddr = reinterpret_cast<uint64_t>(aqlCodeAddr_);
-    *aqlCodeSize = aqlCodeSize_;
 }
 
 //!  Map the scratch ring for host access
