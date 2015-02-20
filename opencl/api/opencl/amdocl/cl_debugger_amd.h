@@ -666,8 +666,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgGetDispatchDebugInfoAMD(
  */
 extern CL_API_ENTRY cl_int CL_API_CALL clHwDbgMapKernelCodeAMD(
     cl_device_id                        /* device */,
-    cl_ulong *                          /* aqlCodeAddress */,
-    cl_uint *                           /* aqlCodeSize */
+    void *                              /* aqlCodeInfo */
 ) CL_API_SUFFIX__VERSION_2_0;
 
 

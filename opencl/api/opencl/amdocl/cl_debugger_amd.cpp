@@ -690,9 +690,7 @@ RUNTIME_EXIT
  *
  *  \param device          specifies the device to be used
  *
- *  \param aqlCodeAddress  is the memory points to the returned host memory address for the kernel code
- *
- *  \param aqlCodeSize     returns the size of the kernel code
+ *  \param aqlCodeInfo   specifies the kernel code and its size
  *
  *  \return One of the following values:
  *  - CL_SUCCESS if the event occurs before the timeout
@@ -701,8 +699,7 @@ RUNTIME_EXIT
  */
 RUNTIME_ENTRY(cl_int, clHwDbgMapKernelCodeAMD, (
     cl_device_id                device,
-    cl_ulong *                  aqlCodeAddress,
-    cl_uint *                   aqlCodeSize))
+    void *                      aqlCodeInfo))
 {
     if (!is_valid(device)) {
         return CL_INVALID_DEVICE;
@@ -713,7 +710,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgMapKernelCodeAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    debugManager->mapKernelCode(aqlCodeAddress, aqlCodeSize);
+    debugManager->mapKernelCode(aqlCodeInfo);
 
     return CL_SUCCESS;
 }
