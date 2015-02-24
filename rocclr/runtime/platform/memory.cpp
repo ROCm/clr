@@ -999,7 +999,8 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
         if (devices[i]->settings().supportDepthsRGB_) {
             supportDepthsRGB = true;
         }
-        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
+        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages) &&
+            (context.info().flags_ & Context::GLDeviceKhr)) {
             supportDepthStencil = true;
         }
     }
