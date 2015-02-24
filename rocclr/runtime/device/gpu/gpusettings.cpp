@@ -338,9 +338,6 @@ Settings::create(
 
         rectLinearDMA_  = true;
 
-        if (oclVersion_ >= OpenCL20) {
-            //enableExtension(ClKhrGLDepthImages);
-        }
         if (AMD_THREAD_TRACE_ENABLE) {
             threadTraceEnable_ = true;
         }
@@ -431,6 +428,7 @@ Settings::create(
 
     // Enable some OpenCL 2.0 extensions
     if (oclVersion_ >= OpenCL20) {
+        enableExtension(ClKhrGLDepthImages);
         enableExtension(ClKhrSubGroups);
         enableExtension(ClKhrDepthImages);
 
