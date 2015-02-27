@@ -44,9 +44,10 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
       } else {
         Builder.Inliner = createFunctionInliningPass(HLC_HSAIL_Inline_Threshold);
       }
-    } else 
+    } else
 #endif
     {
+      HLC_Disable_Amd_Inline_All = false;
       // Always create Inliner regardless of OptLevel
       Builder.Inliner = createFunctionInliningPass(500);
     }
