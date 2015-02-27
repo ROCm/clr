@@ -297,6 +297,11 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_dcfg.DropFlush.hasValue = true;
     m_dcfg.DropFlush.value = (GPU_IFH_MODE == 1);
 
+    // Enable TC compatible htile mode. It's HW feature for VI+ and controlled in HWL.
+    // Depth interop doesn't support TC compatible htile mode, but OCL needs correct tiling setup.
+    m_dcfg.bEnableTCCompatibleHtile.hasValue = true;
+    m_dcfg.bEnableTCCompatibleHtile.value = true;
+
     int32 asic_id = 0;
     if (!SetupAdapter(asic_id))
     {
