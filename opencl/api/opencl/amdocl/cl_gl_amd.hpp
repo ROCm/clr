@@ -341,7 +341,9 @@ getCLFormatFromGL(
     const Context& amdContext,
     GLint gliInternalFormat,
     cl_image_format* pclImageFormat,
-    int* piBytesPerPixel);
+    int* piBytesPerPixel,
+    cl_mem_flags flags
+);
 
 } //namespace amd
 

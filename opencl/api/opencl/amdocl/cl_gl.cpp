@@ -1041,7 +1041,8 @@ checkForGLError(const Context &amdContext)
 bool
 getCLFormatFromGL(const Context& amdContext, GLint gliInternalFormat,
     cl_image_format* pclImageFormat,
-    int* piBytesPerPixel)
+    int* piBytesPerPixel,
+    cl_mem_flags flags)
 {
     bool bRetVal = false;
 
@@ -1348,7 +1349,7 @@ CL_FLOAT
         break;
     }
     amd::Image::Format imageFormat(*pclImageFormat);
-    if (bRetVal && !imageFormat.isSupported(amdContext)) {
+    if (bRetVal && !imageFormat.isSupported(amdContext, 0, flags)) {
         bRetVal = false;
     }
     return bRetVal;
@@ -1881,7 +1882,7 @@ clCreateFromGLTextureAMD(
 
             // Now get CL format from GL format and bytes per pixel
             int iBytesPerPixel = 0;
-            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel)) {
+            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
                 *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
                 LogWarning("\"texture\" format does not map to an appropriate CL image format");
                 return static_cast<cl_mem>(0);
@@ -1939,7 +1940,7 @@ clCreateFromGLTextureAMD(
 
             // Now get CL format from GL format and bytes per pixel
             int iBytesPerPixel = 0;
-            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel)) {
+            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
                 *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
                 LogWarning("\"texture\" format does not map to an appropriate CL image format");
                 return static_cast<cl_mem>(0);
@@ -2053,7 +2054,7 @@ clCreateFromGLRenderbufferAMD(
 
         // Now get CL format from GL format and bytes per pixel
         int iBytesPerPixel = 0;
-        if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel)) {
+        if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
             *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
             LogWarning("\"renderbuffer\" format does not map to an appropriate CL image format");
             return (cl_mem) 0;
