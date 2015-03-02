@@ -465,7 +465,8 @@ public:
         bool isValid() const;
 
         //! Returns true if this format is supported by runtime, false otherwise
-        bool isSupported(const Context& context, cl_mem_object_type image_type=0) const;
+        bool isSupported(const Context& context,
+            cl_mem_object_type image_type = 0, cl_mem_flags flags = 0) const;
 
         //! Compare 2 image formats.
         bool operator == (const Format& rhs) const {

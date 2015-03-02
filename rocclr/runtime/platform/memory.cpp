@@ -1029,7 +1029,9 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
     }
 
     if (supportDepthStencil) {
-        numFormats += sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format);
+        if (flags & CL_MEM_READ_ONLY) {
+            numFormats += sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format);
+        }
     }
 
     return numFormats;
@@ -1058,7 +1060,8 @@ Image::getSupportedFormats(
         if (devices[i]->settings().supportDepthsRGB_) {
             supportDepthsRGB = true;
         }
-        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages)) {
+        if (devices[i]->settings().checkExtension(ClKhrGLDepthImages) &&
+            (context.info().flags_ & Context::GLDeviceKhr)) {
             supportDepthStencil = true;
         }
     }
@@ -1113,37 +1116,34 @@ Image::getSupportedFormats(
     }
 
     if (supportDepthStencil) {
-        for (uint i = 0; i < sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format); i++) {
-            if (numFormats == num_entries) {
-                break;
+        if (flags & CL_MEM_READ_ONLY) {
+            for (uint i = 0; i < sizeof(supportedDepthStencilFormats) / sizeof(cl_image_format); i++) {
+                if (numFormats == num_entries) {
+                    break;
+                }
+                *format++ = amd::Image::supportedDepthStencilFormats[i];
+                numFormats++;
             }
-            *format++ = amd::Image::supportedDepthStencilFormats[i];
         }
     }
     return numFormats;
 }
 
 bool
-Image::Format::isSupported(const Context& context, cl_mem_object_type image_type) const
+Image::Format::isSupported(const Context& context,
+     cl_mem_object_type image_type, cl_mem_flags flags) const
 {
-    uint numFormats = numSupportedFormats(context, image_type) ;
+    uint numFormats = numSupportedFormats(context, image_type, flags) ;
 
-    cl_image_format *image_formats = new cl_image_format[numFormats];
+    std::vector<cl_image_format> image_formats(numFormats);
 
-    if (image_formats == NULL) {
-        return false;
-    }
-
-    getSupportedFormats(context, image_type, numFormats, image_formats) ;
+    getSupportedFormats(context, image_type, numFormats, image_formats.data(), flags);
 
     for (uint i = 0; i < numFormats; i++) {
         if (*this == image_formats[i]) {
-            delete image_formats;
             return true;
         }
     }
-
-    delete image_formats;
 
     return false;
 }
