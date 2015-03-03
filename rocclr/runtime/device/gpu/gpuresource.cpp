@@ -1001,12 +1001,12 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         hwState_[8] = GetHSAILImageFormatType(cal()->format_);
         hwState_[9] = GetHSAILImageOrderType(cal()->channelOrder_, cal()->format_);
         hwState_[10] = static_cast<uint32_t>(cal()->width_);
-        // Workaround for depth view, change tileIndex to 0 for depth view
+        // Workaround for depth view, change tileIndex to the parent for depth view
         if ((memoryType() == ImageView) &&
             (viewChannelOrder == GSL_CHANNEL_ORDER_REPLICATE_R)) {
             if ((hwState_[3] & 0x1f00000) == 0xe00000) {
-                hwState_[3] = hwState_[3] & 0xfe0fffff ;
-           }
+                hwState_[3] = (hwState_[3] & 0xfe0fffff) | viewOwner_->hwState_[3];
+            }
         }
         hwState_[11] = 0;   // one extra reserved field in the argument
     }
