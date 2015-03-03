@@ -1005,7 +1005,8 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         if ((memoryType() == ImageView) &&
             (viewChannelOrder == GSL_CHANNEL_ORDER_REPLICATE_R)) {
             if ((hwState_[3] & 0x1f00000) == 0xe00000) {
-                hwState_[3] = (hwState_[3] & 0xfe0fffff) | viewOwner_->hwState_[3];
+                hwState_[3] = (hwState_[3] & 0xfe0fffff) |
+                    (viewOwner_->hwState_[3] & 0x1f00000);
             }
         }
         hwState_[11] = 0;   // one extra reserved field in the argument
