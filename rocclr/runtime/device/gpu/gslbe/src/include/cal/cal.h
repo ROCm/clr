@@ -234,7 +234,7 @@ typedef struct CALdeviceattribsRec {
     CALuint    counterFreq;                         /**< Ref clock counter frequency */
     double     nanoSecondsPerTick;                  /**< Nano seconds per GPU tick */
     bool       longIdleDetect;                      /**< Whether LongIdleDetect enabled */
-    bool       priSupport;                          /**< IOMMUv2 ATS/PRI support */
+    bool       svmAtomics;                          /**< check if svm atomics support */    
     CALuint64  vaStart;                             /**< VA start address */
     CALuint64  vaEnd;                               /**< VA end address */
     bool       isWorkstation;                       /**< Whether Device is a Workstation/Server part */

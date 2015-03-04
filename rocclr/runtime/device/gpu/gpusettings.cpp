@@ -419,7 +419,7 @@ Settings::create(
 
     svmFineGrainSystem_ = calAttr.isSVMFineGrainSystem;
 
-    svmAtomics_ = (calAttr.priSupport || calAttr.isSVMFineGrainSystem) ? true : false;
+    svmAtomics_ = (calAttr.svmAtomics || calAttr.isSVMFineGrainSystem) ? true : false;
 
     // Enable some platform extensions
     enableExtension(ClAmdDeviceAttributeQuery);
