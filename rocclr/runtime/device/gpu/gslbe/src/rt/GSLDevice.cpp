@@ -150,7 +150,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.counterFreq = cs->getCounterFreq();
     m_attribs.nanoSecondsPerTick = 1000000000.0 / cs->getCounterFreq();
     m_attribs.longIdleDetect = cs->getLongIdleDetect();
-    m_attribs.priSupport = m_adp->pAsicInfo->priSupport;
+    m_attribs.svmAtomics = m_adp->pAsicInfo->svmAtomics;
 
     m_attribs.vaStart = static_cast<CALuint64>(m_adp->pAsicInfo->vaStart);
     m_attribs.vaEnd   = static_cast<CALuint64>(m_adp->pAsicInfo->vaEnd);
