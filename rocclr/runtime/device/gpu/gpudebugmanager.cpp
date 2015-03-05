@@ -15,6 +15,7 @@
 
 #include "device/device.hpp"
 #include "device/gpu/gpumemory.hpp"
+#include "device/gpu/gputrap.hpp"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -124,8 +125,6 @@ GpuDebugManager::mapKernelCode(void* aqlCodeInfo) const
 cl_int
 GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorage)
 {
-    //! @todo: obtain the global mutex of HW debug to make sure only one debugger process exist
-
     if (!device()->settings().enableHwDebug_) {
         LogError("debugmanager: Register debugger error - HW DEBUG is not enable");
         return CL_DEBUGGER_REGISTER_FAILURE_AMD;
@@ -135,10 +134,16 @@ GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorag
     if (!isRegistered()) {
         debugMessages_ = messageStorage;
         if (!device()->gslCtx()->registerHwDebugger(debugMessages_)) {
+            LogError("debugmanager: Register debugger failed");
             return CL_OUT_OF_RESOURCES;
         }
 
         isRegistered_ = true;
+
+        if (CL_SUCCESS != createRuntimeTrapHandler()) {
+            LogError("debugmanager: Create runtime trap handler failed");
+            return CL_OUT_OF_RESOURCES;
+        }
     }
 
     context_ = context;
@@ -150,8 +155,6 @@ void
 GpuDebugManager::unregisterDebugger()
 {
     if (isRegistered()) {
-        //! @todo: release the global mutex of HW debug
-
         // reset the debugger registration flag
         isRegistered_ = false;
         context_ = NULL;
@@ -342,5 +345,56 @@ GpuDebugManager::setGlobalMemory(
     globalMem->unmap(NULL);
 }
 
+cl_int
+GpuDebugManager::createRuntimeTrapHandler()
+{
+    uint32_t codeSize = sizeof(RuntimeTrapCode);
+    uint32_t numCodes = sizeof(RuntimeTrapCode) / sizeof(RuntimeTrapCode[0]);
+
+    // Handle TMA corruption hw bug workaround -
+    //   The trap handler buffer has extra 256 bytes allocated, the TMA address
+    //   is stored in the first two DWORDs and the actual trap handler code
+    //   is stored starting at the location of 256 bytes (TbaStartOffset).
+    //
+    // allocate memory for the runtime trap handler (TBA) + TMA address
+    uint32_t allocSize = codeSize + TbaStartOffset;
+
+    Memory* rtTBA = new Memory(*device(), allocSize);
+    runtimeTBA_ = rtTBA;
+
+    if ((rtTBA == NULL) || !rtTBA->create(Resource::RemoteUSWC)) {
+        return CL_OUT_OF_RESOURCES;
+    }
+    address tbaAddress  = reinterpret_cast<address>(rtTBA->map(NULL));
+
+    // allocate buffer for the runtime trap handler buffer (TMA)
+    uint32_t tmaSize = 0x100;
+    Memory* rtTMA = new Memory(*device(), tmaSize);
+    runtimeTMA_ = rtTMA;
+
+    if ((rtTMA == NULL) || !rtTMA->create(Resource::RemoteUSWC)) {
+        return CL_OUT_OF_RESOURCES;
+    }
+
+    uint64_t rtTmaAddress = rtTMA->vmAddress();
+    if ((rtTBA->vmAddress() & 0xFF) != 0 || (rtTmaAddress & 0xFF) != 0) {
+        LogError("debugmanager: Trap handler/buffer is not 256-byte aligned");
+        return CL_INVALID_VALUE;
+    }
+
+    // store the TMA address at the beginning of trap handler buffer
+    uint64_t* tbaStorage = reinterpret_cast<uint64_t*>(tbaAddress);
+    tbaStorage[0] = rtTmaAddress;
+
+    // save the trap handler code
+    uint32_t* trapHandlerPtr = (uint32_t*)(tbaAddress + TbaStartOffset);
+    for (uint32_t i = 0; i < numCodes; i++) {
+        trapHandlerPtr[i] = RuntimeTrapCode[i];
+    }
+
+    rtTBA->unmap(NULL);
+
+    return CL_SUCCESS;
+}
 
 }  // namespace gpu

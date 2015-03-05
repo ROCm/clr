@@ -102,6 +102,8 @@ private:
     //!  Setup trap handler info for kernel execution
     void setupTrapInformation(DebugToolInfo* toolInfo);
 
+    //!  Create runtime trap handler
+    cl_int createRuntimeTrapHandler();
 
 protected:
 
@@ -123,9 +125,6 @@ private:
     void*                                 oclEventHandle_;     //!< event handler
     const hsa_kernel_dispatch_packet_t*   aqlPacket_;          //!< AQL packet
 };
-
-
-
 
 }  // namespace gpu
 

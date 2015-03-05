@@ -41,6 +41,8 @@ HwDebugManager::HwDebugManager(amd::Device* device)
     , scratchRingAddr_(NULL)
     , scratchRingSize_(0)
     , isRegistered_(false)
+    , runtimeTBA_(NULL)
+    , runtimeTMA_(NULL)
 {
     memset(&debugInfo_, 0, sizeof(debugInfo_));
 
@@ -51,9 +53,10 @@ HwDebugManager::HwDebugManager(amd::Device* device)
 
 HwDebugManager::~HwDebugManager()
 {
-    if (NULL != paramMemory_) {
-        delete[] paramMemory_;
-    }
+    delete[] paramMemory_;
+
+    delete runtimeTMA_;
+    delete runtimeTBA_;
 }
 
 //!  Setup the call back function pointer
