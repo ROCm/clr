@@ -307,6 +307,11 @@ Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags)
 
         for (const auto& dev : svmAllocDevice_) {
             if (dev->type() == CL_DEVICE_TYPE_GPU) {
+                //check if the device support svm platform atomics,
+                //skipped allocation for platform atomics if not supported by this device
+                if ((flags & CL_MEM_SVM_ATOMICS) && !(dev->info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS)) {
+                    continue;
+                }
                 svmPtrAlloced = dev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
                 if (svmPtrAlloced == NULL) {
                     return NULL;
