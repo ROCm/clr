@@ -511,7 +511,7 @@ private:
         amd::Event* enqueueEvent            //!< Event provided in the enqueue kernel command
         );
 
-    void assignTrapHandler(
+    void assignDebugTrapHandler(
         const DebugToolInfo& dbgSetting,  //!< debug settings
         HwDbgKernelInfo& kernelInfo         //!< kernel info for the dispatch
         );

@@ -3530,9 +3530,9 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
         // Execute the pre-dispatch call back function
         dbgManager->executePreDispatchCallBack(reinterpret_cast<void*>(aqlPkt), &dbgSetting);
 
-        // assign the TMA and TBA for kernel dispatch
+        // assign the debug TMA and TBA for kernel dispatch
         if (NULL != dbgSetting.trapHandler_ && NULL != dbgSetting.trapBuffer_) {
-            assignTrapHandler(dbgSetting, kernelInfo);
+            assignDebugTrapHandler(dbgSetting, kernelInfo);
         }
 
         kernelInfo.trapPresent = (kernelInfo.trapHandler) ? true : false;
@@ -3559,41 +3559,47 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
 }
 
 void
-VirtualGPU::assignTrapHandler(const DebugToolInfo& dbgSetting,
-                              HwDbgKernelInfo& kernelInfo)
+VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
+                                   HwDbgKernelInfo& kernelInfo)
 {
+    // setup the runtime trap handler code and trap buffer to be assigned before kernel dispatching
+    //
+    Memory * rtTrapHandlerMem = static_cast<Memory*>(dev().hwDebugMgr()->runtimeTBA());
+    Memory * rtTrapBufferMem = static_cast<Memory*>(dev().hwDebugMgr()->runtimeTMA());
+
+    kernelInfo.trapHandler = reinterpret_cast<void *>(rtTrapHandlerMem->vmAddress() + TbaStartOffset);
+    // With the TMA corruption hw bug workaround, the trap handler buffer can be set to zero.
+    // However, by setting the runtime trap buffer (TMA) correct, the runtime trap hander
+    // without the workaround can still function correctly.
+    kernelInfo.trapHandlerBuffer = reinterpret_cast<void *>(rtTrapBufferMem->vmAddress());
+
+    address rtTrapBufferAddress = static_cast<address>(rtTrapBufferMem->map(this));
 
     Memory * trapHandlerMem = dev().getGpuMemory(dbgSetting.trapHandler_);
     Memory * trapBufferMem = dev().getGpuMemory(dbgSetting.trapBuffer_);
 
-    addVmMemory(trapHandlerMem);
-    addVmMemory(trapBufferMem);
-
-    // Handle TMA corruption hw bug workaround -
-    //   The trap handler buffer has extra 256 bytes allocated, the TMA address
-    //   is stored in the first two DWORDs and the actual trap handler code
-    //   is stored starting at the location of 256 bytes.
-    //
-    //   - kernelInfo.trapHandler points directly to the trap handler code
-    //   - kernelInfo.trapHandlerBuffer points directly to the trap buffer (TMA)
-    //
-    kernelInfo.trapHandler = reinterpret_cast<void *>(trapHandlerMem->vmAddress() + TbaStartOffset);
-    kernelInfo.trapHandlerBuffer = reinterpret_cast<void *>(trapBufferMem->vmAddress());
-
     // Address of the trap handler code/buffer should be 256-byte aligned
-    uint64_t tmaAddress = reinterpret_cast<uint64_t>(kernelInfo.trapHandlerBuffer);
-    if ((reinterpret_cast<uint64_t>(kernelInfo.trapHandler) & 0xFF) != 0
-           || (tmaAddress & 0xFF) != 0) {
+    uint64_t tbaAddress = trapHandlerMem->vmAddress();
+    uint64_t tmaAddress = trapBufferMem->vmAddress();
+    if ((tbaAddress & 0xFF) != 0 || (tmaAddress & 0xFF) != 0) {
         assert(false && "Trap handler/buffer is not 256-byte aligned");
     }
 
-    // map the trap handler buffer address for host access, and store the trap
-    // buffer address at the beginning of the allocated buffer
-    address trapHandlerAddress = static_cast<address>(trapHandlerMem->map(NULL,0));
-    uint32_t * tmaStorage = reinterpret_cast<uint32_t *>(trapHandlerAddress);
-    tmaStorage[0] = tmaAddress & 0xFFFFFFFF;
-    tmaStorage[1] = (tmaAddress >> 32) & 0xFFFFFFFF;
-    trapHandlerMem->unmap(NULL);
+    // The addresses of the debug trap handler code (TBA) and buffer (TMA) are
+    // stored in the runtime trap handler buffer with offset location of 0x18-19
+    // and 0x20-21, respectively.
+    uint64_t * rtTmaPtr = reinterpret_cast<uint64_t *>(rtTrapBufferAddress + 0x18);
+    rtTmaPtr[0] = tbaAddress;
+    rtTmaPtr[1] = tmaAddress;
+
+    rtTrapBufferMem->unmap(NULL);
+
+    // Add GSL handle to the memory list for VidMM
+    addVmMemory(trapHandlerMem);
+    addVmMemory(trapBufferMem);
+    addVmMemory(rtTrapHandlerMem);
+    addVmMemory(rtTrapBufferMem);
+
 }
 
 } // namespace gpu

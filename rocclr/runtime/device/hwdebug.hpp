@@ -128,6 +128,12 @@ public:
     //!  Retrieve the post-dispatch callback function arguments
     void* postDispatchCallBackArgs() const { return postDispatchCallBackArgs_; }
 
+    //!  Retrieve the memory pointer of the runtime trap handler code
+    device::Memory* runtimeTBA() const { return runtimeTBA_; }
+
+    //!  Retrieve the memory pointer of the runtime trap handler buffer
+    device::Memory* runtimeTMA() const { return runtimeTMA_; }
+
     //!  Set exception policy
     void setExceptionPolicy(void* policy);
 
@@ -174,7 +180,6 @@ public:
 
     //!  Unregister the debugger
     virtual void unregisterDebugger() = 0;
-
 
     //!  Send the wavefront control cmmand
     virtual void wavefrontControl(uint32_t waveAction,
@@ -248,6 +253,11 @@ protected:
     cl_dbg_exception_policy_amd     excpPolicy_;         //!< exception policy
     cl_dbg_kernel_exec_mode_amd     execMode_;           //!< kernel execution mode
     RuntimeTrapInfo                 rtTrapHandlerInfo_;  //!< Runtime trap information
+
+    //!  Runtime Trap handler pointer (TBA) & its buffer (TMA)
+    device::Memory*                 runtimeTBA_;         //! runtime trap handler pointer
+    device::Memory*                 runtimeTMA_;         //! runtime trap handler buffer
+
 };
 
 
