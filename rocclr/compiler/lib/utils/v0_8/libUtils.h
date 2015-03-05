@@ -178,7 +178,7 @@ inline bool isHSAILTarget(const aclTargetInfo& target)
 
 enum scId {
   SC_AMDIL = 0,
-  SC_HSAIL = 1,
+  SC_HSAIL = 0,
   SC_LAST,
 };
 

@@ -154,11 +154,11 @@ LOADER_FUNCS_ERROR(AMDILOpt, amdcl::GPUOptimizer);
 
 #if defined(WITH_TARGET_HSAIL)
 LOADER_FUNCS(HSAILAsm, amdcl::HSAIL);
-LOADER_FUNCS(HSAILFE, amdcl::OCLFrontend);
+LOADER_FUNCS(HSAILFE, amdcl::ClangOCLFrontend);
 LOADER_FUNCS(HSAILOpt, amdcl::GPUOptimizer);
 #else
 LOADER_FUNCS_ERROR(HSAILAsm, amdcl::HSAIL);
-LOADER_FUNCS_ERROR(HSAILFE, amdcl::OCLFrontend);
+LOADER_FUNCS_ERROR(HSAILFE, amdcl::ClangOCLFrontend);
 LOADER_FUNCS_ERROR(HSAILOpt, amdcl::GPUOptimizer);
 #endif
 
@@ -170,8 +170,11 @@ LOADER_FUNCS_ERROR(X86Asm, amdcl::X86);
 LOADER_FUNCS_ERROR(X86Opt, amdcl::CPUOptimizer);
 #endif
 
+#if defined(LEGACY_COMPLIB)
 LOADER_FUNCS(OCL, amdcl::OCLFrontend);
-LOADER_FUNCS(OCLClang, amdcl::ClangOCLFrontend);
+#else
+LOADER_FUNCS(OCL, amdcl::ClangOCLFrontend);
+#endif
 LOADER_FUNCS(Link, amdcl::OCLLinker);
 LOADER_FUNCS(Codegen, amdcl::CLCodeGen);
 LOADER_FUNCS(SPIR, amdcl::SPIR);

@@ -61,7 +61,8 @@ Device::init()
     const char *library = getenv("COMPILER_LIBRARY");
     aclCompilerOptions opts = {
         sizeof(aclCompilerOptions_0_8),
-        library,
+        library ? library : LINUX_ONLY("lib") "amdocl12cl" \
+            LP64_SWITCH(LINUX_SWITCH("32",""),"64") LINUX_SWITCH(".so",".dll"),
         NULL,
         NULL,
         NULL,
@@ -71,7 +72,12 @@ Device::init()
         &::malloc,
         &::free
     };
-    compiler_ = aclCompilerInit(NULL, NULL);
+    acl_error   error;
+    compiler_ = aclCompilerInit(&opts, &error);
+    if (error != ACL_SUCCESS) {
+         LogError("Error initializing the compiler");
+         return false;
+    }
 
     device::Info info;
     ::memset(&info, '\0', sizeof(info));

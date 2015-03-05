@@ -6,6 +6,9 @@ ifeq ($(BUILD_HSA_TARGET),yes)
 override BUILD_CPU_DEVICE = no
 override BUILD_GPU_DEVICE = no
 endif
+ifneq ($(BUILD_LEGACY_COMPLIB),yes)
+override BUILD_GPU_DEVICE = no
+endif
 endif
 
 ifneq ($(BUILD_GPU_DEVICE),no)
