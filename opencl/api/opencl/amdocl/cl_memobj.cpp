@@ -158,7 +158,21 @@ validateImageDescriptor(
         return false;
     }
 
-    if ((desc->num_mip_levels != 0) || (desc->num_samples != 0)) {
+    // Check if any device supports mipmaps
+    bool mipMapSupport = false;
+    for (auto& dev : devices) {
+        if (dev->settings().checkExtension(ClKhrMipMapImage)) {
+            mipMapSupport = true;
+            break;
+        }
+    }
+
+    // Check if any device can accept mipmaps
+    if ((desc->num_mip_levels != 0) && (!mipMapSupport || (hostPtr != NULL))) {
+        return false;
+    }
+
+    if (desc->num_samples != 0) {
         return false;
     }
 
@@ -314,11 +328,10 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (
     }
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
     bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if (((*it)->info().maxMemAllocSize_ >= size) ||
+    for (auto& dev : devices) {
+        if ((dev->info().maxMemAllocSize_ >= size) ||
             ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) &&
-             (*it)->settings().largeHostMemAlloc_)) {
+             dev->settings().largeHostMemAlloc_)) {
             sizePass = true;
             break;
         }
@@ -461,9 +474,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateSubBuffer, (
     bool alignmentPass = false;
     const std::vector<amd::Device*>& devices =
         buffer.getContext().devices();
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        cl_uint deviceAlignmentBytes = (*it)->info().memBaseAddrAlign_>>3;
+    for (auto& dev : devices) {
+        cl_uint deviceAlignmentBytes = dev->info().memBaseAddrAlign_>>3;
         if (region->origin ==
             amd::alignDown(region->origin, deviceAlignmentBytes)) {
             alignmentPass = true;
@@ -1053,9 +1065,9 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadBufferRect, (
     cl_command_queue    command_queue,
     cl_mem              buffer,
     cl_bool             blocking_read,
-    const size_t        buffer_origin[3],
-    const size_t        host_origin[3],
-    const size_t        region[3],
+    const size_t*       buffer_origin,
+    const size_t*       host_origin,
+    const size_t*       region,
     size_t              buffer_row_pitch,
     size_t              buffer_slice_pitch,
     size_t              host_row_pitch,
@@ -1255,9 +1267,9 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferRect, (
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,
-    const size_t buffer_origin[3],
-    const size_t host_origin[3],
-    const size_t region[3],
+    const size_t* buffer_origin,
+    const size_t* host_origin,
+    const size_t* region,
     size_t buffer_row_pitch,
     size_t buffer_slice_pitch,
     size_t host_row_pitch,
@@ -1444,9 +1456,9 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferRect, (
     cl_command_queue command_queue,
     cl_mem src_buffer,
     cl_mem dst_buffer,
-    const size_t src_origin[3],
-    const size_t dst_origin[3],
-    const size_t region[3],
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
     size_t src_row_pitch,
     size_t src_slice_pitch,
     size_t dst_row_pitch,
@@ -1775,12 +1787,11 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage2D, (
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
     bool supportPass = false;
     bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if((*it)->info().imageSupport_) {
+    for (auto& dev : devices) {
+        if (dev->info().imageSupport_) {
             supportPass = true;
-            if((*it)->info().image2DMaxWidth_ >= image_width
-                && (*it)->info().image2DMaxHeight_ >= image_height) {
+            if (dev->info().image2DMaxWidth_ >= image_width
+                && dev->info().image2DMaxHeight_ >= image_height) {
                 sizePass = true;
                 break;
             }
@@ -1985,13 +1996,12 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage3D, (
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
     bool supportPass = false;
     bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if((*it)->info().imageSupport_) {
+    for (auto& dev : devices) {
+        if (dev->info().imageSupport_) {
             supportPass = true;
-            if((*it)->info().image3DMaxWidth_ >= image_width
-                && (*it)->info().image3DMaxHeight_ >= image_height
-                && (*it)->info().image3DMaxDepth_ >= image_depth) {
+            if ((dev->info().image3DMaxWidth_ >= image_width) &&
+                (dev->info().image3DMaxHeight_ >= image_height) &&
+                (dev->info().image3DMaxDepth_ >= image_depth)) {
                 sizePass = true;
                 break;
             }
@@ -2276,8 +2286,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
     cl_command_queue command_queue,
     cl_mem image,
     cl_bool blocking_read,
-    const size_t origin[3],
-    const size_t region[3],
+    const size_t* origin,
+    const size_t* region,
     size_t row_pitch,
     size_t slice_pitch,
     void *ptr,
@@ -2459,8 +2469,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage, (
     cl_command_queue command_queue,
     cl_mem image,
     cl_bool blocking_write,
-    const size_t origin[3],
-    const size_t region[3],
+    const size_t* origin,
+    const size_t* region,
     size_t input_row_pitch,
     size_t input_slice_pitch,
     const void *ptr,
@@ -2626,9 +2636,9 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyImage, (
     cl_command_queue command_queue,
     cl_mem src_image,
     cl_mem dst_image,
-    const size_t src_origin[3],
-    const size_t dst_origin[3],
-    const size_t region[3],
+    const size_t* src_origin,
+    const size_t* dst_origin,
+    const size_t* region,
     cl_uint num_events_in_wait_list,
     const cl_event *event_wait_list,
     cl_event *event))
@@ -3922,7 +3932,7 @@ RUNTIME_ENTRY(cl_int, clGetImageInfo, (
             buffer, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_NUM_MIP_LEVELS: {
-        cl_uint numMipLevels = 0;
+        cl_uint numMipLevels = image->getMipLevels();
         return amd::clGetInfo(
             numMipLevels, param_value_size, param_value, param_value_size_ret);
     }
@@ -4130,11 +4140,9 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
     }
 
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    std::vector<amd::Device*>::const_iterator it;
-
     bool supportPass = false;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if ((*it)->info().imageSupport_) {
+    for (auto& dev : devices) {
+        if (dev->info().imageSupport_) {
             supportPass = true;
             break;
         }
@@ -4163,6 +4171,18 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
         return (cl_mem) 0;
     }
 
+    // Validate mip level
+    if (image_desc->num_mip_levels != 0) {
+        size_t maxDim = std::max(image_desc->image_width, image_desc->image_height);
+        maxDim = std::max(maxDim, image_desc->image_depth);
+        uint mipLevels;
+        for (mipLevels = 0; maxDim > 0; maxDim >>= 1, mipLevels++);
+        if (mipLevels < image_desc->num_mip_levels) {
+            *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+            LogWarning("Invalid mip level");
+            return (cl_mem) 0;
+        }
+    }
     amd::Image* image = NULL;
 
     switch (image_desc->image_type) {
@@ -4176,7 +4196,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
                 1,
                 1,
                 imageRowPitch,
-                0);
+                0,
+                image_desc->num_mip_levels);
             break;
         case CL_MEM_OBJECT_IMAGE2D:
             if (image_desc->mem_object != NULL) {
@@ -4229,7 +4250,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
                     image_desc->image_height,
                     1,
                     imageRowPitch,
-                    0);
+                    0,
+                    image_desc->num_mip_levels);
             }
             break;
         case CL_MEM_OBJECT_IMAGE3D:
@@ -4242,7 +4264,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
                 image_desc->image_height,
                 image_desc->image_depth,
                 imageRowPitch,
-                imageSlicePitch);
+                imageSlicePitch,
+                image_desc->num_mip_levels);
             break;
         case CL_MEM_OBJECT_IMAGE1D_BUFFER:
             {
@@ -4284,7 +4307,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
                 image_desc->image_array_size,
                 1,
                 imageRowPitch,
-                imageSlicePitch);
+                imageSlicePitch,
+                image_desc->num_mip_levels);
             break;
         case CL_MEM_OBJECT_IMAGE2D_ARRAY:
             image = new (amdContext) amd::Image(
@@ -4296,7 +4320,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
                 image_desc->image_height,
                 image_desc->image_array_size,
                 imageRowPitch,
-                imageSlicePitch);
+                imageSlicePitch,
+                image_desc->num_mip_levels);
             break;
         default: {
             *not_null(errcode_ret) = CL_INVALID_IMAGE_DESCRIPTOR;
@@ -4867,13 +4892,10 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBufferFromImageAMD, (
     }
 
     amd::Context& amdContext = *as_amd(context);
-
     const std::vector<amd::Device*>& devices = amdContext.devices();
-    std::vector<amd::Device*>::const_iterator it;
-
     bool supportPass = false;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if ((*it)->info().bufferFromImageSupport_) {
+    for (auto&  dev : devices) {
+        if (dev->info().bufferFromImageSupport_) {
             supportPass = true;
             break;
         }
