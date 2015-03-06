@@ -386,7 +386,12 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     if (dev().settings().remoteAlloc_ && !heap &&
         ((memoryType() == Local) ||
          (memoryType() == Persistent))) {
-        cal_.type_ = RemoteUSWC;
+        if (dev().settings().apuSystem_ && dev().settings().viPlus_) {
+            cal_.type_ = Remote;
+        }
+        else {
+            cal_.type_ = RemoteUSWC;
+        }
     }
 
     if (dev().settings().disablePersistent_ && (memoryType() == Persistent)) {

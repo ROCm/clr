@@ -547,6 +547,7 @@ DmaBlitManager::copyBuffer(
 {
     if (setup_.disableCopyBuffer_ ||
         (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(srcMemory).isCacheable() &&
+         !dev().settings().apuSystem_ &&
          gpuMem(dstMemory).isHostMemDirectAccess())) {
         return HostBlitManager::copyBuffer(
             srcMemory, dstMemory, srcOrigin, dstOrigin, size);
