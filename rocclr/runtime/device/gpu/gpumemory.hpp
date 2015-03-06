@@ -82,7 +82,8 @@ public:
         size_t          depth,          //!< Allocated memory depth
         cmSurfFmt       format,         //!< Memory format
         gslChannelOrder chOrder,        //!< Channel order
-        cl_mem_object_type imageType    //!< CL image type
+        cl_mem_object_type imageType,   //!< CL image type
+        uint            mipLevels       //!< The number of mip levels
         );
 
     //! Constructor memory for images (without global heap allocaton)
@@ -94,7 +95,8 @@ public:
         size_t          depth,          //!< Allocated memory depth
         cmSurfFmt       format,         //!< Memory format
         gslChannelOrder chOrder,        //!< Channel order
-        cl_mem_object_type imageType    //!< CL image type
+        cl_mem_object_type imageType,   //!< CL image type
+        uint            mipLevels       //!< The number of mip levels
         );
 
     //! Default destructor
@@ -276,9 +278,10 @@ public:
         size_t          depth,      //!< Allocated memory depth
         cmSurfFmt       format,     //!< Memory format
         gslChannelOrder chOrder,    //!< Channel order
-        cl_mem_object_type imageType    //!< CL image type
+        cl_mem_object_type imageType,   //!< CL image type
+        uint            mipLevels   //!< The number of mip levels
         )
-        : gpu::Memory(gpuDev, owner, width, height, depth, format, chOrder, imageType)
+        : gpu::Memory(gpuDev, owner, width, height, depth, format, chOrder, imageType, mipLevels)
         {}
 
     //! Image constructor
@@ -290,9 +293,10 @@ public:
         size_t          depth,      //!< Allocated memory depth
         cmSurfFmt       format,     //!< Memory format
         gslChannelOrder chOrder,    //!< Channel order
-        cl_mem_object_type imageType    //!< CL image type
+        cl_mem_object_type imageType,   //!< CL image type
+        uint            mipLevels   //!< The number of mip levels
         )
-        : gpu::Memory(gpuDev, size, width, height, depth, format, chOrder, imageType)
+        : gpu::Memory(gpuDev, size, width, height, depth, format, chOrder, imageType, mipLevels)
         {}
 
     //! Allocate memory for API-level maps

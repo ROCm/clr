@@ -77,6 +77,7 @@ Resource::Resource(
     cal_.width_     = width;
     cal_.height_    = 1;
     cal_.depth_     = 1;
+    cal_.mipLevels_ = 1;
     cal_.format_    = format;
     cal_.flags_     = 0;
     cal_.pitch_     = 0;
@@ -99,7 +100,8 @@ Resource::Resource(
     size_t          depth,
     cmSurfFmt       format,
     gslChannelOrder chOrder,
-    cl_mem_object_type  imageType)
+    cl_mem_object_type  imageType,
+    uint            mipLevels)
     : elementSize_(0)
     , gpuDevice_(gpuDev)
     , mapCount_(0)
@@ -121,6 +123,7 @@ Resource::Resource(
     cal_.width_     = width;
     cal_.height_    = height;
     cal_.depth_     = depth;
+    cal_.mipLevels_ = mipLevels;
     cal_.format_    = format;
     cal_.flags_     = 0;
     cal_.pitch_     = 0;
@@ -435,7 +438,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         desc.format         = cal()->format_;
         desc.channelOrder   = cal()->channelOrder_;
         desc.flags          = cal()->flags_;
-        desc.mipLevels      = 0;
+        desc.mipLevels      = cal()->mipLevels_;
         desc.systemMemory   = NULL;
 
         do {
@@ -2023,7 +2026,6 @@ GslResourceReference*
 ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
 {
     amd::ScopedLock l(&lockCacheOps_);
-    bool    found = false;
     GslResourceReference* ref = NULL;
     size_t  size = getResourceSize(desc);
 
@@ -2034,10 +2036,8 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
     }
 
     // Serach the right resource through the cache list
-    std::list<std::pair<Resource::CalResourceDesc*,
-        GslResourceReference*> >::const_iterator it;
-    for (it = resCache_.begin(); it != resCache_.end(); ++it) {
-        Resource::CalResourceDesc*  entry = it->first;
+    for (const auto& it: resCache_) {
+        Resource::CalResourceDesc*  entry = it.first;
         // Find if we can reuse this entry
         if ((entry->dimension_ == desc->dimension_) &&
             (entry->type_ == desc->type_) &&
@@ -2047,17 +2047,13 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
             (entry->channelOrder_ == desc->channelOrder_) &&
             (entry->format_ == desc->format_) &&
             (entry->flags_ == desc->flags_)) {
-            ref = it->second;
-            delete it->first;
-            found = true;
+            ref = it.second;
+            delete it.first;
+            // Remove the found etry from the cache
+            resCache_.remove(it);
+            cacheSize_ -= size;
             break;
         }
-    }
-
-    if (found) {
-        // Remove the found etry from the cache
-        resCache_.remove(*it);
-        cacheSize_ -= size;
     }
 
     return ref;

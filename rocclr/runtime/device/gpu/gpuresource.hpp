@@ -158,6 +158,7 @@ public:
         size_t      width_;         //!< CAL resource width
         size_t      height_;        //!< CAL resource height
         size_t      depth_;         //!< CAL resource depth
+        uint        mipLevels_;     //!< Number of mip levels 
         cmSurfFmt   format_;        //!< GSL resource format
         CALuint     flags_;         //!< CAL resource flags, used in creation
         size_t      pitch_;         //!< CAL resource pitch, valid if locked
@@ -194,7 +195,8 @@ public:
         size_t        depth,        //!< resource depth
         cmSurfFmt     format,       //!< resource format
         gslChannelOrder chOrder,    //!< resource channel order
-        cl_mem_object_type  imageType   //!< CL image type
+        cl_mem_object_type  imageType,  //!< CL image type
+        uint          mipLevels = 1 //!< Number of mip levels
         );
 
     //! Destructor of the resource

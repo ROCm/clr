@@ -780,6 +780,10 @@ CALGSLDevice::resAlloc(const CALresourceDesc* desc) const
 
     attribs.channelOrder = desc->channelOrder;
     attribs.type = desc->dimension;
+    if (desc->mipLevels > 1) {
+        attribs.levels = desc->mipLevels;
+        attribs.mipmap = true;
+    }
     switch (desc->dimension)
     {
         case GSL_MOA_BUFFER:
