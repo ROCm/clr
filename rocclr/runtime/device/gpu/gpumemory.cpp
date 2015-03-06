@@ -105,10 +105,11 @@ Memory::Memory(
     size_t          depth,
     cmSurfFmt       format,
     gslChannelOrder chOrder,
-    cl_mem_object_type  imageType
+    cl_mem_object_type  imageType,
+    uint            mipLevels
     )
     : device::Memory(owner)
-    , Resource(gpuDev, width, height, depth, format, chOrder, imageType)
+    , Resource(gpuDev, width, height, depth, format, chOrder, imageType, mipLevels)
     , hb_(NULL)
 {
     init();
@@ -126,10 +127,11 @@ Memory::Memory(
     size_t          depth,
     cmSurfFmt       format,
     gslChannelOrder chOrder,
-    cl_mem_object_type  imageType
+    cl_mem_object_type  imageType,
+    uint            mipLevels
     )
     : device::Memory(size)
-    , Resource(gpuDev, width, height, depth, format, chOrder, imageType)
+    , Resource(gpuDev, width, height, depth, format, chOrder, imageType, mipLevels)
     , hb_(NULL)
 {
     init();
@@ -602,7 +604,6 @@ Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags)
         // Update all available views, since we sync the parent
         if  ((owner()->subBuffers().size() != 0) &&
             (hasUpdates || !syncFlags.skipViews_)) {
-            std::list<amd::Memory*>::const_iterator  it;
             device::Memory::SyncFlags syncFlagsTmp;
 
             // Sync views from parent, so parent has to be skipped
@@ -619,14 +620,13 @@ Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags)
             }
 
             amd::ScopedLock lock(owner()->lockMemoryOps());
-            for (it = owner()->subBuffers().begin();
-                 it != owner()->subBuffers().end(); ++it) {
+            for (auto& sub : owner()->subBuffers()) {
                 //! \note Don't allow subbuffer's allocation in the worker thread.
                 //! It may cause a system lock, because possible resource
                 //! destruction, heap reallocation or subbuffer allocation
                 static const bool AllocSubBuffer = false;
                 device::Memory* devSub =
-                    (*it)->getDeviceMemory(dev(), AllocSubBuffer);
+                    sub->getDeviceMemory(dev(), AllocSubBuffer);
                 if (NULL != devSub) {
                     gpu::Memory* gpuSub = reinterpret_cast<gpu::Memory*>(devSub);
                     gpuSub->syncCacheFromHost(gpu, syncFlagsTmp);
@@ -728,7 +728,6 @@ Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags)
         // Update all available views, since we sync the parent
         if ((owner()->subBuffers().size() != 0) &&
             (hasUpdates || !syncFlags.skipViews_)) {
-            std::list<amd::Memory*>::const_iterator  it;
             device::Memory::SyncFlags syncFlagsTmp;
 
             // Sync views from parent, so parent has to be skipped
@@ -745,14 +744,13 @@ Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags)
             }
 
             amd::ScopedLock lock(owner()->lockMemoryOps());
-            for (it = owner()->subBuffers().begin();
-                 it != owner()->subBuffers().end(); ++it) {
+            for (auto& sub : owner()->subBuffers()) {
                 //! \note Don't allow subbuffer's allocation in the worker thread.
                 //! It may cause a system lock, because possible resource
                 //! destruction, heap reallocation or subbuffer allocation
                 static const bool AllocSubBuffer = false;
                 device::Memory* devSub =
-                    (*it)->getDeviceMemory(dev(), AllocSubBuffer);
+                    sub->getDeviceMemory(dev(), AllocSubBuffer);
                 if (NULL != devSub) {
                     gpu::Memory* gpuSub = reinterpret_cast<gpu::Memory*>(devSub);
                     gpuSub->syncHostFromCache(syncFlagsTmp);

@@ -276,13 +276,12 @@ Device::Engines::getRequested(uint engines, gslEngineDescriptor* desc) const
 Device::XferBuffers::~XferBuffers()
 {
     // Destroy temporary buffer for reads
-    for (std::list<Resource*>::const_iterator i = freeBuffers_.begin();
-        i != freeBuffers_.end(); ++i) {
+    for (const auto& buf : freeBuffers_) {
         // CPU optimization: unmap staging buffer just once
-        if (!(*i)->cal()->cardMemory_) {
-            (*i)->unmap(NULL);
+        if (!buf->cal()->cardMemory_) {
+            buf->unmap(NULL);
         }
-        delete (*i);
+        delete buf;
     }
     freeBuffers_.clear();
 }
@@ -1748,7 +1747,8 @@ Device::createImage(amd::Memory& owner, bool directAccess) const
         image.getDepth(),
         format.type_,
         format.channelOrder_,
-        image.getType());
+        image.getType(),
+        image.getMipLevels());
 
     // Create resource
     if (NULL != gpuImage) {
@@ -2001,7 +2001,8 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
         image.getDepth(),
         format.type_,
         format.channelOrder_,
-        image.getType());
+        image.getType(),
+        image.getMipLevels());
 
     // Create resource
     if (NULL != gpuImage) {
@@ -2223,13 +2224,11 @@ Device::removeVACache(const Memory* memory) const
         void*   end = reinterpret_cast<address>(start) + memory->owner()->getSize();
 
         // Find VA cache entry for the specified memory
-        std::list<VACacheEntry*>::const_iterator    it;
-        for (it = vaCacheList_->begin(); it != vaCacheList_->end(); ++it) {
-            VACacheEntry*   entry = *it;
+        for (const auto& entry : *vaCacheList_) {
             if (entry->startAddress_ == start) {
                 CondLog((entry->endAddress_ != end), "Incorrect VA range");
-                vaCacheList_->remove(entry);
                 delete entry;
+                vaCacheList_->remove(entry);
                 break;
             }
         }
@@ -2241,9 +2240,7 @@ Device::findMemoryFromVA(const void* ptr, size_t* offset) const
 {
     // VA cache access must be serialised
     amd::ScopedLock lk(*vaCacheAccess_);
-    std::list<VACacheEntry*>::const_iterator    it;
-    for (it = vaCacheList_->begin(); it != vaCacheList_->end(); ++it) {
-        VACacheEntry*   entry = *it;
+    for (const auto& entry : *vaCacheList_) {
         if ((entry->startAddress_ <= ptr) && (entry->endAddress_ > ptr)) {
             *offset = static_cast<size_t>(reinterpret_cast<const char*>(ptr) -
                 reinterpret_cast<char*>(entry->startAddress_));

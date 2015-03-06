@@ -490,10 +490,10 @@ public:
 
     struct Impl
     {
-        const amd::Coord3D  region_;
-        size_t              rp_;
-        size_t              sp_;
-        const Format        format_;
+        const amd::Coord3D  region_;    //!< Image size
+        size_t              rp_;        //!< Image row pitch
+        size_t              sp_;        //!< Image slice pitch
+        const Format        format_;    //!< Image format
         void*               reserved_;
         size_t              bp_;
 
@@ -505,6 +505,7 @@ public:
 private:
     Impl            impl_;      //!< Image object description
     size_t          dim_;       //!< Image dimension
+    uint            mipLevels_; //!< The number of mip levels
 
 protected:
     Image(
@@ -532,7 +533,8 @@ public:
         size_t height,
         size_t depth,
         size_t rowPitch,
-        size_t slicePitch);
+        size_t slicePitch,
+        uint   mipLevels = 1);
 
     Image(
         Buffer& buffer,
@@ -612,10 +614,13 @@ public:
     //! Returns image's slice pitch in bytes
     size_t getSlicePitch() const { return impl_.sp_; }
 
+    //! Returns image's slice pitch in bytes
+    uint getMipLevels() const { return mipLevels_; }
+
     //! Get the image covered region
     const Coord3D& getRegion() const { return impl_.region_; }
 
-    //! Sets the byte pitch obtained from HWL.
+    //! Sets the byte pitch obtained from HWL
     void setBytePitch(size_t bytePitch) { impl_.bp_ = bytePitch; }
 
     //! Creates and initializes device (cache) memory for all devices

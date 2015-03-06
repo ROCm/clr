@@ -550,9 +550,15 @@ Pipe::initDeviceMemory()
 
 Image::Image(
     const Format&   format,
-    Image&          parent) :
-        Memory(parent, 0, 0, parent.getWidth() * parent.getHeight() * parent.getDepth() * format.getElementSize()) ,
-        impl_(format, Coord3D(parent.getWidth() * parent.getImageFormat().getElementSize() / format.getElementSize(), parent.getHeight(), parent.getDepth()), parent.getRowPitch(), parent.getSlicePitch(), parent.getBytePitch())
+    Image&          parent)
+    : Memory(parent, 0, 0, parent.getWidth() * parent.getHeight() *
+            parent.getDepth() * format.getElementSize())
+    , impl_(format, Coord3D(parent.getWidth() *
+            parent.getImageFormat().getElementSize() /
+            format.getElementSize(), parent.getHeight(),
+            parent.getDepth()), parent.getRowPitch(),
+            parent.getSlicePitch(), parent.getBytePitch())
+    , mipLevels_(1)
 {
     initDimension();
 }
@@ -566,10 +572,11 @@ Image::Image(
     size_t height,
     size_t depth,
     size_t rowPitch,
-    size_t slicePitch) :
-        Memory(context, type, flags,
-               width * height * depth * format.getElementSize()) ,
-        impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
+    size_t slicePitch,
+    uint   mipLevels)
+    : Memory(context, type, flags, width * height * depth * format.getElementSize())
+    , impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
+    , mipLevels_(mipLevels)
 {
     initDimension();
 }
@@ -583,10 +590,10 @@ Image::Image(
     size_t height,
     size_t depth,
     size_t rowPitch,
-    size_t slicePitch) :
-        Memory(buffer, flags, 0,
-            buffer.getSize(), type) ,
-        impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
+    size_t slicePitch)
+    : Memory(buffer, flags, 0, buffer.getSize(), type)
+    , impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
+    , mipLevels_(1)
 {
     initDimension();
 }
@@ -600,17 +607,16 @@ Image::validateDimensions(
     size_t              depth,
     size_t              arraySize)
 {
-    std::vector<amd::Device*>::const_iterator it;
     bool sizePass = false;
     switch (type) {
         case CL_MEM_OBJECT_IMAGE3D:
             if ((width == 0) || (height == 0) || (depth < 1)) {
                 return false;
             }
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if (((*it)->info().image3DMaxWidth_ >= width) &&
-                    ((*it)->info().image3DMaxHeight_ >= height) &&
-                    ((*it)->info().image3DMaxDepth_ >= depth)) {
+            for (const auto& dev : devices) {
+                if ((dev->info().image3DMaxWidth_ >= width) &&
+                    (dev->info().image3DMaxHeight_ >= height) &&
+                    (dev->info().image3DMaxDepth_ >= depth)) {
                     return true;
                 }
             }
@@ -619,8 +625,8 @@ Image::validateDimensions(
             if (arraySize == 0) {
                 return false;
             }
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if ((*it)->info().imageMaxArraySize_ >= arraySize) {
+            for (const auto& dev : devices) {
+                if (dev->info().imageMaxArraySize_ >= arraySize) {
                     sizePass = true;
                     break;
                 }
@@ -633,9 +639,9 @@ Image::validateDimensions(
             if ((width == 0) || (height == 0)) {
                 return false;
             }   
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if (((*it)->info().image2DMaxHeight_ >= height) &&
-                    ((*it)->info().image2DMaxWidth_ >= width)) {
+            for (const auto dev : devices) {
+                if ((dev->info().image2DMaxHeight_ >= height) &&
+                    (dev->info().image2DMaxWidth_ >= width)) {
                     return true;
                 }
             }
@@ -645,8 +651,8 @@ Image::validateDimensions(
                 return false;
             }
 
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if ((*it)->info().imageMaxArraySize_ >= arraySize) {
+            for (const auto& dev : devices) {
+                if (dev->info().imageMaxArraySize_ >= arraySize) {
                     sizePass = true;
                     break;
                 }
@@ -659,8 +665,8 @@ Image::validateDimensions(
             if (width == 0) {
                 return false;
             }
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if ((*it)->info().image2DMaxWidth_ >= width) {
+            for (const auto& dev : devices) {
+                if (dev->info().image2DMaxWidth_ >= width) {
                     return true;
                 }
             }
@@ -669,8 +675,8 @@ Image::validateDimensions(
             if (width == 0) {
                 return false;
             }
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                if ((*it)->info().imageMaxBufferSize_ >= width) {
+            for (const auto& dev : devices) {
+                if (dev->info().imageMaxBufferSize_ >= width) {
                     return true;
                 }
             }
@@ -1488,7 +1494,7 @@ bool
 SvmBuffer::Contains(uintptr_t ptr)
 {
     ScopedLock lock(AllocatedLock_);
-    std::map<uintptr_t, uintptr_t>::iterator it = Allocated_.upper_bound(ptr);
+    auto it = Allocated_.upper_bound(ptr);
     if (it == Allocated_.begin()) {
         return false;
     }

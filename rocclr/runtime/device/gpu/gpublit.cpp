@@ -2826,7 +2826,8 @@ KernelBlitManager::createView(
         parent.cal()->depth_,
         format.type_,
         format.channelOrder_,
-        parent.cal()->imageType_);
+        parent.cal()->imageType_,
+        1);
 
     // Create resource
     if (NULL != gpuImage) {
