@@ -92,7 +92,9 @@ aclJITObjectImageDestroy
 aclJITObjectImageFinalize
 aclJITObjectImageSize
 aclJITObjectImageData
+#if defined(LEGACY_COMPLIB)
 aclJITObjectImageDisassembleKernel
+#endif
 aclJITObjectImageIterateSymbols
 aclJITObjectImageGetGlobalsSize
 #if defined(WITH_TARGET_HSAIL)

@@ -421,6 +421,7 @@ public:
   aclJITObjectImage image;
 };
 
+#if defined(LEGACY_COMPLIB)
 static bool
 disasSymbolsCallback(std::string symbol, const void* value, void* data)
 {
@@ -457,7 +458,7 @@ disasSymbolsCallbackCStr(const char* symbol, const void* value, void* data) {
   std::string symbolString(symbol);
   return disasSymbolsCallback(symbolString, value, data);
 }
-
+#endif
 
 bool
 Program::compileBinaryToISA(amd::option::Options* options)
