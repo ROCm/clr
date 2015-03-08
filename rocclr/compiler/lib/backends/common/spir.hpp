@@ -27,7 +27,7 @@ namespace amdcl
         : LLVMCompilerStage(cl, elf, log) {}
 
       virtual ~SPIR() {}
-      virtual llvm::Module* loadBitcode(std::string &spirBinary);
+      virtual llvm::Module* loadBitcode(std::string &spirBinary) override;
       virtual llvm::Module* loadSPIR(std::string &spirBinary);
       const void*
         toBinary(const void *text, size_t text_size, size_t *binary_size);

@@ -64,7 +64,9 @@ typedef int64_t ssize_t;
 #ifdef _WIN32
 # define SIZE_T_FMT "%Iu"
 # define PTR_FMT    "0x%p"
-# define snprintf sprintf_s
+# if !defined(snprintf)
+#  define snprintf sprintf_s
+# endif
 #else /*!_WIN32*/
 # define SIZE_T_FMT "%zu"
 # define PTR_FMT    "%p"
