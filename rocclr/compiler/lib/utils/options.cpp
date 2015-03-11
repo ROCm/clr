@@ -1270,6 +1270,8 @@ Options::Options() :
     WorkGroupSize[2] = -1;
     UseDefaultWGS = true;
     NumAvailGPRs = -1;
+
+    sourceFileName_.reserve(1024);
 }
 
 Options::~Options()
