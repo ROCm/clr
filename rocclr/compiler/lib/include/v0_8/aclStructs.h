@@ -209,6 +209,7 @@ typedef struct _acl_cl_loader_rec_0_8 {
   QueryInfo     getInfo;
   AddDbgArg     addDbg;
   RemoveDbgArg  removeDbg;
+  SetupLoaderObject setupLoaderObject;
 } aclCLLoader_0_8;
 
 //! Structure that holds the required functions

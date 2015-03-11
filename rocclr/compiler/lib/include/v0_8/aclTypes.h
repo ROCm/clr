@@ -66,6 +66,7 @@ typedef Compile_0_8        Compile;
 typedef Link_0_8           Link;
 typedef AddDbgArg_0_8      AddDbgArg;
 typedef RemoveDbgArg_0_8   RemoveDbgArg;
+typedef SetupLoaderObject_0_8 SetupLoaderObject;
 typedef CompLog_0_8        CompLog;
 typedef RetrieveType_0_8   RetrieveType;
 typedef SetType_0_8        SetType;
