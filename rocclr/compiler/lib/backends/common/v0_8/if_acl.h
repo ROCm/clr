@@ -126,4 +126,7 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
     const char* kernel,
     const char* name) ACL_API_0_8;
 
+acl_error  ACL_API_ENTRY
+if_aclSetupLoaderObject(aclCompiler *cl) ACL_API_0_8;
+
 #endif // _IF_ACL_0_8_H_

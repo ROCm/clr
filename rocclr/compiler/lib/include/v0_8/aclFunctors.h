@@ -173,6 +173,9 @@ typedef acl_error
     const void *isa_code,
     size_t isa_size) ACL_API_0_8;
 
+typedef acl_error
+(ACL_API_ENTRY *SetupLoaderObject_0_8)(aclCompiler *cl) ACL_API_0_8;
+
 typedef void*
 (*AllocFunc_0_8)(size_t size) ACL_API_0_8;
 

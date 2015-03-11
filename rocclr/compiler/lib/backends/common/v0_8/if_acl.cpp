@@ -2899,6 +2899,43 @@ void myLogFunc(const char * msg, size_t size)
   printf("%s\n", msg);
 }
 
+#define CONDITIONAL_ASSIGN(A, B) A = (A) ? (A) : (B)
+acl_error  ACL_API_ENTRY
+if_aclSetupLoaderObject(aclCompiler *cl) {
+  /* setup the loader objects here now that we have parsed the
+   * options and know the target. */
+  CONDITIONAL_ASSIGN(cl->cgAPI.init, &CodegenInit);
+  CONDITIONAL_ASSIGN(cl->cgAPI.fini, &CodegenFini);
+  CONDITIONAL_ASSIGN(cl->cgAPI.codegen, &CodegenPhase);
+  CONDITIONAL_ASSIGN(cl->linkAPI.init, &LinkInit);
+  CONDITIONAL_ASSIGN(cl->linkAPI.fini, &LinkFini);
+  CONDITIONAL_ASSIGN(cl->linkAPI.link, &OCLLinkPhase);
+  CONDITIONAL_ASSIGN(cl->linkAPI.toLLVMIR, &OCLLinkToLLVMIR);
+  CONDITIONAL_ASSIGN(cl->linkAPI.toSPIR, &OCLLinkToSPIR);
+
+  CONDITIONAL_ASSIGN(cl->feAPI.init, &OCLInit);
+  CONDITIONAL_ASSIGN(cl->feAPI.fini, &OCLFini);
+#if !defined(LEGACY_COMPLIB)
+  CONDITIONAL_ASSIGN(cl->feAPI.toIR, &OCLFEToSPIR);
+#else
+  CONDITIONAL_ASSIGN(cl->feAPI.toIR, &OCLFEToLLVMIR);
+#endif
+
+  CONDITIONAL_ASSIGN(cl->feAPI.toModule, &OCLFEToModule);
+  CONDITIONAL_ASSIGN(cl->feAPI.toISA, &OCLFEToISA);
+  CONDITIONAL_ASSIGN(cl->optAPI.init, &OptInit);
+  CONDITIONAL_ASSIGN(cl->optAPI.fini, &OptFini);
+  CONDITIONAL_ASSIGN(cl->optAPI.optimize, &OptOptimize);
+  CONDITIONAL_ASSIGN(cl->beAPI.init, &BEInit);
+  CONDITIONAL_ASSIGN(cl->beAPI.fini, &BEFini);
+  CONDITIONAL_ASSIGN(cl->beAPI.finalize, &BEAsmPhase);
+  CONDITIONAL_ASSIGN(cl->beAPI.assemble, &BEAssemble);
+  CONDITIONAL_ASSIGN(cl->beAPI.disassemble, &BEDisassemble);
+  return ACL_SUCCESS;
+}
+
+#undef CONDITIONAL_ASSIGN
+
 extern "C" {
 bool aclRenderscriptCompile(
   char * srcFile,
@@ -2972,4 +3009,5 @@ bool aclRenderscriptCompile(
   *outBuf = buffer;
   return true;
 }
+
 }
