@@ -165,11 +165,13 @@ HSAILKernel::aqlCreateHWInfo(const void* shader, size_t shaderSize)
 
     char* headerBaseAddress =
         reinterpret_cast<char*>(siMetaData->common.hShaderMemHandle);
+    hsa_ext_code_descriptor_t* hcd =
+        reinterpret_cast<hsa_ext_code_descriptor_t*>(headerBaseAddress);
     amd_kernel_code_t* akc = reinterpret_cast<amd_kernel_code_t*>(
-        headerBaseAddress);
+        headerBaseAddress + hcd->code.handle);
 
     address codeStartAddress = reinterpret_cast<address>(akc);
-    address codeEndAddress = reinterpret_cast<address>(akc) + siMetaData->common.codeLenInByte;
+    address codeEndAddress = reinterpret_cast<address>(hcd) + siMetaData->common.codeLenInByte;
     codeSize_ = codeEndAddress - codeStartAddress;
     code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, gpu::ConstBuffer::VectorSize));
 
