@@ -276,7 +276,7 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   amd::Os::unlink(logFile.c_str());
   if (isCpuTarget(Elf()->target)
       && Options()->oVariables->EnableDebug) {
-    Options()->sourceFileName_ = clFile;
+    Options()->sourceFileName_.assign(clFile);
   } else {
     amd::Os::unlink(clFile.c_str());
   }
