@@ -42,7 +42,8 @@ void CALGSLDevice::Initialize()
     m_vpuMask = 1;
     m_PerformLazyDeviceInit = false;
     m_computeRing = false;
-
+    m_isComputeRingIDForced = false;
+    m_forcedComputeEngineID = GSL_ENGINEID_INVALID;
     gslDeviceOps_ = NULL;
 }
 
@@ -313,8 +314,6 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
         return false;
     }
 
-    m_adp->queryAvailableEngines(&m_nEngines, m_engines);
-
     if (m_PerformLazyDeviceInit)
     {
         // close the adaptor
@@ -411,7 +410,9 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 
     m_canDMA = hasDmaEngine;
 
-   //Disable DRMDMA on CFX mode for linux on all GPUs.
+    m_adp->queryAvailableEngines(&m_nEngines, m_engines);
+
+    //Disable DRMDMA on CFX mode for linux on all GPUs.
 #ifdef ATI_OS_LINUX
     if ((m_vpucount > 1) && !DRMDMA_FOR_LNX_CF)
     {
@@ -426,13 +427,29 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
         m_computeRing = false;
     }
     else
-    {   
+    {
         m_computeRing = true;
     }
 
     if (!flagIsDefault(GPU_NUM_COMPUTE_RINGS))
     {
         m_computeRing = (GPU_NUM_COMPUTE_RINGS != 0);
+    }
+
+    if ((!flagIsDefault(GPU_SELECT_COMPUTE_RINGS_ID)) && (m_computeRing))
+    {
+        gslEngineID engineID;
+        engineID = static_cast<gslEngineID>(GPU_SELECT_COMPUTE_RINGS_ID + GSL_ENGINEID_COMPUTE0);
+        if ((engineID >= GSL_ENGINEID_COMPUTE0) && (engineID <= GSL_ENGINEID_COMPUTE7))
+        {
+            for (uint i = 0; i < m_nEngines; ++i) {
+                if (m_engines[i].id == engineID){
+                    m_isComputeRingIDForced = true;
+                    m_forcedComputeEngineID = engineID;
+                    break;
+                }
+            }
+        }
     }
 
     if (m_computeRing && !hasComputeEngine)
@@ -446,8 +463,8 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 bool
 CALGSLDevice::SetupContext(int32 &asic_id)
 {
-    gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? GSL_ENGINEID_COMPUTE0 : GSL_ENGINEID_3DCOMPUTE0, 
-                                                      m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
+    gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID : GSL_ENGINEID_COMPUTE0)
+                                                     : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
     m_revision = temp_cs->getChipRev();
@@ -632,8 +649,8 @@ CALGSLDevice::PerformFullInitialization_int()
 
     if (m_cs == 0)
     {
-        m_cs = m_adp->createComputeContext(m_computeRing ? GSL_ENGINEID_COMPUTE0 : GSL_ENGINEID_3DCOMPUTE0, 
-                                           m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
+        m_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID : GSL_ENGINEID_COMPUTE0)
+                                          : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
         m_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
         //

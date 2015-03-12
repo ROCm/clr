@@ -495,7 +495,8 @@ VirtualGPU::create(
             // hwRing_ should be set 0 if forced to have single scratch buffer
             hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
-            engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE0 + idx));
+            engineMask = dev().engines().getMask((gslEngineID)(dev().isComputeRingIDForced() ?
+                         dev().getforcedComputeEngineID() : (GSL_ENGINEID_COMPUTE0 + idx)));
             if (dev().canDMA()) {
                 if (index() & 0x1) {
                     engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);

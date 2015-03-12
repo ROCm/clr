@@ -122,6 +122,8 @@ release(uint, GPU_SINGLE_ALLOC_PERCENT, 75,                                   \
         "Maximum size of a single allocation as percentage of total")         \
 release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
         "GPU number of compute rings. 0 - disabled, 1 , 2,.. - the number of compute rings") \
+release(int, GPU_SELECT_COMPUTE_RINGS_ID, -1,                                       \
+        "GPU select the compute rings ID -1 - disabled, 0 , 1,.. - the forced compute rings ID for submission") \
 release_on_stg(bool, C1X_ATOMICS, !IS_MAINLINE,                               \
         "Runtime will report c1x atomics support")                            \
 release(uint, GPU_WORKLOAD_SPLIT, 22,                                         \

@@ -134,6 +134,9 @@ public:
 
     gsl::gsCtx* gslCtx() const { return m_cs; }
 
+    bool isComputeRingIDForced() const { return m_isComputeRingIDForced; }
+    gslEngineID getforcedComputeEngineID() const { return m_forcedComputeEngineID; }
+
 protected:
     //
     /// channel order enumerants
@@ -211,7 +214,7 @@ private:
     CALdevicestatus       m_deviceStatus;
     gslTextureResourceObject m_textureResource;
     gslSamplerObject      m_textureSampler;
-    bool                  m_isOpenCL200Device;
+    gslEngineID           m_forcedComputeEngineID;
 
     union {
         struct {
@@ -222,6 +225,8 @@ private:
             uint    m_PerformLazyDeviceInit : 1;
             uint    m_vmMode                : 1;
             uint    m_uavInCB               : 1;
+            uint    m_isComputeRingIDForced : 1;
+            bool    m_isOpenCL200Device     : 1;
         };
     };
 
