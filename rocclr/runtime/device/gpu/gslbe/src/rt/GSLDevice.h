@@ -226,7 +226,6 @@ private:
             uint    m_vmMode                : 1;
             uint    m_uavInCB               : 1;
             uint    m_isComputeRingIDForced : 1;
-            bool    m_isOpenCL200Device     : 1;
         };
     };
 
