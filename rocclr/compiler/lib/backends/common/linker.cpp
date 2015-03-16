@@ -27,7 +27,6 @@
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
-#include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Analysis/Verifier.h"
@@ -64,6 +63,10 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ValueSymbolTable.h"
+
+#if defined(LEGACY_COMPLIB)
+#include "llvm/AMDILFuncSupport.h"
+#endif
 
 #ifdef _DEBUG
 #include "llvm/Assembly/Writer.h"
@@ -202,308 +205,9 @@ static std::set<std::string> *getAmdRtFunctions()
   return result;
 }
 
-// Remove NoInline attribute to functions in a module
-void
-RemoveNoInlineAttr(llvm::Module* M)
-{
-  LLVMContext &Context = M->getContext();
-  for (llvm::Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-    I->removeFnAttr(Attributes::get(Context, Attributes::NoInline));
-  }
 }
 
-bool
-IsKernel(llvm::Function* F)
-{
-  return F->getName().startswith("__OpenCL_") &&
-      F->getName().endswith("_kernel");
-}
 
-// Add NoInline attribute to functions in a module
-void
-AddNoInlineAttr(llvm::Module* M)
-{
-  LLVMContext &Context = M->getContext();
-  for (llvm::Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-    if (!I->isDeclaration() &&
-        !I->isIntrinsic() &&
-        !I->getName().startswith("__amdil") &&
-        !I->getFnAttributes().hasAttribute(Attributes::AlwaysInline) &&
-        !IsKernel(I)) {
-      DEBUG_WITH_TYPE("noinline",
-                      dbgs() << "[Candidate] " << I->getName() << '\n');
-      I->addFnAttr(Attributes::NoInline);
-    }
-  }
-}
-
-unsigned
-CountCallSites(llvm::Function* F, llvm::Module* M,
-    std::map<llvm::Function*, unsigned>& counts) {
-  std::map<llvm::Function*, unsigned>::iterator iter = counts.find(F);
-  if (iter != counts.end())
-    return iter->second;
-
-  unsigned numCalled = 0;
-  for (Function::use_iterator I = F->use_begin(), E = F->use_end(); I != E;
-      ++I) {
-    User *UI = *I;
-    if (isa<CallInst>(UI) || isa<InvokeInst>(UI)) {
-      ImmutableCallSite CS(cast<Instruction>(UI));
-      Function* caller = const_cast<llvm::Function*>(CS.getCaller());
-      unsigned callerCount = CountCallSites(caller, M, counts);
-      if (caller->getFnAttributes().hasAttribute(Attributes::NoInline) &&
-          callerCount > 0)
-        numCalled++;
-      else
-        numCalled += callerCount;
-    }
-  }
-  if (numCalled == 0 && IsKernel(F))
-    numCalled = 1;
-
-  counts[F] = numCalled;
-  return numCalled;
-}
-
-unsigned
-CalculateSize(llvm::Function* F, llvm::Module* M,
-    std::map<llvm::Function*, unsigned>& sizes) {
-  std::map<llvm::Function*, unsigned>::iterator iter = sizes.find(F);
-  if (iter != sizes.end())
-    return iter->second;
-
-  CodeMetrics metrics;
-  metrics.analyzeFunction(F);
-  unsigned size = metrics.NumInsts;
-  for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
-    for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE; ++BI) {
-      if (CallInst* callInst = dyn_cast<CallInst>(BI)) {
-        Function* called = callInst->getCalledFunction();
-        if (called &&
-            !called->getFnAttributes().hasAttribute(Attributes::NoInline))
-          size += CalculateSize(called, M, sizes);
-      }
-    }
-  }
-  sizes[F] = size;
-  return size;
-}
-
-// Identify functions with image arguments.
-// Callers may pass images with different resource ids to the callee.
-// Currently pointer manager cannot handle this.
-// ToDo: Should remove this after we find a way to handle image in function.
-bool
-IsImageFunc(Function* F) {
-  for (Function::arg_iterator I = F->arg_begin(), E = F->arg_end(); I != E;
-      ++I) {
-    if (PointerType *PT = dyn_cast<PointerType>(I->getType())) {
-      if (PT->getAddressSpace() != 1) {
-        continue;
-      }
-      if (StructType *ST = dyn_cast<StructType>(PT->getElementType())) {
-        if (ST->getName().startswith("struct._image")) {
-          DEBUG_WITH_TYPE("noinline", dbgs() << "[image function] " <<
-              F->getName() << " inline\n");
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-bool
-MustInline(Function* F) {
-  if (F->getFnAttributes().hasAttribute(Attributes::AlwaysInline))
-    return true;
-  return IsImageFunc(F);
-}
-
-bool
-CallerMustInline(Function* F) {
-  return IsImageFunc(F);
-}
-
-bool
-CallsNoInlineFunc(Function* F, std::map<Function*, bool>& work) {
-  DEBUG_WITH_TYPE("noinline", dbgs() << "[CallsNoInlineFunc:" << F->getName() << " ");
-  std::map<Function*, bool>::iterator loc = work.find(F);
-  if (loc != work.end()) {
-    DEBUG_WITH_TYPE("noinline", dbgs() << loc->second << "(cached)]\n");
-    return loc->second;
-  }
-  for (Function::iterator I = F->begin(), E = F->end(); I != E; ++I) {
-    for (BasicBlock::iterator BI = I->begin(), BE = I->end(); BI != BE; ++BI) {
-      if (CallInst* callInst = dyn_cast<CallInst>(BI)) {
-        Function* called = callInst->getCalledFunction();
-        if (called) {
-          if (called->getFnAttributes().hasAttribute(Attributes::NoInline) ||
-              CallerMustInline(called) ||
-              CallsNoInlineFunc(called, work)) {
-            work[F] = true;
-            DEBUG_WITH_TYPE("noinline", dbgs() << "1(" << called->getName() <<")]\n");
-            return true;
-          }
-        }
-      }
-    }
-  }
-  work[F] = false;
-  DEBUG_WITH_TYPE("noinline", dbgs() << "0]\n");
-  return false;
-}
-
-bool
-CalledByNoInlineFunc(Function* F, std::map<Function*, bool>& work) {
-  DEBUG_WITH_TYPE("noinline", dbgs() << "[CalledByNoInlineFunc: " << F->getName() << " ");
-  std::map<Function*, bool>::iterator loc = work.find(F);
-  if (loc != work.end()) {
-    DEBUG_WITH_TYPE("noinline", dbgs() << loc->second << "]\n");
-    return loc->second;
-  }
-  for (Function::use_iterator I = F->use_begin(), E = F->use_end(); I != E;
-      ++I) {
-    User *UI = *I;
-    if (isa<CallInst>(UI) || isa<InvokeInst>(UI)) {
-      ImmutableCallSite CS(cast<Instruction>(UI));
-      Function* caller = const_cast<llvm::Function*>(CS.getCaller());
-      if (caller->getFnAttributes().hasAttribute(Attributes::NoInline) ||
-          CalledByNoInlineFunc(caller, work)) {
-        work[F] = true;
-        DEBUG_WITH_TYPE("noinline", dbgs() << "1(" << caller->getName() <<")]\n");
-        return true;
-      }
-    }
-  }
-  work[F] = false;
-  DEBUG_WITH_TYPE("noinline", dbgs() << "0]\n");
-  return false;
-}
-
-bool
-CanBeNoInline(Function* F, std::map<Function*, bool>& callsNoInline,
-    std::map<Function*, bool>& calledByNoInline, bool allowMultiLevelCall) {
-  return !MustInline(F) && (allowMultiLevelCall ||
-      (!CallsNoInlineFunc(F, callsNoInline) &&
-      !CalledByNoInlineFunc(F, calledByNoInline)));
-}
-
-struct CostInfo {
-  unsigned count;
-  unsigned size;
-  unsigned cost;
-};
-
-unsigned
-CalculateMaxKernelSize(llvm::Module* M) {
-  std::map<llvm::Function*, unsigned> sizes;
-  unsigned maxSize = 0;
-  for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-    if (IsKernel(I)) {
-      unsigned kernelSize = CalculateSize(I, M, sizes);
-      DEBUG_WITH_TYPE("noinlines", dbgs() << "[Kernel size] " <<
-          I->getName() << " : " << kernelSize << '\n');
-      if (maxSize < kernelSize)
-        maxSize = kernelSize;
-    }
-  }
-  return maxSize;
-}
-
-void
-RefineNoInlineAttr(llvm::Module* M, int thresh, int sizeThresh,
-    int kernelSizeThresh, bool allowMultiLevelCall)
-{
-  if (thresh == 0 && sizeThresh == 0)
-    return;
-
-  std::set<Function*> candidates;
-  LLVMContext &Context = M->getContext();
-
-  for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-    if (I->getFnAttributes().hasAttribute(Attributes::NoInline)) {
-      candidates.insert(I);
-      I->removeFnAttr(Attributes::get(Context, Attributes::NoInline));
-    }
-  }
-
-  unsigned maxKernelSize = CalculateMaxKernelSize(M);
-  if (maxKernelSize < unsigned(kernelSizeThresh))
-    return;
-
-  while (true) {
-    std::map<Function*, unsigned> counts;
-    std::map<Function*, unsigned> sizes;
-    std::map<Function*, CostInfo> costInfos;
-    std::map<Function*, bool > callsNoInline;
-    std::map<Function*, bool > calledByNoInline;
-    for (std::set<Function*>::iterator I = candidates.begin(),
-        E = candidates.end(); I != E; ++I) {
-      Function* F = *I;
-      unsigned count = CountCallSites(F, M, counts);
-      if (count > 0 && CanBeNoInline(F, callsNoInline, calledByNoInline,
-          allowMultiLevelCall)) {
-        unsigned size = CalculateSize(F, M, sizes);
-        if (size > unsigned(sizeThresh)) {
-          CostInfo& info = costInfos[F];
-          info.count = count;
-          info.size = size;
-          info.cost = (count - 1) * size;
-          DEBUG_WITH_TYPE("noinline", dbgs() << F->getName() <<
-            " : " << count - 1 << " * " << size << " = " << (count-1) * size <<
-            "\n");
-        }
-      }
-    }
-
-    int maxCost = -1;
-    Function* select = NULL;
-    for (std::map<Function*, CostInfo>::iterator I = costInfos.begin(),
-        E = costInfos.end(); I != E; ++I) {
-      CostInfo& info = I->second;
-      if (int(info.cost) > maxCost) {
-        maxCost = int(info.cost);
-        select = I->first;
-      }
-    }
-    if (select == NULL || maxCost < thresh)
-      break;
-    CostInfo& info = costInfos[select];
-    DEBUG_WITH_TYPE("noinlines", llvm::dbgs() << "select " << select->getName().str()
-        << " cost = " << info.count << " x " << info.size << " = " <<
-        info.cost << "\n");
-
-    select->addFnAttr(Attributes::NoInline);
-    candidates.erase(select);
-    if (candidates.empty())
-      break;
-  }
-
-  if (getenv("AMD_OCL_INLINE")) {
-    for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-      if(I->hasName() && strstr(getenv("AMD_OCL_INLINE"),
-          I->getName().str().c_str())) {
-        I->removeFnAttr(Attributes::get(Context, Attributes::NoInline));
-        printf("force inline %s\n", I->getName().data());
-      }
-    }
-  }
-
-  if (getenv("AMD_OCL_NOINLINE")) {
-    for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I) {
-      if(I->hasName() && strstr(getenv("AMD_OCL_NOINLINE"),
-          I->getName().str().c_str())) {
-        I->addFnAttr(Attributes::NoInline);
-        printf("force noinline %s\n", I->getName().data());
-      }
-    }
-  }
-
-}
-
-} // unnamed namespace
 } // namespace amd
 
 // create a llvm function which simply returns the given mask
@@ -998,32 +702,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 
   createASICIDFunctions(LLVMBinary());
 
-  if (!isHSAILTarget(Elf()->target)) {
-    // Add NoInline attribute to user functions
-    llvm::StringRef family(aclGetFamily(Elf()->target));
-    llvm::StringRef chip(aclGetChip(Elf()->target));
-
-    // Add NoInline attribute to library functions so that they
-    // can be considered for not inlining in codegen.
-    if (IsGPUTarget &&
-        (Options()->oVariables->OptMem2reg || Options()->oVariables->DebugCall) &&
-        !Options()->oVariables->clInternalKernel &&
-        !(family == "NI" || family == "Evergreen" || family == "Sumo" ||
-          family == "TN")) {
-      if (Options()->oVariables->AddUserNoInline)
-        amd::AddNoInlineAttr(LLVMBinary());
-      if (Options()->oVariables->AddLibNoInline)
-        for (unsigned int i=0; i < LibMs.size(); i++)
-          amd::AddNoInlineAttr(LibMs[i]);
-    }
-
-    // Disable outline macro for mem2reg=0 unless -fdebug-call
-    // is on.
-    if (!Options()->oVariables->OptMem2reg && !Options()->oVariables->DebugCall) {
-      Options()->oVariables->UseMacroForCall = false;
-    }
-  }
-
   // Link libraries to get every functions that are referenced.
   std::string ErrorMsg;
   if (resolveLink(LLVMBinary(), LibMs, RefMapBuilder.getModuleRefMaps(),
@@ -1047,17 +725,28 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
     appendLogToCL(CL(), tmp_ss.str());
   }
 
-  if (!isHSAILTarget(Elf()->target)) {
-    // Refine NoInline attribute of functions
-    if (IsGPUTarget && !Options()->oVariables->clInternalKernel) {
-      amd::RefineNoInlineAttr(LLVMBinary(),
-          Options()->oVariables->InlineCostThreshold,
-          Options()->oVariables->InlineSizeThreshold,
-          Options()->oVariables->InlineKernelSizeThreshold,
-          Options()->oVariables->AllowMultiLevelCall &&
-          Options()->oVariables->UseMacroForCall );
-    }
+#if defined(LEGACY_COMPLIB)
+  // Disable outline macro for mem2reg=0 unless -fdebug-call
+  // is on.
+  if (!Options()->oVariables->OptMem2reg && !Options()->oVariables->DebugCall)
+    Options()->oVariables->UseMacroForCall = false;
+
+  if (isAMDILTarget(Elf()->target) &&
+      getFamilyEnum(&Elf()->target) >= FAMILY_SI &&
+      !Options()->oVariables->clInternalKernel &&
+      (Options()->oVariables->OptMem2reg ||
+      Options()->oVariables->DebugCall)) {
+    auto OV = Options()->oVariables;
+    AMDILFuncSupport::PostLinkProcForFuncSupport(
+        OV->AddUserNoInline,
+        OV->AddLibNoInline,
+        OV->InlineCostThreshold,
+        OV->InlineSizeThreshold,
+        OV->InlineKernelSizeThreshold,
+        OV->AllowMultiLevelCall && OV->UseMacroForCall,
+        LLVMBinary(), LibMs);
   }
+#endif
 
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
     std::string MyErrorInfo;
