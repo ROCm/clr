@@ -264,6 +264,21 @@ validateImageDescriptor(
     return true;
 }
 
+class ImageViewRef : public amd::EmbeddedObject
+{
+private:
+    amd::Image* ref_;
+    // Do not copy image view references.
+    ImageViewRef& operator = (const ImageViewRef& sref);
+
+public:
+    explicit ImageViewRef(): ref_(NULL) { }
+    ~ImageViewRef() { if (ref_ != NULL) { ref_->release(); } }
+
+    ImageViewRef& operator = (amd::Image* sref) { ref_ = sref; return *this;}
+    amd::Image* operator ()() const { return ref_; }
+};
+
 /*! \brief Create a buffer object.
  *
  *  \param context is a valid OpenCL context used to create the buffer object.
@@ -2333,6 +2348,21 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
     amd::Coord3D    srcOrigin(origin[0], origin[1], origin[2]);
     amd::Coord3D    srcRegion(region[0], region[1], region[2]);
 
+    ImageViewRef    mip;
+    if (srcImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        mip = srcImage->createView(srcImage->getContext(),
+            srcImage->getImageFormat(), NULL, origin[srcImage->getDims()]);
+        if (mip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (srcImage->getDims() < 3) {
+            srcOrigin.c[srcImage->getDims()] = 0;
+        }
+        srcImage = mip();
+    }
+
     if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
         !srcImage->isSliceValid(row_pitch, slice_pitch, region[1])) {
         return CL_INVALID_VALUE;
@@ -2375,6 +2405,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
     if (event == NULL) {
         command->release();
     }
+
     return CL_SUCCESS;
 }
 RUNTIME_EXIT
@@ -2515,6 +2546,20 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage, (
 
     amd::Coord3D    dstOrigin(origin[0], origin[1], origin[2]);
     amd::Coord3D    dstRegion(region[0], region[1], region[2]);
+    ImageViewRef    mip;
+    if (dstImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        mip = dstImage->createView(dstImage->getContext(),
+            dstImage->getImageFormat(), NULL, origin[dstImage->getDims()]);
+        if (mip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (dstImage->getDims() < 3) {
+            dstOrigin.c[dstImage->getDims()] = 0;
+        }
+        dstImage = mip();
+    }
 
     if (!dstImage->validateRegion(dstOrigin, dstRegion) ||
         !dstImage->isSliceValid(input_row_pitch, input_slice_pitch, region[1])) {
@@ -2676,8 +2721,38 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyImage, (
     amd::Coord3D    dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
     amd::Coord3D    copyRegion(region[0], region[1], region[2]);
 
+    ImageViewRef    srcMip;
+    if (srcImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        srcMip = srcImage->createView(srcImage->getContext(),
+            srcImage->getImageFormat(), NULL, src_origin[srcImage->getDims()]);
+        if (srcMip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (srcImage->getDims() < 3) {
+            srcOrigin.c[srcImage->getDims()] = 0;
+        }
+        srcImage = srcMip();
+    }
+
     if (!srcImage->validateRegion(srcOrigin, copyRegion)) {
         return CL_INVALID_VALUE;
+    }
+
+    ImageViewRef    dstMip;
+    if (dstImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        dstMip = dstImage->createView(dstImage->getContext(),
+            dstImage->getImageFormat(), NULL, dst_origin[dstImage->getDims()]);
+        if (dstMip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (dstImage->getDims() < 3) {
+            dstOrigin.c[dstImage->getDims()] = 0;
+        }
+        dstImage = dstMip();
     }
 
     if (!dstImage->validateRegion(dstOrigin, copyRegion)) {
@@ -2856,6 +2931,21 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyImageToBuffer, (
     amd::Coord3D    copySize(region[0] * region[1] * region[2] *
         srcImage->getImageFormat().getElementSize(), 0, 0);
 
+    ImageViewRef    mip;
+    if (srcImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        mip = srcImage->createView(srcImage->getContext(),
+            srcImage->getImageFormat(), NULL, src_origin[srcImage->getDims()]);
+        if (mip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (srcImage->getDims() < 3) {
+            srcOrigin.c[srcImage->getDims()] = 0;
+        }
+        srcImage = mip();
+    }
+
     if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
         !dstBuffer->validateRegion(dstOffset, copySize)) {
         return CL_INVALID_VALUE;
@@ -3006,6 +3096,21 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferToImage, (
     amd::Coord3D    dstRegion(region[0], region[1], region[2]);
     amd::Coord3D    copySize(region[0] * region[1] * region[2] *
         dstImage->getImageFormat().getElementSize(), 0, 0);
+
+    ImageViewRef    mip;
+    if (dstImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        mip = dstImage->createView(dstImage->getContext(),
+            dstImage->getImageFormat(), NULL, dst_origin[dstImage->getDims()]);
+        if (mip() == NULL) {
+            return CL_OUT_OF_HOST_MEMORY;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (dstImage->getDims() < 3) {
+            dstOrigin.c[dstImage->getDims()] = 0;
+        }
+        dstImage = mip();
+    }
 
     if (!srcBuffer->validateRegion(srcOffset, copySize) ||
         !dstImage->validateRegion(dstOrigin, dstRegion)) {
@@ -3460,6 +3565,23 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
 
     amd::Coord3D    srcOrigin(origin[0], origin[1], origin[2]);
     amd::Coord3D    srcRegion(region[0], region[1], region[2]);
+
+    ImageViewRef    mip;
+    if (srcImage->getMipLevels() > 1) {
+        // Create a view for the specified mip level
+        mip = srcImage->createView(srcImage->getContext(),
+            srcImage->getImageFormat(), NULL, origin[srcImage->getDims()]);
+        if (mip() == NULL) {
+            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+            return NULL;
+        }
+        // Reset the mip level value to 0, since a view was created
+        if (srcImage->getDims() < 3) {
+            srcOrigin.c[srcImage->getDims()] = 0;
+        }
+        srcImage = mip();
+    }
+
     if (!srcImage->validateRegion(srcOrigin, srcRegion)) {
         *not_null(errcode_ret) = CL_INVALID_VALUE;
         return NULL;
@@ -3528,6 +3650,7 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
 
     *not_null(errcode_ret) = CL_SUCCESS;
     srcImage->incMapCount();
+
     return mapPtr;
 }
 RUNTIME_EXIT
