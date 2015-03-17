@@ -2011,7 +2011,7 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
         const gpu::Memory& gpuMem = static_cast<const gpu::Memory&>(parent);
 
         params.owner_       = &owner;
-        params.level_       = 0;
+        params.level_       = image.getBaseMipLevel();
         params.layer_       = 0;
         params.resource_    = &gpuMem;
         params.gpu_ = reinterpret_cast<VirtualGPU*>(owner.getVirtualDevice());

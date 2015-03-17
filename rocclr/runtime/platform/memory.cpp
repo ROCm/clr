@@ -548,9 +548,12 @@ Pipe::initDeviceMemory()
         context_().devices().size() * sizeof(DeviceMemory));
 }
 
+#define GETMIPDIM(dim, mip) (((dim >> mip) > 0) ? (dim >> mip) : 1)
+
 Image::Image(
     const Format&   format,
-    Image&          parent)
+    Image&          parent,
+    uint            baseMipLevel)
     : Memory(parent, 0, 0, parent.getWidth() * parent.getHeight() *
             parent.getDepth() * format.getElementSize())
     , impl_(format, Coord3D(parent.getWidth() *
@@ -559,7 +562,22 @@ Image::Image(
             parent.getDepth()), parent.getRowPitch(),
             parent.getSlicePitch(), parent.getBytePitch())
     , mipLevels_(1)
+    , baseMipLevel_(baseMipLevel)
 {
+    if (baseMipLevel > 0) {
+        impl_.region_.c[0] = GETMIPDIM(parent.getWidth(), baseMipLevel) *
+            parent.getImageFormat().getElementSize() / format.getElementSize();
+        impl_.region_.c[1] = GETMIPDIM(parent.getHeight(), baseMipLevel);
+        impl_.region_.c[2] = GETMIPDIM(parent.getDepth(), baseMipLevel);
+
+        if (parent.getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
+            impl_.region_.c[1] = parent.getHeight();
+        }
+        else if (parent.getType() == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
+            impl_.region_.c[2] = parent.getDepth();
+        }
+        size_ = getWidth() * getHeight() * parent.getDepth() * format.getElementSize();
+    }
     initDimension();
 }
 
@@ -577,6 +595,7 @@ Image::Image(
     : Memory(context, type, flags, width * height * depth * format.getElementSize())
     , impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
     , mipLevels_(mipLevels)
+    , baseMipLevel_(0)
 {
     initDimension();
 }
@@ -594,6 +613,7 @@ Image::Image(
     : Memory(buffer, flags, 0, buffer.getSize(), type)
     , impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch)
     , mipLevels_(1)
+    , baseMipLevel_(0)
 {
     initDimension();
 }
@@ -1158,12 +1178,13 @@ Image*
 Image::createView(
     const Context& context,
     const Format&   format,
-    device::VirtualDevice* vDev)
+    device::VirtualDevice* vDev,
+    uint            baseMipLevel)
 {
     Image* view = NULL;
 
     // Find the image dimensions and create a corresponding object
-    view = new (context) Image(format, *this);
+    view = new (context) Image(format, *this, baseMipLevel);
 
     // Set GPU virtual device for this view
     view->setVirtualDevice(vDev);
