@@ -490,12 +490,12 @@ public:
 
     struct Impl
     {
-        const amd::Coord3D  region_;    //!< Image size
-        size_t              rp_;        //!< Image row pitch
-        size_t              sp_;        //!< Image slice pitch
-        const Format        format_;    //!< Image format
-        void*               reserved_;
-        size_t              bp_;
+        amd::Coord3D    region_;    //!< Image size
+        size_t          rp_;        //!< Image row pitch
+        size_t          sp_;        //!< Image slice pitch
+        const Format    format_;    //!< Image format
+        void*           reserved_;
+        size_t          bp_;
 
         Impl(const Format& format, Coord3D region, size_t rp, size_t sp = 0, size_t bp = 0)
           : region_(region), rp_(rp), sp_(sp), format_(format), bp_(bp)
@@ -503,14 +503,16 @@ public:
     };
 
 private:
-    Impl            impl_;      //!< Image object description
-    size_t          dim_;       //!< Image dimension
-    uint            mipLevels_; //!< The number of mip levels
+    Impl    impl_;          //!< Image object description
+    size_t  dim_;           //!< Image dimension
+    uint    mipLevels_;     //!< The number of mip levels
+    uint    baseMipLevel_;  //!< The base mip level for a view
 
 protected:
     Image(
         const Format&   format,
-        Image&          parent);
+        Image&          parent,
+        uint            baseMipLevel = 0);
 
     ///! Initializes the device memory array which is nested
     // after'Image' object in memory layout.
@@ -583,9 +585,10 @@ public:
 
     //! Creates a view memory object
     virtual Image* createView(
-        const Context& context,        //!< Context for a view creation
-        const Format&   format,     //!< The new format for a view
-        device::VirtualDevice* vDev //!< Virtual device object
+        const Context& context,         //!< Context for a view creation
+        const Format&   format,         //!< The new format for a view
+        device::VirtualDevice* vDev,    //!< Virtual device object
+        uint    baseMipLevel = 0        //!< Base mip level for a view
         );
 
     //! Returns the impl for this image.
@@ -616,6 +619,9 @@ public:
 
     //! Returns image's slice pitch in bytes
     uint getMipLevels() const { return mipLevels_; }
+
+    //! Returns image's slice pitch in bytes
+    uint getBaseMipLevel() const { return baseMipLevel_; }
 
     //! Get the image covered region
     const Coord3D& getRegion() const { return impl_.region_; }
