@@ -418,6 +418,10 @@ Device::Device()
 
 Device::~Device()
 {
+    // remove the HW debug manager
+    delete hwDebugMgr_;
+    hwDebugMgr_ = NULL;
+
     CondLog(vaCacheList_ == NULL ||
         (vaCacheList_->size() != 0), "Application didn't unmap all host memory!");
 
@@ -967,6 +971,11 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
         std::max(HsaImageObjectSize, HsaSamplerObjectSize), 64 * Ki);
     if (srdManager_ == NULL) {
         return false;
+    }
+
+    // create the HW debug manager if needed
+    if (settings().enableHwDebug_) {
+        hwDebugMgr_ = new GpuDebugManager(this);
     }
 
     return true;
@@ -2669,7 +2678,6 @@ Device::SrdManager::fillResourceList(std::vector<const Resource*>&   memList)
 cl_int
 Device::hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage)
 {
-    hwDebugMgr_ = new GpuDebugManager(this);
     cl_int status = hwDebugMgr_->registerDebugger(context, messageStorage);
 
     if (CL_SUCCESS != status) {
@@ -2678,15 +2686,6 @@ Device::hwDebugManagerInit(amd::Context *context, uintptr_t messageStorage)
     }
 
     return status;
-}
-
-void
-Device::hwDebugManagerRemove()
-{
-    hwDebugMgr_->unregisterDebugger();
-
-    delete hwDebugMgr_;
-    hwDebugMgr_ = NULL;
 }
 
 } // namespace gpu

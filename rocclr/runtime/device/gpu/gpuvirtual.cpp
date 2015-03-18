@@ -3516,7 +3516,7 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
 
     // set kernel info for HW debug and call the callback function
     if (NULL != dbgManager->preDispatchCallBackFunc()) {
-        DebugToolInfo dbgSetting;
+        DebugToolInfo dbgSetting = {0};
         dbgSetting.scratchAddress_ = kernelInfo.scratchBufAddr;
         dbgSetting.scratchSize_ = kernelInfo.scratchBufferSizeInBytes;
         dbgSetting.globalAddress_ = kernelInfo.heapBufAddr;
