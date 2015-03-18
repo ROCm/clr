@@ -415,9 +415,8 @@ RUNTIME_ENTRY(cl_int, clHwDbgRegisterDebuggerAMD, (
         return CL_INVALID_VALUE;
     }
 
-    // check if the debugger has already registered
-    if (NULL != as_amd(device)->hwDebugMgr()) {
-        return CL_INVALID_VALUE;
+    if (NULL == as_amd(device)->hwDebugMgr()) {
+        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
     return as_amd(device)->hwDebugManagerInit(as_amd(context),
@@ -447,7 +446,7 @@ RUNTIME_ENTRY(cl_int, clHwDbgUnregisterDebuggerAMD, (
         return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
     }
 
-    as_amd(device)->hwDebugManagerRemove();
+    debugManager->unregisterDebugger();
 
     return CL_SUCCESS;
 
