@@ -97,8 +97,11 @@ GpuDebugManager::executePreDispatchCallBack(void*  aqlPacket,
                                  preDispatchCallBackArgs_);
     }
 
-    // Copy the various info set by the debugger/profiler to the tool info structure
-    setupTrapInformation(info);
+    // setup the trap handler information only if the debugger has been registered
+    if (isRegistered()) {
+        // Copy the various info set by the debugger/profiler to the tool info structure
+        setupTrapInformation(info);
+    }
 }
 
 void
@@ -234,12 +237,6 @@ DebugEvent
 GpuDebugManager::createDebugEvent(
     const bool  autoReset)
 {
-    if (!isRegistered()) {
-        LogError("debugmanager: Failed to flush cache - hw debug is not available");
-        return 0;
-    }
-
-
     // create the event object
     osEventHandle shaderEvent = osEventCreate(!autoReset);
 
@@ -348,8 +345,19 @@ GpuDebugManager::setGlobalMemory(
 cl_int
 GpuDebugManager::createRuntimeTrapHandler()
 {
-    uint32_t codeSize = sizeof(RuntimeTrapCode);
-    uint32_t numCodes = sizeof(RuntimeTrapCode) / sizeof(RuntimeTrapCode[0]);
+    size_t codeSize = 0;
+    const uint32_t* rtTrapCode = NULL;
+
+    if (device()->settings().viPlus_) {
+        codeSize = sizeof(RuntimeTrapCodeVi);
+        rtTrapCode = RuntimeTrapCodeVi;
+    }
+    else {
+        codeSize = sizeof(RuntimeTrapCode);
+        rtTrapCode = RuntimeTrapCode;
+    }
+
+    uint32_t numCodes = codeSize / sizeof(uint32_t);
 
     // Handle TMA corruption hw bug workaround -
     //   The trap handler buffer has extra 256 bytes allocated, the TMA address
@@ -389,7 +397,7 @@ GpuDebugManager::createRuntimeTrapHandler()
     // save the trap handler code
     uint32_t* trapHandlerPtr = (uint32_t*)(tbaAddress + TbaStartOffset);
     for (uint32_t i = 0; i < numCodes; i++) {
-        trapHandlerPtr[i] = RuntimeTrapCode[i];
+        trapHandlerPtr[i] = rtTrapCode[i];
     }
 
     rtTBA->unmap(NULL);
