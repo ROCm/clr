@@ -238,6 +238,8 @@ Settings::create(
         break;
     case CAL_TARGET_CARRIZO:
         apuSystem_ = true;
+    case CAL_TARGET_GREENLAND:
+        //TODO: specific code for AI
     case CAL_TARGET_ICELAND:
     case CAL_TARGET_TONGA:
     case CAL_TARGET_FIJI:

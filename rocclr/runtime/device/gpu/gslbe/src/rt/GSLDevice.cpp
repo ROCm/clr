@@ -592,7 +592,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
         m_target = CAL_TARGET_BAFFIN;
         m_elfmachine = ED_ATI_CAL_MACHINE_BAFFIN_ISA;
         break;
-
+  case GSL_ATIASIC_ID_GREENLAND:
+        m_target = CAL_TARGET_GREENLAND;
+        m_elfmachine = ED_ATI_CAL_MACHINE_GREENLAND_ISA;
+        break;
     default:
         // 6XX is not supported
         m_adp->deleteContext(temp_cs);

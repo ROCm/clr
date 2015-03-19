@@ -8,6 +8,7 @@
 #include "inc/asic_reg/kv_id.h"
 #include "inc/asic_reg/ci_id.h"
 #include "inc/asic_reg/cz_id.h"
+#include "inc/asic_reg/ai_id.h"
 #include "inc/asic_reg/atiid.h"
 
 static const TargetMapping HSAILTargetMapping_0_8[] = {
@@ -22,6 +23,7 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   { "VI", "Iceland", "generic", amd::GPU_Library_HSAIL, VI_ICELAND_M_A0, 0, true, true,  FAMILY_VI },
   { "VI", "Tonga",   "generic", amd::GPU_Library_HSAIL, VI_TONGA_P_A0,   0, true, true,  FAMILY_VI },
 
+  UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,

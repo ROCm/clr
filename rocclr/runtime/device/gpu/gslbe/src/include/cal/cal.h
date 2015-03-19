@@ -178,7 +178,8 @@ typedef enum CALtargetEnum {
     CAL_TARGET_CARRIZO,             /**< CARRIZO GPU ISA*/
     CAL_TARGET_ELLESMERE,           /**< ELLESMERE GPU ISA*/
     CAL_TARGET_BAFFIN,             /**< BAFFIN GPU ISA*/
-    CAL_TARGET_LAST = CAL_TARGET_BAFFIN, /**< last */
+    CAL_TARGET_GREENLAND,          /**< GREENLAND GPU ISA*/
+    CAL_TARGET_LAST = CAL_TARGET_GREENLAND, /**< last */
 //##END_PRIVATE##
 } CALtarget;
 
