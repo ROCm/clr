@@ -158,6 +158,7 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_CARRIZO:
     case CAL_TARGET_ELLESMERE:
     case CAL_TARGET_BAFFIN:
+    case CAL_TARGET_GREENLAND:
         calAttr.doublePrecision = CAL_TRUE;
         calAttr.isOpenCL200Device = CAL_TRUE;
         break;

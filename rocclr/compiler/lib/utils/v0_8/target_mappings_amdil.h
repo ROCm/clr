@@ -14,6 +14,7 @@
 #include "inc/asic_reg/ci_id.h"
 #include "inc/asic_reg/vi_id.h"
 #include "inc/asic_reg/cz_id.h"
+#include "inc/asic_reg/ai_id.h"
 #include "inc/asic_reg/atiid.h"
 
 static const TargetMapping AMDILTargetMapping_0_8[] = {
@@ -84,6 +85,7 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "CI", "Bonaire",    "bonaire", amd::GPU_Library_CI,        CI_BONAIRE_M_A0,         F_SI_BASE, true, false, FAMILY_CI },
   { "SI", "Hainan",     "hainan",  amd::GPU_Library_SI,        SI_HAINAN_V_A0,          F_SI_BASE, true, true, FAMILY_SI },
 
+  UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,

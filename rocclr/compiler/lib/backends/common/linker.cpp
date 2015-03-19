@@ -227,7 +227,8 @@ void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
                      || family == "KV"
                      || family == "TN"
                      || family == "VI"
-                     || family == "CZ",
+                     || family == "CZ"
+                     || family == "AI",
                      module);
   createConstIntFunc("__amdil_have_fast_fma32",
                         chip == "Cypress"
@@ -247,7 +248,8 @@ void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
                      || family == "CI"
                      || family == "VI"
                      || family == "KV"
-                     || family == "CZ",
+                     || family == "CZ"
+                     || family == "AI",
                      module);
 }
 
