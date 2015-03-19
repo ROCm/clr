@@ -80,8 +80,19 @@ namespace amdcl
       /*! Loads bitcode in either text or binary format and return
        * and LLVM module. */
       virtual llvm::Module* loadBitcode(std::string& llvmBinary);
+
       void setGPU(bool isForGPU) { hookup_.amdoptions.IsGPU = isForGPU; }
       void setWholeProgram(bool Val) { hookup_.amdoptions.WholeProgram = Val; }
+      void setNoSignedZeros(bool Val) { hookup_.amdoptions.NoSignedZeros = Val; }
+      void setFastRelaxedMath(bool Val) { hookup_.amdoptions.FastRelaxedMath = Val; }
+      void setOptSimplifyLibCall(bool Val) { hookup_.amdoptions.OptSimplifyLibCall = Val; }
+      void setUnsafeMathOpt(bool Val) { hookup_.amdoptions.UnsafeMathOpt = Val; }
+      void setFiniteMathOnly(bool Val) { hookup_.amdoptions.FiniteMathOnly = Val; }
+      void setIsPreLinkOpt(bool Val) { hookup_.amdoptions.IsPreLinkOpt = Val; }
+      void setFP32RoundDivideSqrt(bool Val) { hookup_.amdoptions.FP32RoundDivideSqrt = Val; }
+      void setUseNative(const char * Val) { if(Val) hookup_.amdoptions.OptUseNative = Val; }
+      void setDenormsAreZero(bool Val) { hookup_.amdoptions.DenormsAreZero = Val; }
+      void setUniformWorkGroupSize(bool Val) { hookup_.amdoptions.UniformWorkGroupSize = Val; }
 
       /*! Returns the llvm binary */
       llvm::Module* LLVMBinary() const { return llvmbinary_; }

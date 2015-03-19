@@ -51,14 +51,6 @@ namespace amdcl
    * \brief Linker that is unique to OpenCL.
    */
   class OCLLinker : public Linker {
-    enum {
-      MASK_NO_SIGNED_ZEROES          = 0x1,
-      MASK_UNSAFE_MATH_OPTIMIZATIONS = 0x2,
-      MASK_FINITE_MATH_ONLY          = 0x4,
-      MASK_FAST_RELAXED_MATH         = 0x8,
-      MASK_UNIFORM_WORK_GROUP_SIZE   = 0x10
-    };
-
     public:
       OCLLinker(aclCompiler* cl, aclBinary* bin, aclLogFunction log)
         : Linker(cl, bin, log) {}
@@ -84,7 +76,6 @@ namespace amdcl
      */
       int link(llvm::Module* input, std::vector<llvm::Module*> &libs);
     protected:
-      void createOptionMaskFunction(llvm::Module* module);
       void createASICIDFunctions(llvm::Module* module);
       bool linkLLVMModules(std::vector<llvm::Module*> &libs);
       bool linkWithModule(llvm::Module* Dst, llvm::Module* Src,

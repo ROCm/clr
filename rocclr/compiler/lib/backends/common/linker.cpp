@@ -63,6 +63,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ValueSymbolTable.h"
+#include "llvm/AMDLLVMContextHook.h"
 
 #if defined(LEGACY_COMPLIB)
 #include "llvm/AMDILFuncSupport.h"
@@ -98,8 +99,6 @@
 #undef DEBUG_TYPE
 #endif
 #define DEBUG_TYPE "ocl_linker"
-
-static const char* OptionMaskFName = "__option_mask";
 
 namespace AMDSpir {
   extern void replaceTrivialFunc(llvm::Module& M);
@@ -210,63 +209,11 @@ static std::set<std::string> *getAmdRtFunctions()
 
 } // namespace amd
 
-// create a llvm function which simply returns the given mask
-static void createConstIntFunc(const char* fname,
-                               int mask,
-                               llvm::Module* module)
-{
-  llvm::LLVMContext& context = module->getContext();
-
-  llvm::Type* int32Ty = llvm::Type::getInt32Ty(context);
-  llvm::FunctionType* fType = llvm::FunctionType::get(int32Ty, false);
-  llvm::Function* function
-      = llvm::cast<llvm::Function>(module->getOrInsertFunction(fname, fType));
-  function->setDoesNotThrow();
-  function->setDoesNotAccessMemory();
-  function->addFnAttr(llvm::Attributes::AlwaysInline);
-  llvm::BasicBlock* bb = llvm::BasicBlock::Create(context, "entry", function);
-  llvm::Value* retVal = llvm::ConstantInt::get(int32Ty, mask);
-  llvm::ReturnInst* retInst = llvm::ReturnInst::Create(context, retVal);
-  bb->getInstList().push_back(retInst);
-  assert(!verifyFunction(*function) && "verifyFunction failed");
-}
-
-// create a llvm function that returns a mask of several compile options
-// which are used by the built-in library
-void amdcl::OCLLinker::createOptionMaskFunction(llvm::Module* module)
-{
-  unsigned mask = 0;
-  if (Options()->oVariables->NoSignedZeros) {
-    mask |= MASK_NO_SIGNED_ZEROES;
-  }
-  if (Options()->oVariables->UnsafeMathOpt) {
-    mask |= MASK_UNSAFE_MATH_OPTIMIZATIONS;
-    mask |= MASK_NO_SIGNED_ZEROES;
-  }
-  if (Options()->oVariables->FiniteMathOnly) {
-    mask |= MASK_FINITE_MATH_ONLY;
-  }
-  if (Options()->oVariables->FastRelaxedMath) {
-    mask |= MASK_FAST_RELAXED_MATH;
-    mask |= MASK_FINITE_MATH_ONLY;
-    mask |= MASK_UNSAFE_MATH_OPTIMIZATIONS;
-    mask |= MASK_NO_SIGNED_ZEROES;
-  }
-
-  if (Options()->oVariables->UniformWorkGroupSize) {
-    mask |= MASK_UNIFORM_WORK_GROUP_SIZE;
-  }
-
-  createConstIntFunc(OptionMaskFName, mask, module);
-}
 
 // Create functions that returns true or false for some features which
 // are used by the built-in library
 void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
 {
-  if (!isAMDILTarget(Elf()->target))
-    return;
-
   uint64_t features = aclGetChipOptions(Elf()->target);
 
   llvm::StringRef chip(aclGetChip(Elf()->target));
@@ -514,12 +461,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   } else {
     setUnrollScratchThreshold(500);
   }
-  setGPU(IsGPUTarget);
-
-  setPreLinkOpt(false);
-
-  // We are doing whole program optimization
-  setWholeProgram(true);
 
   llvmbinary_ = input;
 
@@ -613,23 +554,26 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
     return 1;
 
-  // For HSAIL targets, when the option -cl-fp32-correctly-rounded-divide-sqrt
-  // lower divide and sqrt functions to precise HSAIL builtin library functions.
-  bool LowerToPreciseFunctions = (isHSAILTriple(llvm::Triple(LibTargetTriple)) &&
-                                  Options()->oVariables->FP32RoundDivideSqrt);
-
   // Before doing anything else, quickly optimize Module
   if (Options()->oVariables->EnableBuildTiming) {
     time_prelinkopt = amd::Os::timeNanos();
   }
+  setGPU(IsGPUTarget);
+  setFiniteMathOnly(Options()->oVariables->FiniteMathOnly);
+  setNoSignedZeros(Options()->oVariables->NoSignedZeros);
+  setFastRelaxedMath(Options()->oVariables->FastRelaxedMath);
+  setWholeProgram(true);
+  setOptSimplifyLibCall(Options()->oVariables->OptSimplifyLibCall);
+  setUnsafeMathOpt(Options()->oVariables->UnsafeMathOpt);
+  setIsPreLinkOpt(Options()->oVariables->OptLevel);
+  setFP32RoundDivideSqrt(Options()->oVariables->FP32RoundDivideSqrt);
+  setUseNative(Options()->oVariables->OptUseNative);
+  setDenormsAreZero(Options()->oVariables->DenormsAreZero);
+  setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
+  LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
+
   std::string clp_errmsg;
-  llvm::Module *OnFlyLib = AMDPrelinkOpt(LLVMBinary(), true /*Whole*/,
-    !Options()->oVariables->OptSimplifyLibCall,
-    Options()->oVariables->UnsafeMathOpt,
-    Options()->oVariables->OptUseNative,
-    Options()->oVariables->OptLevel,
-    LowerToPreciseFunctions,
-    IsGPUTarget, clp_errmsg);
+  llvm::Module *OnFlyLib = AMDPrelinkOpt(LLVMBinary(), clp_errmsg);
 
   if (!clp_errmsg.empty()) {
     delete LLVMBinary();
@@ -658,54 +602,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 
   std::string ErrorMessage;
 
-  // build the reference map
-  llvm::ReferenceMapBuilder RefMapBuilder(LLVMBinary(), LibMs);
-
-  RefMapBuilder.InitReferenceMap();
-
-  if (IsGPUTarget && RefMapBuilder.isInExternFuncs("printf")) {
-    DEBUG(llvm::dbgs() << "Adding printf funs:\n");
-    // The following functions need forcing as printf-conversion happens
-    // after this link stage
-    static const char* forcedRefs[] = {
-      "___initDumpBuf",
-      "___dumpBytes_v1b8",
-      "___dumpBytes_v1b16",
-      "___dumpBytes_v1b32",
-      "___dumpBytes_v1b64",
-      "___dumpBytes_v1b128",
-      "___dumpBytes_v1b256",
-      "___dumpBytes_v1b512",
-      "___dumpBytes_v1b1024",
-      "___dumpBytes_v1bs",
-      "___dumpStringID"
-    };
-    RefMapBuilder.AddForcedReferences(forcedRefs,
-      sizeof(forcedRefs)/sizeof(forcedRefs[0]));
-  }
-  if (!IsGPUTarget && Options()->oVariables->UseJIT) {
-    RefMapBuilder.AddForcedReferences(amd::amdRTFuns,
-      sizeof(amd::amdRTFuns)/sizeof(amd::amdRTFuns[0]));
-  }
-
-  RefMapBuilder.AddReferences();
-
-  // inject an llvm function that returns the mask of several compile
-  // options, which are used by the built-in library
-  const std::list<std::string>& ExternFuncs
-    = RefMapBuilder.getExternFunctions();
-  const std::list<std::string>::const_iterator it
-    = std::find(ExternFuncs.begin(), ExternFuncs.end(), OptionMaskFName);
-  if (it != ExternFuncs.end()) {
-    createOptionMaskFunction(LLVMBinary());
-  }
-
   createASICIDFunctions(LLVMBinary());
 
   // Link libraries to get every functions that are referenced.
   std::string ErrorMsg;
-  if (resolveLink(LLVMBinary(), LibMs, RefMapBuilder.getModuleRefMaps(),
-                  &ErrorMsg)) {
+  if (resolveLink(LLVMBinary(), LibMs, &ErrorMsg)) {
       BuildLog() += ErrorMsg;
       BuildLog() += "\nInternal Error: linking libraries failed!\n";
       return 1;
