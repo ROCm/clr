@@ -31,6 +31,7 @@
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
 #include "utils/versions.hpp"
+#include "sync.hpp"
 
 #include "llvm/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
@@ -55,7 +56,7 @@ aclLoaderData * ACL_API_ENTRY
 if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
     aclLogFunction log, acl_error *error)
 {
-  llvm::llvm_acquire_global_lock();
+  amdcl::acquire_global_lock();
   char* timing = ::getenv("AMD_DEBUG_HLC_ENABLE_TIMING");
   if (timing && (timing[0] == '1')) 
      llvm::TimePassesIsEnabled = true;
@@ -85,7 +86,7 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
   llvm::initializeVerifierPass(Registry);
   llvm::initializeDominatorTreePass(Registry);
   llvm::initializePreVerifierPass(Registry);
-  llvm::llvm_release_global_lock();
+  amdcl::release_global_lock();
   if (error) (*error) = ACL_SUCCESS;
   return reinterpret_cast<aclLoaderData*>(cl);
 }

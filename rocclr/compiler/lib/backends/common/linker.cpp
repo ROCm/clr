@@ -115,8 +115,7 @@ using namespace llvm;
 inline llvm::Module*
   LoadFile(const std::string &Filename, LLVMContext& Context)
   {
-    bool Exists;
-    if (sys::fs::exists(Filename, Exists) || !Exists) {
+    if (!sys::fs::exists(Filename)) {
       //    dbgs() << "Bitcode file: '" << Filename.c_str() << "' does not exist.\n";
       return 0;
     }
@@ -137,8 +136,7 @@ inline llvm::Module*
 
 inline llvm::Module*
   LoadLibrary(const std::string& libFile, LLVMContext& Context, MemoryBuffer** Buffer) {
-    bool Exists;
-    if (sys::fs::exists(libFile, Exists) || !Exists) {
+    if (!sys::fs::exists(libFile)) {
       //    dbgs() << "Bitcode file: '" << Filename.c_str() << "' does not exist.\n";
       return 0;
     }
