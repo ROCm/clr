@@ -100,6 +100,7 @@ Settings::Settings()
     siPlus_         = false;
     ciPlus_         = false;
     viPlus_         = false;
+    aiPlus_         = false;
 
     // Number of compute rings.
     numComputeRings_ = 0;
@@ -236,10 +237,15 @@ Settings::create(
         }
         enableExtension(ClAmdImage2dFromBufferReadOnly);
         break;
-    case CAL_TARGET_CARRIZO:
-        apuSystem_ = true;
     case CAL_TARGET_GREENLAND:
-        //TODO: specific code for AI
+        //TODO: specific codes for AI
+        aiPlus_ = true;
+        // Fall through to VI ...
+    case CAL_TARGET_CARRIZO:
+        if (!aiPlus_) {
+            // APU systems for VI
+            apuSystem_  = true;
+        }
     case CAL_TARGET_ICELAND:
     case CAL_TARGET_TONGA:
     case CAL_TARGET_FIJI:
