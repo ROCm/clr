@@ -61,6 +61,7 @@ public:
             uint    siPlus_: 1;         //!< SI and post SI features
             uint    ciPlus_: 1;         //!< CI and post CI features
             uint    viPlus_: 1;         //!< VI and post VI features
+            uint    aiPlus_: 1;         //!< AI and post AI features
             uint    rectLinearDMA_: 1;  //!< Rectangular linear DRMDMA support
             uint    threadTraceEnable_: 1;  //!< Thread trace enable
             uint    linearPersistentImage_: 1;  //!< Allocates linear images in persistent
@@ -74,7 +75,6 @@ public:
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
-            uint    reserved_: 1;
         };
         uint    value_;
     };
