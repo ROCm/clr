@@ -12,6 +12,7 @@
 #include "utils/libUtils.h"
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
+#include "llvm/LLVMContext.h"
 
 #include "acl.h"
 
