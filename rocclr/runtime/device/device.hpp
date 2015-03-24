@@ -648,8 +648,9 @@ public:
     {
         amd::Coord3D    origin_;    //!< Origin of the map location
         amd::Coord3D    region_;    //!< Mapped region
+        amd::Image*     baseMip_;   //!< The base mip level for images
         bool            entire_;    //!< True if the enitre memory was mapped
-        WriteMapInfo(): origin_(0, 0, 0), region_(0, 0, 0), entire_(false) {}
+        WriteMapInfo(): origin_(0, 0, 0), region_(0, 0, 0), baseMip_(NULL), entire_(false) {}
     };
 
     //! Constructor (from an amd::Memory object).
@@ -698,6 +699,15 @@ public:
         SyncFlags   syncFlags = SyncFlags()
         ) {}
 
+    //! Allocate memory for API-level maps
+    virtual void* allocMapTarget(
+        const amd::Coord3D& origin, //!< The map location in memory
+        const amd::Coord3D& region, //!< The map region in memory
+        uint    mapFlags,           //!< Map flags
+        size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
+        size_t* slicePitch = NULL   //!< Slice for the mapped memory
+        ) { return NULL; }
+
     virtual bool pinSystemMemory(
         void*   hostPtr,            //!< System memory address
         size_t  size                //!< Size of allocated system memory
@@ -741,7 +751,8 @@ public:
         const amd::Coord3D  origin, //!< Origin of the map location
         const amd::Coord3D  region, //!< Mapped region
         uint                mapFlags,   //< Map flags
-        bool                entire  //!< True if the enitre memory was mapped
+        bool                entire, //!< True if the enitre memory was mapped
+        amd::Image*         baseMip = NULL  //!< The base mip level for map
         );
 
     const WriteMapInfo* writeMapInfo() const { return &writeMapInfo_; }
@@ -1605,7 +1616,7 @@ public:
         uint    mapFlags,           //!< Map flags
         size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
         size_t* slicePitch = NULL   //!< Slice for the mapped memory
-        ) = 0;
+        );
 
     //! Gets free memory on a GPU device
     virtual bool globalFreeMemory(

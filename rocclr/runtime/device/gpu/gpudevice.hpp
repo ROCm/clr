@@ -105,17 +105,6 @@ public:
     virtual bool unbindExternalDevice(
         intptr_t type, void* pDevice, void* pContext, bool validateOnly) { return true; }
 
-    //! Gets a pointer to a region of host-visible memory for use as the target
-    //! of a non-blocking map for a given memory object
-    virtual void* allocMapTarget(
-        amd::Memory&    mem,        //!< Abstraction layer memory object
-        const amd::Coord3D& origin, //!< The map location in memory
-        const amd::Coord3D& region, //!< The map region in memory
-        uint    mapFlags,           //!< Map flags
-        size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
-        size_t* slicePitch = NULL   //!< Slice for the mapped memory
-        ) { return NULL; }
-
     //! Releases non-blocking map target memory
     virtual void freeMapTarget(amd::Memory& mem, void* target) {}
 
@@ -430,17 +419,6 @@ public:
     virtual bool validateKernel(
         const amd::Kernel& kernel,      //!< AMD kernel object
         const device::VirtualDevice* vdev
-        );
-
-    //! Gets a pointer to a region of host-visible memory for use as the target
-    //! of a non-blocking map for a given memory object
-    virtual void* allocMapTarget(
-        amd::Memory&    mem,        //!< Abstraction layer memory object
-        const amd::Coord3D& origin, //!< The map location in memory
-        const amd::Coord3D& region, //!< The map region in memory
-        uint    mapFlags,           //!< Map flags
-        size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
-        size_t* slicePitch = NULL   //!< Slice for the mapped memory
         );
 
     //! Retrieves information about free memory on a GPU device

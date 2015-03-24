@@ -680,26 +680,6 @@ Device::globalFreeMemory(size_t *freeMemory) const
     return false;
 }
 
-void*
-Device::allocMapTarget(
-    amd::Memory&        mem,
-    const amd::Coord3D& origin,
-    const amd::Coord3D& region,
-    uint                mapFlags,
-    size_t*             rowPitch,
-    size_t*             slicePitch)
-{
-    // Translate memory references
-    oclhsa::Memory* memory = getOclHsaMemory(&mem);
-    if (memory == NULL) {
-        LogError("allocMapTarget failed. Can't allocate video memory");
-        return NULL;
-    }
-
-    // Pass request over to memory
-    return memory->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
-}
-
 bool
 Device::bindExternalDevice(
     intptr_t    type,

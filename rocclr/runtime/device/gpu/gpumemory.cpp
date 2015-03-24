@@ -1324,8 +1324,9 @@ Image::allocMapTarget(
                 memory = new (owner()->getContext())
                     amd::Buffer(owner()->getContext(), 0,
                     cal()->width_ * height * depth * elementSize());
-                Memory* gpuMemory;
+                memory->setVirtualDevice(owner()->getVirtualDevice());
 
+                Memory* gpuMemory;
                 do {
                     if ((memory == NULL) || !memory->create(NULL, SysMem)) {
                         failed = true;

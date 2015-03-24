@@ -185,20 +185,6 @@ public:
             return false;
     }
 
-    //! Gets a pointer to a region of host-visible memory for use as the target
-    //! of a non-blocking map for a given memory object
-    virtual void* allocMapTarget(
-        amd::Memory&    mem,        //!< Abstraction layer memory object
-        const amd::Coord3D& origin, //!< The map location in memory
-        const amd::Coord3D& region, //!< The map region in memory
-        uint    mapFlags,           //!< Map flags
-        size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
-        size_t* slicePitch = NULL   //!< Slice for the mapped memory
-        ) {
-            ShouldNotReachHere();
-            return NULL;
-    }
-
     //! Releases non-blocking map target memory
     virtual void freeMapTarget(amd::Memory& mem, void* target) { ShouldNotReachHere();}
 
@@ -316,17 +302,6 @@ public:
         void *gfxContext,   //!< HGLRC/GLXContext handle
         bool validateOnly   //!< Only validate if the device can inter-operate with
                             //!< pDevice/pContext, do not bind.
-        );
-
-    //! Gets a pointer to a region of host-visible memory for use as the target
-    //! of a non-blocking map for a given memory object
-    virtual void *allocMapTarget(
-        amd::Memory &mem,   //!< Abstraction layer memory object
-        const amd::Coord3D &origin, //!< The map location in memory
-        const amd::Coord3D &region, //!< The map region in memory
-        uint    mapFlags,           //!< Map flags
-        size_t *rowPitch = NULL,    //!< Row pitch for the mapped memory
-        size_t *slicePitch = NULL   //!< Slice for the mapped memory
         );
 
     //! Gets free memory on a GPU device

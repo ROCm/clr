@@ -664,6 +664,9 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         viewLevel  = imageView->level_;
         gslResource = imageView->resource_->gslResource();
         viewOwner_  = imageView->resource_;
+        if (viewLevel != 0) {
+            viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL;
+        }
         if (viewLayer != 0) {
             viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER;
         }
@@ -1662,7 +1665,7 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
         sliceResource = dev().resAllocView(
             gslResource(), gslSize,
             calOffset, cal()->format_, cal()->channelOrder_, gslDim,
-            0, i, CAL_RESALLOCSLICEVIEW_LAYER);
+            0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
         if (0 == sliceResource) {
             LogError("Map layer. resAllocSliceView failed!");
             return NULL;
@@ -1772,7 +1775,7 @@ Resource::unmapLayers(VirtualGPU* gpu)
             sliceResource = dev().resAllocView(
                 gslResource(), gslSize,
                 calOffset, cal()->format_, cal()->channelOrder_, gslDim,
-                0, i, CAL_RESALLOCSLICEVIEW_LAYER);
+                0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
             if (0 == sliceResource) {
                 LogError("Unmap layer. resAllocSliceView failed!");
                 return;
