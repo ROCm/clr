@@ -6,17 +6,20 @@
 #include "aclTypes.h"
 #include "utils/options.hpp"
 #include "llvm/AMDLLVMContextHook.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Module.h"
 #include "llvm/PassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Assembly/Parser.h"
 
 #include <cassert>
 #include <string>
+
+namespace llvm
+{
+  class LLVMContext;
+  class Module;
+}
 
 namespace amdcl
 {

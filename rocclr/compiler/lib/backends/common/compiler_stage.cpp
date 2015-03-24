@@ -3,6 +3,8 @@
 //
 #include "compiler_stage.hpp"
 #include "utils/libUtils.h"
+#include "llvm/Assembly/Parser.h"
+#include "llvm/LLVMContext.h"
 
 using namespace amdcl;
 

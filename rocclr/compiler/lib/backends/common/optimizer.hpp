@@ -5,7 +5,11 @@
 #define _BE_OPTIMIZER_HPP_
 #include "aclTypes.h"
 #include "compiler_stage.hpp"
-#include "llvm/Module.h"
+
+namespace llvm
+{
+  class Module;
+}
 
 namespace amdcl
 {

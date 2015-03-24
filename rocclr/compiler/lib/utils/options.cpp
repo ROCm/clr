@@ -958,6 +958,7 @@ parseAllOptions(std::string& options, Options& Opts, bool linkOptsOnly)
             return false;
         }
     }
+    Opts.clangOptions.push_back("-cl-kernel-arg-info");
 
     // Parse options
     if (options.empty()) {
