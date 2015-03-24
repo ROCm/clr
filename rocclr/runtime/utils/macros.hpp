@@ -166,6 +166,12 @@
 # define ALWAYSINLINE
 #endif // !_MSC_VER
 
+#ifdef BRAHMA
+# define IS_BRAHMA true
+#else
+# define IS_BRAHMA false
+#endif
+
 //! \endcond
 
 #endif // MACROS_HPP_
