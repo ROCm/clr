@@ -1669,6 +1669,7 @@ Device::createBuffer(
             !internalAlloc) {
             Resource::CreateParams  params;
             params.owner_ = &owner;
+            params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
 
             // Create memory object
             result = gpuMemory->create(type, &params);
@@ -2143,26 +2144,6 @@ Device::unbindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool 
         }
     }
     return true;
-}
-
-void*
-Device::allocMapTarget(
-    amd::Memory&        mem,
-    const amd::Coord3D& origin,
-    const amd::Coord3D& region,
-    uint                mapFlags,
-    size_t*             rowPitch,
-    size_t*             slicePitch)
-{
-    // Translate memory references
-    gpu::Memory* memory = getGpuMemory(&mem);
-    if (memory == NULL) {
-        LogError("allocMapTarget failed. Can't allocate video memory");
-        return NULL;
-    }
-
-    // Pass request over to memory
-    return memory->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
 }
 
 bool

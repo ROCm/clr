@@ -269,9 +269,6 @@ Device::isAncestor(const Device* sub) const
     return false;
 }
 
-
-
-
 bool Device::IsHsaCapableDevice() {
     static bool init = false;
     typedef std::vector<std::string> ListType;
@@ -506,6 +503,26 @@ Device::getExtensionString()
     return result;
 }
 
+void*
+Device::allocMapTarget(
+    amd::Memory&    mem,
+    const amd::Coord3D& origin,
+    const amd::Coord3D& region,
+    uint    mapFlags,
+    size_t* rowPitch,
+    size_t* slicePitch)
+{
+    // Translate memory references
+    device::Memory* devMem = mem.getDeviceMemory(*this);
+    if (devMem == NULL) {
+        LogError("allocMapTarget failed. Can't allocate video memory");
+        return NULL;
+    }
+
+    // Pass request over to memory
+    return devMem->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
+}
+
 } // namespace amd
 
 namespace device {
@@ -577,11 +594,13 @@ Memory::saveMapInfo(
     const amd::Coord3D  origin,
     const amd::Coord3D  region,
     uint                mapFlags,
-    bool                entire)
+    bool                entire,
+    amd::Image*         baseMip)
 {
     if (mapFlags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
         writeMapInfo_.origin_ = origin;
         writeMapInfo_.region_ = region;
+        writeMapInfo_.baseMip_ = baseMip;
         writeMapInfo_.entire_ = entire;
         flags_ |= UnmapWrite;
     }

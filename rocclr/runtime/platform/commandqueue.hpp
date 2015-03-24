@@ -156,7 +156,7 @@ class HostQueue : public CommandQueue
         }
 
         //! Get virtual device for the current thread
-        const device::VirtualDevice* vdev() const { return virtualDevice_; }
+        device::VirtualDevice* vdev() const { return virtualDevice_; }
 
     private:
         device::VirtualDevice* virtualDevice_;  //!< Virtual device for this thread
@@ -207,7 +207,7 @@ public:
     void finish();
 
     //! Get virtual device for the current command queue
-    const device::VirtualDevice* vdev() const { return thread_.vdev(); }
+    device::VirtualDevice* vdev() const { return thread_.vdev(); }
 
     //! Return the current queue as the HostQueue
     virtual HostQueue* asHostQueue() { return this; }
