@@ -3570,7 +3570,7 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
     if (srcImage->getMipLevels() > 1) {
         // Create a view for the specified mip level
         mip = srcImage->createView(srcImage->getContext(),
-            srcImage->getImageFormat(), NULL, origin[srcImage->getDims()]);
+            srcImage->getImageFormat(), hostQueue.vdev(), origin[srcImage->getDims()]);
         if (mip() == NULL) {
             *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
             return NULL;
@@ -3579,7 +3579,10 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
         if (srcImage->getDims() < 3) {
             srcOrigin.c[srcImage->getDims()] = 0;
         }
+        srcImage->incMapCount();
         srcImage = mip();
+        // Retain this view until unmap is done
+        srcImage->retain();
     }
 
     if (!srcImage->validateRegion(srcOrigin, srcRegion)) {
