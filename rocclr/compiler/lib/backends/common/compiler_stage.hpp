@@ -96,6 +96,7 @@ namespace amdcl
       void setUseNative(const char * Val) { if(Val) hookup_.amdoptions.OptUseNative = Val; }
       void setDenormsAreZero(bool Val) { hookup_.amdoptions.DenormsAreZero = Val; }
       void setUniformWorkGroupSize(bool Val) { hookup_.amdoptions.UniformWorkGroupSize = Val; }
+      void setHaveFastFMA32(bool Val) { hookup_.amdoptions.HaveFastFMA32 = Val; }
 
       /*! Returns the llvm binary */
       llvm::Module* LLVMBinary() const { return llvmbinary_; }
