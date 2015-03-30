@@ -24,7 +24,6 @@
 #include "llvm/AMDFixupKernelModule.h"
 #include "llvm/AMDResolveLinker.h"
 #include "llvm/AMDPrelinkOpt.h"
-#include "llvm/AMDUtils.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
@@ -559,6 +558,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   if (Options()->oVariables->EnableBuildTiming) {
     time_prelinkopt = amd::Os::timeNanos();
   }
+  llvm::StringRef chip(aclGetChip(Elf()->target));
   setGPU(IsGPUTarget);
   setFiniteMathOnly(Options()->oVariables->FiniteMathOnly);
   setNoSignedZeros(Options()->oVariables->NoSignedZeros);
@@ -571,6 +571,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
+  setHaveFastFMA32(chip == "Cypress"
+                || chip == "Cayman"
+                || chip == "Tahiti"
+                || chip == "Hawaii"
+                || chip == "Carrizo");
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
   std::string clp_errmsg;
@@ -602,9 +607,9 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
   std::string ErrorMessage;
-
+#ifdef LEGACY_COMPLIB
   createASICIDFunctions(LLVMBinary());
-
+#endif // LEGACY_COMPLIB
   // Link libraries to get every functions that are referenced.
   std::string ErrorMsg;
   if (resolveLink(LLVMBinary(), LibMs, &ErrorMsg)) {
