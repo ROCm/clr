@@ -32,19 +32,6 @@
 using namespace amdcl;
 using namespace llvm;
 
-static std::string aclGetCodegenName(const aclTargetInfo &tgtInfo)
-{
-  assert(tgtInfo.arch_id <= aclLast && "Unknown device id!");
-  const FamilyMapping *family = familySet + tgtInfo.arch_id;
-  if (!family) return "";
-
-  assert((tgtInfo.chip_id) < family->children_size && "Unknown family id!");
-  const TargetMapping *target = &family->target[tgtInfo.chip_id];
-  return (target) ? target->codegen_name : "";
-}
-
-
-
 /*! Function that modifies the code gen level based on the
  * function size threshhold.
  */
@@ -229,13 +216,13 @@ llvmCodeGen(
 
     std::auto_ptr<TargetMachine>
         target(TheTarget->createTargetMachine(TheTriple.getTriple(),
-	       aclGetCodegenName(binary->target), FeatureStr, targetOptions,
+	       aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
         WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
         CodeModel::Default, OLvl));
 #else
   std::auto_ptr<TargetMachine>
   target(TheTarget->createTargetMachine(TheTriple.getTriple(),
-        aclGetCodegenName(binary->target), FeatureStr,
+        aclutGetCodegenName(binary->target), FeatureStr,
         WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
         CodeModel::Default));
   assert(target.get() && "Could not allocate target machine!");
@@ -244,7 +231,7 @@ llvmCodeGen(
   // MCJIT(Jan)
   if(!isGPU && OptionsObj->oVariables->UseJIT) {
     TargetMachine* jittarget(TheTarget->createTargetMachine(TheTriple.getTriple(),
-	       aclGetCodegenName(binary->target), FeatureStr, targetOptions,
+	       aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
         WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
         CodeModel::Default, OLvl));
 

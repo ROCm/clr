@@ -412,6 +412,17 @@ aclutInsertKernelStatistics(aclCompiler *cl, aclBinary *bin)
     return err;
 }
 
+std::string aclutGetCodegenName(const aclTargetInfo &tgtInfo)
+{
+  assert(tgtInfo.arch_id <= aclLast && "Unknown device id!");
+  const FamilyMapping *family = familySet + tgtInfo.arch_id;
+  if (!family) return "";
+
+  assert((tgtInfo.chip_id) < family->children_size && "Unknown family id!");
+  const TargetMapping *target = &family->target[tgtInfo.chip_id];
+  return (target) ? target->codegen_name : "";
+}
+
 void initElfDeviceCaps(aclBinary *elf)
 {
   if (aclutGetCaps(elf)->encryptCode) {

@@ -71,7 +71,7 @@ CPUOptimizer::optimize(llvm::Module *input)
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos();
   }
-  ret = cpuOpt->optimize(LLVMBinary(), false);
+  ret = cpuOpt->optimize(Elf(), LLVMBinary(), false);
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos() - time_opt;
     std::stringstream tmp_ss;
@@ -123,7 +123,7 @@ GPUOptimizer::optimize(llvm::Module *input)
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos();
   }
-  ret = gpuOpt->optimize(LLVMBinary(), true);
+  ret = gpuOpt->optimize(Elf(), LLVMBinary(), true);
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos() - time_opt;
     std::stringstream tmp_ss;
