@@ -112,6 +112,9 @@ aclutCopyBinOpts(aclBinaryOptions *dst,
 // and insert to elf as symbol
 acl_error aclutInsertKernelStatistics(aclCompiler*, aclBinary*);
 
+// Returns target chip name.
+std::string aclutGetCodegenName(const aclTargetInfo &tgtInfo);
+
 // Helper function that returns the
 // allocation function from the binary.
 AllocFunc

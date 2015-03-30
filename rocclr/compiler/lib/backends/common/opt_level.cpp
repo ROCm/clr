@@ -4,12 +4,16 @@
 #include "top.hpp"
 #include "opt_level.hpp"
 #include "library.hpp"
+#include "acl.h"
 #include "utils/options.hpp"
-#include "llvm/Module.h"
+#include "utils/target_mappings.h"
+#include "utils/libUtils.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/DataLayout.h"
+#include "llvm/Module.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/LinkAllPasses.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Transforms/IPO/AMDOptOptions.h"
 #include "compiler_stage.hpp"
 using namespace amdcl;
@@ -78,8 +82,65 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
 }
 
 void
-OptLevel::run()
+OptLevel::run(aclBinary *elf)
 {
+#if !defined(LEGACY_COMPLIB)
+  const aclTargetInfo* trg = aclutGetTargetInfo(elf);
+  TargetMachine *Machine = nullptr;
+  if (trg) {
+    llvm::Triple TheTriple(getTriple(trg->arch_id));
+    if (TheTriple.getArch()) {
+      std::string Error;
+      llvm::StringRef MArch(aclGetArchitecture(*trg));
+      const Target *TheTarget = TargetRegistry::lookupTarget(MArch, TheTriple,
+                                                             Error);
+      if (TheTarget) {
+        llvm::TargetOptions targetOptions;
+        targetOptions.NoFramePointerElim = false;
+        targetOptions.StackAlignmentOverride = Options()->oVariables->CPUStackAlignment;
+#ifdef WITH_TARGET_HSAIL
+        if (Options()->libraryType_ == amd::GPU_Library_HSAIL)
+          targetOptions.UnsafeFPMath = Options()->oVariables->UnsafeMathOpt;
+#endif
+        targetOptions.LessPreciseFPMADOption = Options()->oVariables->MadEnable ||
+                                               Options()->oVariables->EnableMAD;
+        targetOptions.NoInfsFPMath = Options()->oVariables->FiniteMathOnly;
+        targetOptions.NoNaNsFPMath = Options()->oVariables->FastRelaxedMath;
+
+        llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
+        switch (Options()->oVariables->OptLevel) {
+        case 0: // -O0
+          OLvl = CodeGenOpt::None;
+          break;
+        case 1: // -O1
+          OLvl = CodeGenOpt::Less;
+          break;
+        case 2: // -O2
+        case 5: // -O5(-Os)
+          OLvl = CodeGenOpt::Default;
+          break;
+        case 3: // -O3
+        case 4: // -O4
+          OLvl = CodeGenOpt::Aggressive;
+          break;
+        default:
+          assert(!"Error with optimization level");
+        };
+
+        Machine = TheTarget->createTargetMachine(TheTriple.getTriple(),
+                                                 aclutGetCodegenName(elf->target),
+                                                 "", targetOptions,
+                                                 WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
+                                                 CodeModel::Default, OLvl);
+      }
+    }
+  }
+  std::unique_ptr<TargetMachine> TM(Machine);
+// This is for llvm 3.6
+//  if (TM.get())
+//    TM->addAnalysisPasses(passes_);
+#endif
+
   if (Options()->oVariables->OptPrintLiveness) {
     Passes().add(createAMDLivenessPrinterPass());
   }
@@ -94,7 +155,7 @@ OptLevel::run()
 }
 
 int
-O0OptLevel::optimize(Module *input, bool isGPU)
+O0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   // With -O0, we don't do anything
   module_ = input;
@@ -106,13 +167,13 @@ O0OptLevel::optimize(Module *input, bool isGPU)
 #endif
   {
     setup(false, 0);
-    run();
+    run(elf);
   }
   return 0;
 }
 
 int
-GPUO0OptLevel::optimize(Module *input, bool isGPU)
+GPUO0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   assert(isGPU && "Only a GPU can use GPUO0OptLevel!\n");
@@ -137,51 +198,51 @@ GPUO0OptLevel::optimize(Module *input, bool isGPU)
     }
   }
 #endif
-  run();
+  run(elf);
   return 0;
 }
 
 int
-O1OptLevel::optimize(Module *input, bool isGPU)
+O1OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   setup(isGPU, 1);
-  run();
+  run(elf);
   return 0;
 }
 
 int
-O2OptLevel::optimize(Module *input, bool isGPU)
+O2OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   setup(isGPU, 2);
-  run();
+  run(elf);
   return 0;
 }
 
 int
-O3OptLevel::optimize(Module *input, bool isGPU)
+O3OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   setup(isGPU, 3);
-  run();
+  run(elf);
   return 0;
 }
 
 int
-O4OptLevel::optimize(Module *input, bool isGPU)
+O4OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   setup(isGPU, 4);
-  run();
+  run(elf);
   return 0;
 }
 
 int
-OsOptLevel::optimize(Module *input, bool isGPU)
+OsOptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   setup(isGPU, 5);
-  run();
+  run(elf);
   return 0;
 }

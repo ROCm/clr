@@ -5,6 +5,7 @@
 #define _BE_OPT_LEVEL_HPP_
 #include "top.hpp"
 #include "utils/options.hpp"
+#include "aclTypes.h"
 #include "llvm/PassManager.h"
 #include "llvm/Analysis/Passes.h"
 namespace llvm {
@@ -29,10 +30,10 @@ namespace amdcl
 
     virtual ~OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU) = 0;
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU) = 0;
     protected:
     void setup(bool isGPU, uint32_t OptLevel);
-    void run();
+    void run(aclBinary *elf);
     llvm::PassManager& Passes() { return passes_; }
     llvm::FunctionPassManager& FPasses() { return (*fpasses_); }
     amd::option::Options* Options() { return opts_; }
@@ -60,7 +61,7 @@ namespace amdcl
 
     virtual ~O0OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O0OptLevel
   /*@}*/
 
@@ -80,7 +81,7 @@ namespace amdcl
 
     virtual ~GPUO0OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O0OptLevel
   /*@}*/
 
@@ -100,7 +101,7 @@ namespace amdcl
 
     virtual ~O1OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O1OptLevel
   /*@}*/
 
@@ -120,7 +121,7 @@ namespace amdcl
 
     virtual ~O2OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O2OptLevel
   /*@}*/
 
@@ -140,7 +141,7 @@ namespace amdcl
 
     virtual ~O3OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O3OptLevel
   /*@}*/
 
@@ -160,7 +161,7 @@ namespace amdcl
 
     virtual ~O4OptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class O4OptLevel
   /*@}*/
 
@@ -180,7 +181,7 @@ namespace amdcl
 
     virtual ~OsOptLevel() {}
 
-    virtual int optimize(llvm::Module *input, bool isGPU);
+    virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
   }; // class OsOptLevel
   /*@}*/
 
