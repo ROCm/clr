@@ -1075,9 +1075,9 @@ Device::initializeHeapResources()
         // Create a synchronized transfer queue
         xferQueue_ = new VirtualGPU(*this);
         if (!(xferQueue_ && xferQueue_->create(
-            false,
+            false
     #if cl_amd_open_video
-            NULL
+            ,NULL
     #endif // cl_amd_open_video
             ))) {
             delete xferQueue_;

@@ -184,7 +184,11 @@ DeviceQueue::create()
 
     virtualDevice_ = device().createVirtualDevice(
         properties().test(CL_QUEUE_PROFILING_ENABLE),
-        !InteropQueue, NULL, size_);
+        !InteropQueue
+#if cl_amd_open_video
+        , NULL
+#endif // cl_amd_open_video
+        , size_);
 
     if (virtualDevice_ != NULL) {
         result = true;

@@ -146,7 +146,9 @@ OclExtensionsString[] = {
 #endif
     "cl_khr_image2d_from_buffer ",
     "cl_amd_image2d_from_buffer_read_only ",
+#if cl_amd_open_video
     "cl_amd_open_video ",
+#endif // cl_amd_open_video
     "",
     "cl_amd_bus_addressable_memory ",
     "cl_amd_c11_atomics ",

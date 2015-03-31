@@ -884,7 +884,7 @@ Device::xferQueue() const
         // Create virtual device for internal memory transfer
         Device* thisDevice = const_cast<Device*>(this);
         thisDevice->xferQueue_ = reinterpret_cast<VirtualGPU*>(
-                thisDevice->createVirtualDevice(false, false, NULL));
+                thisDevice->createVirtualDevice(false, false));
         if (!xferQueue_) {
             LogError("Couldn't create the device transfer manager!");
         }
