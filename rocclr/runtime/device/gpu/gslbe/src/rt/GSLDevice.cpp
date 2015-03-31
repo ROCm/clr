@@ -1726,7 +1726,8 @@ CALGSLDevice::fillImageHwState(gslMemObject mem, void* hwState, uint32 hwStateSi
 }
 
 void
-CALGSLDevice::fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 addr, void* hwState, uint32 hwStateSize) const
+CALGSLDevice::fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 addr,
+    float minLod, float maxLod, void* hwState, uint32 hwStateSize) const
 {
     amd::ScopedLock k(gslDeviceOps());
     m_textureSampler->setUnnormalizedMode(m_cs, unnorm);
@@ -1735,6 +1736,8 @@ CALGSLDevice::fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 add
     m_textureSampler->setWrap(m_cs, GSL_TEXTURE_WRAP_S, static_cast<gslTexParameterParamWrap>(addr));
     m_textureSampler->setWrap(m_cs, GSL_TEXTURE_WRAP_T, static_cast<gslTexParameterParamWrap>(addr));
     m_textureSampler->setWrap(m_cs, GSL_TEXTURE_WRAP_R, static_cast<gslTexParameterParamWrap>(addr));
+    m_textureSampler->setMinLOD(m_cs, static_cast<float32>(minLod));
+    m_textureSampler->setMaxLOD(m_cs, static_cast<float32>(maxLod));
 
     m_textureSampler->getSamplerSrd(m_cs, hwState, hwStateSize);
 }
