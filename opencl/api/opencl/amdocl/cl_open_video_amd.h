@@ -96,7 +96,7 @@ jurisdiction and venue of these courts.
 /******************************************
 * Private AMD extension cl_amd_open_video *
 ******************************************/
-#define cl_amd_open_video   1
+#define cl_amd_open_video   0
 
 #if cl_amd_open_video
 
