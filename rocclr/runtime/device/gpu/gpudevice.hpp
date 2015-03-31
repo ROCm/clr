@@ -140,6 +140,10 @@ class VirtualDevice;
 class PrintfDbg;
 class ThreadTrace;
 
+#ifndef CL_FILTER_NONE
+#define CL_FILTER_NONE 0x1142
+#endif
+
 class Sampler : public device::Sampler
 {
 public:
@@ -152,6 +156,11 @@ public:
     //! Creates a device sampler from the OCL sampler state
     bool create(
         uint32_t oclSamplerState    //!< OCL sampler state
+        );
+
+    //! Creates a device sampler from the OCL sampler state
+    bool create(
+        const amd::Sampler& owner   //!< AMD sampler object
         );
 
     const void* hwState() const { return hwState_; }
@@ -518,9 +527,12 @@ public:
 
     //! Set GSL sampler to the specified state
     void    fillHwSampler(
-        uint32_t    state,              //!< Sampler's OpenCL state
-        void*       hwState,            //!< Sampler's HW state
-        uint32_t    hwStateSize         //!< Size of sampler's HW state
+        uint32_t    state,          //!< Sampler's OpenCL state
+        void*       hwState,        //!< Sampler's HW state
+        uint32_t    hwStateSize,    //!< Size of sampler's HW state
+        uint32_t    mipFilter = CL_FILTER_NONE, //!< Mip filter
+        float       minLod = 0.f,           //!< Min level of detail
+        float       maxLod = CL_MAXFLOAT    //!< Max level of detail
         ) const;
 
     //! host memory alloc

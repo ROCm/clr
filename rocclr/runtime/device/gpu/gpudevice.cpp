@@ -1904,7 +1904,7 @@ Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) cons
     *sampler = NULL;
     if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
         Sampler* gpuSampler = new Sampler(*this);
-        if ((NULL == gpuSampler) || !gpuSampler->create(owner.state())) {
+        if ((NULL == gpuSampler) || !gpuSampler->create(owner)) {
             delete gpuSampler;
             return false;
         }
@@ -2449,7 +2449,9 @@ Device::destroyScratchBuffers()
 }
 
 void
-Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize) const
+Device::fillHwSampler(
+    uint32_t state, void* hwState, uint32_t hwStateSize,
+    uint32_t mipFilter, float minLod, float maxLod) const
 {
     // All GSL sampler's parameters are in floats
     uint32_t    gslAddress = GSL_CLAMP_TO_BORDER;
@@ -2483,8 +2485,25 @@ Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize) const
         gslMagFilter = GSL_MAG_LINEAR;
     }
 
+    if (mipFilter == CL_FILTER_NEAREST) {
+        if (gslMinFilter == GSL_MIN_NEAREST) {
+            gslMinFilter = GSL_MIN_NEAREST_MIPMAP_NEAREST;
+        }
+        else {
+            gslMinFilter = GSL_MIN_LINEAR_MIPMAP_NEAREST;
+        }
+    }
+    else if (mipFilter == CL_FILTER_LINEAR) {
+        if (gslMinFilter == GSL_MIN_NEAREST) {
+            gslMinFilter = GSL_MIN_NEAREST_MIPMAP_LINEAR;
+        }
+        else {
+            gslMinFilter = GSL_MIN_LINEAR_MIPMAP_LINEAR;
+        }
+    }
+
     fillSamplerHwState(unnorm, gslMinFilter, gslMagFilter,
-        gslAddress, hwState, hwStateSize);
+        gslAddress, minLod, maxLod, hwState, hwStateSize);
 }
 
 void*
@@ -2564,14 +2583,25 @@ Device::SrdManager::~SrdManager()
 }
 
 bool
-Sampler::create(
-    uint32_t oclSamplerState)
+Sampler::create(uint32_t oclSamplerState)
 {
     hwSrd_ = dev_.srds().allocSrdSlot(&hwState_);
     if (0 == hwSrd_) {
         return false;
     }
     dev_.fillHwSampler(oclSamplerState, hwState_, HsaSamplerObjectSize);
+    return true;
+}
+
+bool
+Sampler::create(const amd::Sampler& owner)
+{
+    hwSrd_ = dev_.srds().allocSrdSlot(&hwState_);
+    if (0 == hwSrd_) {
+        return false;
+    }
+    dev_.fillHwSampler(owner.state(), hwState_, HsaSamplerObjectSize,
+        owner.mipFilter(), owner.minLod(), owner.maxLod());
     return true;
 }
 

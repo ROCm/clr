@@ -126,7 +126,8 @@ public:
 
     void fillImageHwState(gslMemObject mem, void* hwState, uint32 hwStateSize) const;
 
-    void fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 addr, void* hwState, uint32 hwStateSize) const;
+    void fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 addr,
+        float minLod, float maxLod, void* hwState, uint32 hwStateSize) const;
 
     gslSamplerObject txSampler() const { return m_textureSampler; }
 

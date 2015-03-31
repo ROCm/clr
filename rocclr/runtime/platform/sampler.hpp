@@ -45,21 +45,30 @@ public:
 private:
     Context&    context_;   //!< OpenCL context associated with this sampler
     uint32_t    state_;     //!< Sampler state
+    uint        mipFilter_; //!< mip filter
+    float       minLod_;    //!< min level of detail
+    float       maxLod_;    //!< max level of detail
     DeviceSamplers   deviceSamplers_;   //!< Container for the device samplers
 
 public:
     Sampler(
         Context&    context,        //!< OpenCL context
-        bool        norm_coords,    //!< normalized coordinates
-        uint        addr_mode,      //!< adressing mode
-        uint        filter_mode     //!< filter mode
+        bool        normCoords,     //!< normalized coordinates
+        uint        addrMode,       //!< adressing mode
+        uint        filterMode,     //!< filter mode
+        uint        mipFilterMode,  //!< mip filter mode
+        float       minLod,         //!< min level of detail
+        float       maxLod          //!< max level of detail
         )
         : context_(context)
+        , mipFilter_(mipFilterMode)
+        , minLod_(minLod)
+        , maxLod_(maxLod)
     {   // Packs the sampler state into uint32_t for kernel execution
         state_ = 0;
 
         // Set normalized state
-        if (norm_coords) {
+        if (normCoords) {
             state_ |= StateNormalizedCoordsTrue;
         }
         else {
@@ -67,7 +76,7 @@ public:
         }
 
         // Program the sampler filter mode
-        if (filter_mode == CL_FILTER_LINEAR) {
+        if (filterMode == CL_FILTER_LINEAR) {
             state_ |= StateFilterLinear;
         }
         else {
@@ -75,7 +84,7 @@ public:
         }
 
         // Program the sampler address mode
-        switch (addr_mode) {
+        switch (addrMode) {
         case CL_ADDRESS_CLAMP_TO_EDGE:
             state_ |= StateAddressClampToEdge;
             break;        
@@ -98,9 +107,8 @@ public:
 
     virtual ~Sampler()
     {
-        for (DeviceSamplers::const_iterator it = deviceSamplers_.begin();
-            it != deviceSamplers_.end(); ++it) {
-            delete it->second;
+        for (const auto& it : deviceSamplers_) {
+            delete it.second;
         }
     }
 
@@ -119,7 +127,7 @@ public:
 
     device::Sampler* getDeviceSampler(const Device& dev) const
     {
-        DeviceSamplers::const_iterator it = deviceSamplers_.find(&dev);
+        auto it = deviceSamplers_.find(&dev);
         if (it != deviceSamplers_.end()) {
             return it->second;
         }
@@ -129,6 +137,10 @@ public:
     //! Accessor functions
     Context& context() const { return context_; }
     uint32_t state() const { return state_; }
+    uint  mipFilter() const { return mipFilter_; }
+    float minLod() const { return minLod_; }
+    float maxLod() const { return maxLod_; }
+
     bool normalizedCoords() const
     {
         return (state_ & StateNormalizedCoordsTrue) ? true : false;
@@ -166,6 +178,7 @@ public:
         return ((state_ & StateFilterMask) == StateFilterNearest) ?
             CL_FILTER_NEAREST : CL_FILTER_LINEAR;
     }
+
     //! RTTI internal implementation
     virtual ObjectType objectType() const { return ObjectTypeSampler; }
 };
