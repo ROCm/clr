@@ -41,6 +41,7 @@ public:
     void             setUavMask(const CALUavMask& uavMask);
     void             setUAVChannelOrder(uint32 physUnit, gslMemObject mem);
     void             setProgram(gslProgramObject func);
+    void             setWavesPerSH(gslProgramObject func, uint32 wavesPerSH)const;
     bool             runProgramGrid(GpuEvent& event, const ProgramGrid* pProgramGrid, const gslMemObject* mems, uint32 numMems);
     bool             runProgramVideoDecode(GpuEvent& event, gslMemObject mo, const CALprogramVideoDecode& decode);
     void             runAqlDispatch(GpuEvent& event, const void* aqlPacket, const gslMemObject* mems,

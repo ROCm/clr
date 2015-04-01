@@ -5,6 +5,7 @@
 #include "cm_if.h"
 #include "amuABI.h"
 #include "shader/ProgramObject.h"
+#include "shader/ComputeProgramObject.h"
 #include "query/QueryObject.h"
 #include "query/PerformanceQueryObject.h"
 #include "constbuffer/ConstantBufferObject.h"
@@ -398,6 +399,13 @@ void
 CALGSLContext::setProgram(gslProgramObject func)
 {
     m_rs->setCurrentProgramObject(GSL_COMPUTE_PROGRAM, func);
+}
+
+void
+CALGSLContext::setWavesPerSH(gslProgramObject func, uint32 wavesPerSH)const
+{
+    auto compProg = static_cast<gsl::ComputeProgramObject*>(func);
+    compProg->setWavesPerSH(wavesPerSH);
 }
 
 bool

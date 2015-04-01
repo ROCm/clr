@@ -177,7 +177,27 @@ debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
 debug(bool, OCL_FORCE_CPU_SVM, false, \
         "force svm support for CPU")                                          \
 debug(bool, GPU_ENABLE_HW_DEBUG, false,                                       \
-        "Enable HW DEBUG for GPU")
+        "Enable HW DEBUG for GPU")                                            \
+release(uint, GPU_WAVES_PER_SIMD, 0,                                          \
+        "Force the number of waves per SIMD (1-10)")                          \
+release(bool, GPU_WAVE_LIMIT_ENABLE, false,                                   \
+        "1 = Enable adaptive wave limiter")                                   \
+release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
+        "Assume the number of CU per SH for wave limiter")                    \
+release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
+        "Set maximum waves per SIMD to try for wave limiter")                 \
+release_on_stg(uint, GPU_WAVE_LIMIT_WARMUP, 100,                              \
+        "Set warming up kernel execution count for wave limiter")             \
+release_on_stg(uint, GPU_WAVE_LIMIT_ADAPT, 1,                                 \
+        "Set adapting factor for wave limiter")                               \
+release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 40,                                  \
+        "Set running factor for wave limiter")                                \
+release_on_stg(uint, GPU_WAVE_LIMIT_ABANDON, 105,                             \
+        "Set abandon threshold for wave limiter")                             \
+release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
+        "File path prefix for dumping wave limiter output")                   \
+release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
+        "File path prefix for tracing wave limiter")
 
 
 
@@ -242,6 +262,12 @@ public:
 
 #define flagIsDefault(name) \
     (amd::Flag::cannotSet##name || amd::Flag::isDefault(amd::Flag::k##name))
+
+#define setIfNotDefault(var, opt, other) \
+  if (!flagIsDefault(opt)) \
+    var = (opt);\
+  else \
+    var = (other);
 
 //  @}
 

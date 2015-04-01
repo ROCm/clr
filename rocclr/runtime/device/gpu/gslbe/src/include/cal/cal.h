@@ -207,6 +207,7 @@ typedef struct CALdeviceattribsRec {
     CALuint    memoryClock;                         /**< GPU memory clock rate in megahertz */
     CALuint    wavefrontSize;                       /**< Wavefront size */
     CALuint    numberOfSIMD;                        /**< Number of SIMDs */
+    CALuint    numberOfCUsperShaderArray;           /**< Number of CUs per shader array */
     bool       doublePrecision;                     /**< double precision supported */
     bool       localDataShare;                      /**< local data share supported */
     bool       globalDataShare;                     /**< global data share supported */
