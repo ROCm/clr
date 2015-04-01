@@ -116,6 +116,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.engineClock = cs->getMaxEngineClock();
     m_attribs.memoryClock = cs->getMaxMemoryClock();
     m_attribs.numberOfSIMD = cs->getNumSIMD();
+    m_attribs.numberOfCUsperShaderArray = cs->getNumCUsPerShaderArray();
     m_attribs.wavefrontSize = cs->getWaveFrontSize();
     m_attribs.doublePrecision = cs->getIsDoublePrecisionSupported();
     m_attribs.localDataShare = cs->getIsLocalDataShareSupported();

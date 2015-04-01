@@ -89,10 +89,8 @@ protected:
         ProfilingInfo(bool enabled = false) : enabled_(enabled)
         {
             if (enabled) {
-                queued_    = 0ULL;
-                submitted_ = 0ULL;
-                start_     = 0ULL;
-                end_       = 0ULL;
+                clear();
+                callback_  = NULL;
             }
         }
 
@@ -100,7 +98,22 @@ protected:
         uint64_t   submitted_;
         uint64_t   start_;
         uint64_t   end_;
-        const bool enabled_;
+        bool       enabled_;
+        ProfilingCallback *callback_;
+        void clear() {
+            queued_    = 0ULL;
+            submitted_ = 0ULL;
+            start_     = 0ULL;
+            end_       = 0ULL;
+        }
+        void setCallback(ProfilingCallback *callback) {
+            if (callback == NULL) {
+                return;
+            }
+            enabled_ = true;
+            clear();
+            callback_ = callback;
+        }
 
     } profilingInfo_;
 

@@ -71,6 +71,9 @@ namespace option {
 class Options;
 } // option
 
+struct ProfilingCallback: public amd::EmbeddedObject {
+    virtual void callback (ulong duration) = 0;
+};
 }
 
 enum OclExtensions {
@@ -872,6 +875,7 @@ public:
         size_t   compileSizeHint_[3];    //!< kernel compiled workgroup size hint
         std::string compileVecTypeHint_; //!< kernel compiled vector type hint
         bool     uniformWorkGroupSize_;  //!< uniform work group size option
+        bool     limitWave_;             //!< adaptively limit waves per SH
     };
 
     //! Default constructor
@@ -931,6 +935,11 @@ public:
 
     size_t getWorkGroupSizeHint(int dim) const {
       return workGroupInfo_.compileSizeHint_[dim];
+    }
+
+    //! Get profiling callback object
+    virtual amd::ProfilingCallback* getProfilingCallback() const {
+        return NULL;
     }
 
     void setVecTypeHint(const std::string& hint)

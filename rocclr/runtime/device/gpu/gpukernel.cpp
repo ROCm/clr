@@ -58,6 +58,7 @@ const MetaDataConst ArgState[ArgStateTotal] =
     { "printfid:",          KernelArg::PrintfBufId,     { 0, 0, 0, 0, 0, 0, 0 } },
     { "wsh:",               KernelArg::GroupingHint,    { 0, 0, 0, 0, 0, 0, 0 } },
     { "vth:",               KernelArg::VecTypeHint,     { 0, 0, 0, 0, 0, 0, 0 } },
+    { "limitwave:",         KernelArg::LimitWave,        { 0, 0, 0, 0, 0, 0, 0 } },
 };
 
 const DataTypeConst DataType[] =
@@ -829,6 +830,10 @@ Kernel::create(
         }
     }
 
+    // Wave limiter needs to be initialized after kernel metadata is parsed
+    // Since it depends on it.
+    waveLimiter_.enable();
+
     if (result) {
         buildError_ = CL_SUCCESS;
     }
@@ -846,6 +851,7 @@ Kernel::Kernel(
     const InitData*     initData)
     : NullKernel(name, gpuDev, prog)
     , blitKernelHack_(false)
+    , waveLimiter_(this)
 {
     hwPrivateSize_ = 0;
     if (NULL != initData) {
@@ -1671,6 +1677,7 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
         }
     }
 
+    gpu.setWavesPerSH(gpu.gslKernelDesc()->func_, waveLimiter_.getWavesPerSH());
     if (!gpu.runProgramGrid(*calEvent,
         const_cast<ProgramGrid*>(&gpu.cal()->progGrid_), gpu.vmMems(), gpu.cal_.memCount_)) {
         LogError("Failed to execute the program!");
@@ -2710,6 +2717,15 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
                         workGroupInfo_.compileVecTypeHint_ = temp;
                     }
                     // Process next ...
+                    continue;
+                case KernelArg::LimitWave:
+                    {
+                        uint tmp;
+                        if (!getuint(metaData, &pos, &tmp)) {
+                            return false;
+                        }
+                        workGroupInfo_.limitWave_ = tmp!=0;
+                    }
                     continue;
                 default:
                     break;

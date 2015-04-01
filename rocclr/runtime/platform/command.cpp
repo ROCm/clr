@@ -68,6 +68,9 @@ Event::recordProfilingInfo(cl_int status, uint64_t timeStamp)
         break;
     default:
         profilingInfo_.end_ = timeStamp;
+        if (profilingInfo_.callback_ != NULL) {
+            profilingInfo_.callback_->callback(timeStamp - profilingInfo_.start_);
+        }
         break;
     }
     return timeStamp;
@@ -259,6 +262,9 @@ NDRangeKernelCommand::NDRangeKernelCommand(
         kernel_(kernel), sizes_(sizes)
 {
     parameters_ = kernel.parameters().capture(queue.device());
+    auto& device = queue.device();
+    auto devKernel = kernel.getDeviceKernel(device);
+    profilingInfo_.setCallback(devKernel->getProfilingCallback());
     fixme_guarantee(parameters_ != NULL && "out of memory");
     kernel_.retain();
 }

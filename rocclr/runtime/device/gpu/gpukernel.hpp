@@ -15,6 +15,7 @@
 #include "device/gpu/gpuvirtual.hpp"
 #include "sc/Interface/SCHSAInterface.h"
 #include "device/gpu/gpuprintf.hpp"
+#include "device/gpu/gpuwavelimiter.hpp"
 #include "hsa.h"
 //! \namespace gpu GPU Device Implementation
 namespace gpu {
@@ -187,6 +188,7 @@ public:
         PrintfBufId,
         GroupingHint,
         VecTypeHint,
+        LimitWave,
         TotalTypes
     };
 
@@ -312,7 +314,7 @@ struct MetaDataConst
 };
 
 const uint DescTotal        = 15;
-const uint BasicTypeTotal   = 14;
+const uint BasicTypeTotal   = 15;
 const uint ArgStateTotal    = DescTotal + BasicTypeTotal;
 
 //! The constant array that describes different metadata properties
@@ -651,6 +653,11 @@ public:
         VirtualGPU::GslKernelDesc*  desc    //!< Kernel descriptor
         ) const;
 
+    //! Get profiling callback object
+    virtual amd::ProfilingCallback* getProfilingCallback() const {
+        return waveLimiter_.getProfilingCallback();
+    }
+
 protected:
     //! Initializes the kernel parameters for the abstraction layer
     bool initParameters();
@@ -767,6 +774,8 @@ private:
 
     //! @todo remove the blit kernel hack
     bool    blitKernelHack_;    //!< No VM hack for kernel blit
+
+    WaveLimiter waveLimiter_; //!< adaptively control number of waves
 };
 
 enum HSAIL_ADDRESS_QUALIFIER{
