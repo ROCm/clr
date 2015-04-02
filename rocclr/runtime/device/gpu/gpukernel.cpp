@@ -676,6 +676,12 @@ NullKernel::create(
         }
 
         amd::option::Options* Opts = (amd::option::Options*)bin->options;
+
+        // Append an option so that we can selectively enable a SCOption on CZ
+        // whenever IOMMUv2 is enabled.
+        if (nullDev().settings().svmFineGrainSystem_) {
+            options->origOptionStr.append(" -sc-xnack-iommu");
+        }
         // temporary solution to synchronize buildNo between runtime and complib
         // until we move runtime inside complib
         Opts->setBuildNo(options->getBuildNo());
@@ -3557,6 +3563,11 @@ HSAILKernel::init(bool finalize)
         std::string options(compileOptions_.c_str());
         options.append(" -just-kernel=");
         options.append(openClKernelName.c_str());
+        // Append an option so that we can selectively enable a SCOption on CZ
+        // whenever IOMMUv2 is enabled.
+        if (dev().settings().svmFineGrainSystem_) {
+            options.append(" -sc-xnack-iommu");
+        }
         error = aclCompile(dev().hsaCompiler(), prog().binaryElf(),
             options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
         buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
