@@ -1105,6 +1105,14 @@ OPTION(OT_BOOL, \
        true, 0, 0, NULL, \
        "Use AMDAliasAnalysis for correct barrier behavior. If disabled, remove noalias to ensure correct barrier behavior.")
 
+// -sc-xnack-iommu
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_NORMAL, \
+       "sc-xnack-iommu", NULL, \
+       SCXnackIommu, \
+       false, 0, 0, NULL, \
+       "Enable SC XNACK workaround if IOMMUv2 is being used")
+
 // -limit-vector-registers=<value> (default 0 = hardware specific)
 FLAG(OT_UINT32, OVIS_SUPPORT|OVIS_INTERNAL|OVA_REQUIRED, \
     "limit-vector-registers", OptLimitVecRegisters, 0, \
