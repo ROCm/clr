@@ -187,6 +187,10 @@ GPUO0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
     // 1. Mark all non-kernel functions as having internal linkage.
     // 2. Invoke the GlobalOptimizer to resolve function aliases.
     // 3. Force inlining using our custom inliner pass.
+    if (Options()->oVariables->EnableDebug) {
+      HLC_HSAIL_Enable_Calls = false;
+      HLC_Disable_Amd_Inline_All = false;
+    }
     Passes().add(createAMDSymbolLinkagePass(true, NULL));
     Passes().add(createGlobalOptimizerPass());
     if (!HLC_Disable_Amd_Inline_All && !DisableInline ) {
