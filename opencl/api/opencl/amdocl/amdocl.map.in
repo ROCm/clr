@@ -82,6 +82,12 @@ global:
 #if defined(OPENCL_MAINLINE)
 local:
     *;
+#else
+local:
+    elf32_*;
+    elf64_*;
+    elf_*;
+    gelf_*;
 #endif
 };
 
