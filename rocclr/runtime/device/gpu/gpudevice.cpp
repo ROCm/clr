@@ -245,6 +245,7 @@ void
 Device::Engines::create(uint num, gslEngineDescriptor* desc, uint maxNumComputeRings)
 {
     numComputeRings_ = 0;
+    numDmaEngines_ = 0;
 
     for (uint i = 0; i < num; ++i) {
         desc_[desc[i].id] = desc[i];
@@ -253,6 +254,11 @@ Device::Engines::create(uint num, gslEngineDescriptor* desc, uint maxNumComputeR
         if (desc[i].id >= GSL_ENGINEID_COMPUTE0 &&
             desc[i].id <= GSL_ENGINEID_COMPUTE7) {
             numComputeRings_++;
+        }
+
+        if (desc[i].id >= GSL_ENGINEID_DRMDMA0 &&
+            desc[i].id <= GSL_ENGINEID_DRMDMA1) {
+            numDmaEngines_++;
         }
     }
 
