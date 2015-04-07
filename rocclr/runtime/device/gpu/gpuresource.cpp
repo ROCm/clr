@@ -1582,7 +1582,8 @@ Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers)
 
     // Check if memory wasn't mapped yet
     if (++mapCount_ == 1) {
-        if ((cal()->dimSize_ == 3) || cal()->imageArray_)  {
+        if ((cal()->dimSize_ == 3) || cal()->imageArray_ ||
+            ((cal()->type_ == ImageView) && (viewOwner_->cal()->mipLevels_ > 1))) {
             // Save map info for multilayer map/unmap
             startLayer_ = startLayer;
             numLayers_  = numLayers;
@@ -1712,7 +1713,8 @@ Resource::unmap(VirtualGPU* gpu)
 
     // Check if it's the last unmap
     if (count == 0) {
-        if ((cal()->dimSize_ == 3) || cal()->imageArray_) {
+        if ((cal()->dimSize_ == 3) || cal()->imageArray_ ||
+            ((cal()->type_ == ImageView) && (viewOwner_->cal()->mipLevels_ > 1))) {
             // Unmap layers
             unmapLayers(gpu);
         }
