@@ -218,8 +218,12 @@ public:
         //! Returns the number of available compute rings
         uint numComputeRings() const { return numComputeRings_; }
 
+        //! Returns the number of available DMA engines
+        uint numDMAEngines() const { return numDmaEngines_; }
+
     private:
         uint numComputeRings_;
+        uint numDmaEngines_;
         gslEngineDescriptor desc_[GSL_ENGINEID_MAX];    //!< Engine descriptor
     };
 

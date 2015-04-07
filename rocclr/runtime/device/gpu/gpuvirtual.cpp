@@ -498,7 +498,11 @@ VirtualGPU::create(
             engineMask = dev().engines().getMask((gslEngineID)(dev().isComputeRingIDForced() ?
                          dev().getforcedComputeEngineID() : (GSL_ENGINEID_COMPUTE0 + idx)));
             if (dev().canDMA()) {
-                if (index() & 0x1) {
+                // If only 1 DMA engine is available then use that one
+                if (dev().engines().numDMAEngines() < 2) {
+                    engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
+                }
+                else if (index() & 0x1) {
                     engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
                 }
                 else {
