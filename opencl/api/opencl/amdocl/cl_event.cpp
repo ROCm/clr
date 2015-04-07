@@ -81,7 +81,7 @@ RUNTIME_ENTRY(cl_int, clWaitForEvents, (
         }
 
         // Make sure all the events are associated with the same context
-        amd::Context* context = &as_amd(event)->context();
+        const amd::Context* context = &as_amd(event)->context();
         if (prevContext != NULL && prevContext != context) {
             return CL_INVALID_CONTEXT;
         }
@@ -147,7 +147,8 @@ RUNTIME_ENTRY(cl_int, clGetEventInfo, (
 
     switch(param_name) {
     case CL_EVENT_CONTEXT: {
-        cl_context context = as_cl(&as_amd(event)->context());
+        amd::Context& amdCtx = const_cast<amd::Context&>(as_amd(event)->context());
+        cl_context context = as_cl(&amdCtx);
         return amd::clGetInfo(
             context, param_value_size, param_value, param_value_size_ret);
     }
