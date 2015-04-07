@@ -1543,7 +1543,7 @@ SvmBuffer::malloc(
 }
 
 void
-SvmBuffer::free(Context& context, void* ptr)
+SvmBuffer::free(const Context& context, void* ptr)
 {
     Remove(reinterpret_cast<uintptr_t>(ptr));
     context.svmFree(ptr);
