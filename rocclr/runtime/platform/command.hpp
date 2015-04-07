@@ -75,7 +75,6 @@ private:
 
     Monitor lock_;
 
-    SharedReference<Context> context_; //!< context associated with this event.
     std::atomic<CallBackEntry*> callbacks_; //!< linked list of callback entries.
     volatile cl_int  status_;    //!< current execution status.
     std::atomic_flag notified_;  //!< Command queue was notified
@@ -117,8 +116,8 @@ protected:
 
     } profilingInfo_;
 
-    //! Construct a new event in the given \a context.
-    Event(Context& context);
+    //! Construct a new event.
+    Event();
 
     //! Construct a new event associated to the given command \a queue.
     Event(HostQueue& queue);
@@ -138,10 +137,8 @@ protected:
     void processCallbacks(cl_int status) const;
 
 public:
-
     //! Return the context for this event.
-    Context& context() { return context_(); }
-    const Context& context() const { return context_(); }
+    virtual const Context& context() const = 0;
 
     //! Return the command this event is associated with.
     inline Command& command();
@@ -219,8 +216,8 @@ protected:
         const EventWaitList& eventWaitList = nullWaitList);
 
     //! Construct a new command of the given OpenCL type.
-    Command(Context& context, cl_command_type type) :
-        Event(context), queue_(NULL), next_(NULL), type_(type),
+    Command(cl_command_type type) :
+        Event(), queue_(NULL), next_(NULL), type_(type),
         exception_(0), data_(NULL), eventWaitList_(nullWaitList)
     { }
 
@@ -280,27 +277,36 @@ public:
     //! Get the next GPU command
     Command* getNext() const { return next_; }
 
+    //! Return the context for this event.
+    virtual const Context& context() const;
 };
 
 class UserEvent : public Command
 {
+    const Context&  context_;
+
 public:
-    UserEvent(Context& context) : Command(context, CL_COMMAND_USER) {
+    UserEvent(Context& context) : Command(CL_COMMAND_USER), context_(context) {
         setStatus(CL_SUBMITTED);
     }
 
     virtual void submit(device::VirtualDevice& device) {
         ShouldNotCallThis();
     }
+
+    virtual const Context& context() const { return context_; }
 };
 
 class ClGlEvent : public Command
 {
 private:
+    const Context&  context_;
     bool waitForFence();
 
 public:
-    ClGlEvent(Context& context) : Command(context, CL_COMMAND_GL_FENCE_SYNC_OBJECT_KHR) {
+    ClGlEvent(Context& context)
+    : Command(CL_COMMAND_GL_FENCE_SYNC_OBJECT_KHR)
+    , context_(context) {
         setStatus(CL_SUBMITTED);
     }
 
@@ -311,6 +317,8 @@ public:
     bool awaitCompletion() {
         return waitForFence();
     }
+
+    virtual const Context& context() const { return context_; }
 };
 
 inline Command&

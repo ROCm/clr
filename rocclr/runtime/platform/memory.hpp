@@ -647,7 +647,7 @@ public:
         size_t alignment);
 
     //! Release shared buffer
-    static void free(Context& context, void* ptr);
+    static void free(const Context& context, void* ptr);
 
     //! Fill the destination buffer \a dst with the contents of the source
     //! buffer \a src \times times.

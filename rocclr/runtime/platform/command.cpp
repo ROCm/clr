@@ -26,17 +26,15 @@
 namespace amd {
 
 Event::Event(HostQueue& queue)
-    : context_(queue.context())
-    , callbacks_(NULL)
+    : callbacks_(NULL)
     , status_(CL_INT_MAX)
     , profilingInfo_(
         queue.properties().test(CL_QUEUE_PROFILING_ENABLE)
         || Agent::shouldPostEventEvents())
 { notified_.clear(); }
 
-Event::Event(Context& context)
-    : context_(context)
-    , callbacks_(NULL)
+Event::Event()
+    : callbacks_(NULL)
     , status_(CL_SUBMITTED)
 { notified_.clear(); }
 
@@ -252,6 +250,11 @@ Command::enqueue()
     }
 }
 
+const Context& 
+Command::context() const
+{
+    return queue_->context();
+}
 
 NDRangeKernelCommand::NDRangeKernelCommand(
     HostQueue& queue,
