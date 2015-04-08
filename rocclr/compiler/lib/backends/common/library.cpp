@@ -54,6 +54,7 @@ namespace amd {
 #include "builtins-hsail.inc"
 #include "builtins-hsail-amd-ci.inc"
 #include "builtins-gcn.inc"
+#include "builtins-ocml.inc"
 #endif
 
 #include <cstdlib>
@@ -276,7 +277,9 @@ getLibDescs (
         LibDesc[1].size  = builtins_hsail_amd_ci_size;
         LibDesc[2].start = reinterpret_cast<const char*>(builtins_hsail);
         LibDesc[2].size  = builtins_hsail_size;
-        LibDescSize = 3;
+        LibDesc[3].start = reinterpret_cast<const char*>(builtins_ocml);
+        LibDesc[3].size  = builtins_ocml_size;
+        LibDescSize = 4;
         break;
 #endif // WITH_TARGET_HSAIL
 
