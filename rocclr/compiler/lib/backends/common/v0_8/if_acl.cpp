@@ -1644,7 +1644,7 @@ static std::string getSymbolName(aclType type, const char *name, aclSections &id
       assert(symbol && "symbol not found");
       break;
     case ACL_TYPE_HSAIL_BINARY:
-      symbol = findBIF30SymStruct(symHSABinary);
+      symbol = findBIF30SymStruct(symBRIG);
       assert(symbol && "symbol not found");
       break;
     case ACL_TYPE_LLVMIR_BINARY:
@@ -2273,9 +2273,7 @@ if_aclQueryInfo(aclCompiler *cl,
         *size = sizeof(bool);
         return ACL_SUCCESS;
       } else if (*size >= sizeof(bool)) {
-        bool contains = elfBin->isSection(aclBRIGcode) &&
-                  elfBin->isSection(aclBRIGoprs) &&
-                  elfBin->isSection(aclBRIGstrs);
+        bool contains = elfBin->isSection(aclBRIG);
         memcpy(ptr, &contains, sizeof(bool));
         return ACL_SUCCESS;
       }
