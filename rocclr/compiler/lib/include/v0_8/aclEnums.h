@@ -177,10 +177,10 @@ typedef enum _bif_sections_enum_0_8 {
   aclINTERNAL       = 27,
   aclSPIR           = 28,
   aclHEADER         = 29,
-  aclBRIGcode       = 30,
-  aclBRIGxxxx       = 31,
-  aclBRIGoprs       = 32,
-  aclBRIGstrs       = 33,
+  aclBRIG           = 30,
+  aclBRIGxxx1       = 31,
+  aclBRIGxxx2       = 32,
+  aclBRIGxxx3       = 33,
   aclHSADEBUG       = 34,
   aclKSTATS         = 35, // For storing kernel statistics
   aclLAST           = 36

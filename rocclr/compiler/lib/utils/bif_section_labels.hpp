@@ -23,12 +23,12 @@ typedef enum {
   symAMDILText,
   symAMDILBinary,
   symHSAILText,
-  symHSABinary,
+  symBRIG,
   symAMDILFMeta,
   symISAText,
-  symBRIGOperands,
-  symBRIGxxxx,
-  symBRIGStrtab,
+  symBRIGxxx1,
+  symBRIGxxx2,
+  symBRIGxxx3,
   symX86Barrier,
   symAMDILHeader,
   symDebugInfo,
@@ -84,17 +84,17 @@ static const oclBIFSymbolStruct BIF30[28] =
   // 12: BIF 3.0 per kernel HSAIL source, .internal section via -fbin-hsail.
   {symHSAILText, { "__HSAIL_",  "_text" }, {aclCODEGEN, aclLAST}},
   // 13: BIF 3.0 per kernel HSAIL binary, .internal section via -fbin-hsail.
-  {symHSABinary, { "__BRIG__code",  "" }, {aclBRIGcode, aclLAST}},
+  {symBRIG, { "__BRIG__",  "" }, {aclBRIG, aclLAST}},
   // 14: BIF 3.0 per function metadata, .internal section via -fbin-amdil.
   {symAMDILFMeta, { "__AMDIL_",  "_fmetadata" }, {aclINTERNAL, aclLAST}},
   // 15: BIF 3.0 per kernel ISA text, .internal section via disassembly.
   {symISAText, { "__ISA_",    "_text" }, {aclINTERNAL, aclLAST}},
   // 16: BIF 3.0 BRIG operands declarations, .brig section via -fbin-brig.
-  {symBRIGOperands, { "__BRIG__operands","" }, {aclBRIGoprs, aclLAST}},
+  {symBRIGxxx1, { "","" }, {aclLAST, aclLAST}},
   // 17: Unused after changes in HSAIL PRM
-  {symBRIGxxxx, { "","" }, {aclLAST, aclLAST}},
+  {symBRIGxxx2, { "","" }, {aclLAST, aclLAST}},
   // 18: BIF 3.0 BRIG strtab declarations, .brig section via -fbin-brig.
-  {symBRIGStrtab, { "__BRIG__strtab","" }, {aclBRIGstrs, aclLAST}},
+  {symBRIGxxx3, { "","" }, {aclLAST, aclLAST}},
   // 19: BIF 3.0 per kernel barrier metadata, only valid for X86.
   {symX86Barrier, { "__X86_", "_barrier" }, {aclLAST, aclLAST}},
   // 20: BIF 3.0 per kernel header, .internal section via -fbin-amdil.(Legacy from bif2.x)
