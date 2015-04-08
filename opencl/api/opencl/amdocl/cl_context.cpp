@@ -617,8 +617,8 @@ clGetExtensionFunctionAddress(const char* func_name)
     case 'S':
 #if cl_amd_open_video
         CL_EXTENSION_ENTRYPOINT_CHECK(clSendEncodeConfigInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
 #endif // cl_amd_open_video
+        CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
         break;
     case 'U':
         CL_EXTENSION_ENTRYPOINT_CHECK(clUnloadPlatformAMD);
