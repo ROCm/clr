@@ -230,7 +230,7 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
 #ifdef ATI_OS_WIN
     m_gpuIndex = gpuIndex;
     m_usePerVPUAdapterModel = true;
-    m_PerformLazyDeviceInit = true;    
+    m_PerformLazyDeviceInit = true;
 #else
     void * nativeHandle;
     gslDeviceMode deviceMode;
@@ -1007,7 +1007,8 @@ bool
 CALGSLDevice::resMapLocal(void*&            pPtr,
                              size_t&           pitch,
                              gslMemObject      mem,
-                             gslMapAccessType  flags)
+                             gslMapAccessType  flags,
+                             bool              isHwDebug)
 {
     assert(m_cs != 0);
     assert(mem != 0);
@@ -1135,7 +1136,10 @@ CALGSLDevice::resMapLocal(void*&            pPtr,
         pitch = static_cast<size_t>(tmppitch);
 
         uint64 surfaceSize;
-        CopyType copy = GetCopyType(mem, memMap->mem, 0, 0, m_allowDMA, 0, surfaceSize, 0, 0);
+
+        // avoid using CPDMA, which may cause deadlock with HW Debug
+        uint32 copyFlag = (isHwDebug) ? CAL_MEMCOPY_ASYNC : 0;
+        CopyType copy = GetCopyType(mem, memMap->mem, 0, 0, m_allowDMA, copyFlag, surfaceSize, 0, 0);
 
         switch (copy)
         {
@@ -1161,7 +1165,7 @@ CALGSLDevice::resMapLocal(void*&            pPtr,
         case MemMap_DMA_DRMDMA:
             if (flags != GSL_MAP_WRITE_ONLY)
             {
-                PerformDMACopy(mem, memMap->mem, (cmSurfFmt)format, CAL_MEMCOPY_SYNC);
+                PerformDMACopy(mem, memMap->mem, (cmSurfFmt)format, CAL_MEMCOPY_SYNC, isHwDebug);
                 //
                 // Flush then wait
                 //
@@ -1212,7 +1216,7 @@ CALGSLDevice::resMapLocal(void*&            pPtr,
 }
 
 bool
-CALGSLDevice::resUnmapLocal(gslMemObject mem)
+CALGSLDevice::resUnmapLocal(gslMemObject mem, bool isHwDebug)
 {
     assert(m_cs != 0);
 
@@ -1269,7 +1273,7 @@ CALGSLDevice::resUnmapLocal(gslMemObject mem)
 
             if (memMap->flags != GSL_MAP_READ_ONLY)
             {
-                if (PerformDMACopy(memMap->mem, mem, format, CAL_MEMCOPY_SYNC) == false)
+                if (PerformDMACopy(memMap->mem, mem, format, CAL_MEMCOPY_SYNC, isHwDebug) == false)
                 {
                     assert(0);
                 }
@@ -1366,7 +1370,7 @@ CALGSLDevice::resUnmapRemote(gslMemObject mem) const
 }
 
 bool
-CALGSLDevice::PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags)
+CALGSLDevice::PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags, bool isHwDebug)
 {
     assert(m_cs != 0);
 
@@ -1383,22 +1387,27 @@ CALGSLDevice::PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFm
 
     uint32 mode;
 
-    switch (flags)
-    {
-    case CAL_MEMCOPY_SYNC:
-        mode = GSL_SYNCUPLOAD_SYNC_WAIT | GSL_SYNCUPLOAD_SYNC_START;
-        break;
+    if (isHwDebug) {
+        mode = 0;   // Cannot use any sync flag to avoid possible deadlock due to halted wave
+    }
+    else {
+        switch (flags)
+        {
+        case CAL_MEMCOPY_SYNC:
+             mode = GSL_SYNCUPLOAD_SYNC_WAIT | GSL_SYNCUPLOAD_SYNC_START;
+             break;
 
-    case CAL_MEMCOPY_ASYNC:
-        assert(0);
-        //
-        // XXX -- not currently supported so fall through
-        //
+        case CAL_MEMCOPY_ASYNC:
+             assert(0);
+             //
+             // XXX -- not currently supported so fall through
+             //
 
-    case CAL_MEMCOPY_DEFAULT:
-    default:
-        mode = GSL_SYNCUPLOAD_SYNC_START;
-        break;
+        case CAL_MEMCOPY_DEFAULT:
+        default:
+             mode = GSL_SYNCUPLOAD_SYNC_START;
+             break;
+        }
     }
 
     m_cs->DMACopy(srcMem, 0, destMem, 0, surfaceSize, mode, NULL);

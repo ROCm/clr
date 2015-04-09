@@ -57,8 +57,9 @@ public:
     void close();
 
     gslMemObject     resAlloc(const CALresourceDesc* desc) const;
-    bool             resMapLocal(void*& pPtr, size_t& pitch, gslMemObject res, gslMapAccessType flags);
-    bool             resUnmapLocal(gslMemObject res);
+    bool             resMapLocal(void*& pPtr, size_t& pitch, gslMemObject res, gslMapAccessType flags,
+                                 bool isHwDebug = false);
+    bool             resUnmapLocal(gslMemObject res, bool isHwDebug = false);
 
     void             resFree(gslMemObject mem) const;
     bool             resMapRemote(void*& pPtr, size_t& pitch, gslMemObject res, gslMapAccessType flags) const;
@@ -197,7 +198,7 @@ private:
     bool             initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdeviceContext) const;
     bool             glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext);
 
-    bool             PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags);
+    bool             PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags, bool isHwDebug = false);
     void             Initialize(void);
 
     bool             SetupAdapter(int32 &asic_id);

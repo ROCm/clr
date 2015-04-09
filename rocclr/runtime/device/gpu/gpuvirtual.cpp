@@ -560,6 +560,11 @@ VirtualGPU::create(
                 blitSetup.disableReadBufferRect_    = true;
                 blitSetup.disableWriteBufferRect_   = true;
             }
+            // use host blit for HW debug
+            if (dev().settings().enableHwDebug_) {
+                blitSetup.disableCopyImageToBuffer_   = true;
+                blitSetup.disableCopyBufferToImage_   = true;
+            }
             blitMgr_ = new KernelBlitManager(*this, blitSetup);
             break;
     }
@@ -1278,7 +1283,7 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
             }
         }
     }
-    else if ((amdImage != NULL) && (amdImage->getMipLevels() > 1) && 
+    else if ((amdImage != NULL) && (amdImage->getMipLevels() > 1) &&
              (!memory->isUnmapWrite())) {
         // Release a view for a mipmap map
         amdImage->release();

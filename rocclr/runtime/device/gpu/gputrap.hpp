@@ -27,7 +27,7 @@ shader main
   // store all the level 2 trap handler info
   s_or_b32      ttmp9,  ttmp9, 0x01000000
   s_mov_b32     ttmp10, 0x00002000
-  s_mov_b32     ttmp11, 0x18024fac
+  s_mov_b32     ttmp11, 0x00024fac
 
   // TMA is stored 256 (0x100) bytes before the TBA value
   s_sub_u32     ttmp8, ttmp8, 0x100
@@ -52,7 +52,7 @@ shader main
   //store all the level2 trap handler info
   s_or_b32      ttmp9,  ttmp9, 0x00680000
   s_mov_b32     ttmp10, 0x00002000
-  s_mov_b32     ttmp11, 0x18024fac
+  s_mov_b32     ttmp11, 0x00024fac
 
   //===================================================
   //    backup the TMA values to be restored later
@@ -122,7 +122,7 @@ static const uint32_t RuntimeTrapCode []  = {
 	0x0000ffff, 0x8879ff79,
 	0x01000000, 0xbefa03ff,
 	0x00002000, 0xbefb03ff,
-	0x18024fac, 0x80f8ff78,
+	0x00024fac, 0x80f8ff78,
 	0x00000100, 0xbef70300,
 	0xc2007900, 0xbf8c0000,
 	0xbeee0300, 0xc2007901,
@@ -132,7 +132,7 @@ static const uint32_t RuntimeTrapCode []  = {
 	0x0000ffff, 0x8879ff79,
 	0x00680000, 0xbefa03ff,
 	0x00002000, 0xbefb03ff,
-	0x18024fac, 0xbef6036e,
+	0x00024fac, 0xbef6036e,
 	0xbef7036f, 0xbef30300,
 	0xc2007902, 0xbf8c0000,
 	0xbeee0300, 0xc2007903,
@@ -156,7 +156,7 @@ static const uint32_t RuntimeTrapCodeVi []  = {
 	0x0000ffff, 0x8779ff79,
 	0x01000000, 0xbefa00ff,
 	0x00002000, 0xbefb00ff,
-	0x18024fac, 0x80f8ff78,
+	0x00024fac, 0x80f8ff78,
 	0x00000100, 0xbef70000,
 	0xc022003c, 0x00000000,
 	0xbf8c0000, 0xbeee0000,
@@ -167,7 +167,7 @@ static const uint32_t RuntimeTrapCodeVi []  = {
 	0x0000ffff, 0x8779ff79,
 	0x00680000, 0xbefa00ff,
 	0x00002000, 0xbefb00ff,
-	0x18024fac, 0xbef6006e,
+	0x00024fac, 0xbef6006e,
 	0xbef7006f, 0xbef30000,
 	0xc022003c, 0x00000008,
 	0xbf8c0000, 0xbeee0000,
