@@ -1445,7 +1445,8 @@ Resource::gslMap(void** ptr, size_t* pitch, gslMapAccessType flags, gslMemObject
 
     if (cal_.cardMemory_ || cal_.tiled_) {
         // @todo remove const cast
-        result = const_cast<Device&>(dev()).resMapLocal(*ptr, *pitch, resource, flags);
+        result = const_cast<Device&>(dev()).resMapLocal(*ptr, *pitch, resource, flags,
+                                                        dev().settings().enableHwDebug_);
     }
     else {
         result = dev().resMapRemote(*ptr, *pitch, resource, flags);
@@ -1461,7 +1462,8 @@ Resource::gslUnmap(gslMemObject resource) const
 
     if (cal_.cardMemory_) {
         // @todo remove const cast
-        result = const_cast<Device&>(dev()).resUnmapLocal(resource);
+        result = const_cast<Device&>(dev()).resUnmapLocal(resource,
+                                                          dev().settings().enableHwDebug_);
     }
     else {
         result = dev().resUnmapRemote(resource);
