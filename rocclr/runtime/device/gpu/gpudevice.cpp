@@ -203,9 +203,7 @@ NullDevice::create(CALtarget target)
                 NULL,
                 NULL,
                 NULL,
-                AMD_OCL_SC_LIB,
-                &::malloc,
-                &::free
+                AMD_OCL_SC_LIB
             };
             // Initialize the compiler handle
             acl_error   error;
@@ -949,9 +947,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
                 NULL,
                 NULL,
                 NULL,
-                AMD_OCL_SC_LIB,
-                &::malloc,
-                &::free
+                AMD_OCL_SC_LIB
             };
             // Initialize the compiler handle
             acl_error   error;
@@ -1259,9 +1255,7 @@ Device::init()
         NULL,
         NULL,
         NULL,
-        AMD_OCL_SC_LIB,
-        &::malloc,
-        &::free
+        AMD_OCL_SC_LIB
     };
 
     hsaCompiler_ = NULL;
