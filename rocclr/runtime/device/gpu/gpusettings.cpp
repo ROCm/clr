@@ -269,6 +269,7 @@ Settings::create(
         ciPlus_ = true;
         sdmaProfiling_ = true;
         hsail_ = GPU_HSAIL_ENABLE;
+        threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
         // Fall through to SI ...
     case CAL_TARGET_PITCAIRN:
     case CAL_TARGET_CAPEVERDE:
@@ -347,9 +348,6 @@ Settings::create(
 
         rectLinearDMA_  = true;
 
-        if (AMD_THREAD_TRACE_ENABLE) {
-            threadTraceEnable_ = true;
-        }
         // Disable non-aliased(multiUAV) optimization
         assumeAliases_ = true;
         break;
