@@ -68,9 +68,7 @@ Device::init()
         NULL,
         NULL,
         NULL,
-        NULL,
-        &::malloc,
-        &::free
+        NULL
     };
     acl_error   error;
     compiler_ = aclCompilerInit(&opts, &error);
