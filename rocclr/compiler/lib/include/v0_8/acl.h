@@ -239,7 +239,7 @@ void aclGetKstatsR800(const void* shader,
        aclKernelStats &kstats, const char* chip_id);
 void aclGetKstatsSI(const void* shader,
        aclKernelStats &kstats);
-acl_error
+acl_error ACL_API_ENTRY
   aclInsertKernelStatistics(aclCompiler *cl,
     aclBinary *bin);
 //! Define hardware info constants for SI and above devices
