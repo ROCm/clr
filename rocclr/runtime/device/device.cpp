@@ -1052,7 +1052,8 @@ Program::initClBinary(char* binaryIn, size_t size)
         aclBinaryOptions binOpts = {0};
         binOpts.struct_size = sizeof(binOpts);
         binOpts.elfclass
-            = (info().arch_id == aclX64 || info().arch_id == aclAMDIL64)
+            = (info().arch_id == aclX64 || info().arch_id == aclAMDIL64 ||
+               info().arch_id == aclHSAIL64)
               ? ELFCLASS64 : ELFCLASS32;
         binOpts.bitness = ELFDATA2LSB;
         binOpts.alloc = &::malloc;

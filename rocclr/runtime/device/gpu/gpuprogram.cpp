@@ -2298,5 +2298,20 @@ HSAILProgram::fillResListWithKernels(
     }
 }
 
+const aclTargetInfo &
+HSAILProgram::info(const char * str) {
+    acl_error err;
+    std::string arch = GPU_TARGET_INFO_ARCH;
+    if (dev().settings().use64BitPtr_) {
+      arch += "64";
+    }
+    info_ = aclGetTargetInfo(arch.c_str(), ( str && str[0] == '\0' ?
+        dev().hwInfo()->targetName_ : str ), &err);
+    if (err != ACL_SUCCESS) {
+        LogWarning("aclGetTargetInfo failed");
+    }
+    return info_;
+}
+
 
 } // namespace gpu
