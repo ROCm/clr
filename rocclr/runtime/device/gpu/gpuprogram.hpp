@@ -460,9 +460,7 @@ protected:
     //! Release the Binary
     virtual void releaseClBinary();
 
-    virtual const aclTargetInfo & info(const char * str = "") {
-        return info_;
-    }
+    virtual const aclTargetInfo & info(const char * str = "");
 
     virtual bool isElf(const char* bin) const {
         return amd::isElfMagic(bin);
