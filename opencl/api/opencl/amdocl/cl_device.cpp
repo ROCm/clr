@@ -615,13 +615,20 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo, (
     if (as_amd(device)->type() == CL_DEVICE_TYPE_GPU) {
         switch (param_name) {
         case CL_DEVICE_GLOBAL_FREE_MEMORY_AMD: {
+            // Free memory should contain 2 values:
+            // total free memory and the biggest free block
             size_t  freeMemory[2];
-            if (as_amd(device)->globalFreeMemory(freeMemory)) {
+            if (!as_amd(device)->globalFreeMemory(freeMemory)) {
+                return CL_INVALID_DEVICE;
+            }
+            if (param_value_size < sizeof(freeMemory)) {
+                // Return just total free memory if the app provided space for one value
                 return amd::clGetInfo(
-                    freeMemory, param_value_size, param_value, param_value_size_ret);
+                    freeMemory[0], param_value_size, param_value, param_value_size_ret);
             }
             else {
-                return CL_INVALID_DEVICE;
+                return amd::clGetInfo(
+                    freeMemory, param_value_size, param_value, param_value_size_ret);
             }
         }
         CASE(CL_DEVICE_SIMD_PER_COMPUTE_UNIT_AMD, simdPerCU_);
