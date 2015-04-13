@@ -61,7 +61,8 @@ Device::init()
     const char *library = getenv("COMPILER_LIBRARY");
     aclCompilerOptions opts = {
         sizeof(aclCompilerOptions_0_8),
-        library ? library : LINUX_ONLY("lib") "amdocl12cl" \
+        (library || CPU_OPENCL_VERSION >= 200)
+            ? library : LINUX_ONLY("lib") "amdocl12cl" \
             LP64_SWITCH(LINUX_SWITCH("32",""),"64") LINUX_SWITCH(".so",".dll"),
         NULL,
         NULL,
