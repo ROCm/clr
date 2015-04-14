@@ -161,54 +161,6 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource, (
         }
     }
 
-#if defined(DEBUG)
-    if (OCL_STRESS_BINARY_IMAGE) {
-        size_t num_devices = devices.size();
-        cl_int ret;
-
-        cl_device_id* device_list = new cl_device_id[num_devices];
-        memset(device_list, (int) (num_devices * sizeof(cl_device_id)), '\0');
-        clGetProgramInfo(as_cl(program), CL_PROGRAM_DEVICES,
-            num_devices * sizeof(cl_device_id), device_list, NULL);
-
-        clBuildProgram(as_cl(program), (int) num_devices, device_list, NULL, NULL, NULL);
-
-        size_t* lengths = new size_t[num_devices];
-        memset(lengths, (int) (num_devices * sizeof(size_t)), '\0');
-        clGetProgramInfo(as_cl(program), CL_PROGRAM_BINARY_SIZES,
-            num_devices * sizeof(size_t), lengths, NULL);
-
-        unsigned char** binaries = new unsigned char*[num_devices];
-        for (size_t i = 0; i < num_devices; ++i) {
-            binaries[i] = new unsigned char[lengths[i]];
-            memset(binaries[i], (int) lengths[i], '\0');
-        }
-        clGetProgramInfo(as_cl(program), CL_PROGRAM_BINARIES,
-            num_devices * sizeof(unsigned char*), binaries, NULL);
-
-        program->release();
-
-        cl_program new_prg = clCreateProgramWithBinary(
-            context, (int) num_devices, device_list, lengths,
-            (const unsigned char **) binaries, NULL, &ret);
-
-
-        for (size_t i = 0; i < num_devices; ++i) {
-            delete[] binaries[i];
-        }
-        delete[] binaries;
-        delete[] lengths;
-        delete[] device_list;
-
-        if (ret != CL_SUCCESS) {
-            *not_null(errcode_ret) = ret;
-            return NULL;
-        }
-
-        program = as_amd(new_prg);
-    }
-#endif // DEBUG
-
     *not_null(errcode_ret) = CL_SUCCESS;
     return as_cl(program);
 }
