@@ -747,7 +747,15 @@ OPTION(OT_BOOL, \
        SCUseBufferForHsaGlobal, \
        false, 0, 0, NULL, \
        "HSA: use buffer instructions instead of flat for global memory")
-       
+
+//  -fsc-live-sched  -fno-sc-live-sched
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
+       "sc-live-sched", NULL, \
+       SCLiveSched, \
+       false, 0, 0, NULL, \
+       "SC turn on/off liveness based instruction scheduling (default off)")
+
 // -scras=int or --sc-si-opt-reg-alloc-strategy (default 4)
 // 4 let OCL compiler choose SC reg alloc strategy by heuristic
 // keep this updated with SCShaderSi.h
