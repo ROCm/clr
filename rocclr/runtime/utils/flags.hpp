@@ -88,8 +88,6 @@ release(cstring, AMD_OCL_SC_LIB, 0,                                           \
         "Set shader compiler shared library name or path")                    \
 debug(bool, AMD_OCL_SUPPRESS_MESSAGE_BOX, false,                              \
         "Suppress the error dialog on Windows")                               \
-debug(bool, OCL_STRESS_BINARY_IMAGE, false,                                   \
-        "Exercise the binary image producer and consumer")                    \
 release(cstring, GPU_PRE_RA_SCHED, "default",                                 \
         "Allows setting of alternate pre-RA-sched")                           \
 release(size_t, GPU_PINNED_XFER_SIZE, 16,                                     \
