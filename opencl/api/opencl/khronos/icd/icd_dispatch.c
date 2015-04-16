@@ -1359,7 +1359,7 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
     khrIcdInitialize();    
 
     // return any ICD-aware extensions
-    #define CL_COMMON_EXTENSION_ENTRYPOINT_ADD(name) if (!strcmp(function_name, #name) ) return (void *)&name
+    #define CL_COMMON_EXTENSION_ENTRYPOINT_ADD(name) if (!strcmp(function_name, #name) ) return (void *)(size_t)&name
 
     // Are these core or ext?  This is unclear, but they appear to be
     // independent from cl_khr_gl_sharing.
@@ -1567,7 +1567,7 @@ clGetExtensionFunctionAddress(const char *function_name) CL_EXT_SUFFIX__VERSION_
     khrIcdInitialize();    
 
     // return any ICD-aware extensions
-    #define CL_COMMON_EXTENSION_ENTRYPOINT_ADD(name) if (!strcmp(function_name, #name) ) return (void *)&name
+    #define CL_COMMON_EXTENSION_ENTRYPOINT_ADD(name) if (!strcmp(function_name, #name) ) return (void *)(size_t)&name
 
     // Are these core or ext?  This is unclear, but they appear to be
     // independent from cl_khr_gl_sharing.

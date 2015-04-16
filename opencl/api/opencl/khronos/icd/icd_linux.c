@@ -64,7 +64,11 @@ void khrIcdOsVendorsEnumerateCallBack(void)
     vendorPath = getenv("OPENCL_VENDOR_PATH");
     if (vendorPath == NULL) 
     {
-        vendorPath = "/etc/OpenCL/vendors";
+#ifdef __ANDROID__
+        vendorPath = "/system/vendor/Khronos/OpenCL/vendors/";
+#else
+        vendorPath = "/etc/OpenCL/vendors/";
+#endif // ANDROID
     }
 
     // open the directory
