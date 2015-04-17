@@ -1070,16 +1070,27 @@ Program::initClBinary(char* binaryIn, size_t size)
             aclBinaryFini(aclbin_v30);
             return false;
         }
-        aclBinary* aclbin_v21 = aclCreateFromBinary(aclbin_v30,aclBIFVersion21);
-        err = aclWriteToMem(aclbin_v21, reinterpret_cast<void**>(&bin), &sz);
-        if (err != ACL_SUCCESS) {
-            LogWarning("aclWriteToMem failed");
+        if (info().arch_id == aclHSAIL || info().arch_id == aclHSAIL64) {
+            err = aclWriteToMem(aclbin_v30, reinterpret_cast<void**>(&bin), &sz);
+            if (err != ACL_SUCCESS) {
+                LogWarning("aclWriteToMem failed");
+                aclBinaryFini(aclbin_v30);
+                return false;
+            }
+            aclBinaryFini(aclbin_v30);
+        }
+        else {
+            aclBinary* aclbin_v21 = aclCreateFromBinary(aclbin_v30,aclBIFVersion21);
+            err = aclWriteToMem(aclbin_v21, reinterpret_cast<void**>(&bin), &sz);
+            if (err != ACL_SUCCESS) {
+                LogWarning("aclWriteToMem failed");
+                aclBinaryFini(aclbin_v30);
+                aclBinaryFini(aclbin_v21);
+                return false;
+            }
             aclBinaryFini(aclbin_v30);
             aclBinaryFini(aclbin_v21);
-            return false;
         }
-        aclBinaryFini(aclbin_v30);
-        aclBinaryFini(aclbin_v21);
     }
     else
     {
