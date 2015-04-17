@@ -1948,6 +1948,15 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     size_t boolSize = sizeof(bool);
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     // Checking llvmir in .llvmir section
+    bool containsSpirText = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_SPIR, NULL, &containsSpirText, &boolSize);
+    if (errorCode != ACL_SUCCESS) {
+        containsSpirText = false;
+    }
+    if (containsSpirText) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_SPIR_BINARY;
+    }
     bool containsLlvmirText = true;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_LLVMIR, NULL, &containsLlvmirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
@@ -2098,6 +2107,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
           while (!completeStages.empty()) {
               continueCompileFrom = completeStages.back();
               if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+                  continueCompileFrom == ACL_TYPE_SPIR_BINARY ||
                   continueCompileFrom == ACL_TYPE_DEFAULT) {
                   break;
               }
@@ -2120,6 +2130,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         continueCompileFrom = getNextCompilationStageFromBinary(options);
     }
     switch (continueCompileFrom) {
+    case ACL_TYPE_SPIR_BINARY:
     // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
     // 1. if the program is not created with binary;
     // 2. if the program is created with binary and contains only .llvmir & .comment
@@ -2301,9 +2312,9 @@ HSAILProgram::fillResListWithKernels(
 const aclTargetInfo &
 HSAILProgram::info(const char * str) {
     acl_error err;
-    std::string arch = GPU_TARGET_INFO_ARCH;
+    std::string arch = "hsail";
     if (dev().settings().use64BitPtr_) {
-      arch += "64";
+      arch = "hsail-64";
     }
     info_ = aclGetTargetInfo(arch.c_str(), ( str && str[0] == '\0' ?
         dev().hwInfo()->targetName_ : str ), &err);

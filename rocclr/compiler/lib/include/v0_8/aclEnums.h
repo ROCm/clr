@@ -209,7 +209,8 @@ typedef enum _rt_query_types_enum_0_8 {
   RT_CONTAINS_HSAIL      = 18,
   RT_CONTAINS_ISA        = 19,
   RT_CONTAINS_LOADER_MAP = 20,
-  RT_LAST_TYPE           = 21
+  RT_CONTAINS_SPIR       = 21,
+  RT_LAST_TYPE           = 22
 } aclQueryType_0_8;
 
 //! An enumeration for the various GPU capabilities

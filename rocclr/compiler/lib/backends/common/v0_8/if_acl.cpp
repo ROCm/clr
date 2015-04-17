@@ -2245,6 +2245,16 @@ if_aclQueryInfo(aclCompiler *cl,
         return ACL_SUCCESS;
       }
       return ACL_ERROR;
+    case RT_CONTAINS_SPIR:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclSPIR);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
     case RT_CONTAINS_OPTIONS:
       if (!ptr) {
         *size = sizeof(bool);
