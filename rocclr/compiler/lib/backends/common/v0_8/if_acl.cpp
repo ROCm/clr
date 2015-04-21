@@ -35,22 +35,42 @@
 
 #include "llvm/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
+#if defined(LEGACY_COMPLIB)
+#include "Disassembler.h"
+#include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/ADT/OwningPtr.h"
+#endif
+#include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/PrettyStackTrace.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Signals.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/Threading.h"
+#include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Bitcode/BitstreamWriter.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/Support/IRReader.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/ExecutionEngine/ExecutionEngine.h"
+#include "llvm/ExecutionEngine/ObjectImage.h"
+#include "llvm/ExecutionEngine/ObjectBuffer.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
+#include "llvm/ExecutionEngine/RuntimeDyld.h"
 #include <string>
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <cassert>
+#include <iomanip>
 
 aclLoaderData * ACL_API_ENTRY
 if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
@@ -58,7 +78,7 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
 {
   amdcl::acquire_global_lock();
   char* timing = ::getenv("AMD_DEBUG_HLC_ENABLE_TIMING");
-  if (timing && (timing[0] == '1')) 
+  if (timing && (timing[0] == '1'))
      llvm::TimePassesIsEnabled = true;
   else
      llvm::TimePassesIsEnabled = false;
@@ -2208,7 +2228,7 @@ void deserializeCLMetadata(const char* ptr, aclMetadata * const md, const size_t
     tmp_ptr += fmtPtr->fmtStrSize + 1;
   }
   assert(md->data_size == size && "The size and data size calculations are off!");
-  assert((size_t)(tmp_ptr - reinterpret_cast<char*>(md)) 
+  assert((size_t)(tmp_ptr - reinterpret_cast<char*>(md))
     == size && "Size of data and calculated sizes differ!");
 }
 
@@ -2903,6 +2923,258 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   return error_code;
 }
 
+static OCLMCJITMemoryManager* memMgr = NULL;
+
+OCLMCJITMemoryManager* createJITMemoryManager() {
+  if (!memMgr) {
+    memMgr = new OCLMCJITMemoryManager();
+  }
+  return memMgr;
+}
+
+aclJITObjectImage ACL_API_ENTRY
+if_aclJITObjectImageCreate(const void* buffer, size_t length,
+                           aclBinary* bin, acl_error* error_code) {
+  llvm::StringRef dataString((const char*)buffer, length);
+  llvm::MemoryBuffer* memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
+  llvm::ObjectBuffer* objBuf = new llvm::ObjectBuffer(memBuf);
+  llvm::RuntimeDyld rtdyld(createJITMemoryManager());
+  llvm::ObjectImage* objectImage = rtdyld.loadObject(objBuf);
+  rtdyld.resolveRelocations();
+  amd::option::Options* options = reinterpret_cast<amd::option::Options*>(bin->options);
+  if (options && options->isDumpFlagSet(amd::option::DUMP_O)) {
+    llvm::StringRef finalData = objectImage->getData();
+    std::string finalDataString = finalData.str();
+    std::string objname = options->getDumpFileName(".elf");
+    std::ofstream out(objname.c_str(), std::fstream::binary | std::fstream::trunc);
+    out << finalDataString;
+    out.close();
+  }
+  return objectImage;
+}
+
+aclJITObjectImage ACL_API_ENTRY
+if_aclJITObjectImageCopy(const void* buffer, size_t length, acl_error* error_code) {
+  llvm::StringRef dataString((const char*)buffer, length);
+  llvm::MemoryBuffer* memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
+  llvm::ObjectBuffer* objBuf = new llvm::ObjectBuffer(memBuf);
+  llvm::RuntimeDyld rtdyld(createJITMemoryManager());
+  llvm::ObjectImage* objectImage = rtdyld.loadObject(objBuf);
+  rtdyld.resolveRelocations();
+  return objectImage;
+}
+
+acl_error ACL_API_ENTRY
+if_aclJITObjectImageDestroy(aclJITObjectImage image) {
+  llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
+  llvm::object::section_iterator end = objectImage->end_sections();
+  llvm::error_code err;
+  for (llvm::object::section_iterator iter = objectImage->begin_sections();
+       iter != end; iter.increment(err)) {
+    llvm::object::SectionRef sectionRef = *iter;
+    uint64_t address;
+    sectionRef.getAddress(address);
+    memMgr->deallocateSection((uint8_t*)address);
+  }
+  delete objectImage;
+  return ACL_SUCCESS;
+}
+
+size_t ACL_API_ENTRY
+if_aclJITObjectImageSize(aclJITObjectImage image, acl_error* error_code) {
+  return (reinterpret_cast<llvm::ObjectImage*>(image))->getData().size();
+}
+
+const char* ACL_API_ENTRY
+if_aclJITObjectImageData(aclJITObjectImage image, acl_error* error_code) {
+  return (reinterpret_cast<llvm::ObjectImage*>(image))->getData().data();
+}
+
+acl_error ACL_API_ENTRY
+if_aclJITObjectImageFinalize(aclJITObjectImage image) {
+  // TODO: Implement
+  return ACL_SUCCESS;
+}
+
+size_t ACL_API_ENTRY
+if_aclJITObjectImageGetGlobalsSize(aclJITObjectImage image, acl_error* error_code) {
+  size_t totalSize = 0;
+  llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
+  llvm::object::section_iterator end = objectImage->end_sections();
+  llvm::error_code err;
+  for (llvm::object::section_iterator iter = objectImage->begin_sections();
+       iter != end; iter.increment(err)) {
+    llvm::object::SectionRef sectionRef = *iter;
+    llvm::StringRef name;
+    uint64_t size;
+    bool isBSS, isData, isText;
+    sectionRef.getName(name);
+    sectionRef.getSize(size);
+    sectionRef.isBSS(isBSS);
+    sectionRef.isData(isData);
+    sectionRef.isText(isText);
+    if ((isBSS || isData) && !isText) {
+      totalSize += (size_t)size;
+    }
+  }
+  return totalSize;
+}
+
+acl_error ACL_API_ENTRY
+if_aclJITObjectImageIterateSymbols(aclJITObjectImage image,
+                                   JITSymbolCallback jit_callback, void* data) {
+  llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
+  llvm::object::symbol_iterator end = objectImage->end_symbols();
+  llvm::StringRef name;
+  uint64_t address;
+  llvm::error_code err;
+  for (llvm::object::symbol_iterator iter = objectImage->begin_symbols();
+       iter != end; iter.increment(err)) {
+    llvm::object::SymbolRef symRef = *iter;
+    symRef.getName(name);
+    symRef.getAddress(address);
+    jit_callback(name.str().c_str(), (const void*)address, data);
+  }
+  return ACL_SUCCESS;
+}
+
+#if defined(LEGACY_COMPLIB)
+#if 0
+static std::string getFeaturesString(llvm::StringMap<bool>& Features)
+{
+  std::string FeatureString;
+  llvm::raw_string_ostream FeatureStream(FeatureString);
+  llvm::SubtargetFeatures TargetFeatures("");
+  llvm::StringMapConstIterator<bool> iterEnd = Features.end();
+  for(llvm::StringMapConstIterator<bool> I = Features.begin();
+      I != iterEnd; ++I) {
+    const llvm::StringMapEntry<bool> entry = *I;
+    TargetFeatures.AddFeature(entry.getKey(), entry.getValue());
+  }
+  TargetFeatures.print(FeatureStream);
+  return FeatureString;
+}
+#endif
+
+static std::string getTripleName()
+{
+#ifdef _WIN32
+  return LP64_SWITCH("i686-pc-mingw32-amdopencl",
+                     "x86_64-pc-mingw32-amdopencl");
+#else
+  return LP64_SWITCH("i686-pc-linux-amdopencl",
+                     "x86_64-pc-linux-amdopencl");
+#endif
+}
+
+static std::string bytesToHexString(const char* data, size_t size) {
+  std::stringstream hexstring;
+  hexstring << std::hex << std::setfill('0');
+  for(size_t i = 0; i < size; ++i) {
+    hexstring << "0x" << std::setw(2) << unsigned((unsigned char)data[i])
+              << std::endl;
+  }
+  hexstring << std::endl;
+  return hexstring.str();
+}
+
+char* ACL_API_ENTRY
+if_aclJITObjectImageDisassembleKernel(constAclJITObjectImage image,
+                                      const char* kernel, acl_error* error_code) {
+  const llvm::ObjectImage* objectImage(reinterpret_cast<const llvm::ObjectImage*>(image));
+  llvm::object::symbol_iterator end = objectImage->end_symbols();
+  llvm::error_code err;
+  llvm::StringRef name;
+  std::stringstream disas;
+  for (llvm::object::symbol_iterator iter = objectImage->begin_symbols();
+       iter != end; iter.increment(err)) {
+    llvm::object::SymbolRef symRef = *iter;
+    symRef.getName(name);
+    std::string kernelStr(kernel);
+    if(name == kernelStr) {
+      uint64_t start;
+      uint64_t size;
+      symRef.getSize(size);
+      symRef.getAddress(start);
+      const char *bytes = (const char *)start;
+      const uint64_t extent = 0x10000;
+      uint64_t max_pc = 0;
+
+      llvm::InitializeAllTargetInfos();
+      llvm::InitializeAllTargetMCs();
+      llvm::InitializeAllAsmParsers();
+      llvm::InitializeAllDisassemblers();
+
+      std::string TripleName = getTripleName();
+      std::string Error;
+      const llvm::Target *TheTarget =
+        llvm::TargetRegistry::lookupTarget(TripleName, Error);
+
+      std::string hexstring = bytesToHexString(bytes,  size);
+      llvm::StringRef kernelMem(hexstring);
+      llvm::MemoryBuffer *Buffer =
+        llvm::MemoryBuffer::getMemBuffer(kernelMem, "", false);
+      llvm::SourceMgr SrcMgr;
+
+      SrcMgr.AddNewSourceBuffer(Buffer, llvm::SMLoc());
+
+      llvm::OwningPtr<llvm::MCAsmInfo>
+        MAI(TheTarget->createMCAsmInfo(TripleName));
+      assert(MAI && "Unable to create target asm info!");
+
+      llvm::OwningPtr<llvm::MCRegisterInfo>
+        MRI(TheTarget->createMCRegInfo(TripleName));
+      assert(MRI && "Unable to create target register info!");
+
+      llvm::OwningPtr<llvm::MCObjectFileInfo>
+        MOFI(new llvm::MCObjectFileInfo());
+      llvm::MCContext Ctx(*MAI, *MRI, MOFI.get(), &SrcMgr);
+      MOFI->InitMCObjectFileInfo(TripleName, llvm::Reloc::Default,
+                                 llvm::CodeModel::Default, Ctx);
+
+      Ctx.setAllowTemporaryLabels(true);
+      Ctx.setGenDwarfForAssembly(true);
+
+      std::string MCPU = "corei7-avx";
+      std::string FeaturesStr;
+
+      std::string DisasResultString;
+      llvm::raw_string_ostream OutputStream(DisasResultString);
+      OutputStream.SetUnbuffered();
+      llvm::formatted_raw_ostream FOS(OutputStream);
+      llvm::OwningPtr<llvm::MCStreamer> Str;
+      llvm::OwningPtr<llvm::MCInstrInfo> MCII(TheTarget->createMCInstrInfo());
+      llvm::OwningPtr<llvm::MCSubtargetInfo>
+        STI(TheTarget->createMCSubtargetInfo(TripleName, MCPU, FeaturesStr));
+      llvm::MCInstPrinter *IP =
+        TheTarget->createMCInstPrinter(0 /* OutputAsmVariant */,  *MAI, *MCII, *MRI,
+                                       *STI);
+      llvm::MCCodeEmitter *CE = 0;
+      llvm::MCAsmBackend *MAB = 0;
+      if (false) {
+        CE = TheTarget->createMCCodeEmitter(*MCII, *MRI, *STI, Ctx);
+        MAB = TheTarget->createMCAsmBackend(TripleName, MCPU);
+      }
+      Str.reset(TheTarget->createAsmStreamer(Ctx, FOS, /*asmverbose*/true,
+                                             /*useLoc*/ true,
+                                             /*useCFI*/ true,
+                                             /*useDwarfDirectory*/ true,
+                                             IP, CE, MAB, false));
+      // int Res = llvm::Disassembler::disassemble(*TheTarget,
+      //                                           TripleName, *STI, *Str,
+      //                                           *Buffer, SrcMgr, OutputStream);
+
+            int Res =
+                   llvm::Disassembler::disassembleEnhanced(TripleName, *Buffer, SrcMgr,
+                                             OutputStream);
+      const char* result = DisasResultString.c_str();
+      return strdup(result);
+    }
+  }
+  return NULL;
+}
+#endif
+
 void myLogFunc(const char * msg, size_t size)
 {
   printf("%s\n", msg);
@@ -2979,15 +3251,15 @@ bool aclRenderscriptCompile(
     return false;
 
   aclTargetInfo target = aclGetTargetInfo("hsail", "Bonaire", &error_code);
-  if (error_code != ACL_SUCCESS) 
+  if (error_code != ACL_SUCCESS)
     return false;
-  
+
   aclBinary *aoe = aclBinaryInit(sizeof(aclBinary), &target, NULL, &error_code);
-  if (error_code != ACL_SUCCESS) 
+  if (error_code != ACL_SUCCESS)
     return false;
-  
+
   error_code = aclInsertSection(aoc, aoe, source, size, aclLLVMIR);
-  if (error_code != ACL_SUCCESS) 
+  if (error_code != ACL_SUCCESS)
     return false;
 
 #if 1
@@ -2996,7 +3268,7 @@ bool aclRenderscriptCompile(
 #else
   error_code = aclCompile(aoc, aoe, NULL, ACL_TYPE_RSLLVMIR_BINARY, ACL_TYPE_ISA, myLogFunc);
 #endif
-	
+
   if (error_code == ACL_FRONTEND_FAILURE) {
     printf("ACL_FRONTEND_FAILURE.\n");
     return true;
@@ -3007,11 +3279,11 @@ bool aclRenderscriptCompile(
 
   if ((aoe == NULL) || (aoe->bin == NULL))
     return false;
-  
+
   char *buffer = NULL;
   size_t len;
   acl_error errCode = aclWriteToMem(aoe, reinterpret_cast<void**>(&buffer), &len);
-  if (errCode != ACL_SUCCESS) 
+  if (errCode != ACL_SUCCESS)
     return false;
 
   *outLen = len;

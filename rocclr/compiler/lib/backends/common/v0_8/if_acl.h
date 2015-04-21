@@ -129,4 +129,44 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
 acl_error  ACL_API_ENTRY
 if_aclSetupLoaderObject(aclCompiler *cl) ACL_API_0_8;
 
+void*  ACL_API_ENTRY
+if_aclJITObjectImageCreate(const void* buffer,
+    size_t length,
+    aclBinary* bin,
+    acl_error* error_code) ACL_API_0_8;
+
+void*  ACL_API_ENTRY
+if_aclJITObjectImageCopy(const void* buffer,
+    size_t length,
+    acl_error* error_code) ACL_API_0_8;
+
+acl_error  ACL_API_ENTRY
+if_aclJITObjectImageDestroy(aclJITObjectImage buffer) ACL_API_0_8;
+
+size_t  ACL_API_ENTRY
+if_aclJITObjectImageSize(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+const char*  ACL_API_ENTRY
+if_aclJITObjectImageData(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+acl_error  ACL_API_ENTRY
+if_aclJITObjectImageFinalize(aclJITObjectImage image) ACL_API_0_8;
+
+size_t  ACL_API_ENTRY
+if_aclJITObjectImageGetGlobalsSize(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+acl_error  ACL_API_ENTRY
+if_aclJITObjectImageIterateSymbols(aclJITObjectImage image,
+    JITSymbolCallback jit_callback, void* data) ACL_API_0_8;
+
+#if defined(LEGACY_COMPLIB)
+char*  ACL_API_ENTRY
+if_aclJITObjectImageDisassembleKernel(constAclJITObjectImage image,
+    const char* kernel,
+    acl_error* error_code) ACL_API_0_8;
+#endif
+
 #endif // _IF_ACL_0_8_H_

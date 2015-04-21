@@ -4,6 +4,7 @@
 #ifndef _BE_CODEGEN_HPP_
 #define _BE_CODEGEN_HPP_
 #include "compiler_stage.hpp"
+#include "llvm/ExecutionEngine/JITMemoryManager.h"
 
 namespace amdcl
 {
@@ -84,4 +85,77 @@ namespace amdcl
   /*@}*/
 #endif
 } // amdcl namespace
+
+//!--------------------------------------------------------------------------!//
+// JIT Memory manager
+//!--------------------------------------------------------------------------!//
+class OCLMCJITMemoryManager : public llvm::JITMemoryManager {
+public:
+  typedef std::pair<llvm::sys::MemoryBlock, unsigned> Allocation;
+
+private:
+  llvm::SmallVector<Allocation, 16> AllocatedDataMem;
+  llvm::SmallVector<Allocation, 16> AllocatedCodeMem;
+
+  // FIXME: This is part of a work around to keep sections near one another
+  // when MCJIT performs relocations after code emission but before
+  // the generated code is moved to the remote target.
+  llvm::sys::MemoryBlock Near;
+  uint8_t * reservedAlloc(uintptr_t Size, unsigned Alignment);
+  llvm::sys::MemoryBlock allocateSection(uintptr_t Size);
+
+  uint8_t *allocPtr;
+  uint8_t *allocMaxPtr;
+
+public:
+  OCLMCJITMemoryManager() : allocPtr(NULL), allocMaxPtr(NULL) {}
+  virtual ~OCLMCJITMemoryManager();
+
+  typedef llvm::SmallVectorImpl<Allocation>::const_iterator const_data_iterator;
+  typedef llvm::SmallVectorImpl<Allocation>::const_iterator const_code_iterator;
+
+  const_data_iterator data_begin() const { return AllocatedDataMem.begin(); }
+  const_data_iterator   data_end() const { return AllocatedDataMem.end(); }
+  const_code_iterator code_begin() const { return AllocatedCodeMem.begin(); }
+  const_code_iterator   code_end() const { return AllocatedCodeMem.end(); }
+
+  virtual void reserveMemory(uint64_t size);
+
+  uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
+                                       unsigned SectionID);
+
+  uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
+                               unsigned SectionID, bool isReadOnly);
+
+  void *getPointerToNamedFunction(const std::string &Name,
+                                  bool AbortOnFailure = true);
+
+  bool applyPermissions(std::string *ErrMsg) { return false; }
+
+  // The following obsolete JITMemoryManager calls are stubbed out for
+  // this model.
+  void setMemoryWritable();
+  void setMemoryExecutable();
+  void setPoisonMemory(bool poison);
+  void AllocateGOT();
+  uint8_t *getGOTBase() const;
+  uint8_t *startFunctionBody(const llvm::Function *F, uintptr_t &ActualSize);
+  uint8_t *allocateStub(const llvm::GlobalValue* F, unsigned StubSize,
+                        unsigned Alignment);
+  void endFunctionBody(const llvm::Function *F, uint8_t *FunctionStart,
+                       uint8_t *FunctionEnd);
+  uint8_t *allocateSpace(intptr_t Size, unsigned Alignment);
+  uint8_t *allocateGlobal(uintptr_t Size, unsigned Alignment);
+  void deallocateFunctionBody(void *Body);
+  uint8_t* startExceptionTable(const llvm::Function* F, uintptr_t &ActualSize);
+  void endExceptionTable(const llvm::Function *F, uint8_t *TableStart,
+                         uint8_t *TableEnd, uint8_t* FrameRegister);
+  void deallocateExceptionTable(void *ET);
+  void deallocateSection(uint8_t* BasePtr);
+};
+
+// The jitCodeGen function creates a string where the '\0' characters
+// have been encoded. decodeObjectImage puts the '\0' characters back.
+void decodeObjectImage(std::string encodedObjectImage, std::string &decodedObjectImage);
+
 #endif // _BE_CODEGEN_HPP_

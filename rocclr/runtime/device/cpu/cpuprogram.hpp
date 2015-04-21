@@ -10,8 +10,6 @@
 #include "device/cpu/cpubinary.hpp"
 #include <string>
 
-#include "jit.h"
-
 // forward declaration
 namespace amd {
 namespace option {
@@ -95,8 +93,11 @@ public:
     aclJITObjectImage getJITBinary() { return this->JITBinary; }
     void setJITBinary(aclJITObjectImage JITBinary) { this->JITBinary = JITBinary; }
 
-private:
+    //! Returns the pointer to the Compiler struct
+    //! Became public (prev. private) due to use in cpubinary for aclJIT functionality
     aclCompiler* compiler() { return static_cast<const Device&>(device()).compiler(); }
+
+private:
 
     //! Disable default copy constructor
     Program(const Program&);

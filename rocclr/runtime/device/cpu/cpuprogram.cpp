@@ -26,9 +26,6 @@
 #include "amdrt.inc"
 #endif
 
-#include "acl.h"
-#include "jit.h"
-
 //CLC_IN_PROCESS_CHANGE
 extern int openclFrontEnd(const char* cmdline, std::string*, std::string* typInfo = NULL);
 
@@ -416,9 +413,11 @@ setSymbolsCallbackCStr(const char* symbol, const void* value, void* data) {
 struct DisasData {
 public:
   DisasData(std::stringstream *stream,
-            aclJITObjectImage im) : asmstream(stream), image(im) {};
+            aclJITObjectImage im, aclCompiler* cmpl)
+            : asmstream(stream), image(im), compiler(cmpl) {};
   std::stringstream *asmstream;
   aclJITObjectImage image;
+  aclCompiler* compiler;
 };
 
 #if defined(LEGACY_COMPLIB)
@@ -428,6 +427,7 @@ disasSymbolsCallback(std::string symbol, const void* value, void* data)
     DisasData* disasData = (DisasData*) data;
     std::stringstream &asmstream = *(disasData->asmstream);
     aclJITObjectImage image = disasData->image;
+    aclCompiler* compiler = disasData->compiler;
     const char __OpenCL_[] = "__OpenCL_";
     const char _stub[] = "_stub";
     const char _kernel[] = "_kernel";
@@ -445,8 +445,13 @@ disasSymbolsCallback(std::string symbol, const void* value, void* data)
 
     if ((symbol.compare(suffixPos, sizeof(_stub) - 1, _stub) == 0) ||
         (symbol.compare(suffixPos, sizeof(_kernel) - 1, _kernel) == 0)) {
+      acl_error err = ACL_SUCCESS;
       char* kernelDisas =
-        aclJITObjectImageDisassembleKernel(image, symbol.c_str());
+        aclJITObjectImageDisassembleKernel(compiler, image, symbol.c_str(), &err);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageDisassembleKernel failed");
+          return false;
+      }
       asmstream << kernelDisas;
       free(kernelDisas);
     }
@@ -471,9 +476,9 @@ Program::compileBinaryToISA(amd::option::Options* options)
     std::string tempName = amd::Os::getTempFileName();
     dllFileName_ = tempName + "." IF(IS_WINDOWS, "dll", "so");
 
-    acl_error err;
+    acl_error err = ACL_SUCCESS;
     aclTargetInfo aclinfo = info(has_avx ?
-	    /*has_fma4 ? "Bulldozer" :*/
+      /*has_fma4 ? "Bulldozer" :*/
             "Corei7_AVX" :
             "Athlon64");
 
@@ -554,8 +559,18 @@ Program::compileBinaryToISA(amd::option::Options* options)
 
     if (options->oVariables->UseJIT) {
       //      printf("Using the jit!\n");
-      aclJITObjectImage objectImage = aclJITObjectImageCreate(isa, len, bin);
-      aclJITObjectImageFinalize(objectImage);
+      aclJITObjectImage objectImage = aclJITObjectImageCreate(compiler(), isa, len, bin, &err);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageCreate failed");
+          aclBinaryFini(bin);
+          return false;
+      }
+      err = aclJITObjectImageFinalize(compiler(), objectImage);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageFinalize failed");
+          aclBinaryFini(bin);
+          return false;
+      }
       setJITBinary(objectImage);
       aclBinaryFini(bin);
 
@@ -568,10 +583,14 @@ Program::compileBinaryToISA(amd::option::Options* options)
 #if 0
       // Debug stuff. Try and disassemble all kernels and stubs
       std::stringstream asmtext;
-      DisasData disasData(&asmtext, objectImage);
-      aclJITObjectImageIterateSymbols(objectImage,
+      DisasData disasData(&asmtext, objectImage, compiler());
+      err = aclJITObjectImageIterateSymbols(compiler(), objectImage,
                                       disasSymbolsCallbackCStr,
                                       &disasData);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageIterateSymbols failed");
+          return false;
+      }
       printf("DisasSize: %d\nDisas: %s\n", (int)asmtext.str().size(),
              asmtext.str().c_str());
 
@@ -696,7 +715,7 @@ Program::compileImpl(
         f.close();
     }
 
-    acl_error err;
+    acl_error err = ACL_SUCCESS;
     aclTargetInfo aclinfo = info();
 
     aclBinaryOptions binOpts = {0};
@@ -830,12 +849,26 @@ bool
 Program::loadDllCode(amd::option::Options* options, bool addElfSymbols)
 {
     if(options->oVariables->UseJIT) {
+      acl_error err = ACL_SUCCESS;
       aclJITObjectImage objectImage = getJITBinary();
-      aclJITObjectImageIterateSymbols(objectImage, setKernelInfoCallbackCStr,
-                                      this);
-      aclJITObjectImageIterateSymbols(objectImage, setSymbolsCallbackCStr,
-                                      clBinary());
-      setGlobalVariableTotalSize(aclJITObjectImageGetGlobalsSize(objectImage));
+      err = aclJITObjectImageIterateSymbols(compiler(), objectImage,
+                                      setKernelInfoCallbackCStr, this);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageIterateSymbols failed");
+          return false;
+      }
+      err = aclJITObjectImageIterateSymbols(compiler(), objectImage,
+                                      setSymbolsCallbackCStr, clBinary());
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageIterateSymbols failed");
+          return false;
+      }
+      size_t size = aclJITObjectImageGetGlobalsSize(compiler(), objectImage, &err);
+      if (err != ACL_SUCCESS) {
+          LogWarning("aclJITObjectImageGetGlobalsSize failed");
+          return false;
+      }
+      setGlobalVariableTotalSize(size);
       return true;
     }
     // Check if we have a URI
@@ -888,10 +921,24 @@ Program::linkImpl(amd::option::Options* options)
             return false;
           } else if (hasJITBinary) {
             aclJITObjectImage objectImage = getJITBinary();
-            aclJITObjectImageIterateSymbols(objectImage, setKernelInfoCallbackCStr, this);
-            aclJITObjectImageIterateSymbols(objectImage, setSymbolsCallbackCStr, clBinary());
-            setGlobalVariableTotalSize(aclJITObjectImageGetGlobalsSize(objectImage));
-
+            acl_error err = aclJITObjectImageIterateSymbols(compiler(), objectImage,
+                                            setKernelInfoCallbackCStr, this);
+            if (err != ACL_SUCCESS) {
+                LogWarning("aclJITObjectImageIterateSymbols failed");
+                return false;
+            }
+            err = aclJITObjectImageIterateSymbols(compiler(), objectImage,
+                                            setSymbolsCallbackCStr, clBinary());
+            if (err != ACL_SUCCESS) {
+                LogWarning("aclJITObjectImageIterateSymbols failed");
+                return false;
+            }
+            size_t size = aclJITObjectImageGetGlobalsSize(compiler(), objectImage, &err);
+            if (err != ACL_SUCCESS) {
+                LogWarning("aclJITObjectImageGetGlobalsSize failed");
+                return false;
+            }
+            setGlobalVariableTotalSize(size);
             return true;
           }
           // Fall-through to recompile
@@ -1184,7 +1231,7 @@ Program::createBinary(amd::option::Options* options)
 
 const aclTargetInfo &
 Program::info(const char * str) {
-    acl_error err;
+    acl_error err = ACL_SUCCESS;
     info_ = aclGetTargetInfo(LP64_SWITCH("x86", "x86-64"), ( str && str[0] == '\0' ? "Generic" : str ), &err);
     if (err != ACL_SUCCESS) {
         LogWarning("aclGetTargetInfo failed");
@@ -1195,7 +1242,7 @@ Program::info(const char * str) {
 Program::~Program()
 {
     if(getJITBinary() != NULL) {
-      aclJITObjectImageDestroy(getJITBinary());
+      aclJITObjectImageDestroy(compiler(), getJITBinary());
     }
 
     if (!sourceFileName_.empty()) {

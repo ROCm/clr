@@ -9,6 +9,10 @@
 // information on what errors occur.
 typedef void (*aclLogFunction_0_8)(const char *msg, size_t size);
 
+typedef bool (*aclJITSymbolCallback)(const char*, const void*, void*);
+typedef void* aclJITObjectImage;
+typedef const void* constAclJITObjectImage;
+
 typedef acl_error
 (ACL_API_ENTRY *InsertSec_0_8)(aclCompiler *cl,
     aclBinary *binary,
@@ -175,6 +179,47 @@ typedef acl_error
 
 typedef acl_error
 (ACL_API_ENTRY *SetupLoaderObject_0_8)(aclCompiler *cl) ACL_API_0_8;
+
+typedef aclJITObjectImage
+(ACL_API_ENTRY *JITObjectImageCreate_0_8)(const void* buffer,
+    size_t length,
+    aclBinary* bin,
+    acl_error* error_code) ACL_API_0_8;
+
+typedef aclJITObjectImage
+(ACL_API_ENTRY *JITObjectImageCopy_0_8)(const void* buffer,
+    size_t length,
+    acl_error* error_code) ACL_API_0_8;
+
+typedef acl_error
+(ACL_API_ENTRY *JITObjectImageDestroy_0_8)(aclJITObjectImage image) ACL_API_0_8;
+
+typedef size_t
+(ACL_API_ENTRY *JITObjectImageSize_0_8)(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+typedef const char *
+(ACL_API_ENTRY *JITObjectImageData_0_8)(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+typedef acl_error
+(ACL_API_ENTRY *JITObjectImageFinalize_0_8)(aclJITObjectImage image) ACL_API_0_8;
+
+typedef size_t
+(ACL_API_ENTRY *JITObjectImageGetGlobalsSize_0_8)(aclJITObjectImage image,
+    acl_error* error_code) ACL_API_0_8;
+
+typedef bool (*JITSymbolCallback_0_8)(const char*, const void*, void*);
+
+typedef acl_error
+(ACL_API_ENTRY *JITObjectImageIterateSymbols_0_8)(aclJITObjectImage image,
+    JITSymbolCallback_0_8 jit_callback,
+    void* data) ACL_API_0_8;
+
+typedef char*
+(ACL_API_ENTRY *JITObjectImageDisassembleKernel_0_8)(constAclJITObjectImage image,
+    const char* kernel,
+    acl_error* error_code) ACL_API_0_8;
 
 typedef void*
 (*AllocFunc_0_8)(size_t size) ACL_API_0_8;

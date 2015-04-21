@@ -210,6 +210,15 @@ typedef struct _acl_cl_loader_rec_0_8 {
   AddDbgArg     addDbg;
   RemoveDbgArg  removeDbg;
   SetupLoaderObject setupLoaderObject;
+  JITObjectImageCreate jitOICreate;
+  JITObjectImageCopy jitOICopy;
+  JITObjectImageDestroy jitOIDestroy;
+  JITObjectImageSize jitOISize;
+  JITObjectImageData jitOIData;
+  JITObjectImageFinalize jitOIFinalize;
+  JITObjectImageGetGlobalsSize jitOIGlobalSize;
+  JITObjectImageIterateSymbols jitOIIterateSymbols;
+  JITObjectImageDisassembleKernel jitOIDisassembleKernel;
 } aclCLLoader_0_8;
 
 //! Structure that holds the required functions

@@ -173,9 +173,12 @@ ClBinary::loadX86JIT(Program& program, bool& hasJITBinary)
         // force recompiling
         return true;
     }
-
-    program.setJITBinary(aclJITObjectImageCopy(section, sz));
-
+    acl_error err = ACL_SUCCESS;
+    program.setJITBinary(aclJITObjectImageCopy(program.compiler(), section, sz, &err));
+    if (err != ACL_SUCCESS) {
+        LogWarning("aclJITObjectImageCopy failed");
+        return false;
+    }
     hasJITBinary = true;
     return true;
 }
@@ -192,10 +195,18 @@ bool
 ClBinary::storeX86JIT(Program& program)
 {
   if (saveISA()) {
+    acl_error err = ACL_SUCCESS;
     aclJITObjectImage objectImage = program.getJITBinary();
-    const char* x86CodePtr = aclJITObjectImageData(objectImage);
-    size_t x86CodeSize = aclJITObjectImageSize(objectImage);
-
+    size_t x86CodeSize = aclJITObjectImageSize(program.compiler(), objectImage, &err);
+    if (err != ACL_SUCCESS) {
+        LogWarning("aclJITObjectImageSize failed");
+        return false;
+    }
+    const char* x86CodePtr = aclJITObjectImageData(program.compiler(), objectImage, &err);
+    if (err != ACL_SUCCESS) {
+        LogWarning("aclJITObjectImageData failed");
+        return false;
+    }
     elfOut_->addSection(amd::OclElf::JITBINARY, x86CodePtr, x86CodeSize);
   }
   return true;

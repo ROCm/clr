@@ -231,10 +231,52 @@ const void* ACL_API_ENTRY
     acl_error *error_code) ACL_API_0_8;
 
 //!--------------------------------------------------------------------------!//
+// Functions that deal with aclJITObjectImage objects.
+//!--------------------------------------------------------------------------!//
+aclJITObjectImage ACL_API_ENTRY
+aclJITObjectImageCreate(aclCompiler *cl, const void* buffer,
+                        size_t length, aclBinary* bin, acl_error* error_code);
+
+aclJITObjectImage ACL_API_ENTRY
+aclJITObjectImageCopy(aclCompiler *cl, const void* buffer,
+                      size_t length, acl_error* error_code);
+
+acl_error ACL_API_ENTRY
+aclJITObjectImageDestroy(aclCompiler *cl, aclJITObjectImage buffer);
+
+acl_error ACL_API_ENTRY
+aclJITObjectImageFinalize(aclCompiler *cl, aclJITObjectImage image);
+
+size_t ACL_API_ENTRY
+aclJITObjectImageSize(aclCompiler *cl, aclJITObjectImage image,
+                      acl_error* error_code);
+
+const char* ACL_API_ENTRY
+aclJITObjectImageData(aclCompiler *cl, aclJITObjectImage image,
+                      acl_error* error_code);
+
+size_t ACL_API_ENTRY
+aclJITObjectImageGetGlobalsSize(aclCompiler *cl, aclJITObjectImage image,
+                                acl_error* error_code);
+
+acl_error ACL_API_ENTRY
+aclJITObjectImageIterateSymbols(aclCompiler *cl, aclJITObjectImage image,
+                                aclJITSymbolCallback callback, void* data);
+
+#if defined(LEGACY_COMPLIB)
+char* ACL_API_ENTRY
+aclJITObjectImageDisassembleKernel(aclCompiler *cl, constAclJITObjectImage image,
+                                   const char* kernel, acl_error* error_code);
+#endif
+
+//!--------------------------------------------------------------------------!//
 // Debug functionality
 //!--------------------------------------------------------------------------!//
 void aclDumpBinary(const aclBinary *bin);
-// Functions to retrieve kernel information
+
+//!--------------------------------------------------------------------------!//
+// Functions that deal with kenel statistics.
+//!--------------------------------------------------------------------------!//
 void aclGetKstatsR800(const void* shader,
        aclKernelStats &kstats, const char* chip_id);
 void aclGetKstatsSI(const void* shader,
