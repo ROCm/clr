@@ -12,6 +12,18 @@
 
 namespace gpu {
 
+/*! \brief information for adjusting maximum workload time
+ *
+ *  This structure contains the time and OS minor version for max workload time
+ *  adjustment for Windows 7 or 8.
+ */
+struct ModifyMaxWorkload
+{
+    uint32_t time;          //!< max work load time (10x ms)
+    uint32_t minorVersion;  //!< OS minor version
+};
+
+
 Settings::Settings()
 {
     // Initialize the GPU device default settings
@@ -162,6 +174,8 @@ Settings::create(
     }
 
     // Update GPU specific settings and info structure if we have any
+    ModifyMaxWorkload modifyMaxWorkload = {0};
+
     switch (target) {
     case CAL_TARGET_SUMO:
     case CAL_TARGET_SUPERSUMO:
@@ -175,21 +189,9 @@ Settings::create(
         // For the system that has APU and Win 8, the work load needs to be smaller
         // This is because KMD doesn't have workaround for TDR in Win 8
         // This is needed only for EG/NI because EG/NI is using graphics ring
-#if defined(_WIN32)
-        {
-            OSVERSIONINFOEX versionInfo = { 0 };
-            versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-            versionInfo.dwMajorVersion = 6;
-            versionInfo.dwMinorVersion = 2;
+        modifyMaxWorkload.time = 500;       // 50ms
+        modifyMaxWorkload.minorVersion = 2; // Win 8
 
-            DWORDLONG conditionMask = 0;
-            VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
-            VER_SET_CONDITION(conditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
-            if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
-                maxWorkloadTime_ = 500;    // 50 ms
-            }
-        }
-#endif // defined(_WIN32)
         // Add the caps for Trinity here ...
         // Fall through ...
     case CAL_TARGET_CAYMAN:
@@ -262,6 +264,9 @@ Settings::create(
         if (!viPlus_) {
             // APU systems for CI
             apuSystem_  = true;
+            // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
+            modifyMaxWorkload.time = 2500;      // 250ms
+            modifyMaxWorkload.minorVersion = 1; // Win 7
         }
         // Fall through ...
     case CAL_TARGET_BONAIRE:
@@ -355,6 +360,32 @@ Settings::create(
         assert(0 && "Unknown ASIC type!");
         return false;
     }
+
+#if defined(_WIN32)
+    if (modifyMaxWorkload.time > 0) {
+        OSVERSIONINFOEX versionInfo = { 0 };
+        versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+        versionInfo.dwMajorVersion = 6;
+        versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
+
+        BYTE comparisonOps = 0;
+        switch (modifyMaxWorkload.minorVersion) {
+            case 1:     // for Win7 only
+                comparisonOps = VER_EQUAL;
+                break;
+            case 2:     // for Win8 and beyond
+                comparisonOps = VER_GREATER_EQUAL;
+                break;
+        }
+
+        DWORDLONG conditionMask = 0;
+        VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, comparisonOps);
+        VER_SET_CONDITION(conditionMask, VER_MINORVERSION, comparisonOps);
+        if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
+            maxWorkloadTime_ = modifyMaxWorkload.time;
+        }
+    }
+#endif // defined(_WIN32)
 
     // Enable atomics support
     enableExtension(ClKhrGlobalInt32BaseAtomics);
