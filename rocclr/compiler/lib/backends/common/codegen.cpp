@@ -5,7 +5,6 @@
 #include "codegen.hpp"
 #include "utils/libUtils.h"
 #include "os/os.hpp"
-#include "jit/src/jit.hpp"
 #include "utils/target_mappings.h"
 #ifdef _MSC_VER
 /* for disabling warning in llvm/ADT/Statistic.h */
@@ -15,15 +14,20 @@
 #ifdef _MSC_VER
 #pragma warning(default:4146)
 #endif
+#include "llvm/DataLayout.h"
+#include "llvm/Module.h"
+#include "llvm/Support/CodeGen.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/DataLayout.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Support/TargetRegistry.h"
-#include "llvm/Support/CommandLine.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
+#include "llvm/ExecutionEngine/ObjectImage.h"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -48,6 +52,301 @@ AdjustCGOptLevel(Module& M, CodeGenOpt::Level OrigOLvl)
     }
   }
   return OrigOLvl;
+}
+
+//!--------------------------------------------------------------------------!//
+// JIT Memory manager
+//!--------------------------------------------------------------------------!//
+OCLMCJITMemoryManager::~OCLMCJITMemoryManager() {
+  for (llvm::SmallVectorImpl<Allocation>::iterator
+         I = AllocatedCodeMem.begin(), E = AllocatedCodeMem.end();
+       I != E; ++I)
+    llvm::sys::Memory::releaseMappedMemory(I->first);
+  for (llvm::SmallVectorImpl<Allocation>::iterator
+         I = AllocatedDataMem.begin(), E = AllocatedDataMem.end();
+       I != E; ++I)
+    llvm::sys::Memory::releaseMappedMemory(I->first);
+}
+
+void
+OCLMCJITMemoryManager::deallocateSection(uint8_t* BasePtr) {
+  for (llvm::SmallVectorImpl<Allocation>::iterator
+         I = AllocatedCodeMem.begin(), E = AllocatedCodeMem.end();
+       I != E; ++I)
+    if (I->first.base() == BasePtr) {
+      llvm::sys::Memory::releaseMappedMemory(I->first);
+      AllocatedCodeMem.erase(I);
+      return;
+    }
+  for (llvm::SmallVectorImpl<Allocation>::iterator
+         I = AllocatedDataMem.begin(), E = AllocatedDataMem.end();
+       I != E; ++I)
+    if (I->first.base() == BasePtr) {
+      llvm::sys::Memory::releaseMappedMemory(I->first);
+      AllocatedDataMem.erase(I);
+      return;
+    }
+}
+
+void OCLMCJITMemoryManager::reserveMemory(uint64_t Size) {
+  llvm::sys::MemoryBlock Block = allocateSection(Size);
+  AllocatedCodeMem.push_back(Allocation(Block, 64));
+  allocPtr = (uint8_t*)Block.base();
+  allocMaxPtr = allocPtr + Block.size();
+}
+
+uint8_t *OCLMCJITMemoryManager::
+allocateCodeSection(uintptr_t Size, unsigned Alignment, unsigned SectionID) {
+  // The recording memory manager is just a local copy of the remote target.
+  // The alignment requirement is just stored here for later use. Regular
+  // heap storage is sufficient here, but we're using mapped memory to work
+  // around a bug in MCJIT.
+  uint8_t* address = reservedAlloc(Size, Alignment);
+  if(address != NULL) {
+    return address;
+  } else {
+    llvm::sys::MemoryBlock Block = allocateSection(Size);
+    AllocatedCodeMem.push_back(Allocation(Block, Alignment));
+    return (uint8_t*)Block.base();
+  }
+}
+
+uint8_t *OCLMCJITMemoryManager::
+allocateDataSection(uintptr_t Size, unsigned Alignment,
+                    unsigned SectionID, bool isReasOnly) {
+  bool IsReadOnly = false;
+  // The recording memory manager is just a local copy of the remote target.
+  // The alignment requirement is just stored here for later use. Regular
+  // heap storage is sufficient here, but we're using mapped memory to work
+  // around a bug in MCJIT.
+  uint8_t* address = reservedAlloc(Size, Alignment);
+  if(address != NULL) {
+    return address;
+  } else {
+    llvm::sys::MemoryBlock Block = allocateSection(Size);
+    AllocatedDataMem.push_back(Allocation(Block, Alignment));
+    return (uint8_t*)Block.base();
+  }
+}
+
+uint8_t * OCLMCJITMemoryManager::reservedAlloc(uintptr_t Size, unsigned Alignment) {
+  if(allocPtr != NULL) {
+    uint8_t *allocPtrAligned =
+      (uint8_t*)(((uintptr_t)allocPtr +
+                  ((uintptr_t)Alignment-1)) & ~((uintptr_t)Alignment-1));
+    uint8_t *allocPtrNext = allocPtrAligned + Size;
+    if(allocPtrNext < allocMaxPtr) {
+      allocPtr = allocPtrNext;
+      return allocPtrAligned;
+    }
+  }
+  return NULL;
+}
+
+llvm::sys::MemoryBlock OCLMCJITMemoryManager::allocateSection(uintptr_t Size) {
+  llvm::error_code ec;
+  llvm::sys::MemoryBlock MB =
+    llvm::sys::Memory::allocateMappedMemory(Size,
+                                            &Near,
+                                            llvm::sys::Memory::MF_READ |
+                                            llvm::sys::Memory::MF_WRITE |
+                                            llvm::sys::Memory::MF_EXEC,
+                                            ec);
+  assert(!ec && MB.base());
+
+  // FIXME: This is part of a work around to keep sections near one another
+  // when MCJIT performs relocations after code emission but before
+  // the generated code is moved to the remote target.
+  // Save this address as the basis for our next request
+  Near = MB;
+  return MB;
+}
+
+void OCLMCJITMemoryManager::setMemoryWritable() {
+  assert(!"Unexpected");
+}
+
+void OCLMCJITMemoryManager::setMemoryExecutable() {
+  assert(!"Unexpected");
+}
+
+void OCLMCJITMemoryManager::setPoisonMemory(bool poison) {
+  assert(!"Unexpected");
+}
+
+void OCLMCJITMemoryManager::AllocateGOT() {
+  assert(!"Unexpected");
+}
+
+uint8_t *OCLMCJITMemoryManager::getGOTBase() const {
+  assert(!"Unexpected");
+  return 0;
+}
+uint8_t *OCLMCJITMemoryManager::startFunctionBody(const llvm::Function *F,
+                                                  uintptr_t &ActualSize) {
+  assert(!"Unexpected");
+  return 0;
+}
+uint8_t *OCLMCJITMemoryManager::allocateStub(const llvm::GlobalValue* F,
+                                             unsigned StubSize,
+                                             unsigned Alignment) {
+  assert(!"Unexpected");
+  return 0;
+}
+void OCLMCJITMemoryManager::endFunctionBody(const llvm::Function *F,
+                                            uint8_t *FunctionStart,
+                                            uint8_t *FunctionEnd) {
+  assert(!"Unexpected");
+}
+uint8_t *OCLMCJITMemoryManager::allocateSpace(intptr_t Size,
+                                              unsigned Alignment) {
+  assert(!"Unexpected");
+  return 0;
+}
+uint8_t *OCLMCJITMemoryManager::allocateGlobal(uintptr_t Size,
+                                               unsigned Alignment) {
+  assert(!"Unexpected");
+  return 0;
+}
+void OCLMCJITMemoryManager::deallocateFunctionBody(void *Body) {
+  assert(!"Unexpected");
+}
+uint8_t* OCLMCJITMemoryManager::startExceptionTable(const llvm::Function* F,
+                                                    uintptr_t &ActualSize) {
+  assert(!"Unexpected");
+  return 0;
+}
+void OCLMCJITMemoryManager::endExceptionTable(const llvm::Function *F,
+                                              uint8_t *TableStart,
+                                               uint8_t *TableEnd,
+                                              uint8_t* FrameRegister) {
+  assert(!"Unexpected");
+}
+void OCLMCJITMemoryManager::deallocateExceptionTable(void *ET) {
+  assert(!"Unexpected");
+}
+
+static int jit_noop() {
+  return 0;
+}
+
+void *OCLMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
+                                                        bool AbortOnFailure) {
+  // We should not invoke parent's ctors/dtors from generated main()!
+  // On Mingw and Cygwin, the symbol __main is resolved to
+  // callee's(eg. tools/lli) one, to invoke wrong duplicated ctors
+  // (and register wrong callee's dtors with atexit(3)).
+  // We expect ExecutionEngine::runStaticConstructorsDestructors()
+  // is called before ExecutionEngine::runFunctionAsMain() is called.
+  if (Name == "__main") return (void*)(intptr_t)&jit_noop;
+
+  return NULL;
+}
+
+//!--------------------------------------------------------------------------!//
+// JIT Event Listener
+//!--------------------------------------------------------------------------!//
+class OclJITEventListener : public llvm::JITEventListener
+{
+private:
+  std::string* output_;
+
+public:
+  OclJITEventListener(std::string &output) {
+    output_ = &output;
+  }
+
+  virtual void NotifyObjectEmitted(const llvm::ObjectImage &Obj) {
+    encodeObjectImage(Obj.getData(), *output_);
+  }
+
+  // Encoding and decoding are used to eliminate 0x00 ('\0') from the
+  // string so it is safe to use it as a null terminated c string.
+  // Translate:
+  //    0x00 -> 0xaa 0x55
+  //    0xaa -> 0xaa 0xaa
+  static void encodeObjectImage(std::string objectImage, std::string &encodedObjectImage) {
+    size_t length =  objectImage.length();
+    for (size_t i = 0; i < length; ++i) {
+      unsigned char c = objectImage[i];
+      switch (c) {
+      case 0x00U:
+        encodedObjectImage.push_back(0xaaU);
+        encodedObjectImage.push_back(0x55U);
+        break;
+      case 0xaaU:
+        encodedObjectImage.push_back(0xaaU);
+        encodedObjectImage.push_back(0xaaU);
+        break;
+      default:
+        encodedObjectImage.push_back(c);
+        break;
+      }
+    }
+  }
+
+  // Translate:
+  //    0xaa 0x55 -> 0x00
+  //    0xaa 0xaa -> 0xaa
+  static void decodeObjectImage(std::string encodedObjectImage, std::string &decodedObjectImage) {
+    size_t length =  encodedObjectImage.length();
+    for (size_t i = 0; i < length; ++i) {
+      unsigned char c = encodedObjectImage[i];
+      switch (c) {
+      case 0xaaU:
+        {
+          i = i + 1; // Increment to advance two characters
+          unsigned char cnext = encodedObjectImage[i];
+          if (cnext == 0xaaU) {
+            decodedObjectImage.push_back(0xaaU);
+          } else if (cnext == 0x55U) {
+            decodedObjectImage.push_back(0x00U);
+          } else {
+            assert(!"Bad encoding encountered");
+          }
+        }
+        break;
+      default:
+        decodedObjectImage.push_back(c);
+        break;
+      }
+    }
+  }
+
+};
+
+void decodeObjectImage(std::string encodedObjectImage, std::string &decodedObjectImage) {
+  OclJITEventListener::decodeObjectImage(encodedObjectImage, decodedObjectImage);
+}
+
+// Returns empty string if code generation was successful,
+// otherwise the return string contains the error the MCJIT encountered.
+std::string
+jitCodeGen(llvm::Module* Composite,
+           llvm::TargetMachine* TargetMachine,
+           llvm::CodeGenOpt::Level OLvl,
+           std::string& output) {
+  std::string ErrStr;
+  OclJITEventListener Listener(output);
+  llvm::InitializeNativeTargetAsmParser();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::JITMemoryManager* MemMgr = new OCLMCJITMemoryManager();
+  llvm::EngineBuilder builder(Composite);
+  builder.setOptLevel(OLvl);
+  builder.setErrorStr(&ErrStr);
+  builder.setJITMemoryManager(MemMgr);
+  builder.setUseMCJIT(true);
+  // builder.setRelocationModel(llvm::Reloc::PIC_)
+  // builder.setCodeModel(llvm::CodeModel::Large)
+#ifndef ANDROID
+  std::unique_ptr<llvm::ExecutionEngine>
+    TheExecutionEngine(builder.create(TargetMachine));
+
+  TheExecutionEngine->RegisterJITEventListener(&Listener);
+  TheExecutionEngine->finalizeObject();
+  TheExecutionEngine->removeModule(Composite);
+#endif
+  return ErrStr;
 }
 
 int
@@ -231,7 +530,7 @@ llvmCodeGen(
   // MCJIT(Jan)
   if(!isGPU && OptionsObj->oVariables->UseJIT) {
     TargetMachine* jittarget(TheTarget->createTargetMachine(TheTriple.getTriple(),
-	       aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
+        aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
         WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
         CodeModel::Default, OLvl));
 

@@ -83,6 +83,16 @@ typedef CGPhase_0_8        CGPhase;
 typedef DisasmISA_0_8      DisasmISA;
 typedef AllocFunc_0_8      AllocFunc;
 typedef FreeFunc_0_8       FreeFunc;
+typedef JITObjectImageCreate_0_8 JITObjectImageCreate;
+typedef JITObjectImageCopy_0_8 JITObjectImageCopy;
+typedef JITObjectImageDestroy_0_8 JITObjectImageDestroy;
+typedef JITObjectImageSize_0_8 JITObjectImageSize;
+typedef JITObjectImageData_0_8 JITObjectImageData;
+typedef JITObjectImageFinalize_0_8 JITObjectImageFinalize;
+typedef JITObjectImageGetGlobalsSize_0_8 JITObjectImageGetGlobalsSize;
+typedef JITSymbolCallback_0_8 JITSymbolCallback;
+typedef JITObjectImageIterateSymbols_0_8 JITObjectImageIterateSymbols;
+typedef JITObjectImageDisassembleKernel_0_8 JITObjectImageDisassembleKernel;
 
 #include "aclStructs.h"
 
