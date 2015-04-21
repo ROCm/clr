@@ -616,12 +616,19 @@ CALGSLDevice::glAssociate(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
         return false;
     }
 
+    int flags = 0;
+
+    if (m_adp->pAsicInfo->svmFineGrainSystem)
+    {
+        flags = GL_INTEROP_SVM;
+    }
+
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)GLplatformContext;
     return (glXBeginCLInteropAMD(ctx, 0)) ? true : false;
 #else
     HGLRC hRC = (HGLRC)GLplatformContext;
-    return (wglBeginCLInteropAMD(hRC, 0)) ? true : false;
+    return (wglBeginCLInteropAMD(hRC, flags)) ? true : false;
 #endif
 }
 
@@ -661,6 +668,11 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
         DRIVER_MODULE_GLL,       // module
         GSL_ALLOCATION_INSTANCED // alloc_type
     );
+
+    if (m_adp->pAsicInfo->svmFineGrainSystem)
+    {
+        attribs.isAllocSVM = true;
+    }
 
     hRes.type = resData.type;
 
