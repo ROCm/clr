@@ -47,6 +47,12 @@ WaveLimiter::WaveLimiter(Kernel *owner) :
     setIfNotDefault(SIMDPerSH_, GPU_WAVE_LIMIT_CU_PER_SH,
             attrib.numberOfCUsperShaderArray * hwInfo->simdPerCU_);
 
+    MaxWave = GPU_WAVE_LIMIT_MAX_WAVE;
+    WarmUpCount = GPU_WAVE_LIMIT_WARMUP;
+    AdaptCount = GPU_WAVE_LIMIT_ADAPT * MaxWave;
+    RunCount = GPU_WAVE_LIMIT_RUN * MaxWave;
+    AbandonThresh = GPU_WAVE_LIMIT_ABANDON;
+
     state_ = WARMUP;
     dynRunCount_ = RunCount;
     auto size = MaxWave + 1;
@@ -59,12 +65,6 @@ WaveLimiter::WaveLimiter(Kernel *owner) :
         traceStream_.open(std::string(GPU_WAVE_LIMIT_TRACE) + owner_->name() +
             ".txt");
     }
-
-    MaxWave = GPU_WAVE_LIMIT_MAX_WAVE;
-    WarmUpCount = GPU_WAVE_LIMIT_WARMUP;
-    AdaptCount = GPU_WAVE_LIMIT_ADAPT * MaxWave;
-    RunCount = GPU_WAVE_LIMIT_RUN * MaxWave;
-    AbandonThresh = GPU_WAVE_LIMIT_ABANDON;
 
     waves_ = GPU_WAVES_PER_SIMD;
     bestWave_ = MaxWave;
