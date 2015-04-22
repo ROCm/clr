@@ -635,12 +635,19 @@ CALGSLDevice::glAssociate(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
 bool
 CALGSLDevice::glDissociate(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
 {
+    int flags = 0;
+
+    if (m_adp->pAsicInfo->svmFineGrainSystem)
+    {
+        flags = GL_INTEROP_SVM;
+    }
+
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)GLplatformContext;
     return (glXEndCLInteropAMD(ctx, 0)) ? true : false;
 #else
     HGLRC hRC = (HGLRC)GLplatformContext;
-    return (wglEndCLInteropAMD(hRC, 0)) ? true : false;
+    return (wglEndCLInteropAMD(hRC, flags)) ? true : false;
 #endif
 }
 
