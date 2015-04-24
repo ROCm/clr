@@ -120,18 +120,12 @@ NullDevice::create(CALtarget target)
 {
     CALdeviceattribs      calAttr = {0};
     CALdeviceVideoAttribs calVideoAttr = {0};
+    CALdevicestatus       calDevStatus = {0};
 
     online_ = false;
 
-    // Mark the device as GPU type
-    info_.type_     = CL_DEVICE_TYPE_GPU;
-    info_.vendorId_ = 0x1002;
-
     calTarget_ = calAttr.target = target;
     hwInfo_ = &DeviceInfo[calTarget_];
-
-    // Report the device name
-    ::strcpy(info_.name_, hwInfo()->targetName_);
 
     // Force double if it could be supported
     switch (target) {
@@ -177,19 +171,19 @@ NullDevice::create(CALtarget target)
         return false;
     }
 
-    info_.maxWorkGroupSize_ = settings().maxWorkGroupSize_;
+    // Report 512MB for all offline devices
+    calDevStatus.availVisibleHeap = 512;
+    calDevStatus.largestBlockVisibleHeap = 512;
+    calAttr.localRAM = 512;
 
-    // Initialize the extension string for offline devices
-    info_.extensions_   = getExtensionString();
+    // Fill the device info structure
+    fillDeviceInfo(calAttr, calDevStatus, 4096, 1, true
+#if cl_amd_open_video
+        , getVideoAttribs()
+#endif //cl_amd_open_video
+    );
 
-    // Fill the version info
-    ::strcpy(info_.name_, hwInfo()->targetName_);
-    ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
-    ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
-        AMD_BUILD_STRING);
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
-        info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
-        info_.oclcVersion_ = "OpenCL C 2.0 ";
         // Runtime doesn't know what local size could be on the real board
         info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
 
@@ -214,10 +208,6 @@ NullDevice::create(CALtarget target)
             }
         }
     }
-    else {
-        info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
-        info_.oclcVersion_ = "OpenCL C 1.2 ";
-    }
 
     return true;
 }
@@ -237,6 +227,324 @@ NullDevice::createProgram(int oclVer)
     }
 
     return nullProgram;
+}
+
+void NullDevice::fillDeviceInfo(
+    const CALdeviceattribs& calAttr,
+    const CALdevicestatus& calStatus,
+    size_t  maxTextureSize,
+    uint    numComputeRings,
+    bool    isVirtualMode
+#if cl_amd_open_video
+    ,
+    const CALdeviceVideoAttribs& calVideoAttr
+#endif // cl_amd_open_video
+    )
+{
+    info_.type_     = CL_DEVICE_TYPE_GPU;
+    info_.vendorId_ = 0x1002;
+    info_.maxComputeUnits_          = calAttr.numberOfSIMD;
+    info_.maxWorkItemDimensions_    = 3;
+    info_.numberOfShaderEngines     = calAttr.numberOfShaderEngines;
+
+    if (settings().siPlus_) {
+        // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
+        // For example, float4 is not faster than float as long as all threads fetch the same
+        // amount of data and the reads are coalesced.  This is from the H/W team and confirmed
+        // through experimentation.  May also be true on EG/NI, but no point in confusing
+        // developers now.
+        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 4;
+        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 2;
+        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 1;
+        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 1;
+        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 1;
+        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
+            (settings().checkExtension(ClKhrFp64)) ?  1 : 0;
+        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
+    }
+    else {
+        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 16;
+        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 8;
+        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 4;
+        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 2;
+        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 4;
+        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
+            (settings().checkExtension(ClKhrFp64)) ?  2 : 0;
+        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
+    }
+    info_.maxClockFrequency_    = (calAttr.engineClock != 0) ? calAttr.engineClock : 555;
+    info_.maxParameterSize_ = 1024;
+    info_.minDataTypeAlignSize_ = sizeof(cl_long16);
+    info_.singleFPConfig_       = CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO
+        | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
+
+    if (GPU_FORCE_SINGLE_FP_DENORM) {
+        info_.singleFPConfig_ |= CL_FP_DENORM;
+    }
+
+    if (settings().checkExtension(ClKhrFp64)) {
+        info_.doubleFPConfig_   = info_.singleFPConfig_ | CL_FP_DENORM;
+    }
+
+    if (settings().reportFMA_) {
+        info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
+    }
+
+    info_.globalMemCacheLineSize_   = settings().cacheLineSize_;
+    info_.globalMemCacheSize_       = settings().cacheSize_;
+    if ((settings().cacheLineSize_ != 0) || (settings().cacheSize_ != 0)) {
+        info_.globalMemCacheType_   = CL_READ_WRITE_CACHE;
+    }
+    else {
+        info_.globalMemCacheType_   = CL_NONE;
+    }
+
+    if (isVirtualMode) {
+#if defined(ATI_OS_LINUX)
+        info_.globalMemSize_   =
+            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+            // globalMemSize is the actual available size for app on Linux
+            // Because Linux base driver doesn't support paging
+            static_cast<cl_ulong>(calStatus.availVisibleHeap +
+            calStatus.availInvisibleHeap) / 100u) * Mi;
+#else
+        info_.globalMemSize_   =
+            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+            static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
+#endif
+        if (settings().apuSystem_) {
+            info_.globalMemSize_   +=
+                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi);
+        }
+
+        // We try to calculate the largest available memory size from
+        // the largest available block in either heap.  In theory this
+        // should be the size we can actually allocate at application
+        // start.  Note that it may not be a guarantee still as the
+        // application progresses.
+        info_.maxMemAllocSize_ = std::max(
+            cl_ulong(calStatus.largestBlockVisibleHeap * Mi),
+            cl_ulong(calStatus.largestBlockInvisibleHeap * Mi));
+
+#if defined(ATI_OS_WIN)
+        if (settings().apuSystem_) {
+            info_.maxMemAllocSize_ = std::max(
+                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi),
+                info_.maxMemAllocSize_);
+        }
+#endif
+        info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
+            std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+
+        //! \note Force max single allocation size.
+        //! 4GB limit for the blit kernels and 64 bit optimizations.
+        info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_,
+                static_cast<cl_ulong>(settings().maxAllocSize_));
+    }
+    else {
+        uint    maxHeapSize = flagIsDefault(GPU_MAX_HEAP_SIZE) ? 50 : GPU_MAX_HEAP_SIZE;
+        info_.globalMemSize_   = (std::min(maxHeapSize, 100u)
+            * calAttr.localRAM / 100u) * Mi;
+
+        uint    maxAllocSize = flagIsDefault(GPU_SINGLE_ALLOC_PERCENT) ? 25 : GPU_SINGLE_ALLOC_PERCENT;
+        info_.maxMemAllocSize_ = cl_ulong(info_.globalMemSize_ *
+            std::min(maxAllocSize, 100u) / 100u);
+    }
+
+    if (info_.maxMemAllocSize_ < cl_ulong(128 * Mi)) {
+        LogError("We are unable to get a heap large enough to support the OpenCL minimum "\
+            "requirement for FULL_PROFILE");
+    }
+
+    info_.maxMemAllocSize_ = std::max(cl_ulong(128 * Mi),  info_.maxMemAllocSize_);
+
+    // Clamp max single alloc size to the globalMemSize since it's
+    // reduced by default
+    info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
+
+    // We need to verify that we are not reporting more global memory
+    // that 4x single alloc
+    info_.globalMemSize_ = std::min( 4 * info_.maxMemAllocSize_, info_.globalMemSize_);
+
+    // Use 64 bit pointers
+    if (settings().use64BitPtr_) {
+        info_.addressBits_  = 64;
+    }
+    else {
+        info_.addressBits_  = 32;
+        // Limit total size with 3GB for 32 bit
+        info_.globalMemSize_ = std::min(info_.globalMemSize_, cl_ulong(3 * Gi));
+    }
+
+    // Alignment in BITS of the base address of any allocated memory object
+    static const size_t MemBaseAlignment = 256;
+    //! @note Force 256 bytes alignment, since currently
+    //! calAttr.surface_alignment returns 4KB. For pinned memory runtime
+    //! should be able to create a view with 256 bytes alignement
+    info_.memBaseAddrAlign_ = 8 * MemBaseAlignment;
+
+    info_.maxConstantBufferSize_ = 64 * Ki;
+    info_.maxConstantArgs_       = MaxConstArguments;
+
+    // Image support fields
+    if (settings().imageSupport_) {
+        info_.imageSupport_      = CL_TRUE;
+        info_.maxSamplers_       = MaxSamplers;
+        info_.maxReadImageArgs_  = MaxReadImage;
+        info_.maxWriteImageArgs_ = MaxWriteImage;
+        info_.image2DMaxWidth_   = maxTextureSize;
+        info_.image2DMaxHeight_  = maxTextureSize;
+        info_.image3DMaxWidth_   = std::min(2 * Ki, maxTextureSize);
+        info_.image3DMaxHeight_  = std::min(2 * Ki, maxTextureSize);
+        info_.image3DMaxDepth_   = std::min(2 * Ki, maxTextureSize);
+
+        info_.imagePitchAlignment_       = 256; // XXX: 256 pixel pitch alignment for now
+        info_.imageBaseAddressAlignment_ = 256; // XXX: 256 byte base address alignment for now
+
+        info_.bufferFromImageSupport_ = (isVirtualMode) ? CL_TRUE : CL_FALSE;
+    }
+
+    info_.errorCorrectionSupport_    = CL_FALSE;
+
+    if (settings().apuSystem_) {
+        info_.hostUnifiedMemory_ = CL_TRUE;
+    }
+
+    info_.profilingTimerResolution_  = 1;
+    info_.profilingTimerOffset_      = amd::Os::offsetToEpochNanos();
+    info_.littleEndian_              = CL_TRUE;
+    info_.available_                 = CL_TRUE;
+    info_.compilerAvailable_         = CL_TRUE;
+    info_.linkerAvailable_           = CL_TRUE;
+
+    info_.executionCapabilities_     = CL_EXEC_KERNEL;
+    info_.preferredPlatformAtomicAlignment_ = 0;
+    info_.preferredGlobalAtomicAlignment_ = 0;
+    info_.preferredLocalAtomicAlignment_ = 0;
+    info_.queueProperties_           = CL_QUEUE_PROFILING_ENABLE;
+
+    info_.platform_ = AMD_PLATFORM;
+
+#if cl_amd_open_video
+    // Open Video support
+    // Decoder
+    info_.openVideo_ = settings().openVideo_;
+    info_.maxVideoSessions_ = calVideoAttr.max_decode_sessions;
+    info_.numVideoAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
+        / sizeof(CALvideoAttrib);
+    info_.videoAttribs_ = const_cast<cl_video_attrib_amd*>(
+        reinterpret_cast<const cl_video_attrib_amd*>(calVideoAttr.video_attribs));
+
+    // Encoder
+    info_.numVideoEncAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
+        / sizeof(CALvideoEncAttrib);
+    info_.videoEncAttribs_ = const_cast<cl_video_attrib_encode_amd*>(
+        reinterpret_cast<const cl_video_attrib_encode_amd*>(calVideoAttr.video_enc_attribs));
+#endif // cl_amd_open_video
+
+    ::strcpy(info_.name_, hwInfo()->targetName_);
+    ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
+    ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
+         AMD_BUILD_STRING "%s", (isVirtualMode) ? " (VM)": "");
+
+    info_.profile_ = "FULL_PROFILE";
+    if (settings().oclVersion_ == OpenCL20) {
+        info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
+        info_.oclcVersion_ = "OpenCL C 2.0 ";
+        info_.spirVersions_ = "1.2";
+    }
+    else if (settings().oclVersion_ == OpenCL12) {
+        info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
+        info_.oclcVersion_ = "OpenCL C 1.2 ";
+        info_.spirVersions_ = "1.2";
+    }
+    else {
+        info_.version_ = "OpenCL 1.0 " AMD_PLATFORM_INFO;
+        info_.oclcVersion_ = "OpenCL C 1.0 ";
+        info_.spirVersions_ = "";
+        LogError("Unknown version for support");
+    }
+
+    // Fill workgroup info size
+    info_.maxWorkGroupSize_     = settings().maxWorkGroupSize_;
+    info_.maxWorkItemSizes_[0]  = info_.maxWorkGroupSize_;
+    info_.maxWorkItemSizes_[1]  = info_.maxWorkGroupSize_;
+    info_.maxWorkItemSizes_[2]  = info_.maxWorkGroupSize_;
+
+    if (settings().hwLDSSize_ != 0) {
+        info_.localMemType_ = CL_LOCAL;
+        info_.localMemSize_ = settings().hwLDSSize_;
+    }
+    else {
+        info_.localMemType_ = CL_GLOBAL;
+        info_.localMemSize_ = 16 * Ki;
+    }
+
+    info_.extensions_   = getExtensionString();
+
+    if (settings().checkExtension(ClExtAtomicCounters32)) {
+        info_.maxAtomicCounters_    = MaxAtomicCounters;
+    }
+
+    info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
+    info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation&(0xFF<<8))>>8;
+    info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation&(0x1F<<3))>>3;
+    info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation&0x07);
+
+    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
+
+    // OpenCL1.2 device info fields
+    info_.builtInKernels_ = "";
+    info_.imageMaxBufferSize_ = MaxImageBufferSize;
+    info_.imageMaxArraySize_ = MaxImageArraySize;
+    info_.preferredInteropUserSync_ = true;
+    info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;
+
+    if (settings().oclVersion_ >= OpenCL20) {
+        info_.svmCapabilities_ =
+            (CL_DEVICE_SVM_COARSE_GRAIN_BUFFER | CL_DEVICE_SVM_FINE_GRAIN_BUFFER);
+        if (settings().svmAtomics_) {
+            info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
+        }
+        if (settings().svmFineGrainSystem_) {
+            info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
+        }
+        // OpenCL2.0 device info fields
+        info_.maxWriteImageArgs_        = MaxReadWriteImage;    //!< For compatibility
+        info_.maxReadWriteImageArgs_    = MaxReadWriteImage;
+
+        info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
+        info_.maxPipeActiveReservations_ = 16;
+        info_.maxPipeArgs_ = 16;
+
+        info_.queueOnDeviceProperties_ =
+            CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
+        info_.queueOnDevicePreferredSize_ = 256 * Ki;
+        info_.queueOnDeviceMaxSize_ = 512 * Ki;
+        info_.maxOnDeviceQueues_ = 1;
+        info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
+        info_.globalVariablePreferredTotalSize_ = static_cast<size_t>(info_.globalMemSize_);
+        //! \todo Remove % calculation.
+        //! Use 90% of max single alloc size.
+        //! Boards with max single alloc size around 4GB will fail allocations
+        info_.maxGlobalVariableSize_ = static_cast<size_t>(
+            amd::alignDown(info_.maxMemAllocSize_ * 9 / 10, 256));
+    }
+
+    if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
+        info_.simdPerCU_            = hwInfo()->simdPerCU_;
+        info_.simdWidth_            = hwInfo()->simdWidth_;
+        info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
+        info_.wavefrontWidth_       = calAttr.wavefrontSize;
+        info_.globalMemChannels_    = calAttr.memBusWidth / 32;
+        info_.globalMemChannelBanks_    = calAttr.numMemBanks;
+        info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
+        info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
+        info_.localMemBanks_        = hwInfo()->localMemBanks_;
+        info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
+        info_.numAsyncQueues_       = numComputeRings;
+        info_.threadTraceEnable_    = settings().threadTraceEnable_;
+    }
 }
 
 void
@@ -486,321 +794,6 @@ Device::~Device()
     close();
 }
 
-void Device::fillDeviceInfo(
-    const CALdeviceattribs& calAttr,
-    const CALdevicestatus& calStatus
-#if cl_amd_open_video
-    ,
-    const CALdeviceVideoAttribs& calVideoAttr
-#endif // cl_amd_open_video
-    )
-{
-    info_.type_     = CL_DEVICE_TYPE_GPU;
-    info_.vendorId_ = 0x1002;
-    info_.maxComputeUnits_          = calAttr.numberOfSIMD;
-    info_.maxWorkItemDimensions_    = 3;
-    info_.numberOfShaderEngines     = calAttr.numberOfShaderEngines;
-
-    if (settings().siPlus_) {
-        // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
-        // For example, float4 is not faster than float as long as all threads fetch the same
-        // amount of data and the reads are coalesced.  This is from the H/W team and confirmed
-        // through experimentation.  May also be true on EG/NI, but no point in confusing
-        // developers now.
-        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 4;
-        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 2;
-        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 1;
-        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 1;
-        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 1;
-        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
-            (settings().checkExtension(ClKhrFp64)) ?  1 : 0;
-        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
-    }
-    else {
-        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 16;
-        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 8;
-        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 4;
-        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 2;
-        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 4;
-        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
-            (settings().checkExtension(ClKhrFp64)) ?  2 : 0;
-        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
-    }
-    info_.maxClockFrequency_    = (calAttr.engineClock != 0) ? calAttr.engineClock : 555;
-    info_.maxParameterSize_ = 1024;
-     info_.minDataTypeAlignSize_ = sizeof(cl_long16);
-    info_.singleFPConfig_       = CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO
-        | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
-
-    if (GPU_FORCE_SINGLE_FP_DENORM) {
-        info_.singleFPConfig_ |= CL_FP_DENORM;
-    }
-
-    if (settings().checkExtension(ClKhrFp64)) {
-        info_.doubleFPConfig_   = info_.singleFPConfig_ | CL_FP_DENORM;
-    }
-
-    if (settings().reportFMA_) {
-        info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
-    }
-
-    info_.globalMemCacheLineSize_   = settings().cacheLineSize_;
-    info_.globalMemCacheSize_       = settings().cacheSize_;
-    if ((settings().cacheLineSize_ != 0) || (settings().cacheSize_ != 0)) {
-        info_.globalMemCacheType_   = CL_READ_WRITE_CACHE;
-    }
-    else {
-        info_.globalMemCacheType_   = CL_NONE;
-    }
-
-    if (heap()->isVirtual()) {
-#if defined(ATI_OS_LINUX)
-        info_.globalMemSize_   =
-            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-            // globalMemSize is the actual available size for app on Linux
-            // Because Linux base driver doesn't support paging
-            static_cast<cl_ulong>(calStatus.availVisibleHeap +
-            calStatus.availInvisibleHeap) / 100u) * Mi;
-#else
-        info_.globalMemSize_   =
-            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-            static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
-#endif
-        if (settings().apuSystem_) {
-            info_.globalMemSize_   +=
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi);
-        }
-
-        // We try to calculate the largest available memory size from
-        // the largest available block in either heap.  In theory this
-        // should be the size we can actually allocate at application
-        // start.  Note that it may not be a guarantee still as the
-        // application progresses.
-        info_.maxMemAllocSize_ = std::max(
-            cl_ulong(calStatus.largestBlockVisibleHeap * Mi),
-            cl_ulong(calStatus.largestBlockInvisibleHeap * Mi));
-
-#if defined(ATI_OS_WIN)
-        if (settings().apuSystem_) {
-            info_.maxMemAllocSize_ = std::max(
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi),
-                info_.maxMemAllocSize_);
-        }
-#endif
-        info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
-            std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
-
-        //! \note Force max single allocation size.
-        //! 4GB limit for the blit kernels and 64 bit optimizations.
-        info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_,
-                static_cast<cl_ulong>(settings().maxAllocSize_));
-    }
-    else {
-        uint    maxHeapSize = flagIsDefault(GPU_MAX_HEAP_SIZE) ? 50 : GPU_MAX_HEAP_SIZE;
-        info_.globalMemSize_   = (std::min(maxHeapSize, 100u)
-            * calAttr.localRAM / 100u) * Mi;
-
-        uint    maxAllocSize = flagIsDefault(GPU_SINGLE_ALLOC_PERCENT) ? 25 : GPU_SINGLE_ALLOC_PERCENT;
-        info_.maxMemAllocSize_ = cl_ulong(info_.globalMemSize_ *
-            std::min(maxAllocSize, 100u) / 100u);
-    }
-
-    if (info_.maxMemAllocSize_ < cl_ulong(128 * Mi)) {
-        LogError("We are unable to get a heap large enough to support the OpenCL minimum "\
-            "requirement for FULL_PROFILE");
-    }
-
-    info_.maxMemAllocSize_ = std::max(cl_ulong(128 * Mi),  info_.maxMemAllocSize_);
-
-    // Clamp max single alloc size to the globalMemSize since it's
-    // reduced by default
-    info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
-
-    // We need to verify that we are not reporting more global memory
-    // that 4x single alloc
-    info_.globalMemSize_ = std::min( 4 * info_.maxMemAllocSize_, info_.globalMemSize_);
-
-    // Use 64 bit pointers
-    if (settings().use64BitPtr_) {
-        info_.addressBits_  = 64;
-    }
-    else {
-        info_.addressBits_  = 32;
-        // Limit total size with 3GB for 32 bit
-        info_.globalMemSize_ = std::min(info_.globalMemSize_, cl_ulong(3 * Gi));
-    }
-
-    // Alignment in BITS of the base address of any allocated memory object
-    static const size_t MemBaseAlignment = 256;
-    //! @note Force 256 bytes alignment, since currently
-    //! calAttr.surface_alignment returns 4KB. For pinned memory runtime
-    //! should be able to create a view with 256 bytes alignement
-    info_.memBaseAddrAlign_ = 8 * MemBaseAlignment;
-
-    info_.maxConstantBufferSize_ = 64 * Ki;
-    info_.maxConstantArgs_       = MaxConstArguments;
-
-    // Image support fields
-    if (settings().imageSupport_) {
-        info_.imageSupport_      = CL_TRUE;
-        info_.maxSamplers_       = MaxSamplers;
-        info_.maxReadImageArgs_  = MaxReadImage;
-        info_.maxWriteImageArgs_ = MaxWriteImage;
-        info_.image2DMaxWidth_   = static_cast<size_t>(getMaxTextureSize());
-        info_.image2DMaxHeight_  = static_cast<size_t>(getMaxTextureSize());
-        info_.image3DMaxWidth_   = std::min(2 * Ki, static_cast<size_t>(getMaxTextureSize()));
-        info_.image3DMaxHeight_  = std::min(2 * Ki, static_cast<size_t>(getMaxTextureSize()));
-        info_.image3DMaxDepth_   = std::min(2 * Ki, static_cast<size_t>(getMaxTextureSize()));
-
-        info_.imagePitchAlignment_       = 256; // XXX: 256 pixel pitch alignment for now
-        info_.imageBaseAddressAlignment_ = 256; // XXX: 256 byte base address alignment for now
-
-        info_.bufferFromImageSupport_ = (heap()->isVirtual()) ? CL_TRUE : CL_FALSE;
-    }
-
-    info_.errorCorrectionSupport_    = CL_FALSE;
-
-    if (settings().apuSystem_) {
-        info_.hostUnifiedMemory_ = CL_TRUE;
-    }
-
-    info_.profilingTimerResolution_  = 1;
-    info_.profilingTimerOffset_      = amd::Os::offsetToEpochNanos();
-    info_.littleEndian_              = CL_TRUE;
-    info_.available_                 = CL_TRUE;
-    info_.compilerAvailable_         = CL_TRUE;
-    info_.linkerAvailable_           = CL_TRUE;
-
-    info_.executionCapabilities_     = CL_EXEC_KERNEL;
-    info_.preferredPlatformAtomicAlignment_ = 0;
-    info_.preferredGlobalAtomicAlignment_ = 0;
-    info_.preferredLocalAtomicAlignment_ = 0;
-    info_.queueProperties_           = CL_QUEUE_PROFILING_ENABLE;
-
-    info_.platform_ = AMD_PLATFORM;
-
-#if cl_amd_open_video
-    // Open Video support
-    // Decoder
-    info_.openVideo_ = settings().openVideo_;
-    info_.maxVideoSessions_ = calVideoAttr.max_decode_sessions;
-    info_.numVideoAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
-        / sizeof(CALvideoAttrib);
-    info_.videoAttribs_ = const_cast<cl_video_attrib_amd*>(
-        reinterpret_cast<const cl_video_attrib_amd*>(calVideoAttr.video_attribs));
-
-    // Encoder
-    info_.numVideoEncAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
-        / sizeof(CALvideoEncAttrib);
-    info_.videoEncAttribs_ = const_cast<cl_video_attrib_encode_amd*>(
-        reinterpret_cast<const cl_video_attrib_encode_amd*>(calVideoAttr.video_enc_attribs));
-#endif // cl_amd_open_video
-
-    ::strcpy(info_.name_, hwInfo()->targetName_);
-    ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
-    ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
-         AMD_BUILD_STRING "%s", (heap()->isVirtual()) ? " (VM)": "");
-
-    info_.profile_ = "FULL_PROFILE";
-    if (settings().oclVersion_ == OpenCL20) {
-        info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
-        info_.oclcVersion_ = "OpenCL C 2.0 ";
-        info_.spirVersions_ = "1.2";
-    }
-    else if (settings().oclVersion_ == OpenCL12) {
-        info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
-        info_.oclcVersion_ = "OpenCL C 1.2 ";
-        info_.spirVersions_ = "1.2";
-    }
-    else {
-        info_.version_ = "OpenCL 1.0 " AMD_PLATFORM_INFO;
-        info_.oclcVersion_ = "OpenCL C 1.0 ";
-        info_.spirVersions_ = "";
-        LogError("Unknown version for support");
-    }
-
-    // Fill workgroup info size
-    info_.maxWorkGroupSize_     = settings().maxWorkGroupSize_;
-    info_.maxWorkItemSizes_[0]  = info_.maxWorkGroupSize_;
-    info_.maxWorkItemSizes_[1]  = info_.maxWorkGroupSize_;
-    info_.maxWorkItemSizes_[2]  = info_.maxWorkGroupSize_;
-
-    if (settings().hwLDSSize_ != 0) {
-        info_.localMemType_ = CL_LOCAL;
-        info_.localMemSize_ = settings().hwLDSSize_;
-    }
-    else {
-        info_.localMemType_ = CL_GLOBAL;
-        info_.localMemSize_ = 16 * Ki;
-    }
-
-    info_.extensions_   = getExtensionString();
-
-    if (settings().checkExtension(ClExtAtomicCounters32)) {
-        info_.maxAtomicCounters_    = MaxAtomicCounters;
-    }
-
-    info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-    info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation&(0xFF<<8))>>8;
-    info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation&(0x1F<<3))>>3;
-    info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation&0x07);
-
-    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
-
-    // OpenCL1.2 device info fields
-    info_.builtInKernels_ = "";
-    info_.imageMaxBufferSize_ = MaxImageBufferSize;
-    info_.imageMaxArraySize_ = MaxImageArraySize;
-    info_.preferredInteropUserSync_ = true;
-    info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;
-
-    if (settings().oclVersion_ >= OpenCL20) {
-        info_.svmCapabilities_ =
-            (CL_DEVICE_SVM_COARSE_GRAIN_BUFFER | CL_DEVICE_SVM_FINE_GRAIN_BUFFER);
-        if (settings().svmAtomics_) {
-            info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
-        }
-        if (settings().svmFineGrainSystem_) {
-            info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
-        }
-        // OpenCL2.0 device info fields
-        info_.maxWriteImageArgs_        = MaxReadWriteImage;    //!< For compatibility
-        info_.maxReadWriteImageArgs_    = MaxReadWriteImage;
-
-        info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
-        info_.maxPipeActiveReservations_ = 16;
-        info_.maxPipeArgs_ = 16;
-
-        info_.queueOnDeviceProperties_ =
-            CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
-        info_.queueOnDevicePreferredSize_ = 256 * Ki;
-        info_.queueOnDeviceMaxSize_ = 512 * Ki;
-        info_.maxOnDeviceQueues_ = 1;
-        info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
-        info_.globalVariablePreferredTotalSize_ = static_cast<size_t>(info_.globalMemSize_);
-        //! \todo Remove % calculation.
-        //! Use 90% of max single alloc size.
-        //! Boards with max single alloc size around 4GB will fail allocations
-        info_.maxGlobalVariableSize_ = static_cast<size_t>(
-            amd::alignDown(info_.maxMemAllocSize_ * 9 / 10, 256));
-    }
-
-    if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
-        info_.simdPerCU_            = hwInfo()->simdPerCU_;
-        info_.simdWidth_            = hwInfo()->simdWidth_;
-        info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
-        info_.wavefrontWidth_       = calAttr.wavefrontSize;
-        info_.globalMemChannels_    = calAttr.memBusWidth / 32;
-        info_.globalMemChannelBanks_    = calAttr.numMemBanks;
-        info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
-        info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
-        info_.localMemBanks_        = hwInfo()->localMemBanks_;
-        info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
-        info_.numAsyncQueues_       = engines().numComputeRings();
-        info_.threadTraceEnable_    = settings().threadTraceEnable_;
-    }
-}
-
 extern const char* SchedulerSourceCode;
 
 bool
@@ -930,7 +923,9 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     }
 
     // Fill the device info structure
-    fillDeviceInfo(getAttribs(), getStatus()
+    fillDeviceInfo(getAttribs(), getStatus(),
+        static_cast<size_t>(getMaxTextureSize()),
+        engines().numComputeRings(), heap()->isVirtual()
 #if cl_amd_open_video
         , getVideoAttribs()
 #endif //cl_amd_open_video

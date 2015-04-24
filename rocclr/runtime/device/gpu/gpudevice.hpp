@@ -124,6 +124,19 @@ public:
 protected:
     CALtarget   calTarget_;         //!< GPU device identifier
     const AMDDeviceInfo* hwInfo_;   //!< Device HW info structure
+
+    //! Fills OpenCL device info structure
+    void fillDeviceInfo(
+        const CALdeviceattribs& calAttr,    //!< CAL device attributes info
+        const CALdevicestatus&  calStatus,  //!< CAL device status
+        size_t  maxTextureSize,             //!< Maximum texture size supported in HW
+        uint    numComputeRings,            //!< Number of compute rings
+        bool    isVirtualMode               //!< Device is in virtual mode
+#if cl_amd_open_video
+        ,
+        const CALdeviceVideoAttribs& calVideoAttr   //!< -"- video attrib. info
+#endif //cl_amd_open_video
+        );
 };
 
 //! Forward declarations
@@ -566,16 +579,6 @@ private:
 
     //! Sends the stall command to all queues
     bool stallQueues();
-
-    //! Fills OpenCL device info structure
-    void fillDeviceInfo(
-        const CALdeviceattribs& calAttr,    //!< CAL device attributes info
-        const CALdevicestatus&  calStatus   //!< CAL device status
-#if cl_amd_open_video
-        ,
-        const CALdeviceVideoAttribs& calVideoAttr   //!< -"- video attrib. info
-#endif //cl_amd_open_video
-        );
 
     //! Buffer allocation from static heap (no VM mode only)
     gpu::Memory* createBufferFromHeap(
