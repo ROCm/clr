@@ -7,6 +7,9 @@
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 
+#include <cstdlib>
+using namespace std;
+
 namespace gpu {
 
 uint WaveLimiter::MaxWave;
@@ -14,14 +17,18 @@ uint WaveLimiter::WarmUpCount;
 uint WaveLimiter::AdaptCount;
 uint WaveLimiter::RunCount;
 uint WaveLimiter::AbandonThresh;
+uint WaveLimiter::DscThresh;
 
 void WaveLimiter::clearData() {
     waves_ = MaxWave;
     countAll_ = 0;
-    clear(counts_);
-    clear(sum_);
-    clear(average_);
+    clear(measure_);
+    clear(reference_);
+    clear(trial_);
     clear(ratio_);
+    discontinuous_ = false;
+    waveSet_ = false;
+    dataCount_ = 0;
 }
 
 void WaveLimiter::enable() {
@@ -49,17 +56,17 @@ WaveLimiter::WaveLimiter(Kernel *owner) :
 
     MaxWave = GPU_WAVE_LIMIT_MAX_WAVE;
     WarmUpCount = GPU_WAVE_LIMIT_WARMUP;
-    AdaptCount = GPU_WAVE_LIMIT_ADAPT * MaxWave;
+    AdaptCount = 2 * MaxWave + 1;
     RunCount = GPU_WAVE_LIMIT_RUN * MaxWave;
     AbandonThresh = GPU_WAVE_LIMIT_ABANDON;
+    DscThresh = GPU_WAVE_LIMIT_DSC_THRESH;
 
     state_ = WARMUP;
     dynRunCount_ = RunCount;
-    auto size = MaxWave + 1;
-    counts_.resize(size);
-    sum_.resize(size);
-    average_.resize(size);
-    ratio_.resize(size);
+    measure_.resize(MaxWave + 1);
+    reference_.resize(MaxWave + 1);
+    trial_.resize(MaxWave + 1);
+    ratio_.resize(MaxWave + 1);
     clearData();
     if (!flagIsDefault(GPU_WAVE_LIMIT_TRACE)) {
         traceStream_.open(std::string(GPU_WAVE_LIMIT_TRACE) + owner_->name() +
@@ -69,6 +76,7 @@ WaveLimiter::WaveLimiter(Kernel *owner) :
     waves_ = GPU_WAVES_PER_SIMD;
     bestWave_ = MaxWave;
     enable_ = false;
+    waveSet_ = false;
 }
 
 WaveLimiter::~WaveLimiter() {
@@ -78,16 +86,34 @@ WaveLimiter::~WaveLimiter() {
 }
 
 uint WaveLimiter::getWavesPerSH() const {
+    waveSet_ = true;
     return waves_ * SIMDPerSH_;
 }
 
 void WaveLimiter::updateData(ulong time) {
-    sum_[waves_] += time;
-    counts_[waves_]++;
-    average_[waves_] = sum_[waves_] / counts_[waves_];
-    ratio_[waves_] = average_[waves_] * 100 / average_[MaxWave];
-    if (average_[bestWave_] > average_[waves_]) {
-        bestWave_ = waves_;
+    auto count = dataCount_ - 1;
+    assert(count < 2 * MaxWave + 1);
+    assert(time > 0);
+    if (count % 2 == 0) {
+        assert(waves_ == MaxWave);
+        auto pos = count / 2;
+        measure_[pos] = time;
+        if (pos > 0) {
+            auto wave = MaxWave + 1 - pos;
+            if (abs(static_cast<long>(measure_[pos - 1]) -
+                    static_cast<long>(measure_[pos])) * 100 / measure_[pos] >
+                    DscThresh) {
+                discontinuous_ = true;
+            }
+            reference_[wave] = (time + measure_[pos - 1]) / 2;
+            ratio_[wave] = trial_[wave] * 100 / reference_[wave];
+            if (ratio_[bestWave_] > ratio_[wave] && !discontinuous_) {
+                bestWave_ = wave;
+            }
+        }
+    } else {
+        assert(waves_ == MaxWave - count / 2);
+        trial_[waves_] = time;
     }
     outputTrace();
 }
@@ -99,9 +125,8 @@ void WaveLimiter::outputTrace() {
 
     traceStream_ << "[WaveLimiter] " << owner_->name() << " state=" << state_
             << " waves=" << waves_ << " bestWave=" << bestWave_ << '\n';
-    output(traceStream_, "\n counts = ", counts_);
-    output(traceStream_, "\n sum = ", sum_);
-    output(traceStream_, "\n average = ", average_);
+    output(traceStream_, "\n measure = ", measure_);
+    output(traceStream_, "\n reference = ", reference_);
     output(traceStream_, "\n ratio = ", ratio_);
     traceStream_ << "\n\n";
 }
@@ -125,13 +150,26 @@ void WaveLimiter::callback(ulong duration) {
         clearData();
         return;
     case ADAPT:
-        updateData(duration);
-        if (countAll_ < AdaptCount && ratio_[waves_] < AbandonThresh) {
-            waves_ = MaxWave - (countAll_ % MaxWave);
-            return;
+        assert(duration > 0);
+        if (waveSet_) {
+            dataCount_++;
+            updateData(duration);
+            waves_ = MaxWave + 1 - dataCount_ / 2;
+            if (dataCount_ == 1 || (dataCount_ < AdaptCount &&
+                !discontinuous_ && (dataCount_ % 2 == 0 ||
+                ratio_[waves_] < AbandonThresh))) {
+                if (dataCount_ % 2 == 1) {
+                    --waves_;
+                } else {
+                    waves_ = MaxWave;
+                }
+                waveSet_ = false;
+                return;
+            }
         }
         waves_ = bestWave_;
-        if (countAll_ >= AdaptCount) {
+        waveSet_ = false;
+        if (dataCount_ >= AdaptCount) {
             dynRunCount_ = RunCount;
         } else {
             dynRunCount_ = AdaptCount;

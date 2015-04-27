@@ -403,6 +403,7 @@ VirtualGPU::VirtualGPU(
     , schedParamIdx_(0)
     , deviceQueueSize_(0)
     , hsaQueueMem_(NULL)
+    , profileEnabled_(false)
 {
     memset(&cal_, 0, sizeof(CalVirtualDesc));
     for (uint i = 0; i < AllEngines; ++i) {
@@ -2804,7 +2805,7 @@ VirtualGPU::awaitCompletion(CommandBatch* cb, const amd::Event* waitingEvent)
     amd::Command*   head = cb->head_;
 
     // Make sure that profiling is enabled
-    if (head->profilingInfo().enabled_) {
+    if (profileEnabled_) {
         return profilingCollectResults(cb, waitingEvent);
     }
     // Mark the first command in the batch as running
@@ -3250,6 +3251,7 @@ VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling)
         // Save the TimeStamp object in the current OCL event
         command.setData(ts);
         currTs_ = ts;
+        profileEnabled_ = true;
     }
 }
 
