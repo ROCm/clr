@@ -44,10 +44,11 @@ private:
         std::vector<char> state_;
     };
 
-    std::vector<ulong> counts_;
-    std::vector<ulong> sum_;
-    std::vector<ulong> average_;
+    std::vector<ulong> measure_;
+    std::vector<ulong> reference_;
+    std::vector<ulong> trial_;
     std::vector<ulong> ratio_;
+    bool discontinuous_; // Measured data is discontinuous
 
     bool enable_;
     uint SIMDPerSH_;     // Number of SIMDs per SH
@@ -59,12 +60,15 @@ private:
     Kernel *owner_;
     DataDumper dumper_;
     std::ofstream traceStream_;
+    mutable bool waveSet_;
+    uint dataCount_;
 
     static uint MaxWave;       // Maximum number of waves per SIMD
     static uint WarmUpCount;   // Number of kernel executions for warm up
     static uint AdaptCount;    // Number of kernel executions for adapting
     static uint RunCount;      // Number of kernel executions for normal run
     static uint AbandonThresh; // Threshold to abandon adaptation
+    static uint DscThresh;     // Threshold for identifying discontinuities
 
     virtual void callback(ulong duration);
     void updateData(ulong time);

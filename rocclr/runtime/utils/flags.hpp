@@ -188,10 +188,12 @@ release_on_stg(uint, GPU_WAVE_LIMIT_WARMUP, 100,                              \
         "Set warming up kernel execution count for wave limiter")             \
 release_on_stg(uint, GPU_WAVE_LIMIT_ADAPT, 1,                                 \
         "Set adapting factor for wave limiter")                               \
-release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 40,                                  \
+release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 20,                                  \
         "Set running factor for wave limiter")                                \
 release_on_stg(uint, GPU_WAVE_LIMIT_ABANDON, 105,                             \
         "Set abandon threshold for wave limiter")                             \
+release_on_stg(uint, GPU_WAVE_LIMIT_DSC_THRESH, 10,                           \
+        "Set threshold for rejecting discontinuous data")                     \
 release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
         "File path prefix for dumping wave limiter output")                   \
 release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
