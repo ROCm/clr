@@ -4,8 +4,6 @@
 #include "acl.h"
 #include "aclTypes.h"
 #include "api/v0_8/aclValidation.h"
-#include "v0_7/clTypes.h"
-#include "v0_7/clCompiler.h"
 #include "libUtils.h"
 #include "bif/bifbase.hpp"
 #include "utils/target_mappings.h"
@@ -635,18 +633,14 @@ cloneOclElfNoBIF(const aclBinary *src) {
     aclBinary_0_8_1 *dptr = reinterpret_cast<aclBinary_0_8_1*>(dst);
     const aclBinary_0_8_1 *sptr = reinterpret_cast<const aclBinary_0_8_1*>(src);
     dptr->target.struct_size = sizeof(aclTargetInfo_0_8);
-    if (sptr->target.struct_size == sizeof(oclTargetInfo_0_7)) {
-      dptr->target.arch_id = sptr->target.arch_id;
-      dptr->target.chip_id = sptr->target.chip_id;
-    } else if (sptr->target.struct_size == sizeof(aclTargetInfo_0_8)) {
+    if (sptr->target.struct_size == sizeof(aclTargetInfo_0_8)) {
       memcpy(&dptr->target, &sptr->target, sptr->target.struct_size);
     } else {
       assert(!"Unsupported target info detected!");
     }
 
     memcpy(&dptr->caps, &sptr->caps, sptr->caps.struct_size);
-    assert(sizeof(aclDevCaps_0_8) == dptr->caps.struct_size
-        && "The caps struct is not version 0.7!");
+    assert(sizeof(aclDevCaps_0_8) == dptr->caps.struct_size);
     amd::option::Options *Opts = reinterpret_cast<amd::option::Options*>(
             aclutAlloc(src)(sizeof(amd::option::Options)));
     Opts = new (Opts) amd::option::Options;
@@ -668,10 +662,7 @@ cloneOclElfNoBIF(const aclBinary *src) {
     aclBinary_0_8 *dptr = reinterpret_cast<aclBinary_0_8*>(dst);
     const aclBinary_0_8 *sptr = reinterpret_cast<const aclBinary_0_8*>(src);
     dptr->target.struct_size = sizeof(aclTargetInfo_0_8);
-    if (sptr->target.struct_size == sizeof(oclTargetInfo_0_7)) {
-      dptr->target.arch_id = sptr->target.arch_id;
-      dptr->target.chip_id = sptr->target.chip_id;
-    } else if (sptr->target.struct_size == sizeof(aclTargetInfo_0_8)) {
+    if (sptr->target.struct_size == sizeof(aclTargetInfo_0_8)) {
       memcpy(&dptr->target, &sptr->target, sptr->target.struct_size);
     } else {
       assert(!"Unsupported target info detected!");
@@ -691,29 +682,6 @@ cloneOclElfNoBIF(const aclBinary *src) {
     dptr->options = reinterpret_cast<aclOptions*>(Opts);
     dptr->bin = NULL;
     return dst;
-  } else if (src->struct_size == sizeof(oclElfHandle_0_7)) {
-    oclElf *dst = constructOclElf(src->struct_size);
-    if (dst == NULL) {
-      return NULL;
-    }
-    oclElfHandle_0_7 *dptr = reinterpret_cast<oclElfHandle_0_7*>(dst);
-    const oclElfHandle_0_7 *sptr = reinterpret_cast<const oclElfHandle_0_7*>(src);
-    dptr->target.struct_size = sptr->target.struct_size;
-    memcpy(&dptr->target, &sptr->target, sptr->target.struct_size);
-    assert(sizeof(oclTargetInfo_0_7) == dptr->target.struct_size
-        && "The target info struct is not version 0.7!");
-    memcpy(&dptr->caps, &sptr->caps, sptr->caps.struct_size);
-    assert(sizeof(elfDevCaps_0_7) == dptr->caps.struct_size
-        && "The caps struct is not version 0.7!");
-    amd::option::Options *Opts = reinterpret_cast<amd::option::Options*>(
-            aclutAlloc(src)(sizeof(amd::option::Options)));
-    Opts = new (Opts) amd::option::Options;
-    amd::option::Options *sOpts = reinterpret_cast<amd::option::Options*>(
-        sptr->options);
-    parseAllOptions(sOpts->origOptionStr, *Opts);
-    dptr->options = reinterpret_cast<bifOptions*>(Opts);
-    dptr->bin = NULL;
-    return reinterpret_cast<aclBinary*>(dst);
   } else {
     assert(!"Elf version not supported!");
   }

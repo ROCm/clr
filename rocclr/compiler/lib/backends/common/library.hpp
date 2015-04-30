@@ -9,7 +9,7 @@
 #include <string>
 namespace amd {
 
-typedef enum _library_selector_0_7 {
+typedef enum _library_selector {
     LibraryUndefined = 0,
     GPU_Library_7xx,
     GPU_Library_Evergreen,
