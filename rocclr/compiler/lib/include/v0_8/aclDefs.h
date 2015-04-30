@@ -16,10 +16,6 @@
 #define ACL_API_0_8
 #endif
 
-#ifndef AOC_API_0_7
-#define AOC_API_0_7
-#endif
-
 #ifndef BIF_API_2_0
 #define BIF_API_2_0
 #endif
