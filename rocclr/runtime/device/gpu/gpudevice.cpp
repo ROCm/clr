@@ -314,7 +314,7 @@ void NullDevice::fillDeviceInfo(
 #endif
         if (settings().apuSystem_) {
             info_.globalMemSize_   +=
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi);
+                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100;
         }
 
         // We try to calculate the largest available memory size from
@@ -329,7 +329,7 @@ void NullDevice::fillDeviceInfo(
 #if defined(ATI_OS_WIN)
         if (settings().apuSystem_) {
             info_.maxMemAllocSize_ = std::max(
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi),
+                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100,
                 info_.maxMemAllocSize_);
         }
 #endif
