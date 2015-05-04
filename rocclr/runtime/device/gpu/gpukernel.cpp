@@ -1683,7 +1683,7 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
         }
     }
 
-    gpu.setWavesPerSH(gpu.gslKernelDesc()->func_, waveLimiter_.getWavesPerSH());
+    gpu.setWavesPerSH(gpu.gslKernelDesc()->func_, waveLimiter_.getWavesPerSH(&gpu));
     if (!gpu.runProgramGrid(*calEvent,
         const_cast<ProgramGrid*>(&gpu.cal()->progGrid_), gpu.vmMems(), gpu.cal_.memCount_)) {
         LogError("Failed to execute the program!");

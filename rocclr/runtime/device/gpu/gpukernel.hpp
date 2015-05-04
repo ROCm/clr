@@ -654,8 +654,9 @@ public:
         ) const;
 
     //! Get profiling callback object
-    virtual amd::ProfilingCallback* getProfilingCallback() const {
-        return waveLimiter_.getProfilingCallback();
+    virtual amd::ProfilingCallback* getProfilingCallback(
+        const device::VirtualDevice *vdev){
+        return waveLimiter_.getProfilingCallback(vdev);
     }
 
 protected:
@@ -775,7 +776,7 @@ private:
     //! @todo remove the blit kernel hack
     bool    blitKernelHack_;    //!< No VM hack for kernel blit
 
-    WaveLimiter waveLimiter_; //!< adaptively control number of waves
+    WaveLimiterManager waveLimiter_; //!< adaptively control number of waves
 };
 
 enum HSAIL_ADDRESS_QUALIFIER{

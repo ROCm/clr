@@ -71,7 +71,7 @@ namespace option {
 class Options;
 } // option
 
-struct ProfilingCallback: public amd::EmbeddedObject {
+struct ProfilingCallback: public amd::HeapObject {
     virtual void callback (ulong duration) = 0;
 };
 }
@@ -938,7 +938,8 @@ public:
     }
 
     //! Get profiling callback object
-    virtual amd::ProfilingCallback* getProfilingCallback() const {
+    virtual amd::ProfilingCallback* getProfilingCallback(
+        const device::VirtualDevice *vdv) {
         return NULL;
     }
 
