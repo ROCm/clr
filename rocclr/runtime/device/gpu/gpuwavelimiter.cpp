@@ -27,28 +27,17 @@ void WaveLimiter::clearData() {
     clear(trial_);
     clear(ratio_);
     discontinuous_ = false;
-    waveSet_ = false;
     dataCount_ = 0;
 }
 
-void WaveLimiter::enable() {
-    if (waves_ > 0) {
-        return;
-    }
-    auto gpuDev = reinterpret_cast<const Device*>(&owner_->dev());
-    auto hwInfo = gpuDev->hwInfo();
-    // Enable it only for SI+, unless GPU_WAVE_LIMIT_ENABLE is set to 1
-    setIfNotDefault(enable_, GPU_WAVE_LIMIT_ENABLE,
-         owner_->workGroupInfo()->limitWave_ && gpuDev->settings().siPlus_);
-    if (!enable_) {
-        return;
-    }
-    waves_ = MaxWave;
-}
-
-WaveLimiter::WaveLimiter(Kernel *owner) :
-        owner_(owner), dumper_(owner_->name()) {
-    auto gpuDev = reinterpret_cast<const Device*>(&owner_->dev());
+WaveLimiter::WaveLimiter(
+        Kernel* owner,
+        uint    seqNum,
+        bool    enable,
+        bool    enableDump):
+        owner_(owner),
+        dumper_(owner_->name() + "_" + std::to_string(seqNum), enableDump) {
+    auto gpuDev = static_cast<const Device*>(&owner_->dev());
     auto attrib = gpuDev->getAttribs();
     auto hwInfo = gpuDev->hwInfo();
     setIfNotDefault(SIMDPerSH_, GPU_WAVE_LIMIT_CU_PER_SH,
@@ -73,10 +62,10 @@ WaveLimiter::WaveLimiter(Kernel *owner) :
             ".txt");
     }
 
-    waves_ = GPU_WAVES_PER_SIMD;
+    waves_ = MaxWave;
+    currWaves_ = MaxWave;
     bestWave_ = MaxWave;
-    enable_ = false;
-    waveSet_ = false;
+    enable_ = enable;
 }
 
 WaveLimiter::~WaveLimiter() {
@@ -85,8 +74,8 @@ WaveLimiter::~WaveLimiter() {
     }
 }
 
-uint WaveLimiter::getWavesPerSH() const {
-    waveSet_ = true;
+uint WaveLimiter::getWavesPerSH(){
+    currWaves_ = waves_;
     return waves_ * SIMDPerSH_;
 }
 
@@ -94,6 +83,7 @@ void WaveLimiter::updateData(ulong time) {
     auto count = dataCount_ - 1;
     assert(count < 2 * MaxWave + 1);
     assert(time > 0);
+    assert(currWaves_ == waves_);
     if (count % 2 == 0) {
         assert(waves_ == MaxWave);
         auto pos = count / 2;
@@ -124,7 +114,8 @@ void WaveLimiter::outputTrace() {
     }
 
     traceStream_ << "[WaveLimiter] " << owner_->name() << " state=" << state_
-            << " waves=" << waves_ << " bestWave=" << bestWave_ << '\n';
+            << " currWaves=" << currWaves_ << " waves=" << waves_
+            << " bestWave=" << bestWave_ << '\n';
     output(traceStream_, "\n measure = ", measure_);
     output(traceStream_, "\n reference = ", reference_);
     output(traceStream_, "\n ratio = ", ratio_);
@@ -132,7 +123,7 @@ void WaveLimiter::outputTrace() {
 }
 
 void WaveLimiter::callback(ulong duration) {
-    dumper_.addData(duration, waves_, static_cast<char>(state_));
+    dumper_.addData(duration, currWaves_, static_cast<char>(state_));
 
     if (!enable_) {
         return;
@@ -151,7 +142,7 @@ void WaveLimiter::callback(ulong duration) {
         return;
     case ADAPT:
         assert(duration > 0);
-        if (waveSet_) {
+        if (waves_ == currWaves_) {
             dataCount_++;
             updateData(duration);
             waves_ = MaxWave + 1 - dataCount_ / 2;
@@ -163,19 +154,17 @@ void WaveLimiter::callback(ulong duration) {
                 } else {
                     waves_ = MaxWave;
                 }
-                waveSet_ = false;
                 return;
             }
+            waves_ = bestWave_;
+            if (dataCount_ >= AdaptCount) {
+                dynRunCount_ = RunCount;
+            } else {
+                dynRunCount_ = AdaptCount;
+            }
+            countAll_ = rand() % MaxWave;
+            state_ = RUN;
         }
-        waves_ = bestWave_;
-        waveSet_ = false;
-        if (dataCount_ >= AdaptCount) {
-            dynRunCount_ = RunCount;
-        } else {
-            dynRunCount_ = AdaptCount;
-        }
-        countAll_ = rand() % MaxWave;
-        state_ = RUN;
         return;
     case RUN:
         if (countAll_ < dynRunCount_) {
@@ -188,8 +177,8 @@ void WaveLimiter::callback(ulong duration) {
     }
 }
 
-WaveLimiter::DataDumper::DataDumper(const std::string &kernelName) {
-    enable_ = !flagIsDefault(GPU_WAVE_LIMIT_DUMP);
+WaveLimiter::DataDumper::DataDumper(const std::string &kernelName, bool enable) {
+    enable_ = enable;
     if (enable_) {
         fileName_ = std::string(GPU_WAVE_LIMIT_DUMP) + kernelName + ".csv";
     }
@@ -218,11 +207,65 @@ void WaveLimiter::DataDumper::addData(ulong time, uint wave, char state) {
     state_.push_back(state);
 }
 
-amd::ProfilingCallback* WaveLimiter::getProfilingCallback() const {
-    if (enable_ || dumper_.enabled()) {
-        return const_cast<WaveLimiter*>(this);
-    }
-    return NULL;
+WaveLimiterManager::WaveLimiterManager(Kernel* kernel):
+        owner_(kernel),
+        enable_(false),
+        enableDump_(!flagIsDefault(GPU_WAVE_LIMIT_DUMP)),
+        fixed_(GPU_WAVES_PER_SIMD) {
 }
+
+WaveLimiterManager::~WaveLimiterManager() {
+    for (auto &I: limiters_) {
+        delete I.second;
+    }
+}
+
+uint WaveLimiterManager::getWavesPerSH(const device::VirtualDevice *vdev) const {
+    if (fixed_ > 0) {
+        return fixed_;
+    }
+    if (!enable_) {
+        return 0;
+    }
+    auto loc = limiters_.find(vdev);
+    assert (loc != limiters_.end());
+    assert(loc->second != NULL);
+    return loc->second->getWavesPerSH();
+}
+
+amd::ProfilingCallback* WaveLimiterManager::getProfilingCallback(
+        const device::VirtualDevice *vdev) {
+    assert(vdev != NULL);
+    if (!enable_ && !enableDump_) {
+        return NULL;
+    }
+
+    amd::ScopedLock SL(monitor_);
+    auto loc = limiters_.find(vdev);
+    if (loc != limiters_.end()) {
+        return loc->second;
+    }
+
+    auto limiter = new WaveLimiter(owner_, limiters_.size(), enable_,
+            enableDump_);
+    if (limiter == NULL) {
+        enable_ = false;
+        return NULL;
+    }
+    limiters_[vdev] = limiter;
+    return limiter;
+}
+
+void WaveLimiterManager::enable() {
+    if (fixed_ > 0) {
+        return;
+    }
+    auto gpuDev = static_cast<const Device*>(&owner_->dev());
+    auto hwInfo = gpuDev->hwInfo();
+    // Enable it only for SI+, unless GPU_WAVE_LIMIT_ENABLE is set to 1
+    setIfNotDefault(enable_, GPU_WAVE_LIMIT_ENABLE,
+         owner_->workGroupInfo()->limitWave_ && gpuDev->settings().siPlus_);
+}
+
 }
 

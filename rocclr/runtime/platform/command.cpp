@@ -266,8 +266,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(
 {
     parameters_ = kernel.parameters().capture(queue.device());
     auto& device = queue.device();
-    auto devKernel = kernel.getDeviceKernel(device);
-    profilingInfo_.setCallback(devKernel->getProfilingCallback());
+    auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
+    profilingInfo_.setCallback(devKernel->getProfilingCallback(queue.vdev()));
     fixme_guarantee(parameters_ != NULL && "out of memory");
     kernel_.retain();
 }
