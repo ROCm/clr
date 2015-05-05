@@ -6,11 +6,5 @@
 // header file for that version directly.
 #ifndef ACL_FUNCTORS_H_
 #define ACL_FUNCTORS_H_
-#if WITH_VERSION_0_8
 #include "v0_8/aclFunctors.h"
-#elif WITH_VERSION_0_9
-#else
-#error "The compiler library version was not defined."
-#include "v0_8/aclFunctors.h"
-#endif
 #endif // ACL_FUNCTORS_H_

@@ -6,12 +6,5 @@
 // header file for that version directly.
 #ifndef ACL_TYPES_H_
 #define ACL_TYPES_H_
-#if WITH_VERSION_0_8
 #include "v0_8/aclTypes.h"
-#elif WITH_VERSION_0_9
-#include "v0_9/aclTypes.h"
-#else
-#error "The compiler library version was not defined."
-#include "v0_8/aclTypes.h"
-#endif
 #endif // ACL_TYPES_H_

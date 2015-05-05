@@ -77,7 +77,6 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
   if (enableSpir)
     systemPath << "--amd-options-begin " << Opts->origOptionStr << " --amd-options-end ";
 
-#if WITH_VERSION_0_8
   if (checkFlag(aclutGetCaps(elf), capImageSupport)) {
     systemPath << "-D__IMAGE_SUPPORT__=1 ";
   }
@@ -86,10 +85,6 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
     systemPath << "-DFP_FAST_FMAF=1 ";
     systemPath << "-DFP_FAST_FMA=1 ";
   }
-#elif WITH_VERSION_0_9
-#else
-#error "The current version was not handled correctly here."
-#endif
 
   // F_IMAGES
   if (Options()->oVariables->ImageSupport) {
@@ -122,17 +117,6 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
      case aclAMDIL64:
       systemPath << "--march=gpu-64 -D__AMDIL_64__ -D__" << AMDIL64TargetMapping[chipName].chip_name << "__=1 ";
       break;
-#if WITH_VERSION_0_9
-    case aclA64:
-      systemPath << "--march=arm64 -D__ARM_64__=1 -D__" << A64TargetMapping[chipName].chip_name << "__=1 ";
-      break;
-    case aclARM:
-      systemPath << "--march=arm -D__ARM__=1 -D__" << A32TargetMapping[chipName].chip_name << "__=1 ";
-      break;
-#elif WITH_VERSION_0_8
-#else
-#error "The current version was not handled correctly here."
-#endif
     case aclHSAIL:
       systemPath << "--march=hsail -D__HSAIL__ -D__" << HSAILTargetMapping[chipName].chip_name << "__=1 ";
       break;
@@ -158,7 +142,7 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
   }
 
 #ifdef WITH_TARGET_HSAIL
-  if ((Is64bitMachine() && isHSAILTarget(elf->target)) || 
+  if ((Is64bitMachine() && isHSAILTarget(elf->target)) ||
       (Opts->oVariables->GPU64BitIsa && (elf->target.arch_id == aclHSAIL)))
     systemPath << " --march=hsail-64 ";
 #endif
@@ -207,7 +191,6 @@ loadFileToStr(std::string file)
   if (log.is_open()) {
     size_t size = (size_t)log.tellg();
     log.seekg(0, std::ios::beg);
-
     std::vector<char> buffer(size+1);
     log.read(&buffer[0],size);
     log.close();
@@ -221,7 +204,6 @@ loadFileToStr(std::string file)
 int
 amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
 {
-
   std::string tempFileName = amd::Os::getTempFileName();
   std::string logFile = tempFileName + ".log";
   std::string clFile = tempFileName + ".cl";
@@ -234,20 +216,12 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   if (Options()->oVariables->EnableBuildTiming) {
     start_time = amd::Os::timeNanos();
   }
-  if (
-#if WITH_VERSION_0_8
-      !checkFlag(aclutGetCaps(Elf()), capSaveSOURCE)
-#elif WITH_VERSION_0_9
-      !Options()->oVariables->BinSOURCE
-#else
-#error "The current version was not handled correctly here."
-#endif
-      ) {
+  if (!checkFlag(aclutGetCaps(Elf()), capSaveSOURCE)) {
     CL()->clAPI.remSec(CL(), Elf(), aclSOURCE);
   }
   int ret = openclFrontEnd(frontendCmd.c_str(), &Source(), NULL);
 
- // We dump the preprocessed code by invoking clc a second time after the
+  // We dump the preprocessed code by invoking clc a second time after the
   // original call, just in case somthing really bad happens in the original
   // call.
   if (Opts && Opts->isDumpFlagSet(amd::option::DUMP_I)) {
@@ -260,8 +234,7 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   if (Options()->oVariables->EnableBuildTiming) {
     stop_time = amd::Os::timeNanos();
     std::stringstream tmp_ss;
-    tmp_ss << "    OpenCL FE time: "
-      << (stop_time - start_time)/1000ULL
+    tmp_ss << "    OpenCL FE time: " << (stop_time - start_time)/1000ULL
       << "us\n";
     appendLogToCL(CL(), tmp_ss.str());
   }
@@ -274,8 +247,7 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   }
   log_ += loadFileToStr(logFile);
   amd::Os::unlink(logFile.c_str());
-  if (isCpuTarget(Elf()->target)
-      && Options()->oVariables->EnableDebug) {
+  if (isCpuTarget(Elf()->target) && Options()->oVariables->EnableDebug) {
     Options()->sourceFileName_.assign(clFile);
   } else {
     amd::Os::unlink(clFile.c_str());
