@@ -133,19 +133,11 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   //Start the compilation
   uint64_t start_time = 0, stop_time = 0;
 
-    if (Options()->oVariables->EnableBuildTiming) {
+  if (Options()->oVariables->EnableBuildTiming) {
     start_time = amd::Os::timeNanos();
   }
 
-  if (
-#if WITH_VERSION_0_8
-      !checkFlag(aclutGetCaps(Elf()), capSaveSOURCE)
-#elif WITH_VERSION_0_9
-      !Options()->oVariables->BinSOURCE
-#else
-#error "The current version was not handled correctly here."
-#endif
-      ) {
+  if (!checkFlag(aclutGetCaps(Elf()), capSaveSOURCE)) {
     CL()->clAPI.remSec(CL(), Elf(), aclSOURCE);
   }
 
@@ -154,7 +146,7 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   if (OCLVer.equals("CL1.2")) {
     ClangOptions.OCLVer = clc2::OCL_12;
   } else if (OCLVer.equals("CL2.0")) {
-	ClangOptions.OCLVer = clc2::OCL_20;
+    ClangOptions.OCLVer = clc2::OCL_20;
   } else {
     llvm_unreachable("Unknown OpenCL version");
   }

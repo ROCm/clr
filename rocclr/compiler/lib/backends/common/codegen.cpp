@@ -568,13 +568,6 @@ llvmCodeGen(
   // Override default to generate verbose assembly, if the device is not the GPU.
   // The GPU sets this in AMDILTargetMachine.cpp.
   if (familyMap.target == (const TargetMapping*)&X86TargetMapping ||
-#if WITH_VERSION_0_9
-      familyMap.target == (const TargetMapping*)&A32TargetMapping ||
-      familyMap.target == (const TargetMapping*)&A32TargetMapping ||
-#elif WITH_VERSION_0_8
-#else
-#error "The current version implementation was not implemented here."
-#endif
       familyMap.target == (const TargetMapping*)&X64TargetMapping
       ) {
     Target.setAsmVerbosityDefault(true);

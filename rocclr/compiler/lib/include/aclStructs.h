@@ -6,11 +6,5 @@
 // header file for that version directly.
 #ifndef ACL_STRUCTS_H_
 #define ACL_STRUCTS_H_
-#if WITH_VERSION_0_8
 #include "v0_8/aclStructs.h"
-#elif WITH_VERSION_0_9
-#else
-#error "The compiler library version was not defined."
-#include "v0_8/aclStructs.h"
-#endif
 #endif // ACL_STRUCTS_H_
