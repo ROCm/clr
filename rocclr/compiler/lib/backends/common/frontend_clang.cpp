@@ -106,10 +106,9 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   // file itself is not passed to the ClangOCLFE library. It is a passed
   // as a string for compilation.
 
-  llvm::MemoryBuffer *srcBuffer =
+  std::unique_ptr<llvm::MemoryBuffer> srcBufferPtr =
        llvm::MemoryBuffer::getMemBuffer(src, inpCLFileName.c_str(),
                                         true);
-  llvm::OwningPtr<llvm::MemoryBuffer> srcBufferPtr(srcBuffer);
   ClangOptions.Src.swap(srcBufferPtr);
   assert(ClangOptions.Src.get() && "ClangOCLFE: Memory Buffer"
                     " initialization error\n");

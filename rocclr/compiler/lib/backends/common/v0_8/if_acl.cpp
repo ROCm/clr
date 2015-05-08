@@ -33,18 +33,25 @@
 #include "utils/versions.hpp"
 #include "sync.hpp"
 
-#include "llvm/LLVMContext.h"
 #include "llvm/Analysis/Passes.h"
 #if defined(LEGACY_COMPLIB)
 #include "Disassembler.h"
+#include "llvm/LLVMContext.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Support/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/OwningPtr.h"
+#include "llvm/ExecutionEngine/ObjectImage.h"
+#include "llvm/ExecutionEngine/ObjectBuffer.h"
+#else
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/Object/ObjectFile.h"
 #endif
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/Support/CommandLine.h"
@@ -58,11 +65,8 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Bitcode/BitstreamWriter.h"
 #include "llvm/Bitcode/ReaderWriter.h"
-#include "llvm/Support/IRReader.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include "llvm/ExecutionEngine/ObjectImage.h"
-#include "llvm/ExecutionEngine/ObjectBuffer.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/RuntimeDyld.h"
 #include <string>
@@ -84,7 +88,11 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
      llvm::TimePassesIsEnabled = false;
   if (cl->llvm_shutdown == NULL) {
      cl->llvm_shutdown = reinterpret_cast<void*>
-       (new llvm::llvm_shutdown_obj(false));
+       (new llvm::llvm_shutdown_obj(
+#if defined(LEGACY_COMPLIB)
+                                    false
+#endif
+                                   ));
   }
   // Initialize targets first.
   llvm::InitializeAllTargets();
@@ -103,9 +111,11 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
   llvm::initializeIPA(Registry);
   llvm::initializeCodeGen(Registry);
   llvm::initializeTarget(Registry);
+#if defined(LEGACY_COMPLIB)
   llvm::initializeVerifierPass(Registry);
   llvm::initializeDominatorTreePass(Registry);
   llvm::initializePreVerifierPass(Registry);
+#endif
   amdcl::release_global_lock();
   if (error) (*error) = ACL_SUCCESS;
   return reinterpret_cast<aclLoaderData*>(cl);
@@ -285,21 +295,37 @@ RSLLVMIRToModule(
   std::string llvmBinary(source, data_size);
   std::string ErrorMessage;
   llvm::LLVMContext * Context = reinterpret_cast<llvm::LLVMContext*>(ctx);
+#if defined(LEGACY_COMPLIB)
   llvm::MemoryBuffer *Buffer =
   llvm::MemoryBuffer::getMemBufferCopy(
     llvm::StringRef(llvmBinary), "input.bc");
   llvm::Module *M = NULL;
+#else
+  std::unique_ptr<llvm::MemoryBuffer> Buffer =
+    llvm::MemoryBuffer::getMemBufferCopy(llvm::StringRef(llvmBinary), "input.bc");
+  llvm::ErrorOr<llvm::Module*> ErrOrM(nullptr);
+#endif
 
   if (llvm::isBitcode((const unsigned char *)Buffer->getBufferStart(),
                 (const unsigned char *)Buffer->getBufferEnd())) {
+#if defined(LEGACY_COMPLIB)
     M = llvm::ParseBitcodeFile(Buffer, *Context, &ErrorMessage);
+#else
+    ErrOrM = llvm::parseBitcodeFile(Buffer->getMemBufferRef(), *Context);
+#endif
   }
 
+#if defined(LEGACY_COMPLIB)
   if (M == NULL) {
+#else
+  if (!ErrOrM || ErrOrM.get() == nullptr) {
+#endif
     if (error != NULL) (*error) = ACL_INVALID_BINARY;
     return NULL;
   }
-
+#if !defined(LEGACY_COMPLIB)
+  llvm::Module *M = ErrOrM.get();
+#endif
   amdcl::CompilerStage *cs = reinterpret_cast<amdcl::CompilerStage*>(ald);
   aclDevType arch_id = cs->Elf()->target.arch_id;
   if ((arch_id != aclAMDIL) && (arch_id != aclHSAIL)) {
@@ -1322,15 +1348,22 @@ if_aclCompile(aclCompiler *cl,
   if (isHSAILTarget(bin->target)) {
 #ifndef DEBUG
     // Do not install signal handlers for the pretty stack trace.
-    llvm::DisablePrettyStackTrace = true;
+#if defined(LEGACY_COMPLIB)
+     llvm::DisablePrettyStackTrace = true;
+#endif
 #else
+#if !defined(LEGACY_COMPLIB)
+    llvm::EnablePrettyStackTrace();
+#endif
     llvm::sys::PrintStackTraceOnErrorSignal();
 #endif
   } else
 #endif
   {
     llvm::InitializeAllAsmParsers();
+#if defined(LEGACY_COMPLIB)
     llvm::DisablePrettyStackTrace = true;
+#endif
     llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
     llvm::initializeSPIRVerifierPass(Registry);
   }
@@ -2923,6 +2956,7 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   return error_code;
 }
 
+#if defined(LEGACY_COMPLIB)
 static OCLMCJITMemoryManager* memMgr = NULL;
 
 OCLMCJITMemoryManager* createJITMemoryManager() {
@@ -2931,11 +2965,42 @@ OCLMCJITMemoryManager* createJITMemoryManager() {
   }
   return memMgr;
 }
+#else
+typedef llvm::DenseMap<llvm::object::ObjectFile*, OCLMCJITMemoryManager*> MemMgrTableT;
+typedef llvm::DenseMap<llvm::object::ObjectFile*, llvm::RuntimeDyld*>     DyLdTableT;
+static MemMgrTableT MemMgrTable;
+static DyLdTableT   DyLdTable;
+
+static llvm::RuntimeDyld* GetOrCreateDyld(llvm::object::ObjectFile* obj) {
+  DyLdTableT::iterator DI = DyLdTable.find(obj);
+  if (DI != DyLdTable.end())
+    return DI->second;
+  OCLMCJITMemoryManager *memMgr = new OCLMCJITMemoryManager();
+  MemMgrTable.insert(std::make_pair(obj, memMgr));
+  llvm::RuntimeDyld *rtdyld = new llvm::RuntimeDyld(memMgr);
+  DyLdTable.insert(std::make_pair(obj, rtdyld));
+  return rtdyld;
+}
+
+static void ReleaseDyld(llvm::object::ObjectFile* obj) {
+  DyLdTableT::iterator DI = DyLdTable.find(obj);
+  if (DI != DyLdTable.end()) {
+    delete DI->second;
+    DyLdTable.erase(DI);
+  }
+  MemMgrTableT::iterator MI = MemMgrTable.find(obj);
+  if (MI != MemMgrTable.end()) {
+    delete MI->second;
+    MemMgrTable.erase(MI);
+  }
+}
+#endif
 
 aclJITObjectImage ACL_API_ENTRY
 if_aclJITObjectImageCreate(const void* buffer, size_t length,
                            aclBinary* bin, acl_error* error_code) {
   llvm::StringRef dataString((const char*)buffer, length);
+#if defined(LEGACY_COMPLIB)
   llvm::MemoryBuffer* memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
   llvm::ObjectBuffer* objBuf = new llvm::ObjectBuffer(memBuf);
   llvm::RuntimeDyld rtdyld(createJITMemoryManager());
@@ -2951,21 +3016,59 @@ if_aclJITObjectImageCreate(const void* buffer, size_t length,
     out.close();
   }
   return objectImage;
+#else
+  std::unique_ptr<llvm::MemoryBuffer> memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
+  llvm::ErrorOr<std::unique_ptr<llvm::object::ObjectFile>> objBuf =
+    llvm::object::ObjectFile::createObjectFile(memBuf->getMemBufferRef());
+  llvm::RuntimeDyld *rtdyld = GetOrCreateDyld(objBuf->get());
+
+  auto objectImage = rtdyld->loadObject(*(objBuf.get()));
+  rtdyld->resolveRelocations();
+
+  amd::option::Options* options =   (amd::option::Options*)bin->options;
+  if (options->isDumpFlagSet(amd::option::DUMP_O)) {
+    llvm::StringRef finalData = objBuf.get()->getData();
+    std::string finalDataString = finalData.str();
+    std::string objname = options->getDumpFileName(".elf");
+    std::ofstream out(objname.c_str(),
+                      (std::fstream::binary | std::fstream::trunc));
+    out << finalDataString;
+    out.close();
+  }
+
+  memBuf.release();
+  llvm::object::ObjectFile* result = objBuf.get().release();
+
+  return result;
+#endif
 }
 
 aclJITObjectImage ACL_API_ENTRY
 if_aclJITObjectImageCopy(const void* buffer, size_t length, acl_error* error_code) {
   llvm::StringRef dataString((const char*)buffer, length);
+#if defined(LEGACY_COMPLIB)
   llvm::MemoryBuffer* memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
   llvm::ObjectBuffer* objBuf = new llvm::ObjectBuffer(memBuf);
   llvm::RuntimeDyld rtdyld(createJITMemoryManager());
   llvm::ObjectImage* objectImage = rtdyld.loadObject(objBuf);
   rtdyld.resolveRelocations();
   return objectImage;
+#else
+  std::unique_ptr<llvm::MemoryBuffer> memBuf = llvm::MemoryBuffer::getMemBufferCopy(dataString);
+  auto objBuf = llvm::object::ObjectFile::createObjectFile(memBuf->getMemBufferRef());
+  llvm::RuntimeDyld *rtdyld = GetOrCreateDyld(objBuf->get());
+  auto objectImage = rtdyld->loadObject(*(objBuf.get()));
+  rtdyld->resolveRelocations();
+  memBuf.release();
+  llvm::object::ObjectFile* result = objBuf.get().release();
+
+  return result;
+#endif
 }
 
 acl_error ACL_API_ENTRY
 if_aclJITObjectImageDestroy(aclJITObjectImage image) {
+#if defined(LEGACY_COMPLIB)
   llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
   llvm::object::section_iterator end = objectImage->end_sections();
   llvm::error_code err;
@@ -2976,29 +3079,41 @@ if_aclJITObjectImageDestroy(aclJITObjectImage image) {
     sectionRef.getAddress(address);
     memMgr->deallocateSection((uint8_t*)address);
   }
+#else
+  llvm::object::ObjectFile* objectImage(reinterpret_cast<llvm::object::ObjectFile*>(image));
+  ReleaseDyld(objectImage);
+#endif
   delete objectImage;
   return ACL_SUCCESS;
 }
 
 size_t ACL_API_ENTRY
 if_aclJITObjectImageSize(aclJITObjectImage image, acl_error* error_code) {
+#if defined(LEGACY_COMPLIB)
   return (reinterpret_cast<llvm::ObjectImage*>(image))->getData().size();
+#else
+  return (reinterpret_cast<llvm::object::ObjectFile*>(image))->getData().size();
+#endif
 }
 
 const char* ACL_API_ENTRY
 if_aclJITObjectImageData(aclJITObjectImage image, acl_error* error_code) {
+#if defined(LEGACY_COMPLIB)
   return (reinterpret_cast<llvm::ObjectImage*>(image))->getData().data();
+#else
+  return (reinterpret_cast<llvm::object::ObjectFile*>(image))->getData().data();
+#endif
 }
 
 acl_error ACL_API_ENTRY
 if_aclJITObjectImageFinalize(aclJITObjectImage image) {
-  // TODO: Implement
   return ACL_SUCCESS;
 }
 
 size_t ACL_API_ENTRY
 if_aclJITObjectImageGetGlobalsSize(aclJITObjectImage image, acl_error* error_code) {
   size_t totalSize = 0;
+#if defined(LEGACY_COMPLIB)
   llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
   llvm::object::section_iterator end = objectImage->end_sections();
   llvm::error_code err;
@@ -3017,12 +3132,22 @@ if_aclJITObjectImageGetGlobalsSize(aclJITObjectImage image, acl_error* error_cod
       totalSize += (size_t)size;
     }
   }
+#else
+  llvm::object::ObjectFile* objectImage(reinterpret_cast<llvm::object::ObjectFile*>(image));
+  for (auto iter: objectImage->sections()) {
+    uint64_t size = iter.getSize();
+    if ((iter.isBSS() || iter.isData()) && !iter.isText()) {
+      totalSize += (size_t)iter.getSize();
+    }
+  }
+#endif
   return totalSize;
 }
 
 acl_error ACL_API_ENTRY
 if_aclJITObjectImageIterateSymbols(aclJITObjectImage image,
                                    JITSymbolCallback jit_callback, void* data) {
+#if defined(LEGACY_COMPLIB)
   llvm::ObjectImage* objectImage(reinterpret_cast<llvm::ObjectImage*>(image));
   llvm::object::symbol_iterator end = objectImage->end_symbols();
   llvm::StringRef name;
@@ -3035,6 +3160,19 @@ if_aclJITObjectImageIterateSymbols(aclJITObjectImage image,
     symRef.getAddress(address);
     jit_callback(name.str().c_str(), (const void*)address, data);
   }
+#else
+  llvm::object::ObjectFile* objectImage = reinterpret_cast<llvm::object::ObjectFile*>(image);
+  llvm::RuntimeDyld *rtdyld = GetOrCreateDyld(objectImage);
+  std::error_code err;
+  llvm::StringRef name;
+  for (const llvm::object::SymbolRef &S: objectImage->symbols()) {
+    std::error_code err = S.getName(name);
+    assert (!err);
+    uint64_t address;
+    address = (uint64_t) rtdyld->getSymbolLoadAddress(name);
+    jit_callback(name.data(), (const void*)address, data);
+  }
+#endif
   return ACL_SUCCESS;
 }
 

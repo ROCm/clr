@@ -9,8 +9,10 @@
 #include "utils/target_mappings.h"
 #include "utils/libUtils.h"
 #include "llvm/Analysis/Passes.h"
+#if defined(LEGACY_COMPLIB)
 #include "llvm/DataLayout.h"
 #include "llvm/Module.h"
+#endif
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/LinkAllPasses.h"
 #include "llvm/Support/TargetRegistry.h"
@@ -23,9 +25,17 @@ void
 OptLevel::setup(bool isGPU, uint32_t OptLevel)
 {
   // Add an appropriate DataLayout instance for this module.
+#if defined(LEGACY_COMPLIB)
   Passes().add(new DataLayout(module_));
+#else
+  Passes().add(new DataLayoutPass());
+#endif
   fpasses_ = new FunctionPassManager(module_);
+#if defined(LEGACY_COMPLIB)
   fpasses_->add(new DataLayout(module_));
+#else
+  fpasses_->add(new DataLayoutPass());
+#endif
 
   PassManagerBuilder Builder;
   Builder.OptLevel = OptLevel;
@@ -75,8 +85,10 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
   Builder.SizeLevel = 0;
   Builder.DisableUnitAtATime = false;
   Builder.DisableUnrollLoops = OptLevel == 0;
+#if defined(LEGACY_COMPLIB)
   if (Options()->libraryType_ != amd::GPU_Library_HSAIL)
     Builder.DisableSimplifyLibCalls = true;
+#endif
   Builder.AMDpopulateFunctionPassManager(*fpasses_, &module_->getContext());
   Builder.AMDpopulateModulePassManager(passes_, &module_->getContext(), module_);
 }
@@ -136,9 +148,8 @@ OptLevel::run(aclBinary *elf)
     }
   }
   std::unique_ptr<TargetMachine> TM(Machine);
-// This is for llvm 3.6
-//  if (TM.get())
-//    TM->addAnalysisPasses(passes_);
+  if (TM.get())
+    TM->addAnalysisPasses(passes_);
 #endif
 
   if (Options()->oVariables->OptPrintLiveness) {

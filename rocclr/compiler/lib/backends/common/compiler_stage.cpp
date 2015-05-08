@@ -3,8 +3,13 @@
 //
 #include "compiler_stage.hpp"
 #include "utils/libUtils.h"
+#if defined(LEGACY_COMPLIB)
 #include "llvm/Assembly/Parser.h"
 #include "llvm/LLVMContext.h"
+#else
+#include "llvm/AsmParser/Parser.h"
+#include "llvm/IR/LLVMContext.h"
+#endif
 
 using namespace amdcl;
 
@@ -84,9 +89,14 @@ LLVMCompilerStage::loadBitcode(std::string& llvmBinary)
         reinterpret_cast<const unsigned char*>(llvmBinary.data()
           + llvmBinary.length()))) {
     llvm::SMDiagnostic diags;
+#if defined(LEGACY_COMPLIB)
     return ParseAssemblyString(llvmBinary.c_str(), llvmbinary_, diags, Context());
-
+#else
+    llvmbinary_ = llvm::parseAssemblyString(llvmBinary.c_str(), diags, Context()).release();
+    return llvmbinary_;
+#endif
   }
+#if defined(LEGACY_COMPLIB)
   // Use getMemBuffer() ?
   if (llvm::MemoryBuffer *Buffer =
       llvm::MemoryBuffer::getMemBufferCopy(
@@ -97,5 +107,13 @@ LLVMCompilerStage::loadBitcode(std::string& llvmBinary)
     delete Buffer;
     return M;
   }
+#else
+  if (std::unique_ptr<llvm::MemoryBuffer> Buffer =
+      llvm::MemoryBuffer::getMemBufferCopy(
+        llvm::StringRef(llvmBinary), "input.bc")) {
+    llvm::ErrorOr<llvm::Module *> M = llvm::parseBitcodeFile(Buffer->getMemBufferRef(), Context());
+    if( M ) return M.get();
+  }
+#endif
   return NULL;
 }

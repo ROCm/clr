@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#if defined(LEGACY_COMPLIB)
 #include "Disassembler.h"
 #include "lib/MC/MCDisassembler/EDDisassembler.h"
 #include "lib/MC/MCDisassembler/EDInst.h"
@@ -341,3 +342,4 @@ int Disassembler::disassembleEnhanced(const std::string &TS,
 
   return 0;
 }
+#endif // LEGACY_COMPLIB

@@ -4,7 +4,11 @@
 #ifndef _BE_CODEGEN_HPP_
 #define _BE_CODEGEN_HPP_
 #include "compiler_stage.hpp"
+#if defined(LEGACY_COMPLIB)
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
+#else
+#include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
+#endif
 
 namespace amdcl
 {
@@ -89,7 +93,13 @@ namespace amdcl
 //!--------------------------------------------------------------------------!//
 // JIT Memory manager
 //!--------------------------------------------------------------------------!//
-class OCLMCJITMemoryManager : public llvm::JITMemoryManager {
+class OCLMCJITMemoryManager : public
+#if defined(LEGACY_COMPLIB)
+  llvm::JITMemoryManager
+#else
+  llvm::RTDyldMemoryManager
+#endif
+{
 public:
   typedef std::pair<llvm::sys::MemoryBlock, unsigned> Allocation;
 
@@ -121,16 +131,33 @@ public:
 
   virtual void reserveMemory(uint64_t size);
 
+#if defined(LEGACY_COMPLIB)
   uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
                                        unsigned SectionID);
 
   uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
                                unsigned SectionID, bool isReadOnly);
 
+  bool applyPermissions(std::string *ErrMsg) { return false; }
+
+#else
+  virtual bool needsToReserveAllocationSpace() override { return true; }
+
+  virtual void reserveAllocationSpace(uintptr_t CodeSize, uintptr_t DataSizeRO,
+                                      uintptr_t DataSizeRW) override;
+
+  uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
+                               unsigned SectionID, llvm::StringRef SectionName) override;
+
+  uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
+                               unsigned SectionID, llvm::StringRef SectionName,
+                               bool isReadOnly) override;
+
+  bool finalizeMemory(std::string *ErrMsg = nullptr) override { return false; }
+#endif
+
   void *getPointerToNamedFunction(const std::string &Name,
                                   bool AbortOnFailure = true);
-
-  bool applyPermissions(std::string *ErrMsg) { return false; }
 
   // The following obsolete JITMemoryManager calls are stubbed out for
   // this model.
