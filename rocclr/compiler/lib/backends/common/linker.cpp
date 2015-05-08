@@ -12,14 +12,34 @@
 #include "utils/libUtils.h"
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
-#include "llvm/LLVMContext.h"
 
 #include "acl.h"
 
+#if defined(LEGACY_COMPLIB)
 #include "llvm/Instructions.h"
 #include "llvm/Linker.h"
+#include "llvm/LLVMContext.h"
 #include "llvm/GlobalValue.h"
 #include "llvm/GlobalVariable.h"
+#include "llvm/Analysis/Verifier.h"
+#include "llvm/Support/CallSite.h"
+#include "llvm/Support/system_error.h"
+#include "llvm/DataLayout.h"
+#include "llvm/ValueSymbolTable.h"
+#ifdef _DEBUG
+#include "llvm/Assembly/Writer.h"
+#endif
+#else
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/CallSite.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/GlobalValue.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/ValueSymbolTable.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/Linker/Linker.h"
+#endif
 
 #include "llvm/AMDFixupKernelModule.h"
 #include "llvm/AMDResolveLinker.h"
@@ -29,7 +49,6 @@
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/Passes.h"
-#include "llvm/Analysis/Verifier.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 
 #include "llvm/CodeGen/LinkAllAsmWriterComponents.h"
@@ -42,7 +61,6 @@
 
 #include "llvm/MC/SubtargetFeature.h"
 
-#include "llvm/Support/CallSite.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FileUtilities.h"
 #include "llvm/Support/FormattedStream.h"
@@ -53,24 +71,17 @@
 #include "llvm/Support/PluginLoader.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Signals.h"
-#include "llvm/Support/system_error.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/DataLayout.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/ValueSymbolTable.h"
 #include "llvm/AMDLLVMContextHook.h"
 
 #if defined(LEGACY_COMPLIB)
 #include "llvm/AMDILFuncSupport.h"
-#endif
-
-#ifdef _DEBUG
-#include "llvm/Assembly/Writer.h"
 #endif
 
 // need to undef DEBUG before using DEBUG macro in llvm/Support/Debug.h
@@ -120,6 +131,7 @@ inline llvm::Module*
       return 0;
     }
 
+#if defined(LEGACY_COMPLIB)
     llvm::Module* M;
     std::string ErrorMessage;
     OwningPtr<MemoryBuffer> Buffer;
@@ -132,8 +144,18 @@ inline llvm::Module*
     }
 
     return M;
+#else
+    ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr = MemoryBuffer::getFileOrSTDIN(Filename);
+    if (!FileOrErr) {
+      llvm::ErrorOr<llvm::Module *> M = llvm::parseBitcodeFile(FileOrErr.get()->getMemBufferRef(), Context);
+      if (M) return M.get();
+    }
+
+    return nullptr;
+#endif
   }
 
+#if defined(LEGACY_COMPLIB)
 inline llvm::Module*
   LoadLibrary(const std::string& libFile, LLVMContext& Context, MemoryBuffer** Buffer) {
     if (!sys::fs::exists(libFile)) {
@@ -172,9 +194,11 @@ inline llvm::Module*
     }
     return M;
   }
+#endif
 
 // Load bitcode libary from an array of const char. This assumes that
 // the array has a valid ending zero !
+#if defined(LEGACY_COMPLIB)
 llvm::Module*
   LoadLibrary(const char* libBC, size_t libBCSize,
       LLVMContext& Context, MemoryBuffer** Buffer)
@@ -192,7 +216,22 @@ llvm::Module*
     }
     return M;
   }
+#else
+llvm::Module*
+  LoadLibrary(const char* libBC, size_t libBCSize,
+      LLVMContext& Context)
+  {
+    llvm::ErrorOr<llvm::Module*> M(nullptr);
+    std::string ErrorMessage;
 
+    auto Buffer = MemoryBuffer::getMemBuffer(StringRef(libBC, libBCSize), "");
+    if ( Buffer ) {
+      M = llvm::getLazyBitcodeModule(std::move(Buffer), Context);
+      if (!M) return nullptr;
+    }
+    return *M;
+  }
+#endif
 
 static std::set<std::string> *getAmdRtFunctions()
 {
@@ -300,12 +339,21 @@ amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
       char buf[128];
       sprintf(buf, "_original%d.bc", (int)i);
       std::string fileName = Options()->getDumpFileName(buf);
+#if defined(LEGACY_COMPLIB)
       llvm::raw_fd_ostream outs(fileName.c_str(), MyErrorInfo,
           llvm::raw_fd_ostream::F_Binary);
       if (MyErrorInfo.empty())
         llvm::WriteBitcodeToFile(libs[i], outs);
       else
         printf(MyErrorInfo.c_str());
+#else
+      std::error_code EC;
+      llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
+      if (!EC)
+        llvm::WriteBitcodeToFile(libs[i], outs);
+      else
+        printf(EC.message().c_str());
+#endif
     }
   }
 
@@ -480,6 +528,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
+#if defined(LEGACY_COMPLIB)
     std::string MyErrorInfo;
     std::string fileName = Options()->getDumpFileName("_original.bc");
     llvm::raw_fd_ostream outs(fileName.c_str(), MyErrorInfo, llvm::raw_fd_ostream::F_Binary);
@@ -487,6 +536,15 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(MyErrorInfo.c_str());
+#else
+    std::string fileName = Options()->getDumpFileName("_original.bc");
+    std::error_code EC;
+    llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
+    if (!EC)
+      WriteBitcodeToFile(LLVMBinary(), outs);
+    else
+      printf(EC.message().c_str());
+#endif
   }
   std::vector<llvm::Module*> LibMs;
 
@@ -506,8 +564,12 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
     return 1;
   }
   for (int i=0; i < sz; i++) {
+#if defined(LEGACY_COMPLIB)
     llvm::MemoryBuffer* Buffer = 0;
     llvm::Module* Library = amd::LoadLibrary(LibDescs[i].start, LibDescs[i].size, Context(), &Buffer);
+#else
+    llvm::Module *Library = amd::LoadLibrary(LibDescs[i].start, LibDescs[i].size, Context());
+#endif
     DEBUG(llvm::dbgs() << "Loaded library " << i << "\n");
     if ( !Library ) {
       BuildLog() += "Internal Error: cannot load library!\n";
@@ -530,7 +592,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
     // Find the first library whose target triple is not empty.
     if (LibTargetTriple.empty() && !Library->getTargetTriple().empty()) {
         LibTargetTriple = Library->getTargetTriple();
+#if defined(LEGACY_COMPLIB)
         LibDataLayout = Library->getDataLayout();
+#else
+        LibDataLayout = Library->getDataLayoutStr();
+#endif
     }
     LibMs.push_back(Library);
   }
@@ -543,8 +609,13 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       continue;
     assert (LibMs[i]->getTargetTriple() == LibTargetTriple &&
         "Library target triple should match");
+#if defined(LEGACY_COMPLIB)
     assert (LibMs[i]->getDataLayout() == LibDataLayout &&
         "Library data layout should match");
+#else
+    assert (LibMs[i]->getDataLayoutStr() == LibDataLayout &&
+        "Library data layout should match");
+#endif
   }
 #endif
 
@@ -658,12 +729,22 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
     std::string MyErrorInfo;
     std::string fileName = Options()->getDumpFileName("_linked.bc");
+#if defined(LEGACY_COMPLIB)
     llvm::raw_fd_ostream outs(fileName.c_str(), MyErrorInfo, llvm::raw_fd_ostream::F_Binary);
     // FIXME: Need to add this to the elf binary!
     if (MyErrorInfo.empty())
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(MyErrorInfo.c_str());
+#else
+    std::error_code EC;
+    llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
+    // FIXME: Need to add this to the elf binary!
+    if (!EC)
+      WriteBitcodeToFile(LLVMBinary(), outs);
+    else
+      printf(EC.message().c_str());
+#endif
   }
 
     // Check if kernels containing local arrays are called by other kernels.

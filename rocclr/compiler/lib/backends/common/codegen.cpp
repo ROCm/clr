@@ -14,8 +14,15 @@
 #ifdef _MSC_VER
 #pragma warning(default:4146)
 #endif
+#if defined(LEGACY_COMPLIB)
 #include "llvm/DataLayout.h"
 #include "llvm/Module.h"
+#include "llvm/ExecutionEngine/ObjectImage.h"
+#else
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/Module.h"
+#include "llvm/Object/ObjectFile.h"
+#endif
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FormattedStream.h"
@@ -27,7 +34,6 @@
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
-#include "llvm/ExecutionEngine/ObjectImage.h"
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -96,7 +102,11 @@ void OCLMCJITMemoryManager::reserveMemory(uint64_t Size) {
 }
 
 uint8_t *OCLMCJITMemoryManager::
-allocateCodeSection(uintptr_t Size, unsigned Alignment, unsigned SectionID) {
+allocateCodeSection(uintptr_t Size, unsigned Alignment, unsigned SectionID
+#if !defined(LEGACY_COMPLIB)
+                    , llvm::StringRef SectionName
+#endif
+                    ) {
   // The recording memory manager is just a local copy of the remote target.
   // The alignment requirement is just stored here for later use. Regular
   // heap storage is sufficient here, but we're using mapped memory to work
@@ -112,9 +122,11 @@ allocateCodeSection(uintptr_t Size, unsigned Alignment, unsigned SectionID) {
 }
 
 uint8_t *OCLMCJITMemoryManager::
-allocateDataSection(uintptr_t Size, unsigned Alignment,
-                    unsigned SectionID, bool isReasOnly) {
-  bool IsReadOnly = false;
+allocateDataSection(uintptr_t Size, unsigned Alignment, unsigned SectionID,
+#if !defined(LEGACY_COMPLIB)
+                    llvm::StringRef SectionName,
+#endif
+                    bool isReadOnly) {
   // The recording memory manager is just a local copy of the remote target.
   // The alignment requirement is just stored here for later use. Regular
   // heap storage is sufficient here, but we're using mapped memory to work
@@ -144,7 +156,11 @@ uint8_t * OCLMCJITMemoryManager::reservedAlloc(uintptr_t Size, unsigned Alignmen
 }
 
 llvm::sys::MemoryBlock OCLMCJITMemoryManager::allocateSection(uintptr_t Size) {
+#if defined(LEGACY_COMPLIB)
   llvm::error_code ec;
+#else
+  std::error_code ec;
+#endif
   llvm::sys::MemoryBlock MB =
     llvm::sys::Memory::allocateMappedMemory(Size,
                                             &Near,
@@ -161,6 +177,18 @@ llvm::sys::MemoryBlock OCLMCJITMemoryManager::allocateSection(uintptr_t Size) {
   Near = MB;
   return MB;
 }
+
+#if !defined(LEGACY_COMPLIB)
+void OCLMCJITMemoryManager::reserveAllocationSpace(uintptr_t CodeSize,
+                                                   uintptr_t DataSizeRO,
+                                                   uintptr_t DataSizeRW) {
+  uint64_t GOTTableReserveSize = 4096;
+  uint64_t Size = (uint64_t)CodeSize + (uint64_t)DataSizeRO +
+                  (uint64_t)DataSizeRW + GOTTableReserveSize;
+  if ((uint64_t)allocPtr + (uint64_t)Size > (uint64_t)allocMaxPtr)
+    reserveMemory(Size);
+}
+#endif // !LEGACY_COMPLIB
 
 void OCLMCJITMemoryManager::setMemoryWritable() {
   assert(!"Unexpected");
@@ -256,7 +284,13 @@ public:
     output_ = &output;
   }
 
-  virtual void NotifyObjectEmitted(const llvm::ObjectImage &Obj) {
+  virtual void NotifyObjectEmitted
+#if defined(LEGACY_COMPLIB)
+  (const llvm::ObjectImage &Obj)
+#else
+  (const llvm::object::ObjectFile &Obj, const llvm::RuntimeDyld::LoadedObjectInfo &L)
+#endif
+  override {
     encodeObjectImage(Obj.getData(), *output_);
   }
 
@@ -330,12 +364,25 @@ jitCodeGen(llvm::Module* Composite,
   OclJITEventListener Listener(output);
   llvm::InitializeNativeTargetAsmParser();
   llvm::InitializeNativeTargetAsmPrinter();
-  llvm::JITMemoryManager* MemMgr = new OCLMCJITMemoryManager();
+  OCLMCJITMemoryManager* MemMgr = new OCLMCJITMemoryManager();
+#if defined(LEGACY_COMPLIB)
   llvm::EngineBuilder builder(Composite);
+#else
+  // FIXME: this llvm::Module* actually seems to be got from unique_ptr::get()
+  // somewhere, but acl functions use Module* instead of std::unique_ptr<llvm::Module>
+  // llvm::EngineBuilder does std::move on this pointer further so Module* can be
+  // deleted twice...  llvm::EngineBuilder builder(Composite);
+  std::unique_ptr<llvm::Module> MPtr(Composite);
+  llvm::EngineBuilder builder(std::move(MPtr));
+#endif
   builder.setOptLevel(OLvl);
   builder.setErrorStr(&ErrStr);
+#if defined(LEGACY_COMPLIB)
   builder.setJITMemoryManager(MemMgr);
   builder.setUseMCJIT(true);
+#else
+  builder.setMCJITMemoryManager(MemMgr);
+#endif
   // builder.setRelocationModel(llvm::Reloc::PIC_)
   // builder.setCodeModel(llvm::CodeModel::Large)
 #ifndef ANDROID
@@ -393,14 +440,22 @@ llvmCodeGen(
 #ifdef __linux__
     TheTriple.setOS(Triple::Linux);
 #else
+#if defined(LEGACY_COMPLIB)
     TheTriple.setOS(Triple::MinGW32);
+#else
+    TheTriple.setOS(Triple::Win32);
+#endif
 #endif
   }
 
   TheTriple.setEnvironment(Triple::AMDOpenCL);
   // FIXME: need to make AMDOpenCL be the same as ELF
   if (OptionsObj->oVariables->UseJIT)
+#if defined(LEGACY_COMPLIB)
     TheTriple.setEnvironment(Triple::ELF);
+#else
+    TheTriple.setObjectFormat(Triple::ELF);
+#endif
   mod.setTargetTriple(TheTriple.getTriple());
 
   // Allocate target machine.  First, check whether the user has explicitly
@@ -560,10 +615,14 @@ llvmCodeGen(
   PassManager Passes;
 
   // Add the target data from the target machine, if it exists, or the module.
+#if defined(LEGACY_COMPLIB)
   if (const DataLayout *TD = Target.getDataLayout())
     Passes.add(new DataLayout(*TD));
   else
     Passes.add(new DataLayout(&mod));
+#else
+  Passes.add(new DataLayoutPass());
+#endif
 
   // Override default to generate verbose assembly, if the device is not the GPU.
   // The GPU sets this in AMDILTargetMachine.cpp.

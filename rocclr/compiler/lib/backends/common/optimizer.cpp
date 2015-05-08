@@ -9,7 +9,12 @@
 #include "utils/libUtils.h"
 #include "utils/options.hpp"
 
+#if defined(LEGACY_COMPLIB)
 #include "llvm/DataLayout.h"
+#else
+#include "llvm/IR/DataLayout.h"
+#include "llvm/Support/FileSystem.h"
+#endif
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/LinkAllPasses.h"
@@ -42,7 +47,11 @@ int
 CPUOptimizer::preOptimizer(llvm::Module* M)
 {
     llvm::PassManager Passes;
+#if defined(LEGACY_COMPLIB)
     Passes.add(new llvm::DataLayout(M));
+#else
+    Passes.add(new llvm::DataLayoutPass());
+#endif
 
     Passes.add(createAMDExportKernelNaturePass());
 
@@ -87,14 +96,24 @@ CPUOptimizer::optimize(llvm::Module *input)
     return 1;
   }
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_OPTIMIZED)) {
-    std::string MyErrorInfo;
     std::string fileName = Options()->getDumpFileName("_optimized.bc");
+#if defined(LEGACY_COMPLIB)
+    std::string MyErrorInfo;
     raw_fd_ostream outs (fileName.c_str(), MyErrorInfo, raw_fd_ostream::F_Binary);
     // FIXME: Need to add this to the elf binary!
     if (MyErrorInfo.empty())
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(MyErrorInfo.c_str());
+#else
+    std::error_code EC;
+    llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
+    // FIXME: Need to add this to the elf binary!
+    if (!EC)
+      WriteBitcodeToFile(LLVMBinary(), outs);
+    else
+      printf(EC.message().c_str());
+#endif
   }
   return ret;
 }
@@ -139,14 +158,24 @@ GPUOptimizer::optimize(llvm::Module *input)
     return 1;
   }
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_OPTIMIZED)) {
-    std::string MyErrorInfo;
     std::string fileName = Options()->getDumpFileName("_optimized.bc");
+#if defined(LEGACY_COMPLIB)
+    std::string MyErrorInfo;
     raw_fd_ostream outs (fileName.c_str(), MyErrorInfo, raw_fd_ostream::F_Binary);
     // FIXME: Need to add this to the elf binary!
     if (MyErrorInfo.empty())
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(MyErrorInfo.c_str());
+#else
+    std::error_code EC;
+    llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
+    // FIXME: Need to add this to the elf binary!
+    if (!EC)
+      WriteBitcodeToFile(LLVMBinary(), outs);
+    else
+      printf(EC.message().c_str());
+#endif
   }
   return ret;
 }
