@@ -228,7 +228,9 @@ uint WaveLimiterManager::getWavesPerSH(const device::VirtualDevice *vdev) const 
         return 0;
     }
     auto loc = limiters_.find(vdev);
-    assert (loc != limiters_.end());
+    if (loc == limiters_.end()) {
+        return 0;
+    }
     assert(loc->second != NULL);
     return loc->second->getWavesPerSH();
 }
