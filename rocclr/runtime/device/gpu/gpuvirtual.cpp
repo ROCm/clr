@@ -2806,7 +2806,6 @@ VirtualGPU::awaitCompletion(CommandBatch* cb, const amd::Event* waitingEvent)
 
     // Make sure that profiling is enabled
     if (profileEnabled_) {
-        profileEnabled_ = false;
         return profilingCollectResults(cb, waitingEvent);
     }
     // Mark the first command in the batch as running
