@@ -14,6 +14,7 @@
 #include "thread/thread.hpp"
 #include "os/os.hpp"
 #include "utils/util.hpp"
+#include "utils/options.hpp"
 
 #include <amdocl/cl_kernel.h>
 
@@ -302,7 +303,6 @@ NDRangeKernelBatch::patchParameters(
         size_t alignment = cpuKernel.getArgAlignment(i);
         effectiveOffset = amd::alignUp(effectiveOffset, std::min(alignment, size_t(16)));
         param = params + effectiveOffset;
-
         if (desc.size_ == 0) {
             // __local memory parameter
             localMemPtr = amd::alignUp(localMemPtr, sizeof(cl_long16));
@@ -362,10 +362,24 @@ NDRangeKernelBatch::patchParameters(
             *reinterpret_cast<uint32_t*>(param) = (uint32_t)samplerArg->state();
         }
         else {
-            ::memcpy(param, cmdParam, desc.size_);
+            //Using HCtoDCmap
+            HCtoDCmap arg_map = cpuKernel.getHCtoDCmap(i);
+            unsigned int arg_offset = effectiveOffset;
+            int err_code = 0;
+            int inStruct = 0;
+            int sys_64bit = LP64_SWITCH(0, 1);  // Mapping only required for 32 bit targets
+            if (CPU_USE_ALIGNMENT_MAP == 0 && !sys_64bit) {
+               effectiveOffset += arg_map.copy_params(param, cmdParam, arg_offset, err_code, inStruct);
+               if (err_code) {
+                   return false;
+               }
+               prmSize = arg_map.dc_size;
+            }
+            else {
+                ::memcpy(param, cmdParam, desc.size_);
+            }
         }
-
-        effectiveOffset += cpuKernel.getArgSize(i);
+        effectiveOffset += prmSize;
     }
 
     localMemPtr = amd::alignUp(localMemPtr, sizeof(cl_long16));

@@ -24,6 +24,8 @@ release(size_t, CPU_WORKER_THREAD_STACK_SIZE, 64*Ki,                          \
         "The default CPU worker thread stack size")                           \
 release(int, CPU_MAX_COMPUTE_UNITS, -1,                                       \
         "Override the number of computation units per CPU device")            \
+debug(bool, CPU_USE_ALIGNMENT_MAP, false,                                      \
+        "Use flag to enable alignment mapping for parameters for CPU")        \
 release(int, GPU_MAX_WORKGROUP_SIZE, 0,                                       \
         "Maximum number of workitems in a workgroup for GPU, 0 -use default") \
 release(int, GPU_MAX_WORKGROUP_SIZE_2D_X, 0,                                  \
