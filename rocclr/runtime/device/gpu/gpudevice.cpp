@@ -2420,8 +2420,13 @@ Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* v
         if (hsaKernel->dynamicParallelism()) {
             amd::DeviceQueue*  defQueue =
                 kernel.program().context().defDeviceQueue(*this);
-            vgpu = static_cast<VirtualGPU*>(defQueue->vDev());
-            if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu)) {
+            if (defQueue != NULL) {
+                vgpu = static_cast<VirtualGPU*>(defQueue->vDev());
+                if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu)) {
+                    return false;
+                }
+            }
+            else {
                 return false;
             }
         }
