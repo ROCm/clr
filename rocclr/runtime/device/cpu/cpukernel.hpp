@@ -9,6 +9,8 @@
 #include "device/device.hpp"
 #include <amdocl/cl_kernel.h>
 
+#include "device/cpu/cpumapping.hpp"
+
 //! \namespace cpu CPU Device Implementation
 namespace cpu {
 
@@ -18,7 +20,9 @@ class Kernel : public device::Kernel
 private:
     const void* entryPoint_; //!< entry for the kernel
 
-  std::vector< std::pair<size_t, size_t> > args_;
+    std::vector< std::pair<size_t, size_t> > args_;
+    std::vector< std::pair < HCtoDCmap, size_t> > HCtoDCmaps_;
+    std::vector< HCtoDCmap > internal_maps_;
 public:
     uint nature_; //!< kernel's nature
     uint privateSize_; //!< WorkItem's private memory size (in bytes)
@@ -40,6 +44,36 @@ public:
 
     size_t getArgAlignment(int argIndex) const {
         return args_[argIndex].second;
+    }
+
+    void addInternalMap(HCtoDCmap *new_map) {
+        if (new_map != NULL) {
+            internal_maps_.push_back(*new_map);
+            this->addInternalMap(new_map->internal_field_map);
+            this->addInternalMap(new_map->next_field_map);
+        }
+        else
+            return;
+    }
+
+    void addHCtoDCmap(HCtoDCmap *new_map) {
+        if (new_map != NULL) {
+            if (HCtoDCmaps_.size() > 0)
+                HCtoDCmaps_.push_back(std::pair< HCtoDCmap, size_t >(*new_map, HCtoDCmaps_.back().second));
+            else
+                HCtoDCmaps_.push_back(std::pair< HCtoDCmap, size_t >(*new_map, 0));
+        }
+        else
+            return;
+    }
+
+    HCtoDCmap getHCtoDCmap(int mapIndex) const {
+        return HCtoDCmaps_[mapIndex].first;
+    }
+
+
+    uint getArgNumber() {
+        return HCtoDCmaps_.size();
     }
 
     //! Default constructor

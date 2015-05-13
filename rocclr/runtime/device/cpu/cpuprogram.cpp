@@ -175,25 +175,36 @@ getParamSizeImpl(bool cpuLayer, const clk_parameter_descriptor_t* desc,
     if(desc[index].type == T_STRUCT) {
         size_t maxAlignment = 0;
         size_t structSize = 0;
+        size_t structAlignment = 0;
         index++;
         while(desc[index].type != T_VOID) {
             size_t elementAlignment = 0;
             size_t elementSize =
               getParamSizeImpl(cpuLayer, desc, index, qualifier,
                                &elementAlignment, index_out);
+            if (desc[index].type == T_LONG)
+              structAlignment = cpuLayer? LP64_SWITCH(4, 8) : 8;
+            else
+              structAlignment = std::max(maxAlignment, elementAlignment);
             index = *index_out;
             structSize =
               amd::alignUp(structSize,
                            std::min(elementAlignment, size_t(16))) +
               elementSize;
-            maxAlignment = std::max(maxAlignment, elementAlignment);
+            maxAlignment = std::max(maxAlignment, structAlignment);
         }
         *index_out = index + 1;
         *alignment = maxAlignment;
         size = amd::alignUp(structSize, std::min(maxAlignment, size_t(16)));
     } else {
       size = getScalarParamSize(cpuLayer, desc[index].type, qualifier);
-      *alignment = size;
+      if (desc[index].type == T_DOUBLE) {
+          *alignment = LP64_SWITCH(4, 8);
+      } else if (desc[index].type == T_LONG) {
+          *alignment = 8;
+      } else {
+          *alignment = size;
+      }
       *index_out = index + 1;
     }
     return size;
@@ -204,8 +215,8 @@ getParamSize(bool cpuLayer, const clk_parameter_descriptor_t* desc,
              cl_kernel_arg_address_qualifier qualifier,
              size_t* alignment)
 {
-  unsigned index_out = 0;
-  return getParamSizeImpl(cpuLayer, desc, 0, qualifier, alignment,
+   unsigned index_out = 0;
+   return getParamSizeImpl(cpuLayer, desc, 0, qualifier, alignment,
                           &index_out);
 }
 
@@ -335,13 +346,32 @@ setKernelInfoCallback(std::string symbol, const void* value, void* data)
             getParamSize(true, desc, param.addressQualifier_, &cpuAlignment);
           kernel->addArg(cpuSize, cpuAlignment);
 
+          //Init for HCtoDCmap
+          unsigned int init_offset = 0;
+          unsigned int align = 0;
+          int inStruct = 0;
+          int end_index = 0;
+          HCtoDCmap *map_p = new HCtoDCmap(desc, align, 0, init_offset);
+          map_p->dc_size = map_p->compute_map(desc, map_p->map_alignment, init_offset, inStruct, end_index);
+          map_p->align_map(map_p->map_alignment, map_p->hc_size, map_p->dc_size, inStruct);
+          if (CPU_USE_ALIGNMENT_MAP == 0) {
+             kernel->addHCtoDCmap(map_p);
+             if (map_p->internal_field_map != NULL) {
+                  kernel->addInternalMap(map_p->internal_field_map);
+              }
+          }
+          else {
+              delete(map_p);
+          }
+          //End of HCtoDCmap
+
           desc = next_desc;
           params.push_back(param);
           size_t size = param.size_ == 0 ? sizeof(cl_mem) : param.size_;
 #if defined(USE_NATIVE_ABI)
           size  = amd::alignUp(size, sizeof(size_t));
 #endif // USE_NATIVE_ABI
-          offset = param.offset_ + size;
+            offset = param.offset_ + size;
         }
 
         // retrieve vector type hint metadata
