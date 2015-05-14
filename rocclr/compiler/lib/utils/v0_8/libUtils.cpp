@@ -846,16 +846,3 @@ convertBIF30ToBIF21(aclBinary *src) {
   }
   return dst;
 }
-
-#if !defined(BCMAG)
-#define BCMAG  "BC"
-#define SBCMAG 2
-#endif
-bool
-isBcMagic(const char* p)
-{
-    if (p==NULL || strncmp(p, BCMAG, SBCMAG) != 0) {
-        return false;
-    }
-    return true;
-}
