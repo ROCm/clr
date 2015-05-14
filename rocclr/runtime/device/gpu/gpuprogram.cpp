@@ -15,7 +15,6 @@
 #include <sstream>
 #include <cstdio>
 #include "utils/options.hpp"
-#include "utils/libUtils.h"
 #include "hsa.h"
 #include "hsa_ext_image.h"
 
@@ -2116,6 +2115,16 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
       }
     }
     return continueCompileFrom;
+}
+
+inline static std::vector<std::string>
+splitSpaceSeparatedString(char *str)
+{
+  std::string s(str);
+  std::stringstream ss(s);
+  std::istream_iterator<std::string> beg(ss), end;
+  std::vector<std::string> vec(beg, end);
+  return vec;
 }
 
 bool

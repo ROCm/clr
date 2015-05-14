@@ -146,15 +146,10 @@ aclutAlloc(const aclCompilerOptions *bin);
 FreeFunc
 aclutFree(const aclCompilerOptions *bin);
 
-// Helper predicate
-// returns true if p starts with bit code signature.
-bool
-isBcMagic(const char* p);
-
 inline bool is64BitTarget(const aclTargetInfo& target)
 {
-  return (target.arch_id == aclX64 || 
-          target.arch_id == aclAMDIL64 || 
+  return (target.arch_id == aclX64 ||
+          target.arch_id == aclAMDIL64 ||
           target.arch_id == aclHSAIL64);
 }
 

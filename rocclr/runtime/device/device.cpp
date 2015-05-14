@@ -31,7 +31,6 @@ extern void DeviceUnload();
 #include "blowfish/oclcrypt.hpp"
 #endif
 
-#include "../utils/libUtils.h"
 #include "utils/bif_section_labels.hpp"
 
 #include <vector>
@@ -41,6 +40,21 @@ extern void DeviceUnload();
 #include <sstream>
 #include <fstream>
 #include <set>
+
+#if !defined(BCMAG)
+#define BCMAG  "BC"
+#define SBCMAG 2
+#endif
+// Helper predicate returns true if p starts with bit code signature.
+// TODO: Move it into Compiler Lib back in new 1_0 API
+inline static bool
+isBcMagic(const char* p)
+{
+    if (p==NULL || strncmp(p, BCMAG, SBCMAG) != 0) {
+        return false;
+    }
+    return true;
+}
 
 namespace device {
 extern const char* BlitSourceCode;
@@ -238,6 +252,7 @@ Device::~Device()
     }
 }
 
+// TODO: Move it into Compiler Lib in new 1_0 API
 bool
 Device::verifyBinaryImage( const void* image, size_t size) const
 {
