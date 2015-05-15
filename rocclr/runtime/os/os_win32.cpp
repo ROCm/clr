@@ -709,8 +709,12 @@ Os::getTempPath()
     // under windows directory, use . instead
     std::string tempPathStr(tempPath);
     char winPath[MAX_PATH];
-    ret = GetWindowsDirectory(winPath, MAX_PATH);
-    if (ret > 0) {
+    if (GetWindowsDirectory(winPath, MAX_PATH) > 0) {
+        // Need to check if tempPath is C:\Windows or C:\Windows\ //
+        if (tempPath[strlen(tempPath)-1] == '\\') {
+            tempPath[strlen(tempPath)-1] = '\0' ;
+            ret--;
+        }
         if (_memicmp(tempPath, winPath, ret) == 0) {
             return std::string(".");
         }
