@@ -54,6 +54,8 @@
 
 #ifdef ANDROID
 #include "roundup.h"
+#else
+#include <sys/param.h>
 #endif
 
 LIBELF_VCSID("$Id: elf_update.c 1922 2011-09-23 08:04:33Z jkoshy $");

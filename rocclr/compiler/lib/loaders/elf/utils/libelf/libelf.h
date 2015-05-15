@@ -29,7 +29,6 @@
 #ifndef	_LIBELF_H_
 #define	_LIBELF_H_
 
-#include <sys/param.h>
 #include <sys/queue.h>
 #include <elfdefinitions.h>
 #ifdef ANDROID
