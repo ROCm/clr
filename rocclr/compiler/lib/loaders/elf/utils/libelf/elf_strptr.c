@@ -31,6 +31,8 @@
 
 #ifdef ANDROID
 #include "roundup.h"
+#else
+#include <sys/param.h>
 #endif
 
 LIBELF_VCSID("$Id: elf_strptr.c 189 2008-07-20 10:38:08Z jkoshy $");
