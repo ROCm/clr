@@ -29,7 +29,7 @@ class ThreadTrace :  public RuntimeObject
 {
 public:
     enum State {
-        None,
+        Undefined,
         MemoryBound,
         Begin,
         End,
@@ -64,7 +64,7 @@ public:
         const Device&   device)     //!< device object
         : deviceThreadTrace_(NULL)
           ,device_(device)
-          ,state_(None)
+          ,state_(Undefined)
     { }
 
     //! Get the thread trace's associated device

@@ -23,6 +23,8 @@
 #include "device/device.hpp"
 #include "utils/concurrent.hpp"
 #include "platform/memory.hpp"
+#include "platform/perfctr.hpp"
+#include "platform/threadtrace.hpp"
 
 #include "CL/cl_ext.h"
 
@@ -1043,7 +1045,18 @@ public:
             : Command(queue, 0, eventWaitList)
             , counterList_(counterList)
             , state_(state)
-    { }
+    {
+        for (uint i = 0; i < counterList_.size(); ++i) {
+            counterList_[i]->retain();
+        }
+    }
+
+    void releaseResources() {
+        for (uint i = 0; i < counterList_.size(); ++i) {
+            counterList_[i]->release();
+        }
+        Command::releaseResources();
+    }
 
     //! Gets the number of PerfCounter objects
     size_t getNumCounters() const { return counterList_.size(); }
@@ -1090,9 +1103,11 @@ public:
             obj->retain();
             memObjects_[i] = obj;
         }
+        threadTrace_.retain();
     }
     //! Release all resources associated with this command
     void releaseResources() {
+        threadTrace_.release();
         for(std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
             itr != memObjects_.end(); itr++) {
             (*itr)->release();
@@ -1143,7 +1158,7 @@ public:
         Resume  = 3     //!< Issue a resume command
     };
 
-    //! Construct a new PerfCounterCommand
+    //! Construct a new ThreadTraceCommand
     ThreadTraceCommand(
         HostQueue& queue,
         const EventWaitList& eventWaitList,
@@ -1160,6 +1175,13 @@ public:
         if (threadTraceConfig_) {
             memcpy(threadTraceConfig_, threadTraceConfig, size);
         }
+        threadTrace_.retain();
+    }
+
+    //! Release all resources associated with this command
+    void releaseResources() {
+        threadTrace_.release();
+        Command::releaseResources();
     }
 
     //! Get the thread trace object
@@ -1176,7 +1198,7 @@ public:
     void* threadTraceConfig() const { return threadTraceConfig_; }
 
 private:
-    ThreadTrace& threadTrace_;   //!< The list of performance counters
+    ThreadTrace&    threadTrace_;   //!< The list of performance counters
     State           state_;         //!< State of the issued command
 };
 
