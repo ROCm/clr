@@ -29,6 +29,7 @@
 #ifndef	__LIBELF_H_
 #define	__LIBELF_H_
 
+#include <limits.h>
 #include <sys/queue.h>
 
 #include "_libelf_config.h"

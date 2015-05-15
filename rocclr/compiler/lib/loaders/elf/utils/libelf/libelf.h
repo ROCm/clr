@@ -29,11 +29,9 @@
 #ifndef	_LIBELF_H_
 #define	_LIBELF_H_
 
+#include <sys/types.h>
 #include <sys/queue.h>
 #include <elfdefinitions.h>
-#ifdef ANDROID
-#include "sys/types.h"
-#endif
 #ifndef EM_HSAIL
 #define EM_HSAIL 0xAF5A
 #endif
