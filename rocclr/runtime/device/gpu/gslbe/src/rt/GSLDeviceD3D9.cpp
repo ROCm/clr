@@ -34,6 +34,7 @@ CALGSLDevice::associateD3D9Device(void* d3d9Device)
 
     IDirect3D9Ex* p3d9devEx = static_cast<IDirect3D9Ex*>(p3d9dev);
     p3d9devEx->GetAdapterLUID(pCaps.AdapterOrdinal, &d3d9deviceLuid);
+    p3d9devEx->Release();
 
     // match the adapter
     if (m_adp->getMVPUinfo(&calDevAdapterLuid, &calDevChainBitMask))
