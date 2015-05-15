@@ -664,7 +664,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         viewLevel  = imageView->level_;
         gslResource = imageView->resource_->gslResource();
         viewOwner_  = imageView->resource_;
-        if (viewLevel != 0) {
+        if ((viewLevel != 0) || (viewOwner_->cal()->mipLevels_ > 0)) {
             viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL;
         }
         if (viewLayer != 0) {
