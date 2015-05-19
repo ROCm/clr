@@ -4089,13 +4089,12 @@ HSAILKernel::loadArguments(
         return NULL;
     }
 
+    // HSAIL kernarg segment size is rounded up to multiple of 16.
+    aqlArgBuf = amd::alignUp(aqlArgBuf, 16);
     assert((aqlArgBuf == (gpu.cb(0)->sysMemCopy() + argsBufferSize())) &&
         "Size and the number of arguments don't match!");
-    uint  argBufSize = amd::alignUp(
-        static_cast<uint>(argsBufferSize()), sizeof(uint32_t));
     hsa_kernel_dispatch_packet_t* hsaDisp =
-        reinterpret_cast<hsa_kernel_dispatch_packet_t*>(
-        gpu.cb(0)->sysMemCopy() + argBufSize);
+        reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlArgBuf);
 
     amd::NDRange        local(sizes.local());
     const amd::NDRange& global = sizes.global();
@@ -4121,7 +4120,7 @@ HSAILKernel::loadArguments(
     hsaDisp->kernel_object  = gpuAqlCode()->vmAddress();
 
     ConstBuffer* cb = gpu.constBufs_[0];
-    cb->uploadDataToHw(argBufSize + sizeof(hsa_kernel_dispatch_packet_t));
+    cb->uploadDataToHw(argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t));
     uint64_t argList = cb->vmAddress() + cb->wrtOffset();
 
     hsaDisp->kernarg_address = reinterpret_cast<void*>(argList);
