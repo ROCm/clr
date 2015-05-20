@@ -618,10 +618,11 @@ VirtualGPU::allocHsaQueueMem()
     }
     memset(queue, 0, sizeof(amd_queue_t));
     // Provide private and local heap addresses
+    const static uint addressShift = LP64_SWITCH(0, 32);
     queue->private_segment_aperture_base_hi =
-        static_cast<uint32>(dev().gslCtx()->getPrivateApertureBase()>>32);
+        static_cast<uint32>(dev().gslCtx()->getPrivateApertureBase()>>addressShift);
     queue->group_segment_aperture_base_hi =
-        static_cast<uint32>(dev().gslCtx()->getSharedApertureBase()>>32);
+        static_cast<uint32>(dev().gslCtx()->getSharedApertureBase()>>addressShift);
     hsaQueueMem_->unmap(NULL);
     return true;
 }
