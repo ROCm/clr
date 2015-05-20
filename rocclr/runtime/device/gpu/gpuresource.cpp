@@ -91,6 +91,7 @@ Resource::Resource(
     cal_.imageType_  = 0;
     cal_.SVMRes_ = false;
     cal_.scratch_ = false;
+    cal_.isAllocExecute_ = false;
 }
 
 Resource::Resource(
@@ -135,6 +136,7 @@ Resource::Resource(
     cal_.imageType_     = imageType;
     cal_.SVMRes_ = false;
     cal_.scratch_ = false;
+    cal_.isAllocExecute_ = false;
 
     switch (imageType) {
     case CL_MEM_OBJECT_IMAGE2D:
@@ -363,7 +365,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
 
     if (memType == Shader){
         if(dev().settings().svmFineGrainSystem_) {
-            desc.isAllocExecute = true;
+            cal_.isAllocExecute_ = desc.isAllocExecute = true;
         }
         // force to use remote memory for HW DEBUG or use
         // local memory once we determine if FGS is supported
@@ -2058,13 +2060,14 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
             (entry->depth_ == desc->depth_) &&
             (entry->channelOrder_ == desc->channelOrder_) &&
             (entry->format_ == desc->format_) &&
-            (entry->flags_ == desc->flags_)) {
-            ref = it.second;
-            delete it.first;
-            // Remove the found etry from the cache
-            resCache_.remove(it);
-            cacheSize_ -= size;
-            break;
+            (entry->flags_ == desc->flags_) &&
+            (entry->isAllocExecute_  == desc->isAllocExecute_)) {
+                ref = it.second;
+                delete it.first;
+                // Remove the found etry from the cache
+                resCache_.remove(it);
+                cacheSize_ -= size;
+                break;
         }
     }
 
