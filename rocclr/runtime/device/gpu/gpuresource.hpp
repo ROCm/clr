@@ -168,13 +168,14 @@ public:
         cl_mem_object_type  imageType_; //!< CL image type
         union {
             struct {
-                uint    dimSize_    : 2;    //!< Dimension size
-                uint    cardMemory_ : 1;    //!< GSL resource is in video memory
-                uint    imageArray_ : 1;    //!< GSL resource is an array of images
-                uint    buffer_     : 1;    //!< GSL resource is a buffer
-                uint    tiled_      : 1;    //!< GSL resource is tiled
-                uint    SVMRes_     : 1;    //!< SVM flag to the cal resource
-                uint    scratch_    : 1;    //!< Scratch buffer
+                uint    dimSize_        : 2;    //!< Dimension size
+                uint    cardMemory_     : 1;    //!< GSL resource is in video memory
+                uint    imageArray_     : 1;    //!< GSL resource is an array of images
+                uint    buffer_         : 1;    //!< GSL resource is a buffer
+                uint    tiled_          : 1;    //!< GSL resource is tiled
+                uint    SVMRes_         : 1;    //!< SVM flag to the cal resource
+                uint    scratch_        : 1;    //!< Scratch buffer
+                uint    isAllocExecute_ : 1;    //!< SVM resource allocation attribute for shader\cmdbuf
             };
             uint    state_;
         };
