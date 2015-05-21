@@ -51,6 +51,8 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
     if (Options()->libraryType_ == amd::GPU_Library_HSAIL) {
       if (HLC_HSAIL_Enable_Calls) {
         HLC_Disable_Amd_Inline_All = true;
+      } else {
+        HLC_Disable_Amd_Inline_All = false;
       }
       // Always create Inliner regardless of OptLevel
       if (HLC_Force_Always_Inliner_Pass) {
@@ -76,7 +78,7 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
       if (OptLevel > 0) {
         Builder.Inliner = createFunctionInliningPass(Threshold);
       }
-    } else 
+    } else
 #endif
     {
       Builder.Inliner = createFunctionInliningPass(Threshold);
@@ -174,7 +176,7 @@ O0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
   if (Options()->libraryType_ == amd::GPU_Library_HSAIL) {
     // Mark all non-kernel functions as having internal linkage
     Passes().add(createAMDSymbolLinkagePass(true, NULL));
-  } else 
+  } else
 #endif
   {
     setup(false, 0);
