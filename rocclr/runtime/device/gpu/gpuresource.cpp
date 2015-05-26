@@ -347,6 +347,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     CALresourceDesc desc;
     uint64 bytePitch = (uint64)-1;
     bool useRowPitch = false;
+    bool mipLevelPitchPad = false;
 
     desc.vaBase = 0;
     desc.minAlignment = 0;
@@ -669,6 +670,11 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         if ((viewLevel != 0) || (viewOwner_->cal()->mipLevels_ > 1)) {
             viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL;
         }
+        if ((viewOwner_->viewOwner_ != NULL) &&
+            (viewOwner_->viewOwner_->cal()->mipLevels_ > 1)) {
+            mipLevelPitchPad = true;
+        }
+
         if (viewLayer != 0) {
             viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER;
         }
@@ -1014,12 +1020,17 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         hwState_[8] = GetHSAILImageFormatType(cal()->format_);
         hwState_[9] = GetHSAILImageOrderType(cal()->channelOrder_, cal()->format_);
         hwState_[10] = static_cast<uint32_t>(cal()->width_);
-        // Workaround for depth view, change tileIndex to the parent for depth view
-        if ((memoryType() == ImageView) &&
-            (viewChannelOrder == GSL_CHANNEL_ORDER_REPLICATE_R)) {
-            if ((hwState_[3] & 0x1f00000) == 0xe00000) {
-                hwState_[3] = (hwState_[3] & 0xfe0fffff) |
-                    (viewOwner_->hwState_[3] & 0x1f00000);
+        if (memoryType() == ImageView) {
+            // Workaround for depth view, change tileIndex to the parent for depth view
+            if (viewChannelOrder == GSL_CHANNEL_ORDER_REPLICATE_R) {
+                if ((hwState_[3] & 0x1f00000) == 0xe00000) {
+                    hwState_[3] = (hwState_[3] & 0xfe0fffff) |
+                        (viewOwner_->hwState_[3] & 0x1f00000);
+                }
+            }
+            // Update the POW2_PAD flag, otherwise HW uses a wrong pitch value
+            if ((viewFlags & CAL_RESALLOCSLICEVIEW_LEVEL) || mipLevelPitchPad) {
+                hwState_[3] |= (viewOwner_->hwState_[3] & 0x2000000);
             }
         }
         hwState_[11] = 0;   // one extra reserved field in the argument
