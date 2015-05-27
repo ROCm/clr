@@ -24,7 +24,7 @@ release(size_t, CPU_WORKER_THREAD_STACK_SIZE, 64*Ki,                          \
         "The default CPU worker thread stack size")                           \
 release(int, CPU_MAX_COMPUTE_UNITS, -1,                                       \
         "Override the number of computation units per CPU device")            \
-debug(bool, CPU_USE_ALIGNMENT_MAP, false,                                      \
+debug(bool, CPU_USE_ALIGNMENT_MAP, false,                                     \
         "Use flag to enable alignment mapping for parameters for CPU")        \
 release(int, GPU_MAX_WORKGROUP_SIZE, 0,                                       \
         "Maximum number of workitems in a workgroup for GPU, 0 -use default") \
@@ -122,7 +122,7 @@ release(uint, GPU_SINGLE_ALLOC_PERCENT, 75,                                   \
         "Maximum size of a single allocation as percentage of total")         \
 release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
         "GPU number of compute rings. 0 - disabled, 1 , 2,.. - the number of compute rings") \
-release(int, GPU_SELECT_COMPUTE_RINGS_ID, -1,                                       \
+release(int, GPU_SELECT_COMPUTE_RINGS_ID, -1,                                 \
         "GPU select the compute rings ID -1 - disabled, 0 , 1,.. - the forced compute rings ID for submission") \
 release_on_stg(bool, C1X_ATOMICS, !IS_MAINLINE,                               \
         "Runtime will report c1x atomics support")                            \
@@ -168,13 +168,13 @@ release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
         "Enable HSA device local memory usage")                               \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
-release(bool, GPU_IFH_MODE, false,                                  \
+release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
-release(bool, GPU_MIPMAP, false,                                              \
+release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
 debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
         "Forces reporting CL_FP_DENORM bit for single precision")             \
-debug(bool, OCL_FORCE_CPU_SVM, false, \
+debug(bool, OCL_FORCE_CPU_SVM, false,                                         \
         "force svm support for CPU")                                          \
 debug(bool, GPU_ENABLE_HW_DEBUG, false,                                       \
         "Enable HW DEBUG for GPU")                                            \
