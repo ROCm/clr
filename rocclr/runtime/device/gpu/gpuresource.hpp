@@ -277,6 +277,9 @@ public:
     //! Returns global memory offset
     uint64_t vmAddress() const { return gslResource()->getSurfaceAddress(); }
 
+    //! Returns global memory offset
+    bool mipMapped() const { return (cal()->mipLevels_ > 1) ? true : false; }
+
     //! Checks if persistent memory can have a direct map
     bool isPersistentDirectMap() const;
 

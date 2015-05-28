@@ -667,11 +667,11 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         viewLevel  = imageView->level_;
         gslResource = imageView->resource_->gslResource();
         viewOwner_  = imageView->resource_;
-        if ((viewLevel != 0) || (viewOwner_->cal()->mipLevels_ > 1)) {
+        if ((viewLevel != 0) || viewOwner_->mipMapped()) {
             viewFlags |= CAL_RESALLOCSLICEVIEW_LEVEL;
         }
         if ((viewOwner_->viewOwner_ != NULL) &&
-            (viewOwner_->viewOwner_->cal()->mipLevels_ > 1)) {
+            viewOwner_->viewOwner_->mipMapped()) {
             mipLevelPitchPad = true;
         }
 
@@ -1598,7 +1598,7 @@ Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers)
     // Check if memory wasn't mapped yet
     if (++mapCount_ == 1) {
         if ((cal()->dimSize_ == 3) || cal()->imageArray_ ||
-            ((cal()->type_ == ImageView) && (viewOwner_->cal()->mipLevels_ > 1))) {
+            ((cal()->type_ == ImageView) && viewOwner_->mipMapped())) {
             // Save map info for multilayer map/unmap
             startLayer_ = startLayer;
             numLayers_  = numLayers;
@@ -1729,7 +1729,7 @@ Resource::unmap(VirtualGPU* gpu)
     // Check if it's the last unmap
     if (count == 0) {
         if ((cal()->dimSize_ == 3) || cal()->imageArray_ ||
-            ((cal()->type_ == ImageView) && (viewOwner_->cal()->mipLevels_ > 1))) {
+            ((cal()->type_ == ImageView) && viewOwner_->mipMapped())) {
             // Unmap layers
             unmapLayers(gpu);
         }

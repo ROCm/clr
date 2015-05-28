@@ -875,7 +875,9 @@ Memory::decIndMapCount()
     amd::ScopedLock lock(owner()->lockMemoryOps());
 
     if (indirectMapCount_ == 0) {
-        LogError("decIndMapCount() called when indirectMapCount_ already zero");
+        if (!mipMapped()) {
+            LogError("decIndMapCount() called when indirectMapCount_ already zero");
+        }
         return;
     }
 
