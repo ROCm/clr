@@ -16,7 +16,8 @@
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gpudebugger.hpp"
 #include "hsa.h"
-#include "sc/Interface/SCHSAInterface.h"
+#include "amd_hsa_kernel_code.h"
+#include "amd_hsa_queue.h"
 #include <fstream>
 #include <sstream>
 
