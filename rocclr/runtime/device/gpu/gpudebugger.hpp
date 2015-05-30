@@ -15,7 +15,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "hsa.h"
-#include "sc/Interface/SCHSAInterface.h"
+#include "amd_hsa_kernel_code.h"
 #include "device/device.hpp"
 #include "device/hwdebug.hpp"
 #include "acl.h"

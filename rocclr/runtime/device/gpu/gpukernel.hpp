@@ -13,7 +13,7 @@
 #include "platform/sampler.hpp"
 #include "device/gpu/gpudevice.hpp"
 #include "device/gpu/gpuvirtual.hpp"
-#include "sc/Interface/SCHSAInterface.h"
+#include "amd_hsa_kernel_code.h"
 #include "device/gpu/gpuprintf.hpp"
 #include "device/gpu/gpuwavelimiter.hpp"
 #include "hsa.h"
