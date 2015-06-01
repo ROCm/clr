@@ -264,9 +264,10 @@ void WaveLimiterManager::enable() {
     }
     auto gpuDev = static_cast<const Device*>(&owner_->dev());
     auto hwInfo = gpuDev->hwInfo();
-    // Enable it only for SI+, unless GPU_WAVE_LIMIT_ENABLE is set to 1
+    // Enable it only for CI+, unless GPU_WAVE_LIMIT_ENABLE is set to 1
+    // Disabled for SI due to bug #10817
     setIfNotDefault(enable_, GPU_WAVE_LIMIT_ENABLE,
-         owner_->workGroupInfo()->limitWave_ && gpuDev->settings().siPlus_);
+         owner_->workGroupInfo()->limitWave_ && gpuDev->settings().ciPlus_);
 }
 
 }
