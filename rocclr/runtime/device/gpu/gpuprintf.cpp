@@ -93,7 +93,7 @@ PrintfDbg::output(
     const std::vector<PrintfInfo>& printfInfo)
 {
     // Are we expected to generate debug output?
-    if (printfEnabled) {
+    if (printfEnabled && !printfInfo.empty()) {
         uint32_t*   workitemData;
         size_t      i, j, k, z;
         bool realloc = false;
