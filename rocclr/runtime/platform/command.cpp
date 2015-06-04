@@ -219,6 +219,11 @@ Command::Command(
 
 Command::~Command()
 {
+}
+
+void
+Command::releaseResources()
+{
     const Command::EventWaitList& events = eventWaitList();
 
     // Release the commands from the event wait list.
@@ -227,12 +232,6 @@ Command::~Command()
         events.end(),
         std::mem_fun(&Command::release));
 }
-
-void
-Command::releaseResources()
-{
-}
-
 
 void
 Command::enqueue()
