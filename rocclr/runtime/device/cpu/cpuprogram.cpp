@@ -182,16 +182,22 @@ getParamSizeImpl(bool cpuLayer, const clk_parameter_descriptor_t* desc,
             size_t elementSize =
               getParamSizeImpl(cpuLayer, desc, index, qualifier,
                                &elementAlignment, index_out);
-            if (desc[index].type == T_LONG)
-              structAlignment = cpuLayer? LP64_SWITCH(4, 8) : 8;
-            else
-              structAlignment = std::max(maxAlignment, elementAlignment);
+            #if defined(_WIN32)
+              maxAlignment = std::max(maxAlignment, elementAlignment);
+            #else
+              // In Linux, the alignment of long field is 4 for GCC,
+              // but it is 8 on LLVM side
+              if (desc[index].type == T_LONG)
+                structAlignment = cpuLayer? LP64_SWITCH(4, 8) : 8;
+              else
+                structAlignment = std::max(maxAlignment, elementAlignment);
+              maxAlignment = std::max(maxAlignment, structAlignment);
+            #endif
             index = *index_out;
             structSize =
               amd::alignUp(structSize,
                            std::min(elementAlignment, size_t(16))) +
               elementSize;
-            maxAlignment = std::max(maxAlignment, structAlignment);
         }
         *index_out = index + 1;
         *alignment = maxAlignment;
@@ -199,7 +205,11 @@ getParamSizeImpl(bool cpuLayer, const clk_parameter_descriptor_t* desc,
     } else {
       size = getScalarParamSize(cpuLayer, desc[index].type, qualifier);
       if (desc[index].type == T_DOUBLE) {
+          #if defined(_WIN32)
+          *alignment = 8;
+          #else
           *alignment = LP64_SWITCH(4, 8);
+          #endif
       } else if (desc[index].type == T_LONG) {
           *alignment = 8;
       } else {
@@ -352,8 +362,8 @@ setKernelInfoCallback(std::string symbol, const void* value, void* data)
           int inStruct = 0;
           int end_index = 0;
           HCtoDCmap *map_p = new HCtoDCmap(desc, align, 0, init_offset);
-          map_p->dc_size = map_p->compute_map(desc, map_p->map_alignment, init_offset, inStruct, end_index);
-          map_p->align_map(map_p->map_alignment, map_p->hc_size, map_p->dc_size, inStruct);
+          map_p->dc_size = map_p->compute_map(desc, map_p->hc_alignment, map_p->dc_alignment, init_offset, inStruct, end_index);
+          map_p->align_map(map_p->hc_alignment, map_p->dc_alignment, map_p->hc_size, map_p->dc_size, inStruct);
           if (CPU_USE_ALIGNMENT_MAP == 0) {
              kernel->addHCtoDCmap(map_p);
              if (map_p->internal_field_map != NULL) {
