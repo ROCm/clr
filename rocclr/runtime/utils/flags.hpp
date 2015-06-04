@@ -170,7 +170,7 @@ release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
 release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
-release(bool, GPU_MIPMAP, true,                                               \
+release(bool, GPU_MIPMAP, !IS_MAINLINE,                                       \
         "Enables GPU mipmap extension")                                       \
 debug(bool, GPU_FORCE_SINGLE_FP_DENORM, false,                                \
         "Forces reporting CL_FP_DENORM bit for single precision")             \
