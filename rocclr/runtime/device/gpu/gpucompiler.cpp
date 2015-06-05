@@ -416,7 +416,7 @@ HSAILProgram::compileImpl(
         compileOptions_.append(opts.str());
     }
 
-#if !defined(_LP64)
+#if !defined(_LP64) && defined(ATI_OS_LINUX)
     if (options->origOptionStr.find("-cl-std=CL2.0") != std::string::npos && !dev().settings().force32BitOcl20_) {
         errorCode = ACL_UNSUPPORTED;
         LogWarning("aclCompile failed");
