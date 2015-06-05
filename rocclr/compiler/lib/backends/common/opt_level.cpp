@@ -204,14 +204,20 @@ GPUO0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
       HLC_HSAIL_Enable_Calls = false;
       HLC_Disable_Amd_Inline_All = false;
     }
+    else if (HLC_HSAIL_Enable_Calls) {
+      HLC_Disable_Amd_Inline_All = true;
+    }
+    else {
+      HLC_Disable_Amd_Inline_All = false;
+    }
     Passes().add(createAMDSymbolLinkagePass(true, NULL));
     Passes().add(createGlobalOptimizerPass());
-    if (!HLC_Disable_Amd_Inline_All && !DisableInline ) {
-      if (HLC_Force_Always_Inliner_Pass) {
-        Passes().add(createAlwaysInlinerPass());
-      } else {
-        Passes().add(createAMDInlineAllPass(true));
-      }
+    if (!HLC_Disable_Amd_Inline_All &&
+        !DisableInline &&
+        !HLC_Force_Always_Inliner_Pass) {
+      Passes().add(createAMDInlineAllPass(true));
+    } else {
+      Passes().add(createAlwaysInlinerPass());
     }
   }
 #endif
