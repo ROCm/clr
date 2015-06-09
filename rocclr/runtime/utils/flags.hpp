@@ -154,7 +154,7 @@ release(bool, GPU_DIRECT_SRD, false,                                          \
         "Use indirect SRD access in HSAIL")                                   \
 release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
         "Use a dedicated device queue for the actual submissions")            \
-release(bool, GPU_ENABLE_LARGE_ALLOCATION, false,                             \
+release(bool, GPU_ENABLE_LARGE_ALLOCATION, true,                             \
         "Enable >4GB single allocations")                                     \
 release(bool, AMD_THREAD_TRACE_ENABLE, !IS_MAINLINE,                          \
         "Enable thread trace extension")                                      \
