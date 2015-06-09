@@ -205,6 +205,14 @@ RUNTIME_ENTRY(cl_int, clEnqueueNDRangeKernel, (
     if (global_work_size == NULL) {
         return CL_INVALID_VALUE;
     }
+    else {
+        // >32bits global work size is not supported.
+        for (cl_uint dim = 0; dim < work_dim; ++dim) {
+            if (global_work_size[dim] > static_cast<size_t>(0xffffffff)) {
+                return CL_INVALID_GLOBAL_WORK_SIZE;
+            }
+        }
+    }
 
     if (local_work_size == NULL) {
         static size_t zeroes[3] = { 0, 0, 0 };
