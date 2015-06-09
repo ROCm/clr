@@ -3561,6 +3561,7 @@ HSAILKernel::init(bool finalize)
     //compile kernel down to ISA
     if (finalize) {
         std::string options(compileOptions_.c_str());
+        flags_.internalKernel_ = (compileOptions_.find("-cl-internal-kernel") != 0) ? true: false;
         options.append(" -just-kernel=");
         options.append(openClKernelName.c_str());
         // Append an option so that we can selectively enable a SCOption on CZ
