@@ -615,13 +615,13 @@ Memory::saveMapInfo(
     if (mapFlags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
         writeMapInfo_.origin_ = origin;
         writeMapInfo_.region_ = region;
-        writeMapInfo_.baseMip_ = baseMip;
         writeMapInfo_.entire_ = entire;
         flags_ |= UnmapWrite;
     }
     if (mapFlags & CL_MAP_READ) {
         flags_ |= UnmapRead;
     }
+    writeMapInfo_.baseMip_ = baseMip;
 }
 
 Program::Program(amd::Device& device)

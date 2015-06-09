@@ -1163,7 +1163,7 @@ VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd)
             }
             else {
                 // Validate if it's a view for a map of mip level
-                if (memory->isUnmapWrite() && (vcmd.memory().parent() != NULL)) {
+                if (vcmd.memory().parent() != NULL) {
                     amd::Image* amdImage = vcmd.memory().parent()->asImage();
                     if ((amdImage != NULL) && (amdImage->getMipLevels() > 1)) {
                         // Save map write info in the parent object
@@ -1203,7 +1203,6 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
     // Check if image is a mipmap and assign a saved view
     amd::Image* amdImage = owner->asImage();
     if ((amdImage != NULL) && (amdImage->getMipLevels() > 1) &&
-        memory->isUnmapWrite() &&
         (memory->writeMapInfo()->baseMip_ != NULL)) {
         // Clear unmap flags from the parent image
         memory->clearUnmapFlags();
@@ -1285,11 +1284,6 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
                 }
             }
         }
-    }
-    else if ((amdImage != NULL) && (amdImage->getMipLevels() > 1) &&
-             (!memory->isUnmapWrite())) {
-        // Release a view for a mipmap map
-        amdImage->release();
     }
     else {
         LogError("Unhandled unmap!");
