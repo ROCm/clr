@@ -43,7 +43,7 @@ typedef enum clk_value_type_t
     T_LONG2,  T_LONG3,  T_LONG4,  T_LONG8,  T_LONG16,
     T_FLOAT2, T_FLOAT3, T_FLOAT4, T_FLOAT8, T_FLOAT16,
     T_DOUBLE2, T_DOUBLE3, T_DOUBLE4, T_DOUBLE8, T_DOUBLE16,
-    T_SAMPLER, T_SEMA, T_STRUCT, T_QUEUE
+    T_SAMPLER, T_SEMA, T_STRUCT, T_QUEUE, T_PAD
 } clk_value_type_t;
 
 typedef enum clk_address_space_t
