@@ -235,6 +235,38 @@ namespace cpu {
                 }
             }
         }
+        else if (desc[internal_index].type == T_PAD) {
+            //Struct has padding
+            hc_offset = init_offset;
+            if (desc[index_out+1].type != T_VOID) {
+                index_out++;
+                internal_index = index_out;
+                internal_field_map = new HCtoDCmap(desc, 0, internal_index, init_offset);
+                hc_size = internal_field_map->compute_map(desc, hc_alignment, dc_alignment, next_offset, inStruct, index_out);
+                // Adjust alignment to biggest member alignment
+                hc_alignment = 1;
+                dc_alignment = 1;
+                unsigned pad_size = hc_size;
+                internal_index = index_out;
+                if (desc[index_out+1].type != T_VOID) {
+                    //Still inside padding and not done
+                    index_out++;
+                    internal_index = index_out;
+                    next_field_map = new HCtoDCmap(desc, 0, internal_index, next_offset);
+                    pad_size = hc_size;
+                    pad_size += next_field_map->compute_map(desc, outer_hc_alignment, outer_dc_alignment, next_offset, inStruct, index_out);
+                    next_offset = max(next_field_map->hc_offset+next_field_map->hc_size, next_field_map->hc_offset+hc_alignment);
+                    // running count of padding dc_size = hc_size + size of next member
+                    return pad_size;
+                }
+                else {
+                    //Moving out of struct, go to next index
+                    index_out++;
+                    internal_index = index_out;
+                    return hc_size; //return last padding member size
+                }
+            }
+        }
         else {
             //Scalar parameter
             hc_offset = init_offset;
@@ -278,7 +310,7 @@ namespace cpu {
         }
         else {
             // Ignore alignment when a char occurs to account for padding
-            if (type != T_STRUCT && next_field_map->hc_size == 1 && map_param_size > 1 && inStruct_flag > 0) {
+            if (type == T_PAD) {
                 next_field_map->dc_offset = dc_offset + dc_size;
                 next_offset = current_offset + hc_size;
             }
