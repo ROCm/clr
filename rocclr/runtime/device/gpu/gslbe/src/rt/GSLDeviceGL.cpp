@@ -521,7 +521,11 @@ CALGSLDevice::initGLInteropPrivateExt(CALvoid* GLplatformContext, CALvoid* GLdev
     }
 
     if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD ||
-        !glXResourceDetachAMD || !glXGetContextMVPUInfoAMD)
+        !glXResourceDetachAMD
+#ifndef BRAHMA
+        || !glXGetContextMVPUInfoAMD
+#endif
+        )
     {
         return false;
     }
@@ -586,9 +590,13 @@ CALGSLDevice::glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
         }
     }
 #elif defined (ATI_OS_LINUX)
+#ifdef BRAHMA
+    canInteroperate = true;
+#else
     GLuint glDeviceId = 0 ;
     GLuint glChainMask = 0 ;
     GLXContext ctx = (GLXContext)GLplatformContext;
+    
     if (glXGetContextMVPUInfoAMD(ctx,&glDeviceId,&glChainMask)){
         GLuint deviceId = 0 ;
         GLuint chainMask = 0 ;
@@ -602,6 +610,7 @@ CALGSLDevice::glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
             }
         }
     }
+#endif
 #endif
     return canInteroperate;
 }
