@@ -172,7 +172,7 @@ getParamSizeImpl(bool cpuLayer, const clk_parameter_descriptor_t* desc,
                  size_t* alignment, unsigned* index_out)
 {
     size_t size = 0;
-    if(desc[index].type == T_STRUCT) {
+    if(desc[index].type == T_STRUCT || desc[index].type == T_PAD) {
         size_t maxAlignment = 0;
         size_t structSize = 0;
         size_t structAlignment = 0;
@@ -237,7 +237,7 @@ getNumTypeDescs(const clk_parameter_descriptor_t* desc)
   int numStruct = 0;
   unsigned i;
     for(i = 0; desc[i].type != T_VOID || numStruct > 0; ++i) {
-        if (desc[i].type == T_STRUCT)
+        if (desc[i].type == T_STRUCT || desc[i].type == T_PAD)
             numStruct++;
         if (desc[i].type == T_VOID)
             numStruct--;
