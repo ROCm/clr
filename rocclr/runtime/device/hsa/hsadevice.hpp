@@ -100,16 +100,7 @@ public:
 
     //! Create a new virtual device environment.
     virtual device::VirtualDevice* createVirtualDevice(
-        bool    profiling,
-        bool    interopQueue
-#if cl_amd_open_video
-        , void*   calVideoProperties = NULL
-#endif // cl_amd_open_video
-        , uint  deviceQueueSize = 0
-        ) {
-            ShouldNotReachHere();
-            return NULL;
-    };
+        amd::CommandQueue* queue = NULL) { return NULL; }
 
     virtual bool registerSvmMemory(void* ptr, size_t size) const {
         ShouldNotReachHere();
@@ -252,12 +243,8 @@ public:
 
     //! Instantiate a new virtual device
     virtual device::VirtualDevice *createVirtualDevice(
-        bool profiling, bool interopQueue
-#if cl_amd_open_video
-        , void *calVideoProperties = NULL
-#endif   // cl_amd_open_vide
-        , uint  deviceQueueSize = 0
-        );
+        amd::CommandQueue* queue = NULL);
+
     //! Construct an HSAIL program object from the ELF assuming it is valid
     virtual device::Program *createProgram(int oclVer = 120);
 

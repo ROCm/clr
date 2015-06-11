@@ -543,6 +543,8 @@ void NullDevice::fillDeviceInfo(
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
         info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
         info_.numAsyncQueues_       = numComputeRings;
+        info_.numRTQueues_          = 2;
+        info_.numRTCUs_             = 4;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
 }
@@ -1091,14 +1093,31 @@ Device::initializeHeapResources()
 
 device::VirtualDevice*
 Device::createVirtualDevice(
-    bool    profiling,
-    bool    interopQueue
-#if cl_amd_open_video
-    , void* calVideoProperties
-#endif // cl_amd_open_video
-    , uint  deviceQueueSize
+    amd::CommandQueue*  queue
     )
 {
+    bool    profiling = false;
+    bool    interopQueue = false;
+    uint    rtCUs  = 0;
+    uint    deviceQueueSize = 0;
+#if cl_amd_open_video
+    void*   calVideoProperties = NULL;
+#endif // cl_amd_open_video
+
+    if (queue != NULL) {
+        profiling = queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
+        if (queue->asHostQueue() != NULL) {
+            interopQueue = (0 != (queue->context().info().flags_ &
+                (amd::Context::GLDeviceKhr |
+                 amd::Context::D3D10DeviceKhr |
+                 amd::Context::D3D11DeviceKhr)));
+            rtCUs = queue->rtCUs();
+        }
+        else if (queue->asDeviceQueue() != NULL) {
+            deviceQueueSize = queue->asDeviceQueue()->size();
+        }
+    }
+
     // Not safe to add a queue. So lock the device
     amd::ScopedLock k(lockAsyncOps());
     amd::ScopedLock lock(vgpusAccess());

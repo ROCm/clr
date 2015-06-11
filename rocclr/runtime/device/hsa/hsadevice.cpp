@@ -648,15 +648,14 @@ Device::populateOCLDeviceConstants()
 }
 
 device::VirtualDevice*
-Device::createVirtualDevice(
-    bool profiling,
-    bool interopQueue
-#if cl_amd_open_video
-    , void *calVideoProperties
-#endif
-    , uint  deviceQueueSize
-)
+Device::createVirtualDevice(amd::CommandQueue* queue)
 {
+    bool interopQueue = (queue != NULL) &&
+            (0 != (queue->context().info().flags_ &
+            (amd::Context::GLDeviceKhr |
+             amd::Context::D3D10DeviceKhr |
+             amd::Context::D3D11DeviceKhr)));
+
     // Initialization of heap and other resources occur during the command
     // queue creation time.
     HsaQueueType type = kHsaQueueTypeCompute;
@@ -884,7 +883,7 @@ Device::xferQueue() const
         // Create virtual device for internal memory transfer
         Device* thisDevice = const_cast<Device*>(this);
         thisDevice->xferQueue_ = reinterpret_cast<VirtualGPU*>(
-                thisDevice->createVirtualDevice(false, false));
+                thisDevice->createVirtualDevice());
         if (!xferQueue_) {
             LogError("Couldn't create the device transfer manager!");
         }

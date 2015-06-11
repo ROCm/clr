@@ -89,6 +89,9 @@ public:
     //! Returns DeviceQueue object
     virtual DeviceQueue* asDeviceQueue() { return NULL; }
 
+    //! Returns the number or requested real time CUs
+    uint    rtCUs() const { return rtCUs_; }
+
 protected:
     //! CommandQueue constructor is protected
     //! to keep the CommandQueue class as a virtual interface
@@ -96,14 +99,17 @@ protected:
         Context&    context,    //!< Context object
         Device&     device,     //!< Device object
         cl_command_queue_properties properties, //!< Queue properties
-        cl_command_queue_properties propMask    //!< Queue properties mask
+        cl_command_queue_properties propMask,   //!< Queue properties mask
+        uint        rtCUs = 0   //!< Avaialble real time compute units
         )
         : properties_(propMask, properties)
+        , rtCUs_(rtCUs)
         , queueLock_("CommandQueue::queueLock")
         , device_(device)
         , context_(context) {}
 
     Properties  properties_;    //!< Queue properties
+    uint        rtCUs_;         //!< The number of used RT compute units
     Monitor     queueLock_;     //!< Lock protecting the queue
     Device&     device_;        //!< The device
     SharedReference<Context> context_;  //!< The context of this command queue
@@ -133,16 +139,7 @@ class HostQueue : public CommandQueue
         //! The command queue thread entry point.
         void run(void *data) {
             HostQueue* queue = static_cast<HostQueue*>(data);
-
-            bool interopQueue = (0 != (queue->context().info().flags_ & (Context::GLDeviceKhr | Context::D3D10DeviceKhr | Context::D3D11DeviceKhr)));
-
-            virtualDevice_ = queue->device().createVirtualDevice(
-                queue->properties().test(CL_QUEUE_PROFILING_ENABLE),
-                interopQueue
-#if cl_amd_open_video
-                , queue->calVideoProperties_
-#endif // cl_amd_open_video
-                );
+            virtualDevice_ = queue->device().createVirtualDevice(queue);
             if (virtualDevice_ != NULL) {
                 queue->loop(virtualDevice_);
                 if (virtualDevice_->terminate()) {
@@ -185,7 +182,8 @@ public:
     HostQueue(
         Context& context,
         Device& device,
-        cl_command_queue_properties properties
+        cl_command_queue_properties properties,
+        uint    queueRTCUs = 0
 #if cl_amd_open_video
         , void* calVideoProperties = NULL
 #endif // cl_amd_open_video

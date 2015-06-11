@@ -71,12 +71,7 @@ public:
 
     //! Instantiate a new virtual device
     virtual device::VirtualDevice* createVirtualDevice(
-        bool    profiling,
-        bool   interopQueue
-#if cl_amd_open_video
-        , void* calVideoProperties = NULL
-#endif // cl_amd_open_video
-        , uint  deviceQueueSize = 0
+        amd::CommandQueue* queue = NULL
         )
     {
         VirtualCPU* virtualCpu = new VirtualCPU(*this);

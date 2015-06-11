@@ -550,6 +550,10 @@ struct Info : public amd::EmbeddedObject
     cl_uint     gfxipVersion_;
     //! Number of available async queues
     cl_uint     numAsyncQueues_;
+    //! Number of available real time queues
+    cl_uint     numRTQueues_;
+    //! Number of available real time compute units
+    cl_uint     numRTCUs_;
     //! Thread trace enable
     cl_bool     threadTraceEnable_;
 
@@ -1577,12 +1581,7 @@ public:
 
     //! Create a new virtual device environment.
     virtual device::VirtualDevice* createVirtualDevice(
-        bool    profiling,
-        bool    interopQueue
-#if cl_amd_open_video
-        , void*   calVideoProperties = NULL
-#endif // cl_amd_open_video
-        , uint  deviceQueueSize = 0
+        CommandQueue*   queue = NULL
         ) = 0;
 
     //! Compile the given source code.
