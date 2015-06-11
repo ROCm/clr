@@ -87,6 +87,7 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
     } *p = reinterpret_cast<const QueueProperty*>(queue_properties);
 
     uint queueSize = amdDevice.info().queueOnDevicePreferredSize_;
+    uint queueRTCUs = 0;
     if (p != NULL) while(p->name != 0) {
         switch(p->name) {
         case CL_QUEUE_PROPERTIES:
@@ -94,8 +95,12 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
             //properties = p->value.properties;
             properties = static_cast<cl_command_queue_properties>(p->value.raw);
             break;
-        case CL_QUEUE_SIZE: // Unimplemented
+        case CL_QUEUE_SIZE:
             queueSize = p->value.size;
+            break;
+#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD        0x404f
+        case CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD:
+            queueRTCUs = p->value.size;
             break;
         default:
             *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
@@ -110,13 +115,18 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
         return (cl_command_queue) 0;
     }
 
+    if (queueRTCUs > amdDevice.info().numRTCUs_) {
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        return (cl_command_queue) 0;
+    }
+
     amd::CommandQueue* queue = NULL;
     {
         amd::ScopedLock  lock(amdContext.lock());
 
         // Check if the app creates a host queue
         if (!(properties & CL_QUEUE_ON_DEVICE)) {
-            queue = new amd::HostQueue(amdContext, amdDevice, properties);
+            queue = new amd::HostQueue(amdContext, amdDevice, properties, queueRTCUs);
         }
         else {
             // Is it a device default queue
