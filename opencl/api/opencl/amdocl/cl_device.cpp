@@ -652,6 +652,10 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo, (
                     minor, param_value_size, param_value, param_value_size_ret);
         }
         CASE(CL_DEVICE_AVAILABLE_ASYNC_QUEUES_AMD, numAsyncQueues_);
+#define CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD  0x404D
+#define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD   0x404E
+        CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD, numRTQueues_);
+        CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD, numRTCUs_);
         default:
             break;
         }
