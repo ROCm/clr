@@ -18,13 +18,13 @@
 namespace amd {
 
 HostQueue::HostQueue(
-    Context& context, Device& device, cl_command_queue_properties properties
+    Context& context, Device& device, cl_command_queue_properties properties, uint queueRTCUs
 #if cl_amd_open_video
         , void* calVideoProperties
 #endif // cl_amd_open_video
     )
         : CommandQueue(context, device, properties, device.info().queueProperties_
-            | CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD)
+            | CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD, queueRTCUs)
 #if cl_amd_open_video
         , calVideoProperties_(calVideoProperties)
 #endif // cl_amd_open_video
@@ -182,14 +182,7 @@ DeviceQueue::create()
     const bool defaultDeviceQueue = properties().test(CL_QUEUE_ON_DEVICE_DEFAULT);
     bool result = false;
 
-    virtualDevice_ = device().createVirtualDevice(
-        properties().test(CL_QUEUE_PROFILING_ENABLE),
-        !InteropQueue
-#if cl_amd_open_video
-        , NULL
-#endif // cl_amd_open_video
-        , size_);
-
+    virtualDevice_ = device().createVirtualDevice(this);
     if (virtualDevice_ != NULL) {
         result = true;
         context().addDeviceQueue(device(), this, defaultDeviceQueue);
