@@ -364,10 +364,11 @@ jitCodeGen(llvm::Module* Composite,
   OclJITEventListener Listener(output);
   llvm::InitializeNativeTargetAsmParser();
   llvm::InitializeNativeTargetAsmPrinter();
-  OCLMCJITMemoryManager* MemMgr = new OCLMCJITMemoryManager();
 #if defined(LEGACY_COMPLIB)
+  OCLMCJITMemoryManager* MemMgr = new OCLMCJITMemoryManager();
   llvm::EngineBuilder builder(Composite);
 #else
+  std::unique_ptr<RTDyldMemoryManager> MemMgr(new OCLMCJITMemoryManager());
   // FIXME: this llvm::Module* actually seems to be got from unique_ptr::get()
   // somewhere, but acl functions use Module* instead of std::unique_ptr<llvm::Module>
   // llvm::EngineBuilder does std::move on this pointer further so Module* can be
@@ -381,7 +382,7 @@ jitCodeGen(llvm::Module* Composite,
   builder.setJITMemoryManager(MemMgr);
   builder.setUseMCJIT(true);
 #else
-  builder.setMCJITMemoryManager(MemMgr);
+  builder.setMCJITMemoryManager(std::move(MemMgr));
 #endif
   // builder.setRelocationModel(llvm::Reloc::PIC_)
   // builder.setCodeModel(llvm::CodeModel::Large)

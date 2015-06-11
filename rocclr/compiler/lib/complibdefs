@@ -71,7 +71,7 @@ ifdef ATI_OS_WINDOWS
         GCXXOPTS += /Ob1
     endif
     
-    GCXXOPTS += -wd4985 -wd4355 -wd4800
+    GCXXOPTS += -wd4985 -wd4355 -wd4800 -wd4291
 
     GCPPFLAGS += $(DEFSWITCH) _SCL_SECURE_NO_WARNINGS
     
