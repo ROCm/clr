@@ -1550,6 +1550,7 @@ bool ClBinary::setElfOut(unsigned char eclass, const char* outFile)
     if ( (elfOut_ == NULL) || elfOut_->hasError() )  {
         if (elfOut_) {
             delete elfOut_;
+            elfOut_ = NULL;
         }
         LogError("Creating ouput ELF object failed");
         return false;
