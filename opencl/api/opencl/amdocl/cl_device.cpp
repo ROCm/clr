@@ -568,47 +568,6 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo, (
     CASE(CL_DEVICE_IMAGE_PITCH_ALIGNMENT, imagePitchAlignment_);
     CASE(CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT, imageBaseAddressAlignment_);
 
-#if cl_amd_open_video
-    CASE(CL_DEVICE_MAX_VIDEO_SESSIONS_AMD, maxVideoSessions_);
-    CASE(CL_DEVICE_NUM_VIDEO_ATTRIBS_AMD, numVideoAttribs_);
-    CASE(CL_DEVICE_NUM_VIDEO_ENC_ATTRIBS_AMD, numVideoEncAttribs_);
-    case CL_DEVICE_VIDEO_ATTRIBS_AMD:
-        {
-            size_t valueSize = sizeof(cl_video_attrib_amd)
-                * as_amd(device)->info().numVideoAttribs_;
-            if (param_value != NULL && param_value_size < valueSize) {
-                return CL_INVALID_VALUE;
-            }
-            *not_null(param_value_size_ret) = valueSize;
-            if (param_value != NULL) {
-                ::memcpy(param_value, as_amd(device)->info().videoAttribs_,
-                    valueSize);
-                if (param_value_size > valueSize) {
-                    ::memset(static_cast<char*>(param_value) + valueSize,
-                        '\0', param_value_size - valueSize);
-                }
-            }
-            return CL_SUCCESS;
-        }
-      case CL_DEVICE_VIDEO_ATTRIBS_ENC_AMD:
-        {
-            size_t valueSize = sizeof(cl_video_attrib_encode_amd) // has profile & format
-                * as_amd(device)->info().numVideoEncAttribs_;
-            if (param_value != NULL && param_value_size < valueSize) {
-                return CL_INVALID_VALUE;
-            }
-            *not_null(param_value_size_ret) = valueSize;
-            if (param_value != NULL) {
-                ::memcpy(param_value, as_amd(device)->info().videoEncAttribs_, valueSize);
-                // Zero out remaining bytes if encode CAP List + profile is < parameter value size.
-                if (param_value_size > valueSize) {
-                    ::memset(static_cast<char*>(param_value) + valueSize,
-                        '\0', param_value_size - valueSize);
-                }
-            }
-            return CL_SUCCESS;
-        }
-#endif //cl_amd_open_video
     default:
         break;
     }
