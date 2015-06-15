@@ -127,10 +127,6 @@ protected:
         size_t  maxTextureSize,             //!< Maximum texture size supported in HW
         uint    numComputeRings,            //!< Number of compute rings
         bool    isVirtualMode               //!< Device is in virtual mode
-#if cl_amd_open_video
-        ,
-        const CALdeviceVideoAttribs& calVideoAttr   //!< -"- video attrib. info
-#endif //cl_amd_open_video
         );
 };
 

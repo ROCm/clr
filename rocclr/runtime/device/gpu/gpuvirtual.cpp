@@ -212,7 +212,6 @@ VirtualGPU::gslOpen(uint nEngines, gslEngineDescriptor *engines)
 void
 VirtualGPU::gslDestroy()
 {
-    closeVideoSession();
     close(dev().getNative());
 }
 
@@ -421,9 +420,6 @@ VirtualGPU::VirtualGPU(
 bool
 VirtualGPU::create(
     bool    profiling
-#if cl_amd_open_video
-    , void* calVideoProperties
-#endif // cl_amd_open_video
     , uint  deviceQueueSize
     )
 {
@@ -440,56 +436,6 @@ VirtualGPU::create(
     // Virtual GPU will have profiling enabled
     state_.profiling_ = profiling;
 
-#if cl_amd_open_video
-    if(calVideoProperties) {
-        cl_video_encode_desc_amd* ptr_ovSessionProperties  =
-            reinterpret_cast<cl_video_encode_desc_amd *>(calVideoProperties);
-        CALvideoProperties* ptr_calVideoProperties =
-            reinterpret_cast<CALvideoProperties *>(ptr_ovSessionProperties->calVideoProperties);
-
-        switch (ptr_calVideoProperties->VideoEngine_name) {
-        case CAL_CONTEXT_VIDEO:
-            engineMask = dev().engines().getMask(GSL_ENGINEID_UVD);
-            num = dev().engines().getRequested(engineMask, engines);
-            // Open GSL context
-            if ((num == 0) || !gslOpen(num, engines)) {
-                return false;
-            }
-            openVideoSession(*ptr_calVideoProperties);
-            break;
-        case CAL_CONTEXT_VIDEO_VCE:
-            engineMask = dev().engines().getMask(GSL_ENGINEID_VCE);
-            num = dev().engines().getRequested(engineMask, engines);
-            // Open GSL context
-            if ((num == 0) || !gslOpen(num, engines)) {
-                return false;
-            }
-            break;
-        default:
-            assert(false && "Unknown video engine!");
-            break;
-        }
-        if (ptr_calVideoProperties->VideoEngine_name == CAL_CONTEXT_VIDEO_VCE) {
-            CALEncodeCreateVCE encodeVCE;
-            createVCE(&encodeVCE, 0);
-
-            CAL_VID_PROFILE_LEVEL encode_profile_level;
-            encode_profile_level.profile = ptr_ovSessionProperties->attrib.profile;
-            encode_profile_level.level = ptr_ovSessionProperties->attrib.level;
-            createEncodeSession(
-                0,
-                (CALencodeMode)ptr_ovSessionProperties->encodeMode,//CAL_VID_encode_AVC_FULL
-                encode_profile_level,
-                (CAL_VID_PICTURE_FORMAT)ptr_ovSessionProperties->attrib.format, //CAL_VID_PICTURE_NV12
-                ptr_ovSessionProperties->image_width,
-                ptr_ovSessionProperties->image_height,
-                ptr_ovSessionProperties->frameRateNumerator,
-                ptr_ovSessionProperties->frameRateDenominator,
-                (CAL_VID_ENCODE_JOB_PRIORITY)ptr_ovSessionProperties->priority); //CAL_VID_ENCODE_JOB_PRIORITY_LEVEL1
-        }
-    }
-    else
-#endif // !cl_amd_open_video
     {
         if (dev().engines().numComputeRings()) {
             uint    idx = index() % dev().engines().numComputeRings();
@@ -2620,158 +2566,6 @@ VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd)
 
     profilingEnd(vcmd);
 }
-
-#if cl_amd_open_video
-void
-VirtualGPU::submitRunVideoProgram(amd::RunVideoProgramCommand& vcmd)
-{
-    // Make sure VirtualGPU has an exclusive access to the resources
-    amd::ScopedLock lock(execution());
-
-    profilingBegin(vcmd);
-
-    switch(vcmd.type()) {
-    case CL_COMMAND_VIDEO_DECODE_AMD: {
-        CALprogramVideoDecode calVideoData;
-        cl_video_decode_data_amd* clVideoData =
-            static_cast<cl_video_decode_data_amd*>(vcmd.videoData());
-
-        //Convert cl_video_program_type_amd to CALvideoType
-        calVideoData.videoType.type = CAL_VIDEO_DECODE;
-        calVideoData.videoType.size = sizeof(CALprogramVideoDecode);
-        // Copy video data from CL to CAL structure
-        calVideoData.videoType.flags = clVideoData->video_type.flags;
-        calVideoData.picture_parameter_1 = clVideoData->picture_parameter_1;
-        calVideoData.picture_parameter_2 = clVideoData->picture_parameter_2;
-        calVideoData.picture_parameter_2_size = clVideoData->picture_parameter_2_size;
-        calVideoData.bitstream_data = clVideoData->bitstream_data;
-        calVideoData.bitstream_data_size = clVideoData->bitstream_data_size;
-        calVideoData.slice_data_control = clVideoData->slice_data_control;
-        calVideoData.slice_data_size = clVideoData->slice_data_control_size;
-
-        gpu::Memory* gpuMem = dev().getGpuMemory(&vcmd.memory());
-
-        GpuEvent event;
-        if (!runProgramVideoDecode(event, gpuMem->gslResource(),
-            reinterpret_cast<CALprogramVideoDecode&>(calVideoData))) {
-            vcmd.setStatus(CL_INVALID_OPERATION);
-            return;
-        }
-        // Mark source and destination as busy
-        gpuMem->setBusy(*this, event);
-
-        // Update the global GPU event and flush the DMA buffer,
-        // so runtime can synchronize UVD and SDMA engines
-        // @todo - do we need to flush here?
-        setGpuEvent(event, true);
-    }
-    break;
-    case CL_COMMAND_VIDEO_ENCODE_AMD: {
-        cl_video_encode_data_amd* clVideoData =
-            static_cast<cl_video_encode_data_amd*>(vcmd.videoData());
-
-        CAL_VID_ENCODE_PARAMETERS_H264 *ppicture_parameter =
-            reinterpret_cast<CAL_VID_ENCODE_PARAMETERS_H264*>(clVideoData->pictureParam2);
-        uint num_of_encode_task_input_buffer =
-            (uint)(clVideoData->pictureParam1Size);
-        CAL_VID_BUFFER_DESCRIPTION *encode_task_input_buffer_list =
-            reinterpret_cast<CAL_VID_BUFFER_DESCRIPTION *>(clVideoData->pictureParam1);
-
-        CAL_VID_BUFFER_DESCRIPTION *encode_task_input_buffer_listbackup =
-            new CAL_VID_BUFFER_DESCRIPTION [num_of_encode_task_input_buffer];
-        if (encode_task_input_buffer_listbackup == NULL) {
-            LogError("calCtxRunProgramVideo unable to allocate memory");
-            vcmd.setStatus(CL_OUT_OF_RESOURCES);
-            return;
-        }
-
-        // Entropy mode
-        cl_mem  buffer_surface;
-        gpu::Memory* gpuMem;
-
-        // Convert cl_mem object to gslMemObject object
-        for (uint i = 0; i < num_of_encode_task_input_buffer; i++) {
-            encode_task_input_buffer_listbackup[i] = encode_task_input_buffer_list[i];
-            buffer_surface = (cl_mem)encode_task_input_buffer_list[i].buffer.pPicture;
-            gpuMem = dev().getGpuMemory(as_amd(buffer_surface));
-            encode_task_input_buffer_listbackup[i].buffer.pPicture = gpuMem->gslResource();
-        }
-
-        gpuMem     = dev().getGpuMemory(&(vcmd.memory()));
-
-        // Encode the picture - call QueryTask to get the results...
-        GpuEvent event;
-        EncodeePicture(event, num_of_encode_task_input_buffer,
-            encode_task_input_buffer_listbackup, ppicture_parameter,
-            &(clVideoData->uiTaskID),
-            gpuMem->gslResource(), 0);
-
-        // Mark source and destination as busy
-        gpuMem->setBusy(*this, event);
-
-        // Update the global GPU event and flush the DMA buffer,
-        // so runtime can synchronize VCE and SDMA engines
-        // @todo - do we need to flush here?
-        setGpuEvent(event, true);
-        delete[] encode_task_input_buffer_listbackup;
-    }
-    break;
-    default:
-        vcmd.setStatus(CL_INVALID_VIDEO_CONFIG_TYPE_AMD);
-        LogError("Invalid video command type");
-        return;
-    }
-    profilingEnd(vcmd);
-}
-
-void
-VirtualGPU::submitSetVideoSession(amd::SetVideoSessionCommand& cmd)
-{
-    switch (cmd.operation()) {
-    case amd::SetVideoSessionCommand::CloseSession:
-        closeVideoEncodeSession(0);
-        destroyVCE(0);
-        break;
-    case amd::SetVideoSessionCommand::ConfigTypePictureControl:
-        getPictureConfig(
-            (CALEncodeGetPictureControlConfig*)(cmd.paramValue()), 0);
-        break;
-    case amd::SetVideoSessionCommand::ConfigTypeRateControl:
-        getRateControlConfig(
-            (CALEncodeGetRateControlConfig*)(cmd.paramValue()), 0);
-        break;
-    case amd::SetVideoSessionCommand::ConfigTypeMotionEstimation:
-        getMotionEstimationConfig(
-            (CALEncodeGetMotionEstimationConfig*)(cmd.paramValue()), 0);
-        break;
-    case amd::SetVideoSessionCommand::ConfigTypeRDO:
-        getRDOConfig(
-            (CALEncodeGetRDOControlConfig*)(cmd.paramValue()), 0);
-        break;
-    case amd::SetVideoSessionCommand::SendEncodeConfig:
-        SendConfig(
-            cmd.numBuffers(), (CAL_VID_CONFIG*)(cmd.paramValue()), 0);
-        break;
-    case amd::SetVideoSessionCommand::GetDeviceCapVCE: {
-        CALEncodeGetDeviceCAP    EncodeCAP;
-        EncodeCAP.num_of_encode_cap = 1;
-        EncodeCAP.encode_caps = (CAL_VID_ENCODE_CAPS *)(cmd.paramValue());
-        getDeviceCAPVCE(0, cmd.numBuffers(), &EncodeCAP, 0);
-    }
-        break;
-    case amd::SetVideoSessionCommand::EncodeQueryTaskDescription:
-        QueryTaskDescription(
-            cmd.numBuffers(), cmd.paramValue2(),
-            (CAL_VID_OUTPUT_DESCRIPTION *)cmd.paramValue(), 0);
-        break;
-    case amd::SetVideoSessionCommand::ReleaseOutputResource:
-        ReleaseOutputResource(cmd.numBuffers(), 0);
-        break;
-    default:
-        break;
-    }
-}
-#endif // cl_amd_open_video
 
 void
 VirtualGPU::submitSignal(amd::SignalCommand & vcmd)

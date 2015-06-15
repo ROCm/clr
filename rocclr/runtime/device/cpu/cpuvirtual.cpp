@@ -555,18 +555,6 @@ VirtualCPU::flush(amd::Command* list, bool wait)
     }
 }
 
-#if cl_amd_open_video
-void VirtualCPU::submitRunVideoProgram(amd::RunVideoProgramCommand& cmd)
-{
-    cmd.setStatus(CL_INVALID_OPERATION);
-}
-
-void VirtualCPU::submitSetVideoSession(amd::SetVideoSessionCommand& cmd)
-{
-    cmd.setStatus(CL_INVALID_OPERATION);
-}
-#endif // cl_amd_open_video
-
 void
 VirtualCPU::submitSignal(amd::SignalCommand & cmd)
 {

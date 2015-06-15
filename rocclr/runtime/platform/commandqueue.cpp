@@ -19,15 +19,9 @@ namespace amd {
 
 HostQueue::HostQueue(
     Context& context, Device& device, cl_command_queue_properties properties, uint queueRTCUs
-#if cl_amd_open_video
-        , void* calVideoProperties
-#endif // cl_amd_open_video
     )
         : CommandQueue(context, device, properties, device.info().queueProperties_
             | CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD, queueRTCUs)
-#if cl_amd_open_video
-        , calVideoProperties_(calVideoProperties)
-#endif // cl_amd_open_video
 {
     if (thread_.state() >= Thread::INITIALIZED) {
         ScopedLock sl(queueLock_);

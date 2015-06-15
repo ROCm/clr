@@ -16,7 +16,6 @@
 
 #include "utils/macros.hpp"
 #include "CL/opencl.h"
-#include "amdocl/cl_open_video_amd.h"
 
 #if defined(CL_VERSION_2_0)
 /* Deprecated in OpenCL 2.0 */

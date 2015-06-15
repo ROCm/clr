@@ -395,10 +395,6 @@ Device::init()
     }
     info.spirVersions_ = "1.2";
 
-#if cl_amd_open_video
-    info.openVideo_ = CL_FALSE;
-#endif // cl_amd_open_video
-
     info.partitionCreateInfo_.type_.value_ = 0;
     info.partitionProperties_.value_ = 0;
     if (info.maxComputeUnits_ > 1) {
