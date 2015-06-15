@@ -27,10 +27,6 @@
 #include <GL/glext.h>
 #include "CL/cl_gl.h"
 
-#ifndef WITH_GPU_DEVICE
-# undef cl_amd_open_video
-#endif // WITH_GPU_DEVICE
-
 /*! \addtogroup API
  *  @{
  *
@@ -510,18 +506,11 @@ clGetExtensionFunctionAddress(const char* func_name)
 #ifdef cl_ext_device_fission
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSubDevicesEXT);
 #endif // cl_ext_device_fission
-#if cl_amd_open_video
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateVideoSessionAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateVideoEncSessionAMD);
-#endif // cl_amd_open_video
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
         break;
     case 'D':
-#if cl_amd_open_video
-        CL_EXTENSION_ENTRYPOINT_CHECK(clDestroyVideoEncSessionAMD);
-#endif // cl_amd_open_video
         break;
     case 'E':
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueBeginPerfCounterAMD);
@@ -536,13 +525,6 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireDX9MediaSurfacesKHR);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseDX9MediaSurfacesKHR);
 #endif //_WIN32
-#if cl_amd_open_video
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueRunVideoProgramAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEncodeGetDeviceCapAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEncodePictureAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEncodeQueryTaskDescriptionAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEncodeReleaseOutputResourceAMD);
-#endif // cl_amd_open_video
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
@@ -554,10 +536,6 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLTextureInfo);
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLContextInfoKHR);
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetThreadTraceInfoAMD);
-#if cl_amd_open_video
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetVideoSessionInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetVideoSessionEncInfoAMD);
-#endif // cl_amd_open_video
 #ifdef _WIN32
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromD3D10KHR);
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromDX9MediaAdapterKHR);
@@ -609,15 +587,8 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
         CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
 #endif // cl_ext_device_fission
-#if cl_amd_open_video
-       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainVideoSessionAMD);
-       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseVideoSessionAMD);
-#endif // cl_amd_open_video
         break;
     case 'S':
-#if cl_amd_open_video
-        CL_EXTENSION_ENTRYPOINT_CHECK(clSendEncodeConfigInfoAMD);
-#endif // cl_amd_open_video
         CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
         break;
     case 'U':

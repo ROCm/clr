@@ -9,8 +9,8 @@
 #include "platform/runtime.hpp"
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
-#include "platform/video_session.hpp"
 #include "thread/thread.hpp"
+#include "platform/commandqueue.hpp"
 
 #include <vector>
 #include <utility>
@@ -213,23 +213,6 @@ public:
 };
 #define AMD_PLATFORM (reinterpret_cast<cl_platform_id>(&amd::PlatformID::Platform))
 
-#if cl_amd_open_video
-cl_int clEnqueueVideoDecodeAMD(
-    VideoSession&               session,
-    cl_video_decode_data_amd*   video_data,
-    cl_uint                     num_events_in_wait_list,
-    const cl_event*             event_wait_list,
-    cl_event*                   event);
-
-cl_int clEnqueueVideoEncodeAMD(
-    VideoSession&               session,
-    cl_video_encode_data_amd*   video_data,
-    cl_uint                     num_events_in_wait_list,
-    const cl_event*             event_wait_list,
-    cl_event*                   event);
-
-#endif // cl_amd_open_video
-
 } // namespace amd
 
 extern "C" {
@@ -284,103 +267,6 @@ clSetCommandQueueProperty(
     cl_bool enable,
     cl_command_queue_properties *old_properties) CL_API_SUFFIX__VERSION_1_0;
 #endif // CL_VERSION_1_1
-
-#if cl_amd_open_video
-extern CL_API_ENTRY cl_video_session_amd CL_API_CALL
-clCreateVideoSessionAMD(
-    cl_context                  context,
-    cl_device_id                device,
-    cl_video_session_flags_amd  flags,
-    cl_video_config_type_amd    config_buffer_type,
-    cl_uint                     config_buffer_size,
-    void*                       config_buffer,
-    cl_int*                     errcode_ret);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clRetainVideoSessionAMD(
-    cl_video_session_amd    video_session);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseVideoSessionAMD(
-    cl_video_session_amd    video_session);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetVideoSessionInfoAMD(
-    cl_video_session_amd        video_session,
-    cl_video_session_info_amd   param_name,
-    size_t                      param_value_size,
-    void*                       param_value,
-    size_t*                     param_value_size_ret);
-
-
-extern CL_API_ENTRY cl_video_session_amd CL_API_CALL
-clCreateVideoEncSessionAMD(
-    cl_context                  context,
-    cl_device_id                device,
-    cl_video_session_flags_amd  flags,
-    cl_video_config_type_amd    config_buffer_type,
-    cl_uint                     config_buffer_size,
-    void*                       config_buffer,
-    cl_int*                     errcode_ret);
-
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clDestroyVideoEncSessionAMD(
-    cl_video_session_amd video_session);
-
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetVideoSessionEncInfoAMD(
-    cl_video_session_amd        video_session,
-    cl_video_session_enc_info_amd   param_name,
-    size_t                      param_value_size,
-    void*                       param_value,
-    size_t*                     param_value_size_ret);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clSendEncodeConfigInfoAMD(
-    cl_video_session_amd        video_session,
-    size_t                      numBuffers,
-    void*                       pConfigBuffers);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueRunVideoProgramAMD(
-    cl_video_session_amd        video_session,
-    void*                       video_data_struct,
-    cl_uint                     num_events_in_wait_list,
-    const cl_event*             event_wait_list,
-    cl_event*                   event);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEncodeGetDeviceCapAMD(
-    cl_device_id                device_id,
-    cl_uint                     encode_mode,
-    cl_uint                     encode_cap_total_size,
-    cl_uint*                    num_encode_cap,
-    void*                       pEncodeCAP);
-
-#if 1
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEncodePictureAMD(
-    cl_video_session_amd        video_session,
-    cl_uint                     number_of_encode_task_input_buffers,
-    void*                       encode_task_input_buffer_list,
-    void*                       picture_parameter,
-    cl_uint*                    pTaskID);
-#endif
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEncodeQueryTaskDescriptionAMD(
-      cl_video_session_amd      session,
-      cl_uint                   num_of_task_description_request,
-      cl_uint*                  num_of_task_description_return,
-      void *                    task_description_list);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEncodeReleaseOutputResourceAMD(
-      cl_video_session_amd      session,
-      cl_uint                   task_id);
-
-#endif // cl_amd_open_video
 
 extern CL_API_ENTRY cl_mem CL_API_CALL
 clConvertImageAMD(
