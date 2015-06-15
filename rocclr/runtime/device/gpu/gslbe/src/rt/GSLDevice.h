@@ -203,7 +203,7 @@ private:
 
     bool             SetupAdapter(int32 &asic_id);
     bool             SetupContext(int32 &asic_id);
-    void             PerformAdapterInitialization_int();
+    void             PerformAdapterInitialization_int(bool initLite);
     void             PerformFullInitialization_int();
 
     void             getAttribs_int(gsl::gsCtx* cs);

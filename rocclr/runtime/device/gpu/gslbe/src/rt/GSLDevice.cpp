@@ -380,7 +380,7 @@ void
 CALGSLDevice::PerformAdapterInitialization() const
 {
     CALGSLDevice* mutable_this = const_cast<CALGSLDevice*>(this);
-    mutable_this->PerformAdapterInitialization_int();
+    mutable_this->PerformAdapterInitialization_int(false);
 }
 
 void
@@ -396,7 +396,7 @@ CALGSLDevice::PerformFullInitialization() const
 bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
-    PerformAdapterInitialization();
+    PerformAdapterInitialization_int(true);
 
     if (m_adp == 0)
     {
@@ -465,7 +465,7 @@ bool
 CALGSLDevice::SetupContext(int32 &asic_id)
 {
     gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID : GSL_ENGINEID_COMPUTE0)
-                                                     : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
+                                                     : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, true);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
     m_revision = temp_cs->getChipRev();
@@ -626,13 +626,13 @@ CALGSLDevice::SetupContext(int32 &asic_id)
 }
 
 void
-CALGSLDevice::PerformAdapterInitialization_int()
+CALGSLDevice::PerformAdapterInitialization_int(bool initLite)
 {
     if (m_adp == 0)
     {
         if (m_usePerVPUAdapterModel)
         {
-            m_adp = gsAdaptor::openAdaptorByIndex<gsl::gsAdaptor>(m_gpuIndex, &m_scfg, &m_dcfg);
+            m_adp = gsAdaptor::openAdaptorByIndex<gsl::gsAdaptor>(m_gpuIndex, &m_scfg, &m_dcfg, initLite);
         }
         else
         {
@@ -648,13 +648,13 @@ CALGSLDevice::PerformFullInitialization_int()
 {
     if (m_adp == 0)
     {
-        PerformAdapterInitialization_int();
+        PerformAdapterInitialization_int(false);
     }
 
     if (m_cs == 0)
     {
         m_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID : GSL_ENGINEID_COMPUTE0)
-                                          : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID);
+                                          : GSL_ENGINEID_3DCOMPUTE0, m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, false);
         m_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
         //

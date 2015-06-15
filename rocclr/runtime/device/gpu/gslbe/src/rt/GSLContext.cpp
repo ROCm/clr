@@ -109,7 +109,7 @@ CALGSLContext::open(
     }
     else
     {
-        m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal);
+        m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal, false);
     }
 
     if (m_cs == 0)
