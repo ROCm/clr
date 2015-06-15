@@ -49,10 +49,6 @@ public:
     virtual void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd);
     virtual void submitThreadTrace(amd::ThreadTraceCommand& cmd);
     virtual void flush(amd::Command* list = NULL, bool wait = false);
-#if cl_amd_open_video
-    virtual void submitRunVideoProgram(amd::RunVideoProgramCommand& cmd);
-    virtual void submitSetVideoSession(amd::SetVideoSessionCommand& cmd);
-#endif // cl_amd_open_video
     virtual void submitSignal(amd::SignalCommand & cmd);
     virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd);
     virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);

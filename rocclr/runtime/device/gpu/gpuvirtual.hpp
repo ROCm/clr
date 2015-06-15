@@ -206,9 +206,6 @@ public:
     VirtualGPU(Device& device);
     bool create(
         bool    profiling
-#if cl_amd_open_video
-        , void* calVideoProperties
-#endif // cl_amd_open_video
         , uint  deviceQueueSize = 0
         );
     ~VirtualGPU();
@@ -242,10 +239,6 @@ public:
     void submitPerfCounter(amd::PerfCounterCommand& vcmd);
     void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd);
     void submitThreadTrace(amd::ThreadTraceCommand& vcmd);
-#if cl_amd_open_video
-    void submitRunVideoProgram(amd::RunVideoProgramCommand& vcmd);
-    void submitSetVideoSession(amd::SetVideoSessionCommand& cmd);
-#endif // cl_amd_open_video
     void submitSignal(amd::SignalCommand & vcmd);
     void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & vcmd);
     virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);

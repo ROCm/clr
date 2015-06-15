@@ -22,7 +22,6 @@
     F(cl_sampler,           Sampler)        \
     F(cl_counter_amd,       Counter)        \
     F(cl_perfcounter_amd,   PerfCounter)    \
-    F(cl_video_session_amd, VideoSession)   \
     F(cl_threadtrace_amd,   ThreadTrace)
 
 // Forward declare ::cl_* types and amd::Class types
@@ -184,8 +183,7 @@ public:
         ObjectTypeProgram     = 7,
         ObjectTypeQueue       = 8,
         ObjectTypeSampler     = 9,
-        ObjectTypeThreadTrace = 10,
-        ObjectTypeVideoSession= 11
+        ObjectTypeThreadTrace = 10
     };
 
     ObjectMetadata& metadata() { return metadata_; }

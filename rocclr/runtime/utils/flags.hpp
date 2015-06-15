@@ -76,8 +76,6 @@ release(bool, ENABLE_CAL_SHUTDOWN, false,                                     \
         "Enable explicit CAL shutdown (for PM4 capture)")                     \
 release(bool, CL_KHR_FP64, true,                                              \
         "Enable/Disable support for double precision")                        \
-release(uint, GPU_OPEN_VIDEO, 0,                                              \
-        "Non-zero value allows to report Open Video extension on GPU")        \
 release(cstring, AMD_OCL_BUILD_OPTIONS, 0,                                    \
         "Set clBuildProgram() and clCompileProgram()'s options (override)")   \
 release(cstring, AMD_OCL_BUILD_OPTIONS_APPEND, 0,                             \

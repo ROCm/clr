@@ -94,9 +94,6 @@ public:
 
     void             getFuncInfo(gslProgramObject func, gslProgramTarget target, CALfuncInfo* pInfo);
 
-    bool             openVideoSession(CALvideoProperties& properties);
-    void             closeVideoSession(void);
-
     void             bindAtomicCounter(uint32 index, gslMemObject obj);
     void             syncAtomicCounter(GpuEvent& event, uint32 index, bool read);
 
@@ -178,10 +175,6 @@ private:
     gslScratchBufferObject  m_scratchBuffers;
     EventQueue              m_eventQueue[AllEngines];
     bool                    m_allowDMA;
-
-    gslVidSession           m_videoSession;
-    gslVideoContext         m_videocontext;
-    gslVidSession           m_EncodevideoSession;
 };
 
 #endif // __GSLContext_h__

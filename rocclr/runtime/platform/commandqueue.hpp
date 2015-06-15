@@ -169,10 +169,6 @@ private:
 protected:
     virtual bool terminate();
 
-#if cl_amd_open_video
-    void* calVideoProperties_;
-#endif // cl_amd_open_video
-
 public:
     /*! \brief Construct a new host queue.
      *
@@ -184,9 +180,6 @@ public:
         Device& device,
         cl_command_queue_properties properties,
         uint    queueRTCUs = 0
-#if cl_amd_open_video
-        , void* calVideoProperties = NULL
-#endif // cl_amd_open_video
     );
 
     //! Returns TRUE if this command queue can accept commands.

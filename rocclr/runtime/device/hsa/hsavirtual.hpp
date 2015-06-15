@@ -87,10 +87,6 @@ public:
 // when integrating HSA and OpenCL branches.
 // TODO: After inegration, whoever is working on VirtualGPU should write
 // actual implemention.
-#if cl_amd_open_video
-    virtual void submitRunVideoProgram(amd::RunVideoProgramCommand &cmd) {}
-    virtual void submitSetVideoSession(amd::SetVideoSessionCommand &cmd) {}
-#endif  // cl_amd_open_video
     virtual void submitSignal(amd::SignalCommand &cmd) {}
     virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand &cmd) {}
     virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);

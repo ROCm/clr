@@ -51,10 +51,6 @@ class Marker;
 class KernelSignature;
 class ThreadTraceCommand;
 class ThreadTraceMemObjectsCommand;
-#if cl_amd_open_video
-class RunVideoProgramCommand;
-class SetVideoSessionCommand;
-#endif // cl_amd_open_video
 class SignalCommand;
 class MakeBuffersResidentCommand;
 class SvmFreeMemoryCommand;
@@ -106,7 +102,6 @@ enum OclExtensions {
 #endif
     ClKhrImage2dFromBuffer,
     ClAmdImage2dFromBufferReadOnly,
-    ClAmdOpenVideo,
     ClAmdSemaphore,
     ClAMDBusAddressableMemory,
     ClAMDC11Atomics,
@@ -149,11 +144,6 @@ OclExtensionsString[] = {
 #endif
     "cl_khr_image2d_from_buffer ",
     "cl_amd_image2d_from_buffer_read_only ",
-#if cl_amd_open_video
-    "cl_amd_open_video ",
-#else
-    "",
-#endif // cl_amd_open_video
     "",
     "cl_amd_bus_addressable_memory ",
     "cl_amd_c11_atomics ",
@@ -497,23 +487,8 @@ struct Info : public amd::EmbeddedObject
     //! of printf calls from a kernel
     size_t  printfBufferSize_;
 
-    //! Indicates whether UVD interop is supported
-    cl_bool openVideo_;
-
     //! Indicates maximum number of supported global atomic counters
     cl_uint maxAtomicCounters_;
-
-#if cl_amd_open_video
-    // Decoder
-    //! Maximum number of simultaneous video sessions/streams
-    cl_uint     maxVideoSessions_;
-    //! List of supported video attributes (profile/format pairs)
-    cl_video_attrib_amd* videoAttribs_;
-    cl_uint     numVideoAttribs_;
-    //Encoder
-    cl_video_attrib_encode_amd* videoEncAttribs_;
-    cl_uint     numVideoEncAttribs_;
-#endif //cl_amd_open_video
 
     //! Returns the topology for the device
     cl_device_topology_amd deviceTopology_;
@@ -1435,10 +1410,6 @@ public:
     virtual void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) = 0;
     virtual void submitThreadTrace(amd::ThreadTraceCommand& cmd) = 0;
     virtual void flush(amd::Command* list = NULL, bool wait = false) = 0;
-#if cl_amd_open_video
-    virtual void submitRunVideoProgram(amd::RunVideoProgramCommand& cmd) = 0;
-    virtual void submitSetVideoSession(amd::SetVideoSessionCommand& cmd) = 0;
-#endif // cl_amd_open_video
     virtual void submitSignal(amd::SignalCommand & cmd) = 0;
     virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd) = 0;
     virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) = 0;

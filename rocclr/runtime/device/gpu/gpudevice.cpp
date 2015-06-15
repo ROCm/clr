@@ -164,9 +164,6 @@ NullDevice::create(CALtarget target)
     gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);
     // Create setting for the offline target
     if ((gpuSettings == NULL) || !gpuSettings->create(calAttr
-#if cl_amd_open_video
-        , calVideoAttr
-#endif //cl_amd_open_video
         )) {
         return false;
     }
@@ -178,9 +175,6 @@ NullDevice::create(CALtarget target)
 
     // Fill the device info structure
     fillDeviceInfo(calAttr, calDevStatus, 4096, 1, true
-#if cl_amd_open_video
-        , getVideoAttribs()
-#endif //cl_amd_open_video
     );
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
@@ -235,10 +229,6 @@ void NullDevice::fillDeviceInfo(
     size_t  maxTextureSize,
     uint    numComputeRings,
     bool    isVirtualMode
-#if cl_amd_open_video
-    ,
-    const CALdeviceVideoAttribs& calVideoAttr
-#endif // cl_amd_open_video
     )
 {
     info_.type_     = CL_DEVICE_TYPE_GPU;
@@ -424,23 +414,6 @@ void NullDevice::fillDeviceInfo(
     info_.queueProperties_           = CL_QUEUE_PROFILING_ENABLE;
 
     info_.platform_ = AMD_PLATFORM;
-
-#if cl_amd_open_video
-    // Open Video support
-    // Decoder
-    info_.openVideo_ = settings().openVideo_;
-    info_.maxVideoSessions_ = calVideoAttr.max_decode_sessions;
-    info_.numVideoAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
-        / sizeof(CALvideoAttrib);
-    info_.videoAttribs_ = const_cast<cl_video_attrib_amd*>(
-        reinterpret_cast<const cl_video_attrib_amd*>(calVideoAttr.video_attribs));
-
-    // Encoder
-    info_.numVideoEncAttribs_ = (calVideoAttr.data_size - 2 * sizeof(CALuint))
-        / sizeof(CALvideoEncAttrib);
-    info_.videoEncAttribs_ = const_cast<cl_video_attrib_encode_amd*>(
-        reinterpret_cast<const cl_video_attrib_encode_amd*>(calVideoAttr.video_enc_attribs));
-#endif // cl_amd_open_video
 
     ::strcpy(info_.name_, hwInfo()->targetName_);
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
@@ -817,9 +790,6 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     settings_ = new gpu::Settings();
     gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);
     if ((gpuSettings == NULL) || !gpuSettings->create(getAttribs()
-#if cl_amd_open_video
-          , getVideoAttribs()
-#endif // cl_amd_open_video
           , appProfile_.reportAsOCL12Device()
         )) {
         return false;
@@ -928,9 +898,6 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     fillDeviceInfo(getAttribs(), getStatus(),
         static_cast<size_t>(getMaxTextureSize()),
         engines().numComputeRings(), heap()->isVirtual()
-#if cl_amd_open_video
-        , getVideoAttribs()
-#endif //cl_amd_open_video
     );
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
@@ -1075,9 +1042,6 @@ Device::initializeHeapResources()
         xferQueue_ = new VirtualGPU(*this);
         if (!(xferQueue_ && xferQueue_->create(
             false
-    #if cl_amd_open_video
-            ,NULL
-    #endif // cl_amd_open_video
             ))) {
             delete xferQueue_;
             xferQueue_ = NULL;
@@ -1100,9 +1064,6 @@ Device::createVirtualDevice(
     bool    interopQueue = false;
     uint    rtCUs  = 0;
     uint    deviceQueueSize = 0;
-#if cl_amd_open_video
-    void*   calVideoProperties = NULL;
-#endif // cl_amd_open_video
 
     if (queue != NULL) {
         profiling = queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
@@ -1130,9 +1091,6 @@ Device::createVirtualDevice(
     VirtualGPU* vgpu = new VirtualGPU(*this);
     if (vgpu && vgpu->create(
         profiling
-#if cl_amd_open_video
-        , calVideoProperties
-#endif // cl_amd_open_video
         , deviceQueueSize
         )) {
         return vgpu;

@@ -65,11 +65,6 @@ Settings::Settings()
 
     libSelector_    = amd::LibraryUndefined;
 
-#if cl_amd_open_video
-    // By default Open Video extension is not yet supported
-    openVideo_ = false;
-#endif // cl_amd_open_video
-
     // Enable workload split by default (for 24 bit arithmetic or timeout)
     workloadSplitSize_  = 1 << GPU_WORKLOAD_SPLIT;
 
@@ -152,9 +147,6 @@ Settings::Settings()
 bool
 Settings::create(
     const CALdeviceattribs& calAttr
-#if cl_amd_open_video
-  , const CALdeviceVideoAttribs& calVideoAttr
-#endif // cl_amd_open_video
   , bool reportAsOCL12Device
 )
 {
@@ -410,15 +402,6 @@ Settings::create(
 
     // Use kernels for blit if appropriate
     blitEngine_     = BlitEngineKernel;
-
-#if cl_amd_open_video
-    // Enable OpenVideo by default if CAL supports it
-    if (calVideoAttr.max_decode_sessions > 0) {
-        openVideo_ = true;
-        if (GPU_OPEN_VIDEO)
-            enableExtension(ClAmdOpenVideo);
-    }
-#endif // cl_amd_open_video
 
     hostMemDirectAccess_ |= HostMemBuffer;
     // HW doesn't support untiled image writes
