@@ -6,7 +6,6 @@
 #define _CL_VERSIONS_HPP_
 
 #include "utils/macros.hpp"
-#include "SCLib_Ver.h"
 
 #ifndef AMD_COMPILER_NAME
 # define AMD_COMPILER_NAME "AMD COMPILER"
