@@ -1661,6 +1661,13 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
     }
 
     dstOffs = startLayer_ * cal()->slice_ * elementSize();
+    uint32_t viewFlags = CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER;
+    if ((cal()->type_ == ImageView) && viewOwner_->mipMapped() &&
+        (cal()->dimension_ == GSL_MOA_TEXTURE_2D)) {
+        // GSL ignores the base surface dimensions if extra flags
+        // are specified
+        viewFlags = 0;
+    }
 
     // Loop through all layers
     for (uint i = startLayer_; i < layers; ++i) {
@@ -1681,7 +1688,7 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
         sliceResource = dev().resAllocView(
             gslResource(), gslSize,
             calOffset, cal()->format_, cal()->channelOrder_, gslDim,
-            0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
+            0, i, viewFlags);
         if (0 == sliceResource) {
             LogError("Map layer. resAllocSliceView failed!");
             return NULL;
@@ -1771,6 +1778,14 @@ Resource::unmapLayers(VirtualGPU* gpu)
 
     srcOffs = startLayer_ * cal()->slice_ * elementSize();
 
+    uint32_t viewFlags = CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER;
+    if ((cal()->type_ == ImageView) && viewOwner_->mipMapped() &&
+        (cal()->dimension_ == GSL_MOA_TEXTURE_2D)) {
+        // GSL ignores the base surface dimensions if extra flags
+        // are specified
+        viewFlags = 0;
+    }
+
     // Check if map is write only
     if (!(mapFlags_ == GSL_MAP_READ_ONLY)) {
         // Loop through all layers
@@ -1792,7 +1807,7 @@ Resource::unmapLayers(VirtualGPU* gpu)
             sliceResource = dev().resAllocView(
                 gslResource(), gslSize,
                 calOffset, cal()->format_, cal()->channelOrder_, gslDim,
-                0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
+                0, i, viewFlags);
             if (0 == sliceResource) {
                 LogError("Unmap layer. resAllocSliceView failed!");
                 return;
