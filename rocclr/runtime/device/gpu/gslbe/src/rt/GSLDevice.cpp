@@ -932,6 +932,9 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offse
         levelobject = m_cs->createSubMemObject(res, GSL_LEVEL, levelParam);
         attribs.bytePitch = static_cast<size_t>(levelobject->getPitch()) *
             (levelobject->getBitsPerElement() / 8);
+        // GSL doesn't detect that the base surface is mipmaped
+        // and doesn't apply the height alignment
+        size.height = levelobject->getHeight();
     }
     if (flags & CAL_RESALLOCSLICEVIEW_LAYER)
     {
