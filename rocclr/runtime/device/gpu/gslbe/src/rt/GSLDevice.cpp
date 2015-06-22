@@ -926,15 +926,14 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offse
 
     gslMemObject mo = NULL, levelobject = res;
 
+    bool levelLayer = false;
     if (flags & CAL_RESALLOCSLICEVIEW_LEVEL)
     {
         const gsSubImageParam levelParam(level);
         levelobject = m_cs->createSubMemObject(res, GSL_LEVEL, levelParam);
         attribs.bytePitch = static_cast<size_t>(levelobject->getPitch()) *
             (levelobject->getBitsPerElement() / 8);
-        // GSL doesn't detect that the base surface is mipmaped
-        // and doesn't apply the height alignment
-        size.height = levelobject->getHeight();
+        levelLayer = true;
     }
     if (flags & CAL_RESALLOCSLICEVIEW_LAYER)
     {
@@ -945,6 +944,12 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offse
             m_cs->destroyMemObject(levelobject);
         }
         levelobject = mo;
+        levelLayer = true;
+    }
+
+    if (levelLayer) {
+        // If level/layer object was created, then don't need an extra view
+        return levelobject;
     }
 
     attribs.type = resType;
