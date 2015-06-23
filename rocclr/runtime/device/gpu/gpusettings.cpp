@@ -321,8 +321,8 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            if (GPU_ENABLE_LARGE_ALLOCATION) {
-                maxAllocSize_   = 16ULL * Gi;
+            if ((GPU_ENABLE_LARGE_ALLOCATION) && (calAttr.isWorkstation)) {
+                maxAllocSize_   = 64ULL * Gi;
             }
             else {
                 maxAllocSize_   = 4048 * Mi;
