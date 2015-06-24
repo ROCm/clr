@@ -43,7 +43,7 @@
 
 #include "llvm/AMDFixupKernelModule.h"
 #include "llvm/AMDResolveLinker.h"
-#include "llvm/AMDPrelinkOpt.h"
+#include "llvm/AMDPrelink.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
@@ -650,7 +650,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
   std::string clp_errmsg;
-  llvm::Module *OnFlyLib = AMDPrelinkOpt(LLVMBinary(), clp_errmsg);
+  llvm::Module *OnFlyLib = AMDPrelink(LLVMBinary(), clp_errmsg);
 
   if (!clp_errmsg.empty()) {
     delete LLVMBinary();
