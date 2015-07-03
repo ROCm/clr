@@ -2072,6 +2072,7 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
             (entry->channelOrder_ == desc->channelOrder_) &&
             (entry->format_ == desc->format_) &&
             (entry->flags_ == desc->flags_) &&
+            (entry->mipLevels_ == desc->mipLevels_) &&
             (entry->isAllocExecute_  == desc->isAllocExecute_)) {
                 ref = it.second;
                 delete it.first;
