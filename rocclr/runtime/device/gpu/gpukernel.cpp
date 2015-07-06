@@ -4133,7 +4133,8 @@ HSAILKernel::loadArguments(
     if (NULL != prog().globalStore()) {
         memList.push_back(prog().globalStore());
     }
-    if (cpuAqlCode_->enable_sgpr_queue_ptr) {
+    if (AMD_HSA_BITS_GET(cpuAqlCode_->kernel_code_properties,
+          AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
         memList.push_back(gpu.hsaQueueMem());
     }
 
