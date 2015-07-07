@@ -239,12 +239,12 @@ VirtualGPU::releaseXferWrite()
 void
 VirtualGPU::addPinnedMem(amd::Memory* mem)
 {
-    if (pinnedMems_.size() > 7) {
-        pinnedMems_.front()->release();
-        pinnedMems_.pop_front();
-    }
-
     if (NULL == findPinnedMem(mem->getHostMem(), mem->getSize())) {
+        if (pinnedMems_.size() > 7) {
+            pinnedMems_.front()->release();
+            pinnedMems_.pop_front();
+        }
+
         // Start operation, since we should release mem object
         flushDMA(getGpuEvent(dev().getGpuMemory(mem))->engineId_);
 
