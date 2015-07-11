@@ -10,6 +10,10 @@
 
 #include <algorithm>
 
+#if defined(_WIN32)
+#include "versionhelpers.h"
+#endif
+
 namespace gpu {
 
 /*! \brief information for adjusting maximum workload time
@@ -321,7 +325,11 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            if ((GPU_ENABLE_LARGE_ALLOCATION) && (calAttr.isWorkstation)) {
+            if ((GPU_ENABLE_LARGE_ALLOCATION) && (calAttr.isWorkstation)
+#if defined(_WIN32)
+                && (!IsWindows10OrGreater())
+#endif
+                ) {
                 maxAllocSize_   = 64ULL * Gi;
             }
             else {
