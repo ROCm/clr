@@ -1032,14 +1032,6 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Enable timing for Kernel build.")
 
-// -kcache-disable
-OPTION(OT_BOOL, \
-       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
-       "kcache-disable", NULL, \
-       DisableKernelCaching, \
-       false, 0, 0, NULL, \
-       "Disable kernel caching functionality.")
-
 // -print-compile-phases
 OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \

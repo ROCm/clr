@@ -4,8 +4,6 @@
 #include "top.hpp"
 #include "frontend.hpp"
 #include "bif/bifbase.hpp"
-#include "cache.hpp"
-#include "../../../sc/Interface/SCLib_Ver.h"
 #include "utils/libUtils.h"
 #include "utils/target_mappings.h"
 #include "utils/options.hpp"
@@ -221,55 +219,7 @@ amdcl::OCLFrontend::compileCommand(const std::string& singleSrc)
   if (!checkFlag(aclutGetCaps(Elf()), capSaveSOURCE)) {
     CL()->clAPI.remSec(CL(), Elf(), aclSOURCE);
   }
-  int ret = 0;
-  KernelCache kc;
-  KernelCacheData clSrc;
-  std::string kernelID;
-  char *llvmIR = NULL;
-  unsigned int llvmIRSize = 0;
-  bool isCacheReady = false, kernelCached = false;
-  bool canUseCache = !Options()->oVariables->DisableKernelCaching;
-  bool kCacheTest = kc.internalKCacheTestSwitch(canUseCache);
-  size_t pos = frontendCmd.find("--error_output");
-  std::string buildOpts = frontendCmd.substr(0, pos);
-  if (canUseCache && Options()->oVariables->OptLevel > 0) {
-    std::string deviceName(getDeviceName(Elf()->target));
-    isCacheReady = kc.cacheInit(SC_BUILD_NUMBER, deviceName);
-    if (!isCacheReady) {
-      kc.saveLogToFile();
-    } else {
-      unsigned int hashVal = 0;
-      const char *name = Options()->getCurrKernelName();
-      kernelID = name ? name : " ";
-      clSrc.data = const_cast<char *>(singleSrc.c_str());
-      clSrc.dataSize = singleSrc.size();
-
-      kernelCached = kc.getCacheEntry((const KernelCacheData *)&clSrc, 1, buildOpts, kernelID, &llvmIR, llvmIRSize, hashVal);
-      if (!kc.ErrorMsg().empty()) {
-        kc.saveLogToFile();
-      }
-    }
-  }
-
-  if (kernelCached) {
-    if (kCacheTest) {
-      fprintf(stdout, "FE to IR stage is cached!\n");
-      fflush(stdout);
-    }
-    source_.assign(llvmIR, llvmIRSize);
-    if (llvmIR) delete[] llvmIR;
-  } else {
-    if (kCacheTest) {
-      fprintf(stdout, "FE to IR stage is not cached!\n");
-      fflush(stdout);
-    }
-    ret = openclFrontEnd(frontendCmd.c_str(), &Source(), NULL);
-
-    // Caching LLVM IR
-    if (isCacheReady && !kc.makeCacheEntry((const KernelCacheData *)&clSrc, 1, buildOpts, kernelID, Source().data(), Source().size())) {
-      kc.saveLogToFile();
-    }
-  }
+  int ret = openclFrontEnd(frontendCmd.c_str(), &Source(), NULL);
 
   // We dump the preprocessed code by invoking clc a second time after the
   // original call, just in case somthing really bad happens in the original
