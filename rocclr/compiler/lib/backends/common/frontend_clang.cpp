@@ -5,6 +5,8 @@
 #include "OpenCLFE.h"
 
 #include "bif/bifbase.hpp"
+#include "cache.hpp"
+#include "../../../sc/Interface/SCLib_Ver.h"
 #include "frontend.hpp"
 #include "os/os.hpp"
 #include "top.hpp"
@@ -158,11 +160,62 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   ret |= 1;
   return ret;
 #else
-  if (!parseOCLSource(ClangOptions, argsToClang, &Source(), &logFromClang)) {
+  KernelCache kc;
+  KernelCacheData clSrc;
+  std::string kernelID, buildOpts;
+  char *llvmIR = NULL;
+  unsigned int llvmIRSize = 0;
+  bool isCacheReady = false, kernelCached = false;
+  bool canUseCache = !Options()->oVariables->DisableKernelCaching;
+  bool kCacheTest = kc.internalKCacheTestSwitch(canUseCache);
+  if (canUseCache && Options()->oVariables->OptLevel > 0) {
+    std::string deviceName(getDeviceName(Elf()->target));
+    isCacheReady = kc.cacheInit(SC_BUILD_NUMBER, deviceName);
+    if (!isCacheReady) {
+      kc.saveLogToFile();
+    } else {
+      unsigned int hashVal = 0;
+      const char *name = Options()->getCurrKernelName();
+      kernelID = name ? name : " ";
+      clSrc.data = const_cast<char *>(src.c_str());
+      clSrc.dataSize = src.size();
+      for (std::vector<const char*>::const_iterator it = argsToClang.begin();
+           it != argsToClang.end(); ++it) {
+        std::string arg(*it);
+        buildOpts += arg;
+      }
+
+      kernelCached = kc.getCacheEntry((const KernelCacheData *)&clSrc, 1,
+        buildOpts, kernelID, &llvmIR, llvmIRSize, hashVal);
+      if (!kc.ErrorMsg().empty()) {
+        kc.saveLogToFile();
+      }
+    }
+  }
+
+  if (kernelCached) {
+    if (kCacheTest) {
+      fprintf(stdout, "FE to IR stage is cached!\n");
+      fflush(stdout);
+    }
+    source_.assign(llvmIR, llvmIRSize);
+    if (llvmIR) delete[] llvmIR;
+  } else {
+    if (kCacheTest) {
+      fprintf(stdout, "FE to IR stage is not cached!\n");
+      fflush(stdout);
+    }
+    if (!parseOCLSource(ClangOptions, argsToClang, &Source(), &logFromClang)) {
       log_ += logFromClang;
       log_ += "\nerror: Clang front-end compilation failed!\n";
       ret |= 1;
       return ret;
+    }
+
+    // Caching LLVM IR
+    if (isCacheReady && !kc.makeCacheEntry((const KernelCacheData *)&clSrc, 1, buildOpts, kernelID, Source().data(), Source().size())) {
+      kc.saveLogToFile();
+    }
   }
 #endif
 

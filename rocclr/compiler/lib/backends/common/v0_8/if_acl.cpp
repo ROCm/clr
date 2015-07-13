@@ -13,6 +13,8 @@
 
 #include "acl.h"
 #include "aclTypes.h"
+#include "cache.hpp"
+#include "../../../../sc/Interface/SCLib_Ver.h"
 #include "compiler_stage.hpp"
 #include "frontend.hpp"
 #include "spir.hpp"
@@ -1106,6 +1108,16 @@ aclCompileInternal(
   acl_error error_code = ACL_SUCCESS;
   aclLoaderData *ald;
 
+  amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);;
+  KernelCache kc;
+  KernelCacheData llvmIR;
+  std::string kernelName;
+  char *IL = NULL;
+  unsigned int ILSize = 0;
+  bool kCacheTest = false;
+  bool isCacheReady = false, kernelCached = false, llvmIRbinPath = true, canUseCache = true;
+  bool bHsailTextInput = false;
+  char *hsail_text_input = NULL;
 
   // Load the frontend to convert from Source to LLVM-IR
   if (useFE) {
@@ -1133,6 +1145,103 @@ aclCompileInternal(
     }
   }
 
+  if (useCG) {
+    ald = cl->cgAPI.init(cl, bin, compile_callback, &error_code);
+#ifdef WITH_TARGET_HSAIL
+    if (isHSAILTarget(bin->target)) {
+      bool hsailBinary = (!useFE && !useLinker && !useOpt);
+      hsail_text_input = getenv("AMD_DEBUG_HSAIL_TEXT_INPUT");
+      // Verify that the internal (blit) kernel is not being compiled
+      if (hsail_text_input && strcmp(hsail_text_input, "") != 0 && !Opts->oVariables->clInternalKernel) {
+        bHsailTextInput = true;
+      }
+      llvmIRbinPath = !bHsailTextInput && !hsailBinary;
+    } else
+#endif
+    cl->cgAPI.fini(ald);
+
+    canUseCache = !Opts->oVariables->DisableKernelCaching;
+    kCacheTest = kc.internalKCacheTestSwitch(canUseCache);
+    if (canUseCache && llvmIRbinPath && Opts->oVariables->OptLevel > 0) {
+      unsigned int hashVal = 0;
+      std::string deviceName(getDeviceName(bin->target));
+      isCacheReady = kc.cacheInit(SC_BUILD_NUMBER, deviceName);
+      if (!isCacheReady) {
+        kc.saveLogToFile();
+      } else {
+        const char *name = Opts->getCurrKernelName();
+        kernelName.assign(name ? name : " ");
+        llvmIR.data = const_cast<char *>(data);
+        llvmIR.dataSize = data_size;
+
+        kernelCached = kc.getCacheEntry((const KernelCacheData *)&llvmIR, 1,
+          Opts->origOptionStr, kernelName, &IL, ILSize, hashVal);
+        if (!kc.ErrorMsg().empty()) {
+          kc.saveLogToFile();
+        }
+      }
+    }
+  }
+  if (kernelCached) {
+    if (kCacheTest) {
+      fprintf(stdout, "IR to IL stage is cached!\n");
+      fflush(stdout);
+    }
+    uint64_t start_time = 0, stop_time = 0;
+    if (Opts->oVariables->EnableBuildTiming) {
+      start_time = amd::Os::timeNanos();
+    }
+
+    ald = cl->cgAPI.init(cl, bin, compile_callback, &error_code);
+    amdcl::CLCodeGen *aclCG = reinterpret_cast<amdcl::CLCodeGen*>(ald);
+#ifdef WITH_TARGET_HSAIL
+    amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
+    if (isHSAILTarget(acl->Elf()->target)) {
+      // from ACL_TYPE_LLVMIR_BINARY
+      aclCG->Source().assign(IL, ILSize);
+      if (IL) delete[] IL;
+
+      if (!acl->insertBRIG(aclCG->Source())) {
+        appendLogToCL(cl, "ERROR: BRIG inserting failed.");
+        error_code = ACL_CODEGEN_ERROR;
+        goto internal_compile_failure;
+      }
+
+      char* dumpFileName = ::getenv("AMD_DEBUG_DUMP_HSAIL_ALL_KERNELS");
+      if (Opts->isDumpFlagSet(amd::option::DUMP_CGIL) || dumpFileName) {
+        acl->dumpHSAIL(acl->disassembleBRIG(), ".hsail");
+      }
+      bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
+      elfBin->setType(ET_EXEC);
+    } else
+#endif
+    {
+      dataStr.assign(IL, ILSize);
+      if (IL) delete[] IL;
+
+      if (checkFlag(aclutGetCaps(aclCG->Elf()), capSaveCG)) {
+        aclCG->CL()->clAPI.insSec(aclCG->CL(), aclCG->Elf(),
+          dataStr.data(), dataStr.size(), aclCODEGEN);
+      }
+    }
+    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) || !Opts->oVariables->BinLLVMIR) {
+      cl->clAPI.remSec(cl, bin, aclLLVMIR);
+    }
+    cl->cgAPI.fini(ald);
+
+    if (Opts->oVariables->EnableBuildTiming) {
+      stop_time = amd::Os::timeNanos();
+      std::stringstream tmp_ss;
+      tmp_ss << "    LLVM time (link+opt+codegen): "
+             << (stop_time - start_time)/1000ULL
+             << "us\n";
+      appendLogToCL(cl, tmp_ss.str());
+    }
+  } else {
+  if (kCacheTest) {
+    fprintf(stdout, "IR to IL stage is not cached!\n");
+    fflush(stdout);
+  }
   // Use the linker to link in the libraries to the current module.
   if (useLinker) {
     ald = cl->linkAPI.init(cl, bin, compile_callback, &error_code);
@@ -1159,12 +1268,6 @@ aclCompileInternal(
 #ifdef WITH_TARGET_HSAIL
     amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
     if (isHSAILTarget(acl->Elf()->target)) {
-      bool bHsailTextInput = false;
-      const char *hsail_text_input = getenv("AMD_DEBUG_HSAIL_TEXT_INPUT");
-      // Verify that the internal (blit) kernel is not being compiled
-      if (hsail_text_input && strcmp(hsail_text_input, "") != 0 && !acl->Options()->oVariables->clInternalKernel) {
-        bHsailTextInput = true;
-      }
       if (!bHsailTextInput) {
         // from ACL_TYPE_HSAIL_BINARY
         if (!useFE && !useLinker && !useOpt) {
@@ -1198,6 +1301,10 @@ aclCompileInternal(
           std::string* cg = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
           if (!cg || error_code != ACL_SUCCESS) {
             goto internal_compile_failure;
+          }
+          // Caching HSAIL
+          if (isCacheReady && !kc.makeCacheEntry((const KernelCacheData *)&llvmIR, 1, Opts->origOptionStr, kernelName, (*cg).c_str(), (*cg).size())) {
+            kc.saveLogToFile();
           }
           if (!acl->insertBRIG(*cg)) {
             appendLogToCL(cl, "ERROR: BRIG inserting failed.");
@@ -1250,7 +1357,7 @@ aclCompileInternal(
         }
       }
       char* dumpFileName = ::getenv("AMD_DEBUG_DUMP_HSAIL_ALL_KERNELS");
-      if (acl->Options()->isDumpFlagSet(amd::option::DUMP_CGIL) || dumpFileName) {
+      if (Opts->isDumpFlagSet(amd::option::DUMP_CGIL) || dumpFileName) {
         acl->dumpHSAIL(acl->disassembleBRIG(), ".hsail");
       }
       bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
@@ -1263,15 +1370,19 @@ aclCompileInternal(
         goto internal_compile_failure;
       }
       dataStr = *cg;
+      // Caching AMDIL
+      if (isCacheReady && !kc.makeCacheEntry((const KernelCacheData *)&llvmIR, 1, Opts->origOptionStr, kernelName, (*cg).c_str(), (*cg).size())) {
+        kc.saveLogToFile();
+      }
     }
-    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) ||
-        !(reinterpret_cast<amdcl::CompilerStage*>(ald))->Options()->oVariables->BinLLVMIR) {
+    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) || !Opts->oVariables->BinLLVMIR) {
       cl->clAPI.remSec(cl, bin, aclLLVMIR);
     }
     cl->cgAPI.fini(ald);
     if (error_code != ACL_SUCCESS) {
       goto internal_compile_failure;
     }
+  }
   }
 
   if (useISA) {
