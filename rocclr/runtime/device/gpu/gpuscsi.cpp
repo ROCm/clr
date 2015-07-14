@@ -14,6 +14,7 @@
 #include <sstream>
 #include <iostream>
 #include <ctime>
+#include "amd_hsa_loader.hpp"
 
 namespace gpu {
 
@@ -137,54 +138,36 @@ NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
 }
 
 bool
-HSAILKernel::aqlCreateHWInfo(const void* shader, size_t shaderSize)
+HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
 {
-    // Copy the shader_isa into a buffer
-    hwMetaData_ = new char[shaderSize];
-    if (hwMetaData_ == NULL) {
+    if (!sym) {
         return false;
     }
-    memcpy(hwMetaData_, shader, shaderSize);
-
-    SC_SI_HWSHADER_CS* siMetaData = reinterpret_cast<SC_SI_HWSHADER_CS*>(hwMetaData_);
-
-    // Code to patch the pointers in the shader object.
-    // Must be preferably done in the compiler library
-    size_t offset = siMetaData->common.uSizeInBytes;
-    if (siMetaData->common.u32PvtDataSizeInBytes > 0) {
-        siMetaData->common.pPvtData =
-            reinterpret_cast<SC_BYTE *>(
-            reinterpret_cast<char *>(siMetaData) + offset);
-        offset += siMetaData->common.u32PvtDataSizeInBytes;
+    uint64_t akc_addr = 0;
+    if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, reinterpret_cast<void*>(&akc_addr))) {
+        return false;
     }
-    if (siMetaData->common.codeLenInByte > 0) {
-        siMetaData->common.hShaderMemHandle =
-            reinterpret_cast<char *>(siMetaData) + offset;
-        offset += siMetaData->common.codeLenInByte;
+    amd_kernel_code_t *akc = reinterpret_cast<amd_kernel_code_t*>(akc_addr);
+    cpuAqlCode_ = akc;
+    if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_SIZE, reinterpret_cast<void*>(&codeSize_))) {
+        return false;
     }
-
-    char* headerBaseAddress =
-        reinterpret_cast<char*>(siMetaData->common.hShaderMemHandle);
-    amd_kernel_code_t* akc = reinterpret_cast<amd_kernel_code_t*>(
-        headerBaseAddress);
-
-    address codeStartAddress = reinterpret_cast<address>(akc);
-    address codeEndAddress = reinterpret_cast<address>(akc) + siMetaData->common.codeLenInByte;
-    codeSize_ = codeEndAddress - codeStartAddress;
-    code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, gpu::ConstBuffer::VectorSize));
-
+    size_t akc_align = 0;
+    if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_ALIGN, reinterpret_cast<void*>(&akc_align))) {
+        return false;
+    }
+    code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, akc_align));
     // Initialize kernel ISA code
-    if ((code_ != NULL) && code_->create(Resource::Shader)) {
+    if (code_ && code_->create(Resource::Shader)) {
         address cpuCodePtr = static_cast<address>(code_->map(NULL, Resource::WriteOnly));
         // Copy only amd_kernel_code_t
-        memcpy(cpuCodePtr, codeStartAddress, codeSize_);
+        memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
         code_->unmap(NULL);
     }
     else {
         LogError("Failed to allocate ISA code!");
         return false;
     }
-    cpuAqlCode_ = akc;
 
     assert((akc->workitem_private_segment_byte_size & 3) == 0 &&
         "Scratch must be DWORD aligned");

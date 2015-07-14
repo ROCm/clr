@@ -7,11 +7,18 @@
 
 #include "device/gpu/gpukernel.hpp"
 #include "device/gpu/gpubinary.hpp"
+#include "amd_hsa_loader.hpp"
 
 namespace amd {
 namespace option {
 class Options;
 } // option
+namespace hsa {
+namespace loader {
+class Executable;
+class Context;
+} // loader
+} // hsa
 } // amd
 
 //! \namespace gpu GPU Device Implementation
@@ -369,6 +376,121 @@ private:
     gpu::Memory*    glbData_;   //!< Global data store
 };
 
+using namespace amd::hsa::loader;
+class HSAILProgram;
+
+class ORCAHSALoaderContext final: public Context {
+public:
+    ORCAHSALoaderContext(HSAILProgram* program): program_(program) {}
+
+    virtual ~ORCAHSALoaderContext() {}
+
+    hsa_isa_t IsaFromName(const char *name) override;
+
+    bool IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) override;
+
+    void* SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
+        hsa_agent_t agent, size_t size, size_t align, bool zero) override;
+
+    bool SegmentCopy(amdgpu_hsa_elf_segment_t segment,
+        hsa_agent_t agent, void* dst, size_t offset,
+        const void* src, size_t size) override;
+
+    void SegmentFree(amdgpu_hsa_elf_segment_t segment,
+        hsa_agent_t agent, void* seg, size_t size = 0) override;
+
+    void* SegmentAddress(amdgpu_hsa_elf_segment_t segment,
+        hsa_agent_t agent, void* seg, size_t offset) override;
+
+    bool ImageExtensionSupported() override { return false; }
+
+    hsa_status_t ImageCreate(
+        hsa_agent_t agent,
+        hsa_access_permission_t image_permission,
+        const hsa_ext_image_descriptor_t *image_descriptor,
+        const void *image_data,
+        hsa_ext_image_t *image_handle) override {
+        // not supported
+        assert(false);
+        return HSA_STATUS_ERROR;
+    }
+
+    hsa_status_t ImageDestroy(
+        hsa_agent_t agent, hsa_ext_image_t image_handle) override {
+        // not supported
+        assert(false);
+        return HSA_STATUS_ERROR;
+    }
+
+    hsa_status_t SamplerCreate(
+        hsa_agent_t agent,
+        const hsa_ext_sampler_descriptor_t *sampler_descriptor,
+        hsa_ext_sampler_t *sampler_handle) override;
+
+    //! All samplers are owned by HSAILProgram and are deleted in its destructor.
+    hsa_status_t SamplerDestroy(
+        hsa_agent_t agent, hsa_ext_sampler_t sampler_handle) override;
+
+private:
+
+    void* AgentGlobalAlloc(
+        hsa_agent_t agent, size_t size, size_t align, bool zero) {
+        return GpuMemAlloc(size, align, zero);
+    }
+
+    bool AgentGlobalCopy(void *dst, size_t offset, const void *src, size_t size) {
+        return GpuMemCopy(dst, offset, src, size);
+    }
+
+    void AgentGlobalFree(void *ptr, size_t size) {
+        GpuMemFree(ptr, size);
+    }
+
+    void* KernelCodeAlloc(
+        hsa_agent_t agent, size_t size, size_t align, bool zero) {
+        return CpuMemAlloc(size, align, zero);
+    }
+
+    bool KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size) {
+        return CpuMemCopy(dst, offset, src, size);
+    }
+
+    void KernelCodeFree(void *ptr, size_t size) {
+        CpuMemFree(ptr, size);
+    }
+
+    void* CpuMemAlloc(size_t size, size_t align, bool zero);
+
+    bool CpuMemCopy(void *dst, size_t offset, const void* src, size_t size);
+
+    void CpuMemFree(void *ptr, size_t size) {
+        amd::Os::alignedFree(ptr);
+    }
+
+    void* GpuMemAlloc(size_t size, size_t align, bool zero);
+
+    bool GpuMemCopy(void *dst, size_t offset, const void *src, size_t size);
+
+    void GpuMemFree(void *ptr, size_t size = 0) {
+        delete reinterpret_cast<gpu::Memory*>(ptr);
+    }
+
+    ORCAHSALoaderContext(const ORCAHSALoaderContext &c);
+
+    ORCAHSALoaderContext& operator=(const ORCAHSALoaderContext &c);
+
+    enum gfx_handle {
+        gfx700 = 700,
+        gfx701 = 701,
+        gfx702 = 702,
+        gfx800 = 800,
+        gfx801 = 801,
+        gfx810 = 810,
+        gfx900 = 900
+    };
+
+    gpu::HSAILProgram* program_;
+};
 
 //! \class HSAIL program
 class HSAILProgram : public device::Program
@@ -385,9 +507,9 @@ public:
     aclBinary* binaryElf() const {
         return static_cast<aclBinary*>(binaryElf_); }
 
-    void setGlobalStore(Memory* mem) { globalStore_ = mem; }
+    void addGlobalStore(Memory* mem) { globalStores_.push_back(mem); }
 
-    const Memory* globalStore() const { return globalStore_; }
+    const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
     //! Return a typecasted GPU device
     gpu::Device& dev()
@@ -497,11 +619,13 @@ private:
     aclBinary*      binaryElf_;     //!< Binary for the new compiler library
     void*           rawBinary_;     //!< Pointer to the raw binary
     aclBinaryOptions binOpts_;      //!< Binary options to create aclBinary
-    Memory*         globalStore_;   //!< Global memory for the program
+    std::vector<Memory*>         globalStores_;   //!< Global memory for the program
     Memory*         kernels_;       //!< Table with kernel object pointers
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
     std::list<Sampler*>   staticSamplers_;    //!< List od internal static samplers
     bool            isNull_;        //!< Null program no memory allocations
+    amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
+    ORCAHSALoaderContext loaderContext_;    //!< Context for HSA Loader
 };
 
 /*@}*/} // namespace gpu

@@ -128,6 +128,13 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "",  "",   4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
+static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
+static const char* Gfx701 = "AMD:AMDGPU:7:0:1";
+static const char* Gfx800 = "AMD:AMDGPU:8:0:0";
+static const char* Gfx801 = "AMD:AMDGPU:8:0:1";
+static const char* Gfx810 = "AMD:AMDGPU:8:1:0";
+static const char* Gfx900 = "AMD:AMDGPU:9:0:0";
+
 // Supported OpenCL versions
 enum OclVersion {
     OpenCL10,

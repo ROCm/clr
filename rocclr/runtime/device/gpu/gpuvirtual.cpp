@@ -3293,10 +3293,10 @@ VirtualGPU::processMemObjectsHSA(
         }
     }
 
-    if (hsaKernel.prog().globalStore() != NULL) {
+    for (gpu::Memory* mem : hsaKernel.prog().globalStores()) {
         const static bool IsReadOnly = false;
         // Validate global store for a dependency in the queue
-        memoryDependency().validate(*this, hsaKernel.prog().globalStore(), IsReadOnly);
+        memoryDependency().validate(*this, mem, IsReadOnly);
     }
 }
 

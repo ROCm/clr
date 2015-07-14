@@ -53,9 +53,6 @@ global:
 #endif
   aclJITObjectImageIterateSymbols;
   aclJITObjectImageGetGlobalsSize;
-#if defined(WITH_TARGET_HSAIL)
-  _aclHsaLoader;
-#endif
 #if defined(OPENCL_MAINLINE)
 local:
   *;

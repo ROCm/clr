@@ -3552,12 +3552,12 @@ HSAILKernel::~HSAILKernel()
 }
 
 bool
-HSAILKernel::init(bool finalize)
+HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
 {
     acl_error error;
-    const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclKernel);
-    assert(sym && "symbol not found");
-    std::string openClKernelName(std::string("&") + sym->str[PRE] + name() + sym->str[POST]);
+    const oclBIFSymbolStruct* bifSym = findBIF30SymStruct(symOpenclKernel);
+    assert(bifSym && "symbol not found");
+    std::string openClKernelName(std::string("&") + bifSym->str[PRE] + name() + bifSym->str[POST]);
     //compile kernel down to ISA
     if (finalize) {
         std::string options(compileOptions_.c_str());
@@ -3578,19 +3578,10 @@ HSAILKernel::init(bool finalize)
             return false;
         }
     }
-    // Get the ISA out
-    size_t  size_isa;
-    void*   shader_isa = NULL;
-    shader_isa = const_cast<void *>(aclGetDeviceBinary(dev().hsaCompiler(),
-        prog().binaryElf(), openClKernelName.c_str(), &size_isa, &error));
-    if (shader_isa == NULL) {
-        LogError("Failed find the ISA");
-        return false;
-    }
 
     // Allocate HW resources for the real program only
     if (!prog().isNull()) {
-        aqlCreateHWInfo(shader_isa, size_isa);
+        aqlCreateHWInfo(sym);
     }
 
     // Pull out metadata from the ELF
@@ -4131,8 +4122,8 @@ HSAILKernel::loadArguments(
 
     memList.push_back(cb);
     memList.push_back(gpuAqlCode());
-    if (NULL != prog().globalStore()) {
-        memList.push_back(prog().globalStore());
+    for (gpu::Memory * mem : prog().globalStores()) {
+        memList.push_back(mem);
     }
     if (AMD_HSA_BITS_GET(cpuAqlCode_->kernel_code_properties,
           AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
