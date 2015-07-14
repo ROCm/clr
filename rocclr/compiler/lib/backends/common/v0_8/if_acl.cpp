@@ -2092,11 +2092,17 @@ if_aclGetDeviceBinary(aclCompiler *cl,
     size_t *size,
     acl_error *error_code)
 {
-  const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symISABinary);
-  assert(symbol && "symbol not found");
-  std::string kernelName = symbol->str[PRE] + std::string(kernel) + symbol->str[POST];
-  return cl->clAPI.extSym(cl, bin, size,
-      symbol->sections[0], kernelName.c_str(), error_code);
+#ifdef WITH_TARGET_HSAIL
+  if (isHSAILTarget(bin->target)) {
+    return cl->clAPI.extSec(cl, bin, size, aclTEXT, error_code);
+  } else
+#endif
+  {
+    const oclBIFSymbolStruct* sym = findBIF30SymStruct(symISABinary);
+    assert(sym && "symbol not found");
+    std::string name = sym->str[PRE] + std::string(kernel) + sym->str[POST];
+    return cl->clAPI.extSym(cl, bin, size, sym->sections[0], name.c_str(), error_code);
+  }
 }
 
 acl_error  ACL_API_ENTRY

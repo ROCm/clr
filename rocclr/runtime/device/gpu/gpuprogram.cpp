@@ -18,135 +18,6 @@
 #include "hsa.h"
 #include "hsa_ext_image.h"
 
-extern "C" bool
-ACL_API_ENTRY _aclHsaLoader(
-    aclCompiler* compiler_handle,
-    aclBinary* bin,
-    void* userData,
-    void (*allocateGPUMemory)(void* userData, size_t size, uint64_t* GPUMemory),
-    bool (*DmaMemoryCopy)(void* userData, uint64_t offset, const void* pSrc, size_t size),
-    void (*getSamplerObjectParam)(uint32_t* size, uint32_t* alignment),
-    void (*initializeSamplerObject)(void* userData, uint64_t offset, bool unnormalize,
-    uint8_t fltr, uint8_t addrU, uint8_t addrV, uint8_t addrW));
-
-bool
-DmaMemoryCopy(void* userData, uint64_t offset, const void* pSrc, size_t size)
-{
-    gpu::HSAILProgram* prog = reinterpret_cast<gpu::HSAILProgram*>(userData);
-    gpu::Memory* mem = const_cast<gpu::Memory*>(prog->globalStore());
-    if (mem == NULL) {
-        return false;
-    }
-    size_t maxCopySize = prog->globalVariableTotalSize();
-    if (maxCopySize >= size) {
-        maxCopySize = size;
-    }
-    amd::Coord3D origin(offset);
-    amd::Coord3D region(maxCopySize);
-    // memcpy mode
-    if (pSrc) {
-        const bool Entire  = true;
-        return prog->dev().xferMgr().writeBuffer(pSrc, *mem, origin, region, Entire);
-    }
-    // memset mode
-    else {
-        char pattern = 0;
-        return prog->dev().xferMgr().fillBuffer(*mem, &pattern, sizeof(pattern),
-        origin, region);
-    }
-}
-
-void
-AllocateGPUMemory(void* userData, size_t size, uint64_t* GPUMemory)
-{
-    gpu::Memory* mem = NULL;
-    void*   cpuPtr = NULL;
-    gpu::HSAILProgram* prog = reinterpret_cast<gpu::HSAILProgram*>(userData);
-
-    mem = new gpu::Memory(prog->dev(), amd::alignUp(size, gpu::ConstBuffer::VectorSize));
-
-    // Initialize constant buffer
-    if ((mem == NULL) || !mem->create(gpu::Resource::Local)) {
-        delete mem;
-        *GPUMemory = 0;
-        return;
-    }
-    *GPUMemory = mem->vmAddress();
-    prog->setGlobalStore(mem);
-    prog->setGlobalVariableTotalSize(size);
-}
-
-void
-GetSamplerObjectParams(uint32_t* size, uint32_t* alignment)
-{
-    if (GPU_DIRECT_SRD) {
-        *size = gpu::HsaSamplerObjectSize;
-        *alignment = gpu::HsaSamplerObjectAlignment;
-    }
-    else {
-        *size = sizeof(uint64_t);
-        *alignment = sizeof(uint64_t);
-    }
-}
-
-void
-InitializeSamplerObject(void* userData, uint64_t offset, bool unnormalize,
-    uint8_t fltr, uint8_t addrU, uint8_t addrV, uint8_t addrW)
-{
-    assert((addrU == addrV && addrV == addrW) && "GSL supports single address mode");
-    hsa_ext_sampler_filter_mode_t filter =
-        static_cast<hsa_ext_sampler_filter_mode_t>(fltr);
-    hsa_ext_sampler_addressing_mode_t boundaryU =
-        static_cast<hsa_ext_sampler_addressing_mode_t>(addrU);
-
-    uint32_t    state = (unnormalize) ?
-        amd::Sampler::StateNormalizedCoordsFalse : amd::Sampler::StateNormalizedCoordsTrue;
-    if (filter == HSA_EXT_SAMPLER_FILTER_MODE_LINEAR) {
-        state |= amd::Sampler::StateFilterNearest;
-    }
-    else if (filter == HSA_EXT_SAMPLER_FILTER_MODE_LINEAR) {
-        state |= amd::Sampler::StateFilterLinear;
-    }
-    switch (boundaryU) {
-    case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE:
-        state |= amd::Sampler::StateAddressClampToEdge;
-        break;
-    case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER:
-        state |= amd::Sampler::StateAddressClamp;
-        break;
-    case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:
-        state |= amd::Sampler::StateAddressRepeat;
-        break;
-    case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT:
-        state |= amd::Sampler::StateAddressMirroredRepeat;
-        break;
-    case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED:
-    default:
-        break;
-    }
-
-    gpu::HSAILProgram* prog = reinterpret_cast<gpu::HSAILProgram*>(userData);
-    if (prog->dev().settings().hsailDirectSRD_) {
-        char *pCPUbuf = new char[gpu::HsaSamplerObjectSize];
-        if (!pCPUbuf) {
-          assert(false);
-          return;
-        }
-        prog->dev().fillHwSampler(state, pCPUbuf, gpu::HsaSamplerObjectSize);
-        DmaMemoryCopy(userData, offset, pCPUbuf, gpu::HsaSamplerObjectSize);
-        delete pCPUbuf;
-    }
-    else {
-        gpu::Sampler* sampler = new gpu::Sampler(prog->dev());
-        if ((sampler != NULL) && sampler->create(state)) {
-            uint64_t    hwSrd = sampler->hwSrd();
-            DmaMemoryCopy(userData, offset, &hwSrd, sizeof(uint64_t));
-            prog->addSampler(sampler);
-        }
-    }
-    return;
-}
-
 namespace gpu {
 
 bool
@@ -1768,10 +1639,11 @@ HSAILProgram::HSAILProgram(Device& device)
     , llvmBinary_()
     , binaryElf_(NULL)
     , rawBinary_(NULL)
-    , globalStore_(NULL)
     , kernels_(NULL)
     , maxScratchRegs_(0)
     , isNull_(false)
+    , executable_(NULL)
+    , loaderContext_(this)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
     binOpts_.struct_size = sizeof(binOpts_);
@@ -1786,10 +1658,11 @@ HSAILProgram::HSAILProgram(NullDevice& device)
     , llvmBinary_()
     , binaryElf_(NULL)
     , rawBinary_(NULL)
-    , globalStore_(NULL)
     , kernels_(NULL)
     , maxScratchRegs_(0)
     , isNull_(true)
+    , executable_(NULL)
+    , loaderContext_(this)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
     binOpts_.struct_size = sizeof(binOpts_);
@@ -1817,7 +1690,9 @@ HSAILProgram::~HSAILProgram()
         }
     }
     releaseClBinary();
-    delete globalStore_;
+    if (executable_ != NULL) {
+        Executable::Destroy(executable_);
+    }
     delete kernels_;
 }
 
@@ -2163,21 +2038,46 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         break;
     }
     case ACL_TYPE_CG:
-        hsaLoad = false;
         break;
     case ACL_TYPE_ISA:
-        hsaLoad = false;
         finalize = false;
         break;
     default:
         buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
         return false;
     }
+    if (finalize) {
+        std::string fin_options(options->origOptionStr + hsailOptions());
+        // Append an option so that we can selectively enable a SCOption on CZ
+        // whenever IOMMUv2 is enabled.
+        if (dev().settings().svmFineGrainSystem_) {
+            fin_options.append(" -sc-xnack-iommu");
+        }
+        errorCode = aclCompile(dev().hsaCompiler(), binaryElf_,
+            fin_options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
+        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+        if (errorCode != ACL_SUCCESS) {
+            LogError("Failed to finalize");
+            return false;
+        }
+    }
     // ACL_TYPE_CG stage is not performed for offline compilation
+    hsa_agent_t agent;
+    agent.handle = 1;
     if (!isNull() && hsaLoad) {
-        if (!_aclHsaLoader(dev().hsaCompiler(), binaryElf_, this, &AllocateGPUMemory,
-            &DmaMemoryCopy, &GetSamplerObjectParams, &InitializeSamplerObject)) {
-            buildLog_ += "Error while BRIG Codegen phase: loading BRIG globals in the ELF \n";
+        executable_ = Executable::Create(HSA_PROFILE_BASE, &loaderContext_, NULL);
+        if (executable_ == NULL) {
+            return false;
+        }
+        size_t size = 0;
+        hsa_code_object_t code_object;
+        code_object.handle = reinterpret_cast<uint64_t>(aclExtractSection(dev().hsaCompiler(), binaryElf_, &size, aclTEXT, &errorCode));
+        if (errorCode != ACL_SUCCESS) {
+            return false;
+        }
+        hsa_status_t status = executable_->LoadCodeObject(agent, code_object, NULL);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error while HSA Loader phase: loading HSA Code Object \n";
             return false;
         }
     }
@@ -2187,7 +2087,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         buildLog_ += "Error while Finalization phase: kernel names query from the ELF failed\n";
         return false;
     }
-    if (kernelNamesSize > 0) {
+    if (!isNull() && kernelNamesSize > 0) {
         char* kernelNames = new char[kernelNamesSize];
         errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
         if (errorCode != ACL_SUCCESS) {
@@ -2202,12 +2102,18 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         for (it; it != vKernels.end(); ++it) {
             std::string kernelName = *it;
             HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions());
-            if (!aKernel->init(finalize)) {
+            kernels()[kernelName] = aKernel;
+            amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", Kernel::openclMangledName(kernelName).c_str(), agent, 0);
+            if (!sym) {
+                LogError("Failed to get kernel ISA code");
+                return false;
+            }
+            if (!aKernel->init(sym, false)) {
+                LogError("Failed to init HSAILKernel");
                 return false;
             }
             buildLog_ += aKernel->buildLog();
             aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-            kernels()[kernelName] = aKernel;
             dynamicParallelism |= aKernel->dynamicParallelism();
             // Find max scratch regs used in the program. It's used for scratch buffer preallocation
             // with dynamic parallelism, since runtime doesn't know which child kernel will be called
@@ -2333,5 +2239,208 @@ HSAILProgram::info(const char * str) {
     return info_;
 }
 
+hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char *name) {
+    hsa_isa_t isa = {0};
+    if (!strcmp(Gfx700, name)) { isa.handle = gfx700; return isa; }
+    if (!strcmp(Gfx701, name)) { isa.handle = gfx701; return isa; }
+    if (!strcmp(Gfx800, name)) { isa.handle = gfx800; return isa; }
+    if (!strcmp(Gfx801, name)) { isa.handle = gfx801; return isa; }
+    if (!strcmp(Gfx810, name)) { isa.handle = gfx810; return isa; }
+    if (!strcmp(Gfx900, name)) { isa.handle = gfx900; return isa; }
+    return isa;
+}
+
+bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
+    switch (program_->dev().hwInfo()->gfxipVersion_) {
+    default:
+        LogError("Unsupported gfxip version");
+        return false;
+    case gfx700:
+    case gfx701:
+    case gfx702:
+        // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
+        return isa.handle == gfx700 || isa.handle == gfx701;
+    case gfx800:
+        if (ED_ATI_CAL_MACHINE_ICELAND_ISA == program_->dev().hwInfo()->machine_ ||
+            ED_ATI_CAL_MACHINE_TONGA_ISA == program_->dev().hwInfo()->machine_ ) {
+            return isa.handle == gfx800;
+        } else {
+            // gfx800 has only sgrps limited and can be loaded on later chips.
+            return isa.handle == gfx800 || isa.handle == gfx801;
+        }
+    case gfx900:
+        return isa.handle == gfx900;
+    }
+}
+
+void* ORCAHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
+    hsa_agent_t agent, size_t size, size_t align, bool zero) {
+    assert(size);
+    assert(align);
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
+        return AgentGlobalAlloc(agent, size, align, zero);
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
+        return KernelCodeAlloc(agent, size, align, zero);
+    default:
+        assert(false); return 0;
+    }
+}
+
+bool ORCAHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment,
+    hsa_agent_t agent, void* dst, size_t offset, const void* src, size_t size) {
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
+      return AgentGlobalCopy(dst, offset, src, size);
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
+      return KernelCodeCopy(dst, offset, src, size);
+    default:
+      assert(false); return false;
+    }
+}
+
+void ORCAHSALoaderContext::SegmentFree(amdgpu_hsa_elf_segment_t segment,
+    hsa_agent_t agent, void* seg, size_t size) {
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT: AgentGlobalFree(seg, size); break;
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT: KernelCodeFree(seg, size); break;
+    default:
+        assert(false); return;
+    }
+}
+
+void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
+    hsa_agent_t agent, void* seg, size_t offset) {
+    assert(seg);
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
+        gpu::Memory *gpuMem = reinterpret_cast<gpu::Memory*>(seg);
+        return reinterpret_cast<void*>(gpuMem->vmAddress());
+    }
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT: return (char*) seg + offset;
+    default:
+        assert(false); return NULL;
+    }
+}
+
+hsa_status_t ORCAHSALoaderContext::SamplerCreate(
+    hsa_agent_t agent,
+    const hsa_ext_sampler_descriptor_t *sampler_descriptor,
+    hsa_ext_sampler_t *sampler_handle) {
+    if (!agent.handle) {
+        return HSA_STATUS_ERROR_INVALID_AGENT;
+    }
+    if (!sampler_descriptor || !sampler_handle) {
+        return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+    uint32_t state = 0;
+    switch (sampler_descriptor->coordinate_mode) {
+        case HSA_EXT_SAMPLER_COORDINATE_MODE_UNNORMALIZED: state = amd::Sampler::StateNormalizedCoordsFalse; break;
+        case HSA_EXT_SAMPLER_COORDINATE_MODE_NORMALIZED:   state = amd::Sampler::StateNormalizedCoordsTrue; break;
+        default:
+            assert(false);
+            return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+    switch (sampler_descriptor->filter_mode) {
+        case HSA_EXT_SAMPLER_FILTER_MODE_NEAREST: state |= amd::Sampler::StateFilterNearest; break;
+        case HSA_EXT_SAMPLER_FILTER_MODE_LINEAR:  state |= amd::Sampler::StateFilterLinear; break;
+        default:
+            assert(false);
+            return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+
+    }
+    switch (sampler_descriptor->address_mode) {
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE:   state |= amd::Sampler::StateAddressClampToEdge; break;
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER: state |= amd::Sampler::StateAddressClamp; break;
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:          state |= amd::Sampler::StateAddressRepeat; break;
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT: state |= amd::Sampler::StateAddressMirroredRepeat; break;
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED:
+        default:
+            assert(false);
+            return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+    assert(!program_->dev().settings().hsailDirectSRD_);
+    gpu::Sampler* sampler = new gpu::Sampler(program_->dev());
+    if (!sampler || !sampler->create(state)) {
+        delete sampler;
+        return HSA_STATUS_ERROR;
+    }
+    program_->addSampler(sampler);
+    sampler_handle->handle = sampler->hwSrd();
+    return HSA_STATUS_SUCCESS;
+}
+
+hsa_status_t ORCAHSALoaderContext::SamplerDestroy(
+    hsa_agent_t agent, hsa_ext_sampler_t sampler_handle) {
+    if (!agent.handle) {
+        return HSA_STATUS_ERROR_INVALID_AGENT;
+    }
+    if (!sampler_handle.handle) {
+        return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+    }
+    return HSA_STATUS_SUCCESS;
+}
+
+void* ORCAHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero) {
+    assert(size);
+    assert(align);
+    assert(sizeof(void*) == 8 || sizeof(void*) == 4);
+    void* ptr = amd::Os::alignedMalloc(size, align);
+    if (zero) {
+        memset(ptr, 0, size);
+    }
+    return ptr;
+}
+
+bool ORCAHSALoaderContext::CpuMemCopy(void *dst, size_t offset, const void* src, size_t size) {
+  if (!dst || !src || dst == src) {
+      return false;
+  }
+  if (0 == size) {
+      return true;
+  }
+  amd::Os::fastMemcpy((char*)dst + offset, src, size);
+  return true;
+}
+
+void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
+    assert(size);
+    assert(align);
+    assert(sizeof(void*) == 8 || sizeof(void*) == 4);
+    gpu::Memory* mem = new gpu::Memory(program_->dev(), amd::alignUp(size, align));
+    if (!mem || !mem->create(gpu::Resource::Local)) {
+        delete mem;
+        return NULL;
+    }
+    assert(program_->dev().xferQueue());
+    if (zero) {
+        char pattern = 0;
+        program_->dev().xferMgr().fillBuffer(*mem, &pattern, sizeof(pattern), amd::Coord3D(0), amd::Coord3D(size));
+    }
+    program_->addGlobalStore(mem);
+    program_->setGlobalVariableTotalSize(program_->globalVariableTotalSize() + size);
+    return mem;
+}
+
+bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src, size_t size) {
+    if (!dst || !src || dst == src) {
+        return false;
+    }
+    if (0 == size) {
+        return true;
+    }
+    assert(program_->dev().xferQueue());
+    gpu::Memory* mem = reinterpret_cast<gpu::Memory*>(dst);
+    return program_->dev().xferMgr().writeBuffer(src, *mem, amd::Coord3D(offset), amd::Coord3D(size), true);
+    return true;
+}
 
 } // namespace gpu

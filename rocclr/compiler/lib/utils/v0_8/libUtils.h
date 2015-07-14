@@ -36,16 +36,19 @@ initElfDeviceCaps(aclBinary *elf);
 void
 appendLogToCL(aclCompiler *cl, const std::string &logStr);
 
-const char *getDeviceName(const aclTargetInfo &Target);
+const char *getDeviceName(const aclTargetInfo &target);
 
 // Select the correct library from the target information.
-amd::LibrarySelector getLibraryType(const aclTargetInfo *Target);
+amd::LibrarySelector getLibraryType(const aclTargetInfo *target);
 
 // get family_enum from the target information.
-unsigned getFamilyEnum(const aclTargetInfo *Target);
+unsigned getFamilyEnum(const aclTargetInfo *target);
 
 // get chip_enum from the target information.
-unsigned getChipEnum(const aclTargetInfo *Target);
+unsigned getChipEnum(const aclTargetInfo *target);
+
+// get isa type name (compute capability) from the target information.
+const std::string &getIsaTypeName(const aclTargetInfo *target);
 
 // Create a copy of an ELF and duplicate all sections/symbols
 aclBinary*

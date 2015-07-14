@@ -940,6 +940,8 @@ public:
     //! Return the build log
     const std::string& buildLog() const { return buildLog_; }
 
+    static std::string openclMangledName(const std::string& name) { return "&__OpenCL_" + name + "_kernel"; }
+
 protected:
     std::string     name_;              //!< kernel name
     WorkGroupInfo   workGroupInfo_;     //!< device kernel info structure

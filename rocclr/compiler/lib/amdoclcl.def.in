@@ -50,6 +50,3 @@ aclJITObjectImageDisassembleKernel
 #endif
 aclJITObjectImageIterateSymbols
 aclJITObjectImageGetGlobalsSize
-#if defined(WITH_TARGET_HSAIL)
-_aclHsaLoader
-#endif

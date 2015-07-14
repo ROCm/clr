@@ -17,6 +17,15 @@
 #include "device/gpu/gpuprintf.hpp"
 #include "device/gpu/gpuwavelimiter.hpp"
 #include "hsa.h"
+
+namespace amd {
+namespace hsa {
+namespace loader {
+class Symbol;
+} // loader
+} // hsa
+} // amd
+
 //! \namespace gpu GPU Device Implementation
 namespace gpu {
 
@@ -847,7 +856,7 @@ public:
 
     //! Initializes the metadata required for this kernel,
     //! finalizes the kernel if needed
-    bool init(bool finalize = true);
+    bool init(amd::hsa::loader::Symbol *sym, bool finalize = false);
 
     //! Returns true if memory is valid for execution
     virtual bool validateMemory(uint idx, amd::Memory* amdMem) const;
@@ -927,10 +936,7 @@ private:
     HSAILKernel& operator=(const HSAILKernel&);
 
     //! Creates AQL kernel HW info
-    bool aqlCreateHWInfo(
-        const void* kernel,     //!< Kernel's packed binary info and code
-        size_t kernelSize       //!< Size of the kernel's packed binary
-        );
+    bool aqlCreateHWInfo(amd::hsa::loader::Symbol *sym);
 
     //! Initializes arguments_ and the abstraction layer kernel parameters
     void initArgList(

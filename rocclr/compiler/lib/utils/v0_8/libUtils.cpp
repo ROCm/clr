@@ -17,6 +17,12 @@ extern aclBinary* constructBinary(size_t struct_version,
     const aclTargetInfo *target,
     const aclBinaryOptions *opts);
 
+static const std::string sgfx700 = "AMD:AMDGPU:7:0:0";
+static const std::string sgfx701 = "AMD:AMDGPU:7:0:1";
+static const std::string sgfx800 = "AMD:AMDGPU:8:0:0";
+static const std::string sgfx801 = "AMD:AMDGPU:8:0:1";
+static const std::string sgfx900 = "AMD:AMDGPU:9:0:0";
+
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
 void
@@ -499,6 +505,54 @@ unsigned getChipEnum(const aclTargetInfo *target)
 {
   const TargetMapping& Mapping = getTargetMapping(*target);
   return Mapping.chip_enum;
+}
+
+/*! Function that returns isa type name (compute capability) from
+ *the TargetMapping table for the specific target device id.
+ */
+const std::string &getIsaTypeName(const aclTargetInfo *target)
+{
+  const TargetMapping& Mapping = getTargetMapping(*target);
+  switch (Mapping.family_enum) {
+    default: return sgfx700;
+    case FAMILY_KV:
+      switch (Mapping.chip_enum) {
+        default: return sgfx700;
+        case KV_SPECTRE_A0:
+        case KV_SPOOKY_A0:
+        case KB_KALINDI_A0:
+        // ???
+        case ML_GODAVARI_A0: return sgfx700;
+      }
+    case FAMILY_CI:
+      switch (Mapping.chip_enum) {
+        default: return sgfx700;
+        case CI_BONAIRE_M_A0:
+        case CI_BONAIRE_M_A1: return sgfx700;
+        case CI_HAWAII_P_A0: return sgfx701;
+        case CI_TIRAN_P_A0:
+        case CI_MAUI_P_A0: return sgfx700;
+      }
+    case FAMILY_VI:
+      switch (Mapping.chip_enum) {
+        default: return sgfx800;
+        case VI_ICELAND_M_A0:
+        case VI_TONGA_P_A0: return sgfx800;
+        case VI_ELLESMERE_P_A0:
+        case VI_BAFFIN_M_A0:
+        case VI_FIJI_P_A0: return sgfx801;
+      }
+    case FAMILY_CZ:
+      switch (Mapping.chip_enum) {
+        default: return sgfx801;
+        case CARRIZO_A0: return sgfx801;
+      }
+    case FAMILY_AI:
+      switch (Mapping.chip_enum) {
+        default: return sgfx900;
+        case AI_GREENLAND_P_A0: return sgfx900;
+      }
+  }
 }
 
 void
