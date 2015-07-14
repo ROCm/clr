@@ -156,7 +156,6 @@ aclDisassemble
 aclInsertKernelStatistics
 aclGetDeviceBinary
 aclDumpBinary
-_aclHsaLoader
 
 #if !defined(OPENCL_MAINLINE)
 #endif

@@ -122,7 +122,6 @@ global:
     aclCompile;
     aclInsertKernelStatistics;
     aclDisassemble;
-    _aclHsaLoader;
 } OPENCL_1.0;
 #endif
 
@@ -207,5 +206,4 @@ global:
     aclInsertKernelStatistics;
     aclGetDeviceBinary;
     aclDumpBinary;
-    _aclHsaLoader;
 };
