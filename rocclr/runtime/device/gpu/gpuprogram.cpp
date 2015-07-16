@@ -2323,7 +2323,7 @@ void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
     case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
     case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
         gpu::Memory *gpuMem = reinterpret_cast<gpu::Memory*>(seg);
-        return reinterpret_cast<void*>(gpuMem->vmAddress());
+        return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
     }
     case AMDGPU_HSA_SEGMENT_CODE_AGENT: return (char*) seg + offset;
     default:
