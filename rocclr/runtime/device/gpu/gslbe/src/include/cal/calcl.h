@@ -164,6 +164,89 @@ typedef enum CALresallocsliceviewflagsRec {
 
 typedef struct CALthreadTraceConfigRec    CALthreadTraceConfig;
 
+//
+// Video Extension
+//
+
+typedef struct CALvideoPropertiesRec    CALvideoProperties;
+typedef struct CALprogramVideoRec       CALprogramVideo;
+typedef struct CALdeviceVideoAttribsRec CALdeviceVideoAttribs;
+typedef struct CALcontextPropertiesRec  CALcontextProperties;
+typedef struct CALprogramVideoDecodeRec CALprogramVideoDecode;
+typedef struct CALprogramVideoEncodeRec CALprogramVideoEncode;
+typedef struct CALvideoAttribRec        CALvideoAttrib;
+typedef struct CALvideoEncAttribRec     CALvideoEncAttrib;
+
+// VCE
+typedef struct CALEncodeCreateVCERec                     CALEncodeCreateVCE;
+typedef struct CALEncodeGetDeviceInfoRec                 CALEncodeGetDeviceInfo;
+typedef struct CALEncodeGetNumberOfModesRec              CALEncodeGetNumberOfModes;
+typedef struct CALEncodeGetModesRec                      CALEncodeGetModes;
+typedef struct CALEncodeGetDeviceCAPRec                  CALEncodeGetDeviceCAP;
+typedef struct CALEncodeSetStateRec                      CALEncodeSetState;
+typedef struct CALEncodeGetPictureControlConfigRec       CALEncodeGetPictureControlConfig;
+typedef struct CALEncodeGetRateControlConfigRec          CALEncodeGetRateControlConfig;
+typedef struct CALEncodeGetMotionEstimationConfigRec     CALEncodeGetMotionEstimationConfig;
+typedef struct CALEncodeGetRDOControlConfigRec           CALEncodeGetRDOControlConfig;
+
+typedef enum
+{
+    CAL_VID_NV12_INTERLEAVED = 1,// NV12
+    CAL_VID_YV12_INTERLEAVED,   // YV12
+} CALdecodeFormat;
+
+typedef enum
+{
+    CAL_VID_H264_BASELINE = 1,  // H.264 bitstream acceleration baseline profile
+    CAL_VID_H264_MAIN,          // H.264 bitstream acceleration main profile
+    CAL_VID_H264_HIGH,          // H.264 bitstream acceleration high profile
+    CAL_VID_VC1_SIMPLE,         // VC-1 bitstream acceleration simple profile
+    CAL_VID_VC1_MAIN,           // VC-1 bitstream acceleration main profile
+    CAL_VID_VC1_ADVANCED,       // VC-1 bitstream acceleration advanced profile
+    CAL_VID_MPEG2_VLD,          // MPEG2 bitstream acceleration VLD profile
+} CALdecodeProfile;
+
+typedef enum
+{
+    CAL_VID_ENC_H264_BASELINE = 1,  // H.264 bitstream acceleration baseline profile
+    CAL_VID_ENC_H264_MAIN,          // H.264 bitstream acceleration main profile
+    CAL_VID_ENC_H264_HIGH,          // H.264 bitstream acceleration high profile
+} CALencodeProfile;
+
+typedef enum
+{
+    CAL_CONTEXT_VIDEO      = 1,
+    CAL_CONTEXT_3DCOMPUTE  = 2,
+    CAL_CONTEXT_COMPUTE0   = 3,
+    CAL_CONTEXT_COMPUTE1   = 4,
+    CAL_CONTEXT_DRMDMA0    = 5,
+    CAL_CONTEXT_DRMDMA1    = 6,
+    CAL_CONTEXT_VIDEO_VCE,
+    CALcontextEnum_FIRST = CAL_CONTEXT_VIDEO,
+    CALcontextEnum_LAST  = CAL_CONTEXT_VIDEO_VCE,
+} CALcontextEnum;
+
+typedef enum
+{
+    CAL_PRIORITY_NEUTRAL = 0,
+    CAL_PRIORITY_HIGH    = 1,
+    CAL_PRIORITY_LOW     = 2
+} CALpriorityEnum;
+
+
+typedef enum
+{
+    CAL_VIDEO_DECODE = 1,
+    CAL_VIDEO_ENCODE = 2
+} CALvideoType;
+
+struct CALcontextPropertiesRec
+{
+    CALcontextEnum name;
+    CALpriorityEnum priority;
+    CALvoid*       data;
+};
+
 struct CALthreadTraceConfigRec
 {
     CALuint          cu;             // target compute unit [cu]
@@ -179,6 +262,377 @@ struct CALthreadTraceConfigRec
     CALboolean       is_user_data;   // indicator if user_data is set
     CALboolean       is_wrapped;     // indicator if the memory buffer should be wrapped around instead of stopping at the end
 };
+
+struct CALvideoPropertiesRec
+{
+    CALuint          size;
+    CALuint          flags;
+    CALdecodeProfile profile;
+    CALdecodeFormat  format;
+    CALuint          width;
+    CALuint          height;
+    CALcontextEnum   VideoEngine_name;
+};
+
+struct CALprogramVideoRec
+{
+    CALuint      size;
+    CALvideoType type;
+    CALuint      flags;
+};
+
+struct CALprogramVideoDecodeRec
+{
+    CALprogramVideo videoType;
+    void*           picture_parameter_1;
+    void*           picture_parameter_2;
+    CALuint         picture_parameter_2_size;
+    void*           bitstream_data;
+    CALuint         bitstream_data_size;
+    void*           slice_data_control;
+    CALuint         slice_data_size;
+};
+
+struct CALprogramVideoEncodeRec
+{
+    CALprogramVideo videoType;
+    CALuint         pictureParam1Size;
+    CALuint         pictureParam2Size;
+    void*           pictureParam1;
+    void*           pictureParam2;
+    CALuint         uiTaskID;
+};
+
+struct CALvideoAttribRec
+{
+    CALdecodeProfile decodeProfile;
+    CALdecodeFormat  decodeFormat;
+};
+
+struct CALvideoEncAttribRec
+{
+    CALencodeProfile encodeProfile;
+    CALdecodeFormat  encodeFormat;  // decode format is the same as the encode format
+};
+
+struct CALdeviceVideoAttribsRec
+{
+    CALuint                 data_size;  // in - size of the struct,
+                                        // out - bytes of data incl. pointed to
+    CALuint                 max_decode_sessions;
+    const CALvideoAttrib*   video_attribs;  // list of supported
+                                            // profile/format pairs
+    const CALvideoEncAttrib*      video_enc_attribs;
+};
+
+
+////// VCE
+struct CALEncodeCreateVCERec
+{
+    CALvoid*    VCEsession;
+};
+
+struct CALEncodeGetDeviceInfoRec
+{
+    unsigned int     device_id;
+    unsigned int     max_encode_stream;
+    unsigned int     encode_cap_list_size;
+};
+
+struct CALEncodeGetNumberOfModesRec
+{
+    unsigned int num_of_encode_Mode;
+};
+
+typedef enum
+{
+    CAL_VID_encode_MODE_NONE      = 0,
+    CAL_VID_encode_AVC_FULL       = 1,
+    CAL_VID_encode_AVC_ENTROPY    = 2,
+} CALencodeMode;
+
+struct CALEncodeGetModesRec
+{
+    CALuint          NumEncodeModesToRetrieve;
+    CALencodeMode *pEncodeModes;
+};
+
+typedef enum
+{
+    CAL_VID_ENCODE_JOB_PRIORITY_NONE   = 0,
+    CAL_VID_ENCODE_JOB_PRIORITY_LEVEL1 = 1,      // Always in normal queue
+    CAL_VID_ENCODE_JOB_PRIORITY_LEVEL2 = 2       // possibly in low-latency queue
+}   CAL_VID_ENCODE_JOB_PRIORITY;
+
+typedef struct _CAL_VID_PROFILE_LEVEL
+{
+    CALuint      profile;        //based on  H.264 standard
+    CALuint      level;
+} CAL_VID_PROFILE_LEVEL;
+
+typedef enum
+{
+    CAL_VID_PICTURE_NONOE  = 0,
+    CAL_VID_PICTURE_NV12   = 1,
+} CAL_VID_PICTURE_FORMAT;
+
+#define CAL_VID_MAX_NUM_PICTURE_FORMATS_H264_AVC      10
+#define CAL_VID_MAX_NUM_PROFILE_LEVELS_H264_AVC    20
+
+typedef struct
+{
+    CALuint                       maxPicSizeInMBs;    // Max picture size in MBs
+    CALuint                       minPicSizeInMBs;     // Min picture size in MBs
+    CALuint                       numPictureFormats;   // number of supported picture formats
+    CAL_VID_PICTURE_FORMAT        supportedPictureFormats[CAL_VID_MAX_NUM_PICTURE_FORMATS_H264_AVC];
+    CALuint                       numProfileLevels;     // number of supported profiles/levels returne;
+    CAL_VID_PROFILE_LEVEL         supportedProfileLevel[CAL_VID_MAX_NUM_PROFILE_LEVELS_H264_AVC];
+    CALuint                       maxBitRate;               // Max bit rate
+    CALuint                       minBitRate;                // min bit rate
+    CAL_VID_ENCODE_JOB_PRIORITY   supportedJobPriority;// supported max level of job priority
+}CAL_VID_ENCODE_CAPS_FULL;
+
+typedef struct
+{
+    CAL_VID_ENCODE_JOB_PRIORITY  supportedJobPriority;// supported max level of job priority
+    CALuint                      maxJobQueueDepth;    // Max job queue depth
+}CAL_VID_ENCODE_CAPS_ENTROPY;
+
+typedef struct
+{
+    CALencodeMode  EncodeModes;
+    CALuint        encode_cap_size;
+    union
+    {
+       CAL_VID_ENCODE_CAPS_FULL      *encode_cap_full;
+       CAL_VID_ENCODE_CAPS_ENTROPY   *encode_cap_entropy;
+       void                          *encode_cap;
+    }  caps;
+} CAL_VID_ENCODE_CAPS;
+
+struct CALEncodeGetDeviceCAPRec
+{
+    CALuint               num_of_encode_cap;
+    CAL_VID_ENCODE_CAPS  *encode_caps;
+};
+
+
+
+typedef enum
+{
+    CAL_VID__ENCODE_STATE_START       = 1,
+    CAL_VID__ENCODE_STATE_PAUSE       = 2,
+    CAL_VID__ENCODE_STATE_RESUME      = 3,
+    CAL_VID__ENCODE_STATE_STOP        = 4
+} CAL_VID_ENCODE_STATE   ;
+
+typedef struct
+{
+    CALuint             size;                                  // structure size
+
+    CALuint             useConstrainedIntraPred;        // binary var - force the use of constrained intra prediction when set to 1
+    //CABAC options
+    CALuint             cabacEnable;                    // Enable CABAC entropy coding
+    CALuint             cabacIDC;                       // cabac_init_id = 0; cabac_init_id = 1; cabac_init_id = 2;
+
+    CALuint             loopFilterDisable;              // binary var - disable loop filter when 1 - enable loop filter when 0 (0 and 1 are the only two supported cases)
+    int                encLFBetaOffset;                // -- move with loop control flag , Loop filter control, slice_beta_offset (N.B. only used if deblocking filter is not disabled, and there is no div2 as defined in the h264 bitstream syntax)
+    int                encLFAlphaC0Offset;             // Loop filter control, slice_alpha_c0_offset (N.B. only used if deblocking filter is not disabled, and there is no div2 as defined in the h264 bitstream syntax)
+    CALuint             encIDRPeriod;
+    CALuint             encIPicPeriod;                  // spacing for I pictures, in case driver doesnt force/select a picture type, this will be used for inference
+    int                encHeaderInsertionSpacing;      // spacing for inserting SPS/PPS. Example usage cases are: 0 for inserting at the beginning of the stream only, 1 for every picture, "GOP size" to align it with GOP boundaries etc. For compliance reasons, these headers might be inserted when SPS/PPS parameters change from the config packages.
+    CALuint             encCropLeftOffset;
+    CALuint             encCropRightOffset;
+    CALuint             encCropTopOffset;
+    CALuint             encCropBottomOffset;
+    CALuint             encNumMBsPerSlice;              // replaces encSliceArgument - Slice control - number of MBs per slice
+    CALuint             encNumSlicesPerFrame;           // Slice control - number of slices in this frame, pre-calculated to avoid DIV operation in firmware
+    CALuint             encForceIntraRefresh;           // 1 serves to load intra refresh bitmap from address force_intra_refresh_bitmap_mc_addr when equal to 1, 3 also loads dirty clean bitmap on top of the intra refresh
+    CALuint             encForceIMBPeriod;              // --- package with intra referesh -Intra MB spacing. if encForceIntraRefresh = 2, shifts intra refreshed MBs by frame number
+    CALuint             encInsertVUIParam;              // insert VUI params in SPS
+    CALuint             encInsertSEIMsg;                // insert SEI messages (bit 0 for buffering period; bit 1 for picture timing; bit 2 for pan scan)
+} CAL_VID_ENCODE_PICTURE_CONTROL;
+
+typedef struct
+{
+    CALuint        size;                       // structure size
+    CALuint        encRateControlMethod;           // rate control method to be used
+    CALuint        encRateControlTargetBitRate;    // target bit rate
+    CALuint        encRateControlPeakBitRate;      // peak bit rate
+    CALuint        encRateControlFrameRateNumerator;  // target frame rate
+    CALuint        encGOPSize;                     // RC GOP size
+    CALuint        encRCOptions;                   // packed bitfield definition for extending options here, bit 0: RC will not generate skipped frames in order to meet GOP target, bits 1-30: up for grabs by the RC alg designer
+    CALuint        encQP_I;                        // I frame quantization only if rate control is disabled
+    CALuint        encQP_P;                        // P frame quantization if rate control is disabled
+    CALuint        encQP_B;                        // B frame quantization if rate control is disabled
+    CALuint        encVBVBufferSize;               // VBV buffer size - this is CPB Size, and the default is per Table A-1 of the spec
+    CALuint        encRateControlFrameRateDenominator;// target frame rate
+} CAL_VID_ENCODE_RATE_CONTROL;
+
+ // mode estimation control options
+typedef struct
+{
+    CALuint              size;                   // structure size
+    CALuint             imeDecimationSearch;            // decimation search is on
+    CALuint             motionEstHalfPixel;             // enable half pel motion estimation
+    CALuint             motionEstQuarterPixel;          // enable quarter pel motion estimation
+    CALuint             disableFavorPMVPoint;           // disable favorization of PMV point
+    CALuint             forceZeroPointCenter;           // force [0,0] point as search window center in IME
+    CALuint             lsmVert;                        //  Luma Search window in MBs, set to either VCE_ENC_SEARCH_WIND_5x3 or VCE_ENC_SEARCH_WIND_9x5 or VCE_ENC_SEARCH_WIND_13x7
+    CALuint             encSearchRangeX;                // forward prediction - Manual limiting of horizontal motion vector range (for performance) in pel resolution
+    CALuint             encSearchRangeY;                // forward prediction - Manual limiting of vertical motion vector range (for performance)
+    CALuint             encSearch1RangeX;               // for 2nd ref - curr IME_SEARCH_SIZE doesn't have SIZE__SEARCH1_X bitfield
+    CALuint             encSearch1RangeY;               // for 2nd ref
+    CALuint             disable16x16Frame1;             // second reference (B frame) limitation
+    CALuint             disableSATD;                    // Disable SATD cost calculation (SAD only)
+    CALuint             enableAMD;                      // FME advanced mode decision
+    CALuint             encDisableSubMode;              // --- FME
+    CALuint             encIMESkipX;                    // sub sample search window horz --- UENC_IME_OPTIONS.SKIP_POINT_X
+    CALuint             encIMESkipY;                    // sub sample search window vert --- UENC_IME_OPTIONS.SKIP_POINT_Y
+    CALuint             encEnImeOverwDisSubm;           // Enable overwriting of fme_disable_submode in IME with enabled mode number equal to ime_overw_dis_subm_no (only 8x8 and above could be enabled)
+    CALuint             encImeOverwDisSubmNo;           // Numbers of mode IME will pick if en_ime_overw_dis_subm equal to 1.
+    CALuint             encIME2SearchRangeX;            // IME Additional Search Window Size: horizontal 1-4 (+- this value left and right from center)
+    CALuint             encIME2SearchRangeY;            // IME Additional Search Window Size: vertical not-limited (+- this value up and down from center)
+                                                //   (+- this value up and down from center)
+} CAL_VID_ENCODE_MOTION_ESTIMATION_CONTROL;                  // structure aligned to 88 bytes
+
+typedef struct
+{
+    CALuint         size;                                  // structure size
+    CALuint         encDisableTbePredIFrame;            // Disable Prediction Modes For I-Frames
+    CALuint         encDisableTbePredPFrame;            // same as above for P frames
+    CALuint         useFmeInterpolY;                    // zero_residues_luma
+    CALuint         useFmeInterpolUV;                   // zero_residues_chroma
+    CALuint         enc16x16CostAdj;                    // --- UENC_FME_MD.M16x16_COST_ADJ
+    CALuint         encSkipCostAdj;                     // --- UENC_FME_MD.MSkip_COST_ADJ
+    unsigned char   encForce16x16skip;
+} CAL_VID_ENCODE_RDO_CONTROL;
+
+
+struct CALEncodeSetStateRec
+{
+    CAL_VID_ENCODE_STATE  encode_states;
+};
+struct CALEncodeGetPictureControlConfigRec
+{
+    CAL_VID_ENCODE_PICTURE_CONTROL  encode_picture_control;
+};
+struct CALEncodeGetRateControlConfigRec
+{
+    CAL_VID_ENCODE_RATE_CONTROL  encode_rate;
+};
+struct CALEncodeGetMotionEstimationConfigRec
+{
+    CAL_VID_ENCODE_MOTION_ESTIMATION_CONTROL  encode_motion_estimation;
+};
+struct CALEncodeGetRDOControlConfigRec
+{
+    CAL_VID_ENCODE_RDO_CONTROL  encode_RDO;
+};
+
+typedef enum
+{
+    CAL_VID_CONFIG_TYPE_NONE               = 0,
+    CAL_VID_CONFIG_TYPE_PICTURECONTROL       = 1,
+    CAL_VID_CONFIG_TYPE_RATECONTROL          = 2,
+    CAL_VID_CONFIG_TYPE_MOTIONSESTIMATION = 3,
+    CAL_VID_CONFIG_TYPE_RDO               = 4
+} CAL_VID_CONFIG_TYPE;
+
+typedef struct
+{
+    CAL_VID_CONFIG_TYPE                    configType;
+    union
+    {
+        CAL_VID_ENCODE_PICTURE_CONTROL*            pPictureControl;
+        CAL_VID_ENCODE_RATE_CONTROL*               pRateControl;
+        CAL_VID_ENCODE_MOTION_ESTIMATION_CONTROL*  pMotionEstimation;
+        CAL_VID_ENCODE_RDO_CONTROL*                pRDO;
+    }    config;
+} CAL_VID_CONFIG;
+
+typedef enum
+{
+    CAL_VID_PICTURE_STRUCTURE_H264_NONE         = 0,
+    CAL_VID_PICTURE_STRUCTURE_H264_FRAME        = 1,
+    CAL_VID_PICTURE_STRUCTURE_H264_TOP_FIELD    = 2,
+    CAL_VID_PICTURE_STRUCTURE_H264_BOTTOM_FIELD = 3
+} CAL_VID_PICTURE_STRUCTURE_H264;
+
+// Used to force picture type
+typedef enum _CU_VID_PICTURE_TYPE_H264
+{
+    CAL_VID_PICTURE_TYPE_H264_NONE                  = 0,
+    CAL_VID_PICTURE_TYPE_H264_SKIP                  = 1,
+    CAL_VID_PICTURE_TYPE_H264_IDR                   = 2,
+    CAL_VID_PICTURE_TYPE_H264_I                     = 3,
+    CAL_VID_PICTURE_TYPE_H264_P                     = 4
+} CAL_VID_PICTURE_TYPE_H264;
+
+typedef union _CAL_VID_ENCODE_PARAMETERS_H264_FLAGS
+{
+    struct
+    {
+        // enable/disable features
+        unsigned int                            reserved    : 32;   // reserved fields must be set to zero
+    }                                           flags;
+    unsigned int                                value;
+}CAL_VID_ENCODE_PARAMETERS_H264_FLAGS;
+
+typedef struct
+{
+    CALuint                              size;  // structure size. Must be always set to the size of AVE_ENCODE_PARAMETERS_H264.
+
+    CAL_VID_ENCODE_PARAMETERS_H264_FLAGS flags; // enable/disable any supported features
+
+    CALboolean                           insertSPS;
+    CAL_VID_PICTURE_STRUCTURE_H264       pictureStructure;
+    CALboolean                           forceRefreshMap;
+    CALuint                              forceIMBPeriod;
+    CAL_VID_PICTURE_TYPE_H264            forcePicType;
+} CAL_VID_ENCODE_PARAMETERS_H264;
+
+typedef enum
+{
+    CAL_VID_BUFFER_TYPE_NONE                            = 0,
+    CAL_VID_BUFFER_TYPE_ENCODE_PARAM_H264               = 1,
+    CAL_VID_BUFFER_TYPE_PICTURE                         = 2,
+    CAL_VID_BUFFER_TYPE_SLICE_HEADER                    = 3,
+    CAL_VID_BUFFER_TYPE_SLICE                           = 4,
+    CAL_VID_BUFFER_TYPE_RECONSTRUCTED_PICTURE_OUTPUT    = 5
+} CAL_VID_BUFFER_TYPE;
+
+#define CAL_VID_SURFACE_HANDLE                      void*
+
+typedef struct
+{
+    CAL_VID_BUFFER_TYPE           bufferType;
+    union
+    {
+        CAL_VID_ENCODE_PARAMETERS_H264*  pEncodeParamH264;
+        CAL_VID_SURFACE_HANDLE           pPicture;
+        CAL_VID_SURFACE_HANDLE           pSliceHeader;
+        CAL_VID_SURFACE_HANDLE           pSlice;
+        CAL_VID_SURFACE_HANDLE           pReconstructedPictureOutput;
+
+    }   buffer;
+} CAL_VID_BUFFER_DESCRIPTION;
+
+typedef enum
+{
+    CAL_VID_TASK_STATUS_NONE        = 0,
+    CAL_VID_TASK_STATUS_COMPLETE    = 1,    // encoding task has finished successfully.
+    CAL_VID_TASK_STATUS_FAILED      = 2     // encoding task has finished but failed.
+} CAL_VID_TASK_STATUS;
+
+typedef struct
+{
+    CALuint             size;                   // structure size
+    CALuint             taskID;                 // task ID
+    CAL_VID_TASK_STATUS status;                 // Task status. May be duplicated if current task has multiple output blocks.
+    CALuint             size_of_bitstream_data; // data size of the output block
+    void*               bitstream_data;         // read pointer the top portion of the generated bitstream data for the current task
+} CAL_VID_OUTPUT_DESCRIPTION;
 
 typedef enum CALmemcopyflagsEnum
 {
