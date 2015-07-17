@@ -97,7 +97,6 @@ public:
 
     uint32           getMaxTextureSize() const;
     const CALdeviceattribs& getAttribs() const { return m_attribs; }
-    const CALdeviceVideoAttribs& getVideoAttribs() const { return m_videoAttribs; }
     const CALdevicestatus& getStatus() const {return m_deviceStatus; }
     void             getMemInfo(gslMemInfo* memInfo) const;
 
@@ -207,12 +206,10 @@ private:
     void             PerformFullInitialization_int();
 
     void             getAttribs_int(gsl::gsCtx* cs);
-    void             getVideoAttribs_int(gslVideoContext* vsHandle);
     void             getStatus_int(gsl::gsCtx* cs);
     bool             ResolveAperture(const gslMemObjectAttribTiling tiling) const;
 
     CALdeviceattribs      m_attribs;
-    CALdeviceVideoAttribs m_videoAttribs;
     CALdevicestatus       m_deviceStatus;
     gslTextureResourceObject m_textureResource;
     gslSamplerObject      m_textureSampler;
