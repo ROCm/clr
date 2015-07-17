@@ -31,7 +31,6 @@ void CALGSLDevice::Initialize()
     m_vpucount = 1;
     m_srcDRMDMAMem = NULL ;
     m_dstDRMDMAMem = NULL ;
-    m_videoAttribs.video_attribs = NULL;
 
     m_nativeDisplayHandle = NULL;
     m_deviceMode = GSL_DEVICE_MODE_GFX;
@@ -57,8 +56,6 @@ CALGSLDevice::~CALGSLDevice()
     assert(m_adp == 0);    /// CALBE client must call close explicitly. Check that here
 
     delete gslDeviceOps_;
-
-    delete [] m_videoAttribs.video_attribs;
 
     switch(m_deviceMode)
     {
@@ -159,34 +156,6 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.numOfVpu = m_adp->pAsicInfo->numberOfVPU;
     m_attribs.isOpenCL200Device = m_adp->pAsicInfo->bIsOpen2Device;
     m_attribs.isSVMFineGrainSystem = m_adp->pAsicInfo->svmFineGrainSystem;
-}
-
-void
-CALGSLDevice::getVideoAttribs_int(gslVideoContext* vsHandle)
-{
-    gslVidGetInfoStruc vidInfo = {0};
-    gslVidGetInfo(vsHandle, &vidInfo);
-
-    if (vidInfo.num_attribs > 0)
-    {
-        CALvideoAttrib * video_attribs = new CALvideoAttrib[vidInfo.num_attribs];
-        for (uint32 i=0; i < vidInfo.num_attribs; i++)
-        {
-            video_attribs[i].decodeProfile  = static_cast<CALdecodeProfile>(vidInfo.video_attribs[i].decodeProfile);
-            video_attribs[i].decodeFormat  = static_cast<CALdecodeFormat>(vidInfo.video_attribs[i].decodeFormat);
-        }
-
-        m_videoAttribs.max_decode_sessions = vidInfo.num_attribs ;
-        m_videoAttribs.video_attribs = video_attribs;
-    }
-    else
-    {
-        m_videoAttribs.max_decode_sessions = 0;
-        m_videoAttribs.video_attribs = NULL;
-    }
-
-    m_videoAttribs.data_size = sizeof(CALdeviceVideoAttribs) + sizeof(CALvideoAttrib) * vidInfo.num_attribs;
-
 }
 
 void
@@ -607,15 +576,8 @@ CALGSLDevice::SetupContext(int32 &asic_id)
         return false;
     }
 
-    gslVidInit();
-
     //cache device details
-    gslVideoContext temp_vid_context;
-    temp_vid_context.m_gsCtx = temp_cs;
-    temp_vid_context.VideoEngine_name = GSL_VID_CONTEXT_VIDEO;
-
     getAttribs_int(temp_cs);
-    getVideoAttribs_int(&temp_vid_context);
     getStatus_int(temp_cs);
 
     m_vmMode = temp_cs->getVMMode();

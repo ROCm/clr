@@ -43,7 +43,6 @@ public:
     void             setProgram(gslProgramObject func);
     void             setWavesPerSH(gslProgramObject func, uint32 wavesPerSH)const;
     bool             runProgramGrid(GpuEvent& event, const ProgramGrid* pProgramGrid, const gslMemObject* mems, uint32 numMems);
-    bool             runProgramVideoDecode(GpuEvent& event, gslMemObject mo, const CALprogramVideoDecode& decode);
     void             runAqlDispatch(GpuEvent& event, const void* aqlPacket, const gslMemObject* mems,
                         uint32 numMems, gslMemObject scratch, uint32 scratchOffset, const void* cpuKernelCode,
                         uint64 hsaQueueVA, const void* kernelInfo);
@@ -99,27 +98,6 @@ public:
 
     void             setGWSResource(uint32 index, uint32 value);
 
-    void             createVCE(CALEncodeCreateVCE* pEncodeVCE, CALuint flags);
-    void             destroyVCE(CALuint flags);
-    void             getDeviceInfoVCE(CALuint *num_device, CALEncodeGetDeviceInfo* pEncodeDeviceInfo, CALuint flags);
-    void             getNumberOfModesVCE(CALEncodeGetNumberOfModes* pEncodeNumberOfModes, CALuint flags);
-    void             getModesVCE(CALuint device_id, CALuint NumEncodeModesToRetrieve, CALEncodeGetModes* pEncodeMode, CALuint flags);
-    void             getDeviceCAPVCE(CALuint device_id, CALuint encode_cap_total_size, CALEncodeGetDeviceCAP *pEncodeCAP, CALuint flags);
-
-    void             createEncodeSession(CALuint device_id, CALencodeMode encode_mode, CAL_VID_PROFILE_LEVEL encode_profile_level,
-                              CAL_VID_PICTURE_FORMAT encode_formatm, CALuint encode_width, CALuint encode_height,
-                              CALuint frameRateNum, CALuint frameRateDenom, CAL_VID_ENCODE_JOB_PRIORITY  encode_priority_level);
-    void             closeVideoEncodeSession(CALuint device_id);
-
-    void             setState(CALEncodeSetState state, CALuint flags);
-    void             getPictureConfig(CALEncodeGetPictureControlConfig *pPictureControlConfig, CALuint flags);
-    void             getRateControlConfig(CALEncodeGetRateControlConfig *pRateControConfig, CALuint flags);
-    void             getMotionEstimationConfig(CALEncodeGetMotionEstimationConfig *pMotionEstimationConfig, CALuint flags);
-    void             getRDOConfig(CALEncodeGetRDOControlConfig *pRODConfig, CALuint flags);
-
-    void             SendConfig(CALuint num_of_config_buffers, CAL_VID_CONFIG *pConfigBuffers, CALuint flags);
-    void             EncodeePicture(GpuEvent& event, CALuint num_of_encode_task_input_buffer, CAL_VID_BUFFER_DESCRIPTION *encode_task_input_buffer_list, void *picture_parameter, CALuint *pTaskID, gslMemObject input_NV12_surface, CALuint flags);
-    void             QueryTaskDescription(CALuint num_of_task_description_request, CALuint *num_of_task_description_return, CAL_VID_OUTPUT_DESCRIPTION *task_description_list, CALuint flags);
     void             ReleaseOutputResource(CALuint taskID, CALuint flags);
     bool             moduleLoad(CALimage image, gslProgramObject* func, gslMemObject* constants, CALUavMask* uavMask);
     bool             WaitSignal(gslMemObject mem, CALuint value);
