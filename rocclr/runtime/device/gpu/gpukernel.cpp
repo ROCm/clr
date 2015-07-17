@@ -3993,7 +3993,7 @@ HSAILKernel::loadArguments(
                 mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
                 if (mem == NULL) {
                     LogError( "The kernel image argument isn't an image object!");
-                    return false;
+                    return nullptr;
                 }
                 image = static_cast<Image*>(dev().getGpuMemory(mem));
             }
@@ -4063,8 +4063,8 @@ HSAILKernel::loadArguments(
             }
             else {
                 if (!gpu.createVirtualQueue(queue->size())) {
-                    LogError( "Virtual queue creaiton failed!");
-                    return false;
+                    LogError("Virtual queue creation failed!");
+                    return nullptr;
                 }
                 vmQueue = gpu.vQueue()->vmAddress();
             }

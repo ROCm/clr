@@ -10,7 +10,10 @@
 #include "llvm/Analysis/Passes.h"
 namespace llvm {
   class Module;
-  class FunctionPassManager;
+
+  namespace legacy {
+    class FunctionPassManager;
+  }
 }; // llvm namespace
 namespace amdcl
 {
