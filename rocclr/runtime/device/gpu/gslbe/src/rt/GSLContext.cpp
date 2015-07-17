@@ -29,14 +29,6 @@ CALGSLContext::CALGSLContext()
 
     COMPILE_TIME_ASSERT((int)MAX_OUTPUTS <= (int)GSL_MAX_OUTPUT);
 
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_VIDEO     == (int)CAL_CONTEXT_VIDEO);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_3DCOMPUTE == (int)CAL_CONTEXT_3DCOMPUTE);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_COMPUTE0  == (int)CAL_CONTEXT_COMPUTE0);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_COMPUTE1  == (int)CAL_CONTEXT_COMPUTE1);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_DRMDMA0   == (int)CAL_CONTEXT_DRMDMA0);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_DRMDMA1   == (int)CAL_CONTEXT_DRMDMA1);
-    COMPILE_TIME_ASSERT((int)GSL_VID_CONTEXT_VIDEO_VCE == (int)CAL_CONTEXT_VIDEO_VCE);
-
     memset(m_textureSamplers, 0, sizeof(m_textureSamplers));
     memset(m_textureResources, 0, sizeof(m_textureResources));
     memset(m_uavResources, 0, sizeof(m_uavResources));
@@ -414,25 +406,6 @@ CALGSLContext::runProgramGrid(GpuEvent& event, const ProgramGrid* pProgramGrid, 
     m_rs->Dispatch(m_cs, &pProgramGrid->gridBlock, &pProgramGrid->partialGridBlock,
         &pProgramGrid->gridSize, pProgramGrid->localSize, mems, numMems);
     eventEnd(MainEngine, event);
-    return true;
-}
-
-bool
-CALGSLContext::runProgramVideoDecode(GpuEvent& event, gslMemObject mo, const CALprogramVideoDecode& decode)
-{
-    gslVidDecodeData data;
-    data.decode_output       = mo;
-    data.picture_parameter_1      = decode.picture_parameter_1;
-    data.picture_parameter_2      = decode.picture_parameter_2;
-    data.picture_parameter_2_size = decode.picture_parameter_2_size;
-    data.bitstream_data           = decode.bitstream_data;
-    data.bitstream_data_size      = decode.bitstream_data_size;
-    data.slice_data_control       = decode.slice_data_control;
-    data.slice_data_size          = decode.slice_data_size;
-
-    eventBegin(MainEngine);
-    eventEnd(MainEngine, event);
-
     return true;
 }
 
