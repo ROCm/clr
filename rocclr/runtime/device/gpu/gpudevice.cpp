@@ -119,6 +119,7 @@ bool
 NullDevice::create(CALtarget target)
 {
     CALdeviceattribs      calAttr = {0};
+    CALdeviceVideoAttribs calVideoAttr = {0};
     CALdevicestatus       calDevStatus = {0};
 
     online_ = false;
