@@ -131,6 +131,7 @@ CALGSLContext::open(
 
     m_cs->setRenderState(m_rs);
     m_rs->setCurrentFrameBufferObject(m_cs, m_fb);
+    m_cs->createSubAllocDesc();
 
     //
     //
@@ -265,6 +266,7 @@ CALGSLContext::close(gsl::gsAdaptor* native)
 
     m_cs->destroyFrameBuffer(m_fb);
     m_cs->destroyRenderState(m_rs);
+    m_cs->destroySubAllocDesc();
 
     m_rs = 0;
     m_fb = 0;
@@ -319,7 +321,7 @@ CALGSLContext::setConstantBuffer(uint32 physUnit, gslMemObject mem, uint32 offse
         m_rs->setConstantBufferObject(GSL_COMPUTE_PROGRAM, m_constantBuffers[physUnit], physUnit);
     }
 
-    return m_constantBuffers[physUnit]->SetMemory(m_cs, mem, static_cast<mcoffset>(offset), (uint32)size);
+    return m_constantBuffers[physUnit]->bindMemory(m_cs, mem, static_cast<mcoffset>(offset), (uint32)size);
 }
 
 bool

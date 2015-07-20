@@ -331,6 +331,7 @@ CALGSLDevice::close()
 
         m_cs->setRenderState(0);
         m_cs->destroyRenderState(m_rs);
+        m_cs->destroySubAllocDesc();
         m_rs = 0;
 
         m_adp->deleteContext(m_cs);
@@ -630,6 +631,8 @@ CALGSLDevice::PerformFullInitialization_int()
         m_cs->setRenderState(m_rs);
 
         m_cs->Flush();
+
+        m_cs->createSubAllocDesc();
 
         m_mapQuery = m_cs->createQuery(GSL_SYNC_ATI);
         m_mapDMAQuery = m_cs->createQuery(GSL_DRMDMA_SYNC_ATI);
