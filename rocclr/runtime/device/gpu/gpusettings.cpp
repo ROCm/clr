@@ -11,7 +11,7 @@
 #include <algorithm>
 
 #if defined(_WIN32)
-#include "versionhelpers.h"
+#include "VersionHelpers.h"
 #endif
 
 namespace gpu {
