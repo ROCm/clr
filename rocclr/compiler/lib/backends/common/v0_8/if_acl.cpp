@@ -1056,36 +1056,6 @@ HSAILFEToISA(
   return BEAsmPhase(ald, source, data_size);
 }
 
-static char * readFile(const char *source, size_t& size) {
-  FILE *fp = ::fopen( source, "rb" );
-  unsigned int length;
-  size_t offset = 0;
-  char *ptr;
-
-  if (!fp) {
-    return NULL;
-  }
-
-  // obtain file size.
-  ::fseek (fp , 0 , SEEK_END);
-  length = ::ftell (fp);
-  ::rewind (fp);
-
-  ptr = new char[offset + length + 1];
-
-  if (length != fread(&ptr[offset], 1, length, fp))
-  {
-    delete [] ptr;
-    return NULL;
-  }
-
-  ptr[offset + length] = '\0';
-  size = offset + length;
-  ::fclose(fp);
-
-  return ptr;
-}
-
 static acl_error
 aclCompileInternal(
     aclCompiler *cl,
