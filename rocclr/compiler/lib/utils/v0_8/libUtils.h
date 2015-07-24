@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <iterator>
+#include <cstdlib>
 #include "library.hpp"
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -216,6 +217,67 @@ alignedFree(void *ptr)
 #else
   free(ptr);
 #endif
+}
+
+#if defined(_WIN32)
+inline void convertLongAbsFilePathIfNeeded(std::string &filename)
+{
+  if (filename.empty()) {
+    return;
+  }
+  std::wstring ws(filename.begin(), filename.end());
+  wchar_t abs_path[_MAX_ENV];
+  _wfullpath(abs_path, ws.c_str(), _MAX_ENV);
+  std::wstring ws_abs = std::wstring(abs_path);
+  if (ws_abs.size() >= _MAX_PATH) {
+    std::string s(ws_abs.begin(), ws_abs.end());
+    filename = "\\\\?\\" + s;
+  }
+}
+#endif
+
+inline char* readFile(std::string source_filename, size_t& size)
+{
+#if defined(_WIN32)
+  convertLongAbsFilePathIfNeeded(source_filename);
+#endif
+  FILE *fp = ::fopen( source_filename.c_str(), "rb" );
+  unsigned int length;
+  size_t offset = 0;
+  char *ptr;
+  if (!fp) {
+    return NULL;
+  }
+  // obtain file size
+  ::fseek (fp , 0 , SEEK_END);
+  length = ::ftell (fp);
+  ::rewind (fp);
+  ptr = reinterpret_cast<char*>(::malloc(offset + length + 1));
+  if (length != fread(&ptr[offset], 1, length, fp))
+  {
+    ::free(ptr);
+    return NULL;
+  }
+  ptr[offset + length] = '\0';
+  size = offset + length;
+  ::fclose(fp);
+  return ptr;
+}
+
+inline bool writeFile(std::string source_filename, const char *source, size_t size)
+{
+#if defined(_WIN32)
+  convertLongAbsFilePathIfNeeded(source_filename);
+#endif
+  FILE *fp = ::fopen(source_filename.c_str(), "wb");
+  if (!fp) {
+    return EXIT_FAILURE;
+  }
+  if (!::fwrite(source, size, 1, fp)) {
+    return EXIT_FAILURE;
+  }
+  ::fclose(fp);
+  return EXIT_SUCCESS;
 }
 
 #endif // _CL_LIB_UTILS_0_8_H_
