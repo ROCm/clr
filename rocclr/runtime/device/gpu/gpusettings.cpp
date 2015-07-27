@@ -146,6 +146,9 @@ Settings::Settings()
 
     // Use host queue for device enqueuing by default
     useDeviceQueue_ = GPU_USE_DEVICE_QUEUE;
+
+    // Don't support Denormals for single precision by default
+    singleFpDenorm_ = false;
 }
 
 bool
@@ -251,6 +254,7 @@ Settings::create(
     case CAL_TARGET_BAFFIN:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
+        singleFpDenorm_ = true;
         viPlus_ = true;
         // Fall through to CI ...
     case CAL_TARGET_KALINDI:
@@ -546,6 +550,19 @@ Settings::override()
     }
     if (!flagIsDefault(GPU_RESOURCE_CACHE_SIZE)) {
         resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
+    }
+
+    if (!flagIsDefault(AMD_GPU_FORCE_SINGLE_FP_DENORM)) {
+        switch (AMD_GPU_FORCE_SINGLE_FP_DENORM) {
+        case 0:
+            singleFpDenorm_ = false;
+            break;
+        case 1:
+            singleFpDenorm_ = true;
+            break;
+        default:
+            break;
+        }
     }
 }
 

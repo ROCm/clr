@@ -74,6 +74,7 @@ public:
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
+            uint    singleFpDenorm_: 1; //!< Support Single FP Denorm
         };
         uint    value_;
     };
