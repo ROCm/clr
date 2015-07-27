@@ -17,7 +17,6 @@
 
 #include "inifile.h"
 #include "cm_string.h"
-#include "cal.h"
 
 #include <istream>
 #include <iostream>

@@ -56,9 +56,7 @@ GCPPFLAGS += $(DEFSWITCH) "BREAK_ON_LOG_WARNING=0"
 GCPPFLAGS += $(DEFSWITCH) "BREAK_ON_LOG_ERROR=0"
 GCPPFLAGS += $(DEFSWITCH) "LOG_LEVEL=2"
 
-export CAL_INCLUDES = $(OPENCL_DEPTH)/runtime/device/gpu/gslbe/src/include/cal
-GCPPFLAGS += $(INCSWITCH) "$(CAL_INCLUDES)"
-GCPPFLAGS += $(INCSWITCH) "$(CAL_INCLUDES)/private"
+GCPPFLAGS += $(INCSWITCH) "$(OPENCL_DEPTH)/runtime/device/gpu/gslbe/src/rt"
 GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/pele/include/asic"
 GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/evergreen/include/asic"
 GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/si/include/asic"

@@ -6,8 +6,6 @@
 
 #include "top.hpp"
 
-#include "cal.h"
-#include "calcl.h"
 #include "gsl_types.h"
 #include "gsl_config.h"
 #include "gsl_vid_if.h"
