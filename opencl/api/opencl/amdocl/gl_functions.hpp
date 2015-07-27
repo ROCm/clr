@@ -44,13 +44,4 @@ GLPREFIX(void, glTexImage3D, (GLenum target, GLint level, GLint internalformat, 
 
 GLPREFIX(GLboolean, glUnmapBuffer, (GLenum target))
 
-#ifdef _WIN32
-GLPREFIX(HGLRC, wglCreateContext, (HDC hdc))
-GLPREFIX(HGLRC, wglGetCurrentContext, (void))
-GLPREFIX(HDC, wglGetCurrentDC, (void))
-GLPREFIX(BOOL, wglDeleteContext, (HGLRC hglrc))
-GLPREFIX(BOOL, wglMakeCurrent, (HDC hdc, HGLRC hglrc))
-GLPREFIX(BOOL, wglShareLists, (HGLRC hglrc1, HGLRC hglrc2))
-#endif //_WIN32
-
 #undef GLPREFIX
