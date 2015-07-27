@@ -194,6 +194,12 @@ protected:
 #define API_GETPROCADDR     "wglGetProcAddress"
 #define FCN_STR_TYPE        LPCSTR
     typedef PROC (WINAPI* PFN_xxxGetProcAddress) (LPCSTR fcnName);
+    typedef HGLRC (APICALL* PFN_wglCreateContext) (HDC hdc);
+    typedef HGLRC (APICALL* PFN_wglGetCurrentContext) (void);
+    typedef HDC   (APICALL* PFN_wglGetCurrentDC) (void);
+    typedef BOOL  (APICALL* PFN_wglDeleteContext) (HGLRC hglrc);
+    typedef BOOL  (APICALL* PFN_wglMakeCurrent) (HDC hdc, HGLRC hglrc);
+    typedef BOOL  (APICALL* PFN_wglShareLists) (HGLRC hglrc1, HGLRC hglrc2);
 #else //!_WIN32
 #define APICALL // __stdcall   //??? todo odintsov
 #define API_GETPROCADDR     "glXGetProcAddress"
@@ -215,7 +221,6 @@ protected:
     typedef void(*PFNglXDestroyContext)(Display* dpy, GLXContext ctx);
     typedef Bool(*PFNglXMakeCurrent)( Display* dpy, GLXDrawable drawable, GLXContext ctx);
     typedef void* HMODULE;
-
 #endif //!_WIN32
 
 #define GLPREFIX(rtype, fcn, dclargs) \
@@ -256,6 +261,13 @@ private:
     HGLRC       hIntGLRC_;  // handle for internal GLRC to access shared context
     HDC         tempDC_;
     HGLRC       tempGLRC_;
+
+    PFN_wglCreateContext     wglCreateContext_;
+    PFN_wglGetCurrentContext wglGetCurrentContext_;
+    PFN_wglGetCurrentDC      wglGetCurrentDC_;
+    PFN_wglDeleteContext     wglDeleteContext_;
+    PFN_wglMakeCurrent       wglMakeCurrent_;
+    PFN_wglShareLists        wglShareLists_;
 #else
 public:
     Display*    Dpy_;

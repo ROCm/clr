@@ -2417,12 +2417,13 @@ GLFunctions::GLFunctions(HMODULE h) :
 {
     GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, API_GETPROCADDR);
 
+#define VERIFY_POINTER(p) if (NULL == p) {missed_++;}
+
 #ifndef _WIN32
     // Initialize pointers to X11/GLX functions
     // We can not link with these functions on compile time since we need to support
     // console mode. In console mode X server and X server components may be absent.
     // Hence linking with X11 or libGL will fail module image loading in console mode.-tzachi cohen
-#define VERIFY_POINTER(p) if (NULL == p) {missed_++;}
 
     glXGetCurrentDrawable_ = (PFNglXGetCurrentDrawable)GETPROCADDRESS(h,"glXGetCurrentDrawable");
     VERIFY_POINTER(glXGetCurrentDrawable_)
@@ -2449,10 +2450,23 @@ GLFunctions::GLFunctions(HMODULE h) :
     else{
         missed_ += 2;
     }
-#endif
 
     // Initialize pointers to GL functions
     #include "gl_functions.hpp"
+#else
+    wglCreateContext_ = (PFN_wglCreateContext)GETPROCADDRESS(h,"wglCreateContext");
+    VERIFY_POINTER(wglCreateContext_)
+    wglGetCurrentContext_ = (PFN_wglGetCurrentContext)GETPROCADDRESS(h,"wglGetCurrentContext");
+    VERIFY_POINTER(wglGetCurrentContext_)
+    wglGetCurrentDC_ = (PFN_wglGetCurrentDC)GETPROCADDRESS(h,"wglGetCurrentDC");
+    VERIFY_POINTER(wglGetCurrentDC_)
+    wglDeleteContext_ = (PFN_wglDeleteContext)GETPROCADDRESS(h,"wglDeleteContext");
+    VERIFY_POINTER(wglDeleteContext_)
+    wglMakeCurrent_ = (PFN_wglMakeCurrent)GETPROCADDRESS(h,"wglMakeCurrent");
+    VERIFY_POINTER(wglMakeCurrent_)
+    wglShareLists_ = (PFN_wglShareLists)GETPROCADDRESS(h,"wglShareLists");
+    VERIFY_POINTER(wglShareLists_)
+#endif
 }
 
 GLFunctions::~GLFunctions()
@@ -2482,27 +2496,48 @@ GLFunctions::init(intptr_t hdc, intptr_t hglrc)
 
 #ifdef _WIN32
     DWORD err;
-#endif //_WIN32
 
-    if (!missed_) {
-#ifdef _WIN32
-        if (!hdc) {
-            hDC_ = wglGetCurrentDC_();
-        }
-        else
-        {
-            hDC_ = (HDC) hdc;
-        }
-        hOrigGLRC_ = (HGLRC) hglrc;
-        if (!(hIntGLRC_ = wglCreateContext_(hDC_))) {
-            err = GetLastError();
-            return false;
-        }
-        if (!wglShareLists_(hOrigGLRC_, hIntGLRC_)) {
-            err = GetLastError();
-            return false;
-        }
+    if (missed_) {
+        return false;
+    }
+
+    if (!hdc) {
+        hDC_ = wglGetCurrentDC_();
+    }
+    else
+    {
+        hDC_ = (HDC) hdc;
+    }
+    hOrigGLRC_ = (HGLRC) hglrc;
+    if (!(hIntGLRC_ = wglCreateContext_(hDC_))) {
+        err = GetLastError();
+        return false;
+    }
+    if (!wglShareLists_(hOrigGLRC_, hIntGLRC_)) {
+        err = GetLastError();
+        return false;
+    }
+
+    bool makeCurrentNull = false;
+
+    if (wglGetCurrentContext_() == NULL) {
+        wglMakeCurrent_(hDC_, hIntGLRC_);
+
+        makeCurrentNull = true;
+    }
+
+    // Initialize pointers to GL functions
+    #include "gl_functions.hpp"
+
+    if (makeCurrentNull) {
+        wglMakeCurrent_(NULL, NULL);
+    }
+
+    if (missed_ == 0) {
+        return true;
+    }
 #else //!_WIN32
+    if (!missed_) {
         if (!hdc) {
             Dpy_ = glXGetCurrentDisplay_();
         }
@@ -2530,9 +2565,9 @@ GLFunctions::init(intptr_t hdc, intptr_t hglrc)
         if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
             return false;
         }
-#endif //!_WIN32
         return true;
     }
+#endif //!_WIN32
     return false;
 }
 
