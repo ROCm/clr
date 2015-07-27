@@ -267,7 +267,7 @@ void NullDevice::fillDeviceInfo(
     info_.singleFPConfig_       = CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO
         | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 
-    if (GPU_FORCE_SINGLE_FP_DENORM) {
+    if (settings().singleFpDenorm_) {
         info_.singleFPConfig_ |= CL_FP_DENORM;
     }
 

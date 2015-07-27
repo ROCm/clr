@@ -2172,6 +2172,9 @@ HSAILProgram::hsailOptions()
     if (dev().settings().reportFMA_) {
         hsailOptions.append(" -DFP_FAST_FMA=1");
     }
+    if (!dev().settings().singleFpDenorm_) {
+        hsailOptions.append(" -cl-denorms-are-zero");
+    }
 
     // Check if the host is 64 bit or 32 bit
     LP64_ONLY(hsailOptions.append(" -m64"));
