@@ -111,6 +111,10 @@
 #endif
 #define DEBUG_TYPE "ocl_linker"
 
+#if !defined(LEGACY_COMPLIB)
+extern bool HLC_FlushF32Denorms;
+#endif
+
 namespace AMDSpir {
   extern void replaceTrivialFunc(llvm::Module& M);
 }
@@ -641,6 +645,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setFP32RoundDivideSqrt(Options()->oVariables->FP32RoundDivideSqrt);
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
+#if !defined(LEGACY_COMPLIB)
+  // TODO: Enable the following line to pass DenormsAreZero option to the HLC
+  // when ready
+  // HLC_FlushF32Denorms = Options()->oVariables->DenormsAreZero;
+#endif
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   setHaveFastFMA32(chip == "Cypress"
                 || chip == "Cayman"
