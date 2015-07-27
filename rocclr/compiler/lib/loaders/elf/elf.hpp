@@ -8,7 +8,7 @@
 
 #include "top.hpp"
 #include "elf_utils.hpp"
-#include "cal.h" // using CALtargetEnum
+#include "caltarget.h" // using CALtargetEnum
 
 #include "libelf.h"
 #include "gelf.h"

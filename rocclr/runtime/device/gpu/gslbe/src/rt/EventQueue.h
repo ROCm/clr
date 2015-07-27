@@ -1,7 +1,6 @@
 #ifndef __EventQueue_h__
 #define __EventQueue_h__
 
-#include "cal.h"
 #include "backend.h"
 #include "atitypes.h"
 #include "gsl_types.h"

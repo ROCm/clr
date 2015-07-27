@@ -1,8 +1,7 @@
 #ifndef __GSLDevice_h__
 #define __GSLDevice_h__
 
-#include "cal.h"
-#include "calcl.h"
+#include "backend.h"
 #include "atitypes.h"
 #include "gsl_types.h"
 #include "gsl_config.h"
