@@ -53,8 +53,6 @@ global:
 #endif
   aclJITObjectImageIterateSymbols;
   aclJITObjectImageGetGlobalsSize;
-#if defined(OPENCL_MAINLINE)
 local:
   *;
-#endif
 };
