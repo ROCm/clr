@@ -101,8 +101,6 @@ public:
 
     bool             isVmMode() const { return m_vmMode; };
 
-    void             closeNativeDisplayHandle();
-
     uint32           getVPUCount();
     void             setVPUMask(uint32 mask);
     uint32           getVPUMask() const { return m_vpuMask; }

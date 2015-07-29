@@ -1251,7 +1251,7 @@ Device::init()
    }
 #endif // _WIN32 & DEBUG
 
-    calInit();
+    gslInit();
 
 #if defined(_WIN32) && !defined(_WIN64)
     _controlfp_s(&ignored, old, _MCW_RC | _MCW_PC);
@@ -1259,7 +1259,7 @@ Device::init()
 
     // Get the total number of active devices
     // Count up all the devices in the system.
-    numDevices = calGetDeviceCount();
+    numDevices = gsAdaptor::enumerateAdaptors();
 
     CALuint ordinal = 0;
     const char* selectDeviceByName = NULL;
@@ -1295,7 +1295,7 @@ void
 Device::tearDown()
 {
     osExit();
-    calShutdown();
+    gslExit();
     aclCompilerFini(compiler_);
     if (hsaCompiler_ != NULL) {
         aclCompilerFini(hsaCompiler_);

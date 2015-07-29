@@ -2,15 +2,6 @@
 #include "GSLContext.h"
 #include "backend.h"
 #include "GSLDevice.h"
-
-#include "os_if.h"
-
-#include <stdlib.h>
-
-#ifdef ATI_OS_LINUX
-#include <X11/Xlib.h>
-#endif
-
 #include "amuABI.h"
 
 bool
@@ -184,23 +175,4 @@ getFuncInfoFromImage(CALimage image, CALfuncInfo *pFuncInfo)
     return true;
 }
 
-
 gslMemObjectAttribTiling g_CALBETiling_Tiled  = GSL_MOA_TILING_TILED;
-
-void
-calInit(void)
-{
-    gslInit(); // initialize GSL
-}
-
-void
-calShutdown(void)
-{
-    gslExit();
-}
-
-uint32
-calGetDeviceCount()
-{
-    return gsAdaptor::enumerateAdaptors();
-}
