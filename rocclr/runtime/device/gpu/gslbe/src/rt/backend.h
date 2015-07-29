@@ -267,12 +267,4 @@ struct GpuEvent
     void invalidate() { id = InvalidID; }
 };
 
-
-/*
- * GPU Backend functions
- */
-void calInit(void);
-void calShutdown(void);
-uint32 calGetDeviceCount();
-
 #endif

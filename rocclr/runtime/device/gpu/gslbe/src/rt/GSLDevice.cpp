@@ -64,7 +64,6 @@ CALGSLDevice::~CALGSLDevice()
         delete static_cast<char*>(m_nativeDisplayHandle);
         break;
     case GSL_DEVICE_MODE_GFX:
-        closeNativeDisplayHandle();
         break;
     }
 }
