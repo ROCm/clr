@@ -14,6 +14,9 @@
 #include "utils/target_mappings.h"
 
 #include "acl.h"
+#if !(defined(LEGACY_COMPLIB) || defined(MAIN_LINE))
+#define HAS_SPIRV
+#endif
 
 #if defined(LEGACY_COMPLIB)
 #include "llvm/Instructions.h"
@@ -84,6 +87,10 @@
 #include "llvm/AMDILFuncSupport.h"
 #endif
 
+#ifdef HAS_SPIRV
+#include "llvm/Support/SPIRV.h"
+#endif
+
 // need to undef DEBUG before using DEBUG macro in llvm/Support/Debug.h
 #ifdef DEBUG
 #undef DEBUG
@@ -123,6 +130,14 @@ namespace amd {
 namespace {
 
 using namespace llvm;
+
+#ifdef HAS_SPIRV
+// Enable drop-in bi-way translation of LLVM/SPIR-V for testing purpose.
+cl::opt<bool> TestSpirv("test-spirv",
+    cl::desc("Test SPIR-V translation"),
+    cl::init(false),
+    cl::Hidden);
+#endif
 
 // LoadFile - Read the specified bitcode file in and return it.  This routine
 // searches the link path for the specified file to try to find it...
@@ -487,6 +502,42 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
 #endif
 }
 
+#ifdef HAS_SPIRV
+bool
+translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
+    const std::string &DumpLlvm){
+  std::stringstream SS;
+  std::string Err;
+  if (!llvm::WriteSPRV(M, SS, Err)) {
+    llvm::errs() << "Fails to save LLVM as SPRV: " << Err << '\n';
+    return false;
+  }
+
+  if (!DumpSpirv.empty()) {
+    std::ofstream OFS(DumpSpirv, std::ios::binary);
+    OFS << SS.str();
+    OFS.close();
+  }
+
+  if (!llvm::ReadSPRV(M->getContext(), SS, M, Err)) {
+    llvm::errs() << "Fails to load SPIRV as LLVM Module: " << Err << '\n';
+    return false;
+  }
+
+  if (!DumpLlvm.empty()) {
+    std::error_code EC;
+    llvm::raw_fd_ostream outs(DumpLlvm.c_str(), EC, llvm::sys::fs::F_None);
+    if (!EC)
+      WriteBitcodeToFile(M, outs);
+    else {
+      llvm::errs() << EC.message();
+      return false;
+    }
+  }
+  return true;
+}
+#endif
+
 int
 amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 {
@@ -550,6 +601,19 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       printf(EC.message().c_str());
 #endif
   }
+
+#ifdef HAS_SPIRV
+  if (amd::TestSpirv) {
+    std::string DumpSpirv;
+    std::string DumpLlvm;
+    if (Options()->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
+      DumpSpirv = Options()->getDumpFileName(".spv");
+      DumpLlvm = Options()->getDumpFileName("_spirv.bc");
+    }
+    translateSpirv(llvmbinary_, DumpSpirv, DumpLlvm);
+  }
+#endif
+
   std::vector<llvm::Module*> LibMs;
 
   // The AMDIL GPU libraries include 32 bit specific, 64 bit specific and common
