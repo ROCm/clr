@@ -3512,7 +3512,51 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
         if (printf_.size() <= index) {
             printf_.resize(index + 1);
         }
-        info.fmtString_ = aclPrintf->fmtStr;
+        std::string pfmt = aclPrintf->fmtStr;
+        size_t  pos = 0;
+        for (size_t i = 0; i < pfmt.size(); ++i) {
+          char symbol = pfmt[pos++];
+          if (symbol == '\\') {
+            // Rest of the C escape sequences (e.g. \') are handled correctly
+            // by the MDParser, we are not sure exactly how!
+            switch (pfmt[pos]) {
+            case 'a':
+              pos++;
+              symbol = '\a';
+              break;
+            case 'b':
+              pos++;
+              symbol = '\b';
+              break;
+            case 'f':
+              pos++;
+              symbol = '\f';
+              break;
+            case 'n':
+              pos++;
+              symbol = '\n';
+              break;
+            case 'r':
+              pos++;
+              symbol = '\r';
+              break;
+            case 'v':
+              pos++;
+              symbol = '\v';
+              break;
+            case '7':
+              if (pfmt[++pos] == '2') {
+                pos++;
+                i++;
+                symbol = '\72';
+              }
+              break;
+            default:
+              break;
+            }
+          }
+          info.fmtString_.push_back(symbol);
+        }
         info.fmtString_ += "\n";
         uint32_t *tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
         for (uint i = 0; i < aclPrintf->numSizes; i++ , tmp_ptr++) {
