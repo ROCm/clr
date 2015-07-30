@@ -105,27 +105,6 @@ typedef struct CALdeviceattribsRec {
     bool       isSVMFineGrainSystem;                /**< check if SVM finegrainsystem */
 } CALdeviceattribs;
 
-/** CAL device status */
-typedef struct CALdevicestatusRec {
-    CALuint   struct_size;                          /**< Client filled out size of CALdevicestatus struct */
-    CALuint   availLocalRAM;                        /**< Amount of available local GPU RAM in megabytes */
-    CALuint   availUncachedRemoteRAM;               /**< Amount of available uncached remote GPU memory in megabytes */
-    CALuint   availCachedRemoteRAM;                 /**< Amount of available cached remote GPU memory in megabytes */
-    CALuint   availVisibleHeap;                     /**< Amount of available visible local GPU RAM in megabytes */
-    CALuint   availInvisibleHeap;                   /**< Amount of available invisible local GPU RAM in megabytes */
-    CALuint   availDirectHeap;                      /**< Amount of available direct GPU memory in megabytes */
-    CALuint   availCoherentHeap;                    /**< Amount of available coherent GPU memory in megabytes */
-    CALuint   availRemoteSharedHeap;                /**< Amount of available remote Shared GPU memory in megabytes */
-    CALuint   availCachedRemoteSharedHeap;          /**< Amount of available cached remote Shared GPU memory in megabytes */
-    CALuint   largestBlockVisibleHeap;              /**< Largest block available visible local GPU RAM in megabytes */
-    CALuint   largestBlockInvisibleHeap;            /**< Largest block available invisible local GPU RAM in megabytes */
-    CALuint   largestBlockRemoteHeap;               /**< Largest block available remote GPU memory in megabytes */
-    CALuint   largestBlockCachedRemoteHeap;         /**< Largest block available cached remote GPU memory in megabytes */
-    CALuint   largestBlockDirectHeap;               /**< Largest block available direct GPU memory in megabytes */
-    CALuint   largestBlockCoherentHeap;             /**< Largest block available coherent GPU memory in megabytes */
-    CALuint   largestBlockRemoteSharedHeap;         /**< Largest block available remote Shared GPU memory in megabytes */
-    CALuint   largestBlockCachedRemoteSharedHeap;   /**< Largest block available cached remote Shared GPU memory in megabytes */
-} CALdevicestatus;
 
 /** CAL resource allocation flags **/
 typedef enum CALresallocflagsEnum {
