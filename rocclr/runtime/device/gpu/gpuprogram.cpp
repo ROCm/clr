@@ -1273,6 +1273,8 @@ NullProgram::parseFuncMetadata(const std::string& source, size_t posBegin, size_
                     for (size_t i = 0; i < tmp; ++i) {
                         char symbol = source[pos++];
                         if (symbol == '\\') {
+                            // Rest of the C escape sequences (e.g. \') are handled correctly
+                            // by the MDParser, we are not sure exactly how!
                             switch (source[pos]) {
                             case 'n':
                                 pos++;
@@ -1281,6 +1283,22 @@ NullProgram::parseFuncMetadata(const std::string& source, size_t posBegin, size_
                             case 'r':
                                 pos++;
                                 symbol = '\r';
+                                break;
+                            case 'a':
+                                pos++;
+                                symbol = '\a';
+                                break;
+                            case 'b':
+                                pos++;
+                                symbol = '\b';
+                                break;
+                            case 'f':
+                                pos++;
+                                symbol = '\f';
+                                break;
+                            case 'v':
+                                pos++;
+                                symbol = '\v';
                                 break;
                             default:
                                 break;
