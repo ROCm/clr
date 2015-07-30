@@ -118,8 +118,8 @@ NullDevice::init()
 bool
 NullDevice::create(CALtarget target)
 {
-    CALdeviceattribs      calAttr = {0};
-    CALdevicestatus       calDevStatus = {0};
+    CALdeviceattribs    calAttr = {0};
+    gslMemInfo          memInfo = {0};
 
     online_ = false;
 
@@ -168,13 +168,12 @@ NullDevice::create(CALtarget target)
     }
 
     // Report 512MB for all offline devices
-    calDevStatus.availVisibleHeap = 512;
-    calDevStatus.largestBlockVisibleHeap = 512;
+    memInfo.cardMemAvailableBytes = 512 * Mi;
+    memInfo.cardLargestFreeBlockBytes = 512 * Mi;
     calAttr.localRAM = 512;
 
     // Fill the device info structure
-    fillDeviceInfo(calAttr, calDevStatus, 4096, 1, true
-    );
+    fillDeviceInfo(calAttr, memInfo, 4096, 1, true);
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         // Runtime doesn't know what local size could be on the real board
@@ -224,7 +223,7 @@ NullDevice::createProgram(int oclVer)
 
 void NullDevice::fillDeviceInfo(
     const CALdeviceattribs& calAttr,
-    const CALdevicestatus& calStatus,
+    const gslMemInfo& memInfo,
     size_t  maxTextureSize,
     uint    numComputeRings,
     bool    isVirtualMode
@@ -294,8 +293,7 @@ void NullDevice::fillDeviceInfo(
             (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
             // globalMemSize is the actual available size for app on Linux
             // Because Linux base driver doesn't support paging
-            static_cast<cl_ulong>(calStatus.availVisibleHeap +
-            calStatus.availInvisibleHeap) / 100u) * Mi;
+            static_cast<cl_ulong>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / 100u);
 #else
         info_.globalMemSize_   =
             (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
@@ -312,8 +310,8 @@ void NullDevice::fillDeviceInfo(
         // start.  Note that it may not be a guarantee still as the
         // application progresses.
         info_.maxMemAllocSize_ = std::max(
-            cl_ulong(calStatus.largestBlockVisibleHeap * Mi),
-            cl_ulong(calStatus.largestBlockInvisibleHeap * Mi));
+            cl_ulong(memInfo.cardLargestFreeBlockBytes),
+            cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
 
 #if defined(ATI_OS_WIN)
         if (settings().apuSystem_) {
@@ -894,7 +892,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     }
 
     // Fill the device info structure
-    fillDeviceInfo(getAttribs(), getStatus(),
+    fillDeviceInfo(getAttribs(), getMemInfo(),
         static_cast<size_t>(getMaxTextureSize()),
         engines().numComputeRings(), heap()->isVirtual()
     );
@@ -2129,7 +2127,7 @@ Device::globalFreeMemory(size_t* freeMemory) const
     }
     if (heap()->isVirtual()) {
         gslMemInfo memInfo = {0};
-        getMemInfo(&memInfo);
+        gslCtx()->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
 
          // Fill free memory info
         freeMemory[TotalFreeMemory] = (memInfo.cardMemAvailableBytes +

@@ -82,12 +82,6 @@ CALGSLDevice::getMaxTextureSize() const
 }
 
 void
-CALGSLDevice::getMemInfo(gslMemInfo* memInfo) const
-{
-    m_cs->getMemInfo(memInfo, GSL_MEMINFO_BASIC);
-}
-
-void
 CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
 {
     m_attribs.struct_size = sizeof(CALdeviceattribs);
@@ -155,35 +149,6 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.numOfVpu = m_adp->pAsicInfo->numberOfVPU;
     m_attribs.isOpenCL200Device = m_adp->pAsicInfo->bIsOpen2Device;
     m_attribs.isSVMFineGrainSystem = m_adp->pAsicInfo->svmFineGrainSystem;
-}
-
-void
-CALGSLDevice::getStatus_int(gsl::gsCtx* cs)
-{
-    m_deviceStatus.struct_size = sizeof(CALdevicestatus);
-
-    gslMemInfo memInfo;
-    cs->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
-
-    m_deviceStatus.availLocalRAM = (uint32)((memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / (1024 * 1024));
-    m_deviceStatus.availUncachedRemoteRAM = (uint32)(memInfo.agpMemAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availCachedRemoteRAM = (uint32)(memInfo.agpMemAvailableCacheableBytes / (1024 * 1024));
-    m_deviceStatus.availVisibleHeap = (uint32) (memInfo.cardMemAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availInvisibleHeap = (uint32) (memInfo.cardExtMemAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availDirectHeap = (uint32) (memInfo.directAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availCoherentHeap = (uint32) (memInfo.coherentAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availRemoteSharedHeap = (uint32) (memInfo.sharedAvailableBytes / (1024 * 1024));
-    m_deviceStatus.availCachedRemoteSharedHeap = (uint32) (memInfo.sharedCacheableAvailableBytes / (1024 * 1024));
-
-    m_deviceStatus.largestBlockVisibleHeap = (uint32) (memInfo.cardLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockInvisibleHeap = (uint32) (memInfo.cardExtLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockRemoteHeap = (uint32) (memInfo.agpLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockCachedRemoteHeap = (uint32) (memInfo.agpCacheableLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockDirectHeap = (uint32) (memInfo.directLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockCoherentHeap = (uint32) (memInfo.coherentLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockRemoteSharedHeap = (uint32) (memInfo.sharedLargestFreeBlockBytes / (1024 * 1024));
-    m_deviceStatus.largestBlockCachedRemoteSharedHeap = (uint32) (memInfo.sharedCacheableLargestFreeBlockBytes / (1024 * 1024));
-
 }
 
 bool
@@ -578,7 +543,7 @@ CALGSLDevice::SetupContext(int32 &asic_id)
 
     //cache device details
     getAttribs_int(temp_cs);
-    getStatus_int(temp_cs);
+    temp_cs->getMemInfo(&m_memInfo, GSL_MEMINFO_BASIC);
 
     m_vmMode = temp_cs->getVMMode();
 

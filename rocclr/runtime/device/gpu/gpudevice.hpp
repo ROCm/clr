@@ -123,7 +123,7 @@ protected:
     //! Fills OpenCL device info structure
     void fillDeviceInfo(
         const CALdeviceattribs& calAttr,    //!< CAL device attributes info
-        const CALdevicestatus&  calStatus,  //!< CAL device status
+        const gslMemInfo&  memInfo,         //!< GSL mem info
         size_t  maxTextureSize,             //!< Maximum texture size supported in HW
         uint    numComputeRings,            //!< Number of compute rings
         bool    isVirtualMode               //!< Device is in virtual mode
