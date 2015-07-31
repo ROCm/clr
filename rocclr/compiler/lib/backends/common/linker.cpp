@@ -119,7 +119,9 @@
 #define DEBUG_TYPE "ocl_linker"
 
 #if !defined(LEGACY_COMPLIB)
-extern bool HLC_FlushF32Denorms;
+namespace llvm {
+  extern bool HLC_FlushF32Denorms;
+}
 #endif
 
 namespace AMDSpir {
@@ -710,7 +712,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
 #if !defined(LEGACY_COMPLIB)
-  HLC_FlushF32Denorms = Options()->oVariables->DenormsAreZero;
+  llvm::HLC_FlushF32Denorms = Options()->oVariables->DenormsAreZero;
 #endif
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   setHaveFastFMA32(chip == "Cypress"
