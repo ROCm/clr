@@ -2383,7 +2383,7 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER: state |= amd::Sampler::StateAddressClamp; break;
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:          state |= amd::Sampler::StateAddressRepeat; break;
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT: state |= amd::Sampler::StateAddressMirroredRepeat; break;
-        case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED:
+		case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED: state |= amd::Sampler::StateAddressNone; break;
         default:
             assert(false);
             return HSA_STATUS_ERROR_INVALID_ARGUMENT;
