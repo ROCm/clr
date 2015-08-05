@@ -295,14 +295,14 @@ namespace oclhsa {
       std::string openClKernelName("&__OpenCL_" + kernelName + "_kernel");
       const oclBIFSymbolStruct* isaSymbolStruct = findBIF30SymStruct(symISABinary);
       assert(isaSymbolStruct && "symbol not found");
-      std::string kernelIsaSymbol = isaSymbolStruct->str[PRE] +
-        openClKernelName +  isaSymbolStruct->str[POST];
+      std::string kernelIsaSymbol = isaSymbolStruct->str[bif::PRE] +
+        openClKernelName +  isaSymbolStruct->str[bif::POST];
 
       const oclBIFSymbolStruct* debugSymbolStruct = findBIF30SymStruct(symDebugInfo);
       assert(debugSymbolStruct && "symbol not found");
       //For debug symbols, the PRE is used for BRIG debug and the POST is used for
       //ISA debug
-      std::string kernelIsaDebugSymbol = debugSymbolStruct->str[POST] + openClKernelName;
+      std::string kernelIsaDebugSymbol = debugSymbolStruct->str[bif::POST] + openClKernelName;
 
       //Extract the ISA section
       size_t symbolSize;

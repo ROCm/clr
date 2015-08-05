@@ -1974,7 +1974,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
               break;
           const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
           assert(symbol && "symbol not found");
-          std::string symName = std::string(symbol->str[PRE]) + std::string(symbol->str[POST]);
+          std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
           size_t symSize = 0;
           const void *opts = aclExtractSymbol(dev().hsaCompiler(),
               binaryElf_, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
@@ -2095,21 +2095,21 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         }
         hsa_status_t status = executable_->LoadCodeObject(agent, code_object, NULL);
         if (status != HSA_STATUS_SUCCESS) {
-            buildLog_ += "Error while HSA Loader phase: loading HSA Code Object \n";
+            buildLog_ += "Error while HSA Loader phase: loading HSA Code Object\n";
             return false;
         }
     }
     size_t kernelNamesSize = 0;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
-        buildLog_ += "Error while Finalization phase: kernel names query from the ELF failed\n";
+        buildLog_ += "Error while Finalization phase: Kernel names size querying from the ELF failed\n";
         return false;
     }
     if (!isNull() && kernelNamesSize > 0) {
         char* kernelNames = new char[kernelNamesSize];
         errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
         if (errorCode != ACL_SUCCESS) {
-            buildLog_ += "Error while Finalization phase: kernel's Metadata is corrupted in the ELF\n";
+            buildLog_ += "Error while Finalization phase: Kernel names querying from the ELF failed\n";
             delete kernelNames;
             return false;
         }
@@ -2117,11 +2117,22 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         delete kernelNames;
         std::vector<std::string>::iterator it = vKernels.begin();
         bool dynamicParallelism = false;
+        aclMetadata md;
+        md.numHiddenKernelArgs = 0;
+        size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
         for (it; it != vKernels.end(); ++it) {
-            std::string kernelName = *it;
-            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions());
+            std::string kernelName(*it);
+            std::string openclKernelName = Kernel::openclMangledName(kernelName);
+            errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
+                openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
+            if (errorCode != ACL_SUCCESS) {
+                buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
+                return false;
+            }
+            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(),
+                md.numHiddenKernelArgs);
             kernels()[kernelName] = aKernel;
-            amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", Kernel::openclMangledName(kernelName).c_str(), agent, 0);
+            amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", openclKernelName.c_str(), agent, 0);
             if (!sym) {
                 LogError("Failed to get kernel ISA code");
                 return false;

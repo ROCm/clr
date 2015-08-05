@@ -1872,9 +1872,9 @@ VirtualGPU::submitKernelInternalHSA(
                             gpuDefQueue->virtualQueue_->vmAddress();
                         address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
                         print << "Kernel: " << child->name() << "\n";
-                        static const char* Names[HSAILKernel::ExtraArguments] = {
+                        static const char* Names[HSAILKernel::MaxExtraArgumentsNum] = {
                         "Offset0: ", "Offset1: ","Offset2: ","PrintfBuf: ", "VqueuePtr: ", "AqlWrap: "};
-                        for (j = 0; j < HSAILKernel::ExtraArguments; ++j) {
+                        for (j = 0; j < child->extraArgumentsNum(); ++j) {
                             print << "\t" << Names[j] << *(size_t*)argum;
                             print << "\n";
                             argum += sizeof(size_t);

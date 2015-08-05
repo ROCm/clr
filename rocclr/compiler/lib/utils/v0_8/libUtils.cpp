@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2011 Advanced Micro Devices, Inc. All rights reserved.
 //
-#include "acl.h"
-#include "aclTypes.h"
+
 #include "api/v0_8/aclValidation.h"
 #include "libUtils.h"
 #include "bif/bifbase.hpp"
@@ -10,7 +9,6 @@
 #include "utils/versions.hpp"
 #include "utils/options.hpp"
 #include "backends/gpu/scwrapper/devState.h"
-#include <cassert>
 #include <cstring>
 #include "bif/bif.hpp"
 extern aclBinary* constructBinary(size_t struct_version,

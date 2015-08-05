@@ -845,12 +845,13 @@ public:
         uint        numElem_;       //!< Number of elements
     };
 
-    // Global offsets located in the first 3 elements
-    static const uint ExtraArguments = 6;
+    // Max number of possible extra (hidden) kernel arguments
+    static const uint MaxExtraArgumentsNum = 6;
 
     HSAILKernel(std::string name,
         HSAILProgram* prog,
-        std::string compileOptions);
+        std::string compileOptions,
+        uint extraArgsNum);
 
     virtual ~HSAILKernel();
 
@@ -928,6 +929,9 @@ public:
     //! Returns the kernel index in the program
     uint index() const { return index_; }
 
+    //! Returns kernel's extra argument count
+    uint extraArgumentsNum() const { return extraArgumentsNum_; }
+
 private:
     //! Disable copy constructor
     HSAILKernel(const HSAILKernel&);
@@ -965,6 +969,8 @@ private:
     size_t          codeSize_;  //!< Size of ISA code
 
     char*       hwMetaData_;    //!< SI metadata
+
+    uint extraArgumentsNum_; //! Number of extra (hidden) kernel arguments
 
     union Flags {
         struct {

@@ -2641,6 +2641,17 @@ if_aclQueryInfo(aclCompiler *cl,
             }
             break;
           }
+    case RT_NUM_KERNEL_HIDDEN_ARGS: {
+            size_t hidden_kernargs_size = sizeof(md->numHiddenKernelArgs);
+            if (!ptr) {
+              *size = hidden_kernargs_size;
+              success = true;
+            } else if (*size >= hidden_kernargs_size) {
+              memcpy(ptr, &md->numHiddenKernelArgs, hidden_kernargs_size);
+              success = true;
+            }
+            break;
+          }
   }
   return (success) ? ACL_SUCCESS : ACL_ERROR;
 }
