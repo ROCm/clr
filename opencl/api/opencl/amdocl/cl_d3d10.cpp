@@ -1458,6 +1458,7 @@ D3D10Object::copyOrigToShared()
         pD3D10ResOrig_, subRes_, NULL);
 
     // Flush D3D queues and make sure D3D stuff is finished
+    d3dDev->Flush();
     pQuery_->End();
     BOOL data;
     while(S_OK != pQuery_->GetData(&data, sizeof(BOOL), 0) && data != TRUE)
