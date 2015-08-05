@@ -209,7 +209,7 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_dcfg.bEnableSvm.value    = reportAsOCL12Device ? false : OPENCL_MAJOR >= 2;
 
     m_dcfg.bEnableFlatAddressing.hasValue = true;
-#ifdef ATI_BITS_32
+#if defined(ATI_BITS_32) && defined(ATI_OS_LINUX)
     m_dcfg.bEnableFlatAddressing.value    = false;
 #else
     m_dcfg.bEnableFlatAddressing.value    = reportAsOCL12Device ? false : (OPENCL_MAJOR >= 2);
