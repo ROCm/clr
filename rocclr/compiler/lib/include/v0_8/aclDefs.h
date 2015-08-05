@@ -28,4 +28,10 @@
 #define BIF_API_3_0
 #endif
 
+#ifndef MAX_HIDDEN_KERNARGS_NUM
+#define MAX_HIDDEN_KERNARGS_NUM 6
+#else
+#error "MAX_HIDDEN_KERNARGS_NUM is already defined"
+#endif
+
 #endif // _ACL_DEFS_0_8_H_

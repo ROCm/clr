@@ -604,6 +604,14 @@ Kernel::~Kernel()
     delete signature_;
 }
 
+std::string
+Kernel::openclMangledName(const std::string& name)
+{
+    const oclBIFSymbolStruct* bifSym = findBIF30SymStruct(symOpenclKernel);
+    assert(bifSym && "symbol not found");
+    return std::string("&") + bifSym->str[bif::PRE] + name + bifSym->str[bif::POST];
+}
+
 void
 Memory::saveMapInfo(
     const amd::Coord3D  origin,
@@ -1246,7 +1254,7 @@ ClBinary::getBIFSymbol(unsigned int symbolID) const
         const oclBIFSymbolStruct* symb = findBIFSymbolStruct(BIF20, nSymbols, symID);
         assert(symb && "BIF20 symbol with symbolID not found");
         if (symb) {
-            return std::string(symb->str[PRE]) + std::string(symb->str[POST]);
+            return std::string(symb->str[bif::PRE]) + std::string(symb->str[bif::POST]);
         }
         break;
     }
@@ -1255,7 +1263,7 @@ ClBinary::getBIFSymbol(unsigned int symbolID) const
         const oclBIFSymbolStruct* symb = findBIFSymbolStruct(BIF30, nSymbols, symID);
         assert(symb && "BIF30 symbol with symbolID not found");
         if (symb) {
-            return std::string(symb->str[PRE]) + std::string(symb->str[POST]);
+            return std::string(symb->str[bif::PRE]) + std::string(symb->str[bif::POST]);
         }
         break;
     }

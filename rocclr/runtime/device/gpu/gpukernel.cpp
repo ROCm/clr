@@ -9,7 +9,6 @@
 #include "device/gpu/gpusched.hpp"
 #include "platform/commandqueue.hpp"
 #include "utils/options.hpp"
-#include "utils/bif_section_labels.hpp"
 
 #include "acl.h"
 #include "SCShadersR678XXCommon.h"
@@ -3432,7 +3431,7 @@ HSAILKernel::initArgList(const aclArgData* aclArg)
     size_t offset = 0;
 
     // Reserved arguments for HSAIL launch
-    aclArg += ExtraArguments;
+    aclArg += MaxExtraArgumentsNum;
     for (uint i = 0; aclArg->struct_size != 0; i++, aclArg++) {
         desc.name_ = arguments_[i]->name_.c_str();
         desc.type_ = GetOclType(aclArg);
@@ -3479,7 +3478,7 @@ HSAILKernel::initHsailArgs(const aclArgData* aclArg)
     int offset = 0;
 
     // Reserved arguments for HSAIL launch
-    aclArg += ExtraArguments;
+    aclArg += MaxExtraArgumentsNum;
 
     // Iterate through the each kernel argument
     for (; aclArg->struct_size != 0; aclArg++) {
@@ -3569,7 +3568,8 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
 
 HSAILKernel::HSAILKernel(std::string name,
     HSAILProgram* prog,
-    std::string compileOptions)
+    std::string compileOptions,
+    uint extraArgsNum)
     : device::Kernel(name)
     , compileOptions_(compileOptions)
     , dev_(prog->dev())
@@ -3578,6 +3578,7 @@ HSAILKernel::HSAILKernel(std::string name,
     , code_(NULL)
     , codeSize_(0)
     , hwMetaData_(NULL)
+    , extraArgumentsNum_(extraArgsNum)
 {
     hsa_ = true;
 }
@@ -3598,14 +3599,16 @@ HSAILKernel::~HSAILKernel()
 bool
 HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
 {
-    acl_error error;
-    const oclBIFSymbolStruct* bifSym = findBIF30SymStruct(symOpenclKernel);
-    assert(bifSym && "symbol not found");
-    std::string openClKernelName(std::string("&") + bifSym->str[PRE] + name() + bifSym->str[POST]);
+    if (extraArgumentsNum_ > MaxExtraArgumentsNum) {
+        LogError("Failed to initialize kernel: extra arguments number is bigger than is supported");
+        return false;
+    }
+    acl_error error = ACL_SUCCESS;
+    std::string openClKernelName = openclMangledName(name());
     //compile kernel down to ISA
     if (finalize) {
         std::string options(compileOptions_.c_str());
-        flags_.internalKernel_ = (compileOptions_.find("-cl-internal-kernel") != 
+        flags_.internalKernel_ = (compileOptions_.find("-cl-internal-kernel") !=
                                   std::string::npos) ? true: false;
         options.append(" -just-kernel=");
         options.append(openClKernelName.c_str());
@@ -3618,7 +3621,7 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
             options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
         buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
         if (error != ACL_SUCCESS) {
-            LogError("Failed to finalize");
+            LogError("Failed to finalize kernel");
             return false;
         }
     }
@@ -3900,34 +3903,36 @@ HSAILKernel::loadArguments(
     address     aqlStruct = gpu.cb(1)->sysMemCopy();
     bool        srdResource = false;
 
-    // The HLC generates 3 additional arguments for the global offsets
-    //and fourth argument is the printf_buffer pointer
-    size_t offsetSize[HSAILKernel::ExtraArguments] = { 0, 0, 0, 0, 0, 0 };
-    for (uint i = 0; i < sizes.dimensions(); ++i) {
-        offsetSize[i] = sizes.offset()[i];
+    if (extraArgumentsNum_ > 0) {
+        assert(MaxExtraArgumentsNum >= 6 && "MaxExtraArgumentsNum has changed, the below algorithm should be changed accordingly");
+        size_t extraArgs[MaxExtraArgumentsNum] = { 0, 0, 0, 0, 0, 0 };
+        // The HLC generates up to 3 additional arguments for the global offsets
+        for (uint i = 0; i < sizes.dimensions(); ++i) {
+            extraArgs[i] = sizes.offset()[i];
+        }
+        // Check if the kernel may have printf output
+        if ((printfInfo().size() > 0) &&
+            // and printf buffer was allocated
+            (gpu.printfDbgHSA().dbgBuffer() != NULL)) {
+            // and set the fourth argument as the printf_buffer pointer
+            extraArgs[3] = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
+            memList.push_back(gpu.printfDbgHSA().dbgBuffer());
+        }
+        if (dynamicParallelism()) {
+            // Provide the host parent AQL wrap object to the kernel
+            AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(aqlStruct);
+            memset(wrap, 0, sizeof(AmdAqlWrap));
+            wrap->state = AQL_WRAP_BUSY;
+            ConstBuffer* cb = gpu.constBufs_[1];
+            cb->uploadDataToHw(sizeof(AmdAqlWrap));
+            *vmParentWrap = cb->vmAddress() + cb->wrtOffset();
+            // and set 5th & 6th arguments
+            extraArgs[4] = vmDefQueue;
+            extraArgs[5] = *vmParentWrap;
+            memList.push_back(cb);
+        }
+        WriteAqlArg(&aqlArgBuf, extraArgs, sizeof(size_t)*extraArgumentsNum_, sizeof(size_t));
     }
-
-    if (dynamicParallelism()) {
-        // Provide the host parent AQL wrap object to the kernel
-        AmdAqlWrap*    wrap = reinterpret_cast<AmdAqlWrap*>(aqlStruct);
-        memset(wrap, 0, sizeof(AmdAqlWrap));
-        wrap->state = AQL_WRAP_BUSY;
-        ConstBuffer* cb = gpu.constBufs_[1];
-        cb->uploadDataToHw(sizeof(AmdAqlWrap));
-        *vmParentWrap = cb->vmAddress() + cb->wrtOffset();
-        offsetSize[4] = vmDefQueue;
-        offsetSize[5] = *vmParentWrap;
-        memList.push_back(cb);
-    }
-
-    // Check if the kernel may have printf output
-    if ((printfInfo().size() > 0) &&
-        // and printf buffer was allocated
-        (gpu.printfDbgHSA().dbgBuffer() != NULL)) {
-        offsetSize[3] = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
-        memList.push_back(gpu.printfDbgHSA().dbgBuffer());
-    }
-    WriteAqlArg(&aqlArgBuf, offsetSize, sizeof(offsetSize), sizeof(size_t));
 
     const amd::KernelSignature& signature = kernel.signature();
     const amd::KernelParameters& kernelParams = kernel.parameters();

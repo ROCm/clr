@@ -3,12 +3,16 @@
 //
 #ifndef _CL_LIB_UTILS_0_8_H_
 #define _CL_LIB_UTILS_0_8_H_
-#include "v0_8/aclTypes.h"
+#include "acl.h"
 #include <string>
 #include <sstream>
 #include <iterator>
 #include <cstdlib>
+#include <cassert>
 #include "library.hpp"
+#include "utils/bif_section_labels.hpp"
+using namespace bif;
+
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
 void
@@ -150,6 +154,83 @@ aclutAlloc(const aclCompilerOptions *bin);
 FreeFunc
 aclutFree(const aclCompilerOptions *bin);
 
+inline std::vector<std::string> splitSpaceSeparatedString(char *str)
+{
+  std::string s(str);
+  std::stringstream ss(s);
+  std::istream_iterator<std::string> beg(ss), end;
+  std::vector<std::string> vec(beg, end);
+  return vec;
+}
+
+// Helper function that returns OpenCL mangled kernel name.
+inline std::string
+aclutOpenclMangledKernelName(const std::string& kernel_name)
+{
+  const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclKernel);
+  assert(sym && "symbol not found");
+  return std::string("&") + sym->str[PRE] + kernel_name + sym->str[POST];
+}
+
+// Helper function that returns OpenCL mangled kernel metadata symbol name.
+inline std::string
+aclutOpenclMangledKernelMetadataName(const std::string& kernel_name)
+{
+  const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
+  assert(sym && "symbol not found");
+  return sym->str[PRE] + aclutOpenclMangledKernelName(kernel_name) + sym->str[POST];
+}
+
+#ifdef WITH_TARGET_HSAIL
+// Helper function that updates metadata for all the kernels in binary;
+// the updated attribute is the number of hidden kernel arguments.
+inline acl_error
+aclutUpdateMetadataWithHiddenKernargsNum(aclCompiler* cl, aclBinary* bin, uint32_t num) {
+  if (num == MAX_HIDDEN_KERNARGS_NUM) {
+    return ACL_SUCCESS;
+  }
+  const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
+  assert(sym && "symbol not found");
+  aclSections secID = sym->sections[0];
+  size_t kernelNamesSize = 0;
+  acl_error error_code = aclQueryInfo(cl, bin, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
+  if (error_code != ACL_SUCCESS) {
+    return error_code;
+  }
+  char* kernelNames = new char[kernelNamesSize];
+  error_code = aclQueryInfo(cl, bin, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
+  if (error_code != ACL_SUCCESS) {
+    delete kernelNames;
+    return error_code;
+  }
+  std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
+  delete kernelNames;
+  size_t roSize = 0;
+  for (auto it = vKernels.begin(); it != vKernels.end(); ++it) {
+    std::string symbol = aclutOpenclMangledKernelMetadataName(*it);
+    void* roSec = const_cast<void*>(aclExtractSymbol(cl, bin, &roSize, secID, symbol.c_str(), &error_code));
+    if (error_code != ACL_SUCCESS) {
+      return error_code;
+    }
+    if (!roSec || roSize == 0) {
+      error_code = ACL_ELF_ERROR;
+      return error_code;
+    }
+    aclMetadata *md = reinterpret_cast<aclMetadata*>(roSec);
+    md->numHiddenKernelArgs = num;
+    error_code = aclRemoveSymbol(cl, bin, secID, symbol.c_str());
+    if (error_code != ACL_SUCCESS) {
+      return error_code;
+    }
+    error_code = aclInsertSymbol(cl, bin, md, roSize, secID, symbol.c_str());
+    if (error_code != ACL_SUCCESS) {
+      return error_code;
+    }
+  }
+  return error_code;
+}
+#endif
+
 inline bool is64BitTarget(const aclTargetInfo& target)
 {
   return (target.arch_id == aclX64 ||
@@ -183,15 +264,6 @@ enum scId {
   SC_HSAIL = 0,
   SC_LAST,
 };
-
-inline std::vector<std::string> splitSpaceSeparatedString(char *str)
-{
-  std::string s(str);
-  std::stringstream ss(s);
-  std::istream_iterator<std::string> beg(ss), end;
-  std::vector<std::string> vec(beg, end);
-  return vec;
-}
 
 // Helper function that allocates an aligned memory.
 inline void*

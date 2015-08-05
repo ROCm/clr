@@ -6,8 +6,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#define PRE 0
-#define POST 1
+namespace bif {
+const unsigned PRE = 0;
+const unsigned POST = 1;
+}
 
 typedef enum {
   symOpenclCompilerOptions,
