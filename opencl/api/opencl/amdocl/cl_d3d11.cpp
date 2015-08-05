@@ -1002,6 +1002,7 @@ D3D11Object::copyOrigToShared()
      // Flush D3D queues and make sure D3D stuff is finished
     {
         ScopedLock sl(resLock_);//protect from multiple 
+        pImmediateContext->Flush();
         pImmediateContext->End(pQuery_);
         BOOL data;
         while(S_OK != pImmediateContext->GetData(pQuery_, &data, sizeof(BOOL), 0) && data != TRUE)
