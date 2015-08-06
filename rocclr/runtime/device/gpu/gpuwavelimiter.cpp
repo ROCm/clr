@@ -14,21 +14,10 @@ namespace gpu {
 
 uint WaveLimiter::MaxWave;
 uint WaveLimiter::WarmUpCount;
-uint WaveLimiter::AdaptCount;
 uint WaveLimiter::RunCount;
-uint WaveLimiter::AbandonThresh;
-uint WaveLimiter::DscThresh;
-
-void WaveLimiter::clearData() {
-    waves_ = MaxWave;
-    countAll_ = 0;
-    clear(measure_);
-    clear(reference_);
-    clear(trial_);
-    clear(ratio_);
-    discontinuous_ = false;
-    dataCount_ = 0;
-}
+uint WLAlgorithmSmooth::AdaptCount;
+uint WLAlgorithmSmooth::AbandonThresh;
+uint WLAlgorithmSmooth::DscThresh;
 
 WaveLimiter::WaveLimiter(
         Kernel* owner,
@@ -42,21 +31,11 @@ WaveLimiter::WaveLimiter(
     auto hwInfo = gpuDev->hwInfo();
     setIfNotDefault(SIMDPerSH_, GPU_WAVE_LIMIT_CU_PER_SH,
             attrib.numberOfCUsperShaderArray * hwInfo->simdPerCU_);
-
     MaxWave = GPU_WAVE_LIMIT_MAX_WAVE;
     WarmUpCount = GPU_WAVE_LIMIT_WARMUP;
-    AdaptCount = 2 * MaxWave + 1;
     RunCount = GPU_WAVE_LIMIT_RUN * MaxWave;
-    AbandonThresh = GPU_WAVE_LIMIT_ABANDON;
-    DscThresh = GPU_WAVE_LIMIT_DSC_THRESH;
 
     state_ = WARMUP;
-    dynRunCount_ = RunCount;
-    measure_.resize(MaxWave + 1);
-    reference_.resize(MaxWave + 1);
-    trial_.resize(MaxWave + 1);
-    ratio_.resize(MaxWave + 1);
-    clearData();
     if (!flagIsDefault(GPU_WAVE_LIMIT_TRACE)) {
         traceStream_.open(std::string(GPU_WAVE_LIMIT_TRACE) + owner_->name() +
             ".txt");
@@ -79,7 +58,37 @@ uint WaveLimiter::getWavesPerSH(){
     return waves_ * SIMDPerSH_;
 }
 
-void WaveLimiter::updateData(ulong time) {
+WLAlgorithmSmooth::WLAlgorithmSmooth(Kernel* owner, uint seqNum, bool enable, bool enableDump):
+    WaveLimiter(owner, seqNum, enable, enableDump) {
+    AdaptCount = 2 * MaxWave + 1;
+    AbandonThresh = GPU_WAVE_LIMIT_ABANDON;
+    DscThresh = GPU_WAVE_LIMIT_DSC_THRESH;
+
+    dynRunCount_ = RunCount;
+    measure_.resize(MaxWave + 1);
+    reference_.resize(MaxWave + 1);
+    trial_.resize(MaxWave + 1);
+    ratio_.resize(MaxWave + 1);
+
+    clearData();
+}
+
+WLAlgorithmSmooth::~WLAlgorithmSmooth() {
+
+}
+
+void WLAlgorithmSmooth::clearData() {
+    waves_ = MaxWave;
+    countAll_ = 0;
+    clear(measure_);
+    clear(reference_);
+    clear(trial_);
+    clear(ratio_);
+    discontinuous_ = false;
+    dataCount_ = 0;
+}
+
+void WLAlgorithmSmooth::updateData(ulong time) {
     auto count = dataCount_ - 1;
     assert(count < 2 * MaxWave + 1);
     assert(time > 0);
@@ -108,7 +117,7 @@ void WaveLimiter::updateData(ulong time) {
     outputTrace();
 }
 
-void WaveLimiter::outputTrace() {
+void WLAlgorithmSmooth::outputTrace() {
     if (!traceStream_.is_open()) {
         return;
     }
@@ -122,7 +131,8 @@ void WaveLimiter::outputTrace() {
     traceStream_ << "\n\n";
 }
 
-void WaveLimiter::callback(ulong duration) {
+
+void WLAlgorithmSmooth::callback(ulong duration) {
     dumper_.addData(duration, currWaves_, static_cast<char>(state_));
 
     if (!enable_) {
@@ -207,11 +217,79 @@ void WaveLimiter::DataDumper::addData(ulong time, uint wave, char state) {
     state_.push_back(state);
 }
 
+WLAlgorithmAvrg::WLAlgorithmAvrg(Kernel* owner, uint seqNum, bool enable, bool enableDump):
+    WaveLimiter(owner, seqNum, enable, enableDump) {
+
+    measure_.resize(MaxWave + 1);
+    clear(measure_);
+    countAll_ = 0;
+}
+
+WLAlgorithmAvrg::~WLAlgorithmAvrg() {
+
+}
+
+void WLAlgorithmAvrg::outputTrace() {
+    if (!traceStream_.is_open()) {
+        return;
+    }
+
+    traceStream_ << "[WaveLimiter] " << owner_->name() << " state=" << state_
+            << " currWaves=" << currWaves_ << " waves=" << waves_
+            << " bestWave=" << bestWave_ << '\n';
+    output(traceStream_, "\n measure = ", measure_);
+    traceStream_ << "\n\n";
+}
+
+
+void WLAlgorithmAvrg::callback(ulong duration) {
+    dumper_.addData(duration, currWaves_, static_cast<char>(state_));
+
+    if (!enable_) {
+        return;
+    }
+
+    countAll_++;
+
+    switch (state_) {
+    case WARMUP:
+        state_ = ADAPT;
+    case ADAPT:
+        measure_[waves_] += duration;
+        if (countAll_ <= MaxWave * 5) {
+            waves_--;
+            if (waves_ == 0) {
+                waves_ = MaxWave;
+            }
+        }
+        else {
+            bestWave_ = MaxWave;
+            for (uint i=1; i<MaxWave; i++ ) {
+                if (measure_[i] < measure_[bestWave_]) {
+                    bestWave_ = i;
+                }
+            }
+            waves_ = bestWave_;
+            state_ = RUN;
+        }
+        break;
+    case RUN:
+    default:
+        break;
+    }
+}
+
 WaveLimiterManager::WaveLimiterManager(Kernel* kernel):
         owner_(kernel),
         enable_(false),
-        enableDump_(!flagIsDefault(GPU_WAVE_LIMIT_DUMP)),
-        fixed_(GPU_WAVES_PER_SIMD) {
+        enableDump_(!flagIsDefault(GPU_WAVE_LIMIT_DUMP)) {
+    auto gpuDev = static_cast<const Device*>(&owner_->dev());
+    auto attrib = gpuDev->getAttribs();
+    auto hwInfo = gpuDev->hwInfo();
+    unsigned simdPerSH = 0;
+    setIfNotDefault(simdPerSH, GPU_WAVE_LIMIT_CU_PER_SH,
+            attrib.numberOfCUsperShaderArray * hwInfo->simdPerCU_);
+    fixed_ = GPU_WAVES_PER_SIMD * simdPerSH;
 }
 
 WaveLimiterManager::~WaveLimiterManager() {
@@ -248,7 +326,7 @@ amd::ProfilingCallback* WaveLimiterManager::getProfilingCallback(
         return loc->second;
     }
 
-    auto limiter = new WaveLimiter(owner_, limiters_.size(), enable_,
+    auto limiter = new WLAlgorithmSmooth(owner_, limiters_.size(), enable_,
             enableDump_);
     if (limiter == NULL) {
         enable_ = false;
