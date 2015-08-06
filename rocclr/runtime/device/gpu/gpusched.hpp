@@ -62,7 +62,7 @@ struct SchedulerParam {
     uint32_t    eng_clk;        //!< Engine clock in Mhz
     uint64_t    hw_queue;       //!< Address to HW queue
     uint64_t    hsa_queue;      //!< Address to HSA dummy queue
-    uint32_t    reserved;       //!< Reserved
+    uint32_t    useATC;         //!< GPU access to shader program by ATC.
     uint32_t    scratchSize;    //!< Scratch buffer size
     uint64_t    scratch;        //!< GPU address to the scratch buffer
     uint32_t    numMaxWaves;    //!< The max number of possible waves
