@@ -1926,6 +1926,7 @@ VirtualGPU::submitKernelInternalHSA(
             param->releaseHostCP = 0;
             param->parentAQL = vmParentWrap;
             param->dedicatedQueue = dev().settings().useDeviceQueue_;
+            param->useATC = dev().settings().svmFineGrainSystem_;
 
             // Fill the scratch buffer information
             if (hsaKernel.prog().maxScratchRegs() > 0) {
