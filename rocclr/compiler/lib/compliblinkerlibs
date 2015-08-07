@@ -1,0 +1,4 @@
+COMPLIB_DEPTH = $(OPENCL_DEPTH)/compiler/lib
+
+#AMDOpenCLLLVMLinkerLIBS = $(COMPLIB_DEPTH)/linker/lib/$(FULL_BUILD_DIR)/AMDLLVMOpenCLLinker$(LIB_EXT)
+AMDOpenCLLLVMLinkerLIBS = $(OPENCL_DEPTH)/compiler/lib/linker/lib/$(FULL_BUILD_DIR)/AMDOpenCLLLVMLinker$(LIB_EXT)

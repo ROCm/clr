@@ -44,9 +44,16 @@
 #include "llvm/Linker/Linker.h"
 #endif
 
+#ifndef LEGACY_COMPLIB
+#include "AMDFixupKernelModule.h"
+#include "AMDResolveLinker.h"
+#include "AMDPrelink.h"
+#else
 #include "llvm/AMDFixupKernelModule.h"
 #include "llvm/AMDResolveLinker.h"
 #include "llvm/AMDPrelink.h"
+#endif
+
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
@@ -56,10 +63,6 @@
 
 #include "llvm/CodeGen/LinkAllAsmWriterComponents.h"
 #include "llvm/CodeGen/LinkAllCodegenComponents.h"
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 2270
-#else
-#include "llvm/CodeGen/ObjectCodeEmitter.h"
-#endif
 #include "llvm/Config/config.h"
 
 #include "llvm/MC/SubtargetFeature.h"
