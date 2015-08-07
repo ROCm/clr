@@ -295,10 +295,10 @@ Settings::create(
 
         if (ciPlus_) {
             libSelector_ = amd::GPU_Library_CI;
-#if defined(_LP64)
-            oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
-                XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
-#endif
+            if (LP64_SWITCH(WINDOWS_SWITCH(viPlus_, false), true)) {
+                oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
+                    XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
+            }
             if (GPU_FORCE_OCL20_32BIT) {
                 force32BitOcl20_ = true;
                 oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
