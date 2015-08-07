@@ -134,6 +134,9 @@ public:
     bool isComputeRingIDForced() const { return m_isComputeRingIDForced; }
     gslEngineID getforcedComputeEngineID() const { return m_forcedComputeEngineID; }
 
+    gslEngineID getFirstAvailableComputeEngineID() const { return static_cast<gslEngineID>(
+                                                           m_adp->findFirstAvailableComputeEngineID()); }
+
 protected:
     //
     /// channel order enumerants
