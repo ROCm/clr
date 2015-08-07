@@ -640,6 +640,28 @@ convertBIF30MachineTo2X(bifbase *elfBin, const aclTargetInfo *tgtInfo)
 }
 // FIXME: This needs to be moved into the elf classes
 static void
+convertBIF2XMachineTo31(bifbase *elfBin)
+{
+  uint16_t machine = 0;
+  aclPlatform pform = aclPlatformLast;
+  if (elfBin == NULL) return;
+  elfBin->getTarget(machine, pform);
+  assert(pform != aclPlatformCompLib
+      && "Platform is specified incorrectly!");
+  if (pform == aclPlatformCPU) {
+      uint16_t type;
+      elfBin->getType(type);
+    machine = (type == ELFCLASS32 ? EM_386 : EM_X86_64);
+  } else if (pform == aclPlatformCAL) {
+    machine = EM_AMDIL;
+  } else {
+    assert(!"Unknown platform found!");
+  }
+  pform = aclPlatformCompLib;
+  elfBin->setTarget(machine, pform);
+}
+
+static void
 convertBIF2XMachineTo30(bifbase *elfBin)
 {
   uint16_t machine = 0;
@@ -757,12 +779,15 @@ createELFCopy(aclBinary *src) {
       case aclBIFVersion20:
         dstBin = reinterpret_cast<bifbase*>(aclutAlloc(src)(sizeof(bif20)));
         dstBin = new (dstBin) bif20(srcBin->get20()); break;
-      case aclBIFVersion21: 
+      case aclBIFVersion21:
         dstBin = reinterpret_cast<bifbase*>(aclutAlloc(src)(sizeof(bif21)));
         dstBin = new (dstBin) bif21(srcBin->get21()); break;
-      case aclBIFVersion30: 
+      case aclBIFVersion30:
         dstBin = reinterpret_cast<bifbase*>(aclutAlloc(src)(sizeof(bif30)));
         dstBin = new (dstBin) bif30(srcBin->get30()); break;
+      case aclBIFVersion31:
+        dstBin = reinterpret_cast<bifbase*>(aclutAlloc(src)(sizeof(bif31)));
+        dstBin = new (dstBin) bif31(srcBin->get31()); break;
     }
     if (dstBin->hasError()) {
       aclBinaryFini(dst);
@@ -815,6 +840,26 @@ convertBIF20ToBIF30(aclBinary *src) {
   return dst;
 }
 
+// Create a BIF3.1 elf from a BIF 2.0 elf.
+aclBinary*
+convertBIF20ToBIF31(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get20() != NULL && "Passed in an invalid binary!");
+    bif31 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif31*>(aclutAlloc(src)(sizeof(bif31)));
+    dstBin = new (dstBin) bif31(srcBin->get20());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+    convertBIF2XMachineTo31(dstBin);
+  }
+  return dst;
+}
+
 // Create a BIF2.0 elf from a BIF 2.1 elf.
 // All sections except for the COMMENT section is copied
 // verbatim and the section is set to NONE.
@@ -858,6 +903,27 @@ convertBIF21ToBIF30(aclBinary *src) {
   return dst;
 }
 
+// Create a BIF3.1 elf from a BIF 2.1 elf.
+// See BIF spec for 3.1 to 2.1 conversion.
+aclBinary*
+convertBIF21ToBIF31(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get21() != NULL && "Passed in an invalid binary!");
+    bif31 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif31*>(aclutAlloc(src)(sizeof(bif31)));
+    dstBin = new (dstBin) bif31(srcBin->get21());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+    convertBIF2XMachineTo31(dstBin);
+  }
+  return dst;
+}
+
 // Create a BIF2.0 elf from a BIF 3.0 elf.
 // See BIF spec for 3.0 to 2.0 conversion.
 aclBinary*
@@ -879,7 +945,7 @@ convertBIF30ToBIF20(aclBinary *src) {
 }
 
 // Create a BIF2.1 elf from a BIF 3.0 elf
-// See BIF spec for 3.0 to 2.0 conversion
+// See BIF spec for 3.0 to 2.1 conversion
 // but also include the COMMENT section.
 aclBinary*
 convertBIF30ToBIF21(aclBinary *src) {
@@ -890,6 +956,86 @@ convertBIF30ToBIF21(aclBinary *src) {
     bif21 *dstBin = NULL;
     dstBin = reinterpret_cast<bif21*>(aclutAlloc(src)(sizeof(bif21)));
     dstBin = new (dstBin) bif21(srcBin->get30());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+  }
+  return dst;
+}
+
+// Create a BIF3.1 elf from a BIF 3.0 elf
+// See BIF spec for 3.0 to 3.1 conversion.
+aclBinary*
+convertBIF30ToBIF31(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get30() != NULL && "Passed in an invalid binary!");
+    bif31 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif31*>(aclutAlloc(src)(sizeof(bif31)));
+    dstBin = new (dstBin) bif31(srcBin->get30());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+  }
+  return dst;
+}
+
+// Create a BIF2.0 elf from a BIF 3.1 elf.
+// See BIF spec for 3.1 to 2.0 conversion.
+aclBinary*
+convertBIF31ToBIF20(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get31() != NULL && "Passed in an invalid binary!");
+    bif20 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif20*>(aclutAlloc(src)(sizeof(bif20)));
+    dstBin = new (dstBin) bif20(srcBin->get31());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+  }
+  return dst;
+}
+
+// Create a BIF2.1 elf from a BIF 3.1 elf
+// See BIF spec for 3.1 to 2.1 conversion.
+aclBinary*
+convertBIF31ToBIF21(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get31() != NULL && "Passed in an invalid binary!");
+    bif21 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif21*>(aclutAlloc(src)(sizeof(bif21)));
+    dstBin = new (dstBin) bif21(srcBin->get31());
+    if (dstBin->hasError()) {
+      aclBinaryFini(dst);
+      return NULL;
+    }
+    dst->bin = reinterpret_cast<aclBIF*>(dstBin);
+  }
+  return dst;
+}
+
+// Create a BIF3.1 elf from a BIF 3.0 elf
+// See BIF spec for 3.0 to 3.1 conversion.
+aclBinary*
+convertBIF31ToBIF30(aclBinary *src) {
+  aclBinary *dst = cloneOclElfNoBIF(src);
+  if (dst != NULL) {
+    bifbase *srcBin = reinterpret_cast<bifbase*>(aclutGetBIF(src));
+    assert(srcBin->get31() != NULL && "Passed in an invalid binary!");
+    bif30 *dstBin = NULL;
+    dstBin = reinterpret_cast<bif30*>(aclutAlloc(src)(sizeof(bif30)));
+    dstBin = new (dstBin) bif30(srcBin->get31());
     if (dstBin->hasError()) {
       aclBinaryFini(dst);
       return NULL;

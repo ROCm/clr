@@ -67,6 +67,10 @@ convertBIF20ToBIF21(aclBinary *src);
 aclBinary*
 convertBIF20ToBIF30(aclBinary *src);
 
+// Create a BIF3.1 elf from a BIF 2.0 elf
+aclBinary*
+convertBIF20ToBIF31(aclBinary *src);
+
 // Create a BIF2.0 elf from a BIF 2.1 elf
 aclBinary*
 convertBIF21ToBIF20(aclBinary *src);
@@ -75,6 +79,10 @@ convertBIF21ToBIF20(aclBinary *src);
 aclBinary*
 convertBIF21ToBIF30(aclBinary *src);
 
+// Create a BIF3.1 elf from a BIF 2.1 elf
+aclBinary*
+convertBIF21ToBIF31(aclBinary *src);
+
 // Create a BIF2.0 elf from a BIF 3.0 elf
 aclBinary*
 convertBIF30ToBIF20(aclBinary *src);
@@ -82,6 +90,22 @@ convertBIF30ToBIF20(aclBinary *src);
 // Create a BIF2.1 elf from a BIF 3.0 elf
 aclBinary*
 convertBIF30ToBIF21(aclBinary *src);
+
+// Create a BIF3.1 elf from a BIF 3.0 elf
+aclBinary*
+convertBIF30ToBIF31(aclBinary *src);
+
+// Create a BIF2.0 elf from a BIF 3.1 elf
+aclBinary*
+convertBIF31ToBIF20(aclBinary *src);
+
+// Create a BIF2.1 elf from a BIF 3.1 elf
+aclBinary*
+convertBIF31ToBIF21(aclBinary *src);
+
+// Create a BIF3.0 elf from a BIF 3.1 elf
+aclBinary*
+convertBIF31ToBIF30(aclBinary *src);
 
 // get a pointer to the aclBIF irrespective of the
 // binary version.

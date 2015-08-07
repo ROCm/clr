@@ -129,12 +129,13 @@ typedef enum _acl_loader_type_enum_0_8 {
 // Enumeration for the various acl versions
 typedef enum _bif_version_enum_0_8 {
   aclBIFVersionError = 0, // Error
-  aclBIFVersion20   = 1, // Version 2.0 of the OpenCL BIF
-  aclBIFVersion21   = 2, // Version 2.1 of the OpenCL BIF
-  aclBIFVersion30   = 3, // Version 3.0 of the OpenCL BIF
-  aclBIFVersionLatest = aclBIFVersion30, // Most recent version of the BIF
-  aclBIFVersionCAL  = 4,
-  aclBIFVersionLast = 5
+  aclBIFVersion20    = 1, // Version 2.0 of the OpenCL BIF
+  aclBIFVersion21    = 2, // Version 2.1 of the OpenCL BIF
+  aclBIFVersion30    = 3, // Version 3.0 of the OpenCL BIF
+  aclBIFVersion31    = 4, // Version 3.1 of the OpenCL BIF
+  aclBIFVersionLatest = aclBIFVersion31, // Most recent version of the BIF
+  aclBIFVersionCAL   = 5,
+  aclBIFVersionLast  = 6
 } aclBIFVersion_0_8;
 
 // Enumeration for the various platform types
