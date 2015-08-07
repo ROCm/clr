@@ -444,7 +444,8 @@ VirtualGPU::create(
             hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
             engineMask = dev().engines().getMask((gslEngineID)(dev().isComputeRingIDForced() ?
-                         dev().getforcedComputeEngineID() : (GSL_ENGINEID_COMPUTE0 + idx)));
+                         dev().getforcedComputeEngineID() :
+                         (dev().getFirstAvailableComputeEngineID() + idx)));
             if (dev().canDMA()) {
                 // If only 1 DMA engine is available then use that one
                 if (dev().engines().numDMAEngines() < 2) {
