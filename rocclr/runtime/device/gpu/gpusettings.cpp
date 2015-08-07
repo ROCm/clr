@@ -330,11 +330,7 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            if ((GPU_ENABLE_LARGE_ALLOCATION) && (calAttr.isWorkstation)
-#if defined(_WIN32)
-                && (!IsWindows10OrGreater())
-#endif
-                ) {
+            if ((GPU_ENABLE_LARGE_ALLOCATION) && (calAttr.isWorkstation)) {
                 maxAllocSize_   = 64ULL * Gi;
             }
             else {
