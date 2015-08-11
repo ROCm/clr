@@ -9,11 +9,13 @@
 #include "utils/util.hpp"
 
 #include <cstring>
+#include <tuple>
+#include <utility>
 
 namespace amd {
 
 Monitor::Monitor(const char* name, bool recursive) :
-    contendersList_(NULL), onDeck_(NULL), waitersList_(NULL),
+    contendersList_(0), onDeck_(0), waitersList_(NULL),
     owner_(NULL), recursive_(recursive)
 {
     const size_t maxNameLen = sizeof(name_);
@@ -66,19 +68,17 @@ Monitor::finishLock()
     /* The lock is contended. Push the thread's semaphore onto
      * the contention list.
      */
-    Semaphore& sem = thread->lockSemaphore();
-    sem.reset();
+    Semaphore& semaphore = thread->lockSemaphore();
+    semaphore.reset();
 
     LinkedNode newHead;
-    newHead.setItem(&sem);
+    newHead.setItem(&semaphore);
 
-    while (true) {
-        LinkedNode* head; bool isLocked;
-
+    intptr_t head = contendersList_.load(std::memory_order_acquire);
+    for (;;) {
         // The assumption is that lockWord is locked. Make sure we do not
         // continue unless the lock bit is set.
-        tie(head, isLocked) = contendersList_.get();
-        if (!isLocked) {
+        if ((head & kLockBit) == 0) {
             if (tryLock()) {
                 return;
             }
@@ -86,8 +86,10 @@ Monitor::finishLock()
         }
 
         // Set the new contention list head if lockWord is unchanged.
-        newHead.setNext(head);
-        if (contendersList_.compareAndSet(head, &newHead, kLocked, kLocked)) {
+        newHead.setNext(reinterpret_cast<LinkedNode*>(head & ~kLockBit));
+        if (contendersList_.compare_exchange_weak(head,
+                reinterpret_cast<intptr_t>(&newHead) | kLockBit,
+                std::memory_order_acq_rel, std::memory_order_acquire)) {
             break;
         }
 
@@ -97,7 +99,7 @@ Monitor::finishLock()
 
     int32_t spinCount = 0;
     // Go to sleep until we become the on-deck thread.
-    while (onDeck_.getReference() != &sem) {
+    while ((onDeck_ & ~kLockBit) != reinterpret_cast<intptr_t>(&semaphore)) {
         // First, be SMT friendly
         if (spinCount < kMaxReadSpinIter) {
             Os::spinPause();
@@ -108,7 +110,7 @@ Monitor::finishLock()
         }
         // now go to sleep
         else {
-            sem.wait();
+            semaphore.wait();
         }
         spinCount++;
     }
@@ -118,8 +120,9 @@ Monitor::finishLock()
     // From now-on, we are the on-deck thread. It will stay that way until
     // we successfuly acquire the lock.
     //
-    while (true) {
-        assert(onDeck_.getReference() == &sem && "just checking");
+    for (;;) {
+        assert((onDeck_ & ~kLockBit) == reinterpret_cast<intptr_t>(&semaphore)
+               && "just checking");
         if (tryLock()) {
             break;
         }
@@ -136,13 +139,13 @@ Monitor::finishLock()
         }
         // now go to sleep
         else {
-            sem.wait();
+            semaphore.wait();
         }
         spinCount++;
     }
 
     assert(newHead.next() == NULL && "Should not be linked");
-    onDeck_ = NULL;
+    onDeck_ = 0;
 }
 
 void
@@ -152,53 +155,58 @@ Monitor::finishUnlock()
     // list waiting to acquire the lock. We need to select a successor and
     // place it on-deck.
 
-    while (true) {
+    for (;;) {
         // Grab the onDeck_ microlock to protect the next loop (make sure only
         // one semaphore is removed from the contention list).
         //
-        if (!onDeck_.compareAndSet(NULL, NULL, kUnlocked, kLocked)) {
+        intptr_t ptr = 0;
+        if (!onDeck_.compare_exchange_strong(ptr, ptr | kLockBit,
+                std::memory_order_acq_rel, std::memory_order_acquire)) {
             return; // Somebody else has the microlock, let him select onDeck_
         }
 
-        LinkedNode* head; bool isLocked;
-        while (true) {
-            tie(head, isLocked) = contendersList_.get();
-
-            if (head == NULL) {
+        intptr_t head = contendersList_.load(std::memory_order_acquire);
+        for (;;) {
+            if (head == 0) {
                 break; // There's nothing else to do.
             }
 
-            if (isLocked) {
+            if ((head & kLockBit) != 0) {
                 // Somebody could have acquired then released the lock
                 // and failed to grab the onDeck_ microlock.
-                head = NULL;
+                head = 0;
                 break;
             }
 
-            if (contendersList_.compareAndSet(
-                    head, head->next(), kUnlocked, kUnlocked)) {
+            if (contendersList_.compare_exchange_weak(
+                    head, reinterpret_cast<intptr_t>(
+                        reinterpret_cast<LinkedNode*>(head)->next()),
+                    std::memory_order_acq_rel, std::memory_order_acquire)) {
             #ifdef ASSERT
-                head->setNext(NULL);
+                reinterpret_cast<LinkedNode*>(head)->setNext(NULL);
             #endif // ASSERT
                 break;
             }
         }
 
-        Semaphore* sem = (head != NULL) ? head->item() : NULL;
-        onDeck_ = sem;
-        MemoryOrder::fence();
+        Semaphore* semaphore = (head != 0)
+            ? reinterpret_cast<LinkedNode*>(head)->item()
+            : NULL;
+
+        onDeck_.store(reinterpret_cast<intptr_t>(semaphore),
+            std::memory_order_release);
         //
         // Release the onDeck_ microlock (end of critical region);
 
-        if (sem != NULL) {
-            sem->post();
+        if (semaphore != NULL) {
+            semaphore->post();
             return;
         }
 
-        // We do not have an on-deck thread (sem == NULL). Return if
+        // We do not have an on-deck thread (semaphore == NULL). Return if
         // the contention list is empty or if the lock got acquired again.
-        tie(head, isLocked) = contendersList_.get();
-        if (isLocked || head == NULL) {
+        head = contendersList_;
+        if (head == 0 || (head & kLockBit) != 0) {
             return;
         }
     }
@@ -228,7 +236,7 @@ Monitor::wait()
 
     // Go to sleep until we become the on-deck thread.
     int32_t spinCount = 0;
-    while (onDeck_.getReference() != &suspend) {
+    while ((onDeck_ & ~kLockBit) != reinterpret_cast<intptr_t>(&suspend)) {
         // First, be SMT friendly
         if (spinCount < kMaxReadSpinIter) {
             Os::spinPause();
@@ -245,8 +253,9 @@ Monitor::wait()
     }
 
     spinCount = 0;
-    while (true) {
-        assert(onDeck_.getReference() == &suspend && "just checking");
+    for (;;) {
+        assert((onDeck_ & ~kLockBit) == reinterpret_cast<intptr_t>(&suspend)
+               && "just checking");
 
         if (trySpinLock()) {
             break;
@@ -272,8 +281,7 @@ Monitor::wait()
     // Restore the lock count (for recursive mutexes)
     lockCount_ = lockCount;
 
-    onDeck_ = NULL;
-    MemoryOrder::fence();
+    onDeck_.store(0, std::memory_order_release);
 }
 
 void
@@ -288,11 +296,13 @@ Monitor::notify()
 
     // Dequeue a waiter from the wait list and add it to the contention list.
     waitersList_ = waiter->next();
-    while (true) {
-        LinkedNode* node = contendersList_.getReference();
 
-        waiter->setNext(node);
-        if (contendersList_.compareAndSet(node, waiter, kLocked, kLocked)) {
+    intptr_t node = contendersList_.load(std::memory_order_acquire);
+    for (;;) {
+        waiter->setNext(reinterpret_cast<LinkedNode*>(node & ~kLockBit));
+        if (contendersList_.compare_exchange_weak(node,
+                reinterpret_cast<intptr_t>(waiter) | kLockBit,
+                std::memory_order_acq_rel, std::memory_order_acquire)) {
             break;
         }
     }

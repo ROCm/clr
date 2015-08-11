@@ -179,15 +179,4 @@ do {                                                   \
 #define LogPrintfWarning(format, ...)  Logf(amd::LOG_WARNING, format, __VA_ARGS__)
 #define LogPrintfInfo(format, ...)  Logf(amd::LOG_INFO, format, __VA_ARGS__)
 
-//! Used by objects that have split constructors for sanity-checking
-//! their construction state
-
-enum ConstructionState {
-  CS_CONSTRUCTED,       //!< alloc (regular) constructor called ok
-  CS_ACTIVE,            //!< create constructor called ok
-  CS_DYING,             //!< in destructor (use to trap races)
-  CS_BROKEN,            //!< something went wrong during construction
-};
-
 #endif /*DEBUG_HPP_*/
-

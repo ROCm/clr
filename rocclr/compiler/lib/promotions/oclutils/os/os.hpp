@@ -83,6 +83,8 @@ public:
     };
 
 private:
+    static const size_t FILE_PATH_MAX_LENGTH = 1024;
+
     static size_t pageSize_; //!< The default os page size.
     static int processorCount_; //!< The number of active processors.
 
@@ -134,6 +136,8 @@ public:
     static void setThreadAffinity(const void* handle, const ThreadAffinityMask& mask);
     //! Set the currently running thread's name.
     static void setCurrentThreadName(const char* name);
+    //! Check if the thread is alive
+    static bool isThreadAlive(const Thread& osThread);
 
     //! Sleep for n milli-seconds.
     static void sleep(long n);
@@ -150,16 +154,22 @@ public:
     //! Return the amount of host total physical memory in bytes.
     static uint64_t hostTotalPhysicalMemory();
 
-    //! Reserve a chunk of memory (priv | anon | map on demand).
-    static address reserveMemory(size_t size, MemProt prot = MEM_PROT_NONE);
+    //! Reserve a chunk of memory (priv | anon | noreserve).
+    static address reserveMemory(address start, size_t size, size_t alignment = 0, MemProt prot = MEM_PROT_NONE);
+    //! Release a chunk of memory reserved with reserveMemory.
+    static bool releaseMemory(void* addr, size_t size);
+    //! Commit a chunk of memory previously reserved with reserveMemory.
+    static bool commitMemory(void* addr, size_t size, MemProt prot = MEM_PROT_NONE);
+    //! Uncommit a chunk of memory previously committed with commitMemory.
+    static bool uncommitMemory(void* addr, size_t size);
     //! Set the page protections for the given memory region.
     static bool protectMemory(void* addr, size_t size, MemProt prot);
-    //! Release a chunk of memory allocated with reserveMemory.
-    static bool releaseMemory(void* addr, size_t size);
+
     //! Allocate an aligned chunk of memory.
     static void* alignedMalloc(size_t size, size_t alignment);
     //! Deallocate an aligned chunk of memory.
     static void alignedFree(void* mem);
+
     //! Platform-specific optimized memcpy()
     static void* fastMemcpy(void *dest, const void *src, size_t n);
 
@@ -243,9 +253,12 @@ public:
 
     //! Skip an IDIV (F6/F7) instruction and return a pointer to the next insn.
     static bool skipIDIV(address& insn);
-    
+
     // return gloabal memory size to be assigned to device info
-    static size_t getPhysicalMemSize();    
+    static size_t getPhysicalMemSize();
+
+    //! get Application file name
+    static std::string getAppFileName();
 };
 
 /*@}*/

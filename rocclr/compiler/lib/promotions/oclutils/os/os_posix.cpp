@@ -6,6 +6,7 @@
 
 #include "os/os.hpp"
 #include "thread/thread.hpp"
+#include "utils/util.hpp"
 
 #include <iostream>
 #include <stdarg.h>
@@ -31,6 +32,7 @@
 # define DT_GNU_HASH 0x6ffffef5
 #endif // DT_GNU_HASH
 
+#include <atomic>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -38,6 +40,7 @@
 #include <cstdlib>
 #include <cstdio> // for tempnam
 #include <limits.h>
+#include <memory>
 
 #ifdef ANDROID
 //#include <sys/ucontext.h>
@@ -95,30 +98,25 @@ divisionErrorHandler(int sig, siginfo_t* info, void* ptr)
 #if defined(ATI_ARCH_X86)
     insn = (address)uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)];
 #else
-    assert(!"Unimplemented"); 
+    assert(!"Unimplemented");
 #endif
+
+    if(Thread::current()->isWorkerThread()) {
+        if (Os::skipIDIV(insn)) {
+#if defined(ATI_ARCH_X86)
+            uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)] = (greg_t)insn;
+#else
+            assert(!"Unimplemented");
+#endif
+            return;
+        }
+    }
 
     // Call the chained signal handler
     if (callOldSignalHandler(sig, info, ptr)) {
         return;
     }
 
-    // @todo: only handle exception in the generated code.
-    //
-    //if (!isKernelCode(insn)) {
-    //    return;
-    //}
-
-    if (sig == SIGFPE && info->si_code == FPE_INTDIV) {
-        if (Os::skipIDIV(insn)) {
-#if defined(ATI_ARCH_X86)
-            uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP,REG_RIP)] = (greg_t)insn;
-#else
-            assert(!"Unimplemented"); 
-#endif
-            return;
-        }
-    }
 
     std::cerr << "Unhandled signal in divisionErrorHandler()" << std::endl;
     ::abort();
@@ -305,25 +303,76 @@ memProtToOsProt(Os::MemProt prot)
 }
 
 address
-Os::reserveMemory(size_t size, MemProt prot)
+Os::reserveMemory(address start, size_t size, size_t alignment, MemProt prot)
 {
-    address mem = (address) ::mmap(NULL, size, memProtToOsProt(prot),
-        MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+    size = alignUp(size, pageSize());
+    alignment = std::max(pageSize(), alignUp(alignment, pageSize()));
+    assert(isPowerOfTwo(alignment) && "not a power of 2");
 
-    assert(mem != NULL && "out of memory");
-    return mem;
+    size_t requested = size + alignment - pageSize();
+    address mem = (address) ::mmap(start, requested, memProtToOsProt(prot),
+        MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS, 0, 0);
+
+    // check for out of memory
+    if (mem == NULL) return NULL;
+
+    address aligned = alignUp(mem, alignment);
+
+    // return the unused leading pages to the free state
+    if (&aligned[0] != &mem[0]) {
+        assert(&aligned[0] > &mem[0] && "check this code");
+        if (::munmap(&mem[0], &aligned[0] - &mem[0]) != 0) {
+            assert(!"::munmap failed");
+        }
+    }
+    // return the unused trailing pages to the free state
+    if (&aligned[size] != &mem[requested]) {
+       assert(&aligned[size] < &mem[requested] && "check this code");
+       if (::munmap(&aligned[size], &mem[requested] - &aligned[size]) != 0) {
+            assert(!"::munmap failed");
+       }
+    }
+
+    return aligned;
 }
 
-bool 
+bool
 Os::releaseMemory(void* addr, size_t size)
 {
-    // Needs to calculate the size and actual address.
+    assert(isMultipleOf(addr, pageSize()) && "not page aligned!");
+    size = alignUp(size, pageSize());
+
     return 0 == ::munmap(addr, size);
+}
+
+bool
+Os::commitMemory(void* addr, size_t size, MemProt prot)
+{
+    assert(isMultipleOf(addr, pageSize()) && "not page aligned!");
+    size = alignUp(size, pageSize());
+
+    return ::mmap(addr, size, memProtToOsProt(prot),
+        MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS,
+        -1, 0) != MAP_FAILED;
+}
+
+bool
+Os::uncommitMemory(void* addr, size_t size)
+{
+    assert(isMultipleOf(addr, pageSize()) && "not page aligned!");
+    size = alignUp(size, pageSize());
+
+    return ::mmap(addr, size, PROT_NONE,
+        MAP_PRIVATE | MAP_FIXED | MAP_NORESERVE | MAP_ANONYMOUS,
+        -1, 0) != MAP_FAILED;
 }
 
 bool
 Os::protectMemory(void* addr, size_t size, MemProt prot)
 {
+    assert(isMultipleOf(addr, pageSize()) && "not page aligned!");
+    size = alignUp(size, pageSize());
+
     return 0 == ::mprotect(addr, size, memProtToOsProt(prot));
 }
 
@@ -406,6 +455,12 @@ Thread::entry(Thread* thread)
     return thread->main();
 }
 
+bool
+Os::isThreadAlive(const Thread& thread)
+{
+    return true;
+}
+
 const void*
 Os::createOsThread(amd::Thread* thread)
 {
@@ -424,7 +479,7 @@ Os::createOsThread(amd::Thread* thread)
     // We never plan the use join, so free the resources now.
     ::pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
 
-    pthread_t handle = (pthread_t)NULL;
+    pthread_t handle = 0;
     if (0 != ::pthread_create(&handle, &threadAttr,
             (void* (*)(void*)) &Thread::entry, thread)) {
         thread->setState(Thread::FAILED);
@@ -705,20 +760,13 @@ Os::getTempPath()
 std::string
 Os::getTempFileName()
 {
-    std::string tempPath = getTempPath();
-    char* tempBuf = ::tempnam(tempPath.c_str(), "OCL");
+  static std::atomic_size_t counter(0);
 
-    if (tempBuf == NULL) {
-        static amd::Atomic<size_t> counter = 0;
+  std::string tempPath = getTempPath();
+  std::stringstream tempFileName;
 
-        std::stringstream ss;
-        ss << tempPath << "/OCL" << ::getpid() << 'T' << counter++;
-        return ss.str();
-    }
-
-    std::string tempFileName = tempBuf;
-    free(tempBuf);
-    return tempFileName;
+  tempFileName << tempPath << "/OCLC" << ::getpid() << 'T' << counter++;
+  return tempFileName.str();
 }
 
 int
@@ -821,6 +869,18 @@ size_t Os::getPhysicalMemSize()
     }
 
     return (size_t) si.totalram * si.mem_unit;
+}
+
+std::string Os::getAppFileName()
+{
+    std::unique_ptr<char[]> buff(new char[FILE_PATH_MAX_LENGTH]());
+
+    if (readlink("/proc/self/exe", buff.get(), FILE_PATH_MAX_LENGTH) > 0) {
+        // Get filename without path and extension.
+        return std::string(basename(buff.get()));
+    }
+
+    return "";
 }
 
 } // namespace amd

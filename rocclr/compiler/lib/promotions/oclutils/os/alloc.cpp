@@ -21,7 +21,14 @@ GuardedMemory::allocate(size_t size, size_t alignment, size_t guardSize)
 {
     size_t sizeToAllocate = guardSize + alignment;
     sizeToAllocate += size + guardSize + Os::pageSize();
-    address userHostMemGuarded = Os::reserveMemory(sizeToAllocate, Os::MEM_PROT_RW);
+
+    sizeToAllocate = amd::alignUp(sizeToAllocate, Os::pageSize());
+    address userHostMemGuarded = Os::reserveMemory(NULL, sizeToAllocate);
+    if (!userHostMemGuarded || !Os::commitMemory(
+            userHostMemGuarded, sizeToAllocate, Os::MEM_PROT_RW)) {
+        return NULL;
+    }
+
     address userHostMem = userHostMemGuarded + sizeToAllocate;
     userHostMem = amd::alignDown(userHostMem - guardSize, Os::pageSize());
 

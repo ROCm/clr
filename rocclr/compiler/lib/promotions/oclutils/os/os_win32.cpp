@@ -27,6 +27,8 @@ BOOL (WINAPI *pfnGetNumaNodeProcessorMaskEx)(USHORT,PGROUP_AFFINITY) = NULL;
 
 namespace amd {
 
+static size_t allocationGranularity_;
+
 static LONG WINAPI divExceptionFilter(struct _EXCEPTION_POINTERS* ep);
 
 #ifdef _WIN64
@@ -56,6 +58,7 @@ Os::init()
     SYSTEM_INFO si;
     ::GetSystemInfo(&si);
     pageSize_ = si.dwPageSize;
+    allocationGranularity_ = (size_t) si.dwAllocationGranularity;
     processorCount_ = si.dwNumberOfProcessors;
 
     LARGE_INTEGER frequency;
@@ -285,26 +288,67 @@ memProtToOsProt(Os::MemProt prot)
 }
 
 address
-Os::reserveMemory(size_t size, MemProt prot)
+Os::reserveMemory(address start, size_t size, size_t alignment, MemProt prot)
 {
-    // Needs to be COMMITed otherwise the protection will fail.
-    return (address)VirtualAlloc(NULL, size, MEM_COMMIT, PAGE_READWRITE);
+    size = alignUp(size, pageSize());
+    alignment = std::max(allocationGranularity_,
+        alignUp(alignment, allocationGranularity_));
+    assert(isPowerOfTwo(alignment) && "not a power of 2");
+
+    size_t requested = size + alignment - allocationGranularity_;
+    address mem, aligned;
+    do {
+        mem = (address)VirtualAlloc(start, requested,
+            MEM_RESERVE, memProtToOsProt(prot));
+
+        // check for out of memory.
+        if (mem == NULL) return NULL;
+
+        aligned = alignUp(mem, alignment);
+
+        // check for already aligned memory.
+        if (aligned == mem && size == requested) {
+            return mem;
+        }
+
+        // try to reserve the aligned address.
+        if (VirtualFree(mem, 0, MEM_RELEASE) == 0) {
+            assert(!"VirtualFree failed");
+        }
+
+        mem = (address)VirtualAlloc(aligned, size,
+            MEM_RESERVE, memProtToOsProt(prot));
+        assert((mem == NULL || mem == aligned) && "VirtualAlloc failed");
+
+    } while (mem != aligned);
+
+    return mem;
 }
 
-bool 
+bool
 Os::releaseMemory(void* addr, size_t size)
 {
-    BOOL error = VirtualFree(addr, 0, MEM_RELEASE);
-    return (error == 0) ? false : true;
+    return VirtualFree(addr, 0, MEM_RELEASE) != 0;
 }
 
+bool
+Os::commitMemory(void* addr, size_t size, MemProt prot)
+{
+    return VirtualAlloc(addr, size,
+        MEM_COMMIT, memProtToOsProt(prot)) != NULL;
+}
+
+bool
+Os::uncommitMemory(void* addr, size_t size)
+{
+    return VirtualFree(addr, size, MEM_DECOMMIT) != 0;
+}
 
 bool
 Os::protectMemory(void* addr, size_t size, MemProt prot)
 {
     DWORD OldProtect;
-    BOOL error = VirtualProtect(addr, size, memProtToOsProt(prot), &OldProtect);
-    return (error == 0) ? false : true;
+    return VirtualProtect(addr, size, memProtToOsProt(prot), &OldProtect) != 0;
 }
 
 
@@ -406,15 +450,11 @@ divExceptionFilter(struct _EXCEPTION_POINTERS* ep)
 {
     DWORD code = ep->ExceptionRecord->ExceptionCode;
 
-    if (code == EXCEPTION_INT_DIVIDE_BY_ZERO
-            || code == EXCEPTION_INT_OVERFLOW) {
-        // @todo: only handle exception in the generated code.
-        //
-        //if (!isKernelCode(insn)) {
-        //    return;
-        //}
-
+    if ((code == EXCEPTION_INT_DIVIDE_BY_ZERO ||
+         code == EXCEPTION_INT_OVERFLOW) &&
+        Thread::current()->isWorkerThread()) {
         address insn = (address)ep->ContextRecord->LP64_SWITCH(Eip,Rip);
+
         if (Os::skipIDIV(insn)) {
             ep->ContextRecord->LP64_SWITCH(Eip,Rip) = (uintptr_t)insn;
             return EXCEPTION_CONTINUE_EXECUTION;
@@ -427,23 +467,39 @@ void*
 Thread::entry(Thread* thread)
 {
     void* ret = NULL;
-    // @todo: We only need this for CPU worker threads.
 #if !defined(_WIN64)
-    if (true /*thread->isWorkerThread()*/) {
-        __try {
-            ret = thread->main();
-        }
-        __except(divExceptionFilter(GetExceptionInformation())) {
-            // nothing to do here.
-        }
-    }
-    else {
-#else // _WIN64
-    {
-#endif // _WIN64
+    __try {
         ret = thread->main();
     }
+    __except(divExceptionFilter(GetExceptionInformation())) {
+        // nothing to do here.
+    }
+#else // _WIN64
+    ret = thread->main();
+#endif // _WIN64
+
+    // The current thread exits, thus clear the pointer
+#if defined(USE_DECLSPEC_THREAD)
+    details::thread_ = NULL;
+#else // !USE_DECLSPEC_THREAD
+    TlsSetValue(details::threadIndex_, NULL);
+#endif // !USE_DECLSPEC_THREAD
     return ret;
+}
+
+bool
+Os::isThreadAlive(const Thread& thread)
+{
+    HANDLE handle = (HANDLE)(thread.handle());
+
+    DWORD exitCode = 0;
+    if (GetExitCodeThread(handle, &exitCode)) {
+        return exitCode == STILL_ACTIVE;
+    }
+    else {
+        // Could not get thread's exitcode
+        return false;
+    }
 }
 
 const void*
@@ -653,14 +709,14 @@ Os::getTempPath()
     // under windows directory, use . instead
     std::string tempPathStr(tempPath);
     char winPath[MAX_PATH];
-    ret = GetWindowsDirectory(winPath, MAX_PATH);
-    if (ret > 0) {
-        size_t len = strlen(winPath);
-        if (strlen(tempPath) >= len) {
-          tempPath[len] = 0;
-          if (_stricmp(tempPath, winPath) == 0) {
-              return std::string(".");
-          }
+    if (GetWindowsDirectory(winPath, MAX_PATH) > 0) {
+        // Need to check if tempPath is C:\Windows or C:\Windows\ //
+        if (tempPath[strlen(tempPath)-1] == '\\') {
+            tempPath[strlen(tempPath)-1] = '\0' ;
+            ret--;
+        }
+        if (_memicmp(tempPath, winPath, ret) == 0) {
+            return std::string(".");
         }
     }
     return tempPathStr;
@@ -669,18 +725,13 @@ Os::getTempPath()
 std::string
 Os::getTempFileName()
 {
-    char        tempBuf[MAX_PATH];
-    std::string tempPath = getTempPath();
+  static std::atomic_size_t counter(0);
 
-    if (0 == GetTempFileName(tempPath.c_str(), "OCL", 0, tempBuf)) {
-        static amd::Atomic<size_t> counter = 0;
+  std::string tempPath = getTempPath();
+  std::stringstream tempFileName;
 
-        std::stringstream ss;
-        ss << tempPath << "\\OCL" << ::_getpid() << 'T' << counter++;
-        return ss.str();
-    }
-
-    return tempBuf;
+  tempFileName << tempPath << "\\OCLC" << ::_getpid() << 'T' << counter++;
+  return tempFileName.str();
 }
 
 int
@@ -1013,6 +1064,19 @@ size_t Os::getPhysicalMemSize()
     return (size_t) statex.ullTotalPhys;
 }
 
+std::string Os::getAppFileName()
+{
+    std::string strFileName;
+    char* buff = new char[FILE_PATH_MAX_LENGTH];
+
+    if (GetModuleFileNameA(NULL, buff, FILE_PATH_MAX_LENGTH) != 0) {
+        // Get filename without path and extension.
+        strFileName = strrchr(buff, '\\') ? strrchr(buff, '\\') + 1 : buff;
+    }
+
+    delete buff;
+    return strFileName;
+}
 
 } // namespace amd
 

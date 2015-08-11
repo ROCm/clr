@@ -6,9 +6,13 @@
 #define MONITOR_HPP_
 
 #include "top.hpp"
-#include "atomic.hpp"
+#include "thread/atomic.hpp"
 #include "thread/semaphore.hpp"
 #include "thread/thread.hpp"
+
+#include <atomic>
+#include <tuple>
+#include <utility>
 
 namespace amd {
 
@@ -19,13 +23,46 @@ namespace amd {
  *  @{
  */
 
+namespace details {
+
+template <class T, class AllocClass = HeapObject>
+struct SimplyLinkedNode : public AllocClass
+{
+    typedef SimplyLinkedNode<T, AllocClass> Node;
+
+protected:
+    std::atomic<Node*> next_; /*!< \brief The next element. */
+    T volatile item_;
+
+public:
+    //! \brief Return the next element in the linked-list.
+    Node* next() const { return next_; }
+    //! \brief Return the item.
+    T item() const { return item_; }
+
+    //! \brief Set the next element pointer.
+    void setNext(Node* next) { next_ = next; }
+    //! \brief Set the item.
+    void setItem(T item) { item_ = item; }
+
+    //! \brief Swap the next element pointer.
+    Node* swapNext(Node* next) { return next_.swap(next); }
+
+    //! \brief Compare and set the next element pointer.
+    bool compareAndSetNext(Node* compare, Node* next)
+    {
+        return next_.compare_exchange_strong(compare, next);
+    }
+};
+
+} // namespace details
+
 class Monitor : public HeapObject
 {
-    typedef SimplyLinkedNode<Semaphore*,StackObject> LinkedNode;
+    typedef details::SimplyLinkedNode<Semaphore*,StackObject> LinkedNode;
 
 private:
-    static const bool kUnlocked = false;
-    static const bool kLocked = true;
+    static const intptr_t kLockBit = 0x1;
 
     static const int kMaxSpinIter = 55; //!< Total number of spin iterations.
     static const int kMaxReadSpinIter = 50; //!< Read iterations before yielding
@@ -33,12 +70,12 @@ private:
     /*! Linked list of semaphores the contending threads are waiting on
      *  and main lock.
      */
-    AtomicMarkableReference<LinkedNode> contendersList_;
+    std::atomic_intptr_t contendersList_;
     //! The Mutex's name
     char name_[64];
 
     //! Semaphore of the next thread to contend for the lock.
-    AtomicMarkableReference<Semaphore> onDeck_;
+    std::atomic_intptr_t onDeck_;
     //! Linked list of the suspended threads resume semaphores.
     LinkedNode* volatile waitersList_;
 
@@ -63,7 +100,7 @@ protected:
      *
      *  \note The user is responsible for the memory ordering.
      */
-    bool isLocked() const { return contendersList_.isMarked(); }
+    bool isLocked() const { return (contendersList_ & kLockBit) != 0; }
 
     //! Return this monitor's owner thread (NULL if unlocked).
     Thread* owner() const { return owner_; }
@@ -141,10 +178,9 @@ Monitor::tryLock()
     Thread* thread = Thread::current();
     assert(thread != NULL && "cannot lock() from (null)");
 
-    LinkedNode* ptr; bool isLocked;
-    tie(ptr, isLocked) = contendersList_.get();
+    intptr_t ptr = contendersList_.load(std::memory_order_acquire);
 
-    if (unlikely(isLocked)) {
+    if (unlikely((ptr & kLockBit) != 0)) {
         if (recursive_ && thread == owner_) {
             // Recursive lock: increment the lock count and return.
             ++lockCount_;
@@ -153,8 +189,8 @@ Monitor::tryLock()
         return false; // Already locked!
     }
 
-    if (unlikely(!contendersList_.compareAndSet(
-            ptr, ptr, kUnlocked, kLocked))) {
+    if (unlikely(!contendersList_.compare_exchange_weak(ptr, ptr | kLockBit,
+            std::memory_order_acq_rel, std::memory_order_acquire))) {
         return false; // We failed the CAS from unlocked to locked.
     }
 
@@ -189,23 +225,21 @@ Monitor::unlock()
 
     setOwner(NULL);
 
-    while (true) {
-        LinkedNode* ptr = contendersList_.getReference();
-        // Clear the lock bit.
-        if (contendersList_.compareAndSet(ptr, ptr, kLocked, kUnlocked)) {
-            break; // We succeeded the CAS from locked to unlocked.
-        }
-    }
+    // Clear the lock bit.
+    intptr_t ptr = contendersList_.load(std::memory_order_acquire);
+    while (!contendersList_.compare_exchange_weak(ptr, ptr & ~kLockBit,
+               std::memory_order_acq_rel, std::memory_order_acquire))
+        ;
     //
+    // We succeeded the CAS from locked to unlocked.
     // This is the end of the critical region.
 
     // Check if we have an on-deck thread that needs signaling.
-    Semaphore* onDeck; bool isMarked;
-    tie(onDeck, isMarked) = onDeck_.get();
-    if (onDeck != NULL) {
-        if (!isMarked) {
+    intptr_t onDeck = onDeck_;
+    if (onDeck != 0) {
+        if ((onDeck & kLockBit) == 0) {
             // Only signal if it is unmarked.
-            onDeck->post();
+            reinterpret_cast<Semaphore*>(onDeck)->post();
         }
         return; // We are done.
     }
@@ -215,9 +249,8 @@ Monitor::unlock()
     // so return if the list is empty or if the lock got acquired again (it's
     // somebody else's problem now!)
 
-    LinkedNode* head; bool isLocked;
-    amd::tie(head, isLocked) = contendersList_.get();
-    if (isLocked || head == NULL) {
+    intptr_t head = contendersList_;
+    if (head == 0 || (head & kLockBit) != 0) {
         return;
     }
 
