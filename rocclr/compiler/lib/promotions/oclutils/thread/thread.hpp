@@ -103,9 +103,6 @@ protected:
         size_t stackSize = 0 /*use system default*/,
         bool spawn = true /* create a new Os::thread */);
 
-    //! Destroy this thread.
-    virtual ~Thread();
-
 public:
     //! Return the currently running thread instance.
     static inline Thread* current();
@@ -115,6 +112,9 @@ public:
 
     //! Tear down the OsThread package.
     static void tearDown();
+
+    //! Destroy this thread.
+    virtual ~Thread();
 
     //! Return the thread's name
     const std::string& name() const { return name_; }
@@ -130,6 +130,9 @@ public:
 
     //! Return true is this is the host thread.
     virtual bool isHostThread() const { return false; }
+
+    //! Return true if this is a worker thread.
+    virtual bool isWorkerThread() const { return false; }
 
     //! Get the current thread state.
     ThreadState state() const { return state_; }

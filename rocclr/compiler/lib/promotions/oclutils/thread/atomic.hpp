@@ -13,7 +13,8 @@
 #define ATOMIC_HPP_
 
 #include "top.hpp"
-#include "utils/traits.hpp"
+
+#include <type_traits>
 
 #ifdef _WIN32
 # include <intrin.h>
@@ -21,64 +22,15 @@
 # include <emmintrin.h>
 # include <xmmintrin.h>
 #endif // !_WIN32
+
+#include <atomic>
+#include <utility>
+
 namespace amd {
 
 /*! \addtogroup Threads
  *  @{
  *
- *  \defgroup MemOrder Memory ordering
- *  @{
- */
-
-/*! \brief Memory order access operations.
- */
-class MemoryOrder : AllStatic
-{
-public:
-    /*! \brief Execute a memory fence.
-     *
-     *  Perform a serializing operation on loads and stores which guarantees
-     *  that all memory operations dispatched prior to the fence will be
-     *  globally visible before any other memory operation following the fence.
-     */
-    static void fence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_mfence();
-#   else // !ATI_ARCH_X86
-        __sync_synchronize();
-#   endif // !ATI_ARCH_X86
-    }
-
-    /*! \brief Execute a loads fence.
-     *
-     *  Perform a serializing operation on loads which guarantees that all
-     *  load from memory operations dispatched prior to the lfence will be
-     *  globally visible before any other load following the lfence.
-     */
-    static void lfence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_lfence();
-#   else // !ATI_ARCH_X86
-        fence();
-#   endif // !ATI_ARCH_X86
-    }
-
-    /*! \brief Execute a stores fence.
-     *
-     *  Perform a serializing operation on stores which guarantees that all
-     *  store to memory operations dispatched prior to the sfence will be
-     *  globally visible before any other store following the sfence.
-     */
-    static void sfence() {
-#   if defined(ATI_ARCH_X86)
-        _mm_sfence();
-#   else // !ATI_ARCH_X86
-        fence();
-#   endif // !ATI_ARCH_X86
-    }
-};
-
-/*! @}
  *  \addtogroup Atomic Atomic Operations
  *  @{
  */
@@ -149,7 +101,7 @@ public:
      *  Atomically add \a inc to \a *dest and return the prior value.
      */
     template <typename T>
-    static T add(typename make_arithmetic<T>::type inc, volatile T* dest)
+    static T add(T inc, volatile T* dest)
     {
         return Intrinsics<sizeof(T)>::add((T) inc, dest);
     }
@@ -200,7 +152,7 @@ public:
      *  Atomically or \a mask to \a *dest and return the prior value.
      */
     template <typename T>
-    static T _or(typename make_arithmetic<T>::type mask, volatile T* dest)
+    static T _or(T mask, volatile T* dest)
     {
         return Intrinsics<sizeof(T)>::_or((T) mask, dest);
     }
@@ -210,7 +162,7 @@ public:
      *  Atomically or \a mask to \a *dest and return the prior value.
      */
     template <typename T>
-    static T _and(typename make_arithmetic<T>::type mask, volatile T* dest)
+    static T _and(T mask, volatile T* dest)
     {
         return Intrinsics<sizeof(T)>::_and((T) mask, dest);
     }
@@ -422,8 +374,9 @@ class Atomic
 {
 private:
 
-    typedef typename add_volatile<T>::type value_type;
-    value_type value_; //!< \brief The variable.
+    typedef typename std::remove_volatile<typename std::remove_pointer<
+        typename std::remove_reference<T>::type>::type>::type value_type;
+    typename std::add_volatile<T>::type value_; //!< \brief The variable.
 
 public:
     //! Construct a new %Atomic variable of type T.
@@ -444,50 +397,51 @@ public:
     //! Return the %Atomic variable value.
     T operator ->() const    { return T(value_); }
     //! Return the %Atomic variable's address.
-    typename add_pointer<value_type>::type operator &() { return &value_; }
+    typename std::add_pointer<typename std::add_volatile<value_type>::type>::
+    type operator &() { return &value_; }
 
     //! Atomically add \a inc to this variable.
-    Atomic<T>& operator += (typename make_arithmetic<T>::type inc)
+    Atomic<T>& operator += (value_type inc)
     {
-        if (is_pointer<T>::value) {
-            inc *= sizeof(typename remove_pointer<T>::type);
+        if (std::is_pointer<T>::value) {
+            inc *= sizeof(typename std::remove_pointer<T>::type);
         }
         AtomicOperation::add(inc, &value_);
         return *this;
     }
 
     //! Atomically subtract \a inc to this variable.
-    Atomic<T>& operator -= (typename make_arithmetic<T>::type inc)
+    Atomic<T>& operator -= (value_type inc)
     {
-        typename make_arithmetic<T>::type modifier = 0;
-        if (is_pointer<T>::value) {
-            inc *= sizeof(typename remove_pointer<T>::type);
+        value_type modifier = 0;
+        if (std::is_pointer<T>::value) {
+            inc *= sizeof(typename std::remove_pointer<T>::type);
         }
         AtomicOperation::add(modifier - inc, &value_);
         return *this;
     }
 
     //! Atomically OR \a value to this variable.
-    Atomic<T>& operator |= (typename make_arithmetic<T>::type mask)
+    Atomic<T>& operator |= (value_type mask)
     {
         AtomicOperation::_or(mask, &value_);
         return *this;
     }
 
     //! Atomically AND \a value to this variable.
-    Atomic<T>& operator &= (typename make_arithmetic<T>::type mask)
+    Atomic<T>& operator &= (value_type mask)
     {
         AtomicOperation::_and(mask, &value_);
         return *this;
     }
 
     //! Atomically increment this variable and return its new value.
-    typename remove_reference<T>::type operator ++ ()
+    typename std::remove_reference<T>::type operator ++ ()
     {
-        if (is_pointer<T>::value) {
-            typename make_arithmetic<T>::type inc = 1;
-            return AtomicOperation::add(
-                inc * sizeof(typename remove_pointer<T>::type), &value_) + 1;
+        if (std::is_pointer<T>::value) {
+            value_type inc = static_cast<value_type>(
+                sizeof(typename std::remove_pointer<T>::type));
+            return AtomicOperation::add(inc, &value_) + 1;
         }
         else {
             return AtomicOperation::increment(&value_) + 1;
@@ -495,12 +449,13 @@ public:
     }
 
     //! Atomically decrement this variable and return its new value.
-    typename remove_reference<T>::type operator -- ()
+    typename std::remove_reference<T>::type operator -- ()
     {
-        if (is_pointer<T>::value) {
-            typename make_arithmetic<T>::type inc = -1;
-            return AtomicOperation::add(
-                inc * sizeof(typename remove_pointer<T>::type), &value_) - 1;
+        if (std::is_pointer<T>::value) {
+            value_type inc = static_cast<value_type>(-
+                static_cast<typename std::make_signed<value_type>::type>(
+                    sizeof(typename std::remove_pointer<T>::type)));
+            return AtomicOperation::add(inc, &value_) - 1;
         }
         else {
             return AtomicOperation::decrement(&value_) - 1;
@@ -508,12 +463,12 @@ public:
     }
 
     //! Atomically increment this variable and return its previous value.
-    typename remove_reference<T>::type operator ++ (int)
+    typename std::remove_reference<T>::type operator ++ (int)
     {
-        if (is_pointer<T>::value) {
-            typename make_arithmetic<T>::type inc = 1;
-            return AtomicOperation::add(
-                inc * sizeof(typename remove_pointer<T>::type), &value_);
+        if (std::is_pointer<T>::value) {
+            value_type inc = static_cast<value_type>(
+                sizeof(typename std::remove_pointer<T>::type));
+            return AtomicOperation::add(inc, &value_);
         }
         else {
             return AtomicOperation::increment(&value_);
@@ -523,10 +478,11 @@ public:
     //! Atomically decrement this variable and return its previous value.
     T operator -- (int)
     {
-        if (is_pointer<T>::value) {
-            typename make_arithmetic<T>::type inc = -1;
-            return AtomicOperation::add(
-                inc * sizeof(typename remove_pointer<T>::type), &value_);
+        if (std::is_pointer<T>::value) {
+            value_type inc = static_cast<value_type>(-
+                static_cast<typename std::make_signed<value_type>::type>(
+                    sizeof(typename std::remove_pointer<T>::type)));
+            return AtomicOperation::add(inc, &value_);
         }
         else {
             return AtomicOperation::decrement(&value_);
@@ -556,7 +512,7 @@ public:
      */
     void storeRelease(T value)
     {
-        MemoryOrder::fence();
+        std::atomic_thread_fence(std::memory_order_release);
         value_ = value;
     }
 
@@ -569,7 +525,7 @@ public:
     T loadAcquire() const
     {
         T value = value_;
-        MemoryOrder::fence();
+        std::atomic_thread_fence(std::memory_order_acquire);
         return value;
     }
 };
@@ -582,83 +538,6 @@ make_atomic(T& t)
     return Atomic<T&>(t);
 }
 
-
-template <typename T>
-class AtomicMarkableReference
-{
-private:
-    static const intptr_t kMarkBitMask = 0x1;
-
-private:
-    Atomic<T*> reference_;
-
-private:
-    static intptr_t markMask(bool mark)
-    {
-        return mark ? kMarkBitMask : intptr_t(0);
-    }
-
-public:
-    AtomicMarkableReference()
-        : reference_(NULL)
-    { }
-
-    AtomicMarkableReference(T* ptr, bool mark = false)
-        : reference_((T*)((intptr_t) ptr | markMask(mark)))
-    { }
-
-    bool compareAndSet(
-        T* expectedPtr, T* newPtr,
-        bool expectedMark, bool newMark)
-    {
-        return reference_.compareAndSet(
-            (T*)((intptr_t) expectedPtr | markMask(expectedMark)),
-            (T*)((intptr_t) newPtr | markMask(newMark)));
-    }
-
-    pair<T*,bool> swap(T* newPtr, bool newMark)
-    {
-        T* prev = reference_.swap(
-            (T*)((intptr_t) newPtr | markMask(newMark)));
-        return make_pair(
-            (T*) ((intptr_t) prev & ~kMarkBitMask),
-            ((intptr_t) prev & kMarkBitMask) != 0);
-    }
-
-    bool tryMark(T* expectedPtr, bool newMark)
-    {
-        T* current = reference_;
-        if (((intptr_t) current & ~kMarkBitMask) != (intptr_t) expectedPtr) {
-            return false;
-        }
-        bool currentMark = ((intptr_t) current & kMarkBitMask) != 0;
-        return currentMark == newMark || reference_.compareAndSet(current,
-            (T*)((intptr_t) expectedPtr | markMask(newMark)));
-    }
-
-    bool isMarked() const
-    {
-        return ((intptr_t)(T*) reference_ & kMarkBitMask) != 0;
-    }
-
-    pair<T*,bool> get() const
-    {
-        T* current = reference_;
-        return make_pair(
-            (T*) ((intptr_t) current & ~kMarkBitMask),
-            ((intptr_t) current & kMarkBitMask) != 0);
-    }
-
-    T* getReference() const
-    {
-        return (T*) ((intptr_t)(T*) reference_ & ~kMarkBitMask);
-    }
-
-    void set(T* ptr, bool mark)
-    {
-        reference_ = (T*)((intptr_t) ptr | markMask(mark));
-    }
-};
 
 /*! @}
  *  @}

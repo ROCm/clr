@@ -6,8 +6,8 @@
 #define UTIL_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 
+#include <atomic>
 #include <string>
 
 namespace amd {
@@ -15,307 +15,6 @@ namespace amd {
 /*! \addtogroup Utils Utilities
  *  @{
  */
-
-//! \cond ignore
-template <int N>
-struct PairElement;
-
-template <>
-struct PairElement<0>
-{
-    template <class F, class S>
-    static inline F& get(pair<F,S>& p) { return p.first; }
-    template <class F, class S>
-    static inline const F& get(const pair<F,S>& p) { return p.first; }
-};
-
-template <>
-struct PairElement<1>
-{
-    template <class F, class S>
-    static inline S& get(pair<F,S>& p) { return p.second; }
-    template <class F, class S>
-    static inline const S& get(const pair<F,S>& p) { return p.second; }
-};
-
-// Forward declaration of the tuple_elements container class.
-template <class H, class T>
-struct TupleElementsContainer;
-
-/*! \brief Return the type of the Nth element in the tuple.
- */
-template <int N, class T>
-struct TupleElementType
-{
-    typedef typename T::tail_t next_element;
-    typedef typename TupleElementType<N-1,next_element>::type type;
-};
-
-// break the recursion
-template <class T>
-struct TupleElementType<0,T>
-{
-    typedef Null next_element;
-    typedef typename T::head_t type;
-};
-
-/*! \brief Helper struct to extract the Nth element from a tuple
- */
-template <int N>
-struct TupleElementGetter
-{
-    template <class R, class H, class T>
-    static R get(TupleElementsContainer<H,T>& t)
-    {
-        return TupleElementGetter<N-1>::template get<R>(t.tail);
-    }
-    template <class R, class H, class T>
-    static R get(const TupleElementsContainer<H,T>& t)
-    {
-        return TupleElementGetter<N-1>::template get<R>(t.tail);
-    }
-};
-
-// break the recursion
-template <>
-struct TupleElementGetter<0>
-{
-    template <class R, class H, class T>
-    static R get(TupleElementsContainer<H,T>& t)
-    {
-        return t.head;
-    }
-    template <class R, class H, class T>
-    static R get(const TupleElementsContainer<H,T>& t)
-    {
-        return t.head;
-    }
-};
-
-/*! \brief Return the Nth element in the tuple.
- */
-template <int N, class H, class T>
-inline typename TupleElementType<N,TupleElementsContainer<H,T> >::type&
-getTupleElement(TupleElementsContainer<H,T>& t)
-{
-    return TupleElementGetter<N>::template get<
-        typename TupleElementType<N,TupleElementsContainer<H,T> >::type&,
-        H,T>(t);
-}
-
-template <int N, class H, class T>
-inline const typename TupleElementType<N,TupleElementsContainer<H,T> >::type&
-getTupleElement(const TupleElementsContainer<H, T>& t)
-{
-    return TupleElementGetter<N>::template get<
-        const typename TupleElementType<N,TupleElementsContainer<H,T> >::type&,
-        H,T>(t);
-}
-
-/*! \brief The tuple elements struct
- */
-template <class H, class T>
-struct TupleElementsContainer
-{
-    typedef H head_t;
-    typedef T tail_t;
-
-    head_t head; tail_t tail;
-
-    TupleElementsContainer() : head(), tail() { }
-
-    template <class T0, class T1, class T2, class T3>
-    TupleElementsContainer(T0& t0, T1& t1, T2& t2, T3& t3)
-        : head(t0), tail(t1, t2, t3, null())
-    { }
-
-    template <class HH, class TT>
-    TupleElementsContainer& operator= (const TupleElementsContainer<HH,TT>& t)
-    {
-        head = t.head;
-        tail = t.tail;
-        return *this;
-    }
-
-    template <class F, class S>
-    TupleElementsContainer& operator= (const pair<F,S>& p)
-    {
-        head = p.first;
-        tail.head = p.second;
-        return *this;
-    }
-
-    template<int N>
-    typename TupleElementType<N, TupleElementsContainer>::type&
-    get() { return getTupleElement<N>(*this); }
-};
-
-// break the recursion
-template <class H>
-struct TupleElementsContainer<H, Null>
-{
-    typedef H head_t;
-    typedef Null tail_t;
-
-    H head;
-
-    TupleElementsContainer() : head() { }
-
-    template <class T0>
-    TupleElementsContainer(T0& t0, const Null&, const Null&, const Null&)
-        : head(t0)
-    { }
-
-    template <class HH>
-    TupleElementsContainer& operator = (
-        const TupleElementsContainer<HH,Null>& t)
-    {
-        head = t.head;
-        return *this;
-    }
-
-    template<int N>
-    typename TupleElementType<N, TupleElementsContainer>::type&
-    get() { return getTupleElement<N>(*this); }
-};
-
-/*! \brief Rebind the TupleElementsContainer type.
- */
-template <class T0, class T1, class T2, class T3>
-struct TupleElementsBinder
-{
-    typedef TupleElementsContainer<
-        T0, typename TupleElementsBinder<T1, T2, T3, Null>::type
-    > type;
-};
-
-// break the recursion
-template<>
-struct TupleElementsBinder<Null, Null, Null, Null>
-{ typedef Null type; };
-//! \endcond
-
-/*! \brief A simple N-element (1 to 4) tuple.
- */
-template <class T0 = Null, class T1 = Null, class T2 = Null, class T3 = Null>
-class tuple : public TupleElementsBinder<T0, T1, T2, T3>::type
-{
-private:
-    typedef typename TupleElementsBinder<T0, T1, T2, T3>::type base_t;
-
-public:
-    tuple() { }
-    tuple(T0 t0) : base_t(t0, null(), null(), null()) { }
-    tuple(T0 t0, T1 t1) : base_t(t0, t1, null(), null()) { }
-    tuple(T0 t0, T1 t1, T2 t2) : base_t(t0, t1, t2, null()) { }
-    tuple(T0 t0, T1 t1, T2 t2, T3 t3) : base_t(t0, t1, t2, t3) { }
-
-    template <class H, class T>
-    tuple(const TupleElementsContainer<H,T>& te) : base_t(te)
-    { }
-
-    template <class H, class T>
-    tuple& operator = (const TupleElementsContainer<H,T>& te)
-    {
-        base_t::operator = (te);
-        return *this;
-    }
-
-    template <class F, class S>
-    tuple& operator = (const pair<F,S>& p)
-    {
-        base_t::operator = (p);
-        return *this;
-    }
-};
-
-// tuple / pair element getters.
-
-template <int N, class H, class T>
-inline typename TupleElementType<N, TupleElementsContainer<H,T> >::type&
-get(TupleElementsContainer<H,T>& te)
-{
-    return getTupleElement<N>(te);
-}
-
-template <int N, class H, class T>
-inline const typename TupleElementType<N, TupleElementsContainer<H,T> >::type&
-get(const TupleElementsContainer<H,T>& te)
-{
-    return getTupleElement<N>(te);
-}
-
-template <int N, class F, class S>
-inline typename TupleElementType<N, tuple<F,S> >::type&
-get(pair<F,S>& p)
-{
-    return PairElement<N>::get(p);
-}
-
-template <int N, class F, class S>
-inline const typename TupleElementType<N, tuple<F,S> >::type&
-get(const pair<F,S>& p)
-{
-    return PairElement<N>::get(p);
-}
-
-// Some tuple helpers (make_tuple() and tie())
-
-template <class T0>
-inline tuple<T0>
-make_tuple(const T0& t0)
-{
-    return tuple<T0>(t0);
-}
-
-template <class T0, class T1>
-inline tuple<T0, T1>
-make_tuple(const T0& t0, const T1& t1)
-{
-    return tuple<T0, T1>(t0, t1);
-}
-
-template <class T0, class T1, class T2>
-inline tuple<T0, T1, T2>
-make_tuple(const T0& t0, const T1& t1, const T2& t2)
-{
-    return tuple<T0, T1, T2>(t0, t1, t2);
-}
-
-template <class T0, class T1, class T2, class T3>
-inline tuple<T0, T1, T2, T3>
-make_tuple(const T0& t0, const T1& t1, const T2& t2, const T3& t3)
-{
-    return tuple<T0, T1, T2, T3>(t0, t1, t2, t3);
-}
-
-template <class T0>
-inline tuple<T0&>
-tie(T0& t0)
-{
-    return tuple<T0&>(t0);
-}
-
-template <class T0, class T1>
-inline tuple<T0&, T1&>
-tie(T0& t0, T1& t1)
-{
-    return tuple<T0&, T1&>(t0, t1);
-}
-
-template <class T0, class T1, class T2>
-inline tuple<T0&, T1&, T2&>
-tie(T0& t0, T1& t1, T2& t2)
-{
-    return tuple<T0&, T1&, T2&>(t0, t1, t2);
-}
-
-template <class T0, class T1, class T2, class T3>
-inline tuple<T0&, T1&, T2&, T3&>
-tie(T0& t0, T1& t1, T2& t2, T3& t3)
-{
-    return tuple<T0&, T1&, T2&, T3&>(t0, t1, t2, t3);
-}
 
 //! \brief Check if the given value \a val is a power of 2.
 template <typename T>
@@ -471,94 +170,22 @@ alignUp(T* value, size_t alignment)
     return (T*) alignDown((intptr_t) (value + alignment - 1), alignment);
 }
 
-template <class T, class AllocClass = HeapObject>
-struct SimplyLinkedNode : public AllocClass
+template<typename T>
+inline bool isMultipleOf(T value, size_t alignment)
 {
-    typedef SimplyLinkedNode<T, AllocClass> Node;
-
-protected:
-    Atomic<Node*> next_; /*!< \brief The next element. */
-    T volatile item_;
-
-public:
-    //! \brief Return the next element in the linked-list.
-    Node* next() const { return next_; }
-    //! \brief Return the item.
-    T item() const { return item_; }
-
-    //! \brief Set the next element pointer.
-    void setNext(Node* next) { next_ = next; }
-    //! \brief Set the item.
-    void setItem(T item) { item_ = item; }
-
-    //! \brief Swap the next element pointer.
-    Node* swapNext(Node* next) { return next_.swap(next); }
-
-    //! \brief Compare and set the next element pointer.
-    bool compareAndSetNext(Node* compare, Node* next)
-    {
-        return next_.compareAndSet(compare, next);
+    if (isPowerOfTwo(alignment)) {
+        // fast path, using logical operators
+        return alignUp(value, alignment) == value;
     }
-};
+    return value % alignment == 0;
+}
 
-/* For the implementation of a doubly-linked list, check:
- *        Lock-Free and Practical
- *        Deques and Doubly Linked
- *        Lists using Single-Word
- *        Compare-And-Swap
- *
- *        Hakan Sundell, Philippas Tsigas
- *        Department of Computing Science
- *        Chalmers Univ. of Technol. and Goteborg Univ.
- */
-
-template <class T, class AllocClass = HeapObject>
-struct DoublyLinkedNode
+template<typename T>
+inline bool isMultipleOf(T* value, size_t alignment)
 {
-    typedef SimplyLinkedNode<T, AllocClass> Node;
-
-protected:
-    Atomic<Node*> prev_; //!< The previous element.
-    Atomic<Node*> next_; //!< The next element.
-    T volatile item_;
-
-public:
-    //! \brief Return the previous element in the linked-list.
-    Node* prev() const { return prev_; }
-    //! \brief Return the next element in the linked-list.
-    Node* next() const { return next_; }
-    //! \brief Return the item.
-    T item() const { return item_; }
-
-    //! \brief Set the previous element pointer.
-    void setPrev(Node* prev) { prev_ = prev; }
-    //! \brief Set the next element pointer.
-    void setNext(Node* next) { next_ = next; }
-    //! \brief Set the item.
-    void setItem(T item) { item_ = item; }
-
-    //! \brief Swap the previous element pointer.
-    Node* swapPrev(Node* prev)
-    {
-        return prev_.swap(prev);
-    }
-    //! \brief Swap the next element pointer.
-    Node*  swapNext( Node* next)
-    {
-        return next_.swap(next);
-    }
-
-    //! \brief Compare and set the previous element pointer.
-    bool compareAndSetPrev(Node* compare, Node* prev)
-    {
-        return prev_.compareAndSet(compare, prev, false, false);
-    }
-    //! \brief Compare and set the next element pointer.
-    bool compareAndSetNext(Node* compare, Node* next)
-    {
-        return next_.compareAndSet(compare, next, false, false);
-    }
-};
+    intptr_t ptr  = reinterpret_cast<intptr_t>(value);
+    return isMultipleOf(ptr, alignment);
+}
 
 template <class Reference, class Value>
 struct DeviceMap {
@@ -642,6 +269,13 @@ inline uint leastBitSet(T value)
         leastBitSet32((uint32_t)value);
 }
 
+static inline bool Is32Bits() {
+    return LP64_SWITCH(true, false);
+}
+
+static inline bool Is64Bits() {
+    return LP64_SWITCH(false, true);
+}
 /*@}*/} // namespace amd
 
 #endif /*UTIL_HPP_*/
