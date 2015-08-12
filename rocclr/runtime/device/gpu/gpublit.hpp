@@ -379,7 +379,7 @@ public:
         device::Memory& vqueue,         //!< Memory object for virtual queue
         device::Memory& params,         //!< Extra arguments for the scheduler
         uint    paramIdx,               //!< Parameter index
-        uint    numSlots                //!< Number of slots in the queue
+        uint    threads                 //!< Number of scheduling threads
         ) const;
 
 private:

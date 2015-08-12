@@ -545,6 +545,7 @@ private:
     Memory*         schedParams_;   //!< The scheduler parameters
     uint            schedParamIdx_; //!< Index in the scheduler parameters buffer
     uint            deviceQueueSize_;   //!< Device queue size
+    uint            maskGroups_;    //!< The number of mask groups processed in the scheduler by one thread
 
     Memory*         hsaQueueMem_;   //!< Memory for the amd_queue_t object
     bool            profileEnabled_;//!< Profiling is enabled

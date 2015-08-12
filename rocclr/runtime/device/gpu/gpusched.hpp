@@ -70,6 +70,8 @@ struct SchedulerParam {
     uint64_t    parentAQL;      //!< Host parent AmdAqlWrap packet
     uint32_t    dedicatedQueue; //!< Scheduler uses a dedicated queue
     uint32_t    scratchOffset;  //!< Scratch buffer offset
+    uint32_t    mask_groups;    //!< Processed mask groups by one thread
+    uint32_t    reserved;       //!< Reserved
 };
 
 } // namespace gpu

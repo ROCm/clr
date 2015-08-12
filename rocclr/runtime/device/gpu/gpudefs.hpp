@@ -61,6 +61,9 @@ const static uint HsaImageObjectAlignment = 16;
 const static uint HsaSamplerObjectSize = 32;
 const static uint HsaSamplerObjectAlignment = 16;
 
+//! HSA path specific defines for images
+const static uint DeviceQueueMaskSize = 32;
+
 //! Defines all supported ASIC families
 enum AsicFamilies {
     Family7xx,
