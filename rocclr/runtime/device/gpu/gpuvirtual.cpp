@@ -278,9 +278,18 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 {
     uint MinDeviceQueueSize = 16 * 1024;
     deviceQueueSize = std::max(deviceQueueSize, MinDeviceQueueSize);
+
+    maskGroups_      = deviceQueueSize / (512 * Ki);
+    maskGroups_      = (maskGroups_== 0) ? 1 : maskGroups_;
+
     // Align the queue size for the multiple dispatch scheduler.
-    // Each thread works with 32 entries
-    deviceQueueSize = amd::alignUp(deviceQueueSize, sizeof(AmdAqlWrap) * 32);
+    // Each thread works with 32 entries * maskGroups
+    uint extra = deviceQueueSize % (sizeof(AmdAqlWrap) *
+            DeviceQueueMaskSize * maskGroups_);
+    if (extra != 0) {
+        deviceQueueSize += (sizeof(AmdAqlWrap) *
+            DeviceQueueMaskSize * maskGroups_) - extra;
+    }
 
     if (deviceQueueSize_ == deviceQueueSize) {
         return true;
@@ -319,11 +328,11 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 
     uint    eventMaskOffs = allocSize;
     // Add mask array for events
-    allocSize += amd::alignUp(dev().settings().numDeviceEvents_, 32) / 8;
+    allocSize += amd::alignUp(dev().settings().numDeviceEvents_, DeviceQueueMaskSize) / 8;
 
     uint    slotMaskOffs = allocSize;
     // Add mask array for AmdAqlWrap slots
-    allocSize += amd::alignUp(numSlots, 32) / 8;
+    allocSize += amd::alignUp(numSlots, DeviceQueueMaskSize) / 8;
 
     virtualQueue_ = new Memory(dev(), allocSize);
     Resource::MemoryType type = (GPU_PRINT_CHILD_KERNEL == 0) ?
@@ -402,6 +411,7 @@ VirtualGPU::VirtualGPU(
     , schedParams_(NULL)
     , schedParamIdx_(0)
     , deviceQueueSize_(0)
+    , maskGroups_(1)
     , hsaQueueMem_(NULL)
     , profileEnabled_(false)
 {
@@ -1908,7 +1918,7 @@ VirtualGPU::submitKernelInternalHSA(
             static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
                 *gpuDefQueue->virtualQueue_,
                 *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
-                gpuDefQueue->vqHeader_->aql_slot_num);
+                gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
             const static bool FlushL2 = true;
             gpuDefQueue->flushCUCaches(FlushL2);
 
@@ -1928,6 +1938,7 @@ VirtualGPU::submitKernelInternalHSA(
             param->parentAQL = vmParentWrap;
             param->dedicatedQueue = dev().settings().useDeviceQueue_;
             param->useATC = dev().settings().svmFineGrainSystem_;
+            param->mask_groups = maskGroups_;
 
             // Fill the scratch buffer information
             if (hsaKernel.prog().maxScratchRegs() > 0) {
@@ -1958,7 +1969,8 @@ VirtualGPU::submitKernelInternalHSA(
                 gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
             gpuDefQueue->virtualQueueDispatcherEnd(gpuEvent,
                 gpuDefQueue->vmMems(), gpuDefQueue->cal_.memCount_,
-                signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num / 32);
+                signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
+                (DeviceQueueMaskSize * maskGroups_));
 
             // Set GPU event for the used resources
             for (uint i = 0; i < memList.size(); ++i) {
