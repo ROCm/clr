@@ -756,6 +756,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "SC turn on/off liveness based instruction scheduling (default off)")
 
+//  -fsc-post-ra-sched (default false)
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
+       "sc-post-ra-sched", NULL, \
+       SCPostRASched, \
+       false, 0, 0, NULL, \
+       "Run instruction scheduling after register allocation (default off)")
+
 // -scras=int or --sc-si-opt-reg-alloc-strategy (default 4)
 // 4 let OCL compiler choose SC reg alloc strategy by heuristic
 // keep this updated with SCShaderSi.h
@@ -793,13 +801,13 @@ OPTION(OT_INT32, \
       "Set AMDIL shader compiler optimization level -1,0,1,2,3,4 (default -1 "
       "auto).")
 
-// -ilcth=int or --inline-cost-threshold (default 100)
+// -ilcth=int or --inline-cost-threshold (default 400)
 OPTION(OT_UINT32, \
        OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "ilcth", "inline-cost-threshold", \
        InlineCostThreshold, \
        400, 0, 0xFFFFFFFF, NULL, \
-       "Set cost threshold for inliner (default 100).")
+       "Set cost threshold for inliner (default 400).")
 
 // -ilsth=int or --inline-size-threshold (default 50)
 OPTION(OT_UINT32, \
@@ -809,13 +817,13 @@ OPTION(OT_UINT32, \
        50, 0, 0xFFFFFFFF, NULL, \
        "Set size threshold for inliner (default 50).")
 
-// -ilkth=int or --inline-kernel-size-threshold (default 200000)
+// -ilkth=int or --inline-kernel-size-threshold (default 100000)
 OPTION(OT_UINT32, \
        OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "ilkth", "inline-kernel-size-threshold", \
        InlineKernelSizeThreshold, \
        100000, 0, 0xFFFFFFFF, NULL, \
-       "Set kernel size threshold for inliner (default 200000).")
+       "Set kernel size threshold for inliner (default 100000).")
 
 // -wokth=int or --waves-opt-kernel-threshold (default 0)
 OPTION(OT_UINT32, \
