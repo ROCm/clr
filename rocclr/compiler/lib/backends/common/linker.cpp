@@ -14,7 +14,7 @@
 #include "utils/target_mappings.h"
 
 #include "acl.h"
-#if !(defined(LEGACY_COMPLIB) || defined(MAIN_LINE))
+#if !defined(LEGACY_COMPLIB)
 #define HAS_SPIRV
 #endif
 
