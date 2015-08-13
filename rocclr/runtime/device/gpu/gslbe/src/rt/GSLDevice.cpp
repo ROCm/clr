@@ -149,6 +149,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.numOfVpu = m_adp->pAsicInfo->numberOfVPU;
     m_attribs.isOpenCL200Device = m_adp->pAsicInfo->bIsOpen2Device;
     m_attribs.isSVMFineGrainSystem = m_adp->pAsicInfo->svmFineGrainSystem;
+    m_attribs.isWDDM2Enabled = m_adp->pAsicInfo->vaAvailable && m_adp->pAsicInfo->bNoVATranslation;
 }
 
 bool
