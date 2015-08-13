@@ -254,7 +254,8 @@ Settings::create(
     case CAL_TARGET_BAFFIN:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
-        singleFpDenorm_ = true;
+        // Keep this false even though we have support
+        // singleFpDenorm_ = true;
         viPlus_ = true;
         // Fall through to CI ...
     case CAL_TARGET_KALINDI:
