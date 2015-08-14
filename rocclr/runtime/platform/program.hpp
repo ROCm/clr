@@ -81,6 +81,7 @@ private:
     SharedReference<Context> context_;
 
     std::string     sourceCode_;    //!< Strings that make up the source code
+    bool            isIL_;          //!< The binary image is IL
     devicebinary_t  binary_;        //!< The binary image, provided by the app
     symbols_t*      symbolTable_;   //!< The program's kernels symbol table
     std::string     kernelNames_;   //!< The program kernel names
@@ -105,9 +106,10 @@ protected:
 
 public:
     //! Construct a new program to be compiled from the given source code.
-    Program(Context& context, const std::string& sourceCode)
+    Program(Context& context, const std::string& sourceCode, bool isIL = false)
         : context_(context)
         , sourceCode_(sourceCode)
+        , isIL_(isIL)
         , symbolTable_(NULL)
         , programLog_()
         , firstBuildNoOpt_(true)
@@ -116,6 +118,7 @@ public:
     //! Construct a new program associated with a context.
     Program(Context& context)
         : context_(context)
+        , isIL_(false)
         , symbolTable_(NULL)
     { }
 
