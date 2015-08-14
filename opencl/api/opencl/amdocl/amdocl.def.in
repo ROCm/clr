@@ -103,6 +103,7 @@ clUnloadPlatformCompiler
 #endif
 
 #if (OPENCL_MAJOR >= 2)
+clCreateProgramWithIL
 clCreateCommandQueueWithProperties
 clCreateSamplerWithProperties
 clCreatePipe

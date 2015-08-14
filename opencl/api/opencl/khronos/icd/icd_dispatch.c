@@ -471,6 +471,20 @@ clCreateProgramWithSource(cl_context        context,
 }
 
 CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithIL(cl_context        context,
+                      const void *      il,
+                      size_t            length,
+                      cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreateProgramWithIL(
+        context,
+        il,
+        length,
+        errcode_ret);
+}
+
+CL_API_ENTRY cl_program CL_API_CALL
 clCreateProgramWithBinary(cl_context                     context,
                           cl_uint                        num_devices,
                           const cl_device_id *           device_list,

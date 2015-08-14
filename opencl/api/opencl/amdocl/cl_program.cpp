@@ -166,6 +166,73 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource, (
 }
 RUNTIME_EXIT
 
+/*! \brief Create a program object for a context, and loads the IL into the
+ *  program object.
+ *
+ *  \param context must be a valid OpenCL context.
+ *
+ *  \param string is a pointer to IL.
+ *
+ *  \param length is the size in bytes of IL.
+ *
+ *  \param errcode_ret will return an appropriate error code. If \a errcode_ret
+ *  is NULL, no error code is returned.
+ *
+ *  \return A valid non-zero program object and errcode_ret is set to
+ *  \a CL_SUCCESS if the program object is created successfully. It returns a
+ *  NULL value with one of the following error values returned in
+ *  \a errcode_ret:
+ *  - CL_INVALID_CONTEXT if \a context is not a valid context.
+ *  - CL_INVALID_VALUE if \a il is NULL or \a length is zero.
+ *  - CL_INVALID_VALUE if the \a length-byte memory pointed to by \a il does
+ *   not contain well-formed intermediate language input appropriate for the
+ *   deployment environment in which the OpenCL platform is running.
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
+ *   by the OpenCL implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources
+ *   required by the OpenCL implementation on the host.
+ *
+ *  \version 1.0r33
+ */
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithIL, (
+    cl_context context,
+    const void *il,
+    size_t length,
+    cl_int *errcode_ret))
+{
+    if (!is_valid(context)) {
+        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+        return (cl_program)0;
+    }
+    if (length == 0 || il == NULL) {
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        return (cl_program)0;
+    }
+
+    // Create the program
+    amd::Program* program = new amd::Program(*as_amd(context), "", true);
+    if (program == NULL) {
+        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+        return (cl_program)0;
+    }
+
+    // Add programs for all devices in the context.
+    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+    std::vector<amd::Device*>::const_iterator it;
+    for (it = devices.begin(); it != devices.end(); ++it) {
+        if (program->addDeviceProgram(**it, il, length) ==
+            CL_OUT_OF_HOST_MEMORY) {
+            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+            program->release();
+            return (cl_program)0;
+        }
+    }
+
+    *not_null(errcode_ret) = CL_SUCCESS;
+    return as_cl(program);
+}
+RUNTIME_EXIT
+
 /*! \brief Create a program object for a context, and loads the binary images
  *  into the program object.
  *
