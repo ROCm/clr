@@ -14,6 +14,7 @@
 #else
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Support/FileSystem.h"
+#include "AMDPasses.h"
 #endif
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Support/raw_ostream.h"
