@@ -142,6 +142,7 @@ global:
 #if (OPENCL_MAJOR >= 2)
 OPENCL_2.0 {
 global:
+    clCreateProgramWithIL;
     clCreateCommandQueueWithProperties;
     clCreateSamplerWithProperties;
     clCreatePipe;

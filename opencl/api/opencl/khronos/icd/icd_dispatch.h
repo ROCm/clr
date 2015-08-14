@@ -272,6 +272,12 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithSource)(
     const size_t *    lengths,
     cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
+typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithIL)(
+    cl_context        context,
+    const void *      il,
+    size_t            length,
+    cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0;
+
 typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithBinary)(
     cl_context                     context,
     cl_uint                        num_devices,
@@ -1411,6 +1417,9 @@ struct KHRicdVendorDispatchRec
     KHRpfn_clGetKernelSubGroupInfoKHR               clGetKernelSubGroupInfoKHR;
 
     KHRpfn_clTerminateContextKHR                    clTerminateContextKHR;
+
+    /* cl_khr_spirv */
+    KHRpfn_clCreateProgramWithIL                    clCreateProgramWithIL;
 };
 
 #endif // _ICD_DISPATCH_H_
