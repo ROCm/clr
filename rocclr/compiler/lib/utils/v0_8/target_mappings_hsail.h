@@ -30,6 +30,7 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   UnknownTarget,
   { "CZ", "Carrizo", "generic", amd::GPU_Library_HSAIL, CARRIZO_A0,      0, true, true,  FAMILY_CZ },
   { "VI", "Fiji",    "generic", amd::GPU_Library_HSAIL, VI_FIJI_P_A0,    0, true, true,  FAMILY_VI },
+  { "CZ", "Stoney",  "generic", amd::GPU_Library_HSAIL, STONEY_A0,       0, true, true,  FAMILY_CZ },
   InvalidTarget
 };
 

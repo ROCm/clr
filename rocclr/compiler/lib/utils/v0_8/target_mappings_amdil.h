@@ -100,6 +100,7 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "VI", "Tonga",      "tonga",   amd::GPU_Library_CI,        VI_TONGA_P_A0,           F_SI_BASE, true,  true, FAMILY_VI },
   { "CI", "Bonaire",    "bonaire", amd::GPU_Library_CI,        CI_BONAIRE_M_A1,         F_SI_BASE, true, true, FAMILY_CI },
   { "VI", "Fiji",       "fiji",    amd::GPU_Library_CI,        VI_FIJI_P_A0,            F_SI_BASE, true,  true, FAMILY_VI },
+  { "CZ", "Stoney",     "stoney",  amd::GPU_Library_CI,        STONEY_A0,               F_SI_BASE, true, true,  FAMILY_CZ },
   InvalidTarget
 };
 
