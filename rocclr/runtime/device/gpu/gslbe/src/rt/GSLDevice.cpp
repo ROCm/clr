@@ -341,6 +341,17 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     m_vpucount = m_adp->getNumLinkedVPUs();
     asic_id = m_adp->getAsicID();
 
+    if ((asic_id < GSL_ATIASIC_ID_TAHITI_P) ||
+        (asic_id == GSL_ATIASIC_ID_DEVASTATOR) ||
+        (asic_id == GSL_ATIASIC_ID_SCRAPPER))
+    {
+        LogPrintfInfo("Unsupported legacy ASIC(%d) found!\n", asic_id);
+        // close the adaptor
+        gsAdaptor::closeAdaptor(m_adp);
+        m_adp = 0;
+        return false;
+    }
+
     bool hasDmaEngine = m_adp->findDMAEngine();
     bool hasComputeEngine = m_adp->findComputeEngine();
 

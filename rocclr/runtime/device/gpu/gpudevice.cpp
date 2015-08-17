@@ -73,13 +73,12 @@ NullDevice::NullDevice()
 bool
 NullDevice::init()
 {
-    bool result = false;
     std::vector<Device*> devices;
 
     devices = getDevices(CL_DEVICE_TYPE_GPU, false);
 
     // Loop through all supported devices and create each of them
-    for (uint id = CAL_TARGET_CYPRESS; id <= CAL_TARGET_LAST; ++id) {
+    for (uint id = CAL_TARGET_TAHITI; id <= CAL_TARGET_LAST; ++id) {
         bool    foundActive = false;
 
         if (gpu::DeviceInfo[id].targetName_[0] == '\0') {
@@ -106,13 +105,12 @@ NullDevice::init()
                 delete dev;
             }
             else {
-                result |= true;
                 dev->registerDevice();
             }
         }
     }
 
-    return result;
+    return true;
 }
 
 bool
@@ -126,17 +124,17 @@ NullDevice::create(CALtarget target)
     calTarget_ = calAttr.target = target;
     hwInfo_ = &DeviceInfo[calTarget_];
 
+    assert((target >= CAL_TARGET_TAHITI) &&
+           (target != CAL_TARGET_SCRAPPER) &&
+           (target != CAL_TARGET_DEVASTATOR));
+
     // Force double if it could be supported
     switch (target) {
-    case CAL_TARGET_CAYMAN:
-    case CAL_TARGET_CYPRESS:
     case CAL_TARGET_PITCAIRN:
     case CAL_TARGET_CAPEVERDE:
     case CAL_TARGET_TAHITI:
     case CAL_TARGET_OLAND:
     case CAL_TARGET_HAINAN:
-    case CAL_TARGET_DEVASTATOR:
-    case CAL_TARGET_SCRAPPER:
         calAttr.doublePrecision = CAL_TRUE;
         break;
     case CAL_TARGET_BONAIRE:
@@ -1211,7 +1209,6 @@ bool
 Device::init()
 {
     CALuint     numDevices = 0;
-    bool        result = false;
     bool    useDeviceList = false;
     requestedDevices_t requestedDevices;
 
@@ -1274,7 +1271,7 @@ Device::init()
     for (; ordinal < numDevices; ++ordinal) {
         // Create the GPU device object
         Device *d = new Device();
-        result = (NULL != d) && d->create(ordinal, numDevices);
+        bool    result = (NULL != d) && d->create(ordinal, numDevices);
         if (useDeviceList) {
             result &= (requestedDevices.find(ordinal) != requestedDevices.end());
         }
@@ -1287,7 +1284,7 @@ Device::init()
             delete d;
         }
     }
-    return result;
+    return true;
 }
 
 void
