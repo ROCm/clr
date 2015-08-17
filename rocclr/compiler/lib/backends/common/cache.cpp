@@ -1,5 +1,4 @@
 #include "cache.hpp"
-
 // Use srcdata and buildOpts to generate a cache entry
 //
 // In:
@@ -82,7 +81,6 @@ bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcDa
   }
   return true;
 }
-
 // Use srcData and buildOpts to find the corresponding cache entry, if it exists
 //
 // In:
@@ -130,7 +128,6 @@ bool KernelCache::getCacheEntry(bool &isCacheReady, const std::string &deviceNam
   }
   return kernelCached;
 }
-
 // Use srcData and buildOpts to find the corresponding cache entry, if it exists
 //
 // In:
@@ -231,7 +228,6 @@ bool KernelCache::getCacheEntry_helper(const KernelCacheData *srcData, const std
   CloseFile(cacheFile);
   return true;
 }
-
 #if _WIN32
 // Get Sid of account
 //
@@ -306,7 +302,6 @@ std::unique_ptr<SID> KernelCache::getSid(TCHAR *username)
   return sid;
 }
 #endif
-
 #if defined(__linux__)
 inline bool path_is_directory(const std::string &path)
 {
@@ -315,7 +310,6 @@ inline bool path_is_directory(const std::string &path)
     return false;
   return S_ISDIR(s_buf.st_mode);
 }
-
 // Remove all files and subfolders in a dir
 //
 // In:
@@ -354,7 +348,6 @@ unsigned long remove_all(const char* directory_name)
   return (rmdir(directory_name) == 0) ? fileCnt : LONG_MIN;
 }
 #endif
-
 // Wipe the cache folder structure
 //
 // In:
@@ -387,7 +380,6 @@ bool KernelCache::wipeCacheFolders()
   }
   return true;
 }
-
 // Setup cache tree structure
 //
 // In:
@@ -420,7 +412,6 @@ bool KernelCache::setUpCacheFolders()
   }
   return true;
 }
-
 // Return detailed error message as string
 //
 // In:
@@ -450,7 +441,6 @@ std::string KernelCache::getLastErrorMsg()
   return std::string(strerror(errno));
 #endif
 }
-
 // Set file to only owner accessible
 //
 // In:
@@ -492,7 +482,6 @@ bool KernelCache::setAccessPermission(const std::string &fileName, bool isFile)
 #endif
   return true;
 }
-
 // Set the cache's root path
 //
 // In:
@@ -546,7 +535,6 @@ bool KernelCache::setRootPath(const std::string &chipName)
   // Set folder to only owner accessible
   return setAccessPermission(rootPath);
 }
-
 // Set the cache version and size
 //
 // In:
@@ -572,7 +560,6 @@ bool KernelCache::setCacheInfo(unsigned int newVersion, unsigned int newSize)
   cacheSize = newSize;
   return true;
 }
-
 // Get the version and size of the cache
 //
 // In:
@@ -624,7 +611,6 @@ bool KernelCache::getCacheInfo()
   CloseFile(cacheFile);
   return true;
 }
-
 // Initialize the cache
 //
 // In:
@@ -653,7 +639,6 @@ bool KernelCache::cacheInit(unsigned int compilerVersion, const std::string &chi
   }
   return true;
 }
-
 // Compute the hash value for a buffer of data along with the buildOpts
 //
 // In:
@@ -672,7 +657,6 @@ unsigned int KernelCache::computeHash(const KernelCacheData *data, const std::st
   std::hash<HashType> hash_fn;
   return hash_fn(v);
 }
-
 // Control kernel cache test
 //
 // In:
@@ -685,18 +669,9 @@ unsigned int KernelCache::computeHash(const KernelCacheData *data, const std::st
 // true if kernel cache test is on; false otherwise
 //
 bool KernelCache::internalKCacheTestSwitch() {
-#ifndef OPENCL_MAINLINE
-  const char *cache_test_switch = getenv("AMD_FORCE_KCACHE_TEST");
-  if (!(cache_test_switch && strcmp(cache_test_switch,"1") == 0)) {
-    return false;
-  } else {
-    return true;
-  }
-#else
-  return false;
-#endif
-}
 
+  return false;
+}
 // Generate file path from a hash value
 //
 // In:
@@ -724,7 +699,6 @@ void KernelCache::getFilePathFromHash(const unsigned int hashVal, std::string &p
   // Rest of file name determines name
   pathToFile += fileName.c_str() + 2;
 }
-
 // Use data and buildOpts to generate a file name
 //
 // In:
@@ -742,7 +716,6 @@ void KernelCache::makeFileName(const KernelCacheData *data, const std::string &b
   unsigned int hashVal = computeHash(data, buildOpts);
   getFilePathFromHash(hashVal, pathToFile);
 }
-
 // Verify whether the file includes the right kernel cache file header
 //
 // In:
@@ -768,7 +741,6 @@ bool KernelCache::verifyKernelCacheFileHeader(KernelCacheFileHeader &H, const st
   }
   return true;
 }
-
 // Read contents in cacheFile
 //
 // In:
@@ -800,7 +772,6 @@ bool KernelCache::readFile(FileHandle cacheFile, void *buffer, ssize_t sizeToRea
   }
   return true;
 }
-
 // Write contents to cacheFile
 //
 // In:
@@ -832,7 +803,6 @@ bool KernelCache::writeFile(FileHandle cacheFile, const void *buffer, ssize_t si
   }
   return true;
 }
-
 // Open a file and write its contents
 //
 // In:
@@ -894,7 +864,6 @@ bool KernelCache::writeFile(const std::string &fileName, const void *data, size_
   // Set file to only owner accessible
   return setAccessPermission(fileName, true);
 }
-
 // Remove file
 //
 // In:
@@ -917,7 +886,6 @@ void KernelCache::removePartiallyWrittenFile(const std::string &fileName)
     errorMsg += ", Unable to delete partially written cache file: " + getLastErrorMsg();
   }
 }
-
 // Log caching error messages for debugging the cache and/or detecting collisions
 //
 // In:
@@ -939,7 +907,6 @@ void KernelCache::appendLogToFile(std::string extraMsg) {
     writeFile(fileName, errorMsg.c_str(), errorMsg.length(), true);
   }
 }
-
 // Log error message and close the file
 //
 // In:
