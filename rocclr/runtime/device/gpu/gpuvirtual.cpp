@@ -358,6 +358,7 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
     header->aql_slot_mask   = vaBase + slotMaskOffs;
     header->wait_size       = dev().settings().numWaitEvents_;
     header->arg_size        = dev().info().maxParameterSize_ + 64;
+    header->mask_groups     = maskGroups_;
     vqHeader_ = new AmdVQueueHeader;
     if (NULL == vqHeader_) {
         return false;
@@ -1938,7 +1939,6 @@ VirtualGPU::submitKernelInternalHSA(
             param->parentAQL = vmParentWrap;
             param->dedicatedQueue = dev().settings().useDeviceQueue_;
             param->useATC = dev().settings().svmFineGrainSystem_;
-            param->mask_groups = maskGroups_;
 
             // Fill the scratch buffer information
             if (hsaKernel.prog().maxScratchRegs() > 0) {
