@@ -45,6 +45,7 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/Support/IRReader.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ExecutionEngine/ObjectImage.h"
 #include "llvm/ExecutionEngine/ObjectBuffer.h"
@@ -52,9 +53,11 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/Support/SPIRV.h"
 #endif
 #include "llvm/MC/MCObjectFileInfo.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Compiler.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -378,6 +381,59 @@ OCLFEToModule(
   }
   return module;
 }
+
+aclModule* ACL_API_ENTRY
+SPIRVToModule(
+    aclLoaderData *ald,
+    const char *image,
+    size_t length,
+    aclContext *ctx,
+    acl_error *error)
+{
+  auto compiler = reinterpret_cast<amdcl::LLVMCompilerStage*>(ald);
+#ifdef LEGACY_COMPLIB
+  llvm::report_fatal_error("SPIR-V not supported on legacy compiler lib");
+  appendLogToCL(compiler->CL(), "SPIR-V not supported on legacy compiler lib");
+  if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
+  return nullptr;
+#else
+  std::string spvImg(image, length);
+  auto opt = compiler->Options();
+  if (opt->isDumpFlagSet(amd::option::DUMP_SPIRV)) {
+    std::ofstream ofs(opt->getDumpFileName(".spv"), std::ios::binary);
+    ofs << spvImg;
+    ofs.close();
+  }
+
+  std::stringstream ss(spvImg);
+  std::string errMsg;
+  auto llCtx = reinterpret_cast<llvm::LLVMContext*>(ctx);
+  llvm::Module *llMod = nullptr;
+  bool success = llvm::ReadSPRV(*llCtx, ss, llMod, errMsg);
+
+  if (success && llMod && opt->isDumpFlagSet(amd::option::DUMP_BC_SPIRV)) {
+    auto bcDump = opt->getDumpFileName("_spirv.bc");
+    std::error_code ec;
+    llvm::raw_fd_ostream outS(bcDump.c_str(), ec, llvm::sys::fs::F_None);
+    if (!ec)
+      WriteBitcodeToFile(llMod, outS);
+    else
+      errMsg = ec.message();
+  }
+
+  if (!errMsg.empty()) {
+    appendLogToCL(compiler->CL(), errMsg);
+  }
+  if (!success || llMod == nullptr) {
+    if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
+    return nullptr;
+  }
+
+  if (error != nullptr) (*error) = ACL_SUCCESS;
+  return reinterpret_cast<aclModule*>(llMod);
+#endif // LEGACY_COMPLIB
+}
+
 acl_error ACL_API_ENTRY
 AMDILFEToISA(
     aclLoaderData *ald,
@@ -1369,8 +1425,10 @@ if_aclCompile(aclCompiler *cl,
        (from == ACL_TYPE_HSAIL_BINARY && to != ACL_TYPE_ISA && to != ACL_TYPE_CG)) {
     return ACL_INVALID_ARG;
   }
-  uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0, 5, 0, 1};
-  aclSections d_section[7] = {aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE, aclCODEGEN, aclTEXT, aclINTERNAL};
+  uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0,
+      5, 0, 1, 1};
+  aclSections d_section[7] = {aclSOURCE, aclLLVMIR, aclSPIR, aclSOURCE,
+      aclCODEGEN, aclTEXT, aclINTERNAL};
   uint8_t start = sectable[from];
   uint8_t stop = sectable[to];
   const void* data = NULL;
@@ -1393,6 +1451,9 @@ if_aclCompile(aclCompiler *cl,
     }
     break;
   }
+  case ACL_TYPE_SPIRV_BINARY:
+    data = cl->clAPI.extSec(cl, bin, &data_size, aclSPIRV, &error_code);
+    break;
   case ACL_TYPE_SPIR_BINARY:
   case ACL_TYPE_SPIR_TEXT:
     data = cl->clAPI.extSec(cl, bin, &data_size, aclSPIR, &error_code);
@@ -1486,15 +1547,19 @@ if_aclCompile(aclCompiler *cl,
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.toModule, &OCLFEToModule, &SPIRToModule);
       } else if (from == ACL_TYPE_LLVMIR_BINARY || from == ACL_TYPE_LLVMIR_TEXT ||
                  from == ACL_TYPE_SPIR_BINARY   || from == ACL_TYPE_SPIR_TEXT   ||
-                 from == ACL_TYPE_RSLLVMIR_BINARY) {
+                 from == ACL_TYPE_RSLLVMIR_BINARY || from == ACL_TYPE_SPIRV_BINARY) {
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &SPIRInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &AMDILInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.init, &HSAILFEInit, &OCLInit);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &SPIRFini, &OCLFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &AMDILFini, &OCLFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &HSAILFEFini, &OCLFini);
-        if (from == ACL_TYPE_RSLLVMIR_BINARY) {
+        if (from == ACL_TYPE_SPIRV_BINARY) {
+          cl->feAPI.toModule = &SPIRVToModule;
+        } else if (from == ACL_TYPE_RSLLVMIR_BINARY) {
           cl->feAPI.toModule = &RSLLVMIRToModule;
+        } else {
+          cl->feAPI.toModule = &OCLFEToModule;
         }
       }
   }
@@ -2280,6 +2345,16 @@ if_aclQueryInfo(aclCompiler *cl,
         return ACL_SUCCESS;
       } else if (*size >= sizeof(bool)) {
         bool contains = elfBin->isSection(aclSPIR);
+        memcpy(ptr, &contains, sizeof(bool));
+        return ACL_SUCCESS;
+      }
+      return ACL_ERROR;
+    case RT_CONTAINS_SPIRV:
+      if (!ptr) {
+        *size = sizeof(bool);
+        return ACL_SUCCESS;
+      } else if (*size >= sizeof(bool)) {
+        bool contains = elfBin->isSection(aclSPIRV);
         memcpy(ptr, &contains, sizeof(bool));
         return ACL_SUCCESS;
       }

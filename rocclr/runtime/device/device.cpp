@@ -32,6 +32,8 @@ extern void DeviceUnload();
 #endif
 
 #include "utils/bif_section_labels.hpp"
+#include "utils/libUtils.h"
+#include "spirv/spirvUtils.h"
 
 #include <vector>
 #include <string>
@@ -41,20 +43,7 @@ extern void DeviceUnload();
 #include <fstream>
 #include <set>
 
-#if !defined(BCMAG)
-#define BCMAG  "BC"
-#define SBCMAG 2
-#endif
-// Helper predicate returns true if p starts with bit code signature.
-// TODO: Move it into Compiler Lib back in new 1_0 API
-inline static bool
-isBcMagic(const char* p)
-{
-    if (p==NULL || strncmp(p, BCMAG, SBCMAG) != 0) {
-        return false;
-    }
-    return true;
-}
+
 
 namespace device {
 extern const char* BlitSourceCode;
@@ -250,27 +239,6 @@ Device::~Device()
         info_.partitionCreateInfo_.byCounts_.countsList_ != NULL) {
         delete [] info_.partitionCreateInfo_.byCounts_.countsList_;
     }
-}
-
-// TODO: Move it into Compiler Lib in new 1_0 API
-bool
-Device::verifyBinaryImage( const void* image, size_t size) const
-{
-    const char* p = static_cast<const char*>(image);
-#if defined(HAVE_BLOWFISH_H)
-    int outBufSize;
-    if (amd::isEncryptedBIF(p, (int)size, &outBufSize)) {
-        // For encrypted image, check it later and simply return true here.
-        return true;
-    }
-#endif
-    if (amd::isElfMagic(p)) {
-        return true;
-    }
-    if (isBcMagic(p)) {
-        return true;
-    }
-    return false;
 }
 
 bool
@@ -1069,7 +1037,8 @@ Program::initClBinary(char* binaryIn, size_t size)
     int encryptCode = 0;
     char* decryptedBin = NULL;
 
-    if (isBcMagic(binaryIn))
+    bool isSPIRV = isSPIRVMagic(binaryIn, size);
+    if (isSPIRV || isBcMagic(binaryIn))
     {
         acl_error err = ACL_SUCCESS;
         aclBinaryOptions binOpts = {0};
@@ -1087,7 +1056,8 @@ Program::initClBinary(char* binaryIn, size_t size)
             aclBinaryFini(aclbin_v30);
             return false;
         }
-        err = aclInsertSection(device().compiler(), aclbin_v30, binaryIn, size, aclSPIR);
+        err = aclInsertSection(device().compiler(), aclbin_v30, binaryIn, size,
+                isSPIRV?aclSPIRV:aclSPIR);
         if (ACL_SUCCESS != err) {
             LogWarning("aclInsertSection failed");
             aclBinaryFini(aclbin_v30);

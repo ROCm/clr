@@ -1840,6 +1840,16 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     size_t boolSize = sizeof(bool);
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     // Checking llvmir in .llvmir section
+    bool containsSpirv = true;
+    errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_,
+            RT_CONTAINS_SPIRV, NULL, &containsSpirv, &boolSize);
+    if (errorCode != ACL_SUCCESS) {
+        containsSpirv = false;
+    }
+    if (containsSpirv) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_SPIRV_BINARY;
+    }
     bool containsSpirText = true;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_CONTAINS_SPIR, NULL, &containsSpirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
@@ -1998,7 +2008,8 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
       if (recompile) {
           while (!completeStages.empty()) {
               continueCompileFrom = completeStages.back();
-              if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+              if (continueCompileFrom == ACL_TYPE_SPIRV_BINARY ||
+                  continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
                   continueCompileFrom == ACL_TYPE_SPIR_BINARY ||
                   continueCompileFrom == ACL_TYPE_DEFAULT) {
                   break;
@@ -2032,6 +2043,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         continueCompileFrom = getNextCompilationStageFromBinary(options);
     }
     switch (continueCompileFrom) {
+    case ACL_TYPE_SPIRV_BINARY:
     case ACL_TYPE_SPIR_BINARY:
     // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
     // 1. if the program is not created with binary;

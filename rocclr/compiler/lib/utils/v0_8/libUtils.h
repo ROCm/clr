@@ -376,4 +376,19 @@ inline bool writeFile(std::string source_filename, const char *source, size_t si
   return EXIT_SUCCESS;
 }
 
+#if !defined(BCMAG)
+#define BCMAG  "BC"
+#define SBCMAG 2
+#endif
+// Helper predicate returns true if p starts with bit code signature.
+// TODO: Move it into Compiler Lib back in new 1_0 API
+inline static bool
+isBcMagic(const char* p)
+{
+    if (p==NULL || strncmp(p, BCMAG, SBCMAG) != 0) {
+        return false;
+    }
+    return true;
+}
+
 #endif // _CL_LIB_UTILS_0_8_H_

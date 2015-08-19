@@ -6,6 +6,7 @@
 #include "platform/program.hpp"
 #include "platform/context.hpp"
 #include "utils/options.hpp"
+#include "acl.h"
 
 #include <cstdlib> // for malloc
 #include <cstring> // for strcmp
@@ -48,7 +49,9 @@ Program::findSymbol(const char* kernelName) const
 cl_int
 Program::addDeviceProgram(Device& device, const void* image, size_t length, int oclVer)
 {
-    if (image != NULL && !device.verifyBinaryImage(image, length)) {
+    if (image != NULL &&
+        !aclValidateBinaryImage(image, length,
+            isIL_?BINARY_TYPE_SPIRV:BINARY_TYPE_ELF|BINARY_TYPE_LLVM)) {
         return CL_INVALID_BINARY;
     }
 
