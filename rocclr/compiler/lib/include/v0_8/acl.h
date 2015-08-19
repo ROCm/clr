@@ -229,7 +229,12 @@ const void* ACL_API_ENTRY
     const char *kernel,
     size_t *size,
     acl_error *error_code) ACL_API_0_8;
-
+//!--------------------------------------------------------------------------!//
+// Functions that deal with binary image.
+//!--------------------------------------------------------------------------!//
+bool ACL_API_ENTRY
+  aclValidateBinaryImage(const void* binary,
+    size_t length, unsigned) ACL_API_0_8;
 //!--------------------------------------------------------------------------!//
 // Functions that deal with aclJITObjectImage objects.
 //!--------------------------------------------------------------------------!//

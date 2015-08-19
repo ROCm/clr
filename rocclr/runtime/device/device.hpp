@@ -1648,9 +1648,6 @@ public:
         const amd::Kernel& kernel,
         const device::VirtualDevice* vdev) { return true; };
 
-    //! Returns true if the given binary image is valid for this device.
-    bool verifyBinaryImage( const void* image, size_t size) const;
-
     //! Returns TRUE if the device is available for computations
     bool isOnline() const { return online_; }
     //! Returns TRUE if the device is a root device (as opposed to sub-device)

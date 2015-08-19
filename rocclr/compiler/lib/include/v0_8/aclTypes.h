@@ -51,6 +51,7 @@ typedef enum   _bif_version_enum_0_8       aclBIFVersion;
 typedef enum   _bif_platform_enum_0_8      aclPlatform;
 typedef enum   _bif_sections_enum_0_8      aclSections;
 typedef enum   _acl_loader_type_enum_0_8   aclLoaderType;
+typedef enum   _acl_binary_image_type_enum_0_8   aclBinaryImageType;
 
 #include "aclFunctors.h"
 // Typedefs for function pointers

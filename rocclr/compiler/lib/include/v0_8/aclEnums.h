@@ -32,7 +32,8 @@ typedef enum _acl_error_enum_0_8 {
   ACL_INVALID_SPIR    = 24,
   ACL_LWVERIFY_FAIL   = 25,
   ACL_HWVERIFY_FAIL   = 26,
-  ACL_LAST_ERROR      = 27
+  ACL_SPIRV_LOAD_FAIL = 27,
+  ACL_LAST_ERROR      = 28
 } acl_error_0_8;
 
 typedef enum _comp_device_caps_enum_0_8 {
@@ -111,7 +112,8 @@ typedef enum _acl_type_enum_0_8 {
   ACL_TYPE_ISA            = 14,
   ACL_TYPE_HEADER         = 15,
   ACL_TYPE_RSLLVMIR_BINARY  = 16,
-  ACL_TYPE_LAST           = 17
+  ACL_TYPE_SPIRV_BINARY   = 17,
+  ACL_TYPE_LAST           = 18
 } aclType_0_8;
 
 //! Enum of the various loader types that are supported.
@@ -184,7 +186,8 @@ typedef enum _bif_sections_enum_0_8 {
   aclBRIGxxx3       = 33,
   aclHSADEBUG       = 34,
   aclKSTATS         = 35, // For storing kernel statistics
-  aclLAST           = 36
+  aclSPIRV          = 36,
+  aclLAST           = 37
 } aclSections_0_8;
 
 //! An enumeration that defines what are valid queries for aclQueryInfo.
@@ -212,7 +215,8 @@ typedef enum _rt_query_types_enum_0_8 {
   RT_CONTAINS_LOADER_MAP    = 20,
   RT_CONTAINS_SPIR          = 21,
   RT_NUM_KERNEL_HIDDEN_ARGS = 22,
-  RT_LAST_TYPE              = 23
+  RT_CONTAINS_SPIRV         = 23,
+  RT_LAST_TYPE              = 24
 } aclQueryType_0_8;
 
 //! An enumeration for the various GPU capabilities
@@ -327,5 +331,12 @@ typedef enum _acl_access_type_enum_0_8 {
   ACCESS_TYPE_RW    = 3,
   ACCESS_TYPE_LAST  = 4
 } aclAccessType_0_8;
+
+// Enumeration that specifies the binary types.
+typedef enum _acl_binary_image_type_enum_0_8 {
+  BINARY_TYPE_ELF   = 1,
+  BINARY_TYPE_LLVM  = 2,
+  BINARY_TYPE_SPIRV = 4,
+} aclBinaryImageType_0_8;
 
 #endif // _ACL_ENUMS_0_8_H_
