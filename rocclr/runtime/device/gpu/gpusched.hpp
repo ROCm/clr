@@ -28,7 +28,7 @@ struct AmdVQueueHeader {
     uint32_t command_counter;   //!< [LRW] The global counter for the submitted commands into the queue
     uint32_t wait_size;         //!< [LRO] The wait list size (in clk_event_t)
     uint32_t arg_size;          //!< [LRO] The size of argument buffer (in bytes)
-    uint32_t reserved0;         //!< For the future usage
+    uint32_t mask_groups;       //!< Processed mask groups by one thread
     uint64_t kernel_table;      //!< [LRO] Pointer to an array with all kernel objects (ulong for each entry)
     uint32_t reserved[2];       //!< For the future usage
 };
@@ -70,8 +70,7 @@ struct SchedulerParam {
     uint64_t    parentAQL;      //!< Host parent AmdAqlWrap packet
     uint32_t    dedicatedQueue; //!< Scheduler uses a dedicated queue
     uint32_t    scratchOffset;  //!< Scratch buffer offset
-    uint32_t    mask_groups;    //!< Processed mask groups by one thread
-    uint32_t    reserved;       //!< Reserved
+    uint32_t    reserved[2];    //!< Reserved
 };
 
 } // namespace gpu
