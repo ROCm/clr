@@ -86,3 +86,7 @@ endif
 ifeq ($(OPENCL_USE_ONE_SC),1)
     GCPPFLAGS += $(DEFSWITCH) OPENCL_USE_ONE_SC
 endif
+
+ifneq (,$(wildcard $(COMPLIB_DEPTH)/loaders/elf/utils/blowfish/blowfish.h))
+    GCPPFLAGS += $(DEFSWITCH) HAVE_BLOWFISH_H
+endif
