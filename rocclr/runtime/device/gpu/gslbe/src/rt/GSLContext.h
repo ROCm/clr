@@ -107,7 +107,7 @@ public:
     void            destroyThreadTrace(gslQueryObject) const;
     gslShaderTraceBufferObject CreateThreadTraceBuffer(void) const;
     void            DestroyThreadTraceBuffer(gslShaderTraceBufferObject,uint32) const;
-    uint32          getThreadTraceQueryRes(gslQueryObject) const;
+    void            getThreadTraceQueryRes(gslQueryObject, uint32* info) const;
     void            configMemThreadTrace(gslShaderTraceBufferObject,gslMemObject,uint32,uint32) const;
     void            beginThreadTrace(gslQueryObject,gslQueryObject, gslQueryTarget,uint32,CALthreadTraceConfig&) const;
     void            endThreadTrace(gslQueryObject,uint32) const;

@@ -43,7 +43,7 @@ ThreadTrace::create(CalThreadTraceReference* calRef)
 }
 
 bool
-ThreadTrace::info(uint infoType, uint* info,uint  infoSize) const
+ThreadTrace::info(uint infoType, uint* info, uint infoSize) const
 {
     switch (infoType) {
     case CL_THREAD_TRACE_BUFFERS_SIZE: {
@@ -52,7 +52,7 @@ ThreadTrace::info(uint infoType, uint* info,uint  infoSize) const
             return false;
         }
         else {
-            *info = gpu().getThreadTraceQueryRes(gslThreadTrace());
+            gpu().getThreadTraceQueryRes(gslThreadTrace(), info);
         }
         break;
     }

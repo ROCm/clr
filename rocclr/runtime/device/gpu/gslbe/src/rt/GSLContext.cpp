@@ -958,14 +958,10 @@ CALGSLContext::resumeThreadTrace(uint32 seNum) const
     }
 }
 
-uint32
-CALGSLContext::getThreadTraceQueryRes(gslQueryObject threadTrace) const
+void
+CALGSLContext::getThreadTraceQueryRes(gslQueryObject threadTrace, uint32* info) const
 {
-    CALuint64 tempResult;
-    threadTrace->GetResult(m_cs, &tempResult);
-    // Make sure that we aren't losing any data from the cast
-    assert(tempResult < UINT_MAX);
-    return (uint32)tempResult;
+    threadTrace->GetResultAll(m_cs, info);
 }
 
 void
