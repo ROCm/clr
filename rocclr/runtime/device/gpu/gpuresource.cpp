@@ -717,8 +717,10 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         resData.GLdeviceContext = oglRes->glDeviceContext_;
         resData.name = oglRes->handle_;
         resData.type = glType_;
-        // We need not pass any flags down to OGL for interop
-        resData.flags = 0;
+
+        if(dev().settings().svmFineGrainSystem_) {
+            resData.flags = GL_INTEROP_SVM;
+        }
 
         if (dev().resGLAssociate(resData)) {
             gslResource = resData.memObject;
