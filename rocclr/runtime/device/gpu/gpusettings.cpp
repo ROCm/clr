@@ -243,7 +243,7 @@ Settings::create(
         aiPlus_ = true;
         // Fall through to VI ...
     case CAL_TARGET_CARRIZO:
-	case CAL_TARGET_STONEY:
+    case CAL_TARGET_STONEY:
         if (!aiPlus_) {
             // APU systems for VI
             apuSystem_  = true;
