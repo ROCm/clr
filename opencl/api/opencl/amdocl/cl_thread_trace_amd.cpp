@@ -223,9 +223,9 @@ RUNTIME_ENTRY(cl_int, clGetThreadTraceInfoAMD, (
             if (devThreadTrace == NULL) {
                 return CL_INVALID_OPERATION;
             }
-            unsigned int bufSize2Se[2] = {0};
+            unsigned int bufSize2Se[4] = {0};
 
-            if (!devThreadTrace->info(thread_trace_info_param,bufSize2Se,seNum)) {
+            if (!devThreadTrace->info(thread_trace_info_param, bufSize2Se, seNum)) {
                 return CL_INVALID_VALUE;
             }
             return amd::clGetInfo(bufSize2Se,
