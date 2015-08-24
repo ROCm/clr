@@ -54,6 +54,7 @@
 #include "llvm/AMDPrelink.h"
 #endif
 
+#include "llvm/AMDUtils.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/Analysis/AMDLocalArrayUsage.h"
@@ -135,14 +136,6 @@ namespace amd {
 namespace {
 
 using namespace llvm;
-
-#ifdef HAS_SPIRV
-// Enable drop-in bi-way translation of LLVM/SPIR-V for testing purpose.
-cl::opt<bool> TestSpirv("test-spirv",
-    cl::desc("Test SPIR-V translation"),
-    cl::init(false),
-    cl::Hidden);
-#endif
 
 // LoadFile - Read the specified bitcode file in and return it.  This routine
 // searches the link path for the specified file to try to find it...
@@ -608,12 +601,12 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
 #ifdef HAS_SPIRV
-  if (amd::TestSpirv) {
+  if (Options()->oVariables->RoundTripSPIRV && isSPIRModule(*llvmbinary_)) {
     std::string DumpSpirv;
     std::string DumpLlvm;
     if (Options()->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
       DumpSpirv = Options()->getDumpFileName(".spv");
-      DumpLlvm = Options()->getDumpFileName("_spirv.bc");
+      DumpLlvm = Options()->getDumpFileName("_fromspv.bc");
     }
     translateSpirv(llvmbinary_, DumpSpirv, DumpLlvm);
   }
