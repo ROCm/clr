@@ -1817,11 +1817,6 @@ HSAILProgram::linkImpl(
         errorCode = aclLink(dev().hsaCompiler(),
             binaries_to_link[0], binaries_to_link.size() - 1,
             &binaries_to_link[1], ACL_TYPE_LLVMIR_BINARY, "-create-library", NULL);
-        if (errorCode != ACL_SUCCESS) {
-            buildLog_ +="Error while linking : \
-                        aclLink failed" ;
-            return false;
-        }
     }
     // Store the newly linked aclBinary for this program.
     binaryElf_ = binaries_to_link[0];
@@ -1829,17 +1824,7 @@ HSAILProgram::linkImpl(
     for (size_t i = 1; i < binaries_to_link.size(); i++) {
         aclBinaryFini(binaries_to_link[i]);
     }
-    if (createLibrary || options->oVariables->EnableDebug) {
-        // Save the binary in the interface class
-        size_t size = 0;
-        void *mem = NULL;
-        aclWriteToMem(binaryElf_, &mem, &size);
-        setBinary(static_cast<char*>(mem), size);
-        if (createLibrary)
-            setType(TYPE_LIBRARY);
-        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-        return true;
-    }
+
     // Now call linkImpl with the new options
     return linkImpl(options);
 }
