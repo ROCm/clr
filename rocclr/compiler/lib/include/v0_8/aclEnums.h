@@ -33,7 +33,8 @@ typedef enum _acl_error_enum_0_8 {
   ACL_LWVERIFY_FAIL   = 25,
   ACL_HWVERIFY_FAIL   = 26,
   ACL_SPIRV_LOAD_FAIL = 27,
-  ACL_LAST_ERROR      = 28
+  ACL_SPIRV_SAVE_FAIL = 28,
+  ACL_LAST_ERROR      = 29
 } acl_error_0_8;
 
 typedef enum _comp_device_caps_enum_0_8 {

@@ -1170,6 +1170,22 @@ FLAG(OT_BOOL, OVIS_SUPPORT, "lower-atomics", LowerAtomics, 1,\
 FLAG(OT_BOOL, OVIS_SUPPORT, "lower-pipe-builtins", LowerPipeBuiltins, 1,\
     "Enable/disable pass lowering OCL pipe builtin functions to internal library functions ")
 
+// -fe-gen-spirv
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
+       "fe-gen-spirv", NULL, \
+       FEGenSPIRV, \
+       false, 0, 0, NULL, \
+       "Let frontend generate SPIR-V.")
+
+// -round-trip-spirv
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
+       "round-trip-spirv", NULL, \
+       RoundTripSPIRV, \
+       false, 0, 0, NULL, \
+       "Do round-trip translation of SPIR-V in pre-linking for testing purpose.")
+
 /*
    Do not remove the following line. Any option should be
    added above this line.

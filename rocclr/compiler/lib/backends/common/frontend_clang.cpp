@@ -12,8 +12,10 @@
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
 
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/SPIRV.h"
 #include "llvm/ADT/StringRef.h"
 
 #include <string>
@@ -61,6 +63,10 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   }
 
   argsToClang.push_back ("-D__AMD__=1 ");
+
+  if (Options()->oVariables->FEGenSPIRV) {
+    argsToClang.push_back("-D__AMD_SPIRV__ ");
+  }
 
   // Other options are passed using OptionsInfo structure.
   clc2::OptionsInfo ClangOptions;
@@ -184,6 +190,25 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   if (!ret) {
     CL()->clAPI.insSec(CL(), Elf(), Source().data(), Source().size(), aclLLVMIR);
   }
+
+  if (Options()->oVariables->FEGenSPIRV) {
+    std::ostringstream ss;
+    std::string err;
+
+    if (Options()->getLLVMArgc()) {
+      llvm::cl::ParseCommandLineOptions(Options()->getLLVMArgc(),
+        Options()->getLLVMArgv(), "LLVM/SPIRV converter");
+    }
+    if (WriteSPRV(llvmbinary_, ss, err)) {
+      std::string img = ss.str();
+      CL()->clAPI.insSec(CL(), Elf(), img.data(), img.size(), aclSPIRV);
+    }
+
+    if (!log_.empty())
+      log_ += std::string(" ");
+    log_ += err;
+  }
+
   log_ += logFromClang;
   if (isCpuTarget(Elf()->target)
       && Options()->oVariables->EnableDebug) {

@@ -409,10 +409,14 @@ SPIRVToModule(
   std::string errMsg;
   auto llCtx = reinterpret_cast<llvm::LLVMContext*>(ctx);
   llvm::Module *llMod = nullptr;
+  if (opt->getLLVMArgc()) {
+    llvm::cl::ParseCommandLineOptions(opt->getLLVMArgc(), opt->getLLVMArgv(),
+      "SPIRV/LLVM converter");
+  }
   bool success = llvm::ReadSPRV(*llCtx, ss, llMod, errMsg);
 
   if (success && llMod && opt->isDumpFlagSet(amd::option::DUMP_BC_SPIRV)) {
-    auto bcDump = opt->getDumpFileName("_spirv.bc");
+    auto bcDump = opt->getDumpFileName("_fromspv.bc");
     std::error_code ec;
     llvm::raw_fd_ostream outS(bcDump.c_str(), ec, llvm::sys::fs::F_None);
     if (!ec)
@@ -426,6 +430,62 @@ SPIRVToModule(
   }
   if (!success || llMod == nullptr) {
     if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
+    return nullptr;
+  }
+
+  if (error != nullptr) (*error) = ACL_SUCCESS;
+  return reinterpret_cast<aclModule*>(llMod);
+#endif // LEGACY_COMPLIB
+}
+
+aclModule * ACL_API_ENTRY
+LLVMToSPIRV(
+    aclLoaderData *ald,
+    const char *source,
+    size_t data_size,
+    aclContext *ctx,
+    acl_error *error)
+{
+  auto compiler = reinterpret_cast<amdcl::LLVMCompilerStage*>(ald);
+#ifdef LEGACY_COMPLIB
+  llvm::report_fatal_error("SPIR-V not supported on legacy compiler lib");
+  appendLogToCL(compiler->CL(), "SPIR-V not supported on legacy compiler lib");
+  if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
+  return nullptr;
+#else
+
+  std::string errMsg;
+  auto opt = compiler->Options();
+  llvm::Module *llMod = reinterpret_cast<llvm::Module *>(OCLFEToModule(
+      ald, source, data_size, ctx, error));
+  if (!llMod)
+    return nullptr;
+
+  if (opt->isDumpFlagSet(amd::option::DUMP_BC_SPIRV)) {
+    auto bcDump = opt->getDumpFileName("_tospv.bc");
+    std::error_code ec;
+    llvm::raw_fd_ostream outS(bcDump.c_str(), ec, llvm::sys::fs::F_None);
+    if (!ec)
+      WriteBitcodeToFile(llMod, outS);
+    else
+      errMsg = ec.message();
+  }
+
+  std::string spvImg;
+  std::stringstream ss(spvImg);
+  bool success = llvm::WriteSPRV(llMod, ss, errMsg);
+
+  if (opt->isDumpFlagSet(amd::option::DUMP_SPIRV)) {
+    std::ofstream ofs(opt->getDumpFileName(".spv"), std::ios::binary);
+    ofs << spvImg;
+    ofs.close();
+  }
+
+  if (!errMsg.empty()) {
+    appendLogToCL(compiler->CL(), errMsg);
+  }
+  if (!success) {
+    if (error != nullptr) (*error) = ACL_SPIRV_SAVE_FAIL;
     return nullptr;
   }
 
@@ -1393,6 +1453,7 @@ if_aclCompile(aclCompiler *cl,
     llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
     llvm::initializeSPIRVerifierPass(Registry);
   }
+  amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
   // Default 'to' is ACL_TYPE_ISA
   if (to == ACL_TYPE_DEFAULT) {
     to = ACL_TYPE_ISA;
@@ -1409,7 +1470,6 @@ if_aclCompile(aclCompiler *cl,
       (from == ACL_TYPE_LLVMIR_BINARY && to == ACL_TYPE_LLVMIR_TEXT)  ||
       (from == ACL_TYPE_X86_TEXT      && to == ACL_TYPE_X86_BINARY)   ||
       (from == ACL_TYPE_X86_BINARY    && to == ACL_TYPE_X86_TEXT)) {
-    amd::option::Options* Opts = reinterpret_cast<amd::option::Options*>(bin->options);
     const char *kernel = Opts->oVariables->Kernel;
     error_code = aclConvertType(cl, bin, kernel, from);
     // if compilation to ACL_TYPE_ISA, then continue from ACL_TYPE_CG
@@ -1424,6 +1484,14 @@ if_aclCompile(aclCompiler *cl,
         from == ACL_TYPE_HSAIL_TEXT)  && to != ACL_TYPE_ISA) ||
        (from == ACL_TYPE_HSAIL_BINARY && to != ACL_TYPE_ISA && to != ACL_TYPE_CG)) {
     return ACL_INVALID_ARG;
+  }
+  if (to == ACL_TYPE_SPIRV_BINARY) {
+    if (from == ACL_TYPE_OPENCL) {
+      to = ACL_TYPE_LLVMIR_BINARY;
+      Opts->oVariables->FEGenSPIRV = true;
+    } else {
+      return ACL_INVALID_ARG;
+    }
   }
   uint8_t sectable[ACL_TYPE_LAST] = {0, 0, 1, 1, 1, 1, 0, 6, 0, 3, 4, 4, 4, 0,
       5, 0, 1, 1};
