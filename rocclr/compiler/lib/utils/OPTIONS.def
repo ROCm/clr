@@ -565,7 +565,7 @@ OPTION(OT_UINT32, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "unroll-threshold", NULL, \
        LUThreshold, \
-       800, 0, 0x3FFFFFFF, NULL, \
+       150, 0, 0x3FFFFFFF, NULL, \
        "Set loop unroll threshold to <number> for all loops")
 
 // -unroll-allow-partial : allow partial unroll
@@ -573,7 +573,7 @@ OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
        "unroll-allow-partial", NULL, \
        LUAllowPartial, \
-       false, 0, 0, NULL, \
+       true, 0, 0, NULL, \
        "Allow unrolling loops partially")
 
 // -licm=0|1 (deafault is 1)
