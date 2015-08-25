@@ -96,7 +96,6 @@ public:
         gslProgramObject func_; //!< GSL program object
         gslMemObject intCb_;    //!< Internal constant buffer
         CALUavMask  uavMask_;   //!< UAV mask, unclear if necessary
-        CALfuncInfo funcInfo_;  //!< CAL function info
     };
 
     struct ResourceSlot

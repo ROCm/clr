@@ -505,6 +505,7 @@ protected:
     uint            uavArena_;      //!< UAV used for arena access
 
     bool            rwAttributes_;  //!< backend provides RW attributes for arguments
+    bool            setBufferForNumGroup_;
 
     uint            instructionCnt_;//!< Instruction count
 

@@ -15,6 +15,7 @@
 #include "device/gpu/gputimestamp.hpp"
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gpudebugger.hpp"
+#include "shader/ComputeProgramObject.h"
 #include "hsa.h"
 #include "amd_hsa_kernel_code.h"
 #include "amd_hsa_queue.h"
@@ -1807,8 +1808,10 @@ VirtualGPU::submitKernelInternalHSA(
 
         GpuEvent    gpuEvent;
         // Run AQL dispatch in HW
-        runAqlDispatch(gpuEvent, aqlPkt, vmMems(), cal_.memCount_,
-            scratch, scratchOffset, hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo);
+        eventBegin(MainEngine);
+        cs()->AqlDispatch(aqlPkt, vmMems(), cal_.memCount_, scratch, scratchOffset,
+            hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo);
+        eventEnd(MainEngine, gpuEvent);
 
         if (dbgManager && (NULL != dbgManager->postDispatchCallBackFunc())) {
             dbgManager->executePostDispatchCallBack();
@@ -1908,14 +1911,16 @@ VirtualGPU::submitKernelInternalHSA(
 
             if (!dev().settings().useDeviceQueue_) {
                 // Add the termination handshake to the host queue
-                virtualQueueHandshake(gpuEvent, gpuDefQueue->schedParams_->gslResource(),
+                eventBegin(MainEngine);
+                cs()->VirtualQueueHandshake(gpuDefQueue->schedParams_->gslResource(),
                     vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
                     vmParentWrap + offsetof(AmdAqlWrap, child_counter),
                     0, dev().settings().useDeviceQueue_);
+                eventEnd(MainEngine, gpuEvent);
             }
 
             // Get the global loop start before the scheduler
-            mcaddr loopStart = gpuDefQueue->virtualQueueDispatcherStart();
+            mcaddr loopStart = gpuDefQueue->cs()->VirtualQueueDispatcherStart();
             static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
                 *gpuDefQueue->virtualQueue_,
                 *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
@@ -1925,7 +1930,7 @@ VirtualGPU::submitKernelInternalHSA(
 
             // Get the address of PM4 template and add write it to params
             //! @note DMA flush must not occur between patch and the scheduler
-            mcaddr patchStart = gpuDefQueue->virtualQueueDispatcherStart();
+            mcaddr patchStart = gpuDefQueue->cs()->VirtualQueueDispatcherStart();
 
             // Program parameters for the scheduler
             SchedulerParam* param = &reinterpret_cast<SchedulerParam*>
@@ -1967,10 +1972,12 @@ VirtualGPU::submitKernelInternalHSA(
 
             mcaddr  signalAddr = gpuDefQueue->schedParams_->vmAddress() +
                 gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
-            gpuDefQueue->virtualQueueDispatcherEnd(gpuEvent,
+            gpuDefQueue->eventBegin(MainEngine);
+            gpuDefQueue->cs()->VirtualQueueDispatcherEnd(
                 gpuDefQueue->vmMems(), gpuDefQueue->cal_.memCount_,
                 signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
                 (DeviceQueueMaskSize * maskGroups_));
+            gpuDefQueue->eventEnd(MainEngine, gpuEvent);
 
             // Set GPU event for the used resources
             for (uint i = 0; i < memList.size(); ++i) {
@@ -1979,10 +1986,12 @@ VirtualGPU::submitKernelInternalHSA(
 
             if (dev().settings().useDeviceQueue_) {
                 // Add the termination handshake to the host queue
-                virtualQueueHandshake(gpuEvent, gpuDefQueue->schedParams_->gslResource(),
+                eventBegin(MainEngine);
+                cs()->VirtualQueueHandshake(gpuDefQueue->schedParams_->gslResource(),
                     vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
                     vmParentWrap + offsetof(AmdAqlWrap, child_counter),
                     signalAddr, dev().settings().useDeviceQueue_);
+                eventEnd(MainEngine, gpuEvent);
             }
 
             ++gpuDefQueue->schedParamIdx_ %=
@@ -2275,7 +2284,7 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
     const amd::PerfCounterCommand::PerfCounterList counters = vcmd.getCounters();
 
     // Create a HW counter
-    gslCounter = createCounter(GSL_PERFORMANCE_COUNTERS_ATI);
+    gslCounter = cs()->createQuery(GSL_PERFORMANCE_COUNTERS_ATI);
     if (0 == gslCounter) {
         LogError("We failed to allocate memory for the GPU perfcounter");
         vcmd.setStatus(CL_INVALID_OPERATION);
@@ -2338,11 +2347,13 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
             gslCounter = counter->gslCounter();
             // Find the state and sends the command to CAL
             if (vcmd.getState() == amd::PerfCounterCommand::Begin) {
-                beginCounter(gslCounter, GSL_PERFORMANCE_COUNTERS_ATI);
+                gslCounter->BeginQuery(cs(), GSL_PERFORMANCE_COUNTERS_ATI, 0);
             }
             else if (vcmd.getState() == amd::PerfCounterCommand::End) {
                 GpuEvent event;
-                endCounter(gslCounter, event);
+                eventBegin(MainEngine);
+                gslCounter->EndQuery(cs(), 0);
+                eventEnd(MainEngine, event);
                 setGpuEvent(event);
             }
             else {
@@ -2371,7 +2382,7 @@ VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd)
             if (threadTrace == NULL) {
                 gslQueryObject  gslThreadTrace;
                 // Create a HW thread trace query object
-                gslThreadTrace = createThreadTrace();
+                gslThreadTrace = cs()->createQuery(GSL_SHADER_TRACE_BYTES_WRITTEN);
                 if (0 == gslThreadTrace) {
                     LogError("Failure in memory allocation for the GPU threadtrace");
                     cmd.setStatus(CL_INVALID_OPERATION);
@@ -2414,7 +2425,7 @@ VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd)
                 gslMemObject gslMemObj = dev().getGpuMemory(*itMemObj)->gslResource();
 
                 // Bind GSL MemObject to the appropriate SE Thread Trace Buffer Object
-                configMemThreadTrace(threadTraceBufferObjects[se],gslMemObj,se,memObjSize);
+                threadTraceBufferObjects[se]->attachMemObject(cs(), gslMemObj, 0, 0, memObjSize, se);
             }
             break;
         }
@@ -2448,45 +2459,47 @@ VirtualGPU::submitThreadTrace(amd::ThreadTraceCommand& cmd)
             else {
                 gslQueryObject  gslThreadTrace;
                 gslThreadTrace = threadTrace->gslThreadTrace();
-                // Find the state and sends the command to CAL
-                if (cmd.getState() == amd::ThreadTraceCommand::Begin) {
-                    size_t amdMemObjsNumThreadTrace = amdThreadTrace->deviceSeNumThreadTrace();
-                    amd::ThreadTrace::ThreadTraceConfig* amdThreadTraceConfig =
-                        static_cast<amd::ThreadTrace::ThreadTraceConfig*>(cmd.threadTraceConfig());
-                    CALthreadTraceConfig calTthreadTraceConfig;
+                uint32_t seNum = amdThreadTrace->deviceSeNumThreadTrace();
 
-                    calTthreadTraceConfig.cu = amdThreadTraceConfig->cu_;
-                    calTthreadTraceConfig.sh = amdThreadTraceConfig->sh_;
-                    calTthreadTraceConfig.simd_mask = amdThreadTraceConfig->simdMask_;
-                    calTthreadTraceConfig.vm_id_mask = amdThreadTraceConfig->vmIdMask_;
-                    calTthreadTraceConfig.token_mask = amdThreadTraceConfig->tokenMask_;
-                    calTthreadTraceConfig.reg_mask = amdThreadTraceConfig->regMask_;
-                    calTthreadTraceConfig.inst_mask = amdThreadTraceConfig->instMask_;
-                    calTthreadTraceConfig.random_seed = amdThreadTraceConfig->randomSeed_;
-                    calTthreadTraceConfig.user_data = amdThreadTraceConfig->userData_;
-                    calTthreadTraceConfig.capture_mode = amdThreadTraceConfig->captureMode_;
-                    if (amdThreadTraceConfig->isUserData_) {
-                        calTthreadTraceConfig.is_user_data = CAL_TRUE;
+                // Find the state and sends the commands to GSL
+                if (cmd.getState() == amd::ThreadTraceCommand::Begin) {
+                    amd::ThreadTrace::ThreadTraceConfig* traceCfg =
+                        static_cast<amd::ThreadTrace::ThreadTraceConfig*>(cmd.threadTraceConfig());
+                    const gslErrorCode ec = gslThreadTrace->BeginQuery(cs(),
+                        GSL_SHADER_TRACE_BYTES_WRITTEN, 0);
+                    assert(ec == GSL_NO_ERROR);
+
+                    for (uint32_t idx = 0; idx < seNum; ++idx) {
+                        rs()->enableShaderTrace(cs(), idx, true);
+                        rs()->setShaderTraceComputeUnit (idx, traceCfg->cu_);
+                        rs()->setShaderTraceShaderArray (idx, traceCfg->sh_);
+                        rs()->setShaderTraceSIMDMask    (idx, traceCfg->simdMask_);
+                        rs()->setShaderTraceVmIdMask    (idx, traceCfg->vmIdMask_);
+                        rs()->setShaderTraceTokenMask   (idx, traceCfg->tokenMask_);
+                        rs()->setShaderTraceRegisterMask(idx, traceCfg->regMask_);
+                        rs()->setShaderTraceIssueMask   (idx, traceCfg->instMask_);
+                        rs()->setShaderTraceRandomSeed  (idx, traceCfg->randomSeed_);
+                        rs()->setShaderTraceCaptureMode (idx, traceCfg->captureMode_);
+                        rs()->setShaderTraceWrap        (idx, traceCfg->isWrapped_);
+                        rs()->setShaderTraceUserData    (idx,
+                            (traceCfg->isUserData_) ? traceCfg->userData_ : 0);
                     }
-                    else {
-                        calTthreadTraceConfig.is_user_data = CAL_FALSE;
-                    }
-                    if (amdThreadTraceConfig->isWrapped_) {
-                        calTthreadTraceConfig.is_wrapped = CAL_TRUE;
-                    }
-                    else {
-                        calTthreadTraceConfig.is_wrapped = CAL_FALSE;
-                    }
-                    beginThreadTrace(gslThreadTrace,0,GSL_SHADER_TRACE_BYTES_WRITTEN,amdMemObjsNumThreadTrace,calTthreadTraceConfig);
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::End) {
-                    endThreadTrace(gslThreadTrace,2);
+                    for (uint32_t idx = 0; idx < seNum; ++idx) {
+                        rs()->enableShaderTrace(cs(), idx, false);
+                    }
+                    gslThreadTrace->EndQuery(cs(), 0);
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::Pause) {
-                    pauseThreadTrace(2);
+                    for (uint32_t idx = 0; idx < seNum; ++idx) {
+                        rs()->setShaderTraceIsPaused(cs(), idx, true);
+                    }
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::Resume) {
-                    resumeThreadTrace(2);
+                    for (uint32_t idx = 0; idx < seNum; ++idx) {
+                        rs()->setShaderTraceIsPaused(cs(), idx, false);
+                    }
                 }
             }
             break;
@@ -2584,20 +2597,32 @@ VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd)
 void
 VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
 {
-    bool res = true;
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd);
     gpu::Memory* gpuMemory = dev().getGpuMemory(&vcmd.memory());
     if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
-        res = WaitSignal(gpuMemory->gslResource(), vcmd.markerValue());
-    }
-    else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
-        res = WriteSignal(gpuMemory->gslResource(), vcmd.markerValue(),
-            vcmd.markerOffset());
-    }
-    if(res != true) {
+        uint64_t surfAddr = gpuMemory->gslResource()->getPhysicalAddress(cs());
+        uint64_t markerAddr = gpuMemory->gslResource()->getMarkerAddress(cs());
+        uint64_t markerOffset = markerAddr - surfAddr;
+/*  @todo this logic doesn't make any sense
+        if((markerAddr + markerOffset) == 0) {
         LogError("submitSignal failed");
         vcmd.setStatus(CL_INVALID_OPERATION);
+        }
+*/
+        cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(),
+            markerOffset, false);
+    }
+    else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
+        GpuEvent    gpuEvent;
+        eventBegin(MainEngine);
+        cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(),  vcmd.markerOffset(), true);
+        //! @todo We don't need flush if an event is tracked.
+        cs()->Flush();
+        eventEnd(MainEngine, gpuEvent);
+        gpuMemory->setBusy(*this, gpuEvent);
+        // Update the global GPU event
+        setGpuEvent(gpuEvent);
     }
     profilingEnd(vcmd);
 }
@@ -2618,14 +2643,11 @@ VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand & vcmd)
         gpuMemory->syncCacheFromHost(*this);
     }
 
-    cl_ulong* surfBusAddr = new cl_ulong[numObjects];
-    cl_ulong* markerBusAddr = new cl_ulong[numObjects];
-    bool res = MakeBuffersResident(
-                    numObjects,
-                    pGSLMemObjects,
-                    (CALuint64*)surfBusAddr,
-                    (CALuint64*)markerBusAddr);
-    if(res != true) {
+    uint64* surfBusAddr = new uint64[numObjects];
+    uint64* markerBusAddr = new uint64[numObjects];
+    gslErrorCode res = cs()->makeBuffersResident(numObjects, pGSLMemObjects,
+        surfBusAddr, markerBusAddr);
+    if(res != GSL_NO_ERROR) {
         LogError("MakeBuffersResident failed");
         vcmd.setStatus(CL_INVALID_OPERATION);
     }
@@ -2972,11 +2994,11 @@ VirtualGPU::setActiveKernelDesc(
 
     if (result) {
         // Set program in GSL
-        setProgram(desc->func_);
+        rs()->setCurrentProgramObject(GSL_COMPUTE_PROGRAM, desc->func_);
 
         // Update internal constant buffer
         if (desc->intCb_ != 0) {
-            setConstants(desc->intCb_);
+            cs()->setIntConstants(GSL_COMPUTE_PROGRAM, desc->intCb_);
         }
     }
 
@@ -3045,11 +3067,6 @@ VirtualGPU::allocKernelDesc(const Kernel* kernel, CALimage calImage)
             delete desc;
             return NULL;
         }
-
-        //
-        // prime the func info in the func object.
-        //
-        getFuncInfo(desc->func_, GSL_COMPUTE_PROGRAM, &desc->funcInfo_);
     }
 
     if (kernel->argSize() > slots_.size()) {
@@ -3066,7 +3083,7 @@ VirtualGPU::freeKernelDesc(VirtualGPU::GslKernelDesc* desc)
         if (gslKernelDesc() == desc) {
             // Clear active kernel desc
             activeKernelDesc_ = NULL;
-            setProgram(0);
+            rs()->setCurrentProgramObject(GSL_COMPUTE_PROGRAM, 0);
         }
 
         if (desc->image_ != 0) {
@@ -3076,9 +3093,10 @@ VirtualGPU::freeKernelDesc(VirtualGPU::GslKernelDesc* desc)
 
         if (desc->func_ != 0) {
             if (desc->intCb_ != 0) {
-                destroyConstants(desc->intCb_);
+                cs()->setIntConstants(GSL_COMPUTE_PROGRAM, 0);
+                cs()->destroyMemObject(desc->intCb_);
             }
-            destroyProgramObject(desc->func_);
+            cs()->destroyProgramObject(desc->func_);
         }
 
         delete desc;

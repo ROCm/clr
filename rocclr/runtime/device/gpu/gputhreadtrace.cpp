@@ -13,7 +13,7 @@ CalThreadTraceReference::~CalThreadTraceReference() {
     amd::ScopedLock lock(gpu_.execution());
 
     if (0 != threadTrace_) {
-        //gpu().destroyThreadTrace(gslThreadTrace());
+        //gpu().cs()->destroyQuery(gslThreadTrace());
     }
 }
 
@@ -24,7 +24,8 @@ ThreadTrace::~ThreadTrace()
         return;
     }
     for(uint i = 0; i < amdThreadTraceMemObjsNum_;++i) {
-        gpu().DestroyThreadTraceBuffer(threadTraceBufferObjs_[i],i);
+        threadTraceBufferObjs_[i]->attachMemObject(gpu().cs(), NULL, 0, 0, 0, i);
+        gpu().cs()->destroyShaderTraceBuffer(threadTraceBufferObjs_[i]);
     }
 
     // Release the thread trace reference object
@@ -52,7 +53,7 @@ ThreadTrace::info(uint infoType, uint* info, uint infoSize) const
             return false;
         }
         else {
-            gpu().getThreadTraceQueryRes(gslThreadTrace(), info);
+            gslThreadTrace()->GetResultAll(gpu().cs(), info);
         }
         break;
     }

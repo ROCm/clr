@@ -5,6 +5,7 @@
 #include "device/gpu/gpudefs.hpp"
 #include "device/gpu/gpucounters.hpp"
 #include "device/gpu/gpuvirtual.hpp"
+#include "query/PerformanceQueryObject.h"
 
 namespace gpu {
 
@@ -14,7 +15,7 @@ CalCounterReference::~CalCounterReference() {
     amd::ScopedLock lock(gpu_.execution());
 
     if (0 != counter_) {
-        gpu().destroyCounter(gslCounter());
+        gpu().cs()->destroyQuery(gslCounter());
     }
 }
 
@@ -52,7 +53,7 @@ PerfCounter::create(
     calRef->growResultArray(index_);
 
     // Initialize the counter
-    gpu().configPerformanceCounter(gslCounter(),
+    gslCounter()->getAsPerformanceQueryObject()->setCounterState(
         info()->blockIndex_, info()->counterIndex_, info()->eventIndex_);
 
     return true;
@@ -75,7 +76,7 @@ PerfCounter::getInfo(uint64_t infoType) const
         return info()->eventIndex_;
     }
     case CL_PERFCOUNTER_DATA: {
-        gpu().getCounter(reinterpret_cast<uint64*>(calRef_->results()), gslCounter());
+        gslCounter()->GetResult(gpu().cs(), reinterpret_cast<uint64*>(calRef_->results()));
         return calRef_->results()[index_];
     }
     default:
