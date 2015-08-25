@@ -7,6 +7,7 @@
 #include "top.hpp"
 #include "device/device.hpp"
 #include "device/gpu/gpudevice.hpp"
+#include "shadertracebuffer/ShaderTraceBufferObject.h"
 
 #include <vector>
 namespace gpu {
@@ -76,7 +77,7 @@ public:
     {
         threadTraceBufferObjs_ = new gslShaderTraceBufferObject[amdThreadTraceMemObjsNum];
         for (uint i = 0; i < amdThreadTraceMemObjsNum;++i) {
-            threadTraceBufferObjs_[i] = gpu.CreateThreadTraceBuffer();
+            threadTraceBufferObjs_[i] = gpu.cs()->createShaderTraceBuffer();
         }
     }
 

@@ -191,28 +191,6 @@ typedef enum CALresallocsliceviewflagsRec {
     CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER = CAL_RESALLOCSLICEVIEW_LEVEL | CAL_RESALLOCSLICEVIEW_LAYER,
 } CALresallocsliceviewflags;
 
-//
-// Thread Trace Extension
-//
-
-typedef struct CALthreadTraceConfigRec    CALthreadTraceConfig;
-
-struct CALthreadTraceConfigRec
-{
-    CALuint          cu;             // target compute unit [cu]
-    CALuint          sh;             // target shader array [sh],that contains target cu
-    CALuint          simd_mask;      // bitmask to enable or disable target tokens for different SIMDs
-    CALuint          vm_id_mask;     // virtual memory [vm] IDs to capture
-    CALuint          token_mask;     // bitmask indicating which trace token IDs will be included in the trace
-    CALuint          reg_mask;       // bitmask indicating which register types should be included in the trace
-    CALuint          inst_mask;      // types of instruction scheduling updates which should be recorded
-    CALuint          random_seed;    // linear feedback shift register [LFSR] seed
-    CALuint          user_data;      // user data ,which is written as payload
-    CALuint          capture_mode;   // indicator for the way how THREAD_TRACE_START / STOP events affect token collection
-    CALboolean       is_user_data;   // indicator if user_data is set
-    CALboolean       is_wrapped;     // indicator if the memory buffer should be wrapped around instead of stopping at the end
-};
-
 typedef enum CALmemcopyflagsEnum
 {
     CAL_MEMCOPY_DEFAULT = 0, /**< default CAL behavior of partial sync */

@@ -388,29 +388,6 @@ CALGSLContext::setUAVChannelOrder(uint32 physUnit, gslMemObject mem)
     }
 }
 
-void
-CALGSLContext::setProgram(gslProgramObject func)
-{
-    m_rs->setCurrentProgramObject(GSL_COMPUTE_PROGRAM, func);
-}
-
-void
-CALGSLContext::setWavesPerSH(gslProgramObject func, uint32 wavesPerSH)const
-{
-    auto compProg = static_cast<gsl::ComputeProgramObject*>(func);
-    compProg->setWavesPerSH(wavesPerSH);
-}
-
-bool
-CALGSLContext::runProgramGrid(GpuEvent& event, const ProgramGrid* pProgramGrid, const gslMemObject* mems, uint32 numMems)
-{
-    eventBegin(MainEngine);
-    m_rs->Dispatch(m_cs, &pProgramGrid->gridBlock, &pProgramGrid->partialGridBlock,
-        &pProgramGrid->gridSize, pProgramGrid->localSize, mems, numMems);
-    eventEnd(MainEngine, event);
-    return true;
-}
-
 bool
 CALGSLContext::isDone(GpuEvent* event)
 {
@@ -439,21 +416,9 @@ CALGSLContext::waitForEvent(GpuEvent* event)
 }
 
 void
-CALGSLContext::flushIOCaches() const
-{
-    m_cs->FlushIOCaches();
-}
-
-void
 CALGSLContext::flushCUCaches(bool flushL2) const
 {
     m_cs->FlushCUCaches(flushL2);
-}
-
-gslProgramObject
-CALGSLContext::createProgramObject(CALuint type)
-{
-    return m_cs->createProgramObject(GSL_COMPUTE_PROGRAM);
 }
 
 void
@@ -470,20 +435,6 @@ CALGSLContext::setScratchBuffer(gslMemObject mem, int32 engineId)
     m_rs->setScratchBufferObject(target, m_scratchBuffers);
 
     m_scratchBuffers->setMemObject(m_cs, mem, engineId);
-}
-
-void
-CALGSLContext::destroyProgramObject(gslProgramObject func)
-{
-    m_cs->destroyProgramObject(func);
-}
-
-void
-CALGSLContext::writeSurfRaw(GpuEvent& event, gslMemObject mem, size_t size, const void* data)
-{
-    eventBegin(MainEngine);
-    mem->writeDataRaw(m_cs, size, data, true);
-    eventEnd(MainEngine, event);
 }
 
 bool
@@ -631,169 +582,6 @@ CALGSLContext::setSamplerParameter(uint32 sampler, gslTexParameterPname param, v
     }
 }
 
-gslQueryObject CALGSLContext::createCounter(gslQueryTarget target) const
-{
-    return m_cs->createQuery(target);
-}
-
-void CALGSLContext::destroyCounter(gslQueryObject counter) const
-{
-    m_cs->destroyQuery(counter);
-}
-
-void CALGSLContext::beginCounter(gslQueryObject counter, gslQueryTarget target) const
-{
-    // This should never be called for UVD/VCE Sync queries in case it is
-    // Please correctly pass on EngineMask else queries may be messed up
-    assert(target != GSL_UVD_SYNC_ATI || target != GSL_VCE_SYNC_ATI);
-    counter->BeginQuery(m_cs, target, 0);
-}
-
-void CALGSLContext::endCounter(gslQueryObject counter, GpuEvent& event)
-{
-    eventBegin(MainEngine);
-    counter->EndQuery(m_cs, 0);
-    eventEnd(MainEngine, event);
-}
-
-void CALGSLContext::getCounter(uint64* result, gslQueryObject counter) const
-{
-    counter->GetResult(m_cs, result);
-}
-
-void CALGSLContext::configPerformanceCounter(gslQueryObject counter, CALuint block, CALuint index, CALuint event) const
-{
-    counter->getAsPerformanceQueryObject()->setCounterState(block, index, event);
-}
-
-gslMemObject
-CALGSLContext::createConstants(uint32 count) const
-{
-    assert(m_cs != 0);
-
-    const gslMemObjectAttribs attribs(
-        GSL_MOA_CONSTANT_STORE,      // type
-        GSL_MOA_MEMORY_CARD,     // location
-        GSL_MOA_TILING_LINEAR,   // tiling
-        GSL_MOA_DISPLAYABLE_NO,  // displayable
-        ATIGL_FALSE,             // mipmap
-        1,                       // samples
-        0,                       // cpu_address
-        GSL_MOA_SIGNED_NO,       // signed_format
-        GSL_MOA_FORMAT_NORM,     // numFormat
-        DRIVER_MODULE_GLL,       // module
-        GSL_ALLOCATION_INSTANCED // alloc_type
-    );
-
-    return m_cs->createMemObject1D(CM_SURF_FMT_RGBX8, count, &attribs);
-}
-
-void
-CALGSLContext::setConstants(gslMemObject constants) const
-{
-    m_cs->setIntConstants(GSL_COMPUTE_PROGRAM, constants);
-}
-
-void
-CALGSLContext::destroyConstants(gslMemObject constants) const
-{
-    assert(m_cs != 0);
-    assert(constants != 0);
-
-    m_cs->setIntConstants(GSL_COMPUTE_PROGRAM, 0);
-    m_cs->destroyMemObject(constants);
-}
-
-void
-CALGSLContext::getFuncInfo(gslProgramObject func, gslProgramTarget target, CALfuncInfo *pInfo)
-{
-    assert(m_cs!= 0);
-    assert(func!= 0);
-
-    gsl::gsProgramInfo*  pProgramResource = func->getProgramResourceInfo();
-
-    pInfo->maxScratchRegsNeeded    = pProgramResource->elfInfo._maxScratchRegsNeeded;
-    pInfo->numSharedGPRUser        = pProgramResource->elfInfo._numSharedGPRUser;
-    pInfo->numSharedGPRTotal       = pProgramResource->elfInfo._numSharedGPRTotal;
-    pInfo->eCsSetupMode            = (CALboolean)pProgramResource->elfInfo._eCsSetupMode;
-    pInfo->numThreadPerGroup       = pProgramResource->elfInfo._numThreadPerGroup;
-    pInfo->numThreadPerGroupX      = pProgramResource->elfInfo._numThreadPerGroupX;
-    pInfo->numThreadPerGroupY      = pProgramResource->elfInfo._numThreadPerGroupY;
-    pInfo->numThreadPerGroupZ      = pProgramResource->elfInfo._numThreadPerGroupZ;
-    pInfo->totalNumThreadGroup     = pProgramResource->elfInfo._totalNumThreadGroup;
-    pInfo->numWavefrontPerSIMD     = pProgramResource->elfInfo._NumWavefrontPerSIMD;
-    pInfo->isMaxNumWavePerSIMD     = (CALboolean)pProgramResource->elfInfo._IsMaxNumWavePerSIMD;
-    pInfo->setBufferForNumGroup    = (CALboolean)pProgramResource->elfInfo._SetBufferForNumGroup;
-    pInfo->wavefrontSize           = pProgramResource->wavefrontSize;
-    pInfo->numGPRsAvailable        = pProgramResource->numGPRsAvailable;
-    pInfo->numGPRsUsed             = pProgramResource->numGPRsUsed;
-    pInfo->numSGPRsAvailable       = pProgramResource->numSGPRsAvailable;
-    pInfo->numSGPRsUsed            = pProgramResource->numSGPRsUsed;
-    pInfo->numVGPRsAvailable       = pProgramResource->numVGPRsAvailable;
-    pInfo->numVGPRsUsed            = pProgramResource->numVGPRsUsed;
-    pInfo->LDSSizeAvailable        = pProgramResource->LDSSizeAvailable;
-    pInfo->LDSSizeUsed             = pProgramResource->LDSSizeUsed;
-    pInfo->stackSizeAvailable      = pProgramResource->stackSizeAvailable;
-    pInfo->stackSizeUsed           = pProgramResource->stackSizeUsed;
-}
-
-bool
-CALGSLContext::WaitSignal(gslMemObject mem, CALuint value)
-{
-    uint64 surfAddr = mem->getPhysicalAddress(m_cs);
-    uint64 markerAddr = mem->getMarkerAddress(m_cs);
-
-    uint64 markerOffset = markerAddr - surfAddr;
-
-    if((markerAddr + markerOffset) == 0)
-        return false;
-
-
-    m_cs->p2pMarkerOp(mem, value, markerOffset, false);
-
-    return true;
-}
-
-bool
-CALGSLContext::WriteSignal(gslMemObject mem, CALuint value, CALuint64 offset)
-{
-    m_cs->p2pMarkerOp(mem, value,offset, true);
-    m_cs->Flush();
-    return true;
-}
-
-bool
-CALGSLContext::MakeBuffersResident(CALuint numObjects, gslMemObject* pMemObjects,
-                                   CALuint64* surfBusAddress, CALuint64* markerBusAddress)
-{
-    bool res = true;
-
-    res = (m_cs->makeBuffersResident(numObjects, pMemObjects, surfBusAddress,
-                                   markerBusAddress) == GSL_NO_ERROR) ? true:false;
-
-    return res;
-}
-
-void
-CALGSLContext::bindAtomicCounter(uint32 index, gslMemObject obj)
-{
-    m_cs->bindAtomicCounter(index, obj);
-}
-
-void
-CALGSLContext::setGWSResource(uint32 index, uint32 value)
-{
-    m_cs->setGWSResource(index, value);
-}
-
-void
-CALGSLContext::syncAtomicCounter(GpuEvent& event, uint32 index, bool read)
-{
-    eventBegin(MainEngine);
-    m_cs->syncAtomicCounter(index, read);
-    eventEnd(MainEngine, event);
-}
-
 bool
 CALGSLContext::moduleLoad(CALimage image,
     gslProgramObject* func, gslMemObject* constants, CALUavMask* uavMask)
@@ -824,7 +612,7 @@ CALGSLContext::moduleLoad(CALimage image,
         return false;
     }
 
-    *func = createProgramObject((CALuint)ED_ATI_CAL_TYPE_COMPUTE);
+    *func = m_cs->createProgramObject(GSL_COMPUTE_PROGRAM);
     if (*func == 0)
     {
         amuABIMultiBinaryDestroy(binary);
@@ -852,7 +640,21 @@ CALGSLContext::moduleLoad(CALimage image,
 
     if (numConstants > 0)
     {
-        *constants = createConstants(++maxPhysical);
+        const gslMemObjectAttribs attribs(
+            GSL_MOA_CONSTANT_STORE,      // type
+            GSL_MOA_MEMORY_CARD,     // location
+            GSL_MOA_TILING_LINEAR,   // tiling
+            GSL_MOA_DISPLAYABLE_NO,  // displayable
+            ATIGL_FALSE,             // mipmap
+            1,                       // samples
+            0,                       // cpu_address
+            GSL_MOA_SIGNED_NO,       // signed_format
+            GSL_MOA_FORMAT_NORM,     // numFormat
+            DRIVER_MODULE_GLL,       // module
+            GSL_ALLOCATION_INSTANCED // alloc_type
+        );
+
+        *constants = m_cs->createMemObject1D(CM_SURF_FMT_RGBX8, ++maxPhysical, &attribs);
 
         CALuint* ptr = static_cast<CALuint*>((*constants)->map(m_cs, GSL_MAP_READ_WRITE));
         assert(ptr != 0 && "gslMapMemImage failed!");
@@ -872,136 +674,6 @@ CALGSLContext::moduleLoad(CALimage image,
 
     // FIXME Until we get everything right, return an error or we'll hang the HW
     return true;
-}
-
-gslQueryObject CALGSLContext::createThreadTrace(void) const
-{
-    return m_cs->createQuery(GSL_SHADER_TRACE_BYTES_WRITTEN);
-}
-
-void CALGSLContext::destroyThreadTrace(gslQueryObject threadTrace) const
-{
-    m_cs->destroyQuery(threadTrace);
-}
-
-
-gslShaderTraceBufferObject
-CALGSLContext::CreateThreadTraceBuffer(void) const
-{
-    return m_cs->createShaderTraceBuffer();
-}
-
-void
-CALGSLContext::DestroyThreadTraceBuffer(gslShaderTraceBufferObject shaderTraceBuffer,uint32 index) const
-{
-    shaderTraceBuffer->attachMemObject(m_cs, NULL, 0, 0, 0, index);
-    m_cs->destroyShaderTraceBuffer(shaderTraceBuffer);
-}
-
-void
-CALGSLContext::configMemThreadTrace(gslShaderTraceBufferObject shaderTraceBuffer,gslMemObject memObject,uint32 index,uint32 size) const
-{
-   shaderTraceBuffer->attachMemObject(m_cs, memObject, 0, 0, size,index);
-}
-
-void
-CALGSLContext::beginThreadTrace(gslQueryObject threadTrace,gslQueryObject threadTrace2, gslQueryTarget target,uint32 seNum,CALthreadTraceConfig& threadTraceConfig) const
-{
-    // This should never be called for UVD/VCE Sync queries in case it is
-    // Please correctly pass on EngineMask else queries may be messed up
-    assert(target != GSL_UVD_SYNC_ATI || target != GSL_VCE_SYNC_ATI);
-    const gslErrorCode ec = threadTrace->BeginQuery(m_cs, target, 0);
-    assert(ec == GSL_NO_ERROR);
-
-    for (uint32 index = 0;index < seNum;++index) {
-        m_rs->enableShaderTrace(m_cs,index,true);
-        m_rs->setShaderTraceComputeUnit(index,threadTraceConfig.cu);
-        m_rs->setShaderTraceShaderArray(index,threadTraceConfig.sh);
-        m_rs->setShaderTraceSIMDMask(index,threadTraceConfig.simd_mask);
-        m_rs->setShaderTraceVmIdMask(index,threadTraceConfig.vm_id_mask);
-        m_rs->setShaderTraceTokenMask(index,threadTraceConfig.token_mask);
-        m_rs->setShaderTraceRegisterMask(index,threadTraceConfig.reg_mask);
-        m_rs->setShaderTraceIssueMask(index,threadTraceConfig.inst_mask);
-        m_rs->setShaderTraceRandomSeed(index,threadTraceConfig.random_seed);
-        if (threadTraceConfig.is_user_data) {
-            m_rs->setShaderTraceUserData(index,threadTraceConfig.user_data);
-        }
-        m_rs->setShaderTraceCaptureMode(index,threadTraceConfig.capture_mode);
-        if (threadTraceConfig.is_wrapped) {
-            m_rs->setShaderTraceWrap(index,true);
-        }
-    }
-}
-
-void
-CALGSLContext::endThreadTrace(gslQueryObject threadTrace,uint32 seNum) const
-{
-    for (uint32 index = 0;index < seNum;++index) {
-        m_rs->enableShaderTrace(m_cs,index,false);
-    }
-    threadTrace->EndQuery(m_cs, 0);
-}
-
-void
-CALGSLContext::pauseThreadTrace(uint32 seNum) const
-{
-    for (uint32 index = 0;index < seNum;++index) {
-        m_rs->setShaderTraceIsPaused(m_cs,index,(bool32)true);
-    }
-}
-
-void
-CALGSLContext::resumeThreadTrace(uint32 seNum) const
-{
-    for (uint32 index = 0;index < seNum;++index) {
-        m_rs->setShaderTraceIsPaused(m_cs,index,(bool32)false);
-    }
-}
-
-void
-CALGSLContext::getThreadTraceQueryRes(gslQueryObject threadTrace, uint32* info) const
-{
-    threadTrace->GetResultAll(m_cs, info);
-}
-
-void
-CALGSLContext::writeTimer(bool sdma, const gslMemObject mem, uint32 offset) const
-{
-    m_rs->writeTimer(m_cs, sdma, mem, offset);
-}
-
-void
-CALGSLContext::runAqlDispatch(GpuEvent& event, const void* aqlPacket,
-    const gslMemObject* mems, uint32 numMems, gslMemObject scratch, uint32 scratchOffset,
-    const void* cpuKernelCode, uint64 hsaQueueVA, const void* kernelInfo)
-{
-    eventBegin(MainEngine);
-    m_cs->AqlDispatch(aqlPacket, mems, numMems, scratch, scratchOffset, cpuKernelCode, hsaQueueVA, kernelInfo);
-    eventEnd(MainEngine, event);
-}
-
-mcaddr
-CALGSLContext::virtualQueueDispatcherStart()
-{
-    return m_cs->VirtualQueueDispatcherStart();
-}
-
-void
-CALGSLContext::virtualQueueDispatcherEnd(GpuEvent& event, const gslMemObject* mems,
-        uint32 numMems, mcaddr signal, mcaddr loopStart, uint32 numTemplates)
-{
-    eventBegin(MainEngine);
-    m_cs->VirtualQueueDispatcherEnd(mems, numMems, signal, loopStart, numTemplates);
-    eventEnd(MainEngine, event);
-}
-
-void
-CALGSLContext::virtualQueueHandshake(GpuEvent& event, const gslMemObject mem, mcaddr parentState,
-    uint32 newStateValue, mcaddr parentChildCounter, mcaddr signal, bool dedicatedQueue)
-{
-    eventBegin(MainEngine);
-    m_cs->VirtualQueueHandshake(mem, parentState, newStateValue, parentChildCounter, signal, dedicatedQueue);
-    eventEnd(MainEngine, event);
 }
 
 void

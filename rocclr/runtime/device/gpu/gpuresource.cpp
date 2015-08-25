@@ -1181,7 +1181,9 @@ Resource::writeRawData(
     // Write data size bytes to surface
     // size needs to be DWORD aligned
     assert((size & 3) == 0);
-    gpu.writeSurfRaw(event, gslResource(), size, data);
+    gpu.eventBegin(MainEngine);
+    gslResource()->writeDataRaw(gpu.cs(), size, data, true);
+    gpu.eventEnd(MainEngine, event);
 
     setBusy(gpu, event);
     // Update the global GPU event

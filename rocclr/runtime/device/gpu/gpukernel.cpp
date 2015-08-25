@@ -8,6 +8,7 @@
 #include "device/gpu/gpuconstbuf.hpp"
 #include "device/gpu/gpusched.hpp"
 #include "platform/commandqueue.hpp"
+#include "shader/ComputeProgramObject.h"
 #include "utils/options.hpp"
 
 #include "acl.h"
@@ -769,6 +770,7 @@ NullKernel::create(
     workGroupInfo_.usedLDSSize_         = calFuncInfo.LDSSizeUsed;
     workGroupInfo_.availableStackSize_  = calFuncInfo.stackSizeAvailable;
     workGroupInfo_.usedStackSize_       = calFuncInfo.stackSizeUsed;
+    setBufferForNumGroup_               = calFuncInfo.setBufferForNumGroup;
 
     device::Kernel::parameters_t params;
     if (!createSignature(params)) {
@@ -1655,7 +1657,7 @@ bool
 Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
 {
     // 8xx workaround for the number of groups limit in HW
-    if (gpu.gslKernelDesc()->funcInfo_.setBufferForNumGroup) {
+    if (setBufferForNumGroup_) {
         const ProgramGrid* programGrid = &gpu.cal()->progGrid_;
         ConstBuffer* cb = gpu.numGrpCb();
         assert((cb != NULL) && "Runtime must have the constant buffer");
@@ -1682,12 +1684,13 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
         }
     }
 
-    gpu.setWavesPerSH(gpu.gslKernelDesc()->func_, waveLimiter_.getWavesPerSH(&gpu));
-    if (!gpu.runProgramGrid(*calEvent,
-        const_cast<ProgramGrid*>(&gpu.cal()->progGrid_), gpu.vmMems(), gpu.cal_.memCount_)) {
-        LogError("Failed to execute the program!");
-        return false;
-    }
+    auto compProg = static_cast<gsl::ComputeProgramObject*>(gpu.gslKernelDesc()->func_);
+    compProg->setWavesPerSH(waveLimiter_.getWavesPerSH(&gpu));
+
+    gpu.eventBegin(MainEngine);
+    gpu.rs()->Dispatch(gpu.cs(), &gpu.cal()->progGrid_.gridBlock, &gpu.cal()->progGrid_.partialGridBlock,
+        &gpu.cal()->progGrid_.gridSize, gpu.cal()->progGrid_.localSize, gpu.vmMems(), gpu.cal_.memCount_);
+    gpu.eventEnd(MainEngine, *calEvent);
 
     // Unbind all resources
     unbindResources(gpu, *calEvent, lastRun);
@@ -2331,11 +2334,13 @@ Kernel::bindResource(
             GpuEvent  calEvent;
 
             // Bind memory with atomic counter
-            gpu.bindAtomicCounter(argument(paramIdx)->index_,
+            gpu.cs()->bindAtomicCounter(argument(paramIdx)->index_,
                 memory->gslResource());
 
             // Copy the counter value into GDS
-            gpu.syncAtomicCounter(calEvent, argument(paramIdx)->index_, false);
+            gpu.eventBegin(MainEngine);
+            gpu.cs()->syncAtomicCounter(argument(paramIdx)->index_, false);
+            gpu.eventEnd(MainEngine, calEvent);
 
             // Mark resource as busy
             memory->setBusy(gpu, calEvent);
@@ -2455,7 +2460,9 @@ Kernel::unbindResources(
 
                 if (KernelArg::Counter == argument(i)->type_) {
                     // Copy the counter value from GDS
-                    gpu.syncAtomicCounter(calEventTmp, argument(i)->index_, true);
+                    gpu.eventBegin(MainEngine);
+                    gpu.cs()->syncAtomicCounter(argument(i)->index_, true);
+                    gpu.eventEnd(MainEngine, calEventTmp);
                 }
                 else if (!(gpu.slots_[i].state_.constant_ ||
                            argument(i)->memory_.readOnly_)) {
@@ -2487,7 +2494,7 @@ Kernel::unbindResources(
     }
 
     // 8xx workaround for the number of groups limit in HW
-    if (gpu.gslKernelDesc()->funcInfo_.setBufferForNumGroup) {
+    if (setBufferForNumGroup_) {
         ConstBuffer* cb = gpu.numGrpCb();
         assert((cb != NULL) && "Runtime must have the constant buffer");
         cb->setBusy(gpu, calEvent);
