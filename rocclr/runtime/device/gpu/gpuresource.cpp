@@ -340,7 +340,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     uint    viewLevel = 0;
     uint    viewFlags = 0;
     gslResource3D   viewSize = {0};
-    CALdomain       viewOffset = {0};
+    size_t          viewOffset = 0;
     cmSurfFmt       viewSurfFmt;
     gslChannelOrder viewChannelOrder = GSL_CHANNEL_ORDER_UNSPECIFIED;
     gslMemObjectAttribType  viewResType;
@@ -623,10 +623,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             viewSize.width = bytePitch / elementSize();
             viewSize.height = 1;
             viewSize.depth = 1;
-            viewOffset.x = static_cast<CALuint>(offset() / elementSize());
-            viewOffset.y = 0;
-            viewOffset.width = 0;
-            viewOffset.height = 0;
+            viewOffset = static_cast<CALuint>(offset() / elementSize());
 
             gslResource = dev().resAllocView(
                 view->resource_->gslResource(), viewSize, viewOffset,
@@ -833,7 +830,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             viewSize.height = cal()->height_;
             viewSize.depth  = 1;
             bytePitch       = static_cast<size_t>(gslResource->getPitch());
-            viewOffset.x    = 0;
+            viewOffset      = 0;
             viewSurfFmt     = cal()->format_;
             viewChannelOrder = cal()->channelOrder_;
             switch (d3dRes->layer_) {
@@ -843,7 +840,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
                 break;
             case 1:
                 // Y - plane size to the offset
-                viewOffset.x = bytePitch * viewSize.height * 2;
+                viewOffset = bytePitch * viewSize.height * 2;
                 if (d3dRes->misc == 2) {
                     // YV12 format U is 2 times smaller plane
                     bytePitch /= 2;
@@ -852,7 +849,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             case 2:
                 // Y + U plane sizes to the offest.
                 // U plane is 4 times smaller than Y => 5/2
-                viewOffset.x = bytePitch * viewSize.height * 5 / 2;
+                viewOffset = bytePitch * viewSize.height * 5 / 2;
                 // V is 2 times smaller plane
                 bytePitch /= 2;
                 break;
@@ -900,10 +897,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
             viewSize.width   = cal()->width_ + (pinOffset() / elementSize());
             viewSize.height  = cal()->height_;
             viewSize.depth   = cal()->depth_;
-            viewOffset.x     = hostMemOffset / static_cast<CALuint>(elementSize());
-            viewOffset.y     = 0;
-            viewOffset.width = 0;
-            viewOffset.height = 0;
+            viewOffset       = hostMemOffset / static_cast<CALuint>(elementSize());
             viewSurfFmt = cal()->format_;
             viewChannelOrder = cal()->channelOrder_;
         }
@@ -1669,7 +1663,7 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
     // Loop through all layers
     for (uint i = startLayer_; i < layers; ++i) {
         gslResource3D   gslSize;
-        CALdomain       calOffset;
+        size_t          calOffset;
         void*           sliceAddr;
         size_t          pitch;
 
@@ -1677,11 +1671,7 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
         gslSize.width   = cal()->width_;
         gslSize.height  = height;
         gslSize.depth   = 1;
-        calOffset.x     = 0;
-        calOffset.y     = 0;
-        calOffset.width = 0;
-        calOffset.height = 0;
-
+        calOffset       = 0;
         sliceResource = dev().resAllocView(
             gslResource(), gslSize,
             calOffset, cal()->format_, cal()->channelOrder_, gslDim,
@@ -1780,7 +1770,7 @@ Resource::unmapLayers(VirtualGPU* gpu)
         // Loop through all layers
         for (uint i = startLayer_; i < layers; ++i) {
             gslResource3D   gslSize;
-            CALdomain       calOffset;
+            size_t          calOffset;
             void*           sliceAddr;
             size_t          pitch;
 
@@ -1788,11 +1778,7 @@ Resource::unmapLayers(VirtualGPU* gpu)
             gslSize.width   = cal()->width_;
             gslSize.height  = height;
             gslSize.depth   = 1;
-            calOffset.x     = 0;
-            calOffset.y     = 0;
-            calOffset.width = 0;
-            calOffset.height = 0;
-
+            calOffset       = 0;
             sliceResource = dev().resAllocView(
                 gslResource(), gslSize,
                 calOffset, cal()->format_, cal()->channelOrder_, gslDim,

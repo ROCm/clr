@@ -66,7 +66,7 @@ public:
 
     gslMemObject     resGetHeap(size_t size) const;
     gslMemObject     resAllocView(gslMemObject res, gslResource3D size,
-        CALdomain offset, cmSurfFmt format, gslChannelOrder channelOrder,
+        size_t offset, cmSurfFmt format, gslChannelOrder channelOrder,
         gslMemObjectAttribType resType, uint32 level, uint32 layer,
         uint32 flags, uint64 bytePitch = (uint64)-1) const;
 
@@ -100,8 +100,6 @@ public:
 
     bool             isVmMode() const { return m_vmMode; };
 
-    uint32           getVPUCount();
-    void             setVPUMask(uint32 mask);
     uint32           getVPUMask() const { return m_vpuMask; }
     bool             uavInCB() const { return m_uavInCB; }
     bool             canDMA() const { return m_canDMA; }
@@ -171,10 +169,8 @@ private:
     gslRenderState   m_rs;
     CALtarget        m_target;
     CALuint          m_elfmachine;
-    uint32           m_revision;
     uint32           m_vpuMask;
     uint32           m_chainIndex;
-    int32            m_vpucount;
     int32            m_maxtexturesize;
     uint32           m_gpuIndex;
     void*            m_nativeDisplayHandle;

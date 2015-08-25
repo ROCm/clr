@@ -28,7 +28,6 @@ void CALGSLDevice::Initialize()
     m_textureResource = 0;
     m_textureSampler = 0;
     m_target = (CALtarget)0xffffffff;
-    m_vpucount = 1;
     m_srcDRMDMAMem = NULL ;
     m_dstDRMDMAMem = NULL ;
 
@@ -87,7 +86,6 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.struct_size = sizeof(CALdeviceattribs);
 
     m_attribs.target = m_target;
-    m_attribs.targetRevision = m_revision;
 
     gslMemInfo memInfo;
     cs->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
@@ -109,36 +107,16 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.numberOfCUsperShaderArray = cs->getNumCUsPerShaderArray();
     m_attribs.wavefrontSize = cs->getWaveFrontSize();
     m_attribs.doublePrecision = cs->getIsDoublePrecisionSupported();
-    m_attribs.localDataShare = cs->getIsLocalDataShareSupported();
-    m_attribs.globalDataShare = cs->getIsGlobalDataShareSupported();
-    m_attribs.globalGPR = cs->getIsGlobalGPRSupported();
-    m_attribs.computeShader = cs->getIsComputeShaderSupported();
-    m_attribs.memExport = cs->getIsMemExportSupported();
     m_attribs.memBusWidth = cs->getVramBitWidth();
     m_attribs.numMemBanks = cs->getVramBanks();
     m_attribs.isWorkstation = cs->getIsWorkstation();
 
-    // Add this to HWL query
-    m_attribs.pitch_alignment = 256;
-#ifdef ATI_OS_WIN
-    // 4KB aligned on Windows
-    m_attribs.surface_alignment = 4096;
-#else
-    // 256B aligned on Linux
-    m_attribs.surface_alignment = 256;
-#endif
-
-    m_attribs.numberOfUAVs = cs->getNumUAVs();
-    m_attribs.bUAVMemExport = cs->getIsUAVAsMemExport();
     m_attribs.numberOfShaderEngines = cs->getNumShaderEngines();
     m_attribs.pciTopologyInformation = m_adp->getLocationId();
-
 
     const uint8* boardName = cs->getString(GSL_GS_RENDERER);
     ::strncpy(m_attribs.boardName, (char*)boardName, CAL_ASIC_INFO_MAX_LEN * sizeof(char));
 
-    m_attribs.vectorBufferInstructionAddr64 = cs->getVectorBufferInstructionAddr64Supported();
-    m_attribs.memRandomAccessTargetInstructions = cs->getMemRandomAccessTargetInstructionsSupported();
     m_attribs.counterFreq = cs->getCounterFreq();
     m_attribs.nanoSecondsPerTick = 1000000000.0 / cs->getCounterFreq();
     m_attribs.longIdleDetect = cs->getLongIdleDetect();
@@ -338,7 +316,6 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
         return false;
     }
 
-    m_vpucount = m_adp->getNumLinkedVPUs();
     asic_id = m_adp->getAsicID();
 
     if ((asic_id < GSL_ATIASIC_ID_TAHITI_P) ||
@@ -361,7 +338,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 
     //Disable DRMDMA on CFX mode for linux on all GPUs.
 #ifdef ATI_OS_LINUX
-    if ((m_vpucount > 1) && !DRMDMA_FOR_LNX_CF)
+    if ((m_adp->getNumLinkedVPUs() > 1) && !DRMDMA_FOR_LNX_CF)
     {
         m_canDMA = ATIGL_FALSE;
     }
@@ -415,7 +392,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
                                                      m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, true);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
-    m_revision = temp_cs->getChipRev();
     m_maxtexturesize = temp_cs->getMaxTextureSize();
 
     switch (asic_id)
@@ -646,12 +622,6 @@ CALGSLDevice::PerformFullInitialization_int()
     }
 }
 
-uint32
-CALGSLDevice::getVPUCount()
-{
-    return m_vpucount;
-}
-
 void
 Wait(gsl::gsCtx* cs, gslQueryTarget target, gslQueryObject object)
 {
@@ -795,7 +765,7 @@ CALGSLDevice::resAlloc(const CALresourceDesc* desc) const
 }
 
 gslMemObject
-CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offset, cmSurfFmt format,
+CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, size_t offset, cmSurfFmt format,
     gslChannelOrder channelOrder, gslMemObjectAttribType resType, uint32 level, uint32 layer, uint32 flags,
     uint64 bytePitch) const
 {
@@ -847,19 +817,11 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, CALdomain offse
         break;
     };
 
-    // Don't handle offsets for tiled surfaces.
-    if (offset.x != 0 &&
-        offset.y != 0 &&
-        attribs.tiling == GSL_MOA_TILING_TILED)
-    {
-        return 0;
-    }
-
     // Check any alignment restrictions.
     uint64 resPitch = res->getPitch();
     cmSurfFmt baseFormat = res->getFormat();
     uint32 elementSize = cmGetSurfElementSize(static_cast<cmSurfFmt>(baseFormat));
-    uint64 offsetInBytes = (offset.y * (uint32)resPitch + offset.x) * elementSize;
+    uint64 offsetInBytes = static_cast<uint64>(offset) * elementSize;
     if (offsetInBytes % alignment)
     {
         return 0; //offset doesn't match alignment requirements.

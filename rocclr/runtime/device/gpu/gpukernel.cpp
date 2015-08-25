@@ -1279,7 +1279,7 @@ Kernel::setupProgramGrid(
     // Check for 64-bit metadata
     uint glbABIShift = (abi64Bit()) ? 1 : 0;
 
-    ProgramGrid* progGrid = &gpu.cal_.progGrid_;
+    VirtualGPU::CalVirtualDesc* progGrid = &gpu.cal_;
 
     // Finds local workgroup size
     findLocalWorkSize(workDim, gblWorkSize, lclWorkSize);
@@ -1656,21 +1656,21 @@ Kernel::loadParameters(
 bool
 Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
 {
+    const VirtualGPU::CalVirtualDesc* dispatch = gpu.cal();
     // 8xx workaround for the number of groups limit in HW
     if (setBufferForNumGroup_) {
-        const ProgramGrid* programGrid = &gpu.cal()->progGrid_;
         ConstBuffer* cb = gpu.numGrpCb();
         assert((cb != NULL) && "Runtime must have the constant buffer");
 
         uint32_t*   memPtr = reinterpret_cast<uint32_t*>(cb->sysMemCopy());
-        memPtr[0] = programGrid->gridSize.width;
-        memPtr[1] = programGrid->gridSize.height;
-        memPtr[2] = programGrid->gridSize.depth;
+        memPtr[0] = dispatch->gridSize.width;
+        memPtr[1] = dispatch->gridSize.height;
+        memPtr[2] = dispatch->gridSize.depth;
         memPtr[3] = 0;
 
-        memPtr[4] = programGrid->gridBlock.width;
-        memPtr[5] = programGrid->gridBlock.height;
-        memPtr[6] = programGrid->gridBlock.depth;
+        memPtr[4] = dispatch->gridBlock.width;
+        memPtr[5] = dispatch->gridBlock.height;
+        memPtr[6] = dispatch->gridBlock.depth;
         memPtr[7] = 0;
 
         bool    result = cb->uploadDataToHw(8 * sizeof(uint32_t));
@@ -1688,8 +1688,8 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
     compProg->setWavesPerSH(waveLimiter_.getWavesPerSH(&gpu));
 
     gpu.eventBegin(MainEngine);
-    gpu.rs()->Dispatch(gpu.cs(), &gpu.cal()->progGrid_.gridBlock, &gpu.cal()->progGrid_.partialGridBlock,
-        &gpu.cal()->progGrid_.gridSize, gpu.cal()->progGrid_.localSize, gpu.vmMems(), gpu.cal_.memCount_);
+    gpu.rs()->Dispatch(gpu.cs(), &dispatch->gridBlock, &dispatch->partialGridBlock,
+        &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_);
     gpu.eventEnd(MainEngine, *calEvent);
 
     // Unbind all resources
@@ -2062,18 +2062,18 @@ Kernel::setArgument(
     case KernelArg::PointerHwLocal:
         {
             // Calculate current offset in the local ring
-            uint    offset = gpu.cal_.progGrid_.localSize;
+            uint    offset = gpu.cal_.localSize;
             uint    extra  = amd::alignUp(offset, arg->alignment_) - offset;
 
             offset = amd::alignUp(offset, arg->alignment_);
             size_t  memSize = *static_cast<const uintptr_t*>(param);
 
             // Allocate new memory from the local ring
-            gpu.cal_.progGrid_.localSize += static_cast<uint>(memSize) + extra;
+            gpu.cal_.localSize += static_cast<uint>(memSize) + extra;
             // Copy current local argument's offset into the CB
             *(reinterpret_cast<uint*>(memory + arg->cbPos_)) = offset;
 
-            CondLog((gpu.cal_.progGrid_.localSize > dev().info().localMemSize_),
+            CondLog((gpu.cal_.localSize > dev().info().localMemSize_),
                 "Requested local size is bigger than reported!");
         }
         break;
@@ -2122,7 +2122,7 @@ bool
 Kernel::initLocalPrivateRanges(VirtualGPU& gpu) const
 {
     // Initialize HW local
-    gpu.cal_.progGrid_.localSize = hwLocalSize_;
+    gpu.cal_.localSize = hwLocalSize_;
 
     // Bind the global buffer if emulated local or private memory
     // was allocated by the kernel
@@ -2158,13 +2158,13 @@ Kernel::setLocalPrivateRanges(VirtualGPU& gpu) const
     address cbBuf = gpu.cb(0)->sysMemCopy();
     uint*   data;
     uint    gridSize =
-        gpu.cal()->progGrid_.gridSize.width *
-        gpu.cal()->progGrid_.gridSize.height *
-        gpu.cal()->progGrid_.gridSize.depth;
+        gpu.cal()->gridSize.width *
+        gpu.cal()->gridSize.height *
+        gpu.cal()->gridSize.depth;
     uint    blockSize =
-        gpu.cal()->progGrid_.gridBlock.width *
-        gpu.cal()->progGrid_.gridBlock.height *
-        gpu.cal()->progGrid_.gridBlock.depth;
+        gpu.cal()->gridBlock.width *
+        gpu.cal()->gridBlock.height *
+        gpu.cal()->gridBlock.depth;
 
     //! \todo validate if the compiler still generates PrivateFixed
     if (flags() & PrivateFixed) {

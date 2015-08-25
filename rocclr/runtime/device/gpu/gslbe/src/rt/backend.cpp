@@ -21,14 +21,12 @@ getFuncInfoFromImage(CALimage image, CALfuncInfo *pFuncInfo)
     pFuncInfo->maxScratchRegsNeeded = 0;
     pFuncInfo->numSharedGPRUser     = 0;
     pFuncInfo->numSharedGPRTotal    = 0;
-    pFuncInfo->eCsSetupMode         = false;
     pFuncInfo->numThreadPerGroup    = 0;
     pFuncInfo->numThreadPerGroupX   = 0;
     pFuncInfo->numThreadPerGroupY   = 0;
     pFuncInfo->numThreadPerGroupZ   = 0;
     pFuncInfo->totalNumThreadGroup  = 0;
     pFuncInfo->numWavefrontPerSIMD  = 0;
-    pFuncInfo->isMaxNumWavePerSIMD  = false;
     pFuncInfo->setBufferForNumGroup = false;
     pFuncInfo->wavefrontSize        = 0;
     pFuncInfo->numGPRsAvailable     = 0;
@@ -101,7 +99,6 @@ getFuncInfoFromImage(CALimage image, CALfuncInfo *pFuncInfo)
             pFuncInfo->numSharedGPRTotal    = pInfos[i].value;
             break;
         case AMU_ABI_ECS_SETUP_MODE:
-            pFuncInfo->eCsSetupMode         = (0 != pInfos[i].value) ? true : false;
             break;
         case AMU_ABI_NUM_THREAD_PER_GROUP:
             pFuncInfo->numThreadPerGroup    = pInfos[i].value;
@@ -123,7 +120,6 @@ getFuncInfoFromImage(CALimage image, CALfuncInfo *pFuncInfo)
             pFuncInfo->numWavefrontPerSIMD  = pInfos[i].value;
             break;
         case AMU_ABI_IS_MAX_NUM_WAVE_PER_SIMD:
-            pFuncInfo->isMaxNumWavePerSIMD  = (0 != pInfos[i].value) ? true : false;
             break;
         case AMU_ABI_SET_BUFFER_FOR_NUM_GROUP:
             pFuncInfo->setBufferForNumGroup = (0 != pInfos[i].value) ? true : false;
