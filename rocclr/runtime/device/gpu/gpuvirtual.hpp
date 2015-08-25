@@ -73,7 +73,10 @@ public:
     //! CAL descriptor for the GPU virtual device
     struct CalVirtualDesc : public amd::EmbeddedObject
     {
-        ProgramGrid progGrid_;      //!< CAL program grid
+        gslDomain3D gridBlock;      //!< size of a block of data
+        gslDomain3D gridSize;       //!< size of 'blocks' to execute
+        gslDomain3D partialGridBlock;//!< Partial grid block
+        CALuint     localSize;      //!< size of OpenCL Local Memory in bytes
         uint        memCount_;      //!< Memory objects count
         GpuEvent    events_[AllEngines];    //!< Last known GPU events
         uint        iterations_;    //!< Number of iterations for the execution

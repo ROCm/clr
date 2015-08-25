@@ -48,14 +48,6 @@ typedef struct CALimageRec*  CALimage;
 
 #define CAL_ASIC_INFO_MAX_LEN 128
 
-/** CAL computational domain */
-typedef struct CALdomainRec {
-    CALuint x;                 /**< x origin of domain */
-    CALuint y;                 /**< y origin of domain */
-    CALuint width;             /**< width of domain */
-    CALuint height;            /**< height of domain */
-} CALdomain;
-
 /** CAL device attributes */
 typedef struct CALdeviceattribsRec {
     CALuint    struct_size;                         /**< Client filled out size of CALdeviceattribs struct */
@@ -69,17 +61,7 @@ typedef struct CALdeviceattribsRec {
     CALuint    numberOfSIMD;                        /**< Number of SIMDs */
     CALuint    numberOfCUsperShaderArray;           /**< Number of CUs per shader array */
     bool       doublePrecision;                     /**< double precision supported */
-    bool       localDataShare;                      /**< local data share supported */
-    bool       globalDataShare;                     /**< global data share supported */
-    bool       globalGPR;                           /**< global GPR supported */
-    bool       computeShader;                       /**< compute shader supported */
-    bool       memExport;                           /**< memexport supported */
-    CALuint    pitch_alignment;                     /**< Required alignment for calCreateRes allocations (in data elements) */
-    CALuint    surface_alignment;                   /**< Required start address alignment for calCreateRes allocations (in bytes) */
-    CALuint    numberOfUAVs;                        /**< Number of UAVs */
-    bool       bUAVMemExport;                       /**< Hw only supports mem export to simulate 1 UAV */
     CALuint    numberOfShaderEngines;               /**< Number of shader engines */
-    CALuint    targetRevision;                      /**< Asic family revision */
     CALuint    totalVisibleHeap;                    /**< Amount of visible local GPU RAM in megabytes */
     CALuint    totalInvisibleHeap;                  /**< Amount of invisible local GPU RAM in megabytes */
     CALuint    totalDirectHeap;                     /**< Amount of direct GPU memory in megabytes */
@@ -89,8 +71,6 @@ typedef struct CALdeviceattribsRec {
     CALuint    totalSDIHeap;                        /**< Amount of SDI memory allocated in CCC */
     CALuint    pciTopologyInformation;              /**< PCI topology information contains: bus, device and function number. */
     CALchar    boardName[CAL_ASIC_INFO_MAX_LEN];    /**< Actual ASIC board name and not the internal name. */
-    bool       vectorBufferInstructionAddr64;       /**< Vector buffer instructions support ADDR64 mode */
-    bool       memRandomAccessTargetInstructions;   /**< hw/sc supports memory RAT (Random Access Target) instructions e.g. mem0.x_z_ supported */
     CALuint    memBusWidth;                         /**< Memory busw width */
     CALuint    numMemBanks;                         /**< Number of memory banks */
     CALuint    counterFreq;                         /**< Ref clock counter frequency */
@@ -119,14 +99,12 @@ typedef struct CALfuncInfoRec
     CALuint    maxScratchRegsNeeded;    /**< Maximum number of scratch regs needed */
     CALuint    numSharedGPRUser;        /**< Number of shared GPRs */
     CALuint    numSharedGPRTotal;       /**< Number of shared GPRs including ones used by SC */
-    bool       eCsSetupMode;            /**< Slow mode */
     CALuint    numThreadPerGroup;       /**< Flattend umber of threads per group */
     CALuint    numThreadPerGroupX;      /**< x dimension of numThreadPerGroup */
     CALuint    numThreadPerGroupY;      /**< y dimension of numThreadPerGroup */
     CALuint    numThreadPerGroupZ;      /**< z dimension of numThreadPerGroup */
     CALuint    totalNumThreadGroup;     /**< Total number of thread groups */
     CALuint    numWavefrontPerSIMD;     /**< Number of wavefronts per SIMD */
-    bool       isMaxNumWavePerSIMD;     /**< Is this the max num active wavefronts per SIMD */
     bool       setBufferForNumGroup;    /**< Need to set up buffer for info on number of thread groups? */
     CALuint    wavefrontSize;           /**< number of threads per wavefront. */
     CALuint    numGPRsAvailable;        /**< number of GPRs available to the program */
@@ -140,14 +118,6 @@ typedef struct CALfuncInfoRec
     CALuint    numVGPRsAvailable;       /**< number of VGPRs available to the program */
     CALuint    numVGPRsUsed;            /**< number of VGPRs used by the program */
 } CALfuncInfo;
-
-typedef struct ProgramGridRec
-{
-    gslDomain3D     gridBlock;       /**< size of a block of data */
-    gslDomain3D     gridSize;        /**< size of 'blocks' to execute. */
-    gslDomain3D     partialGridBlock;/** Partial grid block */
-    CALuint         localSize;       /** size of OpenCL Local Memory in bytes */
-} ProgramGrid;
 
 // flags for calCtxWaitForEvents
 typedef enum CALwaitTypeEnum
