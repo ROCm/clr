@@ -109,20 +109,11 @@ warning(const char* msg)
 #endif /*NDEBUG*/
 
 #ifdef DEBUG
-namespace amd {
-extern bool ShouldBreak(LogLevel level);
-} // namespace amd
-#endif // DEBUG
-
-#ifdef DEBUG
 # define Log(level,msg)                                 \
 do                                                      \
 {                                                       \
     if (LOG_LEVEL >= level) {                           \
         amd::log_entry(level, __FILE__, __LINE__, msg); \
-        if (amd::ShouldBreak(level)) {                  \
-            amd::breakpoint();                          \
-        }                                               \
     }                                                   \
 } while (false)
 #else // !DEBUG
@@ -135,9 +126,6 @@ do                                                            \
 {                                                             \
     if (LOG_LEVEL >= level) {                                 \
         amd::log_timestamped(level, __FILE__, __LINE__, msg); \
-        if (amd::ShouldBreak(level)) {                        \
-            amd::breakpoint();                                \
-        }                                                     \
     }                                                         \
 } while (false)
 #else // !DEBUG
@@ -150,9 +138,6 @@ do                                                                       \
 {                                                                        \
     if (LOG_LEVEL >= level) {                                            \
         amd::log_printf(level, __FILE__, __LINE__, format, __VA_ARGS__); \
-        if (amd::ShouldBreak(level)) {                                   \
-            amd::breakpoint();                                           \
-        }                                                                \
     }                                                                    \
 } while (false)
 #else // !DEBUG

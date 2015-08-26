@@ -30,16 +30,6 @@ breakpoint(void)
 }
 //! \endcond
 
-bool
-ShouldBreak(LogLevel level)
-{
-    if ((level == LOG_WARNING && BREAK_ON_LOG_WARNING)
-            || (level == LOG_ERROR && BREAK_ON_LOG_ERROR)) {
-        return true;
-    }
-    return false;
-}
-
 void
 report_fatal(const char* file, int line, const char* message)
 {

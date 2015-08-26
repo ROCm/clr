@@ -37,8 +37,10 @@ endif
 GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers"
 GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers/inc/asic_reg"
 GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)"
-GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/promotions/oclutils"
+GCPPFLAGS += $(INCSWITCH) "$(OPENCL_DEPTH)/runtime"
+GCPPFLAGS += $(INCSWITCH) "$(OPENCL_DEPTH)/runtime/utils"
 GCPPFLAGS += $(INCSWITCH) "$(COMPLIB_DEPTH)/utils"
+GCPPFLAGS += $(INCSWITCH) "$(OPENCL_DEPTH)/api/opencl/khronos/headers/opencl2.0"
 
 # Do we build the 0.9 version?
 ifeq ($(BUILD_VERSION_0_9), 1)

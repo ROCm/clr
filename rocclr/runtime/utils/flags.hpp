@@ -10,10 +10,6 @@
                                                                               \
 debug(int, LOG_LEVEL, 0,                                                      \
         "The default log level")                                              \
-debug(bool, BREAK_ON_LOG_WARNING, false,                                      \
-        "Break each time an error is logged")                                 \
-debug(bool, BREAK_ON_LOG_ERROR, false,                                        \
-        "Break each time an error is logged")                                 \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \
 debug(uint, GPU_MAX_COMMAND_QUEUES, 70,                                       \
