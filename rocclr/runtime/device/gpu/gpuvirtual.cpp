@@ -2605,12 +2605,6 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
         uint64_t surfAddr = gpuMemory->gslResource()->getPhysicalAddress(cs());
         uint64_t markerAddr = gpuMemory->gslResource()->getMarkerAddress(cs());
         uint64_t markerOffset = markerAddr - surfAddr;
-/*  @todo this logic doesn't make any sense
-        if((markerAddr + markerOffset) == 0) {
-        LogError("submitSignal failed");
-        vcmd.setStatus(CL_INVALID_OPERATION);
-        }
-*/
         cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(),
             markerOffset, false);
     }
