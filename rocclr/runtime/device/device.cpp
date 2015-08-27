@@ -42,6 +42,7 @@ extern void DeviceUnload();
 #include <sstream>
 #include <fstream>
 #include <set>
+#include <algorithm>
 
 
 

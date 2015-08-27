@@ -21,6 +21,7 @@
 #include "amd_hsa_queue.h"
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <d3d10_1.h>

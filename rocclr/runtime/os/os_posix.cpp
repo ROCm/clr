@@ -41,6 +41,7 @@
 #include <cstdio> // for tempnam
 #include <limits.h>
 #include <memory>
+#include <algorithm>
 
 
 

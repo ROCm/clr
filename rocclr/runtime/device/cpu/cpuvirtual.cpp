@@ -11,6 +11,7 @@
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "os/os.hpp"
+#include <algorithm>
 
 namespace cpu {
 

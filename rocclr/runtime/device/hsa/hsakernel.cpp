@@ -6,6 +6,8 @@
 
 #include "device/hsa/oclhsa_common.hpp"
 
+#include <algorithm>
+
 #ifndef WITHOUT_FSA_BACKEND
 
 namespace oclhsa {

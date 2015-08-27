@@ -11,6 +11,7 @@
 #include "device/gpu/gpuprogram.hpp"
 #include "device/gpu/gpuprintf.hpp"
 #include <cstdio>
+#include <algorithm>
 #include <math.h>
 
 namespace gpu {

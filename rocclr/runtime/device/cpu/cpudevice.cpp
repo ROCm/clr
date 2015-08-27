@@ -12,6 +12,8 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+
 #if defined(__linux__)
 #if !defined(ATI_ARCH_ARM)
 #include <sys/sysinfo.h>

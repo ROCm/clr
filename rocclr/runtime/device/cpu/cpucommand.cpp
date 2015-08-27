@@ -17,6 +17,7 @@
 #include "utils/options.hpp"
 
 #include <amdocl/cl_kernel.h>
+#include <algorithm>
 
 namespace cpu {
 

@@ -17,6 +17,7 @@
 #include <string>
 #include <sstream>
 #include <cstdlib>
+#include <algorithm>
 
 #ifndef WINAPI
 #define WINAPI
