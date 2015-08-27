@@ -1,4 +1,4 @@
-COMPLIB_DEPTH = $(OPENCL_DEPTH)/compiler/lib
+COMPLIB_DEPTH ?= $(OPENCL_DEPTH)/compiler/lib
 ifdef GONE_TO_BUILD_DIR
 ifdef ATI_OS_LINUX
 *$(OBJ_EXT): $(COMPLIB_DEPTH)/complibdefs $(COMPLIB_DEPTH)/complibrules
