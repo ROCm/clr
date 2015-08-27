@@ -20,6 +20,7 @@
 #include <sstream>
 #include <iostream>
 #include <ctime>
+#include <algorithm>
 
 namespace gpu {
 

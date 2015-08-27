@@ -44,6 +44,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #endif  // WITHOUT_FSA_BACKEND
 
 const HsaCoreApiTable *hsacoreapi = NULL;

@@ -37,6 +37,7 @@
 #include <sstream>
 #include <iostream>
 #include <ctype.h>
+#include <algorithm>
 
 #include "gpudebugmanager.hpp"
 

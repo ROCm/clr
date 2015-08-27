@@ -7,9 +7,6 @@
 #ifndef CPUMAPPING_HPP_
 #define CPUMAPPING_HPP_
 
-using std::min;
-using std::max;
-
 namespace cpu {
 
 class HCtoDCmap

@@ -8,6 +8,7 @@
 #include "device/gpu/gpumemory.hpp"
 #include "device/gpu/gpuvirtual.hpp"
 #include "utils/debug.hpp"
+#include <algorithm>
 
 namespace gpu {
 
