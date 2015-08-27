@@ -244,8 +244,6 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
 void
 CALGSLDevice::close()
 {
-    gslVidShutdown();
-
     if (m_cs != NULL)
     {
         m_cs->Flush();
@@ -268,9 +266,6 @@ CALGSLDevice::close()
         m_cs->destroySampler(m_textureSampler);
         m_cs->destroyQuery(m_mapQuery);
         m_cs->destroyQuery(m_mapDMAQuery);
-        m_cs->destroyQuery(m_mapUVDQuery);
-
-        m_cs->destroyQuery(m_mapVCEQuery);
 
         m_cs->setRenderState(0);
         m_cs->destroyRenderState(m_rs);
@@ -594,9 +589,6 @@ CALGSLDevice::PerformFullInitialization_int()
 
         m_mapQuery = m_cs->createQuery(GSL_SYNC_ATI);
         m_mapDMAQuery = m_cs->createQuery(GSL_DRMDMA_SYNC_ATI);
-        m_mapUVDQuery = m_cs->createQuery(GSL_UVD_SYNC_ATI);
-
-        m_mapVCEQuery = m_cs->createQuery(GSL_VCE_SYNC_ATI);
 
         // Allocate 1x1 FART and Vid memory for DMA flush
         CALresourceDesc desc;
@@ -626,9 +618,6 @@ void
 Wait(gsl::gsCtx* cs, gslQueryTarget target, gslQueryObject object)
 {
     uint64 param;
-    // This should never be called for UVD/VCE Sync queries in case it is
-    // Please correctly pass on EngineMask else queries may be messed up
-    assert(target != GSL_UVD_SYNC_ATI || target != GSL_VCE_SYNC_ATI);
 
     uint32 mask = (target == GSL_DRMDMA_SYNC_ATI) ? GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA0) | GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA1) : GSL_ENGINEMASK_ALL_BUT_UVD_VCE;
 

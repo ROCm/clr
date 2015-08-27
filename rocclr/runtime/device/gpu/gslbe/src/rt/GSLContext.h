@@ -3,7 +3,6 @@
 
 #include "atitypes.h"
 #include "gsl_types.h"
-#include "gsl_vid_if.h"
 #include "backend.h"
 
 #include "EventQueue.h"

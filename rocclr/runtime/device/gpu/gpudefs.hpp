@@ -8,7 +8,6 @@
 
 #include "gsl_types.h"
 #include "gsl_config.h"
-#include "gsl_vid_if.h"
 #include "gsl_ctx.h"
 #include "backend.h"
 #include "GSLDevice.h"

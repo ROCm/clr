@@ -62,8 +62,6 @@ CALGSLContext::open(
 
     gslEngineID mainEngineOrdinal = GSL_ENGINEID_INVALID;
     gslEngineID sdmaOrdinal = GSL_ENGINEID_INVALID;
-    gslEngineID decoderOrdinal = GSL_ENGINEID_INVALID;
-    gslEngineID encoderOrdinal = GSL_ENGINEID_INVALID;
     for (uint i = 0; i < nEngines; i++)
     {
         if (engines[i].id >= GSL_ENGINEID_3DCOMPUTE0 &&
@@ -78,30 +76,9 @@ CALGSLContext::open(
             sdmaOrdinal = engines[i].id;
             m_allowDMA = dev()->canDMA();
         }
-
-        if (engines[i].id == GSL_ENGINEID_UVD)
-        {
-            decoderOrdinal = engines[i].id;
-        }
-
-        if (engines[i].id == GSL_ENGINEID_VCE)
-        {
-            encoderOrdinal = engines[i].id;
-        }
     }
 
-    if (decoderOrdinal != GSL_ENGINEID_INVALID)
-    {
-        m_cs = native->createDecoderContext(decoderOrdinal);
-    }
-    else if (encoderOrdinal != GSL_ENGINEID_INVALID)
-    {
-        m_cs = native->createEncoderContext(encoderOrdinal);
-    }
-    else
-    {
-        m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal, false);
-    }
+    m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal, false);
 
     if (m_cs == 0)
     {
@@ -139,27 +116,16 @@ CALGSLContext::open(
     //
     m_rs->setComputeShader(m_cs, true);
 
-    if (decoderOrdinal != GSL_ENGINEID_INVALID)
+    m_eventQueue[MainEngine].open(m_cs, GSL_SYNC_ATI, EQConfig);
+    if (dev()->uavInCB())
     {
-        m_eventQueue[MainEngine].open(m_cs, GSL_UVD_SYNC_ATI, EQConfig, GSL_ENGINEMASK_ALL_BUT_UVD_VCE | GSL_ENGINE_MASK(GSL_ENGINEID_UVD));
-    }
-    else if (encoderOrdinal != GSL_ENGINEID_INVALID)
-    {
-        m_eventQueue[MainEngine].open(m_cs, GSL_VCE_SYNC_ATI, EQConfig, GSL_ENGINEMASK_ALL_BUT_UVD_VCE | GSL_ENGINE_MASK(GSL_ENGINEID_VCE));
+        // Evergreen uses physical mode for DRM engine, so flush 3D pipe wih DRM,
+        // thus GSL can get VA ranges back from KMD asap
+        m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig);
     }
     else
     {
-        m_eventQueue[MainEngine].open(m_cs, GSL_SYNC_ATI, EQConfig);
-        if (dev()->uavInCB())
-        {
-            // Evergreen uses physical mode for DRM engine, so flush 3D pipe wih DRM,
-            // thus GSL can get VA ranges back from KMD asap
-            m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig);
-        }
-        else
-        {
-            m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig, GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA0) | GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA1));
-        }
+        m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig, GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA0) | GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA1));
     }
 
     m_cs->setGPU((gslGPUMask)dev()->getVPUMask());
