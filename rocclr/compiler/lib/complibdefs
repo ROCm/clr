@@ -1,5 +1,8 @@
+OPENCL_DEPTH ?= $(COMPLIB_DEPTH)/../..
+
 include $(OPENCL_DEPTH)/opencldefs
-COMPLIB_DEPTH = $(OPENCL_DEPTH)/compiler/lib
+
+ELFTOOLCHAIN_DIR = $(COMPLIB_DEPTH)/loaders/elf/utils
 
 ifdef GONE_TO_BUILD_DIR
 ifeq ($(BUILD_HSA_TARGET),yes)
