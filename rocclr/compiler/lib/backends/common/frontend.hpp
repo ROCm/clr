@@ -4,8 +4,10 @@
 #ifndef _BE_FRONTEND_HPP_
 #define _BE_FRONTEND_HPP_
 #include <string>
+#include <fstream>
 #include "aclTypes.h"
 #include "compiler_stage.hpp"
+#include "utils/libUtils.h"
 
 namespace amdcl
 {
@@ -32,6 +34,16 @@ namespace amdcl
       virtual int compileCommand(const std::string& singleSrc) = 0;
 
       virtual std::string getClassName() = 0;
+
+      //! Dumps source CL text with compiler options in a file.
+      void dumpSource(const std::string& src, amd::option::Options* opts) {
+        std::ofstream f(opts->getDumpFileName(".cl").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+          f << "/* Compiler options:\n" << opts->origOptionStr << "\n*/\n\n" << src;
+        } else {
+          appendLogToCL(CL(), "File for dumping source cl isn't opened");
+        }
+      }
   }; // class Frontend
   /*@}*/
 
