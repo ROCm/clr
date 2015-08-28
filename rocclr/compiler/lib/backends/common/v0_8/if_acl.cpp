@@ -872,7 +872,7 @@ HSAILDisassemble(aclLoaderData *data,
   if (acl == NULL) {
     return ACL_INVALID_ARG;
   }
-  isaDump = acl->disassemble(isa_code, isa_size);
+  isaDump = acl->disassemble(isa_code, isa_size, kernel);
   const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symISAText);
   assert(symbol && "symbol not found");
   isaName = symbol->str[PRE] + std::string(kernel) + symbol->str[POST];

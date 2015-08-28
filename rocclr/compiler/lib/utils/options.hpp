@@ -155,7 +155,7 @@ enum DumpFlags {
     DUMP_CL            = 0x00000001,   // CL source
     DUMP_I             = 0x00000002,   // pre-processed CL source
     DUMP_S             = 0x00000004,   // x86 assembly text
-    DUMP_O             = 0x00000008,   // x86 object
+    DUMP_O             = 0x00000008,   // x86 object / GPU code object
     DUMP_DLL           = 0x00000010,   // x86 DLL (.so)
     DUMP_IL            = 0x00000020,   // per-kernel IL (GPU)
     DUMP_ISA           = 0x00000040,   // per-kernel assembly text (GPU)
