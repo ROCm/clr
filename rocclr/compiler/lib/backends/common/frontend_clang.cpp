@@ -8,7 +8,6 @@
 #include "frontend.hpp"
 #include "os/os.hpp"
 #include "top.hpp"
-#include "utils/libUtils.h"
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
 
@@ -20,7 +19,6 @@
 
 #include <string>
 #include <sstream>
-#include <fstream>
 
 amdcl::ClangOCLFrontend::ClangOCLFrontend(aclCompiler* cl, aclBinary* elf,
                                           aclLogFunction log)
@@ -128,11 +126,7 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   ClangOptions.CompilerContext = &Context();
 
   if (amdOpts && amdOpts->isDumpFlagSet(amd::option::DUMP_CL)) {
-    std::string inpCLFileName = amdOpts->getDumpFileName(".cl");
-    std::fstream f;
-    f.open(inpCLFileName.c_str(), (std::fstream::out | std::fstream::binary));
-    f.write(src.data(), src.length());
-    f.close();
+    dumpSource(src, amdOpts);
   }
 
   //Start the compilation

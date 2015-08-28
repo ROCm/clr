@@ -4,14 +4,12 @@
 #include "top.hpp"
 #include "frontend.hpp"
 #include "bif/bifbase.hpp"
-#include "utils/libUtils.h"
 #include "utils/target_mappings.h"
 #include "utils/options.hpp"
 #include "os/os.hpp"
 #include "llvm/ADT/StringRef.h"
 #include <cassert>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -172,10 +170,7 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
 #endif
 
   if (Opts && Opts->isDumpFlagSet(amd::option::DUMP_CL) && !preprocessOnly) {
-    std::string clFileName = Opts->getDumpFileName(".cl");
-    f.open(clFileName.c_str(), (std::fstream::out | std::fstream::binary));
-    f.write(src.data(), src.length());
-    f.close();
+    dumpSource(src, Opts);
   }
   std::string clcCmd = systemPath.str();
   return clcCmd;
