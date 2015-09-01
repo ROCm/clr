@@ -919,6 +919,14 @@ CALGSLDevice::resMapLocal(void*&            pPtr,
     assert(m_cs != 0);
     assert(mem != 0);
 
+    // No map really necessary if IOMMUv2 is being used, return the surface address directly
+    // as CPU can write to it for Linear tiled surfaces only
+    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    {
+        pPtr = (void*)mem->getImage(0)->surf.addr.getAddress();
+        return true;
+    }
+
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
@@ -1126,6 +1134,13 @@ CALGSLDevice::resUnmapLocal(gslMemObject mem, bool isHwDebug)
 {
     assert(m_cs != 0);
 
+    // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
+    // which CPU can write to it for Linear tiled surfaces only
+    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    {
+        return true;
+    }
+
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
@@ -1246,6 +1261,14 @@ CALGSLDevice::resMapRemote(void*& pPtr,
     assert(m_cs != 0);
     assert(mem != 0);
 
+    // No map really necessary if IOMMUv2 is being used, return the surface address directly
+    // as CPU can write to it for Linear tiled surfaces only
+    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    {
+        pPtr = (void*)mem->getImage(0)->surf.addr.getAddress();
+        return true;
+    }
+
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
@@ -1266,6 +1289,13 @@ bool
 CALGSLDevice::resUnmapRemote(gslMemObject mem) const
 {
     assert(m_cs != 0);
+
+    // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
+    // which CPU can write to it for Linear tiled surfaces only
+    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    {
+        return true;
+    }
 
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
