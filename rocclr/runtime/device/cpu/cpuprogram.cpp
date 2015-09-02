@@ -514,7 +514,7 @@ Program::compileBinaryToISA(amd::option::Options* options)
 
 #if defined(WITH_ONLINE_COMPILER)
     std::string tempName = amd::Os::getTempFileName();
-    dllFileName_ = tempName + "." IF(IS_WINDOWS, "dll", "so");
+    dllFileName_ = tempName + "dbg" + "." IF(IS_WINDOWS, "dll", "so");
 
     acl_error err = ACL_SUCCESS;
     aclTargetInfo aclinfo = info(has_avx ?
