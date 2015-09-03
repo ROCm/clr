@@ -737,7 +737,8 @@ VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd)
             amd::Coord3D dstOrigin(offset);
             result = blitMgr().copyImageToBuffer(*memory, *hostMemory,
                 vcmd.origin(), dstOrigin, vcmd.size(),
-                vcmd.isEntireMemory());
+                vcmd.isEntireMemory(),
+                vcmd.rowPitch(), vcmd.slicePitch());
         }
         else {
             result = blitMgr().readImage(*memory, vcmd.destination(),
@@ -846,7 +847,8 @@ VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd)
             amd::Coord3D srcOrigin(offset);
             result = blitMgr().copyBufferToImage(*hostMemory, *memory,
                 srcOrigin, vcmd.origin(), vcmd.size(),
-                vcmd.isEntireMemory());
+                vcmd.isEntireMemory(),
+                vcmd.rowPitch(), vcmd.slicePitch());
         }
         else {
             result = blitMgr().writeImage(vcmd.source(), *memory,
