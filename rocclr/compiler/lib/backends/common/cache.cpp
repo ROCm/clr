@@ -1,4 +1,5 @@
 #include "cache.hpp"
+
 // Use srcdata and buildOpts to generate a cache entry
 //
 // In:
@@ -13,7 +14,7 @@
 // Returns:
 // true if entry created; false otherwise, check errorMsg for errors
 //
-bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcData,
+bool StringCache::makeCacheEntry(bool isCacheReady, const StringCacheData *srcData,
                                  const std::string &buildOpts, const std::string &dstData)
 {
   if (!isCacheReady) {
@@ -47,10 +48,10 @@ bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcDa
     return false;
   }
 #endif
-  // Write kernel cache file header, build options, source data size, source data
+  // Write cache file header, build options, source data size, source data
   // and destination data to cache file
-  KernelCacheFileHeader H = { {'A', 'M', 'D', '\0'}, buildOptsSize, dstDataSize };
-  if (!writeFile(cacheFile, &H, sizeof(KernelCacheFileHeader)) ||
+  StringCacheFileHeader H = { {'A', 'M', 'D', '\0'}, buildOptsSize, dstDataSize };
+  if (!writeFile(cacheFile, &H, sizeof(StringCacheFileHeader)) ||
       !writeFile(cacheFile, buildOpts.c_str(), buildOptsSize) ||
       !writeFile(cacheFile, &(srcData->dataSize), sizeof(srcData->dataSize)) ||
       !writeFile(cacheFile, srcData->data, srcData->dataSize) ||
@@ -72,7 +73,7 @@ bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcDa
     return false;
   }
   // Update cache info
-  unsigned int cacheFileSize = sizeof(KernelCacheFileHeader) + buildOptsSize
+  unsigned int cacheFileSize = sizeof(StringCacheFileHeader) + buildOptsSize
                              + sizeof(srcData->dataSize) + srcData->dataSize
                              + dstDataSize;
   if (!setCacheInfo(version, cacheSize + cacheFileSize)) {
@@ -81,14 +82,15 @@ bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcDa
   }
   return true;
 }
+
 // Use srcData and buildOpts to find the corresponding cache entry, if it exists
 //
 // In:
-// deviceName - chip name
-// opts - Options object
+// deviceName - Chip name
+// isCachingOn - A flag indicates whether caching functionality is turned on/off
 // srcData - Source data
 // buildOpts - Build options
-// Msg - message that need to passed for internal cache testing
+// Msg - Message that need to passed for internal cache testing
 //
 // Out:
 // isCacheReady - Indicate whether cache file strucutre is set up
@@ -97,37 +99,39 @@ bool KernelCache::makeCacheEntry(bool isCacheReady, const KernelCacheData *srcDa
 // Returns:
 // true if entry found; false otherwise, check errorMsg for errors
 //
-bool KernelCache::getCacheEntry(bool &isCacheReady, const std::string &deviceName, amd::option::Options *opts,
-                                const KernelCacheData *srcData, const std::string &buildOpts,
+bool StringCache::getCacheEntry(bool &isCacheReady, const std::string &deviceName, bool isCachingOn,
+                                const StringCacheData *srcData, const std::string &buildOpts,
                                 std::string &dstData, const std::string &msg)
 {
+  if (!isCachingOn) {
+    return false;
+  }
   dstData.clear();
   errorMsg.clear();
-  bool kernelCached = false;
-  if (!opts->oVariables->DisableKernelCaching && opts->oVariables->OptLevel > 0) {
-    isCacheReady = cacheInit(SC_BUILD_NUMBER, deviceName);
-    if (!isCacheReady) {
-      appendLogToFile();
-    } else {
-      kernelCached = getCacheEntry_helper(srcData, buildOpts, dstData);
-      // For internal kernel cache test only
-      if (internalKCacheTestSwitch()) {
-        std::string cacheMsg = msg;
-        if (kernelCached) {
-          cacheMsg += " is cached!\n";
-        } else {
-          cacheMsg += " is not cached!\n";
-        }
-        fprintf(stdout, cacheMsg.c_str());
-        fflush(stdout);
+  bool stringCached = false;
+  isCacheReady = cacheInit(deviceName);
+  if (!isCacheReady) {
+    appendLogToFile();
+  } else {
+    stringCached = getCacheEntry_helper(srcData, buildOpts, dstData);
+    // For internal cache test only
+    if (internalCacheTestSwitch()) {
+      std::string cacheMsg = msg;
+      if (stringCached) {
+        cacheMsg += " is cached!\n";
+      } else {
+        cacheMsg += " is not cached!\n";
       }
+      fprintf(stdout, cacheMsg.c_str());
+      fflush(stdout);
     }
   }
   if (!errorMsg.empty()) {
     appendLogToFile();
   }
-  return kernelCached;
+  return stringCached;
 }
+
 // Use srcData and buildOpts to find the corresponding cache entry, if it exists
 //
 // In:
@@ -140,7 +144,7 @@ bool KernelCache::getCacheEntry(bool &isCacheReady, const std::string &deviceNam
 // Returns:
 // true if entry found; false otherwise, check errorMsg for errors
 //
-bool KernelCache::getCacheEntry_helper(const KernelCacheData *srcData, const std::string &buildOpts,
+bool StringCache::getCacheEntry_helper(const StringCacheData *srcData, const std::string &buildOpts,
                                        std::string &dstData)
 {
   std::string fileName;
@@ -163,13 +167,13 @@ bool KernelCache::getCacheEntry_helper(const KernelCacheData *srcData, const std
     return false;
   }
 #endif
-  // Read kernel cache file header
-  KernelCacheFileHeader H;
-  if (!readFile(cacheFile, &H, sizeof(KernelCacheFileHeader))) {
+  // Read cache file header
+  StringCacheFileHeader H;
+  if (!readFile(cacheFile, &H, sizeof(StringCacheFileHeader))) {
     return false;
   }
-  // Compare kernel cache file header
-  if (!verifyKernelCacheFileHeader(H, buildOpts)) {
+  // Compare cache file header
+  if (!verifyStringCacheFileHeader(H, buildOpts)) {
     CloseFile(cacheFile);
     return false;
   }
@@ -228,6 +232,7 @@ bool KernelCache::getCacheEntry_helper(const KernelCacheData *srcData, const std
   CloseFile(cacheFile);
   return true;
 }
+
 #if _WIN32
 // Get Sid of account
 //
@@ -240,7 +245,7 @@ bool KernelCache::getCacheEntry_helper(const KernelCacheData *srcData, const std
 // Return:
 // Sid of account if SID is obtained; NULL otherwise
 //
-std::unique_ptr<SID> KernelCache::getSid(TCHAR *username)
+std::unique_ptr<SID> StringCache::getSid(TCHAR *username)
 {
   if (username == NULL) {
     errorMsg = "Invalid user name in getSid mehtod";
@@ -302,6 +307,7 @@ std::unique_ptr<SID> KernelCache::getSid(TCHAR *username)
   return sid;
 }
 #endif
+
 #if defined(__linux__)
 inline bool path_is_directory(const std::string &path)
 {
@@ -310,6 +316,7 @@ inline bool path_is_directory(const std::string &path)
     return false;
   return S_ISDIR(s_buf.st_mode);
 }
+
 // Remove all files and subfolders in a dir
 //
 // In:
@@ -348,6 +355,7 @@ unsigned long remove_all(const char* directory_name)
   return (rmdir(directory_name) == 0) ? fileCnt : LONG_MIN;
 }
 #endif
+
 // Wipe the cache folder structure
 //
 // In:
@@ -359,14 +367,14 @@ unsigned long remove_all(const char* directory_name)
 // Returns:
 // true if folder wipe is ok; false otherwise
 //
-bool KernelCache::wipeCacheFolders()
+bool StringCache::wipeCacheFolders()
 {
   for (int i = 0; i < 16; ++i) {
     std::string dir = rootPath;
     std::stringstream ss;
-    ss << amd::Os::fileSeparator() << std::hex << i;
+    ss << fileSeparator() << std::hex << i;
     dir += ss.str();
-    if (amd::Os::pathExists(dir)) {
+    if (pathExists(dir)) {
 #if _WIN32
       std::tr2::sys::path mDir(dir);
       if (remove_all(mDir) < 0) {
@@ -380,6 +388,7 @@ bool KernelCache::wipeCacheFolders()
   }
   return true;
 }
+
 // Setup cache tree structure
 //
 // In:
@@ -391,16 +400,16 @@ bool KernelCache::wipeCacheFolders()
 // Returns:
 // true if folders setup is ok; false otherwise
 //
-bool KernelCache::setUpCacheFolders()
+bool StringCache::setUpCacheFolders()
 {
   // Directory structure is distributed as 16 * 16 in order to keep the file count per directory low
   for (int i = 0; i < 16; ++i) {
     for (int j = 0; j < 16; ++j) {
       std::string dir = rootPath;
       std::stringstream ss;
-      ss << amd::Os::fileSeparator() << std::hex << i << amd::Os::fileSeparator() << j;
+      ss << fileSeparator() << std::hex << i << fileSeparator() << j;
       dir += ss.str();
-      if (false == amd::Os::createPath(dir)) {
+      if (false == createPath(dir)) {
         errorMsg = "Error creating directory in cache";
         return false;
       }
@@ -412,6 +421,7 @@ bool KernelCache::setUpCacheFolders()
   }
   return true;
 }
+
 // Return detailed error message as string
 //
 // In:
@@ -423,7 +433,7 @@ bool KernelCache::setUpCacheFolders()
 // Return:
 // Error message in string format. Otherwise, an empty string if there is no error
 //
-std::string KernelCache::getLastErrorMsg()
+std::string StringCache::getLastErrorMsg()
 {
 #if _WIN32
   // Get the error message, if any.
@@ -441,6 +451,7 @@ std::string KernelCache::getLastErrorMsg()
   return std::string(strerror(errno));
 #endif
 }
+
 // Set file to only owner accessible
 //
 // In:
@@ -453,7 +464,7 @@ std::string KernelCache::getLastErrorMsg()
 // Returns:
 // true if access permission is under control; false otherwise
 //
-bool KernelCache::setAccessPermission(const std::string &fileName, bool isFile)
+bool StringCache::setAccessPermission(const std::string &fileName, bool isFile)
 {
 #if _WIN32
   TCHAR username[UNLEN + 1];
@@ -482,6 +493,7 @@ bool KernelCache::setAccessPermission(const std::string &fileName, bool isFile)
 #endif
   return true;
 }
+
 // Set the cache's root path
 //
 // In:
@@ -493,7 +505,7 @@ bool KernelCache::setAccessPermission(const std::string &fileName, bool isFile)
 // Returns:
 // true if root path of cache is set successfully; false otherwise
 //
-bool KernelCache::setRootPath(const std::string &chipName)
+bool StringCache::setRootPath(const std::string &chipName)
 {
   rootPath.clear();
 #if _WIN32
@@ -521,20 +533,21 @@ bool KernelCache::setRootPath(const std::string &chipName)
   }
   rootPath = homedir;
   // Verify the path exists
-  if (!amd::Os::pathExists(rootPath)) {
+  if (!pathExists(rootPath)) {
     errorMsg = "User's home directory is not created: " + getLastErrorMsg();
     return false;
   }
   rootPath += "/.AMD/CLCache";
 #endif
-  rootPath += amd::Os::fileSeparator() + chipName;
-  if (!amd::Os::createPath(rootPath)) {
+  rootPath += fileSeparator() + chipName;
+  if (!createPath(rootPath)) {
     errorMsg = "Failed to create cache root directory";
     return false;
   }
   // Set folder to only owner accessible
   return setAccessPermission(rootPath);
 }
+
 // Set the cache version and size
 //
 // In:
@@ -547,7 +560,7 @@ bool KernelCache::setRootPath(const std::string &chipName)
 // Returns:
 // true if successful; false otherwise
 //
-bool KernelCache::setCacheInfo(unsigned int newVersion, unsigned int newSize)
+bool StringCache::setCacheInfo(unsigned int newVersion, unsigned int newSize)
 {
   unsigned int fileData[2];
   fileData[0] = newVersion;
@@ -560,6 +573,7 @@ bool KernelCache::setCacheInfo(unsigned int newVersion, unsigned int newSize)
   cacheSize = newSize;
   return true;
 }
+
 // Get the version and size of the cache
 //
 // In:
@@ -571,10 +585,10 @@ bool KernelCache::setCacheInfo(unsigned int newVersion, unsigned int newSize)
 // Returns:
 // true if successful; false otherwise
 //
-bool KernelCache::getCacheInfo()
+bool StringCache::getCacheInfo()
 {
   indexName = rootPath;
-  indexName += amd::Os::fileSeparator();
+  indexName += fileSeparator();
   indexName += "cacheDir";
 #if _WIN32
   HANDLE cacheFile = CreateFile(indexName.c_str(), GENERIC_READ, FILE_SHARE_READ,
@@ -611,10 +625,11 @@ bool KernelCache::getCacheInfo()
   CloseFile(cacheFile);
   return true;
 }
+
 // Initialize the cache
 //
 // In:
-// compilerVersion - Compiler version
+// chipName - Chip name
 //
 // Out:
 // none
@@ -622,7 +637,7 @@ bool KernelCache::getCacheInfo()
 // Returns:
 // true if successful; false otherwise
 //
-bool KernelCache::cacheInit(unsigned int compilerVersion, const std::string &chipName)
+bool StringCache::cacheInit(const std::string &chipName)
 {
   if (!setRootPath(chipName)) {
     return false;
@@ -632,13 +647,14 @@ bool KernelCache::cacheInit(unsigned int compilerVersion, const std::string &chi
   }
   // Limit cache size to default cache size, and wipe out all cache files when it's exceed
   // TODO: need to implement cache eviction policy
-  if (version != compilerVersion || cacheSize > DEFAULT_CACHE_SIZE) {
-    if (!wipeCacheFolders() || !setCacheInfo(compilerVersion, 0) || !setUpCacheFolders()) {
+  if (version != cacheVersion || cacheSize > DEFAULT_CACHE_SIZE) {
+    if (!wipeCacheFolders() || !setCacheInfo(cacheVersion, 0) || !setUpCacheFolders()) {
       return false;
     }
   }
   return true;
 }
+
 // Compute the hash value for a buffer of data along with the buildOpts
 //
 // In:
@@ -651,13 +667,14 @@ bool KernelCache::cacheInit(unsigned int compilerVersion, const std::string &chi
 // Returns:
 // Hash value computed from the inputs
 //
-unsigned int KernelCache::computeHash(const KernelCacheData *data, const std::string &buildOpts)
+unsigned int StringCache::computeHash(const StringCacheData *data, const std::string &buildOpts)
 {
   HashType v = { std::string(data->data, data->dataSize), buildOpts };
   std::hash<HashType> hash_fn;
   return hash_fn(v);
 }
-// Control kernel cache test
+
+// Control cache test
 //
 // In:
 // none
@@ -666,12 +683,13 @@ unsigned int KernelCache::computeHash(const KernelCacheData *data, const std::st
 // none
 //
 // Returns:
-// true if kernel cache test is on; false otherwise
+// true if cache test is on; false otherwise
 //
-bool KernelCache::internalKCacheTestSwitch() {
+bool StringCache::internalCacheTestSwitch() {
 
   return false;
 }
+
 // Generate file path from a hash value
 //
 // In:
@@ -683,22 +701,23 @@ bool KernelCache::internalKCacheTestSwitch() {
 // Returns:
 // none
 //
-void KernelCache::getFilePathFromHash(const unsigned int hashVal, std::string &pathToFile)
+void StringCache::getFilePathFromHash(const unsigned int hashVal, std::string &pathToFile)
 {
   char textHash[9];
   sprintf(textHash, "%08x", hashVal);
   std::string fileName = textHash;
   pathToFile = rootPath;
-  pathToFile += amd::Os::fileSeparator();
+  pathToFile += fileSeparator();
   // First char determines first dir level
   pathToFile += fileName[0];
-  pathToFile += amd::Os::fileSeparator();
+  pathToFile += fileSeparator();
   // Second char determines second dir level
   pathToFile += fileName[1];
-  pathToFile += amd::Os::fileSeparator();
+  pathToFile += fileSeparator();
   // Rest of file name determines name
   pathToFile += fileName.c_str() + 2;
 }
+
 // Use data and buildOpts to generate a file name
 //
 // In:
@@ -711,15 +730,16 @@ void KernelCache::getFilePathFromHash(const unsigned int hashVal, std::string &p
 // Returns:
 // none
 //
-void KernelCache::makeFileName(const KernelCacheData *data, const std::string &buildOpts, std::string &pathToFile)
+void StringCache::makeFileName(const StringCacheData *data, const std::string &buildOpts, std::string &pathToFile)
 {
   unsigned int hashVal = computeHash(data, buildOpts);
   getFilePathFromHash(hashVal, pathToFile);
 }
-// Verify whether the file includes the right kernel cache file header
+
+// Verify whether the file includes the right cache file header
 //
 // In:
-// H - Kernel cache file header
+// H - String cache file header
 // buildOpts - Build options
 //
 // Out:
@@ -728,7 +748,7 @@ void KernelCache::makeFileName(const KernelCacheData *data, const std::string &b
 // Returns:
 // true if the file is the one matched our requirement; false othereise
 //
-bool KernelCache::verifyKernelCacheFileHeader(KernelCacheFileHeader &H, const std::string &buildOpts)
+bool StringCache::verifyStringCacheFileHeader(StringCacheFileHeader &H, const std::string &buildOpts)
 {
   const char AMD[4] = {'A', 'M', 'D', '\0'};
   if (memcmp(H.AMD, AMD, 4)) {
@@ -741,6 +761,7 @@ bool KernelCache::verifyKernelCacheFileHeader(KernelCacheFileHeader &H, const st
   }
   return true;
 }
+
 // Read contents in cacheFile
 //
 // In:
@@ -753,7 +774,7 @@ bool KernelCache::verifyKernelCacheFileHeader(KernelCacheFileHeader &H, const st
 // Returns:
 // true if file reads succeed; false otherwise
 //
-bool KernelCache::readFile(FileHandle cacheFile, void *buffer, ssize_t sizeToRead)
+bool StringCache::readFile(FileHandle cacheFile, void *buffer, ssize_t sizeToRead)
 {
   // Read content to the buffer
 #if _WIN32
@@ -772,6 +793,7 @@ bool KernelCache::readFile(FileHandle cacheFile, void *buffer, ssize_t sizeToRea
   }
   return true;
 }
+
 // Write contents to cacheFile
 //
 // In:
@@ -785,7 +807,7 @@ bool KernelCache::readFile(FileHandle cacheFile, void *buffer, ssize_t sizeToRea
 // Returns:
 // true if file writes succeed; false otherwise
 //
-bool KernelCache::writeFile(FileHandle cacheFile, const void *buffer, ssize_t sizeToWritten)
+bool StringCache::writeFile(FileHandle cacheFile, const void *buffer, ssize_t sizeToWritten)
 {
 #if _WIN32
   DWORD bytesWritten = 0;
@@ -803,6 +825,7 @@ bool KernelCache::writeFile(FileHandle cacheFile, const void *buffer, ssize_t si
   }
   return true;
 }
+
 // Open a file and write its contents
 //
 // In:
@@ -816,7 +839,7 @@ bool KernelCache::writeFile(FileHandle cacheFile, const void *buffer, ssize_t si
 // Returns:
 // true if the file is written to file successfully; false otherwise
 //
-bool KernelCache::writeFile(const std::string &fileName, const void *data, size_t size, bool appendable)
+bool StringCache::writeFile(const std::string &fileName, const void *data, size_t size, bool appendable)
 {
 #if _WIN32
   DWORD appendAccess = 0;
@@ -864,6 +887,7 @@ bool KernelCache::writeFile(const std::string &fileName, const void *data, size_
   // Set file to only owner accessible
   return setAccessPermission(fileName, true);
 }
+
 // Remove file
 //
 // In:
@@ -875,7 +899,7 @@ bool KernelCache::writeFile(const std::string &fileName, const void *data, size_
 // Returns:
 // none
 //
-void KernelCache::removePartiallyWrittenFile(const std::string &fileName)
+void StringCache::removePartiallyWrittenFile(const std::string &fileName)
 {
   errorMsg = getLastErrorMsg();
 #if _WIN32
@@ -886,6 +910,7 @@ void KernelCache::removePartiallyWrittenFile(const std::string &fileName)
     errorMsg += ", Unable to delete partially written cache file: " + getLastErrorMsg();
   }
 }
+
 // Log caching error messages for debugging the cache and/or detecting collisions
 //
 // In:
@@ -897,9 +922,9 @@ void KernelCache::removePartiallyWrittenFile(const std::string &fileName)
 // Returns:
 // none
 //
-void KernelCache::appendLogToFile(std::string extraMsg) {
-  if (amd::Os::pathExists(rootPath)) {
-    std::string fileName = rootPath + amd::Os::fileSeparator() + "cacheError.log";
+void StringCache::appendLogToFile(std::string extraMsg) {
+  if (pathExists(rootPath)) {
+    std::string fileName = rootPath + fileSeparator() + "cacheError.log";
     errorMsg += extraMsg;
     if ('\n' != errorMsg[errorMsg.size()-1]) {
       errorMsg.append("\n");
@@ -907,6 +932,7 @@ void KernelCache::appendLogToFile(std::string extraMsg) {
     writeFile(fileName, errorMsg.c_str(), errorMsg.length(), true);
   }
 }
+
 // Log error message and close the file
 //
 // In:
@@ -919,8 +945,51 @@ void KernelCache::appendLogToFile(std::string extraMsg) {
 // Returns:
 // none
 //
-void KernelCache::logErrorCloseFile(const std::string &errorMsg, const FileHandle file)
+void StringCache::logErrorCloseFile(const std::string &errorMsg, const FileHandle file)
 {
   appendLogToFile(errorMsg);
   CloseFile(file);
+}
+
+char StringCache::fileSeparator() {
+#if _WIN32
+  return '\\';
+#else
+  return '/';
+#endif
+}
+
+bool StringCache::pathExists(const std::string& path)
+{
+#if _WIN32
+  DWORD fid = GetFileAttributes(path.c_str());
+  return (fid != INVALID_FILE_ATTRIBUTES) && ((fid & FILE_ATTRIBUTE_DIRECTORY) != 0);
+#else
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0)
+    return false;
+  return S_ISDIR(st.st_mode);
+#endif
+}
+
+bool StringCache::createPath(const std::string& path)
+{
+#if __linux__
+  mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+#endif
+  size_t pos = 0;
+  while (true) {
+    pos = path.find(fileSeparator(), pos);
+    const std::string currPath = path.substr(0, pos);
+    if (!currPath.empty() && !pathExists(currPath)) {
+#if _WIN32
+      if (!CreateDirectory(currPath.c_str(), NULL)) return false;
+#else
+      if (mkdir(currPath.c_str(), mode) == -1) return false;
+#endif
+}
+    if (pos == std::string::npos) break;
+    ++pos;
+  }
+  return true;
 }
