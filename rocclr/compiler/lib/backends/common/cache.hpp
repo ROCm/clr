@@ -22,11 +22,13 @@
 #include <Lmcons.h>
 #include <aclapi.h>
 #include <filesystem>
+#include <BaseTsd.h>
 #endif
 
 #if _WIN32
 #define CloseFile CloseHandle
 #define FileHandle HANDLE
+typedef SSIZE_T ssize_t;
 #else
 #define CloseFile close
 #define FileHandle int
