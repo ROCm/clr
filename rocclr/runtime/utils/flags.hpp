@@ -166,6 +166,8 @@ release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
+release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
+        "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable")                \
 debug(bool, OCL_FORCE_CPU_SVM, false,                                         \

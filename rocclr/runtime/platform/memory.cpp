@@ -282,12 +282,14 @@ Memory::create(void* initFrom, bool sysMemAlloc)
         return false;
     }
 
-    bool ok = true;
-
     const std::vector<Device*>& devices = context_().devices();
 
+    // Forces system memory allocation on the device,
+    // instead of device memory
+    forceSysMemAlloc_ = sysMemAlloc;
+
     // Create memory on all available devices
-    for (size_t i = 0; ok && i < devices.size(); i++) {
+    for (size_t i = 0; i < devices.size(); i++) {
         deviceAlloced_[devices[i]] = AllocInit;
 
         // Only GPU devices have device memory objects
@@ -295,13 +297,18 @@ Memory::create(void* initFrom, bool sysMemAlloc)
             deviceMemories_[i].ref_     = devices[i];
             deviceMemories_[i].value_   = NULL;
         }
+
+        if (DISABLE_DEFERRED_ALLOC) {
+            device::Memory* mem = getDeviceMemory(*devices[i]);
+            if (NULL == mem) {
+                LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
+                    getSize());
+                return false;
+            }
+        }
     }
 
-    // Forces system memory allocation on the device,
-    // instead of device memory
-    forceSysMemAlloc_ = sysMemAlloc;
-
-    return ok;
+    return true;
 }
 
 bool
