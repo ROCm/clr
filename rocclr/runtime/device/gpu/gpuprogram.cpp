@@ -1976,8 +1976,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
         acl_error errorCode;
         binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
         if (errorCode != ACL_SUCCESS) {
-            buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
-            LogWarning("aclReadFromMem failed");
+            buildLog_ += "Error: Reading the binary from memory failed.\n";
             return continueCompileFrom;
       }
       // Calculate the next stage to compile from, based on sections in binaryElf_;
@@ -2081,7 +2080,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, NULL);
         buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
         if (errorCode != ACL_SUCCESS) {
-            buildLog_ += "Error while BRIG Codegen phase: compilation error \n" ;
+            buildLog_ += "Error: BRIG code generation failed.\n";
             return false;
         }
         break;
@@ -2092,7 +2091,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         finalize = false;
         break;
     default:
-        buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
+        buildLog_ += "Error: The binary is incorrect or incomplete. Finalization to ISA couldn't be performed.\n";
         return false;
     }
     if (finalize) {
@@ -2106,7 +2105,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             fin_options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, NULL);
         buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
         if (errorCode != ACL_SUCCESS) {
-            LogError("Failed to finalize");
+            buildLog_ += "Error: BRIG finalization to ISA failed.\n";
             return false;
         }
     }
@@ -2116,31 +2115,33 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     if (!isNull() && hsaLoad) {
         executable_ = Executable::Create(HSA_PROFILE_BASE, &loaderContext_, NULL);
         if (executable_ == NULL) {
+            buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
             return false;
         }
         size_t size = 0;
         hsa_code_object_t code_object;
         code_object.handle = reinterpret_cast<uint64_t>(aclExtractSection(dev().hsaCompiler(), binaryElf_, &size, aclTEXT, &errorCode));
         if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error: Extracting AMD HSA Code Object from binary failed.\n";
             return false;
         }
         hsa_status_t status = executable_->LoadCodeObject(agent, code_object, NULL);
         if (status != HSA_STATUS_SUCCESS) {
-            buildLog_ += "Error while HSA Loader phase: loading HSA Code Object\n";
+            buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
             return false;
         }
     }
     size_t kernelNamesSize = 0;
     errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
-        buildLog_ += "Error while Finalization phase: Kernel names size querying from the ELF failed\n";
+        buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
         return false;
     }
     if (!isNull() && kernelNamesSize > 0) {
         char* kernelNames = new char[kernelNamesSize];
         errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
         if (errorCode != ACL_SUCCESS) {
-            buildLog_ += "Error while Finalization phase: Kernel names querying from the ELF failed\n";
+            buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
             delete kernelNames;
             return false;
         }
@@ -2157,7 +2158,8 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
                 openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
             if (errorCode != ACL_SUCCESS) {
-                buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
+                buildLog_ += "Error: Querying of kernel '" + openclKernelName +
+                    "' extra arguments count from AMD HSA Code Object failed. Kernel initialization failed.\n";
                 return false;
             }
             HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(),
@@ -2165,11 +2167,12 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             kernels()[kernelName] = aKernel;
             amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", openclKernelName.c_str(), agent, 0);
             if (!sym) {
-                LogError("Failed to get kernel ISA code");
+                buildLog_ += "Error: Getting kernel ISA code symbol '" + openclKernelName +
+                    "' from AMD HSA Code Object failed. Kernel initialization failed.\n";
                 return false;
             }
             if (!aKernel->init(sym, false)) {
-                LogError("Failed to init HSAILKernel");
+                buildLog_ += "Error: Kernel '" + openclKernelName + "' initialization failed.\n";
                 return false;
             }
             buildLog_ += aKernel->buildLog();

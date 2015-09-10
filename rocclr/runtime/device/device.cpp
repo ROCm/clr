@@ -747,6 +747,7 @@ Program::compile(const std::string& sourceCode,
             f.write(logs.data(), logs.size());
             f.close();
         }
+        LogError(buildLog_.c_str());
     }
 
     return buildError();
@@ -854,6 +855,7 @@ cl_int Program::link(const std::vector<Program*>& inputPrograms,
             f.write(logs.data(), logs.size());
             f.close();
         }
+        LogError(buildLog_.c_str());
     }
 
     return buildError();
@@ -948,6 +950,7 @@ Program::build(const std::string& sourceCode,
             f.write(logs.data(), logs.size());
             f.close();
         }
+        LogError(buildLog_.c_str());
     }
 
     return buildError();
