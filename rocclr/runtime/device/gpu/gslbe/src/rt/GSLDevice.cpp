@@ -304,7 +304,7 @@ CALGSLDevice::PerformFullInitialization() const
 bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
-    PerformAdapterInitialization_int(true);
+    PerformAdapterInitialization_int(false);
 
     if (m_adp == 0)
     {
@@ -384,7 +384,7 @@ CALGSLDevice::SetupContext(int32 &asic_id)
 {
     gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID :
                                                      getFirstAvailableComputeEngineID()) : GSL_ENGINEID_3DCOMPUTE0,
-                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, true);
+                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, false);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
     m_maxtexturesize = temp_cs->getMaxTextureSize();
