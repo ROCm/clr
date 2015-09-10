@@ -304,7 +304,8 @@ CALGSLDevice::PerformFullInitialization() const
 bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
-    PerformAdapterInitialization_int(false);
+    bool initLite = (m_attribs.isWDDM2Enabled) ? true : false;
+    PerformAdapterInitialization_int(initLite);
 
     if (m_adp == 0)
     {
@@ -382,9 +383,10 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 bool
 CALGSLDevice::SetupContext(int32 &asic_id)
 {
+    bool initLite = (m_attribs.isWDDM2Enabled) ? true : false;
     gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID :
                                                      getFirstAvailableComputeEngineID()) : GSL_ENGINEID_3DCOMPUTE0,
-                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, false);
+                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, initLite);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
     m_maxtexturesize = temp_cs->getMaxTextureSize();
