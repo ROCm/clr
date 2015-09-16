@@ -259,6 +259,12 @@ public:
 
     //! get Application file name
     static std::string getAppFileName();
+
+    //! Install SIGFPE handler for CPU device
+    static bool installSigfpeHandler();
+
+    //! Uninstall SIGFPE handler for CPU device
+    static void uninstallSigfpeHandler();
 };
 
 /*@}*/

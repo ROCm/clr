@@ -51,13 +51,17 @@ Device::~Device()
 void
 Device::tearDown()
 {
-  aclCompilerFini(compiler_);
+    amd::Os::uninstallSigfpeHandler();
+    aclCompilerFini(compiler_);
 }
 bool
 Device::init()
 {
     // Allow disabling of the CPU device
     if (CPU_MAX_COMPUTE_UNITS == 0)
+        return false;
+
+    if(!amd::Os::installSigfpeHandler())
         return false;
 
     const char *library = getenv("COMPILER_LIBRARY");

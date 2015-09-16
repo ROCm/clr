@@ -124,6 +124,23 @@ static pthread_setaffinity_fn pthread_setaffinity_fptr;
 static void init() __attribute__((constructor(101)));
 static void init() { Os::init(); }
 
+bool Os::installSigfpeHandler() {
+    // Install a SIGFPE signal handler @todo: Chain the handlers
+    struct sigaction sa;
+    sigfillset(&sa.sa_mask);
+    sa.sa_handler = SIG_DFL;
+    sa.sa_sigaction = divisionErrorHandler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+
+    if (sigaction(SIGFPE, &sa, &oldSigAction) != 0) {
+        return false;
+    }
+    return true;
+}
+
+void Os::uninstallSigfpeHandler() {
+}
+
 bool
 Os::init()
 {
@@ -137,17 +154,6 @@ Os::init()
 
     pageSize_ = (size_t) ::sysconf(_SC_PAGESIZE);
     processorCount_ = ::sysconf(_SC_NPROCESSORS_CONF);
-
-    // Install a SIGFPE signal handler @todo: Chain the handlers
-    struct sigaction sa;
-    sigfillset(&sa.sa_mask);
-    sa.sa_handler = SIG_DFL;
-    sa.sa_sigaction = divisionErrorHandler;
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-
-    if (sigaction(SIGFPE, &sa, &oldSigAction) != 0) {
-        return false;
-    }
 
     pthread_setaffinity_fptr = (pthread_setaffinity_fn)
         dlsym(RTLD_NEXT, "pthread_setaffinity_np");

@@ -66,10 +66,6 @@ Os::init()
     QueryPerformanceFrequency(&frequency);
     PerformanceFrequency = (double) frequency.QuadPart;
 
-#ifdef _WIN64
-    divExceptionHandler = AddVectoredExceptionHandler(1, divExceptionFilter);
-#endif // _WIN64
-
     HMODULE handle = ::LoadLibrary("kernel32.dll");
     if (handle != NULL) {
         pfnSetThreadGroupAffinity = (SetThreadGroupAffinity_fn)
@@ -87,13 +83,6 @@ __declspec(allocate(".CRT$XTU")) void (*__exit)(void) = Os::tearDown;
 void
 Os::tearDown()
 {
-#ifdef _WIN64
-    if (divExceptionHandler != NULL) {
-        RemoveVectoredExceptionHandler(divExceptionHandler);
-        divExceptionHandler = NULL;
-    }
-#endif // _WIN64
-
     Thread::tearDown();
 }
 
@@ -462,6 +451,22 @@ divExceptionFilter(struct _EXCEPTION_POINTERS* ep)
         }
     }
     return EXCEPTION_CONTINUE_SEARCH;
+}
+
+bool Os::installSigfpeHandler() {
+#ifdef _WIN64
+    divExceptionHandler = AddVectoredExceptionHandler(1, divExceptionFilter);
+#endif // _WIN64
+    return true;
+}
+
+void Os::uninstallSigfpeHandler() {
+#ifdef _WIN64
+    if (divExceptionHandler != NULL) {
+        RemoveVectoredExceptionHandler(divExceptionHandler);
+        divExceptionHandler = NULL;
+    }
+#endif // _WIN64
 }
 
 void*
