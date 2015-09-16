@@ -378,6 +378,7 @@ Settings::create(
     enableExtension(ClAmdDeviceAttributeQuery);
 
     enableExtension(ClKhrSpir);
+    enableExtension(ClKhrIlProgram);
 
     // SVM is not currently supported for DX Interop
     if (!svmFineGrainSystem_) {
