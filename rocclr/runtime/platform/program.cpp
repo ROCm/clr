@@ -467,7 +467,7 @@ Program::build(
             devProgram = getDeviceProgram(**it);
         }
 
-        parsedOptions.oVariables->AssumeAlias = (*it)->settings().assumeAliases_;
+        parsedOptions.oVariables->AssumeAlias = true;
 
         // We only build a Device-Program once
         if (devProgram->buildStatus() != CL_BUILD_NONE) {

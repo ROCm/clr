@@ -303,12 +303,12 @@ public:
     struct ScratchBuffer : public amd::HeapObject
     {
         uint    regNum_;    //!< The number of used scratch registers
-        std::vector<Memory*>   memObjs_;   //!< Memory objects for scratch buffers
+        Memory* memObj_;    //!< Memory objects for scratch buffers
         uint    offset_;    //!< Offset from the global scratch store
         uint    size_;      //!< Scratch buffer size on this queue
 
         //! Default constructor
-        ScratchBuffer(uint numMems): regNum_(0), memObjs_(numMems), offset_(0) {}
+        ScratchBuffer(): regNum_(0), memObj_(NULL), offset_(0) {}
 
         //! Default constructor
         ~ScratchBuffer();

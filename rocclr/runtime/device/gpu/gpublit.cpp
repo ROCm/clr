@@ -582,7 +582,7 @@ DmaBlitManager::copyBufferRect(
 
         uint bytesPerElement = 16;
         bool optimalElementSize = false;
-        bool subWindowRectCopy = dev().settings().rectLinearDMA_;
+        bool subWindowRectCopy = true;
 
         srcOffset   = srcRect.offset(0, 0, 0);
         dstOffset   = dstRect.offset(0, 0, 0);
@@ -605,13 +605,12 @@ DmaBlitManager::copyBufferRect(
         size_t pitchLimit = dev().settings().ciPlus_ ? (0x3FFF * bytesPerElement) | 0xF : 0x7FFFF;
         size_t sizeLimit = dev().settings().ciPlus_ ? (0x3FFF * bytesPerElement) | 0xF : 0x3FFF;
 
-        if (subWindowRectCopy &&
-            (!optimalElementSize ||
+        if (!optimalElementSize ||
             (srcRect.rowPitch_ > pitchLimit) ||
             (dstRect.rowPitch_ > pitchLimit) ||
             (size[0] > sizeLimit) ||    // See above
             (size[1] > 0x3fff) ||   // 14 bits limit in HW
-            (size[2] > 0x7ff))) {    // 11 bits limit in HW
+            (size[2] > 0x7ff)) {    // 11 bits limit in HW
             // Restriction with rectLinearDRMDMA packet
             subWindowRectCopy = false;
         }
@@ -1232,8 +1231,6 @@ KernelBlitManager::copyBufferToImageKernel(
     size_t  globalWorkOffset[3] = { 0, 0, 0 };
     size_t  globalWorkSize[3];
     size_t  localWorkSize[3];
-    bool    swapLayer = (gpuMem(dstMemory).cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) &&
-            !dev().settings().siPlus_;
 
     // Program the kernels workload depending on the blit dimensions
     dim = 3;
@@ -1250,14 +1247,6 @@ KernelBlitManager::copyBufferToImageKernel(
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = localWorkSize[1] = 16;
         localWorkSize[2] = 1;
-        // Swap the Y and Z components, apparently HW expects
-        // layer in Z
-        if (swapLayer) {
-            globalWorkSize[2] = globalWorkSize[1];
-            globalWorkSize[1] = 1;
-            localWorkSize[2] = localWorkSize[1];
-            localWorkSize[1] = 1;
-        }
     }
     else {
         globalWorkSize[0] = amd::alignUp(size[0], 8);
@@ -1294,12 +1283,7 @@ KernelBlitManager::copyBufferToImageKernel(
     cl_int  copySize[4] = { (cl_int)size[0],
                             (cl_int)size[1],
                             (cl_int)size[2], 0 };
-    if (swapLayer) {
-        dstOrg[2]   = dstOrg[1];
-        dstOrg[1]   = 0;
-        copySize[2] = copySize[1];
-        copySize[1] = 1;
-    }
+
     setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
     setArgument(kernels_[blitType], 4, sizeof(copySize), copySize);
 
@@ -1579,8 +1563,6 @@ KernelBlitManager::copyImageToBufferKernel(
     size_t  globalWorkOffset[3] = { 0, 0, 0 };
     size_t  globalWorkSize[3];
     size_t  localWorkSize[3];
-    bool    swapLayer = (gpuMem(srcMemory).cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) &&
-            !dev().settings().siPlus_;
 
     // Program the kernels workload depending on the blit dimensions
     dim = 3;
@@ -1598,14 +1580,6 @@ KernelBlitManager::copyImageToBufferKernel(
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = localWorkSize[1] = 16;
         localWorkSize[2] = 1;
-        // Swap the Y and Z components, apparently HW expects
-        // layer in Z
-        if (swapLayer) {
-            globalWorkSize[2] = globalWorkSize[1];
-            globalWorkSize[1] = 1;
-            localWorkSize[2] = localWorkSize[1];
-            localWorkSize[1] = 1;
-        }
     }
     else {
         globalWorkSize[0] = amd::alignUp(size[0], 8);
@@ -1633,12 +1607,6 @@ KernelBlitManager::copyImageToBufferKernel(
     cl_int  copySize[4] = { (cl_int)size[0],
                             (cl_int)size[1],
                             (cl_int)size[2], 0 };
-    if (swapLayer) {
-        srcOrg[2]   = srcOrg[1];
-        srcOrg[1]   = 0;
-        copySize[2] = copySize[1];
-        copySize[1] = 1;
-    }
     setArgument(kernels_[blitType], 4, sizeof(srcOrg), srcOrg);
     const MemFormatStruct& memFmt = memoryFormatSize(gpuMem(srcMemory).cal()->format_);
 
@@ -1799,20 +1767,12 @@ KernelBlitManager::copyImage(
     cl_int  srcOrg[4] = { (cl_int)srcOrigin[0],
                           (cl_int)srcOrigin[1],
                           (cl_int)srcOrigin[2], 0 };
-    if ((gpuMem(srcMemory).cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) &&
-        !dev().settings().siPlus_) {
-        srcOrg[3] = 1;
-    }
     setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
     // Program destinaiton origin
     cl_int  dstOrg[4] = { (cl_int)dstOrigin[0],
                           (cl_int)dstOrigin[1],
                           (cl_int)dstOrigin[2], 0 };
-    if ((gpuMem(dstMemory).cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) &&
-        !dev().settings().siPlus_) {
-        dstOrg[3] = 1;
-    }
     setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
 
     cl_int  copySize[4] = { (cl_int)size[0],
@@ -1995,13 +1955,11 @@ KernelBlitManager::copyBufferRect(
 
     // Fall into the CAL path for rejected transfers
     if (setup_.disableCopyBufferRect_ ||
-        ((gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) &&
-        dev().settings().rectLinearDMA_) ||
+        (gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) ||
         (!dev().heap()->isVirtual() &&
          ((gpuMem(dstMemory).hb() == NULL) || (gpuMem(srcMemory).hb() == NULL)))) {
         // Copy data with CAL (no VM mode only)
-        if ((gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess())
-                && dev().settings().rectLinearDMA_) {
+        if (gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) {
             result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory,
                 srcRectIn, dstRectIn, sizeIn, entire);
         }
@@ -2570,9 +2528,6 @@ KernelBlitManager::fillImage(
     Memory* memView = &gpuMem(memory);
     amd::Image::Format newFormat(gpuMem(memory).owner()->asImage()->getImageFormat());
 
-    bool    swapLayer = (memView->cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) &&
-            !dev().settings().siPlus_;
-
     // Program the kernels workload depending on the fill dimensions
     fillType = FillImage;
     dim = 3;
@@ -2641,14 +2596,6 @@ KernelBlitManager::fillImage(
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = localWorkSize[1] = 16;
         localWorkSize[2] = 1;
-        // Swap the Y and Z components, apparently HW expects
-        // layer in Z
-        if (swapLayer) {
-            globalWorkSize[2] = globalWorkSize[1];
-            globalWorkSize[1] = 1;
-            localWorkSize[2] = localWorkSize[1];
-            localWorkSize[1] = 1;
-        }
     }
     else {
         globalWorkSize[0] = amd::alignUp(size[0], 8);
@@ -2671,12 +2618,6 @@ KernelBlitManager::fillImage(
     cl_int   fillSize[4] = { (cl_int)size[0],
                              (cl_int)size[1],
                              (cl_int)size[2], 0 };
-    if (swapLayer) {
-        fillOrigin[2]   = fillOrigin[1];
-        fillOrigin[1]   = 0;
-        fillSize[2]     = fillSize[1];
-        fillSize[1]     = 1;
-    }
     setArgument(kernels_[fillType], 4, sizeof(fillOrigin), fillOrigin);
     setArgument(kernels_[fillType], 5, sizeof(fillSize), fillSize);
 

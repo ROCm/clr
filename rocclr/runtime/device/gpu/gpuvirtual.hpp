@@ -89,16 +89,12 @@ public:
 
     typedef std::vector<ConstBuffer*> constbufs_t;
 
-    //! \note Legacy pre SI UAV Arena support
-    static const uint UavArena = MaxWriteImage;    //!< 0-7 reserved for images
-
     //! GSL descriptor for the GPU kernel, specific to the virtual device
     struct GslKernelDesc : public amd::HeapObject
     {
         CALimage    image_;     //!< CAL image for the program
         gslProgramObject func_; //!< GSL program object
         gslMemObject intCb_;    //!< Internal constant buffer
-        CALUavMask  uavMask_;   //!< UAV mask, unclear if necessary
     };
 
     struct ResourceSlot
@@ -310,9 +306,6 @@ public:
     void addConstBuffer(ConstBuffer* cb) { constBufs_.push_back(cb); }
 
     constbufs_t constBufs_;     //!< constant buffers
-
-    //! Returns a resource associated with the constant buffer
-    ConstBuffer* numGrpCb() const { return  numGrpCb_; }
 
     //! Start the command profiling
     void profilingBegin(
@@ -536,7 +529,6 @@ private:
     typedef std::list<CommandBatch*> CommandBatchList;
     CommandBatchList    cbList_;        //!< List of command batches
 
-    ConstBuffer*    numGrpCb_;      //!< Constant buffer for 8xx workaround
     uint            hwRing_;        //!< HW ring used on this virtual device
 
     uint64_t        readjustTimeGPU_;   //!< Readjust time between GPU and CPU timestamps

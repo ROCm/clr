@@ -125,9 +125,6 @@ NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
     assert((i + 4 * (16 - cShader->common.userElementCount)) == NumSiCsInfos);
     encoding.progInfosCount    = infoCount;
 
-    CALUavMask uavMask;
-    memcpy(uavMask.mask, cShader->common.uavResourceUsage, sizeof(CALUavMask));
-    encoding.uavMask    = uavMask;
     encoding.textData   = HWSHADER_Get(cShader, common.hShaderMemHandle);
     encoding.textSize   = cShader->common.codeLenInByte;
     instructionCnt_     = encoding.textSize / sizeof(uint32_t);

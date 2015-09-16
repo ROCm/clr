@@ -36,7 +36,6 @@ public:
     bool             setOutput(uint32 physUnit, gslMemObject mem);
     bool             setConstantBuffer(uint32 physUnit, gslMemObject mem, CALuint offset, size_t size);
     bool             setUAVBuffer(uint32 physUnit, gslMemObject mem, gslUAVType uavType);
-    void             setUavMask(const CALUavMask& uavMask);
     void             setUAVChannelOrder(uint32 physUnit, gslMemObject mem);
     bool             isDone(GpuEvent* event);
     void             waitForEvent(GpuEvent* event);
@@ -63,7 +62,7 @@ public:
     bool             recompileShader(CALimage srcImage, CALimage* newImage, const CALuint type);
     bool             getMachineType(CALuint* pMachine, CALuint* pType, CALimage image);
 
-    bool             moduleLoad(CALimage image, gslProgramObject* func, gslMemObject* constants, CALUavMask* uavMask);
+    bool             moduleLoad(CALimage image, gslProgramObject* func, gslMemObject* constants);
 
     gsl::gsCtx*     cs() const { return m_cs; }
     gslRenderState  rs() const { return m_rs; }
@@ -99,7 +98,6 @@ private:
     gslTextureResourceObject m_textureResources[MAX_RESOURCES];
     gslSamplerObject        m_textureSamplers[MAX_SAMPLERS];
     gslDrawBuffers          m_drawBuffers;
-    gslFramebufferObject    m_fb;
     gslScratchBufferObject  m_scratchBuffers;
     EventQueue              m_eventQueue[AllEngines];
     bool                    m_allowDMA;

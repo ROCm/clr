@@ -235,31 +235,20 @@ void NullDevice::fillDeviceInfo(
     info_.maxWorkItemDimensions_    = 3;
     info_.numberOfShaderEngines     = calAttr.numberOfShaderEngines;
 
-    if (settings().siPlus_) {
-        // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
-        // For example, float4 is not faster than float as long as all threads fetch the same
-        // amount of data and the reads are coalesced.  This is from the H/W team and confirmed
-        // through experimentation.  May also be true on EG/NI, but no point in confusing
-        // developers now.
-        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 4;
-        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 2;
-        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 1;
-        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 1;
-        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 1;
-        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
-            (settings().checkExtension(ClKhrFp64)) ?  1 : 0;
-        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
-    }
-    else {
-        info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 16;
-        info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 8;
-        info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 4;
-        info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 2;
-        info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 4;
-        info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
-            (settings().checkExtension(ClKhrFp64)) ?  2 : 0;
-        info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
-    }
+    // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
+    // For example, float4 is not faster than float as long as all threads fetch the same
+    // amount of data and the reads are coalesced.  This is from the H/W team and confirmed
+    // through experimentation.  May also be true on EG/NI, but no point in confusing
+    // developers now.
+    info_.nativeVectorWidthChar_    = info_.preferredVectorWidthChar_   = 4;
+    info_.nativeVectorWidthShort_   = info_.preferredVectorWidthShort_  = 2;
+    info_.nativeVectorWidthInt_     = info_.preferredVectorWidthInt_    = 1;
+    info_.nativeVectorWidthLong_    = info_.preferredVectorWidthLong_   = 1;
+    info_.nativeVectorWidthFloat_   = info_.preferredVectorWidthFloat_  = 1;
+    info_.nativeVectorWidthDouble_  = info_.preferredVectorWidthDouble_ =
+        (settings().checkExtension(ClKhrFp64)) ?  1 : 0;
+    info_.nativeVectorWidthHalf_    = info_.preferredVectorWidthHalf_ = 0; // no half support
+
     info_.maxClockFrequency_    = (calAttr.engineClock != 0) ? calAttr.engineClock : 555;
     info_.maxParameterSize_ = 1024;
     info_.minDataTypeAlignSize_ = sizeof(cl_long16);
@@ -959,7 +948,7 @@ Device::initializeHeapResources()
 
         // Initialize the number of mem object for the scratch buffer
         for (uint s = 0; s < scratch_.size(); ++s) {
-            scratch_[s] = new ScratchBuffer((settings().siPlus_) ? 1 : info_.numberOfShaderEngines);
+            scratch_[s] = new ScratchBuffer();
             if (NULL == scratch_[s]) {
                 return false;
             }
@@ -2301,11 +2290,9 @@ Device::ScratchBuffer::~ScratchBuffer()
 void
 Device::ScratchBuffer::destroyMemory()
 {
-    for (uint i = 0; i < memObjs_.size(); ++i) {
-        // Release memory object
-        delete memObjs_[i];
-        memObjs_[i] = NULL;
-    }
+    // Release memory object
+    delete memObj_;
+    memObj_ = NULL;
 }
 
 bool
@@ -2333,7 +2320,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
                     // Calculate the size of the scratch buffer for a queue
                     scratchBuf->size_ = calcScratchBufferSize(scratchBuf->regNum_);
                     scratchBuf->offset_ = offset;
-                    size += scratchBuf->size_ * scratchBuf->memObjs_.size();
+                    size += scratchBuf->size_;
                     offset += scratchBuf->size_;
                 }
             }
@@ -2352,22 +2339,20 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
             }
 
             for (uint s = 0; s < scratch_.size(); ++s) {
-                std::vector<Memory*>& mems = scratch_[s]->memObjs_;
-
                 // Loop through all memory objects and reallocate them
-                for (uint i = 0; i < mems.size(); ++i) {
-                    if (scratch_[s]->regNum_ > 0) {
-                        // Allocate new buffer
-                        mems[i] = new gpu::Memory(*this, scratch_[s]->size_);
-                        Resource::ViewParams    view;
-                        view.resource_ = globalScratchBuf_;
-                        view.offset_ = scratch_[s]->offset_ + i * scratch_[s]->size_;
-                        view.size_ = scratch_[s]->size_;
-                        if ((mems[i] == NULL) || !mems[i]->create(Resource::View, &view)) {
-                            LogError("Couldn't allocate a scratch view");
-                            scratch_[s]->regNum_ = 0;
-                            return false;
-                        }
+                if (scratch_[s]->regNum_ > 0) {
+                    // Allocate new buffer
+                    scratch_[s]->memObj_ = new gpu::Memory(*this, scratch_[s]->size_);
+                    Resource::ViewParams    view;
+                    view.resource_ = globalScratchBuf_;
+                    view.offset_ = scratch_[s]->offset_;
+                    view.size_ = scratch_[s]->size_;
+                    if ((scratch_[s]->memObj_ == NULL) ||
+                        !scratch_[s]->memObj_->create(Resource::View, &view)) {
+                        LogError("Couldn't allocate a scratch view");
+                        delete scratch_[s]->memObj_;
+                        scratch_[s]->regNum_ = 0;
+                        return false;
                     }
                 }
             }

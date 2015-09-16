@@ -100,7 +100,6 @@ public:
     bool             isVmMode() const { return m_vmMode; };
 
     uint32           getVPUMask() const { return m_vpuMask; }
-    bool             uavInCB() const { return m_uavInCB; }
     bool             canDMA() const { return m_canDMA; }
     gslMemObject     m_srcDRMDMAMem, m_dstDRMDMAMem;    // memory object of flush buffer, used for DRMDMA flush
 
@@ -213,7 +212,6 @@ private:
             uint    m_usePerVPUAdapterModel : 1;
             uint    m_PerformLazyDeviceInit : 1;
             uint    m_vmMode                : 1;
-            uint    m_uavInCB               : 1;
             uint    m_isComputeRingIDForced : 1;
         };
     };

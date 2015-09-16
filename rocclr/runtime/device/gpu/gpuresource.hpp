@@ -359,9 +359,6 @@ public:
     bool isCacheable() const
         { return (isMemoryType(Remote) || isMemoryType(Pinned)) ? true : false; }
 
-    //! Returns alias memory object
-    Resource* getAliasUAVBuffer(cmSurfFmt newFormat);
-
     bool gslGLAcquire() ;
     bool gslGLRelease() ;
 
@@ -443,8 +440,6 @@ private:
     uint64_t        hbOffset_;      //!< Offset in the heap (virtual or real)
     uint64_t        hbSize_;        //!< Memory size
     uint64_t        pinOffset_;     //!< Pinned memory offset
-    Resource*       byteView_;      //!< Byte view memory object
-    Resource*       shortView_;     //!< Short view memory object
     gslMemObject    glInterop_;     //!< Original GL interop object
     void*           glInteropMbRes_;//!< Mb Res handle
     uint32_t        glType_;        //!< GL interop type

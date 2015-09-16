@@ -54,7 +54,6 @@ Settings::Settings()
     heapSize_           = GPU_INITIAL_HEAP_SIZE * Mi;
     heapSizeGrowth_     = GPU_HEAP_GROWTH_INCREMENT * Mi;
 
-    useAliases_         = false;
     imageSupport_       = false;
     hwLDSSize_          = 0;
 
@@ -108,16 +107,12 @@ Settings::Settings()
     imageDMA_       = GPU_IMAGE_DMA;
 
     // Disable ASIC specific features by default
-    siPlus_         = false;
     ciPlus_         = false;
     viPlus_         = false;
     aiPlus_         = false;
 
     // Number of compute rings.
     numComputeRings_ = 0;
-
-    // Rectangular Linear DRMDMA
-    rectLinearDMA_  = false;
 
     minWorkloadTime_ = 1;       // 0.1 ms
     maxWorkloadTime_ = 5000;    // 500 ms
@@ -176,68 +171,6 @@ Settings::create(
     ModifyMaxWorkload modifyMaxWorkload = {0};
 
     switch (target) {
-    case CAL_TARGET_SUMO:
-    case CAL_TARGET_SUPERSUMO:
-    case CAL_TARGET_WRESTLER:
-        // Treat these like Evergreen parts as far as capabilities go
-        // Fall through ...
-    case CAL_TARGET_DEVASTATOR:
-    case CAL_TARGET_SCRAPPER:
-        apuSystem_  = true;
-        reportFMAF_ = false;
-        // For the system that has APU and Win 8, the work load needs to be smaller
-        // This is because KMD doesn't have workaround for TDR in Win 8
-        // This is needed only for EG/NI because EG/NI is using graphics ring
-        modifyMaxWorkload.time = 500;       // 50ms
-        modifyMaxWorkload.minorVersion = 2; // Win 8
-
-        // Add the caps for Trinity here ...
-        // Fall through ...
-    case CAL_TARGET_CAYMAN:
-        // Add the caps for Cayman here ...
-    case CAL_TARGET_KAUAI:
-    case CAL_TARGET_BARTS:
-    case CAL_TARGET_TURKS:
-    case CAL_TARGET_CAICOS:
-        // Treat these like Evergreen parts as far as capabilities go
-        // Fall through ...
-    case CAL_TARGET_CYPRESS:
-    case CAL_TARGET_JUNIPER:
-    case CAL_TARGET_REDWOOD:
-    case CAL_TARGET_CEDAR:
-        // UAV arena is a pre-SI specific HW feature
-        useAliases_ = true;
-
-        if (CAL_TARGET_CEDAR == target) {
-            // Workaround for SC spill bugs.
-            maxWorkGroupSize_   = 128;
-        }
-        // Get the link library
-        libSelector_ = amd::GPU_Library_Evergreen;
-
-        // Max alloc size
-        maxAllocSize_ = 512 * Mi;
-
-        if ((target == CAL_TARGET_CAYMAN) ||
-            (target == CAL_TARGET_DEVASTATOR) ||
-            (target == CAL_TARGET_SCRAPPER)) {
-            rectLinearDMA_  = true;
-        }
-
-        // Disable KHR_FP64 for Trinity in the mainline
-        if ((target == CAL_TARGET_DEVASTATOR) ||
-            (target == CAL_TARGET_SCRAPPER)) {
-            doublePrecision_ &= !IS_MAINLINE || !flagIsDefault(CL_KHR_FP64);
-        }
-
-        if (target == CAL_TARGET_CYPRESS) {
-            // Float FMA is slower than "multiply + add" because we combine
-            // "multiply + add" into mad.  MAD is 25% faster than FMA on Cypress,
-            // assuming perfect VLIW packing.
-            reportFMAF_ = false;
-        }
-        enableExtension(ClAmdImage2dFromBufferReadOnly);
-        break;
     case CAL_TARGET_GREENLAND:
         //TODO: specific codes for AI
         aiPlus_ = true;
@@ -288,7 +221,6 @@ Settings::create(
         }
         // Fall through ...
     case CAL_TARGET_TAHITI:
-        siPlus_ = true;
         // Cache line size is 64 bytes
         cacheLineSize_  = 64;
         // L1 cache size is 16KB
@@ -352,11 +284,6 @@ Settings::create(
             enableExtension(ClKhrInt64ExtendedAtomics);
         }
         enableExtension(ClKhrImage2dFromBuffer);
-
-        rectLinearDMA_  = true;
-
-        // Disable non-aliased(multiUAV) optimization
-        assumeAliases_ = true;
         break;
     default:
         assert(0 && "Unknown ASIC type!");
@@ -543,9 +470,6 @@ Settings::override()
         numComputeRings_ = GPU_NUM_COMPUTE_RINGS;
     }
 
-    if (!flagIsDefault(GPU_ASSUME_ALIASES)) {
-        assumeAliases_ = GPU_ASSUME_ALIASES;
-    }
     if (!flagIsDefault(GPU_RESOURCE_CACHE_SIZE)) {
         resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
     }

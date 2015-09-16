@@ -405,7 +405,6 @@ VirtualGPU::VirtualGPU(
     , vmMems_(NULL)
     , numVmMems_(0)
     , dmaFlushMgmt_(device)
-    , numGrpCb_(NULL)
     , hwRing_(0)
     , readjustTimeGPU_(0)
     , currTs_(NULL)
@@ -624,7 +623,6 @@ VirtualGPU::~VirtualGPU()
     for (i = 0; i < constBufs_.size(); ++i) {
         delete constBufs_[i];
     }
-    delete numGrpCb_;
 
     gslDestroy();
 
@@ -1789,9 +1787,8 @@ VirtualGPU::submitKernelInternalHSA(
         // Check if the device allocated more registers than the old setup
         if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
             const Device::ScratchBuffer* scratchObj = dev().scratch(hwRing());
-            const std::vector<Memory*>& mems = scratchObj->memObjs_;
-            scratch = mems[0]->gslResource();
-            memList.push_back(mems[0]);
+            scratch = scratchObj->memObj_->gslResource();
+            memList.push_back(scratchObj->memObj_);
             scratchOffset = scratchObj->offset_;
         }
 
@@ -1950,7 +1947,7 @@ VirtualGPU::submitKernelInternalHSA(
 
             // Fill the scratch buffer information
             if (hsaKernel.prog().maxScratchRegs() > 0) {
-                gpu::Memory* scratchBuf = dev().scratch(gpuDefQueue->hwRing())->memObjs_[0];
+                gpu::Memory* scratchBuf = dev().scratch(gpuDefQueue->hwRing())->memObj_;
                 param->scratchSize = scratchBuf->size();
                 param->scratch = scratchBuf->vmAddress();
                 param->numMaxWaves = 32 * dev().info().maxComputeUnits_;
@@ -2058,23 +2055,7 @@ VirtualGPU::submitKernelInternal(
     }
 
     // Find if arguments contain memory aliases or a dependency in the queue
-    if (gpuKernelOpt.processMemObjects(*this, kernel, parameters, nativeMem)) {
-        // Try to obtain a kernel object without optimization
-        noAlias = false;
-        devKernel = const_cast<device::Kernel*>
-            (kernel.getDeviceKernel(dev(), noAlias));
-        if (devKernel == NULL) {
-            // We don't have any, so rebuild kernel
-            if (!kernel.program().buildNoOpt(dev(), gpuKernelOpt.name())) {
-                LogWarning("Kernel recompilation without noAlias failed!");
-                noAlias = true;
-            }
-
-            // Get the GPU kernel object for the final execution
-            devKernel = const_cast<device::Kernel*>
-                (kernel.getDeviceKernel(dev(), noAlias));
-        }
-    }
+    gpuKernelOpt.processMemObjects(*this, kernel, parameters, nativeMem);
 
     Kernel& gpuKernel = static_cast<gpu::Kernel&>(*devKernel);
     bool printfEnabled = (gpuKernel.flags() &
@@ -2247,19 +2228,12 @@ VirtualGPU::releaseMemory(gslMemObject gslResource, bool wait)
         }
     }
 
-    //!@todo optimize unbind
-    if (numGrpCb_ != NULL) {
-        setConstantBuffer(SC_INFO_CONSTANTBUFFER, NULL, 0, 0);
-    }
-
     if ((dev().scratch(hwRing()) != NULL) &&
         (dev().scratch(hwRing())->regNum_ > 0)) {
         // Unbind scratch memory
-        const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
-        for (uint i = 0; i < mems.size(); ++i) {
-            if ((mems[i] != NULL) && (mems[i]->gslResource() == gslResource)) {
-                setScratchBuffer(NULL, i);
-            }
+        const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
+        if ((scratch->memObj_ != NULL) && (scratch->memObj_->gslResource() == gslResource)) {
+            setScratchBuffer(NULL, 0);
         }
     }
 
@@ -2812,16 +2786,9 @@ VirtualGPU::releaseMemObjects(bool scratch)
             cal_.constBuffers_[i] = 0;
         }
     }
-    //!@todo optimize unbind
-    if (numGrpCb_ != NULL) {
-        setConstantBuffer(SC_INFO_CONSTANTBUFFER, NULL, 0, 0);
-    }
 
     if (scratch) {
-        uint numBufs = (dev().settings().siPlus_) ? 1 : dev().info().numberOfShaderEngines;
-        for (uint i = 0; i < numBufs; ++i) {
-            setScratchBuffer(NULL, i);
-        }
+        setScratchBuffer(NULL, 0);
     }
 
     gpuEvents_.clear();
@@ -2936,11 +2903,8 @@ VirtualGPU::validateScratchBuffer(const Kernel* kernel)
 {
     // Check if a scratch buffer is required
     if (dev().scratch(hwRing())->regNum_ > 0) {
-        const std::vector<Memory*>& mems = dev().scratch(hwRing())->memObjs_;
-        for (uint i = 0; i < mems.size(); ++i) {
-            // Setup scratch buffer
-            setScratchBuffer(mems[i]->gslResource(), i);
-        }
+        // Setup scratch buffer
+        setScratchBuffer(dev().scratch(hwRing())->memObj_->gslResource(), 0);
     }
 }
 
@@ -2968,12 +2932,6 @@ VirtualGPU::setActiveKernelDesc(
             return false;
         }
         gslKernels_[calImage] = desc;
-    }
-
-    // Update UAV mask if it has a different set of bits
-    if ((activeKernelDesc_ == NULL) ||
-        (activeKernelDesc_->uavMask_.mask[0] != desc->uavMask_.mask[0])) {
-        setUavMask(desc->uavMask_);
     }
 
     // Set the descriptor as active
@@ -3007,13 +2965,8 @@ VirtualGPU::allocConstantBuffers()
 {
     // Allocate/reallocate constant buffers
     size_t minCbSize;
-    if (dev().settings().siPlus_) {
-        // GCN doesn't really have a limit
-        minCbSize = 128 * Ki;
-    }
-    else {
-        minCbSize = 64 * Ki;
-    }
+    // GCN doesn't really have a limit
+    minCbSize = 128 * Ki;
     uint    i;
 
     // Create/reallocate constant buffer resources
@@ -3027,16 +2980,6 @@ VirtualGPU::allocConstantBuffers()
         else {
             // We failed to create a constant buffer
             delete constBuf;
-            return false;
-        }
-    }
-
-    // 8xx workaround for num workgroups
-    if (!dev().settings().siPlus_) {
-        numGrpCb_ = new ConstBuffer(*this, ((minCbSize +
-                ConstBuffer::VectorSize - 1) / ConstBuffer::VectorSize));
-        if ((numGrpCb_ == NULL) || !numGrpCb_->create()) {
-            LogError("Could not allocate num groups constant buffer!");
             return false;
         }
     }
@@ -3058,7 +3001,7 @@ VirtualGPU::allocKernelDesc(const Kernel* kernel, CALimage calImage)
             desc->image_ = calImage;
         }
 
-        if (!moduleLoad(calImage, &desc->func_, &desc->intCb_, &desc->uavMask_)) {
+        if (!moduleLoad(calImage, &desc->func_, &desc->intCb_)) {
             LogPrintfError("calModuleLoad failed for \"%s\" kernel!",
                 kernel->name().c_str());
             delete desc;
@@ -3376,7 +3319,7 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
     // Initialize structure with default values
 
     if (hsaKernel.prog().maxScratchRegs() > 0) {
-        gpu::Memory* scratchBuf = dev().scratch(hwRing())->memObjs_[0];
+        gpu::Memory* scratchBuf = dev().scratch(hwRing())->memObj_;
         kernelInfo.scratchBufAddr = scratchBuf->vmAddress();
         kernelInfo.scratchBufferSizeInBytes = scratchBuf->size();
 

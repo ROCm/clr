@@ -140,8 +140,6 @@ release(bool, DRMDMA_FOR_LNX_CF, false,                                       \
         "Enable DRMDMA for Linux CrossFire")                                  \
 release(bool, GPU_HSAIL_ENABLE, false,                                        \
         "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
-release(bool, GPU_ASSUME_ALIASES, false,                                      \
-        "Assume memory aliases in the compilation process")                   \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
 release(bool, GPU_DIRECT_SRD, false,                                          \

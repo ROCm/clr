@@ -521,7 +521,6 @@ Settings::Settings()
     customHostAllocator_ = false;
     waitCommand_         = AMD_OCL_WAIT_COMMAND;
     supportDepthsRGB_    = false;
-    assumeAliases_       = false;
     enableHwDebug_       = false;
 }
 

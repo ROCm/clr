@@ -385,7 +385,6 @@ public:
         Undefined           = 0x00000000,   //!< resource type will be detected
         ConstantBuffer      = 0x00000001,   //!< resource is a constant buffer
         GlobalBuffer        = 0x00000002,   //!< resource is a global buffer
-        GlobalBufferArena   = 0x00000003,   //!< resource is a global buffer
         ArgumentHeapBuffer  = 0x00000004,   //!< resource is an argument buffer
         ArgumentBuffer      = 0x00000005,   //!< resource is an argument buffer
         ArgumentImageRead   = 0x00000006,   //!< resource is an argument image read
@@ -482,9 +481,6 @@ protected:
     //! Returns UAV raw index for this kernel
     uint uavRaw() const { return uavRaw_; }
 
-    //! Returns UAV arena index for this kernel
-    uint uavArena() const { return uavArena_; }
-
     cl_int          buildError_;    //!< Kernel's build error
     std::string     ilSource_;      //!< IL source code of this kernel
 
@@ -502,10 +498,8 @@ protected:
     uint            numCb_;         //!< total number of constant buffers
 
     uint            uavRaw_;        //!< UAV used for RAW access
-    uint            uavArena_;      //!< UAV used for arena access
 
     bool            rwAttributes_;  //!< backend provides RW attributes for arguments
-    bool            setBufferForNumGroup_;
 
     uint            instructionCnt_;//!< Instruction count
 
@@ -600,7 +594,7 @@ public:
      *
      *  \return True if aliases were detected in the kernel arguments
      */
-    bool processMemObjects(
+    void processMemObjects(
         VirtualGPU&         gpu,        //!< Virtual GPU objects - queue
         const amd::Kernel&  kernel,     //!< AMD kernel object for execution
         const_address       params,     //!< pointer to the param's store
@@ -759,12 +753,6 @@ private:
         VirtualGPU& gpu,        //!< virtual GPU device object
         GpuEvent    gpuEvent,   //!< GPU event that will be associated with the resources
         bool        lastRun     //!< last run in the split execution
-        ) const;
-
-    //! Returns true if arena setup was successful
-    bool setupArenaAliases(
-        VirtualGPU& gpu,            //!< Virtual GPU device object
-        const Resource& resource    //!< Resource for aliases setup
         ) const;
 
     //! Copies image constants to the constant buffer
