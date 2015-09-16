@@ -63,6 +63,7 @@ Settings::create(bool doublePrecision)
         // Also enable AMD double precision extension?
         enableExtension(ClAmdFp64);
     }
+    enableExtension(ClKhrIlProgram);
 
     // Override current device settings
     override();
