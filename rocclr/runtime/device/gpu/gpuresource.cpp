@@ -67,8 +67,6 @@ Resource::Resource(
     , hbOffset_(0)
     , hbSize_(0)
     , pinOffset_(0)
-    , byteView_(NULL)
-    , shortView_(NULL)
     , glInterop_(0)
     , gpu_(NULL)
 {
@@ -114,8 +112,6 @@ Resource::Resource(
     , hbOffset_(0)
     , hbSize_(0)
     , pinOffset_(0)
-    , byteView_(NULL)
-    , shortView_(NULL)
     , glInterop_(0)
     , gpu_(NULL)
 {
@@ -1069,15 +1065,6 @@ Resource::reallocate(CreateParams* params)
 void
 Resource::free()
 {
-    if (NULL != byteView_) {
-        delete byteView_;
-        byteView_ = NULL;
-    }
-    if (NULL != shortView_) {
-        delete shortView_;
-        shortView_ = NULL;
-    }
-
     if (gslRef_ == NULL) {
         return;
     }
@@ -1935,7 +1922,7 @@ Resource::warmUpRenames(VirtualGPU& gpu)
         // EPR #411675 - On Kaveri, benchmark "photo editing" of PCMarks takes longer time
         // if writing 0 for the buffer paging by VidMM is excuted. Not sure how PCMarks measures it.
         // Disable this code for apu
-        if (dev().settings().siPlus_ && !dev().settings().apuSystem_) {
+        if (!dev().settings().apuSystem_) {
             uint    dummy = 0;
             const bool NoWait = false;
             // Write 0 for the buffer paging by VidMM
@@ -1944,57 +1931,6 @@ Resource::warmUpRenames(VirtualGPU& gpu)
         const bool Force = true;
         rename(gpu, Force);
     }
-}
-
-Resource*
-Resource::getAliasUAVBuffer(cmSurfFmt newFormat)
-{
-    Resource*   view = NULL;
-    uint        byteSize;
-
-    // Lock device so a view allocation is unique operation
-    amd::ScopedLock k(dev().gslDeviceOps());
-
-    if (newFormat == CM_SURF_FMT_R8I) {
-        view = byteView_;
-        byteSize = 1;
-    }
-    else if (newFormat == CM_SURF_FMT_R16I) {
-        view = shortView_;
-        byteSize = 2;
-    }
-    else {   // only take byte and short
-        assert(false && "Unsupported format for a view");
-        return NULL;
-    }
-
-    // allocate byte/short view
-    if (NULL == view) {
-        view = new Resource(dev(), (cal()->width_ * elementSize()) / byteSize, newFormat);
-        if (view == NULL) {
-            return NULL;
-        }
-
-        Resource::ViewParams params;
-        params.offset_      = 0;
-        params.size_        = cal()->width_ * elementSize();
-        params.resource_    = this;
-
-        if (!view->create(Resource::View, &params)) {
-            delete view;
-            return NULL;
-        }
-
-        // save view resource
-        if (newFormat == CM_SURF_FMT_R8I) {
-            byteView_ = view;
-        }
-        else if (newFormat == CM_SURF_FMT_R16I) {
-            shortView_ = view;
-        }
-    }
-
-    return view;
 }
 
 ResourceCache::~ResourceCache()

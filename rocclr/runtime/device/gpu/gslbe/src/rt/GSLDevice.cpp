@@ -406,50 +406,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
 
     switch (asic_id)
     {
-    case GSL_ATIASIC_ID_R870:
-        m_target = CAL_TARGET_CYPRESS;
-        m_elfmachine = ED_ATI_CAL_MACHINE_CYPRESS_ISA;
-        break;
-    case GSL_ATIASIC_ID_R830:
-        m_target = CAL_TARGET_JUNIPER;
-        m_elfmachine = ED_ATI_CAL_MACHINE_JUNIPER_ISA;
-        break;
-    case GSL_ATIASIC_ID_REDWOOD:
-        m_target = CAL_TARGET_REDWOOD;
-        m_elfmachine = ED_ATI_CAL_MACHINE_REDWOOD_ISA;
-        break;
-    case GSL_ATIASIC_ID_CEDAR:
-        m_target = CAL_TARGET_CEDAR;
-        m_elfmachine = ED_ATI_CAL_MACHINE_CEDAR_ISA;
-        break;
-    case GSL_ATIASIC_ID_CAYMAN:
-        m_target = CAL_TARGET_CAYMAN;
-        m_elfmachine = ED_ATI_CAL_MACHINE_CAYMAN_ISA;
-        break;
-    case GSL_ATIASIC_ID_BARTS:
-        m_target = CAL_TARGET_BARTS;
-        m_elfmachine = ED_ATI_CAL_MACHINE_BARTS_ISA;
-        break;
-    case GSL_ATIASIC_ID_TURKS:
-        m_target = CAL_TARGET_TURKS;
-        m_elfmachine = ED_ATI_CAL_MACHINE_TURKS_ISA;
-        break;
-    case GSL_ATIASIC_ID_CAICOS:
-        m_target = CAL_TARGET_CAICOS;
-        m_elfmachine = ED_ATI_CAL_MACHINE_CAICOS_ISA;
-        break;
-    case GSL_ATIASIC_ID_SUMO:
-        m_target = CAL_TARGET_SUMO;
-        m_elfmachine = ED_ATI_CAL_MACHINE_SUMO_ISA;
-        break;
-    case GSL_ATIASIC_ID_SUPERSUMO:
-        m_target = CAL_TARGET_SUPERSUMO;
-        m_elfmachine = ED_ATI_CAL_MACHINE_SUPERSUMO_ISA;
-        break;
-    case GSL_ATIASIC_ID_WRESTLER:
-        m_target = CAL_TARGET_WRESTLER;
-        m_elfmachine = ED_ATI_CAL_MACHINE_WRESTLER_ISA;
-        break;
     case GSL_ATIASIC_ID_TAHITI_P:
         m_target = CAL_TARGET_TAHITI;
         m_elfmachine = ED_ATI_CAL_MACHINE_TAHITI_ISA;
@@ -461,14 +417,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
     case GSL_ATIASIC_ID_CAPEVERDE_M:
         m_target = CAL_TARGET_CAPEVERDE;
         m_elfmachine = ED_ATI_CAL_MACHINE_CAPEVERDE_ISA;
-        break;
-    case GSL_ATIASIC_ID_DEVASTATOR:
-        m_target = CAL_TARGET_DEVASTATOR;
-        m_elfmachine = ED_ATI_CAL_MACHINE_DEVASTATOR_ISA;
-        break;
-    case GSL_ATIASIC_ID_SCRAPPER:
-        m_target = CAL_TARGET_SCRAPPER;
-        m_elfmachine = ED_ATI_CAL_MACHINE_SCRAPPER_ISA;
         break;
     case GSL_ATIASIC_ID_OLAND_M:
         m_target = CAL_TARGET_OLAND;
@@ -623,7 +571,6 @@ CALGSLDevice::PerformFullInitialization_int()
 
         m_PerformLazyDeviceInit = false;
 
-        m_uavInCB = m_cs->getIsUAVInCB();
         m_textureResource = m_cs->createTextureResource();
         m_textureSampler = m_cs->createSampler();
     }
@@ -1537,17 +1484,10 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
     memset(scratchBufferSizes, 0, sizeof(scratchBufferSizes));
     uint32 enabledShadersFlag = 0;
 
-    if (!uavInCB())
-    {
-        enabledShadersFlag |= CM_FRAGMENT_SHADER_BIT;
-        scratchSpacePerShaderStage.scratchSpace[CM_FRAGMENT_SHADER] = regNum;
-        target = GSL_FRAGMENT_PROGRAM;
-    }
-    else
-    {
-        enabledShadersFlag |= CM_COMPUTE_SHADER_BIT;
-        scratchSpacePerShaderStage.scratchSpace[CM_COMPUTE_SHADER] = regNum;
-    }
+    //!@todo should be CM_COMPUTE_SHADER
+    enabledShadersFlag |= CM_FRAGMENT_SHADER_BIT;
+    scratchSpacePerShaderStage.scratchSpace[CM_FRAGMENT_SHADER] = regNum;
+    target = GSL_FRAGMENT_PROGRAM;
 
     m_cs->CalcAllScratchBufferSizes(enabledShadersFlag, scratchSpacePerShaderStage,
                                 scratchBufferSizes);

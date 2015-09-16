@@ -48,7 +48,6 @@ public:
             uint    stagedXferRead_: 1;     //!< Uses a staged buffer read
             uint    stagedXferWrite_: 1;    //!< Uses a staged buffer write
             uint    disablePersistent_: 1;  //!< Disables using persistent memory for staging
-            uint    useAliases_: 1;         //!< Enables global heap aliases in HW
             uint    imageSupport_: 1;       //!< Report images support
             uint    doublePrecision_: 1;    //!< Enables double precision support
             uint    reportFMAF_: 1;     //!< Report FP_FAST_FMAF define in CL program
@@ -57,11 +56,9 @@ public:
             uint    force32BitOcl20_: 1;    //!< Force 32bit apps to take CLANG/HSAIL path on GPU
             uint    imageDMA_: 1;       //!< Enable direct image DMA transfers
             uint    syncObject_: 1;     //!< Enable syncobject
-            uint    siPlus_: 1;         //!< SI and post SI features
             uint    ciPlus_: 1;         //!< CI and post CI features
             uint    viPlus_: 1;         //!< VI and post VI features
             uint    aiPlus_: 1;         //!< AI and post AI features
-            uint    rectLinearDMA_: 1;  //!< Rectangular linear DRMDMA support
             uint    threadTraceEnable_: 1;  //!< Thread trace enable
             uint    linearPersistentImage_: 1;  //!< Allocates linear images in persistent
             uint    useSingleScratch_: 1;   //!< Allocates single scratch per device
@@ -75,6 +72,7 @@ public:
             uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
             uint    singleFpDenorm_: 1; //!< Support Single FP Denorm
+            uint    reserved_: 3;
         };
         uint    value_;
     };

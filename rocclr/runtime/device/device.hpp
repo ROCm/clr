@@ -101,7 +101,6 @@ enum OclExtensions {
     ClKhrD3d9Sharing,
 #endif
     ClKhrImage2dFromBuffer,
-    ClAmdImage2dFromBufferReadOnly,
     ClAmdSemaphore,
     ClAMDBusAddressableMemory,
     ClAMDC11Atomics,
@@ -143,7 +142,6 @@ OclExtensionsString[] = {
     "cl_khr_dx9_media_sharing ",
 #endif
     "cl_khr_image2d_from_buffer ",
-    "cl_amd_image2d_from_buffer_read_only ",
     "",
     "cl_amd_bus_addressable_memory ",
     "cl_amd_c11_atomics ",
@@ -582,9 +580,8 @@ public:
             uint    customHostAllocator_: 1;//!< True if device has custom host allocator
                                             //  that replaces generic OS allocation routines
             uint    supportDepthsRGB_: 1;   //!< Support DEPTH and sRGB channel order format
-            uint    assumeAliases_: 1;      //!< Assume aliases in the compilation process
             uint    enableHwDebug_: 1;      //!< Enable HW debug support
-            uint    reserved_: 24;
+            uint    reserved_: 25;
         };
         uint    value_;
     };

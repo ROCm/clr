@@ -16,7 +16,6 @@
 #include "shadertracebuffer/ShaderTraceBufferObject.h"
 #include "scratchbuffer/ScratchBufferObject.h"
 #include "memory/MemObject.h"
-#include "framebuffer/FrameBufferObject.h"
 
 #include <algorithm>
 
@@ -24,7 +23,6 @@ CALGSLContext::CALGSLContext()
 {
     m_cs = 0;
     m_rs = 0;
-    m_fb = 0;
     m_allowDMA = false;
 
     COMPILE_TIME_ASSERT((int)MAX_OUTPUTS <= (int)GSL_MAX_OUTPUT);
@@ -96,18 +94,7 @@ CALGSLContext::open(
         return false;
     }
 
-    m_fb = m_cs->createFrameBuffer();
-    if (m_fb == 0)
-    {
-        m_cs->destroyRenderState(m_rs);
-        m_rs = 0;
-        native->deleteContext(m_cs);
-        m_cs = 0;
-        return false;
-    }
-
     m_cs->setRenderState(m_rs);
-    m_rs->setCurrentFrameBufferObject(m_cs, m_fb);
     m_cs->createSubAllocDesc();
 
     //
@@ -117,16 +104,7 @@ CALGSLContext::open(
     m_rs->setComputeShader(m_cs, true);
 
     m_eventQueue[MainEngine].open(m_cs, GSL_SYNC_ATI, EQConfig);
-    if (dev()->uavInCB())
-    {
-        // Evergreen uses physical mode for DRM engine, so flush 3D pipe wih DRM,
-        // thus GSL can get VA ranges back from KMD asap
-        m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig);
-    }
-    else
-    {
-        m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig, GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA0) | GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA1));
-    }
+    m_eventQueue[SdmaEngine].open(m_cs, GSL_DRMDMA_SYNC_ATI, EQConfig, GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA0) | GSL_ENGINE_MASK(GSL_ENGINEID_DRMDMA1));
 
     m_cs->setGPU((gslGPUMask)dev()->getVPUMask());
 
@@ -166,7 +144,6 @@ CALGSLContext::close(gsl::gsAdaptor* native)
     m_cs->Flush();
 
     assert(m_rs != 0);
-    assert(m_fb != 0);
 
     m_cs->setRenderState(m_rs);
 
@@ -210,32 +187,19 @@ CALGSLContext::close(gsl::gsAdaptor* native)
 
     if (m_scratchBuffers != NULL)
     {
-        if (!dev()->uavInCB())
-        {
-            m_rs->setScratchBufferObject(GSL_FRAGMENT_PROGRAM, 0);
-            m_scratchBuffers->setMemObject(m_cs, 0, 0);
-        }
-        else
-        {
-            m_rs->setScratchBufferObject(GSL_COMPUTE_PROGRAM, 0);
-            for (int i = 0; i < MAX_SHADERENGINES; i++)
-            {
-                m_scratchBuffers->setMemObject(m_cs, 0, i);
-            }
-        }
+        //!@todo it should be GSL_COMPUTE_PROGRAM
+        m_rs->setScratchBufferObject(GSL_FRAGMENT_PROGRAM, 0);
+        m_scratchBuffers->setMemObject(m_cs, 0, 0);
         m_cs->destroyScratchBuffer(m_scratchBuffers);
         m_scratchBuffers = 0;
     }
 
-    m_rs->setCurrentFrameBufferObject(m_cs, 0);
     m_cs->setRenderState(0);
 
-    m_cs->destroyFrameBuffer(m_fb);
     m_cs->destroyRenderState(m_rs);
     m_cs->destroySubAllocDesc();
 
     m_rs = 0;
-    m_fb = 0;
 
     for (uint32 i = 0; i < AllEngines; ++i)
     {
@@ -293,65 +257,26 @@ CALGSLContext::setConstantBuffer(uint32 physUnit, gslMemObject mem, uint32 offse
 bool
 CALGSLContext::setUAVBuffer(uint32 physUnit, gslMemObject mem, gslUAVType uavType)
 {
-    if (!dev()->uavInCB()) // SI
-    {
-        assert(physUnit < MAX_UAVS);
+    assert(physUnit < MAX_UAVS);
 
-        if (m_uavResources[physUnit] == 0)
-        {
-            m_uavResources[physUnit] = m_cs->createUAVObject();
-            m_rs->setUavObject(m_cs, GSL_COMPUTE_PROGRAM, m_uavResources[physUnit], GSL_UAV0 + physUnit);
-        }
-        m_uavResources[physUnit]->setMemObject(m_cs, mem, uavType);
-        m_uavResources[physUnit]->setRSOBindings(m_cs, GSL_COMPUTE_PROGRAM);
-    }
-    else
+    if (m_uavResources[physUnit] == 0)
     {
-        assert(physUnit < MAX_OUTPUTS);
-        m_fb->setColorBufferMemory(m_cs, mem, physUnit, true);
+        m_uavResources[physUnit] = m_cs->createUAVObject();
+        m_rs->setUavObject(m_cs, GSL_COMPUTE_PROGRAM, m_uavResources[physUnit], GSL_UAV0 + physUnit);
     }
+    m_uavResources[physUnit]->setMemObject(m_cs, mem, uavType);
+    m_uavResources[physUnit]->setRSOBindings(m_cs, GSL_COMPUTE_PROGRAM);
 
     return true;
 }
 
 void
-CALGSLContext::setUavMask(const CALUavMask& uavMask)
-{
-    // Only do this if UAV in the Color Buffer block
-    if (dev()->uavInCB())
-    {
-        int count = 0;
-        for (int i = 0; i < MAX_OUTPUTS; i++)
-        {
-            m_drawBuffers.buffer[i] = GSL_COLOR_NONE;
-            if (uavMask.mask[0] & (1 << i))
-            {
-                m_drawBuffers.buffer[count] = static_cast<gslColorBuffer>(GSL_COLOR_BUFFER0 + i);
-                ++count;
-            }
-        }
-        m_fb->setDrawBuffers(m_cs, m_drawBuffers);
-    }
-}
-
-void
 CALGSLContext::setUAVChannelOrder(uint32 physUnit, gslMemObject mem)
 {
-    if (!dev()->uavInCB()) // SI
-    {
-        assert(physUnit < MAX_UAVS);
-        intp channelOrder = mem->getAttribs().channelOrder;
-        dev()->convertInputChannelOrder(&channelOrder);
-        m_uavResources[physUnit]->setParameter(GSL_UAV_RESOURCE_SWIZZLE, &channelOrder);
-    }
-    else
-    {
-        assert(physUnit < MAX_OUTPUTS);
-        int32 channelOrder[2];
-        channelOrder[0] = mem->getAttribs().channelOrder;
-        channelOrder[1] = physUnit;
-        m_fb->setChannelOrder(m_cs, (const int32*) channelOrder);
-    }
+    assert(physUnit < MAX_UAVS);
+    intp channelOrder = mem->getAttribs().channelOrder;
+    dev()->convertInputChannelOrder(&channelOrder);
+    m_uavResources[physUnit]->setParameter(GSL_UAV_RESOURCE_SWIZZLE, &channelOrder);
 }
 
 bool
@@ -394,8 +319,8 @@ CALGSLContext::setScratchBuffer(gslMemObject mem, int32 engineId)
     // independent of program type and number of shader engineers.
     // For consistency with GSL, We will store the buffer under the
     // fragment program type for shader engine 0.
-    gslProgramTargetEnum target =
-        (!dev()->uavInCB()) ? GSL_FRAGMENT_PROGRAM : GSL_COMPUTE_PROGRAM;
+    //!@tod should be GSL_COMPUTE_PROGRAM
+    gslProgramTargetEnum target = GSL_FRAGMENT_PROGRAM;
     gslScratchBufferObject  scratchBuff = (mem != NULL) ? m_scratchBuffers : NULL;
 
     m_rs->setScratchBufferObject(target, m_scratchBuffers);
@@ -550,7 +475,7 @@ CALGSLContext::setSamplerParameter(uint32 sampler, gslTexParameterPname param, v
 
 bool
 CALGSLContext::moduleLoad(CALimage image,
-    gslProgramObject* func, gslMemObject* constants, CALUavMask* uavMask)
+    gslProgramObject* func, gslMemObject* constants)
 {
     AMUabiMultiBinary binary;
     AMUabiEncoding encoding;
@@ -585,8 +510,6 @@ CALGSLContext::moduleLoad(CALimage image,
         return false;
     }
     (*func)->programStringARB(m_cs, GSL_COMPUTE_PROGRAM, GSL_PROGRAM_FORMAT_ELF_BINARY, 0, image);
-
-    amuABIEncodingGetUAVMask(uavMask, encoding);
 
     // Setup the loop constants from the ELF binary int const area.
     CALuint numConstants = 0;

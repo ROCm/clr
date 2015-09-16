@@ -533,8 +533,6 @@ NullKernel::NullKernel(
 {
     // UAV raw index will be detected
     uavRaw_ = UavIdUndefined;
-    // Initialize UAV arena index(should be 8)
-    uavArena_ = VirtualGPU::UavArena;
     // CB index will be detected
     cbId_ = UavIdUndefined;
     // Printf index will be detected
@@ -771,7 +769,6 @@ NullKernel::create(
     workGroupInfo_.usedLDSSize_         = calFuncInfo.LDSSizeUsed;
     workGroupInfo_.availableStackSize_  = calFuncInfo.stackSizeAvailable;
     workGroupInfo_.usedStackSize_       = calFuncInfo.stackSizeUsed;
-    setBufferForNumGroup_               = calFuncInfo.setBufferForNumGroup;
 
     device::Kernel::parameters_t params;
     if (!createSignature(params)) {
@@ -935,12 +932,7 @@ NullKernel::createMultiBinary(uint* imageSize, void** image, const void* isa)
     AMUabiMultiBinary amuBinary;
     amuABIMultiBinaryCreate(&amuBinary);
 
-    if (nullDev().settings().siPlus_) {
-        result = siCreateHwInfo(shader, encoding);
-    }
-    else {
-        result = r800CreateHwInfo(shader, encoding);
-    }
+    result = siCreateHwInfo(shader, encoding);
     if (!result) {
         delete [] tmpMem;
         LogWarning("Error Creating program info");
@@ -975,7 +967,6 @@ NullKernel::createMultiBinary(uint* imageSize, void** image, const void* isa)
     uint inputResourceCount = 0;
 
     uint uavCount = 0;
-    bool globalBound = false;
     bool cbBound = false;
     bool printfBound = false;
     for (uint i = 0; i < arguments_.size(); ++i) {
@@ -986,30 +977,11 @@ NullKernel::createMultiBinary(uint* imageSize, void** image, const void* isa)
             constBuffers[constBufferCount++].index = arg->index_;
             break;
         case KernelArg::PointerGlobal:
-            if (nullDev().settings().useAliases_) {
-                if (!globalBound) {
-                    uav[uavCount].offset = uavRaw_;
-                    uav[uavCount].type = AMU_ABI_UAV_TYPE_RAW;
-                    uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
-                    uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
-                    uavCount++;
-                    if (uavArena_ != 0) {
-                        uav[uavCount].offset = uavArena_;
-                        uav[uavCount].type = AMU_ABI_UAV_TYPE_ARENA;
-                        uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
-                        uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
-                        uavCount++;
-                    }
-                }
-                globalBound = true;
-            }
-            else {
-                uav[uavCount].offset = arg->index_;
-                uav[uavCount].type = AMU_ABI_UAV_TYPE_TYPELESS;
-                uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
-                uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
-                uavCount++;
-            }
+            uav[uavCount].offset = arg->index_;
+            uav[uavCount].type = AMU_ABI_UAV_TYPE_TYPELESS;
+            uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
+            uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
+            uavCount++;
             break;
         case KernelArg::ConstBufId:
             if (!cbBound) {
@@ -1032,8 +1004,7 @@ NullKernel::createMultiBinary(uint* imageSize, void** image, const void* isa)
             printfBound = true;
             break;
         case KernelArg::UavId:
-            if (!nullDev().settings().useAliases_ &&
-                (UavIdUndefined != uavRaw_) &&
+            if ((UavIdUndefined != uavRaw_) &&
                 !(flags() & PrintfOutput)) {
                 uav[uavCount].offset = arg->index_;
                 uav[uavCount].type = AMU_ABI_UAV_TYPE_TYPELESS;
@@ -1045,13 +1016,6 @@ NullKernel::createMultiBinary(uint* imageSize, void** image, const void* isa)
                 if (UavIdUndefined != uavRaw_) {
                     uav[uavCount].offset = uavRaw_;
                     uav[uavCount].type = AMU_ABI_UAV_TYPE_RAW;
-                    uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
-                    uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
-                    uavCount++;
-                }
-                if (uavArena_ != 0) {
-                    uav[uavCount].offset = uavArena_;
-                    uav[uavCount].type = AMU_ABI_UAV_TYPE_ARENA;
                     uav[uavCount].dimension = AMU_ABI_DIM_BUFFER;
                     uav[uavCount].format = AMU_ABI_UAV_FORMAT_TYPELESS;
                     uavCount++;
@@ -1518,16 +1482,14 @@ Kernel::bindConstantBuffers(VirtualGPU& gpu) const
     return result;
 }
 
-bool
+void
 Kernel::processMemObjects(
     VirtualGPU&         gpu,
     const amd::Kernel&  kernel,
     const_address       params,
     bool                nativeMem) const
 {
-    bool    aliases = false;
     VirtualGPU::MemoryDependency& dependecy = gpu.memoryDependency();
-    bool readCache = !internal_ && rwAttributes_ && !dev().settings().assumeAliases_;
 
     // Mark the tracker with a new kernel,
     // so we can avoid checks of the aliased objects
@@ -1539,7 +1501,6 @@ Kernel::processMemObjects(
         const amd::KernelParameterDescriptor& desc = signature.at(i);
         const KernelArg*  arg = argument(i);
         Memory* memory = NULL;
-        bool    readOnly = false;
 
         // Find if current argument is a buffer
         if ((desc.type_ == T_POINTER) &&
@@ -1557,44 +1518,11 @@ Kernel::processMemObjects(
             }
 
             if (memory != NULL) {
-                readOnly = arg->memory_.readOnly_;
-
-                // Check if read cache optimization is possible
-                if (readCache) {
-                    // Find if the same buffer was sent to other arguments (aliases)
-                    for (size_t j = i + 1; (j < signature.numParameters()); ++j) {
-                        const amd::KernelParameterDescriptor& descJ = signature.at(j);
-                        const KernelArg*    argJ = argument(j);
-                        if (argJ->type_ == KernelArg::PointerGlobal) {
-                            bool readOnlyJ  = argJ->memory_.readOnly_;
-                            Memory* memory2 = NULL;
-                            if (nativeMem) {
-                                memory2 = *reinterpret_cast<Memory* const*>
-                                    (params + descJ.offset_);
-                            }
-                            else if (*reinterpret_cast<amd::Memory* const*>
-                                    (params + descJ.offset_) != NULL) {
-                                memory2 = dev().getGpuMemory(
-                                    *reinterpret_cast<amd::Memory* const*>
-                                    (params + descJ.offset_));
-                            }
-                            if (memory == memory2) {
-                                if (!readOnly || !readOnlyJ) {
-                                    aliases = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // Validate memory for a dependency in the queue
-                gpu.memoryDependency().validate(gpu, memory, readOnly);
+                gpu.memoryDependency().validate(gpu, memory, arg->memory_.readOnly_);
             }
         }
     }
-
-    return aliases & readCache;
 }
 
 bool
@@ -1612,8 +1540,7 @@ Kernel::loadParameters(
         return false;
     }
 
-    if (!dev().settings().useAliases_ &&
-        (UavIdUndefined != uavRaw_) &&
+    if ((UavIdUndefined != uavRaw_) &&
         (!(flags() & PrintfOutput) || (printfId_ != UavIdUndefined))) {
         Memory* gpuMemory = dev().getGpuMemory(dev().dummyPage());
         // Bind a buffer for a dummy read
@@ -1638,10 +1565,7 @@ Kernel::loadParameters(
 
         result = bindConstantBuffers(gpu);
 
-        if (dev().settings().useAliases_) {
-            result &= bindResource(gpu, dev().globalMem(), 0, GlobalBufferArena, uavArena_);
-        }
-        else if (flags() & PrivateFixed) {
+        if (flags() & PrivateFixed) {
             result &= bindResource(gpu, dev().globalMem(), 0, GlobalBuffer, uavRaw_);
         }
 
@@ -1658,32 +1582,6 @@ bool
 Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
 {
     const VirtualGPU::CalVirtualDesc* dispatch = gpu.cal();
-    // 8xx workaround for the number of groups limit in HW
-    if (setBufferForNumGroup_) {
-        ConstBuffer* cb = gpu.numGrpCb();
-        assert((cb != NULL) && "Runtime must have the constant buffer");
-
-        uint32_t*   memPtr = reinterpret_cast<uint32_t*>(cb->sysMemCopy());
-        memPtr[0] = dispatch->gridSize.width;
-        memPtr[1] = dispatch->gridSize.height;
-        memPtr[2] = dispatch->gridSize.depth;
-        memPtr[3] = 0;
-
-        memPtr[4] = dispatch->gridBlock.width;
-        memPtr[5] = dispatch->gridBlock.height;
-        memPtr[6] = dispatch->gridBlock.depth;
-        memPtr[7] = 0;
-
-        bool    result = cb->uploadDataToHw(8 * sizeof(uint32_t));
-        if (result) {
-            gpu.setConstantBuffer(SC_INFO_CONSTANTBUFFER,
-                cb->gslResource(), static_cast<CALuint>(cb->wrtOffset()), cb->hbSize());
-        }
-        else {
-            assert(!"Runtime didn't upload data for NumGroup workaround");
-            return false;
-        }
-    }
 
     auto compProg = static_cast<gsl::ComputeProgramObject*>(gpu.gslKernelDesc()->func_);
     compProg->setWavesPerSH(waveLimiter_.getWavesPerSH(&gpu));
@@ -1950,15 +1848,13 @@ Kernel::setArgument(
 
                 // Update offset only if we bind HeapBuffer or
                 // it's global address space in UAV setup on SI+
-                if ((type == ArgumentHeapBuffer) || dev().settings().siPlus_) {
-                    if (!blitKernelHack_) {
-                        offset += gpuMem->hbOffset();
-                        if (!forceZeroOffset) {
-                            assert((offset != 0) && "Offset 0 with a real allocation!");
-                        }
+                if (!blitKernelHack_) {
+                    offset += gpuMem->hbOffset();
+                    if (!forceZeroOffset) {
+                        assert((offset != 0) && "Offset 0 with a real allocation!");
                     }
-                    gpu.addVmMemory(gpuMem);
                 }
+                gpu.addVmMemory(gpuMem);
             }
 
             // Wait for resource if it was used on an inactive engine
@@ -2290,14 +2186,6 @@ Kernel::bindResource(
         physUnit = uavRaw_;
         uavType = GSL_UAV_TYPE_TYPELESS;
         break;
-    case GlobalBufferArena:
-        if (gpu.state_.boundGlobal_) {
-            return true;
-        }
-        gpu.state_.boundGlobal_ = true;
-        physUnit = uavArena_;
-        uavType = GSL_UAV_TYPE_TYPELESS;
-        break;
     case ArgumentCbID:
         if (gpu.state_.boundCb_) {
             return true;
@@ -2365,8 +2253,7 @@ Kernel::bindResource(
 
     gslMemObject gslMem = NULL;
     // Use global address space on SI+ for UAV setup
-    if (dev().settings().siPlus_ &&
-        ((type == ArgumentBuffer) || (type == ArgumentCbID) ||
+    if (((type == ArgumentBuffer) || (type == ArgumentCbID) ||
          (type == ArgumentUavID) || (type == ArgumentPrintfID)) &&
         !blitKernelHack_) {
         gslMem = dev().heap()->resource().gslResource();
@@ -2379,7 +2266,6 @@ Kernel::bindResource(
     bool result = true;
     switch (type) {
     case GlobalBuffer:
-    case GlobalBufferArena:
     case ArgumentBuffer:
     case ArgumentImageWrite:
     case ArgumentUavID:
@@ -2395,10 +2281,6 @@ Kernel::bindResource(
             result = gpu.setUAVBuffer(physUnit, gslMem, uavType);
             gpu.setUAVChannelOrder(physUnit, gslMem);
             gpu.cal_.uavs_[physUnit] = gslMem;
-        }
-        else if (!dev().settings().siPlus_)
-        {
-            gpu.setUAVChannelOrder(physUnit, gslMem);
         }
         break;
     case ConstantBuffer:
@@ -2423,25 +2305,6 @@ Kernel::bindResource(
     if (!result) {
         LogPrintfError("setMem failed unit:%d mem:0x%08x!", physUnit, gslMem);
         return false;
-    }
-
-    if ((type == GlobalBuffer) && dev().settings().useAliases_) {
-        if (uavArena_ != 0) {
-            if (!setupArenaAliases(gpu, resource)) {
-                return false;
-            }
-            if ((uavArena_ != physUnit) &&
-                (gpu.cal_.uavs_[uavArena_] != gslMem)) {
-                gpu.cal_.uavs_[uavArena_] = gslMem;
-                // Associate memory with the name
-                if (!gpu.setUAVBuffer(uavArena_, gslMem,
-                    GSL_UAV_TYPE_TYPELESS)) {
-                    LogError("calCtxSetMem failed!");
-                    return false;
-                }
-                gpu.setUAVChannelOrder(uavArena_, gslMem);
-            }
-        }
     }
 
     return true;
@@ -2494,62 +2357,10 @@ Kernel::unbindResources(
         gpu.constBufs_[i]->setBusy(gpu, calEvent);
     }
 
-    // 8xx workaround for the number of groups limit in HW
-    if (setBufferForNumGroup_) {
-        ConstBuffer* cb = gpu.numGrpCb();
-        assert((cb != NULL) && "Runtime must have the constant buffer");
-        cb->setBusy(gpu, calEvent);
-    }
-
     // Set the event object for the scratch buffer
     if (workGroupInfo()->scratchRegs_ > 0) {
-        for (uint i = 0; i < dev().scratch(gpu.hwRing())->memObjs_.size(); ++i) {
-            dev().scratch(gpu.hwRing())->memObjs_[i]->setBusy(gpu, calEvent);
-        }
+        dev().scratch(gpu.hwRing())->memObj_->setBusy(gpu, calEvent);
     }
-}
-
-bool
-Kernel::setupArenaAliases(VirtualGPU& gpu, const Resource& resource) const
-{
-    const static uint ScArenaUavShortId = 9;
-    const static uint ScArenaUavByteId  = 10;
-
-    Resource* buf = &(const_cast<Resource&>(resource));
-    Resource* alias;
-    gslMemObject gslMem = NULL;
-    //
-    // byte view
-    //
-    alias = buf->getAliasUAVBuffer(CM_SURF_FMT_R8I);
-    if (NULL == alias) {
-        return false;
-    }
-    gslMem = alias->gslResource();
-    if (gpu.cal_.uavs_[ScArenaUavByteId] != gslMem) {
-        if (!gpu.setUAVBuffer(ScArenaUavByteId,
-            gslMem, GSL_UAV_TYPE_TYPELESS)) {
-            return false;
-        }
-        gpu.cal_.uavs_[ScArenaUavByteId] = gslMem;
-    }
-
-    //
-    // short view
-    //
-    alias = buf->getAliasUAVBuffer(CM_SURF_FMT_R16I);
-    if (NULL == alias) {
-        return false;
-    }
-    bool result = true;
-    gslMem = alias->gslResource();
-    if (gpu.cal_.uavs_[ScArenaUavShortId] != gslMem) {
-        result = gpu.setUAVBuffer(ScArenaUavShortId,
-            gslMem, GSL_UAV_TYPE_TYPELESS);
-        gpu.cal_.uavs_[ScArenaUavShortId] = gslMem;
-    }
-
-    return result;
 }
 
 void
@@ -2993,29 +2804,13 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
             // Check if can't use a dedicated UAV,
             // so realloc memory in the heap
             arg->memory_.realloc_ = isRealloc();
-
-            if (nullDev().settings().useAliases_) {
-                if (uavRefCount[arg->index_] > 1) {
-                    // Multiple accesses, assume this is the heap
-                    uavRaw_ = arg->index_;
-                }
-                // Mark argument as an UAV buffer if no aliases or it's not arena
-                else if (arg->index_ != VirtualGPU::UavArena) {
-                    arg->memory_.uavBuf_ = true;
-                }
-            }
-            else {
-                arg->memory_.uavBuf_ = true;
-            }
+            arg->memory_.uavBuf_ = true;
             break;
         case KernelArg::PointerHwConst:
             arg->memory_.realloc_ = true;
             break;
         case KernelArg::UavId:
-            if (!nullDev().settings().useAliases_ ||
-                (arg->index_ != VirtualGPU::UavArena)) {
-                uavRaw_ = arg->index_;
-            }
+            uavRaw_ = arg->index_;
             break;
         default:
             break;
@@ -3029,8 +2824,7 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
         }
     }
 
-    if (!nullDev().settings().useAliases_ &&
-        (uavRaw_ != UavIdUndefined) &&
+    if ((uavRaw_ != UavIdUndefined) &&
         !(flags() & PrintfOutput)) {
         // Find if default UAV is already assigned to an argument
         for (uint i = 0; i < arguments_.size(); ++i) {
