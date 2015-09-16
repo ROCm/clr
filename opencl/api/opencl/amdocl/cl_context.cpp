@@ -509,6 +509,9 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
+#if cl_khr_il_program
+        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
+#endif // cl_khr_il_program
         break;
     case 'D':
         break;

@@ -210,11 +210,11 @@ typedef cl_program (CL_API_CALL * clCreateProgramWithSource_fn)(
     const size_t *    /* lengths */,
     cl_int *          /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
 
-typedef cl_program (CL_API_CALL * clCreateProgramWithIL_fn)(
+typedef cl_program (CL_API_CALL * clCreateProgramWithILKHR_fn)(
     cl_context        /* context */,
     const void *      /* il */,
     size_t            /* length */,
-    cl_int *          /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
+    cl_int *          /* errcode_ret */) CL_API_SUFFIX__VERSION_1_2;
 
 typedef cl_program (CL_API_CALL * clCreateProgramWithBinary_fn)(
     cl_context                     /* context */,
@@ -979,8 +979,8 @@ typedef struct _cl_icd_dispatch_table
     clGetKernelSubGroupInfoKHR_fn           GetKernelSubGroupInfoKHR;
     clTerminateContextKHR_fn                TerminateContextKHR;
 
-    /* cl_khr_spirv */
-    clCreateProgramWithIL_fn                CreateProgramWithIL;
+    /* cl_khr_il_program */
+    clCreateProgramWithILKHR_fn             CreateProgramWithILKHR;
 } cl_icd_dispatch_table;
 
 #ifdef __cplusplus

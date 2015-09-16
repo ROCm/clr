@@ -482,6 +482,25 @@ typedef CL_API_ENTRY cl_int
 						      void* /*param_value*/,
 						      size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
 #endif /* CL_VERSION_2_0 */
+#ifdef CL_VERSION_2_0
+/*********************************
+* cl_khr_il_program extension
+*********************************/
+#define cl_khr_il_program 1
+
+extern CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithILKHR(cl_context        /* context */,
+                         const void *      /* strings */,
+                         size_t            /* lengths */,
+                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
+
+typedef CL_API_ENTRY cl_program
+    ( CL_API_CALL * clCreateProgramWithILKHR_fn)(cl_context        /* context */,
+                         const void *      /* strings */,
+                         size_t            /* lengths */,
+                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
+
+#endif /* CL_VERSION_2_0 */
 
 #ifdef __cplusplus
 }

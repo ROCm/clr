@@ -272,11 +272,13 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithSource)(
     const size_t *    lengths,
     cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
+//ToDo: Change CL_API_SUFFIX__VERSION_2_0 to CL_API_SUFFIX__VERSION_2_1
+//      after switching to OpenCL 2.1.
 typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithIL)(
     cl_context        context,
     const void *      il,
     size_t            length,
-    cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0;
+    cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_2_0;
 
 typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithBinary)(
     cl_context                     context,
@@ -1418,7 +1420,7 @@ struct KHRicdVendorDispatchRec
 
     KHRpfn_clTerminateContextKHR                    clTerminateContextKHR;
 
-    /* cl_khr_spirv */
+    /* OpenCL 2.1 */
     KHRpfn_clCreateProgramWithIL                    clCreateProgramWithIL;
 };
 

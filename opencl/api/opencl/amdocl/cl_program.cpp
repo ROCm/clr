@@ -194,7 +194,7 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithIL, (
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithILKHR, (
     cl_context context,
     const void *il,
     size_t length,

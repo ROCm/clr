@@ -103,7 +103,6 @@ clUnloadPlatformCompiler
 #endif
 
 #if (OPENCL_MAJOR >= 2)
-clCreateProgramWithIL
 clCreateCommandQueueWithProperties
 clCreateSamplerWithProperties
 clCreatePipe
@@ -157,6 +156,8 @@ aclDisassemble
 aclInsertKernelStatistics
 aclGetDeviceBinary
 aclDumpBinary
-
+#if (OPENCL_MAJOR > 2) || (OPENCL_MAJOR == 2 && OPENCL_MINOR >= 1)
+clCreateProgramWithIL
+#endif
 #if !defined(OPENCL_MAINLINE)
 #endif

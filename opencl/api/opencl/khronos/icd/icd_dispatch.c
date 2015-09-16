@@ -471,20 +471,6 @@ clCreateProgramWithSource(cl_context        context,
 }
 
 CL_API_ENTRY cl_program CL_API_CALL
-clCreateProgramWithIL(cl_context        context,
-                      const void *      il,
-                      size_t            length,
-                      cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0
-{
-    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreateProgramWithIL(
-        context,
-        il,
-        length,
-        errcode_ret);
-}
-
-CL_API_ENTRY cl_program CL_API_CALL
 clCreateProgramWithBinary(cl_context                     context,
                           cl_uint                        num_devices,
                           const cl_device_id *           device_list,
@@ -1641,6 +1627,9 @@ clGetExtensionFunctionAddress(const char *function_name) CL_EXT_SUFFIX__VERSION_
 
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clTerminateContextKHR);
 
+    /* cl_khr_il_program */
+    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clCreateProgramWithILKHR);
+
     // fall back to vendor extension detection
     for (vendor = khrIcdState.vendors; vendor; vendor = vendor->next)
     {
@@ -2561,5 +2550,29 @@ clTerminateContextKHR(
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(context, CL_INVALID_CONTEXT);
     return context->dispatch->clTerminateContextKHR(context);
+}
+
+CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithILKHR(cl_context    context,
+                         const void *  il,
+                         size_t        length,
+                         cl_int *      errcode_ret) CL_EXT_SUFFIX__VERSION_1_2
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreateProgramWithIL(context, il, length,
+      errcode_ret);
+}
+
+//ToDo: change CL_API_SUFFIX__VERSION_2_0 to CL_API_SUFFIX__VERSION_2_1
+//      after switching to OpenCL 2.1
+CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithIL(cl_context    context,
+                         const void *  il,
+                         size_t        length,
+                         cl_int *      errcode_ret) CL_API_SUFFIX__VERSION_2_0
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
+    return context->dispatch->clCreateProgramWithIL(context, il, length,
+      errcode_ret);
 }
 
