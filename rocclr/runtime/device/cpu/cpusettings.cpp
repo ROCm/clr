@@ -47,6 +47,7 @@ Settings::create()
     enableExtension(ClKhrD3d10Sharing);
 #endif // _WIN32
     enableExtension(ClKhrSpir);
+    enableExtension(ClKhrIlProgram);
 
     // Enable some OpenCL 2.0 extensions
     if ((OPENCL_MAJOR >= 2) && (CPU_OPENCL_VERSION >= 200)) {

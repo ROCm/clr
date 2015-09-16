@@ -110,6 +110,7 @@ enum OclExtensions {
     ClKhrDepthImages,
     ClKhrMipMapImage,
     ClKhrMipMapImageWrites,
+    ClKhrIlProgram,
     ClExtTotal
 };
 
@@ -151,6 +152,7 @@ OclExtensionsString[] = {
     "cl_khr_depth_images ",
     "cl_khr_mipmap_image ",
     "cl_khr_mipmap_image_writes ",
+    "",
     NULL
 };
 
