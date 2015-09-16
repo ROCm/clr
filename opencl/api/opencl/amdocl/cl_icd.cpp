@@ -205,7 +205,7 @@ amd::ICDDispatchedObject::icdVendorDispatch_[] = {{
 
     clGetKernelSubGroupInfoKHR,
     clTerminateContextKHR,
-    clCreateProgramWithIL
+    clCreateProgramWithILKHR
 }};
 
 CL_API_ENTRY cl_int CL_API_CALL

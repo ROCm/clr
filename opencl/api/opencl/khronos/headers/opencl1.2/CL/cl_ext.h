@@ -481,6 +481,25 @@ typedef struct _cl_mem_ion_host_ptr
                                                  cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 #endif /* CL_VERSION_1_2 */
+#ifdef CL_VERSION_1_2
+/*********************************
+* cl_khr_il_program extension
+*********************************/
+#define cl_khr_il_program 1
+
+extern CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithILKHR(cl_context        /* context */,
+                         const void *      /* strings */,
+                         size_t            /* lengths */,
+                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_program
+    ( CL_API_CALL * clCreateProgramWithILKHR_fn)(cl_context        /* context */,
+                         const void *      /* strings */,
+                         size_t            /* lengths */,
+                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+
+#endif /* CL_VERSION_1_2 */
 
 #ifdef __cplusplus
 }

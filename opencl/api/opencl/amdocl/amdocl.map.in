@@ -142,7 +142,6 @@ global:
 #if (OPENCL_MAJOR >= 2)
 OPENCL_2.0 {
 global:
-    clCreateProgramWithIL;
     clCreateCommandQueueWithProperties;
     clCreateSamplerWithProperties;
     clCreatePipe;
@@ -157,6 +156,13 @@ global:
     clEnqueueSVMMap;
     clEnqueueSVMUnmap;
 } OPENCL_1.2;
+#endif
+
+#if (OPENCL_MAJOR > 2) || (OPENCL_MAJOR == 2 && OPENCL_MINOR >= 1)
+OPENCL_2.1 {
+global:
+    clCreateProgramWithIL;
+} OPENCL_2.1;
 #endif
 
 ACL_0.8 {
