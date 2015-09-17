@@ -88,7 +88,6 @@ private:
 
     //! The device program objects included in this program
     deviceprograms_t devicePrograms_;
-    deviceprograms_t devProgramsNoOpt_;
     devicelist_t deviceList_;
 
     std::string     programLog_;        //!< Log for parsing options, etc.

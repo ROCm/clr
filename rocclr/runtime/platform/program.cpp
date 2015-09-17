@@ -22,10 +22,6 @@ Program::~Program()
          it != itEnd; ++it) {
         delete it->second;
     }
-    for (it = devProgramsNoOpt_.begin(), itEnd = devProgramsNoOpt_.end();
-         it != itEnd; ++it) {
-        delete it->second;
-    }
 
     for (devicebinary_t::const_iterator IT = binary_.begin(), IE = binary_.end();
          IT != IE;  ++IT) {
@@ -100,7 +96,6 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length, int 
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
-    devProgramsNoOpt_[&rootDev] = program;
 
     deviceList_.insert(&device);
     return CL_SUCCESS;
@@ -536,12 +531,8 @@ Program::clear()
         // Destroy device program
         delete sit->second;
     }
-    for (sit = devProgramsNoOpt_.begin(); sit != devProgramsNoOpt_.end(); ++sit) {
-        // Destroy device program
-        delete sit->second;
-    }
+
     devicePrograms_.clear();
-    devProgramsNoOpt_.clear();
     deviceList_.clear();
     if (symbolTable_) symbolTable_->clear();
     kernelNames_.clear();
