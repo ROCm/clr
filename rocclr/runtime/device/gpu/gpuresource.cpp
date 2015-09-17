@@ -322,7 +322,7 @@ static uint32_t GetHSAILImageOrderType(gslChannelOrder chOrder, cmSurfFmt format
 }
 
 bool
-Resource::create(MemoryType memType, CreateParams* params, bool heap)
+Resource::create(MemoryType memType, CreateParams* params)
 {
     bool    calRes = false;
     gslMemObject  gslResource = 0;
@@ -382,7 +382,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     }
 
     // Force remote allocation if it was requested in the settings
-    if (dev().settings().remoteAlloc_ && !heap &&
+    if (dev().settings().remoteAlloc_ &&
         ((memoryType() == Local) ||
          (memoryType() == Persistent))) {
         if (dev().settings().apuSystem_ && dev().settings().viPlus_) {
@@ -515,7 +515,7 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
                 if (memoryType() == Local) {
                     cal_.type_ = Persistent;
                 }
-                else if (!heap && (memoryType() == Persistent)) {
+                else if (memoryType() == Persistent) {
                     cal_.type_ = RemoteUSWC;
                 }
                 // Remote cacheable to uncacheable
@@ -553,11 +553,6 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
                 reinterpret_cast<const char*>(address_) - tmpHost);
 
             pinOffset_ = hostMemOffset & 0xff;
-            //!@note GSL has a problem with the defines for flags and
-            //! view creation, so check the restriction here
-            if (!dev().heap()->isVirtual() && (pinOffset_ != 0)) {
-                return false;
-            }
 
             pinAddress = tmpHost;
             // Align width to avoid GSL useless assert with a view
@@ -627,20 +622,6 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
                 cal()->dimension_, 0, 0, cal()->flags_, bytePitch);
             if (gslResource != 0) {
                 calRes = true;
-            }
-
-            // Check if it's a heap allocation
-            if (!dev().heap()->isVirtual()) {
-                if (viewOwner_ == &dev().globalMem()) {
-                    // Allocation directly from the heap
-                    hbOffset_   = static_cast<uint64_t>(view->offset_);
-                }
-                else {
-                    // Allocation from another memory object
-                    hbOffset_   = static_cast<uint64_t>(view->offset_) +
-                        viewOwner_->hbOffset();
-                }
-                hbSize_ = view->size_;
             }
 
             if (viewOwner_->isMemoryType(Pinned)) {
@@ -952,11 +933,9 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
     cal_.tiled_ = (GSL_MOA_TILING_LINEAR != tiling) &&
         (GSL_MOA_TILING_LINEAR_GENERAL != tiling);
 
-    // Get the heap block offset if it's a virtual heap
-    if (dev().heap()->isVirtual()) {
-        hbOffset_ = gslResource->getSurfaceAddress() -
-            dev().heap()->baseAddress();
-    }
+    // Get the heap block offset
+    hbOffset_ = gslResource->getSurfaceAddress() -
+        dev().heap().baseAddress();
     hbSize_ = static_cast<uint64_t>(gslResource->getSurfaceSize());
 
     if (!dev().settings().use64BitPtr_ &&
@@ -1033,32 +1012,6 @@ Resource::create(MemoryType memType, CreateParams* params, bool heap)
         params->owner_->setSvmPtr(reinterpret_cast<void*>(gslResource->getSurfaceAddress()));
     }
 
-    return true;
-}
-
-bool
-Resource::reallocate(CreateParams* params)
-{
-    GslResourceReference*   old;
-    GslResourceReference*   active;
-
-    old = gslRef_;
-    if (!create(memoryType(), params)) {
-        gslRef_ = old;
-        return false;
-    }
-    // Get the new active resource
-    active = gslRef_;
-    gslRef_ = old;
-
-    dev().resCopy(old->gslResource(),
-        active->gslResource(), CAL_MEMCOPY_SYNC);
-
-    // Free all old resources
-    assert(renames_.size() == 0);
-    free();
-
-    gslRef_ = active;
     return true;
 }
 
@@ -1813,10 +1766,8 @@ Resource::setActiveRename(VirtualGPU& gpu, GslResourceReference* rename)
     gslRef_  = rename;
     address_ = rename->cpuAddress_;
 
-    if (dev().heap()->isVirtual()) {
-        hbOffset_ = rename->gslResource()->getSurfaceAddress() -
-            dev().heap()->baseAddress();
-    }
+    hbOffset_ = rename->gslResource()->getSurfaceAddress() -
+        dev().heap().baseAddress();
 }
 
 bool

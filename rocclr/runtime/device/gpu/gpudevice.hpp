@@ -125,8 +125,7 @@ protected:
         const CALdeviceattribs& calAttr,    //!< CAL device attributes info
         const gslMemInfo&  memInfo,         //!< GSL mem info
         size_t  maxTextureSize,             //!< Maximum texture size supported in HW
-        uint    numComputeRings,            //!< Number of compute rings
-        bool    isVirtualMode               //!< Device is in virtual mode
+        uint    numComputeRings             //!< Number of compute rings
         );
 };
 
@@ -184,6 +183,32 @@ private:
 class Device : public NullDevice, public CALGSLDevice
 {
 public:
+    class Heap : public amd::EmbeddedObject
+    {
+    public:
+        //! The size of a heap element in bytes
+        static const size_t ElementSize = 4;
+
+        //! The type of a heap element in bytes
+        static const cmSurfFmt ElementType = CM_SURF_FMT_R32I;
+
+        Heap(): resource_(NULL), baseAddress_(0) {}
+
+        bool create(
+            Device& device      //!< GPU device object
+            );
+
+        //! Gets the GPU resource associated with the global heap
+        const Resource& resource() const { return *resource_; }
+
+        //! Returns the base virtual address of the heap
+        uint64_t baseAddress() const { return baseAddress_; }
+
+    protected:
+        Resource*   resource_;      //!< GPU resource referencing the heap memory
+        uint64_t    baseAddress_;   //!< Virtual heap base address
+    };
+
     //! Locks any access to the virtual GPUs
     class ScopedLockVgpus : public amd::StackObject {
     public:
@@ -377,12 +402,6 @@ public:
     //! Destructor for the physical GPU device
     virtual ~Device();
 
-    //! Reallocates current global heap
-    bool reallocHeap(
-        size_t  size,           //!< requested size for reallocation
-        bool    remoteAlloc     //!< allocate the new heap in remote memory
-        );
-
     //! Instantiate a new virtual device
     device::VirtualDevice* createVirtualDevice(
         amd::CommandQueue*  queue = NULL
@@ -442,15 +461,10 @@ public:
         ) const;
 
     //! Gets the GPU resource associated with the global heap
-    const Resource& globalMem() const { return heap_->resource(); }
+    const Resource& globalMem() const { return heap_.resource(); }
 
     //! Gets the global heap object
-    const Heap* heap() const { return heap_; }
-
-    //! Allocates a heap block from the global heap
-    HeapBlock* allocHeapBlock(
-        size_t size             //!< The heap block size for allocation
-        ) const;
+    const Heap& heap() const { return heap_; }
 
     //! Gets the memory object for the dummy page
     amd::Memory* dummyPage() const { return dummyPage_; }
@@ -566,16 +580,10 @@ private:
     //! Sends the stall command to all queues
     bool stallQueues();
 
-    //! Buffer allocation from static heap (no VM mode only)
-    gpu::Memory* createBufferFromHeap(
-        amd::Memory&    owner           //!< Abstraction layer memory object
-        ) const;
-
     //! Buffer allocation
     gpu::Memory* createBuffer(
         amd::Memory&    owner,          //!< Abstraction layer memory object
-        bool            directAccess,   //!< Use direct host memory access
-        bool            bufferAlloc     //!< If TRUE, then don't use heap
+        bool            directAccess    //!< Use direct host memory access
         ) const;
 
     //! Image allocation
@@ -591,8 +599,7 @@ private:
         );
 
     amd::Context*   context_;       //!< A dummy context for internal allocations
-    size_t      heapSize_;          //!< The global heap size
-    Heap*       heap_;              //!< GPU heap manager
+    Heap            heap_;          //!< GPU global heap
     amd::Memory*    dummyPage_;     //!< A dummy page for NULL pointer
 
     amd::Monitor*   lockAsyncOps_;  //!< Lock to serialise all async ops on this device

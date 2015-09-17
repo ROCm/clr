@@ -450,9 +450,6 @@ public:
     uint  instructionCnt() const { return instructionCnt_; }
 
 protected:
-    //! Returns TRUE if memory should be reallocated, returns FALSE always for NullDevice
-    virtual bool isRealloc() const { return false; }
-
     /*! \brief Parses the metadata structure for the kernel,
      *   provided by the OpenCL compiler
      *
@@ -673,9 +670,6 @@ protected:
      */
     bool initConstBuffers();
 
-    //! Returns TRUE if memory should be reallocated, returns FALSE always for NullDevice
-    virtual bool isRealloc() const { return !dev().heap()->isVirtual(); }
-
 private:
     //! Disable copy constructor
     Kernel(const Kernel&);
@@ -770,9 +764,6 @@ private:
 
     uint    hwPrivateSize_;     //!< initial HW private size
     uint    hwLocalSize_;       //!< initial HW local size
-
-    //! @todo remove the blit kernel hack
-    bool    blitKernelHack_;    //!< No VM hack for kernel blit
 
     WaveLimiterManager waveLimiter_; //!< adaptively control number of waves
 };

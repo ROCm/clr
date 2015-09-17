@@ -52,12 +52,8 @@ release(cstring, GPU_DEVICE_ORDINAL, "",                                      \
         "Select the device ordinal (comma seperated list of available devices)") \
 release(bool, REMOTE_ALLOC, false,                                            \
         "Use remote memory for the global heap allocation")                   \
-release(int, GPU_INITIAL_HEAP_SIZE, 16,                                       \
-        "Initial size of the GPU heap in MiB")                                \
 release(uint, GPU_MAX_HEAP_SIZE, 100,                                         \
         "Set maximum size of the GPU heap to % of board memory")              \
-release(int, GPU_HEAP_GROWTH_INCREMENT, 8,                                    \
-        "Amount to grow the GPU heap by in MiB")                              \
 release(uint, GPU_STAGING_BUFFER_SIZE, 512,                                   \
         "Size of the GPU staging buffer in KiB")                              \
 release(bool, GPU_DUMP_BLIT_KERNELS, false,                                   \

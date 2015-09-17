@@ -30,30 +30,15 @@ namespace gpu {
 Memory::Memory(
     const Device&   gpuDev,
     amd::Memory&    owner,
-    HeapBlock*      hb,
     size_t          size)
     : device::Memory(owner)
-    , Resource(gpuDev, ((hb) ? hb->size_ : size) / Heap::ElementSize, Heap::ElementType)
-    , hb_(hb)
+    , Resource(gpuDev, size / Device::Heap::ElementSize, Device::Heap::ElementType)
 {
     init();
-
-    if (NULL != hb_) hb_->setMemory(this);
 
     if (owner.parent() != NULL) {
         flags_ |= SubMemoryObject;
     }
-}
-
-Memory::Memory(
-    const Device&   gpuDev,
-    HeapBlock&      hb)
-    : device::Memory(hb.size_)
-    , Resource(gpuDev, hb.size_ / Heap::ElementSize, Heap::ElementType)
-    , hb_(&hb)
-{
-    init();
-    hb.setMemory(this);
 }
 
 Memory::Memory(
@@ -61,8 +46,8 @@ Memory::Memory(
     size_t          size)
     : device::Memory(size)
     , Resource(gpuDev,
-        amd::alignUp(size, Heap::ElementSize) / Heap::ElementSize, Heap::ElementType)
-    , hb_(NULL)
+        amd::alignUp(size, Device::Heap::ElementSize) /
+            Device::Heap::ElementSize, Device::Heap::ElementType)
 {
     init();
 }
@@ -75,7 +60,6 @@ Memory::Memory(
     )
     : device::Memory(owner)
     , Resource(gpuDev, width, format)
-    , hb_(NULL)
 {
     init();
 
@@ -92,7 +76,6 @@ Memory::Memory(
     )
     : device::Memory(size)
     , Resource(gpuDev, width, format)
-    , hb_(NULL)
 {
     init();
 }
@@ -110,7 +93,6 @@ Memory::Memory(
     )
     : device::Memory(owner)
     , Resource(gpuDev, width, height, depth, format, chOrder, imageType, mipLevels)
-    , hb_(NULL)
 {
     init();
 
@@ -132,7 +114,6 @@ Memory::Memory(
     )
     : device::Memory(size)
     , Resource(gpuDev, width, height, depth, format, chOrder, imageType, mipLevels)
-    , hb_(NULL)
 {
     init();
 }
@@ -197,14 +178,9 @@ Memory::create(
             break;
         case Resource::Remote:
         case Resource::RemoteUSWC:
-            // @todo Enable unconditional optimization for remote memory
-            if ((owner() != NULL &&
-                owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) ||
-                (hb() == NULL)) {
-                if (!cal()->tiled_) {
-                    // Marks memory object for direct GPU access to the host memory
-                    flags_ |= HostMemoryDirectAccess;
-                }
+            if (!cal()->tiled_) {
+                // Marks memory object for direct GPU access to the host memory
+                flags_ |= HostMemoryDirectAccess;
             }
             break;
         case Resource::View: {
@@ -481,8 +457,8 @@ Memory::createInterop(InteropType type)
     else {
         // Allocate Resource object for interop as buffer
         interopMemory_ = new Memory(dev(), size(),
-            amd::alignUp(size(), Heap::ElementSize) / Heap::ElementSize,
-            Heap::ElementType);
+            amd::alignUp(size(), Device::Heap::ElementSize) / Device::Heap::ElementSize,
+            Device::Heap::ElementType);
 
         // Create the interop object in CAL
         if (NULL == interopMemory_ || !interopMemory_->create(memType, createParams)) {
@@ -501,14 +477,6 @@ Memory::~Memory()
 {
     // Clean VA cache
     dev().removeVACache(this);
-
-    // Release associated heap block, if any
-    if (hb_) {
-        // Protect heap block from simultaneous release with realloc
-        amd::ScopedLock k(dev().lockAsyncOps());
-        hb_->setMemory(NULL);
-        hb_->free();
-    }
 
     delete interopMemory_;
 
@@ -529,35 +497,6 @@ Memory::~Memory()
         // Unmap memory if direct access was requested
         unmap(NULL);
     }
-}
-
-bool
-Memory::reallocate(HeapBlock* hb, const Resource* parent)
-{
-    Resource::ViewParams params;
-    params.size_        = hb->size_;
-    params.resource_    = parent;
-    params.memory_      = NULL;
-
-    // Check if it's a view reallocation
-    if (NULL != hb->parent_) {
-        // The offset inside the view is unchanged
-        params.offset_ = Resource::offset();
-
-        // Create a new view
-        if (Resource::create(Resource::View, &params)) {
-            hb_ = hb;
-            return true;
-        }
-    }
-    else {
-        params.offset_ = hb->offset_;
-        if (Resource::reallocate(&params)) {
-            hb_ = hb;
-            return true;
-        }
-    }
-    return false;
 }
 
 void
@@ -814,33 +753,13 @@ Memory::createBufferView(amd::Memory& subBufferOwner)
 {
     gpu::Memory*            viewMemory;
     Resource::ViewParams    params;
-    HeapBlock*              hb = NULL;
 
     size_t  offset = subBufferOwner.getOrigin();
     size_t  size = subBufferOwner.getSize();
 
-    if (!dev().heap()->isVirtual()) {
-        if (NULL == hb_) {
-            LogError("HeapBlock must be initialized!");
-            return NULL;
-        }
-
-        hb = new HeapBlock(NULL, size, offset + hb_->offset());
-        if (hb == NULL) {
-            LogError("We don't have enough video memory!");
-            return NULL;
-        }
-        amd::ScopedLock lock(owner()->lockMemoryOps());
-        hb_->addView(hb);
-    }
-
     // Create a memory object
-    viewMemory = new gpu::Memory(dev(), subBufferOwner, hb, size);
+    viewMemory = new gpu::Memory(dev(), subBufferOwner, size);
     if (NULL == viewMemory) {
-        if (hb != NULL) {
-            hb->setMemory(NULL);
-            hb->free();
-        }
         return NULL;
     }
 

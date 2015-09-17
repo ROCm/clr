@@ -1955,20 +1955,9 @@ KernelBlitManager::copyBufferRect(
 
     // Fall into the CAL path for rejected transfers
     if (setup_.disableCopyBufferRect_ ||
-        (gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) ||
-        (!dev().heap()->isVirtual() &&
-         ((gpuMem(dstMemory).hb() == NULL) || (gpuMem(srcMemory).hb() == NULL)))) {
-        // Copy data with CAL (no VM mode only)
-        if (gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) {
-            result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory,
-                srcRectIn, dstRectIn, sizeIn, entire);
-        }
-
-        if ((!dev().heap()->isVirtual() && ((gpuMem(dstMemory).hb() == NULL) || (gpuMem(srcMemory).hb() == NULL)))
-                && !result) {
-            result = HostBlitManager::copyBufferRect(srcMemory, dstMemory,
-                srcRectIn, dstRectIn, sizeIn, entire);
-        }
+        gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) {
+        result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory,
+            srcRectIn, dstRectIn, sizeIn, entire);
 
         if (result) {
             synchronize();
@@ -2395,11 +2384,9 @@ KernelBlitManager::copyBuffer(
 {
     amd::ScopedLock k(lockXferOps_);
     bool    result = false;
-    bool    forceCal = !dev().heap()->isVirtual() &&
-        ((gpuMem(srcMemory).hb() == NULL) || (gpuMem(dstMemory).hb() == NULL));
 
-    if ((!forceCal && !gpuMem(srcMemory).isHostMemDirectAccess() &&
-         !gpuMem(dstMemory).isHostMemDirectAccess())) {
+    if (!gpuMem(srcMemory).isHostMemDirectAccess() &&
+        !gpuMem(dstMemory).isHostMemDirectAccess()) {
         uint    blitType = BlitCopyBuffer;
         size_t  dim = 1;
         size_t  globalWorkOffset[3] = { 0, 0, 0 };
@@ -2489,7 +2476,6 @@ KernelBlitManager::copyBuffer(
         result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters);
     }
     else {
-        // Copy data with CAL (no VM mode only)
         result = DmaBlitManager::copyBuffer(
             srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire);
     }

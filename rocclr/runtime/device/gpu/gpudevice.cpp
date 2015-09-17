@@ -173,7 +173,7 @@ NullDevice::create(CALtarget target)
     calAttr.localRAM = 512;
 
     // Fill the device info structure
-    fillDeviceInfo(calAttr, memInfo, 4096, 1, true);
+    fillDeviceInfo(calAttr, memInfo, 4096, 1);
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         // Runtime doesn't know what local size could be on the real board
@@ -225,9 +225,7 @@ void NullDevice::fillDeviceInfo(
     const CALdeviceattribs& calAttr,
     const gslMemInfo& memInfo,
     size_t  maxTextureSize,
-    uint    numComputeRings,
-    bool    isVirtualMode
-    )
+    uint    numComputeRings)
 {
     info_.type_     = CL_DEVICE_TYPE_GPU;
     info_.vendorId_ = 0x1002;
@@ -276,56 +274,45 @@ void NullDevice::fillDeviceInfo(
         info_.globalMemCacheType_   = CL_NONE;
     }
 
-    if (isVirtualMode) {
 #if defined(ATI_OS_LINUX)
-        info_.globalMemSize_   =
-            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-            // globalMemSize is the actual available size for app on Linux
-            // Because Linux base driver doesn't support paging
-            static_cast<cl_ulong>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / 100u);
+    info_.globalMemSize_   =
+        (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+        // globalMemSize is the actual available size for app on Linux
+        // Because Linux base driver doesn't support paging
+        static_cast<cl_ulong>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / 100u);
 #else
-        info_.globalMemSize_   =
-            (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-            static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
+    info_.globalMemSize_   =
+        (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+        static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
 #endif
-        if (settings().apuSystem_) {
-            info_.globalMemSize_   +=
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100;
-        }
+    if (settings().apuSystem_) {
+        info_.globalMemSize_   +=
+            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100;
+    }
 
-        // We try to calculate the largest available memory size from
-        // the largest available block in either heap.  In theory this
-        // should be the size we can actually allocate at application
-        // start.  Note that it may not be a guarantee still as the
-        // application progresses.
-        info_.maxMemAllocSize_ = std::max(
-            cl_ulong(memInfo.cardLargestFreeBlockBytes),
-            cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
+    // We try to calculate the largest available memory size from
+    // the largest available block in either heap.  In theory this
+    // should be the size we can actually allocate at application
+    // start.  Note that it may not be a guarantee still as the
+    // application progresses.
+    info_.maxMemAllocSize_ = std::max(
+        cl_ulong(memInfo.cardLargestFreeBlockBytes),
+        cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
 
 #if defined(ATI_OS_WIN)
-        if (settings().apuSystem_) {
-            info_.maxMemAllocSize_ = std::max(
-                (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100,
-                info_.maxMemAllocSize_);
-        }
+    if (settings().apuSystem_) {
+        info_.maxMemAllocSize_ = std::max(
+            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100,
+            info_.maxMemAllocSize_);
+    }
 #endif
-        info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
-            std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+    info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
+        std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
-        //! \note Force max single allocation size.
-        //! 4GB limit for the blit kernels and 64 bit optimizations.
-        info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_,
-                static_cast<cl_ulong>(settings().maxAllocSize_));
-    }
-    else {
-        uint    maxHeapSize = flagIsDefault(GPU_MAX_HEAP_SIZE) ? 50 : GPU_MAX_HEAP_SIZE;
-        info_.globalMemSize_   = (std::min(maxHeapSize, 100u)
-            * calAttr.localRAM / 100u) * Mi;
-
-        uint    maxAllocSize = flagIsDefault(GPU_SINGLE_ALLOC_PERCENT) ? 25 : GPU_SINGLE_ALLOC_PERCENT;
-        info_.maxMemAllocSize_ = cl_ulong(info_.globalMemSize_ *
-            std::min(maxAllocSize, 100u) / 100u);
-    }
+    //! \note Force max single allocation size.
+    //! 4GB limit for the blit kernels and 64 bit optimizations.
+    info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_,
+            static_cast<cl_ulong>(settings().maxAllocSize_));
 
     if (info_.maxMemAllocSize_ < cl_ulong(128 * Mi)) {
         LogError("We are unable to get a heap large enough to support the OpenCL minimum "\
@@ -377,7 +364,7 @@ void NullDevice::fillDeviceInfo(
         info_.imagePitchAlignment_       = 256; // XXX: 256 pixel pitch alignment for now
         info_.imageBaseAddressAlignment_ = 256; // XXX: 256 byte base address alignment for now
 
-        info_.bufferFromImageSupport_ = (isVirtualMode) ? CL_TRUE : CL_FALSE;
+        info_.bufferFromImageSupport_ = CL_TRUE;
     }
 
     info_.errorCorrectionSupport_    = CL_FALSE;
@@ -404,7 +391,7 @@ void NullDevice::fillDeviceInfo(
     ::strcpy(info_.name_, hwInfo()->targetName_);
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
-         AMD_BUILD_STRING "%s", (isVirtualMode) ? " (VM)": "");
+         AMD_BUILD_STRING "%s", " (VM)");
 
     info_.profile_ = "FULL_PROFILE";
     if (settings().oclVersion_ == OpenCL20) {
@@ -506,6 +493,25 @@ void NullDevice::fillDeviceInfo(
         info_.numRTCUs_             = 4;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
+}
+
+bool
+Device::Heap::create(Device& device)
+{
+    // Create a new GPU resource
+    resource_ = new Resource(device, 0, CM_SURF_FMT_R32I);
+    if (resource_ == NULL) {
+        return false;
+    }
+
+    if (!resource_->create(Resource::Heap)) {
+        return false;
+    }
+
+    if (!device.settings().hsail_) {
+        baseAddress_ = resource_->gslResource()->getSurfaceAddress();
+    }
+    return true;
 }
 
 void
@@ -670,7 +676,7 @@ Device::Device()
     , CALGSLDevice()
     , numOfVgpus_(0)
     , context_(NULL)
-    , heap_(NULL)
+    , heap_()
     , dummyPage_(NULL)
     , lockAsyncOps_(NULL)
     , lockAsyncOpsForInitHeap_(NULL)
@@ -729,11 +735,6 @@ Device::~Device()
 
     if (dummyPage_ != NULL) {
         dummyPage_->release();
-    }
-
-    // Destroy global heap
-    if (heap_ != NULL) {
-        delete heap_;
     }
 
     // Destroy resource cache
@@ -837,26 +838,6 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
 
     size_t  resourceCacheSize = settings().resourceCacheSize_;
 
-    // Allocate heap
-    heapSize_ = settings().heapSize_;
-
-    // Check if BE supports virtual addressing mode
-    if (isVmMode()) {
-        heap_ = new VirtualHeap(*this);
-        gpuSettings->largeHostMemAlloc_ = (NULL != heap_) ? true : false;
-    }
-
-    // If virtual heap allocation failed, then try static allocation
-    if (heap_ == NULL) {
-        heap_ = new Heap(*this);
-        // Disable resource cache if VM is disable
-        resourceCacheSize = 0;
-        if (NULL == heap_) {
-            return false;
-        }
-    }
-
-
 #ifdef DEBUG
     std::stringstream  message;
     if (settings().remoteAlloc_) {
@@ -865,10 +846,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     else {
         message << "Using *Local* memory";
     }
-    if (!heap()->isVirtual()) {
-        message << ": " << settings().heapSize_ / Mi << "MB, growth: " <<  \
-            settings().heapSizeGrowth_ / Mi << "MB";
-    }
+
     message << std::endl;
     LogInfo(message.str().c_str());
 #endif // DEBUG
@@ -883,8 +861,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     // Fill the device info structure
     fillDeviceInfo(getAttribs(), getMemInfo(),
         static_cast<size_t>(getMaxTextureSize()),
-        engines().numComputeRings(), heap()->isVirtual()
-    );
+        engines().numComputeRings());
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         if (NULL == hsaCompiler_) {
@@ -955,7 +932,7 @@ Device::initializeHeapResources()
         }
 
         // Complete initialization of the heap and other buffers
-        if ((heap_ == NULL) || !heap_->create(heapSize_, settings().remoteAlloc_)) {
+        if (!heap_.create(*this)) {
             LogError("Failed GPU heap creation");
             return false;
         }
@@ -987,7 +964,7 @@ Device::initializeHeapResources()
                     type = Resource::RemoteUSWC;
                 }
                 xferWrite_ = new XferBuffers(*this, type,
-                    amd::alignUp(settings().stagedXferSize_, heap()->granularityB()));
+                    amd::alignUp(settings().stagedXferSize_, 4 * Ki));
                 if ((xferWrite_ == NULL) || !xferWrite_->create()) {
                     LogError("Couldn't allocate transfer buffer objects for read");
                     return false;
@@ -997,7 +974,7 @@ Device::initializeHeapResources()
             // Initialize staged read buffers
             if (settings().stagedXferRead_) {
                 xferRead_ = new XferBuffers(*this, Resource::Remote,
-                    amd::alignUp(settings().stagedXferSize_, heap()->granularityB()));
+                    amd::alignUp(settings().stagedXferSize_, 4 * Ki));
                 if ((xferRead_ == NULL) || !xferRead_->create()) {
                     LogError("Couldn't allocate transfer buffer objects for write");
                     return false;
@@ -1084,52 +1061,6 @@ Device::createVirtualDevice(
         delete vgpu;
         return NULL;
     }
-}
-
-bool
-Device::reallocHeap(size_t size, bool remoteAlloc)
-{
-    size_t  heapSize    =  heapSize_ + ((size != 0) ?
-        amd::alignUp(size, settings().heapSizeGrowth_) : 0);
-    Heap*   oldHeap     = heap_;
-    // Maximum heap limit size = reported size + internal memory
-    size_t  maxHeapLimit = static_cast<size_t>(info().globalMemSize_) +
-        // an extra 10MB for the alignments of allocations,
-        // since the conformance test doesn't expect any
-        10 * Mi;
-
-    if ((settings().heapSizeGrowth_ == 0) ||
-        // Allow the heap growth up to the global memory limit
-        (heapSize_ + size > maxHeapLimit)) {
-        return false;
-    }
-    heapSize = std::min(maxHeapLimit, heapSize);
-
-    heap_ = new Heap(*this);
-
-    // Make sure we have allocated a new global heap
-    if (NULL == heap_) {
-        heap_ = oldHeap;
-        return false;
-    }
-
-    if (!heap_->create(heapSize, remoteAlloc)) {
-        delete heap_;
-        heap_ = oldHeap;
-        return false;
-    }
-
-    // Copy the old heap to the new one
-    if (!oldHeap->copyTo(heap_)) {
-        delete heap_;
-        heap_ = oldHeap;
-        return false;
-    }
-
-    delete oldHeap;
-    heapSize_ = heapSize;
-
-    return true;
 }
 
 device::Program*
@@ -1288,65 +1219,6 @@ Device::tearDown()
     }
 }
 
-//! @note This funciton must be lock protected from a caller
-HeapBlock*
-Device::allocHeapBlock(size_t size) const
-{
-    HeapBlock* hb = NULL;
-
-    // Allocate the underlying heap block
-    hb = heap_->alloc(size);
-
-    // Virtual heap should never fail allocation
-    if ((hb == NULL) && (!heap_->isVirtual())) {
-        // Queues can't process commands,
-        // while the global heap reallocation occurs.
-        // So stall all queues and then reallocate the global heap
-        ScopedLockVgpus lock(*this);
-
-        // Wait for idle
-        for (uint idx = 0; idx < vgpus().size(); ++idx) {
-            vgpus()[idx]->waitAllEngines();
-        }
-
-        // Acount memory alignment for the new allocation
-        size_t  extraSpace = heap_->granularityB();
-        if (size >= heap_->freeSpace()) {
-            // Required extra space = requested size - free space
-            extraSpace += size - heap_->freeSpace();
-        }
-
-        //! @note the const cast here looks bad, but the device object
-        //  is a lock protected above. The rest of the code
-        //  doesn't change the device object.
-        //  So the const methods can be safly used everywhere else.
-        //  In general we should avoid changing the device object after initialization
-
-        // Try to reallocate the heap with the same memory type
-        if (const_cast<Device*>(this)->reallocHeap(extraSpace, settings().remoteAlloc_)) {
-            hb = heap_->alloc(size);
-        }
-
-        if (hb == NULL) {
-            // Use reversed memory type as a temporary storage
-            bool    remoteAlloc = settings().remoteAlloc_ ^ true;
-
-            // Try to reallocate the heap
-            if (const_cast<Device*>(this)->reallocHeap(extraSpace, remoteAlloc)) {
-                // Back to the default location of the global heap
-                remoteAlloc ^= true;
-                if (!const_cast<Device*>(this)->reallocHeap(0, remoteAlloc)) {
-                    LogWarning("New memory type for the \
-                        global heap after reallocation!");
-                }
-                hb = heap_->alloc(size);
-            }
-        }
-    }
-
-    return hb;
-}
-
 gpu::Memory*
 Device::getGpuMemory(amd::Memory* mem) const
 {
@@ -1392,99 +1264,20 @@ Device::createScratchBuffer(size_t size) const
 {
     Memory* gpuMemory = NULL;
 
-    // Use virtual heap allocation
-    if (heap()->isVirtual()) {
-        // Create a memory object
-        gpuMemory = new gpu::Memory(*this, size);
-        if (NULL == gpuMemory || !gpuMemory->create(Resource::Local)) {
-            delete gpuMemory;
-            gpuMemory = NULL;
-        }
-    }
-    else {
-        // We have to lock the heap block allocation,
-        // so possible reallocation won't occur twice or
-        // another thread could destroy a heap block,
-        // while we didn't finish allocation
-        amd::ScopedLock k(lockAsyncOps());
-
-        HeapBlock* hb = allocHeapBlock(size);
-        if (hb != NULL) {
-            // wrap it
-            gpuMemory = new gpu::Memory(*this, *hb);
-
-            // Create resource
-            if (NULL != gpuMemory) {
-                Resource::ViewParams   params;
-                params.offset_  = hb->offset_;
-                params.size_    = hb->size_;
-                params.resource_ = &(globalMem());
-                params.memory_  = NULL;
-                if (!gpuMemory->create(Resource::View, &params)) {
-                    delete gpuMemory;
-                    gpuMemory = NULL;
-                }
-            }
-        }
-    }
-
-    return gpuMemory;
-}
-
-gpu::Memory*
-Device::createBufferFromHeap(amd::Memory& owner) const
-{
-    size_t  size = owner.getSize();
-    gpu::Memory* gpuMemory;
-
-    // We have to lock the heap block allocation,
-    // so possible reallocation won't occur twice or
-    // another thread could destroy a heap block,
-    // while we didn't finish allocation
-    amd::ScopedLock k(lockAsyncOps());
-
-    HeapBlock* hb = allocHeapBlock(size);
-    if (hb == NULL) {
-        LogError("We don't have enough video memory!");
-        return NULL;
-    }
-
     // Create a memory object
-    gpuMemory = new gpu::Memory(*this, owner, hb);
-    if (NULL == gpuMemory) {
-        hb->setMemory(NULL);
-        hb->free();
-        return NULL;
-    }
-
-    Resource::ViewParams params;
-    params.owner_       = &owner;
-    params.offset_      = hb->offset_;
-    params.size_        = hb->size_;
-    params.resource_    = &(globalMem());
-    params.memory_      = NULL;
-
-    if (!gpuMemory->create(Resource::View, &params)) {
+    gpuMemory = new gpu::Memory(*this, size);
+    if (NULL == gpuMemory || !gpuMemory->create(Resource::Local)) {
         delete gpuMemory;
-        return NULL;
+        gpuMemory = NULL;
     }
 
-    // Check if owner is interop memory
-    if (owner.isInterop()) {
-        if (!gpuMemory->createInterop(Memory::InteropHwEmulation)) {
-            LogError("HW interop creation failed!");
-            delete gpuMemory;
-            return NULL;
-        }
-    }
     return gpuMemory;
 }
 
 gpu::Memory*
 Device::createBuffer(
     amd::Memory&    owner,
-    bool            directAccess,
-    bool            bufferAlloc) const
+    bool            directAccess) const
 {
     size_t  size = owner.getSize();
     gpu::Memory* gpuMemory;
@@ -1504,39 +1297,7 @@ Device::createBuffer(
             return NULL;
         }
 
-        if (!heap()->isVirtual()) {
-            bool    uhpAlloc =
-                (owner.parent()->getMemFlags() & CL_MEM_USE_HOST_PTR) ? true : false;
-
-            if (owner.parent()->getType() != CL_MEM_OBJECT_IMAGE1D_BUFFER) {
-                //! \note This extra line is necessary to make sure that subbuffer
-                //! allocation is a synch operation,
-                //! due to a possible realloc of heap(no VM) or parent(UHP)
-                amd::ScopedLock k(lockAsyncOps());
-
-                //! @note: For now make sure the parent is allocated in the global heap
-                //! or if it's the UHP optimization for prepinned memory
-                if (((gpuParent->hb() == NULL) || uhpAlloc) &&
-                    !owner.parent()->reallocedDeviceMemory(this)) {
-                    if (reallocMemory(*owner.parent())) {
-                        gpuParent = getGpuMemory(owner.parent());
-                    }
-                    else {
-                        LogError("Can't reallocate the owner object for subbuffer allocation");
-                        return NULL;
-                    }
-                }
-
-                return gpuParent->createBufferView(owner);
-            }
-            else {
-                gpuParent = getGpuMemory(owner.parent()->parent());
-                return gpuParent->createBufferView(*owner.parent()->parent());
-            }
-        }
-        else {
-            return gpuParent->createBufferView(owner);
-        }
+        return gpuParent->createBufferView(owner);
     }
 
     Resource::MemoryType    type = (owner.forceSysMemAlloc() || (owner.getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) ?
@@ -1550,138 +1311,123 @@ Device::createBuffer(
     }
 
     // Use direct access if it's possible
-    if (bufferAlloc || (type == Resource::Remote)) {
-        bool    forceHeapAlloc = false;
-        bool    remoteAlloc = false;
-        // Internal means VirtualDevice!=NULL
-        bool    internalAlloc = ((owner.getMemFlags() & CL_MEM_USE_HOST_PTR) &&
-              (owner.getVirtualDevice() != NULL)) ? true : false;
+    bool    remoteAlloc = false;
+    // Internal means VirtualDevice!=NULL
+    bool    internalAlloc = ((owner.getMemFlags() & CL_MEM_USE_HOST_PTR) &&
+            (owner.getVirtualDevice() != NULL)) ? true : false;
 
-        // Create a memory object
-        gpuMemory = new gpu::Buffer(*this, owner, owner.getSize());
-        if (NULL == gpuMemory) {
-            return NULL;
-        }
+    // Create a memory object
+    gpuMemory = new gpu::Buffer(*this, owner, owner.getSize());
+    if (NULL == gpuMemory) {
+        return NULL;
+    }
 
-        // Check if owner is interop memory
-        if (owner.isInterop()) {
-            result = gpuMemory->createInterop(Memory::InteropDirectAccess);
-        }
-        else if (owner.getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
-            // Attempt to allocate from persistent heap
-            result = gpuMemory->create(Resource::Persistent);
-        }
-        else if (directAccess || (type == Resource::Remote)) {
-            // Check for system memory allocations
-            if ((owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_HOST_PTR))
-                || (settings().remoteAlloc_)) {
-                // Allocate remote memory if AHP allocation and context has just 1 device
-                if ((owner.getMemFlags() & CL_MEM_ALLOC_HOST_PTR) &&
-                    (owner.getContext().devices().size() == 1)) {
-                    if (owner.getMemFlags() & (CL_MEM_READ_ONLY |
-                        CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-                        // GPU will be reading from this host memory buffer,
-                        // so assume Host write into it
-                        type = Resource::RemoteUSWC;
-                        remoteAlloc = true;
-                    }
+    // Check if owner is interop memory
+    if (owner.isInterop()) {
+        result = gpuMemory->createInterop(Memory::InteropDirectAccess);
+    }
+    else if (owner.getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
+        // Attempt to allocate from persistent heap
+        result = gpuMemory->create(Resource::Persistent);
+    }
+    else if (directAccess || (type == Resource::Remote)) {
+        // Check for system memory allocations
+        if ((owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_HOST_PTR))
+            || (settings().remoteAlloc_)) {
+            // Allocate remote memory if AHP allocation and context has just 1 device
+            if ((owner.getMemFlags() & CL_MEM_ALLOC_HOST_PTR) &&
+                (owner.getContext().devices().size() == 1)) {
+                if (owner.getMemFlags() & (CL_MEM_READ_ONLY |
+                    CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+                    // GPU will be reading from this host memory buffer,
+                    // so assume Host write into it
+                    type = Resource::RemoteUSWC;
+                    remoteAlloc = true;
                 }
-                // Make sure owner has a valid hostmem pointer and it's not COPY
-                if (!remoteAlloc && (owner.getHostMem() != NULL)) {
-                    Resource::PinnedParams params;
-                    params.owner_ = &owner;
-                    params.gpu_ =
-                        reinterpret_cast<VirtualGPU*>(owner.getVirtualDevice());
+            }
+            // Make sure owner has a valid hostmem pointer and it's not COPY
+            if (!remoteAlloc && (owner.getHostMem() != NULL)) {
+                Resource::PinnedParams params;
+                params.owner_ = &owner;
+                params.gpu_ =
+                    reinterpret_cast<VirtualGPU*>(owner.getVirtualDevice());
 
-                    params.hostMemRef_  = owner.getHostMemRef();
-                    params.size_        = owner.getHostMemRef()->size();
-                    if (0 == params.size_) {
-                        params.size_ = owner.getSize();
-                    }
-                    // Create memory object
-                    result = gpuMemory->create(Resource::Pinned, &params);
+                params.hostMemRef_  = owner.getHostMemRef();
+                params.size_        = owner.getHostMemRef()->size();
+                if (0 == params.size_) {
+                    params.size_ = owner.getSize();
+                }
+                // Create memory object
+                result = gpuMemory->create(Resource::Pinned, &params);
 
-                    // If direct access failed
-                    if (!result) {
-                        // and VM off, then force a heap allocation
-                        if (!heap()->isVirtual()) {
-                            // Internal pinning doesn't need a heap allocation
-                            if (!internalAlloc) {
-                                forceHeapAlloc = true;
-                            }
-                        }
-                        // Don't use cached allocation
-                        // if size is biger than max single alloc
-                        if (owner.getSize() > info().maxMemAllocSize_) {
-                            delete gpuMemory;
-                            return NULL;
-                        }
+                // If direct access failed
+                if (!result) {
+                    // Don't use cached allocation
+                    // if size is biger than max single alloc
+                    if (owner.getSize() > info().maxMemAllocSize_) {
+                        delete gpuMemory;
+                        return NULL;
                     }
                 }
             }
         }
+    }
 
-        if (!result && !forceHeapAlloc &&
-            // Make sure it's not internal alloc
-            !internalAlloc) {
-            Resource::CreateParams  params;
-            params.owner_ = &owner;
-            params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
+    if (!result &&
+        // Make sure it's not internal alloc
+        !internalAlloc) {
+        Resource::CreateParams  params;
+        params.owner_ = &owner;
+        params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
 
-            // Create memory object
-            result = gpuMemory->create(type, &params);
+        // Create memory object
+        result = gpuMemory->create(type, &params);
 
-            // If allocation was successful
-            if (result) {
-                // Initialize if the memory is a pipe object
-                if (owner.getType() == CL_MEM_OBJECT_PIPE) {
-                    // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
-                    // Init with 3 DWORDS for 32bit addressing and 6 DWORDS for 64bit
-                    size_t pipeInit[3] = {0 , 0, owner.asPipe()->getMaxNumPackets()};
-                    gpuMemory->writeRawData(*xferQueue_, sizeof(pipeInit), pipeInit, true);
+        // If allocation was successful
+        if (result) {
+            // Initialize if the memory is a pipe object
+            if (owner.getType() == CL_MEM_OBJECT_PIPE) {
+                // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
+                // Init with 3 DWORDS for 32bit addressing and 6 DWORDS for 64bit
+                size_t pipeInit[3] = {0 , 0, owner.asPipe()->getMaxNumPackets()};
+                gpuMemory->writeRawData(*xferQueue_, sizeof(pipeInit), pipeInit, true);
+            }
+            // If memory has direct access from host, then get CPU address
+            if (gpuMemory->isHostMemDirectAccess() &&
+                (type != Resource::ExternalPhysical)) {
+                void* address = gpuMemory->map(NULL);
+                if (address != NULL) {
+                    // Copy saved memory
+                    if (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) {
+                        memcpy(address, owner.getHostMem(), owner.getSize());
+                    }
+                    // It should be safe to change the host memory pointer,
+                    // because it's lock protected from the upper caller
+                    owner.setHostMem(address);
                 }
-                // If memory has direct access from host, then get CPU address
-                if (gpuMemory->isHostMemDirectAccess() &&
-                   (type != Resource::ExternalPhysical)) {
-                    void* address = gpuMemory->map(NULL);
-                    if (address != NULL) {
-                        // Copy saved memory
-                        if (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) {
-                            memcpy(address, owner.getHostMem(), owner.getSize());
-                        }
-                        // It should be safe to change the host memory pointer,
-                        // because it's lock protected from the upper caller
-                        owner.setHostMem(address);
-                    }
-                    else {
-                        result = false;
-                    }
-                }
-                // An optimization for CHP. Copy memory and destroy sysmem allocation
-                else if ((gpuMemory->memoryType() != Resource::Pinned) &&
-                         (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
-                         (owner.getContext().devices().size() == 1)) {
-                    amd::Coord3D    origin(0, 0, 0);
-                    amd::Coord3D    region(owner.getSize());
-                    static const bool Entire  = true;
-                    if (xferMgr().writeBuffer(owner.getHostMem(),
-                        *gpuMemory, origin, region, Entire)) {
-                        // Clear CHP memory
-                        owner.setHostMem(NULL);
-                    }
+                else {
+                    result = false;
                 }
             }
-        }
-
-        if (!result && !forceHeapAlloc) {
-            delete gpuMemory;
-            return NULL;
+            // An optimization for CHP. Copy memory and destroy sysmem allocation
+            else if ((gpuMemory->memoryType() != Resource::Pinned) &&
+                        (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
+                        (owner.getContext().devices().size() == 1)) {
+                amd::Coord3D    origin(0, 0, 0);
+                amd::Coord3D    region(owner.getSize());
+                static const bool Entire  = true;
+                if (xferMgr().writeBuffer(owner.getHostMem(),
+                    *gpuMemory, origin, region, Entire)) {
+                    // Clear CHP memory
+                    owner.setHostMem(NULL);
+                }
+            }
         }
     }
 
     if (!result) {
-        assert(!heap()->isVirtual() && "Can't have static heap allocation with VM");
-        gpuMemory = createBufferFromHeap(owner);
+        delete gpuMemory;
+        return NULL;
     }
 
     return gpuMemory;
@@ -1703,10 +1449,10 @@ Device::createImage(amd::Memory& owner, bool directAccess) const
         }
         // Create a view on the specified device
         gpuImage = (gpu::Memory*)createView(owner, *devParent);
-        if (heap()->isVirtual() && (NULL != gpuImage) && (gpuImage->owner() != NULL)) {
+        if ((NULL != gpuImage) && (gpuImage->owner() != NULL)) {
             gpuImage->owner()->setHostMem((address)(owner.parent()->getHostMem()) + gpuImage->owner()->getOrigin());
         }
-        return gpuImage ;
+        return gpuImage;
     }
 
     gpuImage = new gpu::Image(*this, owner,
@@ -1778,11 +1524,11 @@ Device::createImage(amd::Memory& owner, bool directAccess) const
                  (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
                  (owner.getContext().devices().size() == 1)) {
             // Ignore copy for image1D_buffer, since it was already done for buffer
-            if (heap()->isVirtual() && imageBuffer) {
+            if (imageBuffer) {
                 // Clear CHP memory
                 owner.setHostMem(NULL);
             }
-            else if (!imageBuffer) {
+            else {
                 amd::Coord3D    origin(0, 0, 0);
                 static const bool Entire  = true;
                 if (xferMgr().writeImage(owner.getHostMem(),
@@ -1809,25 +1555,12 @@ Device::createMemory(
     amd::Memory&    owner) const
 {
     bool directAccess   = false;
-    bool bufferAlloc    = false;
     gpu::Memory* memory = NULL;
-
-    if (heap()->isVirtual()) {
-        bufferAlloc = true;
-    }
-    //!@todo Remove this code when VM is always on.
-    // Use zero-copy transfers for sysmem allocations or persistent memory
-    else {
-        if (owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR |
-                                   CL_MEM_USE_HOST_PTR)) {
-            bufferAlloc = true;
-        }
-    }
 
     if (owner.asBuffer()) {
         directAccess = (settings().hostMemDirectAccess_ & Settings::HostMemBuffer)
             ? true : false;
-        memory = createBuffer(owner, directAccess, bufferAlloc);
+        memory = createBuffer(owner, directAccess);
     }
     else if (owner.asImage()) {
         directAccess = (settings().hostMemDirectAccess_ & Settings::HostMemImage)
@@ -1878,7 +1611,6 @@ bool
 Device::reallocMemory(amd::Memory& owner) const
 {
     bool directAccess   = false;
-    bool bufferAlloc    = heap()->isVirtual();
 
     // For now we have to serialize reallocation code
     amd::ScopedLock lk(*lockAsyncOps_);
@@ -1889,35 +1621,18 @@ Device::reallocMemory(amd::Memory& owner) const
     if (gpuMemory == NULL) {
         return false;
     }
-    if (gpuMemory->hb() != NULL) {
+
+    if (gpuMemory->pinOffset() == 0) {
         return true;
     }
-
-    if (bufferAlloc) {
-        if (gpuMemory->pinOffset() == 0) {
-            return true;
-        }
-        else if (NULL != owner.parent()) {
-            if (!reallocMemory(*owner.parent())) {
-                return false;
-            }
+    else if (NULL != owner.parent()) {
+        if (!reallocMemory(*owner.parent())) {
+            return false;
         }
     }
 
     if (owner.asBuffer()) {
-        // Disable remote allocation if no VM
-        if ((gpuMemory != NULL) &&
-            ((gpuMemory->memoryType() == Resource::Remote) ||
-             (gpuMemory->memoryType() == Resource::RemoteUSWC)) && !bufferAlloc) {
-            // Make sure we don't have a stale memory in VA cache before reallocation
-            // of system memory.
-            // \note: the app must unmap() memory before kernel launch
-            removeVACache(gpuMemory);
-            static const bool forceAllocHostMem = true;
-            static const bool forceCopy = true;
-            owner.allocHostMemory(owner.getHostMem(), forceAllocHostMem, forceCopy);
-        }
-        gpuMemory = createBuffer(owner, directAccess, bufferAlloc);
+        gpuMemory = createBuffer(owner, directAccess);
     }
     else if (owner.asImage()) {
         return true;
@@ -2113,24 +1828,18 @@ Device::globalFreeMemory(size_t* freeMemory) const
     if (!(const_cast<Device*>(this)->initializeHeapResources())) {
         return false;
     }
-    if (heap()->isVirtual()) {
-        gslMemInfo memInfo = {0};
-        gslCtx()->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
 
-         // Fill free memory info
-        freeMemory[TotalFreeMemory] = (memInfo.cardMemAvailableBytes +
-            memInfo.cardExtMemAvailableBytes) / Ki;
-        freeMemory[LargestFreeBlock] = std::max(memInfo.cardLargestFreeBlockBytes,
-           memInfo.cardExtLargestFreeBlockBytes) / Ki;
-        if (settings().apuSystem_) {
-            freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
-            freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
-        }
-    }
-    else {
-        freeMemory[TotalFreeMemory] = static_cast<size_t>((info().globalMemSize_ -
-            static_cast<cl_ulong>(heapSize_) + heap()->freeSpace()) / Ki);
-        freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
+    gslMemInfo memInfo = {0};
+    gslCtx()->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
+
+        // Fill free memory info
+    freeMemory[TotalFreeMemory] = (memInfo.cardMemAvailableBytes +
+        memInfo.cardExtMemAvailableBytes) / Ki;
+    freeMemory[LargestFreeBlock] = std::max(memInfo.cardLargestFreeBlockBytes,
+        memInfo.cardExtLargestFreeBlockBytes) / Ki;
+    if (settings().apuSystem_) {
+        freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
+        freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
     }
 
     return true;
