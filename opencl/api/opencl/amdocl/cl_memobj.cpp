@@ -345,8 +345,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (
     bool sizePass = false;
     for (auto& dev : devices) {
         if ((dev->info().maxMemAllocSize_ >= size) ||
-            ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) &&
-             dev->settings().largeHostMemAlloc_)) {
+            (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
             sizePass = true;
             break;
         }

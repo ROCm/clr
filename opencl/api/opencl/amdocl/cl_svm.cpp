@@ -147,8 +147,7 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (
         }
         combinedSvmCapabilities |= svmCapabilities;
 
-        if (((*it)->info().maxMemAllocSize_ >= size) ||
-                (*it)->settings().largeHostMemAlloc_) {
+        if ((*it)->info().maxMemAllocSize_ >= size) {
             sizePass = true;
         }
 
