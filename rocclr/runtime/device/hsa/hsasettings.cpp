@@ -62,7 +62,8 @@ Settings::create(bool doublePrecision)
         // Also enable AMD double precision extension?
         enableExtension(ClAmdFp64);
     }
-    enableExtension(ClKhrIlProgram);
+    // ToDo: enable this after conformance test is updated to accept it
+    // enableExtension(ClKhrIlProgram);
 
     // Override current device settings
     override();
