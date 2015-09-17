@@ -92,7 +92,6 @@ private:
     devicelist_t deviceList_;
 
     std::string     programLog_;        //!< Log for parsing options, etc.
-    bool            firstBuildNoOpt_;   //!< Build program without optimizations
 
 protected:
     //! Destroy this program.
@@ -112,7 +111,6 @@ public:
         , isIL_(isIL)
         , symbolTable_(NULL)
         , programLog_()
-        , firstBuildNoOpt_(true)
     { }
 
     //! Construct a new program associated with a context.
@@ -186,9 +184,6 @@ public:
         void (CL_CALLBACK * notifyFptr)(cl_program, void *) = NULL,
         void* data = NULL,
         bool optionChangable = true);
-
-    //! Build the program for the given devices without noalias optimization
-    bool buildNoOpt(const Device& device, const std::string& kernelName);
 
     //! RTTI internal implementation
     virtual ObjectType objectType() const {return ObjectTypeProgram;}
