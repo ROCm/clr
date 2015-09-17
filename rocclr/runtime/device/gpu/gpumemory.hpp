@@ -8,7 +8,6 @@
 #include "top.hpp"
 #include "thread/atomic.hpp"
 #include "device/gpu/gpuresource.hpp"
-#include "device/gpu/gpuheap.hpp"
 #include "device/gpu/gpudevice.hpp"
 #include <map>
 
@@ -27,7 +26,6 @@ class Heap;
 class Resource;
 class Memory;
 class VirtualGPU;
-class HeapBlock;
 
 //! GPU memory object.
 //  Wrapper that can contain a heap block or an interop buffer/image.
@@ -44,13 +42,7 @@ public:
     Memory(
         const Device&   gpuDev,
         amd::Memory&    owner,
-        HeapBlock*      hb,
         size_t          size = 0);
-
-    //! Constructor (nonfat version for local scratch mem use)
-    Memory(
-        const Device&   gpuDev,
-        HeapBlock&      hb);
 
     //! Constructor (nonfat version for local scratch mem use without heap block)
     Memory(
@@ -101,12 +93,6 @@ public:
 
     //! Default destructor
     ~Memory();
-
-    //! Reallocates the memory object in the new heap block
-    bool reallocate(
-        HeapBlock*      hb,     //! The new heap block for this memory object
-        const Resource* parent  //! Parent resource for view reallocaiton
-        );
 
     //! Creates the interop memory
     bool createInterop(
@@ -189,9 +175,6 @@ public:
     //! Sets interop type for this memory object
     void setInteropType(InteropType type) { interopType_ = type; }
 
-    //! Returns the HeapBlock pointer
-    const HeapBlock* hb() const { return hb_; }
-
     //! Set the owner
     void setOwner(amd::Memory* owner) { owner_ = owner; }
 
@@ -229,7 +212,6 @@ private:
     InteropType interopType_;   //!< Interop type
     Memory*     interopMemory_; //!< interop memory
 
-    HeapBlock*  hb_;            //!< Heap Block, or NULL if not in-heap memory
     Memory*     pinnedMemory_;  //!< Memory used as pinned system memory
     const Memory*   parent_;        //!< Parent memory object
 };

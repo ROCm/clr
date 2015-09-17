@@ -50,10 +50,6 @@ Settings::Settings()
     maxRenames_         = 16;
     maxRenameSize_      = 4 * Mi;
 
-    // The global heap settings
-    heapSize_           = GPU_INITIAL_HEAP_SIZE * Mi;
-    heapSizeGrowth_     = GPU_HEAP_GROWTH_INCREMENT * Mi;
-
     imageSupport_       = false;
     hwLDSSize_          = 0;
 

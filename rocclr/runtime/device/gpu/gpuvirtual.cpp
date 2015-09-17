@@ -517,10 +517,6 @@ VirtualGPU::create(
             // Fall through ...
         case Settings::BlitEngineCAL:
         case Settings::BlitEngineKernel:
-            if (!dev().heap()->isVirtual()) {
-                blitSetup.disableReadBufferRect_    = true;
-                blitSetup.disableWriteBufferRect_   = true;
-            }
             // use host blit for HW debug
             if (dev().settings().enableHwDebug_) {
                 blitSetup.disableCopyImageToBuffer_   = true;
@@ -3166,23 +3162,21 @@ VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* waitingE
 bool
 VirtualGPU::addVmMemory(const Resource* resource)
 {
-    if (dev().heap()->isVirtual()) {
-        uint*    cnt = &cal_.memCount_;
-        (*cnt)++;
-        // Reallocate array if kernel uses more memory objects
-        if (numVmMems_ < *cnt) {
-            gslMemObject* tmp;
-            tmp = new gslMemObject [*cnt];
-            if (tmp == NULL) {
-                return false;
-            }
-            memcpy(tmp, vmMems_, sizeof(gslMemObject) * numVmMems_);
-            delete [] vmMems_;
-            vmMems_ = tmp;
-            numVmMems_ = *cnt;
+    uint*    cnt = &cal_.memCount_;
+    (*cnt)++;
+    // Reallocate array if kernel uses more memory objects
+    if (numVmMems_ < *cnt) {
+        gslMemObject* tmp;
+        tmp = new gslMemObject [*cnt];
+        if (tmp == NULL) {
+            return false;
         }
-        vmMems_[*cnt - 1] = resource->gslResource();
+        memcpy(tmp, vmMems_, sizeof(gslMemObject) * numVmMems_);
+        delete [] vmMems_;
+        vmMems_ = tmp;
+        numVmMems_ = *cnt;
     }
+    vmMems_[*cnt - 1] = resource->gslResource();
 
     return true;
 }

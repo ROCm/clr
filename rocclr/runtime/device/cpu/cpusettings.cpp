@@ -10,8 +10,6 @@ namespace cpu {
 bool
 Settings::create()
 {
-    largeHostMemAlloc_ = true;
-
     // This code is temporary until cl_khr_fp64 is unconditional
     if (flagIsDefault(CL_KHR_FP64) || CL_KHR_FP64) {
         enableExtension(ClKhrFp64);

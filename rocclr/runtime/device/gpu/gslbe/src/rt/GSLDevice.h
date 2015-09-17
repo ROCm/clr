@@ -97,13 +97,9 @@ public:
     const CALdeviceattribs& getAttribs() const { return m_attribs; }
     const gslMemInfo& getMemInfo() const { return m_memInfo; }
 
-    bool             isVmMode() const { return m_vmMode; };
-
     uint32           getVPUMask() const { return m_vpuMask; }
     bool             canDMA() const { return m_canDMA; }
     gslMemObject     m_srcDRMDMAMem, m_dstDRMDMAMem;    // memory object of flush buffer, used for DRMDMA flush
-
-    void             resCopy(gslMemObject srcRes, gslMemObject dstRes, uint32 flags) const;
 
     void             PerformAdapterInitialization() const;
     void             PerformFullInitialization() const;
@@ -211,7 +207,6 @@ private:
             uint    m_computeRing           : 1;
             uint    m_usePerVPUAdapterModel : 1;
             uint    m_PerformLazyDeviceInit : 1;
-            uint    m_vmMode                : 1;
             uint    m_isComputeRingIDForced : 1;
         };
     };

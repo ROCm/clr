@@ -82,8 +82,6 @@ public:
     size_t  stagedXferSize_;    //!< Staged buffer size
     uint    maxRenames_;        //!< Maximum number of possible renames
     uint    maxRenameSize_;     //!< Maximum size for all renames
-    size_t  heapSize_;          //!< The global heap size
-    size_t  heapSizeGrowth_;    //!< The global heap size growth
     uint    hwLDSSize_;         //!< HW local data store size
     uint    maxWorkGroupSize_;  //!< Requested workgroup size for this device
     uint    hostMemDirectAccess_;   //!< Enables direct access to the host memory

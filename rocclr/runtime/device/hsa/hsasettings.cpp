@@ -34,7 +34,6 @@ Settings::Settings()
 bool
 Settings::create(bool doublePrecision)
 {
-    largeHostMemAlloc_ = true;
     customHostAllocator_ = true;
 
     // Enable extensions

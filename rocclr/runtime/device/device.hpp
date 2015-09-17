@@ -577,13 +577,12 @@ public:
         struct {
             uint    partialDispatch_: 1;    //!< Enables partial dispatch
             uint    supportRA_: 1;          //!< Support RA channel order format
-            uint    largeHostMemAlloc_: 1;  //!< Allow large host mem allocations (> maxSingleAlloc)
             uint    waitCommand_: 1;        //!< Enables a wait for every submitted command
             uint    customHostAllocator_: 1;//!< True if device has custom host allocator
                                             //  that replaces generic OS allocation routines
             uint    supportDepthsRGB_: 1;   //!< Support DEPTH and sRGB channel order format
             uint    enableHwDebug_: 1;      //!< Enable HW debug support
-            uint    reserved_: 25;
+            uint    reserved_: 26;
         };
         uint    value_;
     };

@@ -209,15 +209,6 @@ public:
      */
     virtual bool create(
         MemoryType  memType,        //!< memory type
-        CreateParams*   params = 0, //!< special parameters for resource allocation
-        bool        heap = false    //!< Global heap allocation for not VM mode
-        );
-
-    /*! \brief Reallocates a CAL object, associated with the resource
-     *
-     *  \return True if we succesfully reallocated a CAL resource
-     */
-    bool reallocate(
         CreateParams*   params = 0  //!< special parameters for resource allocation
         );
 

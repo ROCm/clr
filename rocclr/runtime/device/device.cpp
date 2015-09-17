@@ -517,7 +517,6 @@ Settings::Settings()
     extensions_          = 0;
     partialDispatch_     = false;
     supportRA_           = true;
-    largeHostMemAlloc_   = false;
     customHostAllocator_ = false;
     waitCommand_         = AMD_OCL_WAIT_COMMAND;
     supportDepthsRGB_    = false;

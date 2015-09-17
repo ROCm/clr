@@ -496,7 +496,7 @@ CALGSLDevice::SetupContext(int32 &asic_id)
     getAttribs_int(temp_cs);
     temp_cs->getMemInfo(&m_memInfo, GSL_MEMINFO_BASIC);
 
-    m_vmMode = temp_cs->getVMMode();
+    assert(temp_cs->getVMMode());
 
     m_adp->deleteContext(temp_cs);
 
@@ -1311,38 +1311,6 @@ CALGSLDevice::PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFm
     m_cs->DMACopy(srcMem, 0, destMem, 0, surfaceSize, mode, NULL);
 
     return true;
-}
-
-void
-CALGSLDevice::resCopy(gslMemObject srcRes, gslMemObject dstRes, uint32 flags) const
-{
-    assert(m_cs != 0);
-    assert(srcRes != 0);
-    assert(dstRes != 0);
-
-    //! @note: GSL device isn't thread safe
-    amd::ScopedLock k(gslDeviceOps());
-
-    uint64 surfaceSize;
-
-    CopyType type = GetCopyType(srcRes, dstRes, 0, 0, m_allowDMA, 0, surfaceSize, 0, 0);
-
-    if (type == USE_DRMDMA)
-    {
-        m_cs->DMACopy(srcRes, 0, dstRes, 0, surfaceSize, GSL_SYNCUPLOAD_SYNC_WAIT, NULL);
-        m_cs->Flush();
-        Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
-    }
-    else if (type == USE_CPDMA)
-    {
-        m_cs->syncUploadRaw(srcRes, 0, dstRes, 0, surfaceSize, 0);
-        m_cs->Flush();
-        Wait(m_cs, GSL_SYNC_ATI, m_mapQuery);
-    }
-    else
-    {
-        assert(0 && "No copy engine is being used");
-    }
 }
 
 #define CPDMA_THRESHOLD 131072

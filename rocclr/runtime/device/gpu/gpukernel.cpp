@@ -824,17 +824,6 @@ Kernel::create(
     // Initialize the kernel parameters
     bool    result = initParameters();
 
-    if (!dev().heap()->isVirtual()) {
-        amd::option::Options *options = nullProg().getCompilerOptions();
-        // @todo Remove this. This is a hack for no VM mode
-        if (!options->oVariables->EnableDumpKernel) {
-            if (!name().compare(BlitName[KernelBlitManager::BlitCopyImageToBuffer]) ||
-                !name().compare(BlitName[KernelBlitManager::BlitCopyBufferToImage])) {
-                blitKernelHack_ = true;
-            }
-        }
-    }
-
     // Wave limiter needs to be initialized after kernel metadata is parsed
     // Since it depends on it.
     waveLimiter_.enable();
@@ -855,7 +844,6 @@ Kernel::Kernel(
     const Program&      prog,
     const InitData*     initData)
     : NullKernel(name, gpuDev, prog)
-    , blitKernelHack_(false)
     , waveLimiter_(this)
 {
     hwPrivateSize_ = 0;
@@ -1603,10 +1591,6 @@ Kernel::debug(VirtualGPU& gpu) const
 {
     std::fstream    stubWrite;
     address         src = NULL;
-    if (!dev().heap()->isVirtual()) {
-        src  = reinterpret_cast<address>
-            (const_cast<Resource&>(dev().globalMem()).map(&gpu));
-    }
 
     std::cerr << "--- " << name_ << " ---" << std::endl;
     for (uint i = 0; i < arguments_.size(); ++i) {
@@ -1688,9 +1672,6 @@ Kernel::debug(VirtualGPU& gpu) const
             (it->second)->unmap(&gpu);
             stubWrite.close();
         }
-    }
-    if (!dev().heap()->isVirtual()) {
-        const_cast<Resource&>(dev().globalMem()).unmap(&gpu);
     }
 }
 
@@ -1824,18 +1805,10 @@ Kernel::setArgument(
                     type = ArgumentBuffer;
                 }
                 else {
-                    if (blitKernelHack_) {
-                        // Bind global buffer to UAV this buffer is bound to
-                        if (!bindResource(gpu, *gpuMem, 0, GlobalBuffer, uavRaw_)) {
-                            return false;
-                        }
-                    }
-                    else {
-                        // Bind global buffer to UAV this buffer is bound to
-                        if (!bindResource(gpu, dev().globalMem(), 0,
-                            GlobalBuffer, uavRaw_)) {
-                            return false;
-                        }
+                    // Bind global buffer to UAV this buffer is bound to
+                    if (!bindResource(gpu, dev().globalMem(), 0,
+                        GlobalBuffer, uavRaw_)) {
+                        return false;
                     }
                 }
 
@@ -1848,11 +1821,9 @@ Kernel::setArgument(
 
                 // Update offset only if we bind HeapBuffer or
                 // it's global address space in UAV setup on SI+
-                if (!blitKernelHack_) {
-                    offset += gpuMem->hbOffset();
-                    if (!forceZeroOffset) {
-                        assert((offset != 0) && "Offset 0 with a real allocation!");
-                    }
+                offset += gpuMem->hbOffset();
+                if (!forceZeroOffset) {
+                    assert((offset != 0) && "Offset 0 with a real allocation!");
                 }
                 gpu.addVmMemory(gpuMem);
             }
@@ -2253,10 +2224,9 @@ Kernel::bindResource(
 
     gslMemObject gslMem = NULL;
     // Use global address space on SI+ for UAV setup
-    if (((type == ArgumentBuffer) || (type == ArgumentCbID) ||
-         (type == ArgumentUavID) || (type == ArgumentPrintfID)) &&
-        !blitKernelHack_) {
-        gslMem = dev().heap()->resource().gslResource();
+    if ((type == ArgumentBuffer) || (type == ArgumentCbID) ||
+        (type == ArgumentUavID) || (type == ArgumentPrintfID)) {
+        gslMem = dev().heap().resource().gslResource();
     }
     else {
         gslMem = resource.gslResource();
@@ -2803,7 +2773,7 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
         case KernelArg::PointerPrivate:
             // Check if can't use a dedicated UAV,
             // so realloc memory in the heap
-            arg->memory_.realloc_ = isRealloc();
+            arg->memory_.realloc_ = false;
             arg->memory_.uavBuf_ = true;
             break;
         case KernelArg::PointerHwConst:
