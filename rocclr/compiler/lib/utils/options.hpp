@@ -198,10 +198,11 @@ class Options {
 public:
     std::string origOptionStr;
 
-    OptionVariables *oVariables;  // pointer to a struct of all option variables
-    std::string clcOptions;       // options passed into EDG frontend (clc)
-    std::vector<std::string> clangOptions;     // Options passed into Clang frontend.
-    std::string llvmOptions;      // options passed into backend (llvm)
+    OptionVariables *oVariables;                // pointer to a struct of all option variables
+    std::string clcOptions;                     // options passed into EDG frontend (clc)
+    std::vector<std::string> clangOptions;      // options passed into Clang frontend
+    std::string llvmOptions;                    // options passed into backend (llvm)
+    std::vector<std::string> finalizerOptions;  // options passed into finalizer
 
     // Given as build option
     int WorkGroupSize[3];         // -1: use default
@@ -279,6 +280,8 @@ public:
     // Set the option variables same as defined in "other"
     bool setOptionVariablesAs(const Options& other);
 
+    std::string getFinalizerOptions() { return getStringFromStringVec(finalizerOptions); }
+
 private:
     std::string fullPath, baseName;
     long basename_max;
@@ -310,7 +313,9 @@ private:
                 (f & DUMP_ENCRYPT));
     }
 
+    std::string getStringFromStringVec(std::vector<std::string>& stringVec);
     void setDumpFileName(const char* val);
+
 public:
     LibrarySelector libraryType_;
     std::string sourceFileName_;
