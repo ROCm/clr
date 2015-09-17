@@ -526,6 +526,14 @@ OPTION(OT_CSTRING, \
         0, 0, 0, NULL, \
         "Pass comma-separated <options> to the backend (llvm)")
 
+// -Wh,<options>  : pass comma-separated <options> to the finalizer (sc)
+OPTION(OT_CSTRING, \
+        OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_NONE, \
+        "Wh,", NULL, \
+        WHComma, \
+        0, 0, 0, NULL, \
+        "Pass comma-separated <options> to the finalizer (sc)")
+
 // -O[0|1|2|3|4|5]
 OPTION(OT_UINT32, \
        OA_RUNTIME|OVA_OPTIONAL|OA_SEPARATOR_NONE, \

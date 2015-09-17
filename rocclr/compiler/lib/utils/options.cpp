@@ -267,7 +267,7 @@ ShowOptionsHelp(const char* helpValue, Options& Opts)
         std::string pntVal;
         switch (OPTION_type(od)) {
         case OT_CSTRING:
-            if ((i == OID_WFComma) || (i == OID_WBComma)) {
+            if ((i == OID_WFComma) || (i == OID_WBComma) || (i == OID_WHComma)) {
                 pntVal = "<options>";
             }
             else if (i == OID_SaveTemps) {
@@ -858,6 +858,7 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
 
     case OID_WFComma:
     case OID_WBComma:
+    case OID_WHComma:
         if (sval != NULL) {
             // we know that sval was new'ed
             for (char* p=(char*)sval; *p; ++p) {
@@ -877,6 +878,9 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
             else if (((OptionIdentifier)OptDescTableIx) == OID_WBComma) {
                 Opts.llvmOptions.append(" ");
                 Opts.llvmOptions.append(sval);
+            }
+            else if (((OptionIdentifier)OptDescTableIx) == OID_WHComma) {
+                  Opts.finalizerOptions.push_back(sval);
             }
         }
         break;
@@ -1585,6 +1589,14 @@ bool Options::setOptionVariablesAs(const Options& other)
     }
 
     return true;
+}
+
+std::string Options::getStringFromStringVec(std::vector<std::string>& stringVec)
+{
+    const char* const delim = " ";
+    std::ostringstream strstr;
+    std::copy(stringVec.begin(), stringVec.end(), std::ostream_iterator<std::string>(strstr, delim));
+    return strstr.str();
 }
 
 } // option
