@@ -41,6 +41,11 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   // Following are the options passed to the ClangOCLFE library
   // and then to Clang itself.
 
+  // handle -O0
+  if (amdOpts && amdOpts->origOptionStr.find("-O0") != std::string::npos) {
+    amdOpts->clangOptions.push_back("-O0");
+  }
+
   // Passing the compiler FE options to clang.
   if (amdOpts) {
     for (std::vector<std::string>::const_iterator it = amdOpts->clangOptions.begin();
@@ -48,6 +53,7 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
       argsToClang.push_back((*it).c_str());
     }
   }
+
   if (Options()->oVariables->ImageSupport) {
     argsToClang.push_back ("-D__IMAGE_SUPPORT__=1 ");
   }
