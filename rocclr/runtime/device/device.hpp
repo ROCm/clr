@@ -1556,7 +1556,7 @@ public:
         ) = 0;
 
     //! Compile the given source code.
-    virtual device::Program* createProgram(int oclVer = 120) = 0;
+    virtual device::Program* createProgram(bool hsail = false) = 0;
 
     //! Allocate a chunk of device memory as a cache for a CL memory object
     virtual device::Memory* createMemory(Memory& owner) const = 0;

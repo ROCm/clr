@@ -67,7 +67,7 @@ public:
         ) { return NULL; }
 
     //! Compile the given source code.
-    virtual device::Program* createProgram(int oclVer = 120);
+    virtual device::Program* createProgram(bool hsail = false);
 
     //! Just returns NULL for the dummy device
     virtual device::Memory* createMemory(amd::Memory& owner) const { return NULL; }
@@ -430,7 +430,7 @@ public:
         ) const;
 
     //! Create the device program.
-    virtual device::Program* createProgram(int oclVer = 120);
+    virtual device::Program* createProgram(bool hsail = false);
 
     //! Attempt to bind with external graphics API's device/context
     virtual bool bindExternalDevice(

@@ -76,7 +76,7 @@ public:
     aclCompiler *compiler() const { return compilerHandle_; }
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
-    virtual device::Program *createProgram(int oclVer = 120);
+    virtual device::Program *createProgram(bool hsail = false);
 
     const AMDDeviceInfo& deviceInfo() const {
         return deviceInfo_;
@@ -246,7 +246,7 @@ public:
         amd::CommandQueue* queue = NULL);
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
-    virtual device::Program *createProgram(int oclVer = 120);
+    virtual device::Program *createProgram(bool hsail = false);
 
     virtual device::Memory *createMemory(amd::Memory &owner) const;
 

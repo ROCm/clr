@@ -415,12 +415,12 @@ Device::getOclHsaMemory(amd::Memory* mem) const
 }
 
 device::Program*
-NullDevice::createProgram(int oclVer) {
+NullDevice::createProgram(bool hsail) {
     return new oclhsa::FSAILProgram(*this);
 }
 
 device::Program*
-Device::createProgram(int oclVer) {
+Device::createProgram(bool hsail) {
     return new oclhsa::FSAILProgram(*this);
 }
 

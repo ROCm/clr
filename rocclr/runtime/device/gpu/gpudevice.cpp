@@ -205,10 +205,10 @@ NullDevice::create(CALtarget target)
 }
 
 device::Program*
-NullDevice::createProgram(int oclVer)
+NullDevice::createProgram(bool hsail)
 {
     device::Program* nullProgram;
-    if (settings().hsail_ || (oclVer == 200)) {
+    if (settings().hsail_ || hsail) {
         nullProgram = new HSAILProgram(*this);
     }
     else {
@@ -1064,10 +1064,10 @@ Device::createVirtualDevice(
 }
 
 device::Program*
-Device::createProgram(int oclVer)
+Device::createProgram(bool hsail)
 {
     device::Program* gpuProgram;
-    if (settings().hsail_ || (oclVer == 200)) {
+    if (settings().hsail_ || hsail) {
         gpuProgram = new HSAILProgram(*this);
     }
     else {
