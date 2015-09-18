@@ -63,7 +63,8 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length, int 
         return CL_SUCCESS;
     }
 
-    device::Program* program = rootDev.createProgram(oclVer);
+    bool hsail = (oclVer >= 200) || isIL_;
+    device::Program* program = rootDev.createProgram(hsail);
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -92,7 +93,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length, int 
 
     devicePrograms_[&rootDev] = program;
 
-    program = rootDev.createProgram(oclVer);
+    program = rootDev.createProgram(hsail);
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }

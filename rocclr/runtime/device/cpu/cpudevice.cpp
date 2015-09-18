@@ -1115,7 +1115,7 @@ Device::partitionByAffinityDomainCacheLevel(
 }
 
 device::Program*
-Device::createProgram(int oclVer)
+Device::createProgram(bool hsail)
 {
     Program* cpuProgram = new Program(*this);
     if (cpuProgram == NULL) {
