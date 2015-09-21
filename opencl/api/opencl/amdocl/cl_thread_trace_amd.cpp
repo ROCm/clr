@@ -8,6 +8,7 @@
 #include "platform/threadtrace.hpp"
 #include <cstring>
 #include <vector>
+#include <memory>
 
 /*! \addtogroup API
  *  @{
@@ -215,7 +216,6 @@ RUNTIME_ENTRY(cl_int, clGetThreadTraceInfoAMD, (
         {
             return amd::clGetInfo(seNum,
                 param_value_size, param_value, param_value_size_ret);
-            break;
         }
     case CL_THREAD_TRACE_BUFFERS_SIZE:
         {
@@ -223,14 +223,34 @@ RUNTIME_ENTRY(cl_int, clGetThreadTraceInfoAMD, (
             if (devThreadTrace == NULL) {
                 return CL_INVALID_OPERATION;
             }
-            unsigned int bufSize2Se[4] = {0};
 
-            if (!devThreadTrace->info(thread_trace_info_param, bufSize2Se, seNum)) {
+            std::unique_ptr<uint> bufSize2Se(new uint[seNum]);
+
+            if (bufSize2Se.get() == NULL) {
+                return CL_OUT_OF_HOST_MEMORY;
+            }
+
+            if (!devThreadTrace->info(thread_trace_info_param, bufSize2Se.get(), seNum)) {
                 return CL_INVALID_VALUE;
             }
-            return amd::clGetInfo(bufSize2Se,
-                param_value_size, param_value, param_value_size_ret);
-            break;
+
+            const size_t valueSize = seNum * sizeof(unsigned int);
+
+            if (param_value != NULL && param_value_size < valueSize) {
+                return CL_INVALID_VALUE;
+            }
+
+            *not_null(param_value_size_ret) = valueSize;
+
+            if (param_value != NULL) {
+                ::memcpy(param_value, bufSize2Se.get(), valueSize);
+                if (param_value_size > valueSize) {
+                    ::memset(static_cast<address>(param_value) + valueSize,
+                        '\0', param_value_size - valueSize);
+                }
+            }
+
+            return CL_SUCCESS;
         }
     }
 
