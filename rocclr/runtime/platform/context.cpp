@@ -40,10 +40,22 @@ Context::Context(
             svmAllocDevice_.push_back(device);
         }
     }
-    //make sure the first device is GPU
-    if ((svmAllocDevice_.size() > 1)
-        && (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)) {
-        std::swap(svmAllocDevice_.front(), svmAllocDevice_.back());
+    if (svmAllocDevice_.size() > 1) {
+        //make sure the CPU is the last device to do allocation.
+        if ((svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)) {
+            std::swap(svmAllocDevice_.front(), svmAllocDevice_.back());
+        }
+
+        uint isFirstDeviceFGSEnabled = svmAllocDevice_.front()->isFineGrainedSystem();
+        for (auto& dev : svmAllocDevice_) {
+            //allocation on fine - grained system incapable device first
+            if (isFirstDeviceFGSEnabled && (dev->type() == CL_DEVICE_TYPE_GPU)
+                && (!(dev->isFineGrainedSystem()))) {
+                std::swap(svmAllocDevice_.front(), dev);
+                break;
+            }
+        }
+
     }
 
 }

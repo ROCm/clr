@@ -1537,6 +1537,11 @@ public:
             CL_DEVICE_SVM_FINE_GRAIN_SYSTEM)) != 0 ? true : false;
     }
 
+    //! check svm FGS support capability.
+    inline bool isFineGrainedSystem() const {
+        return (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true : false;
+    }
+ 
     //! Return this device's type.
     cl_device_type type() const {
         return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT | CL_HSA_ENABLED_AMD
