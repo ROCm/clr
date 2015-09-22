@@ -1013,35 +1013,43 @@ VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd)
     profilingBegin(vcmd);
 
     cl_command_type type = vcmd.type();
-    amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
-    amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
-    if (NULL == srcMem || NULL == dstMem) {
-        vcmd.setStatus(CL_INVALID_OPERATION);
-        return;
+    //no op for FGS supported device
+    if (!dev().isFineGrainedSystem()) {
+
+        amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
+        amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
+        if (NULL == srcMem || NULL == dstMem) {
+            vcmd.setStatus(CL_INVALID_OPERATION);
+            return;
+        }
+
+        amd::Coord3D srcOrigin(0, 0, 0);
+        amd::Coord3D dstOrigin(0, 0, 0);
+        amd::Coord3D size(vcmd.srcSize(), 1, 1);
+        amd::BufferRect srcRect;
+        amd::BufferRect dstRect;
+
+        srcOrigin.c[0] = static_cast<const_address>(vcmd.src()) - static_cast<address>(srcMem->getSvmPtr());
+        dstOrigin.c[0] = static_cast<const_address>(vcmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
+
+        if (!(srcMem->validateRegion(srcOrigin, size)) || !(dstMem->validateRegion(dstOrigin, size))) {
+            vcmd.setStatus(CL_INVALID_OPERATION);
+            return;
+        }
+
+        bool entire = srcMem->isEntirelyCovered(srcOrigin, size) &&
+            dstMem->isEntirelyCovered(dstOrigin, size);
+
+        if (!copyMemory(type, *srcMem, *dstMem, entire,
+            srcOrigin, dstOrigin, size, srcRect, dstRect)) {
+            vcmd.setStatus(CL_INVALID_OPERATION);
+        }
     }
+    else {
+        //direct memcpy for FGS enabled system
+        memcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
 
-    amd::Coord3D srcOrigin(0, 0, 0);
-    amd::Coord3D dstOrigin(0, 0, 0);
-    amd::Coord3D size(vcmd.srcSize(), 1, 1);
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-
-    srcOrigin.c[0] = static_cast<const_address>(vcmd.src()) - static_cast<address>(srcMem->getSvmPtr());
-    dstOrigin.c[0] = static_cast<const_address>(vcmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
-
-    if (!(srcMem->validateRegion(srcOrigin, size)) || !(dstMem->validateRegion(dstOrigin, size))) {
-        vcmd.setStatus(CL_INVALID_OPERATION);
-        return;
     }
-
-    bool entire  = srcMem->isEntirelyCovered(srcOrigin, size) &&
-                   dstMem->isEntirelyCovered(dstOrigin, size);
-
-    if (!copyMemory(type, *srcMem, *dstMem, entire,
-        srcOrigin, dstOrigin, size, srcRect, dstRect)) {
-        vcmd.setStatus(CL_INVALID_OPERATION);
-    }
-
     profilingEnd(vcmd);
 }
 
@@ -1353,25 +1361,28 @@ VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd)
 
     profilingBegin(vcmd, true);
 
-    // Make sure we have memory for the command execution
-    gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
+    //no op for FGS supported device
+    if (!dev().isFineGrainedSystem()) {
+        // Make sure we have memory for the command execution
+        gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
 
-    memory->saveMapInfo(vcmd.origin(), vcmd.size(),
-        vcmd.mapFlags(), vcmd.isEntireMemory());
+        memory->saveMapInfo(vcmd.origin(), vcmd.size(),
+            vcmd.mapFlags(), vcmd.isEntireMemory());
 
-    if (memory->mapMemory() != NULL) {
-        if (vcmd.mapFlags() & (CL_MAP_READ | CL_MAP_WRITE)) {
-            amd::Coord3D dstOrigin(0, 0, 0);
-            assert(memory->cal()->buffer_ && "SVM memory can't be an image");
-            if (!blitMgr().copyBuffer(*memory, *memory->mapMemory(),
-                vcmd.origin(), dstOrigin, vcmd.size(), vcmd.isEntireMemory())) {
-                LogError("submitSVMMapMemory() - copy failed");
-                vcmd.setStatus(CL_MAP_FAILURE);
+        if (memory->mapMemory() != NULL) {
+            if (vcmd.mapFlags() & (CL_MAP_READ | CL_MAP_WRITE)) {
+                amd::Coord3D dstOrigin(0, 0, 0);
+                assert(memory->cal()->buffer_ && "SVM memory can't be an image");
+                if (!blitMgr().copyBuffer(*memory, *memory->mapMemory(),
+                    vcmd.origin(), dstOrigin, vcmd.size(), vcmd.isEntireMemory())) {
+                    LogError("submitSVMMapMemory() - copy failed");
+                    vcmd.setStatus(CL_MAP_FAILURE);
+                }
             }
         }
-    }
-    else {
-        LogError("Unhandled svm map!");
+        else {
+            LogError("Unhandled svm map!");
+        }
     }
 
     profilingEnd(vcmd);
@@ -1384,18 +1395,21 @@ VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& vcmd)
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd, true);
 
-    gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
+    //no op for FGS supported device
+    if (!dev().isFineGrainedSystem()) {
 
-    if (memory->mapMemory() != NULL) {
-        if (memory->isUnmapWrite()) {
-            amd::Coord3D srcOrigin(0, 0, 0);
-            // Target is a remote resource, so copy
-            assert(memory->cal()->buffer_ && "SVM memory can't be an image");
-            if (!blitMgr().copyBuffer(*memory->mapMemory(), *memory, srcOrigin,
-                memory->writeMapInfo()->origin_, memory->writeMapInfo()->region_,
-                memory->writeMapInfo()->entire_)) {
-                LogError("submitSvmUnmapMemory() - copy failed");
-                vcmd.setStatus(CL_OUT_OF_RESOURCES);
+        gpu::Memory* memory = dev().getGpuMemory(vcmd.getSvmMem());
+        if (memory->mapMemory() != NULL) {
+            if (memory->isUnmapWrite()) {
+                amd::Coord3D srcOrigin(0, 0, 0);
+                // Target is a remote resource, so copy
+                assert(memory->cal()->buffer_ && "SVM memory can't be an image");
+                if (!blitMgr().copyBuffer(*memory->mapMemory(), *memory, srcOrigin,
+                    memory->writeMapInfo()->origin_, memory->writeMapInfo()->region_,
+                    memory->writeMapInfo()->entire_)) {
+                    LogError("submitSvmUnmapMemory() - copy failed");
+                    vcmd.setStatus(CL_OUT_OF_RESOURCES);
+                }
             }
         }
     }
@@ -1411,23 +1425,38 @@ VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd)
 
     profilingBegin(vcmd, true);
 
-    amd::Memory* dstMemory = amd::SvmManager::FindSvmBuffer(vcmd.dst());
-    assert(dstMemory&&"No svm Buffer to fill with!");
-    size_t offset = reinterpret_cast<uintptr_t>(vcmd.dst())
-                    - reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
-    assert((offset >= 0)&&"wrong svm ptr to fill with!");
+    size_t patternSize = vcmd.patternSize();
+    size_t fillSize = patternSize * vcmd.times();
+    size_t offset = 0;
 
-    gpu::Memory* memory = dev().getGpuMemory(dstMemory);
-    size_t fillSize = vcmd.patternSize() * vcmd.times();
+    if (!dev().isFineGrainedSystem()) {
+        amd::Memory* dstMemory = amd::SvmManager::FindSvmBuffer(vcmd.dst());
+        assert(dstMemory&&"No svm Buffer to fill with!");
+        offset = reinterpret_cast<uintptr_t>(vcmd.dst())
+            - reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
+        assert((offset >= 0) && "wrong svm ptr to fill with!");
 
-    amd::Coord3D    origin(offset, 0, 0);
-    amd::Coord3D    size(fillSize, 1, 1);
-    assert((dstMemory->validateRegion(origin, size))&&"The incorrect fill size!");
+        gpu::Memory* memory = dev().getGpuMemory(dstMemory);
 
-    if (!fillMemory(vcmd.type(), dstMemory, vcmd.pattern(),
-                    vcmd.patternSize(), origin, size)) {
-        vcmd.setStatus(CL_INVALID_OPERATION);
+        amd::Coord3D    origin(offset, 0, 0);
+        amd::Coord3D    size(fillSize, 1, 1);
+        assert((dstMemory->validateRegion(origin, size)) && "The incorrect fill size!");
+
+        if (!fillMemory(vcmd.type(), dstMemory, vcmd.pattern(),
+            vcmd.patternSize(), origin, size)) {
+            vcmd.setStatus(CL_INVALID_OPERATION);
+        }
     }
+    else {
+        // for FGS capable device, fill CPU memory directly
+        for (size_t i = 0; i < vcmd.times(); i++) {
+            memcpy(reinterpret_cast<address>(vcmd.dst()) + offset,
+                   reinterpret_cast<const_address>(vcmd.pattern()),
+                   patternSize);
+            offset += patternSize;
+        }
+    }
+
     profilingEnd(vcmd);
 }
 

@@ -1541,7 +1541,7 @@ public:
     inline bool isFineGrainedSystem() const {
         return (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true : false;
     }
- 
+
     //! Return this device's type.
     cl_device_type type() const {
         return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT | CL_HSA_ENABLED_AMD
@@ -1623,7 +1623,7 @@ public:
     /**
      * @copydoc amd::Context::hostAlloc
      */
-    virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const
+    virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false, void* ptr = NULL, bool commit = false) const
     {
         ShouldNotCallThis();
         return NULL;
