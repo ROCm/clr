@@ -746,41 +746,46 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap, (
     }
     amd::HostQueue& hostQueue = *queue;
     size_t offset = 0;
+    amd::Memory * svmMem = NULL;
+    if ((queue->device()).isFineGrainedSystem()) {
+        //leave blank on purpose for FGS no op
+    }
+    else {
+        svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+        if (NULL != svmMem) {
+            //make sure the context is the same as the context of creation of svm space
+            if (hostQueue.context() != svmMem->getContext()) {
+                LogWarning("different contexts");
+                return CL_INVALID_CONTEXT;
+            }
 
-    //make sure the context is the same as the context of creation of svm space
-    amd::Memory * svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
-    if (NULL != svmMem) {
-        if (hostQueue.context() != svmMem->getContext()) {
-           LogWarning("different contexts");
-            return CL_INVALID_CONTEXT;
-        }
-
-        offset = static_cast<address>(svm_ptr) - static_cast<address>(svmMem->getSvmPtr());
-        if (offset < 0 || offset + size > svmMem->getSize()) {
-            LogWarning("wrong svm address ");
-            return CL_INVALID_VALUE;
-        }
-        amd::Buffer* srcBuffer = svmMem->asBuffer();
-
-        amd::Coord3D    srcSize(size);
-        amd::Coord3D    srcOffset(offset);
-        if (NULL != srcBuffer) {
-            if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
+            offset = static_cast<address>(svm_ptr) - static_cast<address>(svmMem->getSvmPtr());
+            if (offset < 0 || offset + size > svmMem->getSize()) {
+                LogWarning("wrong svm address ");
                 return CL_INVALID_VALUE;
             }
-        }
+            amd::Buffer* srcBuffer = svmMem->asBuffer();
 
-        // Make sure we have memory for the command execution
-        device::Memory* mem = svmMem->getDeviceMemory(queue->device());
-        if (NULL == mem) {
-            LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
-                svmMem->getSize());
-            return CL_OUT_OF_RESOURCES;
-        }
-        // Attempt to allocate the map target now (whether blocking or non-blocking)
-        void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
-        if (NULL == mapPtr || mapPtr != svm_ptr) {
-            return CL_OUT_OF_RESOURCES;
+            amd::Coord3D    srcSize(size);
+            amd::Coord3D    srcOffset(offset);
+            if (NULL != srcBuffer) {
+                if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
+                    return CL_INVALID_VALUE;
+                }
+            }
+
+            // Make sure we have memory for the command execution
+            device::Memory* mem = svmMem->getDeviceMemory(queue->device());
+            if (NULL == mem) {
+                LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
+                    svmMem->getSize());
+                return CL_OUT_OF_RESOURCES;
+            }
+            // Attempt to allocate the map target now (whether blocking or non-blocking)
+            void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
+            if (NULL == mapPtr || mapPtr != svm_ptr) {
+                return CL_OUT_OF_RESOURCES;
+            }
         }
     }
 
@@ -881,17 +886,19 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMUnmap, (
         return CL_INVALID_COMMAND_QUEUE;
     }
     amd::HostQueue& hostQueue = *queue;
-
-    //check if the ptr is in the svm space
-    amd::Memory * svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
-    // Make sure we have memory for the command execution
-    if (NULL != svmMem) {
+    amd::Memory * svmMem = NULL;
+    if (!(queue->device()).isFineGrainedSystem()) {
+        //check if the ptr is in the svm space
+        svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
         // Make sure we have memory for the command execution
-        device::Memory* mem = svmMem->getDeviceMemory(queue->device());
-        if (NULL == mem) {
-            LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
-                svmMem->getSize());
-            return CL_INVALID_VALUE;
+        if (NULL != svmMem) {
+            // Make sure we have memory for the command execution
+            device::Memory* mem = svmMem->getDeviceMemory(queue->device());
+            if (NULL == mem) {
+                LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
+                    svmMem->getSize());
+                return CL_INVALID_VALUE;
+            }
         }
     }
 
