@@ -1819,6 +1819,7 @@ HSAILProgram::linkImpl(
             binaries_to_link[0], binaries_to_link.size() - 1,
             &binaries_to_link[1], ACL_TYPE_LLVMIR_BINARY, "-create-library", NULL);
         if (errorCode != ACL_SUCCESS) {
+            buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
             buildLog_ +="Error while linking : \
                         aclLink failed" ;
             return false;

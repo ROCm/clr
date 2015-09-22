@@ -354,6 +354,10 @@ Program::link(
         }
     }
 
+    if (retval != CL_SUCCESS) {
+        return retval;
+    }
+
     // Rebuild the symbol table
     deviceprograms_t::iterator sit;
     for (sit = devicePrograms_.begin(); sit != devicePrograms_.end(); ++sit) {
