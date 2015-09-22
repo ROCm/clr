@@ -553,7 +553,7 @@ public:
         ) const;
 
     //! host memory alloc
-    virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false, void* ptr = NULL, bool commit = false) const;
+    virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const;
 
     //! SVM allocation
     virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const;
@@ -623,7 +623,6 @@ private:
     SrdManager*     srdManager_;    //!< SRD manager object
 
     static AppProfile appProfile_; //!< application profile
-    mutable bool freeCPUMem_;              //!< flag to mark GPU free SVM CPU mem
 };
 
 /*@}*/} // namespace gpu

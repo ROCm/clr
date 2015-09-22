@@ -2174,14 +2174,10 @@ Device::fillHwSampler(
 }
 
 void*
-Device::hostAlloc(size_t size, size_t alignment, bool atomics, void* ptr, bool commit) const
+Device::hostAlloc(size_t size, size_t alignment, bool atomics) const
 {
     //for discrete gpu, we only reserve,no commit yet.
-    void* allocPtr = amd::Os::reserveMemory((address)ptr, size, alignment, amd::Os::MEM_PROT_NONE);
-    if (commit) {
-        amd::Os::commitMemory(allocPtr, size, amd::Os::MEM_PROT_RW);
-    }
-    return allocPtr;
+    return amd::Os::reserveMemory(NULL, size, alignment, amd::Os::MEM_PROT_NONE);
 }
 
 void
@@ -2202,13 +2198,7 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
 
     size = amd::alignUp(size, alignment);
     amd::Memory* mem = NULL;
-    freeCPUMem_ = false;
     if (NULL == svmPtr) {
-        if (isFineGrainedSystem()) {
-            freeCPUMem_ = true;
-            return hostAlloc(size, alignment, false, NULL, true);
-        }
-
         //create a hidden buffer, which will allocated on the device later
         mem = new (context)amd::Buffer(context, flags, size, reinterpret_cast<void*>(1));
         if (mem == NULL) {
@@ -2221,12 +2211,10 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
             mem->release();
             return NULL;
         }
-        //if the device supports SVM FGS, return the committed CPU address directly.
         gpu::Memory* gpuMem = getGpuMemory(mem);
-
         //add the information to context so that we can use it later.
         amd::SvmManager::AddSvmBuffer(mem->getSvmPtr(), mem);
-        svmPtr = mem->getSvmPtr();
+
     }
     else {
         //find the existing amd::mem object
@@ -2234,31 +2222,20 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
         if (NULL == mem) {
             return NULL;
         }
-        //commit the CPU memory for FGS device.
-        if (isFineGrainedSystem()) {
-            mem->commitSvmMemory();
-        }
-        else {
-            gpu::Memory* gpuMem = getGpuMemory(mem);
-        }
-        svmPtr = mem->getSvmPtr();
+        gpu::Memory* gpuMem = getGpuMemory(mem);
     }
-    return svmPtr;
+
+    return mem->getSvmPtr();
 }
 
 void
 Device::svmFree(void *ptr) const
 {
-    if (freeCPUMem_) {
-        hostFree(ptr, 0);
-    }
-    else {
-        amd::Memory * svmMem = NULL;
-        svmMem = amd::SvmManager::FindSvmBuffer(ptr);
-        if (NULL != svmMem) {
-            svmMem->release();
-            amd::SvmManager::RemoveSvmBuffer(ptr);
-        }
+    amd::Memory * svmMem = NULL;
+    svmMem = amd::SvmManager::FindSvmBuffer(ptr);
+    if (NULL != svmMem) {
+        svmMem->release();
+        amd::SvmManager::RemoveSvmBuffer(ptr);
     }
 }
 
