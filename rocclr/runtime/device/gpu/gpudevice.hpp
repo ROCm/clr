@@ -623,6 +623,7 @@ private:
     SrdManager*     srdManager_;    //!< SRD manager object
 
     static AppProfile appProfile_; //!< application profile
+    mutable bool freeCPUMem_;              //!< flag to mark GPU free SVM CPU mem
 };
 
 /*@}*/} // namespace gpu
