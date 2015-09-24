@@ -154,11 +154,7 @@ elf_getscn(Elf *e, size_t index)
 	if ((ehdr = _libelf_ehdr(e, ec, 0)) == NULL)
 		return (NULL);
 
-  // If we aren't a read/write from a file or a read only elf,
-  // make sure that the headers are loaded. If we are a read/write
-  // from a file, we should have the headers loaded already.
-	if ((e->e_cmd == ELF_C_READ
-        || (e->e_cmd == ELF_C_RDWR && e->e_fd == -1)) &&
+	if (e->e_cmd != ELF_C_WRITE &&
 	    (e->e_flags & LIBELF_F_SHDRS_LOADED) == 0 &&
 	    _libelf_load_section_headers(e, ehdr) == 0)
 		return (NULL);
@@ -211,8 +207,7 @@ elf_newscn(Elf *e)
 	 * file using ELF_C_READ, mess with its internal structure and
 	 * use elf_update(...,ELF_C_NULL) to compute its new layout.
 	 */
-	if ((e->e_cmd == ELF_C_READ
-        || (e->e_cmd == ELF_C_RDWR && e->e_fd == -1)) &&
+	if (e->e_cmd != ELF_C_WRITE &&
 	    (e->e_flags & LIBELF_F_SHDRS_LOADED) == 0 &&
 	    _libelf_load_section_headers(e, ehdr) == 0)
 		return (NULL);
