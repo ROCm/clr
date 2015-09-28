@@ -2283,7 +2283,7 @@ HSAILProgram::allocKernelTable()
 
 void
 HSAILProgram::fillResListWithKernels(
-    std::vector<const Resource*>& memList) const
+    std::vector<const Memory*>& memList) const
 {
     for (auto& it : kernels()) {
         memList.push_back(

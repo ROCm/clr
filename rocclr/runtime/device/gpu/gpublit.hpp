@@ -20,7 +20,6 @@ namespace gpu {
 
 class Device;
 class Kernel;
-class Resource;
 class Memory;
 class VirtualGPU;
 
@@ -189,9 +188,9 @@ private:
 
     //! Reads video memory, using a staged buffer
     bool readMemoryStaged(
-        Resource&   srcMemory,  //!< Source memory object
+        Memory&     srcMemory,  //!< Source memory object
         void*       dstHost,    //!< Destination host memory
-        Resource**  xferBuf,    //!< Staged buffer for read
+        Memory**    xferBuf,    //!< Staged buffer for read
         size_t      origin,     //!< Original offset in the source memory
         size_t&     offset,     //!< Offset for the current copy pointer
         size_t&     totalSize,  //!< Total size for copy region
@@ -201,8 +200,8 @@ private:
     //! Write into video memory, using a staged buffer
     bool writeMemoryStaged(
         const void* srcHost,    //!< Source host memory
-        Resource&   dstMemory,  //!< Destination memory object
-        Resource&   xferBuf,    //!< Staged buffer for write
+        Memory&     dstMemory,  //!< Destination memory object
+        Memory&     xferBuf,    //!< Staged buffer for write
         size_t      origin,     //!< Original offset in the destination memory
         size_t&     offset,     //!< Offset for the current copy pointer
         size_t&     totalSize,  //!< Total size for the copy region

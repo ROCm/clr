@@ -1201,7 +1201,7 @@ Resource::setBusy(
     GpuEvent    gpuEvent
     ) const
 {
-    gpu.assignGpuEvent(this, gpuEvent);
+    gpu.assignGpuEvent(gslResource(), gpuEvent);
 
     // If current resource is a view, then update the parent event as well
     if (viewOwner_ != NULL) {
@@ -1212,7 +1212,7 @@ Resource::setBusy(
 void
 Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const
 {
-    GpuEvent*   gpuEvent = gpu.getGpuEvent(this);
+    GpuEvent*   gpuEvent = gpu.getGpuEvent(gslResource());
 
     // Check if we have to wait unconditionally
     if (!waitOnBusyEngine ||
@@ -1781,7 +1781,7 @@ Resource::getActiveRename(VirtualGPU& gpu, GslResourceReference** rename)
 bool
 Resource::rename(VirtualGPU& gpu, bool force)
 {
-    GpuEvent*   gpuEvent = gpu.getGpuEvent(this);
+    GpuEvent*   gpuEvent = gpu.getGpuEvent(gslResource());
     if (!gpuEvent->isValid() && !force) {
         return true;
     }

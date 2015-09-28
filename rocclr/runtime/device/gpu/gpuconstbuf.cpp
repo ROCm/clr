@@ -12,7 +12,7 @@ namespace gpu {
 ConstBuffer::ConstBuffer(
     VirtualGPU&     gpu,
     size_t          size)
-    : Resource(const_cast<gpu::Device&>(gpu.dev()), size, CM_SURF_FMT_RGBA32F)
+    : Memory(const_cast<gpu::Device&>(gpu.dev()), size * VectorSize)
     , gpu_(gpu)
     , size_(size * VectorSize)
     , wrtOffset_(0)
@@ -42,7 +42,7 @@ ConstBuffer::create()
     }
     memset(sysMemCopy_, 0, size_);
 
-    if (!Resource::create(Resource::RemoteUSWC)) {
+    if (!Memory::create(Resource::RemoteUSWC)) {
         LogPrintfError("We couldn't create HW constant buffer, size(%d)!", size_);
         return false;
     }

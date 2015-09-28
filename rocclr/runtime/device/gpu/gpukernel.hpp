@@ -734,11 +734,10 @@ private:
      */
     bool bindResource(
         VirtualGPU&     gpu,        //!< virtual GPU device object
-        const Resource& resource,   //!< resource for binding
+        const Memory&   memory,     //!< memory for binding
         uint            paramIdx,   //!< index of the parameter
         ResourceType    type,       //!< resource type
         uint            physUnit,   //!< PhysUnit
-        Memory*         memory = NULL,  //!< GPU layer memory object
         size_t          offset = 0
         ) const;
 
@@ -900,7 +899,7 @@ public:
         bool                        nativeMem,      //!< Native memory objectes are passed
         uint64_t                    vmDefQueue,     //!< GPU VM default queue pointer
         uint64_t*                   vmParentWrap,   //!< GPU VM parent aql wrap object
-        std::vector<const Resource*>&   memList     //!< Memory list for GSL/VidMM handles
+        std::vector<const Memory*>&     memList     //!< Memory list for GSL/VidMM handles
         ) const;
 
     //! Returns pritnf info array

@@ -520,7 +520,7 @@ public:
     const Memory* kernelTable() const { return kernels_; }
 
     //! Adds all kernels to the mem handle lists
-    void fillResListWithKernels(std::vector<const Resource*>& memList) const;
+    void fillResListWithKernels(std::vector<const Memory*>& memList) const;
 
     //! Returns the maximum number of scratch regs used in the program
     uint    maxScratchRegs() const { return maxScratchRegs_; }
