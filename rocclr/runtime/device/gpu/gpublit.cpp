@@ -37,9 +37,9 @@ DmaBlitManager::gpuMem(device::Memory& mem) const
 
 bool
 DmaBlitManager::readMemoryStaged(
-    Resource&   srcMemory,
+    Memory&     srcMemory,
     void*       dstHost,
-    Resource**  xferBuf,
+    Memory**    xferBuf,
     size_t      origin,
     size_t&     offset,
     size_t&     totalSize,
@@ -196,9 +196,9 @@ DmaBlitManager::readBuffer(
         }
 
         if (0 != srcSize) {
-            Resource& xferBuf0 = dev().xferRead().acquire();
-            Resource& xferBuf1 = dev().xferRead().acquire();
-            Resource* xferBuf[2] = { &xferBuf0, &xferBuf1 };
+            Memory& xferBuf0 = dev().xferRead().acquire();
+            Memory& xferBuf1 = dev().xferRead().acquire();
+            Memory* xferBuf[2] = { &xferBuf0, &xferBuf1 };
 
             // Read memory using a staged resource
             if (!readMemoryStaged(gpuMem(srcMemory), dstHost, xferBuf, origin[0],
@@ -231,7 +231,7 @@ DmaBlitManager::readBufferRect(
             srcMemory, dstHost, bufRect, hostRect, size, entire);
     }
     else {
-        Resource& xferBuf = dev().xferRead().acquire();
+        Memory& xferBuf = dev().xferRead().acquire();
 
         amd::Coord3D dst(0, 0, 0);
         size_t  tmpSize = 0;
@@ -304,8 +304,8 @@ DmaBlitManager::readImage(
 bool
 DmaBlitManager::writeMemoryStaged(
     const void* srcHost,
-    Resource&   dstMemory,
-    Resource&   xferBuf,
+    Memory&     dstMemory,
+    Memory&     xferBuf,
     size_t      origin,
     size_t&     offset,
     size_t&     totalSize,
@@ -433,7 +433,7 @@ DmaBlitManager::writeBuffer(
         }
 
         if (dstSize != 0) {
-            Resource& xferBuf = dev().xferWrite().acquire();
+            Memory& xferBuf = dev().xferWrite().acquire();
 
             // Write memory using a staged resource
             if (!writeMemoryStaged(srcHost, gpuMem(dstMemory), xferBuf, origin[0],
@@ -466,7 +466,7 @@ DmaBlitManager::writeBufferRect(
             srcHost, dstMemory, hostRect, bufRect, size, entire);
     }
     else {
-        Resource& xferBuf = dev().xferWrite().acquire();
+        Memory& xferBuf = dev().xferWrite().acquire();
 
         amd::Coord3D src(0, 0, 0);
         size_t  tmpSize = 0;

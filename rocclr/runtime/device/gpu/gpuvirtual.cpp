@@ -218,7 +218,7 @@ VirtualGPU::gslDestroy()
 }
 
 void
-VirtualGPU::addXferWrite(Resource& resource)
+VirtualGPU::addXferWrite(Memory& memory)
 {
     if (xferWriteBuffers_.size() > 7) {
         dev().xferWrite().release(*this, *xferWriteBuffers_.front());
@@ -226,14 +226,14 @@ VirtualGPU::addXferWrite(Resource& resource)
     }
 
     // Delay destruction
-    xferWriteBuffers_.push_back(&resource);
+    xferWriteBuffers_.push_back(&memory);
 }
 
 void
 VirtualGPU::releaseXferWrite()
 {
-    for (auto& resource : xferWriteBuffers_) {
-        dev().xferWrite().release(*this, *resource);
+    for (auto& memory : xferWriteBuffers_) {
+        dev().xferWrite().release(*this, *memory);
     }
     xferWriteBuffers_.clear();
 }
@@ -248,7 +248,7 @@ VirtualGPU::addPinnedMem(amd::Memory* mem)
         }
 
         // Start operation, since we should release mem object
-        flushDMA(getGpuEvent(dev().getGpuMemory(mem))->engineId_);
+        flushDMA(getGpuEvent(dev().getGpuMemory(mem)->gslResource())->engineId_);
 
         // Delay destruction
         pinnedMems_.push_back(mem);
@@ -560,14 +560,14 @@ bool
 VirtualGPU::allocHsaQueueMem()
 {
     // Allocate a dummy HSA queue
-    hsaQueueMem_ = new gpu::Memory(dev(), sizeof(amd_queue_t));
+    hsaQueueMem_ = new Memory(dev(), sizeof(amd_queue_t));
     if ((hsaQueueMem_ == NULL) ||
-        (!hsaQueueMem_->create(gpu::Resource::Local))) {
+        (!hsaQueueMem_->create(Resource::Local))) {
         delete hsaQueueMem_;
         return false;
     }
     amd_queue_t* queue = reinterpret_cast<amd_queue_t*>
-        (hsaQueueMem_->map(NULL, gpu::Resource::WriteOnly));
+        (hsaQueueMem_->map(NULL, Resource::WriteOnly));
     if (NULL == queue) {
         delete hsaQueueMem_;
         return false;
@@ -1662,7 +1662,7 @@ VirtualGPU::submitKernelInternalHSA(
     // Get the HSA kernel object
     const HSAILKernel& hsaKernel =
         static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
-    std::vector<const Resource*>    memList;
+    std::vector<const Memory*>    memList;
 
     bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true:false;
     if (!printfDbgHSA().init(*this, printfEnabled )){
@@ -3182,7 +3182,7 @@ VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* waitingE
 }
 
 bool
-VirtualGPU::addVmMemory(const Resource* resource)
+VirtualGPU::addVmMemory(const Memory* memory)
 {
     uint*    cnt = &cal_.memCount_;
     (*cnt)++;
@@ -3198,7 +3198,7 @@ VirtualGPU::addVmMemory(const Resource* resource)
         vmMems_ = tmp;
         numVmMems_ = *cnt;
     }
-    vmMems_[*cnt - 1] = resource->gslResource();
+    vmMems_[*cnt - 1] = memory->gslResource();
 
     return true;
 }

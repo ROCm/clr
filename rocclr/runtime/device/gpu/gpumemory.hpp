@@ -8,7 +8,6 @@
 #include "top.hpp"
 #include "thread/atomic.hpp"
 #include "device/gpu/gpuresource.hpp"
-#include "device/gpu/gpudevice.hpp"
 #include <map>
 
 /*! \addtogroup GPU

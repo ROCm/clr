@@ -4,6 +4,8 @@
 #ifndef GPUPRINTFDBG_HPP_
 #define GPUPRINTFDBG_HPP_
 
+#include "device/gpu/gpumemory.hpp"
+
 /*! \addtogroup GPU GPU Device Implementation
  *  @{
  */
@@ -85,7 +87,7 @@ protected:
     Memory*         dbgBuffer_;     //!< Buffer to hold debug output
     FILE*           dbgFile_;       //!< Debug file
     Device&         gpuDevice_;     //!< GPU device object
-    Resource*       xferBufRead_;   //!< Transfer buffer for the dump read
+    Memory*         xferBufRead_;   //!< Transfer buffer for the dump read
 
     //! Gets GPU device object
     Device& dev() const { return gpuDevice_; }
@@ -100,7 +102,7 @@ protected:
         const std::string& fmt  //!< Format string
         ) const;
 
-	//! Returns TRUE if a string value has to be printed
+    //! Returns TRUE if a string value has to be printed
     bool checkString(
         const std::string& fmt  //!< Format string
         ) const;
@@ -154,8 +156,8 @@ private:
         const uint32_t* workitemData    //!< The PrintfDbg dump buffer
         ) const;
 
-    size_t          wiDbgSize_;     //!< Workitem debug size
-    Resource        initCntValue_;  //!< Initialized count value
+    size_t      wiDbgSize_;     //!< Workitem debug size
+    Memory      initCntValue_;  //!< Initialized count value
 };
 class PrintfDbgHSA : public PrintfDbg
 {

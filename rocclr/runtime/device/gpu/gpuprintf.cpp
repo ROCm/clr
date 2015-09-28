@@ -21,7 +21,7 @@ PrintfDbg::PrintfDbg(Device& device, FILE* file)
     , dbgFile_(file)
     , gpuDevice_(device)
     , wiDbgSize_(0)
-    , initCntValue_(device, 1, CM_SURF_FMT_R32I)
+    , initCntValue_(device, 4)
 {
 }
 

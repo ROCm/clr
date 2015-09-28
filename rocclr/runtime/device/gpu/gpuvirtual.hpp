@@ -24,7 +24,6 @@ namespace gpu {
 
 class Device;
 class Kernel;
-class Resource;
 class Memory;
 class CalCounterReference;
 class VirtualGPU;
@@ -110,8 +109,8 @@ public:
             State(): value_(0)  {}
         };
 
-        State       state_;     //!< slot's state
-        Memory*     memory_;    //!< GPU memory object
+        State       state_;         //!< slot's state
+        const Memory*   memory_;    //!< GPU memory object
 
         ResourceSlot(): memory_(NULL) {}
 
@@ -262,14 +261,14 @@ public:
 
     //! Returns a GPU event, associated with GPU memory
     GpuEvent* getGpuEvent(
-        const Resource* resource    //!< GPU resource object
-        ) { return &gpuEvents_[resource->gslResource()]; }
+        const gslMemObject gslMem   //!< GSL mem object
+        ) { return &gpuEvents_[gslMem]; }
 
     //! Assigns a GPU event, associated with GPU memory
     void assignGpuEvent(
-        const Resource* resource,   //!< GPU resource object
+        const gslMemObject gslMem,  //!< GSL mem object
         GpuEvent    gpuEvent
-        ) { gpuEvents_[resource->gslResource()] = gpuEvent; }
+        ) { gpuEvents_[gslMem] = gpuEvent; }
 
     //! Set the kernel as active
     bool setActiveKernelDesc(
@@ -324,11 +323,11 @@ public:
 
     //! Adds a memory handle into the GSL memory array for Virtual Heap
     bool addVmMemory(
-        const Resource*   resource  //!< GPU resource object
+        const Memory*   memory  //!< GPU memory object
         );
 
     //! Adds a stage write buffer into a list
-    void addXferWrite(Resource& resource);
+    void addXferWrite(Memory& memory);
 
     //! Adds a pinned memory object into a map
     void addPinnedMem(amd::Memory* mem);
@@ -523,7 +522,7 @@ private:
 
     DmaFlushMgmt    dmaFlushMgmt_;      //!< DMA flush management
 
-    std::list<Resource*>    xferWriteBuffers_;  //!< Stage write buffers
+    std::list<Memory*>    xferWriteBuffers_;  //!< Stage write buffers
     std::list<amd::Memory*> pinnedMems_;//!< Pinned memory list
 
     typedef std::list<CommandBatch*> CommandBatchList;

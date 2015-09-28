@@ -498,8 +498,8 @@ void NullDevice::fillDeviceInfo(
 bool
 Device::Heap::create(Device& device)
 {
-    // Create a new GPU resource
-    resource_ = new Resource(device, 0, CM_SURF_FMT_R32I);
+    // Create global GPU heap
+    resource_ = new Memory(device, 0);
     if (resource_ == NULL) {
         return false;
     }
@@ -569,13 +569,12 @@ Device::XferBuffers::~XferBuffers()
 bool
 Device::XferBuffers::create()
 {
-    Resource*   xferBuf = NULL;
+    Memory*     xferBuf = NULL;
     bool        result = false;
-    // Note: create a 1D resource
-    xferBuf = new Resource(dev(), bufSize_ / Heap::ElementSize,
-        Heap::ElementType);
+    // Create a buffer object
+    xferBuf = new Memory(dev(), bufSize_);
 
-    // We will try to creat a CAL resource for the transfer buffer
+    // Try to allocate memory for the transfer buffer
     if ((NULL == xferBuf) || !xferBuf->create(type_)) {
         delete xferBuf;
         xferBuf = NULL;
@@ -593,10 +592,10 @@ Device::XferBuffers::create()
     return result;
 }
 
-Resource&
+Memory&
 Device::XferBuffers::acquire()
 {
-    Resource*   xferBuf = NULL;
+    Memory*     xferBuf = NULL;
     size_t      listSize;
 
     // Lock the operations with the staged buffer list
@@ -605,11 +604,10 @@ Device::XferBuffers::acquire()
 
     // If the list is empty, then attempt to allocate a staged buffer
     if (listSize == 0) {
-        // Note: create a 1D resource
-        xferBuf = new Resource(dev(), bufSize_ / Heap::ElementSize,
-            Heap::ElementType);
+        // Allocate memory
+        xferBuf = new Memory(dev(), bufSize_);
 
-        // We will try to create a CAL resource for the transfer buffer
+        // Allocate memory for the transfer buffer
         if ((NULL == xferBuf) || !xferBuf->create(type_)) {
             delete xferBuf;
             xferBuf = NULL;
@@ -634,7 +632,7 @@ Device::XferBuffers::acquire()
 }
 
 void
-Device::XferBuffers::release(VirtualGPU& gpu, Resource& buffer)
+Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer)
 {
     // Make sure buffer isn't busy on the current VirtualGPU, because
     // the next aquire can come from different queue
@@ -1225,6 +1223,11 @@ Device::getGpuMemory(amd::Memory* mem) const
     return static_cast<gpu::Memory*>(mem->getDeviceMemory(*this));
 }
 
+const device::BlitManager&
+Device::xferMgr() const
+{
+    return xferQueue_->blitMgr();
+}
 
 CalFormat
 Device::getCalFormat(const amd::Image::Format& format) const
@@ -2366,7 +2369,7 @@ Device::SrdManager::freeSrdSlot(uint64_t addr) {
 }
 
 void
-Device::SrdManager::fillResourceList(std::vector<const Resource*>&   memList)
+Device::SrdManager::fillResourceList(std::vector<const Memory*>&   memList)
 {
     for (uint i = 0; i < pool_.size(); ++i) {
         memList.push_back(pool_[i].buf_);

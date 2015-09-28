@@ -1464,7 +1464,7 @@ Kernel::bindConstantBuffers(VirtualGPU& gpu) const
     for (uint i = 0; i < numCb_; i++) {
         ConstBuffer* cb = gpu.constBufs_[i];
         result &= cb->uploadDataToHw(cbSizes_[i]) &&
-            bindResource(gpu, *cb, i, ConstantBuffer, i, NULL, cb->wrtOffset());
+            bindResource(gpu, *cb, i, ConstantBuffer, i, cb->wrtOffset());
     }
 
     return result;
@@ -1595,7 +1595,7 @@ Kernel::debug(VirtualGPU& gpu) const
     std::cerr << "--- " << name_ << " ---" << std::endl;
     for (uint i = 0; i < arguments_.size(); ++i) {
         const KernelArg*  arg = argument(i);
-        Memory*  gpuMem = gpu.slots_[i].memory_;
+        const Memory*  gpuMem = gpu.slots_[i].memory_;
         std::stringstream fileName;
         bool bufferObj =
             ((arg->type_ == KernelArg::PointerGlobal) ||
@@ -1625,7 +1625,8 @@ Kernel::debug(VirtualGPU& gpu) const
         if (((arg->type_ >= KernelArg::Image1D) &&
              (arg->type_ <= KernelArg::Image3D)) ||
             ((src == NULL) && bufferObj)) {
-            Memory*  resource = gpu.slots_[i].memory_;
+            //@todo Replace the current map
+            Memory*  resource = const_cast<Memory*>(gpu.slots_[i].memory_);
             void* memory = resource->map(&gpu);
             uint* location  = reinterpret_cast<uint*>(memory);
             std::cerr << " > " << arg->name_ << (bufferObj ? ": buffer" : ": image") << std::endl;
@@ -1790,7 +1791,7 @@ Kernel::setArgument(
             if (arg->type_ == KernelArg::PointerHwConst) {
                  // Bind current memory object with the kernel
                 if (!bindResource(gpu, *gpuMem, idx,
-                        ArgumentConstBuffer, arg->index_, gpuMem)) {
+                        ArgumentConstBuffer, arg->index_)) {
                     return false;
                 }
                 assert((offset == 0) && "No offset for HW CB");
@@ -1815,7 +1816,7 @@ Kernel::setArgument(
                 // Bind current memory object with the kernel
                 // Note: it's a fake binding, if the buffer is part of
                 // the global heap
-                if (!bindResource(gpu, *gpuMem, idx, type, arg->index_, gpuMem)) {
+                if (!bindResource(gpu, *gpuMem, idx, type, arg->index_)) {
                     return false;
                 }
 
@@ -1875,7 +1876,7 @@ Kernel::setArgument(
 
             // Bind current memory object with the shader.
             if (!bindResource(gpu, *gpuMem, idx,
-                    resType, arg->index_, gpuMem)) {
+                    resType, arg->index_)) {
                 return false;
             }
 
@@ -1922,7 +1923,7 @@ Kernel::setArgument(
 
             // Bind current memory object with the shader.
             if (!bindResource(gpu, *gpuMem, idx,
-                ArgumentCounter, idx, gpuMem)) {
+                ArgumentCounter, idx)) {
                 return false;
             }
         }
@@ -2138,11 +2139,10 @@ Kernel::setSampler(
 bool
 Kernel::bindResource(
     VirtualGPU&     gpu,
-    const Resource& resource,
+    const Memory&   memory,
     uint            paramIdx,
     ResourceType    type,
     uint            physUnit,
-    Memory*         memory,
     size_t          offset) const
 {
     gslUAVType  uavType = GSL_UAV_TYPE_UNKNOWN;
@@ -2185,7 +2185,7 @@ Kernel::bindResource(
         }
 
         // Associate resource with the slot
-        gpu.slots_[paramIdx].memory_    = memory;
+        gpu.slots_[paramIdx].memory_    = &memory;
 
         // Mark resource as bound
         gpu.slots_[paramIdx].state_.bound_ = true;
@@ -2195,7 +2195,7 @@ Kernel::bindResource(
 
             // Bind memory with atomic counter
             gpu.cs()->bindAtomicCounter(argument(paramIdx)->index_,
-                memory->gslResource());
+                memory.gslResource());
 
             // Copy the counter value into GDS
             gpu.eventBegin(MainEngine);
@@ -2203,7 +2203,7 @@ Kernel::bindResource(
             gpu.eventEnd(MainEngine, calEvent);
 
             // Mark resource as busy
-            memory->setBusy(gpu, calEvent);
+            memory.setBusy(gpu, calEvent);
             return true;
         }
         else if (type == ArgumentHeapBuffer) {
@@ -2229,7 +2229,7 @@ Kernel::bindResource(
         gslMem = dev().heap().resource().gslResource();
     }
     else {
-        gslMem = resource.gslResource();
+        gslMem = memory.gslResource();
     }
 
     // Associate memory with the physical unit, the actual binding
@@ -2257,7 +2257,7 @@ Kernel::bindResource(
     case ArgumentConstBuffer:
         if ((gpu.cal_.constBuffers_[physUnit] != gslMem) || (offset != 0)) {
             result = gpu.setConstantBuffer(physUnit,
-                gslMem, offset, resource.hbSize());
+                gslMem, offset, memory.hbSize());
             gpu.cal_.constBuffers_[physUnit] = gslMem;
         }
         break;
@@ -3667,7 +3667,7 @@ HSAILKernel::loadArguments(
     bool                            nativeMem,
     uint64_t                        vmDefQueue,
     uint64_t*                       vmParentWrap,
-    std::vector<const Resource*>&   memList) const
+    std::vector<const Memory*>&     memList) const
 {
     static const bool WaitOnBusyEngine = true;
     uint64_t    ldsAddress = ldsSize();

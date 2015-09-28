@@ -5,13 +5,13 @@
 #ifndef GPUCONSTBUF_HPP_
 #define GPUCONSTBUF_HPP_
 
-#include "device/gpu/gpuresource.hpp"
+#include "device/gpu/gpumemory.hpp"
 
 //! \namespace gpu GPU Resource Implementation
 namespace gpu {
 
 //! Cconstant buffer
-class ConstBuffer : public Resource
+class ConstBuffer : public Memory
 {
 public:
     //! Vector size of the constant buffer

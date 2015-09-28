@@ -199,13 +199,13 @@ public:
             );
 
         //! Gets the GPU resource associated with the global heap
-        const Resource& resource() const { return *resource_; }
+        const Memory& resource() const { return *resource_; }
 
         //! Returns the base virtual address of the heap
         uint64_t baseAddress() const { return baseAddress_; }
 
     protected:
-        Resource*   resource_;      //!< GPU resource referencing the heap memory
+        Memory*     resource_;      //!< GPU resource referencing the heap memory
         uint64_t    baseAddress_;   //!< Virtual heap base address
     };
 
@@ -277,12 +277,12 @@ public:
         bool create();
 
         //! Acquires an instance of the transfer buffers
-        Resource& acquire();
+        Memory& acquire();
 
         //! Releases transfer buffer
         void release(
             VirtualGPU& gpu,    //!< Virual GPU object used with the buffer
-            Resource& buffer    //!< Transfer buffer for release
+            Memory& buffer    //!< Transfer buffer for release
             );
 
         //! Returns the buffer's size for transfer
@@ -300,7 +300,7 @@ public:
 
         Resource::MemoryType    type_;          //!< The buffer's type
         size_t                  bufSize_;       //!< Staged buffer size
-        std::list<Resource*>    freeBuffers_;   //!< The list of free buffers
+        std::list<Memory*>    freeBuffers_;   //!< The list of free buffers
         amd::Atomic<uint>       acquiredCnt_;   //!< The total number of acquired buffers
         amd::Monitor            lock_;          //!< Stgaed buffer acquire/release lock
         const Device&           gpuDevice_;     //!< GPU device object
@@ -358,8 +358,8 @@ public:
         //! Frees a SRD slot
         void freeSrdSlot(uint64_t addr);
 
-        // Fills the resource list for VidMM KMD
-        void fillResourceList(std::vector<const Resource*>&   memList);
+        // Fills the memory list for VidMM KMD
+        void fillResourceList(std::vector<const Memory*>&   memList);
 
     private:
         //! Disable copy constructor
@@ -461,7 +461,7 @@ public:
         ) const;
 
     //! Gets the GPU resource associated with the global heap
-    const Resource& globalMem() const { return heap_.resource(); }
+    const Memory& globalMem() const { return heap_.resource(); }
 
     //! Gets the global heap object
     const Heap& heap() const { return heap_; }
@@ -517,7 +517,7 @@ public:
     const Engines& engines() const { return engines_; }
 
     //! Returns engines object
-    const device::BlitManager& xferMgr() const { return xferQueue_->blitMgr(); }
+    const device::BlitManager& xferMgr() const;
 
     VirtualGPU* xferQueue() const { return xferQueue_; }
 
@@ -614,7 +614,7 @@ private:
     amd::Monitor*   vaCacheAccess_; //!< Lock to serialize VA caching access
     std::list<VACacheEntry*>*   vaCacheList_; //!< VA cache list
     std::vector<amd::Memory*>*  mapCache_;  //!< Map cache info structure
-    ResourceCache*  resourceCache_; //!< CAL resource cache
+    ResourceCache*  resourceCache_; //!< Resource cache
     Engines         engines_;       //!< Available engines on device
     bool            heapInitComplete_;  //!< Keep track of initialization status of heap resources
     VirtualGPU*     xferQueue_;     //!< Transfer queue
