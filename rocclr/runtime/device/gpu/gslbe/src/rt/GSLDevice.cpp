@@ -1379,11 +1379,10 @@ CALGSLDevice::GetCopyType(
             pitch  = srcMem->getPitch();
             linearBytePitch = size * (bppSrc / 8);
 
-            // Make sure linear pitch in bytes is 128 bytes aligned
-            // Note: Cypress restriction, Cayman should have 4 bytes
-            if (((linearBytePitch % 0x80) == 0) &&
-                // another DRM restriciton... Cayman has 4 pixels
-                (srcOffset[0] % 8 == 0))
+            // Make sure linear pitch in bytes is 4 bytes aligned
+            if (((linearBytePitch % 4) == 0) &&
+                // another DRM restriciton... SI has 4 pixels
+                (srcOffset[0] % 4 == 0))
             {
                 type = USE_DRMDMA_T2L;
             }
@@ -1399,11 +1398,10 @@ CALGSLDevice::GetCopyType(
             pitch  = destMem->getPitch();
             linearBytePitch = size * (bppDst / 8);
 
-            // Make sure linear pitch in bytes is 128 bytes aligned
-            // Note: Cypress restriction, Cayman should have 4 bytes
-            if (((linearBytePitch % 0x80) == 0) &&
-                // another DRM restriciton... Cayman has 4 pixels
-                (destOffset[0] % 8 == 0))
+            // Make sure linear pitch in bytes is 4 bytes aligned
+            if (((linearBytePitch % 4) == 0) &&
+                // another DRM restriciton... SI has 4 pixels
+                (destOffset[0] % 4 == 0))
             {
                 type = USE_DRMDMA_L2T;
             }
@@ -1420,21 +1418,6 @@ CALGSLDevice::GetCopyType(
     else if (dstType == srcType)
     {
         type = USE_DRMDMA;
-    }
-
-    //
-    // Machine specific issues here
-    //
-    if (allowDMA && ((m_target == CAL_TARGET_CAYMAN) ||
-              (m_target == CAL_TARGET_DEVASTATOR) ||
-              (m_target == CAL_TARGET_SCRAPPER)
-             ) &&
-             ((bppSrc == 128 || bppDst == 128) &&
-              ((srcTiling != GSL_MOA_TILING_LINEAR) ||
-               (dstTiling != GSL_MOA_TILING_LINEAR)))
-            )
-    {
-        type = USE_NONE;
     }
 
     return type;
