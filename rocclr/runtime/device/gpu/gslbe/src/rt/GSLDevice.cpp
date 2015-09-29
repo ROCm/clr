@@ -1382,7 +1382,7 @@ CALGSLDevice::GetCopyType(
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
-                (srcOffset[0] % 4 == 0))
+                (destOffset[0] % 4 == 0))
             {
                 type = USE_DRMDMA_T2L;
             }
@@ -1401,7 +1401,7 @@ CALGSLDevice::GetCopyType(
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
-                (destOffset[0] % 4 == 0))
+                (srcOffset[0] % 4 == 0))
             {
                 type = USE_DRMDMA_L2T;
             }
