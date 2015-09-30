@@ -391,14 +391,20 @@ SPIRVToModule(
     acl_error *error)
 {
   auto compiler = reinterpret_cast<amdcl::LLVMCompilerStage*>(ald);
+  auto cl = compiler->CL();
+  auto bin = compiler->Elf();
 #ifdef LEGACY_COMPLIB
   llvm::report_fatal_error("SPIR-V not supported on legacy compiler lib");
-  appendLogToCL(compiler->CL(), "SPIR-V not supported on legacy compiler lib");
+  appendLogToCL(cl, "SPIR-V not supported on legacy compiler lib");
   if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
   return nullptr;
 #else
   std::string spvImg(image, length);
-  auto opt = compiler->Options();
+  /// ToDo: When there are multiple binaries, compiler->Options()
+  /// cannot carry options specified by environment variables to here
+  /// but bin->options can. This seems to be related to how runtime
+  /// sets up aclCompiler options and BIF options.
+  auto opt = reinterpret_cast<amd::option::Options*>(bin->options);
   if (opt->isDumpFlagSet(amd::option::DUMP_SPIRV)) {
     std::ofstream ofs(opt->getDumpFileName(".spv"), std::ios::binary);
     ofs << spvImg;
@@ -426,14 +432,20 @@ SPIRVToModule(
   }
 
   if (!errMsg.empty()) {
-    appendLogToCL(compiler->CL(), errMsg);
+    appendLogToCL(cl, errMsg);
   }
   if (!success || llMod == nullptr) {
     if (error != nullptr) (*error) = ACL_SPIRV_LOAD_FAIL;
     return nullptr;
   }
 
-  if (error != nullptr) (*error) = ACL_SUCCESS;
+  llvm::SmallVector<char, 4096> array;
+  llvm::raw_svector_ostream outstream(array);
+  llvm::WriteBitcodeToFile(reinterpret_cast<llvm::Module*>(llMod), outstream);
+  outstream.flush();
+  auto errCode = cl->clAPI.insSec(cl, bin, &array[0], array.size(), aclLLVMIR);
+  if (error != nullptr) (*error) = errCode;
+
   return reinterpret_cast<aclModule*>(llMod);
 #endif // LEGACY_COMPLIB
 }
@@ -1623,7 +1635,14 @@ if_aclCompile(aclCompiler *cl,
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &AMDILFini, &OCLFini);
         CONDITIONAL_CMP_ASSIGN(cl->feAPI.fini, &HSAILFEFini, &OCLFini);
         if (from == ACL_TYPE_SPIRV_BINARY) {
-          cl->feAPI.toModule = &SPIRVToModule;
+          if (to != ACL_TYPE_LLVMIR_BINARY)
+            cl->feAPI.toModule = &SPIRVToModule;
+          else {
+            cl->feAPI.toISA = NULL;
+            cl->feAPI.toIR = &SPIRVToModule;
+            start = 0;
+            stop = 1;
+          }
         } else if (from == ACL_TYPE_RSLLVMIR_BINARY) {
           cl->feAPI.toModule = &RSLLVMIRToModule;
         } else {
