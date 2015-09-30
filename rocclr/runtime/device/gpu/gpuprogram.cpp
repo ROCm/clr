@@ -1801,27 +1801,9 @@ HSAILProgram::linkImpl(
         const void *llvmirText = aclExtractSection(dev().hsaCompiler(),
             binaryElf_, &llvmirSize, aclLLVMIR, &errorCode);
         if (errorCode != ACL_SUCCESS) {
-            bool spirv = false;
-            size_t boolSize = sizeof(bool);
-            errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_,
-                RT_CONTAINS_SPIRV, NULL, &spirv, &boolSize);
-            if (errorCode != ACL_SUCCESS) {
-                spirv = false;
-            }
-            if (spirv) {
-                errorCode = aclCompile(dev().hsaCompiler(), binaryElf_,
-                    options->origOptionStr.c_str(), ACL_TYPE_SPIRV_BINARY,
-                    ACL_TYPE_LLVMIR_BINARY, NULL);
-                buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-                if (errorCode != ACL_SUCCESS) {
-                    buildLog_ += "Error while linking: Could not load SPIR-V" ;
-                    return false;
-                }
-            } else {
-                buildLog_ +="Error while linking : \
+            buildLog_ +="Error while linking : \
                         Invalid binary (Missing LLVMIR section)" ;
-                return false;
-            }
+            return false;
         }
         // Create a new aclBinary for each LLVMIR and save it in a list
         aclBIFVersion ver = aclBinaryVersion(binaryElf_);

@@ -1255,7 +1255,6 @@ Options::Options() :
     oVariables(NULL),
     clcOptions(),
     llvmOptions(),
-    kernelArgAlign(0),
     basename_max(0),
     OptionsLog(),
     flagsSize (((OID_LAST + 31)/32) * 32),
@@ -1265,8 +1264,7 @@ Options::Options() :
     dumpFileRoot(),
     currKernelName(NULL),
     encryptCode(0),
-    MemoryHandles(),
-    libraryType_(amd::LibraryUndefined)
+    MemoryHandles()
 {
     oVariables = new OptionVariables();
     ::memset(flags, 0, sizeof(flags));
