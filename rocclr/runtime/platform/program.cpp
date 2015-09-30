@@ -43,8 +43,7 @@ Program::findSymbol(const char* kernelName) const
 }
 
 cl_int
-Program::addDeviceProgram(Device& device, const void* image, size_t length,
-        bool hsail)
+Program::addDeviceProgram(Device& device, const void* image, size_t length, int oclVer)
 {
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
@@ -64,7 +63,8 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         return CL_SUCCESS;
     }
 
-    device::Program* program = rootDev.createProgram(hsail || isIL_);
+    bool hsail = (oclVer >= 200) || isIL_;
+    device::Program* program = rootDev.createProgram(hsail);
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -201,16 +201,15 @@ Program::compile(
         device::Program* devProgram = getDeviceProgram(**it);
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
-            retval = addDeviceProgram(**it, bin.first, bin.second,
-                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200);
+            const int oclVer = GetOclCVersion(parsedOptions.oVariables->CLStd);
+            retval = addDeviceProgram(**it, bin.first, bin.second, oclVer);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
             devProgram = getDeviceProgram(**it);
         }
 
-        if (devProgram->type() == device::Program::TYPE_INTERMEDIATE ||
-            isIL_) {
+        if (devProgram->type() == device::Program::TYPE_INTERMEDIATE) {
            continue;
         }
         // We only build a Device-Program once
@@ -301,10 +300,9 @@ Program::link(
         // find the corresponding device program in each input program
         std::vector<device::Program*> inputDevPrograms(numInputs);
         bool found = false;
-        bool hsail = GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200;
+        int maxOclVer = GetOclCVersion(parsedOptions.oVariables->CLStd);
         for (size_t i = 0; i < numInputs; ++i) {
             Program& inputProgram = *inputPrograms[i];
-            hsail = hsail || inputProgram.isIL_;
             deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
             deviceprograms_t::const_iterator findIt = inputDevProgs.find(*it);
             if (findIt == inputDevProgs.end()) {
@@ -317,8 +315,10 @@ Program::link(
             if (pos != std::string::npos) {
                 std::string clStd =
                     inputDevPrograms[i]->compileOptions().substr((pos+8), 5);
-                hsail = hsail || GetOclCVersion(clStd.c_str()) >= 200;
+                int oclVer = GetOclCVersion(clStd.c_str());
+                maxOclVer = (maxOclVer > oclVer) ? maxOclVer : oclVer;
             }
+
         }
         if (inputDevPrograms.size() == 0) {
             continue;
@@ -330,7 +330,7 @@ Program::link(
         device::Program* devProgram = getDeviceProgram(**it);
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
-            retval = addDeviceProgram(**it, bin.first, bin.second, hsail);
+            retval = addDeviceProgram(**it, bin.first, bin.second, maxOclVer);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
@@ -455,12 +455,12 @@ Program::build(
         device::Program* devProgram = getDeviceProgram(**it);
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
+            const int oclVer = GetOclCVersion(parsedOptions.oVariables->CLStd);
             if (sourceCode_.empty() && (bin.first == NULL)) {
                 retval = false;
                 continue;
             }
-            retval = addDeviceProgram(**it, bin.first, bin.second,
-                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200);
+            retval = addDeviceProgram(**it, bin.first, bin.second, oclVer);
             if (retval != CL_SUCCESS) {
                 return retval;
             }

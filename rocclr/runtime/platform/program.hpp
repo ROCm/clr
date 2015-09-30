@@ -139,7 +139,7 @@ public:
 
     //! Add a binary image to this program.
     cl_int addDeviceProgram(Device&, const void* image = NULL,
-        size_t len = 0, bool hsail = false);
+        size_t len = 0, int oclVer = 120);
 
     //! Find the section for the given device. Return NULL if not found.
     device::Program* getDeviceProgram(const Device& device) const;
