@@ -2814,6 +2814,17 @@ if_aclQueryInfo(aclCompiler *cl,
             }
             break;
           }
+    case RT_WAVES_PER_SIMD_HINT: {
+            size_t waves_per_simd_hint_size = sizeof(md->wavesPerSimdHint);
+            if (!ptr) {
+              *size = waves_per_simd_hint_size;
+              success = true;
+            } else if (*size >= waves_per_simd_hint_size) {
+              memcpy(ptr, &md->wavesPerSimdHint, waves_per_simd_hint_size);
+              success = true;
+            }
+            break;
+          }
   }
   return (success) ? ACL_SUCCESS : ACL_ERROR;
 }
