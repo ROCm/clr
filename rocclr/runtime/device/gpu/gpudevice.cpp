@@ -466,7 +466,7 @@ void NullDevice::fillDeviceInfo(
         info_.queueOnDeviceProperties_ =
             CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
         info_.queueOnDevicePreferredSize_ = 256 * Ki;
-        info_.queueOnDeviceMaxSize_ = 16 * Mi;
+        info_.queueOnDeviceMaxSize_ = 8 * Mi;
         info_.maxOnDeviceQueues_ = 1;
         info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
         info_.globalVariablePreferredTotalSize_ = static_cast<size_t>(info_.globalMemSize_);
