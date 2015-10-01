@@ -15,6 +15,7 @@ class Options;
 } // option
 namespace hsa {
 namespace loader {
+class Loader;
 class Executable;
 class Context;
 } // loader
@@ -624,6 +625,7 @@ private:
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
     std::list<Sampler*>   staticSamplers_;    //!< List od internal static samplers
     bool            isNull_;        //!< Null program no memory allocations
+    amd::hsa::loader::Loader* loader_; //!< Loader object
     amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
     ORCAHSALoaderContext loaderContext_;    //!< Context for HSA Loader
 };

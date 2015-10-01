@@ -18,6 +18,7 @@
 #include "utils/options.hpp"
 #include "hsa.h"
 #include "hsa_ext_image.h"
+#include "amd_hsa_loader.hpp"
 
 namespace gpu {
 
@@ -1670,6 +1671,7 @@ HSAILProgram::HSAILProgram(Device& device)
     binOpts_.bitness = ELFDATA2LSB;
     binOpts_.alloc = &::malloc;
     binOpts_.dealloc = &::free;
+    loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
 HSAILProgram::HSAILProgram(NullDevice& device)
@@ -1689,6 +1691,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
     binOpts_.bitness = ELFDATA2LSB;
     binOpts_.alloc = &::malloc;
     binOpts_.dealloc = &::free;
+    loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
 HSAILProgram::~HSAILProgram()
@@ -1710,9 +1713,10 @@ HSAILProgram::~HSAILProgram()
     }
     releaseClBinary();
     if (executable_ != NULL) {
-        Executable::Destroy(executable_);
+        loader_->DestroyExecutable(executable_);
     }
     delete kernels_;
+    amd::hsa::loader::Loader::Destroy(loader_);
 }
 
 bool
@@ -2132,7 +2136,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     hsa_agent_t agent;
     agent.handle = 1;
     if (!isNull() && hsaLoad) {
-        executable_ = Executable::Create(HSA_PROFILE_BASE, &loaderContext_, NULL);
+        executable_ = loader_->CreateExecutable(HSA_PROFILE_BASE, NULL);
         if (executable_ == NULL) {
             buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
             return false;
