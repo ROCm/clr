@@ -1665,54 +1665,17 @@ VirtualGPU::submitKernelInternalHSA(
     std::vector<const Memory*>    memList;
 
     bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true:false;
-    if (!printfDbgHSA().init(*this, printfEnabled )){
+    if (!printfDbgHSA().init(*this, printfEnabled )) {
         LogError( "Printf debug buffer initialization failed!");
         return false;
     }
 
-    bool deviceSupportFGS = 0 != (dev().info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM);
-    bool supportFineGrainedSystem = deviceSupportFGS;
-    FGSStatus status = kernel.parameters().getSvmSystemPointersSupport();
-    switch (status) {
-        case FGS_YES:
-            if (!deviceSupportFGS) {
-                return false;
-            }
-            supportFineGrainedSystem = true;
-            break;
-        case FGS_NO:
-            supportFineGrainedSystem = false;
-            break;
-        case FGS_DEFAULT:
-        default:
-            break;
+    // Check memory dependency and SVM objects
+    if (!processMemObjectsHSA(kernel, parameters, nativeMem, &memList)) {
+        LogError("Wrong memory objects!");
+        return false;
     }
 
-    size_t count = kernel.parameters().getNumberOfSvmPtr();
-    size_t execInfoOffset = kernel.parameters().getExecInfoOffset();
-    amd::Memory* memory = NULL;
-    //get svm non arugment information
-    void* const* svmPtrArray = reinterpret_cast<void* const*>(parameters + execInfoOffset);
-    for (size_t i = 0; i < count; i++) {
-        memory =  amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
-        if (NULL == memory) {
-            if (!supportFineGrainedSystem) {
-                return false;
-            }
-        }
-        else {
-            Memory* gpuMemory = dev().getGpuMemory(memory);
-            if (NULL != gpuMemory) {
-                memList.push_back(gpuMemory);
-            }
-            else {
-                return false;
-            }
-        }
-    }
-
-    // Check memory dependency and cache coherency
-    processMemObjectsHSA(kernel, parameters, nativeMem);
     cal_.memCount_ = 0;
 
     if (hsaKernel.dynamicParallelism()) {
@@ -3217,22 +3180,79 @@ VirtualGPU::profileEvent(EngineType engine, bool type) const
     }
 }
 
-void
+bool
 VirtualGPU::processMemObjectsHSA(
     const amd::Kernel&  kernel,
     const_address       params,
-    bool                nativeMem)
+    bool                nativeMem,
+    std::vector<const Memory*>* memList)
 {
     static const bool NoAlias = true;
     const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>
         (*(kernel.getDeviceKernel(dev(), NoAlias)));
+    const amd::KernelSignature& signature = kernel.signature();
+    const amd::KernelParameters& kernelParams = kernel.parameters();
 
     // Mark the tracker with a new kernel,
     // so we can avoid checks of the aliased objects
     memoryDependency().newKernel();
 
-    const amd::KernelSignature& signature = kernel.signature();
-    const amd::KernelParameters& kernelParams = kernel.parameters();
+    bool deviceSupportFGS = 0 != (dev().info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM);
+    bool supportFineGrainedSystem = deviceSupportFGS;
+    FGSStatus status = kernelParams.getSvmSystemPointersSupport();
+    switch (status) {
+        case FGS_YES:
+            if (!deviceSupportFGS) {
+                return false;
+            }
+            supportFineGrainedSystem = true;
+            break;
+        case FGS_NO:
+            supportFineGrainedSystem = false;
+            break;
+        case FGS_DEFAULT:
+        default:
+            break;
+    }
+
+    size_t count = kernelParams.getNumberOfSvmPtr();
+    size_t execInfoOffset = kernelParams.getExecInfoOffset();
+    bool sync = true;
+
+    amd::Memory* memory = NULL;
+    //get svm non arugment information
+    void* const* svmPtrArray =
+        reinterpret_cast<void* const*>(params + execInfoOffset);
+    for (size_t i = 0; i < count; i++) {
+        memory =  amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
+        if (NULL == memory) {
+            if (!supportFineGrainedSystem) {
+                return false;
+            }
+            else if (sync) {
+                flushCUCaches();
+                // Clear memory dependency state
+                const static bool All = true;
+                memoryDependency().clear(!All);
+            }
+        }
+        else {
+            Memory* gpuMemory = dev().getGpuMemory(memory);
+            if (NULL != gpuMemory) {
+                // Synchronize data with other memory instances if necessary
+                gpuMemory->syncCacheFromHost(*this);
+
+                const static bool IsReadOnly = false;
+                // Validate SVM passed in the non argument list
+                memoryDependency().validate(*this, gpuMemory, IsReadOnly);
+
+                memList->push_back(gpuMemory);
+            }
+            else {
+                return false;
+            }
+        }
+    }
 
     // Check all parameters for the current kernel
     for (size_t i = 0; i < signature.numParameters(); ++i) {
@@ -3248,9 +3268,10 @@ VirtualGPU::processMemObjectsHSA(
                 svmMem = amd::SvmManager::FindSvmBuffer(
                     *reinterpret_cast<void* const*>(params + desc.offset_));
                 if (!svmMem) {
-                    //!\todo Do we have to sync cache coherency or wait for SDMA?
                     flushCUCaches();
-                    break;
+                    // Clear memory dependency state
+                    const static bool All = true;
+                    memoryDependency().clear(!All);
                 }
             }
 
@@ -3271,10 +3292,11 @@ VirtualGPU::processMemObjectsHSA(
             }
 
             if (memory != NULL) {
-                //!@todo The code below can handle images only,
-                //! but the qualifier is broken anyway
+                // Check image
                 readOnly = (desc.accessQualifier_ ==
                     CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
+                // Check buffer
+                readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
                 // Validate memory for a dependency in the queue
                 memoryDependency().validate(*this, memory, readOnly);
             }
@@ -3286,6 +3308,8 @@ VirtualGPU::processMemObjectsHSA(
         // Validate global store for a dependency in the queue
         memoryDependency().validate(*this, mem, IsReadOnly);
     }
+
+    return true;
 }
 
 amd::Memory*
