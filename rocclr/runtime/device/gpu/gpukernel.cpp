@@ -2893,6 +2893,23 @@ GetHSAILArgAlignment(const aclArgData* argInfo)
     }
 }
 
+inline static HSAIL_ACCESS_TYPE
+GetHSAILArgAccessType(const aclArgData* argInfo)
+{
+    if (argInfo->type == ARG_TYPE_POINTER) {
+        switch (argInfo->arg.pointer.type) {
+        case ACCESS_TYPE_RO:
+            return HSAIL_ACCESS_TYPE_RO;
+        case ACCESS_TYPE_WO:
+            return HSAIL_ACCESS_TYPE_WO;
+        case ACCESS_TYPE_RW:
+        default:
+            return HSAIL_ACCESS_TYPE_RW;
+        }
+    }
+    return HSAIL_ACCESS_TYPE_NONE;
+}
+
 inline static HSAIL_ADDRESS_QUALIFIER
 GetHSAILAddrQual(const aclArgData* argInfo)
 {
@@ -3268,6 +3285,7 @@ HSAILKernel::initHsailArgs(const aclArgData* aclArg)
              (aclArg->arg.value.data != DATATYPE_struct)) ?
              aclArg->arg.value.numElements : 1;
         arg->alignment_ = GetHSAILArgAlignment(aclArg);
+        arg->access_    = GetHSAILArgAccessType(aclArg);
         offset += GetHSAILArgSize(aclArg);
         arguments_.push_back(arg);
     }

@@ -807,6 +807,12 @@ enum HSAIL_DATA_TYPE{
     HSAIL_DATATYPE_MAX_TYPES
 };
 
+enum HSAIL_ACCESS_TYPE {
+    HSAIL_ACCESS_TYPE_NONE = 0,
+    HSAIL_ACCESS_TYPE_RO,
+    HSAIL_ACCESS_TYPE_WO,
+    HSAIL_ACCESS_TYPE_RW
+};
 
 class HSAILKernel : public device::Kernel
 {
@@ -822,6 +828,7 @@ public:
         HSAIL_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
         HSAIL_DATA_TYPE dataType_;  //!< The type of data
         uint        numElem_;       //!< Number of elements
+        HSAIL_ACCESS_TYPE access_;  //!< Access type for the argument
     };
 
     // Max number of possible extra (hidden) kernel arguments

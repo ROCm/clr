@@ -463,10 +463,11 @@ private:
         );
 
     //! Detects memory dependency for HSAIL kernels and flushes caches
-    void processMemObjectsHSA(
+    bool processMemObjectsHSA(
         const amd::Kernel&  kernel,     //!< AMD kernel object for execution
         const_address       params,     //!< Pointer to the param's store
-        bool                nativeMem   //!< Native memory objects
+        bool                nativeMem,  //!< Native memory objects
+        std::vector<const Memory*>* memList //!< Memory list for KMD tracking
         );
 
     //! Common function for fill memory used by both svm Fill and non-svm fill
