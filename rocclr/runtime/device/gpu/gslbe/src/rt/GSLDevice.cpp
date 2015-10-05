@@ -855,128 +855,85 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, size_t offset, 
     return mo;
 }
 
-enum MemMap_DMA
-{
-    MemMap_DMA_None,
-    MemMap_DMA_DRMDMA,
-    MemMap_DMA_CPDMA
-};
-
-typedef struct _GSLDeviceMemMap_
+struct GSLDeviceMemMap
 {
     gslMemObject    mem;
-    MemMap_DMA      dma;
     uint32          flags;
-    bool32          lockable;
-} GSLDeviceMemMap;
+};
 
-
-bool
-CALGSLDevice::resMapLocal(void*&            pPtr,
-                             size_t&           pitch,
-                             gslMemObject      mem,
-                             gslMapAccessType  flags,
-                             bool              isHwDebug)
+void*
+CALGSLDevice::resMapLocal(size_t&           pitch,
+                          gslMemObject      mem,
+                          gslMapAccessType  flags)
 {
-    assert(m_cs != 0);
-    assert(mem != 0);
-
     // No map really necessary if IOMMUv2 is being used, return the surface address directly
     // as CPU can write to it for Linear tiled surfaces only
     if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
-        pPtr = (void*)mem->getImage(0)->surf.addr.getAddress();
-        return true;
+        return (void*)mem->getImage(0)->surf.addr.getAddress();
     }
 
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    //
-    // Allocate map structure for the unmap call
-    //
-
-    GSLDeviceMemMap* memMap = (GSLDeviceMemMap*)malloc(sizeof(GSLDeviceMemMap));
-
-    if (memMap == NULL)
-    {
-        return false;
-    }
-
+    void*   pPtr = NULL;
     gslMemObjectAttribLocation location = mem->getAttribs().location;
 
-    gslMemObject newMemDest = 0;
-    gslMemObject newMemSrc = 0;
-    bool needDestroy = 0;
-
-    uint64 width = mem->getRectWidth();
-
-    intp height = mem->getRectHeight();
-
-    cmSurfFmt format = mem->getFormat();
-
-    gslMemObjectAttribType   dstType   = mem->getAttribs().type;
-
-    gslMemObjectAttribs attribsDest(
-        dstType,                                        // type
-        GSL_MOA_MEMORY_REMOTE_CACHEABLE,                // location
-        GSL_MOA_TILING_LINEAR,                          // tiling
-        GSL_MOA_DISPLAYABLE_NO,                         // displayable
-        ATIGL_FALSE,                                    // mipmap
-        1,                                              // samples
-        0,                                              // cpu_address
-        GSL_MOA_SIGNED_NO,                              // signed_format
-        GSL_MOA_FORMAT_DERIVED,                         // numFormat
-        DRIVER_MODULE_GLL,                              // module
-        GSL_ALLOCATION_INSTANCED                        // alloc_type
-    );
-
-    attribsDest.channelOrder = mem->getAttribs().channelOrder;
-
-    //
-    // DMA 1D surfaces
-    //
-    MemMap_DMA dma = MemMap_DMA_DRMDMA;
-
-    if (location == GSL_MOA_MEMORY_CARD_LOCKABLE)
+    if ((location == GSL_MOA_MEMORY_CARD_LOCKABLE) || !m_allowDMA)
     {
-        //
         // direct lock
-        //
+        if (location == GSL_MOA_MEMORY_CARD_LOCKABLE) {
+            // Get tiling mode and resolve the aperture settings.
+            bool useAperture = ResolveAperture(mem->getAttribs().tiling);
 
-        dma = MemMap_DMA_None;
-        memMap->lockable = ATIGL_TRUE;
-
-        // Get tiling mode and resolve the aperture settings.
-        bool useAperture;
-        gslMemObjectAttribTiling tiling = mem->getAttribs().tiling;
-        useAperture = ResolveAperture(tiling);
-
-        pPtr = mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, useAperture);
+            pPtr = mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, useAperture);
+        }
+        else
+        {
+            pPtr = mem->map(m_cs, flags, GSL_GPU_0, true, false);
+        }
 
         if (pPtr == NULL)
         {
-            free(memMap);
-            return false;
+            return NULL;
         }
 
-        //
         // obtain the pitch of the buffer
-        //
-        uint64 tmppitch = mem->getPitch();
-
-        pitch = static_cast<size_t>(tmppitch);
-
-        m_hack.insert(std::pair<gslMemObject, intp>(mem, (intp) memMap));
+        pitch = static_cast<size_t>(mem->getPitch());
     }
     else
     {
-        memMap->lockable = ATIGL_FALSE;
+        // Allocate map structure for the unmap call
+        GSLDeviceMemMap* memMap = (GSLDeviceMemMap*)malloc(sizeof(GSLDeviceMemMap));
 
-        //
+        if (memMap == NULL)
+        {
+            return NULL;
+        }
+
+        uint64 width = mem->getRectWidth();
+        intp height = mem->getRectHeight();
+        cmSurfFmt format = mem->getFormat();
+
+        gslMemObjectAttribType   dstType   = mem->getAttribs().type;
+
+        gslMemObjectAttribs attribsDest(
+            dstType,                            // type
+            GSL_MOA_MEMORY_REMOTE_CACHEABLE,    // location
+            GSL_MOA_TILING_LINEAR,              // tiling
+            GSL_MOA_DISPLAYABLE_NO,             // displayable
+            ATIGL_FALSE,                        // mipmap
+            1,                                  // samples
+            0,                                  // cpu_address
+            GSL_MOA_SIGNED_NO,                  // signed_format
+            GSL_MOA_FORMAT_DERIVED,             // numFormat
+            DRIVER_MODULE_GLL,                  // module
+            GSL_ALLOCATION_INSTANCED            // alloc_type
+        );
+
+        attribsDest.channelOrder = mem->getAttribs().channelOrder;
+
         // Create the target destination buffer
-        //
-
         memMap->mem = m_cs->createMemObject2D(format, width, (uint32)height, &attribsDest);
 
         if (memMap->mem == NULL)
@@ -986,203 +943,89 @@ CALGSLDevice::resMapLocal(void*&            pPtr,
             if (memMap->mem == NULL)
             {
                 free(memMap);
-                return false;
+                return NULL;
             }
         }
 
-        //
         // set the pointer to it as the return buffer
-        //
-        void* tmp = memMap->mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, false);
-
-        if (tmp == 0)
+        pPtr = memMap->mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, false);
+        if (pPtr == 0)
         {
             m_cs->destroyMemObject(memMap->mem);
             free(memMap);
-            return false;
+            return NULL;
         }
 
-        pPtr = tmp;
-
-        //
         // obtain the pitch of the temporary buffer
-        //
-        uint64 tmppitch = memMap->mem->getPitch();
+        pitch = static_cast<size_t>(memMap->mem->getPitch());
 
-        pitch = static_cast<size_t>(tmppitch);
-
-        uint64 surfaceSize;
-
-        // avoid using CPDMA, which may cause deadlock with HW Debug
-        uint32 copyFlag = (isHwDebug) ? CAL_MEMCOPY_ASYNC : 0;
-        CopyType copy = GetCopyType(mem, memMap->mem, 0, 0, m_allowDMA, copyFlag, surfaceSize, 0, 0);
-
-        switch (copy)
-        {
-        case USE_CPDMA:
-            dma = MemMap_DMA_CPDMA;
-            break;
-
-        case USE_DRMDMA:
-            dma = MemMap_DMA_DRMDMA;
-            break;
-
-        default:
-            dma = MemMap_DMA_None;
-            break;
-         }
-
-
-        //
         // For write only cases, we don't care about the data
-        //
-        switch (dma)
+        if (flags != GSL_MAP_WRITE_ONLY)
         {
-        case MemMap_DMA_DRMDMA:
-            if (flags != GSL_MAP_WRITE_ONLY)
-            {
-                PerformDMACopy(mem, memMap->mem, (cmSurfFmt)format, CAL_MEMCOPY_SYNC, isHwDebug);
-                //
-                // Flush then wait
-                //
-                m_cs->Flush();
-#ifdef USE_3D_SYNC
-                Wait(m_cs, GSL_SYNC_ATI, m_mapQuery);
-#else
-                Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
-#endif
-            }
-            break;
+            uint64 surfaceSize = memMap->mem->getSurfaceSize();
+            uint64 dstSize = mem->getSurfaceSize();
 
-        case MemMap_DMA_CPDMA:
-            memMap->mem->unmap(m_cs);
-            m_cs->destroyMemObject(memMap->mem);
-            memMap->mem = NULL;
+            surfaceSize = (surfaceSize > dstSize) ? dstSize : surfaceSize;
 
-            pPtr = mem->map(m_cs, flags, GSL_GPU_0, true, false);
+            m_cs->DMACopy(mem, 0, memMap->mem, 0, surfaceSize, 0, NULL);
 
-            if (pPtr == NULL)
-            {
-                assert(0);
-                free(memMap);
-                return false;
-            }
-            break;
-
-        case MemMap_DMA_None:
-            assert(0);
-            break;
+            Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
         }
 
-        //
-        // XXX - lock free?
         m_hack.insert(std::pair<gslMemObject, intp>(mem, (intp) memMap));
-
-        if (needDestroy)
-        {
-            m_cs->destroyMemObject(newMemSrc);
-            m_cs->destroyMemObject(newMemDest);
-        }
+        memMap->flags = flags;
     }
 
-    memMap->dma   = dma;
-    memMap->flags = flags;
-
-    return true;
+    return pPtr;
 }
 
-bool
-CALGSLDevice::resUnmapLocal(gslMemObject mem, bool isHwDebug)
+void
+CALGSLDevice::resUnmapLocal(gslMemObject mem)
 {
-    assert(m_cs != 0);
-
     // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
     // which CPU can write to it for Linear tiled surfaces only
     if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
-        return true;
+        return;
     }
 
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    //
     // Find the pairing
-    //
-
     Hack::iterator iter = m_hack.find(mem);
     if (iter == m_hack.end())
     {
+        // We didn't find a pair, then it's a direct map
         mem->unmap(m_cs);
-        return true;
+        //! @todo: GSL doesn't wait for CB on unmap,
+        //! thus the data isn't really avaiable to all engines
+        if (mem->getAttribs().location != GSL_MOA_MEMORY_CARD_LOCKABLE)
+        {
+            Wait(m_cs, GSL_SYNC_ATI, m_mapQuery);
+        }
+        return;
     }
 
     GSLDeviceMemMap* memMap = (GSLDeviceMemMap*)iter->second;
     m_hack.erase(iter);
 
-    if (memMap->lockable)
+    memMap->mem->unmap(m_cs);
+
+    if (memMap->flags != GSL_MAP_READ_ONLY)
     {
-        //
-        // direct unlock
-        //
-        mem->unmap(m_cs);
+        uint64 surfaceSize = memMap->mem->getSurfaceSize();
+        uint64 dstSize = mem->getSurfaceSize();
+
+        surfaceSize = (surfaceSize > dstSize) ? dstSize : surfaceSize;
+
+        m_cs->DMACopy(memMap->mem, 0, mem, 0, surfaceSize, 0, NULL);
+
+        Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
     }
-    else
-    {
-        //
-        // Handle the different map cases.  For readonly cases, we can forgo the
-        // copy back
-        //
-        //
-        // 770 flushes denorms to 0 during the copy. To be consistent with other platforms, we
-        // alias the memory as uint32 when doing the copies.
-        //
+    m_cs->destroyMemObject(memMap->mem);
 
-        cmSurfFmt format = mem->getFormat();
-
-        switch (memMap->dma)
-        {
-        case MemMap_DMA_CPDMA:
-            mem->unmap(m_cs);
-            //
-            // Flush then wait
-            //
-            m_cs->Flush();
-            Wait(m_cs, GSL_SYNC_ATI, m_mapQuery);
-            break;
-
-        case MemMap_DMA_DRMDMA:
-            memMap->mem->unmap(m_cs);
-
-            if (memMap->flags != GSL_MAP_READ_ONLY)
-            {
-                if (PerformDMACopy(memMap->mem, mem, format, CAL_MEMCOPY_SYNC, isHwDebug) == false)
-                {
-                    assert(0);
-                }
-
-                //
-                // Flush then wait
-                //
-                m_cs->Flush();
-#ifdef USE_3D_SYNC
-                Wait(m_cs, GSL_SYNC_ATI, m_mapQuery);
-#else
-                Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
-#endif
-            }
-            m_cs->destroyMemObject(memMap->mem);
-            break;
-
-        case MemMap_DMA_None:
-            assert(0);
-            break;
-        }
-    }
-
-    free(memMap);
-
-    return true;
+    delete memMap;
 }
 
 gslMemObject
@@ -1214,103 +1057,40 @@ CALGSLDevice::resGetHeap(size_t size) const
     return rval;
 }
 
-bool
-CALGSLDevice::resMapRemote(void*& pPtr,
-                               size_t& pitch,
-                               gslMemObject mem,
-                               gslMapAccessType flags) const
+void*
+CALGSLDevice::resMapRemote(
+        size_t& pitch,
+        gslMemObject mem,
+        gslMapAccessType flags) const
 {
-    assert(m_cs != 0);
-    assert(mem != 0);
-
     // No map really necessary if IOMMUv2 is being used, return the surface address directly
     // as CPU can write to it for Linear tiled surfaces only
     if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
-        pPtr = (void*)mem->getImage(0)->surf.addr.getAddress();
-        return true;
+        return (void*)mem->getImage(0)->surf.addr.getAddress();
     }
 
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
-    pPtr = mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, false);
-    if (pPtr == NULL)
-    {
-        return false;
-    }
-
-    uint64 tmppitch = mem->getPitch();
-
-    pitch = static_cast<size_t>(tmppitch);
-
-    return true;
+    pitch = static_cast<size_t>(mem->getPitch());
+    return mem->map(m_cs, GSL_MAP_NOSYNC, GSL_GPU_0, false, false);
 }
 
-bool
+void
 CALGSLDevice::resUnmapRemote(gslMemObject mem) const
 {
-    assert(m_cs != 0);
-
     // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
     // which CPU can write to it for Linear tiled surfaces only
     if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
-        return true;
+        return;
     }
 
     //! @note: GSL device isn't thread safe
     amd::ScopedLock k(gslDeviceOps());
 
     mem->unmap(m_cs);
-
-    return true;
-}
-
-bool
-CALGSLDevice::PerformDMACopy(gslMemObject srcMem, gslMemObject destMem, cmSurfFmt format, CALuint flags, bool isHwDebug)
-{
-    assert(m_cs != 0);
-
-    uint64 surfaceSize = srcMem->getSurfaceSize();
-    uint64 dstSize = destMem->getSurfaceSize();
-
-    //
-    // XXX -- this is somewhat lame.  Need the actual amount of data
-    // to copy.  Not the surface sizes.  Since one is linear and one
-    // could be tiled.  The smaller one should contain the size we need.
-    //
-
-    surfaceSize = (surfaceSize > dstSize) ? dstSize : surfaceSize;
-
-    uint32 mode;
-
-    if (isHwDebug) {
-        mode = 0;   // Cannot use any sync flag to avoid possible deadlock due to halted wave
-    }
-    else {
-        switch (flags)
-        {
-        case CAL_MEMCOPY_SYNC:
-             mode = GSL_SYNCUPLOAD_SYNC_WAIT | GSL_SYNCUPLOAD_SYNC_START;
-             break;
-
-        case CAL_MEMCOPY_ASYNC:
-             assert(0);
-             //
-             // XXX -- not currently supported so fall through
-             //
-
-        case CAL_MEMCOPY_DEFAULT:
-        default:
-             mode = GSL_SYNCUPLOAD_SYNC_START;
-             break;
-        }
-    }
-
-    m_cs->DMACopy(srcMem, 0, destMem, 0, surfaceSize, mode, NULL);
-
-    return true;
 }
 
 #define CPDMA_THRESHOLD 131072
@@ -1323,44 +1103,37 @@ CALGSLDevice::GetCopyType(
     size_t* destOffset,
     bool allowDMA,
     uint32 flags,
-    uint64& surfaceSize,
     size_t size,
     bool enableCopyRect) const
 {
     CopyType    type = USE_NONE;
-    intp        bppSrc = 0;
-    intp        bppDst = 0;
 
     gslMemObjectAttribTiling srcTiling = srcMem->getAttribs().tiling;
     gslMemObjectAttribTiling dstTiling = destMem->getAttribs().tiling;
     gslMemObjectAttribType   srcType   = srcMem->getAttribs().type;
     gslMemObjectAttribType   dstType   = destMem->getAttribs().type;
     uint64                   srcSize   = srcMem->getSurfaceSize();
-    uint64                   dstSize   = destMem->getSurfaceSize();
 
-    surfaceSize = (srcSize > dstSize) ? dstSize : srcSize;
-
-    if( size != 0)
-      srcSize = (srcSize > size) ? size : srcSize;
-
-    if(allowDMA == false) {
-        if(((srcTiling != GSL_MOA_TILING_LINEAR) && (srcTiling != GSL_MOA_TILING_LINEAR_GENERAL)) ||
-          ((dstTiling != GSL_MOA_TILING_LINEAR) && (dstTiling != GSL_MOA_TILING_LINEAR_GENERAL))) {
-                type = USE_NONE;
-                return type;
-        }
+    if (size != 0)
+    {
+        srcSize = (srcSize > size) ? size : srcSize;
     }
 
-
-	// CPDMA isnt possible for anything other than a 1D_TEXURE or a BUFFER as it does a blind blob copy without regards to padding
+    // CPDMA isnt possible for anything other than a 1D_TEXURE or a BUFFER as it does a blind blob copy without regards to padding
     bool isCPDMApossible = ((srcTiling == GSL_MOA_TILING_LINEAR) || srcTiling == GSL_MOA_TILING_LINEAR_GENERAL) &&
                            ((dstTiling == GSL_MOA_TILING_LINEAR) || dstTiling == GSL_MOA_TILING_LINEAR_GENERAL) &&
                            (dstType == GSL_MOA_TEXTURE_1D || dstType == GSL_MOA_BUFFER) &&
                            (srcType == dstType);
+
+    if (!allowDMA && !isCPDMApossible)
+    {
+        return USE_NONE;
+    }
+
     //
     // Use CPDMA for transfers < 128KB
     //
-    if(isCPDMApossible && (((flags != CAL_MEMCOPY_ASYNC) && (srcSize <= CPDMA_THRESHOLD) && !enableCopyRect) ||
+    if (isCPDMApossible && (((flags != CAL_MEMCOPY_ASYNC) && (srcSize <= CPDMA_THRESHOLD) && !enableCopyRect) ||
          (allowDMA == false)) )
     {
         type = USE_CPDMA;
@@ -1370,14 +1143,11 @@ CALGSLDevice::GetCopyType(
             (((srcType == GSL_MOA_TEXTURE_2D) && (dstType == GSL_MOA_BUFFER)) ||
             ((dstType == GSL_MOA_TEXTURE_2D) && (srcType == GSL_MOA_BUFFER))))
     {
-        uint64 pitch;
-        uint64 linearBytePitch = 0;
         if ((srcTiling != GSL_MOA_TILING_LINEAR) &&
             (dstTiling == GSL_MOA_TILING_LINEAR))
         {
-            bppSrc = srcMem->getBitsPerElement();
-            pitch  = srcMem->getPitch();
-            linearBytePitch = size * (bppSrc / 8);
+            intp bppSrc = srcMem->getBitsPerElement();
+            uint64 linearBytePitch = size * (bppSrc / 8);
 
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
@@ -1394,9 +1164,8 @@ CALGSLDevice::GetCopyType(
         else if ((srcTiling == GSL_MOA_TILING_LINEAR) &&
                  (dstTiling != GSL_MOA_TILING_LINEAR))
         {
-            bppDst = destMem->getBitsPerElement();
-            pitch  = destMem->getPitch();
-            linearBytePitch = size * (bppDst / 8);
+            intp bppDst = destMem->getBitsPerElement();
+            uint64 linearBytePitch = size * (bppDst / 8);
 
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&

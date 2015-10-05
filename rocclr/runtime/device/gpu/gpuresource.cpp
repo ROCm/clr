@@ -1389,38 +1389,28 @@ Resource::hostRead(
     return true;
 }
 
-bool
-Resource::gslMap(void** ptr, size_t* pitch, gslMapAccessType flags, gslMemObject resource) const
+void*
+Resource::gslMap(size_t* pitch, gslMapAccessType flags, gslMemObject resource) const
 {
-    bool result = true;
-
     if (cal_.cardMemory_ || cal_.tiled_) {
         // @todo remove const cast
-        result = const_cast<Device&>(dev()).resMapLocal(*ptr, *pitch, resource, flags,
-                                                        dev().settings().enableHwDebug_);
+        return const_cast<Device&>(dev()).resMapLocal(*pitch, resource, flags);
     }
     else {
-        result = dev().resMapRemote(*ptr, *pitch, resource, flags);
+        return dev().resMapRemote(*pitch, resource, flags);
     }
-
-    return result;
 }
 
-bool
+void
 Resource::gslUnmap(gslMemObject resource) const
 {
-    bool result = true;
-
     if (cal_.cardMemory_) {
         // @todo remove const cast
-        result = const_cast<Device&>(dev()).resUnmapLocal(resource,
-                                                          dev().settings().enableHwDebug_);
+        const_cast<Device&>(dev()).resUnmapLocal(resource);
     }
     else {
-        result = dev().resUnmapRemote(resource);
+        dev().resUnmapRemote(resource);
     }
-
-    return result;
 }
 
 bool
@@ -1546,7 +1536,8 @@ Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers)
         }
         else {
             // Map current resource
-            if (!gslMap(&address_, &cal_.pitch_, mapFlags, gslResource())) {
+            address_ = gslMap(&cal_.pitch_, mapFlags, gslResource());
+            if (address_ == NULL) {
                 LogError("cal::ResMap failed!");
                 --mapCount_;
                 return NULL;
@@ -1622,7 +1613,8 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
         }
 
         // Map 2D layer
-        if (!gslMap(&sliceAddr, &pitch, GSL_MAP_READ_ONLY, sliceResource)) {
+        sliceAddr = gslMap(&pitch, GSL_MAP_READ_ONLY, sliceResource);
+        if (sliceAddr == NULL) {
             LogError("Map layer. CalResMap failed!");
             return NULL;
         }
@@ -1641,9 +1633,7 @@ Resource::mapLayers(VirtualGPU* gpu, CALuint flags)
         }
 
         // Unmap a layer
-        if (!gslUnmap(sliceResource)) {
-            LogError("Map layer. CalResUnmap failed!");
-        }
+        gslUnmap(sliceResource);
         dev().resFree(sliceResource);
     }
 
@@ -1669,9 +1659,7 @@ Resource::unmap(VirtualGPU* gpu)
         }
         else {
             // Unmap current resource
-            if (!gslUnmap(gslResource())) {
-                LogError("CalResUnmap failed!");
-            }
+            gslUnmap(gslResource());
         }
         address_ = NULL;
     }
@@ -1729,7 +1717,8 @@ Resource::unmapLayers(VirtualGPU* gpu)
             }
 
             // Map a layer
-            if (!gslMap(&sliceAddr, &pitch, GSL_MAP_WRITE_ONLY, sliceResource)) {
+            sliceAddr = gslMap(&pitch, GSL_MAP_WRITE_ONLY, sliceResource);
+            if (sliceAddr == NULL) {
                 LogError("Unmap layer. CalResMap failed!");
                 return;
             }
@@ -1748,9 +1737,7 @@ Resource::unmapLayers(VirtualGPU* gpu)
             }
 
             // Unmap a layer
-            if (!gslUnmap(sliceResource)) {
-                LogError("Unmap layer. CalResUnmap failed!");
-            }
+            gslUnmap(sliceResource);
             dev().resFree(sliceResource);
         }
     }
@@ -1830,8 +1817,9 @@ Resource::rename(VirtualGPU& gpu, bool force)
         if (create(memoryType())) {
             if (mapCount_ > 0) {
                 assert(!cal()->cardMemory_ && "Unsupported memory type!");
-                if (!dev().resMapRemote(gslRef_->cpuAddress_, cal_.pitch_,
-                    gslResource(), GSL_MAP_READ_WRITE)) {
+                gslRef_->cpuAddress_ = dev().resMapRemote(cal_.pitch_,
+                    gslResource(), GSL_MAP_READ_WRITE);
+                if (gslRef_->cpuAddress_ == NULL) {
                     LogError("gslMap fails on rename!");
                 }
                 address_ = gslRef_->cpuAddress_;

@@ -55,13 +55,12 @@ public:
     void close();
 
     gslMemObject     resAlloc(const CALresourceDesc* desc) const;
-    bool             resMapLocal(void*& pPtr, size_t& pitch, gslMemObject res, gslMapAccessType flags,
-                                 bool isHwDebug = false);
-    bool             resUnmapLocal(gslMemObject res, bool isHwDebug = false);
+    void*            resMapLocal(size_t& pitch, gslMemObject res, gslMapAccessType flags);
+    void             resUnmapLocal(gslMemObject res);
 
     void             resFree(gslMemObject mem) const;
-    bool             resMapRemote(void*& pPtr, size_t& pitch, gslMemObject res, gslMapAccessType flags) const;
-    bool             resUnmapRemote(gslMemObject res) const;
+    void*            resMapRemote(size_t& pitch, gslMemObject res, gslMapAccessType flags) const;
+    void             resUnmapRemote(gslMemObject res) const;
 
     gslMemObject     resGetHeap(size_t size) const;
     gslMemObject     resAllocView(gslMemObject res, gslResource3D size,
@@ -105,8 +104,7 @@ public:
     void             PerformFullInitialization() const;
 
     CopyType         GetCopyType(gslMemObject srcMem, gslMemObject destMem, size_t* srcOffset,
-                                     size_t* destOffset, bool allowDMA, uint32 flags, uint64& surfaceSize,
-                                     size_t size, bool enableCopyRect) const;
+                                     size_t* destOffset, bool allowDMA, uint32 flags, size_t size, bool enableCopyRect) const;
 
     uint32          calcScratchBufferSize(uint32 regNum) const;
 
