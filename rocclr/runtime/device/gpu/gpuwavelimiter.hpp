@@ -50,7 +50,7 @@ protected:
         std::vector<char> state_;
     };
 
-    std::vector<ulong> measure_;
+    std::vector<uint64_t> measure_;
     bool enable_;
     uint SIMDPerSH_;     // Number of SIMDs per SH
     uint waves_;         // Waves per SIMD to be set
@@ -91,9 +91,9 @@ public:
     explicit WLAlgorithmSmooth(Kernel* owner, uint seqNum, bool enable, bool enableDump);
     virtual ~WLAlgorithmSmooth();
 private:
-    std::vector<ulong> reference_;
-    std::vector<ulong> trial_;
-    std::vector<ulong> ratio_;
+    std::vector<uint64_t> reference_;
+    std::vector<uint64_t> trial_;
+    std::vector<uint64_t> ratio_;
     bool discontinuous_; // Measured data is discontinuous
     uint dynRunCount_;
     uint dataCount_;
