@@ -852,7 +852,7 @@ public:
         size_t   compileSizeHint_[3];    //!< kernel compiled workgroup size hint
         std::string compileVecTypeHint_; //!< kernel compiled vector type hint
         bool     uniformWorkGroupSize_;  //!< uniform work group size option
-        bool     limitWave_;             //!< adaptively limit waves per SH
+        size_t   wavesPerSimdHint_;      //!< waves per simd hit
     };
 
     //! Default constructor

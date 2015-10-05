@@ -344,8 +344,21 @@ void WaveLimiterManager::enable() {
     auto hwInfo = gpuDev->hwInfo();
     // Enable it only for CI+, unless GPU_WAVE_LIMIT_ENABLE is set to 1
     // Disabled for SI due to bug #10817
-    setIfNotDefault(enable_, GPU_WAVE_LIMIT_ENABLE,
-         owner_->workGroupInfo()->limitWave_ && gpuDev->settings().ciPlus_);
+
+    if (!flagIsDefault(GPU_WAVE_LIMIT_ENABLE)) {
+        enable_ = GPU_WAVE_LIMIT_ENABLE;
+    }
+    else {
+        if (gpuDev->settings().ciPlus_) {
+            if (owner_->workGroupInfo()->wavesPerSimdHint_ == 0) {
+                enable_ = true;
+            }
+            else if (owner_->workGroupInfo()->wavesPerSimdHint_ <= GPU_WAVE_LIMIT_MAX_WAVE) {
+                //Todo:
+                //fixed_ = owner_->workGroupInfo()->wavesPerSimdHint_;
+            }
+        }
+    }
 }
 
 }

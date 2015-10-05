@@ -197,7 +197,7 @@ public:
         PrintfBufId,
         GroupingHint,
         VecTypeHint,
-        LimitWave,
+        WavesPerSimdHint,
         TotalTypes
     };
 

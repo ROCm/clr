@@ -59,7 +59,7 @@ const MetaDataConst ArgState[ArgStateTotal] =
     { "printfid:",          KernelArg::PrintfBufId,     { 0, 0, 0, 0, 0, 0, 0 } },
     { "wsh:",               KernelArg::GroupingHint,    { 0, 0, 0, 0, 0, 0, 0 } },
     { "vth:",               KernelArg::VecTypeHint,     { 0, 0, 0, 0, 0, 0, 0 } },
-    { "limitwave:",         KernelArg::LimitWave,        { 0, 0, 0, 0, 0, 0, 0 } },
+    { "WavesPerSimdHint:",  KernelArg::WavesPerSimdHint,{ 0, 0, 0, 0, 0, 0, 0 } },
 };
 
 const DataTypeConst DataType[] =
@@ -854,6 +854,8 @@ Kernel::Kernel(
     }
     // Workgroup info private memory size
     workGroupInfo_.privateMemSize_ = hwPrivateSize_;
+    // Default wavesPerSimdHint_
+    workGroupInfo_.wavesPerSimdHint_ = ~0U;
     hsa_ = false;
 }
 
@@ -2512,13 +2514,13 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
                     }
                     // Process next ...
                     continue;
-                case KernelArg::LimitWave:
+                case KernelArg::WavesPerSimdHint:
                     {
                         uint tmp;
                         if (!getuint(metaData, &pos, &tmp)) {
                             return false;
                         }
-                        workGroupInfo_.limitWave_ = tmp!=0;
+                        workGroupInfo_.wavesPerSimdHint_ = tmp;
                     }
                     continue;
                 default:
