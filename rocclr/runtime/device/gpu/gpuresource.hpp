@@ -404,15 +404,14 @@ private:
         );
 
     //! Calls GSL to map a resource
-    bool gslMap(
-        void**  ptr,            //!< Pointer to virtual address
+    void* gslMap(
         size_t* pitch,          //!< Pitch value for the image
         gslMapAccessType flags, //!< Map flags
         gslMemObject resource   //!< GSL memory object
         ) const;
 
     //! Uses GSL to unmap a resource
-    bool gslUnmap(
+    void gslUnmap(
         gslMemObject resource   //!< GSL memory object
         ) const;
 

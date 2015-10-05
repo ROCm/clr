@@ -339,7 +339,6 @@ CALGSLContext::copyPartial(GpuEvent&      event,
                            bool             enableRectCopy,
                            uint32           bytesPerElement)
 {
-    uint64      surfaceSize;
     uint32      mode = GSL_SYNCUPLOAD_IGNORE_ELEMENTSIZE;
     EngineType  engineId = MainEngine;
     assert(m_cs != 0);
@@ -347,7 +346,7 @@ CALGSLContext::copyPartial(GpuEvent&      event,
     uint64  linearBytePitch = 0;
     intp bpp = 0;
 
-    type = dev()->GetCopyType(srcMem, destMem, srcOffset, destOffset, m_allowDMA, flags, surfaceSize, size[0], enableRectCopy);
+    type = dev()->GetCopyType(srcMem, destMem, srcOffset, destOffset, m_allowDMA, flags, size[0], enableRectCopy);
 
     if(type == USE_NONE)
     {

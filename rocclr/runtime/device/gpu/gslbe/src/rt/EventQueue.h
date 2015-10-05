@@ -6,8 +6,6 @@
 #include "gsl_types.h"
 #include "gsl_config.h"
 
-//#define USE_3D_SYNC 1
-
 namespace gsl
 {
     class gsCtx;
