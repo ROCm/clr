@@ -514,11 +514,6 @@ PrintfDbg::outputDbgBuffer(const PrintfInfo& info, const uint32_t* workitemData,
                     / sizeof(uint32_t);
             }
         }
-        else {
-            amd::Os::printf("Error: The arguments don't match the printf format string. printf(%s)",
-                info.fmtString_.data());
-            return;
-        }
     }
 
     if (pos != std::string::npos) {
