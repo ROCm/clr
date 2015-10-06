@@ -967,7 +967,11 @@ CALGSLDevice::resMapLocal(size_t&           pitch,
 
             surfaceSize = (surfaceSize > dstSize) ? dstSize : surfaceSize;
 
-            m_cs->DMACopy(mem, 0, memMap->mem, 0, surfaceSize, 0, NULL);
+            //! @todo Workaround strange GSL/CMM-QS behavior. OCL doesn't require a sync,
+            //! because resource isn't busy on the CAL device. However without sync there are less CBs available
+            //! Conformanace multidevice test will create around 60 queues, instead of 70 
+            uint32 mode = (IS_LINUX) ? GSL_SYNCUPLOAD_SYNC_WAIT | GSL_SYNCUPLOAD_SYNC_START : 0;
+            m_cs->DMACopy(mem, 0, memMap->mem, 0, surfaceSize, mode, NULL);
 
             Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
         }
@@ -1019,7 +1023,11 @@ CALGSLDevice::resUnmapLocal(gslMemObject mem)
 
         surfaceSize = (surfaceSize > dstSize) ? dstSize : surfaceSize;
 
-        m_cs->DMACopy(memMap->mem, 0, mem, 0, surfaceSize, 0, NULL);
+        //! @todo Workaround strange GSL/CMM-QS behavior. OCL doesn't require a sync,
+        //! because resource isn't busy on the CAL device. However without sync there are less CBs available
+        //! Conformanace multidevice test will create around 60 queues, instead of 70    
+        uint32 mode = (IS_LINUX) ? GSL_SYNCUPLOAD_SYNC_WAIT | GSL_SYNCUPLOAD_SYNC_START : 0;
+        m_cs->DMACopy(memMap->mem, 0, mem, 0, surfaceSize, mode, NULL);
 
         Wait(m_cs, GSL_DRMDMA_SYNC_ATI, m_mapDMAQuery);
     }
