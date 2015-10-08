@@ -233,7 +233,7 @@ Settings::create(
                 oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
                     XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
             }
-            if (hsail_ || (OPENCL_VERSION < 200)) {
+            if (OPENCL_VERSION < 200) {
                 oclVersion_ = OpenCL12;
             }
             numComputeRings_ = 8;
