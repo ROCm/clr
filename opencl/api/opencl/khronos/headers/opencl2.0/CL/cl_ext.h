@@ -450,6 +450,45 @@ typedef CL_API_ENTRY cl_int
                                                     cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 #endif /* CL_VERSION_1_2 */
 
+#ifdef CL_VERSION_1_2
+/**********************
+* cl_amd_liquid_flash *
+***********************/
+#define cl_amd_liquid_flash 1
+
+#define CL_INVALID_FILE_OBJECT_AMD 0x404D
+
+typedef struct _cl_file_amd * cl_file_amd;
+
+typedef cl_uint cl_file_flags_amd;
+
+typedef CL_API_ENTRY cl_file_amd
+(CL_API_CALL * clCreateFileObjectAMD_fn)( cl_context /*context*/,
+                                          cl_file_flags_amd /*flags*/,
+                                          cl_char * /*file_name*/,
+                                          cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clRetainFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clReleaseFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueWriteBufferFromFileAMD_fn)( cl_command_queue /*command_queue*/,
+                                                    cl_mem /*buffer*/,
+                                                    cl_bool /*blocking_write*/,
+                                                    size_t /*buffer_offset*/,
+                                                    size_t /*cb*/,
+                                                    cl_file_amd /*file*/,
+                                                    size_t /*file_offset*/,
+                                                    cl_uint /*num_events_in_wait_list*/,
+                                                    const cl_event * /*event_wait_list*/,
+                                                    cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+#endif /* CL_VERSION_1_2 */
+
+
 #ifdef CL_VERSION_2_0
 /*********************************
 * cl_khr_sub_groups extension
