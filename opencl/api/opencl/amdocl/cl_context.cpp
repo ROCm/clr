@@ -22,6 +22,7 @@
 #include "cl_sdi_amd.h"
 #include "cl_thread_trace_amd.h"
 #include "cl_debugger_amd.h"
+#include "cl_lqdflash_amd.h"
 
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -512,6 +513,9 @@ clGetExtensionFunctionAddress(const char* func_name)
 #if cl_khr_il_program
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
 #endif // cl_khr_il_program
+#if cl_amd_liquid_flash
+        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFileObjectAMD);
+#endif // cl_amd_liquid_flash
         break;
     case 'D':
         break;
@@ -531,6 +535,9 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
+#if cl_amd_liquid_flash
+        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteBufferFromFileAMD);
+#endif // cl_amd_liquid_flash
         break;
     case 'G':
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelInfoAMD);
@@ -590,6 +597,10 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
         CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
 #endif // cl_ext_device_fission
+#if cl_amd_liquid_flash
+        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainFileObjectAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseFileObjectAMD);
+#endif // cl_amd_liquid_flash
         break;
     case 'S':
         CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
