@@ -461,11 +461,14 @@ typedef CL_API_ENTRY cl_int
 typedef struct _cl_file_amd * cl_file_amd;
 
 typedef cl_uint cl_file_flags_amd;
+#define CL_FILE_READ_ONLY_AMD   (1 << 0)
+#define CL_FILE_WRITE_ONLY_AMD  (1 << 1)
+#define CL_FILE_READ_WRITE_AMD  (1 << 2)
 
 typedef CL_API_ENTRY cl_file_amd
 (CL_API_CALL * clCreateFileObjectAMD_fn)( cl_context /*context*/,
                                           cl_file_flags_amd /*flags*/,
-                                          cl_char * /*file_name*/,
+                                          const wchar_t * /*file_name*/,
                                           cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int

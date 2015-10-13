@@ -11,7 +11,7 @@ extern CL_API_ENTRY cl_file_amd CL_API_CALL
 clCreateFileObjectAMD(
     cl_context context,
     cl_file_flags_amd flags,
-    cl_char * file_name,
+    const wchar_t * file_name,
     cl_int * errcode_ret) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
