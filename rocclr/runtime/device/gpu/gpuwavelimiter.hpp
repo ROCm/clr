@@ -16,12 +16,12 @@
 //! \namespace gpu GPU Device Implementation
 namespace gpu {
 
-class WaveLimiterManager;
+class Kernel;
 
 // Adaptively limit the number of waves per SIMD based on kernel execution time
 class WaveLimiter: public amd::ProfilingCallback {
 public:
-    explicit WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
+    explicit WaveLimiter(Kernel*, uint seqNum, bool enable, bool enableDump);
     virtual ~WaveLimiter();
 
     //! Get waves per shader array to be used for kernel execution.
@@ -57,7 +57,7 @@ protected:
     uint bestWave_;      // Optimal waves per SIMD
     uint countAll_;      // Number of kernel executions
     StateKind state_;
-    WaveLimiterManager* manager_;
+    Kernel *owner_;
     DataDumper dumper_;
     std::ofstream traceStream_;
     uint currWaves_;     // Current waves per SIMD
@@ -88,7 +88,7 @@ protected:
 
 class WLAlgorithmSmooth: public WaveLimiter {
 public:
-    explicit WLAlgorithmSmooth(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
+    explicit WLAlgorithmSmooth(Kernel* owner, uint seqNum, bool enable, bool enableDump);
     virtual ~WLAlgorithmSmooth();
 private:
     std::vector<uint64_t> reference_;
@@ -117,7 +117,7 @@ private:
 
 class WLAlgorithmAvrg: public WaveLimiter {
 public:
-    explicit WLAlgorithmAvrg(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
+    explicit WLAlgorithmAvrg(Kernel* owner, uint seqNum, bool enable, bool enableDump);
     virtual ~WLAlgorithmAvrg();
 private:
     //! Call back from Event::recordProfilingInfo to get execution time.
@@ -130,7 +130,7 @@ private:
 // Create wave limiter for each virtual device for a kernel and manages the wave limiters.
 class WaveLimiterManager {
 public:
-    explicit WaveLimiterManager(device::Kernel* owner, const uint simdPerSH);
+    explicit WaveLimiterManager(Kernel* owner);
     virtual ~WaveLimiterManager();
 
     //! Get waves per shader array for a specific virtual device.
@@ -140,17 +140,9 @@ public:
     amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice *);
 
     //! Enable wave limiter manager by kernel metadata and flags.
-    void enable(const bool isCiPlus);
-
-    //! Returns the kernel name
-    const std::string& name() const { return owner_->name(); }
-
-    //! Get SimdPerSH.
-    uint getSimdPerSH() const {return simdPerSH_;}
-
+    void enable();
 private:
-    device::Kernel *owner_;        // The kernel which owns this object
-    uint simdPerSH_;               // Simd Per SH
+    Kernel *owner_;                // The kernel which owns this object
     std::unordered_map<const device::VirtualDevice *,
         WaveLimiter*> limiters_;   // Maps virtual device to wave limiter
     bool enable_;                  // Whether the adaptation is enabled
