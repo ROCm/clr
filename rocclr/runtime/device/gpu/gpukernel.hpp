@@ -918,6 +918,17 @@ public:
     //! Returns kernel's extra argument count
     uint extraArgumentsNum() const { return extraArgumentsNum_; }
 
+    //! Get profiling callback object
+    virtual amd::ProfilingCallback* getProfilingCallback(
+        const device::VirtualDevice *vdev){
+        return waveLimiter_.getProfilingCallback(vdev);
+    }
+
+    //! Get waves per shader array to be used for kernel execution.
+    uint getWavesPerSH(const device::VirtualDevice *vdev) const {
+        return waveLimiter_.getWavesPerSH(vdev);
+    }
+
 private:
     //! Disable copy constructor
     HSAILKernel(const HSAILKernel&);
@@ -968,6 +979,8 @@ private:
         uint    value_;
         Flags(): value_(0) {}
     } flags_;
+
+    WaveLimiterManager waveLimiter_; //!< adaptively control number of waves
 };
 
 /*@}*/} // namespace gpu
