@@ -144,7 +144,7 @@ expect(const std::string& str, size_t* pos, const std::string& sym)
 }
 
 bool
-getword(const std::string& str, size_t* pos, char* sym)
+getword(const std::string& str, size_t* pos, std::string& sym)
 {
     if (*pos == std::string::npos) {
         return false;
@@ -155,9 +155,7 @@ getword(const std::string& str, size_t* pos, char* sym)
     size_t  count   = posEnd - *pos;
 
     if (count != 0) {
-        if (!str.copy(sym, count, *pos)) {
-            return false;
-        }
+        sym = str.substr(*pos, count);
     }
     sym[count] = 0;
     *pos = posEnd + 1;
@@ -2527,7 +2525,7 @@ NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount)
                     break;
                 }
 
-                char    argName[256];
+                std::string    argName;
                 // Save the argument type
                 arg.type_ = ArgState[i].type_;
 

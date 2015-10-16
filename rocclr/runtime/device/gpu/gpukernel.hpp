@@ -75,7 +75,7 @@ bool expect(
 bool getword(
     const std::string&  str,    //!< The original std::string
     size_t*             pos,    //!< Position to start
-    char*               sym     //!< Returned word
+    std::string&        sym     //!< Returned word
     );
 
 /*! \brief Helper function for the std::string processing.

@@ -1085,7 +1085,7 @@ NullProgram::findILFuncs(const std::string& source,
 
     // Loop through all provided program arguments
     while (pos != std::string::npos) {
-        char    funcName[256];
+        std::string    funcName;
         ILFunc  func;
 
         func.code_.begin_ = pos;
@@ -1445,7 +1445,7 @@ NullProgram::parseKernels(const std::string& source)
     pos = 0;
     // Find all available metadata structures
     for (size_t i = 0; i < funcs_.size(); ++i) {
-        char    funcName[256];
+        std::string    funcName;
         ILFunc::SourceRange range;
 
         // Find function metadata start
