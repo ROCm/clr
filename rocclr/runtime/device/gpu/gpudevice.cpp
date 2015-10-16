@@ -285,9 +285,10 @@ void NullDevice::fillDeviceInfo(
         (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
         static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
 #endif
+    int uswcPercentAvailable = (calAttr.uncachedRemoteRAM > 1536) ? 75 : 50;
     if (settings().apuSystem_) {
         info_.globalMemSize_   +=
-            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100;
+            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable)/100;
     }
 
     // We try to calculate the largest available memory size from
@@ -302,7 +303,7 @@ void NullDevice::fillDeviceInfo(
 #if defined(ATI_OS_WIN)
     if (settings().apuSystem_) {
         info_.maxMemAllocSize_ = std::max(
-            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * 75)/100,
+            (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable)/100,
             info_.maxMemAllocSize_);
     }
 #endif
