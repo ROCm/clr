@@ -868,7 +868,7 @@ CALGSLDevice::resMapLocal(size_t&           pitch,
 {
     // No map really necessary if IOMMUv2 is being used, return the surface address directly
     // as CPU can write to it for Linear tiled surfaces only
-    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    if (mem->getAttribs().isAllocSVM && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
         return (void*)mem->getImage(0)->surf.addr.getAddress();
     }
@@ -988,7 +988,7 @@ CALGSLDevice::resUnmapLocal(gslMemObject mem)
 {
     // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
     // which CPU can write to it for Linear tiled surfaces only
-    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    if (mem->getAttribs().isAllocSVM && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
         return;
     }
@@ -1073,7 +1073,7 @@ CALGSLDevice::resMapRemote(
 {
     // No map really necessary if IOMMUv2 is being used, return the surface address directly
     // as CPU can write to it for Linear tiled surfaces only
-    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    if (mem->getAttribs().isAllocSVM && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
         return (void*)mem->getImage(0)->surf.addr.getAddress();
     }
@@ -1090,7 +1090,7 @@ CALGSLDevice::resUnmapRemote(gslMemObject mem) const
 {
     // No unmap necessary with IOMMUv2 as map operation directly returned the base surface System VA
     // which CPU can write to it for Linear tiled surfaces only
-    if (m_adp->pAsicInfo->svmFineGrainSystem && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
+    if (mem->getAttribs().isAllocSVM && mem->getAttribs().tiling <= GSL_MOA_TILING_LINEAR)
     {
         return;
     }
