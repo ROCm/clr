@@ -135,7 +135,7 @@ void WLAlgorithmSmooth::outputTrace() {
 void WLAlgorithmSmooth::callback(ulong duration) {
     dumper_.addData(duration, currWaves_, static_cast<char>(state_));
 
-    if (!enable_) {
+    if (!enable_ || (duration == 0)) {
         return;
     }
 
