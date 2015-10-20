@@ -1226,17 +1226,21 @@ Image::validateRegion(const Coord3D& origin, const Coord3D& region) const
 }
 
 bool
-Image::isSliceValid(
-    const size_t&   rowPitch,
-    const size_t&   slice,
-    const size_t&   height) const
+Image::isRowSliceValid(
+    size_t  rowPitch,
+    size_t  slice,
+    size_t  width,
+    size_t  height) const
 {
     size_t  tmpHeight =
         (getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ? 1 : height;
 
+    bool valid = (rowPitch == 0) || ((rowPitch != 0) &&
+             (rowPitch >= width * getImageFormat().getElementSize()));
+
     return ((slice == 0) ||
             ((slice != 0) &&
-             (slice >= rowPitch * tmpHeight))) ? true : false;
+             (slice >= rowPitch * tmpHeight))) ? valid : false;
 }
 
 void

@@ -938,6 +938,8 @@ KernelBlitManager::copyBufferToImage(
     static const bool CopyRect = false;
     // Flush DMA for ASYNC copy
     static const bool FlushDMA = true;
+    size_t imgRowPitch = size[0] * gpuMem(dstMemory).elementSize();
+    size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyBufferToImage_) {
         result = DmaBlitManager::copyBufferToImage(
@@ -948,7 +950,9 @@ KernelBlitManager::copyBufferToImage(
     }
     // Check if buffer is in system memory with direct access
     else if (gpuMem(srcMemory).isHostMemDirectAccess() &&
-             (rowPitch == 0) && (slicePitch == 0)) {
+             (((rowPitch == 0) && (slicePitch == 0)) ||
+              ((rowPitch == imgRowPitch) &&
+               ((slicePitch == 0) || (slicePitch == imgSlicePitch))))) {
         // First attempt to do this all with DMA,
         // but there are restriciton with older hardware
         if (dev().settings().imageDMA_) {
@@ -1330,6 +1334,8 @@ KernelBlitManager::copyImageToBuffer(
     static const bool CopyRect = false;
     // Flush DMA for ASYNC copy
     static const bool FlushDMA = true;
+    size_t imgRowPitch = size[0] * gpuMem(srcMemory).elementSize();
+    size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyImageToBuffer_) {
         result = HostBlitManager::copyImageToBuffer(
@@ -1340,7 +1346,9 @@ KernelBlitManager::copyImageToBuffer(
     }
     // Check if buffer is in system memory with direct access
     else if (gpuMem(dstMemory).isHostMemDirectAccess() &&
-             (rowPitch == 0) && (slicePitch == 0)) {
+             (((rowPitch == 0) && (slicePitch == 0)) ||
+              ((rowPitch == imgRowPitch) &&
+                ((slicePitch == 0) || (slicePitch == imgSlicePitch))))) {
         // First attempt to do this all with DMA,
         // but there are restriciton with older hardware
         if (dev().settings().imageDMA_) {
