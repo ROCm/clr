@@ -2363,7 +2363,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
     }
 
     if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
-        !srcImage->isSliceValid(row_pitch, slice_pitch, region[1])) {
+        !srcImage->isRowSliceValid(row_pitch, slice_pitch, region[0], region[1])) {
         return CL_INVALID_VALUE;
     }
 
@@ -2561,7 +2561,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage, (
     }
 
     if (!dstImage->validateRegion(dstOrigin, dstRegion) ||
-        !dstImage->isSliceValid(input_row_pitch, input_slice_pitch, region[1])) {
+        !dstImage->isRowSliceValid(input_row_pitch, input_slice_pitch, region[0], region[1])) {
         return CL_INVALID_VALUE;
     }
 
