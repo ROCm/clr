@@ -235,6 +235,10 @@ Device::init()
     virtualMemSize =
         (uintptr_t) std::min(statex.ullTotalPageFile, statex.ullTotalVirtual);
 #endif
+    //disable CPU device if system memory is equal to or less than 2GB
+    if (info.globalMemSize_ <= 2 * Gi) {
+        return true;
+    }
 
     maxWorkerThreads_ = (size_t) (virtualMemSize /
         (uintptr_t) ((CPU_WORKER_THREAD_STACK_SIZE +

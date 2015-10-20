@@ -110,6 +110,7 @@ public:
     bool create(
         const CALdeviceattribs& calAttr //!< CAL attributes structure
       , bool reportAsOCL12Device = false //!< Report As OpenCL1.2 Device
+      , bool smallMemSystem = false //!< report the sys memory is small
         );
 
 private:

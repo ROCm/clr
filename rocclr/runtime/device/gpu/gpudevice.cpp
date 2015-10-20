@@ -762,9 +762,14 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
 {
     appProfile_.init();
 
+    bool smallMemSystem = false;
+    if (amd::Os::hostTotalPhysicalMemory() < 2 * Gi) {
+        smallMemSystem = true;
+    }
+
     // Open GSL device
     if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-        appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200))) {
+        smallMemSystem || appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200))) {
         return false;
     }
 
@@ -776,7 +781,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     settings_ = new gpu::Settings();
     gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);
     if ((gpuSettings == NULL) || !gpuSettings->create(getAttribs()
-          , appProfile_.reportAsOCL12Device()
+        , appProfile_.reportAsOCL12Device(), smallMemSystem
         )) {
         return false;
     }

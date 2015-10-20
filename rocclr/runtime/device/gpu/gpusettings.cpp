@@ -146,6 +146,7 @@ bool
 Settings::create(
     const CALdeviceattribs& calAttr
   , bool reportAsOCL12Device
+  , bool smallMemSystem
 )
 {
     CALuint target = calAttr.target;
@@ -227,6 +228,14 @@ Settings::create(
             if (LP64_SWITCH(WINDOWS_SWITCH(viPlus_, false), true)) {
                 oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
                     XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
+            }
+            if (smallMemSystem) {         //force the dGPU to be 1.2 device for small memory system.
+                if (apuSystem_) {
+                    return false;
+                }
+                else {
+                    oclVersion_ = OpenCL12;
+                }
             }
             if (GPU_FORCE_OCL20_32BIT) {
                 force32BitOcl20_ = true;
