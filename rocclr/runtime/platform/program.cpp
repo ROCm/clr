@@ -93,11 +93,6 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
 
     devicePrograms_[&rootDev] = program;
 
-    program = rootDev.createProgram(hsail);
-    if (program == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
     deviceList_.insert(&device);
     return CL_SUCCESS;
 }
