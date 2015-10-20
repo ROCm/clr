@@ -577,10 +577,11 @@ public:
         ) const;
 
     //! Returns true if the slice value for the image is valid
-    bool isSliceValid(
-        const size_t& rowPitch,     //!< The row pitch value
-        const size_t& slicePitch,   //!< The slice pitch value
-        const size_t& height        //!< The height of the copy region
+    bool isRowSliceValid(
+        size_t  rowPitch,       //!< The row pitch value
+        size_t  slicePitch,     //!< The slice pitch value
+        size_t  width,          //!< The width of the copy region
+        size_t  height          //!< The height of the copy region
         ) const;
 
     //! Creates a view memory object
