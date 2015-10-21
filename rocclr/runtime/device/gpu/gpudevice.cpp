@@ -763,7 +763,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     appProfile_.init();
 
     bool smallMemSystem = false;
-    if (amd::Os::hostTotalPhysicalMemory() < 2 * Gi) {
+    if (amd::Os::hostTotalPhysicalMemory() < OCL_SYSMEM_REQUIREMENT * Gi) {
         smallMemSystem = true;
     }
 
