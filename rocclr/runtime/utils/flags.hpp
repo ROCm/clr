@@ -166,6 +166,8 @@ release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable")                \
 debug(bool, OCL_FORCE_CPU_SVM, false,                                         \
         "force svm support for CPU")                                          \
+debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
+        "Use flag to change the minimum requirement of system memory not to downgrade")        \
 debug(bool, GPU_ENABLE_HW_DEBUG, false,                                       \
         "Enable HW DEBUG for GPU")                                            \
 release(uint, GPU_WAVES_PER_SIMD, 0,                                          \

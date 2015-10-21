@@ -5,6 +5,7 @@
 #include "device/cpu/cpudevice.hpp"
 #include "device/cpu/cpuprogram.hpp"
 #include "utils/versions.hpp"
+#include "utils/flags.hpp"
 
 #include "amdocl/cl_common.hpp"
 
@@ -236,7 +237,7 @@ Device::init()
         (uintptr_t) std::min(statex.ullTotalPageFile, statex.ullTotalVirtual);
 #endif
     //disable CPU device if system memory is equal to or less than 2GB
-    if (info.globalMemSize_ <= 2 * Gi) {
+    if (info.globalMemSize_ <= OCL_SYSMEM_REQUIREMENT * Gi) {
         return true;
     }
 
