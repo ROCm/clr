@@ -3302,6 +3302,7 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
             printf_.resize(index + 1);
         }
         std::string pfmt = aclPrintf->fmtStr;
+        info.fmtString_.clear();
         size_t  pos = 0;
         for (size_t i = 0; i < pfmt.size(); ++i) {
           char symbol = pfmt[pos++];
