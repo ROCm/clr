@@ -192,7 +192,7 @@ static const char* calTargetMapping[] = {
       "Spectre", "Spooky", "Kalindi",
       "Hainan", "Hawaii",
       "Iceland", "Tonga", "Mullins", "Fiji",
-      "Carrizo", "", "",
+      "Carrizo", "Horse", "Goose",
       "",  "Dummy",
     };
 
