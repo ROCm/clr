@@ -199,7 +199,7 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
       llvm::cl::ParseCommandLineOptions(Options()->getLLVMArgc(),
         Options()->getLLVMArgv(), "LLVM/SPIRV converter");
     }
-    if (WriteSPRV(llvmbinary_, ss, err)) {
+    if (WriteSPIRV(llvmbinary_, ss, err)) {
       std::string img = ss.str();
       CL()->clAPI.insSec(CL(), Elf(), img.data(), img.size(), aclSPIRV);
     }

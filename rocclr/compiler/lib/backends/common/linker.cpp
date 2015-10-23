@@ -506,8 +506,8 @@ translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
     const std::string &DumpLlvm){
   std::stringstream SS;
   std::string Err;
-  if (!llvm::WriteSPRV(M, SS, Err)) {
-    llvm::errs() << "Fails to save LLVM as SPRV: " << Err << '\n';
+  if (!llvm::WriteSPIRV(M, SS, Err)) {
+    llvm::errs() << "Fails to save LLVM as SPIR-V: " << Err << '\n';
     return false;
   }
 
@@ -517,8 +517,8 @@ translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
     OFS.close();
   }
 
-  if (!llvm::ReadSPRV(M->getContext(), SS, M, Err)) {
-    llvm::errs() << "Fails to load SPIRV as LLVM Module: " << Err << '\n';
+  if (!llvm::ReadSPIRV(M->getContext(), SS, M, Err)) {
+    llvm::errs() << "Fails to load SPIR-V as LLVM Module: " << Err << '\n';
     return false;
   }
 
