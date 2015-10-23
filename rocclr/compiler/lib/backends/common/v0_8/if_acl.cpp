@@ -354,7 +354,7 @@ RSLLVMIRToModule(
     if (error != NULL) (*error) = ACL_FRONTEND_FAILURE;
     return NULL;
   }
-  
+
   aclModule *module = reinterpret_cast<aclModule*>(M);
   return module;
 }
@@ -419,7 +419,7 @@ SPIRVToModule(
     llvm::cl::ParseCommandLineOptions(opt->getLLVMArgc(), opt->getLLVMArgv(),
       "SPIRV/LLVM converter");
   }
-  bool success = llvm::ReadSPRV(*llCtx, ss, llMod, errMsg);
+  bool success = llvm::ReadSPIRV(*llCtx, ss, llMod, errMsg);
 
   if (success && llMod && opt->isDumpFlagSet(amd::option::DUMP_BC_SPIRV)) {
     auto bcDump = opt->getDumpFileName("_fromspv.bc");
@@ -485,7 +485,7 @@ LLVMToSPIRV(
 
   std::string spvImg;
   std::stringstream ss(spvImg);
-  bool success = llvm::WriteSPRV(llMod, ss, errMsg);
+  bool success = llvm::WriteSPIRV(llMod, ss, errMsg);
 
   if (opt->isDumpFlagSet(amd::option::DUMP_SPIRV)) {
     std::ofstream ofs(opt->getDumpFileName(".spv"), std::ios::binary);
@@ -2335,13 +2335,13 @@ if_aclRemoveSymbol(aclCompiler *cl,
   return elfBin->removeSymbol(id, symbol) ? ACL_SUCCESS : ACL_ELF_ERROR;
 }
 
-// Function performs deserialization of aclMetadata into *md 
+// Function performs deserialization of aclMetadata into *md
 // instead of changing source .rodata section in memory pointed by *ptr.
 // Deserialization includes restoring of pointers, whereas
 // serialized .rodata has pointers set to NULL by serializeMetadata function.
 // We should leave serialized metaData unchanged (e.g. w/o garbage pointers)
 // due to obtain the same binary from one compilation to another.
-// Otherwise, OpenCL conformance "binary_create" test would fail on comparison 
+// Otherwise, OpenCL conformance "binary_create" test would fail on comparison
 // of OpenCL "binaries" (bifs in our case).
 void deserializeCLMetadata(const char* ptr, aclMetadata * const md, const size_t size)
 {
