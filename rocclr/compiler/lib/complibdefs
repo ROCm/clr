@@ -2,6 +2,15 @@ OPENCL_DEPTH ?= $(COMPLIB_DEPTH)/../..
 
 include $(OPENCL_DEPTH)/opencldefs
 
+# Set the #defines for sc/Interface like that used to build sc.
+# For a non-default configuration (for instance adding GFX9),
+#   make GFX9_BUILD=1 wNow.dbg
+# or change
+#   ../../opencldefs
+# to make sure that the settings for sc and sc's uses match.
+include $(OPENCL_DEPTH)/compiler/sc/Interface/scinterfacedefs
+GCPPFLAGS += $(SC_LIB_DEFS)
+
 ELFTOOLCHAIN_DIR = $(COMPLIB_DEPTH)/loaders/elf/utils
 
 ifdef GONE_TO_BUILD_DIR
