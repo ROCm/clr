@@ -48,7 +48,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
 {
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
-            isIL_?BINARY_TYPE_SPIRV:BINARY_TYPE_ELF|BINARY_TYPE_LLVM)) {
+            isSPIRV_?BINARY_TYPE_SPIRV:BINARY_TYPE_ELF|BINARY_TYPE_LLVM)) {
         return CL_INVALID_BINARY;
     }
 
@@ -64,7 +64,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         return CL_SUCCESS;
     }
 
-    device::Program* program = rootDev.createProgram(hsail || isIL_);
+    device::Program* program = rootDev.createProgram(hsail || isSPIRV_);
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -205,7 +205,7 @@ Program::compile(
         }
 
         if (devProgram->type() == device::Program::TYPE_INTERMEDIATE ||
-            isIL_) {
+            isSPIRV_) {
            continue;
         }
         // We only build a Device-Program once
@@ -299,7 +299,7 @@ Program::link(
         bool hsail = GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200;
         for (size_t i = 0; i < numInputs; ++i) {
             Program& inputProgram = *inputPrograms[i];
-            hsail = hsail || inputProgram.isIL_;
+            hsail = hsail || inputProgram.isSPIRV_;
             deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
             deviceprograms_t::const_iterator findIt = inputDevProgs.find(*it);
             if (findIt == inputDevProgs.end()) {
