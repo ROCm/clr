@@ -13,8 +13,8 @@
 typedef wchar_t char_t;
 #endif // __linux__
 
-#if defined _WIN32
-//#define WITH_LIQUID_FLASH 1
+#if defined(_WIN32) && !defined(_LP64)
+#define WITH_LIQUID_FLASH 1
 #endif // _WIN32
 
 #if defined WITH_LIQUID_FLASH
