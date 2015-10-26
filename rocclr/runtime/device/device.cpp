@@ -770,7 +770,11 @@ cl_int Program::link(const std::vector<Program*>& inputPrograms,
         }
     }
     else {
-        amd::option::parseAllOptions(compileOptions_, options);
+        if (!amd::option::parseAllOptions(compileOptions_, options)) {
+            buildStatus_ = CL_BUILD_ERROR;
+            buildLog_ += options.optionsLog();
+            LogError("Parsing compile options failed.");
+        }
     }
 
     uint64_t start_time = 0;
@@ -972,7 +976,7 @@ Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,
         if (!amd::option::parseAllOptions(program->compileOptions_,
                                           *thisCompileOptions)) {
             buildLog_ += thisCompileOptions->optionsLog();
-            LogError("Bad compile options from input binary");
+            LogError("Parsing compile options failed.");
             return false;
         }
 
@@ -993,7 +997,7 @@ Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,
                 if (!amd::option::parseLinkOptions(program->linkOptions_,
                                                    thisLinkOptions)) {
                     buildLog_ += thisLinkOptions.optionsLog();
-                    LogError("Bad link options from input binary");
+                    LogError("Parsing link options failed.");
                     return false;
                 }
                 if (thisLinkOptions.oVariables->clEnableLinkOptions)
@@ -1002,7 +1006,7 @@ Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,
             if (linkOptsCanOverwrite) {
                 if (!thisCompileOptions->setOptionVariablesAs(*linkOptions)) {
                     buildLog_ += thisCompileOptions->optionsLog();
-                    LogError("Bad compile options from input binary");
+                    LogError("Setting link options failed.");
                     return false;
                 }
             }

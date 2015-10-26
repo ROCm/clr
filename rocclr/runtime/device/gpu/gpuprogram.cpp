@@ -1957,7 +1957,11 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     }
     std::string sCurOptions = compileOptions_ + linkOptions_;
     amd::option::Options curOptions;
-    amd::option::parseAllOptions(sCurOptions, curOptions);
+    if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+        buildLog_ += curOptions.optionsLog();
+        LogError("Parsing compile options failed.");
+        return ACL_TYPE_DEFAULT;
+    }
     switch (from) {
     // compile from HSAIL text, no matter prev. stages and options
     case ACL_TYPE_HSAIL_TEXT:
@@ -2036,8 +2040,16 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
           std::string sBinOptions = std::string((char*)opts, symSize);
           std::string sCurOptions = compileOptions_ + linkOptions_;
           amd::option::Options curOptions, binOptions;
-          amd::option::parseAllOptions(sBinOptions, binOptions);
-          amd::option::parseAllOptions(sCurOptions, curOptions);
+          if (!amd::option::parseAllOptions(sBinOptions, binOptions)) {
+              buildLog_ += binOptions.optionsLog();
+              LogError("Parsing compile options from binary failed.");
+              return ACL_TYPE_DEFAULT;
+          }
+          if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+              buildLog_ += curOptions.optionsLog();
+              LogError("Parsing compile options failed.");
+              return ACL_TYPE_DEFAULT;
+          }
           if (!curOptions.equals(binOptions)) {
               recompile = true;
           }
