@@ -2356,6 +2356,10 @@ void deserializeCLMetadata(const char* ptr, aclMetadata * const md, const size_t
   md->deviceName = tmp_ptr;
   tmp_ptr += md->deviceNameSize + 1;
 
+  // de-serialize the vec type hint
+  md->vth = tmp_ptr;
+  tmp_ptr += md->vecTypeHintSize + 1;
+
   // de-serailize the arguments
   md->args = reinterpret_cast<aclArgData*>(tmp_ptr);
   tmp_ptr += (md->numArgs + 1) * sizeof(aclArgData);
@@ -2825,7 +2829,34 @@ if_aclQueryInfo(aclCompiler *cl,
             }
             break;
           }
-  }
+    case RT_WORK_GROUP_SIZE_HINT: {
+            size_t work_group_size_hint_size = sizeof(md->wsh);
+            if (!ptr) {
+              *size = work_group_size_hint_size;
+              success = true;
+            } else if (*size >= work_group_size_hint_size) {
+              memcpy(ptr, md->wsh, work_group_size_hint_size);
+              success = true;
+            }
+            break;
+          }
+    case RT_VEC_TYPE_HINT: {
+            if (!ptr) {
+              *size = md->vecTypeHintSize;
+              success = true;
+            } else if (*size >= md->vecTypeHintSize) {
+              // vecTypeHint is a pointer, which is serialized by serializeMetadata() to NULL
+              // in binary; to get the data deserializeCLMetadata() is needed
+              aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+              deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+              if (deserializedMd->vth && deserializedMd->vecTypeHintSize == md->vecTypeHintSize) {
+                strncpy(reinterpret_cast<char*>(ptr), deserializedMd->vth, deserializedMd->vecTypeHintSize);
+                success = true;
+              }
+            }
+            break;
+          }
+    }
   return (success) ? ACL_SUCCESS : ACL_ERROR;
 }
 static unsigned getSize(aclArgDataType data)
