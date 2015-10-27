@@ -218,7 +218,9 @@ typedef enum _rt_query_types_enum_0_8 {
   RT_NUM_KERNEL_HIDDEN_ARGS = 22,
   RT_CONTAINS_SPIRV         = 23,
   RT_WAVES_PER_SIMD_HINT    = 24,
-  RT_LAST_TYPE              = 25
+  RT_WORK_GROUP_SIZE_HINT   = 25,
+  RT_VEC_TYPE_HINT          = 26,
+  RT_LAST_TYPE              = 27
 } aclQueryType_0_8;
 
 //! An enumeration for the various GPU capabilities

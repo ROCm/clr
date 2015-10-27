@@ -2356,6 +2356,10 @@ void deserializeCLMetadata(const char* ptr, aclMetadata * const md, const size_t
   md->deviceName = tmp_ptr;
   tmp_ptr += md->deviceNameSize + 1;
 
+  // de-serialize the vec type hint
+  md->vth = tmp_ptr;
+  tmp_ptr += md->vecTypeHintSize + 1;
+
   // de-serailize the arguments
   md->args = reinterpret_cast<aclArgData*>(tmp_ptr);
   tmp_ptr += (md->numArgs + 1) * sizeof(aclArgData);
@@ -2825,7 +2829,34 @@ if_aclQueryInfo(aclCompiler *cl,
             }
             break;
           }
-  }
+    case RT_WORK_GROUP_SIZE_HINT: {
+            size_t work_group_size_hint_size = sizeof(md->wsh);
+            if (!ptr) {
+              *size = work_group_size_hint_size;
+              success = true;
+            } else if (*size >= work_group_size_hint_size) {
+              memcpy(ptr, md->wsh, work_group_size_hint_size);
+              success = true;
+            }
+            break;
+          }
+    case RT_VEC_TYPE_HINT: {
+            if (!ptr) {
+              *size = md->vecTypeHintSize;
+              success = true;
+            } else if (*size >= md->vecTypeHintSize) {
+              // vecTypeHint is a pointer, which is serialized by serializeMetadata() to NULL
+              // in binary; to get the data deserializeCLMetadata() is needed
+              aclMetadata *deserializedMd = static_cast<aclMetadata*>(alloca(roSize));
+              deserializeCLMetadata(reinterpret_cast<const char*>(roSec), deserializedMd, roSize);
+              if (deserializedMd->vth && deserializedMd->vecTypeHintSize == md->vecTypeHintSize) {
+                strncpy(reinterpret_cast<char*>(ptr), deserializedMd->vth, deserializedMd->vecTypeHintSize);
+                success = true;
+              }
+            }
+            break;
+          }
+    }
   return (success) ? ACL_SUCCESS : ACL_ERROR;
 }
 static unsigned getSize(aclArgDataType data)
@@ -2878,11 +2909,14 @@ if_aclDbgAddArgument(aclCompiler *cl,
   aclMetadata *newMD = reinterpret_cast<aclMetadata*>(newMDptr);
   memcpy(tmp_ptr, md, md->struct_size
       + (md->kernelNameSize + 1)
-      + (md->deviceNameSize + 1));
+      + (md->deviceNameSize + 1)
+      + (md->vecTypeHintSize + 1));
   tmp_ptr += md->struct_size;
   tmp_ptr += md->kernelNameSize + 1;
   tmp_ptr[-1] = '\0';
   tmp_ptr += md->deviceNameSize + 1;
+  tmp_ptr[-1] = '\0';
+  tmp_ptr += md->vecTypeHintSize + 1;
   tmp_ptr[-1] = '\0';
   newMD->args = reinterpret_cast<aclArgData*>(tmp_ptr);
   unsigned cb_offset = 0;
@@ -3018,6 +3052,7 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   ro_ptr += md->struct_size;
   ro_ptr += md->kernelNameSize + 1;
   ro_ptr += md->deviceNameSize + 1;
+  ro_ptr += md->vecTypeHintSize + 1;
   const aclArgData *argPtr = reinterpret_cast<const aclArgData*>(ro_ptr);
   const aclArgData *delArg = 0;
   for (unsigned x = 0; x < md->numArgs; ++x) {
@@ -3038,11 +3073,14 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   char *tmp_ptr = newMDptr;
   memcpy(tmp_ptr, reinterpret_cast<const char*>(md), md->struct_size
       + (md->kernelNameSize + 1)
-      + (md->deviceNameSize + 1));
+      + (md->deviceNameSize + 1)
+      + (md->vecTypeHintSize +1));
   tmp_ptr += md->struct_size;
   tmp_ptr += md->kernelNameSize + 1;
   tmp_ptr[-1] = '\0';
   tmp_ptr += md->deviceNameSize + 1;
+  tmp_ptr[-1] = '\0';
+  tmp_ptr += md->vecTypeHintSize + 1;
   tmp_ptr[-1] = '\0';
   unsigned cb_offset = ((delArg->type == ARG_TYPE_VALUE)
       ? delArg->arg.value.cbOffset : delArg->arg.pointer.cbOffset);
