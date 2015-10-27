@@ -154,6 +154,10 @@ release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
         "Determines if Hsa runtime should use polling scheme")                \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
         "Enable HSA device local memory usage")                               \
+release(uint, HSA_KERNARG_POOL_SIZE, 2 * 1024 * 1024,                         \
+        "Kernarg pool size")                                                  \
+release(uint, HSA_SIGNAL_POOL_SIZE, 16,                                       \
+        "Signal object pool size")                                            \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
 release(bool, GPU_IFH_MODE, false,                                            \
