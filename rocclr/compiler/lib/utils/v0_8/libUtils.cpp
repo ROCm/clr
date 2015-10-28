@@ -8,7 +8,6 @@
 #include "utils/target_mappings.h"
 #include "utils/versions.hpp"
 #include "utils/options.hpp"
-#include "backends/gpu/scwrapper/devState.h"
 #include <cstring>
 #include "bif/bif.hpp"
 extern aclBinary* constructBinary(size_t struct_version,
@@ -405,7 +404,7 @@ aclutInsertKernelStatistics(aclCompiler *cl, aclBinary *bin)
       else {
         aclGetKstatsSI(isa, kstats);
       }
-	  kstats.wavefrontsize = amdcl::GetWavefrontSize(family, chip);
+	  kstats.wavefrontsize = 64; // FIXME: Hardcoded for now.
 	  const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symKernelStats);
 	  assert(symbol && "symbol not found");
 	  std::string symName = std::string(symbol->str[PRE]) + std::string(symbol->str[POST]);
