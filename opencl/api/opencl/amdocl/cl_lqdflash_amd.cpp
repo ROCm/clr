@@ -24,34 +24,6 @@ typedef wchar_t char_t;
 
 namespace amd {
 
-class LiquidFlashFile : public RuntimeObject
-{
-private:
-    const wchar_t*    name_;
-    cl_file_flags_amd flags_;
-    void*             handle_;
-
-public:
-    LiquidFlashFile(const wchar_t* name, cl_file_flags_amd flags)
-      : name_(name), flags_(flags), handle_(NULL) { }
-
-    ~LiquidFlashFile();
-
-    bool open();
-    void close();
-
-    size_t blockSize() const;
-
-    size_t readBlocks(
-        void* dst,
-        uint32_t count,
-        const uint64_t* file_offsets,
-        const uint64_t* buffer_offsets,
-        const uint64_t* sizes);
-
-    virtual ObjectType objectType() const {return ObjectTypeLiquidFlashFile;}
-};
-
 LiquidFlashFile::~LiquidFlashFile()
 {
     close();
@@ -71,11 +43,17 @@ LiquidFlashFile::open()
     }
 
     handle_ = lfOpenFile(name_, flags, &err);
-    if (err == lf_success) {
-        return true;
+    if (err != lf_success) {
+        return false;
     }
-#endif // WITH_LIQUID_FLASH
+
+    if (lfGetFileBlockSize((lf_file)handle_, &blockSize_) != lf_success) {
+        return false;
+    }
+    return true;
+#else
     return false;
+#endif // WITH_LIQUID_FLASH
 }
 
 void
@@ -89,18 +67,26 @@ LiquidFlashFile::close()
 #endif // WITH_LIQUID_FLASH
 }
 
-size_t
-LiquidFlashFile::blockSize() const
+bool
+LiquidFlashFile::readBlock(
+    void* dst,
+    uint64_t fileOffset,
+    uint64_t bufferOffset,
+    uint64_t size) const
 {
 #if defined WITH_LIQUID_FLASH
-    if (handle_ != NULL) {
-        lf_uint32 blockSize;
-        if (lfGetFileBlockSize((lf_file)handle_, &blockSize) == lf_success) {
-            return blockSize;
-        }
+    lf_region_descriptor    region =
+        { fileOffset / blockSize(), bufferOffset / blockSize(), size / blockSize() };
+    lf_status status = lfReadFile(dst, size, handle_, 1, &region, NULL);
+    if (lf_success == status) {
+        return true;
     }
+    else {
+        return false;
+    }
+#else
+    return false;
 #endif // WITH_LIQUID_FLASH
-    return 0;
 }
 
 } // namesapce amd
@@ -171,7 +157,75 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     const cl_event *event_wait_list,
     cl_event *event))
 {
-    return CL_INVALID_FILE_OBJECT_AMD;
+    if (!is_valid(command_queue)) {
+        return CL_INVALID_COMMAND_QUEUE;
+    }
+
+    if (!is_valid(buffer)) {
+        return CL_INVALID_MEM_OBJECT;
+    }
+    amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
+    if (dstBuffer == NULL) {
+        return CL_INVALID_MEM_OBJECT;
+    }
+
+    if (dstBuffer->getMemFlags() &
+        (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+        return CL_INVALID_OPERATION;
+    }
+
+    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+    if (NULL == queue) {
+        return CL_INVALID_COMMAND_QUEUE;
+    }
+    amd::HostQueue& hostQueue = *queue;
+
+    if(hostQueue.context() != dstBuffer->getContext()) {
+        return CL_INVALID_CONTEXT;
+    }
+
+    if (!is_valid(file)) {
+        return CL_INVALID_FILE_OBJECT_AMD;
+    }
+
+    amd::LiquidFlashFile* amdFile  = as_amd(file);
+    amd::Coord3D    dstOffset(buffer_offset, 0, 0);
+    amd::Coord3D    dstSize(cb, 1, 1);
+
+    if(!dstBuffer->validateRegion(dstOffset, dstSize)) {
+        return CL_INVALID_VALUE;
+    }
+
+    amd::Command::EventWaitList eventWaitList;
+    cl_int err = amd::clSetEventWaitList(eventWaitList,
+        hostQueue.context(), num_events_in_wait_list, event_wait_list);
+    if (err != CL_SUCCESS){
+        return err;
+    }
+
+    amd::WriteBufferFromFileCommand *command = new amd::WriteBufferFromFileCommand(
+        hostQueue, eventWaitList,
+        *dstBuffer, dstOffset, dstSize, amdFile, file_offset);
+    if (command == NULL) {
+        return CL_OUT_OF_HOST_MEMORY;
+    }
+
+    // Make sure we have memory for the command execution
+    if (!command->validateMemory()) {
+        delete command;
+        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    }
+
+    command->enqueue();
+    if (blocking_write) {
+        command->awaitCompletion();
+    }
+
+    *not_null(event) = as_cl(&command->event());
+    if (event == NULL) {
+        command->release();
+    }
+    return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
