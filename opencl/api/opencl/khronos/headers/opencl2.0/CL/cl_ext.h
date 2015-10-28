@@ -456,7 +456,9 @@ typedef CL_API_ENTRY cl_int
 ***********************/
 #define cl_amd_liquid_flash 1
 
-#define CL_INVALID_FILE_OBJECT_AMD 0x404D
+#define CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD 0x4083
+
+#define CL_INVALID_FILE_OBJECT_AMD 0x4084
 
 typedef struct _cl_file_amd * cl_file_amd;
 
