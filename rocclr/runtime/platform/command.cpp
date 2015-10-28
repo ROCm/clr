@@ -217,10 +217,6 @@ Command::Command(
         std::mem_fun(&Command::retain));
 }
 
-Command::~Command()
-{
-}
-
 void
 Command::releaseResources()
 {
@@ -574,6 +570,37 @@ ThreadTraceMemObjectsCommand::validateMemory()
         }
     }
 
+    return true;
+}
+
+void
+WriteBufferFromFileCommand::submit(device::VirtualDevice& device)
+{
+    device::Memory* mem = memory_->getDeviceMemory(queue()->device());
+    void* dstBuffer = mem->cpuMap(device);
+    // Make HD transfer to the host accessible memory
+    if (!file()->readBlock(dstBuffer, fileOffset(), origin()[0], size()[0])) {
+        return;
+    }
+    mem->cpuUnmap(device);
+}
+
+bool
+WriteBufferFromFileCommand::validateMemory()
+{
+    if (!(memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
+          CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
+        return false;
+    }
+
+    if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
+        device::Memory* mem = memory_->getDeviceMemory(queue()->device());
+        if (NULL == mem) {
+            LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
+                memory_->getSize());
+            return false;
+        }
+    }
     return true;
 }
 

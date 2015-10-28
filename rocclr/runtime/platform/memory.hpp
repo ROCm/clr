@@ -12,6 +12,7 @@
 #include "platform/object.hpp"
 #include "platform/interop.hpp"
 #include "device/device.hpp"
+#include "lf.h"
 
 #include <atomic>
 #include <utility>
@@ -671,6 +672,34 @@ private:
     static Monitor AllocatedLock_;
 };
 
+//! Liquid flash extension
+class LiquidFlashFile : public RuntimeObject
+{
+private:
+    const wchar_t*      name_;
+    cl_file_flags_amd   flags_;
+    lf_file             handle_;
+    uint32_t            blockSize_;
+
+public:
+    LiquidFlashFile(const wchar_t* name, cl_file_flags_amd flags)
+      : name_(name), flags_(flags), handle_(NULL) { }
+
+    ~LiquidFlashFile();
+
+    bool open();
+    void close();
+
+    uint32_t blockSize() const { return blockSize_; };
+
+    bool readBlock(
+        void* dst,
+        uint64_t fileOffset,
+        uint64_t bufferOffset,
+        uint64_t size) const;
+
+    virtual ObjectType objectType() const { return ObjectTypeLiquidFlashFile; }
+};
 } // namespace amd
 
 #endif // MEMORY_H_
