@@ -23,7 +23,6 @@
 #include "amdil_be.hpp"
 #include "hsail_be.hpp"
 #include "x86_be.hpp"
-#include "scCompileBase.h"
 #include "bif/bifbase.hpp"
 #include "os/os.hpp"
 #include "utils/bif_section_labels.hpp"
@@ -824,12 +823,6 @@ HSAILAsmPhase(aclLoaderData *data,
   amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(data);
   if (acl == NULL) {
     error_code = ACL_CODEGEN_ERROR;
-  }
-  SC_EXPORT_FUNCTIONS* scef = reinterpret_cast<SC_EXPORT_FUNCTIONS*>(acl->CL()->scAPI.scef);
-  if (scef[SC_HSAIL].SCCreate == NULL) {
-    // Fail if table has not been initialized, probably because dynamic SC has not been loaded.
-    // In this case, aclSCLoaderInit returns ACL_SUCCESS.
-    return ACL_CODEGEN_ERROR;
   }
   if (acl->finalize()) {
     error_code = ACL_CODEGEN_ERROR;
