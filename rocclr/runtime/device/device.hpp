@@ -58,6 +58,7 @@ class SvmCopyMemoryCommand;
 class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
+class WriteBufferFromFileCommand;
 class HwDebugManager;
 class Device;
 struct KernelParameterDescriptor;
@@ -111,6 +112,7 @@ enum OclExtensions {
     ClKhrMipMapImage,
     ClKhrMipMapImageWrites,
     ClKhrIlProgram,
+    ClAMDLiquidFlash,
     ClExtTotal
 };
 
@@ -153,6 +155,7 @@ OclExtensionsString[] = {
     "cl_khr_mipmap_image ",
     "cl_khr_mipmap_image_writes ",
     "",
+    (IS_MAINLINE || IS_LINUX) ? "" : "cl_amd_liquid_flash ",
     NULL
 };
 
@@ -1410,13 +1413,14 @@ public:
     virtual void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) = 0;
     virtual void submitThreadTrace(amd::ThreadTraceCommand& cmd) = 0;
     virtual void flush(amd::Command* list = NULL, bool wait = false) = 0;
-    virtual void submitSignal(amd::SignalCommand & cmd) = 0;
-    virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd) = 0;
     virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) = 0;
     virtual void submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) = 0;
     virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) = 0;
     virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) = 0;
     virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) = 0;
+    /// Optional extensions
+    virtual void submitSignal(amd::SignalCommand & cmd) = 0;
+    virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd) = 0;
 
     //! Get the blit manager object
     device::BlitManager& blitMgr() const { return *blitMgr_; }

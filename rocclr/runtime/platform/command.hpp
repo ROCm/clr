@@ -223,9 +223,6 @@ protected:
         exception_(0), data_(NULL), eventWaitList_(nullWaitList)
     { }
 
-    //! Destroy the command object.
-    virtual ~Command();
-
     bool terminate() {
         if (Agent::shouldPostEventEvents() && type() != 0) {
             Agent::postEventFree(as_cl(static_cast<Event*>(this)));
@@ -1470,6 +1467,56 @@ public:
     }
 
     Memory* getSvmMem() const {return svmMem_;}
+};
+
+/*! \brief      A generic write memory from file command.
+ *
+ *  \details    Currently supports buffers only. Buffers
+ *              are treated as 1D structures so origin_[0] and size_[0]
+ *              are equivalent to offset_ and count_ respectively.
+ */
+class WriteBufferFromFileCommand : public OneMemoryArgCommand
+{
+private:
+    const Coord3D   origin_;    //!< Origin of the region to write to
+    const Coord3D   size_;      //!< Size of the region to write to
+    LiquidFlashFile* file_;     //!< The file object for data read
+    size_t          fileOffset_; //!< Offset in the file for data read
+
+public:
+    WriteBufferFromFileCommand(
+        HostQueue& queue,
+        const EventWaitList& eventWaitList,
+        Memory& memory, const Coord3D& origin,
+        const Coord3D& size, LiquidFlashFile* file, size_t fileOffset)
+            : OneMemoryArgCommand(queue, CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD,
+                eventWaitList, memory)
+            , origin_(origin)
+            , size_(size)
+            , file_(file)
+            , fileOffset_(fileOffset)
+    {
+        // Sanity checks
+        assert(size.c[0] > 0 && "invalid");
+    }
+
+    virtual void submit(device::VirtualDevice& device);
+
+    //! Return the memory object to write to
+    Memory& memory() const { return *memory_; }
+
+    //! Return the host memory to read from
+    LiquidFlashFile* file() const { return file_; }
+
+    //! Returns file offset
+    size_t  fileOffset() const { return fileOffset_; }
+
+    //! Return the region origin
+    const Coord3D& origin() const { return origin_; }
+    //! Return the region size
+    const Coord3D& size() const { return size_; }
+
+    bool validateMemory();
 };
 
 /*! @}
