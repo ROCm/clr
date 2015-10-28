@@ -25,7 +25,7 @@
  * http://www.khronos.org/conformance/;
  *
  * 5. The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Materials. 
+ * all copies or substantial portions of the Materials.
  *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,12 +34,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE MATERIALS OR THE USE OR OTHER DEALINGS IN
  * THE MATERIALS.
- *
+ * 
  * OpenCL is a trademark of Apple Inc. used under license by Khronos.  
  */
 
 #ifndef _ICD_H_
 #define _ICD_H_
+
+#ifndef CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_0_APIS
+#endif
+
+#ifndef CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_1_APIS
+#endif
+
+#ifndef CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#endif
 
 #include <CL/cl.h>
 #include <CL/cl_ext.h>
@@ -127,7 +139,6 @@ typedef CL_API_ENTRY void *(CL_API_CALL *pfn_clGetExtensionFunctionAddress)(
     const char *function_name)  CL_API_SUFFIX__VERSION_1_0;
 
 typedef struct KHRicdVendorRec KHRicdVendor;
-typedef struct KHRicdStateRec  KHRicdState;
 
 /* 
  * KHRicdVendor
@@ -152,26 +163,8 @@ struct KHRicdVendorRec
     KHRicdVendor *next;
 };
 
-
-/* 
- * KHRicdState
- *
- * The global state of all vendors
- *
- * TODO: write access to this structure needs to be protected via a mutex
- */
-
-struct KHRicdStateRec 
-{
-    // has this structure been initialized
-    cl_bool initialized;
-
-    // the list of vendors which have been loaded
-    KHRicdVendor *vendors;
-};
-
 // the global state
-extern KHRicdState khrIcdState;
+extern KHRicdVendor * khrIcdVendors;
 
 /* 
  * khrIcd interface
@@ -187,7 +180,7 @@ void khrIcdInitialize(void);
 // go through the list of vendors (in /etc/OpenCL.conf or through 
 // the registry) and call khrIcdVendorAdd for each vendor encountered
 // n.b, this call is OS-specific
-cl_bool khrIcdOsVendorsEnumerate(void);
+void khrIcdOsVendorsEnumerateOnce(void);
 
 // add a vendor's implementation to the list of libraries
 void khrIcdVendorAdd(const char *libraryName);

@@ -43,18 +43,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-KHRicdState khrIcdState = {0, NULL};
+KHRicdVendor *khrIcdVendors = NULL;
 
 // entrypoint to initialize the ICD and add all vendors
 void khrIcdInitialize(void)
 {
-    // make sure we don't double-initialize
-    if (khrIcdState.initialized)
-    {
-        return;
-    }
-    // khrIcdOsVendorsEnumerate is atomic
-    khrIcdState.initialized = khrIcdOsVendorsEnumerate();
+    // enumerate vendors present on the system
+    khrIcdOsVendorsEnumerateOnce();
 }
 
 void khrIcdVendorAdd(const char *libraryName)
@@ -184,7 +179,7 @@ void khrIcdVendorAdd(const char *libraryName)
         // add this vendor to the list of vendors at the tail
         {
             KHRicdVendor **prevNextPointer = NULL;
-            for (prevNextPointer = &khrIcdState.vendors; *prevNextPointer; prevNextPointer = &( (*prevNextPointer)->next) );
+            for (prevNextPointer = &khrIcdVendors; *prevNextPointer; prevNextPointer = &( (*prevNextPointer)->next) );
             *prevNextPointer = vendor;
         }
 
@@ -197,6 +192,10 @@ Done:
     if (library)
     {
         khrIcdOsLibraryUnload(library);
+    }
+    if (platforms)
+    {
+        free(platforms);
     }
 }
 

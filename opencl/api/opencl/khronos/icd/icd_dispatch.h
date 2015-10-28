@@ -49,6 +49,10 @@
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #endif
 
+#ifndef CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#endif
+
 // cl.h
 #include <CL/cl.h>
 

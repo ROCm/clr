@@ -47,15 +47,16 @@
 #include <dirent.h>
 #include <pthread.h>
 
+static pthread_once_t initialized = PTHREAD_ONCE_INIT;
+
 /*
  * 
  * Vendor enumeration functions
  *
  */
-static pthread_once_t InitOnce = PTHREAD_ONCE_INIT;
 
 // go through the list of vendors in the two configuration files
-void khrIcdOsVendorsEnumerateCallBack(void)
+void khrIcdOsVendorsEnumerate(void)
 {
     DIR *dir = NULL;
     struct dirent *dirEntry = NULL;
@@ -164,6 +165,12 @@ Cleanup:
     }
 }
 
+// go through the list of vendors only once
+void khrIcdOsVendorsEnumerateOnce(void)
+{
+    pthread_once(&initialized, khrIcdOsVendorsEnumerate);
+}
+
 /*
  * 
  * Dynamic library loading functions
@@ -188,8 +195,3 @@ void khrIcdOsLibraryUnload(void *library)
     dlclose(library);
 }
 
-cl_bool khrIcdOsVendorsEnumerate(void)
-{
-    pthread_once(&InitOnce, khrIcdOsVendorsEnumerateCallBack);
-    return CL_TRUE;
-}
