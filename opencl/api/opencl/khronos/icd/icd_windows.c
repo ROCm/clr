@@ -42,21 +42,18 @@
 #include <stdio.h>
 #include <windows.h>
 #include <winreg.h>
-#include <WinBase.h>
+
+static INIT_ONCE initialized = INIT_ONCE_STATIC_INIT;
 
 /*
  * 
  * Vendor enumeration functions
  *
  */
-static INIT_ONCE InitOnce = INIT_ONCE_STATIC_INIT;
 
 // go through the list of vendors in the registry and call khrIcdVendorAdd 
 // for each vendor encountered
-BOOL CALLBACK khrIcdOsVendorsEnumerateCallBack(
-  _Inout_      PINIT_ONCE InitOnce,
-  _Inout_opt_  PVOID Parameter,
-  _Out_opt_    PVOID *Context)
+BOOL CALLBACK khrIcdOsVendorsEnumerate(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext)
 {
     LONG result;
     const char* platformsName = "SOFTWARE\\Khronos\\OpenCL\\Vendors";
@@ -125,7 +122,14 @@ BOOL CALLBACK khrIcdOsVendorsEnumerateCallBack(
     {
         KHR_ICD_TRACE("Failed to close platforms key %s, ignoring\n", platformsName);
     }
+	
     return TRUE;
+}
+
+// go through the list of vendors only once
+void khrIcdOsVendorsEnumerateOnce()
+{
+    InitOnceExecuteOnce(&initialized, khrIcdOsVendorsEnumerate, NULL, NULL);
 }
 
 /*
@@ -156,8 +160,3 @@ void khrIcdOsLibraryUnload(void *library)
     FreeLibrary( (HMODULE)library);
 }
 
-cl_bool khrIcdOsVendorsEnumerate(void)
-{
-    InitOnceExecuteOnce(&InitOnce, khrIcdOsVendorsEnumerateCallBack, NULL, NULL);
-    return CL_TRUE;
-}

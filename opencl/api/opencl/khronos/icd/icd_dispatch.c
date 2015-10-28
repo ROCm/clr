@@ -73,12 +73,12 @@ clGetPlatformIDs(cl_uint          num_entries,
         platforms[i] = NULL;
     }
     // return error if we have no platforms
-    if (!khrIcdState.vendors)
+    if (!khrIcdVendors)
     {
         return CL_PLATFORM_NOT_FOUND_KHR;
     }
     // otherwise enumerate all platforms
-    for (vendor = khrIcdState.vendors; vendor; vendor = vendor->next)
+    for (vendor = khrIcdVendors; vendor; vendor = vendor->next)
     {
         if (num_entries && platforms)
         {
@@ -1631,7 +1631,7 @@ clGetExtensionFunctionAddress(const char *function_name) CL_EXT_SUFFIX__VERSION_
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clCreateProgramWithILKHR);
 
     // fall back to vendor extension detection
-    for (vendor = khrIcdState.vendors; vendor; vendor = vendor->next)
+    for (vendor = khrIcdVendors; vendor; vendor = vendor->next)
     {
         size_t vendor_suffix_length = strlen(vendor->suffix);
         if (vendor_suffix_length <= function_name_length && vendor_suffix_length > 0)
