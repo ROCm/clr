@@ -186,6 +186,12 @@ public:
 
     //! RTTI internal implementation
     virtual ObjectType objectType() const {return ObjectTypeProgram;}
+
+    static int GetOclCVersion(const char* clVer);
+
+    static bool ParseAMDOCLBUILDOptions(option::Options& options);
+
+    static bool ParseAMDOCLLINKOptions(option::Options& options);
 };
 
 /*! @}
