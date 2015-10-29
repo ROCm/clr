@@ -6,6 +6,7 @@
 #include "platform/program.hpp"
 #include "platform/context.hpp"
 #include "utils/options.hpp"
+#include "utils/libUtils.h"
 #include "acl.h"
 
 #include <cstdlib> // for malloc
@@ -111,28 +112,6 @@ Program::getDeviceProgram(const Device& device) const
 Monitor
 Program::buildLock_("OCL build program", true);
 
-inline static int
-GetOclCVersion(const char* clVer)
-{
-    std::string clStd(clVer);
-
-    if (clStd == "CL1.0") {
-        return 100;
-    }
-    else if (clStd == "CL1.1") {
-        return 110;
-    }
-    else if (clStd == "CL1.2") {
-        return 120;
-    }
-    else {
-        if (clStd != "CL2.0") {
-            LogError("Unsupported OCL C version!");
-        }
-        return 200;
-    }
-}
-
 cl_int
 Program::compile(
     const std::vector<Device*>& devices,
@@ -152,7 +131,6 @@ Program::compile(
     clear();
 
     // Process build options.
-    option::Options parsedOptions;
     std::string cppstr(options ? options : "");
 
     // if there is a -ignore-env,  adjust options.
@@ -164,22 +142,11 @@ Program::compile(
             optionChangable = false;
         }
     }
-    if (optionChangable) {
-        if (AMD_OCL_BUILD_OPTIONS != NULL) {
-            // Override options.
-            cppstr = AMD_OCL_BUILD_OPTIONS;
-        }
-        if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
-          cppstr.append(" ");
-          cppstr.append(Device::appProfile()->GetBuildOptsAppend());
-        }
-        if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
-            cppstr.append(" ");
-            cppstr.append(AMD_OCL_BUILD_OPTIONS_APPEND);
-        }
-    }
-    if (!option::parseAllOptions(cppstr, parsedOptions)) {
+    option::Options parsedOptions;
+    if ((optionChangable && !ParseAMDOCLBUILDOptions(parsedOptions)) ||
+        !option::parseAllOptions(cppstr, parsedOptions)) {
         programLog_ = parsedOptions.optionsLog();
+        LogError("Parsing compile options failed.");
         return CL_INVALID_COMPILER_OPTIONS;
     }
     programLog_ = parsedOptions.optionsLog();
@@ -197,7 +164,7 @@ Program::compile(
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
             retval = addDeviceProgram(**it, bin.first, bin.second,
-                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200);
+                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
@@ -262,7 +229,6 @@ Program::link(
     clear();
 
     // Process build options.
-    option::Options parsedOptions;
     std::string cppstr(options ? options : "");
 
     // if there is a -ignore-env,  adjust options.
@@ -274,18 +240,11 @@ Program::link(
             optionChangable = false;
         }
     }
-    if (optionChangable) {
-        if (AMD_OCL_LINK_OPTIONS != NULL) {
-            // Override options.
-            cppstr = AMD_OCL_LINK_OPTIONS;
-        }
-        if (AMD_OCL_LINK_OPTIONS_APPEND != NULL) {
-            cppstr.append(" ");
-            cppstr.append(AMD_OCL_LINK_OPTIONS_APPEND);
-        }
-    }
-    if (!option::parseLinkOptions(cppstr, parsedOptions)) {
+    option::Options parsedOptions;
+    if ((optionChangable && !ParseAMDOCLLINKOptions(parsedOptions)) ||
+        !option::parseLinkOptions(cppstr, parsedOptions)) {
         programLog_ = parsedOptions.optionsLog();
+        LogError("Parsing link options failed.");
         return CL_INVALID_LINKER_OPTIONS;
     }
     programLog_ = parsedOptions.optionsLog();
@@ -296,7 +255,7 @@ Program::link(
         // find the corresponding device program in each input program
         std::vector<device::Program*> inputDevPrograms(numInputs);
         bool found = false;
-        bool hsail = GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200;
+        bool hsail = GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20;
         for (size_t i = 0; i < numInputs; ++i) {
             Program& inputProgram = *inputPrograms[i];
             hsail = hsail || inputProgram.isSPIRV_;
@@ -312,7 +271,7 @@ Program::link(
             if (pos != std::string::npos) {
                 std::string clStd =
                     inputDevPrograms[i]->compileOptions().substr((pos+8), 5);
-                hsail = hsail || GetOclCVersion(clStd.c_str()) >= 200;
+                hsail = hsail || GetOclCVersion(clStd.c_str()) >= 20;
             }
         }
         if (inputDevPrograms.size() == 0) {
@@ -412,7 +371,6 @@ Program::build(
     clear();
 
     // Process build options.
-    option::Options parsedOptions;
     std::string cppstr(options ? options : "");
 
     // if there is a -ignore-env,  adjust options.
@@ -424,23 +382,12 @@ Program::build(
             optionChangable = false;
         }
     }
-    if (optionChangable) {
-        if (AMD_OCL_BUILD_OPTIONS != NULL) {
-            // Override options.
-            cppstr = AMD_OCL_BUILD_OPTIONS;
-        }
-        if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
-          cppstr.append(" ");
-          cppstr.append(Device::appProfile()->GetBuildOptsAppend());
-        }
-        if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
-            cppstr.append(" ");
-            cppstr.append(AMD_OCL_BUILD_OPTIONS_APPEND);
-        }
-    }
-    if (!option::parseAllOptions(cppstr, parsedOptions)) {
+    option::Options parsedOptions;
+    if ((optionChangable && !ParseAMDOCLBUILDOptions(parsedOptions)) ||
+        !option::parseAllOptions(cppstr, parsedOptions)) {
         programLog_ = parsedOptions.optionsLog();
-        return CL_INVALID_BUILD_OPTIONS;
+        LogError("Parsing compile options failed.");
+        return CL_INVALID_COMPILER_OPTIONS;
     }
     programLog_ = parsedOptions.optionsLog();
 
@@ -455,7 +402,7 @@ Program::build(
                 continue;
             }
             retval = addDeviceProgram(**it, bin.first, bin.second,
-                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 200);
+                     GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
@@ -536,6 +483,58 @@ Program::clear()
     deviceList_.clear();
     if (symbolTable_) symbolTable_->clear();
     kernelNames_.clear();
+}
+
+int
+Program::GetOclCVersion(const char* clVer) {
+    // default version
+    int version = 12;
+    if (clVer == NULL) {
+        return version;
+    }
+    std::string clStd(clVer);
+    if (clStd.size() != 5) {
+        return version;
+    }
+    clStd.erase(0,2);
+    clStd.erase(1,1);
+    return std::stoi(clStd);
+}
+
+bool
+Program::ParseAMDOCLBUILDOptions(option::Options& options) {
+    std::string opts;
+    if (AMD_OCL_BUILD_OPTIONS != NULL) {
+        opts = AMD_OCL_BUILD_OPTIONS;
+    }
+    if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
+        opts.append(" ");
+        opts.append(Device::appProfile()->GetBuildOptsAppend());
+    }
+    if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
+        opts.append(" ");
+        opts.append(AMD_OCL_BUILD_OPTIONS_APPEND);
+    }
+    if (!amd::option::parseAllOptions(opts, options)) {
+        return false;
+    }
+    return true;
+}
+
+bool
+Program::ParseAMDOCLLINKOptions(option::Options& options) {
+    std::string opts;
+    if (AMD_OCL_LINK_OPTIONS != NULL) {
+        opts = AMD_OCL_LINK_OPTIONS;
+    }
+    if (AMD_OCL_LINK_OPTIONS_APPEND != NULL) {
+        opts.append(" ");
+        opts.append(AMD_OCL_LINK_OPTIONS_APPEND);
+    }
+    if (!amd::option::parseLinkOptions(opts, options)) {
+        return false;
+    }
+    return true;
 }
 
 bool
