@@ -23,10 +23,6 @@ override BUILD_GPU_DEVICE = no
 endif
 endif
 
-ifneq ($(BUILD_GPU_DEVICE),no)
-GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_AMDIL
-endif
-
 ifneq ($(BUILD_HSA_DEVICE),no)
 GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_HSAIL
 ifneq ($(BUILD_GPU_DEVICE),no)
