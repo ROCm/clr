@@ -824,7 +824,7 @@ Kernel::create(
 
     // Wave limiter needs to be initialized after kernel metadata is parsed
     // Since it depends on it.
-    waveLimiter_.enable();
+    waveLimiter_.enable(dev().settings().ciPlus_);
 
     if (result) {
         buildError_ = CL_SUCCESS;
@@ -842,7 +842,7 @@ Kernel::Kernel(
     const Program&      prog,
     const InitData*     initData)
     : NullKernel(name, gpuDev, prog)
-    , waveLimiter_(this)
+    , waveLimiter_(this, dev().getAttribs().numberOfCUsperShaderArray * dev().hwInfo()->simdPerCU_)
 {
     hwPrivateSize_ = 0;
     if (NULL != initData) {
@@ -3370,6 +3370,7 @@ HSAILKernel::HSAILKernel(std::string name,
     , codeSize_(0)
     , hwMetaData_(NULL)
     , extraArgumentsNum_(extraArgsNum)
+    , waveLimiter_(this, dev().getAttribs().numberOfCUsperShaderArray * dev().hwInfo()->simdPerCU_)
 {
     hsa_ = true;
 }
@@ -3515,6 +3516,16 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
         return false;
     }
     index_ = md.kernel_index;
+
+    size_t sizeOfWavesPerSimdHint;
+    error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
+        RT_WAVES_PER_SIMD_HINT, openClKernelName.c_str(),
+        &workGroupInfo_.wavesPerSimdHint_, &sizeOfWavesPerSimdHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    waveLimiter_.enable(dev().settings().ciPlus_);
 
     return true;
 }

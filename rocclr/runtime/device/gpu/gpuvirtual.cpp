@@ -1791,7 +1791,7 @@ VirtualGPU::submitKernelInternalHSA(
         // Run AQL dispatch in HW
         eventBegin(MainEngine);
         cs()->AqlDispatch(aqlPkt, vmMems(), cal_.memCount_, scratch, scratchOffset,
-            hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo, 0);
+            hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo, hsaKernel.getWavesPerSH(this));
         eventEnd(MainEngine, gpuEvent);
 
         if (dbgManager && (NULL != dbgManager->postDispatchCallBackFunc())) {
