@@ -96,6 +96,10 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
 #endif
                                    ));
   }
+#ifndef NDEBUG
+  llvm::EnablePrettyStackTrace();
+  llvm::sys::PrintStackTraceOnErrorSignal();
+#endif
   // Initialize targets first.
   llvm::InitializeAllTargets();
 
@@ -1437,24 +1441,10 @@ if_aclCompile(aclCompiler *cl,
   }
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(bin->target)) {
-#ifndef DEBUG
-    // Do not install signal handlers for the pretty stack trace.
-#if defined(LEGACY_COMPLIB)
-     llvm::DisablePrettyStackTrace = true;
-#endif
-#else
-#if !defined(LEGACY_COMPLIB)
-    llvm::EnablePrettyStackTrace();
-#endif
-    llvm::sys::PrintStackTraceOnErrorSignal();
-#endif
   } else
 #endif
   {
     llvm::InitializeAllAsmParsers();
-#if defined(LEGACY_COMPLIB)
-    llvm::DisablePrettyStackTrace = true;
-#endif
     llvm::PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
     llvm::initializeSPIRVerifierPass(Registry);
   }
