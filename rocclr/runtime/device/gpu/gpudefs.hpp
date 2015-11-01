@@ -126,7 +126,7 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_ELLESMERE */  { ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "Horse", "horse",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_BAFFIN */     { ED_ATI_CAL_MACHINE_BAFFIN_ISA,    "Goose",    "goose",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "",  "",   4, 16, 1, 256, 64 * Ki, 32, 900 },
-/* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Dummy",                   "dummy",     4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",       "stoney",       4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
 static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
