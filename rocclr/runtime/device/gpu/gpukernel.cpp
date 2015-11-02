@@ -3517,7 +3517,7 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
     }
     index_ = md.kernel_index;
 
-    size_t sizeOfWavesPerSimdHint;
+    size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);
     error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
         RT_WAVES_PER_SIMD_HINT, openClKernelName.c_str(),
         &workGroupInfo_.wavesPerSimdHint_, &sizeOfWavesPerSimdHint);
