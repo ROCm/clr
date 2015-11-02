@@ -192,7 +192,11 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     amd::Coord3D    dstOffset(buffer_offset, 0, 0);
     amd::Coord3D    dstSize(cb, 1, 1);
 
-    if(!dstBuffer->validateRegion(dstOffset, dstSize)) {
+    if ((!dstBuffer->validateRegion(dstOffset, dstSize)) ||
+        // LF library supports aligned sizes only
+        ((buffer_offset % amdFile->blockSize()) != 0) ||
+        ((cb % amdFile->blockSize()) != 0) ||
+        ((file_offset % amdFile->blockSize()) != 0))  {
         return CL_INVALID_VALUE;
     }
 
