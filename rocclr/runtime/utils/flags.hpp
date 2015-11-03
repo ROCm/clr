@@ -146,7 +146,7 @@ release(bool, GPU_ENABLE_LARGE_ALLOCATION, true,                              \
         "Enable >4GB single allocations")                                     \
 release(bool, AMD_THREAD_TRACE_ENABLE, true,                                  \
         "Enable thread trace extension")                                      \
-release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
+release(uint, OPENCL_VERSION, 200,                                            \
         "Force GPU opencl verison")                                           \
 release(uint, CPU_OPENCL_VERSION, 120,                                        \
         "Force CPU opencl verison")                                           \
