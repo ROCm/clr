@@ -349,6 +349,22 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Produce debugging information")
 
+//  -legacy
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OA_SEPARATOR_NONE|OFA_NORMAL, \
+       "legacy", NULL, \
+       Legacy, \
+       false, 0, 0, NULL, \
+       "Forces compilation via legacy (AMDIL)")
+
+//  -binary_is_spirv
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OA_SEPARATOR_NONE|OFA_NORMAL, \
+       "binary_is_spirv", NULL, \
+       BinaryIsSpirv, \
+       false, 0, 0, NULL, \
+       "Program is created from SPIRV binary")
+
 //  -falias, -fno-alias
 OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_PREFIX_F, \
@@ -516,7 +532,6 @@ OPTION(OT_CSTRING, \
         XLang, \
         0, 0, 0, NULL, \
         "-x clc|clc++|spir")
-
 
 // -Wb,<options>  : pass comma-separated <options> to the backend (llvm)
 OPTION(OT_CSTRING, \
