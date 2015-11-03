@@ -143,13 +143,11 @@ Program::compile(
         }
     }
     option::Options parsedOptions;
-    if ((optionChangable && !ParseAMDOCLBUILDOptions(parsedOptions)) ||
-        !option::parseAllOptions(cppstr, parsedOptions)) {
+    if (!ParseAllOptions(cppstr, parsedOptions, optionChangable)) {
         programLog_ = parsedOptions.optionsLog();
         LogError("Parsing compile options failed.");
         return CL_INVALID_COMPILER_OPTIONS;
     }
-    programLog_ = parsedOptions.optionsLog();
 
     std::vector<const std::string*> headers(numHeaders);
     for (size_t i = 0; i < numHeaders; ++i) {
@@ -241,13 +239,11 @@ Program::link(
         }
     }
     option::Options parsedOptions;
-    if ((optionChangable && !ParseAMDOCLLINKOptions(parsedOptions)) ||
-        !option::parseLinkOptions(cppstr, parsedOptions)) {
+    if (!ParseAllOptions(cppstr, parsedOptions, optionChangable, true)) {
         programLog_ = parsedOptions.optionsLog();
         LogError("Parsing link options failed.");
         return CL_INVALID_LINKER_OPTIONS;
     }
-    programLog_ = parsedOptions.optionsLog();
 
     // Link the program programs associated with the given devices.
     std::vector<Device*>::const_iterator it;
@@ -383,13 +379,11 @@ Program::build(
         }
     }
     option::Options parsedOptions;
-    if ((optionChangable && !ParseAMDOCLBUILDOptions(parsedOptions)) ||
-        !option::parseAllOptions(cppstr, parsedOptions)) {
+    if (!ParseAllOptions(cppstr, parsedOptions, optionChangable)) {
         programLog_ = parsedOptions.optionsLog();
         LogError("Parsing compile options failed.");
         return CL_INVALID_COMPILER_OPTIONS;
     }
-    programLog_ = parsedOptions.optionsLog();
 
     // Build the program programs associated with the given devices.
     std::vector<Device*>::const_iterator it;
@@ -502,39 +496,34 @@ Program::GetOclCVersion(const char* clVer) {
 }
 
 bool
-Program::ParseAMDOCLBUILDOptions(option::Options& options) {
-    std::string opts;
-    if (AMD_OCL_BUILD_OPTIONS != NULL) {
-        opts = AMD_OCL_BUILD_OPTIONS;
+Program::ParseAllOptions(const std::string& options, option::Options& parsedOptions, bool optionChangable, bool linkOptsOnly) {
+    std::string allOpts = options;
+    if (optionChangable) {
+        if (linkOptsOnly) {
+            if (AMD_OCL_LINK_OPTIONS != NULL) {
+                allOpts.append(" ");
+                allOpts.append(AMD_OCL_LINK_OPTIONS);
+            }
+            if (AMD_OCL_LINK_OPTIONS_APPEND != NULL) {
+                allOpts.append(" ");
+                allOpts.append(AMD_OCL_LINK_OPTIONS_APPEND);
+            }
+        } else {
+            if (AMD_OCL_BUILD_OPTIONS != NULL) {
+                allOpts.append(" ");
+                allOpts.append(AMD_OCL_BUILD_OPTIONS);
+            }
+            if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
+                allOpts.append(" ");
+                allOpts.append(Device::appProfile()->GetBuildOptsAppend());
+            }
+            if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
+                allOpts.append(" ");
+                allOpts.append(AMD_OCL_BUILD_OPTIONS_APPEND);
+            }
+        }
     }
-    if (!Device::appProfile()->GetBuildOptsAppend().empty()) {
-        opts.append(" ");
-        opts.append(Device::appProfile()->GetBuildOptsAppend());
-    }
-    if (AMD_OCL_BUILD_OPTIONS_APPEND != NULL) {
-        opts.append(" ");
-        opts.append(AMD_OCL_BUILD_OPTIONS_APPEND);
-    }
-    if (!amd::option::parseAllOptions(opts, options)) {
-        return false;
-    }
-    return true;
-}
-
-bool
-Program::ParseAMDOCLLINKOptions(option::Options& options) {
-    std::string opts;
-    if (AMD_OCL_LINK_OPTIONS != NULL) {
-        opts = AMD_OCL_LINK_OPTIONS;
-    }
-    if (AMD_OCL_LINK_OPTIONS_APPEND != NULL) {
-        opts.append(" ");
-        opts.append(AMD_OCL_LINK_OPTIONS_APPEND);
-    }
-    if (!amd::option::parseLinkOptions(opts, options)) {
-        return false;
-    }
-    return true;
+    return amd::option::parseAllOptions(allOpts, parsedOptions, linkOptsOnly);
 }
 
 bool
