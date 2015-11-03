@@ -12,7 +12,6 @@
 #include "platform/object.hpp"
 #include "platform/interop.hpp"
 #include "device/device.hpp"
-#include "lf.h"
 
 #include <atomic>
 #include <utility>
@@ -678,7 +677,7 @@ class LiquidFlashFile : public RuntimeObject
 private:
     const wchar_t*      name_;
     cl_file_flags_amd   flags_;
-    lf_file             handle_;
+    void*               handle_;
     uint32_t            blockSize_;
 
 public:
