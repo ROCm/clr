@@ -2569,8 +2569,6 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
         GpuEvent    gpuEvent;
         eventBegin(MainEngine);
         cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(),  vcmd.markerOffset(), true);
-        //! @todo We don't need flush if an event is tracked.
-        cs()->Flush();
         eventEnd(MainEngine, gpuEvent);
         gpuMemory->setBusy(*this, gpuEvent);
         // Update the global GPU event
