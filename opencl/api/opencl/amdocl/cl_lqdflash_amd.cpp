@@ -77,7 +77,7 @@ LiquidFlashFile::readBlock(
 #if defined WITH_LIQUID_FLASH
     lf_region_descriptor    region =
         { fileOffset / blockSize(), bufferOffset / blockSize(), size / blockSize() };
-    lf_status status = lfReadFile(dst, size, handle_, 1, &region, NULL);
+    lf_status status = lfReadFile(dst, size, (lf_file)handle_, 1, &region, NULL);
     if (lf_success == status) {
         return true;
     }
