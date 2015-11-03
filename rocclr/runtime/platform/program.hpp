@@ -189,9 +189,10 @@ public:
 
     static int GetOclCVersion(const char* clVer);
 
-    static bool ParseAMDOCLBUILDOptions(option::Options& options);
-
-    static bool ParseAMDOCLLINKOptions(option::Options& options);
+    static bool ParseAllOptions(const std::string& options,
+                                option::Options& parsedOptions,
+                                bool optionChangable = true,
+                                bool linkOptsOnly = false);
 };
 
 /*! @}
