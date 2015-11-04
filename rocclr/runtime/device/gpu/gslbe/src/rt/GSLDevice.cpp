@@ -207,6 +207,10 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_dcfg.syncObjectMode.value = (GPU_USE_SYNC_OBJECTS) ?
         GSL_CONFIG_SYNCOBJECT_MODE_ON : GSL_CONFIG_SYNCOBJECT_MODE_OFF;
 
+    // Use OCL_SET_SVM_SIZE to set SVM size we need
+    m_dcfg.ndevSVMSize.hasValue = true;
+    m_dcfg.ndevSVMSize.value = OCL_SET_SVM_SIZE;
+
     // Use GPU_IFH_MODE to test with IFH mode enabled
     m_dcfg.DropFlush.hasValue = true;
     m_dcfg.DropFlush.value = (GPU_IFH_MODE == 1);
