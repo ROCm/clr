@@ -1848,20 +1848,14 @@ HSAILProgram::linkImpl(
     for (size_t i = 1; i < binaries_to_link.size(); i++) {
         aclBinaryFini(binaries_to_link[i]);
     }
-    // Uncomment when CL1.2 support on HSAIL is enabled,
-    // Otherwise ocltst's OCLSeparateCompile will fail
-    // on the non-legacy path with CL1.2
-    // if (createLibrary || options->oVariables->EnableDebug) {
-    //     // Save the binary in the interface class
-    //     size_t size = 0;
-    //     void *mem = NULL;
-    //     aclWriteToMem(binaryElf_, &mem, &size);
-    //     setBinary(static_cast<char*>(mem), size);
-    //     if (createLibrary)
-    //         setType(TYPE_LIBRARY);
-    //     buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-    //     return true;
-    // }
+    if (createLibrary || options->oVariables->EnableDebug) {
+        size_t size = 0;
+        void *mem = NULL;
+        aclWriteToMem(binaryElf_, &mem, &size);
+        setBinary(static_cast<char*>(mem), size);
+        buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+        return true;
+    }
     // Now call linkImpl with the new options
     return linkImpl(options);
 }
