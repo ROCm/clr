@@ -860,7 +860,36 @@ public:
 
     //! Default constructor
     Kernel(const std::string& name): name_(name), signature_(NULL), hsa_(false)
-        { memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_)); }
+        {
+          // Instead of memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_));
+          // Due to std::string not being able to be memset to 0
+          workGroupInfo_.size_ = 0;
+          workGroupInfo_.compileSize_[0] = 0;
+          workGroupInfo_.compileSize_[1] = 0;
+          workGroupInfo_.compileSize_[2] = 0;
+          workGroupInfo_.localMemSize_ = 0;
+          workGroupInfo_.preferredSizeMultiple_ = 0;
+          workGroupInfo_.privateMemSize_ = 0;
+          workGroupInfo_.scratchRegs_ = 0;
+          workGroupInfo_.wavefrontPerSIMD_ = 0;
+          workGroupInfo_.wavefrontSize_ = 0;
+          workGroupInfo_.availableGPRs_ = 0;
+          workGroupInfo_.usedGPRs_ = 0;
+          workGroupInfo_.availableSGPRs_ = 0;
+          workGroupInfo_.usedSGPRs_ = 0;
+          workGroupInfo_.availableVGPRs_ = 0;
+          workGroupInfo_.usedVGPRs_ = 0;
+          workGroupInfo_.availableLDSSize_ = 0;
+          workGroupInfo_.usedLDSSize_ = 0;
+          workGroupInfo_.availableStackSize_ = 0;
+          workGroupInfo_.usedStackSize_ = 0;
+          workGroupInfo_.compileSizeHint_[0] = 0;
+          workGroupInfo_.compileSizeHint_[1] = 0;
+          workGroupInfo_.compileSizeHint_[2] = 0;
+          workGroupInfo_.compileVecTypeHint_ = "";
+          workGroupInfo_.uniformWorkGroupSize_ = false;
+          workGroupInfo_.wavesPerSimdHint_ = 0;
+        }
 
     //! Default destructor
     virtual ~Kernel();
