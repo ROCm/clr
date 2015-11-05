@@ -120,8 +120,8 @@ typedef struct _acl_metadata_0_8 {
   bool enqueue_kernel; // RT_DEVICE_ENQUEUE
   uint32_t kernel_index; // RT_KERNEL_INDEX
   uint32_t numHiddenKernelArgs; // RT_NUM_KERNEL_HIDDEN_ARGS
-  uint32_t wavesPerSimdHint; // RT_WAVES_PER_SIMD_HINT
-  uint32_t wsh[3]; // RT_WORK_GROUP_SIZE_HINT
+  size_t wavesPerSimdHint; // RT_WAVES_PER_SIMD_HINT
+  size_t wsh[3]; // RT_WORK_GROUP_SIZE_HINT
   size_t vecTypeHintSize;
   const char *vth; // RT_VEC_TYPE_HINT
 } aclMetadata_0_8;

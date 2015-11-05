@@ -3440,9 +3440,6 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
     if (error != ACL_SUCCESS) {
         return false;
     }
-    // Set the argList
-    initArgList(reinterpret_cast<const aclArgData*>(aclArgList));
-    delete [] aclArgList;
 
     size_t sizeOfWorkGroupSize;
     error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
@@ -3526,6 +3523,42 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
     }
 
     waveLimiter_.enable(dev().settings().ciPlus_);
+
+    size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
+    error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
+        RT_WORK_GROUP_SIZE_HINT, openClKernelName.c_str(),
+        workGroupInfo_.compileSizeHint_, &sizeOfWorkGroupSizeHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    size_t sizeOfVecTypeHint;
+    error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
+        RT_VEC_TYPE_HINT, openClKernelName.c_str(),
+        NULL, &sizeOfVecTypeHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    if (0 != sizeOfVecTypeHint) {
+        char* VecTypeHint = new char[sizeOfVecTypeHint + 1];
+        if (NULL == VecTypeHint) {
+            return false;
+        }
+        error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(),
+            RT_VEC_TYPE_HINT, openClKernelName.c_str(),
+            VecTypeHint, &sizeOfVecTypeHint);
+        if (error != ACL_SUCCESS) {
+            return false;
+        }
+        VecTypeHint[sizeOfVecTypeHint] = '\0';
+        workGroupInfo_.compileVecTypeHint_ = std::string(VecTypeHint);
+        delete [] VecTypeHint;
+    }
+
+    // Set the argList
+    initArgList(reinterpret_cast<const aclArgData*>(aclArgList));
+    delete [] aclArgList;
 
     return true;
 }
