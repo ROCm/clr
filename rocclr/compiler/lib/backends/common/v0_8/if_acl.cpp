@@ -2,9 +2,9 @@
 // Copyright (c) 2012 Advanced Micro Devices, Inc. All rights reserved.
 //
 #ifdef WITH_TARGET_HSAIL
-#include "libHSAIL/HSAILBrigContainer.h"
-#include "libHSAIL/HSAILDisassembler.h"
-#include "libHSAIL/HSAILBrigObjectFile.h"
+#include "HSAILBrigContainer.h"
+#include "HSAILDisassembler.h"
+#include "HSAILBrigObjectFile.h"
 
 //prevent macro redefinition in drivers\hsa\compiler\lib\promotions\oclutils\top.hpp
 //as it's already defined in drivers\hsa\compiler\llvm\include\llvm\Support\Format.h
