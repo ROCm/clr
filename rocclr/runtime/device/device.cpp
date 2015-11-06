@@ -7,7 +7,7 @@
 #include "thread/monitor.hpp"
 
 #if defined(WITH_HSA_DEVICE)
-#include "device/hsa/hsadevice.hpp"
+#include "device/hsa_foundation/hsadevice.hpp"
 extern amd::AppProfile* oclhsaCreateAppProfile();
 #endif
 
