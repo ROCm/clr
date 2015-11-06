@@ -662,46 +662,57 @@ PrintfDbgHSA::output(
             return false;
         }
 
-        // Copy the buffer data (i.e., the printfID followed by the
-        //argument data for each printf call in th kernel) to the staged buffer
-        if (!dbgBuffer_->partialMemCopyTo(gpu,
-            amd::Coord3D(2*sizeof(uint32_t), 0, 0), amd::Coord3D(0, 0, 0),
-            offsetSize,*xferBufRead_)) {
-            return false;
-        }
-
-        // Get a pointer to the buffer data
-        dbgBufferPtr = reinterpret_cast<uint32_t*>(xferBufRead_->map(&gpu));
-        if (NULL == dbgBufferPtr) {
-            return false;
-        }
-
-
-        std::vector<uint>::const_iterator ita;
-        uint sb = 0;
-        uint sbt = 0;
-
-        // parse the debug buffer
-        while (sbt < offsetSize) {
-            assert(((*dbgBufferPtr) < printfInfo.size()) &&
-                "Cound't find the reported PrintfID!");
-            const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
-            sb += sizeof(uint32_t);
-            for (ita = info.arguments_.begin();
-                ita != info.arguments_.end(); ++ita){
-                    sb += *ita;
+        size_t bufSize = dev().xferRead().bufSize();
+        size_t copySize = offsetSize;
+        while (copySize != 0) {
+            // Copy the buffer data (i.e., the printfID followed by the
+            //argument data for each printf call in th kernel) to the staged buffer
+            if (!dbgBuffer_->partialMemCopyTo(gpu,
+                amd::Coord3D(2*sizeof(uint32_t) + offsetSize - copySize, 0, 0),
+                amd::Coord3D(0, 0, 0),
+                std::min(copySize, bufSize), *xferBufRead_)) {
+                return false;
             }
 
-            size_t idx = 1;
-            // There's something in the debug buffer
-            outputDbgBuffer(info, dbgBufferPtr, idx);
+            // Get a pointer to the buffer data
+            dbgBufferPtr = reinterpret_cast<uint32_t*>(xferBufRead_->map(&gpu));
+            if (NULL == dbgBufferPtr) {
+                return false;
+            }
 
-            sbt += sb;
-            dbgBufferPtr += sb/sizeof(uint32_t);
-            sb = 0;
+
+            std::vector<uint>::const_iterator ita;
+            uint sb = 0;
+            uint sbt = 0;
+
+            // parse the debug buffer
+            while (sbt < copySize) {
+                assert(((*dbgBufferPtr) < printfInfo.size()) &&
+                    "Cound't find the reported PrintfID!");
+                const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
+                sb += sizeof(uint32_t);
+                for (ita = info.arguments_.begin();
+                    ita != info.arguments_.end(); ++ita){
+                        sb += *ita;
+                }
+
+                if (sbt + sb > bufSize) {
+                    break; // Need new portion of data in staging buffer
+                }
+
+                size_t idx = 1;
+                // There's something in the debug buffer
+                outputDbgBuffer(info, dbgBufferPtr, idx);
+
+                sbt += sb;
+                dbgBufferPtr += sb/sizeof(uint32_t);
+                sb = 0;
+            }
+
+            copySize -= sbt;
+            xferBufRead_->unmap(&gpu);
         }
 
-        xferBufRead_->unmap(&gpu);
         dev().xferRead().release(gpu, *xferBufRead_);
     }
 
