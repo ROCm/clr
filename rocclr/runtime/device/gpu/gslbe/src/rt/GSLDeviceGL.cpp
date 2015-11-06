@@ -685,11 +685,6 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
         GSL_ALLOCATION_INSTANCED // alloc_type
     );
 
-    if (m_adp->pAsicInfo->svmFineGrainSystem)
-    {
-        attribs.isAllocSVM = true;
-    }
-
     hRes.type = resData.type;
 
     GLResourceData* hData = new GLResourceData;
