@@ -680,7 +680,6 @@ PrintfDbgHSA::output(
         std::vector<uint>::const_iterator ita;
         uint sb = 0;
         uint sbt = 0;
-        size_t idx = 1;
 
         // parse the debug buffer
         while (sbt < offsetSize) {
@@ -693,6 +692,7 @@ PrintfDbgHSA::output(
                     sb += *ita;
             }
 
+            size_t idx = 1;
             // There's something in the debug buffer
             outputDbgBuffer(info, dbgBufferPtr, idx);
 
