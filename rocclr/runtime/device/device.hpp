@@ -1593,8 +1593,8 @@ public:
         CommandQueue*   queue = NULL
         ) = 0;
 
-    //! Compile the given source code.
-    virtual device::Program* createProgram(bool hsail = false) = 0;
+    //! Create a program for device.
+    virtual device::Program* createProgram(option::Options* options = NULL) = 0;
 
     //! Allocate a chunk of device memory as a cache for a CL memory object
     virtual device::Memory* createMemory(Memory& owner) const = 0;

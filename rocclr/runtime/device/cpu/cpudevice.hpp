@@ -84,7 +84,7 @@ public:
     }
 
     //! Compile the given source code.
-    virtual device::Program* createProgram(bool hsail = false);
+    virtual device::Program* createProgram(amd::option::Options* options = NULL);
 
     //! Just returns NULL as CPU devices use the host memory
     virtual device::Memory* createMemory(amd::Memory& owner) const
