@@ -220,7 +220,7 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithILKHR, (
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
     std::vector<amd::Device*>::const_iterator it;
     for (it = devices.begin(); it != devices.end(); ++it) {
-        if (program->addDeviceProgram(**it, il, length, true) ==
+        if (program->addDeviceProgram(**it, il, length) ==
             CL_OUT_OF_HOST_MEMORY) {
             *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
             program->release();
