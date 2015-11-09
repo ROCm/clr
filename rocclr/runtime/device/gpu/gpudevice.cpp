@@ -285,7 +285,7 @@ void NullDevice::fillDeviceInfo(
         (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
         static_cast<cl_ulong>(calAttr.localRAM) / 100u) * Mi;
 #endif
-    int uswcPercentAvailable = (calAttr.uncachedRemoteRAM > 1536) ? 75 : 50;
+    int uswcPercentAvailable = (calAttr.uncachedRemoteRAM > 1536 && IS_WINDOWS) ? 75 : 50;
     if (settings().apuSystem_) {
         info_.globalMemSize_   +=
             (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable)/100;
@@ -300,13 +300,11 @@ void NullDevice::fillDeviceInfo(
         cl_ulong(memInfo.cardLargestFreeBlockBytes),
         cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
 
-#if defined(ATI_OS_WIN)
     if (settings().apuSystem_) {
         info_.maxMemAllocSize_ = std::max(
             (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable)/100,
             info_.maxMemAllocSize_);
     }
-#endif
     info_.maxMemAllocSize_ = cl_ulong(info_.maxMemAllocSize_ *
         std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
