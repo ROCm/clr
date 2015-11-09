@@ -52,7 +52,6 @@ namespace amd {
 #ifdef WITH_TARGET_HSAIL
 // HSAIL libraries
 #include "builtins-hsail.inc"
-#include "builtins-hsail-amd-ci.inc"
 #include "builtins-gcn.inc"
 #include "builtins-ocml.inc"
 #include "builtins-spirv.inc"
@@ -274,15 +273,13 @@ getLibDescs (
         // Library order is important!
         LibDesc[0].start = reinterpret_cast<const char*>(builtins_gcn);
         LibDesc[0].size  = builtins_gcn_size;
-        LibDesc[1].start = reinterpret_cast<const char*>(builtins_hsail_amd_ci);
-        LibDesc[1].size  = builtins_hsail_amd_ci_size;
-        LibDesc[2].start = reinterpret_cast<const char*>(builtins_hsail);
-        LibDesc[2].size  = builtins_hsail_size;
-        LibDesc[3].start = reinterpret_cast<const char*>(builtins_ocml);
-        LibDesc[3].size  = builtins_ocml_size;
-        LibDesc[4].start = reinterpret_cast<const char*>(builtins_spirv);
-        LibDesc[4].size  = builtins_spirv_size;
-        LibDescSize = 5;
+        LibDesc[1].start = reinterpret_cast<const char*>(builtins_hsail);
+        LibDesc[1].size  = builtins_hsail_size;
+        LibDesc[2].start = reinterpret_cast<const char*>(builtins_ocml);
+        LibDesc[2].size  = builtins_ocml_size;
+        LibDesc[3].start = reinterpret_cast<const char*>(builtins_spirv);
+        LibDesc[3].size  = builtins_spirv_size;
+        LibDescSize = 4;
         break;
 #endif // WITH_TARGET_HSAIL
 
