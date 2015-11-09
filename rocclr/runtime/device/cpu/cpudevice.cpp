@@ -1120,7 +1120,7 @@ Device::partitionByAffinityDomainCacheLevel(
 }
 
 device::Program*
-Device::createProgram(bool hsail)
+Device::createProgram(amd::option::Options* options)
 {
     Program* cpuProgram = new Program(*this);
     if (cpuProgram == NULL) {

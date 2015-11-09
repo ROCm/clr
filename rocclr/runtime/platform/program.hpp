@@ -137,9 +137,9 @@ public:
     //! Return the program log.
     const std::string& programLog() const { return programLog_; }
 
-    //! Add a binary image to this program.
-    cl_int addDeviceProgram(Device&, const void* image = NULL,
-        size_t len = 0, bool hsail = false);
+    //! Add a new device program with or without binary image and options.
+    cl_int addDeviceProgram(Device&, const void* image = NULL, size_t len = 0,
+        amd::option::Options* options = NULL);
 
     //! Find the section for the given device. Return NULL if not found.
     device::Program* getDeviceProgram(const Device& device) const;

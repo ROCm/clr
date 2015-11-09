@@ -66,8 +66,8 @@ public:
         amd::CommandQueue*  queue = NULL
         ) { return NULL; }
 
-    //! Compile the given source code.
-    virtual device::Program* createProgram(bool hsail = false);
+    //! Create the device program.
+    virtual device::Program* createProgram(amd::option::Options* options = NULL);
 
     //! Just returns NULL for the dummy device
     virtual device::Memory* createMemory(amd::Memory& owner) const { return NULL; }
@@ -119,6 +119,10 @@ public:
 protected:
     CALtarget   calTarget_;         //!< GPU device identifier
     const AMDDeviceInfo* hwInfo_;   //!< Device HW info structure
+
+    //! Answer the question: "Should HSAIL Program be created?",
+    //! based on the given options.
+    bool isHsailProgram(amd::option::Options* options = NULL);
 
     //! Fills OpenCL device info structure
     void fillDeviceInfo(
@@ -430,7 +434,7 @@ public:
         ) const;
 
     //! Create the device program.
-    virtual device::Program* createProgram(bool hsail = false);
+    virtual device::Program* createProgram(amd::option::Options* options = NULL);
 
     //! Attempt to bind with external graphics API's device/context
     virtual bool bindExternalDevice(

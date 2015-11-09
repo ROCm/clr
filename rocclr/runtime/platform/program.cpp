@@ -7,6 +7,7 @@
 #include "platform/context.hpp"
 #include "utils/options.hpp"
 #include "utils/libUtils.h"
+#include "utils/bif_section_labels.hpp"
 #include "acl.h"
 
 #include <cstdlib> // for malloc
@@ -45,7 +46,7 @@ Program::findSymbol(const char* kernelName) const
 
 cl_int
 Program::addDeviceProgram(Device& device, const void* image, size_t length,
-        bool hsail)
+    amd::option::Options* options)
 {
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
@@ -64,8 +65,49 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
     if (devicePrograms_[&rootDev] != NULL) {
         return CL_SUCCESS;
     }
-
-    device::Program* program = rootDev.createProgram(hsail || isSPIRV_);
+    bool emptyOptions = false;
+    amd::option::Options emptyOpts;
+    if (options == NULL) {
+        options = &emptyOpts;
+        emptyOptions = true;
+    }
+    if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
+        acl_error errorCode;
+        aclBinary *binary = aclReadFromMem(image, length, &errorCode);
+        if (errorCode != ACL_SUCCESS) {
+            if (emptyOptions) {
+                options = NULL;
+            }
+            return CL_INVALID_BINARY;
+        }
+        const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
+        assert(symbol && "symbol not found");
+        std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
+        size_t symSize = 0;
+        const void *opts = aclExtractSymbol(device.compiler(),
+            binary, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
+        if (errorCode != ACL_SUCCESS) {
+            if (emptyOptions) {
+                options = NULL;
+            }
+            return CL_INVALID_BINARY;
+        }
+        std::string sBinOptions = std::string((char*)opts, symSize);
+        if (!amd::option::parseAllOptions(sBinOptions, *options)) {
+            programLog_ = options->optionsLog();
+            LogError("Parsing compilation options from binary failed.");
+            if (emptyOptions) {
+                options = NULL;
+            }
+            return CL_INVALID_COMPILER_OPTIONS;
+        }
+        options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
+    }
+    options->oVariables->BinaryIsSpirv = isSPIRV_;
+    device::Program* program = rootDev.createProgram(options);
+    if (emptyOptions) {
+        options = NULL;
+    }
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -161,8 +203,7 @@ Program::compile(
         device::Program* devProgram = getDeviceProgram(**it);
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
-            retval = addDeviceProgram(**it, bin.first, bin.second,
-                    GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20);
+            retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
@@ -251,24 +292,37 @@ Program::link(
         // find the corresponding device program in each input program
         std::vector<device::Program*> inputDevPrograms(numInputs);
         bool found = false;
-        bool hsail = GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20;
         for (size_t i = 0; i < numInputs; ++i) {
             Program& inputProgram = *inputPrograms[i];
-            hsail = hsail || inputProgram.isSPIRV_;
+            if (inputProgram.isSPIRV_) {
+                parsedOptions.oVariables->BinaryIsSpirv = inputProgram.isSPIRV_;
+            }
             deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
             deviceprograms_t::const_iterator findIt = inputDevProgs.find(*it);
             if (findIt == inputDevProgs.end()) {
                 if (found) break;
                 continue;
             }
-            found = true;
             inputDevPrograms[i] = findIt->second;
-            size_t pos = inputDevPrograms[i]->compileOptions().find("-cl-std=");
-            if (pos != std::string::npos) {
-                std::string clStd =
-                    inputDevPrograms[i]->compileOptions().substr((pos+8), 5);
-                hsail = hsail || GetOclCVersion(clStd.c_str()) >= 20;
+            device::Program::binary_t binary = inputDevPrograms[i]->binary();
+            // Check the binary's target for the first found device program.
+            // TODO: Revise these binary's target checks
+            // and possibly remove them after switching to HSAIL by default.
+            if (!found && binary.first != NULL && binary.second > 0) {
+                acl_error errorCode = ACL_SUCCESS;
+                void *mem = const_cast<void*>(binary.first);
+                aclBinary* aclBin = aclReadFromMem(mem, binary.second, &errorCode);
+                if (errorCode != ACL_SUCCESS) {
+                    LogWarning("Error while linking: Could not read from raw binary.");
+                    return CL_INVALID_BINARY;
+                }
+                if (isHSAILTarget(*aclutGetTargetInfo(aclBin))) {
+                    parsedOptions.oVariables->Frontend = "clang";
+                } else if (isAMDILTarget(*aclutGetTargetInfo(aclBin))) {
+                    parsedOptions.oVariables->Frontend = "edg";
+                }
             }
+            found = true;
         }
         if (inputDevPrograms.size() == 0) {
             continue;
@@ -280,7 +334,7 @@ Program::link(
         device::Program* devProgram = getDeviceProgram(**it);
         if (devProgram == NULL) {
             const binary_t& bin = binary(**it);
-            retval = addDeviceProgram(**it, bin.first, bin.second, hsail);
+            retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
             if (retval != CL_SUCCESS) {
                 return retval;
             }
@@ -395,8 +449,7 @@ Program::build(
                 retval = false;
                 continue;
             }
-            retval = addDeviceProgram(**it, bin.first, bin.second,
-                     GetOclCVersion(parsedOptions.oVariables->CLStd) >= 20);
+            retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
             if (retval != CL_SUCCESS) {
                 return retval;
             }

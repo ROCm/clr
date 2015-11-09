@@ -11,6 +11,7 @@
 #include "device/gpu/gpudevice.hpp"
 #include "utils/flags.hpp"
 #include "utils/versions.hpp"
+#include "utils/options.hpp"
 #include "thread/monitor.hpp"
 #include "device/gpu/gpuprogram.hpp"
 #include "device/gpu/gpubinary.hpp"
@@ -204,21 +205,79 @@ NullDevice::create(CALtarget target)
     return true;
 }
 
-device::Program*
-NullDevice::createProgram(bool hsail)
-{
-    device::Program* nullProgram;
-    if (settings().hsail_ || hsail) {
-        nullProgram = new HSAILProgram(*this);
+bool
+NullDevice::isHsailProgram(amd::option::Options* options) {
+    bool isCIPlus = settings().ciPlus_;
+    bool isHSAILcapable = settings().hsail_;
+    bool isBlit = false;
+    bool isSPIRV = false;
+    bool isLangExt = false;
+    bool isClang = false;
+    bool isEDG = false;
+    bool isLegacy = false;
+    bool isOCL20 = false;
+    std::vector<amd::option::Options*> optvec;
+    bool isInputOptions = false;
+    if (options != NULL) {
+        optvec.push_back(options);
+        isInputOptions = true;
     }
-    else {
-        nullProgram = new NullProgram(*this);
+    amd::option::Options parsedOptions;
+    if (!amd::Program::ParseAllOptions("", parsedOptions)) {
+        return NULL;
     }
-    if (nullProgram == NULL) {
-        LogError("Memory allocation has failed!");
+    optvec.push_back(&parsedOptions);
+    for (auto const op : optvec) {
+        if (op->oVariables->clInternalKernel) {
+            isBlit = true;
+            continue;
+        }
+        if (!isLegacy) {
+            isLegacy = op->oVariables->Legacy;
+        }
+        if (!isLangExt) {
+            isLangExt = op->isCStrOptionsEqual(op->oVariables->XLang, "clc++") ||
+                        op->isCStrOptionsEqual(op->oVariables->XLang, "spir");
+        }
+        // Checks Frontend option only from input *options, not from Env,
+        // because they might be only calculated by RT based on the binaries to link.
+        // -frontend is being queried now instead of -cl-std=CL2.0, because the last one
+        // is not an indicator for HSAIL path anymore.
+        // TODO: Revise these binary's target checks
+        // and possibly remove them after switching to HSAIL by default.
+        if (isInputOptions) {
+            if (!isClang) {
+                isClang = op->isCStrOptionsEqual(op->oVariables->Frontend, "clang");
+            }
+            if (!isEDG) {
+                isEDG = op->isCStrOptionsEqual(op->oVariables->Frontend, "edg");
+            }
+        }
+        if (!isSPIRV) {
+            isSPIRV = op->oVariables->BinaryIsSpirv;
+        }
+        // TODO: Remove isOCL20 related code from this function along with switching HSAIL by default
+        if (isCIPlus && amd::Program::GetOclCVersion(op->oVariables->CLStd) >= 20) {
+            isOCL20 = true;
+        }
+        isInputOptions = false;
     }
+    if (isSPIRV || (isBlit && isCIPlus) || isClang || isOCL20) {
+        return true;
+    }
+    if (isLegacy || !isHSAILcapable || isEDG || isLangExt) {
+        return false;
+    }
+    return true;
+}
 
-    return nullProgram;
+device::Program*
+NullDevice::createProgram(amd::option::Options* options)
+{
+    if (isHsailProgram(options)) {
+        return new HSAILProgram(*this);
+    }
+    return new NullProgram(*this);
 }
 
 void NullDevice::fillDeviceInfo(
@@ -985,17 +1044,17 @@ Device::initializeHeapResources()
         }
 
         // Delay compilation due to brig_loader memory allocation
-        if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
-            const char* scheduler = NULL;
+        if (settings().ciPlus_) {
+            const char* CL20extraBlits = NULL;
             const char* ocl20 = NULL;
             if (settings().oclVersion_ == OpenCL20) {
-                scheduler = SchedulerSourceCode;
+                CL20extraBlits = SchedulerSourceCode;
                 ocl20 = "-cl-std=CL2.0";
             }
             blitProgram_ = new BlitProgram(context_);
             // Create blit programs
             if (blitProgram_ == NULL ||
-                !blitProgram_->create(this, scheduler, ocl20)) {
+                !blitProgram_->create(this, CL20extraBlits, ocl20)) {
                 delete blitProgram_;
                 blitProgram_ = NULL;
                 LogError("Couldn't create blit kernels!");
@@ -1066,20 +1125,12 @@ Device::createVirtualDevice(
 }
 
 device::Program*
-Device::createProgram(bool hsail)
+Device::createProgram(amd::option::Options* options)
 {
-    device::Program* gpuProgram;
-    if (settings().hsail_ || hsail) {
-        gpuProgram = new HSAILProgram(*this);
+    if (isHsailProgram(options)) {
+        return new HSAILProgram(*this);
     }
-    else {
-        gpuProgram = new Program(*this);
-    }
-    if (gpuProgram == NULL) {
-        LogError("We failed memory allocation for program!");
-    }
-
-    return gpuProgram;
+    return new Program(*this);
 }
 
 //! Requested devices list as configured by the GPU_DEVICE_ORDINAL
