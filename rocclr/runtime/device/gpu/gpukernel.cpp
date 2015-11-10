@@ -3304,12 +3304,14 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
         std::string pfmt = aclPrintf->fmtStr;
         info.fmtString_.clear();
         size_t  pos = 0;
-        for (size_t i = 0; i < pfmt.size(); ++i) {
-          char symbol = pfmt[pos++];
+        bool need_nl = true;
+        for (size_t pos = 0; pos < pfmt.size(); ++pos) {
+          char symbol = pfmt[pos];
+          need_nl = true;
           if (symbol == '\\') {
             // Rest of the C escape sequences (e.g. \') are handled correctly
             // by the MDParser, we are not sure exactly how!
-            switch (pfmt[pos]) {
+            switch (pfmt[pos+1]) {
             case 'a':
               pos++;
               symbol = '\a';
@@ -3325,6 +3327,7 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
             case 'n':
               pos++;
               symbol = '\n';
+              need_nl = false;
               break;
             case 'r':
               pos++;
@@ -3335,9 +3338,8 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
               symbol = '\v';
               break;
             case '7':
-              if (pfmt[++pos] == '2') {
-                pos++;
-                i++;
+              if (pfmt[pos+2] == '2') {
+                pos += 2;
                 symbol = '\72';
               }
               break;
@@ -3347,7 +3349,9 @@ HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf)
           }
           info.fmtString_.push_back(symbol);
         }
-        info.fmtString_ += "\n";
+        if (need_nl) {
+          info.fmtString_ += "\n";
+        }
         uint32_t *tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
         for (uint i = 0; i < aclPrintf->numSizes; i++ , tmp_ptr++) {
             info.arguments_.push_back(*tmp_ptr);
