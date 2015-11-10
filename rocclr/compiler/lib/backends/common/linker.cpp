@@ -517,7 +517,10 @@ translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
     OFS.close();
   }
 
-  if (!llvm::ReadSPIRV(M->getContext(), SS, M, Err)) {
+  auto &Ctx = M->getContext();
+  delete M;
+  M = nullptr;
+  if (!llvm::ReadSPIRV(Ctx, SS, M, Err)) {
     llvm::errs() << "Fails to load SPIR-V as LLVM Module: " << Err << '\n';
     return false;
   }
@@ -822,6 +825,20 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       BuildLog() += "Error: " + localArrayUsageError + '\n';
       return 1;
     }
+
+    // check undefined function
+#ifndef NDEBUG
+    {
+      auto M = LLVMBinary();
+      for (auto I = M->begin(), E = M->end(); I != E; ++I) {
+        if (!I->isDeclaration() || I->use_empty() || (I->hasName() &&
+            (I->getName().startswith("__") ||
+             I->getName().startswith("llvm."))))
+          continue;
+        llvm::errs() << "Warning: Undefined function: " << *I << '\n';
+      }
+    }
+#endif
 
   return 0;
 }
