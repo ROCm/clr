@@ -228,9 +228,13 @@ NullDevice::isHsailProgram(amd::option::Options* options) {
     }
     optvec.push_back(&parsedOptions);
     for (auto const op : optvec) {
+        // TODO: Remove isOCL20 related code from this function along with switching HSAIL by default
+        if (isCIPlus && amd::Program::GetOclCVersion(op->oVariables->CLStd) >= 20) {
+            isOCL20 = true;
+        }
         if (op->oVariables->clInternalKernel) {
             isBlit = true;
-            continue;
+            break;
         }
         if (!isLegacy) {
             isLegacy = op->oVariables->Legacy;
@@ -256,13 +260,9 @@ NullDevice::isHsailProgram(amd::option::Options* options) {
         if (!isSPIRV) {
             isSPIRV = op->oVariables->BinaryIsSpirv;
         }
-        // TODO: Remove isOCL20 related code from this function along with switching HSAIL by default
-        if (isCIPlus && amd::Program::GetOclCVersion(op->oVariables->CLStd) >= 20) {
-            isOCL20 = true;
-        }
         isInputOptions = false;
     }
-    if (isSPIRV || (isBlit && isCIPlus) || isClang || isOCL20) {
+    if (isSPIRV || (isBlit && isCIPlus && isHSAILcapable) || isClang || isOCL20) {
         return true;
     }
     if (isLegacy || !isHSAILcapable || isEDG || isLangExt) {
