@@ -467,6 +467,9 @@ public:
     //! Gets the GPU resource associated with the global heap
     const Memory& globalMem() const { return heap_.resource(); }
 
+    //! Gets the device context object
+    amd::Context& context() const { return *context_; }
+
     //! Gets the global heap object
     const Heap& heap() const { return heap_; }
 
