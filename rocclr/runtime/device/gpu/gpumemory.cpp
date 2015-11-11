@@ -900,8 +900,8 @@ Memory::allocMapTarget(
 
             if (memory == NULL) {
                 // for map target of svm buffer , we need use svm host ptr
-                memory = new(owner()->getContext())
-                    amd::Buffer(owner()->getContext(), flag, owner()->getSize());
+                memory = new(dev().context())
+                    amd::Buffer(dev().context(), flag, owner()->getSize());
                 Memory* gpuMemory;
 
                 do {
@@ -1242,8 +1242,8 @@ Image::allocMapTarget(
                 // Allocate a new buffer to use as the map target
                 //! @note Allocate a 1D buffer, since CAL issues with 3D
                 //! Also HW doesn't support untiled images
-                memory = new (owner()->getContext())
-                    amd::Buffer(owner()->getContext(), 0,
+                memory = new (dev().context())
+                    amd::Buffer(dev().context(), 0,
                     cal()->width_ * height * depth * elementSize());
                 memory->setVirtualDevice(owner()->getVirtualDevice());
 
