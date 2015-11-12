@@ -552,6 +552,9 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
 #endif //_WIN32
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
+#if cl_amd_liquid_flash && !defined(OPENCL_MAINLINE)
+        CL_EXTENSION_ENTRYPOINT_CHECK(clGetFileObjectInfoAMD);
+#endif // cl_amd_liquid_flash
         break;
     case 'H':
 #ifdef _WIN32

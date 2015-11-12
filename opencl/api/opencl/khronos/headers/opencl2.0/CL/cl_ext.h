@@ -467,11 +467,21 @@ typedef cl_uint cl_file_flags_amd;
 #define CL_FILE_WRITE_ONLY_AMD  (1 << 1)
 #define CL_FILE_READ_WRITE_AMD  (1 << 2)
 
+typedef cl_uint cl_file_info_amd;
+#define CL_FILE_BLOCK_SIZE_AMD 0x4085
+
 typedef CL_API_ENTRY cl_file_amd
 (CL_API_CALL * clCreateFileObjectAMD_fn)( cl_context /*context*/,
                                           cl_file_flags_amd /*flags*/,
                                           const wchar_t * /*file_name*/,
                                           cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clGetFileObjectInfoAMD_fn)(cl_file_amd /* file */,
+                                          cl_file_info_amd /* param_name */,
+                                          size_t /* param_value_size */,
+                                          void * /* param_value */,
+                                          size_t * /* param_value_size_ret */) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
 (CL_API_CALL * clRetainFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
