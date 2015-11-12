@@ -123,6 +123,31 @@ RUNTIME_ENTRY_RET(cl_file_amd, clCreateFileObjectAMD, (
 }
 RUNTIME_EXIT
 
+RUNTIME_ENTRY(cl_int, clGetFileObjectInfoAMD, (
+    cl_file_amd file,
+    cl_file_info_amd param_name,
+    size_t param_value_size,
+    void * param_value,
+    size_t * param_value_size_ret))
+{
+    if (!is_valid(file)) {
+        return CL_INVALID_FILE_OBJECT_AMD;
+    }
+
+    switch (param_name) {
+    case CL_FILE_BLOCK_SIZE_AMD: {
+        cl_uint size = as_amd(file)->blockSize();
+        return amd::clGetInfo(
+            size, param_value_size, param_value, param_value_size_ret);
+    }
+    default:
+        break;
+    }
+
+    return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
 RUNTIME_ENTRY(cl_int, clRetainFileObjectAMD, (
     cl_file_amd file))
 {

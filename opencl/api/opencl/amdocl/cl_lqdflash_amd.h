@@ -15,6 +15,14 @@ clCreateFileObjectAMD(
     cl_int * errcode_ret) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
+clGetFileObjectInfoAMD(
+    cl_file_amd file,
+    cl_file_info_amd param_name,
+    size_t param_value_size,
+    void * param_value,
+    size_t * param_value_size_ret) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
 clRetainFileObjectAMD(
     cl_file_amd file) CL_EXT_SUFFIX__VERSION_1_2;
 
