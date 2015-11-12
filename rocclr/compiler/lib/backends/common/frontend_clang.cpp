@@ -11,6 +11,7 @@
 #include "utils/options.hpp"
 #include "utils/target_mappings.h"
 
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MemoryBuffer.h"
@@ -129,7 +130,11 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   }
 
   // Set the LLVMContext for the front-end compilation.
-  ClangOptions.CompilerContext = &Context();
+  // Clang needs to use a separate LLVMContext since the generated bitcode
+  // needs to be loaded again. Using the same LLVMContext causes name collision
+  // for named struct types in bitcode loader.
+  llvm::LLVMContext ClangCtx;
+  ClangOptions.CompilerContext = &ClangCtx;
 
   if (amdOpts && amdOpts->isDumpFlagSet(amd::option::DUMP_CL)) {
     dumpSource(src, amdOpts);
