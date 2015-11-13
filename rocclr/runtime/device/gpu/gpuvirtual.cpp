@@ -3491,4 +3491,30 @@ VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
 
 }
 
+void
+VirtualGPU::submitWriteBufferFromFile(amd::WriteBufferFromFileCommand& cmd)
+{
+    size_t copySize = cmd.size()[0];
+    size_t fileOffset = cmd.fileOffset();
+    size_t dstOffset = cmd.origin()[0];
+    Memory* mem = dev().getGpuMemory(&cmd.memory());
+    uint    idx = 0;
+    while (copySize > 0) {
+        Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
+        size_t dstSize = amd::WriteBufferFromFileCommand::StagingBufferSize;
+        dstSize = std::min(dstSize, copySize);
+        void* dstBuffer = staging->cpuMap(*this);
+        if (!cmd.file()->readBlock(dstBuffer, fileOffset, 0, dstSize)) {
+            return;
+        }
+        staging->cpuUnmap(*this);
+
+        bool result = blitMgr().copyBuffer(*staging, *mem,
+            fileOffset, dstOffset, dstSize, false);
+        flushDMA(getGpuEvent(staging->gslResource())->engineId_);
+        dstOffset += dstSize;
+        copySize -= dstSize;
+    }
+}
+
 } // namespace gpu
