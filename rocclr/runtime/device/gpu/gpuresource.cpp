@@ -445,6 +445,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         desc.mipLevels      = cal()->mipLevels_;
         desc.systemMemory   = NULL;
 
+        uint allocAttempt = 0; 
         do {
             // Find a type for allocation
             if (memoryType() == Persistent) {
@@ -515,7 +516,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 if (memoryType() == Local) {
                     cal_.type_ = Persistent;
                 }
-                else if (memoryType() == Persistent) {
+                // Don't switch to USWC if persistent memory was explicitly asked
+                else if ((allocAttempt > 0) && (memoryType() == Persistent)) {
                     cal_.type_ = RemoteUSWC;
                 }
                 // Remote cacheable to uncacheable
@@ -525,6 +527,7 @@ Resource::create(MemoryType memType, CreateParams* params)
                 else {
                     break;
                 }
+                allocAttempt++;
             }
         }
         while (!calRes);

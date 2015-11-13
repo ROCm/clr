@@ -574,26 +574,60 @@ ThreadTraceMemObjectsCommand::validateMemory()
 }
 
 void
+WriteBufferFromFileCommand::releaseResources()
+{
+    for (uint i = 0; i < NumStagingBuffers; ++i) {
+        if (NULL != staging_[i]) {
+            staging_[i]->release();
+        }
+    }
+
+    // Call the parent
+    OneMemoryArgCommand::releaseResources();
+}
+
+void
 WriteBufferFromFileCommand::submit(device::VirtualDevice& device)
 {
     device::Memory* mem = memory_->getDeviceMemory(queue()->device());
-    void* dstBuffer = mem->cpuMap(device);
-    // Make HD transfer to the host accessible memory
-    if (!file()->readBlock(dstBuffer, fileOffset(), origin()[0], size()[0])) {
-        return;
+    if (memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
+        CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD)) {
+        void* dstBuffer = mem->cpuMap(device);
+        // Make HD transfer to the host accessible memory
+        if (!file()->readBlock(dstBuffer, fileOffset(), origin()[0], size()[0])) {
+            return;
+        }
+        mem->cpuUnmap(device);
     }
-    mem->cpuUnmap(device);
+    else {
+        device.submitWriteBufferFromFile(*this);
+    }
 }
 
 bool
 WriteBufferFromFileCommand::validateMemory()
 {
-    if (!(memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
-          CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
-        return false;
-    }
-
     if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
+        // Check if the destination buffer has direct host access
+        if (!(memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
+                CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
+            // Allocate staging buffers
+            for (uint i = 0; i < NumStagingBuffers; ++i) {
+                staging_[i] = new (memory_->getContext())
+                    Buffer(memory_->getContext(),
+                        StagingBufferMemType, StagingBufferSize);
+                if (NULL == staging_[i] || !staging_[i]->create(nullptr)) {
+                    return false;
+                }
+                device::Memory* mem = staging_[i]->getDeviceMemory(queue()->device());
+                if (NULL == mem) {
+                    LogPrintfError("Can't allocate staging buffer - 0x%08X bytes!",
+                        staging_[i]->getSize());
+                    return false;
+                }
+            }
+        }
+
         device::Memory* mem = memory_->getDeviceMemory(queue()->device());
         if (NULL == mem) {
             LogPrintfError("Can't allocate memory size - 0x%08X bytes!",

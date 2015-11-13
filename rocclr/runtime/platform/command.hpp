@@ -1303,8 +1303,6 @@ public:
             pfnFreeFunc_(pfnFreeFunc),
             userData_(userData) { }
 
-    virtual void releaseResources() { Command::releaseResources(); }
-
     virtual void submit(device::VirtualDevice& device)
     {
         device.submitSvmFreeMemory(*this);
@@ -1337,8 +1335,6 @@ public:
             dst_(dst),
             src_(src),
             srcSize_(srcSize) { }
-
-    virtual void releaseResources() { Command::releaseResources(); }
 
     virtual void submit(device::VirtualDevice& device)
     {
@@ -1382,8 +1378,6 @@ public:
         memcpy(pattern_, pattern, patternSize);
     }
 
-    virtual void releaseResources() { Command::releaseResources(); }
-
     virtual void submit(device::VirtualDevice& device)
     {
         device.submitSvmFillMemory(*this);
@@ -1425,8 +1419,6 @@ public:
             {
             }
 
-    virtual void releaseResources() { Command::releaseResources(); }
-
     virtual void submit(device::VirtualDevice& device)
     {
         device.submitSvmMapMemory(*this);
@@ -1459,8 +1451,6 @@ public:
             svmMem_(svmMem)
             {}
 
-    virtual void releaseResources() { Command::releaseResources(); }
-
     virtual void submit(device::VirtualDevice& device)
     {
         device.submitSvmUnmapMemory(*this);
@@ -1477,11 +1467,17 @@ public:
  */
 class WriteBufferFromFileCommand : public OneMemoryArgCommand
 {
+public:
+    static const uint NumStagingBuffers = 2;
+    static const size_t StagingBufferSize = 4 * Mi;
+    static const uint StagingBufferMemType = CL_MEM_USE_PERSISTENT_MEM_AMD;
+
 private:
     const Coord3D   origin_;    //!< Origin of the region to write to
     const Coord3D   size_;      //!< Size of the region to write to
     LiquidFlashFile* file_;     //!< The file object for data read
     size_t          fileOffset_; //!< Offset in the file for data read
+    amd::Memory*    staging_[NumStagingBuffers];    //!< Staging buffers for transfer
 
 public:
     WriteBufferFromFileCommand(
@@ -1498,7 +1494,12 @@ public:
     {
         // Sanity checks
         assert(size.c[0] > 0 && "invalid");
+        for (uint i = 0; i < NumStagingBuffers; ++i) {
+            staging_[i] = NULL;
+        }
     }
+
+    virtual void releaseResources();
 
     virtual void submit(device::VirtualDevice& device);
 
@@ -1515,6 +1516,9 @@ public:
     const Coord3D& origin() const { return origin_; }
     //! Return the region size
     const Coord3D& size() const { return size_; }
+
+    //! Return the staging buffer for transfer
+    Memory& staging(uint i) const { return *staging_[i]; }
 
     bool validateMemory();
 };

@@ -1450,6 +1450,7 @@ public:
     /// Optional extensions
     virtual void submitSignal(amd::SignalCommand & cmd) = 0;
     virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd) = 0;
+    virtual void submitWriteBufferFromFile(amd::WriteBufferFromFileCommand& cmd) { ShouldNotReachHere(); }
 
     //! Get the blit manager object
     device::BlitManager& blitMgr() const { return *blitMgr_; }
