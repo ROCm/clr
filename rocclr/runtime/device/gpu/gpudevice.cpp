@@ -566,9 +566,7 @@ Device::Heap::create(Device& device)
         return false;
     }
 
-    if (!device.settings().hsail_) {
-        baseAddress_ = resource_->gslResource()->getSurfaceAddress();
-    }
+    baseAddress_ = resource_->gslResource()->getSurfaceAddress();
     return true;
 }
 
