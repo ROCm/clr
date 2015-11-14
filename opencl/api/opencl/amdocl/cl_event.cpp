@@ -290,7 +290,9 @@ RUNTIME_ENTRY(cl_int, clSetUserEventStatus, (
         return CL_INVALID_VALUE;
     }
 
-    as_amd(event)->setStatus(execution_status);
+    if (!as_amd(event)->setStatus(execution_status)) {
+        return CL_INVALID_OPERATION;
+    }
     return CL_SUCCESS;
 }
 RUNTIME_EXIT
