@@ -46,11 +46,11 @@ Context::Context(
             std::swap(svmAllocDevice_.front(), svmAllocDevice_.back());
         }
 
-        uint isFirstDeviceFGSEnabled = svmAllocDevice_.front()->isFineGrainedSystem();
+        uint isFirstDeviceFGSEnabled = svmAllocDevice_.front()->isFineGrainedSystem(true);
         for (auto& dev : svmAllocDevice_) {
             //allocation on fine - grained system incapable device first
             if (isFirstDeviceFGSEnabled && (dev->type() == CL_DEVICE_TYPE_GPU)
-                && (!(dev->isFineGrainedSystem()))) {
+                && (!(dev->isFineGrainedSystem(true)))) {
                 std::swap(svmAllocDevice_.front(), dev);
                 break;
             }

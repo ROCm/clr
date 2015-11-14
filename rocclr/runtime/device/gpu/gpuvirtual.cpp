@@ -3195,7 +3195,7 @@ VirtualGPU::processMemObjectsHSA(
     // so we can avoid checks of the aliased objects
     memoryDependency().newKernel();
 
-    bool deviceSupportFGS = 0 != dev().isFineGrainedSystem();
+    bool deviceSupportFGS = 0 != dev().isFineGrainedSystem(true);
     bool supportFineGrainedSystem = deviceSupportFGS;
     FGSStatus status = kernelParams.getSvmSystemPointersSupport();
     switch (status) {

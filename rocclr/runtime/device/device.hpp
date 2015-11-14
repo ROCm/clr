@@ -1572,8 +1572,8 @@ public:
     }
 
     //! check svm FGS support capability.
-    inline bool isFineGrainedSystem() const {
-        return (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true : false;
+    inline bool isFineGrainedSystem(bool FGSOPT = false) const {
+        return FGSOPT && (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true : false;
     }
  
     //! Return this device's type.

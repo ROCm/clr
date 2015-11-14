@@ -2254,10 +2254,8 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
 
     size = amd::alignUp(size, alignment);
     amd::Memory* mem = NULL;
-    freeCPUMem_ = false;
     if (NULL == svmPtr) {
         if (isFineGrainedSystem()) {
-            freeCPUMem_ = true;
             return amd::Os::alignedMalloc(size, alignment);
         }
 
@@ -2301,7 +2299,7 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
 void
 Device::svmFree(void *ptr) const
 {
-    if (freeCPUMem_) {
+    if (isFineGrainedSystem()) {
         amd::Os::alignedFree(ptr);
     }
     else {
