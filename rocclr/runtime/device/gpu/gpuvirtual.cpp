@@ -139,7 +139,7 @@ VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev)
     aluCnt_ = dev.info().simdPerCU_ * dev.info().simdWidth_ * dev.info().maxComputeUnits_;
     maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
         // find time in us
-        100 * dev.settings().maxWorkloadTime_ *
+        dev.settings().maxWorkloadTime_ *
         aluCnt_;
     resetCbWorkload(dev);
 }
@@ -150,7 +150,7 @@ VirtualGPU::DmaFlushMgmt::resetCbWorkload(const Device& dev)
     cbWorkload_ = 0;
     maxCbWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
         // find time in us
-        100 * dev.settings().minWorkloadTime_ * aluCnt_;
+        dev.settings().minWorkloadTime_ * aluCnt_;
 }
 
 void

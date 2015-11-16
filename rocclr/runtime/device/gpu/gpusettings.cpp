@@ -25,6 +25,9 @@ struct ModifyMaxWorkload
 {
     uint32_t time;          //!< max work load time (10x ms)
     uint32_t minorVersion;  //!< OS minor version
+#if defined(_WIN32)
+    BYTE comparisonOps; //!< Comparison option
+#endif
 };
 
 
@@ -110,8 +113,8 @@ Settings::Settings()
     // Number of compute rings.
     numComputeRings_ = 0;
 
-    minWorkloadTime_ = 1;       // 0.1 ms
-    maxWorkloadTime_ = 5000;    // 500 ms
+    minWorkloadTime_ = 100;       // 0.1 ms
+    maxWorkloadTime_ = 500000;    // 500 ms
 
     // Controls tiled images in persistent
     //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
@@ -172,8 +175,17 @@ Settings::create(
         //TODO: specific codes for AI
         aiPlus_ = true;
         // Fall through to VI ...
-    case CAL_TARGET_CARRIZO:
     case CAL_TARGET_STONEY:
+        if (!aiPlus_) {
+            // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
+            minWorkloadTime_ = 2;
+            modifyMaxWorkload.time = 2;         // Decided by experiment
+            modifyMaxWorkload.minorVersion = 1; // Win 7
+#if defined(_WIN32)
+            modifyMaxWorkload.comparisonOps = VER_GREATER_EQUAL; // Win 7 and later
+#endif
+        }
+    case CAL_TARGET_CARRIZO:
         if (!aiPlus_) {
             // APU systems for VI
             apuSystem_  = true;
@@ -197,8 +209,11 @@ Settings::create(
             // APU systems for CI
             apuSystem_  = true;
             // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
-            modifyMaxWorkload.time = 2500;      // 250ms
+            modifyMaxWorkload.time = 250000;      // 250ms
             modifyMaxWorkload.minorVersion = 1; // Win 7
+#if defined(_WIN32)
+            modifyMaxWorkload.comparisonOps = VER_EQUAL; // limit to Win 7
+#endif
         }
         // Fall through ...
     case CAL_TARGET_BONAIRE:
@@ -303,19 +318,9 @@ Settings::create(
         versionInfo.dwMajorVersion = 6;
         versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
 
-        BYTE comparisonOps = 0;
-        switch (modifyMaxWorkload.minorVersion) {
-            case 1:     // for Win7 only
-                comparisonOps = VER_EQUAL;
-                break;
-            case 2:     // for Win8 and beyond
-                comparisonOps = VER_GREATER_EQUAL;
-                break;
-        }
-
         DWORDLONG conditionMask = 0;
-        VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, comparisonOps);
-        VER_SET_CONDITION(conditionMask, VER_MINORVERSION, comparisonOps);
+        VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, modifyMaxWorkload.comparisonOps);
+        VER_SET_CONDITION(conditionMask, VER_MINORVERSION, modifyMaxWorkload.comparisonOps);
         if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
             maxWorkloadTime_ = modifyMaxWorkload.time;
         }
