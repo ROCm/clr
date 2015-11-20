@@ -3803,7 +3803,7 @@ HSAILKernel::loadArguments(
                     }
                     // If finegrainsystem is present then the pointer can be malloced by the app and
                     // passed to kernel directly. If so copy the pointer location to aqlArgBuf
-                    else if (dev().isFineGrainedSystem(true)) {
+                    else if (!dev().isFineGrainedSystem(true)) {
                         return NULL;
                     }
                     break;

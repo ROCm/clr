@@ -149,6 +149,7 @@ typedef struct CALresourceDescRec {
     mcaddr          vaBase;
     gslMemObjectAttribSection section;
     CALuint         minAlignment;
+    bool            isAllocSVM;
     bool            isAllocExecute;
 } CALresourceDesc;
 

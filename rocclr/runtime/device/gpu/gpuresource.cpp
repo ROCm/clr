@@ -87,8 +87,9 @@ Resource::Resource(
     cal_.buffer_    = true;
     cal_.imageArray_ = false;
     cal_.imageType_  = 0;
-    cal_.SVMRes_ = false;
+    cal_.skipRsrcCache_ = false;
     cal_.scratch_ = false;
+    cal_.isAllocSVM_ = false;
     cal_.isAllocExecute_ = false;
 }
 
@@ -130,8 +131,9 @@ Resource::Resource(
     cal_.buffer_        = false;
     cal_.imageArray_    = false;
     cal_.imageType_     = imageType;
-    cal_.SVMRes_ = false;
+    cal_.skipRsrcCache_ = false;
     cal_.scratch_ = false;
+    cal_.isAllocSVM_ = false;
     cal_.isAllocExecute_ = false;
 
     switch (imageType) {
@@ -348,21 +350,31 @@ Resource::create(MemoryType memType, CreateParams* params)
     desc.vaBase = 0;
     desc.minAlignment = 0;
     desc.isAllocExecute = false;
+    desc.isAllocSVM = false;
     desc.section = GSL_SECTION_REGULAR;
     if (NULL != params && NULL != params->owner_) {   //make sure params not NULL
         mcaddr svmPtr = reinterpret_cast<mcaddr>(params->owner_->getSvmPtr());
         desc.vaBase = (svmPtr == 1)? 0:svmPtr;
-        cal_.SVMRes_ = (svmPtr != 0);
+        // Dont cache coarse\fine grain svm resource as these may not be released
+        // and allocations may fail since there is limited space for coarse\fine grainbuffers
+        cal_.skipRsrcCache_ = (svmPtr != 0);
         desc.section = (svmPtr != 0) ? GSL_SECTION_SVM : GSL_SECTION_REGULAR;
 
         if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
             desc.section = GSL_SECTION_SVM_ATOMICS;
+        }
+
+        if (dev().settings().svmFineGrainSystem_ &&
+            (desc.section == GSL_SECTION_SVM ||
+             desc.section == GSL_SECTION_SVM_ATOMICS)) {
+                cal_.isAllocSVM_ = desc.isAllocSVM = true;
         }
     }
 
     if (memType == Shader){
         if(dev().settings().svmFineGrainSystem_) {
             cal_.isAllocExecute_ = desc.isAllocExecute = true;
+            cal_.isAllocSVM_ = desc.isAllocSVM = true;
         }
         // force to use remote memory for HW DEBUG or use
         // local memory once we determine if FGS is supported
@@ -594,6 +606,11 @@ Resource::create(MemoryType memType, CreateParams* params)
         // Ensure page alignment
         if ((CALuint64)desc.systemMemory & (amd::Os::pageSize() - 1)) {
             return false;
+        }
+
+        if(dev().settings().svmFineGrainSystem_) {
+            cal_.isAllocExecute_ = desc.isAllocExecute = true;
+            cal_.isAllocSVM_ = desc.isAllocSVM = true;
         }
 
         gslResource = dev().resAlloc(&desc);
@@ -1893,7 +1910,7 @@ ResourceCache::addCalResource(
          (desc->type_ == Resource::Remote) ||
          (desc->type_ == Resource::RemoteUSWC)) &&
          (size < cacheSizeLimit_) &&
-         !desc->SVMRes_) {
+         !desc->skipRsrcCache_) {
         // Validate the cache size limit. Loop until we have enough space
         while ((cacheSize_ + size) > cacheSizeLimit_) {
             removeLast();
@@ -1921,7 +1938,7 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
     size_t  size = getResourceSize(desc);
 
     // Early exit if resource is too big
-    if (size >= cacheSizeLimit_ || desc->SVMRes_) {
+    if (size >= cacheSizeLimit_ || desc->skipRsrcCache_) {
         //! \note we may need to free the cache here to reduce memory pressure
         return ref;
     }
@@ -1939,6 +1956,7 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
             (entry->format_ == desc->format_) &&
             (entry->flags_ == desc->flags_) &&
             (entry->mipLevels_ == desc->mipLevels_) &&
+            (entry->isAllocSVM_  == desc->isAllocSVM_) &&
             (entry->isAllocExecute_  == desc->isAllocExecute_)) {
                 ref = it.second;
                 delete it.first;
