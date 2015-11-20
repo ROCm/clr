@@ -173,8 +173,9 @@ public:
                 uint    imageArray_     : 1;    //!< GSL resource is an array of images
                 uint    buffer_         : 1;    //!< GSL resource is a buffer
                 uint    tiled_          : 1;    //!< GSL resource is tiled
-                uint    SVMRes_         : 1;    //!< SVM flag to the cal resource
                 uint    scratch_        : 1;    //!< Scratch buffer
+                uint    skipRsrcCache_  : 1;    //!< Skip caching of a cal resource
+                uint    isAllocSVM_     : 1;    //!< SVM resource attribute
                 uint    isAllocExecute_ : 1;    //!< SVM resource allocation attribute for shader\cmdbuf
             };
             uint    state_;

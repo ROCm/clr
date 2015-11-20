@@ -3232,6 +3232,7 @@ VirtualGPU::processMemObjectsHSA(
                 // Clear memory dependency state
                 const static bool All = true;
                 memoryDependency().clear(!All);
+                continue;
             }
         }
         else {
@@ -3270,6 +3271,7 @@ VirtualGPU::processMemObjectsHSA(
                     // Clear memory dependency state
                     const static bool All = true;
                     memoryDependency().clear(!All);
+                    continue;
                 }
             }
 

@@ -635,6 +635,7 @@ CALGSLDevice::resAlloc(const CALresourceDesc* desc) const
     attribs.location = desc->type;
     attribs.vaBase   = desc->vaBase;
     attribs.section = desc->section;
+    attribs.isAllocSVM = desc->isAllocSVM;
     attribs.isAllocExecute = desc->isAllocExecute;
     attribs.minAlignment = desc->minAlignment;
 
@@ -744,6 +745,7 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, size_t offset, 
     );
     attribs.bytePitch = bytePitch;
     attribs.section = res->getAttribs().section;
+    attribs.isAllocSVM = res->getAttribs().isAllocSVM;
     attribs.isAllocExecute = res->getAttribs().isAllocExecute;
 
     // Need to get the alignment info from hwl.
