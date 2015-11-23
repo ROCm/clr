@@ -96,10 +96,11 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
 #endif
                                    ));
   }
-#ifndef NDEBUG
-  llvm::EnablePrettyStackTrace();
-  llvm::sys::PrintStackTraceOnErrorSignal();
-#endif
+  static const char *DumpStackTrace = getenv("AMD_DUMP_STACK_TRACE");
+  if (DumpStackTrace) {
+    llvm::EnablePrettyStackTrace();
+    llvm::sys::PrintStackTraceOnErrorSignal();
+  }
   // Initialize targets first.
   llvm::InitializeAllTargets();
 
