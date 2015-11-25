@@ -58,14 +58,14 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
       if (HLC_Force_Always_Inliner_Pass) {
         Builder.Inliner = createAlwaysInlinerPass();
       } else {
-        Builder.Inliner = createFunctionInliningPass(HLC_HSAIL_Inline_Threshold);
+        Builder.Inliner = createAMDFunctionInliningPass(HLC_HSAIL_Inline_Threshold);
       }
     } else
 #endif
     {
       HLC_Disable_Amd_Inline_All = false;
       // Always create Inliner regardless of OptLevel
-      Builder.Inliner = createFunctionInliningPass(500);
+      Builder.Inliner = createAMDFunctionInliningPass(500);
     }
   } else if (OptLevel > 1) {
     unsigned Threshold = 225;
@@ -76,12 +76,12 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
       // Don't do inlining (including createAlwaysInlinerPass()) if OptimizationLevel
       // is zero becaue we are generating code for -g
       if (OptLevel > 0) {
-        Builder.Inliner = createFunctionInliningPass(Threshold);
+        Builder.Inliner = createAMDFunctionInliningPass(Threshold);
       }
     } else
 #endif
     {
-      Builder.Inliner = createFunctionInliningPass(Threshold);
+      Builder.Inliner = createAMDFunctionInliningPass(Threshold);
     }
   }
   Builder.SizeLevel = 0;
