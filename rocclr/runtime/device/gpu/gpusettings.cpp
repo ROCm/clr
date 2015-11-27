@@ -178,8 +178,8 @@ Settings::create(
     case CAL_TARGET_STONEY:
         if (!aiPlus_) {
             // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
-            minWorkloadTime_ = 2;
-            modifyMaxWorkload.time = 2;         // Decided by experiment
+            minWorkloadTime_ = 1000;
+            modifyMaxWorkload.time = 1000;         // Decided by experiment
             modifyMaxWorkload.minorVersion = 1; // Win 7
 #if defined(_WIN32)
             modifyMaxWorkload.comparisonOps = VER_GREATER_EQUAL; // Win 7 and later
