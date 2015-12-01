@@ -182,7 +182,7 @@ Settings::create(
             modifyMaxWorkload.time = 1000;         // Decided by experiment
             modifyMaxWorkload.minorVersion = 1; // Win 7
 #if defined(_WIN32)
-            modifyMaxWorkload.comparisonOps = VER_GREATER_EQUAL; // Win 7 and later
+            modifyMaxWorkload.comparisonOps = VER_EQUAL; // Limit to Win 7 only
 #endif
         }
     case CAL_TARGET_CARRIZO:
