@@ -167,7 +167,9 @@ release(bool, GPU_MIPMAP, true,                                               \
 release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
-        "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable")                \
+        "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
+release(bool, GPU_FORCE_FP16, false,                                          \
+        "Force CL_KHR_FP16 extension")                                        \
 debug(bool, OCL_FORCE_CPU_SVM, false,                                         \
         "force svm support for CPU")                                          \
 debug(uint, OCL_SET_SVM_SIZE, 4096,                                           \
