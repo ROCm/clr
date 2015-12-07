@@ -78,10 +78,10 @@ bool ADL::init()
         }
     }
 
-    result = adl2ApplicationProfilesSystemReload(adlContext_);
-    if (result != ADL_OK) {
-        return false;
-    }
+    // Reload is disabled in ADL with the change list 1198904 and ticket
+    // SWDEV-59442 - The ADL_ApplicationProfiles_System_Reload Function is not Re-entrant
+    // Returned value is ADL_ERR_NOT_SUPPORTED on Windows.
+    adl2ApplicationProfilesSystemReload(adlContext_);
 
     return true;
 }
