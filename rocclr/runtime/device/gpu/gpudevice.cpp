@@ -486,10 +486,6 @@ void NullDevice::fillDeviceInfo(
 
     info_.extensions_   = getExtensionString();
 
-    if (settings().checkExtension(ClExtAtomicCounters32)) {
-        info_.maxAtomicCounters_    = MaxAtomicCounters;
-    }
-
     info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
     info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation&(0xFF<<8))>>8;
     info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation&(0x1F<<3))>>3;

@@ -347,7 +347,6 @@ Settings::create(
     enableExtension(ClKhr3DImageWrites);
     enableExtension(ClAmdVec3);
     enableExtension(ClAmdPrintf);
-    enableExtension(ClExtAtomicCounters32);
     // Enable some platform extensions
     enableExtension(ClAmdDeviceAttributeQuery);
     enableExtension(ClKhrSpir);
