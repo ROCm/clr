@@ -305,11 +305,8 @@ Settings::create(
         partialDispatch_    = GPU_PARTIAL_DISPATCH;
         numMemDependencies_ = GPU_NUM_MEM_DEPENDENCY;
 
-        //! @todo HSAIL doesn't support 64 bit atomic on 32 bit!
-        if (LP64_SWITCH(!hsail_, true)) {
-            enableExtension(ClKhrInt64BaseAtomics);
-            enableExtension(ClKhrInt64ExtendedAtomics);
-        }
+        enableExtension(ClKhrInt64BaseAtomics);
+        enableExtension(ClKhrInt64ExtendedAtomics);
         enableExtension(ClKhrImage2dFromBuffer);
         break;
     default:
