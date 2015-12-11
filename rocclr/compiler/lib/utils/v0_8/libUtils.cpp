@@ -1043,3 +1043,8 @@ convertBIF31ToBIF30(aclBinary *src) {
   }
   return dst;
 }
+
+void dump(aclBinary *bin) {
+  bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
+  elfBin->dump();
+}

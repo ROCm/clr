@@ -1670,6 +1670,10 @@ if_aclLink(aclCompiler *cl,
        const void *ptr = cl->clAPI.extSec(cl, src_bin, &data_size, aclLLVMIR, &error_code);
        if (ptr == NULL)
          ptr = cl->clAPI.extSec(cl, src_bin, &data_size, aclSPIR, &error_code);
+       if (ptr == NULL) {
+         error_code = ACL_INVALID_FILE;
+         goto internal_link_failure;
+       }
        char *mod = new char[data_size];
        memcpy(mod, ptr, data_size);
        module = cl->feAPI.toModule(ald, mod, data_size, context, &error_code);
@@ -1677,7 +1681,10 @@ if_aclLink(aclCompiler *cl,
          const void *ptr = cl->clAPI.extSec(cl, libs[x], &data_size, aclLLVMIR, NULL);
          if (ptr == NULL)
            ptr = cl->clAPI.extSec(cl, libs[x], &data_size, aclSPIR, NULL);
-         if (ptr == NULL) continue;
+         if (ptr == NULL) {
+           error_code = ACL_INVALID_FILE;
+           goto internal_link_failure;
+         }
          mod = new char[data_size];
          memcpy(mod, ptr, data_size);
          mod_libs[x] = cl->feAPI.toModule(ald, mod, data_size, context, &error_code);

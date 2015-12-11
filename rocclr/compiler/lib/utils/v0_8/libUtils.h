@@ -391,4 +391,6 @@ isBcMagic(const char* p)
     return true;
 }
 
+void dump(aclBinary *bin);
+
 #endif // _CL_LIB_UTILS_0_8_H_
