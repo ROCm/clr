@@ -1821,9 +1821,6 @@ HSAILProgram::linkImpl(
                     buildLog_ += "Error while linking: Could not load SPIR-V" ;
                     return false;
                 }
-                // Need to update elf raw file since it will be used by
-                // aclCreateFromBinary.
-                aclUpdateRawFile(binaryElf_);
             } else {
                 buildLog_ +="Error while linking : \
                         Invalid binary (Missing LLVMIR section)" ;
