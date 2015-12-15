@@ -223,8 +223,8 @@ NullProgram::linkImpl(amd::option::Options* options)
                         clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, section, sz);
                     }
                     if (clBinary()->saveLLVMIR()) {
-                        if (clBinary()->loadLlvmBinary(llvmBinary_, llvmBinaryIsSpir_) && (!llvmBinary_.empty())) {
-                            clBinary()->elfOut()->addSection(llvmBinaryIsSpir_?amd::OclElf::SPIR:amd::OclElf::LLVMIR,
+                        if (clBinary()->loadLlvmBinary(llvmBinary_, elfSectionType_) && (!llvmBinary_.empty())) {
+                            clBinary()->elfOut()->addSection(elfSectionType_,
                                                   llvmBinary_.data(), llvmBinary_.size(), false);
                         }
                     }
@@ -243,7 +243,7 @@ NullProgram::linkImpl(amd::option::Options* options)
                 }
                 return true;
             }
-            else if (clBinary()->loadLlvmBinary(llvmBinary_, llvmBinaryIsSpir_) &&
+            else if (clBinary()->loadLlvmBinary(llvmBinary_, elfSectionType_) &&
                      clBinary()->isRecompilable(llvmBinary_, amd::OclElf::CAL_PLATFORM)) {
                 char *section;
                 size_t sz;
@@ -260,7 +260,7 @@ NullProgram::linkImpl(amd::option::Options* options)
                     clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, section, sz);
                 }
                 if (clBinary()->saveLLVMIR()) {
-                    clBinary()->elfOut()->addSection(llvmBinaryIsSpir_?amd::OclElf::SPIR:amd::OclElf::LLVMIR,
+                    clBinary()->elfOut()->addSection(elfSectionType_,
                                          llvmBinary_.data(), llvmBinary_.size(), false);
                 }
             }
@@ -509,7 +509,7 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                       bool createLibrary)
 {
     std::vector<std::string*> llvmBinaries(inputPrograms.size());
-    std::vector<bool> llvmBinaryIsSpir(inputPrograms.size());
+    std::vector<amd::OclElf::oclElfSections> elfSectionType(inputPrograms.size());
     std::vector<device::Program*>::const_iterator it
         = inputPrograms.begin();
     std::vector<device::Program*>::const_iterator itEnd
@@ -533,7 +533,7 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                 return false;
             }
             if (!program->clBinary()->loadLlvmBinary(program->llvmBinary_,
-                    program->llvmBinaryIsSpir_)) {
+                    program->elfSectionType_)) {
                 buildLog_
                     += "Internal error: Failed loading compiled binary!\n";
                 LogError("Bad OCL Binary");
@@ -560,7 +560,7 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
         }
 
         llvmBinaries[i] = &program->llvmBinary_;
-        llvmBinaryIsSpir[i] = program->llvmBinaryIsSpir_;
+        elfSectionType[i] = program->elfSectionType_;
     }
 
     acl_error err;
@@ -580,9 +580,16 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
             break;
         }
 
+        _bif_sections_enum_0_8 aclTypeUsed;
+        if (elfSectionType[i] == amd::OclElf::SPIRV) {
+          aclTypeUsed = aclSPIRV;
+        } else if (elfSectionType[i] == amd::OclElf::SPIR) {
+          aclTypeUsed = aclSPIR;
+        } else {
+          aclTypeUsed = aclLLVMIR;
+        }
         err = aclInsertSection(dev().compiler(), libs[i],
-            llvmBinaries[i]->data(), llvmBinaries[i]->size(),
-            llvmBinaryIsSpir[i]?aclSPIR:aclLLVMIR);
+               llvmBinaries[i]->data(), llvmBinaries[i]->size(), aclTypeUsed);
         if (err != ACL_SUCCESS) {
             LogWarning("aclInsertSection failed");
             break;
@@ -597,7 +604,6 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
     if (libs.size() > 0 && err == ACL_SUCCESS) do {
         unsigned int numLibs = libs.size() - 1;
-        bool resultIsSPIR = (llvmBinaryIsSpir[0] && numLibs == 0);
 
         if (numLibs > 0) {
             err = aclLink(dev().compiler(), libs[0], numLibs, &libs[1],
@@ -612,15 +618,23 @@ NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
         }
 
         size_t size = 0;
+        _bif_sections_enum_0_8 aclTypeUsed;
+        if (elfSectionType[0] == amd::OclElf::SPIRV && numLibs == 0) {
+          aclTypeUsed = aclSPIRV;
+        } else if (elfSectionType[0] == amd::OclElf::SPIR && numLibs == 0) {
+          aclTypeUsed = aclSPIR;
+        } else {
+          aclTypeUsed = aclLLVMIR;
+        }
         const void* llvmir = aclExtractSection(dev().compiler(), libs[0],
-            &size, resultIsSPIR?aclSPIR:aclLLVMIR, &err);
+                                                &size, aclTypeUsed, &err);
         if (err != ACL_SUCCESS) {
             LogWarning("aclExtractSection failed");
             break;
         }
 
         llvmBinary_.assign(reinterpret_cast<const char*>(llvmir), size);
-        llvmBinaryIsSpir_ = false;
+        elfSectionType_ = amd::OclElf::LLVMIR;
     } while(0);
 
     std::for_each(libs.begin(), libs.end(), std::ptr_fun(aclBinaryFini));

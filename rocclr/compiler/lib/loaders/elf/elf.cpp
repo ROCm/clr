@@ -105,6 +105,8 @@ namespace {
       "Internal usage" },
     { OclElf::SPIR,            ".spir",          ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
       "Vendor/Device-independent LLVM IR" },
+    { OclElf::SPIRV,           ".spirv",         ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+      "SPIR-V Binary" },
   };
 
   // index 0 is reserved and must be there (NULL section)

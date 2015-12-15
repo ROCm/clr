@@ -604,7 +604,7 @@ Program::Program(amd::Device& device)
     , type_(TYPE_NONE)
     , clBinary_(NULL)
     , llvmBinary_()
-    , llvmBinaryIsSpir_(false)
+    , elfSectionType_(amd::OclElf::LLVMIR)
     , compileOptions_()
     , linkOptions_()
     , lastBuildOptionsArg_()
@@ -1143,7 +1143,7 @@ Program::setBinary(char* binaryIn, size_t size)
         }
         case ET_REL:
         {
-            if (clBinary()->isSPIR()) {
+            if (clBinary()->isSPIR() || clBinary()->isSPIRV()) {
                 setType(TYPE_INTERMEDIATE);
             } else {
                 setType(TYPE_COMPILED);
@@ -1552,19 +1552,20 @@ void ClBinary::resetElfOut()
 }
 
 bool
-ClBinary::loadLlvmBinary(std::string& llvmBinary, bool& llvmBinaryIsSpir) const
+ClBinary::loadLlvmBinary(std::string& llvmBinary, amd::OclElf::oclElfSections& elfSectionType) const
 {
     // Check if current binary already has LLVMIR
     char *section = NULL;
     size_t sz = 0;
-    if (elfIn_->getSection(amd::OclElf::LLVMIR, &section, &sz) && section && sz > 0) {
-        llvmBinary.append(section, sz);
-        llvmBinaryIsSpir = false;
-        return true;
-    } else if (elfIn_->getSection(amd::OclElf::SPIR, &section, &sz) && section && sz > 0) {
-        llvmBinary.append(section, sz);
-        llvmBinaryIsSpir = true;
-        return true;
+    const amd::OclElf::oclElfSections SectionTypes[] =
+            {amd::OclElf::LLVMIR, amd::OclElf::SPIR, amd::OclElf::SPIRV};
+
+    for (int i = 0; i < 3; ++i){
+      if (elfIn_->getSection(SectionTypes[i], &section, &sz) && section && sz > 0) {
+          llvmBinary.append(section, sz);
+          elfSectionType = SectionTypes[i];
+          return true;
+      }
     }
 
     return false;
@@ -1625,6 +1626,18 @@ ClBinary::isSPIR() const
     if (elfIn_->getSection(amd::OclElf::SPIR, &section, &sz) && section && sz > 0)
         return true;
 
+    return false;
+}
+
+bool
+ClBinary::isSPIRV() const
+{
+    char *section = NULL;
+    size_t sz = 0;
+
+    if (elfIn_->getSection(amd::OclElf::SPIRV, &section, &sz) && section && sz > 0) {
+        return true;
+    }
     return false;
 }
 
