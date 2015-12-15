@@ -98,9 +98,6 @@ acl_error ACL_API_ENTRY
   aclWriteToMem(aclBinary *bin,
     void **mem, size_t *size) ACL_API_0_8;
 
-acl_error ACL_API_ENTRY
-  aclUpdateRawFile(aclBinary *bin);
-
 aclBinary* ACL_API_ENTRY
   aclCreateFromBinary(const aclBinary *binary,
     aclBIFVersion version) ACL_API_0_8;

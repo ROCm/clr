@@ -386,6 +386,18 @@ OCLFEToModule(
   return module;
 }
 
+/// Update elf e_rawfile buffer.
+static acl_error
+updateElfRawFile(aclBinary *bin)
+{
+  if (bin == NULL
+      || bin->bin == NULL) {
+    return ACL_INVALID_ARG;
+  }
+  bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
+  return elfBin->updateRawFile() ? ACL_SUCCESS : ACL_ELF_ERROR;
+}
+
 aclModule* ACL_API_ENTRY
 SPIRVToModule(
     aclLoaderData *ald,
@@ -449,7 +461,11 @@ SPIRVToModule(
   outstream.flush();
   auto errCode = cl->clAPI.insSec(cl, bin, &array[0], array.size(), aclLLVMIR);
   if (error != nullptr) (*error) = errCode;
+  if (errCode != ACL_SUCCESS)
+    return reinterpret_cast<aclModule*>(llMod);
 
+  errCode = updateElfRawFile(bin);
+  if (error != nullptr) (*error) = errCode;
   return reinterpret_cast<aclModule*>(llMod);
 #endif // LEGACY_COMPLIB
 }
