@@ -1012,7 +1012,7 @@ private:
 protected:
     ClBinary*   clBinary_;      //!< The CL program binary file
     std::string llvmBinary_;    //!< LLVM IR binary code
-    bool        llvmBinaryIsSpir_; //!< LLVM IR binary code is in SPIR format
+    amd::OclElf::oclElfSections elfSectionType_; //!< LLVM IR binary code is in SPIR format
     std::string compileOptions_;//!< compile/build options.
     std::string linkOptions_;   //!< link options.
     //!< the option arg passed in to clCompileProgram(), clLinkProgram(),
@@ -1212,7 +1212,7 @@ public:
     //! Loads llvmir binary from OCL binary file
     bool loadLlvmBinary(
         std::string&  llvmBinary,    //!< LLVMIR binary code
-        bool& llvmBinaryIsSpir       //!< LLVMIR binary is in SPIR format
+        amd::OclElf::oclElfSections& elfSectionType       //!< LLVMIR binary is in SPIR format
         ) const;
 
     //! Loads compile options from OCL binary file
@@ -1275,6 +1275,8 @@ public:
 
     // Returns TRUE of binary file is SPIR
     bool isSPIR() const;
+    // Returns TRUE of binary file is SPIRV
+    bool isSPIRV() const;
 protected:
     enum Flags {
         BinaryAllocated    = 0x1,    //!< Binary was created

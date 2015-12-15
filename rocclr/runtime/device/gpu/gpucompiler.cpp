@@ -213,7 +213,7 @@ NullProgram::compileImpl(const std::string& src,
     }
 
     llvmBinary_.assign(reinterpret_cast<const char*>(ir), len);
-    llvmBinaryIsSpir_ = false;
+    elfSectionType_ = amd::OclElf::LLVMIR;
     aclBinaryFini(bin);
 
     for (size_t i = 0; i < headerFileNames.size(); ++i) {
@@ -260,11 +260,23 @@ NullProgram::compileBinaryToIL(amd::option::Options* options)
         LogWarning("aclBinaryInit failed");
         return CL_BUILD_PROGRAM_FAILURE;
     }
-    bool spirFlag = std::string::npos != options->clcOptions.find("--spir")
-        || llvmBinaryIsSpir_;
+    aclSections_0_8 spirFlag;
+    _acl_type_enum_0_8 aclTypeBinaryUsed;
+    if (std::string::npos != options->clcOptions.find("--spirv")
+          || elfSectionType_ == amd::OclElf::SPIRV) {
+        spirFlag = aclSPIRV;
+        aclTypeBinaryUsed = ACL_TYPE_SPIRV_BINARY;
+    } else if (std::string::npos != options->clcOptions.find("--spir")
+              || elfSectionType_ == amd::OclElf::SPIR) {
+        spirFlag = aclSPIR;
+        aclTypeBinaryUsed = ACL_TYPE_SPIR_BINARY;
+    } else {
+        spirFlag = aclLLVMIR;
+        aclTypeBinaryUsed = ACL_TYPE_LLVMIR_BINARY;
+    }
+
     if (ACL_SUCCESS != aclInsertSection(dev().compiler(), bin,
-            llvmBinary_.data(), llvmBinary_.size(),
-              spirFlag ? aclSPIR : aclLLVMIR)) {
+            llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
         LogWarning("aclInsertSection failed");
         aclBinaryFini(bin);
         return CL_BUILD_PROGRAM_FAILURE;
@@ -289,10 +301,9 @@ NullProgram::compileBinaryToIL(amd::option::Options* options)
     if (options->oVariables->BinBIF30) {
         type = ACL_TYPE_ISA;
     }
-    err = aclCompile(dev().compiler(), bin, optionStr.c_str(),
-        spirFlag ? ACL_TYPE_SPIR_BINARY : ACL_TYPE_LLVMIR_BINARY,
-          type, NULL);
 
+    err = aclCompile(dev().compiler(), bin, optionStr.c_str(),
+                      aclTypeBinaryUsed, type, NULL);
     buildLog_ += aclGetCompilerLog(dev().compiler());
 
     if (err != ACL_SUCCESS) {

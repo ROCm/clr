@@ -536,11 +536,23 @@ Program::compileBinaryToISA(amd::option::Options* options)
         return false;
     }
 
-    bool spirFlag = std::string::npos != options->clcOptions.find("--spir")
-        || llvmBinaryIsSpir_;
+    aclSections_0_8 spirFlag;
+    _acl_type_enum_0_8 aclTypeBinaryUsed;
+    if (std::string::npos != options->clcOptions.find("--spirv")
+          || elfSectionType_ == amd::OclElf::SPIRV) {
+        spirFlag = aclSPIRV;
+        aclTypeBinaryUsed = ACL_TYPE_SPIRV_BINARY;
+    } else if (std::string::npos != options->clcOptions.find("--spir")
+              || elfSectionType_ == amd::OclElf::SPIR) {
+        spirFlag = aclSPIR;
+        aclTypeBinaryUsed = ACL_TYPE_SPIR_BINARY;
+    } else {
+        spirFlag = aclLLVMIR;
+        aclTypeBinaryUsed = ACL_TYPE_LLVMIR_BINARY;
+    }
+
     if (ACL_SUCCESS != aclInsertSection(compiler(), bin,
-            llvmBinary_.data(), llvmBinary_.size(),
-              spirFlag ? aclSPIR : aclLLVMIR )) {
+         llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
         LogWarning("aclInsertSection failed");
         aclBinaryFini(bin);
         return false;
@@ -551,8 +563,7 @@ Program::compileBinaryToISA(amd::option::Options* options)
     ((amd::option::Options*)bin->options)->setBuildNo(options->getBuildNo());
 
     err = aclCompile(compiler(), bin, options->origOptionStr.c_str(),
-        spirFlag ? ACL_TYPE_SPIR_BINARY : ACL_TYPE_LLVMIR_BINARY,
-          ACL_TYPE_ISA, NULL);
+                      aclTypeBinaryUsed, ACL_TYPE_ISA, NULL);
 
     buildLog_ += aclGetCompilerLog(compiler());
 
@@ -865,7 +876,7 @@ Program::compileImpl(
     }
 
     llvmBinary_.assign(reinterpret_cast<const char*>(llvmir), size);
-    llvmBinaryIsSpir_ = false;
+    elfSectionType_ = amd::OclElf::LLVMIR;
     aclBinaryFini(bin);
 
     if (clBinary()->saveSOURCE()) {
@@ -1001,7 +1012,7 @@ Program::linkImpl(amd::option::Options* options)
         }
 
         // Need to try recompile, check to see if if LLVM IR is present
-        if (clBinary()->loadLlvmBinary(llvmBinary_, llvmBinaryIsSpir_) &&
+        if (clBinary()->loadLlvmBinary(llvmBinary_, elfSectionType_) &&
             clBinary()->isRecompilable(llvmBinary_, amd::OclElf::CPU_PLATFORM)) {
             // Copy both .source and .llvmir into the elfout_
             char *section;
@@ -1014,7 +1025,7 @@ Program::linkImpl(amd::option::Options* options)
             }
 
             if (clBinary()->saveLLVMIR()) {
-                clBinary()->elfOut()->addSection(llvmBinaryIsSpir_?amd::OclElf::SPIR:amd::OclElf::LLVMIR,
+                clBinary()->elfOut()->addSection(elfSectionType_,
                                                  llvmBinary_.data(),
                                                  llvmBinary_.size(), false);
             }
@@ -1063,7 +1074,7 @@ Program::linkImpl(
 {
 #if defined(WITH_ONLINE_COMPILER)
     std::vector<std::string*> llvmBinaries(inputPrograms.size());
-    std::vector<bool> llvmBinaryIsSpir(inputPrograms.size());
+    std::vector<amd::OclElf::oclElfSections> elfSectionType(inputPrograms.size());
     std::vector<device::Program*>::const_iterator it
         = inputPrograms.begin();
     std::vector<device::Program*>::const_iterator itEnd
@@ -1091,7 +1102,7 @@ Program::linkImpl(
             }
 
             // Need to try recompile, check to see if if LLVM IR is present
-            if (program->clBinary()->loadLlvmBinary(program->llvmBinary_, program->llvmBinaryIsSpir_) &&
+            if (program->clBinary()->loadLlvmBinary(program->llvmBinary_, program->elfSectionType_) &&
                 program->clBinary()->isRecompilable(program->llvmBinary_,
                 amd::OclElf::CPU_PLATFORM)) {
                 // Copy both .source and .llvmir into the elfout_
@@ -1117,7 +1128,7 @@ Program::linkImpl(
         }
 
         llvmBinaries[i] = &program->llvmBinary_;
-        llvmBinaryIsSpir[i] = program->llvmBinaryIsSpir_;
+        elfSectionType[i] = program->elfSectionType_;
     }
 
     acl_error err = ACL_SUCCESS;
@@ -1139,9 +1150,17 @@ Program::linkImpl(
             break;
         }
 
+        _bif_sections_enum_0_8 aclTypeUsed;
+        if (elfSectionType[i] == amd::OclElf::SPIRV) {
+          aclTypeUsed = aclSPIRV;
+        } else if (elfSectionType[i] == amd::OclElf::SPIR) {
+          aclTypeUsed = aclSPIR;
+        } else {
+          aclTypeUsed = aclLLVMIR;
+        }
         err = aclInsertSection(compiler(), libs[i],
-            llvmBinaries[i]->data(), llvmBinaries[i]->size(),
-            llvmBinaryIsSpir[i]?aclSPIR:aclLLVMIR);
+                    llvmBinaries[i]->data(), llvmBinaries[i]->size(), aclTypeUsed);
+
         if (err != ACL_SUCCESS) {
             LogWarning("aclInsertSection failed");
             break;
@@ -1155,7 +1174,7 @@ Program::linkImpl(
 
     if (libs.size() > 0 && err == ACL_SUCCESS) do {
         unsigned int numLibs = libs.size() - 1;
-        bool resultIsSPIR = (llvmBinaryIsSpir[0] && numLibs == 0);
+
         if (numLibs > 0) {
             err = aclLink(compiler(), libs[0], libs.size() - 1, &libs[1],
                 ACL_TYPE_LLVMIR_BINARY, "-create-library", NULL);
@@ -1169,8 +1188,16 @@ Program::linkImpl(
         }
 
         size_t size = 0;
+        _bif_sections_enum_0_8 aclTypeUsed;
+        if (elfSectionType[0] == amd::OclElf::SPIRV && numLibs == 0) {
+          aclTypeUsed = aclSPIRV;
+        } else if (elfSectionType[0] == amd::OclElf::SPIR && numLibs == 0) {
+          aclTypeUsed = aclSPIR;
+        } else {
+          aclTypeUsed = aclLLVMIR;
+        }
         const void* llvmir = aclExtractSection(compiler(), libs[0],
-            &size, resultIsSPIR?aclSPIR:aclLLVMIR, &err);
+                                                &size, aclTypeUsed, &err);
         if (err != ACL_SUCCESS) {
             LogWarning("aclExtractSection failed");
             break;
@@ -1187,7 +1214,7 @@ Program::linkImpl(
     }
 
     if (clBinary()->saveLLVMIR()) {
-        clBinary()->elfOut()->addSection(llvmBinaryIsSpir_?amd::OclElf::SPIR:amd::OclElf::LLVMIR,
+        clBinary()->elfOut()->addSection(elfSectionType_,
                                          llvmBinary_.data(),
                                          llvmBinary_.size(),
                                          false);

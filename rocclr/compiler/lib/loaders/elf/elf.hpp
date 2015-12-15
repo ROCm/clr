@@ -113,6 +113,7 @@ public:
         TEXT,
         INTERNAL,
         SPIR,
+        SPIRV,
         OCL_ELF_SECTIONS_LAST
     } oclElfSections;
 
