@@ -504,18 +504,22 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
 bool
 translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
     const std::string &DumpLlvm){
-  std::stringstream SS;
+  std::string S;
+  llvm::raw_string_ostream RSS(S);
   std::string Err;
-  if (!llvm::WriteSPIRV(M, SS, Err)) {
+  if (!llvm::WriteSPIRV(M, RSS, Err)) {
     llvm::errs() << "Fails to save LLVM as SPIR-V: " << Err << '\n';
     return false;
   }
 
   if (!DumpSpirv.empty()) {
     std::ofstream OFS(DumpSpirv, std::ios::binary);
-    OFS << SS.str();
+    OFS << RSS.str();
     OFS.close();
   }
+
+  RSS.flush();
+  std::stringstream SS(S);
 
   auto &Ctx = M->getContext();
   delete M;

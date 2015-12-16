@@ -197,7 +197,8 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   }
 
   if (Options()->oVariables->FEGenSPIRV) {
-    std::ostringstream ss;
+    std::string s;
+    llvm::raw_string_ostream ss(s);
     std::string err;
 
     if (Options()->getLLVMArgc()) {

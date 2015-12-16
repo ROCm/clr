@@ -504,12 +504,12 @@ LLVMToSPIRV(
   }
 
   std::string spvImg;
-  std::stringstream ss(spvImg);
+  llvm::raw_string_ostream ss(spvImg);
   bool success = llvm::WriteSPIRV(llMod, ss, errMsg);
 
   if (opt->isDumpFlagSet(amd::option::DUMP_SPIRV)) {
     std::ofstream ofs(opt->getDumpFileName(".spv"), std::ios::binary);
-    ofs << spvImg;
+    ofs << ss.str();
     ofs.close();
   }
 
