@@ -653,8 +653,8 @@ FLAG(OT_UINT32, OVIS_SUPPORT, "SRAE-threshold", OptSRAEThreshold, 1024, \
      "Maximum size of the local array element aggregrates that\n"
      HINDENT " will be scalar replaced.")
 
-// -liveness=0|1 (default 1)
-FLAG(OT_BOOL, OVIS_SUPPORT, "liveness", OptLiveness, 1, "Enable/disable Liveness Analysis")
+// -liveness=0|1 (default 0)
+FLAG(OT_BOOL, OVIS_SUPPORT, "liveness", OptLiveness, 0, "Enable/disable Liveness Analysis")
 
 // -prt-opt-liveness=0|1 (default 0)
 FLAG(OT_BOOL, OVIS_SUPPORT, "prt-opt-liveness", OptPrintLiveness, 0, \
