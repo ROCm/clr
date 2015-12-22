@@ -391,14 +391,11 @@ Settings::create(
 
     svmAtomics_ = (calAttr.svmAtomics || calAttr.isSVMFineGrainSystem) ? true : false;
 
-    // SVM is not currently supported for DX Interop
-    if (!svmFineGrainSystem_) {
 #if defined(_WIN32)
-        enableExtension(ClKhrD3d9Sharing);
-        enableExtension(ClKhrD3d10Sharing);
-        enableExtension(ClKhrD3d11Sharing);
+    enableExtension(ClKhrD3d9Sharing);
+    enableExtension(ClKhrD3d10Sharing);
+    enableExtension(ClKhrD3d11Sharing);
 #endif // _WIN32
-    }
 
     // Enable some OpenCL 2.0 extensions
     if (oclVersion_ >= OpenCL20) {
