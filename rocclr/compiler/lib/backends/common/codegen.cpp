@@ -42,24 +42,6 @@
 using namespace amdcl;
 using namespace llvm;
 
-/*! Function that modifies the code gen level based on the
- * function size threshhold.
- */
-static CodeGenOpt::Level
-AdjustCGOptLevel(Module& M, CodeGenOpt::Level OrigOLvl)
-{
-  const unsigned int FuncSizeThreshold = 10000;
-  if (OrigOLvl == CodeGenOpt::None)
-    return OrigOLvl;
-  for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
-    Function *F = (Function *)I;
-    if (F->size() > FuncSizeThreshold) {
-      return CodeGenOpt::None;
-    }
-  }
-  return OrigOLvl;
-}
-
 //!--------------------------------------------------------------------------!//
 // JIT Memory manager
 //!--------------------------------------------------------------------------!//
@@ -505,9 +487,6 @@ llvmCodeGen(
       OLvl = CodeGenOpt::Aggressive;
       break;
   };
-
-  // If there is a very big function, lower the optimization level.
-  OLvl = AdjustCGOptLevel(mod, OLvl);
 
   // Adjust the triple to match (if known), otherwise stick with the
   // module/host triple.
