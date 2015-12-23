@@ -134,7 +134,7 @@ release(bool, GPU_STAGING_WRITE_PERSISTENT, false,                            \
         "Enable Persistent writes")                                           \
 release(bool, DRMDMA_FOR_LNX_CF, false,                                       \
         "Enable DRMDMA for Linux CrossFire")                                  \
-release(bool, GPU_HSAIL_ENABLE, false,                                        \
+release(bool, GPU_HSAIL_ENABLE, true,                                         \
         "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
