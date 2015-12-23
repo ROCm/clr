@@ -9,6 +9,7 @@
 #include "memory/MemObject.h"
 #include "sampler/SamplerObject.h"
 #include "texture/TextureResourceObject.h"
+#include "../iol/iodrv_if.h"
 
 extern gslMemObjectAttribTiling g_CALBETiling_Tiled;
 
@@ -193,6 +194,11 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
 #else
     m_dcfg.bEnableFlatAddressing.value    = reportAsOCL12Device ? false : (OPENCL_MAJOR >= 2);
 #endif
+
+    if (GPU_ENABLE_HW_DEBUG) {
+        m_dcfg.nPatchDumpLevel.hasValue = true;
+        m_dcfg.nPatchDumpLevel.value |= NPATCHDUMPLEVEL_BITS_HW_DEBUG;
+    }
 
     //we can use environment variable CAL_ENABLE_ASYNC_DMA to force dma on or off when we need it
     char *s = NULL;
