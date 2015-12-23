@@ -134,7 +134,8 @@ release(bool, GPU_STAGING_WRITE_PERSISTENT, false,                            \
         "Enable Persistent writes")                                           \
 release(bool, DRMDMA_FOR_LNX_CF, false,                                       \
         "Enable DRMDMA for Linux CrossFire")                                  \
-release(bool, GPU_HSAIL_ENABLE, true,                                         \
+/* HSAIL is by default, except Linux 32bit, because of known Catalyst 32bit issue */  \
+release(bool, GPU_HSAIL_ENABLE, LP64_SWITCH(LINUX_SWITCH(false,true),true),   \
         "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
