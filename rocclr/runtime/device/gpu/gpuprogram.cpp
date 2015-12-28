@@ -1862,12 +1862,13 @@ HSAILProgram::linkImpl(
     for (size_t i = 1; i < binaries_to_link.size(); i++) {
         aclBinaryFini(binaries_to_link[i]);
     }
-    if (createLibrary || options->oVariables->EnableDebug) {
+    if (createLibrary) {
         size_t size = 0;
         void *mem = NULL;
         aclWriteToMem(binaryElf_, &mem, &size);
         setBinary(static_cast<char*>(mem), size);
         buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+        setType(TYPE_LIBRARY);
         return true;
     }
     // Now call linkImpl with the new options
@@ -2231,6 +2232,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     aclWriteToMem(binaryElf_, &mem, &size);
     setBinary(static_cast<char*>(mem), size);
     buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+    setType(TYPE_EXECUTABLE);
     return true;
 }
 
