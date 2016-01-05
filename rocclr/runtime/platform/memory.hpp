@@ -679,10 +679,10 @@ private:
     cl_file_flags_amd   flags_;
     void*               handle_;
     uint32_t            blockSize_;
-
+    uint64_t            fileSize_;
 public:
     LiquidFlashFile(const wchar_t* name, cl_file_flags_amd flags)
-      : name_(name), flags_(flags), handle_(NULL) { }
+      : name_(name), flags_(flags), handle_(NULL) ,blockSize_(0),fileSize_(0) { }
 
     ~LiquidFlashFile();
 
@@ -690,6 +690,7 @@ public:
     void close();
 
     uint32_t blockSize() const { return blockSize_; };
+    uint64_t fileSize() const { return fileSize_; };
 
     bool readBlock(
         void* dst,
