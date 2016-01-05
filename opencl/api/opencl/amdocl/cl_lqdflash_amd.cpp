@@ -50,6 +50,10 @@ LiquidFlashFile::open()
     if (lfGetFileBlockSize((lf_file)handle_, &blockSize_) != lf_success) {
         return false;
     }
+
+    if (lfGetFileSize((lf_file)handle_, &fileSize_) != lf_success) {
+        return false;
+    }
     return true;
 #else
     return false;
@@ -136,9 +140,14 @@ RUNTIME_ENTRY(cl_int, clGetFileObjectInfoAMD, (
 
     switch (param_name) {
     case CL_FILE_BLOCK_SIZE_AMD: {
-        cl_uint size = as_amd(file)->blockSize();
+        cl_uint blockSize = as_amd(file)->blockSize();
         return amd::clGetInfo(
-            size, param_value_size, param_value, param_value_size_ret);
+            blockSize, param_value_size, param_value, param_value_size_ret);
+    }
+    case CL_FILE_SIZE_AMD: {
+        cl_ulong fileSize = as_amd(file)->fileSize();
+        return amd::clGetInfo(
+            fileSize, param_value_size, param_value, param_value_size_ret);
     }
     default:
         break;

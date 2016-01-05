@@ -469,6 +469,7 @@ typedef cl_uint cl_file_flags_amd;
 
 typedef cl_uint cl_file_info_amd;
 #define CL_FILE_BLOCK_SIZE_AMD 0x4085
+#define CL_FILE_SIZE_AMD       0x4086
 
 typedef CL_API_ENTRY cl_file_amd
 (CL_API_CALL * clCreateFileObjectAMD_fn)( cl_context /*context*/,
