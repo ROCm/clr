@@ -503,14 +503,21 @@ checkAndFixAclBinaryTarget(llvm::Module* module, aclBinary* elf,
 #ifdef HAS_SPIRV
 bool
 translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
-    const std::string &DumpLlvm){
+    const std::string &DumpLlvm, bool Timing, std::string &TimeStr){
+  uint64_t ReadTime = 0;
+  uint64_t WriteTime = 0;
   std::string S;
   llvm::raw_string_ostream RSS(S);
   std::string Err;
+
+  if (Timing)
+    WriteTime = amd::Os::timeNanos();
   if (!llvm::WriteSPIRV(M, RSS, Err)) {
     llvm::errs() << "Fails to save LLVM as SPIR-V: " << Err << '\n';
     return false;
   }
+  if (Timing)
+    WriteTime = amd::Os::timeNanos() - WriteTime;
 
   if (!DumpSpirv.empty()) {
     std::ofstream OFS(DumpSpirv, std::ios::binary);
@@ -524,9 +531,21 @@ translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
   auto &Ctx = M->getContext();
   delete M;
   M = nullptr;
+  if (Timing)
+    ReadTime = amd::Os::timeNanos();
   if (!llvm::ReadSPIRV(Ctx, SS, M, Err)) {
     llvm::errs() << "Fails to load SPIR-V as LLVM Module: " << Err << '\n';
     return false;
+  }
+
+  if (Timing) {
+    ReadTime = amd::Os::timeNanos() - ReadTime;
+    std::stringstream tmp_ss;
+    tmp_ss << "    LLVM/SPIRV translation time: "
+           << WriteTime/1000ULL << " us\n"
+           << "    SPIRV/LLVM translation time: "
+           << ReadTime/1000ULL << " us\n";
+    TimeStr = tmp_ss.str();
   }
 
   if (!DumpLlvm.empty()) {
@@ -615,7 +634,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       DumpSpirv = Options()->getDumpFileName(".spv");
       DumpLlvm = Options()->getDumpFileName("_fromspv.bc");
     }
-    translateSpirv(llvmbinary_, DumpSpirv, DumpLlvm);
+    std::string TimeStr;
+    translateSpirv(llvmbinary_, DumpSpirv, DumpLlvm,
+        Options()->oVariables->EnableBuildTiming, TimeStr);
+    if (!TimeStr.empty())
+      appendLogToCL(CL(), TimeStr);
   }
 #endif
 
