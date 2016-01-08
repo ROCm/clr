@@ -1890,8 +1890,15 @@ Device::globalFreeMemory(size_t* freeMemory) const
     freeMemory[LargestFreeBlock] = std::max(memInfo.cardLargestFreeBlockBytes,
         memInfo.cardExtLargestFreeBlockBytes) / Ki;
     if (settings().apuSystem_) {
-        freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
-        freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
+        if (settings().viPlus_) {
+            // for viPlus_, OCL is using remote instead remoteUSWC to avoid extra copy
+            freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableCacheableBytes / Ki;
+            freeMemory[LargestFreeBlock] += memInfo.agpCacheableLargestFreeBlockBytes / Ki;
+        }
+        else {
+            freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
+            freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
+        }
     }
 
     return true;
