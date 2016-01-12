@@ -18,7 +18,10 @@ static const std::string sgfx700 = "AMD:AMDGPU:7:0:0";
 static const std::string sgfx701 = "AMD:AMDGPU:7:0:1";
 static const std::string sgfx800 = "AMD:AMDGPU:8:0:0";
 static const std::string sgfx801 = "AMD:AMDGPU:8:0:1";
+static const std::string sgfx804 = "AMD:AMDGPU:8:0:4";
+static const std::string sgfx810 = "AMD:AMDGPU:8:1:0";
 static const std::string sgfx900 = "AMD:AMDGPU:9:0:0";
+static const std::string sgfx901 = "AMD:AMDGPU:9:0:1";
 
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -537,12 +540,13 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
         case VI_TONGA_P_A0: return sgfx800;
         case VI_ELLESMERE_P_A0:
         case VI_BAFFIN_M_A0:
-        case VI_FIJI_P_A0: return sgfx801;
+        case VI_FIJI_P_A0: return sgfx804;
       }
     case FAMILY_CZ:
       switch (Mapping.chip_enum) {
         default: return sgfx801;
         case CARRIZO_A0: return sgfx801;
+        case STONEY_A0:  return sgfx810;
       }
     case FAMILY_AI:
       switch (Mapping.chip_enum) {

@@ -483,16 +483,6 @@ private:
 
     ORCAHSALoaderContext& operator=(const ORCAHSALoaderContext &c);
 
-    enum gfx_handle {
-        gfx700 = 700,
-        gfx701 = 701,
-        gfx702 = 702,
-        gfx800 = 800,
-        gfx801 = 801,
-        gfx810 = 810,
-        gfx900 = 900
-    };
-
     gpu::HSAILProgram* program_;
 };
 

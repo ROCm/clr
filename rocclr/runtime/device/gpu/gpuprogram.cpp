@@ -2351,8 +2351,10 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char *name) {
     if (!strcmp(Gfx701, name)) { isa.handle = gfx701; return isa; }
     if (!strcmp(Gfx800, name)) { isa.handle = gfx800; return isa; }
     if (!strcmp(Gfx801, name)) { isa.handle = gfx801; return isa; }
+    if (!strcmp(Gfx804, name)) { isa.handle = gfx804; return isa; }
     if (!strcmp(Gfx810, name)) { isa.handle = gfx810; return isa; }
     if (!strcmp(Gfx900, name)) { isa.handle = gfx900; return isa; }
+    if (!strcmp(Gfx901, name)) { isa.handle = gfx901; return isa; }
     return isa;
 }
 
@@ -2367,15 +2369,32 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
         return isa.handle == gfx700 || isa.handle == gfx701;
     case gfx800:
-        if (ED_ATI_CAL_MACHINE_ICELAND_ISA == program_->dev().hwInfo()->machine_ ||
-            ED_ATI_CAL_MACHINE_TONGA_ISA == program_->dev().hwInfo()->machine_ ) {
+        switch (program_->dev().hwInfo()->machine_) {
+        case ED_ATI_CAL_MACHINE_ICELAND_ISA:
+        case ED_ATI_CAL_MACHINE_TONGA_ISA:
             return isa.handle == gfx800;
-        } else {
-            // gfx800 has only sgrps limited and can be loaded on later chips.
-            return isa.handle == gfx800 || isa.handle == gfx801;
+        case ED_ATI_CAL_MACHINE_CARRIZO_ISA:
+            return isa.handle == gfx801;
+        case ED_ATI_CAL_MACHINE_FIJI_ISA:
+        case ED_ATI_CAL_MACHINE_ELLESMERE_ISA:
+        case ED_ATI_CAL_MACHINE_BAFFIN_ISA:
+            // gfx800 ISA has only sgrps limited and can be loaded.
+            // gfx801 ISA has XNACK limitations and can be loaded.
+            return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
+        case ED_ATI_CAL_MACHINE_STONEY_ISA:
+            return isa.handle == gfx810;
+        default:
+            assert(0);
+            return false;
         }
     case gfx900:
-        return isa.handle == gfx900;
+        switch (program_->dev().hwInfo()->machine_) {
+        case ED_ATI_CAL_MACHINE_GREENLAND_ISA:
+            return isa.handle == gfx900 || isa.handle == gfx901;
+        default:
+            assert(0);
+            return false;
+        }
     }
 }
 
