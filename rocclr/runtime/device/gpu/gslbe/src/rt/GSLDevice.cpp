@@ -1231,6 +1231,13 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
 
     m_cs->CalcAllScratchBufferSizes(enabledShadersFlag, scratchSpacePerShaderStage,
                                 scratchBufferSizes);
+
+    // SWDEV-79308:
+    //   Reduce the total scratch buffer size by a factor of 4, which in effect reducing the
+    //   max. scratch waves from 32 to 8. This will avoid the required total scratch buffer
+    //   size exceeds the available local memory.
+    scratchBufferSizes[target] >>= 2;
+
     return scratchBufferSizes[target];
 }
 
