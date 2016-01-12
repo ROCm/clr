@@ -129,12 +129,26 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",       "stoney",       4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
+enum gfx_handle {
+    gfx700 = 700,
+    gfx701 = 701,
+    gfx702 = 702,
+    gfx800 = 800,
+    gfx801 = 801,
+    gfx804 = 804,
+    gfx810 = 810,
+    gfx900 = 900,
+    gfx901 = 901
+};
+
 static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
 static const char* Gfx701 = "AMD:AMDGPU:7:0:1";
 static const char* Gfx800 = "AMD:AMDGPU:8:0:0";
 static const char* Gfx801 = "AMD:AMDGPU:8:0:1";
+static const char* Gfx804 = "AMD:AMDGPU:8:0:4";
 static const char* Gfx810 = "AMD:AMDGPU:8:1:0";
 static const char* Gfx900 = "AMD:AMDGPU:9:0:0";
+static const char* Gfx901 = "AMD:AMDGPU:9:0:1";
 
 // Supported OpenCL versions
 enum OclVersion {
