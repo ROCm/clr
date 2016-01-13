@@ -227,7 +227,7 @@ Settings::create(
         ciPlus_ = true;
         sdmaProfiling_ = true;
         hsail_ = GPU_HSAIL_ENABLE;
-        threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
+        threadTraceEnable_ = calAttr.isSVMFineGrainSystem ? false : AMD_THREAD_TRACE_ENABLE;
         // Fall through to SI ...
     case CAL_TARGET_PITCAIRN:
     case CAL_TARGET_CAPEVERDE:
