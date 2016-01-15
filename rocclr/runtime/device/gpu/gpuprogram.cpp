@@ -2373,8 +2373,14 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         case ED_ATI_CAL_MACHINE_ICELAND_ISA:
         case ED_ATI_CAL_MACHINE_TONGA_ISA:
             return isa.handle == gfx800;
-        case ED_ATI_CAL_MACHINE_CARRIZO_ISA:
-            return isa.handle == gfx801;
+        case ED_ATI_CAL_MACHINE_CARRIZO_ISA: {
+                if (program_->dev().settings().svmFineGrainSystem_) {
+                    return isa.handle == gfx801;
+                }
+                else {
+                    return isa.handle == gfx804;
+                }
+            }
         case ED_ATI_CAL_MACHINE_FIJI_ISA:
         case ED_ATI_CAL_MACHINE_ELLESMERE_ISA:
         case ED_ATI_CAL_MACHINE_BAFFIN_ISA:
