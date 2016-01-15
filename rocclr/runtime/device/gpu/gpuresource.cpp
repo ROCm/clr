@@ -1937,8 +1937,8 @@ ResourceCache::findCalResource(Resource::CalResourceDesc* desc)
     GslResourceReference* ref = NULL;
     size_t  size = getResourceSize(desc);
 
-    // Early exit if resource is too big or it is for scratch buffer
-    if (size >= cacheSizeLimit_ || desc->skipRsrcCache_ || desc->scratch_ ) {
+    // Early exit if resource is too big
+    if (size >= cacheSizeLimit_ || desc->skipRsrcCache_) {
         //! \note we may need to free the cache here to reduce memory pressure
         return ref;
     }
