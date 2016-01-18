@@ -1217,7 +1217,7 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
 {
     gslProgramTargetEnum target = GSL_COMPUTE_PROGRAM;
 
-    // Determine the scratch size we need to allocate.
+    // Determine the scratch size we need to allocate
     cmScratchSpaceNeededPerShaderStage scratchSpacePerShaderStage;
     memset(&scratchSpacePerShaderStage, 0, sizeof(scratchSpacePerShaderStage));
     uint32 scratchBufferSizes[gslProgramTarget_COUNT];
@@ -1231,6 +1231,21 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
 
     m_cs->CalcAllScratchBufferSizes(enabledShadersFlag, scratchSpacePerShaderStage,
                                 scratchBufferSizes);
+
+    // SWDEV-79308:
+    //   Reduce the total scratch buffer size by a factor of 4, which in effect reducing the
+    //   max. scratch waves from 32 to 8. This will avoid the required total scratch buffer
+    //   size exceeds the available local memory. (Note: the scratch buffer size needs to
+    //   be 64K alignment)
+    if (scratchBufferSizes[target] > 0)
+    {
+        scratchBufferSizes[target] = (scratchBufferSizes[target] >> 2) & 0xFFFF0000;
+
+        if (scratchBufferSizes[target] == 0) {  // assign minimum scratch buffer size of 64K
+            scratchBufferSizes[target] = 0x10000;
+        }
+    }
+
     return scratchBufferSizes[target];
 }
 
