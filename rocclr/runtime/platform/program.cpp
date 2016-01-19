@@ -86,20 +86,16 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         size_t symSize = 0;
         const void *opts = aclExtractSymbol(device.compiler(),
             binary, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
-        if (errorCode != ACL_SUCCESS) {
-            if (emptyOptions) {
-                options = NULL;
+        if (opts != NULL) {
+            std::string sBinOptions = std::string((char*)opts, symSize);
+            if (!amd::option::parseAllOptions(sBinOptions, *options)) {
+                programLog_ = options->optionsLog();
+                LogError("Parsing compilation options from binary failed.");
+                if (emptyOptions) {
+                    options = NULL;
+                }
+                return CL_INVALID_COMPILER_OPTIONS;
             }
-            return CL_INVALID_BINARY;
-        }
-        std::string sBinOptions = std::string((char*)opts, symSize);
-        if (!amd::option::parseAllOptions(sBinOptions, *options)) {
-            programLog_ = options->optionsLog();
-            LogError("Parsing compilation options from binary failed.");
-            if (emptyOptions) {
-                options = NULL;
-            }
-            return CL_INVALID_COMPILER_OPTIONS;
         }
         options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
     }
