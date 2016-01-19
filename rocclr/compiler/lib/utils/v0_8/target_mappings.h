@@ -230,7 +230,7 @@ inline const char* getArchitecture(aclDevType arch_id)
     case aclX64:
       return "x86-64";
     case aclHSAIL64:
-      return "hsail-64";
+      return "hsail64";
     case aclAMDIL64:
       return "amdil64";
     default:

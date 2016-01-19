@@ -2335,7 +2335,7 @@ HSAILProgram::info(const char * str) {
     acl_error err;
     std::string arch = "hsail";
     if (dev().settings().use64BitPtr_) {
-      arch = "hsail-64";
+      arch = "hsail64";
     }
     info_ = aclGetTargetInfo(arch.c_str(), ( str && str[0] == '\0' ?
         dev().hwInfo()->targetName_ : str ), &err);
