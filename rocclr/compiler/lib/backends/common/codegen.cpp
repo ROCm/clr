@@ -451,7 +451,7 @@ llvmCodeGen(
 
 #ifdef WITH_TARGET_HSAIL
   if (MArch == "hsail" && OptionsObj->oVariables->GPU64BitIsa) {
-    MArch = std::string("hsail-64");
+    MArch = std::string("hsail64");
   }
 #endif
 

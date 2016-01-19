@@ -346,7 +346,7 @@ HSAILProgram::compileImpl(
 
     std::string arch = "hsail";
     if (dev().settings().use64BitPtr_) {
-        arch += "-64";
+        arch += "64";
     }
     target = aclGetTargetInfo(arch.c_str(),
         dev().info().name_, &errorCode);

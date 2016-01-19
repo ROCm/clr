@@ -119,7 +119,7 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
       systemPath << "--march=hsail -D__HSAIL__ -D__" << HSAILTargetMapping[chipName].chip_name << "__=1 ";
       break;
     case aclHSAIL64:
-      systemPath << "--march=hsail-64 -D__HSAIL__ -D__" << HSAIL64TargetMapping[chipName].chip_name << "__=1 ";
+      systemPath << "--march=hsail64 -D__HSAIL__ -D__" << HSAIL64TargetMapping[chipName].chip_name << "__=1 ";
       break;
   };
   // AMDIL and non CPU HSAIL targets get the GPU define, everything
@@ -142,7 +142,7 @@ amdcl::OCLFrontend::getFrontendCommand(aclBinary *elf,
 #ifdef WITH_TARGET_HSAIL
   if ((Is64bitMachine() && isHSAILTarget(elf->target)) ||
       (Opts->oVariables->GPU64BitIsa && (elf->target.arch_id == aclHSAIL)))
-    systemPath << " --march=hsail-64 ";
+    systemPath << " --march=hsail64 ";
 #endif
 
 #ifdef DEBUG
