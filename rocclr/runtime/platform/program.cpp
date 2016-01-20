@@ -75,9 +75,6 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         acl_error errorCode;
         aclBinary *binary = aclReadFromMem(image, length, &errorCode);
         if (errorCode != ACL_SUCCESS) {
-            if (emptyOptions) {
-                options = NULL;
-            }
             return CL_INVALID_BINARY;
         }
         const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
@@ -86,14 +83,12 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         size_t symSize = 0;
         const void *opts = aclExtractSymbol(device.compiler(),
             binary, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
-        if (opts != NULL) {
+        // if we have options from binary and input options was not specified
+        if (opts != NULL && emptyOptions) {
             std::string sBinOptions = std::string((char*)opts, symSize);
             if (!amd::option::parseAllOptions(sBinOptions, *options)) {
                 programLog_ = options->optionsLog();
                 LogError("Parsing compilation options from binary failed.");
-                if (emptyOptions) {
-                    options = NULL;
-                }
                 return CL_INVALID_COMPILER_OPTIONS;
             }
         }
@@ -101,9 +96,6 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
     }
     options->oVariables->BinaryIsSpirv = isSPIRV_;
     device::Program* program = rootDev.createProgram(options);
-    if (emptyOptions) {
-        options = NULL;
-    }
     if (program == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
