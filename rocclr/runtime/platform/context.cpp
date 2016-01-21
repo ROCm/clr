@@ -31,9 +31,7 @@ Context::Context(
 {
     for (const auto& device : devices) {
         device->retain();
-        if (device->customHostAllocator()) {
-            assert(!customHostAllocDevice_ && "Only one custom host allocator "
-                    "is allowed per context");
+        if (customHostAllocDevice_ == NULL && device->customHostAllocator()) {
             customHostAllocDevice_ = device;
         }
         if (device->svmSupport()) {
