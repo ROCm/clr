@@ -137,6 +137,10 @@ class HeapObject
 public:
     void* operator new(size_t size);
     void operator delete(void* obj);
+    void* operator new(size_t size, size_t extSize)
+        { return HeapObject::operator new (size + extSize); };
+    void operator delete(void* obj, size_t extSize)
+        { HeapObject::operator delete (obj); }
 };
 
 /*! \brief For all reference counted objects.
@@ -154,6 +158,10 @@ public:
 
     void* operator new(size_t size) { return ::operator new(size); }
     void operator delete(void* p) { return ::operator delete(p); }
+    void* operator new(size_t size, size_t extSize)
+        { return ReferenceCountedObject::operator new (size + extSize); };
+    void operator delete(void* obj, size_t extSize)
+        { ReferenceCountedObject::operator delete (obj); }
 
     uint referenceCount() const { return referenceCount_; }
 
