@@ -15,6 +15,13 @@ extern amd::AppProfile* oclhsaCreateAppProfile();
 #include "device/cpu/cpudevice.hpp"
 #endif // WITH_CPU_DEVICE
 
+#if defined(WITH_PAL_DEVICE)
+//namespace pal {
+extern bool PalDeviceLoad();
+extern void PalDeviceUnload();
+//}
+#endif // WITH_PAL_DEVICE
+
 #if defined(WITH_GPU_DEVICE)
 extern bool DeviceLoad();
 extern void DeviceUnload();
@@ -177,9 +184,12 @@ Device::init()
         ret |= oclhsa::NullDevice::init();
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE)
+#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
     ret |= DeviceLoad();
 #endif // WITH_GPU_DEVICE
+#if defined(WITH_PAL_DEVICE)
+    ret |= PalDeviceLoad();
+#endif // WITH_PAL_DEVICE
 #if defined(WITH_CPU_DEVICE)
     ret |= cpu::Device::init();
 #endif // WITH_CPU_DEVICE
@@ -203,9 +213,12 @@ Device::tearDown()
         oclhsaAppProfile_ = NULL;
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE)
+#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
     DeviceUnload();
 #endif // WITH_GPU_DEVICE
+#if defined(WITH_PAL_DEVICE)
+    PalDeviceUnload();
+#endif // WITH_PAL_DEVICE
 #if defined(WITH_CPU_DEVICE)
     cpu::Device::tearDown();
 #endif // WITH_CPU_DEVICE
