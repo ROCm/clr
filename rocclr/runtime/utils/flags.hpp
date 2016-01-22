@@ -153,7 +153,7 @@ release(uint, CPU_OPENCL_VERSION, 120,                                        \
         "Force CPU opencl verison")                                           \
 release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
         "Determines if Hsa runtime should use polling scheme")                \
-release(bool, HSA_LOCAL_MEMORY_ENABLE, false,                                 \
+release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
         "Enable HSA device local memory usage")                               \
 release(uint, HSA_KERNARG_POOL_SIZE, 2 * 1024 * 1024,                         \
         "Kernarg pool size")                                                  \
