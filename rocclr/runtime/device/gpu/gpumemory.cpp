@@ -597,7 +597,7 @@ Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags)
                     *this, origin, origin, region, Entire);
             }
             else {
-                amd::Image& image = *owner()->asImage();
+                amd::Image& image = *static_cast<amd::Image*>(owner());
                 result = gpu.blitMgr().copyBufferToImage(*pinnedMemory_,
                     *this, origin, origin, image.getRegion(), Entire,
                     image.getRowPitch(), image.getSlicePitch());
@@ -611,7 +611,7 @@ Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags)
                     *this, origin, region, Entire);
             }
             else {
-                amd::Image& image = *owner()->asImage();
+                amd::Image& image = *static_cast<amd::Image*>(owner());
                 result = gpu.blitMgr().writeImage(owner()->getHostMem(),
                     *this, origin, image.getRegion(),
                     image.getRowPitch(), image.getSlicePitch(), Entire);
@@ -721,7 +721,7 @@ Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags)
                     *pinnedMemory_, origin, origin, region, Entire);
             }
             else {
-                amd::Image& image = *owner()->asImage();
+                amd::Image& image = *static_cast<amd::Image*>(owner());
                 result = dev().xferMgr().copyImageToBuffer(*this,
                     *pinnedMemory_, origin, origin, image.getRegion(), Entire,
                     image.getRowPitch(), image.getSlicePitch());
@@ -736,7 +736,7 @@ Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags)
                     owner()->getHostMem(), origin, region, Entire);
             }
             else {
-                amd::Image& image = *owner()->asImage();
+                amd::Image& image = *static_cast<amd::Image*>(owner());
                 result = dev().xferMgr().readImage(*this,
                     owner()->getHostMem(), origin, image.getRegion(),
                     image.getRowPitch(), image.getSlicePitch(), Entire);
