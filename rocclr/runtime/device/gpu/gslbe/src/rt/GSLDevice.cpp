@@ -1220,7 +1220,7 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
     // Determine the scratch size we need to allocate
     cmScratchSpaceNeededPerShaderStage scratchSpacePerShaderStage;
     memset(&scratchSpacePerShaderStage, 0, sizeof(scratchSpacePerShaderStage));
-    uint32 scratchBufferSizes[gslProgramTarget_COUNT];
+    uint64 scratchBufferSizes[gslProgramTarget_COUNT];
     memset(scratchBufferSizes, 0, sizeof(scratchBufferSizes));
     uint32 enabledShadersFlag = 0;
 
@@ -1244,6 +1244,8 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
         if (scratchBufferSizes[target] == 0) {  // assign minimum scratch buffer size of 64K
             scratchBufferSizes[target] = 0x10000;
         }
+
+        assert(scratchBufferSizes[target] <= 0xFFFFFFFF);     // scratch buffer size < 4GB
     }
 
     return scratchBufferSizes[target];
