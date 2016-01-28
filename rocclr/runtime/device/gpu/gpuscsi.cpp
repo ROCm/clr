@@ -174,6 +174,7 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     workGroupInfo_.availableVGPRs_ = dev().gslCtx()->getNumVGPRsAvailable();
     workGroupInfo_.preferredSizeMultiple_ = dev().getAttribs().wavefrontSize;
     workGroupInfo_.privateMemSize_ = akc->workitem_private_segment_byte_size;
+    workGroupInfo_.availableLDSSize_ = dev().info().localMemSize_;
     workGroupInfo_.localMemSize_ =
     workGroupInfo_.usedLDSSize_ = akc->workgroup_group_segment_byte_size;
     workGroupInfo_.usedSGPRs_ = akc->wavefront_sgpr_count;
