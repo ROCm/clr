@@ -1218,7 +1218,6 @@ aclCompileInternal(
   acl_error error_code = ACL_SUCCESS;
   aclLoaderData *ald;
 
-
   // Load the frontend to convert from Source to LLVM-IR
   if (useFE) {
     ald = cl->feAPI.init(cl, bin, compile_callback, &error_code);
@@ -1268,9 +1267,9 @@ aclCompileInternal(
   // Use the code generators to generate the ISA/IL string.
   if (useCG) {
     ald = cl->cgAPI.init(cl, bin, compile_callback, &error_code);
-#ifdef WITH_TARGET_HSAIL
-    amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
-    if (isHSAILTarget(acl->Elf()->target)) {
+    amdcl::CompilerStage *acs = reinterpret_cast<amdcl::CompilerStage*>(ald);
+    if (isHSAILTarget(acs->Elf()->target)) {
+      amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(ald);
       bool bHsailTextInput = false;
       const char *hsail_text_input = getenv("AMD_DEBUG_HSAIL_TEXT_INPUT");
       // Verify that the internal (blit) kernel is not being compiled
@@ -1367,17 +1366,16 @@ aclCompileInternal(
       }
       bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
       elfBin->setType(ET_EXEC);
-    } else
-#endif
-    {
+    } else if(isCpuTarget(acs->Elf()->target)) {
       std::string* cg = (std::string*) cl->cgAPI.codegen(ald, module, context, &error_code);
       if (!cg || error_code != ACL_SUCCESS) {
         goto internal_compile_failure;
       }
       dataStr = *cg;
+    } else {
+      assert("Unsupported architecture.");
     }
-    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) ||
-        !(reinterpret_cast<amdcl::CompilerStage*>(ald))->Options()->oVariables->BinLLVMIR) {
+    if (!checkFlag(aclutGetCaps(bin), capSaveLLVMIR) || !acs->Options()->oVariables->BinLLVMIR) {
       cl->clAPI.remSec(cl, bin, aclLLVMIR);
     }
     cl->cgAPI.fini(ald);
@@ -1388,25 +1386,21 @@ aclCompileInternal(
 
   if (useISA) {
     ald = cl->beAPI.init(cl, bin, compile_callback, &error_code);
-    // AMDIL: Convert the input string into the device ISA binary.
-    // HSAIL: Converting BRIG in bin into the device ISA binary; input string isn't used.
     error_code = cl->beAPI.finalize(ald, dataStr.data(), dataStr.length());
-#ifdef WITH_TARGET_HSAIL
     if (isHSAILTarget(bin->target) && error_code == ACL_SUCCESS) {
       amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(cl->cgAPI.init(cl, bin, compile_callback, &error_code));
       acl->deleteBRIG();
     }
-#endif
     cl->beAPI.fini(ald);
     if (error_code != ACL_SUCCESS) {
       goto internal_compile_failure;
     }
   }
+
 internal_compile_failure:
   if (module) {
     delete reinterpret_cast<llvm::Module*>(module);
   }
-
   return error_code;
 }
 #define CONDITIONAL_ASSIGN(A, B) A = (A) ? (A) : (B)
