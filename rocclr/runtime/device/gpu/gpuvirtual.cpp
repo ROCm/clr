@@ -1016,32 +1016,51 @@ VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd)
     //no op for FGS supported device
     if (!dev().isFineGrainedSystem()) {
 
-        amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
-        amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
-        if (NULL == srcMem || NULL == dstMem) {
-            vcmd.setStatus(CL_INVALID_OPERATION);
-            return;
-        }
-
         amd::Coord3D srcOrigin(0, 0, 0);
         amd::Coord3D dstOrigin(0, 0, 0);
         amd::Coord3D size(vcmd.srcSize(), 1, 1);
         amd::BufferRect srcRect;
         amd::BufferRect dstRect;
 
-        srcOrigin.c[0] = static_cast<const_address>(vcmd.src()) - static_cast<address>(srcMem->getSvmPtr());
-        dstOrigin.c[0] = static_cast<const_address>(vcmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
 
-        if (!(srcMem->validateRegion(srcOrigin, size)) || !(dstMem->validateRegion(dstOrigin, size))) {
-            vcmd.setStatus(CL_INVALID_OPERATION);
-            return;
+        bool result = false;
+        amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
+        amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
+        if (NULL != srcMem) {
+            srcMem->commitSvmMemory();
+            srcOrigin.c[0] = static_cast<const_address>(vcmd.src()) - static_cast<address>(srcMem->getSvmPtr());
+            if (!(srcMem->validateRegion(srcOrigin, size))) {
+                vcmd.setStatus(CL_INVALID_OPERATION);
+                return;
+            }
+        }
+        if (NULL != dstMem) {
+            dstMem->commitSvmMemory();
+            dstOrigin.c[0] = static_cast<const_address>(vcmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
+            if (!(dstMem->validateRegion(dstOrigin, size))) {
+                vcmd.setStatus(CL_INVALID_OPERATION);
+                return;
+            }
         }
 
-        bool entire = srcMem->isEntirelyCovered(srcOrigin, size) &&
-            dstMem->isEntirelyCovered(dstOrigin, size);
+        if (NULL == srcMem && NULL != dstMem) {             //src not in svm space
+            gpu::Memory* memory = dev().getGpuMemory(dstMem);
+            result = blitMgr().writeBuffer(vcmd.src(), *memory,
+                dstOrigin, size, dstMem->isEntirelyCovered(dstOrigin, size));
+        }
+        else if (NULL != srcMem && NULL == dstMem) {        //dst not in svm space
+            gpu::Memory* memory = dev().getGpuMemory(srcMem);
+            result = blitMgr().readBuffer(*memory, vcmd.dst(),
+                srcOrigin, size, srcMem->isEntirelyCovered(srcOrigin, size));
+        }
+        else if (NULL != srcMem && NULL != dstMem) {        //both not in svm space
+            bool entire = srcMem->isEntirelyCovered(srcOrigin, size) &&
+                          dstMem->isEntirelyCovered(dstOrigin, size);
+            result = copyMemory(type, *srcMem, *dstMem, entire, srcOrigin, dstOrigin,
+                size, srcRect, dstRect);
+        }
 
-        if (!copyMemory(type, *srcMem, *dstMem, entire,
-            srcOrigin, dstOrigin, size, srcRect, dstRect)) {
+        if (!result) {
             vcmd.setStatus(CL_INVALID_OPERATION);
         }
     }
