@@ -125,6 +125,7 @@
 #if !defined(LEGACY_COMPLIB)
 namespace llvm {
   extern bool HLC_FlushF32Denorms;
+  extern unsigned HLC_Max_WG_Size;
 }
 #endif
 
@@ -739,6 +740,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
 #if !defined(LEGACY_COMPLIB)
   llvm::HLC_FlushF32Denorms = Options()->oVariables->DenormsAreZero;
+  llvm::HLC_Max_WG_Size = 2048; // Maximum HW supported workgroup size
 #endif
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   setHaveFastFMA32(chip == "Cypress"
