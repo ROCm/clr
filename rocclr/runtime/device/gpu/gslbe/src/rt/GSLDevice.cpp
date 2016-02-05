@@ -200,9 +200,6 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
         m_dcfg.nPatchDumpLevel.value |= NPATCHDUMPLEVEL_BITS_HW_DEBUG;
     }
 
-    // disable serialization in LHIO to get perf gains
-    m_dcfg.nPatchDumpLevel.value |= NPATCHDUMPLEVEL_FEATURE_ALLOWUNSERIALIZEDPXPROXY;
-
     //we can use environment variable CAL_ENABLE_ASYNC_DMA to force dma on or off when we need it
     char *s = NULL;
     if((s = getenv("CAL_ENABLE_ASYNC_DMA")))
