@@ -1063,13 +1063,29 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Enable timing for Kernel build.")
 
-// -kcache-disable
+// -kernel-cache
 OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
-       "kcache-disable", NULL, \
-       DisableKernelCaching, \
+       "kernel-cache", NULL, \
+       EnableKernelCaching, \
+       true, 0, 0, NULL, \
+       "Enable kernel caching functionality.")
+
+// -kernel-cache-wipe
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
+       "kernel-cache-wipe", NULL, \
+       WipeKernelCache, \
        false, 0, 0, NULL, \
-       "Disable kernel caching functionality.")
+       "Wipe out kernel cache storage.")
+
+// -kernel-cache-enforce-miss
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED, \
+       "kernel-cache-enforce-miss", NULL, \
+       EnforceKernelCacheMiss, \
+       false, 0, 0, NULL, \
+       "Enforce kernel cache miss (actual compilation).")
 
 // -print-compile-phases
 OPTION(OT_BOOL, \
