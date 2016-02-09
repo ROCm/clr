@@ -583,6 +583,39 @@ CALGSLDevice::PerformFullInitialization_int()
 
         m_textureResource = m_cs->createTextureResource();
         m_textureSampler = m_cs->createSampler();
+
+        // This is a temporary w/a for a CP uCode bug in HWS mode.
+        // due to this bug, CP uCode loops through a RUNLIST unless
+        // there is a submission on all queues in HWS mode.
+        // To force CP uCode to exit the loop, the below code creates
+        // temporary contexts and submits a packet (via setRenderState)
+        // to each available compute engines except the first one which
+        // already had submission in the above code.
+        // @todo: remove this code once the bug is fixed in CP uCode
+        if (m_adp->isHWSSupported()) {
+            gslEngineID    usedComputeEngineID = m_isComputeRingIDForced ?
+                                                 m_forcedComputeEngineID :
+                                                 getFirstAvailableComputeEngineID();
+            for (uint i = 0; i < m_nEngines; ++i) {
+                if (m_engines[i].id >= GSL_ENGINEID_COMPUTE0 &&
+                    m_engines[i].id <= GSL_ENGINEID_COMPUTE7 &&
+                    m_engines[i].id != usedComputeEngineID) {
+                        gsl::gsCtx*       cs_temp;
+                        gslRenderState    rs_temp;
+
+                        cs_temp = m_adp->createComputeContext(m_engines[i].id,
+                            m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, false);
+
+                        cs_temp->getMainSubCtx()->setVPUMask(m_vpuMask);
+                        rs_temp = cs_temp->createRenderState();
+                        cs_temp->setRenderState(rs_temp);
+                        cs_temp->Flush();
+                        cs_temp->setRenderState(0);
+                        cs_temp->destroyRenderState(rs_temp);
+                        m_adp->deleteContext(cs_temp);
+                }
+            }
+        }
     }
 }
 
