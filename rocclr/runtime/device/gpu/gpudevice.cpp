@@ -355,15 +355,9 @@ void NullDevice::fillDeviceInfo(
     // should be the size we can actually allocate at application
     // start.  Note that it may not be a guarantee still as the
     // application progresses.
-#if defined(BRAHMA)
-    info_.maxMemAllocSize_ = std::max(
-        cl_ulong(memInfo.cardMemAvailableBytes),
-        cl_ulong(memInfo.cardExtMemAvailableBytes));
-#else
     info_.maxMemAllocSize_ = std::max(
         cl_ulong(memInfo.cardLargestFreeBlockBytes),
         cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
-#endif
 
     if (settings().apuSystem_) {
         info_.maxMemAllocSize_ = std::max(
