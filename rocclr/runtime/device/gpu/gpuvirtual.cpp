@@ -1731,6 +1731,12 @@ VirtualGPU::submitKernelInternalHSA(
         dbgManager->allocParamMemList(numParams);
     }
 
+    bool needFlush = false;
+    dmaFlushMgmt_.findSplitSize(dev(), sizes.global().product(), hsaKernel.aqlCodeSize());
+    if (dmaFlushMgmt().dispatchSplitSize() != 0) {
+        needFlush = true;
+    }
+
     size_t newOffset[3] = {0, 0, 0};
     size_t newGlobalSize[3] = {0, 0, 0};
 
@@ -2008,7 +2014,7 @@ VirtualGPU::submitKernelInternalHSA(
         }
 
         // Update the global GPU event
-        setGpuEvent(gpuEvent);
+        setGpuEvent(gpuEvent, needFlush);
 
         if (!printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
             LogError("Couldn't read printf data from the buffer!\n");
