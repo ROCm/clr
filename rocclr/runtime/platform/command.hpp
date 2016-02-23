@@ -1459,20 +1459,20 @@ public:
     Memory* getSvmMem() const {return svmMem_;}
 };
 
-/*! \brief      A generic write memory from file command.
+/*! \brief      A generic transfer memory from/to file command.
  *
  *  \details    Currently supports buffers only. Buffers
  *              are treated as 1D structures so origin_[0] and size_[0]
  *              are equivalent to offset_ and count_ respectively.
  */
-class WriteBufferFromFileCommand : public OneMemoryArgCommand
+class TransferBufferFileCommand : public OneMemoryArgCommand
 {
 public:
     static const uint NumStagingBuffers = 2;
     static const size_t StagingBufferSize = 4 * Mi;
     static const uint StagingBufferMemType = CL_MEM_USE_PERSISTENT_MEM_AMD;
 
-private:
+protected:
     const Coord3D   origin_;    //!< Origin of the region to write to
     const Coord3D   size_;      //!< Size of the region to write to
     LiquidFlashFile* file_;     //!< The file object for data read
@@ -1480,12 +1480,13 @@ private:
     amd::Memory*    staging_[NumStagingBuffers];    //!< Staging buffers for transfer
 
 public:
-    WriteBufferFromFileCommand(
+    TransferBufferFileCommand(
+        cl_command_type type,
         HostQueue& queue,
         const EventWaitList& eventWaitList,
         Memory& memory, const Coord3D& origin,
         const Coord3D& size, LiquidFlashFile* file, size_t fileOffset)
-            : OneMemoryArgCommand(queue, CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD,
+            : OneMemoryArgCommand(queue, type,
                 eventWaitList, memory)
             , origin_(origin)
             , size_(size)

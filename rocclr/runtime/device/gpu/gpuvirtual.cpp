@@ -3515,32 +3515,36 @@ VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
     addVmMemory(trapBufferMem);
     addVmMemory(rtTrapHandlerMem);
     addVmMemory(rtTrapBufferMem);
-
 }
 
 void
-VirtualGPU::submitWriteBufferFromFile(amd::WriteBufferFromFileCommand& cmd)
+VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd)
 {
     size_t copySize = cmd.size()[0];
     size_t fileOffset = cmd.fileOffset();
-    size_t dstOffset = cmd.origin()[0];
+    size_t srcDstOffset = cmd.origin()[0];
     Memory* mem = dev().getGpuMemory(&cmd.memory());
     uint    idx = 0;
+
+    assert((cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD) ||
+           (cmd.type() == CL_COMMAND_READ_BUFFER_FROM_FILE_AMD));
+    bool writeBuffer(cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
+
     while (copySize > 0) {
         Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
-        size_t dstSize = amd::WriteBufferFromFileCommand::StagingBufferSize;
-        dstSize = std::min(dstSize, copySize);
-        void* dstBuffer = staging->cpuMap(*this);
-        if (!cmd.file()->readBlock(dstBuffer, fileOffset, 0, dstSize)) {
+        size_t srcDstSize = amd::TransferBufferFileCommand::StagingBufferSize;
+        srcDstSize = std::min(srcDstSize, copySize);
+        void* srcDstBuffer = staging->cpuMap(*this);
+        if (!cmd.file()->transferBlock(writeBuffer, srcDstBuffer, fileOffset, 0, srcDstSize)) {
             return;
         }
         staging->cpuUnmap(*this);
 
         bool result = blitMgr().copyBuffer(*staging, *mem,
-            fileOffset, dstOffset, dstSize, false);
+            fileOffset, srcDstOffset, srcDstSize, false);
         flushDMA(getGpuEvent(staging->gslResource())->engineId_);
-        dstOffset += dstSize;
-        copySize -= dstSize;
+        srcDstOffset += srcDstSize;
+        copySize     -= srcDstSize;
     }
 }
 
