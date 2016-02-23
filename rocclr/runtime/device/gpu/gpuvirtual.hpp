@@ -243,7 +243,7 @@ public:
     virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
     virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
     virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
-    virtual void submitWriteBufferFromFile(amd::WriteBufferFromFileCommand& cmd);
+    virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
     void releaseMemory(gslMemObject gslResource, bool wait = true);
     void releaseKernel(CALimage calImage);

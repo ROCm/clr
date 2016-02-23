@@ -58,7 +58,7 @@ class SvmCopyMemoryCommand;
 class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
-class WriteBufferFromFileCommand;
+class TransferBufferFileCommand;
 class HwDebugManager;
 class Device;
 struct KernelParameterDescriptor;
@@ -1452,7 +1452,7 @@ public:
     /// Optional extensions
     virtual void submitSignal(amd::SignalCommand & cmd) = 0;
     virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand & cmd) = 0;
-    virtual void submitWriteBufferFromFile(amd::WriteBufferFromFileCommand& cmd) { ShouldNotReachHere(); }
+    virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd) { ShouldNotReachHere(); }
 
     //! Get the blit manager object
     device::BlitManager& blitMgr() const { return *blitMgr_; }

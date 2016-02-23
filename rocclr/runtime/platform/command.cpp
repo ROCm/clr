@@ -574,7 +574,7 @@ ThreadTraceMemObjectsCommand::validateMemory()
 }
 
 void
-WriteBufferFromFileCommand::releaseResources()
+TransferBufferFileCommand::releaseResources()
 {
     for (uint i = 0; i < NumStagingBuffers; ++i) {
         if (NULL != staging_[i]) {
@@ -587,25 +587,27 @@ WriteBufferFromFileCommand::releaseResources()
 }
 
 void
-WriteBufferFromFileCommand::submit(device::VirtualDevice& device)
+TransferBufferFileCommand::submit(device::VirtualDevice& device)
 {
     device::Memory* mem = memory_->getDeviceMemory(queue()->device());
     if (memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
         CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD)) {
-        void* dstBuffer = mem->cpuMap(device);
+        void* srcDstBuffer = mem->cpuMap(device);
         // Make HD transfer to the host accessible memory
-        if (!file()->readBlock(dstBuffer, fileOffset(), origin()[0], size()[0])) {
+        bool writeBuffer(type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
+        if (!file()->transferBlock(writeBuffer, srcDstBuffer,
+                                   fileOffset(), origin()[0], size()[0])) {
             return;
         }
         mem->cpuUnmap(device);
     }
     else {
-        device.submitWriteBufferFromFile(*this);
+        device.submitTransferBufferFromFile(*this);
     }
 }
 
 bool
-WriteBufferFromFileCommand::validateMemory()
+TransferBufferFileCommand::validateMemory()
 {
     if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
         // Check if the destination buffer has direct host access
