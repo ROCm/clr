@@ -537,6 +537,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
 #if cl_amd_liquid_flash  && !defined(OPENCL_MAINLINE)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteBufferFromFileAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadBufferToFileAMD);
 #endif // cl_amd_liquid_flash
         break;
     case 'G':

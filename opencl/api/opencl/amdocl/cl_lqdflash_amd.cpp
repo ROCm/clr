@@ -72,16 +72,24 @@ LiquidFlashFile::close()
 }
 
 bool
-LiquidFlashFile::readBlock(
-    void* dst,
+LiquidFlashFile::transferBlock(
+    bool writeBuffer,
+    void* srcDst,
     uint64_t fileOffset,
     uint64_t bufferOffset,
     uint64_t size) const
 {
 #if defined WITH_LIQUID_FLASH
+    lf_status status;
+
     lf_region_descriptor    region =
         { fileOffset / blockSize(), bufferOffset / blockSize(), size / blockSize() };
-    lf_status status = lfReadFile(dst, size, (lf_file)handle_, 1, &region, NULL);
+    if (writeBuffer) {
+        status = lfReadFile(srcDst, size, (lf_file)handle_, 1, &region, NULL);
+    }
+    else {
+        status = lfWriteFile(srcDst, size, (lf_file)handle_, 1, &region, NULL);
+    }
     if (lf_success == status) {
         return true;
     }
@@ -93,7 +101,7 @@ LiquidFlashFile::readBlock(
 #endif // WITH_LIQUID_FLASH
 }
 
-} // namesapce amd
+} // namespace amd
 
 /*! \addtogroup API
  *  @{
@@ -179,7 +187,8 @@ RUNTIME_ENTRY(cl_int, clReleaseFileObjectAMD, (
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
+cl_int EnqueueTransferBufferFromFileAMD(
+    cl_bool isWrite,
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,
@@ -189,7 +198,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     size_t file_offset,
     cl_uint num_events_in_wait_list,
     const cl_event *event_wait_list,
-    cl_event *event))
+    cl_event *event)
 {
     if (!is_valid(command_queue)) {
         return CL_INVALID_COMMAND_QUEUE;
@@ -198,12 +207,12 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     if (!is_valid(buffer)) {
         return CL_INVALID_MEM_OBJECT;
     }
-    amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
-    if (dstBuffer == NULL) {
+    amd::Buffer* pBuffer = as_amd(buffer)->asBuffer();
+    if (pBuffer == NULL) {
         return CL_INVALID_MEM_OBJECT;
     }
 
-    if (dstBuffer->getMemFlags() &
+    if (pBuffer->getMemFlags() &
         (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
         return CL_INVALID_OPERATION;
     }
@@ -214,7 +223,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     }
     amd::HostQueue& hostQueue = *queue;
 
-    if(hostQueue.context() != dstBuffer->getContext()) {
+    if(hostQueue.context() != pBuffer->getContext()) {
         return CL_INVALID_CONTEXT;
     }
 
@@ -223,10 +232,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     }
 
     amd::LiquidFlashFile* amdFile  = as_amd(file);
-    amd::Coord3D    dstOffset(buffer_offset, 0, 0);
-    amd::Coord3D    dstSize(cb, 1, 1);
+    amd::Coord3D    bufferOffset(buffer_offset, 0, 0);
+    amd::Coord3D    bufferSize(cb, 1, 1);
 
-    if ((!dstBuffer->validateRegion(dstOffset, dstSize)) ||
+    if ((!pBuffer->validateRegion(bufferOffset, bufferSize)) ||
         // LF library supports aligned sizes only
         ((buffer_offset % amdFile->blockSize()) != 0) ||
         ((cb % amdFile->blockSize()) != 0) ||
@@ -241,9 +250,14 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
         return err;
     }
 
-    amd::WriteBufferFromFileCommand *command = new amd::WriteBufferFromFileCommand(
-        hostQueue, eventWaitList,
-        *dstBuffer, dstOffset, dstSize, amdFile, file_offset);
+    amd::TransferBufferFileCommand *command;
+    command = new amd::TransferBufferFileCommand((isWrite
+                                                        ? CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD
+                                                        : CL_COMMAND_READ_BUFFER_FROM_FILE_AMD),
+                                                 hostQueue, eventWaitList,
+                                                 *pBuffer, bufferOffset, bufferSize,
+                                                 amdFile, file_offset);
+
     if (command == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -265,5 +279,55 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     }
     return CL_SUCCESS;
 }
+
+RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
+    cl_command_queue command_queue,
+    cl_mem buffer,
+    cl_bool blocking_write,
+    size_t buffer_offset,
+    size_t cb,
+    cl_file_amd file,
+    size_t file_offset,
+    cl_uint num_events_in_wait_list,
+    const cl_event *event_wait_list,
+    cl_event *event))
+{
+    return EnqueueTransferBufferFromFileAMD(CL_TRUE,
+                                            command_queue,
+                                            buffer,
+                                            blocking_write,
+                                            buffer_offset,
+                                            cb,
+                                            file,
+                                            file_offset,
+                                            num_events_in_wait_list,
+                                            event_wait_list,
+                                            event);
+}
 RUNTIME_EXIT
 
+RUNTIME_ENTRY(cl_int, clEnqueueReadBufferToFileAMD, (
+    cl_command_queue command_queue,
+    cl_mem buffer,
+    cl_bool blocking_write,
+    size_t buffer_offset,
+    size_t cb,
+    cl_file_amd file,
+    size_t file_offset,
+    cl_uint num_events_in_wait_list,
+    const cl_event * event_wait_list,
+    cl_event * event))
+{
+    return EnqueueTransferBufferFromFileAMD(CL_FALSE,
+                                            command_queue,
+                                            buffer,
+                                            blocking_write,
+                                            buffer_offset,
+                                            cb,
+                                            file,
+                                            file_offset,
+                                            num_events_in_wait_list,
+                                            event_wait_list,
+                                            event);
+}
+RUNTIME_EXIT
