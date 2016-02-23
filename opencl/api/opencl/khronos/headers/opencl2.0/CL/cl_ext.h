@@ -254,16 +254,16 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     * cl_ext_device_fission extension *
     ***********************************/
     #define cl_ext_device_fission   1
-    
+
     extern CL_API_ENTRY cl_int CL_API_CALL
     clReleaseDeviceEXT( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1; 
-    
+
     typedef CL_API_ENTRY cl_int 
     (CL_API_CALL *clReleaseDeviceEXT_fn)( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1;
 
     extern CL_API_ENTRY cl_int CL_API_CALL
     clRetainDeviceEXT( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1; 
-    
+
     typedef CL_API_ENTRY cl_int 
     (CL_API_CALL *clRetainDeviceEXT_fn)( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1;
 
@@ -287,14 +287,14 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     #define CL_DEVICE_PARTITION_BY_COUNTS_EXT           0x4051
     #define CL_DEVICE_PARTITION_BY_NAMES_EXT            0x4052
     #define CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT  0x4053
-    
+
     /* clDeviceGetInfo selectors */
     #define CL_DEVICE_PARENT_DEVICE_EXT                 0x4054
     #define CL_DEVICE_PARTITION_TYPES_EXT               0x4055
     #define CL_DEVICE_AFFINITY_DOMAINS_EXT              0x4056
     #define CL_DEVICE_REFERENCE_COUNT_EXT               0x4057
     #define CL_DEVICE_PARTITION_STYLE_EXT               0x4058
-    
+
     /* clGetImageInfo enum */
     #define CL_IMAGE_BYTE_PITCH_AMD                     0x4059
 
@@ -302,7 +302,7 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     #define CL_DEVICE_PARTITION_FAILED_EXT              -1057
     #define CL_INVALID_PARTITION_COUNT_EXT              -1058
     #define CL_INVALID_PARTITION_NAME_EXT               -1059
-    
+
     /* CL_AFFINITY_DOMAINs */
     #define CL_AFFINITY_DOMAIN_L1_CACHE_EXT             0x1
     #define CL_AFFINITY_DOMAIN_L2_CACHE_EXT             0x2
@@ -457,6 +457,7 @@ typedef CL_API_ENTRY cl_int
 #define cl_amd_liquid_flash 1
 
 #define CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD 0x4083
+#define CL_COMMAND_READ_BUFFER_FROM_FILE_AMD  0x4087
 
 #define CL_INVALID_FILE_OBJECT_AMD 0x4084
 
@@ -491,16 +492,28 @@ typedef CL_API_ENTRY cl_int
 (CL_API_CALL * clReleaseFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clEnqueueWriteBufferFromFileAMD_fn)( cl_command_queue /*command_queue*/,
-                                                    cl_mem /*buffer*/,
-                                                    cl_bool /*blocking_write*/,
-                                                    size_t /*buffer_offset*/,
-                                                    size_t /*cb*/,
-                                                    cl_file_amd /*file*/,
-                                                    size_t /*file_offset*/,
-                                                    cl_uint /*num_events_in_wait_list*/,
-                                                    const cl_event * /*event_wait_list*/,
-                                                    cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clEnqueueWriteBufferFromFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                                   cl_mem /*buffer*/,
+                                                   cl_bool /*blocking_write*/,
+                                                   size_t /*buffer_offset*/,
+                                                   size_t /*cb*/,
+                                                   cl_file_amd /*file*/,
+                                                   size_t /*file_offset*/,
+                                                   cl_uint /*num_events_in_wait_list*/,
+                                                   const cl_event * /*event_wait_list*/,
+                                                   cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueReadBufferToFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                                cl_mem /*buffer*/,
+                                                cl_bool /*blocking_read*/,
+                                                size_t /*buffer_offset*/,
+                                                size_t /*cb*/,
+                                                cl_file_amd /*file*/,
+                                                size_t /*file_offset*/,
+                                                cl_uint /*num_events_in_wait_list*/,
+                                                const cl_event * /*event_wait_list*/,
+                                                cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 #endif /* CL_VERSION_1_2 */
 
@@ -514,28 +527,28 @@ typedef CL_API_ENTRY cl_int
 typedef cl_uint  cl_kernel_sub_group_info;
 
 /* cl_khr_sub_group_info */
-#define CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR	0x2033
-#define CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR		0x2034
+#define CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR    0x2033
+#define CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR       0x2034
 
 extern CL_API_ENTRY cl_int CL_API_CALL
 clGetKernelSubGroupInfoKHR(cl_kernel /* in_kernel */,
-						   cl_device_id /*in_device*/,
-						   cl_kernel_sub_group_info /* param_name */,
-						   size_t /*input_value_size*/,
-						   const void * /*input_value*/,
-						   size_t /*param_value_size*/,
-						   void* /*param_value*/,
-						   size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
-						   
+                           cl_device_id /*in_device*/,
+                           cl_kernel_sub_group_info /* param_name */,
+                           size_t /*input_value_size*/,
+                           const void * /*input_value*/,
+                           size_t /*param_value_size*/,
+                           void* /*param_value*/,
+                           size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
+
 typedef CL_API_ENTRY cl_int
      ( CL_API_CALL * clGetKernelSubGroupInfoKHR_fn)(cl_kernel /* in_kernel */,
-						      cl_device_id /*in_device*/,
-						      cl_kernel_sub_group_info /* param_name */,
-						      size_t /*input_value_size*/,
-						      const void * /*input_value*/,
-						      size_t /*param_value_size*/,
-						      void* /*param_value*/,
-						      size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
+                                                    cl_device_id /*in_device*/,
+                                                    cl_kernel_sub_group_info /* param_name */,
+                                                    size_t /*input_value_size*/,
+                                                    const void * /*input_value*/,
+                                                    size_t /*param_value_size*/,
+                                                    void* /*param_value*/,
+                                                    size_t* /*param_value_size_ret*/ ) CL_EXT_SUFFIX__VERSION_2_0;
 #endif /* CL_VERSION_2_0 */
 #ifdef CL_VERSION_2_0
 /*********************************
@@ -551,9 +564,9 @@ clCreateProgramWithILKHR(cl_context        /* context */,
 
 typedef CL_API_ENTRY cl_program
     ( CL_API_CALL * clCreateProgramWithILKHR_fn)(cl_context        /* context */,
-                         const void *      /* strings */,
-                         size_t            /* lengths */,
-                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
+                                                 const void *      /* strings */,
+                                                 size_t            /* lengths */,
+                                                 cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
 
 #endif /* CL_VERSION_2_0 */
 
