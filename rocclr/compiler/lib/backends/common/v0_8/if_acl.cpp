@@ -1390,6 +1390,7 @@ aclCompileInternal(
     if (isHSAILTarget(bin->target) && error_code == ACL_SUCCESS) {
       amdcl::HSAIL *acl = reinterpret_cast<amdcl::HSAIL*>(cl->cgAPI.init(cl, bin, compile_callback, &error_code));
       acl->deleteBRIG();
+      cl->cgAPI.fini(reinterpret_cast<aclLoaderData*>(acl));
     }
     cl->beAPI.fini(ald);
     if (error_code != ACL_SUCCESS) {
