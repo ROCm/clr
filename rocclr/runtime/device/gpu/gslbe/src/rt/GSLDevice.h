@@ -206,6 +206,7 @@ private:
             uint    m_usePerVPUAdapterModel : 1;
             uint    m_PerformLazyDeviceInit : 1;
             uint    m_isComputeRingIDForced : 1;
+            uint    m_isSDMAL2TConstrained  : 1;
         };
     };
 

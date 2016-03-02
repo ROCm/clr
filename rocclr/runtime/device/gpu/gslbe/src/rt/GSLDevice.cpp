@@ -357,6 +357,19 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     }
 #endif
 
+    //The sDMA L2T reading invalid address bug is fixed starting from Vega10,
+    //and page-fault is not enabled for pre-VI, so we need to workaround
+    //the bug for ASICs in between.
+    if (asic_id < GSL_ATIASIC_ID_GREENLAND &&
+        asic_id >= GSL_ATIASIC_ID_ICELAND_M)
+    {
+        m_isSDMAL2TConstrained = true;
+    }
+    else
+    {
+        m_isSDMAL2TConstrained = false;
+    }
+
     if (asic_id < GSL_ATIASIC_ID_TAHITI_P ||
         asic_id == GSL_ATIASIC_ID_DEVASTATOR ||
         asic_id == GSL_ATIASIC_ID_SCRAPPER)
@@ -1209,32 +1222,27 @@ CALGSLDevice::GetCopyType(
             {
                 type = USE_DRMDMA_T2L;
             }
-            else
-            {
-                type = USE_NONE;
-            }
         }
         else if ((srcTiling == GSL_MOA_TILING_LINEAR) &&
                  (dstTiling != GSL_MOA_TILING_LINEAR))
         {
             intp bppDst = destMem->getBitsPerElement();
-            uint64 linearBytePitch = size * (bppDst / 8);
+            uint64 BytesPerPixel = bppDst / 8;
+            uint64 linearBytePitch = size * BytesPerPixel;
 
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
                 (srcOffset[0] % 4 == 0))
             {
-                type = USE_DRMDMA_L2T;
+                // The sDMA L2T cases we need to avoid are when the tiled_x
+                // is not a multiple of BytesPerPixel.
+                if (!m_isSDMAL2TConstrained ||
+                    (destOffset[0] % BytesPerPixel == 0))
+                {
+                    type = USE_DRMDMA_L2T;
+                }
             }
-            else
-            {
-                type = USE_NONE;
-            }
-        }
-        else
-        {
-            type = USE_NONE;
         }
     }
     else if (dstType == srcType)
