@@ -261,7 +261,7 @@ Context::create(const intptr_t* properties)
 #ifdef _WIN32
                     "OpenGL32.dll"
 #else //!_WIN32
-                    "libGL.so"
+                    "libGL.so.1"
 #endif //!_WIN32
                     );
 
