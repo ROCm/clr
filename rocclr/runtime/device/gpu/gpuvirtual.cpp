@@ -57,6 +57,8 @@ VirtualGPU::MemoryDependency::validate(
     bool    flushL1Cache = false;
 
     if (maxMemObjectsInQueue_ == 0) {
+        // Flush cache
+        gpu.flushCUCaches();
         return;
     }
 
