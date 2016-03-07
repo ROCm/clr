@@ -290,7 +290,8 @@ void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
                      || chip == "Cayman"
                      || chip == "Tahiti"
                      || chip == "Hawaii"
-                     || chip == "Carrizo",
+                     || chip == "Carrizo"
+                     || chip == "",
                      module);
   createConstIntFunc("__amdil_have_bitalign", !!(features & F_EG_BASE), module);
   createConstIntFunc("__amdil_is_cypress", chip == "Cypress", module);
@@ -747,7 +748,8 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
                 || chip == "Cayman"
                 || chip == "Tahiti"
                 || chip == "Hawaii"
-                || chip == "Carrizo");
+                || chip == "Carrizo"
+                || chip == "");
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
   std::string clp_errmsg;
