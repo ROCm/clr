@@ -200,12 +200,7 @@ Settings::create(
         // Keep this false even though we have support
         // singleFpDenorm_ = true;
         viPlus_ = true;
-        if (GPU_FORCE_FP16) {
-            enableExtension(ClKhrFp16);
-        }
-        else {
-            enableExtension(ClAmdFp16);
-        }
+        enableExtension(ClKhrFp16);
         // Fall through to CI ...
     case CAL_TARGET_KALINDI:
     case CAL_TARGET_SPECTRE:
