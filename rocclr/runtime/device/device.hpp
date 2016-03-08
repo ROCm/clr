@@ -112,7 +112,6 @@ enum OclExtensions {
     ClKhrMipMapImageWrites,
     ClKhrIlProgram,
     ClAMDLiquidFlash,
-    ClAmdFp16,
     ClExtTotal
 };
 
@@ -155,7 +154,6 @@ OclExtensionsString[] = {
     "cl_khr_mipmap_image_writes ",
     "",
     (IS_MAINLINE || IS_LINUX) ? "" : "cl_amd_liquid_flash ",
-    "cl_amd_fp16 ",
     NULL
 };
 
