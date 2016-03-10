@@ -17,6 +17,11 @@
 #ifndef _WIN32
 #include <GL/glx.h>
 #endif //!_WIN32
+
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <EGL/eglplatform.h>
+
 #include "platform/context.hpp"
 #include "platform/command.hpp"
 
@@ -255,6 +260,12 @@ private:
 
     amd::Monitor lock_;
 
+    EGLDisplay eglDisplay_;
+    EGLContext eglOriginalContext_;
+    EGLContext eglInternalContext_;
+    EGLContext eglTempContext_;
+    bool isEGL_;
+
 #ifdef _WIN32
     HGLRC       hOrigGLRC_;
     HDC         hDC_;
@@ -295,18 +306,23 @@ public:
 #endif
 public:
 
-    GLFunctions(HMODULE h);
+    GLFunctions(HMODULE h, bool isEGL);
     ~GLFunctions();
 
     // Query CL-GL context association
     bool isAssociated() const
     {
+        if (isEGL_ && eglDisplay_ && eglOriginalContext_) return true;
 #ifdef _WIN32
         if(hDC_ && hOrigGLRC_) return true;
 #else //!_WIN32
         if(Dpy_ && origCtx_) return true;
 #endif //!_WIN32
         return false;
+    }
+    bool isEGL() const
+    {
+        return isEGL_;
     }
     // Accessor methods
 #ifdef _WIN32
