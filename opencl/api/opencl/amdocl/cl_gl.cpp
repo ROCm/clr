@@ -15,6 +15,10 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <EGL/eglplatform.h>
+
 #include "cl_common.hpp"
 #include "cl_gl_amd.hpp"
 
@@ -915,7 +919,7 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR, (
             for (cl_uint i = 0; i < num_gpu_devices; ++i) {
                 cl_device_id device = gpu_devices[i];
                 if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(info.type_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
+                    as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
                     return amd::clGetInfo(
                         device, param_value_size, param_value, param_value_size_ret);
                 }
@@ -955,7 +959,7 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR, (
             for (cl_uint i = 0; i < total_devices; ++i) {
                 cl_device_id device = devices[i];
                 if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(info.type_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
+                    as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
                     compatible_devices.push_back(as_amd(device));
                 }
             }
@@ -1367,6 +1371,7 @@ BufferGL::initDeviceMemory()
 bool
 BufferGL::mapExtObjectInCQThread()
 {
+    assert(!context_().glenv()->isEGL());
     GLFunctions::SetIntEnv ie(context_().glenv());
     if (!ie.isValid()) {
         return false;
@@ -1397,6 +1402,7 @@ BufferGL::mapExtObjectInCQThread()
 bool
 BufferGL::unmapExtObjectInCQThread()
 {
+    assert(!context_().glenv()->isEGL());
     GLFunctions::SetIntEnv ie(context_().glenv());
     if (!ie.isValid()) {
         return false;
@@ -1488,6 +1494,7 @@ ImageGL::initDeviceMemory()
 bool
 ImageGL::mapExtObjectInCQThread()
 {
+    assert(!context_().glenv()->isEGL());
     GLFunctions::SetIntEnv ie(context_().glenv());
     if (!ie.isValid()) {
         return false;
@@ -1533,6 +1540,7 @@ ImageGL::mapExtObjectInCQThread()
 bool
 ImageGL::unmapExtObjectInCQThread()
 {
+    assert(!context_().glenv()->isEGL());
     GLFunctions::SetIntEnv ie(context_().glenv());
     if (!ie.isValid()) {
         return false;
@@ -2390,9 +2398,14 @@ GLFunctions::SetIntEnv::~SetIntEnv()
     env_->getLock().unlock();
 }
 
-GLFunctions::GLFunctions(HMODULE h) :
+GLFunctions::GLFunctions(HMODULE h, bool isEGL) :
     libHandle_(h),
     missed_(0),
+    eglDisplay_(EGL_NO_DISPLAY),
+    eglOriginalContext_(EGL_NO_CONTEXT),
+    eglInternalContext_(EGL_NO_CONTEXT),
+    eglTempContext_(EGL_NO_CONTEXT),
+    isEGL_(isEGL),
 #ifdef _WIN32
     hOrigGLRC_(0),
     hDC_(0),
@@ -2415,57 +2428,65 @@ GLFunctions::GLFunctions(HMODULE h) :
     glXMakeCurrent_(NULL)
 #endif //!_WIN32
 {
-    GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, API_GETPROCADDR);
-
 #define VERIFY_POINTER(p) if (NULL == p) {missed_++;}
 
+    if (isEGL_)
+    {
+        GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, "eglGetProcAddress");
+    }
+    else {
+        GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, API_GETPROCADDR);
+    }
 #ifndef _WIN32
     // Initialize pointers to X11/GLX functions
     // We can not link with these functions on compile time since we need to support
     // console mode. In console mode X server and X server components may be absent.
     // Hence linking with X11 or libGL will fail module image loading in console mode.-tzachi cohen
 
-    glXGetCurrentDrawable_ = (PFNglXGetCurrentDrawable)GETPROCADDRESS(h,"glXGetCurrentDrawable");
-    VERIFY_POINTER(glXGetCurrentDrawable_)
-    glXGetCurrentDisplay_ = (PFNglXGetCurrentDisplay)GETPROCADDRESS(h,"glXGetCurrentDisplay");
-    VERIFY_POINTER(glXGetCurrentDisplay_)
-    glXGetCurrentContext_ = (PFNglXGetCurrentContext) GETPROCADDRESS(h,"glXGetCurrentContext");
-    VERIFY_POINTER(glXGetCurrentContext_)
-    glXChooseVisual_ = (PFNglXChooseVisual)GETPROCADDRESS(h,"glXChooseVisual");
-    VERIFY_POINTER(glXChooseVisual_)
-    glXCreateContext_ = (PFNglXCreateContext)GETPROCADDRESS(h,"glXCreateContext");
-    VERIFY_POINTER(glXCreateContext_)
-    glXDestroyContext_ = (PFNglXDestroyContext) GETPROCADDRESS(h,"glXDestroyContext");
-    VERIFY_POINTER(glXDestroyContext_)
-    glXMakeCurrent_ = (PFNglXMakeCurrent) GETPROCADDRESS(h,"glXMakeCurrent");
-    VERIFY_POINTER(glXMakeCurrent_)
+    if (!isEGL_) {
+        glXGetCurrentDrawable_ = (PFNglXGetCurrentDrawable)GETPROCADDRESS(h,"glXGetCurrentDrawable");
+        VERIFY_POINTER(glXGetCurrentDrawable_)
+        glXGetCurrentDisplay_ = (PFNglXGetCurrentDisplay)GETPROCADDRESS(h,"glXGetCurrentDisplay");
+        VERIFY_POINTER(glXGetCurrentDisplay_)
+        glXGetCurrentContext_ = (PFNglXGetCurrentContext) GETPROCADDRESS(h,"glXGetCurrentContext");
+        VERIFY_POINTER(glXGetCurrentContext_)
+        glXChooseVisual_ = (PFNglXChooseVisual)GETPROCADDRESS(h,"glXChooseVisual");
+        VERIFY_POINTER(glXChooseVisual_)
+        glXCreateContext_ = (PFNglXCreateContext)GETPROCADDRESS(h,"glXCreateContext");
+        VERIFY_POINTER(glXCreateContext_)
+        glXDestroyContext_ = (PFNglXDestroyContext) GETPROCADDRESS(h,"glXDestroyContext");
+        VERIFY_POINTER(glXDestroyContext_)
+        glXMakeCurrent_ = (PFNglXMakeCurrent) GETPROCADDRESS(h,"glXMakeCurrent");
+        VERIFY_POINTER(glXMakeCurrent_)
 
-    HMODULE hXModule = (HMODULE) Os::loadLibrary("libX11.so.6");
-    if (NULL != hXModule) {
-         XOpenDisplay_ = (PFNXOpenDisplay)GETPROCADDRESS(hXModule,"XOpenDisplay");
-         VERIFY_POINTER(XOpenDisplay_)
-         XCloseDisplay_= (PFNXCloseDisplay)GETPROCADDRESS(hXModule,"XCloseDisplay");
-         VERIFY_POINTER(XCloseDisplay_)
+        HMODULE hXModule = (HMODULE) Os::loadLibrary("libX11.so.6");
+        if (NULL != hXModule) {
+                XOpenDisplay_ = (PFNXOpenDisplay)GETPROCADDRESS(hXModule,"XOpenDisplay");
+                VERIFY_POINTER(XOpenDisplay_)
+                XCloseDisplay_= (PFNXCloseDisplay)GETPROCADDRESS(hXModule,"XCloseDisplay");
+                VERIFY_POINTER(XCloseDisplay_)
+        }
+        else {
+            missed_ += 2;
+        }
     }
-    else{
-        missed_ += 2;
-    }
-
     // Initialize pointers to GL functions
     #include "gl_functions.hpp"
 #else
-    wglCreateContext_ = (PFN_wglCreateContext)GETPROCADDRESS(h,"wglCreateContext");
-    VERIFY_POINTER(wglCreateContext_)
-    wglGetCurrentContext_ = (PFN_wglGetCurrentContext)GETPROCADDRESS(h,"wglGetCurrentContext");
-    VERIFY_POINTER(wglGetCurrentContext_)
-    wglGetCurrentDC_ = (PFN_wglGetCurrentDC)GETPROCADDRESS(h,"wglGetCurrentDC");
-    VERIFY_POINTER(wglGetCurrentDC_)
-    wglDeleteContext_ = (PFN_wglDeleteContext)GETPROCADDRESS(h,"wglDeleteContext");
-    VERIFY_POINTER(wglDeleteContext_)
-    wglMakeCurrent_ = (PFN_wglMakeCurrent)GETPROCADDRESS(h,"wglMakeCurrent");
-    VERIFY_POINTER(wglMakeCurrent_)
-    wglShareLists_ = (PFN_wglShareLists)GETPROCADDRESS(h,"wglShareLists");
-    VERIFY_POINTER(wglShareLists_)
+    if (!isEGL_) {
+        wglCreateContext_ = (PFN_wglCreateContext)GETPROCADDRESS(h,"wglCreateContext");
+        VERIFY_POINTER(wglCreateContext_)
+        wglGetCurrentContext_ = (PFN_wglGetCurrentContext)GETPROCADDRESS(h,"wglGetCurrentContext");
+        VERIFY_POINTER(wglGetCurrentContext_)
+        wglGetCurrentDC_ = (PFN_wglGetCurrentDC)GETPROCADDRESS(h,"wglGetCurrentDC");
+        VERIFY_POINTER(wglGetCurrentDC_)
+        wglDeleteContext_ = (PFN_wglDeleteContext)GETPROCADDRESS(h,"wglDeleteContext");
+        VERIFY_POINTER(wglDeleteContext_)
+        wglMakeCurrent_ = (PFN_wglMakeCurrent)GETPROCADDRESS(h,"wglMakeCurrent");
+        VERIFY_POINTER(wglMakeCurrent_)
+        wglShareLists_ = (PFN_wglShareLists)GETPROCADDRESS(h,"wglShareLists");
+        VERIFY_POINTER(wglShareLists_)
+    }
 #endif
 }
 
@@ -2493,6 +2514,11 @@ GLFunctions::~GLFunctions()
 bool
 GLFunctions::init(intptr_t hdc, intptr_t hglrc)
 {
+    if (isEGL_) {
+        eglDisplay_ = (EGLDisplay)hdc;
+        eglOriginalContext_ = (EGLContext)hglrc;
+        return true;
+    }
 
 #ifdef _WIN32
     DWORD err;
@@ -2574,6 +2600,9 @@ GLFunctions::init(intptr_t hdc, intptr_t hglrc)
 bool
 GLFunctions::setIntEnv()
 {
+    if (isEGL_) {
+        return true;
+    }
 #ifdef _WIN32
     // Save current DC and GLRC
     tempDC_ = wglGetCurrentDC_();
@@ -2606,6 +2635,10 @@ GLFunctions::setIntEnv()
 bool
 GLFunctions::restoreEnv()
 {
+    if (isEGL_) {
+        // eglMakeCurrent( );
+        return true;
+    }
 #ifdef _WIN32
     // Restore original DC and GLRC
     if (!wglMakeCurrent_(tempDC_, tempGLRC_)) {
