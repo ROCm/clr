@@ -41,13 +41,13 @@ public:
         D3D9DeviceKhr       = 1<<6,   //!< d3d9 device
         D3D9DeviceEXKhr     = 1<<7,   //!< d3d9EX device
         D3D9DeviceVAKhr     = 1<<8,   //!< d3d9VA device
+        EGLDeviceKhr        = 1<<9,   //!< EGL device
     };
 
     //! Context info structure
     struct Info
     {
         uint        flags_;         //!< Context info flags
-        intptr_t    type_;          //!< Context type
         void*       hDev_;          //!< Device object reference
         void*       hCtx_;          //!< Context object reference
         size_t      propertiesSize_;//!< Size of the original properties in bytes

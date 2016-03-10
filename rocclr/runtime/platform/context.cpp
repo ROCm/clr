@@ -67,7 +67,7 @@ Context::~Context()
         std::vector<Device *>::const_iterator it;
         // Loop through all devices
         for (it = devices_.begin(); it != devices_.end(); it++) {
-            (*it)->unbindExternalDevice(info_.type_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY);
+            (*it)->unbindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY);
         }
     }
 
@@ -119,7 +119,6 @@ Context::checkProperties(
                 return CL_INVALID_VALUE;
             }
             info->hDev_ = p->ptr;
-            info->type_ = CL_CONTEXT_D3D10_DEVICE_KHR;
             info->flags_ |= D3D10DeviceKhr;
             break;
         case CL_CONTEXT_D3D11_DEVICE_KHR:
@@ -127,7 +126,6 @@ Context::checkProperties(
                 return CL_INVALID_VALUE;
             }
             info->hDev_ = p->ptr;
-            info->type_ = CL_CONTEXT_D3D11_DEVICE_KHR;
             info->flags_ |= D3D11DeviceKhr;
             break;
         case CL_CONTEXT_ADAPTER_D3D9_KHR:
@@ -135,7 +133,6 @@ Context::checkProperties(
                 return CL_INVALID_VALUE;
             }
             info->hDev_ = p->ptr;
-            info->type_ = CL_CONTEXT_ADAPTER_D3D9_KHR;
             info->flags_ |= D3D9DeviceKhr;
             break;
         case CL_CONTEXT_ADAPTER_D3D9EX_KHR:
@@ -143,7 +140,6 @@ Context::checkProperties(
                 return CL_INVALID_VALUE;
             }
             info->hDev_ = p->ptr;
-            info->type_ = CL_CONTEXT_ADAPTER_D3D9EX_KHR;
             info->flags_ |= D3D9DeviceEXKhr;
             break;
         case CL_CONTEXT_ADAPTER_DXVA_KHR:            
@@ -151,9 +147,15 @@ Context::checkProperties(
                 return CL_INVALID_VALUE;
             }
             info->hDev_ = p->ptr;
-            info->type_ = CL_CONTEXT_ADAPTER_DXVA_KHR;
             info->flags_ |= D3D9DeviceVAKhr;
             break;
+#endif //_WIN32
+
+        case CL_EGL_DISPLAY_KHR:
+            info->hDev_   = p->ptr;
+            info->flags_ |= EGLDeviceKhr;
+
+#ifdef _WIN32
         case CL_WGL_HDC_KHR:
             info->hDev_ = p->ptr;
 #endif //_WIN32
@@ -174,7 +176,6 @@ Context::checkProperties(
                 return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
             }
             if (p->name == CL_GL_CONTEXT_KHR) {
-                info->type_ = p->name;
                 info->hCtx_ = p->ptr;
             }
             info->flags_ |= GLDeviceKhr;
@@ -232,7 +233,7 @@ Context::create(const intptr_t* properties)
         // Loop through all devices
         for (it = devices_.begin(); it != devices_.end(); it++) {
             if (!(*it)->bindExternalDevice(
-                    info_.type_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY)) {
+                    info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY)) {
                 result = CL_INVALID_VALUE;
             }
         }
@@ -265,7 +266,7 @@ Context::create(const intptr_t* properties)
 #endif //!_WIN32
                     );
 
-                if (h && (glenv_ = new GLFunctions(h))) {
+                if (h && (glenv_ = new GLFunctions(h, (info_.flags_ & Flags::EGLDeviceKhr) != 0))) {
                     if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_),
                                       reinterpret_cast<intptr_t>(info_.hCtx_))) {
                         delete glenv_;

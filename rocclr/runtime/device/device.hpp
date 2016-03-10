@@ -1614,14 +1614,14 @@ public:
 
     //! Return true if initialized external API interop, otherwise false
     virtual bool bindExternalDevice(
-        intptr_t type,  //!< Enum val. for ext.API type: GL, D3D10, etc.
+        uint  flags,  //!< Enum val. for ext.API type: GL, D3D10, etc.
         void* pDevice,  //!< D3D device do D3D, HDC/Display handle of X Window for GL
         void* pContext,  //!< HGLRC/GLXContext handle
         bool validateOnly //! Only validate if the device can inter-operate with pDevice/pContext, do not bind.
         ) = 0;
 
     virtual bool unbindExternalDevice(
-        intptr_t type,  //!< Enum val. for ext.API type: GL, D3D10, etc.
+        uint  flags,  //!< Enum val. for ext.API type: GL, D3D10, etc.
         void* pDevice,  //!< D3D device do D3D, HDC/Display handle of X Window for GL
         void* pContext,  //!< HGLRC/GLXContext handle
         bool validateOnly //! Only validate if the device can inter-operate with pDevice/pContext, do not bind.

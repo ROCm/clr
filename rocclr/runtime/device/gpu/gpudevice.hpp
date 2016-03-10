@@ -95,10 +95,10 @@ public:
     //! Needed for OpenGL objects on CPU device
 
     virtual bool bindExternalDevice(
-        intptr_t type, void* pDevice, void* pContext, bool validateOnly) { return true; }
+        uint flags, void* pDevice, void* pContext, bool validateOnly) { return true; }
 
     virtual bool unbindExternalDevice(
-        intptr_t type, void* pDevice, void* pContext, bool validateOnly) { return true; }
+        uint flags, void* pDevice, void* pContext, bool validateOnly) { return true; }
 
     //! Releases non-blocking map target memory
     virtual void freeMapTarget(amd::Memory& mem, void* target) {}
@@ -438,14 +438,14 @@ public:
 
     //! Attempt to bind with external graphics API's device/context
     virtual bool bindExternalDevice(
-        intptr_t type,
+        uint flags,
         void* pDevice,
         void* pContext,
         bool validateOnly);
 
     //! Attempt to unbind with external graphics API's device/context
     virtual bool unbindExternalDevice(
-        intptr_t type,
+        uint flags,
         void* pDevice,
         void* pContext,
         bool validateOnly);

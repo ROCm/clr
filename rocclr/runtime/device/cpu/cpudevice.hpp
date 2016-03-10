@@ -122,12 +122,12 @@ public:
     //! Needed for OpenGL objects on CPU device
 
     //! Return true if initialized interoperability, otherwise false
-    virtual bool bindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool validateOnly)
+    virtual bool bindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
     {
         return true;    // On CPU always avail if pD3DDevice is not NULL
     }
 
-    virtual bool unbindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool validateOnly)
+    virtual bool unbindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
     {
         return true;
     }
