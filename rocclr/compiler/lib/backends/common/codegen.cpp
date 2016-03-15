@@ -658,6 +658,7 @@ CLCodeGen::codegen(llvm::Module *input)
   if (!isHSAILTarget(cs->Elf()->target)) {
     setWholeProgram(true);
   }
+  setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
 
   int ret = llvmCodeGen(LLVMBinary(), Options(), Source(), Elf());
 
