@@ -56,16 +56,6 @@ CALGSLDevice::~CALGSLDevice()
     assert(m_adp == 0);    /// CALBE client must call close explicitly. Check that here
 
     delete gslDeviceOps_;
-
-    switch(m_deviceMode)
-    {
-    case GSL_DEVICE_MODE_NONE:
-    case GSL_DEVICE_MODE_CONSOLE:
-        delete static_cast<char*>(m_nativeDisplayHandle);
-        break;
-    case GSL_DEVICE_MODE_GFX:
-        break;
-    }
 }
 
 
