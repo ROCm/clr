@@ -276,6 +276,37 @@ static inline bool Is32Bits() {
 static inline bool Is64Bits() {
     return LP64_SWITCH(false, true);
 }
+
+template <typename lambda>
+class ScopeGuard {
+ public:
+  explicit ALWAYSINLINE ScopeGuard(const lambda& release)
+      : release_(release), dismiss_(false) {}
+
+  ScopeGuard(ScopeGuard& rhs) { *this = rhs; }
+
+  ALWAYSINLINE ~ScopeGuard() {
+    if (!dismiss_) release_();
+  }
+  ALWAYSINLINE ScopeGuard& operator=(ScopeGuard& rhs) {
+    dismiss_ = rhs.dismiss_;
+    release_ = rhs.release_;
+    rhs.dismiss_ = true;
+  }
+  ALWAYSINLINE void Dismiss() { dismiss_ = true; }
+
+ private:
+  lambda release_;
+  bool dismiss_;
+};
+
+#define MAKE_SCOPE_GUARD_HELPER(lname, sname, ...) \
+  auto lname = __VA_ARGS__;                        \
+  amd::ScopeGuard<decltype(lname)> sname(lname);
+#define MAKE_SCOPE_GUARD(name, ...)                             \
+  MAKE_SCOPE_GUARD_HELPER(XCONCAT(scopeGuardLambda, __COUNTER__), name, \
+                          __VA_ARGS__)
+
 /*@}*/} // namespace amd
 
 #endif /*UTIL_HPP_*/
