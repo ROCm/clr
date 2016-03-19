@@ -77,6 +77,7 @@ CPUOptimizer::optimize(llvm::Module *input)
     start_time = amd::Os::timeNanos();
   }
   ret = preOptimizer(LLVMBinary());
+  setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   OptLevel* cpuOpt = getOptLevel(Options(), false);
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos();
@@ -139,6 +140,7 @@ GPUOptimizer::optimize(llvm::Module *input)
       hookup_.amdoptions.NumAvailGPRs = Options()->NumAvailGPRs;
   }
 #endif
+  setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   OptLevel* gpuOpt = getOptLevel(Options(), true);
   if (Options()->oVariables->EnableBuildTiming) {
     time_opt = amd::Os::timeNanos();
