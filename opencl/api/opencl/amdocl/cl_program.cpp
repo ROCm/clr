@@ -1049,6 +1049,9 @@ RUNTIME_ENTRY(cl_int, clGetProgramInfo, (
         return CL_SUCCESS;
     }
     case CL_PROGRAM_NUM_KERNELS: {
+        if (as_amd(program)->symbolsPtr() == NULL) {
+            return CL_INVALID_PROGRAM_EXECUTABLE;
+        }
         size_t numKernels = as_amd(program)->symbols().size();
         return amd::clGetInfo(
             numKernels, param_value_size, param_value, param_value_size_ret);
