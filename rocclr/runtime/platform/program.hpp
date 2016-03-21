@@ -131,6 +131,9 @@ public:
     //! Return the symbols for this program.
     const symbols_t& symbols() const { return *symbolTable_; }
 
+    //! Return the pointer to symbols for this program.
+    const symbols_t* symbolsPtr() const { return symbolTable_; }
+
     //! Return the program source code.
     const std::string& sourceCode() const { return sourceCode_; }
 
