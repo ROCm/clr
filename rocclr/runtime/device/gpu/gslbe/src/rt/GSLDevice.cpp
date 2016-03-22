@@ -351,7 +351,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
     //and page-fault is not enabled for pre-VI, so we need to workaround
     //the bug for ASICs in between.
     if (asic_id < GSL_ATIASIC_ID_GREENLAND &&
-        asic_id >= GSL_ATIASIC_ID_ICELAND_M)
+        asic_id >= GSL_ATIASIC_ID_BONAIRE_M)
     {
         m_isSDMAL2TConstrained = true;
     }
