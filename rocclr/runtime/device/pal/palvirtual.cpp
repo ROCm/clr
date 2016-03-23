@@ -43,6 +43,7 @@ VirtualGPU::Queue::Create(
     Pal::QueueCreateInfo        qCreateInfo = {};
     qCreateInfo.engineType = queueType;
     qCreateInfo.engineIndex = engineIdx;
+    qCreateInfo.aqlQueue = true;
 
     // Find queue object size
     size_t qSize = palDev->GetQueueSize(qCreateInfo, &result);
@@ -181,8 +182,10 @@ VirtualGPU::Queue::flush()
             memRef.push_back(it->first);
         }
     }
+
     if (memRef.size() != 0) {
-        iDev_->AddGpuMemoryReferences(memRef.size(), &memRef[0], iQueue_);
+        iDev_->AddGpuMemoryReferences(memRef.size(), &memRef[0], iQueue_,
+             Pal::GpuMemoryRefCantTrim);
     }
 
     // Submit command buffer to OS
@@ -1982,12 +1985,12 @@ VirtualGPU::submitKernelInternal(
         eventBegin(MainEngine);
         if (nullptr == scratch) {
             iCmd()->CmdDispatchAql(aqlPkt, 0, 0, 0,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo, 0x3ff);
+                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), 0x3ff);
         }
         else {
             iCmd()->CmdDispatchAql(aqlPkt, scratch->memObj_->vmAddress(),
                 scratch->size_, scratch->offset_,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo, 0x3ff);
+                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), 0x3ff);
         }
         eventEnd(MainEngine, gpuEvent);
 

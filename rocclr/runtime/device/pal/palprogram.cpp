@@ -505,7 +505,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     hsa_agent_t agent;
     agent.handle = 1;
     if (!isNull() && hsaLoad) {
-        executable_ = loader_->CreateExecutable(HSA_PROFILE_BASE, nullptr);
+        executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
         if (executable_ == nullptr) {
             buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
             return false;
