@@ -387,40 +387,49 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_ALIGN, reinterpret_cast<void*>(&akc_align))) {
         return false;
     }
-    code_ = new Memory(dev(), amd::alignUp(codeSize_, akc_align));
-    Resource::MemoryType    type = Resource::RemoteUSWC;
-    if (flags_.internalKernel_) {
-        type = Resource::RemoteUSWC;
-    }
-    // Initialize kernel ISA code
-    if (code_ && code_->create(type)) {
-        address cpuCodePtr = static_cast<address>(code_->map(nullptr, Resource::WriteOnly));
-        // Copy only amd_kernel_code_t
-        memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
-        code_->unmap(nullptr);
-    }
-    else {
-        LogError("Failed to allocate ISA code!");
-        return false;
+    // Allocate HW resources for the real program only
+    if (!prog().isNull()) {
+        code_ = new Memory(dev(), amd::alignUp(codeSize_, akc_align));
+        Resource::MemoryType    type = Resource::RemoteUSWC;
+        if (flags_.internalKernel_) {
+            type = Resource::RemoteUSWC;
+        }
+        // Initialize kernel ISA code
+        if (code_ && code_->create(type)) {
+            address cpuCodePtr = static_cast<address>(code_->map(nullptr, Resource::WriteOnly));
+            // Copy only amd_kernel_code_t
+            memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
+            code_->unmap(nullptr);
+        }
+        else {
+            LogError("Failed to allocate ISA code!");
+            return false;
+        }
     }
 
     assert((akc->workitem_private_segment_byte_size & 3) == 0 &&
         "Scratch must be DWORD aligned");
     workGroupInfo_.scratchRegs_ =
         amd::alignUp(akc->workitem_private_segment_byte_size, 16) / sizeof(uint);
-/*
-    workGroupInfo_.availableSGPRs_ = dev().gslCtx()->getNumSGPRsAvailable();
-    workGroupInfo_.availableVGPRs_ = dev().gslCtx()->getNumVGPRsAvailable();
-    workGroupInfo_.preferredSizeMultiple_ = dev().getAttribs().wavefrontSize;
-    workGroupInfo_.wavefrontPerSIMD_ = dev().getAttribs().wavefrontSize;
-*/
     workGroupInfo_.privateMemSize_ = akc->workitem_private_segment_byte_size;
     workGroupInfo_.localMemSize_ =
     workGroupInfo_.usedLDSSize_ = akc->workgroup_group_segment_byte_size;
     workGroupInfo_.usedSGPRs_ = akc->wavefront_sgpr_count;
     workGroupInfo_.usedStackSize_ = 0;
     workGroupInfo_.usedVGPRs_ = akc->workitem_vgpr_count;
-    
+
+    if (!prog().isNull()) {
+        workGroupInfo_.availableSGPRs_ = dev().properties().gfxipProperties.shaderCore.numAvailableSgprs;
+        workGroupInfo_.availableVGPRs_ = dev().properties().gfxipProperties.shaderCore.numAvailableVgprs;
+        workGroupInfo_.preferredSizeMultiple_ =
+        workGroupInfo_.wavefrontPerSIMD_ =  dev().properties().gfxipProperties.shaderCore.wavefrontSize;
+    }
+    else {
+        workGroupInfo_.availableSGPRs_ = 104;
+        workGroupInfo_.availableVGPRs_ = 256;
+        workGroupInfo_.preferredSizeMultiple_ =
+        workGroupInfo_.wavefrontPerSIMD_ = 64;
+    }
     return true;
 }
 
@@ -633,10 +642,7 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
         }
     }
 
-    // Allocate HW resources for the real program only
-    if (!prog().isNull()) {
-        aqlCreateHWInfo(sym);
-    }
+    aqlCreateHWInfo(sym);
 
     // Pull out metadata from the ELF
     size_t sizeOfArgList;

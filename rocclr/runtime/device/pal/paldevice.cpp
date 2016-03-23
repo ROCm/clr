@@ -175,10 +175,10 @@ void NullDevice::fillDeviceInfo(
 
     info_.maxWorkItemDimensions_    = 3;
     info_.maxComputeUnits_          =
-        palProp.gfxipProperties.engineCore.numOfShaderEngines *
-        palProp.gfxipProperties.engineCore.numOfShaderArrays *
-        palProp.gfxipProperties.engineCore.numOfCUsPerShaderArray;
-    info_.numberOfShaderEngines     = palProp.gfxipProperties.engineCore.numOfShaderEngines;
+        palProp.gfxipProperties.shaderCore.numShaderEngines *
+        palProp.gfxipProperties.shaderCore.numShaderArrays *
+        palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
+    info_.numberOfShaderEngines     = palProp.gfxipProperties.shaderCore.numShaderEngines;
 
     // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
     // For example, float4 is not faster than float as long as all threads fetch the same
@@ -417,7 +417,7 @@ void NullDevice::fillDeviceInfo(
         info_.simdPerCU_            = hwInfo()->simdPerCU_;
         info_.simdWidth_            = hwInfo()->simdWidth_;
         info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
-        info_.wavefrontWidth_       = palProp.gfxipProperties.engineCore.wavefrontSize;
+        info_.wavefrontWidth_       = palProp.gfxipProperties.shaderCore.wavefrontSize;
         //info_.globalMemChannels_    = calAttr.memBusWidth / 32;
         //info_.globalMemChannelBanks_    = calAttr.numMemBanks;
         info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
@@ -1541,35 +1541,34 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
 
 //! Attempt to bind with external graphics API's device/context
 bool
-Device::bindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool validateOnly)
+Device::bindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
 {
     assert(pDevice);
 
-    switch (type) {
 #ifdef _WIN32
-    case CL_CONTEXT_D3D10_DEVICE_KHR:
+    if (flags & amd::Context::Flags::D3D10DeviceKhr) {
         if (!associateD3D10Device(pDevice)) {
             LogError("Failed gslD3D10Associate()");
             return false;
         }
-        break;
-    case CL_CONTEXT_D3D11_DEVICE_KHR:
+    }
+    else if (flags & amd::Context::Flags::D3D11DeviceKhr) {
         if (!associateD3D11Device(pDevice)) {
             LogError("Failed gslD3D11Associate()");
             return false;
         }
-        break;
-    case CL_CONTEXT_ADAPTER_D3D9_KHR:
-    case CL_CONTEXT_ADAPTER_D3D9EX_KHR:
+    }
+    else if (flags & (amd::Context::Flags::D3D9DeviceKhr |
+                      amd::Context::Flags::D3D9DeviceEXKhr)) {
         if (!associateD3D9Device(pDevice)) {
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
-        break;
-    case CL_CONTEXT_ADAPTER_DXVA_KHR:
-        break;
+    }
+    else if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
+    }
 #endif //_WIN32
-    case CL_GL_CONTEXT_KHR:
+    if (flags & amd::Context::Flags::GLDeviceKhr) {
         // Attempt to associate GSL-OGL
         if (!glAssociate(pContext, pDevice)) {
             if (!validateOnly) {
@@ -1577,20 +1576,15 @@ Device::bindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool va
             }
             return false;
         }
-        break;
-    default:
-        LogError("Unknown external device!");
-        return false;
-        break;
     }
 
     return true;
 }
 
 bool
-Device::unbindExternalDevice(intptr_t type, void* pDevice, void* pContext, bool validateOnly)
+Device::unbindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
 {
-    if (type != CL_GL_CONTEXT_KHR) {
+    if ((flags & amd::Context::Flags::GLDeviceKhr) == 0) {
         return true;
     }
 
@@ -1820,8 +1814,8 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
                     // Calculate the size of the scratch buffer for a queue
                     uint32_t numTotalCUs = info().maxComputeUnits_;
                     uint32_t numMaxWaves =
-                        properties().gfxipProperties.engineCore.maxScratchWavesPerCU * numTotalCUs;
-                    scratchBuf->size_ = properties().gfxipProperties.engineCore.wavefrontSize *
+                        properties().gfxipProperties.shaderCore.maxScratchWavesPerCu * numTotalCUs;
+                    scratchBuf->size_ = properties().gfxipProperties.shaderCore.wavefrontSize *
                         scratchBuf->regNum_ * numMaxWaves * sizeof(uint32_t);
                     scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 0xFFFF);
                     scratchBuf->offset_ = offset;
@@ -1920,8 +1914,7 @@ Device::fillHwSampler(
 
     samplerInfo.borderColorType = Pal::BorderColorType::TransparentBlack;
 
-    // Assign defaults
-    samplerInfo.filter = Pal::TexFilter::MagPointMinPointMipBase;
+    samplerInfo.filter.zFilter = Pal::XyFilterPoint;
 
     samplerInfo.flags.unnormalizedCoords = !(state & amd::Sampler::StateNormalizedCoordsMask);
 
@@ -1956,24 +1949,16 @@ Device::fillHwSampler(
 
     // Program texture filter mode
     if (state == amd::Sampler::StateFilterLinear) {
-        samplerInfo.filter = Pal::TexFilter::MagLinearMinLinearMipBase;
+        samplerInfo.filter.magnification = Pal::XyFilterLinear;
+        samplerInfo.filter.minification = Pal::XyFilterLinear;
+        samplerInfo.filter.zFilter = Pal::ZFilterLinear;
     }
 
     if (mipFilter == CL_FILTER_NEAREST) {
-        if (state == amd::Sampler::StateFilterLinear) {
-            samplerInfo.filter = Pal::TexFilter::MagLinearMinLinearMipPoint;
-        }
-        else {
-            samplerInfo.filter = Pal::TexFilter::MagPointMinPointMipPoint;
-        }
+        samplerInfo.filter.mipFilter = Pal::MipFilterPoint;
     }
     else if (mipFilter == CL_FILTER_LINEAR) {
-        if (state == amd::Sampler::StateFilterLinear) {
-            samplerInfo.filter = Pal::TexFilter::MagLinearMinLinearMipLinear;
-        }
-        else {
-            samplerInfo.filter = Pal::TexFilter::MagPointMinPointMipLinear;
-        }
+        samplerInfo.filter.mipFilter = Pal::MipFilterLinear;
     }
 
     iDev()->CreateSamplerSrds(1, &samplerInfo, hwState);

@@ -153,7 +153,7 @@ public:
         { return cpuAqlCode_->workgroup_group_segment_byte_size; }
 
     //! Returns pointer on CPU to AQL code info
-    const void* cpuAqlCode() const { return cpuAqlCode_; }
+    const amd_kernel_code_t* cpuAqlCode() const { return cpuAqlCode_; }
 
     //! Returns memory object with AQL code
     pal::Memory* gpuAqlCode() const { return code_; }

@@ -55,6 +55,11 @@ public:
     void* SegmentAddress(amdgpu_hsa_elf_segment_t segment,
         hsa_agent_t agent, void* seg, size_t offset) override;
 
+    void* SegmentHostAddress(amdgpu_hsa_elf_segment_t segment,
+        hsa_agent_t agent, void* seg, size_t offset) override {
+      return nullptr;
+    }
+
     bool SegmentFreeze(amdgpu_hsa_elf_segment_t segment,
         hsa_agent_t agent, void* seg, size_t size) override { return false; }
 

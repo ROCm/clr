@@ -69,7 +69,8 @@ public:
 
         void addMemRef(Pal::IGpuMemory* iMem) const
         {
-            iDev_->AddGpuMemoryReferences(1, &iMem, NULL);
+            iDev_->AddGpuMemoryReferences(1, &iMem, NULL,
+                Pal::GpuMemoryRefCantTrim);
         }
         void removeMemRef(Pal::IGpuMemory* iMem) const
         {
