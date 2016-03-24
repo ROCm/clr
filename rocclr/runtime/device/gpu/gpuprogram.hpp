@@ -480,9 +480,7 @@ private:
 
     bool GpuMemCopy(void *dst, size_t offset, const void *src, size_t size);
 
-    void GpuMemFree(void *ptr, size_t size = 0) {
-        delete reinterpret_cast<gpu::Memory*>(ptr);
-    }
+    void GpuMemFree(void *ptr, size_t size = 0);
 
     ORCAHSALoaderContext(const ORCAHSALoaderContext &c);
 
