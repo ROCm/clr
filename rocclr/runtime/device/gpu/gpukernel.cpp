@@ -3374,7 +3374,8 @@ HSAILKernel::HSAILKernel(std::string name,
     , codeSize_(0)
     , hwMetaData_(NULL)
     , extraArgumentsNum_(extraArgsNum)
-    , waveLimiter_(this, dev().getAttribs().numberOfCUsperShaderArray * dev().hwInfo()->simdPerCU_)
+    , waveLimiter_(this, (prog->isNull() ? 1 :
+        dev().getAttribs().numberOfCUsperShaderArray) * dev().hwInfo()->simdPerCU_)
 {
     hsa_ = true;
 }
@@ -3456,7 +3457,8 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
     }
 
     // Copy wavefront size
-    workGroupInfo_.wavefrontSize_ = dev().getAttribs().wavefrontSize;
+    workGroupInfo_.wavefrontSize_ = prog().isNull() ? 64 : dev().getAttribs().wavefrontSize;
+    
     // Find total workgroup size
     if (workGroupInfo_.compileSize_[0] != 0) {
         workGroupInfo_.size_ =
