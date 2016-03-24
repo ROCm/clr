@@ -3422,10 +3422,7 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
         }
     }
 
-    // Allocate HW resources for the real program only
-    if (!prog().isNull()) {
-        aqlCreateHWInfo(sym);
-    }
+    aqlCreateHWInfo(sym);
 
     // Pull out metadata from the ELF
     size_t sizeOfArgList;

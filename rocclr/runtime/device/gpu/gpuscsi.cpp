@@ -153,26 +153,27 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_ALIGN, reinterpret_cast<void*>(&akc_align))) {
         return false;
     }
-    code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, akc_align));
-    // Initialize kernel ISA code
-    if (code_ && code_->create(Resource::Shader)) {
-        address cpuCodePtr = static_cast<address>(code_->map(NULL, Resource::WriteOnly));
-        // Copy only amd_kernel_code_t
-        memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
-        code_->unmap(NULL);
-    }
-    else {
-        LogError("Failed to allocate ISA code!");
-        return false;
+
+    // Allocate HW resources for the real program only
+    if (!prog().isNull()) {
+        code_ = new gpu::Memory(dev(), amd::alignUp(codeSize_, akc_align));
+        // Initialize kernel ISA code
+        if (code_ && code_->create(Resource::Shader)) {
+            address cpuCodePtr = static_cast<address>(code_->map(NULL, Resource::WriteOnly));
+            // Copy only amd_kernel_code_t
+            memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
+            code_->unmap(NULL);
+        }
+        else {
+            LogError("Failed to allocate ISA code!");
+            return false;
+        }
     }
 
     assert((akc->workitem_private_segment_byte_size & 3) == 0 &&
         "Scratch must be DWORD aligned");
     workGroupInfo_.scratchRegs_ =
         amd::alignUp(akc->workitem_private_segment_byte_size, 16) / sizeof(uint);
-    workGroupInfo_.availableSGPRs_ = dev().gslCtx()->getNumSGPRsAvailable();
-    workGroupInfo_.availableVGPRs_ = dev().gslCtx()->getNumVGPRsAvailable();
-    workGroupInfo_.preferredSizeMultiple_ = dev().getAttribs().wavefrontSize;
     workGroupInfo_.privateMemSize_ = akc->workitem_private_segment_byte_size;
     workGroupInfo_.availableLDSSize_ = dev().info().localMemSize_;
     workGroupInfo_.localMemSize_ =
@@ -180,8 +181,19 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     workGroupInfo_.usedSGPRs_ = akc->wavefront_sgpr_count;
     workGroupInfo_.usedStackSize_ = 0;
     workGroupInfo_.usedVGPRs_ = akc->workitem_vgpr_count;
-    workGroupInfo_.wavefrontPerSIMD_ = dev().getAttribs().wavefrontSize;
 
+    if (!prog().isNull()) {
+        workGroupInfo_.availableSGPRs_ = dev().gslCtx()->getNumSGPRsAvailable();
+        workGroupInfo_.availableVGPRs_ = dev().gslCtx()->getNumVGPRsAvailable();
+        workGroupInfo_.preferredSizeMultiple_ = dev().getAttribs().wavefrontSize;
+        workGroupInfo_.wavefrontPerSIMD_ = dev().getAttribs().wavefrontSize;
+    }
+    else {
+        workGroupInfo_.availableSGPRs_ = 104;
+        workGroupInfo_.availableVGPRs_ = 256;
+        workGroupInfo_.preferredSizeMultiple_ =
+        workGroupInfo_.wavefrontPerSIMD_ = 64;
+    }
     return true;
 }
 } // namespace gpu

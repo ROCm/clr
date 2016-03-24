@@ -2151,7 +2151,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     // ACL_TYPE_CG stage is not performed for offline compilation
     hsa_agent_t agent;
     agent.handle = 1;
-    if (!isNull() && hsaLoad) {
+    if (hsaLoad) {
         executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
         if (executable_ == NULL) {
             buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
@@ -2176,7 +2176,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
         return false;
     }
-    if (!isNull() && kernelNamesSize > 0) {
+    if (kernelNamesSize > 0) {
         char* kernelNames = new char[kernelNamesSize];
         errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
         if (errorCode != ACL_SUCCESS) {
@@ -2447,8 +2447,10 @@ void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
     case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
     case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
     case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
-        gpu::Memory *gpuMem = reinterpret_cast<gpu::Memory*>(seg);
-        return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
+        if (!program_->isNull()) {
+            gpu::Memory *gpuMem = reinterpret_cast<gpu::Memory*>(seg);
+            return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
+        }
     }
     case AMDGPU_HSA_SEGMENT_CODE_AGENT: return (char*) seg + offset;
     default:
@@ -2487,7 +2489,7 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER: state |= amd::Sampler::StateAddressClamp; break;
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:          state |= amd::Sampler::StateAddressRepeat; break;
         case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT: state |= amd::Sampler::StateAddressMirroredRepeat; break;
-		case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED: state |= amd::Sampler::StateAddressNone; break;
+        case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED: state |= amd::Sampler::StateAddressNone; break;
         default:
             assert(false);
             return HSA_STATUS_ERROR_INVALID_ARGUMENT;
@@ -2540,6 +2542,10 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
+    if (program_->isNull()) {
+        return new char [size];
+    }
+
     gpu::Memory* mem = new gpu::Memory(program_->dev(), amd::alignUp(size, align));
     if (!mem || !mem->create(gpu::Resource::Local)) {
         delete mem;
@@ -2562,10 +2568,24 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
     if (0 == size) {
         return true;
     }
+    if (program_->isNull()) {
+        memcpy(reinterpret_cast<address>(dst) + offset, src, size);
+        return true;
+    }
     assert(program_->dev().xferQueue());
     gpu::Memory* mem = reinterpret_cast<gpu::Memory*>(dst);
     return program_->dev().xferMgr().writeBuffer(src, *mem, amd::Coord3D(offset), amd::Coord3D(size), true);
     return true;
+}
+
+void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
+{
+    if (program_->isNull()) {
+        delete [] reinterpret_cast<char*>(ptr);
+    }
+    else {
+        delete reinterpret_cast<gpu::Memory*>(ptr);
+    }
 }
 
 } // namespace gpu
