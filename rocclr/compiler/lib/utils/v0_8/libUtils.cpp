@@ -1052,3 +1052,39 @@ void dump(aclBinary *bin) {
   bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
   elfBin->dump();
 }
+
+const void*
+aclutGetKernelMetadata(aclCompiler *cl, const aclBinary *bin, size_t *symbolSize, const char *symbol, acl_error *error_code) {
+  aclutKernelMetadata* md = bin->binData->kernelMetadata;
+  std::string s(symbol);
+  aclutKernelMetadata::iterator it = md->find(s);
+  if (md->end() == it) {
+    const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
+    assert(sym && "symbol not found");
+    const void* symbolData = cl->clAPI.extSym(cl, bin, symbolSize, sym->sections[0], symbol, error_code);
+    if (symbolData && *symbolSize != 0) {
+      md->insert(std::make_pair(s, std::make_pair(symbolData, *symbolSize)));
+      return symbolData;
+    }
+  } else {
+    aclutDataSizePair ds = it->second;
+    *symbolSize = ds.second;
+    *error_code = ACL_SUCCESS;
+    return ds.first;
+  }
+  return NULL;
+}
+
+acl_error
+aclutSetKernelMetadata(aclCompiler *cl, aclBinary *bin, const void *symbolData, size_t symbolSize, const char *symbol) {
+  const oclBIFSymbolStruct* sym = findBIF30SymStruct(symOpenclMeta);
+  assert(sym && "symbol not found");
+  acl_error err = cl->clAPI.insSym(cl, bin, symbolData, symbolSize, sym->sections[0], symbol);
+  if (err != ACL_SUCCESS) return err;
+  aclutKernelMetadata* md = bin->binData->kernelMetadata;
+  std::string s(symbol);
+  if (md->end() != md->find(s)) {
+    md->erase(s);
+  }
+  return ACL_SUCCESS;
+}
