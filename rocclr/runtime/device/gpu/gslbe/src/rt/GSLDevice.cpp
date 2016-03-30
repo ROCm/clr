@@ -1203,14 +1203,21 @@ CALGSLDevice::GetCopyType(
             (dstTiling == GSL_MOA_TILING_LINEAR))
         {
             intp bppSrc = srcMem->getBitsPerElement();
-            uint64 linearBytePitch = size * (bppSrc / 8);
+            uint64 BytesPerPixel = bppSrc / 8;
+            uint64 linearBytePitch = size * BytesPerPixel;
 
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
                 (destOffset[0] % 4 == 0))
             {
-                type = USE_DRMDMA_T2L;
+                // The sDMA T2L cases we need to avoid are when the tiled_x
+                // is not a multiple of BytesPerPixel.
+                if (!m_isSDMAL2TConstrained ||
+                    (srcOffset[0] % BytesPerPixel == 0))
+                {
+                    type = USE_DRMDMA_T2L;
+                }
             }
         }
         else if ((srcTiling == GSL_MOA_TILING_LINEAR) &&
