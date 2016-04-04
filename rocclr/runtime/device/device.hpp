@@ -1519,6 +1519,9 @@ public:
     Device(Device* parent = NULL);
     virtual ~Device();
 
+    //! Initializes abstraction layer device object
+    bool create();
+
     //! Increment the reference count
     uint retain() {
         // Only increment the reference count of sub-devices
@@ -1733,6 +1736,15 @@ public:
     //! Remove the Hardware Debug Manager
     virtual void hwDebugManagerRemove() {}
 
+    //! Adds GPU memory to the VA cache list
+    void addVACache(device::Memory* memory) const;
+
+    //! Removes GPU memory from the VA cache list
+    void removeVACache(const device::Memory* memory) const;
+
+    //! Finds GPU memory from virtual address
+    device::Memory* findMemoryFromVA(const void* ptr, size_t* offset) const;
+
 protected:
     //! Enable the specified extension
     char* getExtensionString();
@@ -1757,7 +1769,9 @@ private:
     typedef std::vector<Device*>::iterator device_iterator;
     static std::vector<Device*>* devices_; //!< All known devices
 
-    Device*         parent_;   //!< This device's parent
+    Device*     parent_;        //!< This device's parent
+    Monitor*    vaCacheAccess_; //!< Lock to serialize VA caching access
+    std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
 };
 
 struct KernelParameterDescriptor

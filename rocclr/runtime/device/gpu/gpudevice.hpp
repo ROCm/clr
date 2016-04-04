@@ -310,25 +310,6 @@ public:
         const Device&           gpuDevice_;     //!< GPU device object
     };
 
-    //! Virtual address cache entry
-    struct VACacheEntry : public amd::HeapObject
-    {
-        void*   startAddress_;  //!< Start virtual address
-        void*   endAddress_;    //!< End virtual address
-        Memory* memory_;        //!< GPU memory, associated with the range
-
-        //! Constructor
-        VACacheEntry(
-            void*   startAddress,   //!< Start virtual address
-            void*   endAddress,     //!< End virtual address
-            Memory* memory          //!< GPU memory object
-            ): startAddress_(startAddress), endAddress_(endAddress), memory_(memory) {}
-
-    private:
-        //! Disable default constructor
-        VACacheEntry();
-    };
-
     struct ScratchBuffer : public amd::HeapObject
     {
         uint    regNum_;    //!< The number of used scratch registers
@@ -502,15 +483,6 @@ public:
     //! Returns transfer buffer object
     XferBuffers& xferRead() const { return *xferRead_; }
 
-    //! Adds GPU memory to the VA cache list
-    void addVACache(Memory* memory) const;
-
-    //! Removes GPU memory from the VA cache list
-    void removeVACache(const Memory* memory) const;
-
-    //! Finds GPU memory from virtual address
-    Memory* findMemoryFromVA(const void* ptr, size_t* offset) const;
-
     //! Finds an appropriate map target
     amd::Memory* findMapTarget(size_t size) const;
 
@@ -618,8 +590,6 @@ private:
     XferBuffers*    xferRead_;      //!< Transfer buffers read
     XferBuffers*    xferWrite_;     //!< Transfer buffers write
 
-    amd::Monitor*   vaCacheAccess_; //!< Lock to serialize VA caching access
-    std::list<VACacheEntry*>*   vaCacheList_; //!< VA cache list
     std::vector<amd::Memory*>*  mapCache_;  //!< Map cache info structure
     ResourceCache*  resourceCache_; //!< Resource cache
     Engines         engines_;       //!< Available engines on device
