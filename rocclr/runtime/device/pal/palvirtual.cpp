@@ -922,7 +922,7 @@ VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd)
 
     size_t offset = 0;
     // Find if virtual address is a CL allocation
-    pal::Memory* hostMemory = dev().findMemoryFromVA(vcmd.destination(), &offset);
+    device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.destination(), &offset);
 
     profilingBegin(vcmd, true);
 
@@ -1027,7 +1027,7 @@ VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd)
     pal::Memory* memory = dev().getGpuMemory(&vcmd.destination());
     size_t offset = 0;
     // Find if virtual address is a CL allocation
-    pal::Memory* hostMemory = dev().findMemoryFromVA(vcmd.source(), &offset);
+    device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.source(), &offset);
 
     profilingBegin(vcmd, true);
 

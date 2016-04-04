@@ -225,7 +225,13 @@ Device::tearDown()
 }
 
 Device::Device(Device* parent)
-  : settings_(NULL), online_(true), blitProgram_(NULL), hwDebugMgr_(NULL), parent_(parent)
+    : settings_(NULL)
+    , online_(true)
+    , blitProgram_(NULL)
+    , hwDebugMgr_(NULL)
+    , parent_(parent)
+    , vaCacheAccess_(nullptr)
+    , vaCacheMap_(nullptr)
 {
     memset(&info_, '\0', sizeof(info_));
     if (parent_ != NULL) {
@@ -235,6 +241,11 @@ Device::Device(Device* parent)
 
 Device::~Device()
 {
+    CondLog((vaCacheMap_ != nullptr) &&
+        (vaCacheMap_->size() != 0), "Application didn't unmap all host memory!");
+    delete vaCacheMap_;
+    delete vaCacheAccess_;
+
     // Destroy device settings
     if (settings_ != NULL) {
         delete settings_;
@@ -253,6 +264,20 @@ Device::~Device()
         info_.partitionCreateInfo_.byCounts_.countsList_ != NULL) {
         delete [] info_.partitionCreateInfo_.byCounts_.countsList_;
     }
+}
+
+bool
+Device::create()
+{
+    vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
+    if (NULL == vaCacheAccess_) {
+        return false;
+    }
+    vaCacheMap_ = new std::map<uintptr_t, device::Memory*>();
+    if (NULL == vaCacheMap_) {
+        return false;
+    }
+    return true;
 }
 
 bool
@@ -319,6 +344,62 @@ Device::registerDevice()
     devices_->push_back(this);
 }
 
+void
+Device::addVACache(device::Memory* memory) const
+{
+    // Make sure system memory has direct access
+    if (memory->isHostMemDirectAccess()) {
+        // VA cache access must be serialised
+        amd::ScopedLock lk(*vaCacheAccess_);
+        void*   start = memory->owner()->getHostMem();
+        size_t  offset;
+        device::Memory*   doubleMap = findMemoryFromVA(start, &offset);
+
+        if (doubleMap == nullptr) {
+            // Insert the new entry
+            vaCacheMap_->insert(std::pair<uintptr_t, device::Memory*>
+                (reinterpret_cast<uintptr_t>(start), memory));
+        }
+        else {
+            LogError("Unexpected double map() call from the app!");
+        }
+    }
+}
+
+void
+Device::removeVACache(const device::Memory* memory) const
+{
+    // Make sure system memory has direct access
+    if (memory->isHostMemDirectAccess() && memory->owner()) {
+        // VA cache access must be serialised
+        amd::ScopedLock lk(*vaCacheAccess_);
+        void*   start = memory->owner()->getHostMem();
+        vaCacheMap_->erase(reinterpret_cast<uintptr_t>(start));
+    }
+}
+
+device::Memory*
+Device::findMemoryFromVA(const void* ptr, size_t* offset) const
+{
+    // VA cache access must be serialised
+    amd::ScopedLock lk(*vaCacheAccess_);
+
+    uintptr_t key = reinterpret_cast<uintptr_t>(ptr);
+    std::map<uintptr_t, device::Memory*>::iterator it = vaCacheMap_->upper_bound(
+        reinterpret_cast<uintptr_t>(ptr));
+    if (it == vaCacheMap_->begin()) {
+        return nullptr;
+    }
+
+    --it;
+    device::Memory* mem = it->second;
+    if (key >= it->first && key < (it->first + mem->size())) {
+        // ptr is in the range
+        *offset = key - it->first;
+        return mem;
+    }
+    return nullptr;
+}
 
 bool IsHsaRequested(cl_device_type requestedType) {
 // Depending on HSA_RUNTIME and hint flags CL_HSA_XXXXX_AMD,

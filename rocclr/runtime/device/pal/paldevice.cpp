@@ -559,8 +559,6 @@ Device::Device()
     , mapCacheOps_(nullptr)
     , xferRead_(nullptr)
     , xferWrite_(nullptr)
-    , vaCacheAccess_(nullptr)
-    , vaCacheList_(nullptr)
     , mapCache_(nullptr)
     , resourceCache_(nullptr)
     , numComputeEngines_(0)
@@ -577,9 +575,6 @@ Device::~Device()
     // remove the HW debug manager
     delete hwDebugMgr_;
     hwDebugMgr_ = nullptr;
-
-    CondLog(vaCacheList_ == nullptr ||
-        (vaCacheList_->size() != 0), "Application didn't unmap all host memory!");
 
     delete srdManager_;
 
@@ -618,8 +613,6 @@ Device::~Device()
     delete vgpusAccess_;
     delete scratchAlloc_;
     delete mapCacheOps_;
-    delete vaCacheAccess_;
-    delete vaCacheList_;
 
     if (context_ != nullptr) {
         context_->release();
@@ -633,6 +626,10 @@ extern const char* SchedulerSourceCode;
 bool
 Device::create(Pal::IDevice* device)
 {
+    if (!amd::Device::create()) {
+        return false;
+    }
+
     appProfile_.init();
     device_ = device;
     Pal::Result result;
@@ -718,15 +715,6 @@ Device::create(Pal::IDevice* device)
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
     if (nullptr == mapCacheOps_) {
-        return false;
-    }
-
-    vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
-    if (nullptr == vaCacheAccess_) {
-        return false;
-    }
-    vaCacheList_ = new std::list<VACacheEntry*>();
-    if (nullptr == vaCacheList_) {
         return false;
     }
 
@@ -1628,68 +1616,6 @@ Device::globalFreeMemory(size_t* freeMemory) const
     }
 
     return true;
-}
-
-void
-Device::addVACache(Memory* memory) const
-{
-    // Make sure system memory has direct access
-    if (memory->isHostMemDirectAccess()) {
-        // VA cache access must be serialised
-        amd::ScopedLock lk(*vaCacheAccess_);
-        void*   start = memory->owner()->getHostMem();
-        void*   end = reinterpret_cast<address>(start) + memory->owner()->getSize();
-        size_t  offset;
-        Memory*   doubleMap = findMemoryFromVA(start, &offset);
-
-        if (doubleMap == nullptr) {
-            // Allocate a new entry
-            VACacheEntry*   entry = new VACacheEntry(start, end, memory);
-            if (entry != nullptr) {
-                vaCacheList_->push_back(entry);
-            }
-        }
-        else {
-            LogError("Unexpected double map() call from the app!");
-        }
-    }
-}
-
-void
-Device::removeVACache(const Memory* memory) const
-{
-    // Make sure system memory has direct access
-    if (memory->isHostMemDirectAccess() && memory->owner()) {
-        // VA cache access must be serialised
-        amd::ScopedLock lk(*vaCacheAccess_);
-        void*   start = memory->owner()->getHostMem();
-        void*   end = reinterpret_cast<address>(start) + memory->owner()->getSize();
-
-        // Find VA cache entry for the specified memory
-        for (const auto& entry : *vaCacheList_) {
-            if (entry->startAddress_ == start) {
-                CondLog((entry->endAddress_ != end), "Incorrect VA range");
-                delete entry;
-                vaCacheList_->remove(entry);
-                break;
-            }
-        }
-    }
-}
-
-Memory*
-Device::findMemoryFromVA(const void* ptr, size_t* offset) const
-{
-    // VA cache access must be serialised
-    amd::ScopedLock lk(*vaCacheAccess_);
-    for (const auto& entry : *vaCacheList_) {
-        if ((entry->startAddress_ <= ptr) && (entry->endAddress_ > ptr)) {
-            *offset = static_cast<size_t>(reinterpret_cast<const char*>(ptr) -
-                reinterpret_cast<char*>(entry->startAddress_));
-            return entry->memory_;
-        }
-    }
-    return nullptr;
 }
 
 amd::Memory*
