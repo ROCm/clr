@@ -241,7 +241,7 @@ Settings::create(
 
         if (ciPlus_) {
             libSelector_ = amd::GPU_Library_CI;
-            if (LP64_SWITCH(WINDOWS_SWITCH(viPlus_, false), true)) {
+            if (LP64_SWITCH(false, true)) {
                 oclVersion_ = !reportAsOCL12Device && calAttr.isOpenCL200Device ?
                     XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
             }
