@@ -1759,8 +1759,23 @@ Device::bindExternalDevice(
 {
     assert(pDevice);
 
+    if (flags & amd::Context::Flags::GLDeviceKhr) {
+        // There is no need to perform full initialization here
+        // if the GSLDevice is still uninitialized.
+        // Only adapter initialization is required to validate
+        // GL interoperability.
+        PerformAdapterInitialization();
+
+        // Attempt to associate GSL-OGL
+        if (!glAssociate((CALvoid*)pContext, pDevice)) {
+            if (!validateOnly) {
+                LogError("Failed gslGLAssociate()");
+            }
+            return false;
+        }
+    }
 #ifdef _WIN32
-    if (flags & amd::Context::Flags::D3D10DeviceKhr) {
+    else if (flags & amd::Context::Flags::D3D10DeviceKhr) {
         // There is no need to perform full initialization here
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required
@@ -1811,22 +1826,6 @@ Device::bindExternalDevice(
     else if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
     }
 #endif //_WIN32
-    if (flags & amd::Context::Flags::GLDeviceKhr) {
-        // There is no need to perform full initialization here
-        // if the GSLDevice is still uninitialized.
-        // Only adapter initialization is required to validate
-        // GL interoperability.
-        PerformAdapterInitialization();
-
-        // Attempt to associate GSL-OGL
-        if (!glAssociate((CALvoid*)pContext, pDevice)) {
-            if (!validateOnly) {
-                LogError("Failed gslGLAssociate()");
-            }
-            return false;
-        }
-    }
-
     return true;
 }
 
