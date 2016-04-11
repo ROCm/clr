@@ -1476,7 +1476,7 @@ Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resource) con
 void
 Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const
 {
-    if (desc_.cardMemory_) {
+    if (desc_.cardMemory_ && !isPersistentDirectMap()) {
         // @todo remove const cast
         Unimplemented();
 //        const_cast<Device&>(dev()).resUnmapLocal(resource);
