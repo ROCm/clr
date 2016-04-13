@@ -675,22 +675,38 @@ Kernel::openclMangledName(const std::string& name)
 
 void
 Memory::saveMapInfo(
+    const void*         mapAddress,
     const amd::Coord3D  origin,
     const amd::Coord3D  region,
     uint                mapFlags,
     bool                entire,
     amd::Image*         baseMip)
 {
+    // Map/Unmap must be serialized.
+    amd::ScopedLock lock(owner()->lockMemoryOps());
+
+    WriteMapInfo info = {};
+    WriteMapInfo* pInfo = &info;
+    auto it = writeMapInfo_.find(mapAddress);
+    if (it != writeMapInfo_.end()) {
+        LogWarning("Double map of the same region!");
+    }
+    else {
+        writeMapInfo_.insert(std::pair<const void*, WriteMapInfo>(mapAddress, info));
+        it  = writeMapInfo_.find(mapAddress);
+        pInfo = &it->second;
+    }
+
     if (mapFlags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-        writeMapInfo_.origin_ = origin;
-        writeMapInfo_.region_ = region;
-        writeMapInfo_.entire_ = entire;
-        flags_ |= UnmapWrite;
+        pInfo->origin_ = origin;
+        pInfo->region_ = region;
+        pInfo->entire_ = entire;
+        pInfo->unmapWrite_ = true;
     }
     if (mapFlags & CL_MAP_READ) {
-        flags_ |= UnmapRead;
+        pInfo->unmapRead_ = true;
     }
-    writeMapInfo_.baseMip_ = baseMip;
+    pInfo->baseMip_ = baseMip;
 }
 
 Program::Program(amd::Device& device)

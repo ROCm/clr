@@ -634,8 +634,25 @@ public:
         amd::Coord3D    origin_;    //!< Origin of the map location
         amd::Coord3D    region_;    //!< Mapped region
         amd::Image*     baseMip_;   //!< The base mip level for images
-        bool            entire_;    //!< True if the enitre memory was mapped
-        WriteMapInfo(): origin_(0, 0, 0), region_(0, 0, 0), baseMip_(NULL), entire_(false) {}
+        union {
+            struct {
+                uint32_t    unmapWrite_: 1; //!< Unmap write operation
+                uint32_t    unmapRead_: 1;  //!< Unmap read operation
+                uint32_t    entire_: 1;     //!< Process the entire memory
+            };
+            uint32_t    flags_;
+        };
+
+        //! Returns the state of entire map
+        bool isEntire() const { return (entire_) ? true : false; }
+
+        //! Returns the state of map write flag
+        bool isUnmapWrite() const { return (unmapWrite_) ? true : false; }
+
+        //! Returns the state of map read flag
+        bool isUnmapRead() const { return (unmapRead_) ? true : false; }
+
+        WriteMapInfo(): origin_(0, 0, 0), region_(0, 0, 0), baseMip_(NULL), flags_(0) {}
     };
 
     //! Constructor (from an amd::Memory object).
@@ -733,23 +750,44 @@ public:
     //! @note: It's not a thread safe operation, the app must implement
     //! synchronization for the multiple write maps if necessary
     void saveMapInfo(
-        const amd::Coord3D  origin, //!< Origin of the map location
-        const amd::Coord3D  region, //!< Mapped region
-        uint                mapFlags,   //< Map flags
-        bool                entire, //!< True if the enitre memory was mapped
-        amd::Image*         baseMip = NULL  //!< The base mip level for map
+        const void*         mapAddress, //!< Map cpu address
+        const amd::Coord3D  origin,     //!< Origin of the map location
+        const amd::Coord3D  region,     //!< Mapped region
+        uint                mapFlags,   //!< Map flags
+        bool                entire,     //!< True if the enitre memory was mapped
+        amd::Image*         baseMip = nullptr  //!< The base mip level for map
         );
 
-    const WriteMapInfo* writeMapInfo() const { return &writeMapInfo_; }
+    const WriteMapInfo* writeMapInfo(const void* mapAddress) const
+    {
+        // Unmap must be serialized.
+        amd::ScopedLock lock(owner()->lockMemoryOps());
+
+        auto it = writeMapInfo_.find(mapAddress);
+        if (it == writeMapInfo_.end()) {
+            if (writeMapInfo_.size() == 0) {
+                assert(false && "Unmap() call without map!");
+                return nullptr;
+            }
+            LogWarning("Unknown unmap signature!");
+            // Get the first map info
+            it = writeMapInfo_.begin();
+        }
+        return &it->second;
+    }
 
     //! Clear memory object as mapped read only
-    void clearUnmapFlags() { flags_ &= ~(UnmapWrite | UnmapRead); }
-
-    //! Returns state of map write flag
-    bool isUnmapWrite() const { return (flags_ & UnmapWrite) ? true : false; }
-
-    //! Returns state of map read flag
-    bool isUnmapRead() const { return (flags_ & UnmapRead) ? true : false; }
+    void clearUnmapInfo(const void* mapAddress)
+    {
+        // Unmap must be serialized.
+        amd::ScopedLock lock(owner()->lockMemoryOps());
+        auto it = writeMapInfo_.find(mapAddress);
+        if (it == writeMapInfo_.end()) {
+            // Get the first map info
+            it = writeMapInfo_.begin();
+        }
+        writeMapInfo_.erase(it);
+    }
 
     //! Returns state of memory direct access flag
     bool isHostMemDirectAccess() const
@@ -764,10 +802,8 @@ protected:
         HostMemoryDirectAccess  = 0x00000001,   //!< GPU has direct access to the host memory
         MapResourceAlloced      = 0x00000002,   //!< Map resource was allocated
         PinnedMemoryAlloced     = 0x00000004,   //!< An extra pinned resource was allocated
-        UnmapWrite              = 0x00000008,   //!< Memory was mapped for write
-        SubMemoryObject         = 0x00000010,   //!< Memory is sub-memory
-        HostMemoryRegistered    = 0x00000020,   //!< Host memory was registered
-        UnmapRead               = 0x00000040,   //!< Memory was mapped for read
+        SubMemoryObject         = 0x00000008,   //!< Memory is sub-memory
+        HostMemoryRegistered    = 0x00000010,   //!< Host memory was registered
     };
     uint        flags_;         //!< Memory object flags
 
@@ -781,7 +817,7 @@ protected:
     //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
     amd::Memory*    mapMemory_;         //!< Memory used as map target buffer
     volatile size_t indirectMapCount_;  //!< Number of maps
-    WriteMapInfo    writeMapInfo_;  //!< Saved write map info for partial unmap
+    std::map<const void*, WriteMapInfo>    writeMapInfo_;  //!< Saved write map info for partial unmap
 
     //! Increment map count
     void incIndMapCount() { ++indirectMapCount_; }
