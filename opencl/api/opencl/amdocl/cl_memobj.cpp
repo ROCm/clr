@@ -3314,6 +3314,14 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
         return (void*) 0;
     }
 
+    // Attempt to allocate the map target now (whether blocking or non-blocking)
+    void* mapPtr = hostQueue.device().allocMapTarget(
+        *srcBuffer, srcOffset, srcSize, map_flags);
+    if (NULL == mapPtr) {
+        *not_null(errcode_ret) = CL_MAP_FAILURE;
+        return NULL;
+    }
+
     // Allocate a map command for the queue thread
     amd::MapMemoryCommand *command = new amd::MapMemoryCommand(
         hostQueue,
@@ -3323,7 +3331,10 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
         map_flags,
         blocking_map ? true : false,
         srcOffset,
-        srcSize);
+        srcSize,
+        nullptr,
+        nullptr,
+        mapPtr);
     if (command == NULL) {
         *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
         return NULL;
@@ -3341,15 +3352,6 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
         // Runtime can't map persistent memory if it's still busy or
         // even wasn't submitted to HW from the worker thread yet
         hostQueue.finish();
-    }
-
-    // Attempt to allocate the map target now (whether blocking or non-blocking)
-    void* mapPtr = hostQueue.device().allocMapTarget(
-        *srcBuffer, srcOffset, srcSize, map_flags);
-    if (NULL == mapPtr) {
-        delete command;
-        *not_null(errcode_ret) = CL_MAP_FAILURE;
-        return NULL;
     }
 
     // Send the map command for processing
@@ -3598,6 +3600,14 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
         return (void*) 0;
     }
 
+    // Attempt to allocate the map target now (whether blocking or non-blocking)
+    void *mapPtr = hostQueue.device().allocMapTarget(
+        *srcImage, srcOrigin, srcRegion, map_flags, image_row_pitch, image_slice_pitch);
+    if (NULL == mapPtr) {
+        *not_null(errcode_ret) = CL_MAP_FAILURE;
+        return NULL;
+    }
+
     // Allocate a map command for the queue thread
     amd::MapMemoryCommand *command = new amd::MapMemoryCommand(
         hostQueue,
@@ -3607,7 +3617,10 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
         map_flags,
         blocking_map ? true : false,
         srcOrigin,
-        srcRegion);
+        srcRegion,
+        nullptr,
+        nullptr,
+        mapPtr);
     if (command == NULL) {
         *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
         return NULL;
@@ -3625,15 +3638,6 @@ RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
         // Runtime can't map persistent memory if it's still busy or
         // even wasn't submitted to HW from the worker thread yet
         hostQueue.finish();
-    }
-
-    // Attempt to allocate the map target now (whether blocking or non-blocking)
-    void *mapPtr = hostQueue.device().allocMapTarget(
-        *srcImage, srcOrigin, srcRegion, map_flags, image_row_pitch, image_slice_pitch);
-    if (NULL == mapPtr) {
-        delete command;
-        *not_null(errcode_ret) = CL_MAP_FAILURE;
-        return NULL;
     }
 
     // Send the map command for processing

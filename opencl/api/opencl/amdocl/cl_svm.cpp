@@ -797,7 +797,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap, (
     }
 
     amd::Command* command = new amd::SvmMapMemoryCommand(
-        hostQueue, eventWaitList, svmMem, size, offset, map_flags);
+        hostQueue, eventWaitList, svmMem, size, offset, map_flags, svm_ptr);
     if (command == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
@@ -910,7 +910,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMUnmap, (
     }
 
     amd::Command* command = new amd::SvmUnmapMemoryCommand(
-        hostQueue, eventWaitList, svmMem);
+        hostQueue, eventWaitList, svmMem, svm_ptr);
     if (command == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
     }
