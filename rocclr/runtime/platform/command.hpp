@@ -709,10 +709,11 @@ public:
 class MapMemoryCommand: public OneMemoryArgCommand
 {
 private:
-    cl_map_flags mapFlags_;     //!< Flags controlling the map.
-    bool blocking_;             //!< True for blocking maps
-    Coord3D origin_;            //!< Origin of the region to map.
-    Coord3D size_;              //!< Size of the region to map.
+    cl_map_flags mapFlags_; //!< Flags controlling the map.
+    bool blocking_;         //!< True for blocking maps
+    Coord3D origin_;        //!< Origin of the region to map.
+    Coord3D size_;          //!< Size of the region to map.
+    const void* mapPtr_;    //!< Host-space pointer that the object is currently mapped at
 
 public:
     //! Construct a new MapMemoryCommand
@@ -723,11 +724,12 @@ public:
         Memory& memory, cl_map_flags mapFlags,
         bool blocking,
         Coord3D origin, Coord3D size,
-        size_t* imgRowPitch = NULL,
-        size_t* imgSlicePitch = NULL) :
+        size_t* imgRowPitch = nullptr,
+        size_t* imgSlicePitch = nullptr,
+        void* mapPtr = nullptr) :
             OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
             mapFlags_(mapFlags), blocking_(blocking),
-            origin_(origin), size_(size)
+            origin_(origin), size_(size), mapPtr_(mapPtr)
     {
         // Sanity checks
         assert(size.c[0] > 0 && "invalid");
@@ -749,6 +751,9 @@ public:
     bool blocking() const { return blocking_; }
     //! Returns true if the entire memory object is mapped
     bool isEntireMemory() const;
+    //! Read the map pointer
+    const void* mapPtr() const { return mapPtr_; }
+
 };
 
 
@@ -1398,10 +1403,11 @@ public:
 class SvmMapMemoryCommand : public Command
 {
 private:
-    Memory* svmMem_;            //!< the pointer to the amd::Memory object corresponding the svm pointer mapped
-    Coord3D size_;              //!< the map size
-    Coord3D origin_;            //!< the origin of the mapped svm pointer shift from the beginning of svm space allocated
-    cl_map_flags flags_;        //!< map flags
+    Memory*     svmMem_;    //!< the pointer to the amd::Memory object corresponding the svm pointer mapped
+    Coord3D     size_;      //!< the map size
+    Coord3D     origin_;    //!< the origin of the mapped svm pointer shift from the beginning of svm space allocated
+    cl_map_flags flags_;    //!< map flags
+    void*       svmPtr_;
 
 public:
     SvmMapMemoryCommand(
@@ -1410,12 +1416,14 @@ public:
         Memory* svmMem,
         const size_t size,
         const size_t offset,
-        cl_map_flags flags) :
-            Command(queue, CL_COMMAND_SVM_MAP, eventWaitList),
-            svmMem_(svmMem),
-            size_(size),
-            origin_(offset),
-            flags_(flags)
+        cl_map_flags flags,
+        void*   svmPtr)
+            : Command(queue, CL_COMMAND_SVM_MAP, eventWaitList)
+            , svmMem_(svmMem)
+            , size_(size)
+            , origin_(offset)
+            , flags_(flags)
+            , svmPtr_(svmPtr)
             {
             }
 
@@ -1432,6 +1440,8 @@ public:
 
     Coord3D origin() const {return origin_;}
 
+    void* svmPtr() const { return svmPtr_; }
+
     bool isEntireMemory() const;
 };
 
@@ -1441,14 +1451,18 @@ public:
 class SvmUnmapMemoryCommand : public Command
 {
 private:
-    Memory* svmMem_;            //!< the pointer to the amd::Memory object corresponding the svm pointer mapped
+    Memory* svmMem_;    //!< the pointer to the amd::Memory object corresponding the svm pointer mapped
+    void*   svmPtr_;    //!< SVM pointer
+
 public:
     SvmUnmapMemoryCommand(
         HostQueue& queue,
         const EventWaitList& eventWaitList,
-        Memory* svmMem) :
-            Command(queue, CL_COMMAND_SVM_UNMAP, eventWaitList),
-            svmMem_(svmMem)
+        Memory* svmMem,
+        void*   svmPtr)
+            : Command(queue, CL_COMMAND_SVM_UNMAP, eventWaitList)
+            , svmMem_(svmMem)
+            , svmPtr_(svmPtr)
             {}
 
     virtual void submit(device::VirtualDevice& device)
@@ -1456,7 +1470,9 @@ public:
         device.submitSvmUnmapMemory(*this);
     }
 
-    Memory* getSvmMem() const {return svmMem_;}
+    Memory* getSvmMem() const { return svmMem_; }
+
+    void*   svmPtr() const { return svmPtr_; }
 };
 
 /*! \brief      A generic transfer memory from/to file command.

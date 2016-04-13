@@ -945,9 +945,6 @@ Memory::allocMapTarget(
             }
         }
         mapAddress = mapMemory()->data();
-
-        // Use start of the indirect buffer
-        offset = 0;
     }
 
     return mapAddress + offset;
