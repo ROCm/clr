@@ -1190,12 +1190,13 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
     amd::Image* amdImage = owner->asImage();
     if ((amdImage != NULL) && (amdImage->getMipLevels() > 1) &&
         (writeMapInfo->baseMip_ != NULL)) {
-        // Clear unmap flags from the parent image
-        memory->clearUnmapInfo(vcmd.mapPtr());
         // Assign mip level view
         amdImage = writeMapInfo->baseMip_;
+        // Clear unmap flags from the parent image
+        memory->clearUnmapInfo(vcmd.mapPtr());
         memory = dev().getGpuMemory(amdImage);
         unmapMip = true;
+        writeMapInfo = memory->writeMapInfo(vcmd.mapPtr());
     }
 
     // We used host memory
