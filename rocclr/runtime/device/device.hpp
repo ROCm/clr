@@ -629,13 +629,14 @@ public:
         SyncFlags(): value_(0) {}
     };
 
-    struct WriteMapInfo: public amd::EmbeddedObject
+    struct WriteMapInfo: public amd::HeapObject
     {
         amd::Coord3D    origin_;    //!< Origin of the map location
         amd::Coord3D    region_;    //!< Mapped region
         amd::Image*     baseMip_;   //!< The base mip level for images
         union {
             struct {
+                uint32_t    count_: 8;      //!< The same map region counter
                 uint32_t    unmapWrite_: 1; //!< Unmap write operation
                 uint32_t    unmapRead_: 1;  //!< Unmap read operation
                 uint32_t    entire_: 1;     //!< Process the entire memory
@@ -766,7 +767,7 @@ public:
         auto it = writeMapInfo_.find(mapAddress);
         if (it == writeMapInfo_.end()) {
             if (writeMapInfo_.size() == 0) {
-                assert(false && "Unmap() call without map!");
+                LogError("Unmap is a NOP!");
                 return nullptr;
             }
             LogWarning("Unknown unmap signature!");
@@ -786,7 +787,9 @@ public:
             // Get the first map info
             it = writeMapInfo_.begin();
         }
-        writeMapInfo_.erase(it);
+        if (--it->second.count_ == 0) {
+            writeMapInfo_.erase(it);
+        }
     }
 
     //! Returns state of memory direct access flag

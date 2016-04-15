@@ -1422,12 +1422,16 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
 
-    profilingBegin(vcmd, true);
     pal::Memory* memory = dev().getGpuMemory(&vcmd.memory());
     amd::Memory* owner = memory->owner();
     bool    unmapMip = false;
     const device::Memory::WriteMapInfo* writeMapInfo =
         memory->writeMapInfo(vcmd.mapPtr());
+    if (nullptr == writeMapInfo) {
+        LogError("Unmap without map call");
+        return;
+    }
+    profilingBegin(vcmd, true);
 
     // Check if image is a mipmap and assign a saved view
     amd::Image* amdImage = owner->asImage();
