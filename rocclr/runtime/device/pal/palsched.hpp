@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALSCHED_HPP_
-#define PALSCHED_HPP_
+#pragma once
 
 #include "hsa.h"
 
@@ -74,5 +73,3 @@ struct SchedulerParam {
 };
 
 } // namespace pal
-
-#endif

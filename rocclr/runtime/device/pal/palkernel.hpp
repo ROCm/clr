@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef GPUKERNEL_HPP_
-#define GPUKERNEL_HPP_
+#pragma once
 
 #include "device/device.hpp"
 #include "utils/macros.hpp"
@@ -32,24 +31,6 @@ class VirtualGPU;
 class Device;
 class NullDevice;
 class HSAILProgram;
-
-struct HWSHADER_Helper
-{
-    template <typename S, typename T>
-    static T Get(S base, T offset) {
-        return reinterpret_cast<T>(reinterpret_cast<intptr_t>(base)
-            + reinterpret_cast<size_t>(offset));
-    }
-};
-
-#define HWSHADER_Get(shader, field) \
-    HWSHADER_Helper::Get((shader), (shader)->field)
-
-template <typename D, typename S>
-static void CalcPtr(D& dst, const S src, size_t structSize, size_t size) {
-    dst = reinterpret_cast<D>(reinterpret_cast<const intptr_t>(src)
-            + structSize * size);
-}
 
 /*! \addtogroup pal PAL Device Implementation
  *  @{
@@ -260,4 +241,3 @@ private:
 
 /*@}*/} // namespace pal
 
-#endif /*PALKERNEL_HPP_*/

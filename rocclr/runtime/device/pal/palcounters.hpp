@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALCOUNTERS_HPP_
-#define PALCOUNTERS_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "device/device.hpp"
@@ -148,5 +147,4 @@ private:
 
 } // namespace pal
 
-#endif // PALCOUNTERS_HPP_
 

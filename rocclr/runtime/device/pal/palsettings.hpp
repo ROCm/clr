@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALSETTINGS_HPP_
-#define PALSETTINGS_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "library.hpp"
@@ -124,5 +123,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALSETTINGS_HPP_*/

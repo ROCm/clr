@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALDEBUGMANAGER_H__
-#define PALDEBUGMANAGER_H__
+#pragma once
 
 #include "device/pal/palvirtual.hpp"
 #include "device/pal/paldebugger.hpp"
@@ -113,5 +112,3 @@ private:
 };
 
 }  // namespace pal
-
-#endif // PALDEBUGMANAGER_H__

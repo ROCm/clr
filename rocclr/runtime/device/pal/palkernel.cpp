@@ -10,7 +10,6 @@
 #include "utils/options.hpp"
 
 #include "acl.h"
-#include "SCShadersR678XXCommon.h"
 
 #include <string>
 #include <memory>

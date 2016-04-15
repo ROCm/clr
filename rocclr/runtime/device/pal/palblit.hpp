@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALBLIT_HPP_
-#define PALBLIT_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "platform/command.hpp"
@@ -448,4 +447,3 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
 
 /*@}*/} // namespace pal
 
-#endif /*PALBLIT_HPP_*/

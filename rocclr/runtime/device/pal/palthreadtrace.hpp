@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef GPUTHREADTRACE_HPP_
-#define GPUTHREADTRACE_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "device/device.hpp"
@@ -131,6 +130,4 @@ private:
 };
 
 } // namespace pal
-
-#endif // PALTHREADTRACE_HPP_
 

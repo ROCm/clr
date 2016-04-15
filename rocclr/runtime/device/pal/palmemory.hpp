@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALMEMORY_HPP_
-#define PALMEMORY_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "thread/atomic.hpp"
@@ -271,5 +270,3 @@ private:
 };
 
 } // namespace pal
-
-#endif // PALMEMORY_HPP_

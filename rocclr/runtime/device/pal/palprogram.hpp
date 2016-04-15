@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALPROGRAM_HPP_
-#define PALPROGRAM_HPP_
+#pragma once
 
 #include "device/pal/palkernel.hpp"
 #include "device/pal/palbinary.hpp"
@@ -293,5 +292,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALPROGRAM_HPP_*/

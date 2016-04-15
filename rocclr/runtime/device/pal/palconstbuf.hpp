@@ -1,9 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-
-#ifndef PALCONSTBUF_HPP_
-#define PALCONSTBUF_HPP_
+#pragma once
 
 #include "device/pal/palmemory.hpp"
 
@@ -64,7 +62,5 @@ private:
     void*       wrtAddress_;    //!< Write address in CB
 };
 
-
 /*@}*/} // namespace pal
 
-#endif /*PALCONSTBUF_HPP_*/

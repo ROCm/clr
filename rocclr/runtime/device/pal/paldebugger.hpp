@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALDEBGGER_H_
-#define PALDEBGGER_H_
+#pragma once
 
 #include <cstddef>
 #include <cstdint>
@@ -118,4 +117,3 @@ struct AqlCodeInfo
 
 }  // namespace pal
 
-#endif  // PALDEBGGER_H_

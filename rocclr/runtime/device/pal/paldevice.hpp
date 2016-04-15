@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALDEVICE_HPP_
-#define PALDEVICE_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "device/device.hpp"
@@ -21,7 +20,6 @@
 #include "device/pal/palappprofile.hpp"
 #include "acl.h"
 #include "memory"
-
 
 /*! \addtogroup PAL
  *  @{
@@ -559,4 +557,3 @@ private:
 
 /*@}*/} // namespace pal
 
-#endif /*PALDEVICE_HPP_*/

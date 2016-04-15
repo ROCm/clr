@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALRESOURCE_HPP_
-#define PALRESOURCE_HPP_
+#pragma once
 
 #include "platform/command.hpp"
 #include "platform/program.hpp"
@@ -504,5 +503,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALRESOURCE_HPP_*/
