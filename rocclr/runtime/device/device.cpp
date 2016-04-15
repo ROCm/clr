@@ -689,11 +689,7 @@ Memory::saveMapInfo(
     WriteMapInfo* pInfo = &info;
     auto it = writeMapInfo_.find(mapAddress);
     if (it != writeMapInfo_.end()) {
-        LogWarning("Double map of the same region!");
-    }
-    else {
-        writeMapInfo_.insert(std::pair<const void*, WriteMapInfo>(mapAddress, info));
-        it  = writeMapInfo_.find(mapAddress);
+        LogWarning("Double map of the same or overlapped region!");
         pInfo = &it->second;
     }
 
@@ -707,6 +703,12 @@ Memory::saveMapInfo(
         pInfo->unmapRead_ = true;
     }
     pInfo->baseMip_ = baseMip;
+
+    // Insert into the map if it's the first region
+    if (++pInfo->count_ == 1) {
+        writeMapInfo_.insert(std::pair<const void*, WriteMapInfo>(mapAddress, info));
+    }
+
 }
 
 Program::Program(amd::Device& device)
