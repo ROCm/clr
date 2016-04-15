@@ -1,9 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-
-#ifndef PALVIRTUAL_HPP_
-#define PALVIRTUAL_HPP_
+#pragma once
 
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palconstbuf.hpp"
@@ -573,5 +571,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALVIRTUAL_HPP_*/

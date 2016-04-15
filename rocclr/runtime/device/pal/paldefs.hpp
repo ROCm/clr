@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALDEFS_HPP_
-#define PALDEFS_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "pal.h"
@@ -581,4 +580,3 @@ MemoryFormatMap[] = {
 
 } // namespace pal
 
-#endif // PALDEFS_HPP_

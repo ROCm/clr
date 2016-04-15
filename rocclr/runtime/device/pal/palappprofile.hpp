@@ -1,9 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-
-#ifndef PALAPPPROFILE_HPP_
-#define PALAPPPROFILE_HPP_
+#pragma once
 
 #include <string>
 #include <map>
@@ -26,5 +24,3 @@ private:
 };
 
 }
-
-#endif // PALAPPPROFILE_HPP_

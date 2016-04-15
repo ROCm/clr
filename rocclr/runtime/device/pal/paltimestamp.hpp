@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALTIMESTAMP_HPP_
-#define PALTIMESTAMP_HPP_
+#pragma once
 
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palresource.hpp"
@@ -128,5 +127,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALTIMESTAMP_HPP_*/

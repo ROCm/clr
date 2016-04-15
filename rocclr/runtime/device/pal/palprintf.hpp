@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALPRINTFDBG_HPP_
-#define PALPRINTFDBG_HPP_
+#pragma once
 
 #include "device/pal/palmemory.hpp"
 
@@ -188,5 +187,3 @@ private:
 };
 
 /*@}*/} // namespace pal
-
-#endif /*PALPRINTFDBG_HPP_*/

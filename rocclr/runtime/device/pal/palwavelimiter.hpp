@@ -1,9 +1,7 @@
 //
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
-
-#ifndef PALWAVELIMITER_HPP_
-#define PALWAVELIMITER_HPP_
+#pragma once
 
 #include "platform/command.hpp"
 #include "thread/thread.hpp"
@@ -151,4 +149,3 @@ private:
     amd::Monitor monitor_;          //!< The mutex for updating the wave limiter map
 };
 }
-#endif

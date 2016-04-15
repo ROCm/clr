@@ -1,8 +1,7 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#ifndef PALBINARY_HPP_
-#define PALBINARY_HPP_
+#pragma once
 
 #include "top.hpp"
 #include "device/pal/paldevice.hpp"
@@ -43,6 +42,4 @@ private:
 };
 
 } // namespace pal
-
-#endif // PALBINARY_HPP_
 
