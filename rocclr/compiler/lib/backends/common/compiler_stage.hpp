@@ -97,6 +97,7 @@ namespace amdcl
       void setDenormsAreZero(bool Val) { hookup_.amdoptions.DenormsAreZero = Val; }
       void setUniformWorkGroupSize(bool Val) { hookup_.amdoptions.UniformWorkGroupSize = Val; }
       void setHaveFastFMA32(bool Val) { hookup_.amdoptions.HaveFastFMA32 = Val; }
+      void setISAVersion(int Val) { hookup_.amdoptions.ISAVersion = Val; }
 
       /*! Returns the llvm binary */
       llvm::Module* LLVMBinary() const { return llvmbinary_; }
