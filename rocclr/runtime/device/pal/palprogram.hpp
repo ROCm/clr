@@ -193,6 +193,9 @@ public:
     //! Returns TRUE if the program just compiled
     bool isNull() const { return isNull_; }
 
+    //! Returns TRUE if the program contains static samplers
+    bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
+
 protected:
     //! pre-compile setup for GPU
     virtual bool initBuild(amd::option::Options* options);

@@ -1192,7 +1192,7 @@ HSAILKernel::loadArguments(
         memList.push_back(gpu.hsaQueueMem());
     }
 
-    if (srdResource) {
+    if (srdResource || prog().isStaticSampler()) {
         dev().srds().fillResourceList(memList);
     }
 
