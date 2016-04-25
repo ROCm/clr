@@ -27,6 +27,7 @@ using std::max;
 namespace cpu {
     HCtoDCmap::HCtoDCmap(const clk_parameter_descriptor_t* desc, unsigned int level_alignment, unsigned int index, unsigned int init_offset)
     {
+        level_alignment = std::max(level_alignment, 1u); // Minimal possible alignment is 1 and alignment is used as a divisor below.
         //Initialize fields
         hc_offset = 0;
         hc_size = 0;
