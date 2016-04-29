@@ -180,7 +180,6 @@ typedef struct _acl_bif_rec_0_8_1 {
   aclOptions*   options;     // Pointer to acl options.
   aclBinaryOptions_0_8_1 binOpts;  // Pointer to the binary options.
   aclDevCaps_0_8     caps;        // Capabilities of the BIF.
-  aclBinaryData *binData;  // Pointer to the binary's temporary data.
 } aclBinary_0_8_1;
 
 #define ACL_LOADER_COMMON\
