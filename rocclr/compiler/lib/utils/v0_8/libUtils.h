@@ -4,22 +4,14 @@
 #ifndef _CL_LIB_UTILS_0_8_H_
 #define _CL_LIB_UTILS_0_8_H_
 #include "acl.h"
+#include <string>
 #include <sstream>
-#include <map>
+#include <iterator>
 #include <cstdlib>
 #include <cassert>
 #include "library.hpp"
 #include "utils/bif_section_labels.hpp"
 using namespace bif;
-
-typedef std::pair<const void*, size_t> aclutDataSizePair;
-typedef std::map<std::string, aclutDataSizePair> aclutKernelMetadata;
-
-//! Structure for storing temporary aclBinary information (non-serializable).
-typedef struct _acl_binary_data_0_8_2 {
-  ACL_STRUCT_HEADER;
-  aclutKernelMetadata* kernelMetadata;  // Opaque pointer to the cached kernel's Metadata.
-} aclBinaryData_0_8_2;
 
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -185,18 +177,6 @@ aclutAlloc(const aclCompilerOptions *bin);
 // de-allocation function from the compiler options.
 FreeFunc
 aclutFree(const aclCompilerOptions *bin);
-
-// Wrapper function for extracting symbol with particular kernel Metadata from the binary bin,
-// once extracted kernel Metadata is cached, secondary extraction doesn't happen.
-// This function have to be used instead of extSym function for symOpenclMeta.
-const void*
-aclutGetKernelMetadata(aclCompiler *cl, const aclBinary *bin, size_t *symbolSize, const char *symbol, acl_error *error_code);
-
-// Wrapper function for inserting symbol with particular kernel Metadata into the binary bin,
-// once inserted kernel Metadata is cached.
-// This function have to be used instead of insSym function for symOpenclMeta.
-acl_error
-aclutSetKernelMetadata(aclCompiler *cl, aclBinary *bin, const void *symbolData, size_t symbolSize, const char *symbol);
 
 inline std::vector<std::string> splitSpaceSeparatedString(char *str)
 {

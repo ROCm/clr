@@ -2542,7 +2542,7 @@ if_aclQueryInfo(aclCompiler *cl,
     return ACL_INVALID_ARG;
   }
   std::string symbol = pre + std::string(kernel) + post;
-  const void* roSec = aclutGetKernelMetadata(cl, binary, &roSize, symbol.c_str(), &error_code);
+  const void* roSec = cl->clAPI.extSym(cl, binary, &roSize, secID, symbol.c_str(), &error_code);
   if (error_code != ACL_SUCCESS) return error_code;
   if (roSec == NULL || roSize == 0) {
     return ACL_ELF_ERROR;
@@ -2876,7 +2876,8 @@ if_aclDbgAddArgument(aclCompiler *cl,
   acl_error error_code;
   aclMetadata *md = NULL;
   {
-    const char* roSec = reinterpret_cast<const char*>(aclutGetKernelMetadata(cl, bin, &roSize, symbol.c_str(), &error_code));
+    const char* roSec = reinterpret_cast<const char*>(cl->clAPI.extSym(
+      cl, bin, &roSize, sym->sections[0], symbol.c_str(), &error_code));
     if (error_code != ACL_SUCCESS) return error_code;
     if (roSec == NULL || roSize == 0) {
       return ACL_ELF_ERROR;
@@ -2997,7 +2998,9 @@ if_aclDbgAddArgument(aclCompiler *cl,
   newMD->data_size = newSize;
   memcpy(tmp_ptr, reinterpret_cast<const char*>(md) + printf_offset, roSize - printf_offset);
   tmp_ptr += (roSize - printf_offset);
-  error_code = aclutSetKernelMetadata(cl, bin, newMDptr, newSize, symbol.c_str());
+  cl->clAPI.remSym(cl, bin, aclRODATA, symbol.c_str());
+  error_code = cl->clAPI.insSym(cl, bin, newMDptr, newSize,
+      aclRODATA, symbol.c_str());
   assert((size_t)(tmp_ptr - newMDptr) == newSize && "allocated memory does not equal the amount of memory copied!");
   free(md);
   delete [] newMDptr;
@@ -3020,7 +3023,8 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   acl_error error_code;
   aclMetadata *md = NULL;
   {
-    const char* roSec = reinterpret_cast<const char*>(aclutGetKernelMetadata(cl, bin, &roSize, symbol.c_str(), &error_code));
+    const char* roSec = reinterpret_cast<const char*>(cl->clAPI.extSym(cl, bin, &roSize,
+        sym->sections[0], symbol.c_str(), &error_code));
     if (error_code != ACL_SUCCESS) return error_code;
     if (roSec == NULL || roSize == 0) {
       return ACL_ELF_ERROR;
@@ -3126,7 +3130,9 @@ if_aclDbgRemoveArgument(aclCompiler *cl,
   memcpy(tmp_ptr, reinterpret_cast<const char*>(md) + printf_offset, roSize - printf_offset);
   tmp_ptr += (roSize - printf_offset);
   newMD->data_size = newSize;
-  error_code = aclutSetKernelMetadata(cl, bin, newMDptr, newSize, symbol.c_str());
+  cl->clAPI.remSym(cl, bin, aclRODATA, symbol.c_str());
+  error_code = cl->clAPI.insSym(cl, bin, newMDptr, newSize,
+      aclRODATA, symbol.c_str());
   assert((size_t)(tmp_ptr - newMDptr) == newSize && "allocated memory does not equal the amount of memory copied!");
   free(md);
   delete [] newMDptr;

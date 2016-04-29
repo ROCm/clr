@@ -30,7 +30,6 @@ typedef struct _acl_be_loader_rec_0_8     aclBELoader;
 typedef struct _acl_llvm_module_0_8*      aclModule; // Opaque pointer to llvm::Module
 typedef struct _acl_llvm_context_0_8*     aclContext; // Opaque pointer to llvm::Context
 typedef struct _acl_loader_data_0_8*      aclLoaderData; // Opaque pointer to loader data
-typedef struct _acl_binary_data_0_8_2     aclBinaryData;
 
 #include "aclEnums.h"
 // Typedefs for enumerations
