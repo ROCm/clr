@@ -740,6 +740,18 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         }
         break;
 
+    case OID_FiniteMathOnly:
+        Opts.setFlag(OID_FiniteMathOnly, 1);
+        tod = &OptDescTable[OID_FiniteMathOnly];
+        (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        break;
+
+    case OID_NoSignedZeros:
+        Opts.setFlag(OID_NoSignedZeros, 1);
+        tod = &OptDescTable[OID_NoSignedZeros];
+        (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        break;
+
     case OID_FastRelaxedMath:
         // -cl-fast-relaxed-math implies:
         //    -cl-finite-math-only
