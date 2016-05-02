@@ -119,7 +119,7 @@ OptLevel::run(aclBinary *elf)
         targetOptions.LessPreciseFPMADOption = Options()->oVariables->MadEnable ||
                                                Options()->oVariables->EnableMAD;
         targetOptions.NoInfsFPMath = Options()->oVariables->FiniteMathOnly;
-        targetOptions.NoNaNsFPMath = Options()->oVariables->FastRelaxedMath;
+        targetOptions.NoNaNsFPMath = Options()->oVariables->FiniteMathOnly;
 
         llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
         switch (Options()->oVariables->OptLevel) {

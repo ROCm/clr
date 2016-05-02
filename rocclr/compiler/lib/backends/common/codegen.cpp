@@ -546,7 +546,7 @@ llvmCodeGen(
                                            OptionsObj->oVariables->EnableMAD;
     targetOptions.NoInfsFPMath = OptionsObj->oVariables->FiniteMathOnly;
     // Need to add a support for OptionsObj->oVariables->NoSignedZeros,
-    targetOptions.NoNaNsFPMath = OptionsObj->oVariables->FastRelaxedMath;
+    targetOptions.NoNaNsFPMath = OptionsObj->oVariables->FiniteMathOnly;
 
     std::auto_ptr<TargetMachine>
         target(TheTarget->createTargetMachine(TheTriple.getTriple(),
