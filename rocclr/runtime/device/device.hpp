@@ -153,7 +153,7 @@ OclExtensionsString[] = {
     "cl_khr_mipmap_image ",
     "cl_khr_mipmap_image_writes ",
     "",
-    (IS_MAINLINE || IS_LINUX) ? "" : "cl_amd_liquid_flash ",
+    (IS_LINUX) ? "" : "cl_amd_liquid_flash ",
     NULL
 };
 
