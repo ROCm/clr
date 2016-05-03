@@ -70,23 +70,30 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR, (
             for (cl_uint i = 0; i < num_gpu_devices; ++i) {
                 cl_device_id device = gpu_devices[i];
                 amd::Context::Flags context_flag;
+                amd::Context::DeviceFlagIdx devIdx;
                 switch (media_adapters_type[i]) {
                     case CL_ADAPTER_D3D9_KHR:
                         context_flag = amd::Context::Flags::D3D9DeviceKhr;
+                        devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx;
                         break;
                     case CL_ADAPTER_D3D9EX_KHR:
                         context_flag = amd::Context::Flags::D3D9DeviceEXKhr;
+                        devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceEXKhrIdx;
                         break;
                     case CL_ADAPTER_DXVA_KHR:
                         context_flag = amd::Context::Flags::D3D9DeviceVAKhr;
+                        devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceVAKhrIdx;
                         break;
                 }
 
                 for (cl_uint j = 0; j < num_media_adapters; ++j) {
                     //Since there can be multiple DX9 adapters passed in the array we need to validate interopability with each.
+                    void * external_device[amd::Context::DeviceFlagIdx::LastDeviceFlagIdx] = {};
+                    external_device[devIdx] = d3d9_device[j];
+
                     if (is_valid(device) && (media_adapters_type[j] == CL_ADAPTER_D3D9EX_KHR)  &&
                         as_amd(device)->bindExternalDevice(context_flag,
-                        d3d9_device[j], NULL, VALIDATE_ONLY)) {
+                        external_device, NULL, VALIDATE_ONLY)) {
                             compatible_devices.push_back(as_amd(device));
                     }
                 }
