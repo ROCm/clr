@@ -13,7 +13,7 @@
 typedef wchar_t char_t;
 #endif // __linux__
 
-#if !defined(OPENCL_MAINLINE) && !defined(BUILD_HSA_TARGET) && defined(_WIN32)
+#if !defined(BUILD_HSA_TARGET) && defined(_WIN32)
 #define WITH_LIQUID_FLASH 1
 #endif // _WIN32
 

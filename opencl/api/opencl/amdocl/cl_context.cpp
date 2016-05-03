@@ -513,7 +513,7 @@ clGetExtensionFunctionAddress(const char* func_name)
 #if cl_khr_il_program
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
 #endif // cl_khr_il_program
-#if cl_amd_liquid_flash && !defined(OPENCL_MAINLINE)
+#if cl_amd_liquid_flash
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFileObjectAMD);
 #endif // cl_amd_liquid_flash
         break;
@@ -535,7 +535,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
-#if cl_amd_liquid_flash  && !defined(OPENCL_MAINLINE)
+#if cl_amd_liquid_flash
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteBufferFromFileAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadBufferToFileAMD);
 #endif // cl_amd_liquid_flash
@@ -553,7 +553,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
 #endif //_WIN32
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
-#if cl_amd_liquid_flash && !defined(OPENCL_MAINLINE)
+#if cl_amd_liquid_flash
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetFileObjectInfoAMD);
 #endif // cl_amd_liquid_flash
         break;
@@ -601,7 +601,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
         CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
 #endif // cl_ext_device_fission
-#if cl_amd_liquid_flash  && !defined(OPENCL_MAINLINE)
+#if cl_amd_liquid_flash
         CL_EXTENSION_ENTRYPOINT_CHECK(clRetainFileObjectAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseFileObjectAMD);
 #endif // cl_amd_liquid_flash
