@@ -117,9 +117,14 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromD3D11KHR, (
 
             std::vector<amd::Device*> compatible_devices;
             for (cl_uint i = 0; i < num_gpu_devices; ++i) {
+
+                void * external_device[amd::Context::DeviceFlagIdx::LastDeviceFlagIdx] = {};
+                external_device[amd::Context::DeviceFlagIdx::D3D11DeviceKhrIdx] = d3d11_device;
+
                 cl_device_id device = gpu_devices[i];
                 if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(amd::Context::Flags::D3D11DeviceKhr, d3d11_device, NULL, VALIDATE_ONLY)) {
+                    as_amd(device)->bindExternalDevice(amd::Context::Flags::D3D11DeviceKhr,
+                    external_device, NULL, VALIDATE_ONLY)) {
                         compatible_devices.push_back(as_amd(device));
                 }
             }

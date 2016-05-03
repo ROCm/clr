@@ -360,7 +360,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         *not_null(param_value_size_ret) = sizeof(intptr_t);
         if (param_value != NULL) {
             *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_);
+                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D10DeviceKhrIdx]);
         }
         return CL_SUCCESS;
     }
@@ -387,7 +387,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         *not_null(param_value_size_ret) = sizeof(intptr_t);
         if (param_value != NULL) {
             *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_);
+                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D11DeviceKhrIdx]);
         }
         return CL_SUCCESS;
     }
@@ -412,7 +412,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         *not_null(param_value_size_ret) = sizeof(intptr_t);
         if (param_value != NULL) {
             *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_);
+                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceKhrIdx]);
         }
         return CL_SUCCESS;
     }
@@ -427,7 +427,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         *not_null(param_value_size_ret) = sizeof(intptr_t);
         if (param_value != NULL) {
             *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_);
+                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceEXKhrIdx]);
         }
         return CL_SUCCESS;
     }
@@ -442,7 +442,7 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo, (
         *not_null(param_value_size_ret) = sizeof(intptr_t);
         if (param_value != NULL) {
             *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_);
+                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceVAKhrIdx]);
         }
         return CL_SUCCESS;
     }
