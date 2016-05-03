@@ -118,52 +118,50 @@ Context::checkProperties(
             if (p->ptr == NULL) {
                 return CL_INVALID_VALUE;
             }
-            info->hDev_ = p->ptr;
+            info->hDev_[D3D10DeviceKhrIdx] = p->ptr;
             info->flags_ |= D3D10DeviceKhr;
             break;
         case CL_CONTEXT_D3D11_DEVICE_KHR:
             if (p->ptr == NULL) {
                 return CL_INVALID_VALUE;
             }
-            info->hDev_ = p->ptr;
+            info->hDev_[D3D11DeviceKhrIdx] = p->ptr;
             info->flags_ |= D3D11DeviceKhr;
             break;
         case CL_CONTEXT_ADAPTER_D3D9_KHR:
             if (p->ptr == NULL) {                //not supported for xp
                 return CL_INVALID_VALUE;
             }
-            info->hDev_ = p->ptr;
+            info->hDev_[D3D9DeviceKhrIdx] = p->ptr;
             info->flags_ |= D3D9DeviceKhr;
             break;
         case CL_CONTEXT_ADAPTER_D3D9EX_KHR:
             if (p->ptr == NULL) {
                 return CL_INVALID_VALUE;
             }
-            info->hDev_ = p->ptr;
+            info->hDev_[D3D9DeviceEXKhrIdx] = p->ptr;
             info->flags_ |= D3D9DeviceEXKhr;
             break;
         case CL_CONTEXT_ADAPTER_DXVA_KHR:            
             if (p->ptr == NULL) {
                 return CL_INVALID_VALUE;
             }
-            info->hDev_ = p->ptr;
+            info->hDev_[D3D9DeviceVAKhrIdx] = p->ptr;
             info->flags_ |= D3D9DeviceVAKhr;
             break;
 #endif //_WIN32
 
         case CL_EGL_DISPLAY_KHR:
-            info->hDev_   = p->ptr;
             info->flags_ |= EGLDeviceKhr;
 
 #ifdef _WIN32
         case CL_WGL_HDC_KHR:
-            info->hDev_ = p->ptr;
 #endif //_WIN32
 
 #if defined(__linux__)
         case CL_GLX_DISPLAY_KHR:
-            info->hDev_ = p->ptr;
 #endif //linux
+            info->hDev_[GLDeviceKhrIdx]   = p->ptr;
 
 #if defined(__APPLE__) || defined(__MACOSX)
         case CL_CGL_SHAREGROUP_KHR:
@@ -267,7 +265,7 @@ Context::create(const intptr_t* properties)
                     );
 
                 if (h && (glenv_ = new GLFunctions(h, (info_.flags_ & Flags::EGLDeviceKhr) != 0))) {
-                    if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_),
+                    if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_[GLDeviceKhrIdx]),
                                       reinterpret_cast<intptr_t>(info_.hCtx_))) {
                         delete glenv_;
                         glenv_ = NULL;

@@ -30,25 +30,40 @@ class Context : public RuntimeObject
     std::vector<Device*> devices_;
 
 public:
+    enum DeviceFlagIdx
+    {
+        GLDeviceKhrIdx = 0,     //!< GL
+        D3D10DeviceKhrIdx,      //!< D3D10
+        OfflineDevicesIdx,      //!< Offline devices
+        CommandInterceptIdx,    //!< Command intercept
+        D3D11DeviceKhrIdx,      //!< D3D11
+        InteropUserSyncIdx,     //!< Interop user sync enabled
+        D3D9DeviceKhrIdx,       //!< d3d9 device
+        D3D9DeviceEXKhrIdx,     //!< d3d9EX device
+        D3D9DeviceVAKhrIdx,     //!< d3d9VA device
+        EGLDeviceKhrIdx,        //!< EGL device
+        LastDeviceFlagIdx
+    };
+
     enum Flags
     {
-        GLDeviceKhr         = 1<<0,   //!< GL
-        D3D10DeviceKhr      = 1<<1,   //!< D3D10
-        OfflineDevices      = 1<<2,   //!< Offline devices
-        CommandIntercept    = 1<<3,   //!< Command intercept
-        D3D11DeviceKhr      = 1<<4,   //!< D3D11
-        InteropUserSync     = 1<<5,   //!< Interop user sync enabled
-        D3D9DeviceKhr       = 1<<6,   //!< d3d9 device
-        D3D9DeviceEXKhr     = 1<<7,   //!< d3d9EX device
-        D3D9DeviceVAKhr     = 1<<8,   //!< d3d9VA device
-        EGLDeviceKhr        = 1<<9,   //!< EGL device
+        GLDeviceKhr         = 1 << GLDeviceKhrIdx,      //!< GL
+        D3D10DeviceKhr      = 1 << D3D10DeviceKhrIdx,   //!< D3D10
+        OfflineDevices      = 1 << OfflineDevicesIdx,   //!< Offline devices
+        CommandIntercept    = 1 << CommandInterceptIdx, //!< Command intercept
+        D3D11DeviceKhr      = 1 << D3D11DeviceKhrIdx,   //!< D3D11
+        InteropUserSync     = 1 << InteropUserSyncIdx,  //!< Interop user sync enabled
+        D3D9DeviceKhr       = 1 << D3D9DeviceKhrIdx,    //!< d3d9 device
+        D3D9DeviceEXKhr     = 1 << D3D9DeviceEXKhrIdx,  //!< d3d9EX device
+        D3D9DeviceVAKhr     = 1 << D3D9DeviceVAKhrIdx,  //!< d3d9VA device
+        EGLDeviceKhr        = 1 << EGLDeviceKhrIdx,     //!< EGL device
     };
 
     //! Context info structure
     struct Info
     {
         uint        flags_;         //!< Context info flags
-        void*       hDev_;          //!< Device object reference
+        void*       hDev_[LastDeviceFlagIdx];    //!< Device object reference
         void*       hCtx_;          //!< Context object reference
         size_t      propertiesSize_;//!< Size of the original properties in bytes
         cl_int      (CL_CALLBACK * commandIntercept_)(cl_event, cl_int *);
