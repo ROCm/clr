@@ -84,6 +84,7 @@ typedef struct CALdeviceattribsRec {
     bool       isOpenCL200Device;                   /**< the flag to mark if the device is OpenCL 200 */
     bool       isSVMFineGrainSystem;                /**< check if SVM finegrainsystem */
     bool       isWDDM2Enabled;                      /**< check if WDDM2 is enabled */
+    CALuint    maxRTCUs;                            /**< The maximum number of RT CUs for RT queues */
 } CALdeviceattribs;
 
 

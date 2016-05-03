@@ -29,7 +29,7 @@ public:
     CALGSLContext();
     ~CALGSLContext();
 
-    bool open(const CALGSLDevice* pDeviceObject, uint32 nEngines, gslEngineDescriptor *engines);
+    bool open(const CALGSLDevice* pDeviceObject, uint32 nEngines, gslEngineDescriptor *engines, uint32 rtCUs = 0);
     void close(gsl::gsAdaptor* native);
 
     bool             setInput(uint32 physUnit, gslMemObject mem);

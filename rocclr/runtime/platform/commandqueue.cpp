@@ -18,10 +18,11 @@
 namespace amd {
 
 HostQueue::HostQueue(
-    Context& context, Device& device, cl_command_queue_properties properties, uint queueRTCUs
+    Context& context, Device& device,
+    cl_command_queue_properties properties, uint queueRTCUs, Priority priority
     )
         : CommandQueue(context, device, properties, device.info().queueProperties_
-            | CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD, queueRTCUs)
+            | CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD, queueRTCUs, priority)
 {
     if (thread_.state() >= Thread::INITIALIZED) {
         ScopedLock sl(queueLock_);

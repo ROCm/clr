@@ -129,7 +129,8 @@ protected:
         const CALdeviceattribs& calAttr,    //!< CAL device attributes info
         const gslMemInfo&  memInfo,         //!< GSL mem info
         size_t  maxTextureSize,             //!< Maximum texture size supported in HW
-        uint    numComputeRings             //!< Number of compute rings
+        uint    numComputeRings,            //!< Number of compute rings
+        uint    numComputeRingsRT           //!< Number of RT compute rings
         );
 };
 
@@ -237,7 +238,11 @@ public:
     {
     public:
         //! Default constructor
-        Engines() { memset(desc_, 0xff, sizeof(desc_)); }
+        Engines()
+            : numComputeRings_(0)
+            , numComputeRingsRT_(0)
+            , numDmaEngines_(0)
+            { memset(desc_, 0xff, sizeof(desc_)); }
 
         //! Creates engine descriptor for this class
         void create(uint num, gslEngineDescriptor* desc, uint maxNumComputeRings);
@@ -251,11 +256,15 @@ public:
         //! Returns the number of available compute rings
         uint numComputeRings() const { return numComputeRings_; }
 
+        //! Returns the number of available real time compute rings
+        uint numComputeRingsRT() const { return numComputeRingsRT_; }
+
         //! Returns the number of available DMA engines
         uint numDMAEngines() const { return numDmaEngines_; }
 
     private:
         uint numComputeRings_;
+        uint numComputeRingsRT_;
         uint numDmaEngines_;
         gslEngineDescriptor desc_[GSL_ENGINEID_MAX];    //!< Engine descriptor
     };
