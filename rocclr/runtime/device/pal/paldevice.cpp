@@ -1529,36 +1529,37 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
 
 //! Attempt to bind with external graphics API's device/context
 bool
-Device::bindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
+Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
 {
     assert(pDevice);
 
 #ifdef _WIN32
     if (flags & amd::Context::Flags::D3D10DeviceKhr) {
-        if (!associateD3D10Device(pDevice)) {
+        if (!associateD3D10Device(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx]));
             LogError("Failed gslD3D10Associate()");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D11DeviceKhr) {
-        if (!associateD3D11Device(pDevice)) {
+
+    if (flags & amd::Context::Flags::D3D11DeviceKhr) {
+        if (!associateD3D11Device(pDevice[amd::Context::DeviceFlagIdx::D3D11DeviceKhrIdx])) {
             LogError("Failed gslD3D11Associate()");
             return false;
         }
     }
-    else if (flags & (amd::Context::Flags::D3D9DeviceKhr |
+
+    if (flags & (amd::Context::Flags::D3D9DeviceKhr |
                       amd::Context::Flags::D3D9DeviceEXKhr)) {
-        if (!associateD3D9Device(pDevice)) {
+        if (!associateD3D9Device(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx])) {
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
-    }
 #endif //_WIN32
+
     if (flags & amd::Context::Flags::GLDeviceKhr) {
         // Attempt to associate GSL-OGL
-        if (!glAssociate(pContext, pDevice)) {
+        if (!glAssociate(pContext, pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx])) {
             if (!validateOnly) {
                 LogError("Failed gslGLAssociate()");
             }
@@ -1570,15 +1571,16 @@ Device::bindExternalDevice(uint flags, void* pDevice, void* pContext, bool valid
 }
 
 bool
-Device::unbindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
+Device::unbindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
 {
     if ((flags & amd::Context::Flags::GLDeviceKhr) == 0) {
         return true;
     }
 
-    if (pDevice != nullptr) {
+    void * glDevice = pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+    if (glDevice != nullptr) {
         // Dissociate GSL-OGL
-        if (!glDissociate(pContext, pDevice)) {
+        if (!glDissociate(pContext, glDevice)) {
             if (validateOnly) {
                 LogWarning("Failed gslGLDiassociate()");
             }

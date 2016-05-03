@@ -268,6 +268,7 @@ Memory::createInterop(InteropType type)
     assert((interop != NULL) && "An invalid interop object is impossible!");
 
     amd::GLObject*  glObject = interop->asGLObject();
+
 #ifdef _WIN32
     amd::D3D10Object*   d3d10Object = interop->asD3D10Object();
     amd::D3D11Object*   d3d11Object = interop->asD3D11Object();
@@ -442,14 +443,15 @@ Memory::createInterop(InteropType type)
             return false;
             break;
         }
+
+        oglRes.glPlatformContext_ = owner()->getContext().info().hCtx_;
+        oglRes.glDeviceContext_ = owner()->getContext().info().hDev_[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+        // We dont pass any flags here for the GL Resource.
+        oglRes.flags_ = 0;
     }
     else {
         return false;
     }
-    oglRes.glPlatformContext_ = owner()->getContext().info().hCtx_;
-    oglRes.glDeviceContext_ = owner()->getContext().info().hDev_;
-    // We dont pass any flags here for the GL Resource.
-    oglRes.flags_ = 0;
 
     // Get the interop settings
     if (type == InteropDirectAccess) {

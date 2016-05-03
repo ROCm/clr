@@ -1769,7 +1769,7 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
 //! Attempt to bind with external graphics API's device/context
 bool
 Device::bindExternalDevice(
-    uint flags, void* pDevice, void* pContext, bool validateOnly)
+    uint flags, void* const pDevice[], void* pContext, bool validateOnly)
 {
     assert(pDevice);
 
@@ -1781,15 +1781,16 @@ Device::bindExternalDevice(
         PerformAdapterInitialization();
 
         // Attempt to associate GSL-OGL
-        if (!glAssociate((CALvoid*)pContext, pDevice)) {
+        if (!glAssociate((CALvoid*)pContext, pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx])) {
             if (!validateOnly) {
                 LogError("Failed gslGLAssociate()");
             }
             return false;
         }
     }
+
 #ifdef _WIN32
-    else if (flags & amd::Context::Flags::D3D10DeviceKhr) {
+    if (flags & amd::Context::Flags::D3D10DeviceKhr) {
         // There is no need to perform full initialization here
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required
@@ -1798,12 +1799,13 @@ Device::bindExternalDevice(
 
         // Associate GSL-D3D
         if (!associateD3D10Device(
-            reinterpret_cast<ID3D10Device*>(pDevice))) {
+            reinterpret_cast<ID3D10Device*>(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx]))) {
             LogError("Failed gslD3D10Associate()");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D11DeviceKhr) {
+
+    if (flags & amd::Context::Flags::D3D11DeviceKhr) {
         // There is no need to perform full initialization here
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required to validate
@@ -1812,47 +1814,51 @@ Device::bindExternalDevice(
 
         // Associate GSL-D3D
         if (!associateD3D11Device(
-            reinterpret_cast<ID3D11Device*>(pDevice))) {
+            reinterpret_cast<ID3D11Device*>(pDevice[amd::Context::DeviceFlagIdx::D3D11DeviceKhrIdx]))) {
             LogError("Failed gslD3D11Associate()");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D9DeviceKhr) {
+
+    if (flags & amd::Context::Flags::D3D9DeviceKhr) {
         PerformAdapterInitialization();
 
         // Associate GSL-D3D
         if (!associateD3D9Device(
-            reinterpret_cast<IDirect3DDevice9*>(pDevice))) {
+            reinterpret_cast<IDirect3DDevice9*>(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx]))) {
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D9DeviceEXKhr) {
+
+    if (flags & amd::Context::Flags::D3D9DeviceEXKhr) {
         PerformAdapterInitialization();
 
         // Associate GSL-D3D
         if (!associateD3D9Device(
-            reinterpret_cast<IDirect3DDevice9Ex*>(pDevice))) {
+            reinterpret_cast<IDirect3DDevice9Ex*>(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceEXKhrIdx]))) {
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
     }
-    else if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
+
+    if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
     }
 #endif //_WIN32
     return true;
 }
 
 bool
-Device::unbindExternalDevice(uint flags, void* pDevice, void* pContext, bool validateOnly)
+Device::unbindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
 {
     if ((flags & amd::Context::Flags::GLDeviceKhr) == 0) {
         return true;
     }
 
-    if (pDevice != NULL) {
+    void * glDevice = pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+    if (glDevice != NULL) {
         // Dissociate GSL-OGL
-        if (true != glDissociate(pContext, pDevice)) {
+        if (true != glDissociate(pContext, glDevice)) {
             if (validateOnly) {
                 LogWarning("Failed gslGLDiassociate()");
             }

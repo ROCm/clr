@@ -399,14 +399,15 @@ Memory::createInterop(InteropType type)
             return false;
             break;
         }
+
+        oglRes.glPlatformContext_ = owner()->getContext().info().hCtx_;
+        oglRes.glDeviceContext_ = owner()->getContext().info().hDev_[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
+        // We dont pass any flags here for the GL Resource.
+        oglRes.flags_ = 0;
     }
     else {
         return false;
     }
-    oglRes.glPlatformContext_ = owner()->getContext().info().hCtx_;
-    oglRes.glDeviceContext_ = owner()->getContext().info().hDev_;
-    // We dont pass any flags here for the GL Resource.
-    oglRes.flags_ = 0;
 
     // Get the interop settings
     if (type == InteropDirectAccess) {
