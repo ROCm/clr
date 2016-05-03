@@ -87,7 +87,8 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
     } *p = reinterpret_cast<const QueueProperty*>(queue_properties);
 
     uint queueSize = amdDevice.info().queueOnDevicePreferredSize_;
-    uint queueRTCUs = 0;
+    uint queueRTCUs = amd::CommandQueue::RealTimeDisabled;
+    amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal;
     if (p != NULL) while(p->name != 0) {
         switch(p->name) {
         case CL_QUEUE_PROPERTIES:
@@ -102,6 +103,10 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
         case CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD:
             queueRTCUs = p->value.size;
             break;
+#define CL_QUEUE_MEDIUM_PRIORITY        0x4050
+        case CL_QUEUE_MEDIUM_PRIORITY:
+            priority = amd::CommandQueue::Priority::Medium;
+            break;
         default:
             *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
             LogWarning("invalid property name");
@@ -115,7 +120,8 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
         return (cl_command_queue) 0;
     }
 
-    if (queueRTCUs > amdDevice.info().numRTCUs_) {
+    if ((queueRTCUs != amd::CommandQueue::RealTimeDisabled) &&
+        ((queueRTCUs > amdDevice.info().numRTCUs_) || (queueRTCUs == 0))) {
         *not_null(errcode_ret) = CL_INVALID_VALUE;
         return (cl_command_queue) 0;
     }
@@ -126,7 +132,7 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
 
         // Check if the app creates a host queue
         if (!(properties & CL_QUEUE_ON_DEVICE)) {
-            queue = new amd::HostQueue(amdContext, amdDevice, properties, queueRTCUs);
+            queue = new amd::HostQueue(amdContext, amdDevice, properties, queueRTCUs, priority);
         }
         else {
             // Is it a device default queue
