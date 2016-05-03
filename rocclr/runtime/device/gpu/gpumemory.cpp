@@ -171,6 +171,7 @@ Memory::create(
     // Check if CAL created a resource
     if (result) {
         switch (memoryType()) {
+        case Resource::Persistent:
         case Resource::Pinned:
         case Resource::ExternalPhysical:
             // Marks memory object for direct GPU access to the host memory
@@ -186,6 +187,9 @@ Memory::create(
         case Resource::View: {
             Resource::ViewParams* view =
                 reinterpret_cast<Resource::ViewParams*>(params);
+            if (view->resource_->memoryType() == Resource::Persistent) {
+                flags_ |= HostMemoryDirectAccess;
+            }
             // Check if parent was allocated in system memory
             if ((view->resource_->memoryType() == Resource::Pinned) ||
                 (((view->resource_->memoryType() == Resource::Remote) ||

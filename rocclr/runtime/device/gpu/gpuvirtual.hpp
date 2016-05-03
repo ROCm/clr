@@ -10,6 +10,7 @@
 #include "device/gpu/gpuprintf.hpp"
 #include "device/gpu/gputimestamp.hpp"
 #include "device/gpu/gpusched.hpp"
+#include "platform/commandqueue.hpp"
 #include "device/blit.hpp"
 
 #include "device/gpu/gpudebugger.hpp"
@@ -199,12 +200,10 @@ public:
     typedef std::vector<ResourceSlot> ResourceSlots;
 
 public:
-
     VirtualGPU(Device& device);
-    bool create(
-        bool    profiling
-        , uint  deviceQueueSize = 0
-        );
+    bool create(bool profiling, uint rtCUs = amd::CommandQueue::RealTimeDisabled,
+            uint deviceQueueSize = 0,
+            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
     ~VirtualGPU();
 
     void submitReadMemory(amd::ReadMemoryCommand& vcmd);
@@ -443,7 +442,7 @@ private:
     //! Frees CAL kernel descriptor of the virtual device
     void freeKernelDesc(GslKernelDesc* desc);
 
-    bool gslOpen(uint nEngines, gslEngineDescriptor *engines);
+    bool gslOpen(uint nEngines, gslEngineDescriptor *engines, uint32_t rtCUs);
     void gslDestroy();
 
     //! Releases stage write buffers

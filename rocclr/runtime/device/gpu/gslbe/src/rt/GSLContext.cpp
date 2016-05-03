@@ -46,7 +46,8 @@ bool
 CALGSLContext::open(
     const CALGSLDevice* pDeviceObject,
     uint32              nEngines,
-    gslEngineDescriptor* engines)
+    gslEngineDescriptor* engines,
+    uint32              rtCUs)
 {
     m_Dev = pDeviceObject;
 
@@ -63,7 +64,7 @@ CALGSLContext::open(
     for (uint i = 0; i < nEngines; i++)
     {
         if (engines[i].id >= GSL_ENGINEID_3DCOMPUTE0 &&
-            engines[i].id <= GSL_ENGINEID_COMPUTE7)
+            engines[i].id <= GSL_ENGINEID_COMPUTE_MEDIUM_PRIORITY)
         {
             mainEngineOrdinal = engines[i].id;
         }
@@ -76,7 +77,7 @@ CALGSLContext::open(
         }
     }
 
-    m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal, false);
+    m_cs = native->createComputeContext(mainEngineOrdinal, sdmaOrdinal, false, rtCUs);
 
     if (m_cs == 0)
     {

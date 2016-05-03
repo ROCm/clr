@@ -196,7 +196,7 @@ VirtualGPU::DmaFlushMgmt::isCbReady(
 }
 
 bool
-VirtualGPU::gslOpen(uint nEngines, gslEngineDescriptor *engines)
+VirtualGPU::gslOpen(uint nEngines, gslEngineDescriptor *engines, uint32_t rtCUs)
 {
     // GSL device initialization
     dev().PerformFullInitialization();
@@ -206,7 +206,7 @@ VirtualGPU::gslOpen(uint nEngines, gslEngineDescriptor *engines)
         ? CAL_WAIT_LOW_CPU_UTILIZATION
         : CAL_WAIT_POLLING;
 
-    if (!open(&dev(), nEngines, engines)) {
+    if (!open(&dev(), nEngines, engines, rtCUs)) {
         return false;
     }
 
@@ -432,10 +432,8 @@ VirtualGPU::VirtualGPU(
 }
 
 bool
-VirtualGPU::create(
-    bool    profiling
-    , uint  deviceQueueSize
-    )
+VirtualGPU::create(bool profiling, uint rtCUs, uint  deviceQueueSize,
+    amd::CommandQueue::Priority priority)
 {
     device::BlitManager::Setup  blitSetup;
     gslEngineDescriptor engines[2];
@@ -452,14 +450,34 @@ VirtualGPU::create(
 
     {
         if (dev().engines().numComputeRings()) {
-            uint    idx = index() % dev().engines().numComputeRings();
+            uint    idx;
 
+            if ((amd::CommandQueue::RealTimeDisabled == rtCUs) &&
+                (priority == amd::CommandQueue::Priority::Normal)) {
+                idx = index() % dev().engines().numComputeRings();
+                engineMask = dev().engines().getMask(
+                    (gslEngineID)(dev().isComputeRingIDForced() ?
+                    dev().getforcedComputeEngineID() :
+                    (dev().getFirstAvailableComputeEngineID() + idx)));
+
+            }
+            else {
+                if (priority == amd::CommandQueue::Priority::Medium) {
+                    engineMask = dev().engines().getMask((gslEngineID)
+                        (GSL_ENGINEID_COMPUTE_MEDIUM_PRIORITY));
+                }
+                else {
+                    engineMask = dev().engines().getMask((gslEngineID)
+                        (GSL_ENGINEID_COMPUTE_RT));
+                }
+                //!@todo This is not a generic solution and
+                // may have issues with > 8 queues
+                idx = index() % (dev().engines().numComputeRings() + 
+                        dev().engines().numComputeRingsRT());
+            }
             // hwRing_ should be set 0 if forced to have single scratch buffer
             hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
-            engineMask = dev().engines().getMask((gslEngineID)(dev().isComputeRingIDForced() ?
-                         dev().getforcedComputeEngineID() :
-                         (dev().getFirstAvailableComputeEngineID() + idx)));
             if (dev().canDMA()) {
                 // If only 1 DMA engine is available then use that one
                 if (dev().engines().numDMAEngines() < 2) {
@@ -479,12 +497,12 @@ VirtualGPU::create(
                 engineMask |= dev().engines().getMask(GSL_ENGINEID_DRMDMA0);
             }
         }
-        num = dev().engines().getRequested(engineMask, engines);
+    }
+    num = dev().engines().getRequested(engineMask, engines);
 
-        // Open GSL context
-        if ((num == 0) || !gslOpen(num, engines)) {
-            return false;
-        }
+    // Open GSL context
+    if ((num == 0) || !gslOpen(num, engines, rtCUs)) {
+        return false;
     }
 
     // Diable double copy optimization,
@@ -1178,7 +1196,6 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
 {
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
-
     gpu::Memory* memory = dev().getGpuMemory(&vcmd.memory());
     amd::Memory* owner = memory->owner();
     bool    unmapMip = false;
@@ -2831,7 +2848,6 @@ VirtualGPU::flushDMA(uint engineID)
         //! since only L2 cache is flushed in KMD frame,
         //! but L1 still has to be invalidated.
     }
-
     //! \note Use CtxIsEventDone, so we won't flush compute for DRM engine
     isDone(&cal_.events_[engineID]);
 }
@@ -2841,7 +2857,6 @@ VirtualGPU::waitAllEngines(CommandBatch* cb)
 {
     uint i;
     GpuEvent*   events;    //!< GPU events for the batch
-
     // If command batch is NULL then wait for the current
     if (NULL == cb) {
         events = cal_.events_;

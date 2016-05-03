@@ -31,6 +31,12 @@ class DeviceQueue;
 class CommandQueue : public RuntimeObject
 {
 public:
+    static const uint RealTimeDisabled = 0xffffffff;
+    enum class Priority : uint {
+        Normal = 0,
+        Medium
+    };
+
     struct Properties
     {
         typedef cl_command_queue_properties value_type;
@@ -92,6 +98,9 @@ public:
     //! Returns the number or requested real time CUs
     uint    rtCUs() const { return rtCUs_; }
 
+    //! Returns the queue priority
+    Priority    priority() const { return priority_; }
+
 protected:
     //! CommandQueue constructor is protected
     //! to keep the CommandQueue class as a virtual interface
@@ -100,16 +109,19 @@ protected:
         Device&     device,     //!< Device object
         cl_command_queue_properties properties, //!< Queue properties
         cl_command_queue_properties propMask,   //!< Queue properties mask
-        uint        rtCUs = 0   //!< Avaialble real time compute units
+        uint        rtCUs = RealTimeDisabled,   //!< Avaialble real time compute units
+        Priority    priority = Priority::Normal //!< Queue priority
         )
         : properties_(propMask, properties)
         , rtCUs_(rtCUs)
+        , priority_(priority)
         , queueLock_("CommandQueue::queueLock")
         , device_(device)
         , context_(context) {}
 
     Properties  properties_;    //!< Queue properties
     uint        rtCUs_;         //!< The number of used RT compute units
+    Priority    priority_;      //!< Queue priority
     Monitor     queueLock_;     //!< Lock protecting the queue
     Device&     device_;        //!< The device
     SharedReference<Context> context_;  //!< The context of this command queue
@@ -179,7 +191,8 @@ public:
         Context& context,
         Device& device,
         cl_command_queue_properties properties,
-        uint    queueRTCUs = 0
+        uint    queueRTCUs = 0,
+        Priority priority = Priority::Normal
     );
 
     //! Returns TRUE if this command queue can accept commands.

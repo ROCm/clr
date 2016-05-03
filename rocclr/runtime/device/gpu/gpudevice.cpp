@@ -174,7 +174,7 @@ NullDevice::create(CALtarget target)
     calAttr.localRAM = 512;
 
     // Fill the device info structure
-    fillDeviceInfo(calAttr, memInfo, 4096, 1);
+    fillDeviceInfo(calAttr, memInfo, 4096, 1, 0);
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         // Runtime doesn't know what local size could be on the real board
@@ -280,11 +280,14 @@ NullDevice::createProgram(amd::option::Options* options)
     return new NullProgram(*this);
 }
 
-void NullDevice::fillDeviceInfo(
+void
+NullDevice::fillDeviceInfo(
     const CALdeviceattribs& calAttr,
     const gslMemInfo& memInfo,
     size_t  maxTextureSize,
-    uint    numComputeRings)
+    uint    numComputeRings,
+    uint    numComputeRingsRT
+    )
 {
     info_.type_     = CL_DEVICE_TYPE_GPU;
     info_.vendorId_ = 0x1002;
@@ -549,8 +552,8 @@ void NullDevice::fillDeviceInfo(
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
         info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
         info_.numAsyncQueues_       = numComputeRings;
-        info_.numRTQueues_          = 2;
-        info_.numRTCUs_             = 4;
+        info_.numRTQueues_          = numComputeRingsRT;
+        info_.numRTCUs_             = calAttr.maxRTCUs;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
 }
@@ -576,6 +579,7 @@ void
 Device::Engines::create(uint num, gslEngineDescriptor* desc, uint maxNumComputeRings)
 {
     numComputeRings_ = 0;
+    numComputeRingsRT_ = 0;
     numDmaEngines_ = 0;
 
     for (uint i = 0; i < num; ++i) {
@@ -585,6 +589,13 @@ Device::Engines::create(uint num, gslEngineDescriptor* desc, uint maxNumComputeR
         if (desc[i].id >= GSL_ENGINEID_COMPUTE0 &&
             desc[i].id <= GSL_ENGINEID_COMPUTE7) {
             numComputeRings_++;
+        }
+
+        if (desc[i].id == GSL_ENGINEID_COMPUTE_RT) {
+            numComputeRingsRT_++;
+        }
+        if (desc[i].id == GSL_ENGINEID_COMPUTE_MEDIUM_PRIORITY) {
+            numComputeRingsRT_++;
         }
 
         if (desc[i].id >= GSL_ENGINEID_DRMDMA0 &&
@@ -910,7 +921,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     // Fill the device info structure
     fillDeviceInfo(getAttribs(), getMemInfo(),
         static_cast<size_t>(getMaxTextureSize()),
-        engines().numComputeRings());
+        engines().numComputeRings(), engines().numComputeRingsRT());
 
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         if (NULL == hsaCompiler_) {
@@ -969,7 +980,7 @@ Device::initializeHeapResources()
 
         PerformFullInitialization();
 
-        uint numComputeRings = engines_.numComputeRings();
+        uint numComputeRings = engines_.numComputeRings() + engines_.numComputeRingsRT();
         scratch_.resize((settings().useSingleScratch_) ? 1 : (numComputeRings ? numComputeRings : 1));
 
         // Initialize the number of mem object for the scratch buffer
@@ -1074,7 +1085,7 @@ Device::createVirtualDevice(
 {
     bool    profiling = false;
     bool    interopQueue = false;
-    uint    rtCUs  = 0;
+    uint    rtCUs  = amd::CommandQueue::RealTimeDisabled;
     uint    deviceQueueSize = 0;
 
     if (queue != NULL) {
@@ -1101,10 +1112,7 @@ Device::createVirtualDevice(
     }
 
     VirtualGPU* vgpu = new VirtualGPU(*this);
-    if (vgpu && vgpu->create(
-        profiling
-        , deviceQueueSize
-        )) {
+    if (vgpu && vgpu->create(profiling, rtCUs, deviceQueueSize, queue->priority())) {
         return vgpu;
     } else {
         delete vgpu;
