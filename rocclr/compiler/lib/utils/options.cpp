@@ -1078,6 +1078,11 @@ parseAllOptions(std::string& options, Options& Opts, bool linkOptsOnly)
                    return false;
                  }
                  std::string vStr = oStr.substr(vPos1, std::string::npos);
+                 if ((vStr.size() > 2) &&
+                     (vStr.front() == '\"' && vStr.back() == '\"')) {
+                   // Unquote string
+                   vStr = vStr.substr(1, vStr.size() - 2);
+                 }
                  Opts.clangOptions.push_back(oStr.substr(0,2) + vStr);
                }
             }
