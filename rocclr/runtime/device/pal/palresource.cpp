@@ -56,11 +56,10 @@ GpuMemoryReference::Create(
 GpuMemoryReference*
 GpuMemoryReference::Create(
     const Device&   dev,
-    const void*     sysMem,
-    size_t          memSize)
+    const Pal::PinnedGpuMemoryCreateInfo& createInfo)
 {
     Pal::Result result;
-    size_t gpuMemSize = dev.iDev()->GetPinnedGpuMemorySize(sysMem, memSize, &result);
+    size_t gpuMemSize = dev.iDev()->GetPinnedGpuMemorySize(createInfo, &result);
     if (result != Pal::Result::Success) {
         return nullptr;
     }
@@ -68,7 +67,7 @@ GpuMemoryReference::Create(
     GpuMemoryReference*  memRef = new (gpuMemSize) GpuMemoryReference();
     Pal::VaRange vaRange = Pal::VaRange::Default;
     if (memRef != nullptr) {
-        result = dev.iDev()->CreatePinnedGpuMemory(sysMem, memSize, vaRange,
+        result = dev.iDev()->CreatePinnedGpuMemory(createInfo,
             &memRef[1], &memRef->gpuMem_);
         if (result != Pal::Result::Success) {
             memRef->release();
@@ -77,7 +76,7 @@ GpuMemoryReference::Create(
     }
     // Update free memory size counters
     const_cast<Device&>(dev).updateFreeMemory(
-        Pal::GpuHeap::GpuHeapGartCacheable, memSize, false);
+        Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
     return memRef;
 }
 
@@ -513,8 +512,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 imgOpenInfo.flags.formatChangeSrd = true;
                 imgOpenInfo.usage.shaderRead = true;
                 imgOpenInfo.usage.shaderWrite = true;
-                Pal::gpusize imageSize;
-                Pal::gpusize gpuMemSize;
+                size_t imageSize;
+                size_t gpuMemSize;
 
                 if (Pal::Result::Success != dev().iDev()->GetExternalSharedImageSizes(
                     imgOpenInfo, &imageSize, &gpuMemSize, &imgCreateInfo)) {
@@ -936,8 +935,11 @@ Resource::create(MemoryType memType, CreateParams* params)
         if ((uint64_t)(pinAddress) & (amd::Os::pageSize() - 1)) {
             return false;
         }
-
-        memRef_ = GpuMemoryReference::Create(dev(), pinAddress, allocSize);
+        Pal::PinnedGpuMemoryCreateInfo createInfo = {};
+        createInfo.pSysMem = pinAddress;
+        createInfo.size = allocSize;
+        createInfo.vaRange = Pal::VaRange::Default;
+        memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         if (nullptr == memRef_) {
             LogError("Failed PAL memory allocation!");
             pinOffset_ = 0;

@@ -26,8 +26,7 @@ public:
 
     static GpuMemoryReference* Create(
         const Device&   dev,
-        const void*     sysMem,
-        size_t          memSize);
+        const Pal::PinnedGpuMemoryCreateInfo& createInfo);
 
     static GpuMemoryReference* Create(
         const Device&   dev,
