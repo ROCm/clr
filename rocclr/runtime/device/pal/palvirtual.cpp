@@ -1354,7 +1354,7 @@ VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd)
             amd::Coord3D dstOrigin(0, 0, 0);
             if (memory->desc().buffer_) {
                 if (!blitMgr().copyBuffer(*memory,
-                    *memory->mapMemory(), vcmd.origin(), dstOrigin,
+                    *memory->mapMemory(), vcmd.origin(), vcmd.origin(),
                     vcmd.size(), vcmd.isEntireMemory())) {
                     LogError("submitMapMemory() - copy failed");
                     vcmd.setStatus(CL_MAP_FAILURE);

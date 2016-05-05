@@ -1535,7 +1535,7 @@ Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContext, bo
 
 #ifdef _WIN32
     if (flags & amd::Context::Flags::D3D10DeviceKhr) {
-        if (!associateD3D10Device(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx]));
+        if (!associateD3D10Device(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx])) {
             LogError("Failed gslD3D10Associate()");
             return false;
         }

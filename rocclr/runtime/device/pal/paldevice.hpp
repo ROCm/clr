@@ -348,11 +348,11 @@ public:
 
     //! Attempt to bind with external graphics API's device/context
     virtual bool bindExternalDevice(
-        uint flags, void* pDevice[], void* pContext, bool validateOnly);
+        uint flags, void* const pDevice[], void* pContext, bool validateOnly);
 
     //! Attempt to unbind with external graphics API's device/context
     virtual bool unbindExternalDevice(
-        uint flags, void* pDevice[], void* pContext, bool validateOnly);
+        uint flags, void* const pDevice[], void* pContext, bool validateOnly);
 
     //! Validates kernel before execution
     virtual bool validateKernel(

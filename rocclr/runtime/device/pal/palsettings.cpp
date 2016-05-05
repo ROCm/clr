@@ -363,12 +363,12 @@ Settings::create(
 #else
     if (remoteAlloc_) {
         resourceCacheSize_ = std::max((heaps[Pal::GpuHeapGartUswc].heapSize / 8),
-            GPU_RESOURCE_CACHE_SIZE * Mi);
+            (uint64_t)GPU_RESOURCE_CACHE_SIZE * Mi);
     }
     else {
         resourceCacheSize_ = std::max(((heaps[Pal::GpuHeapLocal].heapSize +
             heaps[Pal::GpuHeapInvisible].heapSize) / 8),
-            GPU_RESOURCE_CACHE_SIZE * Mi);
+            (uint64_t)GPU_RESOURCE_CACHE_SIZE * Mi);
     }
     resourceCacheSize_ = std::min(resourceCacheSize_, 512 * Mi);
 #endif
