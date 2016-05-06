@@ -42,6 +42,10 @@
 using namespace amdcl;
 using namespace llvm;
 
+namespace llvm {
+  extern int HsailOptimizeFor;
+}
+
 //!--------------------------------------------------------------------------!//
 // JIT Memory manager
 //!--------------------------------------------------------------------------!//
@@ -614,6 +618,7 @@ llvmCodeGen(
 
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(binary->target)) {
+    llvm::HsailOptimizeFor = getIsaType(aclutGetTargetInfo(binary));
     if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_ObjectFile, true)) {
       delete Out;
       return 1;
