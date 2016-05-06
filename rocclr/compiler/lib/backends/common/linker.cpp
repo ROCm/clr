@@ -750,12 +750,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
                 || chip == "Hawaii"
                 || chip == "Carrizo"
                 || chip == "");
-  setISAVersion((chip == "Hawaii") ? 701 :
-               ((chip == "Iceland" || chip == "Tonga") ? 800 :
-               ((chip == "Carrizo") ? 801 :
-               ((chip == "Fiji" || chip == "Baffin" || chip == "Ellesmere") ? 804 :
-               ((chip == "Stoney")  ? 810 :
-               ((chip == "") ? 900 : 700))))));
+  setISAVersion(getIsaType(aclutGetTargetInfo(Elf())));
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
   std::string clp_errmsg;

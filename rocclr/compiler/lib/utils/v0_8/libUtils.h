@@ -55,6 +55,9 @@ unsigned getChipEnum(const aclTargetInfo *target);
 // get isa type name (compute capability) from the target information.
 const std::string &getIsaTypeName(const aclTargetInfo *target);
 
+// get isa type  (compute capability) from the target information.
+int getIsaType(const aclTargetInfo *target);
+
 // Create a copy of an ELF and duplicate all sections/symbols
 aclBinary*
 createELFCopy(aclBinary *src);

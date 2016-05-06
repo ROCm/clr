@@ -512,46 +512,63 @@ unsigned getChipEnum(const aclTargetInfo *target)
  */
 const std::string &getIsaTypeName(const aclTargetInfo *target)
 {
+  switch (getIsaType(target)) {
+  default:  return sgfx700;
+  case 700: return sgfx700;
+  case 701: return sgfx701;
+  case 800: return sgfx800;
+  case 801: return sgfx801;
+  case 804: return sgfx804;
+  case 810: return sgfx810;
+  case 900: return sgfx900;
+  }
+}
+
+/*! Function that returns isa type (compute capability) from
+ *the TargetMapping table for the specific target device id.
+ */
+int getIsaType(const aclTargetInfo *target)
+{
   const TargetMapping& Mapping = getTargetMapping(*target);
   switch (Mapping.family_enum) {
-    default: return sgfx700;
+    default: return 700;
     case FAMILY_KV:
       switch (Mapping.chip_enum) {
-        default: return sgfx700;
+        default: return 700;
         case KV_SPECTRE_A0:
         case KV_SPOOKY_A0:
         case KB_KALINDI_A0:
         // ???
-        case ML_GODAVARI_A0: return sgfx700;
+        case ML_GODAVARI_A0: return 700;
       }
     case FAMILY_CI:
       switch (Mapping.chip_enum) {
-        default: return sgfx700;
+        default: return 700;
         case CI_BONAIRE_M_A0:
-        case CI_BONAIRE_M_A1: return sgfx700;
-        case CI_HAWAII_P_A0: return sgfx701;
+        case CI_BONAIRE_M_A1: return 700;
+        case CI_HAWAII_P_A0: return 701;
         case CI_TIRAN_P_A0:
-        case CI_MAUI_P_A0: return sgfx700;
+        case CI_MAUI_P_A0: return 700;
       }
     case FAMILY_VI:
       switch (Mapping.chip_enum) {
-        default: return sgfx800;
+        default: return 800;
         case VI_ICELAND_M_A0:
-        case VI_TONGA_P_A0: return sgfx800;
+        case VI_TONGA_P_A0: return 800;
         case VI_ELLESMERE_P_A0:
         case VI_BAFFIN_M_A0:
-        case VI_FIJI_P_A0: return sgfx804;
+        case VI_FIJI_P_A0: return 804;
       }
     case FAMILY_CZ:
       switch (Mapping.chip_enum) {
-        default: return sgfx801;
-        case CARRIZO_A0: return sgfx801;
-        case STONEY_A0:  return sgfx810;
+        default: return 801;
+        case CARRIZO_A0: return 801;
+        case STONEY_A0:  return 810;
       }
     case FAMILY_AI:
       switch (Mapping.chip_enum) {
-        default: return sgfx900;
-        case AI_GREENLAND_P_A0: return sgfx900;
+        default: return 900;
+        case AI_GREENLAND_P_A0: return 900;
       }
   }
 }
