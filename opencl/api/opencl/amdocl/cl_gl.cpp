@@ -1754,7 +1754,6 @@ clCreateFromGLTextureAMD(
         {
         case GL_TEXTURE_BUFFER:
             glTarget    = GL_TEXTURE_BUFFER;
-            target      = 0;
             dim         = 1;
             clType      = CL_MEM_OBJECT_IMAGE1D_BUFFER;
             clGLType    = CL_GL_OBJECT_TEXTURE_BUFFER;
@@ -1763,7 +1762,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_1D:
             glTarget    = GL_TEXTURE_1D;
-            target      = 0;
             dim         = 1;
             clType      = CL_MEM_OBJECT_IMAGE1D;
             clGLType    = CL_GL_OBJECT_TEXTURE1D;
@@ -1783,7 +1781,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_1D_ARRAY:
             glTarget    = GL_TEXTURE_1D_ARRAY;
-            target      = 0;
             dim         = 2;
             clType      = CL_MEM_OBJECT_IMAGE1D_ARRAY;
             clGLType    = CL_GL_OBJECT_TEXTURE1D_ARRAY;
@@ -1791,7 +1788,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_2D:
             glTarget    = GL_TEXTURE_2D;
-            target      = 0;
             dim         = 2;
             clType      = CL_MEM_OBJECT_IMAGE2D;
             clGLType    = CL_GL_OBJECT_TEXTURE2D;
@@ -1799,7 +1795,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_2D_MULTISAMPLE:
             glTarget    = GL_TEXTURE_2D_MULTISAMPLE;
-            target      = 0;
             dim         = 2;
             clType      = CL_MEM_OBJECT_IMAGE2D;
             clGLType    = CL_GL_OBJECT_TEXTURE2D;
@@ -1807,7 +1802,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_RECTANGLE_ARB:
             glTarget    = GL_TEXTURE_RECTANGLE_ARB;
-            target      = 0;
             dim         = 2;
             clType      = CL_MEM_OBJECT_IMAGE2D;
             clGLType    = CL_GL_OBJECT_TEXTURE2D;
@@ -1815,7 +1809,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_2D_ARRAY:
             glTarget    = GL_TEXTURE_2D_ARRAY;
-            target      = 0;
             dim         = 3;
             clType      = CL_MEM_OBJECT_IMAGE2D_ARRAY;
             clGLType    = CL_GL_OBJECT_TEXTURE2D_ARRAY;
@@ -1823,7 +1816,6 @@ clCreateFromGLTextureAMD(
 
         case GL_TEXTURE_3D:
             glTarget    = GL_TEXTURE_3D;
-            target      = 0;
             dim         = 3;
             clType      = CL_MEM_OBJECT_IMAGE3D;
             clGLType    = CL_GL_OBJECT_TEXTURE3D;
@@ -1867,7 +1859,7 @@ clCreateFromGLTextureAMD(
 
             // Get GL texture format and check if it's compatible with CL format
             clearGLErrors(amdContext);
-            amdContext.glenv()->glGetTexLevelParameteriv_(glTarget, miplevel, GL_TEXTURE_INTERNAL_FORMAT,
+            amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_INTERNAL_FORMAT,
                 (GLint*) &glInternalFormat);
             if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
                 *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
@@ -1875,7 +1867,7 @@ clCreateFromGLTextureAMD(
                 return static_cast<cl_mem>(0);
             }
 
-            amdContext.glenv()->glGetTexLevelParameteriv_(glTarget, miplevel, GL_TEXTURE_SAMPLES,
+            amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_SAMPLES,
                 (GLint*) &numSamples);
             if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
                 *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
@@ -1899,7 +1891,7 @@ clCreateFromGLTextureAMD(
             switch (dim) {
             case 3:
                 clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(glTarget, miplevel, GL_TEXTURE_DEPTH, &gliTexDepth);
+                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_DEPTH, &gliTexDepth);
                 if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
                     *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
                     LogWarning("Cannot get the depth of \"miplevel\" of GL \"texure\"");
@@ -1908,7 +1900,7 @@ clCreateFromGLTextureAMD(
                 // Fall trough to process other dimensions...
             case 2:
                 clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(glTarget, miplevel, GL_TEXTURE_HEIGHT, &gliTexHeight);
+                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_HEIGHT, &gliTexHeight);
                 if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
                     *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
                     LogWarning("Cannot get the height of \"miplevel\" of GL \"texure\"");
@@ -1917,7 +1909,7 @@ clCreateFromGLTextureAMD(
                 // Fall trough to process other dimensions...
             case 1:
                 clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(glTarget, miplevel, GL_TEXTURE_WIDTH, &gliTexWidth);
+                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_WIDTH, &gliTexWidth);
                 if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
                     *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
                     LogWarning("Cannot get the width of \"miplevel\" of GL \"texure\"");
@@ -1979,6 +1971,8 @@ clCreateFromGLTextureAMD(
         // PBO and mapping will be done at "acquire" time (sync point)
 
     } // Release scoped lock
+
+    target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
 
     pImageGL = new(amdContext)
         ImageGL(amdContext, clType, clFlags, clImageFormat,
