@@ -191,13 +191,13 @@ VirtualGPU::Queue::flush()
 
     // Submit command buffer to OS
     if (Pal::Result::Success != iQueue_->Submit(
-        1, &iCmdBuffs_[cmdBufIdSlot_], 0, nullptr, iCmdFences_[cmdBufIdSlot_])) {
+        1, &iCmdBuffs_[cmdBufIdSlot_], nullptr, 0, nullptr, iCmdFences_[cmdBufIdSlot_])) {
         LogError("PAL failed to submit CMD!");
         return false;
     }
     if (GPU_FLUSH_ON_EXECUTION) {
         if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, 100.f)) {
+            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, WaitTimeoutInNsec)) {
             LogError("PAL wait for a fence failed!");
             return false;
         }
@@ -221,7 +221,7 @@ VirtualGPU::Queue::flush()
     // Make sure the slot isn't busy
     if (Pal::Result::NotReady == iCmdFences_[cmdBufIdSlot_]->GetStatus()) {
         if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, 100.f)) {
+            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, WaitTimeoutInNsec)) {
             LogError("PAL wait for a fence failed!");
             return false;
         }
@@ -275,7 +275,7 @@ VirtualGPU::Queue::waitForEvent(uint id)
     // Wait for the specified fence
     if (Pal::Result::Success != iCmdFences_[slotId]->GetStatus()) {
         if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[slotId], true, 100.f)) {
+            iDev_->WaitForFences(1, &iCmdFences_[slotId], true, WaitTimeoutInNsec)) {
             LogError("PAL wait for a fence failed!");
             return false;
         }

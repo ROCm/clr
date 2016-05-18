@@ -42,6 +42,8 @@ public:
         static const uint  MaxCommands = 512;
         static const uint  StartCmdBufIdx = 1;
         static const uint  FirstMemoryReference = 0x80000000;
+        static const uint64_t WaitTimeoutInNsec = 10000000000;
+
         static Queue* Create(
             Pal::IDevice*   palDev,     //!< PAL device object
             Pal::QueueType  queueType,  //!< PAL queue type
