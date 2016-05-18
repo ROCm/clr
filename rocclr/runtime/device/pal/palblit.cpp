@@ -23,8 +23,8 @@ inline void
 DmaBlitManager::synchronize() const
 {
     if (syncOperation_) {
-        gpu().waitAllEngines();
         gpu().releaseMemObjects();
+        gpu().waitAllEngines();
     }
 }
 
@@ -2683,6 +2683,18 @@ KernelBlitManager::runScheduler(
     synchronize();
 
     return result;
+}
+
+void
+KernelBlitManager::writeRawData(
+    device::Memory& memory,
+    size_t      size,
+    const void* data
+    ) const
+{
+    static_cast<pal::Memory&>(memory).writeRawData(gpu(), size, data, false);
+
+    synchronize();
 }
 
 amd::Memory*

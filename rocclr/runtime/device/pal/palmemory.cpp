@@ -151,14 +151,8 @@ Memory::create(
                 reinterpret_cast<Resource::ViewParams*>(params);
             // Check if parent was allocated in system memory
             if ((view->resource_->memoryType() == Resource::Pinned) ||
-                (((view->resource_->memoryType() == Resource::Remote) ||
-                  (view->resource_->memoryType() == Resource::RemoteUSWC)) &&
-                // @todo Enable unconditional optimization for remote memory
-                // Check for external allocation, to avoid the optimization
-                // for non-VM (double copy) mode
-                 (owner() != nullptr) &&
-                 ((owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) ||
-                  dev().settings().remoteAlloc_))) {
+                (view->resource_->memoryType() == Resource::Remote) ||
+                (view->resource_->memoryType() == Resource::RemoteUSWC)) {
                 // Marks memory object for direct GPU access to the host memory
                 flags_ |= HostMemoryDirectAccess;
             }
@@ -577,10 +571,6 @@ Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags)
                     image.getRowPitch(), image.getSlicePitch(), Entire);
             }
         }
-
-        //!@todo A wait isn't really necessary. However
-        //! Linux no-VM may have extra random failures.
-        wait(gpu);
 
         // Should never fail
         assert(result && "Memory synchronization failed!");

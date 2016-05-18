@@ -237,7 +237,6 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     aclType from = ACL_TYPE_DEFAULT;
     needOptionsCheck = true;
     size_t boolSize = sizeof(bool);
-    //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     // Checking llvmir in .llvmir section
     bool containsSpirv = true;
     errorCode = aclQueryInfo(dev().compiler(), binaryElf_,
@@ -375,7 +374,6 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
           return continueCompileFrom;
       }
       bool recompile = false;
-      //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
       switch (continueCompileFrom) {
       case ACL_TYPE_HSAIL_BINARY:
       case ACL_TYPE_CG:
