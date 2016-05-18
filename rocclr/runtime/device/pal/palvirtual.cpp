@@ -149,8 +149,9 @@ VirtualGPU::Queue::addCmdMemRef(Pal::IGpuMemory* iMem)
 void
 VirtualGPU::Queue::removeCmdMemRef(Pal::IGpuMemory* iMem)
 {
-    memReferences_.erase(iMem);
-    iDev_->RemoveGpuMemoryReferences(1, &iMem, iQueue_);
+    if (0 != memReferences_.erase(iMem)) {
+        iDev_->RemoveGpuMemoryReferences(1, &iMem, iQueue_);
+    }
 }
 
 uint
@@ -2264,39 +2265,32 @@ VirtualGPU::submitMarker(amd::Marker& vcmd)
 GpuEvent*
 VirtualGPU::getGpuEvent(Pal::IGpuMemory* iMem)
 {
-    GpuEvents::iterator it = gpuEvents_.find(iMem);
-    if (it == gpuEvents_.end()) {
-//        queue(MainEngine).addMemRef(iMem);
-//        queue(SdmaEngine).addMemRef(iMem);
-    }
     return &gpuEvents_[iMem];
 }
 
 void 
 VirtualGPU::assignGpuEvent(Pal::IGpuMemory* iMem, GpuEvent gpuEvent)
 { 
-    GpuEvents::iterator it = gpuEvents_.find(iMem);
+    auto it = gpuEvents_.find(iMem);
+
     if (it != gpuEvents_.end()) {
         it->second = gpuEvent;
     }
     else {
-//        queue(gpuEvent.engineId_).addMemRef(iMem);
         gpuEvents_[iMem] = gpuEvent;
     }
-//    queues_[gpuEvent.engineId_]->addCmdMemRef(iMem);
 }
 
 void
 VirtualGPU::releaseMemory(Pal::IGpuMemory* iMem, bool wait)
 {
+    auto it = gpuEvents_.find(iMem);
     //! @note if there is no wait, then it's a view release
-    if (wait) {
-        waitForEvent(&gpuEvents_[iMem]);
-        //queue(MainEngine).removeMemRef(iMem);
-        //queue(SdmaEngine).removeMemRef(iMem);
+    if (wait &&  (it != gpuEvents_.end())) {
+        waitForEvent(&it->second);
         queues_[MainEngine]->removeCmdMemRef(iMem);
         queues_[SdmaEngine]->removeCmdMemRef(iMem);
-        gpuEvents_.erase(iMem);
+        gpuEvents_.erase(it);
     }
 }
 

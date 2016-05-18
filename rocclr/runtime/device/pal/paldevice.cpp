@@ -987,8 +987,8 @@ Device::init()
     acl_error   error;
     compiler_ = aclCompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
-            LogError("Error initializing the compiler");
-            return false;
+        LogError("Error initializing the compiler");
+        return false;
     }
 
     size_t size = Pal::GetPlatformSize();
@@ -1210,7 +1210,8 @@ Device::createBuffer(
                 // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
                 // Init with 3 DWORDS for 32bit addressing and 6 DWORDS for 64bit
                 size_t pipeInit[3] = {0 , 0, owner.asPipe()->getMaxNumPackets()};
-                gpuMemory->writeRawData(*xferQueue_, sizeof(pipeInit), pipeInit, true);
+                static_cast<const KernelBlitManager&>(xferMgr()).writeRawData(
+                    *gpuMemory, sizeof(pipeInit), pipeInit);
             }
             // If memory has direct access from host, then get CPU address
             if (gpuMemory->isHostMemDirectAccess() &&

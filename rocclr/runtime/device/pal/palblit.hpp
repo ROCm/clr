@@ -371,12 +371,19 @@ public:
         bool        entire = false      //!< Entire buffer will be updated
         ) const;
 
-    //! Fills an image memory with a pattern data
-    virtual bool runScheduler(
+    //! Runs a GPU scheduler for device enqueue
+    bool runScheduler(
         device::Memory& vqueue,         //!< Memory object for virtual queue
         device::Memory& params,         //!< Extra arguments for the scheduler
         uint    paramIdx,               //!< Parameter index
         uint    threads                 //!< Number of scheduling threads
+        ) const;
+
+    //! Writes CPU raw data into GPU memory
+    void writeRawData(
+        device::Memory& memory,         //!< Memory object for data udpate
+        size_t      size,               //!< Size of raw data
+        const void* data                //!< Raw data pointer
         ) const;
 
 private:

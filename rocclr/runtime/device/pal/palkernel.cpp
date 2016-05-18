@@ -677,9 +677,8 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
         return false;
     }
 
-    //! @todo get the right value;
     // Copy wavefront size
-    workGroupInfo_.wavefrontSize_ = 64;//dev().getAttribs().wavefrontSize;
+    workGroupInfo_.wavefrontSize_ = dev().properties().gfxipProperties.shaderCore.wavefrontSize;
     // Find total workgroup size
     if (workGroupInfo_.compileSize_[0] != 0) {
         workGroupInfo_.size_ =
@@ -999,7 +998,7 @@ HSAILKernel::loadArguments(
                     break;
                 }
 
-                //! @todo 64 bit isn't supported with 32 bit binary
+                //! 64 bit isn't supported with 32 bit binary
                 uint64_t globalAddress = gpuMem->vmAddress() + gpuMem->pinOffset();
                 WriteAqlArg(&aqlArgBuf, &globalAddress, sizeof(void*));
 
