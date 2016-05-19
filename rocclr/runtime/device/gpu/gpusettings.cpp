@@ -135,9 +135,6 @@ Settings::Settings()
     // Don't support platform atomics by default.
     svmAtomics_ = false;
 
-    // Use direct SRD by default
-    hsailDirectSRD_ = GPU_DIRECT_SRD;
-
     // Use host queue for device enqueuing by default
     useDeviceQueue_ = GPU_USE_DEVICE_QUEUE;
 

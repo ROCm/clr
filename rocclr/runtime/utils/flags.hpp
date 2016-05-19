@@ -139,8 +139,6 @@ release(bool, GPU_HSAIL_ENABLE, LP64_SWITCH(LINUX_SWITCH(false,true),true),   \
         "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
-release(bool, GPU_DIRECT_SRD, false,                                          \
-        "Use indirect SRD access in HSAIL")                                   \
 release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
         "Use a dedicated device queue for the actual submissions")            \
 release(bool, GPU_ENABLE_LARGE_ALLOCATION, true,                              \

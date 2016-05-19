@@ -1178,7 +1178,9 @@ Resource::partialMemCopyTo(
         // Make sure linear pitch in bytes is 4 bytes aligned
         if (((copyRegion.gpuMemoryRowPitch % 4) != 0) ||
             // another DRM restriciton... SI has 4 pixels
-            (copyRegion.gpuMemoryOffset % 4 != 0)) {
+            (copyRegion.gpuMemoryOffset % 4 != 0) ||
+            (dev().settings().sdamPageFaultWar_ && 
+             (copyRegion.imageOffset.x % dstResource.elementSize() != 0))) {
             result = false;
         }
         else {
@@ -1204,7 +1206,9 @@ Resource::partialMemCopyTo(
         // Make sure linear pitch in bytes is 4 bytes aligned
         if (((copyRegion.gpuMemoryRowPitch % 4) != 0) ||
             // another DRM restriciton... SI has 4 pixels
-            (copyRegion.gpuMemoryOffset % 4 != 0)) {
+            (copyRegion.gpuMemoryOffset % 4 != 0) ||
+            (dev().settings().sdamPageFaultWar_ &&
+             (copyRegion.imageOffset.x % elementSize() != 0))) {
             result = false;
         }
         else {

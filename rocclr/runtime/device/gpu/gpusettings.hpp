@@ -69,10 +69,9 @@ public:
             uint    svmFineGrainSystem_: 1;     //!< SVM fine grain system support
             uint    apuSystem_: 1;      //!< Device is APU system with shared memory
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
-            uint    hsailDirectSRD_: 1; //!< Controls direct SRD for HSAIL
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
             uint    singleFpDenorm_: 1; //!< Support Single FP Denorm
-            uint    reserved_: 3;
+            uint    reserved_: 4;
         };
         uint    value_;
     };

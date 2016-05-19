@@ -3889,30 +3889,23 @@ HSAILKernel::loadArguments(
             //! \note syncCache may call DRM transfer
             image->wait(gpu, WaitOnBusyEngine);
 
-            if (dev().settings().hsailDirectSRD_) {
-                // Image arguments are of size 48 bytes and aligned to 16 bytes
-                WriteAqlArg(&aqlArgBuf, image->hwState(),
-                    HsaImageObjectSize, HsaImageObjectAlignment);
+            //! \note Special case for the image views.
+            //! Copy SRD to CB1, so blit manager will be able to release
+            //! this view without a wait for SRD resource.
+            if (image->memoryType() == Resource::ImageView) {
+                // Copy the current structre into CB1
+                memcpy(aqlStruct, image->hwState(), HsaImageObjectSize);
+                ConstBuffer* cb = gpu.constBufs_[1];
+                cb->uploadDataToHw(HsaImageObjectSize);
+                // Then use a pointer in aqlArgBuffer to CB1
+                uint64_t srd = cb->vmAddress() + cb->wrtOffset();
+                WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+                memList.push_back(cb);
             }
             else {
-                //! \note Special case for the image views.
-                //! Copy SRD to CB1, so blit manager will be able to release
-                //! this view without a wait for SRD resource.
-                if (image->memoryType() == Resource::ImageView) {
-                    // Copy the current structre into CB1
-                    memcpy(aqlStruct, image->hwState(), HsaImageObjectSize);
-                    ConstBuffer* cb = gpu.constBufs_[1];
-                    cb->uploadDataToHw(HsaImageObjectSize);
-                    // Then use a pointer in aqlArgBuffer to CB1
-                    uint64_t srd = cb->vmAddress() + cb->wrtOffset();
-                    WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-                    memList.push_back(cb);
-                }
-                else {
-                    uint64_t srd = image->hwSrd();
-                    WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-                    srdResource = true;
-                }
+                uint64_t srd = image->hwSrd();
+                WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+                srdResource = true;
             }
 
             //! @todo Compiler has to return read/write attributes
@@ -3929,15 +3922,9 @@ HSAILKernel::loadArguments(
                 *reinterpret_cast<amd::Sampler* const*>(paramaddr);
             const Sampler* gpuSampler = static_cast<Sampler*>
                     (sampler->getDeviceSampler(dev()));
-            if (dev().settings().hsailDirectSRD_) {
-                WriteAqlArg(&aqlArgBuf, gpuSampler->hwState(),
-                    HsaSamplerObjectSize, HsaSamplerObjectAlignment);
-            }
-            else {
-                uint64_t srd = gpuSampler->hwSrd();
-                WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-                srdResource = true;
-            }
+            uint64_t srd = gpuSampler->hwSrd();
+            WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+            srdResource = true;
             break;
         }
         case HSAIL_ARGTYPE_QUEUE: {

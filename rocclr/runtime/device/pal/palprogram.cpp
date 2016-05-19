@@ -844,7 +844,6 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
             assert(false);
             return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
-    assert(!program_->dev().settings().hsailDirectSRD_);
     pal::Sampler* sampler = new pal::Sampler(program_->dev());
     if (!sampler || !sampler->create(state)) {
         delete sampler;
