@@ -115,20 +115,17 @@ Settings::Settings()
     numDeviceEvents_ = 1024;
     numWaitEvents_   = 8;
 
-    // Disable HSAIL by default
-    hsail_ = false;
-
     // Don't support platform atomics by default.
     svmAtomics_ = false;
-
-    // Use direct SRD by default
-    hsailDirectSRD_ = GPU_DIRECT_SRD;
 
     // Use host queue for device enqueuing by default
     useDeviceQueue_ = GPU_USE_DEVICE_QUEUE;
 
     // Don't support Denormals for single precision by default
     singleFpDenorm_ = false;
+
+    // Disable SDMA workaround by default
+    sdamPageFaultWar_ = false;
 }
 
 bool
@@ -179,6 +176,9 @@ Settings::create(
         // Keep this false even though we have support
         // singleFpDenorm_ = true;
         viPlus_ = true;
+        // SDMA may have memory access outside of
+        // the valid buffer range and cause a page fault
+        sdamPageFaultWar_ = true;
         // Fall through to CI ...
     case Pal::AsicRevision::Kalindi:
     case Pal::AsicRevision::Spectre:
@@ -193,7 +193,6 @@ Settings::create(
     case Pal::AsicRevision::Bonaire:
     case Pal::AsicRevision::Hawaii:
         ciPlus_ = true;
-        hsail_ = true;
         threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
         reportFMAF_ = false;
         if (palProp.revision == Pal::AsicRevision::Hawaii) {
@@ -228,11 +227,10 @@ Settings::create(
         // This needs to be cleaned once 64bit addressing is stable
         if (oclVersion_ < OpenCL20) {
             use64BitPtr_ = flagIsDefault(GPU_FORCE_64BIT_PTR) ? LP64_SWITCH(false,
-                /*calAttr.isWorkstation ||*/ hsail_) : GPU_FORCE_64BIT_PTR;
+                /*calAttr.isWorkstation ||*/ true) : GPU_FORCE_64BIT_PTR;
         }
         else {
-            if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, (hsail_
-                || (oclVersion_ >= OpenCL20)))) {
+            if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, true)) {
                 use64BitPtr_    = true;
             }
         }

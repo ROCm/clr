@@ -149,19 +149,14 @@ NullDevice::create(Pal::GfxIpLevel ipLevel)
 device::Program*
 NullDevice::createProgram(amd::option::Options* options)
 {
-    device::Program* nullProgram;
-    if (settings().hsail_) {
-        nullProgram = new HSAILProgram(*this);
-    }
-    else {
-        // AMDIL path
-        ShouldNotReachHere();
-    }
-    if (nullProgram == nullptr) {
+    device::Program* program;
+    program = new HSAILProgram(*this);
+
+    if (program == nullptr) {
         LogError("Memory allocation has failed!");
     }
 
-    return nullProgram;
+    return program;
 }
 
 void NullDevice::fillDeviceInfo(
@@ -643,19 +638,26 @@ Device::create(Pal::IDevice* device)
     // Update HW info for the device
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
 
+    // Find the number of available engines
+    numComputeEngines_ =
+        properties().engineProperties[Pal::QueueTypeCompute].engineCount;
+    numDmaEngines_ =
+        properties().engineProperties[Pal::QueueTypeDma].engineCount;
+
     Pal::PalPublicSettings*const palSettings = iDev()->GetPublicSettings();
     // Modify settings here
     // palSettings ...
     palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
+
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
     if (result == Pal::Result::Success) {
         Pal::DeviceFinalizeInfo finalizeInfo = {};
 
-        // Request 2 compute engines
-        finalizeInfo.engineCounts[Pal::QueueTypeCompute] = 2;
-        // Request 2 SDMA engines
-        finalizeInfo.engineCounts[Pal::QueueTypeDma] = 2;
+        // Request all compute engines
+        finalizeInfo.engineCounts[Pal::QueueTypeCompute] = numComputeEngines_;
+        // Request all SDMA engines
+        finalizeInfo.engineCounts[Pal::QueueTypeDma] = numDmaEngines_;
 
         result = iDev()->Finalize(finalizeInfo);
     }
@@ -670,12 +672,6 @@ Device::create(Pal::IDevice* device)
         appProfile_.reportAsOCL12Device())) {
         return false;
     }
-
-    // Find the number of available engines
-    numComputeEngines_ =
-        properties().engineProperties[Pal::QueueTypeCompute].engineCount;
-    numDmaEngines_ =
-        properties().engineProperties[Pal::QueueTypeDma].engineCount;
     numComputeEngines_ = std::min(numComputeEngines_, settings().numComputeRings_);
 
     amd::Context::Info  info = {0};
@@ -816,22 +812,20 @@ Device::initializeHeapResources()
         }
 
         // Delay compilation due to brig_loader memory allocation
-        if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
-            const char* scheduler = nullptr;
-            const char* ocl20 = nullptr;
-            if (settings().oclVersion_ == OpenCL20) {
-                scheduler = SchedulerSourceCode;
-                ocl20 = "-cl-std=CL2.0";
-            }
-            blitProgram_ = new BlitProgram(context_);
-            // Create blit programs
-            if (blitProgram_ == nullptr ||
-                !blitProgram_->create(this, scheduler, ocl20)) {
-                delete blitProgram_;
-                blitProgram_ = nullptr;
-                LogError("Couldn't create blit kernels!");
-                return false;
-            }
+        const char* scheduler = nullptr;
+        const char* ocl20 = nullptr;
+        if (settings().oclVersion_ == OpenCL20) {
+            scheduler = SchedulerSourceCode;
+            ocl20 = "-cl-std=CL2.0";
+        }
+        blitProgram_ = new BlitProgram(context_);
+        // Create blit programs
+        if (blitProgram_ == nullptr ||
+            !blitProgram_->create(this, scheduler, ocl20)) {
+            delete blitProgram_;
+            blitProgram_ = nullptr;
+            LogError("Couldn't create blit kernels!");
+            return false;
         }
 
         // Create a synchronized transfer queue
@@ -900,20 +894,13 @@ Device::createVirtualDevice(
 device::Program*
 Device::createProgram(amd::option::Options* options)
 {
-    device::Program* gpuProgram;
-    if (settings().hsail_) {
-        gpuProgram = new HSAILProgram(*this);
-    }
-    else {
-        ShouldNotReachHere();
-        //AMDIL
-        //gpuProgram = new Program(*this);
-    }
-    if (gpuProgram == nullptr) {
+    device::Program* program;
+    program = new HSAILProgram(*this);
+    if (program == nullptr) {
         LogError("We failed memory allocation for program!");
     }
 
-    return gpuProgram;
+    return program;
 }
 
 //! Requested devices list as configured by the GPU_DEVICE_ORDINAL
@@ -1410,14 +1397,12 @@ bool
 Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) const
 {
     *sampler = nullptr;
-    if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
-        Sampler* gpuSampler = new Sampler(*this);
-        if ((nullptr == gpuSampler) || !gpuSampler->create(owner)) {
-            delete gpuSampler;
-            return false;
-        }
-        *sampler = gpuSampler;
+    Sampler* gpuSampler = new Sampler(*this);
+    if ((nullptr == gpuSampler) || !gpuSampler->create(owner)) {
+        delete gpuSampler;
+        return false;
     }
+    *sampler = gpuSampler;
     return true;
 }
 
