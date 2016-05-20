@@ -265,50 +265,6 @@ static std::set<std::string> *getAmdRtFunctions()
 } // namespace amd
 
 
-// Create functions that returns true or false for some features which
-// are used by the built-in library
-void amdcl::OCLLinker::createASICIDFunctions(llvm::Module* module)
-{
-  uint64_t features = aclGetChipOptions(Elf()->target);
-
-  llvm::StringRef chip(aclGetChip(Elf()->target));
-  llvm::StringRef family(aclGetFamily(Elf()->target));
-
-  createConstIntFunc("__amdil_have_hw_fma32",
-                        chip == "Cypress"
-                     || chip == "Cayman"
-                     || family == "SI"
-                     || family == "CI"
-                     || family == "KV"
-                     || family == "TN"
-                     || family == "VI"
-                     || family == "CZ"
-                     || family == "AI",
-                     module);
-  createConstIntFunc("__amdil_have_fast_fma32",
-                        chip == "Cypress"
-                     || chip == "Cayman"
-                     || chip == "Tahiti"
-                     || chip == "Hawaii"
-                     || chip == "Carrizo"
-                     || chip == "",
-                     module);
-  createConstIntFunc("__amdil_have_bitalign", !!(features & F_EG_BASE), module);
-  createConstIntFunc("__amdil_is_cypress", chip == "Cypress", module);
-  createConstIntFunc("__amdil_is_ni",
-                        chip == "Cayman"
-                     || family == "TN",
-                     module);
-  createConstIntFunc("__amdil_is_gcn",
-                        family == "SI"
-                     || family == "CI"
-                     || family == "VI"
-                     || family == "KV"
-                     || family == "CZ"
-                     || family == "AI",
-                     module);
-}
-
 bool
 amdcl::OCLLinker::linkWithModule(
     llvm::Module* Dst, llvm::Module* Src,
@@ -782,9 +738,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
   std::string ErrorMessage;
-#ifdef LEGACY_COMPLIB
-  createASICIDFunctions(LLVMBinary());
-#endif // LEGACY_COMPLIB
   // Link libraries to get every functions that are referenced.
   std::string ErrorMsg;
   if (resolveLink(LLVMBinary(), LibMs, &ErrorMsg)) {
