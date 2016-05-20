@@ -76,7 +76,6 @@ namespace amdcl
      */
       int link(llvm::Module* input, std::vector<llvm::Module*> &libs);
     protected:
-      void createASICIDFunctions(llvm::Module* module);
       bool linkLLVMModules(std::vector<llvm::Module*> &libs);
       bool linkWithModule(llvm::Module* Dst, llvm::Module* Src,
     std::map<const llvm::Value*, bool> *ModuleRefMap);
