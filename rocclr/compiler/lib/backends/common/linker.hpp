@@ -77,8 +77,7 @@ namespace amdcl
       int link(llvm::Module* input, std::vector<llvm::Module*> &libs);
     protected:
       bool linkLLVMModules(std::vector<llvm::Module*> &libs);
-      bool linkWithModule(llvm::Module* Dst, llvm::Module* Src,
-    std::map<const llvm::Value*, bool> *ModuleRefMap);
+      bool linkWithModule(llvm::Module* Dst, llvm::Module* Src);
 
 
     private:

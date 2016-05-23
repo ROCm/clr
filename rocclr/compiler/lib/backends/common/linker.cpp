@@ -266,9 +266,7 @@ static std::set<std::string> *getAmdRtFunctions()
 
 
 bool
-amdcl::OCLLinker::linkWithModule(
-    llvm::Module* Dst, llvm::Module* Src,
-    std::map<const llvm::Value*, bool> *ModuleRefMap)
+amdcl::OCLLinker::linkWithModule(llvm::Module* Dst, llvm::Module* Src)
 {
 #ifndef NDEBUG
   if (Options()->oVariables->EnableDebugLinker) {
@@ -277,7 +275,7 @@ amdcl::OCLLinker::linkWithModule(
   }
 #endif
   std::string ErrorMessage;
-  if (llvm::linkWithModule(Dst, Src, ModuleRefMap, &ErrorMessage)) {
+  if (llvm::linkWithModule(Dst, Src, &ErrorMessage)) {
     DEBUG(llvm::dbgs() << "Error: " << ErrorMessage << "\n");
     BuildLog() += "\nInternal Error: linking libraries failed!\n";
     LogError("linkWithModule(): linking bc libraries failed!");
@@ -336,7 +334,7 @@ amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
     // Link input modules together
     for (size_t i = 0; i < libs.size(); ++i) {
       DEBUG(llvm::dbgs() << "LinkWithModule " << i << ":\n");
-      if (amdcl::OCLLinker::linkWithModule(LLVMBinary(), libs[i], NULL)) {
+      if (amdcl::OCLLinker::linkWithModule(LLVMBinary(), libs[i])) {
         Failed = true;
       }
     }
@@ -724,8 +722,8 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
   if (OnFlyLib) {
-    // OnFlyLib must be the last!
-    LibMs.push_back(OnFlyLib);
+    // OnFlyLib must be the first!
+    LibMs.insert(LibMs.begin(), OnFlyLib);
   }
 
   if (Options()->oVariables->EnableBuildTiming) {
