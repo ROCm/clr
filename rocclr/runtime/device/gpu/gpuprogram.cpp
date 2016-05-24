@@ -2461,13 +2461,21 @@ void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
 hsa_status_t ORCAHSALoaderContext::SamplerCreate(
     hsa_agent_t agent,
     const hsa_ext_sampler_descriptor_t *sampler_descriptor,
-    hsa_ext_sampler_t *sampler_handle) {
+    hsa_ext_sampler_t *sampler_handle)
+{
     if (!agent.handle) {
         return HSA_STATUS_ERROR_INVALID_AGENT;
     }
     if (!sampler_descriptor || !sampler_handle) {
         return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
+
+    if (program_->isNull()) {
+        // Offline compilation. Provide a fake handle to avoid an assert
+        sampler_handle->handle = 1;
+        return HSA_STATUS_SUCCESS;
+    }
+
     uint32_t state = 0;
     switch (sampler_descriptor->coordinate_mode) {
         case HSA_EXT_SAMPLER_COORDINATE_MODE_UNNORMALIZED: state = amd::Sampler::StateNormalizedCoordsFalse; break;
