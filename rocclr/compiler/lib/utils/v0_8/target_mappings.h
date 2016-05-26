@@ -158,6 +158,15 @@ typedef enum {
   F_SI_64BIT_PTR      = F_SI_BASE|F_64BIT_PTR
 } GPUCodeGenFlags;
 
+typedef enum {
+  // Bits for each feature.
+  F_FP32_DENORMS      = 0x0001,
+  // Bitmasks for each device type.
+  F_CI_BASE           = 0,
+  F_VI_BASE           = F_CI_BASE | F_FP32_DENORMS,
+  F_AI_BASE           = F_VI_BASE
+} HSAILCodeGenFlags;
+
 static const char* GPUCodeGenFlagTable[] = {
   "fp64",
   "byte_addressable_store",
@@ -178,6 +187,10 @@ static const char* GPUCodeGenFlagTable[] = {
   "metadata30",
   "stack-uav",
   "macro-call"
+};
+
+static const char* HSAILCodeGenFlagTable[] = {
+  "fp32-denormals"
 };
 
 static const char* calTargetMapping[] = {

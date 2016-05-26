@@ -143,7 +143,8 @@ OptLevel::run(aclBinary *elf)
 
         Machine = TheTarget->createTargetMachine(TheTriple.getTriple(),
                                                  aclutGetCodegenName(elf->target),
-                                                 "", targetOptions,
+                                                 getFeatureString(elf->target, Options()),
+                                                 targetOptions,
                                                  WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
                                                  CodeModel::Default, OLvl);
       }

@@ -573,6 +573,28 @@ int getIsaType(const aclTargetInfo *target)
   }
 }
 
+std::string getFeatureString(const aclTargetInfo& target, amd::option::Options *OptionsObj)
+{
+  std::string FeatureStr;
+  if (isHSAILTarget(target)) {
+    uint64_t y = aclGetChipOptions(target);
+    FeatureStr += ((y & F_FP32_DENORMS) && !OptionsObj->oVariables->DenormsAreZero) ? '+' : '-';
+    FeatureStr += "fp32-denormals";
+
+    for (uint64_t x = 0; y != 0; y >>= 1, ++x) {
+      if ((1 << x) == F_FP32_DENORMS) {
+        continue;
+      }
+      if (!FeatureStr.empty()) {
+        FeatureStr += ',';
+      }
+      FeatureStr += ((y & 0x1) ? '+' : '-');
+      FeatureStr += HSAILCodeGenFlagTable[x];
+    }
+  }
+  return FeatureStr;
+}
+
 void
 appendLogToCL(aclCompiler *cl, const std::string &logStr)
 {
