@@ -38,7 +38,7 @@ const static uint MaxConstArguments = 8;
 //! Maximum number of supported kernel UAV arguments
 const static uint MaxUavArguments = 1024;
 //! Maximum number of pixels for a 1D image created from a buffer
-const static size_t MaxImageBufferSize = 65536;
+const static size_t MaxImageBufferSize = 1 << 27;
 //! Maximum number of pixels for a 1D image created from a buffer
 const static size_t MaxImageArraySize = 2048;
 
