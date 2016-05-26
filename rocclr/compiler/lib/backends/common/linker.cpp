@@ -563,15 +563,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
-#if defined(LEGACY_COMPLIB)
-    std::string MyErrorInfo;
-    std::string fileName = Options()->getDumpFileName("_original.bc");
-    llvm::raw_fd_ostream outs(fileName.c_str(), MyErrorInfo, llvm::raw_fd_ostream::F_Binary);
-    if (MyErrorInfo.empty())
-      WriteBitcodeToFile(LLVMBinary(), outs);
-    else
-      printf(MyErrorInfo.c_str());
-#else
     std::string fileName = Options()->getDumpFileName("_original.bc");
     std::error_code EC;
     llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
@@ -579,7 +570,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(EC.message().c_str());
-#endif
   }
 
 #ifdef HAS_SPIRV
@@ -598,89 +588,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 #endif
 
-  std::vector<llvm::Module*> LibMs;
-
-  // The AMDIL GPU libraries include 32 bit specific, 64 bit specific and common
-  // libraries. The common libraries do not have target triple. A search is
-  // performed to find the first library containing non-empty target triple
-  // and use it for translating SPIR.
-  amd::LibraryDescriptor  LibDescs[
-    amd::LibraryDescriptor::MAX_NUM_LIBRARY_DESCS];
-  int sz;
-  std::string LibTargetTriple;
-  std::string LibDataLayout;
-  if (amd::getLibDescs(Options()->libraryType_, LibDescs, sz) != 0) {
-    // FIXME: If we error here, we don't clean up, so we crash in debug build
-    // on compilerfini().
-    BuildLog() += "Internal Error: finding libraries failed!\n";
-    return 1;
-  }
-  for (int i=0; i < sz; i++) {
-#if defined(LEGACY_COMPLIB)
-    llvm::MemoryBuffer* Buffer = 0;
-    llvm::Module* Library = amd::LoadLibrary(LibDescs[i].start, LibDescs[i].size, Context(), &Buffer);
-#else
-    llvm::Module *Library = amd::LoadLibrary(LibDescs[i].start, LibDescs[i].size, Context());
-#endif
-    DEBUG(llvm::dbgs() << "Loaded library " << i << "\n");
-    if ( !Library ) {
-      BuildLog() += "Internal Error: cannot load library!\n";
-      delete LLVMBinary();
-      for (int j = 0; j < i; ++j) {
-        delete LibMs[j];
-      }
-      LibMs.clear();
-      return 1;
-#ifndef NDEBUG
-    } else {
-      if ( llvm::verifyModule( *Library ) ) {
-        BuildLog() += "Internal Error: library verification failed!\n";
-        exit(1);
-      }
-#endif
-    }
-    DEBUG_WITH_TYPE("linkTriple", llvm::dbgs() << "Library[" << i << "] " <<
-        Library->getTargetTriple() << ' ' << Library->getDataLayout() << '\n');
-    // Find the first library whose target triple is not empty.
-    if (LibTargetTriple.empty() && !Library->getTargetTriple().empty()) {
-        LibTargetTriple = Library->getTargetTriple();
-#if defined(LEGACY_COMPLIB)
-        LibDataLayout = Library->getDataLayout();
-#else
-        LibDataLayout = Library->getDataLayoutStr();
-#endif
-    }
-    LibMs.push_back(Library);
-  }
-
-  // Check consistency of target and data layout
-  assert (!LibTargetTriple.empty() && "At least one library should have triple");
-#ifndef NDEBUG
-  for (size_t i = 0, e = LibMs.size(); i < e; ++i) {
-    if (LibMs[i]->getTargetTriple().empty())
-      continue;
-    assert (LibMs[i]->getTargetTriple() == LibTargetTriple &&
-        "Library target triple should match");
-#if defined(LEGACY_COMPLIB)
-    assert (LibMs[i]->getDataLayout() == LibDataLayout &&
-        "Library data layout should match");
-#else
-    assert (LibMs[i]->getDataLayoutStr() == LibDataLayout &&
-        "Library data layout should match");
-#endif
-  }
-#endif
-
-
-  AMDSpir::replaceTrivialFunc(*LLVMBinary());
-
-  if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
-    return 1;
-
-  // Before doing anything else, quickly optimize Module
-  if (Options()->oVariables->EnableBuildTiming) {
-    time_prelinkopt = amd::Os::timeNanos();
-  }
   llvm::StringRef chip(aclGetChip(Elf()->target));
   setGPU(IsGPUTarget);
   setFiniteMathOnly(Options()->oVariables->FiniteMathOnly);
@@ -693,10 +600,8 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setFP32RoundDivideSqrt(Options()->oVariables->FP32RoundDivideSqrt);
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
-#if !defined(LEGACY_COMPLIB)
   llvm::HLC_FlushF32Denorms = Options()->oVariables->DenormsAreZero;
   llvm::HLC_Max_WG_Size = 2048; // Maximum HW supported workgroup size
-#endif
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   setHaveFastFMA32(chip == "Cypress"
                 || chip == "Cayman"
@@ -707,44 +612,111 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setISAVersion(getIsaType(aclutGetTargetInfo(Elf())));
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
-  std::string clp_errmsg;
-  llvm::Module *OnFlyLib = AMDPrelink(LLVMBinary(), clp_errmsg);
-
-  if (!clp_errmsg.empty()) {
-    delete LLVMBinary();
-    for (unsigned int i = 0; i < LibMs.size(); ++ i) {
-      delete LibMs[i];
-    }
-    LibMs.clear();
-    BuildLog() += clp_errmsg;
-    BuildLog() += "Internal Error: on-fly library generation failed\n";
+  amd::LibraryDescriptor  LibDescs[
+    amd::LibraryDescriptor::MAX_NUM_LIBRARY_DESCS];
+  int sz;
+  std::string LibTargetTriple;
+  std::string LibDataLayout;
+  if (amd::getLibDescs(Options()->libraryType_, LibDescs, sz) != 0) {
+    // FIXME: If we error here, we don't clean up, so we crash in debug build
+    // on compilerfini().
+    BuildLog() += "Internal Error: finding libraries failed!\n";
     return 1;
   }
 
-  if (OnFlyLib) {
-    // OnFlyLib must be the first!
-    LibMs.insert(LibMs.begin(), OnFlyLib);
-  }
+  AMDSpir::replaceTrivialFunc(*LLVMBinary());
 
-  if (Options()->oVariables->EnableBuildTiming) {
-    time_prelinkopt = amd::Os::timeNanos() - time_prelinkopt;
-  }
-  // Now, do linking by extracting from the builtins library only those
-  // functions that are used in the kernel(s).
-  if (Options()->oVariables->EnableBuildTiming) {
-    time_link = amd::Os::timeNanos();
-  }
+  for (int i=0; i < sz; i++) {
+    std::unique_ptr<llvm::Module> Library(
+      amd::LoadLibrary(LibDescs[i].start, LibDescs[i].size, Context()));
 
-  std::string ErrorMessage;
-  // Link libraries to get every functions that are referenced.
-  std::string ErrorMsg;
-  if (resolveLink(LLVMBinary(), LibMs, &ErrorMsg)) {
-      BuildLog() += ErrorMsg;
-      BuildLog() += "\nInternal Error: linking libraries failed!\n";
+    DEBUG(llvm::dbgs() << "Loaded library " << i << "\n");
+    if ( !Library.get() ) {
+      BuildLog() += "Internal Error: cannot load library!\n";
+      delete LLVMBinary();
       return 1;
-  }
-  LibMs.clear();
+#ifndef NDEBUG
+    } else {
+      if ( llvm::verifyModule( *Library.get() ) ) {
+        BuildLog() += "Internal Error: library verification failed!\n";
+        exit(1);
+      }
+#endif
+    }
 
+    if (LibTargetTriple.empty()) {
+      // The first member in the list of libraries is assumed to be
+      // representative of the target device.
+      LibTargetTriple = Library->getTargetTriple();
+      LibDataLayout = Library->getDataLayoutStr();
+      DEBUG_WITH_TYPE("linkTriple", llvm::dbgs() << "Library[" << i << "] " <<
+          LibTargetTriple << ' ' << LibDataLayout << '\n');
+      assert(!LibTargetTriple.empty() && !LibDataLayout.empty() &&
+            "First library should have triple and datalayout");
+
+      if (!llvm::fixupKernelModule(LLVMBinary(), LibTargetTriple, LibDataLayout))
+        return 1;
+
+      // Before doing anything else, quickly optimize Module
+      if (Options()->oVariables->EnableBuildTiming) {
+        time_prelinkopt = amd::Os::timeNanos();
+      }
+
+      std::string clp_errmsg;
+      llvm::Module *OnFlyLib = AMDPrelink(LLVMBinary(), clp_errmsg);
+
+      if (!clp_errmsg.empty()) {
+        delete LLVMBinary();
+        BuildLog() += clp_errmsg;
+        BuildLog() += "Internal Error: on-fly library generation failed\n";
+        return 1;
+      }
+
+      if (OnFlyLib) {
+        // OnFlyLib must be the first!
+        std::string ErrorMsg;
+        if (resolveLink(LLVMBinary(), OnFlyLib, &ErrorMsg)) {
+          delete OnFlyLib;
+          BuildLog() += ErrorMsg;
+          BuildLog() += "\nInternal Error: linking libraries failed!\n";
+          return 1;
+        }
+        delete OnFlyLib;
+      }
+
+      if (Options()->oVariables->EnableBuildTiming) {
+        time_prelinkopt = amd::Os::timeNanos() - time_prelinkopt;
+      }
+    }
+
+#ifndef NDEBUG
+    // Check consistency of target and data layout
+    if (!Library->getTargetTriple().empty()) {
+      assert (Library->getTargetTriple() == LibTargetTriple &&
+          "Library target triple should match");
+      assert (Library->getDataLayoutStr() == LibDataLayout &&
+          "Library data layout should match");
+    }
+#endif
+
+    // Now, do linking by extracting from the builtins library only those
+    // functions that are used in the kernel(s).
+    uint64_t tm = Options()->oVariables->EnableBuildTiming ? amd::Os::timeNanos() : 0ULL;
+
+    // Link libraries to get every functions that are referenced.
+    std::string ErrorMsg;
+    if (resolveLink(LLVMBinary(), Library.get(), &ErrorMsg)) {
+        BuildLog() += ErrorMsg;
+        BuildLog() += "\nInternal Error: linking libraries failed!\n";
+        return 1;
+    }
+
+    if (Options()->oVariables->EnableBuildTiming) {
+      time_link += amd::Os::timeNanos() - tm;
+    }
+  }
+
+  CreateOptControlFunctions(LLVMBinary());
 
   if (Options()->oVariables->EnableBuildTiming) {
     time_link = amd::Os::timeNanos() - time_link;
@@ -753,45 +725,13 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       << (amd::Os::timeNanos() - start_time)/1000ULL
           << " us\n"
           << "      prelinkopt: "  << time_prelinkopt/1000ULL << " us\n"
-          << "      link: "  << time_link/1000ULL << " us\n"
-            ;
+          << "      link: "  << time_link/1000ULL << " us\n";
     appendLogToCL(CL(), tmp_ss.str());
   }
-
-#if defined(LEGACY_COMPLIB)
-  // Disable outline macro for mem2reg=0 unless -fdebug-call
-  // is on.
-  if (!Options()->oVariables->OptMem2reg && !Options()->oVariables->DebugCall)
-    Options()->oVariables->UseMacroForCall = false;
-
-  if (isAMDILTarget(Elf()->target) &&
-      getFamilyEnum(&Elf()->target) >= FAMILY_SI &&
-      !Options()->oVariables->clInternalKernel &&
-      (Options()->oVariables->OptMem2reg ||
-      Options()->oVariables->DebugCall)) {
-    auto OV = Options()->oVariables;
-    AMDILFuncSupport::PostLinkProcForFuncSupport(
-        OV->AddUserNoInline,
-        OV->AddLibNoInline,
-        OV->InlineCostThreshold,
-        OV->InlineSizeThreshold,
-        OV->InlineKernelSizeThreshold,
-        OV->AllowMultiLevelCall && OV->UseMacroForCall,
-        LLVMBinary(), LibMs);
-  }
-#endif
 
   if (Options()->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
     std::string MyErrorInfo;
     std::string fileName = Options()->getDumpFileName("_linked.bc");
-#if defined(LEGACY_COMPLIB)
-    llvm::raw_fd_ostream outs(fileName.c_str(), MyErrorInfo, llvm::raw_fd_ostream::F_Binary);
-    // FIXME: Need to add this to the elf binary!
-    if (MyErrorInfo.empty())
-      WriteBitcodeToFile(LLVMBinary(), outs);
-    else
-      printf(MyErrorInfo.c_str());
-#else
     std::error_code EC;
     llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
     // FIXME: Need to add this to the elf binary!
@@ -799,7 +739,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       WriteBitcodeToFile(LLVMBinary(), outs);
     else
       printf(EC.message().c_str());
-#endif
   }
 
     // Check if kernels containing local arrays are called by other kernels.
