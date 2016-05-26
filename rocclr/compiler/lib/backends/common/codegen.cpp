@@ -42,10 +42,6 @@
 using namespace amdcl;
 using namespace llvm;
 
-namespace llvm {
-  extern int HsailOptimizeFor;
-}
-
 //!--------------------------------------------------------------------------!//
 // JIT Memory manager
 //!--------------------------------------------------------------------------!//
@@ -499,72 +495,33 @@ llvmCodeGen(
     TheTriple.setArch(Type);
 
   // Package up features to be passed to target/subtarget
-  std::string FeatureStr;
-  if ((Type == Triple::amdil || Type == Triple::amdil64) &&
-      targetMap[famID].chip_options) {
-    uint64_t y = targetMap[famID].chip_options;
-    for (uint64_t x = 0; y != 0; y >>= 1, ++x) {
-      if (!(y & 0x1) && (x >= 11 && x < 16)) {
-        continue;
-      }
+  std::string FeatureStr = getFeatureString(binary->target, OptionsObj);
 
-      if ((1 << x) == F_NO_ALIAS) {
-        FeatureStr += (!OptionsObj->oVariables->AssumeAlias ? '+' : '-');
-      } else if ((1 << x) == F_STACK_UAV) {
-        FeatureStr += (OptionsObj->oVariables->UseStackUAV ? '+' : '-');
-      } else if ((1 << x) == F_MACRO_CALL) {
-        FeatureStr += (OptionsObj->oVariables->UseMacroForCall ? '+' : '-');
-      } else if ((1 << x) == F_64BIT_PTR) {
-        FeatureStr += (binary->target.arch_id == aclAMDIL64) ? '+' : '-';
-      } else {
-        FeatureStr += ((y & 0x1) ? '+' : '-');
-      }
+  llvm::TargetOptions targetOptions;
+  targetOptions.NoFramePointerElim = false;
+  targetOptions.StackAlignmentOverride =
+    OptionsObj->oVariables->CPUStackAlignment;
+  // jgolds
+  //targetOptions.EnableEBB = (optimize && OptionsObj->oVariables->CGEBB);
+  //targetOptions.EnableBFO = OptionsObj->oVariables->CGBFO;
+  //targetOptions.NoExcessFPPrecision = !OptionsObj->oVariables->EnableFMA;
 
-      FeatureStr += GPUCodeGenFlagTable[x];
-      if (y != 0x1) {
-        FeatureStr += ',';
-      }
-    }
-  }
+  // Don't allow unsafe optimizations for CPU because the library
+  // contains code that is not safe.  See bug 9567.
+  if (isGPU)
+      targetOptions.UnsafeFPMath = OptionsObj->oVariables->UnsafeMathOpt;
+  targetOptions.LessPreciseFPMADOption = OptionsObj->oVariables->MadEnable ||
+                                         OptionsObj->oVariables->EnableMAD;
+  targetOptions.NoInfsFPMath = OptionsObj->oVariables->FiniteMathOnly;
+  // Need to add a support for OptionsObj->oVariables->NoSignedZeros,
+  targetOptions.NoNaNsFPMath = OptionsObj->oVariables->FiniteMathOnly;
 
-  if (Type == Triple::amdil64) {
-      if (OptionsObj->oVariables->SmallGlobalObjects)
-          FeatureStr += ",+small-global-objects";
-  }
-
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 1463
-    llvm::TargetOptions targetOptions;
-    targetOptions.NoFramePointerElim = false;
-    targetOptions.StackAlignmentOverride =
-      OptionsObj->oVariables->CPUStackAlignment;
-    // jgolds
-    //targetOptions.EnableEBB = (optimize && OptionsObj->oVariables->CGEBB);
-    //targetOptions.EnableBFO = OptionsObj->oVariables->CGBFO;
-    //targetOptions.NoExcessFPPrecision = !OptionsObj->oVariables->EnableFMA;
-
-    // Don't allow unsafe optimizations for CPU because the library
-    // contains code that is not safe.  See bug 9567.
-    if (isGPU)
-        targetOptions.UnsafeFPMath = OptionsObj->oVariables->UnsafeMathOpt;
-    targetOptions.LessPreciseFPMADOption = OptionsObj->oVariables->MadEnable ||
-                                           OptionsObj->oVariables->EnableMAD;
-    targetOptions.NoInfsFPMath = OptionsObj->oVariables->FiniteMathOnly;
-    // Need to add a support for OptionsObj->oVariables->NoSignedZeros,
-    targetOptions.NoNaNsFPMath = OptionsObj->oVariables->FiniteMathOnly;
-
-    std::auto_ptr<TargetMachine>
-        target(TheTarget->createTargetMachine(TheTriple.getTriple(),
-	       aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
-        WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
-        CodeModel::Default, OLvl));
-#else
   std::auto_ptr<TargetMachine>
-  target(TheTarget->createTargetMachine(TheTriple.getTriple(),
-        aclutGetCodegenName(binary->target), FeatureStr,
-        WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
-        CodeModel::Default));
+      target(TheTarget->createTargetMachine(TheTriple.getTriple(),
+         aclutGetCodegenName(binary->target), FeatureStr, targetOptions,
+      WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
+      CodeModel::Default, OLvl));
   assert(target.get() && "Could not allocate target machine!");
-#endif
 
   // MCJIT(Jan)
   if(!isGPU && OptionsObj->oVariables->UseJIT) {
@@ -618,7 +575,6 @@ llvmCodeGen(
 
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(binary->target)) {
-    llvm::HsailOptimizeFor = getIsaType(aclutGetTargetInfo(binary));
     if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_ObjectFile, true)) {
       delete Out;
       return 1;

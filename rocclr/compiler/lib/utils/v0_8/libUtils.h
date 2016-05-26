@@ -11,6 +11,7 @@
 #include <cassert>
 #include "library.hpp"
 #include "utils/bif_section_labels.hpp"
+#include "utils/options.hpp"
 using namespace bif;
 
 // Utility function to set a flag in option structure
@@ -57,6 +58,9 @@ const std::string &getIsaTypeName(const aclTargetInfo *target);
 
 // get isa type  (compute capability) from the target information.
 int getIsaType(const aclTargetInfo *target);
+
+// get Feature String for target.
+std::string getFeatureString(const aclTargetInfo& target, amd::option::Options *OptionsObj);
 
 // Create a copy of an ELF and duplicate all sections/symbols
 aclBinary*
