@@ -120,6 +120,7 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.isSVMFineGrainSystem = m_adp->pAsicInfo->svmFineGrainSystem;
     m_attribs.isWDDM2Enabled = m_adp->pAsicInfo->vaAvailable && m_adp->pAsicInfo->bNoVATranslation;
     m_attribs.maxRTCUs = cs->getMaxRTCUs();
+    m_attribs.asicRevision = cs->getChipRev();
 }
 
 bool

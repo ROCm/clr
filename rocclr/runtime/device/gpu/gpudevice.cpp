@@ -17,6 +17,7 @@
 #include "device/gpu/gpubinary.hpp"
 #include "device/gpu/gpusettings.hpp"
 #include "device/gpu/gpublit.hpp"
+#include "cz_id.h"
 
 #include "acl.h"
 
@@ -455,7 +456,14 @@ NullDevice::fillDeviceInfo(
 
     info_.platform_ = AMD_PLATFORM;
 
-    ::strcpy(info_.name_, hwInfo()->targetName_);
+    if ((calTarget() == CAL_TARGET_CARRIZO) &&
+        ASICREV_IS_CARRIZO_BRISTOL(calAttr.asicRevision)) {
+        const static char* bristol = "Bristol Ridge";
+        ::strcpy(info_.name_, bristol);
+    }
+    else {
+        ::strcpy(info_.name_, hwInfo()->targetName_);
+    }
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
          AMD_BUILD_STRING "%s", " (VM)");
