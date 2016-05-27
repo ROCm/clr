@@ -122,12 +122,6 @@
 #endif
 #define DEBUG_TYPE "ocl_linker"
 
-#if !defined(LEGACY_COMPLIB)
-namespace llvm {
-  extern unsigned HLC_Max_WG_Size;
-}
-#endif
-
 namespace AMDSpir {
   extern void replaceTrivialFunc(llvm::Module& M);
 }
@@ -599,7 +593,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   setFP32RoundDivideSqrt(Options()->oVariables->FP32RoundDivideSqrt);
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
-  llvm::HLC_Max_WG_Size = 2048; // Maximum HW supported workgroup size
   setUniformWorkGroupSize(Options()->oVariables->UniformWorkGroupSize);
   setHaveFastFMA32(chip == "Cypress"
                 || chip == "Cayman"
