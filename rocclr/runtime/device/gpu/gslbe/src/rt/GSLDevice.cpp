@@ -1210,7 +1210,8 @@ CALGSLDevice::GetCopyType(
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
-                (srcOffset[0] % 4 == 0))
+                (srcOffset[0] % 4 == 0) &&
+                (destOffset[0] % 4 == 0))
             {
                 // The sDMA T2L cases we need to avoid are when the tiled_x
                 // is not a multiple of BytesPerPixel.
@@ -1231,7 +1232,8 @@ CALGSLDevice::GetCopyType(
             // Make sure linear pitch in bytes is 4 bytes aligned
             if (((linearBytePitch % 4) == 0) &&
                 // another DRM restriciton... SI has 4 pixels
-                (destOffset[0] % 4 == 0))
+                (destOffset[0] % 4 == 0) &&
+                (srcOffset[0] % 4 == 0))
             {
                 // The sDMA L2T cases we need to avoid are when the tiled_x
                 // is not a multiple of BytesPerPixel.
