@@ -34,7 +34,7 @@ HSAILProgram::compileImpl(
         arch += "64";
     }
     target = aclGetTargetInfo(arch.c_str(),
-        dev().info().name_, &errorCode);
+        dev().hwInfo()->targetName_, &errorCode);
 
     // end if asic info is ready
     // We dump the source code for each program (param: headers)
