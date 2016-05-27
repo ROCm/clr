@@ -610,7 +610,8 @@ OCLLinkPhase(
   }
   const char* argv[] = { "",
     "-loop-unswitch-threshold=0",
-    "-binomial-coefficient-limit-bitwidth=64"
+    "-binomial-coefficient-limit-bitwidth=64",
+    "-hsail-max-wg-size=2048"
   };
 
   aclLink->setContext(ctx);
