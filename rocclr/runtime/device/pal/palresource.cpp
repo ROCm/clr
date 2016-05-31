@@ -697,21 +697,30 @@ Resource::create(MemoryType memType, CreateParams* params)
 
     if (!desc_.buffer_) {
         if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
-            Pal::GpuMemoryCreateInfo createInfo = {};
-            createInfo.size = desc().width_ * elementSize();
-            // @todo 64K alignment is too big
-            createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-            createInfo.alignment = MaxGpuAlignment;
-            createInfo.vaRange = Pal::VaRange::Default;
-            createInfo.priority  = Pal::GpuMemPriority::Normal;
-            memTypeToHeap(&createInfo);
-            // createInfo.priority;
-            memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
-            if (nullptr == memRef_) {
-                memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+            if (memoryType() == ImageBuffer) {
+                ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
+                viewOwner_ = imageBuffer->resource_;
+                memRef_ = viewOwner_->memRef_;
+                memRef_->retain();
+                desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+            }
+            else {
+                Pal::GpuMemoryCreateInfo createInfo = {};
+                createInfo.size = desc().width_ * elementSize();
+                // @todo 64K alignment is too big
+                createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
+                createInfo.alignment = MaxGpuAlignment;
+                createInfo.vaRange = Pal::VaRange::Default;
+                createInfo.priority  = Pal::GpuMemPriority::Normal;
+                memTypeToHeap(&createInfo);
+                // createInfo.priority;
+                memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
                 if (nullptr == memRef_) {
-                    LogError("Failed PAL memory allocation!");
-                    return false;
+                    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+                    if (nullptr == memRef_) {
+                        LogError("Failed PAL memory allocation!");
+                        return false;
+                    }
                 }
             }
             Pal::BufferViewInfo viewInfo = {};
@@ -719,6 +728,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             viewInfo.range = memRef_->iMem()->Desc().size;
             viewInfo.stride = elementSize();
             viewInfo.format = format;
+            //viewInfo.channels = channels;
             hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
             if ((0 == hwSrd_) && (memoryType() != ImageView)) {
                 return false;
@@ -782,7 +792,8 @@ Resource::create(MemoryType memType, CreateParams* params)
             (elementSize() != viewOwner_->elementSize())) {
             imgCreateInfo.flags.formatChangeSrd = true;
             imgCreateInfo.usageFlags.shaderRead = true;
-            imgCreateInfo.usageFlags.shaderWrite = true;
+            imgCreateInfo.usageFlags.shaderWrite =
+                (format.numFmt == Pal::NumFmt::Srgb) ? false : true;
             imgCreateInfo.format = format;
             imgCreateInfo.mipLevels     = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
             imgCreateInfo.samples   = 1;
