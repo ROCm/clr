@@ -367,9 +367,10 @@ void NullDevice::fillDeviceInfo(
     info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation&(0xFF<<8))>>8;
     info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation&(0x1F<<3))>>3;
     info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation&0x07);
-
-    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
 */
+    ::strncpy(info_.boardName_, palProp.gpuName,
+        ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
+
     // OpenCL1.2 device info fields
     info_.builtInKernels_ = "";
     info_.imageMaxBufferSize_ = MaxImageBufferSize;
