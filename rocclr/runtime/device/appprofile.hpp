@@ -4,48 +4,10 @@
 #ifndef APPPROFILE_HPP_
 #define APPPROFILE_HPP_
 
-#include "adl.h"
-
 #include <map>
 #include <string>
 
 namespace amd {
-
-class ADL {
-public:
-    ADL();
-    ~ADL();
-
-    bool init();
-
-    void* adlHandle() const { return adlHandle_; };
-    ADL_CONTEXT_HANDLE adlContext() const { return adlContext_; }
-
-    typedef int (*Adl2MainControlCreate)(ADL_MAIN_MALLOC_CALLBACK callback,
-                                            int iEnumConnectedAdapters,
-                                            ADL_CONTEXT_HANDLE* context);
-    typedef int (*Adl2MainControlDestroy)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ConsoleModeFileDescriptorSet)(ADL_CONTEXT_HANDLE context, int fileDescriptor);
-    typedef int (*Adl2MainControlRefresh)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ApplicationProfilesSystemReload)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ApplicationProfilesProfileOfApplicationx2Search)(ADL_CONTEXT_HANDLE context,
-                                                                              const wchar_t* fileName,
-                                                                              const wchar_t* path,
-                                                                              const wchar_t* version,
-                                                                              const wchar_t* appProfileArea,
-                                                                              ADLApplicationProfile** lppProfile);
-
-    Adl2MainControlCreate adl2MainControlCreate;
-    Adl2MainControlDestroy adl2MainControlDestroy;
-    Adl2ConsoleModeFileDescriptorSet adl2ConsoleModeFileDescriptorSet;
-    Adl2MainControlRefresh adl2MainControlRefresh;
-    Adl2ApplicationProfilesSystemReload adl2ApplicationProfilesSystemReload;
-    Adl2ApplicationProfilesProfileOfApplicationx2Search adl2ApplicationProfilesProfileOfApplicationx2Search;
-
-private:
-    void* adlHandle_;
-    ADL_CONTEXT_HANDLE adlContext_;
-};
 
 class AppProfile {
 public:
