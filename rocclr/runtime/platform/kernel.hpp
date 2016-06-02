@@ -83,13 +83,11 @@ private:
     std::vector<void*>  execSvmPtr_; //!< The non argument svm pointers for kernel
     FGSStatus svmSystemPointersSupport_; //!< The flag for the status of the kernel
                                          //   support of fine-grain system sharing.
-    bool execNewVcop_;      //!< special new VCOP for kernel execution
 public:
 
     //! Construct a new instance of parameters for the given signature.
     KernelParameters(const KernelSignature& signature) :
-        signature_(signature), validated_(false), execInfoOffset_(0), svmSystemPointersSupport_(FGS_DEFAULT),
-        execNewVcop_(false)
+        signature_(signature), validated_(false), execInfoOffset_(0), svmSystemPointersSupport_(FGS_DEFAULT)
     {
         values_    = (address) this + alignUp(sizeof(KernelParameters), 16);
         defined_   = (bool*) (values_ + signature.paramsSize());
@@ -168,13 +166,6 @@ public:
 
     //! return the status of kernel support fine-grained SVM system pointer sharing
     FGSStatus getSvmSystemPointersSupport() const { return svmSystemPointersSupport_; }
-
-    //! set the new VCOP in the execInfo container
-    void setExecNewVcop(const bool newVcop) { execNewVcop_ = newVcop; }
-
-    //! get the new VCOP in the execInfo container
-    bool getExecNewVcop() const { return execNewVcop_; }
-
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values
