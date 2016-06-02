@@ -6,7 +6,12 @@
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 #include "appprofile.hpp"
+#include "adl.h"
 #include <cstdlib>
+
+#ifdef BRAHMA
+extern int SearchProfileOfAnApplication(const wchar_t* fileName, ADLApplicationProfile ** lppProfile);
+#endif //BRAHMA
 
 static void* __stdcall adlMallocCallback(int n)
 {
@@ -16,6 +21,44 @@ static void* __stdcall adlMallocCallback(int n)
 #define GETPROCADDRESS(_adltype_, _adlfunc_) (_adltype_)amd::Os::getSymbol(adlHandle_, #_adlfunc_);
 
 namespace amd {
+
+#ifndef BRAHMA
+
+class ADL {
+public:
+    ADL();
+    ~ADL();
+
+    bool init();
+
+    void* adlHandle() const { return adlHandle_; };
+    ADL_CONTEXT_HANDLE adlContext() const { return adlContext_; }
+
+    typedef int (*Adl2MainControlCreate)(ADL_MAIN_MALLOC_CALLBACK callback,
+                                            int iEnumConnectedAdapters,
+                                            ADL_CONTEXT_HANDLE* context);
+    typedef int (*Adl2MainControlDestroy)(ADL_CONTEXT_HANDLE context);
+    typedef int (*Adl2ConsoleModeFileDescriptorSet)(ADL_CONTEXT_HANDLE context, int fileDescriptor);
+    typedef int (*Adl2MainControlRefresh)(ADL_CONTEXT_HANDLE context);
+    typedef int (*Adl2ApplicationProfilesSystemReload)(ADL_CONTEXT_HANDLE context);
+    typedef int (*Adl2ApplicationProfilesProfileOfApplicationx2Search)(ADL_CONTEXT_HANDLE context,
+                                                                              const wchar_t* fileName,
+                                                                              const wchar_t* path,
+                                                                              const wchar_t* version,
+                                                                              const wchar_t* appProfileArea,
+                                                                              ADLApplicationProfile** lppProfile);
+
+    Adl2MainControlCreate adl2MainControlCreate;
+    Adl2MainControlDestroy adl2MainControlDestroy;
+    Adl2ConsoleModeFileDescriptorSet adl2ConsoleModeFileDescriptorSet;
+    Adl2MainControlRefresh adl2MainControlRefresh;
+    Adl2ApplicationProfilesSystemReload adl2ApplicationProfilesSystemReload;
+    Adl2ApplicationProfilesProfileOfApplicationx2Search adl2ApplicationProfilesProfileOfApplicationx2Search;
+
+private:
+    void* adlHandle_;
+    ADL_CONTEXT_HANDLE adlContext_;
+};
 
 ADL::ADL() : adlHandle_(NULL),
                adlContext_(NULL)
@@ -86,6 +129,8 @@ bool ADL::init()
     return true;
 }
 
+#endif //BRAHMA
+
 AppProfile::AppProfile(): hsaDeviceHint_(0),
                           gpuvmHighAddr_(false),
                           noHsaInit_(false),
@@ -151,6 +196,9 @@ cl_device_type AppProfile::ApplyHsaDeviceHintFlag(const cl_device_type& type)
 
 bool AppProfile::ParseApplicationProfile()
 {
+    ADLApplicationProfile* pProfile = NULL;
+
+#ifndef BRAHMA
     amd::ADL* adl = new amd::ADL;
 
     if ((adl == NULL) || !adl->init()) {
@@ -158,14 +206,20 @@ bool AppProfile::ParseApplicationProfile()
         return false;
     }
 
-    ADLApplicationProfile* pProfile = NULL;
-
     // Apply blb configurations
     int result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(
         adl->adlContext(), wsAppFileName_.c_str(), NULL, NULL,
         L"OCL", &pProfile);
 
     delete adl;
+
+#else //BRAHMA
+
+    if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
+        return false;
+    }
+
+#endif //BRAHMA
 
     if (pProfile == NULL) {
         return false;
@@ -199,8 +253,8 @@ bool AppProfile::ParseApplicationProfile()
         case DataType_String: {
             assert((size_t)(profileProperty->iDataSize) < sizeof(wbuffer) - 2 &&
                 "app profile string too long");
+            memset(wbuffer, 0, sizeof(wbuffer));
             memcpy(wbuffer, profileProperty->uData, profileProperty->iDataSize);
-            wbuffer[profileProperty->iDataSize / 2] = L'\0';
             size_t len = wcstombs(buffer, wbuffer, sizeof(buffer));
             assert(len < sizeof(buffer) - 1 && "app profile string too long");
             *(reinterpret_cast<std::string*>(entry->second.data_)) = buffer;
