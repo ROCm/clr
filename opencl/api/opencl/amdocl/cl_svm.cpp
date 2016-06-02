@@ -1041,53 +1041,63 @@ RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (
         return CL_INVALID_KERNEL;
     }
 
-    if (param_name != CL_KERNEL_EXEC_INFO_SVM_PTRS &&
-            param_name != CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM) {
-        return CL_INVALID_VALUE;
-    }
-
     if (param_value == NULL) {
         return CL_INVALID_VALUE;
     }
 
     const amd::Kernel* amdKernel = as_amd(kernel);
 
-    if (param_name == CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM) {
+    switch (param_name) {
+    case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM:
         if (param_value_size != sizeof(cl_bool)) {
             return CL_INVALID_VALUE;
         }
-
-        const bool flag = *(static_cast<const bool*>(param_value));
-        const amd::Context* amdContext = &amdKernel->program().context();
-        bool foundFineGrainedSystemDevice = false;
-        const std::vector<amd::Device*>& devices = amdContext->devices();
-        std::vector<amd::Device*>::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          if ((*it)->info().svmCapabilities_ &
-                  CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
-              foundFineGrainedSystemDevice = true;
-              break;
-          }
+        else {
+            const bool flag = *(static_cast<const bool*>(param_value));
+            const amd::Context* amdContext = &amdKernel->program().context();
+            bool foundFineGrainedSystemDevice = false;
+            const std::vector<amd::Device*>& devices = amdContext->devices();
+            std::vector<amd::Device*>::const_iterator it;
+            for (it = devices.begin(); it != devices.end(); ++it) {
+              if ((*it)->info().svmCapabilities_ &
+                      CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
+                  foundFineGrainedSystemDevice = true;
+                  break;
+              }
+            }
+            if (flag && !foundFineGrainedSystemDevice) {
+                return CL_INVALID_OPERATION;
+            }
+            amdKernel->parameters().setSvmSystemPointersSupport(flag ? FGS_YES : FGS_NO);
         }
-        if (flag && !foundFineGrainedSystemDevice) {
-            return CL_INVALID_OPERATION;
-        }
-        amdKernel->parameters().setSvmSystemPointersSupport(flag ? FGS_YES : FGS_NO);
-    }
-    else {
+        break;
+    case CL_KERNEL_EXEC_INFO_SVM_PTRS:
         if (param_value_size == 0 || !amd::isMultipleOf(param_value_size,
-                                                        sizeof(void*))) {
+                                                            sizeof(void*))) {
             return CL_INVALID_VALUE;
         }
-
-        size_t count = param_value_size/sizeof(void*);
-        void* const* execInfoArray = reinterpret_cast<void* const*>(param_value);
-        for (size_t i = 0; i < count; i++) {
-            if (NULL == execInfoArray[i]) {
-                return CL_INVALID_VALUE;
+        else {
+            size_t count = param_value_size/sizeof(void*);
+            void* const* execInfoArray = reinterpret_cast<void* const*>(param_value);
+            for (size_t i = 0; i < count; i++) {
+                if (NULL == execInfoArray[i]) {
+                    return CL_INVALID_VALUE;
+                }
             }
+            amdKernel->parameters().addSvmPtr(execInfoArray, count);
         }
-        amdKernel->parameters().addSvmPtr(execInfoArray, count);
+        break;
+    case CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD:
+        if (param_value_size != sizeof(cl_bool)) {
+            return CL_INVALID_VALUE;
+        }
+        else {
+            const bool newVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true: false;
+            amdKernel->parameters().setExecNewVcop(newVcopFlag);
+        }
+        break;
+    default:
+        return CL_INVALID_VALUE;
     }
 
     return CL_SUCCESS;
