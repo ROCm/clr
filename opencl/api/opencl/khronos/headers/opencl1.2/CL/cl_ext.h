@@ -266,9 +266,6 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
 **************************/
 #define CL_QUEUE_THREAD_HANDLE_AMD                  0x403E
 
-/*   cl_kernel_exec_info for DVR DOPP texture support   */
-#define CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD            0x4120
-
 /***************************************
 * cl-gl depth buffer interop extension *
 ****************************************/
