@@ -215,9 +215,10 @@ bool AppProfile::ParseApplicationProfile()
 
 #else //BRAHMA
 
-    if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
-        return false;
-    }
+    return false; // to fix TC OpenCL Brahma build for now.
+    //if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
+    //    return false;
+    //}
 
 #endif //BRAHMA
 
