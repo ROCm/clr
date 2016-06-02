@@ -1567,7 +1567,7 @@ Kernel::loadParameters(
 }
 
 bool
-Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDoppCmd) const
+Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun) const
 {
     const VirtualGPU::CalVirtualDesc* dispatch = gpu.cal();
 
@@ -1576,7 +1576,7 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDoppCmd)
 
     gpu.eventBegin(MainEngine);
     gpu.rs()->Dispatch(gpu.cs(), &dispatch->gridBlock, &dispatch->partialGridBlock,
-        &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_, lastDoppCmd);
+        &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_);
     gpu.eventEnd(MainEngine, *calEvent);
 
     // Unbind all resources
@@ -1888,12 +1888,6 @@ Kernel::setArgument(
             if (gpuMem->owner() != NULL) {
                 copyImageConstants(gpuMem->owner()->asImage(),
                     reinterpret_cast<ImageConstants*>(memory + arg->cbPos_));
-            }
-
-            // Handle DOPP texture resource
-            gslMemObject gslMem = gpuMem->gslResource();
-            if (gslMem->getAttribs().isDOPPDesktopTexture) {
-                gpu.addVmMemory(gpuMem);
             }
         }
         break;
@@ -3464,7 +3458,7 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
 
     // Copy wavefront size
     workGroupInfo_.wavefrontSize_ = prog().isNull() ? 64 : dev().getAttribs().wavefrontSize;
-
+    
     // Find total workgroup size
     if (workGroupInfo_.compileSize_[0] != 0) {
         workGroupInfo_.size_ =
