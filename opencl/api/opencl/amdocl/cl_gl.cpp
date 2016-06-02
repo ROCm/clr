@@ -24,6 +24,10 @@
 
 #include "device/device.hpp"
 
+/* The pixel internal format for DOPP texture defined in gl_enum.h */
+#define GL_BGR8_ATI         0x8083
+#define GL_BGRA8_ATI        0x8088
+
 #include <cstring>
 #include <vector>
 
@@ -1085,6 +1089,14 @@ CL_FLOAT
 
     switch(gliInternalFormat)
     {
+    case GL_BGR8_ATI:
+    case GL_BGRA8_ATI:
+        pclImageFormat->image_channel_order = CL_BGRA;
+        pclImageFormat->image_channel_data_type = CL_UNORM_INT8;//CL_UNSIGNED_INT8;
+        *piBytesPerPixel = 4;
+        bRetVal = true;
+        break;
+
     case GL_ALPHA8:
         pclImageFormat->image_channel_order = CL_A;
         pclImageFormat->image_channel_data_type = CL_UNORM_INT8;//CL_UNSIGNED_INT8;
