@@ -472,7 +472,7 @@ VirtualGPU::create(bool profiling, uint rtCUs, uint  deviceQueueSize,
                 }
                 //!@todo This is not a generic solution and
                 // may have issues with > 8 queues
-                idx = index() % (dev().engines().numComputeRings() + 
+                idx = index() % (dev().engines().numComputeRings() +
                         dev().engines().numComputeRingsRT());
             }
             // hwRing_ should be set 0 if forced to have single scratch buffer
@@ -1839,11 +1839,23 @@ VirtualGPU::submitKernelInternalHSA(
             pKernelInfo = &kernelInfo;
         }
 
+        // Set up the dispatch information
+        KernelDispatchInfo dispatchInfo;
+        dispatchInfo.aqlPacket = aqlPkt;
+        dispatchInfo.mems = vmMems();
+        dispatchInfo.numMems = cal_.memCount_;
+        dispatchInfo.scratch = scratch;
+        dispatchInfo.scratchOffset = scratchOffset;
+        dispatchInfo.cpuAqlCode = hsaKernel.cpuAqlCode();
+        dispatchInfo.hsaQueueVA = hsaQueueMem_->vmAddress();
+        dispatchInfo.kernelInfo = pKernelInfo;
+        dispatchInfo.wavesPerSH = hsaKernel.getWavesPerSH(this);
+        dispatchInfo.lastDoppSubmission = kernel.parameters().getExecNewVcop();
+
         GpuEvent    gpuEvent;
         // Run AQL dispatch in HW
         eventBegin(MainEngine);
-        cs()->AqlDispatch(aqlPkt, vmMems(), cal_.memCount_, scratch, scratchOffset,
-            hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), pKernelInfo, hsaKernel.getWavesPerSH(this));
+        cs()->AqlDispatch(&dispatchInfo);
         eventEnd(MainEngine, gpuEvent);
 
         if (dbgManager && (NULL != dbgManager->postDispatchCallBackFunc())) {
@@ -2143,7 +2155,7 @@ VirtualGPU::submitKernelInternal(
             }
 
             // Execute the kernel
-            if (gpuKernel.run(*this, &gpuEvent, lastRun)) {
+            if (gpuKernel.run(*this, &gpuEvent, lastRun, kernel.parameters().getExecNewVcop())) {
                 //! @todo A flush is necessary to make sure
                 // that 2 consecutive runs won't access to the same
                 // private/local memory. CAL has to generate cache flush
