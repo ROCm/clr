@@ -620,7 +620,8 @@ public:
     bool run(
         VirtualGPU& gpu,        //!< virtual GPU device object
         GpuEvent*   gpuEvent,   //!< Pointer to the GPU event
-        bool        lastRun     //!< Last run in the split execution
+        bool        lastRun,    //!< Last run in the split execution
+        bool        lastDoppCmd //!< info for kernel dispatch
         ) const;
 
     //! Help function to debug the kernel output
