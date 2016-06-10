@@ -134,9 +134,6 @@ private:
     // file name
     const char* _fname;
 
-    // Is the _fname temporary ?
-    bool       _isTempFile;
-
     // pointer to libelf structure
     ::Elf*     _e;
 

@@ -1024,7 +1024,7 @@ _libelf_update_elf(Elf *e, off_t newsize, struct _Elf_Extent_List *extents)
     // memory and has a raw file and one that is based on a file
     // descriptor and does not have a raw_file. Both are equally
     // valid, so we don't special case here.
-	assert(e->e_cmd == ELF_C_RDWR || (e->e_cmd == ELF_C_WRITE && e->e_fd >= 0));
+	assert(e->e_cmd == ELF_C_RDWR || (e->e_cmd == ELF_C_WRITE && e->e_fd != -1));
 
 	if ((newfile = e->e_mem.alloc((size_t) newsize)) == NULL) {
 		LIBELF_SET_ERROR(RESOURCE, errno);
@@ -1077,7 +1077,7 @@ _libelf_update_elf(Elf *e, off_t newsize, struct _Elf_Extent_List *extents)
 	 * For regular files, throw away existing file content and
 	 * unmap any existing mappings.
 	 */
-	if ((e->e_flags & LIBELF_F_SPECIAL_FILE) == 0 && e->e_fd >= 0) {
+	if ((e->e_flags & LIBELF_F_SPECIAL_FILE) == 0 && e->e_fd != -1) {
 #if !defined(WIN32)
 #define FTRUNC(A, B) ftruncate(A, (off_t)B)
 #else
@@ -1101,7 +1101,7 @@ _libelf_update_elf(Elf *e, off_t newsize, struct _Elf_Extent_List *extents)
 	/*
 	 * Write out the new contents.
 	 */
-	if (e->e_fd >= 0 && write(e->e_fd, newfile, (size_t) newsize) != newsize) {
+	if (e->e_fd != -1 && write(e->e_fd, newfile, (size_t) newsize) != newsize) {
 		LIBELF_SET_ERROR(IO, errno);
 		goto error;
 	}
@@ -1246,7 +1246,7 @@ elf_update(Elf *e, Elf_Cmd c)
 	if (c == ELF_C_NULL)
 		goto done;
 
-	if (c == ELF_C_WRITE && e->e_fd < 0) {
+	if (c == ELF_C_WRITE && e->e_fd == -1) {
 		rc = (off_t) -1;
 		LIBELF_SET_ERROR(SEQUENCE, 0);
 		goto done;

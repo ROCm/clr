@@ -216,3 +216,48 @@ typedef struct {
 	u_int32_t	gh_shift2;	/* Bloom filter shift count. */
 } Elf_GNU_Hash_Header;
 #endif
+
+#if defined(USE_MEMFILE)
+#include "memfile.h"
+
+#if !defined(read)
+#define read(f, b, l)     mem_read((f), (b), (l))
+#endif
+
+#if !defined(write)
+#define write(f, b, l)    mem_write((f), (b), (l))
+#endif
+
+#if !defined(lseek)
+#define lseek(f, l, w)    mem_lseek((f), (l), (w))
+#endif
+
+#if !defined(fstat)
+#define fstat(f, b)       mem_fstat((f), (struct stat*)(b))
+#endif
+
+#if !defined(_fstat64i32)
+#define _fstat64i32(f, b) mem_fstat((f), (struct stat*)(b))
+#endif
+
+#if !defined(_fstat32i64)
+#define _fstat32i64(f, b) mem_fstat((f), (struct stat*)(b))
+#endif
+
+#if !defined(_fstat32)
+#define _fstat32(f, b)    mem_fstat((f), (struct stat*)(b))
+#endif
+
+#if !defined(_fstat64)
+#define _fstat64(f, b)    mem_fstat((f), (struct stat*)(b))
+#endif
+
+#if !defined(ftruncate)
+#define ftruncate(f, l)   mem_ftruncate((f), (size_t)(l))
+#endif
+
+#if !defined(_chsize)
+#define _chsize(f, l)     mem_ftruncate((f), (size_t)(l))
+#endif
+
+#endif //USE_MEMFILE
