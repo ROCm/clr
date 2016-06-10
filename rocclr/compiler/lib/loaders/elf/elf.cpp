@@ -194,7 +194,6 @@ OclElf::OclElf (
     )
 : _fd (-1),
   _fname (elfFileName),
-  _isTempFile(false), 
   _e (0),
   _err (),
   _eclass (eclass),
@@ -235,11 +234,10 @@ OclElf::~OclElf()
         if (_fd != -1) {
         xclose(_err, _fname, _fd);
         char* tname= const_cast<char*>(_fname);
-        if (_isTempFile) {
+        if (tname) {
         unlink(tname);
-        _isTempFile = false;
-        }
         free(tname);
+        }
         _fd = -1;
         _fname = NULL;
 
@@ -284,25 +282,17 @@ OclElf::Init()
 
   // Create a temporary file if it is needed
   if (_elfCmd != ELF_C_READ) {
-    std::string tempFileName;
-    size_t  sz;
-    if (_fname == NULL) {
-      tempFileName = amd::Os::getTempFileName();
-      _fname       = tempFileName.c_str();
-      sz           = tempFileName.size() + 1;
-      _isTempFile = true;
-    }
-    else {
-      sz = strlen(_fname) + 1;
-    }
+    if (_fname != NULL) {
+      size_t  sz = strlen(_fname) + 1;
 
-    char* tname = (char*)xmalloc(_err, sz);
-    if (tname == 0) {
-      _err.xfail("OclElf::Init() failed to malloc()");
-      return false;
+      char* tname = (char*)xmalloc(_err, sz);
+      if (tname == 0) {
+        _err.xfail("OclElf::Init() failed to malloc()");
+        return false;
+      }
+      strcpy(tname, _fname);
+      _fname = static_cast<const char*>(tname);
     }
-    strcpy(tname, _fname);
-    _fname = static_cast<const char*>(tname);
   }
 
   if (elf_version(EV_CURRENT) == EV_NONE) {
@@ -330,10 +320,8 @@ OclElf::Init()
   if ((_fd == -1) && (_rawElfBytes == NULL)) {
     // case 1: elf object is in file '_fname'
 
-    assert ((_fname != NULL) && "ELF file name should be provided");
-
     _fd = xopen(_err, _fname, oflag, pmode);
-    if (_fd < 0) {
+    if (_fd == -1) {
       _err.xfail("OclElf::Init(): Cannot Open File %s!", _fname);
       return false;
     }
@@ -350,7 +338,7 @@ OclElf::Init()
       assert ((_fname == NULL) && "ELF file name should not be provided for a read only elf.");
     } else {
       _fd = xopen(_err, _fname, oflag, pmode);
-      if (_fd < 0) {
+      if (_fd == -1) {
         _err.xfail("OclElf::Init(): Cannot Open File %s!", _fname);
         return false;
       }
@@ -1469,7 +1457,7 @@ OclElf::dumpImage(char** buff, size_t* len)
     return false;
   }
 
-  assert ((_fd > 0) && "_fd in Elf::dumpImage should be defined");
+  assert ((_fd != -1) && "_fd in Elf::dumpImage should be defined");
 
   // Now, write the ELF into the file
   if (elf_update(_e, ELF_C_WRITE) < 0) {

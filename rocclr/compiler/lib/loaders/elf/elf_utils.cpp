@@ -3,18 +3,12 @@
 //
 
 #include "elf_utils.hpp"
+#include "memfile.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
-
-#if defined(__GNUC__)
-#include <unistd.h>
-#else
-#include <io.h>
-#endif
-
 
 /*
    See elf_utils.hpp for descriptions about each functions
@@ -22,23 +16,11 @@
 
 namespace amd {
 
-#if defined(_MSC_VER)
-
-#define ELF_OPEN             _open
-#define ELF_READ(f, b, l)    _read((f), (b), (unsigned int)(l))
-#define ELF_WRITE            _write
-#define ELF_CLOSE            _close
-#define ELF_LSEEK            _lseek
-
-#else
-
-#define ELF_OPEN             open
-#define ELF_READ(f, b, l)    read((f), (b), (size_t)(l))
-#define ELF_WRITE            write
-#define ELF_CLOSE            close
-#define ELF_LSEEK            lseek
-
-#endif
+#define ELF_OPEN             mem_open
+#define ELF_READ(f, b, l)    mem_read((f), (b), (unsigned int)(l))
+#define ELF_WRITE            mem_write
+#define ELF_CLOSE            mem_close
+#define ELF_LSEEK            mem_lseek
 
 /*
    Save the error string in _lastErrMsg.  If it is built without NDEBUG, the program
@@ -81,7 +63,7 @@ void* xmalloc(OclElfErr& err, const size_t len)
 int xopen(OclElfErr& err, const char *fname, const int in_flags, const int perms)
 {
     const int retval = ELF_OPEN(fname, in_flags, perms);
-    if (retval < 0) {
+    if (retval == -1) {
         err.xfail("Failed to open '%s': %s", fname, strerror(errno));
         return -1;
     }
