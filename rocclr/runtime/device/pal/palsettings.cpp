@@ -28,7 +28,6 @@ Settings::Settings()
     // Initialize the GPU device default settings
     oclVersion_         = OpenCL12;
     debugFlags_         = 0;
-    singleHeap_         = false;
     syncObject_         = GPU_USE_SYNC_OBJECTS;
     remoteAlloc_        = REMOTE_ALLOC;
 
@@ -95,7 +94,6 @@ Settings::Settings()
     imageDMA_       = GPU_IMAGE_DMA;
 
     // Disable ASIC specific features by default
-    ciPlus_         = false;
     viPlus_         = false;
     aiPlus_         = false;
 
@@ -197,7 +195,6 @@ Settings::create(
         // Fall through ...
     case Pal::AsicRevision::Bonaire:
     case Pal::AsicRevision::Hawaii:
-        ciPlus_ = true;
         threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
         reportFMAF_ = false;
         if (palProp.revision == Pal::AsicRevision::Hawaii) {
@@ -208,26 +205,20 @@ Settings::create(
         // L1 cache size is 16KB
         cacheSize_      = 16 * Ki;
 
-        if (ciPlus_) {
-            libSelector_ = amd::GPU_Library_CI;
-            if (LP64_SWITCH(WINDOWS_SWITCH(viPlus_, false), true)) {
-                oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/ ?
-                    XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
-            }
-            if (GPU_FORCE_OCL20_32BIT) {
-                force32BitOcl20_ = true;
-                oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/ ?
-                    XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
-            }
-            if (OPENCL_VERSION < 200) {
-                oclVersion_ = OpenCL12;
-            }
-            numComputeRings_ = 8;
+        libSelector_ = amd::GPU_Library_CI;
+        if (LP64_SWITCH(WINDOWS_SWITCH(viPlus_, false), true)) {
+            oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/ ?
+                XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
         }
-        else {
-            numComputeRings_ = 2;
-            libSelector_ = amd::GPU_Library_SI;
+        if (GPU_FORCE_OCL20_32BIT) {
+            force32BitOcl20_ = true;
+            oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/ ?
+                XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR)) : OpenCL12;
         }
+        if (OPENCL_VERSION < 200) {
+            oclVersion_ = OpenCL12;
+        }
+        numComputeRings_ = 8;
 
         // This needs to be cleaned once 64bit addressing is stable
         if (oclVersion_ < OpenCL20) {
@@ -289,7 +280,6 @@ Settings::create(
     hwLDSSize_      = 32 * Ki;
 
     imageSupport_       = true;
-    singleHeap_         = true;
 
     // Use kernels for blit if appropriate
     blitEngine_     = BlitEngineKernel;

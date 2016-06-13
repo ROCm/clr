@@ -594,6 +594,8 @@ HSAILKernel::HSAILKernel(std::string name,
     , codeSize_(0)
     , hwMetaData_(nullptr)
     , extraArgumentsNum_(extraArgsNum)
+    , waveLimiter_(this, (prog->isNull() ? 1 :
+        dev().properties().gfxipProperties.shaderCore.numCusPerShaderArray) * dev().hwInfo()->simdPerCU_)
 {
     hsa_ = true;
 }
@@ -736,6 +738,49 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
         return false;
     }
     index_ = md.kernel_index;
+
+    size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);
+    error = aclQueryInfo(dev().compiler(), prog().binaryElf(),
+        RT_WAVES_PER_SIMD_HINT, openClKernelName.c_str(),
+        &workGroupInfo_.wavesPerSimdHint_, &sizeOfWavesPerSimdHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    waveLimiter_.enable();
+
+    size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
+    error = aclQueryInfo(dev().compiler(), prog().binaryElf(),
+        RT_WORK_GROUP_SIZE_HINT, openClKernelName.c_str(),
+        workGroupInfo_.compileSizeHint_, &sizeOfWorkGroupSizeHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    size_t sizeOfVecTypeHint;
+    error = aclQueryInfo(dev().compiler(), prog().binaryElf(),
+        RT_VEC_TYPE_HINT, openClKernelName.c_str(),
+        NULL, &sizeOfVecTypeHint);
+    if (error != ACL_SUCCESS) {
+        return false;
+    }
+
+    if (0 != sizeOfVecTypeHint) {
+        char* VecTypeHint = new char[sizeOfVecTypeHint + 1];
+        if (NULL == VecTypeHint) {
+            return false;
+        }
+        error = aclQueryInfo(dev().compiler(), prog().binaryElf(),
+            RT_VEC_TYPE_HINT, openClKernelName.c_str(),
+            VecTypeHint, &sizeOfVecTypeHint);
+        if (error != ACL_SUCCESS) {
+            return false;
+        }
+        VecTypeHint[sizeOfVecTypeHint] = '\0';
+        workGroupInfo_.compileVecTypeHint_ = std::string(VecTypeHint);
+        delete[] VecTypeHint;
+    }
+
 
     return true;
 }

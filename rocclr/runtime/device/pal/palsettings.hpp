@@ -43,7 +43,6 @@ public:
 
     union {
         struct {
-            uint    singleHeap_: 1;         //!< Device will use a preallocated heap
             uint    remoteAlloc_: 1;        //!< Allocate remote memory for the heap
             uint    stagedXferRead_: 1;     //!< Uses a staged buffer read
             uint    stagedXferWrite_: 1;    //!< Uses a staged buffer write
@@ -56,7 +55,6 @@ public:
             uint    force32BitOcl20_: 1;    //!< Force 32bit apps to take CLANG/HSAIL path on GPU
             uint    imageDMA_: 1;           //!< Enable direct image DMA transfers
             uint    syncObject_: 1;         //!< Enable syncobject
-            uint    ciPlus_: 1;             //!< CI and post CI features
             uint    viPlus_: 1;             //!< VI and post VI features
             uint    aiPlus_: 1;             //!< AI and post AI features
             uint    threadTraceEnable_: 1;  //!< Thread trace enable
@@ -69,7 +67,7 @@ public:
             uint    useDeviceQueue_: 1;     //!< Submit to separate device queue
             uint    singleFpDenorm_: 1;     //!< Support Single FP Denorm
             uint    sdamPageFaultWar_: 1;   //!< SDAM page fault workaround
-            uint    reserved_: 7;
+            uint    reserved_: 9;
         };
         uint    value_;
     };
