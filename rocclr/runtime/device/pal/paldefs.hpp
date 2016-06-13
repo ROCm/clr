@@ -141,8 +141,17 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* Iceland */   { "Iceland",    "iceland",  4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* Tonga */     { "Tonga",      "tonga",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* Fiji */      { "Fiji",       "fiji",     4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Ellesmere */ { "Horse", "horse",    4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Buffin */    { "Goose",    "goose",    4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* Ellesmere */ { "Ellesmere",  "ellesmere",4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* Buffin */    { "Baffin",     "baffin",   4, 16, 1, 256, 64 * Ki, 32, 800 },
+};
+
+static const AMDDeviceInfo GfxIpDeviceInfo[] = {
+/* Unknown  */    { "",              "unknown",     4, 16, 1, 256, 64 * Ki, 32, 000 },
+/* GFX6_0_0 */    { "GFX6_0_0",      "gfx6_0_0",    4, 16, 1, 256, 64 * Ki, 32, 600 },
+/* GFX7_0_0 */    { "GFX7_0_0",      "gfx7_0_0",    4, 16, 1, 256, 64 * Ki, 32, 700 },
+/* GFX8_0_0 */    { "GFX8_0_0",      "gfx8_0_0",    4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* GFX8_0_1 */    { "GFX8_0_1",      "gfx8_0_1",    4, 16, 1, 256, 64 * Ki, 32, 801 },
+/* GFX9_0_0 */    { "",  "",   4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
 static const char* Gfx700 = "AMD:AMDGPU:7:0:0";

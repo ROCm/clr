@@ -739,10 +739,9 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
             return false;
         }
     case gfx900:
-        switch (program_->dev().properties().revision) {
-        case 0:
-/*        case Pal::AsicRevision::Greenland:
-            return isa.handle == gfx900 || isa.handle == gfx901;*/
+        switch (program_->dev().properties().gfxLevel) {
+        case Pal::GfxIpLevel::GfxIp9:
+            return isa.handle == gfx900 || isa.handle == gfx901;
         default:
             assert(0);
             return false;

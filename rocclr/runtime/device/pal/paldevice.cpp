@@ -637,7 +637,13 @@ Device::create(Pal::IDevice* device)
     ipLevel_ = properties().gfxLevel;
 
     // Update HW info for the device
-    hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
+    if (properties().revision == Pal::AsicRevision::Unknown) {
+        hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(properties().gfxLevel)];
+    }
+    else {
+        hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
+    }
+
 
     // Find the number of available engines
     numComputeEngines_ =
