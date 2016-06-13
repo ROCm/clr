@@ -833,11 +833,10 @@ VirtualGPU::allocHsaQueueMem()
 
     // Provide private and local heap addresses
     const static uint addressShift = LP64_SWITCH(0, 32);
-    LogWarning("Private/Shared aperture isn't set");
-/*    queue->private_segment_aperture_base_hi =
-        static_cast<uint32>(dev().gslCtx()->getPrivateApertureBase()>>addressShift);
-    queue->group_segment_aperture_base_hi =
-        static_cast<uint32>(dev().gslCtx()->getSharedApertureBase()>>addressShift);
+/*    queue->private_segment_aperture_base_hi = static_cast<uint32_t>(
+        dev().properties().gpuMemoryProperties.privateApertureBase >> addressShift);
+    queue->group_segment_aperture_base_hi = static_cast<uint32_t>(
+        dev().properties().gpuMemoryProperties.sharedApertureBase >> addressShift);
 */
     hsaQueueMem_->unmap(nullptr);
     return true;
@@ -3438,4 +3437,34 @@ VirtualGPU::validateSdmaOverlap(const Resource& src, const Resource& dst)
     return false;
 }
 
+void
+VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd)
+{
+    size_t copySize = cmd.size()[0];
+    size_t fileOffset = cmd.fileOffset();
+    size_t srcDstOffset = cmd.origin()[0];
+    Memory* mem = dev().getGpuMemory(&cmd.memory());
+    uint    idx = 0;
+
+    assert((cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD) ||
+        (cmd.type() == CL_COMMAND_READ_BUFFER_FROM_FILE_AMD));
+    bool writeBuffer(cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
+
+    while (copySize > 0) {
+        Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
+        size_t srcDstSize = amd::TransferBufferFileCommand::StagingBufferSize;
+        srcDstSize = std::min(srcDstSize, copySize);
+        void* srcDstBuffer = staging->cpuMap(*this);
+        if (!cmd.file()->transferBlock(writeBuffer, srcDstBuffer, fileOffset, 0, srcDstSize)) {
+            return;
+        }
+        staging->cpuUnmap(*this);
+
+        bool result = blitMgr().copyBuffer(*staging, *mem,
+            fileOffset, srcDstOffset, srcDstSize, false);
+        flushDMA(getGpuEvent(staging->iMem())->engineId_);
+        srcDstOffset += srcDstSize;
+        copySize -= srcDstSize;
+    }
+}
 } // namespace pal

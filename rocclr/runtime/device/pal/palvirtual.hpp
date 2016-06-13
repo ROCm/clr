@@ -253,6 +253,7 @@ public:
     virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
     virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
     virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
+    virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
     void releaseMemory(Pal::IGpuMemory* iMem, bool wait = true);
 

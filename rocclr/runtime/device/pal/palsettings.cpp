@@ -281,6 +281,10 @@ Settings::create(
     enableExtension(ClAmdVec3);
     enableExtension(ClAmdPrintf);
     enableExtension(ClKhrImage2dFromBuffer);
+    // Enable some platform extensions
+    enableExtension(ClAmdDeviceAttributeQuery);
+    enableExtension(ClKhrSpir);
+    enableExtension(ClAMDLiquidFlash);
 
     hwLDSSize_      = 32 * Ki;
 
@@ -324,10 +328,6 @@ Settings::create(
 
     svmAtomics_ = (calAttr.svmAtomics || calAttr.isSVMFineGrainSystem) ? true : false;
 */
-    // Enable some platform extensions
-    enableExtension(ClAmdDeviceAttributeQuery);
-
-    enableExtension(ClKhrSpir);
 
     // SVM is not currently supported for DX Interop
 #if defined(_WIN32)
