@@ -14,12 +14,13 @@
 //! \namespace pal PAL Device Implementation
 namespace pal {
 
+class WaveLimiterManager;
 class HSAILKernel;
 
 // Adaptively limit the number of waves per SIMD based on kernel execution time
 class WaveLimiter: public amd::ProfilingCallback {
 public:
-    explicit WaveLimiter(HSAILKernel*, uint seqNum, bool enable, bool enableDump);
+    explicit WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
     virtual ~WaveLimiter();
 
     //! Get waves per shader array to be used for kernel execution.
@@ -48,14 +49,14 @@ protected:
         std::vector<char> state_;
     };
 
-    std::vector<ulong> measure_;
+    std::vector<uint64_t> measure_;
     bool enable_;
     uint SIMDPerSH_;     // Number of SIMDs per SH
     uint waves_;         // Waves per SIMD to be set
     uint bestWave_;      // Optimal waves per SIMD
     uint countAll_;      // Number of kernel executions
     StateKind state_;
-    HSAILKernel *owner_;
+    WaveLimiterManager* manager_;
     DataDumper dumper_;
     std::ofstream traceStream_;
     uint currWaves_;     // Current waves per SIMD
@@ -86,12 +87,12 @@ protected:
 
 class WLAlgorithmSmooth: public WaveLimiter {
 public:
-    explicit WLAlgorithmSmooth(HSAILKernel* owner, uint seqNum, bool enable, bool enableDump);
+    explicit WLAlgorithmSmooth(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
     virtual ~WLAlgorithmSmooth();
 private:
-    std::vector<ulong> reference_;
-    std::vector<ulong> trial_;
-    std::vector<ulong> ratio_;
+    std::vector<uint64_t> reference_;
+    std::vector<uint64_t> trial_;
+    std::vector<uint64_t> ratio_;
     bool discontinuous_; // Measured data is discontinuous
     uint dynRunCount_;
     uint dataCount_;
@@ -115,7 +116,7 @@ private:
 
 class WLAlgorithmAvrg: public WaveLimiter {
 public:
-    explicit WLAlgorithmAvrg(HSAILKernel* owner, uint seqNum, bool enable, bool enableDump);
+    explicit WLAlgorithmAvrg(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
     virtual ~WLAlgorithmAvrg();
 private:
     //! Call back from Event::recordProfilingInfo to get execution time.
@@ -128,7 +129,7 @@ private:
 // Create wave limiter for each virtual device for a kernel and manages the wave limiters.
 class WaveLimiterManager {
 public:
-    explicit WaveLimiterManager(HSAILKernel* owner);
+    explicit WaveLimiterManager(device::Kernel* owner, const uint simdPerSH);
     virtual ~WaveLimiterManager();
 
     //! Get waves per shader array for a specific virtual device.
@@ -139,13 +140,21 @@ public:
 
     //! Enable wave limiter manager by kernel metadata and flags.
     void enable();
+
+    //! Returns the kernel name
+    const std::string& name() const { return owner_->name(); }
+
+    //! Get SimdPerSH.
+    uint getSimdPerSH() const {return simdPerSH_;}
+
 private:
-    HSAILKernel*    owner_;         //!< The kernel which owns this object
+    device::Kernel *owner_;        // The kernel which owns this object
+    uint simdPerSH_;               // Simd Per SH
     std::unordered_map<const device::VirtualDevice *,
-        WaveLimiter*> limiters_;    //!< Maps virtual device to wave limiter
-    bool enable_;                   //!< Whether the adaptation is enabled
-    bool enableDump_;               //!< Whether the data dumper is enabled
-    uint fixed_;                    //!< The fixed waves/simd value if not zero
-    amd::Monitor monitor_;          //!< The mutex for updating the wave limiter map
+        WaveLimiter*> limiters_;   // Maps virtual device to wave limiter
+    bool enable_;                  // Whether the adaptation is enabled
+    bool enableDump_;              // Whether the data dumper is enabled
+    uint fixed_;                   // The fixed waves/simd value if not zero
+    amd::Monitor monitor_;         // The mutex for updating the wave limiter map
 };
 }

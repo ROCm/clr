@@ -36,7 +36,6 @@ Settings::Settings()
     // Initialize the GPU device default settings
     oclVersion_         = OpenCL12;
     debugFlags_         = 0;
-    singleHeap_         = false;
     syncObject_         = GPU_USE_SYNC_OBJECTS;
     remoteAlloc_        = REMOTE_ALLOC;
 
@@ -344,7 +343,6 @@ Settings::create(
     hwLDSSize_      = 32 * Ki;
 
     imageSupport_       = true;
-    singleHeap_         = true;
 
     // Use kernels for blit if appropriate
     blitEngine_     = BlitEngineKernel;

@@ -1994,12 +1994,12 @@ VirtualGPU::submitKernelInternal(
         eventBegin(MainEngine);
         if (nullptr == scratch) {
             iCmd()->CmdDispatchAql(aqlPkt, 0, 0, 0,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), 0x3ff);
+                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), hsaKernel.getWavesPerSH(this));
         }
         else {
             iCmd()->CmdDispatchAql(aqlPkt, scratch->memObj_->vmAddress(),
                 scratch->size_, scratch->offset_,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), 0x3ff);
+                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), hsaKernel.getWavesPerSH(this));
         }
         eventEnd(MainEngine, gpuEvent);
 

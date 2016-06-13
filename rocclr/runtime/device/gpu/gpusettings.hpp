@@ -43,7 +43,6 @@ public:
 
     union {
         struct {
-            uint    singleHeap_: 1;         //!< Device will use a preallocated heap
             uint    remoteAlloc_: 1;        //!< Allocate remote memory for the heap
             uint    stagedXferRead_: 1;     //!< Uses a staged buffer read
             uint    stagedXferWrite_: 1;    //!< Uses a staged buffer write
@@ -71,7 +70,7 @@ public:
             uint    asyncMemCopy_: 1;   //!< Use async memory transfers
             uint    useDeviceQueue_: 1; //!< Submit to separate device queue
             uint    singleFpDenorm_: 1; //!< Support Single FP Denorm
-            uint    reserved_: 4;
+            uint    reserved_: 5;
         };
         uint    value_;
     };

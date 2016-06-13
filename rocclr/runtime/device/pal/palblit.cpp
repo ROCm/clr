@@ -600,9 +600,10 @@ DmaBlitManager::copyBufferRect(
             bytesPerElement = bytesPerElement >> 1;
         }
 
-        // 19 bit limit in HW in SI and 16 bit limit in CI+(we adjust the ElementSize to 4bytes but the packet still has 14bits)
-        size_t pitchLimit = dev().settings().ciPlus_ ? (0x3FFF * bytesPerElement) | 0xF : 0x7FFFF;
-        size_t sizeLimit = dev().settings().ciPlus_ ? (0x3FFF * bytesPerElement) | 0xF : 0x3FFF;
+        // 19 bit limit in HW in SI and 16 bit limit in CI+
+        // (we adjust the ElementSize to 4bytes but the packet still has 14bits)
+        size_t pitchLimit = (0x3FFF * bytesPerElement) | 0xF;
+        size_t sizeLimit = (0x3FFF * bytesPerElement) | 0xF;
 
         if (!optimalElementSize ||
             (srcRect.rowPitch_ > pitchLimit) ||
@@ -2419,24 +2420,9 @@ KernelBlitManager::copyBuffer(
             size.c[0] /= CopyBuffAlignment[i];
         }
         else {
-            if (dev().settings().ciPlus_) {
-                remain = size[0] % 4;
-                size.c[0] /= 4;
-                size.c[0] += 1;
-            }
-            else {
-                // Check if offsets are aligned
-                aligned = ((srcOrigin[0] % sizeof(uint32_t)) == 0);
-                aligned &= ((dstOrigin[0] % sizeof(uint32_t)) == 0);
-                if (aligned) {
-                    remain = size[0] % 4;
-                    size.c[0] /= 4;
-                    size.c[0] += 1;
-                }
-                else {
-                    remain = 8;
-                }
-            }
+            remain = size[0] % 4;
+            size.c[0] /= 4;
+            size.c[0] += 1;
         }
 
         // Program the dispatch dimensions
