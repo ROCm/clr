@@ -155,10 +155,15 @@ Settings::create(
     ModifyMaxWorkload modifyMaxWorkload = {0};
 
     switch (palProp.revision) {
-/*    case Pal::AsicRevision:::
-    case CAL_TARGET_GREENLAND:
-        //TODO: specific codes for AI
-        aiPlus_ = true;*/
+    case Pal::AsicRevision::Unknown:
+        switch (palProp.gfxLevel) {
+        case Pal::GfxIpLevel::GfxIp9:
+            aiPlus_ = true;
+            break;
+        default:
+            assert(0 && "Unknown GfxIP type!");
+            return false;
+        }
         // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Stoney:
