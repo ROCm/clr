@@ -260,4 +260,30 @@ typedef struct {
 #define _chsize(f, l)     mem_ftruncate((f), (size_t)(l))
 #endif
 
+#if !defined(mmap)
+#define mmap              mem_mmap
+#endif
+
+#if !defined(mem_munmap)
+#define munmap            mem_munmap
+#endif
+
+#else // !USE_MEMFILE
+
+#if !defined(mmap)
+#if defined(WIN32)
+#define mmap              w32_mmap
+#else
+#define mmap              mmap
+#endif
+#endif
+
+#if !defined(mem_munmap)
+#if defined(WIN32)
+#define munmap            w32_munmap
+#else
+#define munmap            munmap
+#endif
+#endif
+
 #endif //USE_MEMFILE
