@@ -12,15 +12,23 @@
 
 #if defined(__GNUC__)
 #include <unistd.h>
+#include <sys/mman.h>
+#include <sys/sendfile.h>
 #else
 #include <io.h>
+#if !defined(PROT_READ)
+#define PROT_READ 0x0004   // FILE_MAP_READ
+#endif
+#if !defined(MAP_PRIVATE)
+#define MAP_PRIVATE 0x0001 // FILE_MAP_COPY
+#endif
 #endif
 
 // Allocation granularity
 #define ALLOC_G          512
 #define is_file(fd)      ((fd) >= 0)
 
-#if defined(_MSC_VER)
+#if defined(_WIN32)
 
 #define OPEN             ::_open
 #define READ(f, b, l)    ::_read((f), (b), (unsigned int)(l))
@@ -29,6 +37,8 @@
 #define LSEEK            ::_lseek
 #define FSTAT            ::fstat
 #define FTRUNC(f, l)     ::_chsize((f), (long)(l))
+#define MMAP             ::w32_mmap
+#define MUNMAP           ::w32_munmap
 
 #else
 
@@ -39,7 +49,14 @@
 #define LSEEK            ::lseek
 #define FSTAT            ::fstat
 #define FTRUNC(f, l)     ::ftruncate((f), (off_t)(l))
+#define MMAP             ::mmap
+#define MUNMAP           ::munmap
 
+#endif
+
+#if defined(_WIN32)
+extern "C" void* w32_mmap(void* start, size_t length, int prot, int flags, int fd, unsigned offset);
+extern "C" int   w32_munmap(void* start, size_t length);
 #endif
 
 namespace amd {
@@ -175,6 +192,7 @@ public:
 
   bool   is_open() const { return buf != nullptr; }
   size_t tell()    const { return size_t((char*)curp - (char*)buf); }
+  void*  get()     const { return buf; }
 
 protected:
 
@@ -323,4 +341,55 @@ int mem_ftruncate(int fd, size_t len)
     return -1;
 
   return m->ftruncate(len) ? 0 : -1;
+}
+
+off_t mem_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
+{
+#if defined(__GNUC__)
+  if (is_file(in_fd) && is_file(out_fd))
+    return sendfile(out_fd, in_fd, offset, count);
+#endif
+
+  off_t start = offset ? *offset : mem_lseek(in_fd, 0, SEEK_CUR);
+  struct stat sb;
+  if (mem_fstat(in_fd, &sb) == -1)
+    return -1;
+  if (start < 0 || sb.st_size <= start)
+    return 0;
+  count = std::min(count, (size_t)(sb.st_size - start));
+  void *in = mem_mmap(NULL, count, PROT_READ, MAP_PRIVATE, in_fd, start);
+  if ((void*)-1 == in)
+    return -1;
+
+  off_t written = mem_write(out_fd, in, count);
+  mem_munmap(in, count);
+  if (written < 0)
+    return -1;
+
+  if (offset) {
+    *offset += written;
+  } else {
+    if (mem_lseek(in_fd, written, SEEK_CUR) < 0)
+      return -1;
+  }
+
+  return written;
+}
+
+void* mem_mmap(void* start, size_t length, int prot, int flags, int fd, unsigned offset)
+{
+  if (is_file(fd))
+    return MMAP(start, length, prot, flags, fd, offset);
+
+  memfile_t *m = get_memfile(fd);
+  if (!m)
+    return (void*)-1;
+
+  return (char*)m->get()  + offset;
+}
+
+int mem_munmap(void* start, size_t length)
+{
+  MUNMAP(start, length);
+  return 0;
 }

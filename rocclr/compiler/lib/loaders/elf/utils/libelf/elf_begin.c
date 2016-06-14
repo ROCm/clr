@@ -312,7 +312,7 @@ elf_begin(int fd, Elf_Cmd c, Elf *a, Elf_Mem *mem)
 // http://www.mingw.org/wiki/FAQ
 // http://www.mingw.org/license
 // FIXME: This needs to be more robust to the protection and flag options.
-void *mmap(void *start, size_t length, int prot, int flags, int fd, 
+void *w32_mmap(void *start, size_t length, int prot, int flags, int fd, 
 unsigned offset) 
 { 
 	HANDLE handle; 
@@ -330,7 +330,7 @@ length);
 } 
 
 
-int munmap(void *start, size_t length) {
+int w32_munmap(void *start, size_t length) {
   UnmapViewOfFile(start);
   return 0;
 }
