@@ -414,7 +414,7 @@ void NullDevice::fillDeviceInfo(
         info_.simdWidth_            = hwInfo()->simdWidth_;
         info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
         info_.wavefrontWidth_       = palProp.gfxipProperties.shaderCore.wavefrontSize;
-        //info_.globalMemChannels_    = calAttr.memBusWidth / 32;
+        //info_.globalMemChannels_    = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
         //info_.globalMemChannelBanks_    = calAttr.numMemBanks;
         info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
         info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
@@ -647,7 +647,8 @@ Device::create(Pal::IDevice* device)
 
     // Find the number of available engines
     numComputeEngines_ =
-        properties().engineProperties[Pal::QueueTypeCompute].engineCount;
+        properties().engineProperties[Pal::QueueTypeCompute].engineCount -
+        properties().engineProperties[Pal::QueueTypeCompute].numExclusiveComputeEngines;
     numDmaEngines_ =
         properties().engineProperties[Pal::QueueTypeDma].engineCount;
 
@@ -655,6 +656,7 @@ Device::create(Pal::IDevice* device)
     // Modify settings here
     // palSettings ...
     palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
+    //palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
