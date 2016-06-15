@@ -18,7 +18,7 @@
 #include "palLib.h"
 #include "palPlatform.h"
 #include "palDevice.h"
-
+#include "cz_id.h"
 #include "acl.h"
 
 #include "amdocl/cl_common.hpp"
@@ -78,12 +78,45 @@ NullDevice::init()
     devices = getDevices(CL_DEVICE_TYPE_GPU, false);
 
     // Loop through all supported devices and create each of them
+    for (uint id = 0; id < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
+        bool    foundActive = false;
+        Pal::AsicRevision revision = static_cast<Pal::AsicRevision>(id);
+
+        if (pal::DeviceInfo[id].targetName_[0] == '\0') {
+            continue;
+        }
+
+        // Loop through all active devices and see if we match one
+        for (uint i = 0; i < devices.size(); ++i) {
+            if (static_cast<NullDevice*>(devices[i])->asicRevision() == revision) {
+                foundActive = true;
+                break;
+            }
+        }
+
+        // Don't report an offline device if it's active
+        if (foundActive) {
+            continue;
+        }
+
+        NullDevice*  dev = new NullDevice();
+        if (nullptr != dev) {
+            if (!dev->create(revision, Pal::GfxIpLevel::_None)) {
+                delete dev;
+            }
+            else {
+                dev->registerDevice();
+            }
+        }
+    }
+
+    // Loop through all supported devices and create each of them
     for (uint id = static_cast<uint>(Pal::GfxIpLevel::GfxIp7);
         id <= static_cast<uint>(Pal::GfxIpLevel::GfxIp9); ++id) {
         bool    foundActive = false;
         Pal::GfxIpLevel ipLevel = static_cast<Pal::GfxIpLevel>(id);
 
-        if (pal::DeviceInfo[id].targetName_[0] == '\0') {
+        if (pal::GfxIpDeviceInfo[id].targetName_[0] == '\0') {
             continue;
         }
 
@@ -102,7 +135,7 @@ NullDevice::init()
 
         NullDevice*  dev = new NullDevice();
         if (nullptr != dev) {
-            if (!dev->create(ipLevel)) {
+            if (!dev->create(Pal::AsicRevision::Unknown, ipLevel)) {
                 delete dev;
             }
             else {
@@ -115,15 +148,24 @@ NullDevice::init()
 }
 
 bool
-NullDevice::create(Pal::GfxIpLevel ipLevel)
+NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel)
 {
     online_ = false;
     Pal::DeviceProperties properties = {};
 
     // Use fake GFX IP for the device init
+    asicRevision_ = asicRevision;
     ipLevel_ = ipLevel;
+    properties.revision = asicRevision;
     properties.gfxLevel = ipLevel;
-    hwInfo_ = &DeviceInfo[static_cast<uint>(ipLevel)];
+
+    // Update HW info for the device
+    if (ipLevel == Pal::GfxIpLevel::_None) {
+        hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
+    }
+    else {
+        hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel)];
+    }
 
     settings_ = new pal::Settings();
     pal::Settings* palSettings = reinterpret_cast<pal::Settings*>(settings_);
@@ -329,7 +371,14 @@ void NullDevice::fillDeviceInfo(
 
     info_.platform_ = AMD_PLATFORM;
 
-    ::strcpy(info_.name_, hwInfo()->targetName_);
+    if (false && (asicRevision() == Pal::AsicRevision::Carrizo) /*&&
+        ASICREV_IS_CARRIZO_BRISTOL(palProp.revisionId)*/) {
+        const static char* bristol = "Bristol Ridge";
+        ::strcpy(info_.name_, bristol);
+    }
+    else {
+        ::strcpy(info_.name_, hwInfo()->targetName_);
+    }
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
          AMD_BUILD_STRING "%s", " (VM)");
@@ -635,6 +684,7 @@ Device::create(Pal::IDevice* device)
 
     // Save the IP level for the offline detection
     ipLevel_ = properties().gfxLevel;
+    asicRevision_ = properties().revision;
 
     // Update HW info for the device
     if (properties().revision == Pal::AsicRevision::Unknown) {

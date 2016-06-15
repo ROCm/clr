@@ -29,7 +29,6 @@ namespace pal {
 
 using namespace amd::hsa::loader;
 class HSAILProgram;
-class ClBinaryHsa;
 
 class ORCAHSALoaderContext final: public Context {
 public:
@@ -131,25 +130,11 @@ private:
 
     bool GpuMemCopy(void *dst, size_t offset, const void *src, size_t size);
 
-    void GpuMemFree(void *ptr, size_t size = 0) {
-        delete reinterpret_cast<pal::Memory*>(ptr);
-    }
+    void GpuMemFree(void *ptr, size_t size = 0);
 
     ORCAHSALoaderContext(const ORCAHSALoaderContext &c);
 
     ORCAHSALoaderContext& operator=(const ORCAHSALoaderContext &c);
-
-    enum gfx_handle {
-        gfx700 = 700,
-        gfx701 = 701,
-        gfx702 = 702,
-        gfx800 = 800,
-        gfx801 = 801,
-        gfx804 = 804,
-        gfx810 = 810,
-        gfx900 = 900,
-        gfx901 = 901
-    };
 
     pal::HSAILProgram* program_;
 };

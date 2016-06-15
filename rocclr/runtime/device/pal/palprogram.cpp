@@ -502,7 +502,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     // ACL_TYPE_CG stage is not performed for offline compilation
     hsa_agent_t agent;
     agent.handle = 1;
-    if (!isNull() && hsaLoad) {
+    if (hsaLoad) {
         executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
         if (executable_ == nullptr) {
             buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
@@ -527,7 +527,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
         return false;
     }
-    if (!isNull() && kernelNamesSize > 0) {
+    if (kernelNamesSize > 0) {
         char* kernelNames = new char[kernelNamesSize];
         errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames, &kernelNamesSize);
         if (errorCode != ACL_SUCCESS) {
@@ -720,7 +720,7 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
         return isa.handle == gfx700 || isa.handle == gfx701;
     case gfx800:
-        switch (program_->dev().properties().revision) {
+        switch (program_->dev().asicRevision()) {
         case Pal::AsicRevision::Iceland:
         case Pal::AsicRevision::Tonga:
             return isa.handle == gfx800;
@@ -735,15 +735,15 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         case Pal::AsicRevision::Stoney:
             return isa.handle == gfx810;
         default:
-            assert(0);
+            assert(0 && "Unknown asic!");
             return false;
         }
     case gfx900:
-        switch (program_->dev().properties().gfxLevel) {
+        switch (program_->dev().ipLevel()) {
         case Pal::GfxIpLevel::GfxIp9:
             return isa.handle == gfx900 || isa.handle == gfx901;
         default:
-            assert(0);
+            assert(0 && "Unknown asic!");
             return false;
         }
     }
@@ -798,8 +798,10 @@ void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
     case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
     case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
     case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
-        pal::Memory *gpuMem = reinterpret_cast<pal::Memory*>(seg);
-        return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
+        if (!program_->isNull()) {
+            pal::Memory *gpuMem = reinterpret_cast<pal::Memory*>(seg);
+            return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
+        }
     }
     case AMDGPU_HSA_SEGMENT_CODE_AGENT: return (char*) seg + offset;
     default:
@@ -874,6 +876,7 @@ void* ORCAHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
+
     void* ptr = amd::Os::alignedMalloc(size, align);
     if (zero) {
         memset(ptr, 0, size);
@@ -896,6 +899,10 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
+    if (program_->isNull()) {
+        return new char[size];
+    }
+
     pal::Memory* mem = new pal::Memory(program_->dev(), amd::alignUp(size, align));
     if (!mem || !mem->create(pal::Resource::Local)) {
         delete mem;
@@ -918,10 +925,24 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
     if (0 == size) {
         return true;
     }
+    if (program_->isNull()) {
+        memcpy(reinterpret_cast<address>(dst) + offset, src, size);
+        return true;
+    }
     assert(program_->dev().xferQueue());
     pal::Memory* mem = reinterpret_cast<pal::Memory*>(dst);
     return program_->dev().xferMgr().writeBuffer(src, *mem, amd::Coord3D(offset), amd::Coord3D(size), true);
     return true;
+}
+
+void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
+{
+    if (program_->isNull()) {
+        delete[] reinterpret_cast<char*>(ptr);
+    }
+    else {
+        delete reinterpret_cast<pal::Memory*>(ptr);
+    }
 }
 
 } // namespace pal

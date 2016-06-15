@@ -44,7 +44,8 @@ public:
 
     //! Creates an offline device with the specified target
     bool create(
-        Pal::GfxIpLevel ipLevel     //!< GPU ip level
+        Pal::AsicRevision asicRevision, //!< GPU ASIC revision
+        Pal::GfxIpLevel ipLevel         //!< GPU ip level
         );
 
     virtual cl_int createSubDevices(
@@ -98,6 +99,7 @@ public:
     virtual void freeMapTarget(amd::Memory& mem, void* target) {}
 
     Pal::GfxIpLevel ipLevel() const { return ipLevel_; }
+    Pal::AsicRevision asicRevision() const  { return  asicRevision_; }
 
     const AMDDeviceInfo* hwInfo() const { return hwInfo_; }
 
@@ -111,8 +113,9 @@ public:
     virtual void svmFree(void* ptr) const {return;}
 
 protected:
-    Pal::GfxIpLevel     ipLevel_;   //!< Device IP level
-    const AMDDeviceInfo* hwInfo_;   //!< Device HW info structure
+    Pal::AsicRevision   asicRevision_;  //!< ASIC revision
+    Pal::GfxIpLevel     ipLevel_;       //!< Device IP level
+    const AMDDeviceInfo* hwInfo_;       //!< Device HW info structure
 
     //! Fills OpenCL device info structure
     void fillDeviceInfo(
