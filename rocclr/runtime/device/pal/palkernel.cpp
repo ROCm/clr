@@ -680,7 +680,8 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
     }
 
     // Copy wavefront size
-    workGroupInfo_.wavefrontSize_ = dev().properties().gfxipProperties.shaderCore.wavefrontSize;
+    workGroupInfo_.wavefrontSize_ = prog().isNull() ? 64 :
+        dev().properties().gfxipProperties.shaderCore.wavefrontSize;
     // Find total workgroup size
     if (workGroupInfo_.compileSize_[0] != 0) {
         workGroupInfo_.size_ =
