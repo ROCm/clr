@@ -32,6 +32,7 @@
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include <iostream>
@@ -555,15 +556,10 @@ llvmCodeGen(
   // Basic Block.
   PassManager Passes;
 
-  // Add the target data from the target machine, if it exists, or the module.
-#if defined(LEGACY_COMPLIB)
-  if (const DataLayout *TD = Target.getDataLayout())
-    Passes.add(new DataLayout(*TD));
-  else
-    Passes.add(new DataLayout(&mod));
-#else
+  // Add the target data from the target machine, if it exists.
+  if (const DataLayout *TD = Target.getSubtargetImpl()->getDataLayout())
+    mod.setDataLayout(TD);
   Passes.add(new DataLayoutPass());
-#endif
 
   // Override default to generate verbose assembly, if the device is not the GPU.
   // The GPU sets this in AMDILTargetMachine.cpp.
