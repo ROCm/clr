@@ -33,7 +33,8 @@ PalCounterReference::Create(
     return memRef;
 }
 
-PalCounterReference::~PalCounterReference() {
+PalCounterReference::~PalCounterReference()
+{
     // The counter object is always associated with a particular queue,
     // so we have to lock just this queue
     amd::ScopedLock lock(gpu_.execution());
@@ -43,7 +44,8 @@ PalCounterReference::~PalCounterReference() {
 }
 
 bool
-PalCounterReference::growResultArray(uint index) {
+PalCounterReference::growResultArray(uint index)
+{
     if (results_ != nullptr) {
         delete [] results_;
     }
@@ -52,6 +54,68 @@ PalCounterReference::growResultArray(uint index) {
         return false;
     }
     return true;
+}
+
+bool PalCounterReference::finalize()
+{
+    iPerf()->Finalize();
+
+    // Acquire GPU memory for the query from the pool and bind it.
+    Pal::GpuMemoryRequirements gpuMemReqs = {};
+    iPerf()->GetGpuMemoryRequirements(&gpuMemReqs);
+
+    Pal::GpuMemoryCreateInfo createInfo = {};
+    createInfo.size      = amd::alignUp(gpuMemReqs.size, gpuMemReqs.alignment);
+    createInfo.alignment = gpuMemReqs.alignment;
+    createInfo.vaRange   = Pal::VaRange::Default;
+    createInfo.heapCount = 1;
+    //createInfo.heaps[0]  = Pal::GpuHeapGartCacheable;
+    createInfo.heaps[0]  = gpuMemReqs.heaps[0];
+    createInfo.priority  = Pal::GpuMemPriority::Normal;
+
+    Pal::Result result;
+    size_t gpuMemSize = gpu().dev().iDev()->GetGpuMemorySize(createInfo, &result);
+    if (result != Pal::Result::Success) {
+        return false;
+    }
+
+    char* pMemory = new char[gpuMemSize];
+
+    if (pMemory != nullptr) {
+        result = gpu().dev().iDev()->CreateGpuMemory(createInfo, pMemory, &pGpuMemory);
+
+        if (result == Pal::Result::Success) {
+            // GPU profiler memory is perma-resident.
+            result = gpu().dev().iDev()->AddGpuMemoryReferences(1, &pGpuMemory, nullptr, Pal::GpuMemoryRefCantTrim);
+
+            if (result == Pal::Result::Success) {
+                // GPU profiler memory is perma-mapped.
+                result = pGpuMemory->Map(&pCpuAddr);
+            }
+        }
+        
+        if (result != Pal::Result::Success) {
+            if (pGpuMemory != nullptr) {
+                pGpuMemory->Destroy();
+                pGpuMemory = nullptr;
+                pCpuAddr   = nullptr;
+            }
+
+            delete pMemory;
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+
+    result = iPerf()->BindGpuMemory(pGpuMemory, 0);
+    if (result == Pal::Result::Success) { 
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 PerfCounter::~PerfCounter()
@@ -106,8 +170,9 @@ PerfCounter::getInfo(uint64_t infoType) const
         return info()->eventIndex_;
     }
     case CL_PERFCOUNTER_DATA: {
-        Unimplemented();
-        //gslCounter()->GetResult(gpu().cs(), reinterpret_cast<uint64*>(calRef_->results()));
+        Pal::GlobalCounterLayout layout = {};
+        counter_->GetGlobalCounterLayout(&layout);
+
         return calRef_->results()[index_];
     }
     default:
