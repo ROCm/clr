@@ -38,11 +38,7 @@ public:
         uint maxIndex   //!< the maximum HW counter index in the PAL counter
         );
 
-    void finalize() {
-        iPerf()->Finalize();
-        Pal::GlobalCounterLayout layout = {};
-        layout.sampleCount = referenceCount() - 1;
-        iPerf()->GetGlobalCounterLayout(&layout); }
+    bool finalize();
 
     //! Returns the PAL counter results
     uint64_t*  results() const { return results_; }
@@ -62,6 +58,8 @@ private:
 
     VirtualGPU&     gpu_;           //!< The virtual GPU device object
     uint64_t*       results_;       //!< Counter results
+    Pal::IGpuMemory*    pGpuMemory;
+    void*               pCpuAddr;
 };
 
 //! Performance counter implementation on GPU
