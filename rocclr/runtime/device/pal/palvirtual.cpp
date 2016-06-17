@@ -2303,12 +2303,6 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
 
     // Create performance experiment
     Pal::PerfExperimentCreateInfo   createInfo = {};
-
-    createInfo.optionFlags.sampleInternalOperations       = 1;
-    createInfo.optionFlags.cacheFlushOnCounterCollection  = 1;
-    createInfo.optionFlags.sqShaderMask  = 1;
-    createInfo.optionValues.sampleInternalOperations      = true;
-    createInfo.optionValues.cacheFlushOnCounterCollection = true;
     createInfo.optionValues.sqShaderMask = Pal::PerfShaderMaskCs;
 
     PalCounterReference* palRef = PalCounterReference::Create(*this, createInfo);
