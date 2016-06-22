@@ -447,15 +447,10 @@ HSAILProgram::compileImpl(
     }
 
     clBinary()->storeCompileOptions(compileOptions_);
-    // Save the binary in the interface class
-    size_t size = 0;
-    void* mem = NULL;
-    aclWriteToMem(binaryElf_, &mem, &size);
-    setBinary(static_cast<char*>(mem), size);
 
-    // Save the binary inside the program
-    // The FSAILProgram will be responsible to free it during destruction
-    rawBinary_ = mem;
+    // Save the binary in the interface class
+    saveBinaryAndSetType(TYPE_COMPILED);
+
     return true;
 }
 

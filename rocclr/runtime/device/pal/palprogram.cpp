@@ -68,7 +68,7 @@ HSAILProgram::~HSAILProgram()
         delete it;
     }
     if (rawBinary_ != nullptr) {
-        free(rawBinary_);
+        aclFreeMem(binaryElf_, rawBinary_);
     }
     acl_error error;
     // Free the elf binary
@@ -216,12 +216,8 @@ HSAILProgram::linkImpl(
         aclBinaryFini(binaries_to_link[i]);
     }
     if (createLibrary) {
-        size_t size = 0;
-        void *mem = NULL;
-        aclWriteToMem(binaryElf_, &mem, &size);
-        setBinary(static_cast<char*>(mem), size);
+        saveBinaryAndSetType(TYPE_LIBRARY);
         buildLog_ += aclGetCompilerLog(dev().compiler());
-        setType(TYPE_LIBRARY);
         return true;
     }
     // Now call linkImpl with the new options
@@ -578,12 +574,8 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         }
     }
     // Save the binary in the interface class
-    size_t size = 0;
-    void *mem = nullptr;
-    aclWriteToMem(binaryElf_, &mem, &size);
-    setBinary(static_cast<char*>(mem), size);
+    saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += aclGetCompilerLog(dev().compiler());
-    setType(TYPE_EXECUTABLE);
     return true;
 }
 
@@ -694,6 +686,26 @@ HSAILProgram::info(const char * str) {
         LogWarning("aclGetTargetInfo failed");
     }
     return info_;
+}
+
+bool
+HSAILProgram::saveBinaryAndSetType(type_t type)
+{
+    //Write binary to memory
+    if (rawBinary_ != nullptr) {
+        //Free memory containing rawBinary
+        aclFreeMem(binaryElf_, rawBinary_);
+        rawBinary_ = nullptr;
+    }
+    size_t  size = 0;
+    if (aclWriteToMem(binaryElf_, &rawBinary_, &size) != ACL_SUCCESS) {
+        buildLog_ += "Failed to write binary to memory \n";
+        return false;
+    }
+    setBinary(static_cast<char*>(rawBinary_), size);
+    //Set the type of binary
+    setType(type);
+    return true;
 }
 
 hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char *name) {

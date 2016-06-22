@@ -559,13 +559,7 @@ protected:
     */
     aclType getNextCompilationStageFromBinary(amd::option::Options* options);
 
-    /*! \brief Compiles LLVM binary to FSAIL code (compiler backend: link+opt+codegen)
-    *
-    *  \return The build error code
-    */
-    int compileBinaryToFSAIL(
-        amd::option::Options* options   //!< options for compilation
-        );
+    bool saveBinaryAndSetType(type_t type);
 
     virtual bool linkImpl(amd::option::Options* options);
 
