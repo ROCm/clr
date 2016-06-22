@@ -208,14 +208,8 @@ protected:
     /* \brief Returns the next stage to compile from, based on sections and options in binary
     */
     aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-
-    /*! \brief Compiles LLVM binary to FSAIL code (compiler backend: link+opt+codegen)
-    *
-    *  \return The build error code
-    */
-    int compileBinaryToFSAIL(
-        amd::option::Options* options   //!< options for compilation
-        );
+    
+    bool saveBinaryAndSetType(type_t type);
 
     virtual bool linkImpl(amd::option::Options* options);
 
@@ -269,10 +263,10 @@ private:
     aclBinary*      binaryElf_;     //!< Binary for the new compiler library
     void*           rawBinary_;     //!< Pointer to the raw binary
     aclBinaryOptions binOpts_;      //!< Binary options to create aclBinary
-    std::vector<Memory*>         globalStores_;   //!< Global memory for the program
+    std::vector<Memory*>    globalStores_;   //!< Global memory for the program
     Memory*         kernels_;       //!< Table with kernel object pointers
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
-    std::list<Sampler*>   staticSamplers_;    //!< List od internal static samplers
+    std::list<Sampler*>     staticSamplers_;    //!< List od internal static samplers
     bool            isNull_;        //!< Null program no memory allocations
     amd::hsa::loader::Loader* loader_; //!< Loader object
     amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
