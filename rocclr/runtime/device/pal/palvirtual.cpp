@@ -833,11 +833,11 @@ VirtualGPU::allocHsaQueueMem()
 
     // Provide private and local heap addresses
     const static uint addressShift = LP64_SWITCH(0, 32);
-/*    queue->private_segment_aperture_base_hi = static_cast<uint32_t>(
+    queue->private_segment_aperture_base_hi = static_cast<uint32_t>(
         dev().properties().gpuMemoryProperties.privateApertureBase >> addressShift);
     queue->group_segment_aperture_base_hi = static_cast<uint32_t>(
         dev().properties().gpuMemoryProperties.sharedApertureBase >> addressShift);
-*/
+
     hsaQueueMem_->unmap(nullptr);
     return true;
 }
