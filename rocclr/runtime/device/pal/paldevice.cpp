@@ -371,8 +371,8 @@ void NullDevice::fillDeviceInfo(
 
     info_.platform_ = AMD_PLATFORM;
 
-    if (false && (asicRevision() == Pal::AsicRevision::Carrizo) /*&&
-        ASICREV_IS_CARRIZO_BRISTOL(palProp.revisionId)*/) {
+    if (false && (asicRevision() == Pal::AsicRevision::Carrizo) &&
+        ASICREV_IS_CARRIZO_BRISTOL(palProp.revisionId)) {
         const static char* bristol = "Bristol Ridge";
         ::strcpy(info_.name_, bristol);
     }
@@ -411,11 +411,10 @@ void NullDevice::fillDeviceInfo(
     info_.localMemSize_ = settings().hwLDSSize_;
     info_.extensions_   = getExtensionString();
 
-/*
     info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-    info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation&(0xFF<<8))>>8;
-    info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation&(0x1F<<3))>>3;
-    info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation&0x07);
+/*    info_.deviceTopology_.pcie.bus  = palProp.pciProperties.busNumber;
+    info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
+    info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
 */
     ::strncpy(info_.boardName_, palProp.gpuName,
         ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
@@ -463,7 +462,7 @@ void NullDevice::fillDeviceInfo(
         info_.simdWidth_            = hwInfo()->simdWidth_;
         info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
         info_.wavefrontWidth_       = palProp.gfxipProperties.shaderCore.wavefrontSize;
-        //info_.globalMemChannels_    = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
+        info_.globalMemChannels_    = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
         //info_.globalMemChannelBanks_    = calAttr.numMemBanks;
         info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
         info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
@@ -706,7 +705,7 @@ Device::create(Pal::IDevice* device)
     // Modify settings here
     // palSettings ...
     palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
-    //palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
+    palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
