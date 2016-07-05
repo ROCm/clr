@@ -16,6 +16,11 @@
 #include "compiler_stage.hpp"
 #include "frontend.hpp"
 #include "spir.hpp"
+
+#if defined DEBUG
+#undef DEBUG
+#endif
+
 #include "codegen.hpp"
 #include "library.hpp"
 #include "linker.hpp"
@@ -23,7 +28,6 @@
 #include "amdil_be.hpp"
 #include "hsail_be.hpp"
 #include "x86_be.hpp"
-#include "bif/bifbase.hpp"
 #include "os/os.hpp"
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
@@ -71,6 +75,8 @@
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/RuntimeDyld.h"
+
+#include "bif/bifbase.hpp"
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -115,7 +121,6 @@ if_aclCompilerInit(aclCompiler *cl, aclBinary *bin,
   llvm::initializeIPO(Registry);
   llvm::initializeInstrumentation(Registry);
   llvm::initializeAnalysis(Registry);
-  llvm::initializeIPA(Registry);
   llvm::initializeCodeGen(Registry);
   llvm::initializeTarget(Registry);
 #if defined(LEGACY_COMPLIB)
@@ -310,7 +315,7 @@ RSLLVMIRToModule(
 #else
   std::unique_ptr<llvm::MemoryBuffer> Buffer =
     llvm::MemoryBuffer::getMemBufferCopy(llvm::StringRef(llvmBinary), "input.bc");
-  llvm::ErrorOr<llvm::Module*> ErrOrM(nullptr);
+  llvm::ErrorOr<std::unique_ptr<llvm::Module>> ErrOrM(nullptr);
 #endif
 
   if (llvm::isBitcode((const unsigned char *)Buffer->getBufferStart(),
@@ -325,13 +330,13 @@ RSLLVMIRToModule(
 #if defined(LEGACY_COMPLIB)
   if (M == NULL) {
 #else
-  if (!ErrOrM || ErrOrM.get() == nullptr) {
+  if (ErrOrM.getError()) {
 #endif
     if (error != NULL) (*error) = ACL_INVALID_BINARY;
     return NULL;
   }
 #if !defined(LEGACY_COMPLIB)
-  llvm::Module *M = ErrOrM.get();
+  auto M = ErrOrM.get().release();
 #endif
   amdcl::CompilerStage *cs = reinterpret_cast<amdcl::CompilerStage*>(ald);
   aclDevType arch_id = cs->Elf()->target.arch_id;
@@ -352,7 +357,11 @@ RSLLVMIRToModule(
   const char * LayoutStr = is64BitTarget(cs->Elf()->target) ?
     DATA_LAYOUT_64BIT : DATA_LAYOUT_32BIT;
   M->setDataLayout(LayoutStr);
+#if defined(LEGACY_COMPLIB)
   llvm::PassManager TransformPasses;
+#else
+  llvm::legacy::PassManager TransformPasses;
+#endif
   TransformPasses.add(llvm::createOpenCLIRTransform());
   if (!TransformPasses.run(*M)) {
     if (error != NULL) (*error) = ACL_FRONTEND_FAILURE;
@@ -458,7 +467,6 @@ SPIRVToModule(
   llvm::SmallVector<char, 4096> array;
   llvm::raw_svector_ostream outstream(array);
   llvm::WriteBitcodeToFile(reinterpret_cast<llvm::Module*>(llMod), outstream);
-  outstream.flush();
   auto errCode = cl->clAPI.insSec(cl, bin, &array[0], array.size(), aclLLVMIR);
   if (error != nullptr) (*error) = errCode;
   if (errCode != ACL_SUCCESS)
@@ -624,10 +632,10 @@ OCLLinkPhase(
         Opts->getLLVMArgv(), "OpenCL");
 
   // LLVM Link phase
-  std::vector<llvm::Module*> libvec;
+  std::vector<std::unique_ptr<llvm::Module>> libvec;
   for (unsigned x = 0; x < numLibs; ++x) {
     if (libs[x] != NULL) {
-      libvec.push_back(reinterpret_cast<llvm::Module*>(libs[x]));
+      libvec.push_back(std::unique_ptr<llvm::Module>(reinterpret_cast<llvm::Module*>(libs[x])));
     }
   }
   int ret = aclLink->link(reinterpret_cast<llvm::Module*>(llvmBin), libvec);
@@ -1718,24 +1726,12 @@ if_aclLink(aclCompiler *cl,
       case ACL_TYPE_LLVMIR_BINARY:
       case ACL_TYPE_RSLLVMIR_BINARY:
       {
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 7710
         llvm::SmallVector<char, 4096> array;
         llvm::raw_svector_ostream outstream(array);
         llvm::WriteBitcodeToFile(reinterpret_cast<llvm::Module*>(dst_module), outstream);
         cl->clAPI.remSec(cl, src_bin, aclLLVMIR);
-        outstream.flush();
         error_code = cl->clAPI.insSec(cl, src_bin,
             &array[0], array.size(), aclLLVMIR);
-#else
-        std::vector<unsigned char> array;
-        array.reserve(4096);
-        llvm::BitstreamWriter stream(array);
-        llvm::WriteBitcodeToStream(reinterpret_cast<llvm::Module*>(dst_module),
-          stream);
-        cl->clAPI.remSec(cl, src_bin, aclLLVMIR);
-        error_code = cl->clAPI.insSec(cl, src_bin,
-            &array[0], array.size(), aclLLVMIR);
-#endif
         if (dst_module != NULL && dst_module != module) {
           delete reinterpret_cast<llvm::Module*>(dst_module);
         }
@@ -3161,7 +3157,7 @@ static llvm::RuntimeDyld* GetOrCreateDyld(llvm::object::ObjectFile* obj) {
     return DI->second;
   OCLMCJITMemoryManager *memMgr = new OCLMCJITMemoryManager();
   MemMgrTable.insert(std::make_pair(obj, memMgr));
-  llvm::RuntimeDyld *rtdyld = new llvm::RuntimeDyld(memMgr);
+  llvm::RuntimeDyld *rtdyld = new llvm::RuntimeDyld(*memMgr, *memMgr);
   DyLdTable.insert(std::make_pair(obj, rtdyld));
   return rtdyld;
 }
@@ -3347,14 +3343,13 @@ if_aclJITObjectImageIterateSymbols(aclJITObjectImage image,
 #else
   llvm::object::ObjectFile* objectImage = reinterpret_cast<llvm::object::ObjectFile*>(image);
   llvm::RuntimeDyld *rtdyld = GetOrCreateDyld(objectImage);
-  std::error_code err;
-  llvm::StringRef name;
-  for (const llvm::object::SymbolRef &S: objectImage->symbols()) {
-    std::error_code err = S.getName(name);
-    assert (!err);
-    uint64_t address;
-    address = (uint64_t) rtdyld->getSymbolLoadAddress(name);
-    jit_callback(name.data(), (const void*)address, data);
+  for (const auto &S: objectImage->symbols()) {
+    auto Ret = S.getName();
+    if (!Ret) {
+      auto InternalSymbol = rtdyld->getSymbol(Ret.get());
+      uint64_t address = (uint64_t)(InternalSymbol ? InternalSymbol.getAddress() : 0);
+      jit_callback(Ret.get().data(), (const void*)address, data);
+    }
   }
 #endif
   return ACL_SUCCESS;

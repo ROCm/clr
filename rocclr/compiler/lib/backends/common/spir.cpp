@@ -27,7 +27,11 @@
 #include "llvm/IR/Verifier.h"
 #endif
 #include "llvm/Pass.h"
+#if defined(LEGACY_COMPLIB)
 #include "llvm/PassManager.h"
+#else
+#include "llvm/IR/LegacyPassManager.h"
+#endif
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Analysis/SPIRVerifier.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -67,7 +71,11 @@ amdcl::SPIR::loadSPIR(std::string &spirBinary)
     log_ += errors;
     errors.clear();
   }
+#if defined(LEGACY_COMPLIB)
   FunctionPassManager FPM(bc);
+#else
+  legacy::FunctionPassManager FPM(bc);
+#endif
   if (Options()->oVariables->verifyHWSpir) {
     if (!isHSAILTarget(Elf()->target)) {
       verifySPIRModule(*bc, LLVMReturnStatusAction, State, false, &errors);
@@ -106,11 +114,11 @@ amdcl::SPIR::loadBitcode(std::string &binary)
   bc->setDataLayout(LayoutStr);
   bc->setTargetTriple(familySet[Elf()->target.arch_id].triple);
 
-  llvm::PassManager SPIRPasses;
 #if defined(LEGACY_COMPLIB)
+  llvm::PassManager SPIRPasses;
   SPIRPasses.add(new llvm::DataLayout(bc));
 #else
-  SPIRPasses.add(new llvm::DataLayoutPass());
+  llvm::legacy::PassManager SPIRPasses;
 #endif
   SPIRPasses.add(createSPIRLoader(/*demangleBuiltin=*/ true));
   SPIRPasses.run(*bc);

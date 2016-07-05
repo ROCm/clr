@@ -79,7 +79,7 @@ ifdef ATI_OS_WINDOWS
         GCXXOPTS += /Ob1
     endif
     
-    GCXXOPTS += -wd4985 -wd4355 -wd4800 -wd4291
+    GCXXOPTS += -wd4985 -wd4355 -wd4800 -wd4291 -wd4624 -wd4141
 
     GCPPFLAGS += $(DEFSWITCH) _SCL_SECURE_NO_WARNINGS
     
@@ -90,7 +90,7 @@ ifdef ATI_OS_LINUX
     GCPPFLAGS += $(DEFSWITCH) __STDC_LIMIT_MACROS
     GCPPFLAGS += $(DEFSWITCH) __STDC_CONSTANT_MACROS
 
-    GCXXOPTS += -fno-rtti
+    GCXXOPTS += -fno-rtti -Wno-sign-compare
 endif    
 
 ifeq ($(OPENCL_USE_ONE_SC),1)

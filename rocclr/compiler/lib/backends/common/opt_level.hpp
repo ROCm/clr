@@ -6,15 +6,28 @@
 #include "top.hpp"
 #include "utils/options.hpp"
 #include "aclTypes.h"
+
+#if defined DEBUG
+#undef DEBUG
+#endif
+
+#if defined(LEGACY_COMPLIB)
 #include "llvm/PassManager.h"
+#else
+#include "llvm/IR/LegacyPassManager.h"
+#endif
 #include "llvm/Analysis/Passes.h"
 namespace llvm {
   class Module;
 
-  namespace legacy {
-    class FunctionPassManager;
-  }
 }; // llvm namespace
+
+#if defined(LEGACY_COMPLIB)
+#define LLVM_LEGACY_NAMESPACE llvm
+#else
+#define LLVM_LEGACY_NAMESPACE llvm::legacy
+#endif
+
 namespace amdcl
 {
   /*! \addtogroup Compiler Library
@@ -37,13 +50,13 @@ namespace amdcl
     protected:
     void setup(bool isGPU, uint32_t OptLevel);
     void run(aclBinary *elf);
-    llvm::PassManager& Passes() { return passes_; }
-    llvm::FunctionPassManager& FPasses() { return (*fpasses_); }
+    LLVM_LEGACY_NAMESPACE::PassManager& Passes() { return passes_; }
+    LLVM_LEGACY_NAMESPACE::FunctionPassManager& FPasses() { return (*fpasses_); }
     amd::option::Options* Options() { return opts_; }
     llvm::Module* module_;
     private:
-    llvm::FunctionPassManager *fpasses_;
-    llvm::PassManager passes_;
+    LLVM_LEGACY_NAMESPACE::FunctionPassManager *fpasses_;
+    LLVM_LEGACY_NAMESPACE::PassManager passes_;
     amd::option::Options *opts_;
   }; // class OptLevel
   /*@}*/

@@ -38,7 +38,7 @@ namespace amdcl
      * binary and links in a vector of libraries.  
      * Returns 0 on success, non-zero on failure.
      */
-    virtual int link(llvm::Module* input, std::vector<llvm::Module*> &libs) = 0;
+    virtual int link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Module>> &libs) = 0;
 
   }; // class Linker
   /*@}*/
@@ -74,10 +74,10 @@ namespace amdcl
      * This version also links in the OpenCL math libraries along with
      * the list of libraries that are passed in.
      */
-      int link(llvm::Module* input, std::vector<llvm::Module*> &libs);
+      int link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Module>> &libs);
     protected:
-      bool linkLLVMModules(std::vector<llvm::Module*> &libs);
-      bool linkWithModule(llvm::Module* Dst, llvm::Module* Src);
+      bool linkLLVMModules(std::vector<std::unique_ptr<llvm::Module>> &libs);
+      bool linkWithModule(llvm::Module* Dst, std::unique_ptr<llvm::Module> Src);
 
 
     private:

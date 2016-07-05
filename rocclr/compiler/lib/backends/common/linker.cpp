@@ -33,6 +33,7 @@
 #include "llvm/Assembly/Writer.h"
 #endif
 #else
+#include "llvm/Support/Debug.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/Instructions.h"
@@ -95,12 +96,6 @@
 #include "llvm/Support/SPIRV.h"
 #endif
 
-// need to undef DEBUG before using DEBUG macro in llvm/Support/Debug.h
-#ifdef DEBUG
-#undef DEBUG
-#endif
-#include "llvm/Support/Debug.h"
-
 #include <cassert>
 #include <cstdlib>
 #include <cstdio>
@@ -117,9 +112,6 @@
 #include <windows.h>
 #endif // _WIN32
 
-#ifdef DEBUG_TYPE
-#undef DEBUG_TYPE
-#endif
 #define DEBUG_TYPE "ocl_linker"
 
 namespace AMDSpir {
@@ -158,8 +150,8 @@ inline llvm::Module*
 #else
     ErrorOr<std::unique_ptr<MemoryBuffer>> FileOrErr = MemoryBuffer::getFileOrSTDIN(Filename);
     if (!FileOrErr) {
-      llvm::ErrorOr<llvm::Module *> M = llvm::parseBitcodeFile(FileOrErr.get()->getMemBufferRef(), Context);
-      if (M) return M.get();
+      auto ModuleOrErr = llvm::parseBitcodeFile(FileOrErr.get()->getMemBufferRef(), Context);
+      if (!ModuleOrErr.getError()) return ModuleOrErr.get().release();
     }
 
     return nullptr;
@@ -232,15 +224,13 @@ llvm::Module*
   LoadLibrary(const char* libBC, size_t libBCSize,
       LLVMContext& Context)
   {
-    llvm::ErrorOr<llvm::Module*> M(nullptr);
-    std::string ErrorMessage;
 
     auto Buffer = MemoryBuffer::getMemBuffer(StringRef(libBC, libBCSize), "");
     if ( Buffer ) {
-      M = llvm::getLazyBitcodeModule(std::move(Buffer), Context);
-      if (!M) return nullptr;
+      auto ModuleOrErr = llvm::getLazyBitcodeModule(std::move(Buffer), Context);
+      if (!ModuleOrErr.getError()) return ModuleOrErr.get().release();
     }
-    return *M;
+    return nullptr;
   }
 #endif
 
@@ -259,7 +249,7 @@ static std::set<std::string> *getAmdRtFunctions()
 
 
 bool
-amdcl::OCLLinker::linkWithModule(llvm::Module* Dst, llvm::Module* Src)
+amdcl::OCLLinker::linkWithModule(llvm::Module* Dst, std::unique_ptr<llvm::Module> Src)
 {
 #ifndef NDEBUG
   if (Options()->oVariables->EnableDebugLinker) {
@@ -268,7 +258,7 @@ amdcl::OCLLinker::linkWithModule(llvm::Module* Dst, llvm::Module* Src)
   }
 #endif
   std::string ErrorMessage;
-  if (llvm::linkWithModule(Dst, Src, &ErrorMessage)) {
+  if (llvm::linkWithModule(Dst, std::move(Src), &ErrorMessage)) {
     DEBUG(llvm::dbgs() << "Error: " << ErrorMessage << "\n");
     BuildLog() += "\nInternal Error: linking libraries failed!\n";
     LogError("linkWithModule(): linking bc libraries failed!");
@@ -277,14 +267,8 @@ amdcl::OCLLinker::linkWithModule(llvm::Module* Dst, llvm::Module* Src)
   return false;
 }
 
-
-
-static void delete_llvm_module(llvm::Module *a)
-{
-  delete a;
-}
-  bool
-amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
+bool
+amdcl::OCLLinker::linkLLVMModules(std::vector<std::unique_ptr<llvm::Module>> &libs)
 {
   // Load input modules first
   bool Failed = false;
@@ -316,7 +300,7 @@ amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
       std::error_code EC;
       llvm::raw_fd_ostream outs(fileName.c_str(), EC, llvm::sys::fs::F_None);
       if (!EC)
-        llvm::WriteBitcodeToFile(libs[i], outs);
+        llvm::WriteBitcodeToFile(libs[i].get(), outs);
       else
         printf(EC.message().c_str());
 #endif
@@ -327,7 +311,7 @@ amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
     // Link input modules together
     for (size_t i = 0; i < libs.size(); ++i) {
       DEBUG(llvm::dbgs() << "LinkWithModule " << i << ":\n");
-      if (amdcl::OCLLinker::linkWithModule(LLVMBinary(), libs[i])) {
+      if (amdcl::OCLLinker::linkWithModule(LLVMBinary(), std::move(libs[i]))) {
         Failed = true;
       }
     }
@@ -336,7 +320,6 @@ amdcl::OCLLinker::linkLLVMModules(std::vector<llvm::Module*> &libs)
   if (Failed) {
     delete LLVMBinary();
   }
-  std::for_each(libs.begin(), libs.end(), std::ptr_fun(delete_llvm_module));
   libs.clear();
   return Failed;
 
@@ -512,7 +495,7 @@ translateSpirv(llvm::Module *&M, const std::string &DumpSpirv,
 #endif
 
 int
-amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
+amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Module>> &libs)
 {
   bool IsGPUTarget = isGpuTarget(Elf()->target);
   uint64_t start_time = 0ULL, time_link = 0ULL, time_prelinkopt = 0ULL;
@@ -566,7 +549,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
   }
 
 #ifdef HAS_SPIRV
-  if (Options()->oVariables->RoundTripSPIRV && isSPIRModule(*llvmbinary_)) {
+  if (Options()->oVariables->RoundTripSPIRV && isAMDSPIRModule(*llvmbinary_)) {
     std::string DumpSpirv;
     std::string DumpLlvm;
     if (Options()->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
@@ -634,6 +617,8 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       }
 #endif
     }
+    DEBUG_WITH_TYPE("linkTriple", llvm::dbgs() << "Library[" << i << "] " <<
+        Library->getTargetTriple() << ' ' << LibDataLayout << '\n');
 
     if (LibTargetTriple.empty()) {
       // The first member in the list of libraries is assumed to be
@@ -654,7 +639,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       }
 
       std::string clp_errmsg;
-      llvm::Module *OnFlyLib = AMDPrelink(LLVMBinary(), clp_errmsg);
+      std::unique_ptr<llvm::Module> OnFlyLib(AMDPrelink(LLVMBinary(), clp_errmsg));
 
       if (!clp_errmsg.empty()) {
         delete LLVMBinary();
@@ -666,13 +651,11 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
       if (OnFlyLib) {
         // OnFlyLib must be the first!
         std::string ErrorMsg;
-        if (resolveLink(LLVMBinary(), OnFlyLib, &ErrorMsg)) {
-          delete OnFlyLib;
+        if (resolveLink(LLVMBinary(), std::move(OnFlyLib), &ErrorMsg)) {
           BuildLog() += ErrorMsg;
           BuildLog() += "\nInternal Error: linking libraries failed!\n";
           return 1;
         }
-        delete OnFlyLib;
       }
 
       if (Options()->oVariables->EnableBuildTiming) {
@@ -696,7 +679,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<llvm::Module*> &libs)
 
     // Link libraries to get every functions that are referenced.
     std::string ErrorMsg;
-    if (resolveLink(LLVMBinary(), Library.get(), &ErrorMsg)) {
+    if (resolveLink(LLVMBinary(), std::move(Library), &ErrorMsg)) {
         BuildLog() += ErrorMsg;
         BuildLog() += "\nInternal Error: linking libraries failed!\n";
         return 1;
