@@ -12,6 +12,8 @@
 #if defined(LEGACY_COMPLIB)
 #include "llvm/DataLayout.h"
 #include "llvm/Module.h"
+#else
+#include "llvm/Analysis/TargetTransformInfo.h"
 #endif
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/LinkAllPasses.h"
@@ -27,14 +29,10 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
   // Add an appropriate DataLayout instance for this module.
 #if defined(LEGACY_COMPLIB)
   Passes().add(new DataLayout(module_));
-#else
-  Passes().add(new DataLayoutPass());
-#endif
   fpasses_ = new FunctionPassManager(module_);
-#if defined(LEGACY_COMPLIB)
   fpasses_->add(new DataLayout(module_));
 #else
-  fpasses_->add(new DataLayoutPass());
+  fpasses_ = new legacy::FunctionPassManager(module_);
 #endif
 
   PassManagerBuilder Builder;
@@ -110,7 +108,6 @@ OptLevel::run(aclBinary *elf)
                                                              Error);
       if (TheTarget) {
         llvm::TargetOptions targetOptions;
-        targetOptions.NoFramePointerElim = false;
         targetOptions.StackAlignmentOverride = Options()->oVariables->CPUStackAlignment;
 #ifdef WITH_TARGET_HSAIL
         if (Options()->libraryType_ == amd::GPU_Library_HSAIL)
@@ -118,8 +115,14 @@ OptLevel::run(aclBinary *elf)
 #endif
         targetOptions.LessPreciseFPMADOption = Options()->oVariables->MadEnable ||
                                                Options()->oVariables->EnableMAD;
-        targetOptions.NoInfsFPMath = Options()->oVariables->FiniteMathOnly;
-        targetOptions.NoNaNsFPMath = Options()->oVariables->FiniteMathOnly;
+        targetOptions.NoInfsFPMath = targetOptions.NoNaNsFPMath
+          = Options()->oVariables->FiniteMathOnly;
+        for (auto &F : *module_) {
+          auto Attrs = F.getAttributes();
+          Attrs = Attrs.addAttribute(F.getContext(), AttributeSet::FunctionIndex,
+                                     "no-frame-pointer-elim", "false");
+          F.setAttributes(Attrs);
+        }
 
         llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
         switch (Options()->oVariables->OptLevel) {
@@ -152,7 +155,7 @@ OptLevel::run(aclBinary *elf)
   }
   std::unique_ptr<TargetMachine> TM(Machine);
   if (TM.get())
-    TM->addAnalysisPasses(passes_);
+    fpasses_->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
 #endif
 
   if (Options()->oVariables->OptPrintLiveness) {

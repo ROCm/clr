@@ -2,6 +2,7 @@
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
 #include "top.hpp"
+
 #include "codegen.hpp"
 #include "utils/libUtils.h"
 #include "os/os.hpp"
@@ -163,11 +164,14 @@ llvm::sys::MemoryBlock OCLMCJITMemoryManager::allocateSection(uintptr_t Size) {
 
 #if !defined(LEGACY_COMPLIB)
 void OCLMCJITMemoryManager::reserveAllocationSpace(uintptr_t CodeSize,
-                                                   uintptr_t DataSizeRO,
-                                                   uintptr_t DataSizeRW) {
+                                                   uint32_t CodeAlign,
+                                                   uintptr_t RODataSize,
+                                                   uint32_t RODataAlign,
+                                                   uintptr_t RWDataSize,
+                                                   uint32_t RWDataAlign) {
   uint64_t GOTTableReserveSize = 4096;
-  uint64_t Size = (uint64_t)CodeSize + (uint64_t)DataSizeRO +
-                  (uint64_t)DataSizeRW + GOTTableReserveSize;
+  uint64_t Size = (uint64_t)CodeSize + (uint64_t)RODataSize +
+                  (uint64_t)RWDataSize + GOTTableReserveSize;
   if ((uint64_t)allocPtr + (uint64_t)Size > (uint64_t)allocMaxPtr)
     reserveMemory(Size);
 }
@@ -396,11 +400,6 @@ llvmCodeGen(
     return 1;
   }
 
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 1463
-#else
-  // a dirty way to guarantee "push bp" inserted by CodeGen in prologue
-  llvm::NoFramePointerElim = !optimize;
-#endif
   // Load the module to be compiled...
   Module &mod = *Composite;
 
@@ -456,8 +455,13 @@ llvmCodeGen(
   }
 #endif
 
+#if defined(LEGACY_COMPLIB)
   for (TargetRegistry::iterator it = TargetRegistry::begin(),
       ie = TargetRegistry::end(); it != ie; ++it) {
+#else
+  for (TargetRegistry::iterator it = TargetRegistry::targets().begin(),
+      ie = TargetRegistry::targets().end(); it != ie; ++it) {
+#endif
     if (MArch == it->getName()) {
       TheTarget = &*it;
       break;
@@ -499,7 +503,6 @@ llvmCodeGen(
   std::string FeatureStr = getFeatureString(binary->target, OptionsObj);
 
   llvm::TargetOptions targetOptions;
-  targetOptions.NoFramePointerElim = false;
   targetOptions.StackAlignmentOverride =
     OptionsObj->oVariables->CPUStackAlignment;
   // jgolds
@@ -545,61 +548,69 @@ llvmCodeGen(
   TargetMachine &Target = *target;
 
   // Figure out where we are going to send the output...
+#if defined(LEGACY_COMPLIB)
   raw_string_ostream *RSOut = new raw_string_ostream(output);
   formatted_raw_ostream *Out = new formatted_raw_ostream(*RSOut, formatted_raw_ostream::DELETE_STREAM);
-  if (Out == 0) {
+#else
+  auto RSOut = llvm::make_unique<raw_string_ostream>(output);
+  if (!RSOut) {
+    LogError("llvmCodeGen couldn't create an output stream");
+    return 1;
+  }
+  auto Out = llvm::make_unique<buffer_ostream>(*RSOut);
+#endif
+  if (!Out) {
     LogError("llvmCodeGen couldn't create an output stream");
     return 1;
   }
 
   // Build up all of the passes that we want to do to the module or function or
   // Basic Block.
-  PassManager Passes;
+  legacy::PassManager Passes;
 
-  // Add the target data from the target machine, if it exists.
-  if (const DataLayout *TD = Target.getSubtargetImpl()->getDataLayout())
-    mod.setDataLayout(TD);
-  Passes.add(new DataLayoutPass());
-
+  // Add the target data from the target machine, if it exists, or the module.
+  mod.setDataLayout(Target.createDataLayout());
   // Override default to generate verbose assembly, if the device is not the GPU.
   // The GPU sets this in AMDILTargetMachine.cpp.
   if (familyMap.target == (const TargetMapping*)&X86TargetMapping ||
       familyMap.target == (const TargetMapping*)&X64TargetMapping
       ) {
+#if defined(LEGACY_COMPLIB)
     Target.setAsmVerbosityDefault(true);
+#else
+    Target.Options.MCOptions.AsmVerbose = true;
+#endif
   }
 
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(binary->target)) {
     if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_ObjectFile, true)) {
+#if defined(LEGACY_COMPLIB)
       delete Out;
+#endif
       return 1;
     }
   } else 
 #endif
   {
 #ifndef NDEBUG
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 1144
     if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_AssemblyFile, false))
 #else
-    if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_AssemblyFile, OLvl, false))
-#endif
-#else
-#if 1 || LLVM_TRUNK_INTEGRATION_CL >= 1144
     if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_AssemblyFile, true))
-#else
-    if (Target.addPassesToEmitFile(Passes, *Out, TargetMachine::CGFT_AssemblyFile, OLvl, true))
-#endif
 #endif
     {
+#if defined(LEGACY_COMPLIB)
       delete Out;
+#endif
       return 1;
     }
   }
 
   Passes.run(mod);
   llvm::PrintStatistics();
+#if defined(LEGACY_COMPLIB)
   delete Out;
+#endif
   return 0;
 }
 

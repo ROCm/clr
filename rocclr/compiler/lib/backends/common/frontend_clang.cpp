@@ -52,7 +52,12 @@ int amdcl::ClangOCLFrontend::compileCommand(const std::string& src) {
   if (amdOpts) {
     for (std::vector<std::string>::const_iterator it = amdOpts->clangOptions.begin();
          it != amdOpts->clangOptions.end(); ++it) {
-      argsToClang.push_back((*it).c_str());
+      if ("-g" == *it) {
+        argsToClang.push_back("-dwarf-version=2");
+        argsToClang.push_back("-debug-info-kind=standalone");
+      } else {
+        argsToClang.push_back((*it).c_str());
+      }
     }
   }
 

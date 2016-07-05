@@ -3,14 +3,24 @@
 //
 #ifndef _BE_COMPILER_STAGE_HPP_
 #define _BE_COMPILER_STAGE_HPP_
-#include "aclTypes.h"
-#include "utils/options.hpp"
+
+#if defined DEBUG
+#undef DEBUG
+#endif
+
 #include "llvm/AMDLLVMContextHook.h"
+#if defined(LEGACY_COMPLIB)
 #include "llvm/PassManager.h"
+#else
+#include "llvm/IR/LegacyPassManager.h"
+#endif
 #include "llvm/Pass.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Bitcode/ReaderWriter.h"
+
+#include "aclTypes.h"
+#include "utils/options.hpp"
 
 #include <cassert>
 #include <string>

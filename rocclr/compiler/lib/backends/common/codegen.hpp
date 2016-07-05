@@ -143,8 +143,11 @@ public:
 #else
   virtual bool needsToReserveAllocationSpace() override { return true; }
 
-  virtual void reserveAllocationSpace(uintptr_t CodeSize, uintptr_t DataSizeRO,
-                                      uintptr_t DataSizeRW) override;
+  virtual void reserveAllocationSpace(uintptr_t CodeSize, uint32_t CodeAlign,
+                                      uintptr_t RODataSize,
+                                      uint32_t RODataAlign,
+                                      uintptr_t RWDataSize,
+                                      uint32_t RWDataAlign) override;
 
   uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
                                unsigned SectionID, llvm::StringRef SectionName) override;

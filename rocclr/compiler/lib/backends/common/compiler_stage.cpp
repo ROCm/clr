@@ -111,8 +111,8 @@ LLVMCompilerStage::loadBitcode(std::string& llvmBinary)
   if (std::unique_ptr<llvm::MemoryBuffer> Buffer =
       llvm::MemoryBuffer::getMemBufferCopy(
         llvm::StringRef(llvmBinary), "input.bc")) {
-    llvm::ErrorOr<llvm::Module *> M = llvm::parseBitcodeFile(Buffer->getMemBufferRef(), Context());
-    if( M ) return M.get();
+    auto ModuleOrErr = llvm::parseBitcodeFile(Buffer->getMemBufferRef(), Context());
+    if( !ModuleOrErr.getError() ) return ModuleOrErr.get().release();
   }
 #endif
   return NULL;

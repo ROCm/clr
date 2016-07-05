@@ -47,11 +47,11 @@ static OptLevel* getOptLevel(amd::option::Options* Options, bool isGPU) {
 int
 CPUOptimizer::preOptimizer(llvm::Module* M)
 {
-    llvm::PassManager Passes;
 #if defined(LEGACY_COMPLIB)
+    llvm::PassManager Passes;
     Passes.add(new llvm::DataLayout(M));
 #else
-    Passes.add(new llvm::DataLayoutPass());
+    llvm::legacy::PassManager Passes;
 #endif
 
     Passes.add(createAMDExportKernelNaturePass());
