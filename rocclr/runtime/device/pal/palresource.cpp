@@ -1072,9 +1072,10 @@ Resource::free()
 void
 Resource::writeRawData(
     VirtualGPU& gpu,
-    size_t size,
+    size_t      offset,
+    size_t      size,
     const void* data,
-    bool waitForEvent) const
+    bool        waitForEvent) const
 {
     GpuEvent    event;
 
@@ -1082,11 +1083,8 @@ Resource::writeRawData(
     // size needs to be DWORD aligned
     assert((size & 3) == 0);
     gpu.eventBegin(MainEngine);
-    //! @todo Remove cache flush
-    //! It's a workaround for a PAL crash with embedded data, allocated before any command
-    gpu.flushCUCaches();
     gpu.queue(MainEngine).addCmdMemRef(iMem());
-    gpu.iCmd()->CmdUpdateMemory(*iMem(), 0, size, reinterpret_cast<const uint32_t*>(data));
+    gpu.iCmd()->CmdUpdateMemory(*iMem(), offset, size, reinterpret_cast<const uint32_t*>(data));
     gpu.eventEnd(MainEngine, event);
 
     setBusy(gpu, event);
@@ -1938,7 +1936,7 @@ Resource::warmUpRenames(VirtualGPU& gpu)
         uint    dummy = 0;
         const bool NoWait = false;
         // Write 0 for the buffer paging by VidMM
-        writeRawData(gpu, sizeof(dummy), &dummy, NoWait);
+        writeRawData(gpu, 0, sizeof(dummy), &dummy, NoWait);
         const bool Force = true;
         rename(gpu, Force);
     }
