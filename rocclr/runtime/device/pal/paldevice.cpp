@@ -706,6 +706,7 @@ Device::create(Pal::IDevice* device)
     // palSettings ...
     palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
     palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
+    palSettings->cmdBufBatchedSubmitChainLimit = 0;
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
