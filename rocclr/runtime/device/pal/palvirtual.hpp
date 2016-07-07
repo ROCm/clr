@@ -79,7 +79,7 @@ public:
 
         //! Flushes the current command buffer to HW
         //! Returns ID associated with the submission
-        uint submit();
+        uint submit(bool forceFlush);
 
         bool flush();
 
@@ -401,15 +401,17 @@ public:
     //! Returns queue, associated with VirtualGPU
     Queue& queue(EngineType id) const { return *queues_[id]; }
 
-    void flushCUCaches() const
+    void flushCUCaches(bool flushL2 = false) const
     {
         Pal::BarrierInfo barrier = {};
         barrier.pipePointWaitCount = 1;
         Pal::HwPipePoint point = Pal::HwPipePostCs;
         barrier.pPipePoints = &point;
         barrier.transitionCount = 1;
-        Pal::BarrierTransition trans = {Pal::CoherShader, Pal::CoherShader,
-            {nullptr, { {Pal::ImageAspect::Color, 0, 0}, 0, 0 }, Pal::LayoutShaderRead, Pal::LayoutShaderRead}};
+        uint32_t    cacheMask = (flushL2) ? Pal::CoherCopy : Pal::CoherShader;
+        Pal::BarrierTransition trans = { cacheMask, cacheMask,
+            { nullptr, { { Pal::ImageAspect::Color, 0, 0 }, 0, 0 },
+            Pal::LayoutShaderRead, Pal::LayoutShaderRead}};
         barrier.pTransitions = &trans;
         barrier.waitPoint = Pal::HwPipePreCs;
         iCmd()->CmdBarrier(barrier);
@@ -420,10 +422,17 @@ public:
         profileEvent(engId, Begin);
     }
 
-    void eventEnd(EngineType engId, GpuEvent& event) const {
-        const static bool End = false;
-        profileEvent(engId, End);
-        event.id = queues_[engId]->submit();
+    void eventEnd(EngineType engId, GpuEvent& event, bool forceExec = false) const {
+        constexpr bool End = false;
+        if (forceExec) {
+            constexpr bool ForceFlush = true;
+            event.id = queues_[engId]->submit(ForceFlush);
+            profileEvent(engId, End);
+        }
+        else {
+            profileEvent(engId, End);
+            event.id = queues_[engId]->submit(GPU_FLUSH_ON_EXECUTION);
+        }
         event.engineId_ = engId;
     }
 
