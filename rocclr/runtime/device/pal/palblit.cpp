@@ -2678,7 +2678,7 @@ KernelBlitManager::writeRawData(
     const void* data
     ) const
 {
-    static_cast<pal::Memory&>(memory).writeRawData(gpu(), 0, size, data, false);
+    static_cast<pal::Memory&>(memory).writeRawData(gpu(), size, data, false);
 
     synchronize();
 }
