@@ -240,10 +240,11 @@ public:
      *
      */
     void writeRawData(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        size_t size,                    //!< Size in bytes of data to be copied(multiple of DWORDS)
-        const void* data,               //!< Data to be copied
-        bool waitForEvent               //!< Wait for event complete
+        VirtualGPU& gpu,            //!< Virtual GPU device object
+        size_t      offset,         //!< Offset for in the buffer for data
+        size_t      size,           //!< Size in bytes of data to be copied(multiple of DWORDS)
+        const void* data,           //!< Data to be copied
+        bool        waitForEvent    //!< Wait for event complete
         ) const;
 
     //! Returns the offset in GPU memory for aliases
