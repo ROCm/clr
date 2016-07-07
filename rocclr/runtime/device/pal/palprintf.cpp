@@ -619,7 +619,7 @@ PrintfDbgHSA::init(
 
         // Copy offset and number of bytes available for printf data
         // into the corresponding location in the debug buffer
-        dbgBuffer_->writeRawData(gpu, 0, initSize, sysMem, true);
+        dbgBuffer_->writeRawData(gpu, initSize, sysMem, true);
     }
     return true;
 }
