@@ -155,11 +155,11 @@ VirtualGPU::Queue::removeCmdMemRef(Pal::IGpuMemory* iMem)
 }
 
 uint
-VirtualGPU::Queue::submit(bool forceFlush)
+VirtualGPU::Queue::submit()
 {
     cmdCnt_++;
     uint id = cmdBufIdCurrent_;
-    if ((cmdCnt_ > MaxCommands) || forceFlush) {
+    if ((cmdCnt_ > MaxCommands) || GPU_FLUSH_ON_EXECUTION) {
         if (!flush()) {
             return GpuEvent::InvalidID;
         }
@@ -238,11 +238,6 @@ VirtualGPU::Queue::flush()
         return false;
     }
 
-    // Reset command buffer, so CB chunks could be reused
-    if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Reset(nullptr, false)) {
-        LogError("PAL failed CB reset!");
-        return false;
-    }
     // Start command buffer building
     Pal::CmdBufferBuildInfo cmdBuildInfo = {};
     if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo)) {
@@ -596,44 +591,41 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
     if  ((virtualQueue_ == nullptr) || !virtualQueue_->create(type)) {
         return false;
     }
-
-    if (GPU_PRINT_CHILD_KERNEL != 0) {
-        address ptr  = reinterpret_cast<address>(
-            virtualQueue_->map(this, Resource::WriteOnly));
-        if (nullptr == ptr) {
-            return false;
-        }
+    address ptr  = reinterpret_cast<address>(
+        virtualQueue_->map(this, Resource::WriteOnly));
+    if (nullptr == ptr) {
+        return false;
     }
+    // Clear memory
+    memset(ptr, 0, allocSize);
+    uint64_t    vaBase = virtualQueue_->vmAddress();
+    AmdVQueueHeader* header = reinterpret_cast<AmdVQueueHeader*>(ptr);
 
-    uint64_t        vaBase = virtualQueue_->vmAddress();
-    AmdVQueueHeader header = {};
     // Initialize the virtual queue header
-    header.aql_slot_num    = numSlots;
-    header.event_slot_num  = dev().settings().numDeviceEvents_;
-    header.event_slot_mask = vaBase + eventMaskOffs;
-    header.event_slots     = vaBase + eventsOffs;
-    header.aql_slot_mask   = vaBase + slotMaskOffs;
-    header.wait_size       = dev().settings().numWaitEvents_;
-    header.arg_size        = dev().info().maxParameterSize_ + 64;
-    header.mask_groups     = maskGroups_;
-
+    header->aql_slot_num    = numSlots;
+    header->event_slot_num  = dev().settings().numDeviceEvents_;
+    header->event_slot_mask = vaBase + eventMaskOffs;
+    header->event_slots     = vaBase + eventsOffs;
+    header->aql_slot_mask   = vaBase + slotMaskOffs;
+    header->wait_size       = dev().settings().numWaitEvents_;
+    header->arg_size        = dev().info().maxParameterSize_ + 64;
+    header->mask_groups     = maskGroups_;
     vqHeader_ = new AmdVQueueHeader;
     if (nullptr == vqHeader_) {
         return false;
     }
-    *vqHeader_ = header;
-
-    virtualQueue_->writeRawData(*this, 0, sizeof(AmdVQueueHeader), &header, false);
+    *vqHeader_ = *header;
 
     // Go over all slots and perform initialization
-    AmdAqlWrap  slot = {};
-    size_t      offset = sizeof(AmdVQueueHeader);
+    AmdAqlWrap* slots = reinterpret_cast<AmdAqlWrap*>(&header[1]);
     for (uint i = 0; i < numSlots; ++i) {
         uint64_t argStart = vaBase + argOffs + i * singleArgSize;
-        slot.aql.kernarg_address = reinterpret_cast<void*>(argStart);
-        slot.wait_list = argStart + dev().info().maxParameterSize_ + 64;
-        virtualQueue_->writeRawData(*this, offset, sizeof(AmdAqlWrap), &slot, false);
-        offset += sizeof(AmdAqlWrap);
+        slots[i].aql.kernarg_address = reinterpret_cast<void*>(argStart);
+        slots[i].wait_list = argStart + dev().info().maxParameterSize_ + 64;
+    }
+    // Upload data back to local memory
+    if (GPU_PRINT_CHILD_KERNEL == 0) {
+        virtualQueue_->unmap(this);
     }
 
     schedParams_ = new Memory(dev(), 64 * Ki);
@@ -641,7 +633,7 @@ VirtualGPU::createVirtualQueue(uint deviceQueueSize)
         return false;
     }
 
-    address ptr  = reinterpret_cast<address>(schedParams_->map(this));
+    ptr  = reinterpret_cast<address>(schedParams_->map(this));
 
     deviceQueueSize_ = deviceQueueSize;
 
@@ -697,9 +689,9 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize)
     state_.profiling_ = profiling;
 
     Pal::CmdAllocatorCreateInfo createInfo = {};
-    createInfo.flags.threadSafe = true;
     // \todo forces PAL to reuse CBs, but requires postamble
-    createInfo.flags.autoMemoryReuse = false;
+    createInfo.flags.autoMemoryReuse = true;
+    createInfo.flags.threadSafe = false;
     createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap =
         Pal::GpuHeapGartCacheable;
     createInfo.allocInfo[Pal::CommandDataAlloc].allocSize = 128 * Ki;
@@ -2108,28 +2100,34 @@ VirtualGPU::submitKernelInternal(
             }
 
             if (!dev().settings().useDeviceQueue_) {
+                Unimplemented();
+/*
                 // Add the termination handshake to the host queue
                 eventBegin(MainEngine);
-                //iCmd()->CmdVirtualQueueHandshake(*gpuDefQueue->schedParams_->iMem(),
-                //    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
-                //    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
-                //    0, dev().settings().useDeviceQueue_);
+                cs()->VirtualQueueHandshake(gpuDefQueue->schedParams_->iMem(),
+                    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                    0, dev().settings().useDeviceQueue_);
                 eventEnd(MainEngine, gpuEvent);
+*/
             }
 
             // Get the global loop start before the scheduler
-            //Pal::gpusize loopStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
-            //static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
-            //    *gpuDefQueue->virtualQueue_,
-            //    *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
-            //    gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
+            Unimplemented();
+/*
+            mcaddr loopStart = gpuDefQueue->cs()->VirtualQueueDispatcherStart();
+            static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
+                *gpuDefQueue->virtualQueue_,
+                *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
+                gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
             const static bool FlushL2 = true;
             gpuDefQueue->flushCUCaches(FlushL2);
 
             // Get the address of PM4 template and add write it to params
             //! @note DMA flush must not occur between patch and the scheduler
+            mcaddr patchStart = gpuDefQueue->cs()->VirtualQueueDispatcherStart();
+*/
             Pal::gpusize patchStart = 0;
-            //Pal::gpusize patchStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
             // Program parameters for the scheduler
             SchedulerParam* param = &reinterpret_cast<SchedulerParam*>
                 (gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
@@ -2170,28 +2168,31 @@ VirtualGPU::submitKernelInternal(
 
             Pal::gpusize  signalAddr = gpuDefQueue->schedParams_->vmAddress() +
                 gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
+            Unimplemented();
+/*
             gpuDefQueue->eventBegin(MainEngine);
-            //gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherEnd(
-            //    signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
-            //    (DeviceQueueMaskSize * maskGroups_));
-            // Note: Device enqueue can't have extra commands after INDIRECT_BUFFER call.
-            // Thus TS command for profiling has to follow in the next CB.
-            constexpr bool ForceSubmitFirst = true;
-            gpuDefQueue->eventEnd(MainEngine, gpuEvent, ForceSubmitFirst);
-
+            gpuDefQueue->cs()->VirtualQueueDispatcherEnd(
+                gpuDefQueue->vmMems(), gpuDefQueue->cal_.memCount_,
+                signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
+                (DeviceQueueMaskSize * maskGroups_));
+            gpuDefQueue->eventEnd(MainEngine, gpuEvent);
+*/
             // Set GPU event for the used resources
             for (uint i = 0; i < memList.size(); ++i) {
                 memList[i]->setBusy(*gpuDefQueue, gpuEvent);
             }
 
             if (dev().settings().useDeviceQueue_) {
+                Unimplemented();
+/*
                 // Add the termination handshake to the host queue
                 eventBegin(MainEngine);
-                //iCmd()->CmdVirtualQueueHandshake(*gpuDefQueue->schedParams_->iMem(),
-                //    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
-                //    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
-                //    signalAddr, dev().settings().useDeviceQueue_);
+                cs()->VirtualQueueHandshake(gpuDefQueue->schedParams_->iMem(),
+                    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                    signalAddr, dev().settings().useDeviceQueue_);
                 eventEnd(MainEngine, gpuEvent);
+*/
             }
 
             ++gpuDefQueue->schedParamIdx_ %=
@@ -3249,7 +3250,7 @@ VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable)
 {
     const static bool Wait = true;
     vqHeader_->kernel_table = kernelTable;
-    virtualQueue_->writeRawData(hostQ, 0, sizeof(AmdVQueueHeader), vqHeader_, Wait);
+    virtualQueue_->writeRawData(hostQ, sizeof(AmdVQueueHeader), vqHeader_, !Wait);
 }
 
 void
