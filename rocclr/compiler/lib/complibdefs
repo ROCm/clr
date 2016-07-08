@@ -67,8 +67,8 @@ GCPPFLAGS += $(DEFSWITCH) "BREAK_ON_LOG_ERROR=0"
 GCPPFLAGS += $(DEFSWITCH) "LOG_LEVEL=2"
 
 GCPPFLAGS += $(INCSWITCH) "$(OPENCL_DEPTH)/runtime/device/gpu/gslbe/src/rt"
-GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/pele/include/asic"
-GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/evergreen/include/asic"
+GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers/inc/asic_reg/3D/r600"
+GCPPFLAGS += $(INCSWITCH) "$(DEPTH)/drivers/inc/asic_reg/3D/r800"
 GCPPFLAGS += $(INCSWITCH) "$(UGL_DEPTH)/gl/gs/hwl/si/include/asic"
 export BRIG_ENABLE=1
 
