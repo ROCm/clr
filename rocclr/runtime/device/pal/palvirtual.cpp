@@ -189,9 +189,13 @@ VirtualGPU::Queue::flush()
              Pal::GpuMemoryRefCantTrim);
     }
 
+    Pal::SubmitInfo submitInfo = {};
+    submitInfo.cmdBufferCount = 1;
+    submitInfo.ppCmdBuffers = &iCmdBuffs_[cmdBufIdSlot_];
+    submitInfo.pFence = iCmdFences_[cmdBufIdSlot_];
+
     // Submit command buffer to OS
-    if (Pal::Result::Success != iQueue_->Submit(
-        1, &iCmdBuffs_[cmdBufIdSlot_], nullptr, 0, nullptr, iCmdFences_[cmdBufIdSlot_])) {
+    if (Pal::Result::Success != iQueue_->Submit(submitInfo)) {
         LogError("PAL failed to submit CMD!");
         return false;
     }
