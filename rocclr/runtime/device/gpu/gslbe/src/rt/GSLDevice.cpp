@@ -323,9 +323,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 
     asic_id = m_adp->getAsicID();
 
-    if ((asic_id < GSL_ATIASIC_ID_TAHITI_P) ||
-        (asic_id == GSL_ATIASIC_ID_DEVASTATOR) ||
-        (asic_id == GSL_ATIASIC_ID_SCRAPPER))
+    if ((asic_id < GSL_ATIASIC_ID_TAHITI_P))
     {
         LogPrintfInfo("Unsupported legacy ASIC(%d) found!\n", asic_id);
         // close the adaptor
@@ -362,9 +360,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
         m_isSDMAL2TConstrained = false;
     }
 
-    if (asic_id < GSL_ATIASIC_ID_TAHITI_P ||
-        asic_id == GSL_ATIASIC_ID_DEVASTATOR ||
-        asic_id == GSL_ATIASIC_ID_SCRAPPER)
+    if (asic_id < GSL_ATIASIC_ID_TAHITI_P)
     {
         m_computeRing = false;
     }
