@@ -2,18 +2,26 @@
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
 
-#include "device/pal/paldefs.hpp"
 #include "device/pal/palcounters.hpp"
 #include "device/pal/palvirtual.hpp"
 
 namespace pal {
 
 PalCounterReference*
-PalCounterReference::Create(
-   VirtualGPU&     gpu,
-    const Pal::PerfExperimentCreateInfo& createInfo)
+PalCounterReference::Create(VirtualGPU& gpu)
 {
     Pal::Result result;
+
+    // Create performance experiment
+    Pal::PerfExperimentCreateInfo   createInfo = {};
+
+    createInfo.optionFlags.sampleInternalOperations       = 1;
+    createInfo.optionFlags.cacheFlushOnCounterCollection  = 1;
+    createInfo.optionFlags.sqShaderMask                   = 1;
+    createInfo.optionValues.sampleInternalOperations      = true;
+    createInfo.optionValues.cacheFlushOnCounterCollection = true;
+    createInfo.optionValues.sqShaderMask = Pal::PerfShaderMaskCs;
+
     size_t palExperSize = gpu.dev().iDev()->GetPerfExperimentSize(
         createInfo, &result);
     if (result != Pal::Result::Success) {
@@ -33,47 +41,110 @@ PalCounterReference::Create(
     return memRef;
 }
 
-PalCounterReference::~PalCounterReference() {
+PalCounterReference::~PalCounterReference()
+{
     // The counter object is always associated with a particular queue,
     // so we have to lock just this queue
     amd::ScopedLock lock(gpu_.execution());
+
+    if (layout_ != nullptr) {
+        delete layout_;
+    }
+
+    if (memory_ != nullptr) {
+        delete memory_;
+    }
+
     if (nullptr != iPerf()) {
         iPerf()->Destroy();
     }
 }
 
-bool
-PalCounterReference::growResultArray(uint index) {
-    if (results_ != nullptr) {
-        delete [] results_;
+uint64_t PalCounterReference::result(uint index)
+{
+    if (layout_ != nullptr) {
+        assert(index <= layout_->sampleCount && "index not in range");
+        const Pal::GlobalSampleLayout& sample = layout_->samples[index];
+        if (sample.dataType == Pal::PerfCounterDataType::Uint32) {
+            uint32_t beginVal = *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(cpuAddr_) + sample.beginValueOffset);
+            uint32_t endVal = *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(cpuAddr_) + sample.endValueOffset);
+            return (endVal - beginVal);
+        }
+        else if (sample.dataType == Pal::PerfCounterDataType::Uint64) {
+            uint64_t beginVal = *reinterpret_cast<uint64_t*>(reinterpret_cast<char*>(cpuAddr_) + sample.beginValueOffset);
+            uint64_t endVal = *reinterpret_cast<uint64_t*>(reinterpret_cast<char*>(cpuAddr_) + sample.endValueOffset);
+            return (endVal - beginVal);
+        }
+        else {
+            assert(0 && "dataType should be either Uint32 or Uint64");
+            return 0;
+        }
     }
-    results_ = new uint64_t [index + 1];
-    if (results_ == nullptr) {
+
+    return 0;
+}
+
+bool PalCounterReference::finalize()
+{
+    Pal::Result result;
+
+    iPerf()->Finalize();
+
+    // Acquire GPU memory for the query from the pool and bind it.
+    Pal::GpuMemoryRequirements gpuMemReqs = {};
+    iPerf()->GetGpuMemoryRequirements(&gpuMemReqs);
+
+    memory_ = new Memory(gpu().dev(), amd::alignUp(gpuMemReqs.size, gpuMemReqs.alignment));
+
+    if (nullptr == memory_) {
         return false;
     }
-    return true;
+
+    if (!memory_->create(Resource::Remote)) {
+        return false;
+    }
+
+    cpuAddr_ = memory_->cpuMap(gpu_);
+
+    if (nullptr == cpuAddr_) {
+        return false;
+    }
+
+    gpu_.queue(gpu_.engineID_).addMemRef(memory_->iMem());
+
+    result = iPerf()->BindGpuMemory(memory_->iMem(), 0);
+
+    if (result == Pal::Result::Success) {
+        Pal::GlobalCounterLayout layout = {};
+        iPerf()->GetGlobalCounterLayout(&layout);
+
+        size_t size = sizeof(Pal::GlobalCounterLayout) + (sizeof(Pal::GlobalSampleLayout) * (layout.sampleCount - 1));
+        layout_ = reinterpret_cast<Pal::GlobalCounterLayout*>(new char[size]);
+        if (layout_ != nullptr) {
+            layout_->sampleCount = layout.sampleCount;
+            iPerf()->GetGlobalCounterLayout(layout_);
+        }
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 PerfCounter::~PerfCounter()
 {
-    if (calRef_ == nullptr) {
+    if (palRef_ == nullptr) {
         return;
     }
 
     // Release the counter reference object
-    calRef_->release();
+    palRef_->release();
 }
 
 bool
-PerfCounter::create(
-    PalCounterReference*    calRef)
+PerfCounter::create()
 {
-    assert(&gpu() == &calRef->gpu());
-
-    calRef_ = calRef;
-    counter_ = calRef->iPerf();
-    index_ = calRef->retain() - 2;
-    calRef->growResultArray(index_);
+    index_ = palRef_->retain() - 2;
 
     // Initialize the counter
     Pal::PerfCounterInfo counterInfo = {};
@@ -81,7 +152,7 @@ PerfCounter::create(
     counterInfo.block       = static_cast<Pal::GpuBlock>(info_.blockIndex_);
     counterInfo.instance    = info_.counterIndex_;
     counterInfo.eventId     = info_.eventIndex_;
-    Pal::Result result = counter_->AddCounter(counterInfo);
+    Pal::Result result = iPerf()->AddCounter(counterInfo);
     if (result != Pal::Result::Success) {
         return false;
     }
@@ -106,9 +177,7 @@ PerfCounter::getInfo(uint64_t infoType) const
         return info()->eventIndex_;
     }
     case CL_PERFCOUNTER_DATA: {
-        Unimplemented();
-        //gslCounter()->GetResult(gpu().cs(), reinterpret_cast<uint64*>(calRef_->results()));
-        return calRef_->results()[index_];
+        return palRef_->result(index_);
     }
     default:
         LogError("Wrong PerfCounter::getInfo parameter");
