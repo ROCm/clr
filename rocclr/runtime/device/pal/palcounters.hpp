@@ -15,9 +15,7 @@ class VirtualGPU;
 class PalCounterReference : public amd::ReferenceCountedObject
 {
 public:
-    static PalCounterReference* Create(
-        VirtualGPU&   gpu,
-        const Pal::PerfExperimentCreateInfo& createInfo);
+    static PalCounterReference* Create(VirtualGPU& gpu);
 
     //! Default constructor
     PalCounterReference(
@@ -25,7 +23,9 @@ public:
         )
         : perfExp_(nullptr)
         , gpu_(gpu)
-        , results_(nullptr) {}
+        , memory_(nullptr)
+        , cpuAddr_(nullptr)
+        , layout_(nullptr) {}
 
     //! Get PAL counter
     Pal::IPerfExperiment* iPerf() const { return perfExp_; }
@@ -33,21 +33,11 @@ public:
     //! Returns the virtual GPU device
     const VirtualGPU& gpu() const { return gpu_; }
 
-    //! Increases the results array for this PAL counter(container)
-    bool growResultArray(
-        uint maxIndex   //!< the maximum HW counter index in the PAL counter
-        );
-
-    void finalize() {
-        iPerf()->Finalize();
-        Pal::GlobalCounterLayout layout = {};
-        layout.sampleCount = referenceCount() - 1;
-        iPerf()->GetGlobalCounterLayout(&layout); }
+    //! Prepare for execution
+    bool finalize();
 
     //! Returns the PAL counter results
-    uint64_t*  results() const { return results_; }
-
-    Pal::IPerfExperiment* perfExp_;   //!< PAL performance experiment object
+    uint64_t result(uint index);
 
 protected:
     //! Default destructor
@@ -60,8 +50,11 @@ private:
     //! Disable operator=
     PalCounterReference& operator=(const PalCounterReference&);
 
-    VirtualGPU&     gpu_;           //!< The virtual GPU device object
-    uint64_t*       results_;       //!< Counter results
+    VirtualGPU&                 gpu_;           //!< The virtual GPU device object
+    Pal::IPerfExperiment*       perfExp_;       //!< PAL performance experiment object
+    Pal::GlobalCounterLayout*   layout_;        //!< Layout of the result
+    Memory*                     memory_;
+    void*                       cpuAddr_;       //!< CPU address of memory_
 };
 
 //! Performance counter implementation on GPU
@@ -76,26 +69,15 @@ public:
         uint        eventIndex_;    //!< Event you wish to count with the counter
     };
 
-    //! The PerfCounter flags
-    enum Flags
-    {
-        BeginIssued     = 0x00000001,
-        EndIssued       = 0x00000002,
-        ResultReady     = 0x00000004
-    };
-
     //! Constructor for the GPU PerfCounter object
     PerfCounter(
         const Device&       device,         //!< A GPU device object
-        const VirtualGPU&   gpu,            //!< Virtual GPU device object
+        PalCounterReference* palRef,        //!< Counter Reference
         cl_uint             blockIndex,     //!< HW block index
         cl_uint             counterIndex,   //!< Counter index within the block
         cl_uint             eventIndex)     //!< Event index for profiling
         : gpuDevice_(device)
-        , gpu_(gpu)
-        , calRef_(NULL)
-        , flags_(0)
-        , counter_(0)
+        , palRef_(palRef)
         , index_(0)
     {
         info_.blockIndex_   = blockIndex;
@@ -107,9 +89,7 @@ public:
     virtual ~PerfCounter();
 
     //! Creates the current object
-    bool create(
-        PalCounterReference* calRef     //!< Reference counter
-        );
+    bool create();
 
     //! Returns the specific information about the counter
     uint64_t getInfo(
@@ -120,13 +100,13 @@ public:
     const Device& dev() const { return gpuDevice_; }
 
     //! Returns the virtual GPU device
-    const VirtualGPU& gpu() const { return gpu_; }
+    const VirtualGPU& gpu() const { return palRef_->gpu(); }
 
     //! Returns the CAL performance counter descriptor
     const Info* info() const { return &info_; }
 
     //! Returns the Info structure for performance counter
-    Pal::IPerfExperiment* iPerf() const { return counter_; }
+    Pal::IPerfExperiment* iPerf() const { return palRef_->iPerf(); }
 
 private:
     //! Disable default copy constructor
@@ -135,16 +115,10 @@ private:
     //! Disable default operator=
     PerfCounter& operator=(const PerfCounter&);
 
-    const Device&   gpuDevice_; //!< The backend device
-    const VirtualGPU&   gpu_;   //!< The virtual GPU device object
-
-    PalCounterReference* calRef_;   //!< Reference counter
-    uint                flags_; //!< The perfcounter object state
-    Info                info_;  //!< The info structure for perfcounter
-    Pal::IPerfExperiment*    counter_;   //!< GSL counter object
-    uint                index_; //!< Counter index in the CAL container
+    const Device&           gpuDevice_; //!< The backend device
+    PalCounterReference*    palRef_;    //!< Reference counter
+    Info                    info_;      //!< The info structure for perfcounter
+    uint                    index_;     //!< Counter index in the CAL container
 };
 
 } // namespace pal
-
-

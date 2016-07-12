@@ -2304,11 +2304,7 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
 
     const amd::PerfCounterCommand::PerfCounterList counters = vcmd.getCounters();
 
-    // Create performance experiment
-    Pal::PerfExperimentCreateInfo   createInfo = {};
-    createInfo.optionValues.sqShaderMask = Pal::PerfShaderMaskCs;
-
-    PalCounterReference* palRef = PalCounterReference::Create(*this, createInfo);
+    PalCounterReference* palRef = PalCounterReference::Create(*this);
     if (palRef == nullptr) {
         LogError("We failed to allocate memory for the GPU perfcounter");
         vcmd.setStatus(CL_INVALID_OPERATION);
@@ -2328,7 +2324,7 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
             amd::PerfCounter::Properties prop = amdCounter->properties();
             PerfCounter* gpuCounter = new PerfCounter(
                 gpuDevice_,
-                *this,
+                palRef,
                 prop[CL_PERFCOUNTER_GPU_BLOCK_INDEX],
                 prop[CL_PERFCOUNTER_GPU_COUNTER_INDEX],
                 prop[CL_PERFCOUNTER_GPU_EVENT_INDEX]);
@@ -2337,7 +2333,7 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
                 vcmd.setStatus(CL_INVALID_OPERATION);
                 return;
             }
-            else if (gpuCounter->create(palRef)) {
+            else if (gpuCounter->create()) {
                 amdCounter->setDeviceCounter(gpuCounter);
                 newExperiment = true;
             }
@@ -2351,7 +2347,6 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
                 vcmd.setStatus(CL_INVALID_OPERATION);
                 return;
             }
-            counter = gpuCounter;
         }
     }
 
