@@ -1890,6 +1890,7 @@ Device::fillHwSampler(
     samplerInfo.filter.zFilter = Pal::XyFilterPoint;
 
     samplerInfo.flags.unnormalizedCoords = !(state & amd::Sampler::StateNormalizedCoordsMask);
+    samplerInfo.maxLod = 4096.0f;
 
     state &= ~amd::Sampler::StateNormalizedCoordsMask;
 
