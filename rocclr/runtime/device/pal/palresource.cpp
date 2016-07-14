@@ -190,6 +190,7 @@ Resource::Resource(
     desc_.SVMRes_    = false;
     desc_.scratch_   = false;
     desc_.isAllocExecute_ = false;
+    desc_.baseLevel_ = 0;
 }
 
 Resource::Resource(
@@ -231,6 +232,7 @@ Resource::Resource(
     desc_.SVMRes_ = false;
     desc_.scratch_ = false;
     desc_.isAllocExecute_ = false;
+    desc_.baseLevel_ = 0;
 
     switch (imageType) {
     case CL_MEM_OBJECT_IMAGE2D:
@@ -682,6 +684,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
                 ImgSubresRange.numSlices = desc_.depth_;
             }
+            ImgSubresRange.numMips = desc().mipLevels_;
             viewInfo.subresRange = ImgSubresRange;
 
             dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
@@ -777,6 +780,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         if (memoryType() == ImageView) {
             ImageViewParams* imageView = reinterpret_cast<ImageViewParams*>(params);
             ImgSubresRange.startSubres.mipLevel = imageView->level_;
+            desc_.baseLevel_ = imageView->level_;
             ImgSubresRange.startSubres.arraySlice = imageView->layer_;
             viewOwner_  = imageView->resource_;
             image_ = viewOwner_->image_;
@@ -786,6 +790,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
             viewOwner_  = imageBuffer->resource_;
         }
+        ImgSubresRange.numMips = desc().mipLevels_;
 
         if ((memoryType() != ImageView) ||
             //! @todo PAL doesn't allow an SRD view creation with different pixel size
@@ -1126,8 +1131,6 @@ Resource::partialMemCopyTo(
     bool flushDMA,
     uint bytesPerElement) const
 {
-    Pal::SubresId    ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
-    Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
     GpuEvent    event;
     bool        result = true;
     EngineType  activeEngineID = gpu.engineID_;
@@ -1170,6 +1173,7 @@ Resource::partialMemCopyTo(
     gpu.queue(gpu.engineID_).addCmdMemRef(iMem());
     gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.iMem());
     if (desc().buffer_ && !dstResource.desc().buffer_) {
+        Pal::SubresId    ImgSubresId = { Pal::ImageAspect::Color, dstResource.desc().baseLevel_, 0 };
         Pal::MemoryImageCopyRegion copyRegion = {};
         copyRegion.imageSubres = ImgSubresId;
         copyRegion.imageOffset.x = calDstOrigin[0];
@@ -1199,6 +1203,7 @@ Resource::partialMemCopyTo(
     }
     else if (!desc().buffer_ && dstResource.desc().buffer_) {
         Pal::MemoryImageCopyRegion copyRegion = {};
+        Pal::SubresId    ImgSubresId = { Pal::ImageAspect::Color, desc().baseLevel_, 0 };
         copyRegion.imageSubres = ImgSubresId;
         copyRegion.imageOffset.x = calSrcOrigin[0];
         copyRegion.imageOffset.y = calSrcOrigin[1];
