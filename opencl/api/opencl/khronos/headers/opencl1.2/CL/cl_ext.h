@@ -268,6 +268,7 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
 
 /*   cl_kernel_exec_info for DVR DOPP texture support   */
 #define CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD            0x4120
+#define CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD           0x4121
 
 /***************************************
 * cl-gl depth buffer interop extension *

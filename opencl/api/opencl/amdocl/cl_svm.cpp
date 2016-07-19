@@ -1096,6 +1096,15 @@ RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (
             amdKernel->parameters().setExecNewVcop(newVcopFlag);
         }
         break;
+    case CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD:
+        if (param_value_size != sizeof(cl_bool)) {
+            return CL_INVALID_VALUE;
+        }
+        else {
+            const bool pfpaVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true: false;
+            amdKernel->parameters().setExecPfpaVcop(pfpaVcopFlag);
+        }
+        break;
     default:
         return CL_INVALID_VALUE;
     }

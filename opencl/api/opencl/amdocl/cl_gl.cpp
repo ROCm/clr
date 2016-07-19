@@ -1089,6 +1089,13 @@ CL_FLOAT
 
     switch(gliInternalFormat)
     {
+    case GL_RGB10_A2:
+        pclImageFormat->image_channel_order = CL_RGB;
+        pclImageFormat->image_channel_data_type = CL_UNORM_INT_101010;
+        *piBytesPerPixel = 4;
+        bRetVal = true;
+        break;
+
     case GL_BGR8_ATI:
     case GL_BGRA8_ATI:
         pclImageFormat->image_channel_order = CL_BGRA;
@@ -1456,10 +1463,10 @@ clChannelDataTypeToGlType(cl_channel_type channel_type)
     case CL_UNSIGNED_INT16:     return GL_UNSIGNED_SHORT;
     case CL_UNSIGNED_INT32:     return GL_UNSIGNED_INT;
     case CL_FLOAT:              return GL_FLOAT;
+    case CL_UNORM_INT_101010:   return GL_UNSIGNED_INT_10_10_10_2;
     case CL_HALF_FLOAT:
     case CL_UNORM_SHORT_565:
     case CL_UNORM_SHORT_555:
-    case CL_UNORM_INT_101010:
     default:
         guarantee(false && "Unexpected CL type.");
         return 0;
