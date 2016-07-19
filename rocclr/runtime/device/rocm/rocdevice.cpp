@@ -120,6 +120,29 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
         case DEVICE_ID_CI_HAWAII_P_67B9:
         case DEVICE_ID_CI_HAWAII_P_67BE:
             return HSA_HAWAII_ID;
+        case DEVICE_ID_VI_ELLESMERE_P_67C0:
+        case DEVICE_ID_VI_ELLESMERE_P_67C1:
+        case DEVICE_ID_VI_ELLESMERE_P_67C2:
+        case DEVICE_ID_VI_ELLESMERE_P_67C4:
+        case DEVICE_ID_VI_ELLESMERE_P_67C7:
+        case DEVICE_ID_VI_ELLESMERE_P_67DF:
+        case DEVICE_ID_VI_ELLESMERE_P_67D0:
+        case DEVICE_ID_VI_ELLESMERE_P_67C8:
+        case DEVICE_ID_VI_ELLESMERE_P_67C9:
+        case DEVICE_ID_VI_ELLESMERE_P_67CA:
+        case DEVICE_ID_VI_ELLESMERE_P_67CC:
+        case DEVICE_ID_VI_ELLESMERE_P_67CF:
+            return HSA_ELLESMERE_ID;
+        case DEVICE_ID_VI_BAFFIN_M_67E0:
+        case DEVICE_ID_VI_BAFFIN_M_67E3:
+        case DEVICE_ID_VI_BAFFIN_M_67E8:
+        case DEVICE_ID_VI_BAFFIN_M_67EB:
+        case DEVICE_ID_VI_BAFFIN_M_67EF:
+        case DEVICE_ID_VI_BAFFIN_M_67FF:
+        case DEVICE_ID_VI_BAFFIN_M_67E1:
+        case DEVICE_ID_VI_BAFFIN_M_67E7:
+        case DEVICE_ID_VI_BAFFIN_M_67E9:
+            return HSA_BAFFIN_ID;
     default:
         return HSA_INVALID_DEVICE_ID;
   }
