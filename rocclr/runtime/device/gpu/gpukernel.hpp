@@ -621,7 +621,8 @@ public:
         VirtualGPU& gpu,        //!< virtual GPU device object
         GpuEvent*   gpuEvent,   //!< Pointer to the GPU event
         bool        lastRun,    //!< Last run in the split execution
-        bool        lastDoppCmd //!< info for kernel dispatch
+        bool        lastDoppCmd, //!< for last dopp submission kernel dispatch
+        bool        pfpaDoppCmd  //!< for PFPA dopp submission kernel dispatch
         ) const;
 
     //! Help function to debug the kernel output

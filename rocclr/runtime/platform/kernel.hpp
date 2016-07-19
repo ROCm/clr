@@ -77,19 +77,25 @@ private:
 
     address values_;         //!< pointer to the base of the values stack.
     bool* defined_;          //!< pointer to the isDefined flags.
-    bool validated_;         //!< True if all parameters are defined.
     bool* svmBound_;         //!< True at 'i' if parameter 'i' is bound to SVM pointer
     size_t execInfoOffset_;  //!< The offset of execInfo
     std::vector<void*>  execSvmPtr_; //!< The non argument svm pointers for kernel
     FGSStatus svmSystemPointersSupport_; //!< The flag for the status of the kernel
                                          //   support of fine-grain system sharing.
-    bool execNewVcop_;      //!< special new VCOP for kernel execution
+    struct
+    {
+        uint32_t validated_     :  1;      //!< True if all parameters are defined.
+        uint32_t execNewVcop_   :  1;      //!< special new VCOP for kernel execution
+        uint32_t execPfpaVcop_  :  1;      //!< special PFPA VCOP for kernel execution
+        uint32_t unused         : 29;      //!< unused
+    };
+
 public:
 
     //! Construct a new instance of parameters for the given signature.
     KernelParameters(const KernelSignature& signature) :
-        signature_(signature), validated_(false), execInfoOffset_(0), svmSystemPointersSupport_(FGS_DEFAULT),
-        execNewVcop_(false)
+        signature_(signature), execInfoOffset_(0), svmSystemPointersSupport_(FGS_DEFAULT),
+        validated_(0), execNewVcop_(0), execPfpaVcop_(0)
     {
         values_    = (address) this + alignUp(sizeof(KernelParameters), 16);
         defined_   = (bool*) (values_ + signature.paramsSize());
@@ -104,7 +110,7 @@ public:
     {
         defined_[index] = false;
         svmBound_[index] = false;
-        validated_ = false;
+        validated_ = 0;
     }
     //! Set the parameter at the given \a index to the value pointed by \a value
     // \a svmBound indicates that \a value is a SVM pointer.
@@ -170,11 +176,16 @@ public:
     FGSStatus getSvmSystemPointersSupport() const { return svmSystemPointersSupport_; }
 
     //! set the new VCOP in the execInfo container
-    void setExecNewVcop(const bool newVcop) { execNewVcop_ = newVcop; }
+    void setExecNewVcop(const bool newVcop) { execNewVcop_ = (newVcop == true); }
+
+    //! set the PFPA VCOP in the execInfo container
+    void setExecPfpaVcop(const bool pfpaVcop) { execPfpaVcop_ = (pfpaVcop == true); }
 
     //! get the new VCOP in the execInfo container
-    bool getExecNewVcop() const { return execNewVcop_; }
+    bool getExecNewVcop() const { return (execNewVcop_ == 1); }
 
+    //! get the PFPA VCOP in the execInfo container
+    bool getExecPfpaVcop() const { return (execPfpaVcop_ == 1); }
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values

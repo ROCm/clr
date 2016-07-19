@@ -1851,6 +1851,7 @@ VirtualGPU::submitKernelInternalHSA(
         dispatchInfo.kernelInfo = pKernelInfo;
         dispatchInfo.wavesPerSH = hsaKernel.getWavesPerSH(this);
         dispatchInfo.lastDoppSubmission = kernel.parameters().getExecNewVcop();
+        dispatchInfo.pfpaDoppSubmission = kernel.parameters().getExecPfpaVcop();
 
         GpuEvent    gpuEvent;
         // Run AQL dispatch in HW
@@ -2155,7 +2156,8 @@ VirtualGPU::submitKernelInternal(
             }
 
             // Execute the kernel
-            if (gpuKernel.run(*this, &gpuEvent, lastRun, kernel.parameters().getExecNewVcop())) {
+            if (gpuKernel.run(*this, &gpuEvent, lastRun, kernel.parameters().getExecNewVcop(),
+                                    kernel.parameters().getExecPfpaVcop())) {
                 //! @todo A flush is necessary to make sure
                 // that 2 consecutive runs won't access to the same
                 // private/local memory. CAL has to generate cache flush
