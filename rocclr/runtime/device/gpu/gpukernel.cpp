@@ -1567,7 +1567,7 @@ Kernel::loadParameters(
 }
 
 bool
-Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDoppCmd) const
+Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDoppCmd, bool pfpaDoppCmd) const
 {
     const VirtualGPU::CalVirtualDesc* dispatch = gpu.cal();
 
@@ -1576,7 +1576,7 @@ Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDoppCmd)
 
     gpu.eventBegin(MainEngine);
     gpu.rs()->Dispatch(gpu.cs(), &dispatch->gridBlock, &dispatch->partialGridBlock,
-        &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_, lastDoppCmd);
+        &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_, lastDoppCmd, pfpaDoppCmd);
     gpu.eventEnd(MainEngine, *calEvent);
 
     // Unbind all resources
