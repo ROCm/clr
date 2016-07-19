@@ -7,8 +7,8 @@
 #include "thread/monitor.hpp"
 
 #if defined(WITH_HSA_DEVICE)
-#include "device/hsa_foundation/hsadevice.hpp"
-extern amd::AppProfile* oclhsaCreateAppProfile();
+#include "device/rocm/rocdevice.hpp"
+extern amd::AppProfile* rocCreateAppProfile();
 #endif
 
 #if defined(WITH_CPU_DEVICE)
@@ -65,7 +65,7 @@ bool Device::isGpuDeviceAvailable_ = false;
 AppProfile Device::appProfile_;
 
 #if defined(WITH_HSA_DEVICE)
-AppProfile* Device::oclhsaAppProfile_ = NULL;
+AppProfile* Device::rocAppProfile_ = NULL;
 #endif
 
 amd::Monitor SvmManager::AllocatedLock_("Guards SVM allocation list");
@@ -169,22 +169,22 @@ Device::init()
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-    oclhsaAppProfile_ = oclhsaCreateAppProfile();
-    if (oclhsaAppProfile_ && !oclhsaAppProfile_->IsHsaInitDisabled()) {
-        // Return value of oclhsa::Device::init()
+    rocAppProfile_ = rocCreateAppProfile();
+    if (rocAppProfile_ && !rocAppProfile_->IsHsaInitDisabled()) {
+        // Return value of roc::Device::init()
         // If returned false, error initializing HSA stack.
         // If returned true, either HSA not installed or HSA stack
         //                   successfully initialized.
-        if (!oclhsa::Device::init() ) {
+        if (!roc::Device::init() ) {
             // abort() commentted because this is the only indication
             // that KFD is not installed.
             // Ignore the failure and assume KFD is not installed.
             //abort();
         }
-        ret |= oclhsa::NullDevice::init();
+        ret |= roc::NullDevice::init();
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
+#if defined(WITH_GPU_DEVICE)
     ret |= DeviceLoad();
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
@@ -207,13 +207,13 @@ Device::tearDown()
         delete devices_;
     }
 #if defined(WITH_HSA_DEVICE)
-    if (oclhsaAppProfile_ && !oclhsaAppProfile_->IsHsaInitDisabled()) {
-        oclhsa::Device::tearDown();
-        delete oclhsaAppProfile_;
-        oclhsaAppProfile_ = NULL;
+    if (rocAppProfile_ && !rocAppProfile_->IsHsaInitDisabled()) {
+        roc::Device::tearDown();
+        delete rocAppProfile_;
+        rocAppProfile_ = NULL;
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
+#if defined(WITH_GPU_DEVICE)
     DeviceUnload();
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
@@ -481,7 +481,7 @@ Device::getDevices(cl_device_type type, bool offlineDevices)
     }
 
 #if defined(WITH_HSA_DEVICE)
-    type = oclhsaAppProfile_->ApplyHsaDeviceHintFlag(type);
+    type = rocAppProfile_->ApplyHsaDeviceHintFlag(type);
 #endif
 
     // Create the list of available devices
@@ -505,7 +505,7 @@ Device::numDevices(cl_device_type type, bool offlineDevices)
     }
 
 #if defined(WITH_HSA_DEVICE)
-    type = oclhsaAppProfile_->ApplyHsaDeviceHintFlag(type);
+    type = rocAppProfile_->ApplyHsaDeviceHintFlag(type);
 #endif
 
     for (device_iterator it = devices_->begin(); it != devices_->end(); ++it) {

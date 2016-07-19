@@ -1800,7 +1800,7 @@ private:
     bool IsTypeMatching(cl_device_type type, bool offlineDevices);
 
 #if defined(WITH_HSA_DEVICE)
-    static AppProfile* oclhsaAppProfile_;
+    static AppProfile* rocAppProfile_;
 #endif
     static bool isHsaDeviceAvailable_;
     static bool isGpuDeviceAvailable_;
