@@ -24,7 +24,7 @@ using namespace amdcl;
 using namespace llvm;
 
 void
-OptLevel::setup(bool isGPU, uint32_t OptLevel)
+OptLevel::setup(aclBinary *elf, bool isGPU, uint32_t OptLevel)
 {
   // Add an appropriate DataLayout instance for this module.
 #if defined(LEGACY_COMPLIB)
@@ -34,6 +34,66 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
 #else
   fpasses_ = new legacy::FunctionPassManager(module_);
 #endif
+
+  const aclTargetInfo* trg = aclutGetTargetInfo(elf);
+  if (trg) {
+    llvm::Triple TheTriple(getTriple(trg->arch_id));
+    if (TheTriple.getArch()) {
+      std::string Error;
+      llvm::StringRef MArch(aclGetArchitecture(*trg));
+      const Target *TheTarget = TargetRegistry::lookupTarget(MArch, TheTriple,
+                                                             Error);
+      if (TheTarget) {
+        llvm::TargetOptions targetOptions;
+        targetOptions.StackAlignmentOverride = Options()->oVariables->CPUStackAlignment;
+#ifdef WITH_TARGET_HSAIL
+        if (Options()->libraryType_ == amd::GPU_Library_HSAIL)
+          targetOptions.UnsafeFPMath = Options()->oVariables->UnsafeMathOpt;
+#endif
+        targetOptions.LessPreciseFPMADOption = Options()->oVariables->MadEnable ||
+                                               Options()->oVariables->EnableMAD;
+        targetOptions.NoInfsFPMath = targetOptions.NoNaNsFPMath
+          = Options()->oVariables->FiniteMathOnly;
+        for (auto &F : *module_) {
+          auto Attrs = F.getAttributes();
+          Attrs = Attrs.addAttribute(F.getContext(), AttributeSet::FunctionIndex,
+                                     "no-frame-pointer-elim", "false");
+          F.setAttributes(Attrs);
+        }
+
+        llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
+        switch (Options()->oVariables->OptLevel) {
+        case 0: // -O0
+          OLvl = CodeGenOpt::None;
+          break;
+        case 1: // -O1
+          OLvl = CodeGenOpt::Less;
+          break;
+        case 2: // -O2
+        case 5: // -O5(-Os)
+          OLvl = CodeGenOpt::Default;
+          break;
+        case 3: // -O3
+        case 4: // -O4
+          OLvl = CodeGenOpt::Aggressive;
+          break;
+        default:
+          assert(!"Error with optimization level");
+        };
+
+        TM = TheTarget->createTargetMachine(TheTriple.getTriple(),
+                                                 aclutGetCodegenName(elf->target),
+                                                 getFeatureString(elf->target, Options()),
+                                                 targetOptions,
+                                                 WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
+                                                 CodeModel::Default, OLvl);
+      }
+    }
+  }
+  if (TM) {
+    passes_.add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
+    fpasses_->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
+  }
 
   PassManagerBuilder Builder;
   Builder.OptLevel = OptLevel;
@@ -96,68 +156,6 @@ OptLevel::setup(bool isGPU, uint32_t OptLevel)
 void
 OptLevel::run(aclBinary *elf)
 {
-#if !defined(LEGACY_COMPLIB)
-  const aclTargetInfo* trg = aclutGetTargetInfo(elf);
-  TargetMachine *Machine = nullptr;
-  if (trg) {
-    llvm::Triple TheTriple(getTriple(trg->arch_id));
-    if (TheTriple.getArch()) {
-      std::string Error;
-      llvm::StringRef MArch(aclGetArchitecture(*trg));
-      const Target *TheTarget = TargetRegistry::lookupTarget(MArch, TheTriple,
-                                                             Error);
-      if (TheTarget) {
-        llvm::TargetOptions targetOptions;
-        targetOptions.StackAlignmentOverride = Options()->oVariables->CPUStackAlignment;
-#ifdef WITH_TARGET_HSAIL
-        if (Options()->libraryType_ == amd::GPU_Library_HSAIL)
-          targetOptions.UnsafeFPMath = Options()->oVariables->UnsafeMathOpt;
-#endif
-        targetOptions.LessPreciseFPMADOption = Options()->oVariables->MadEnable ||
-                                               Options()->oVariables->EnableMAD;
-        targetOptions.NoInfsFPMath = targetOptions.NoNaNsFPMath
-          = Options()->oVariables->FiniteMathOnly;
-        for (auto &F : *module_) {
-          auto Attrs = F.getAttributes();
-          Attrs = Attrs.addAttribute(F.getContext(), AttributeSet::FunctionIndex,
-                                     "no-frame-pointer-elim", "false");
-          F.setAttributes(Attrs);
-        }
-
-        llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
-        switch (Options()->oVariables->OptLevel) {
-        case 0: // -O0
-          OLvl = CodeGenOpt::None;
-          break;
-        case 1: // -O1
-          OLvl = CodeGenOpt::Less;
-          break;
-        case 2: // -O2
-        case 5: // -O5(-Os)
-          OLvl = CodeGenOpt::Default;
-          break;
-        case 3: // -O3
-        case 4: // -O4
-          OLvl = CodeGenOpt::Aggressive;
-          break;
-        default:
-          assert(!"Error with optimization level");
-        };
-
-        Machine = TheTarget->createTargetMachine(TheTriple.getTriple(),
-                                                 aclutGetCodegenName(elf->target),
-                                                 getFeatureString(elf->target, Options()),
-                                                 targetOptions,
-                                                 WINDOWS_SWITCH(Reloc::DynamicNoPIC, Reloc::PIC_),
-                                                 CodeModel::Default, OLvl);
-      }
-    }
-  }
-  std::unique_ptr<TargetMachine> TM(Machine);
-  if (TM.get())
-    fpasses_->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
-#endif
-
   if (Options()->oVariables->OptPrintLiveness) {
     Passes().add(createAMDLivenessPrinterPass());
   }
@@ -183,7 +181,7 @@ O0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
   } else
 #endif
   {
-    setup(false, 0);
+    setup(elf, false, 0);
     run(elf);
   }
   return 0;
@@ -194,7 +192,7 @@ GPUO0OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
   assert(isGPU && "Only a GPU can use GPUO0OptLevel!\n");
-  setup(true, 0);
+  setup(elf, true, 0);
 #ifdef WITH_TARGET_HSAIL
   if (Options()->libraryType_ == amd::GPU_Library_HSAIL) {
     // On the GPU, even with -O0, we must do some optimizations. One
@@ -233,7 +231,7 @@ int
 O1OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
-  setup(isGPU, 1);
+  setup(elf, isGPU, 1);
   run(elf);
   return 0;
 }
@@ -242,7 +240,7 @@ int
 O2OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
-  setup(isGPU, 2);
+  setup(elf, isGPU, 2);
   run(elf);
   return 0;
 }
@@ -251,7 +249,7 @@ int
 O3OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
-  setup(isGPU, 3);
+  setup(elf, isGPU, 3);
   run(elf);
   return 0;
 }
@@ -260,7 +258,7 @@ int
 O4OptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
-  setup(isGPU, 4);
+  setup(elf, isGPU, 4);
   run(elf);
   return 0;
 }
@@ -269,7 +267,7 @@ int
 OsOptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
   module_ = input;
-  setup(isGPU, 5);
+  setup(elf, isGPU, 5);
   run(elf);
   return 0;
 }

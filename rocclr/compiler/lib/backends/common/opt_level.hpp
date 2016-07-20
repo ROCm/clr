@@ -11,12 +11,10 @@
 #undef DEBUG
 #endif
 
-#if defined(LEGACY_COMPLIB)
-#include "llvm/PassManager.h"
-#else
-#include "llvm/IR/LegacyPassManager.h"
-#endif
 #include "llvm/Analysis/Passes.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Target/TargetMachine.h"
+
 namespace llvm {
   class Module;
 
@@ -42,13 +40,13 @@ namespace amdcl
 
     public:
     OptLevel(amd::option::Options *OptionsObj)
-    : opts_(OptionsObj) {}
+    : opts_(OptionsObj), TM(nullptr) {}
 
-    virtual ~OptLevel() {}
+    virtual ~OptLevel() { delete TM; }
 
     virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU) = 0;
     protected:
-    void setup(bool isGPU, uint32_t OptLevel);
+    void setup(aclBinary *elf, bool isGPU, uint32_t OptLevel);
     void run(aclBinary *elf);
     LLVM_LEGACY_NAMESPACE::PassManager& Passes() { return passes_; }
     LLVM_LEGACY_NAMESPACE::FunctionPassManager& FPasses() { return (*fpasses_); }
@@ -58,6 +56,7 @@ namespace amdcl
     LLVM_LEGACY_NAMESPACE::FunctionPassManager *fpasses_;
     LLVM_LEGACY_NAMESPACE::PassManager passes_;
     amd::option::Options *opts_;
+    llvm::TargetMachine* TM;
   }; // class OptLevel
   /*@}*/
 
