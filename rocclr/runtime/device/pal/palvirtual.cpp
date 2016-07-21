@@ -2399,34 +2399,29 @@ VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd)
             amd::ThreadTrace* amdThreadTrace = &cmd.getThreadTrace();
             ThreadTrace* threadTrace =
                 static_cast<ThreadTrace*>(amdThreadTrace->getDeviceThreadTrace());
-            Unimplemented();
-/*
+
             if (threadTrace == nullptr) {
-                gslQueryObject  gslThreadTrace;
-                // Create a HW thread trace query object
-                gslThreadTrace = cs()->createQuery(GSL_SHADER_TRACE_BYTES_WRITTEN);
-                if (0 == gslThreadTrace) {
-                    LogError("Failure in memory allocation for the GPU threadtrace");
-                    cmd.setStatus(CL_INVALID_OPERATION);
-                    return;
-                }
-                CalThreadTraceReference* palRef = new CalThreadTraceReference(*this,gslThreadTrace);
+                PalThreadTraceReference* palRef = PalThreadTraceReference::Create(*this);
                 if (palRef == nullptr) {
                     LogError("Failure in memory allocation for the GPU threadtrace");
                     cmd.setStatus(CL_INVALID_OPERATION);
                     return;
                 }
-                size_t seNum = amdThreadTrace->deviceSeNumThreadTrace();
+
+                size_t numSe = amdThreadTrace->deviceSeNumThreadTrace();
+
                 ThreadTrace* gpuThreadTrace = new ThreadTrace(
                     gpuDevice_,
-                    *this,
-                    seNum);
+                    palRef,
+                    cmd.getMemList(),
+                    numSe);
                 if (nullptr == gpuThreadTrace) {
                     LogError("Failure in memory allocation for the GPU threadtrace");
                     cmd.setStatus(CL_INVALID_OPERATION);
                     return;
                 }
-                if (gpuThreadTrace->create(palRef)) {
+
+                if (gpuThreadTrace->create()) {
                     amdThreadTrace->setDeviceThreadTrace(gpuThreadTrace);
                 }
                 else {
@@ -2435,21 +2430,11 @@ VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd)
                     cmd.setStatus(CL_INVALID_OPERATION);
                     return;
                 }
-                threadTrace = gpuThreadTrace;
+
+                palRef->finalize();
                 palRef->release();
             }
-            gslShaderTraceBufferObject* threadTraceBufferObjects = threadTrace->getThreadTraceBufferObjects();
-            const size_t memObjSize = cmd.getMemoryObjectSize();
-            const std::vector<amd::Memory*>& memObj = cmd.getMemList();
-            size_t se = 0;
-            for (std::vector<amd::Memory*>::const_iterator itMemObj = memObj.begin();itMemObj != memObj.end();++itMemObj,++se) {
-                // Find GSL Mem Object
-                Pal::IGpuMemory* gslMemObj = dev().getGpuMemory(*itMemObj)->iMem();
 
-                // Bind GSL MemObject to the appropriate SE Thread Trace Buffer Object
-                threadTraceBufferObjects[se]->attachMemObject(cs(), gslMemObj, 0, 0, memObjSize, se);
-            }
-*/
             break;
         }
     default:
@@ -2480,53 +2465,26 @@ VirtualGPU::submitThreadTrace(amd::ThreadTraceCommand& cmd)
                 return;
             }
             else {
-                Unimplemented();
-/*
-                gslQueryObject  gslThreadTrace;
-                gslThreadTrace = threadTrace->gslThreadTrace();
-                uint32_t seNum = amdThreadTrace->deviceSeNumThreadTrace();
-
-                // Find the state and sends the commands to GSL
+                Pal::IPerfExperiment* palPerf = threadTrace->iPerf();
                 if (cmd.getState() == amd::ThreadTraceCommand::Begin) {
                     amd::ThreadTrace::ThreadTraceConfig* traceCfg =
                         static_cast<amd::ThreadTrace::ThreadTraceConfig*>(cmd.threadTraceConfig());
-                    const gslErrorCode ec = gslThreadTrace->BeginQuery(cs(),
-                        GSL_SHADER_TRACE_BYTES_WRITTEN, 0);
-                    assert(ec == GSL_NO_ERROR);
-
-                    for (uint32_t idx = 0; idx < seNum; ++idx) {
-                        rs()->enableShaderTrace(cs(), idx, true);
-                        rs()->setShaderTraceComputeUnit (idx, traceCfg->cu_);
-                        rs()->setShaderTraceShaderArray (idx, traceCfg->sh_);
-                        rs()->setShaderTraceSIMDMask    (idx, traceCfg->simdMask_);
-                        rs()->setShaderTraceVmIdMask    (idx, traceCfg->vmIdMask_);
-                        rs()->setShaderTraceTokenMask   (idx, traceCfg->tokenMask_);
-                        rs()->setShaderTraceRegisterMask(idx, traceCfg->regMask_);
-                        rs()->setShaderTraceIssueMask   (idx, traceCfg->instMask_);
-                        rs()->setShaderTraceRandomSeed  (idx, traceCfg->randomSeed_);
-                        rs()->setShaderTraceCaptureMode (idx, traceCfg->captureMode_);
-                        rs()->setShaderTraceWrap        (idx, traceCfg->isWrapped_);
-                        rs()->setShaderTraceUserData    (idx,
-                            (traceCfg->isUserData_) ? traceCfg->userData_ : 0);
-                    }
+                    iCmd()->CmdBeginPerfExperiment(palPerf);
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::End) {
-                    for (uint32_t idx = 0; idx < seNum; ++idx) {
-                        rs()->enableShaderTrace(cs(), idx, false);
-                    }
-                    gslThreadTrace->EndQuery(cs(), 0);
+                    GpuEvent event;
+                    eventBegin(MainEngine);
+                    iCmd()->CmdEndPerfExperiment(palPerf);
+                    threadTrace->populateUserMemory();
+                    eventEnd(MainEngine, event);
+                    setGpuEvent(event);
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::Pause) {
-                    for (uint32_t idx = 0; idx < seNum; ++idx) {
-                        rs()->setShaderTraceIsPaused(cs(), idx, true);
-                    }
+                    // There's no Pause from the PerfExperiment interface
                 }
                 else if (cmd.getState() == amd::ThreadTraceCommand::Resume) {
-                    for (uint32_t idx = 0; idx < seNum; ++idx) {
-                        rs()->setShaderTraceIsPaused(cs(), idx, false);
-                    }
+                    // There's no Resume from the PerfExperiment interface
                 }
-*/
             }
             break;
         }

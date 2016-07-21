@@ -13,35 +13,47 @@ namespace pal {
 
 class VirtualGPU;
 
-class CalThreadTraceReference : public amd::ReferenceCountedObject
+class PalThreadTraceReference : public amd::ReferenceCountedObject
 {
 public:
-    //! Default constructor
-    CalThreadTraceReference(
-        VirtualGPU&     gpu,             //!< Virtual GPU device object
-        Pal::IPerfExperiment*  gslThreadTrace)  //!< GSL query thread trace object
-        : gpu_(gpu)
-        , threadTrace_(gslThreadTrace){}
+    static PalThreadTraceReference* Create(VirtualGPU& gpu);
 
-    //! Get GSL thread race object
-    Pal::IPerfExperiment* gslThreadTrace() const { return threadTrace_; }
+    //! Default constructor
+    PalThreadTraceReference(
+        VirtualGPU&     gpu             //!< Virtual GPU device object
+        )
+        : perfExp_(nullptr)
+        , gpu_(gpu)
+        , memory_(nullptr)
+        , layout_(nullptr) {}
+
+    //! Get PAL thread race object
+    Pal::IPerfExperiment* iPerf() const { return perfExp_; }
 
     //! Returns the virtual GPU device
     const VirtualGPU& gpu() const { return gpu_; }
 
+    //! Prepare for execution
+    bool finalize();
+
+    //! Copy ThreadTrace capture to User Buffer
+    void copyToUserBuffer(Memory* dstMem, uint seIndex);
+
 protected:
     //! Default destructor
-    ~CalThreadTraceReference();
+    ~PalThreadTraceReference();
 
 private:
     //! Disable copy constructor
-    CalThreadTraceReference(const CalThreadTraceReference&);
+    PalThreadTraceReference(const PalThreadTraceReference&);
 
     //! Disable operator=
-    CalThreadTraceReference& operator=(const CalThreadTraceReference&);
+    PalThreadTraceReference& operator=(const PalThreadTraceReference&);
 
-    VirtualGPU&     gpu_;           //!< The virtual GPU device object
-    Pal::IPerfExperiment*  threadTrace_;   //!< GSL thread trace query object
+    VirtualGPU&                 gpu_;           //!< The virtual GPU device object
+    Pal::IPerfExperiment*       perfExp_;       //!< PAL performance experiment object
+    Pal::ThreadTraceLayout*     layout_;        //!< Layout of the result
+    Memory*                     memory_;        //!< Memory bound to PerfExperiment
 };
 
 //! ThreadTrace implementation on GPU
@@ -49,37 +61,29 @@ class ThreadTrace : public device::ThreadTrace
 {
 public:
 
+    //! Constructor for the GPU ThreadTrace object
+    ThreadTrace(
+        Device&                     device,                 //!< A GPU device object
+        PalThreadTraceReference*    palRef,                 //!< Reference ThreadTrace
+        const std::vector<amd::Memory*>&        memObjs,    //!< ThreadTrace memory objects
+        uint                        numSe                   //!< Number of Shader Engines
+        )
+        : gpuDevice_(device)
+        , palRef_(palRef)
+        , memObj_(memObjs)
+        , numSe_(numSe)
+    {
+
+    }
+
     //! Destructor for the GPU ThreadTrace object
     virtual ~ThreadTrace();
 
     //! Creates the current object
-    bool create(
-        CalThreadTraceReference* calRef     //!< Reference ThreadTrace
-        );
+    bool create();
 
-    //! Returns the GPU device, associated with the current object
-    const Device& dev() const { return gpuDevice_; }
-
-    //! Returns the virtual GPU device
-    const VirtualGPU& gpu() const { return gpu_; }
-
-    //! Constructor for the GPU ThreadTrace object
-    ThreadTrace(
-        Device&             device,                 //!< A GPU device object
-        VirtualGPU&         gpu,                    //!< Virtual GPU device object
-        uint                amdThreadTraceMemObjsNum)
-        : gpuDevice_(device)
-        , gpu_(gpu)
-        , calRef_(NULL)
-        , index_(0)
-        , amdThreadTraceMemObjsNum_(amdThreadTraceMemObjsNum)
-    {
-        threadTraceBufferObjs_ = new Pal::ThreadTraceLayout[amdThreadTraceMemObjsNum];
-        Unimplemented();
-        for (uint i = 0; i < amdThreadTraceMemObjsNum;++i) {
-            //threadTraceBufferObjs_[i] = gpu.cs()->createShaderTraceBuffer();
-        }
-    }
+    // Populate ThreadTrace memory with PerfExperiment memory
+    void populateUserMemory();
 
     //! Returns the specific information about the thread trace object
     bool info(
@@ -88,25 +92,18 @@ public:
         uint  infoSize   //!< The size of returned information
         ) const;
 
-    //! Set the ThreadTrace memory buffer size
-    void setMemBufferSizeTT(uint memBufferSizeTT) { memBufferSizeTT_ = memBufferSizeTT;}
-
     //! Set isNewBufferBinded_ to true/false if new buffer was binded/unbinded respectively
-    void setNewBufferBinded(bool isNewBufferBinded) { isNewBufferBinded_ = isNewBufferBinded; }
+    void setNewBufferBinded(bool isNewBufferBinded) {}
 
-    //! Attach Pal::IGpuMemory to the TreadTrace buffer
-    void attachMemToThreadTraceBuffer();
+    //! Returns the GPU device, associated with the current object
+    const Device& dev() const { return gpuDevice_; }
 
-    void setMemObj(size_t memObjSize,std::vector<amd::Memory*> memObj)
-    {
-        memObj_ = memObj;
-        memBufferSizeTT_ = memObjSize;
-    }
-    //! Get GSL thread trace object
-    Pal::IPerfExperiment* gslThreadTrace() const { return threadTrace_; }
+    //! Returns the virtual GPU device
+    const VirtualGPU& gpu() const { return palRef_->gpu(); }
 
-    //! Get GSL Thread Trace Buffer objects
-    Pal::ThreadTraceLayout* getThreadTraceBufferObjects() {return threadTraceBufferObjs_;}
+    //! Get PAL thread trace object
+    Pal::IPerfExperiment* iPerf() const { return palRef_->iPerf(); }
+
 private:
     //! Disable default copy constructor
     ThreadTrace(const ThreadTrace&);
@@ -114,19 +111,10 @@ private:
     //! Disable default operator=
     ThreadTrace& operator=(const ThreadTrace&);
 
-    const Device&   gpuDevice_; //!< The backend device
-
-    VirtualGPU&   gpu_;        //!< The virtual GPU device object
-
-    CalThreadTraceReference*    calRef_;                   //!< Reference ThreadTrace
-    Pal::ThreadTraceLayout*     threadTraceBufferObjs_;    //!< The buffer object for Thread Trace recording
-    uint                        index_;                    //!< ThreadTrace index in the CAL container
-    uint                        memBufferSizeTT_;          //!< ThreadTrace memory buffer size
-    std::vector<amd::Memory*>   memObj_;                   //!< ThreadTrace memory object
-    Pal::IPerfExperiment*       threadTrace_;              //!< GSL thread trace query object
-    uint                        amdThreadTraceMemObjsNum_; //!< ThreadTrace memory object`s number (should be equal to the SE number)
-    bool                        isNewBufferBinded_;        //!< The indicator if new buffer was binded to the ThreadTrace object
-    bool                        isBufferOnSubmit_;         //!< The indicator if "new buffer on submit" mode is used
+    const Device&               gpuDevice_;         //!< The backend device
+    PalThreadTraceReference*    palRef_;            //!< Reference ThreadTrace
+    uint                        numSe_;             //!< Number of Shader Engines
+    std::vector<amd::Memory*>   memObj_;            //!< ThreadTrace memory objects
 };
 
 } // namespace pal
