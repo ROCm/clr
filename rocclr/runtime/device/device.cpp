@@ -184,7 +184,7 @@ Device::init()
         ret |= roc::NullDevice::init();
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE)
+#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
     ret |= DeviceLoad();
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
@@ -213,7 +213,7 @@ Device::tearDown()
         rocAppProfile_ = NULL;
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE)
+#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
     DeviceUnload();
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
