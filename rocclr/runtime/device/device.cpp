@@ -184,11 +184,15 @@ Device::init()
         ret |= roc::NullDevice::init();
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
-    ret |= DeviceLoad();
+#if defined(WITH_GPU_DEVICE)
+    if (GPU_ENABLE_PAL != 1) {
+        ret |= DeviceLoad();
+    }
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
-    ret |= PalDeviceLoad();
+    if (GPU_ENABLE_PAL != 0) {
+        ret |= PalDeviceLoad();
+    }
 #endif // WITH_PAL_DEVICE
 #if defined(WITH_CPU_DEVICE)
     ret |= cpu::Device::init();
@@ -213,11 +217,15 @@ Device::tearDown()
         rocAppProfile_ = NULL;
     }
 #endif // WITH_HSA_DEVICE
-#if defined(WITH_GPU_DEVICE) && !defined(WITH_PAL_DEVICE)
-    DeviceUnload();
+#if defined(WITH_GPU_DEVICE)
+    if (GPU_ENABLE_PAL != 1) {
+        DeviceUnload();
+    }
 #endif // WITH_GPU_DEVICE
 #if defined(WITH_PAL_DEVICE)
-    PalDeviceUnload();
+    if (GPU_ENABLE_PAL != 0) {
+        PalDeviceUnload();
+    }
 #endif // WITH_PAL_DEVICE
 #if defined(WITH_CPU_DEVICE)
     cpu::Device::tearDown();
