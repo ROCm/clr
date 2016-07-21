@@ -163,6 +163,8 @@ release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
+release(uint, GPU_ENABLE_PAL, 0,                                              \
+        "Enables PAL backend. 0 - GSL(default), 1 - PAL, 2 - GSL and PAL")    \
 release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
