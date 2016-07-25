@@ -1238,7 +1238,7 @@ Resource::partialMemCopyTo(
             copyRegion.srcBuffer.offset = calSrcOrigin[0] + offset();
             copyRegion.srcBuffer.rowPitch = calSrcOrigin[1];
             copyRegion.srcBuffer.depthPitch = calSrcOrigin[2];
-            copyRegion.extent.width = calSize[0];
+            copyRegion.extent.width = calSize[0] / bytesPerElement;
             copyRegion.extent.height = calSize[1];
             copyRegion.extent.depth = calSize[2];
             copyRegion.dstBuffer.format.chFmt = ChannelFmt(bytesPerElement);
