@@ -25,6 +25,7 @@ static const TargetMapping HSAIL64TargetMapping_0_8[] = {
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
+  { "VI", "Bee",   "VI",   amd::GPU_Library_HSAIL, VI_LEXA_V_A0,    F_VI_BASE, true, true,  FAMILY_VI },
   { "CZ", "Carrizo", "VI", amd::GPU_Library_HSAIL, CARRIZO_A0,      F_VI_BASE, true, true,  FAMILY_CZ },
   { "VI", "Fiji",    "VI", amd::GPU_Library_HSAIL, VI_FIJI_P_A0,    F_VI_BASE, true, true,  FAMILY_VI },
   { "CZ", "Stoney",  "VI", amd::GPU_Library_HSAIL, STONEY_A0,       F_VI_BASE, true, true,  FAMILY_CZ },

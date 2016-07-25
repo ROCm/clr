@@ -493,6 +493,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
         m_target = CAL_TARGET_STONEY;
         m_elfmachine = ED_ATI_CAL_MACHINE_STONEY_ISA;
         break;
+  case GSL_ATIASIC_ID_LEXA:
+        m_target = CAL_TARGET_LEXA;
+        m_elfmachine = ED_ATI_CAL_MACHINE_LEXA_ISA;
+        break;
     default:
         // 6XX is not supported
         m_adp->deleteContext(temp_cs);

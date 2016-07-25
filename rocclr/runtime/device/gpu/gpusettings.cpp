@@ -191,6 +191,7 @@ Settings::create(
     case CAL_TARGET_FIJI:
     case CAL_TARGET_ELLESMERE:
     case CAL_TARGET_BAFFIN:
+    case CAL_TARGET_LEXA:
         // Disable tiling aperture on VI+
         linearPersistentImage_ = true;
         // Keep this false even though we have support
