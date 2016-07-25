@@ -463,7 +463,7 @@ void NullDevice::fillDeviceInfo(
         info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
         info_.wavefrontWidth_       = palProp.gfxipProperties.shaderCore.wavefrontSize;
         info_.globalMemChannels_    = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
-        //info_.globalMemChannelBanks_    = calAttr.numMemBanks;
+        info_.globalMemChannelBanks_     = 4;
         info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
         info_.localMemSizePerCU_    = hwInfo()->localMemSizePerCU_;
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
