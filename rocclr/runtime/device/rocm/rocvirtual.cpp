@@ -1206,7 +1206,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
     }
     if (mapInfo->isUnmapWrite()) {
         // Commit the changes made by the user.
-        if (!devMemory->isHostMemDirectAccess()) {
+        if (devMemory->owner()->getHostMem() == nullptr) {
             bool result = false;
 
             if (cmd.memory().asImage() && !imageBuffer) {
