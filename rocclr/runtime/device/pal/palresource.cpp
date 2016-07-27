@@ -172,8 +172,8 @@ Resource::Resource(
     desc_.state_     = 0;
     desc_.type_      = Empty;
     desc_.width_     = amd::alignUp(size,
-        Pal::Formats::BytesPerPixel(Pal::ChFmt::R32)) /
-        Pal::Formats::BytesPerPixel(Pal::ChFmt::R32);
+        Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint)) /
+        Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint);
     desc_.height_    = 1;
     desc_.depth_     = 1;
     desc_.mipLevels_ = 1;
@@ -397,7 +397,7 @@ Resource::create(MemoryType memType, CreateParams* params)
     Pal::SubresId    ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
     Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
     Pal::ChannelMapping channels;
-    Pal::Format format = dev().getPalFormat(desc().format_, &channels);
+    Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
 
     // This is a thread safe operation
     const_cast<Device&>(dev()).initializeHeapResources();
@@ -412,7 +412,7 @@ Resource::create(MemoryType memType, CreateParams* params)
     }
 
     // Get the element size
-    elementSize_ = Pal::Formats::BytesPerPixel(format.chFmt);
+    elementSize_ = Pal::Formats::BytesPerPixel(format);
     desc_.type_ = memType;
     if (memType == Scratch) {
         // use local memory for scratch buffer unless it is using HW DEBUG
@@ -510,7 +510,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 Pal::ImageCreateInfo    imgCreateInfo = {};
                 Pal::ExternalImageOpenInfo imgOpenInfo = {};
                 imgOpenInfo.resourceInfo = openInfo;
-                imgOpenInfo.format = format;
+                imgOpenInfo.swizzledFormat.format = format;
+                imgOpenInfo.swizzledFormat.swizzle = channels;
                 imgOpenInfo.flags.formatChangeSrd = true;
                 imgOpenInfo.usage.shaderRead = true;
                 imgOpenInfo.usage.shaderWrite = true;
@@ -532,7 +533,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 imgCreateInfo.flags.formatChangeSrd = true;
                 imgCreateInfo.usageFlags.shaderRead = true;
                 imgCreateInfo.usageFlags.shaderWrite = true;
-                imgCreateInfo.format    = format;
+                imgCreateInfo.swizzledFormat.format  = format;
+                imgCreateInfo.swizzledFormat.swizzle = channels;
                 imgCreateInfo.mipLevels = 1;
                 imgCreateInfo.samples   = 1;
                 imgCreateInfo.fragments = 1;
@@ -607,8 +609,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 Pal::ImageViewInfo viewInfo = {};
                 viewInfo.viewType = Pal::ImageViewType::Tex2d;
                 viewInfo.pImage = image_;
-                viewInfo.format = format;
-                viewInfo.channels = channels;
+                viewInfo.swizzledFormat.format = format;
+                viewInfo.swizzledFormat.swizzle = channels;
                 viewInfo.subresRange = ImgSubresRange;
                 dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
 
@@ -627,7 +629,8 @@ Resource::create(MemoryType memType, CreateParams* params)
             viewInfo.gpuAddr = memRef_->iMem()->Desc().gpuVirtAddr + offset();
             viewInfo.range = memRef_->iMem()->Desc().size;
             viewInfo.stride = elementSize();
-            viewInfo.format = format;
+            viewInfo.swizzledFormat.format = format;
+            viewInfo.swizzledFormat.swizzle = channels;
             hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
             if ((0 == hwSrd_) && (memoryType() != ImageView)) {
                 return false;
@@ -643,7 +646,8 @@ Resource::create(MemoryType memType, CreateParams* params)
             Pal::ExternalImageOpenInfo imgOpenInfo = {};
             Pal::ImageCreateInfo    imgCreateInfo = {};
             imgOpenInfo.resourceInfo = openInfo;
-            imgOpenInfo.format = format;
+            imgOpenInfo.swizzledFormat.format = format;
+            imgOpenInfo.swizzledFormat.swizzle = channels;
             imgOpenInfo.flags.formatChangeSrd = true;
             imgOpenInfo.usage.shaderRead = true;
             imgOpenInfo.usage.shaderWrite = true;
@@ -668,8 +672,8 @@ Resource::create(MemoryType memType, CreateParams* params)
                 break;
             }
             viewInfo.pImage = image_;
-            viewInfo.format = format;
-            viewInfo.channels = channels;
+            viewInfo.swizzledFormat.format = format;
+            viewInfo.swizzledFormat.swizzle = channels;
             if ((type == InteropTextureViewLevel) ||
                 (type == InteropTextureViewCube)) {
                 ImgSubresRange.startSubres.mipLevel = mipLevel;
@@ -730,7 +734,8 @@ Resource::create(MemoryType memType, CreateParams* params)
             viewInfo.gpuAddr = memRef_->iMem()->Desc().gpuVirtAddr + offset();
             viewInfo.range = memRef_->iMem()->Desc().size;
             viewInfo.stride = elementSize();
-            viewInfo.format = format;
+            viewInfo.swizzledFormat.format = format;
+            viewInfo.swizzledFormat.swizzle = channels;
             //viewInfo.channels = channels;
             hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
             if ((0 == hwSrd_) && (memoryType() != ImageView)) {
@@ -798,8 +803,9 @@ Resource::create(MemoryType memType, CreateParams* params)
             imgCreateInfo.flags.formatChangeSrd = true;
             imgCreateInfo.usageFlags.shaderRead = true;
             imgCreateInfo.usageFlags.shaderWrite =
-                (format.numFmt == Pal::NumFmt::Srgb) ? false : true;
-            imgCreateInfo.format = format;
+                (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
+            imgCreateInfo.swizzledFormat.format = format;
+            imgCreateInfo.swizzledFormat.swizzle = channels;
             imgCreateInfo.mipLevels     = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
             imgCreateInfo.samples   = 1;
             imgCreateInfo.fragments = 1;
@@ -868,8 +874,8 @@ Resource::create(MemoryType memType, CreateParams* params)
             return false;
         }
         viewInfo.pImage = image_;
-        viewInfo.format = format;
-        viewInfo.channels = channels;
+        viewInfo.swizzledFormat.format = format;
+        viewInfo.swizzledFormat.swizzle = channels;
         viewInfo.subresRange = ImgSubresRange;
         dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
 
@@ -1101,22 +1107,22 @@ Resource::writeRawData(
         gpu.waitForEvent(&event);
     }
 }
-static const Pal::ChFmt ChannelFmt(uint bytesPerElement)
+static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement)
 {
     if (bytesPerElement == 16) {
-        return Pal::ChFmt::R32G32B32A32;
+        return Pal::ChNumFormat::X32Y32Z32W32_Uint;
     }
     else if (bytesPerElement == 8) {
-        return Pal::ChFmt::R32G32;
+        return Pal::ChNumFormat::X32Y32_Uint;
     }
     else if (bytesPerElement == 4) {
-        return Pal::ChFmt::R32;
+        return Pal::ChNumFormat::X32_Uint;
     }
     else if (bytesPerElement == 2) {
-        return Pal::ChFmt::R16;
+        return Pal::ChNumFormat::X16_Uint;
     }
     else {
-        return Pal::ChFmt::R8;
+        return Pal::ChNumFormat::X8_Uint;
     }
 }
 
@@ -1135,19 +1141,10 @@ Resource::partialMemCopyTo(
     bool        result = true;
     EngineType  activeEngineID = gpu.engineID_;
     static const bool waitOnBusyEngine = true;
-    // \note timing issues in Linux with sync mode
-    bool        flush = true;
 
-    // Check if runtime can use async memory copy,
-    // even if a caller didn't request async
-    if (!desc().cardMemory_ || !dstResource.desc().cardMemory_) {
-        // Switch to SDMA engine
-        gpu.engineID_ = SdmaEngine;
-        flush = false;
-    }
-    else {
-        assert("Unsupported configuraiton!");
-    }
+    assert(!(desc().cardMemory_ && dstResource.desc().cardMemory_) &&
+        "Unsupported configuraiton!");
+    gpu.engineID_ = SdmaEngine;
 
     // Wait for the resources, since runtime may use async transfers
     wait(gpu, waitOnBusyEngine);
@@ -1233,16 +1230,18 @@ Resource::partialMemCopyTo(
     else {
         if (enableCopyRect) {
             Pal::TypedBufferCopyRegion copyRegion = {};
-            copyRegion.srcBuffer.format.chFmt = ChannelFmt(bytesPerElement);
-            copyRegion.srcBuffer.format.numFmt = Pal::NumFmt::Uint;
+            Pal::ChannelMapping channels = { Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y,
+                Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::W };
+            copyRegion.srcBuffer.swizzledFormat.format = ChannelFmt(bytesPerElement);
+            copyRegion.srcBuffer.swizzledFormat.swizzle = channels;
             copyRegion.srcBuffer.offset = calSrcOrigin[0] + offset();
             copyRegion.srcBuffer.rowPitch = calSrcOrigin[1];
             copyRegion.srcBuffer.depthPitch = calSrcOrigin[2];
             copyRegion.extent.width = calSize[0] / bytesPerElement;
             copyRegion.extent.height = calSize[1];
             copyRegion.extent.depth = calSize[2];
-            copyRegion.dstBuffer.format.chFmt = ChannelFmt(bytesPerElement);
-            copyRegion.dstBuffer.format.numFmt = Pal::NumFmt::Uint;
+            copyRegion.dstBuffer.swizzledFormat.format = ChannelFmt(bytesPerElement);
+            copyRegion.dstBuffer.swizzledFormat.swizzle = channels;
             copyRegion.dstBuffer.offset = calDstOrigin[0] + dstResource.offset();
             copyRegion.dstBuffer.rowPitch = calDstOrigin[1];
             copyRegion.dstBuffer.depthPitch = calDstOrigin[2];
@@ -1267,7 +1266,7 @@ Resource::partialMemCopyTo(
         dstResource.setBusy(gpu, event);
 
         // Update the global GPU event
-        gpu.setGpuEvent(event, (flush | flushDMA));
+        gpu.setGpuEvent(event, flushDMA);
     }
 
     // Restore the original engine

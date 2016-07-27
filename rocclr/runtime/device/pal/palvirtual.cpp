@@ -170,7 +170,7 @@ VirtualGPU::Queue::submit(bool forceFlush)
 bool
 VirtualGPU::Queue::flush()
 {
-    std::vector<Pal::IGpuMemory*>   memRef;
+    std::vector<Pal::GpuMemoryRef>   memRefs;
     // Stop commands building
     if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
         LogError("PAL failed to finalize a command buffer!");
@@ -180,12 +180,14 @@ VirtualGPU::Queue::flush()
     for (auto it = memReferences_.begin(); it != memReferences_.end(); ++it) {
         if (it->second & FirstMemoryReference) {
             it->second &= ~FirstMemoryReference;
-            memRef.push_back(it->first);
+            Pal::GpuMemoryRef   memRef = {};
+            memRef.pGpuMemory = it->first;
+            memRefs.push_back(memRef);
         }
     }
 
-    if (memRef.size() != 0) {
-        iDev_->AddGpuMemoryReferences(memRef.size(), &memRef[0], iQueue_,
+    if (memRefs.size() != 0) {
+        iDev_->AddGpuMemoryReferences(memRefs.size(), &memRefs[0], iQueue_,
              Pal::GpuMemoryRefCantTrim);
     }
 
@@ -254,19 +256,20 @@ VirtualGPU::Queue::flush()
         return false;
     }
 
-    memRef.clear();
+    memRefs.clear();
+    std::vector<Pal::IGpuMemory*>   iMems;
     // Remove old memory references
     for (auto it = memReferences_.begin(); it != memReferences_.end();) {
         if (it->second == cmdBufIdSlot_) {
-            memRef.push_back(it->first);
+            iMems.push_back(it->first);
             it = memReferences_.erase(it);
         }
         else {
             ++it;
         }
     }
-    if (memRef.size() != 0) {
-        iDev_->RemoveGpuMemoryReferences(memRef.size(), &memRef[0], iQueue_);
+    if (iMems.size() != 0) {
+        iDev_->RemoveGpuMemoryReferences(iMems.size(), &iMems[0], iQueue_);
     }
 
     return true;
