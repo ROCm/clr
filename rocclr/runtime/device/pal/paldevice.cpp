@@ -1040,6 +1040,7 @@ Device::init()
     size_t size = Pal::GetPlatformSize();
     platformObj = new char[size];
     Pal::PlatformCreateInfo  info = {};
+    //info.flags.disableGpuTimeout = true;
     info.pSettingsPath = "OCL";
 
     // PAL init
@@ -1106,7 +1107,7 @@ Device::xferMgr() const
     return xferQueue_->blitMgr();
 }
 
-Pal::Format
+Pal::ChNumFormat
 Device::getPalFormat(const amd::Image::Format& format, Pal::ChannelMapping* channel) const
 {
     // Find PAL format

@@ -361,7 +361,7 @@ public:
     uint64_t    hwSrd() const { return hwSrd_; }
 
     uint numComponents() const {
-        return Pal::Formats::NumComponents(image_->GetImageCreateInfo().format.chFmt); }
+        return Pal::Formats::NumComponents(image_->GetImageCreateInfo().swizzledFormat.format); }
 
 protected:
     uint    elementSize_;   //!< Size of a single element in bytes

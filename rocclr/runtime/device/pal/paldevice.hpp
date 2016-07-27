@@ -421,7 +421,7 @@ public:
     VirtualGPU* xferQueue() const { return xferQueue_; }
 
     //! Retrieves the internal format from the OCL format
-    Pal::Format getPalFormat(
+    Pal::ChNumFormat getPalFormat(
         const amd::Image::Format& format,   //! OCL image format
         Pal::ChannelMapping* channel
         ) const;
