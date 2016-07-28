@@ -156,16 +156,13 @@ KernelParameters::capture(const Device& device)
                 }
             }
             else if (desc.type_ == T_SAMPLER) {
-                // We're going to replace (mem + desc.offset_) in the
-                // CPU device code -- It will go from Sampler* to clk_sampler.
-                // Do the retain() and release() on this other copy.
-                Sampler* samplerArg = *(Sampler**)(values_ + desc.offset_);
+                Sampler* samplerArg = *(Sampler**)(mem + desc.offset_);
                 if (samplerArg != NULL) {
                     samplerArg->retain();
                 }
             }
             else if (desc.type_ == T_QUEUE) {
-                DeviceQueue* queue = *(DeviceQueue**)(values_ + desc.offset_);
+                DeviceQueue* queue = *(DeviceQueue**)(mem + desc.offset_);
                 if (queue != NULL) {
                     queue->retain();
                 }
@@ -216,13 +213,13 @@ KernelParameters::release(address mem, const amd::Device& device) const
             }
         }
         else if (desc.type_ == T_SAMPLER) {
-            Sampler* samplerArg = *(Sampler**)(values_ + desc.offset_);
+            Sampler* samplerArg = *(Sampler**)(mem + desc.offset_);
             if (samplerArg != NULL) {
                 samplerArg->release();
             }
         }
         else if (desc.type_ == T_QUEUE) {
-            DeviceQueue* queue = *(DeviceQueue**)(values_ + desc.offset_);
+            DeviceQueue* queue = *(DeviceQueue**)(mem + desc.offset_);
             if (queue != NULL) {
                 queue->release();
             }
