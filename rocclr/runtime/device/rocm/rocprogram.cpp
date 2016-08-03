@@ -13,6 +13,9 @@
 #include "roccompilerlib.hpp"
 #include "utils/bif_section_labels.hpp"
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "driver/AmdCompiler.h"
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 #include <string>
 #include <vector>
