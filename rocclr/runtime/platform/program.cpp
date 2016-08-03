@@ -48,11 +48,15 @@ cl_int
 Program::addDeviceProgram(Device& device, const void* image, size_t length,
     amd::option::Options* options)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"FIMXE_Wilkins: check the code below");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
             isSPIRV_?BINARY_TYPE_SPIRV:BINARY_TYPE_ELF|BINARY_TYPE_LLVM)) {
         return CL_INVALID_BINARY;
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     // Check if the device is already associated with this program
     if (deviceList_.find(&device) != deviceList_.end()) {
@@ -71,6 +75,9 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         options = &emptyOpts;
         emptyOptions = true;
     }
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"FIMXE_Wilkins: check the code below");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
         acl_error errorCode;
         aclBinary *binary = aclReadFromMem(image, length, &errorCode);
@@ -92,8 +99,11 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
                 return CL_INVALID_COMPILER_OPTIONS;
             }
         }
+#if !defined(WITH_LIGHTNING_COMPILER)
         options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     options->oVariables->BinaryIsSpirv = isSPIRV_;
     device::Program* program = rootDev.createProgram(options);
     if (program == NULL) {
@@ -296,6 +306,7 @@ Program::link(
             // Check the binary's target for the first found device program.
             // TODO: Revise these binary's target checks
             // and possibly remove them after switching to HSAIL by default.
+#if !defined(WITH_LIGHTNING_COMPILER)
             if (!found && binary.first != NULL && binary.second > 0) {
                 acl_error errorCode = ACL_SUCCESS;
                 void *mem = const_cast<void*>(binary.first);
@@ -310,6 +321,7 @@ Program::link(
                     parsedOptions.oVariables->Frontend = "edg";
                 }
             }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
             found = true;
         }
         if (inputDevPrograms.size() == 0) {
