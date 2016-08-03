@@ -1163,6 +1163,7 @@ Program::initClBinary(char* binaryIn, size_t size)
     int encryptCode = 0;
     char* decryptedBin = NULL;
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     bool isSPIRV = isSPIRVMagic(binaryIn, size);
     if (isSPIRV || isBcMagic(binaryIn))
     {
@@ -1212,6 +1213,7 @@ Program::initClBinary(char* binaryIn, size_t size)
         }
     }
     else
+#endif // defined(WITH_LIGHTNING_COMPILER)
     {
         size_t decryptedSize;
         if (!clBinary()->decryptElf(binaryIn,size,
@@ -1294,6 +1296,10 @@ Program::setBinary(char* binaryIn, size_t size)
 bool
 Program::createBIFBinary(aclBinary* bin)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"FIXME_Wilkin");
+    return false;
+#else // defined(WITH_LIGHTNING_COMPILER)
     acl_error err;
     char *binaryIn = NULL;
     size_t size;
@@ -1305,6 +1311,7 @@ Program::createBIFBinary(aclBinary* bin)
     clBinary()->saveBIFBinary(binaryIn, size);
     aclFreeMem(bin, binaryIn);
     return true;
+#endif // defined(WITH_LIGHTNING_COMPILER)
 }
 
 ClBinary::ClBinary(const amd::Device& dev, BinaryImageFormat bifVer)
