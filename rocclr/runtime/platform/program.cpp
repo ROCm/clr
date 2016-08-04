@@ -49,7 +49,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
     amd::option::Options* options)
 {
 #if defined(WITH_LIGHTNING_COMPILER)
-    assert(!"FIMXE_Wilkins: check the code below");
+    if (image != NULL) { assert(!"FIMXE_Wilkins: check the code below"); }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
@@ -76,7 +76,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         emptyOptions = true;
     }
 #if defined(WITH_LIGHTNING_COMPILER)
-    assert(!"FIMXE_Wilkins: check the code below");
+    if (image != NULL && length != 0) { assert(!"FIMXE_Wilkins: check the code below"); }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
         acl_error errorCode;
