@@ -10,12 +10,12 @@
 #include "compiler/lib/loaders/elf/elf.hpp"
 #include "compiler/lib/utils/options.hpp"
 #include "rockernel.hpp"
-#include "roccompilerlib.hpp"
-#include "utils/bif_section_labels.hpp"
-
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#else // !defined(WITH_LIGHTNING_COMPILER)
+#include "roccompilerlib.hpp"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+#include "utils/bif_section_labels.hpp"
 
 #include <string>
 #include <vector>
@@ -39,7 +39,11 @@ namespace roc {
         acl_error error;
         // Free the elf binary
         if (binaryElf_ != NULL) {
+#if defined(WITH_LIGHTNING_COMPILER)
+            assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
             error = g_complibApi._aclBinaryFini(binaryElf_);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (error != ACL_SUCCESS) {
                 LogWarning( "Error while destroying the acl binary \n" );
             }
@@ -198,6 +202,12 @@ namespace roc {
         //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
         // Checking llvmir in .llvmir section
         bool containsLlvmirText = true;
+#if defined(WITH_LIGHTNING_COMPILER)
+        assert(!"FIXME_Wilkin");
+        bool containsOpts = false;
+        bool containsHsailText = false;
+        bool containsBrig = false;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, NULL, &containsLlvmirText, &boolSize);
         if (errorCode != ACL_SUCCESS) {
             containsLlvmirText = false;
@@ -224,6 +234,7 @@ namespace roc {
         if (errorCode != ACL_SUCCESS) {
             containsBrig = false;
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         if (containsBrig) {
             completeStages.push_back(from);
             from = ACL_TYPE_HSAIL_BINARY;
@@ -244,7 +255,11 @@ namespace roc {
         }
         // Checking ISA in .text section
         bool containsShaderIsa = true;
+#if defined(WITH_LIGHTNING_COMPILER)
+        assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
         errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, NULL, &containsShaderIsa, &boolSize);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         if (errorCode != ACL_SUCCESS) {
             containsShaderIsa = false;
         }
@@ -301,7 +316,11 @@ namespace roc {
         if ((binary.first != NULL) && (binary.second > 0)) {
             void *mem = const_cast<void *>(binary.first);
             acl_error errorCode;
+#if defined(WITH_LIGHTNING_COMPILER)
+            assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
             binaryElf_ = g_complibApi._aclReadFromMem(mem, binary.second, &errorCode);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (errorCode != ACL_SUCCESS) {
                 buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
                 LogWarning("aclReadFromMem failed");
@@ -332,8 +351,13 @@ namespace roc {
               assert(symbol && "symbol not found");
               std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
               size_t symSize = 0;
+#if defined(WITH_LIGHTNING_COMPILER)
+              assert(!"FIXME_Wilkin");
+              const void *opts = NULL;
+#else // !defined(WITH_LIGHTNING_COMPILER)
               const void *opts = g_complibApi._aclExtractSymbol(device().compiler(),
                   binaryElf_, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
               if (errorCode != ACL_SUCCESS) {
                   recompile = true;
                   break;
@@ -377,11 +401,15 @@ namespace roc {
         //Write binary to memory
         void *rawBinary = NULL;
         size_t size;
+#if defined(WITH_LIGHTNING_COMPILER)
+        assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
         if (g_complibApi._aclWriteToMem(binaryElf_, &rawBinary, &size)
             != ACL_SUCCESS) {
                 buildLog_ += "Failed to write binary to memory \n";
                 return false;
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         clBinary()->saveBIFBinary((char*)rawBinary, size);
         //Set the type of binary
         setType(type);
@@ -393,6 +421,10 @@ namespace roc {
     bool HSAILProgram::linkImpl(const std::vector<Program *> &inputPrograms,
         amd::option::Options *options,
         bool createLibrary) {
+#if defined(WITH_LIGHTNING_COMPILER)
+            assert(!"FIXME_Wilkin");
+            return false;
+#else // !defined(WITH_LIGHTNING_COMPILER)
             std::vector<device::Program *>::const_iterator it
                 = inputPrograms.begin();
             std::vector<device::Program *>::const_iterator itEnd
@@ -479,6 +511,7 @@ namespace roc {
 
             // Now call linkImpl with the new options
             return linkImpl(options);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
 
     bool HSAILProgram::initBrigModule() {
@@ -486,6 +519,10 @@ namespace roc {
         BrigModuleHeader* brig; 
         acl_error error_code;
         size_t size;
+#if defined(WITH_LIGHTNING_COMPILER)
+        assert(!"FIXME_Wilkin");
+        const void* symbol_data = NULL;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         const void* symbol_data = g_complibApi._aclExtractSymbol(
             device().compiler(),
             binaryElf_,
@@ -493,6 +530,7 @@ namespace roc {
             aclBRIG,
             symbol_name,
             &error_code);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         if (error_code != ACL_SUCCESS) {
            std::string error = "Could not find Brig in BIF: ";
            error += symbol_name;
@@ -563,9 +601,13 @@ namespace roc {
         // 1. if the program is created with binary and contains only hsail text
         case ACL_TYPE_HSAIL_TEXT: {
             std::string curOptions = options->origOptionStr + hsailOptions();
+#if defined(WITH_LIGHTNING_COMPILER)
+            assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
             errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
                 curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
             buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
+#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (errorCode != ACL_SUCCESS) {
                 buildLog_ += "Error while BRIG Codegen phase: compilation error \n" ;
                 return false;
@@ -722,8 +764,12 @@ namespace roc {
                 aclMetadata md;
                 md.numHiddenKernelArgs = 0;
                 size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
+#if defined(WITH_LIGHTNING_COMPILER)
+                assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
                 errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
                     openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
                 if (errorCode != ACL_SUCCESS) {
                     buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
                     return false;
@@ -787,7 +833,11 @@ namespace roc {
             }
         }
         saveBinaryAndSetType(TYPE_EXECUTABLE);
+#if defined(WITH_LIGHTNING_COMPILER)
+        assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
         buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         return true;
     }
 

@@ -18,7 +18,11 @@
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "driver/AmdCompiler.h"
+#else // !defined(WITH_LIGHTNING_COMPILER)
 #include "device/rocm/roccompilerlib.hpp"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #include "kv_id.h"
@@ -41,7 +45,7 @@ extern const char* BlitSourceCode;
 }
 
 namespace roc {
-aclCompiler* NullDevice::compilerHandle_;
+amd::Device::Compiler* NullDevice::compilerHandle_;
 bool roc::Device::isHsaInitialized_ = false;
 hsa_agent_t roc::Device::cpu_agent_ = { 0 };
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
@@ -226,6 +230,16 @@ Device::~Device()
     }
 }
 bool NullDevice::initCompiler(bool isOffline) {
+#if defined(WITH_LIGHTNING_COMPILER)
+    if (!compilerHandle_) {
+        const std::string llvmbin(amd::Os::getEnvironment("LLVM_BIN"));
+        compilerHandle_ = amd::opencl_driver::CompilerFactory()
+            .CreateAMDGPUCompiler(llvmbin);
+        if (!compilerHandle_) {
+            return false;
+        }
+    }
+#else // !defined(WITH_LIGHTNING_COMPILER)
      // Initializes g_complibModule and g_complibApi if they were not initialized
     if( g_complibModule == NULL ){
         if (!LoadCompLib(isOffline)) {
@@ -245,10 +259,15 @@ bool NullDevice::initCompiler(bool isOffline) {
             return false;
         }
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
 
 bool NullDevice::destroyCompiler() {
+#if defined(WITH_LIGHTNING_COMPILER)
+    delete compilerHandle_;
+    compilerHandle_ = NULL;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     if (compilerHandle_ != NULL) {
         acl_error error = g_complibApi._aclCompilerFini(compilerHandle_);
         if (error != ACL_SUCCESS) {
@@ -259,6 +278,7 @@ bool NullDevice::destroyCompiler() {
     if( g_complibModule != NULL ){
         UnloadCompLib();
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
 

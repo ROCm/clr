@@ -16,7 +16,6 @@
 #include "thread/thread.hpp"
 #include "thread/monitor.hpp"
 #include "utils/versions.hpp"
-#include "aclTypes.h"
 
 #include "device/rocm/rocsettings.hpp"
 #include "device/rocm/rocvirtual.hpp"
@@ -78,7 +77,7 @@ public:
     //! Destructor for the Null device
     virtual ~NullDevice();
 
-    aclCompiler *compiler() const { return compilerHandle_; }
+    Compiler *compiler() const { return compilerHandle_; }
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
     virtual device::Program *createProgram(amd::option::Options* options = NULL);
@@ -199,7 +198,7 @@ protected:
     //! destroy compiler instance and handle
     static bool destroyCompiler();
     //! Handle to the the compiler
-    static aclCompiler* compilerHandle_;
+    static Compiler* compilerHandle_;
     //! Device Id for an HsaDevice
     AMDDeviceInfo deviceInfo_;
 private:

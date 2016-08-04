@@ -91,7 +91,7 @@ typedef hsa_status_t
                                         void *correlation_handle);
 static void SetOclCorrelationHandle(void *tools_lib, const hsa_agent_t agent, void *handle) {
   hsa_ext_tools_set_correlation_handle func = 
-    (hsa_ext_tools_set_correlation_handle)Os::getSymbol(tools_lib, "hsa_ext_tools_set_correlation_handler");
+    (hsa_ext_tools_set_correlation_handle)amd::Os::getSymbol(tools_lib, "hsa_ext_tools_set_correlation_handler");
   if (func) {
     func(agent, handle);
   }
@@ -488,14 +488,14 @@ VirtualGPU::create(bool profilingEna)
 {
     // Set the event handle to the tools lib if the env var
     // Load the library using its advertised "soname"
-    std::string lib_name = Os::getEnvironment("HSA_TOOLS_LIB");
+    std::string lib_name = amd::Os::getEnvironment("HSA_TOOLS_LIB");
     if (lib_name != "") {
 #if defined(_WIN32) || defined(__CYGWIN__)
         const char *tools_lib_name = "hsa-runtime-tools" LP64_SWITCH("", "64") ".dll";
 #else
         const char *tools_lib_name = "libhsa-runtime-tools" LP64_SWITCH("", "64") ".so.1";
 #endif
-        tools_lib_ = Os::loadLibrary(tools_lib_name);
+        tools_lib_ = amd::Os::loadLibrary(tools_lib_name);
     }
 
     uint32_t queue_max_packets = 0;
@@ -581,7 +581,7 @@ VirtualGPU::terminate()
     }
 
     if (tools_lib_) {
-        Os::unloadLibrary(tools_lib_);
+        amd::Os::unloadLibrary(tools_lib_);
         tools_lib_ = NULL;
     }
 
@@ -633,7 +633,7 @@ VirtualGPU::allocKernArg(size_t size, size_t alignment)
 {
     char* result = nullptr;
     do {
-        result = alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
+        result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
         const size_t pool_new_usage = (result + size) - kernarg_pool_base_;
         if (pool_new_usage <= kernarg_pool_size_) {
             kernarg_pool_cur_offset_ = pool_new_usage;
@@ -981,7 +981,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd)
     // in-order semantics: previous commands need to be done before we start
     releaseGpuMemoryFence();
     profilingBegin(cmd);
-    SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
+    amd::SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
     profilingEnd(cmd);
 }
 
