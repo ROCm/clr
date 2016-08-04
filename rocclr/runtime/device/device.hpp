@@ -16,7 +16,11 @@
 #include "elf/elf.hpp"
 #include "appprofile.hpp"
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "driver/AmdCompiler.h"
+#endif // defined(WITH_LIGHTNING_COMPILER)
 #include "acl.h"
+
 #include "hwdebug.hpp"
 
 #include <cstdio>
@@ -1535,6 +1539,13 @@ private:
  */
 class Device : public RuntimeObject
 {
+protected:
+#if defined(WITH_LIGHTNING_COMPILER)
+    typedef amd::opencl_driver::Compiler Compiler;
+#else // !defined(WITH_LIGHTNING_COMPILER)
+    typedef aclCompiler Compiler;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
 public:
     typedef std::list<CommandQueue*> CommandQueues;
 
@@ -1553,7 +1564,7 @@ public:
             );
     };
 
-    virtual aclCompiler* compiler() const = 0;
+    virtual Compiler* compiler() const = 0;
 
     Device(Device* parent = NULL);
     virtual ~Device();

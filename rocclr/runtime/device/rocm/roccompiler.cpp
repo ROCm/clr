@@ -11,7 +11,9 @@
 #include "os/os.hpp"
 #include "rocdevice.hpp"
 #include "rocprogram.hpp"
+#if !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 #include "utils/options.hpp"
 #include <cstdio>
 
@@ -34,6 +36,10 @@ HSAILProgram::compileImpl(const std::string& sourceCode,
 		       const char** headerIncludeNames,
 		       amd::option::Options* options)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"FIXME_Wilkin");
+    return false;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     acl_error errorCode;
     aclTargetInfo target;
 
@@ -154,7 +160,7 @@ HSAILProgram::compileImpl(const std::string& sourceCode,
     // Save the binary in the interface class
     saveBinaryAndSetType(TYPE_COMPILED);
     return true;
-
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 }
 #endif // WITHOUT_GPU_BACKEND

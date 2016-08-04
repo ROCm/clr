@@ -10,6 +10,10 @@
 #include "acl.h"
 #include "utils/debug.hpp"
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#error Should not include this file
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
 using namespace amd;
 
 namespace roc {

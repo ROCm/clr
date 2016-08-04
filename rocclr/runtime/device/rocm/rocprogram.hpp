@@ -6,7 +6,9 @@
 #ifndef WITHOUT_HSA_BACKEND
 
 #include "rocbinary.hpp"
+#if !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 #include "acl.h"
 #include <string>
 #include <sstream>

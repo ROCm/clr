@@ -493,6 +493,9 @@ Kernel::Kernel(std::string name, HSAILProgram* prog,
       extraArgumentsNum_(extraArgsNum) {}
 
 bool Kernel::init(){
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"FIXME_Wilkin");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     acl_error errorCode;
     //compile kernel down to ISA
     hsa_agent_t hsaDevice = program_->hsaDevice();
@@ -601,6 +604,7 @@ bool Kernel::init(){
     // Set the Printf List
     initPrintf(reinterpret_cast<aclPrintfFmt*>(aclPrintfList.get()));
   }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
