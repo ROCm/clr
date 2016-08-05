@@ -257,6 +257,7 @@ namespace roc {
         bool containsShaderIsa = true;
 #if defined(WITH_LIGHTNING_COMPILER)
         assert(!"FIXME_Wilkin");
+        errorCode = ACL_ERROR;
 #else // !defined(WITH_LIGHTNING_COMPILER)
         errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, NULL, &containsShaderIsa, &boolSize);
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -318,6 +319,7 @@ namespace roc {
             acl_error errorCode;
 #if defined(WITH_LIGHTNING_COMPILER)
             assert(!"FIXME_Wilkin");
+            errorCode = ACL_ERROR;
 #else // !defined(WITH_LIGHTNING_COMPILER)
             binaryElf_ = g_complibApi._aclReadFromMem(mem, binary.second, &errorCode);
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -400,7 +402,7 @@ namespace roc {
     bool HSAILProgram::saveBinaryAndSetType(type_t type) {
         //Write binary to memory
         void *rawBinary = NULL;
-        size_t size;
+        size_t size = 0;
 #if defined(WITH_LIGHTNING_COMPILER)
         assert(!"FIXME_Wilkin");
 #else // !defined(WITH_LIGHTNING_COMPILER)
@@ -522,6 +524,7 @@ namespace roc {
 #if defined(WITH_LIGHTNING_COMPILER)
         assert(!"FIXME_Wilkin");
         const void* symbol_data = NULL;
+        error_code = ACL_ERROR;
 #else // !defined(WITH_LIGHTNING_COMPILER)
         const void* symbol_data = g_complibApi._aclExtractSymbol(
             device().compiler(),
@@ -603,6 +606,7 @@ namespace roc {
             std::string curOptions = options->origOptionStr + hsailOptions();
 #if defined(WITH_LIGHTNING_COMPILER)
             assert(!"FIXME_Wilkin");
+            errorCode = ACL_ERROR;
 #else // !defined(WITH_LIGHTNING_COMPILER)
             errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
                 curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
@@ -766,6 +770,7 @@ namespace roc {
                 size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
 #if defined(WITH_LIGHTNING_COMPILER)
                 assert(!"FIXME_Wilkin");
+                errorCode = ACL_ERROR;
 #else // !defined(WITH_LIGHTNING_COMPILER)
                 errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
                     openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
