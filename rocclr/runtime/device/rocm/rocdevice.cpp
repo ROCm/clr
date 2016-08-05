@@ -436,6 +436,7 @@ Device::create()
         return false;
     }
 
+#if !defined(WITH_LIGHTNING_COMPILER) // FIXME_Wilkin
     blitProgram_ = new BlitProgram(context_);
     // Create blit programs
     if (blitProgram_ == NULL || !blitProgram_->create(this)) {
@@ -444,6 +445,7 @@ Device::create()
         LogError("Couldn't create blit kernels!");
         return false;
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
     if (NULL == mapCacheOps_) {
