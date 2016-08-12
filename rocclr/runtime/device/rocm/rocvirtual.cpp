@@ -1208,16 +1208,20 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
     }
     if (mapInfo->isUnmapWrite()) {
         // Commit the changes made by the user.
-        if (devMemory->owner()->getHostMem() == nullptr) {
+        if (!devMemory->isHostMemDirectAccess()) {
             bool result = false;
 
             if (cmd.memory().asImage() && !imageBuffer) {
                 amd::Image *image = cmd.memory().asImage();
+                amd::Memory* mapMemory = devMemory->mapMemory();
+                void *hostPtr = mapMemory == NULL ?
+                    devMemory->owner()->getHostMem() :
+                    mapMemory->getHostMem();
+
                 result = blitMgr().writeImage(
-                    cmd.mapPtr(), *devMemory,
-                    mapInfo->origin_,
-                    mapInfo->region_,
-                    image->getRowPitch(), image->getSlicePitch());
+                    hostPtr, *devMemory,
+                    amd::Coord3D(0), image->getRegion(),
+                    image->getRowPitch(), image->getSlicePitch(), true);
             }
             else {
                 amd::Coord3D origin(mapInfo->origin_[0]);
