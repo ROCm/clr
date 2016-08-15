@@ -148,6 +148,11 @@ public:
     //! Initializes the metadata required for this kernel
     bool init();
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    //! Initializes the metadata required for this kernel
+    bool init_LC();
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
     const HSAILProgram* program() {
         return static_cast<const HSAILProgram*>(program_);
     }
@@ -171,6 +176,12 @@ private:
 
     //! Initializes Hsail Argument metadata and info ;
     void initHsailArgs(const aclArgData* aclArg);
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    //! Initializes Hsail Argument metadata and info for LC
+    void initArgsParams( const RuntimeMD::KernelArg::Metadata* lcArg, size_t* kOffset,
+                         device::Kernel::parameters_t& params, size_t* pOffset );
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     //! Initializes HSAIL Printf metadata and info
     void initPrintf(const aclPrintfFmt* aclPrintf);

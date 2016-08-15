@@ -6,24 +6,8 @@ namespace device {
 
 #define BLIT_KERNELS(...) #__VA_ARGS__
 
-const char* BlitSourceCode = BLIT_KERNELS(
-
-extern void __amd_copyBufferToImage(
-    __global uint*, __write_only image2d_array_t, ulong4,
-    int4, int4, uint4, ulong4);
-
-extern void __amd_copyImageToBuffer(
-    __read_only image2d_array_t, __global uint*, __global ushort*,
-    __global uchar*, int4, ulong4, int4, uint4, ulong4);
-
-extern void __amd_copyImage(
-    __read_only image2d_array_t, __write_only image2d_array_t,
-    int4, int4, int4);
-
-extern void __amd_copyImage1DA(
-    __read_only image2d_array_t, __write_only image2d_array_t,
-    int4, int4, int4);
-
+const char* BlitSourceCode =
+BLIT_KERNELS(
 extern void __amd_copyBufferRect(
     __global uchar*, __global uchar*,
     ulong4, ulong4, ulong4);
@@ -43,58 +27,6 @@ extern void __amd_copyBufferAligned(
 extern void __amd_fillBuffer(
     __global uchar*, __global uint*, __constant uchar*,
     uint, ulong, ulong);
-
-extern void __amd_fillImage(
-    __write_only image2d_array_t,
-    float4, int4, uint4, int4, int4, uint);
-
-
-__kernel void copyBufferToImage(
-    __global uint* src,
-    __write_only image2d_array_t dst,
-    ulong4 srcOrigin,
-    int4 dstOrigin,
-    int4 size,
-    uint4 format,
-    ulong4 pitch)
-{
-    __amd_copyBufferToImage(src, dst, srcOrigin, dstOrigin, size, format, pitch);
-}
-
-__kernel void copyImageToBuffer(
-    __read_only image2d_array_t src,
-    __global uint* dstUInt,
-    __global ushort* dstUShort,
-    __global uchar* dstUChar,
-    int4 srcOrigin,
-    ulong4 dstOrigin,
-    int4 size,
-    uint4 format,
-    ulong4 pitch)
-{
-    __amd_copyImageToBuffer(src, dstUInt, dstUShort, dstUChar,
-                              srcOrigin, dstOrigin, size, format, pitch);
-}
-
-__kernel void copyImage(
-    __read_only  image2d_array_t src,
-    __write_only image2d_array_t dst,
-    int4 srcOrigin,
-    int4 dstOrigin,
-    int4 size)
-{
-    __amd_copyImage(src, dst, srcOrigin, dstOrigin, size);
-}
-
-__kernel void copyImage1DA(
-    __read_only image2d_array_t src,
-    __write_only image2d_array_t dst,
-    int4 srcOrigin,
-    int4 dstOrigin,
-    int4 size)
-{
-    __amd_copyImage1DA(src, dst, srcOrigin, dstOrigin, size);
-}
 
 __kernel void copyBufferRect(
     __global uchar* src,
@@ -148,6 +80,76 @@ __kernel void fillBuffer(
 {
     __amd_fillBuffer(bufUChar, bufUInt, pattern, patternSize, offset, size);
 }
+)
+#if !defined(WITH_LIGHTNING_COMPILER)
+BLIT_KERNELS(
+extern void __amd_copyBufferToImage(
+    __global uint*, __write_only image2d_array_t, ulong4,
+    int4, int4, uint4, ulong4);
+
+extern void __amd_copyImageToBuffer(
+    __read_only image2d_array_t, __global uint*, __global ushort*,
+    __global uchar*, int4, ulong4, int4, uint4, ulong4);
+
+extern void __amd_copyImage(
+    __read_only image2d_array_t, __write_only image2d_array_t,
+    int4, int4, int4);
+
+extern void __amd_copyImage1DA(
+    __read_only image2d_array_t, __write_only image2d_array_t,
+    int4, int4, int4);
+
+extern void __amd_fillImage(
+    __write_only image2d_array_t,
+    float4, int4, uint4, int4, int4, uint);
+
+
+__kernel void copyBufferToImage(
+    __global uint* src,
+    __write_only image2d_array_t dst,
+    ulong4 srcOrigin,
+    int4 dstOrigin,
+    int4 size,
+    uint4 format,
+    ulong4 pitch)
+{
+    __amd_copyBufferToImage(src, dst, srcOrigin, dstOrigin, size, format, pitch);
+}
+
+__kernel void copyImageToBuffer(
+    __read_only image2d_array_t src,
+    __global uint* dstUInt,
+    __global ushort* dstUShort,
+    __global uchar* dstUChar,
+    int4 srcOrigin,
+    ulong4 dstOrigin,
+    int4 size,
+    uint4 format,
+    ulong4 pitch)
+{
+    __amd_copyImageToBuffer(src, dstUInt, dstUShort, dstUChar,
+                              srcOrigin, dstOrigin, size, format, pitch);
+}
+
+__kernel void copyImage(
+    __read_only  image2d_array_t src,
+    __write_only image2d_array_t dst,
+    int4 srcOrigin,
+    int4 dstOrigin,
+    int4 size)
+{
+    __amd_copyImage(src, dst, srcOrigin, dstOrigin, size);
+}
+
+__kernel void copyImage1DA(
+    __read_only image2d_array_t src,
+    __write_only image2d_array_t dst,
+    int4 srcOrigin,
+    int4 dstOrigin,
+    int4 size)
+{
+    __amd_copyImage1DA(src, dst, srcOrigin, dstOrigin, size);
+}
 
 __kernel void fillImage(
     __write_only image2d_array_t image,
@@ -161,7 +163,8 @@ __kernel void fillImage(
     __amd_fillImage(image, patternFLOAT4, patternINT4, patternUINT4,
                       origin, size, type);
 }
-
-);
+)
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+;
 
 } // namespace device

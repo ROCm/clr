@@ -97,16 +97,18 @@ namespace {
       "Dwarf debug frame" },
     { OclElf::JITBINARY,      ".text",           ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "x86 JIT Binary" },
-    { OclElf::CODEGEN,         ".cg",            ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
+    { OclElf::CODEGEN,         ".cg",            ELF_T_BYTE, 1, SHT_PROGBITS, 0,
       "Target dependent IL" },
     { OclElf::TEXT,            ".text",          ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "Device specific ISA" },
-    { OclElf::INTERNAL,        ".internal",      ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
+    { OclElf::INTERNAL,        ".internal",      ELF_T_BYTE, 1, SHT_PROGBITS, 0,
       "Internal usage" },
-    { OclElf::SPIR,            ".spir",          ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
+    { OclElf::SPIR,            ".spir",          ELF_T_BYTE, 1, SHT_PROGBITS, 0,
       "Vendor/Device-independent LLVM IR" },
     { OclElf::SPIRV,           ".spirv",         ELF_T_BYTE, 1, SHT_PROGBITS, 0,
       "SPIR-V Binary" },
+    { OclElf::RUNTIME_METADATA,".AMDGPU.runtime_metadata",  ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+      "AMDGPU runtime metadata" },
   };
 
   // index 0 is reserved and must be there (NULL section)

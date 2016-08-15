@@ -49,7 +49,10 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
     amd::option::Options* options)
 {
 #if defined(WITH_LIGHTNING_COMPILER)
-    if (image != NULL) { assert(!"FIMXE_Wilkins: check the code below"); }
+    // LC binary must be in ELF format
+    if (image != NULL && !amd::isElfMagic((const char *) image)) {
+        return CL_INVALID_BINARY;
+    }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL &&
         !aclValidateBinaryImage(image, length,
@@ -76,7 +79,10 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         emptyOptions = true;
     }
 #if defined(WITH_LIGHTNING_COMPILER)
-    if (image != NULL && length != 0) { assert(!"FIMXE_Wilkins: check the code below"); }
+    if (image != NULL && length != 0 && amd::isElfMagic((const char *) image)) {
+        assert(!"FIMXE_Wilkins: check the code below");
+        return CL_INVALID_BINARY;
+    }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
         acl_error errorCode;
@@ -99,9 +105,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
                 return CL_INVALID_COMPILER_OPTIONS;
             }
         }
-#if !defined(WITH_LIGHTNING_COMPILER)
         options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
-#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     options->oVariables->BinaryIsSpirv = isSPIRV_;
