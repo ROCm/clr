@@ -12,6 +12,26 @@
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
+#include "opencl-c.amdgcn.inc"
+#include "builtins-irif.amdgcn.inc"
+#include "builtins-ockl.amdgcn.inc"
+#include "builtins-ocml.amdgcn.inc"
+#include "builtins-opencl.amdgcn.inc"
+#include "correctly_rounded_sqrt_off.amdgcn.inc"
+#include "correctly_rounded_sqrt_on.amdgcn.inc"
+#include "daz_opt_off.amdgcn.inc"
+#include "daz_opt_on.amdgcn.inc"
+#include "finite_only_off.amdgcn.inc"
+#include "finite_only_on.amdgcn.inc"
+#include "isa_version_701.amdgcn.inc"
+#include "isa_version_800.amdgcn.inc"
+#include "isa_version_801.amdgcn.inc"
+#include "isa_version_802.amdgcn.inc"
+#include "isa_version_803.amdgcn.inc"
+#include "isa_version_804.amdgcn.inc"
+#include "isa_version_810.amdgcn.inc"
+#include "unsafe_math_off.amdgcn.inc"
+#include "unsafe_math_on.amdgcn.inc"
 #else // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -30,6 +50,34 @@
 
 namespace roc {
 #ifndef WITHOUT_HSA_BACKEND
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    static hsa_status_t GetKernelNamesCallback(
+            hsa_executable_t exec,
+            hsa_executable_symbol_t symbol,
+            void *data ) {
+        std::vector<std::string>* symNameList = (reinterpret_cast<std::vector<std::string> *>(data));
+
+        hsa_symbol_kind_t sym_type;
+        hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_TYPE, &sym_type);
+
+        if (sym_type == HSA_SYMBOL_KIND_KERNEL) {
+            uint32_t  len;
+            hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &len);
+
+            char* symName = (char*) malloc(len);
+            hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME, symName);
+
+            std::string kernelName(symName,len);
+            symNameList->push_back(kernelName);
+
+            free(symName);
+        }
+
+        return HSA_STATUS_SUCCESS;
+    }
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
     /* Temporary log function for the compiler library */
     static void logFunction(const char *msg, size_t size) {
         std::cout << "Compiler Library log :" << msg << std::endl;
@@ -40,13 +88,15 @@ namespace roc {
         // Free the elf binary
         if (binaryElf_ != NULL) {
 #if defined(WITH_LIGHTNING_COMPILER)
-            assert(!"FIXME_Wilkin");
+            if (lcBinaryElf_) {
+                free(lcBinaryElf_);
+            }
 #else // !defined(WITH_LIGHTNING_COMPILER)
             error = g_complibApi._aclBinaryFini(binaryElf_);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (error != ACL_SUCCESS) {
                 LogWarning( "Error while destroying the acl binary \n" );
             }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         }
         // Destroy the executable.
         if (hsaExecutable_.handle != 0) {
@@ -84,6 +134,14 @@ namespace roc {
         hsaProgramHandle_.handle = 0;
         hsaProgramCodeObject_.handle = 0;
         hsaExecutable_.handle = 0;
+
+#if defined(WITH_LIGHTNING_COMPILER)
+        lcProgramCodeObject_.handle = 0;
+        lcExecutable_.handle = 0;
+        codeObjBinary_ = NULL;
+        lcBinaryElf_ = NULL;
+        lcBinaryElfSize_ = 0;
+#endif // defined(WITH_LIGHTNING_COMPILER)
     }
 
     bool HSAILProgram::initClBinary(char *binaryIn, size_t size) {  // Save the
@@ -140,7 +198,11 @@ namespace roc {
             outFileName = options->getDumpFileName(".bin");
         }
 
+#if defined(WITH_LIGHTNING_COMPILER)
+        bool useELF64 = true;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         bool useELF64 = getCompilerOptions()->oVariables->EnableGpuElf64;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         if (!clBinary()->setElfOut(useELF64 ? ELFCLASS64 : ELFCLASS32,
             (outFileName.size() >
             0) ? outFileName.c_str() : NULL)) {
@@ -203,7 +265,7 @@ namespace roc {
         // Checking llvmir in .llvmir section
         bool containsLlvmirText = true;
 #if defined(WITH_LIGHTNING_COMPILER)
-        assert(!"FIXME_Wilkin");
+        // TODO:FIXME_Wilkin - Query
         bool containsOpts = false;
         bool containsHsailText = false;
         bool containsBrig = false;
@@ -318,16 +380,14 @@ namespace roc {
             void *mem = const_cast<void *>(binary.first);
             acl_error errorCode;
 #if defined(WITH_LIGHTNING_COMPILER)
-            assert(!"FIXME_Wilkin");
-            errorCode = ACL_ERROR;
+            // TODO: FIXME_Wilkin
 #else // !defined(WITH_LIGHTNING_COMPILER)
             binaryElf_ = g_complibApi._aclReadFromMem(mem, binary.second, &errorCode);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (errorCode != ACL_SUCCESS) {
                 buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
-                LogWarning("aclReadFromMem failed");
                 return continueCompileFrom;
           }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
           // Calculate the next stage to compile from, based on sections in binaryElf_;
           // No any validity checks here
           std::vector<aclType> completeStages;
@@ -359,11 +419,11 @@ namespace roc {
 #else // !defined(WITH_LIGHTNING_COMPILER)
               const void *opts = g_complibApi._aclExtractSymbol(device().compiler(),
                   binaryElf_, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
               if (errorCode != ACL_SUCCESS) {
                   recompile = true;
                   break;
               }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
               std::string sBinOptions = std::string((char*)opts, symSize);
               std::string sCurOptions = compileOptions_ + linkOptions_;
               amd::option::Options curOptions, binOptions;
@@ -404,7 +464,8 @@ namespace roc {
         void *rawBinary = NULL;
         size_t size = 0;
 #if defined(WITH_LIGHTNING_COMPILER)
-        assert(!"FIXME_Wilkin");
+        rawBinary = codeObjBinary_->Binary();
+        size = codeObjBinary_->BinarySize();
 #else // !defined(WITH_LIGHTNING_COMPILER)
         if (g_complibApi._aclWriteToMem(binaryElf_, &rawBinary, &size)
             != ACL_SUCCESS) {
@@ -415,8 +476,10 @@ namespace roc {
         clBinary()->saveBIFBinary((char*)rawBinary, size);
         //Set the type of binary
         setType(type);
+#if !defined(WITH_LIGHTNING_COMPILER)
         //Free memory containing rawBinary
         binaryElf_->binOpts.dealloc(rawBinary);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         return true;
     }
 
@@ -517,15 +580,13 @@ namespace roc {
     }
 
     bool HSAILProgram::initBrigModule() {
+#if defined(WITH_LIGHTNING_COMPILER)
+        brigModule_ = NULL;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         const char *symbol_name = "__BRIG__";
-        BrigModuleHeader* brig; 
+        BrigModuleHeader* brig;
         acl_error error_code;
         size_t size;
-#if defined(WITH_LIGHTNING_COMPILER)
-        assert(!"FIXME_Wilkin");
-        const void* symbol_data = NULL;
-        error_code = ACL_ERROR;
-#else // !defined(WITH_LIGHTNING_COMPILER)
         const void* symbol_data = g_complibApi._aclExtractSymbol(
             device().compiler(),
             binaryElf_,
@@ -533,7 +594,6 @@ namespace roc {
             aclBRIG,
             symbol_name,
             &error_code);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
         if (error_code != ACL_SUCCESS) {
            std::string error = "Could not find Brig in BIF: ";
            error += symbol_name;
@@ -544,6 +604,7 @@ namespace roc {
         brig = (BrigModuleHeader*)malloc(size);
         memcpy(brig, symbol_data, size);
         brigModule_ = brig;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         return true;
     }
    void HSAILProgram::destroyBrigModule() {
@@ -552,6 +613,9 @@ namespace roc {
     }
    }
     bool HSAILProgram::initBrigContainer() {
+#if defined(WITH_LIGHTNING_COMPILER)
+        hsaBrigContainer_ = NULL;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         assert(brigModule_ != NULL);
 
         //Create a BRIG container
@@ -559,6 +623,7 @@ namespace roc {
         if (!hsaBrigContainer_) {
             return false;
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         return true;
     }
 
@@ -566,7 +631,7 @@ namespace roc {
         delete (hsaBrigContainer_);
     }
 
-    
+
     void HSAILProgram::hsaError(const char *msg, hsa_status_t status) {
       std::string fmsg;
       fmsg += msg;
@@ -582,12 +647,284 @@ namespace roc {
       buildLog_ += fmsg;
     }
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    bool HSAILProgram::linkImpl_LC(amd::option::Options *options) {
+        // call LinkLLVMBitcode
+        std::vector<amd::opencl_driver::Data*> inputs;
+
+        amd::opencl_driver::Data* opencl_bc = device().compiler()->NewBufferReference(
+                                                amd::opencl_driver::DT_LLVM_BC,
+                                                (const char*) builtins_opencl_amdgcn,
+                                                builtins_opencl_amdgcn_size);
+        if (opencl_bc == NULL) {
+            buildLog_ += "Error while open opencl library bitcode ";
+            return false;
+        }
+
+        amd::opencl_driver::Data* ocml_bc = device().compiler()->NewBufferReference(
+                                                amd::opencl_driver::DT_LLVM_BC,
+                                                (const char*) builtins_ocml_amdgcn,
+                                                builtins_ocml_amdgcn_size);
+        if (ocml_bc == NULL) {
+            buildLog_ += "Error while open ocml library bitcode ";
+            return false;
+        }
+        amd::opencl_driver::Data* ockl_bc = device().compiler()->NewBufferReference(
+                                                amd::opencl_driver::DT_LLVM_BC,
+                                                (const char*) builtins_ockl_amdgcn,
+                                                builtins_ockl_amdgcn_size);
+        if (ockl_bc == NULL) {
+            buildLog_ += "Error while open ockl library bitcode ";
+            return false;
+        }
+
+        amd::opencl_driver::Data* irif_bc = device().compiler()->NewBufferReference(
+                                                amd::opencl_driver::DT_LLVM_BC,
+                                                (const char*) builtins_irif_amdgcn,
+                                                builtins_irif_amdgcn_size);
+        if (irif_bc == NULL) {
+            buildLog_ += "Error while open irif (llvm) library bitcode ";
+            return false;
+        }
+
+        const std::string llvmIR = codeObjBinary_->getLlvmIR();
+        amd::opencl_driver::Data* llvm_src = device().compiler()->NewBufferReference(
+                                            amd::opencl_driver::DT_LLVM_BC,
+                                            llvmIR.c_str(),
+                                            llvmIR.length());
+        if (llvm_src == NULL) {
+            buildLog_ += "Error while creating data from LLVM bitcode";
+            return false;
+        }
+
+        inputs.push_back(llvm_src);
+        inputs.push_back(opencl_bc);
+        inputs.push_back(ocml_bc);
+        inputs.push_back(ockl_bc);
+        inputs.push_back(irif_bc);
+
+        std::vector<std::string> linkOptions;
+        amd::opencl_driver::Data* linked_bc = device().compiler()->NewBuffer(
+                                                amd::opencl_driver::DT_LLVM_BC);
+        if (!device().compiler()->LinkLLVMBitcode(inputs, linked_bc, linkOptions)) {
+            buildLog_ += "Error while linking source & LLVM library: linking source & IR library";
+#if 0
+            std::cerr << "\n**** Compiler Output After LinkLLVMBitcode ****\n";
+            std::cerr << device().compiler()->Output().c_str();
+            std::cerr << "***********************************************\n\n";
+#endif
+            return false;
+        }
+
+
+        // convert option string into vector here as clang treats option
+        // with leading space as file name
+        std::vector<std::string> complibOptions;
+        if (!options->origOptionStr.empty())
+        {
+            std::istringstream buf(options->origOptionStr);
+            std::istream_iterator<std::string> beg(buf), end;
+            std::vector<std::string> origOptions(beg, end);
+
+            complibOptions.insert( complibOptions.end(),
+                                   origOptions.begin(),
+                                   origOptions.end());
+        }
+
+        appendHsailOptions(complibOptions);
+        complibOptions.push_back("-mcpu=fiji");
+
+        inputs.clear();
+        inputs.push_back(linked_bc);
+
+        amd::opencl_driver::Buffer* out_exec = device().compiler()->NewBuffer(
+                                                    amd::opencl_driver::DT_EXECUTABLE);
+        if (out_exec == NULL) {
+            buildLog_ += "Error while creating output file for the executable";
+            return false;
+        }
+
+        if (!device().compiler()->CompileAndLinkExecutable(inputs,
+                                                 (amd::opencl_driver::Data*) out_exec,
+                                                 complibOptions))
+        {
+            buildLog_ += "Error while creating executable: Compiling LLVM IRs to exe";
+#if 0
+            std::cerr <<  "\n**** Compiler Output After CompileAndLinkExecutable ****\n";
+            std::cerr << device().compiler()->Output().c_str();
+            std::cerr << "********************************************************\n\n";
+#endif
+            return false;
+        }
+
+
+        // allocate memory and store the ELF code object
+        lcBinaryElfSize_ = out_exec->Size();
+//        lcBinaryElf_ = (void *)malloc(lcBinaryElfSize_);
+//        memcpy(lcBinaryElf_, (void *) out_exec->Buf().data(), lcBinaryElfSize_);
+
+        hsa_status_t status;
+        status = hsa_code_object_deserialize( out_exec->Buf().data(),
+                                              out_exec->Size(),
+                                              NULL, &lcProgramCodeObject_ );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to deserialize code object from a buffer.");
+            return false;
+        }
+
+        status = hsa_executable_create( HSA_PROFILE_FULL,
+                                        HSA_EXECUTABLE_STATE_UNFROZEN,
+                                        NULL, &lcExecutable_ );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to create executable", status);
+            return false;
+        }
+
+        // Load the code object.
+        hsa_agent_t hsaDevice = dev().getBackendDevice();
+        status = hsa_executable_load_code_object( lcExecutable_, hsaDevice,
+                                                  lcProgramCodeObject_, NULL );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to load code object", status);
+            return false;
+        }
+
+        // Freeze the executable.
+        status = hsa_executable_freeze( lcExecutable_, NULL );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to freeze executable");
+            return false;
+        }
+
+        //TODO: WC - use the proper target code based on the agent
+        std::string target = "AMD:AMDGPU:8:0:3";
+        codeObjBinary_->init( target, out_exec->Buf().data(), out_exec->Size());
+        saveBinaryAndSetType(TYPE_EXECUTABLE);
+
+        buildLog_ += device().compiler()->Output();
+
+        // Get the list of kernels
+        std::vector<std::string> kernelNameList;
+        status = hsa_executable_iterate_symbols( lcExecutable_, GetKernelNamesCallback,
+                                                (void *) &kernelNameList );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to get kernel names");
+            return false;
+        }
+
+        for ( auto &kernelName : kernelNameList )
+        {
+            hsa_executable_symbol_t kernelSymbol;
+            hsa_executable_get_symbol ( lcExecutable_, "", kernelName.c_str(),
+                                        hsaDevice, 0, &kernelSymbol );
+
+            uint64_t kernelCodeHandle;
+            status = hsa_executable_symbol_get_info(
+                        kernelSymbol,
+                        HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
+                        &kernelCodeHandle);
+            if (status != HSA_STATUS_SUCCESS) {
+                hsaError("Failed to get the kernel code", status);
+                return false;
+            }
+
+            uint32_t workgroupGroupSegmentByteSize;
+            status = hsa_executable_symbol_get_info(
+                        kernelSymbol,
+                        HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_GROUP_SEGMENT_SIZE,
+                        &workgroupGroupSegmentByteSize);
+            if (status != HSA_STATUS_SUCCESS) {
+                hsaError("Failed to get group segment size info", status);
+                return false;
+            }
+
+            uint32_t workitemPrivateSegmentByteSize;
+            status = hsa_executable_symbol_get_info(
+                        kernelSymbol,
+                        HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE,
+                        &workitemPrivateSegmentByteSize);
+            if (status != HSA_STATUS_SUCCESS) {
+                hsaError("Failed to get private segment size info", status);
+                return false;
+            }
+
+            uint32_t kernargSegmentByteSize;
+            status = hsa_executable_symbol_get_info(
+                        kernelSymbol,
+                        HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE,
+                        &kernargSegmentByteSize);
+            if (status != HSA_STATUS_SUCCESS) {
+               hsaError("Failed to get kernarg segment size info", status);
+               return false;
+            }
+
+            uint32_t kernargSegmentAlignment;
+            status = hsa_executable_symbol_get_info(
+                        kernelSymbol,
+                        HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_ALIGNMENT,
+                        &kernargSegmentAlignment);
+            if (status != HSA_STATUS_SUCCESS) {
+               hsaError("Failed to get kernarg segment alignment info", status);
+               return false;
+            }
+
+            // for OpenCL default hidden kernel arguments assuming there is no printf
+            size_t numHiddenKernelArgs = 0; // FIXME_lmoriche:3;
+
+            // Fix the kernel name issue that causes string comparison does not work
+            // due to an extra character at the end
+            // TODO: find out the root cause
+            kernelName.resize(kernelName.length()-1);
+
+            Kernel *aKernel = new roc::Kernel(
+                kernelName,
+                this,
+                kernelCodeHandle,
+                workgroupGroupSegmentByteSize,
+                workitemPrivateSegmentByteSize,
+                // TODO: remove the workaround
+                //   add 24 bytes for global offsets as workaround for LC reporting
+                //   excluded the hidden arguments
+                kernargSegmentByteSize /* FIXME_lmoriche:+24*/,
+                kernargSegmentAlignment,
+                numHiddenKernelArgs
+            );
+            if (!aKernel->init()) {
+                return false;
+            }
+            aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+            kernels()[kernelName] = aKernel;
+        }
+
+#if 0
+        // Cleaning up
+        status = hsa_code_object_destroy( lcProgramCodeObject_ );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to destory the code object", status);
+            return false;
+        }
+
+        status = hsa_executable_destroy( lcExecutable_ );
+        if (status != HSA_STATUS_SUCCESS) {
+            hsaError("Failed to destory the executable", status);
+            return false;
+        }
+#endif
+        return true;
+    }
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
     bool HSAILProgram::linkImpl(amd::option::Options *options) {
         acl_error errorCode;
         aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
         bool finalize = true;
         // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
-        if (!binaryElf_) {
+#if defined(WITH_LIGHTNING_COMPILER)
+        if (!codeObjBinary_)
+#else // !defined(WITH_LIGHTNING_COMPILER)
+        if (!binaryElf_)
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+        {
             continueCompileFrom = getNextCompilationStageFromBinary(options);
         }
         switch (continueCompileFrom) {
@@ -603,19 +940,20 @@ namespace roc {
         // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
         // 1. if the program is created with binary and contains only hsail text
         case ACL_TYPE_HSAIL_TEXT: {
-            std::string curOptions = options->origOptionStr + hsailOptions();
 #if defined(WITH_LIGHTNING_COMPILER)
-            assert(!"FIXME_Wilkin");
-            errorCode = ACL_ERROR;
+            if (!linkImpl_LC(options)) {
+                return false;
+            }
 #else // !defined(WITH_LIGHTNING_COMPILER)
+            std::string curOptions = options->origOptionStr + hsailOptions();
             errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
                 curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
             buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
-#endif // !defined(WITH_LIGHTNING_COMPILER)
             if (errorCode != ACL_SUCCESS) {
                 buildLog_ += "Error while BRIG Codegen phase: compilation error \n" ;
                 return false;
             }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
             break;
         }
         case ACL_TYPE_CG:
@@ -633,6 +971,7 @@ namespace roc {
             return true;
         }
 
+#if !defined(WITH_LIGHTNING_COMPILER)
         hsa_agent_t hsaDevice = dev().getBackendDevice();
         if (!initBrigModule()) {
             hsaError("Failed to create Brig Module");
@@ -767,14 +1106,10 @@ namespace roc {
                 kernelName = kernelName.substr(0,kernelName.size() - strlen("_kernel"));
                 aclMetadata md;
                 md.numHiddenKernelArgs = 0;
+
                 size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
-#if defined(WITH_LIGHTNING_COMPILER)
-                assert(!"FIXME_Wilkin");
-                errorCode = ACL_ERROR;
-#else // !defined(WITH_LIGHTNING_COMPILER)
                 errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
                     openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
                 if (errorCode != ACL_SUCCESS) {
                     buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
                     return false;
@@ -838,9 +1173,6 @@ namespace roc {
             }
         }
         saveBinaryAndSetType(TYPE_EXECUTABLE);
-#if defined(WITH_LIGHTNING_COMPILER)
-        assert(!"FIXME_Wilkin");
-#else // !defined(WITH_LIGHTNING_COMPILER)
         buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
 #endif // !defined(WITH_LIGHTNING_COMPILER)
         return true;
@@ -876,18 +1208,20 @@ namespace roc {
         hsailOptions.append(" -DFP_FAST_FMA=1");
         //TODO: this is a quick fix to restore original f32 denorm flushing
         //Make this target/option dependent
+#if !defined(WITH_LIGHTNING_COMPILER) // TODO: WC
         hsailOptions.append(" -cl-denorms-are-zero");
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         //TODO(sramalin) : Query the device for opencl version
         //                 and only set if -cl-std wasn't specified in
         //                 original build options (app)
         //hsailOptions.append(" -cl-std=CL1.2");
         //check if the host is 64 bit or 32 bit
         LP64_ONLY(hsailOptions.append(" -m64"));
-        //Now append each extension supported by the device 
+        //Now append each extension supported by the device
         // one by one
         std::string token;
         std::istringstream iss("");
-        iss.str(device().info().extensions_); 	  
+        iss.str(device().info().extensions_);
         while (getline(iss, token, ' ')) {
             if (!token.empty()) {
                 hsailOptions.append(" -D");
@@ -898,6 +1232,94 @@ namespace roc {
         return hsailOptions;
     }
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    void HSAILProgram::appendHsailOptions(std::vector<std::string>& options)
+    {
+        //TODO: this is a quick fix to restore original f32 denorm flushing
+        //Make this target/option dependent
+        options.push_back("-Xclang");
+        options.push_back("-cl-denorms-are-zero");
+#if 0
+        // option to debug metadata section
+
+        options.push_back("-Xclang");
+        options.push_back("-backend-option");
+
+        options.push_back("-Xclang");
+        options.push_back("-print-after-all");
+#endif
+        //options.push_back("-mcpu=fiji");
+        //options.push_back("-include"); options.push_back("opencl-c.h");
+
+        //Set options for the standard device specific options
+        //This is just for legacy compiler code
+        // All our devices support these options now
+        options.push_back("-DFP_FAST_FMAF=1");
+        options.push_back("-DFP_FAST_FMA=1");
+
+        //TODO(sramalin) : Query the device for opencl version
+        //                 and only set if -cl-std wasn't specified in
+        //                 original build options (app)
+        //options.push_back(" -cl-std=CL1.2");
+
+        //check if the host is 64 bit or 32 bit
+        LP64_ONLY(options.push_back("-m64"));
+
+        //Now append each extension supported by the device
+        // one by one
+        std::string token;
+        std::istringstream iss("");
+        iss.str(device().info().extensions_);
+        while (getline(iss, token, ' ')) {
+            if (!token.empty()) {
+                options.push_back("-D"+token+"=1");
+            }
+        }
+        return;
+    }
+
+    void CodeObjBinary::init(std::string& target, void* binary, size_t binarySize)
+    {
+        target_ = target;
+        binary_ = binary;
+        binarySize_ = binarySize;
+
+        oclElf_ = new amd::OclElf(ELFCLASS64, (char *)binary_, binarySize_, NULL, ELF_C_READ);
+
+        // load the runtime metadata
+        runtimeMD_ = new roc::RuntimeMD::Program::Metadata();
+    }
+
+    void CodeObjBinary::fini()
+    {
+        if (oclElf_) {
+            delete oclElf_;
+        }
+
+        if (runtimeMD_) {
+            delete runtimeMD_;
+        }
+
+        target_ = "";
+        binary_ = NULL;
+        binarySize_ = 0;
+    }
+
+    const RuntimeMD::Program::Metadata* CodeObjBinary::GetProgramMetadata() const
+    {
+        char*   metaData;
+        size_t  metaSize;
+        if (!oclElf_->getSection(amd::OclElf::RUNTIME_METADATA, &metaData, &metaSize)) {
+            LogWarning( "Error while access runtime metadata section from the binary \n" );
+        }
+
+        if (!runtimeMD_->ReadFrom((void *) metaData, metaSize)) {
+            LogWarning( "Error while parsing runtime metadata \n" );
+        }
+
+        return runtimeMD_;
+    }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 #endif  // WITHOUT_HSA_BACKEND
-}  // namespace hsa
+}  // namespace roc
 

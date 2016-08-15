@@ -522,14 +522,17 @@ VirtualGPU::create(bool profilingEna)
         return false;
     }
 
-#if !defined(WITH_LIGHTNING_COMPILER) // FIXME_Wilkin
     device::BlitManager::Setup  blitSetup;
+ #if defined(WITH_LIGHTNING_COMPILER)
+    // TODO: Wilkin - remove the setting of value_ after image kernels are available
+    blitSetup.value_ = 0x3724;  // disable the image related BLIT kernels for now
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
     blitMgr_ = new KernelBlitManager(*this, blitSetup);
     if ((NULL == blitMgr_) || !blitMgr_->create(roc_device_)) {
         LogError("Could not create BlitManager!");
         return false;
     }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     // Create signal for the barrier packet.
     hsa_signal_t signal = { 0 };

@@ -53,12 +53,12 @@ bool isCALTarget(const char* p, signed char ec);
 // Symbol handle
 typedef struct symbol_handle *Sym_Handle;
 
-class OclElf 
+class OclElf
 {
 public:
     enum {
            CAL_BASE = 1001,         // A number that is not dependent on libelf.h
-           CPU_BASE = 2001, 
+           CPU_BASE = 2001,
            CPU_FEATURES_FIRST = 0,  // Never generated, but keep it for simplicity.
            CPU_FEATURES_LAST  = 0xF // This should be consistent with cpudevice.hpp
         } oclElfBase;
@@ -66,23 +66,25 @@ public:
     typedef enum {
         // NOTE!!! Never remove an entry or change the order.
 
-        //  All CAL targets are within [CAL_FIRST, CAL_LAST]. 
+        //  All CAL targets are within [CAL_FIRST, CAL_LAST].
         CAL_FIRST      = CAL_TARGET_600  + CAL_BASE,
         CAL_LAST       = CAL_TARGET_LAST + CAL_BASE,
-  
+
         // All CPU targets are within [CPU_FIRST, CPU_LAST]
         CPU_FIRST      = CPU_FEATURES_FIRST + CPU_BASE,
-        CPU_LAST       = CPU_FEATURES_LAST  + CPU_BASE,   
+        CPU_LAST       = CPU_FEATURES_LAST  + CPU_BASE,
+
         OCL_TARGETS_LAST,
     } oclElfTargets;
-    
+
     typedef enum {
         CAL_PLATFORM = 0,
         CPU_PLATFORM = 1,
         COMPLIB_PLATFORM = 2,
-        LAST_PLATFORM = 3
-    } oclElfPlatform;    
-    
+        LC_PLATFORM = 3,
+        LAST_PLATFORM = 4
+    } oclElfPlatform;
+
     typedef enum {
         LLVMIR = 0,
         SOURCE,
@@ -114,6 +116,7 @@ public:
         INTERNAL,
         SPIR,
         SPIRV,
+        RUNTIME_METADATA,
         OCL_ELF_SECTIONS_LAST
     } oclElfSections;
 

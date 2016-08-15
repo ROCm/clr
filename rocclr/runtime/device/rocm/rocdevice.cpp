@@ -37,6 +37,11 @@
 #include <algorithm>
 #endif  // WITHOUT_HSA_BACKEND
 
+#if defined(ATI_OS_LINUX)
+#include <dlfcn.h>
+#include <libgen.h>
+#endif // defined(ATI_OS_LINUX)
+
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
@@ -232,7 +237,20 @@ Device::~Device()
 bool NullDevice::initCompiler(bool isOffline) {
 #if defined(WITH_LIGHTNING_COMPILER)
     if (!compilerHandle_) {
-        const std::string llvmbin(amd::Os::getEnvironment("LLVM_BIN"));
+        std::string llvmbin = amd::Os::getEnvironment("LLVM_BIN");
+#if defined(ATI_OS_LINUX)
+        // FIXME_Wilkin: When no LLVM_BIN defined, use the default path
+        if (llvmbin.empty()) {
+            Dl_info info;
+            if (dladdr((const void*)&roc::NullDevice::initCompiler, &info)) {
+                llvmbin = dirname(strdup(info.dli_fname));
+                size_t pos = llvmbin.rfind("lib");
+                if (pos != std::string::npos) {
+                    llvmbin.replace(pos, 3, "bin");
+                }
+            }
+        }
+#endif // defined(ATI_OS_LINUX)
         compilerHandle_ = amd::opencl_driver::CompilerFactory()
             .CreateAMDGPUCompiler(llvmbin);
         if (!compilerHandle_) {
@@ -436,7 +454,6 @@ Device::create()
         return false;
     }
 
-#if !defined(WITH_LIGHTNING_COMPILER) // FIXME_Wilkin
     blitProgram_ = new BlitProgram(context_);
     // Create blit programs
     if (blitProgram_ == NULL || !blitProgram_->create(this)) {
@@ -445,7 +462,6 @@ Device::create()
         LogError("Couldn't create blit kernels!");
         return false;
     }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
     if (NULL == mapCacheOps_) {
