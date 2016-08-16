@@ -39,11 +39,6 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 		                     const char** headerIncludeNames,
 		                     amd::option::Options* options)
 {
-    std::vector<std::string> complibOptions;
-    if (!this->compileOptions_.empty()) {
-        complibOptions.push_back(this->compileOptions_);
-    }
-
     std::vector<amd::opencl_driver::Data*> inputs;
     amd::opencl_driver::Data* src = device().compiler()->NewBufferReference(
                                                 amd::opencl_driver::DT_CL,sourceCode.c_str(),
@@ -108,7 +103,8 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     //Set the options for the compiler
     //Set the include path for the temp folder that contains the includes
     if(!headers.empty()) {
-        complibOptions.push_back("-I"+tempFolder);
+        compileOptions_.append(" -I");
+        compileOptions_.append(tempFolder);
     }
 
     //Add only for CL2.0 and later
@@ -116,12 +112,8 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         std::stringstream opts;
         opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
             << device().info().maxGlobalVariableSize_;
-
-        complibOptions.push_back(opts.str());
+        compileOptions_.append(opts.str());
     }
-
-    //    Compile source to IR
-    appendHsailOptions(complibOptions);
 
     amd::opencl_driver::File* pch = device().compiler()->NewTempFile(
             amd::opencl_driver::DT_CL_HEADER);
@@ -132,9 +124,10 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     }
 
     // FIXME_lmoriche: Force OpenCL-C 2.0, since the built-ins are built that way.
-    complibOptions.push_back("-Xclang");complibOptions.push_back("-cl-std=CL2.0");
-    complibOptions.push_back("-Xclang");complibOptions.push_back("-include-pch");
-    complibOptions.push_back("-Xclang");complibOptions.push_back(pch->Name());
+    compileOptions_.append(" -Xclang -cl-std=CL2.0");
+    compileOptions_.append(" -Xclang -include-pch -Xclang " + pch->Name());
+
+    compileOptions_.append(hsailOptions());
 
     amd::opencl_driver::Buffer* output = device().compiler()->NewBuffer(amd::opencl_driver::DT_LLVM_BC);
     if (output == NULL) {
@@ -142,14 +135,17 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         return false;
     }
 
-    if (!device().compiler()->CompileToLLVMBitcode(inputs, output, complibOptions)) {
+    // Tokenize the options string into a vector of strings
+    std::istringstream strstr(compileOptions_);
+    std::istream_iterator<std::string> sit(strstr), end;
+    std::vector<std::string> optionsvec(sit, end);
+
+    // Compile source to IR
+    bool ret = device().compiler()->CompileToLLVMBitcode(inputs, output, optionsvec);
+    buildLog_ += device().compiler()->Output().c_str();
+    if (!ret) {
         buildLog_ += "Error while compiling \
                      opencl source: Compiling CL to IR";
-#if 0
-        std::cerr <<  "\n**** Compiler Output After CompileToLLVMBitcode ****\n";
-        std::cerr << device().compiler()->Output().c_str();
-        std::cerr << "********************************************************\n\n";
-#endif
         return false;
     }
 

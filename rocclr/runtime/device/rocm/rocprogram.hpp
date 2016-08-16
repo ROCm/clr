@@ -110,9 +110,6 @@ namespace roc {
         }
 
     protected:
-        //! log and append to build log an error from runtime
-        void hsaError(const char *msg, hsa_status_t status = HSA_STATUS_SUCCESS);
-
         //! pre-compile setup for GPU
         virtual bool initBuild(amd::option::Options* options);
 
@@ -206,13 +203,8 @@ namespace roc {
         HSAILProgram& operator=(const HSAILProgram&);
 
         //! Returns all the options to be appended while passing to the
-        //compiler library
+        //compiler
         std::string hsailOptions();
-
-#if defined(WITH_LIGHTNING_COMPILER)
-        //! append all the HSAIL options to the compiler library
-        void        appendHsailOptions(std::vector<std::string>& options);
-#endif // defined(WITH_LIGHTNING_COMPILER)
 
         std::string     openCLSource_; //!< Original OpenCL source
         std::string     hsailProgram_;     //!< HSAIL program after compilation.
@@ -229,13 +221,7 @@ namespace roc {
         hsa_executable_t hsaExecutable_; //!< Handle to HSA executable
 
 #if defined(WITH_LIGHTNING_COMPILER)
-        hsa_code_object_t lcProgramCodeObject_; //!< Handle to LC code object
-        hsa_executable_t  lcExecutable_;        //!< Handle to LC executable
-
         CodeObjBinary*    codeObjBinary_;       //! Binary for the code object
-
-        void*             lcBinaryElf_;         //!< memory store the ELF code object
-        size_t            lcBinaryElfSize_;     //!< size of the ELF code object
 #endif // defined(WITH_LIGHTNING_COMPILER)
     };
 
