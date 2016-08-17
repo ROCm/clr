@@ -610,60 +610,74 @@ namespace roc {
         // call LinkLLVMBitcode
         std::vector<amd::opencl_driver::Data*> inputs;
 
-        amd::opencl_driver::Data* opencl_bc = device().compiler()->NewBufferReference(
-                                                amd::opencl_driver::DT_LLVM_BC,
-                                                (const char*) builtins_opencl_amdgcn,
-                                                builtins_opencl_amdgcn_size);
-        if (opencl_bc == NULL) {
-            buildLog_ += "Error: Failed to open the opencl.bc bitcode library.\n";
-            return false;
-        }
-
-        amd::opencl_driver::Data* ocml_bc = device().compiler()->NewBufferReference(
-                                                amd::opencl_driver::DT_LLVM_BC,
-                                                (const char*) builtins_ocml_amdgcn,
-                                                builtins_ocml_amdgcn_size);
-        if (ocml_bc == NULL) {
-            buildLog_ += "Error: Failed to open the ocml.bc bitcode library.\n";
-            return false;
-        }
-        amd::opencl_driver::Data* ockl_bc = device().compiler()->NewBufferReference(
-                                                amd::opencl_driver::DT_LLVM_BC,
-                                                (const char*) builtins_ockl_amdgcn,
-                                                builtins_ockl_amdgcn_size);
-        if (ockl_bc == NULL) {
-            buildLog_ += "Error: Failed to open the ockl.bc bitcode library.\n";
-            return false;
-        }
-
-        amd::opencl_driver::Data* irif_bc = device().compiler()->NewBufferReference(
-                                                amd::opencl_driver::DT_LLVM_BC,
-                                                (const char*) builtins_irif_amdgcn,
-                                                builtins_irif_amdgcn_size);
-        if (irif_bc == NULL) {
-            buildLog_ += "Error: Failed to open the irif.bc bitcode library.\n";
-            return false;
-        }
-
+        // open the input IR source
         const std::string llvmIR = codeObjBinary_->getLlvmIR();
         amd::opencl_driver::Data* llvm_src = device().compiler()->NewBufferReference(
-                                            amd::opencl_driver::DT_LLVM_BC,
-                                            llvmIR.c_str(),
-                                            llvmIR.length());
-        if (llvm_src == NULL) {
-            buildLog_ += "Error: Failed to open the llvm.bc bitcode library.\n";
+            amd::opencl_driver::DT_LLVM_BC, llvmIR.c_str(), llvmIR.length());
+
+        if (!llvm_src) {
+            buildLog_ += "Error: Failed to open the compiled program.\n";
             return false;
         }
 
-        inputs.push_back(llvm_src);
+        inputs.push_back(llvm_src); //< must be the first input
+
+        // open the bitcode libraries
+        amd::opencl_driver::Data* opencl_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_opencl_amdgcn, builtins_opencl_amdgcn_size);
+        amd::opencl_driver::Data* ocml_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_ocml_amdgcn, builtins_ocml_amdgcn_size);
+        amd::opencl_driver::Data* ockl_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_ockl_amdgcn, builtins_ockl_amdgcn_size);
+        amd::opencl_driver::Data* irif_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_irif_amdgcn, builtins_irif_amdgcn_size);
+
+        if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
+            buildLog_ += "Error: Failed to open the bitcode library.\n";
+            return false;
+        }
+
         inputs.push_back(opencl_bc);
         inputs.push_back(ocml_bc);
         inputs.push_back(ockl_bc);
         inputs.push_back(irif_bc);
 
+        // open the control functions
+        amd::opencl_driver::Data* correctly_rounded_sqrt_off_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) correctly_rounded_sqrt_off_amdgcn, correctly_rounded_sqrt_off_amdgcn_size);
+        amd::opencl_driver::Data* daz_opt_off_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) daz_opt_off_amdgcn, daz_opt_off_amdgcn_size);
+        amd::opencl_driver::Data* finite_only_off_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) finite_only_off_amdgcn, finite_only_off_amdgcn_size);
+        amd::opencl_driver::Data* unsafe_math_off_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) unsafe_math_off_amdgcn, unsafe_math_off_amdgcn_size);
+        amd::opencl_driver::Data* isa_version_803_bc = device().compiler()->NewBufferReference(
+            amd::opencl_driver::DT_LLVM_BC, (const char*) isa_version_803_amdgcn, isa_version_803_amdgcn_size);
+
+        if (!correctly_rounded_sqrt_off_bc
+         || !daz_opt_off_bc
+         || !finite_only_off_bc
+         || !unsafe_math_off_bc
+         || !isa_version_803_bc) {
+            buildLog_ += "Error: Failed to open the control functions.\n";
+            return false;
+        }
+
+        inputs.push_back(correctly_rounded_sqrt_off_bc);
+        inputs.push_back(daz_opt_off_bc);
+        inputs.push_back(finite_only_off_bc);
+        inputs.push_back(unsafe_math_off_bc);
+        inputs.push_back(isa_version_803_bc);
+
+        // open the linked output
         std::vector<std::string> linkOptions;
         amd::opencl_driver::Data* linked_bc = device().compiler()->NewBuffer(
-                                                amd::opencl_driver::DT_LLVM_BC);
+            amd::opencl_driver::DT_LLVM_BC);
+
+        if (!linked_bc) {
+            buildLog_ += "Error: Failed to open the linked program.\n";
+            return false;
+        }
 
         bool ret = device().compiler()->LinkLLVMBitcode(inputs, linked_bc, linkOptions);
         buildLog_ += device().compiler()->Output().c_str();
@@ -677,8 +691,8 @@ namespace roc {
 
         amd::opencl_driver::Buffer* out_exec = device().compiler()->NewBuffer(
                                                     amd::opencl_driver::DT_EXECUTABLE);
-        if (out_exec == NULL) {
-            buildLog_ += "Error: Failed to create the output file.\n";
+        if (!out_exec) {
+            buildLog_ += "Error: Failed to create the linked executable.\n";
             return false;
         }
 
