@@ -250,6 +250,16 @@ bool NullDevice::initCompiler(bool isOffline) {
                 }
             }
         }
+#if defined(DEBUG)
+        std::string clangbin(llvmbin);
+        clangbin.append("/clang");
+        struct stat buf;
+        if (stat(clangbin.c_str(), &buf)) {
+            std::string msg("Could not find the Clang binary in ");
+            msg.append(llvmbin);
+            LogWarning(msg.c_str());
+        }
+#endif // defined(DEBUG)
 #endif // defined(ATI_OS_LINUX)
         compilerHandle_ = amd::opencl_driver::CompilerFactory()
             .CreateAMDGPUCompiler(llvmbin);
