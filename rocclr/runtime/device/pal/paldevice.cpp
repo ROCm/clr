@@ -706,6 +706,7 @@ Device::create(Pal::IDevice* device)
     // palSettings ...
     palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
     palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
+    palSettings->longRunningSubmissions = true;
     palSettings->cmdBufBatchedSubmitChainLimit = 0;
 
     // Commit the new settings for the device
@@ -1040,7 +1041,10 @@ Device::init()
     size_t size = Pal::GetPlatformSize();
     platformObj = new char[size];
     Pal::PlatformCreateInfo  info = {};
-    //info.flags.disableGpuTimeout = true;
+    info.flags.disableGpuTimeout = true;
+#ifdef ATI_BITS_32
+    info.flags.force32BitVaSpace = true;
+#endif
     info.pSettingsPath = "OCL";
 
     // PAL init
