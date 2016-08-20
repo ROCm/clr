@@ -12,7 +12,8 @@
 #include "rocdevice.hpp"
 #include "rocprogram.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "opencl-c.amdgcn.inc"
+#include "opencl1.2-c.amdgcn.inc"
+#include "opencl2.0-c.amdgcn.inc"
 #else // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -117,8 +118,8 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 
     amd::opencl_driver::File* pch = device().compiler()->NewTempFile(
             amd::opencl_driver::DT_CL_HEADER);
-    if (pch == NULL || !pch->WriteData((const char*) opencl_c_amdgcn,
-            opencl_c_amdgcn_size)) {
+    if (pch == NULL || !pch->WriteData((const char*) opencl2_0_c_amdgcn,
+            opencl2_0_c_amdgcn_size)) {
         buildLog_ += "Error while opening the opencl-c header ";
         return false;
     }
@@ -126,6 +127,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     // FIXME_lmoriche: Force OpenCL-C 2.0, since the built-ins are built that way.
     compileOptions_.append(" -Xclang -cl-std=CL2.0");
     compileOptions_.append(" -Xclang -include-pch -Xclang " + pch->Name());
+    compileOptions_.append(" -Xclang -fno-validate-pch");
 
     compileOptions_.append(hsailOptions());
 
