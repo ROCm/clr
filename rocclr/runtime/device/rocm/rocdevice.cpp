@@ -383,16 +383,6 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
         return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
     }
 
-    if (!roc_device->mapHSADeviceToOpenCLDevice(agent)) {
-        LogError("Failed mapping of HsaDevice to Device.");
-        return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
-    }
-
-    if (!roc_device->create()) {
-        LogError("Error creating new instance of Device.");
-        return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
-    }
-
     uint32_t pci_id;
     HsaDeviceId deviceId = getHsaDeviceId(agent, pci_id);
     if (deviceId == HSA_INVALID_DEVICE_ID) {
@@ -412,7 +402,56 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
         return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
     }
     roc_device->deviceInfo_ = DeviceInfo[id];
-    roc_device->deviceInfo_.pciDeviceId = pci_id;
+    roc_device->deviceInfo_.pciDeviceId_ = pci_id;
+
+    // Query the agent's ISA name to fill deviceInfo.gfxipVersion_. We can't
+    // have a static mapping as some marketing names cover multiple gfxip. For
+    // example a Fiji could be 8.0.3 or 8.0.4. Same for Polaris11 and Polaris12.
+    hsa_isa_t isa = {0};
+    if (hsa_agent_get_info(agent, HSA_AGENT_INFO_ISA, &isa)
+            != HSA_STATUS_SUCCESS) {
+      return HSA_STATUS_ERROR;
+    }
+
+    uint32_t isaNameLength = 0;
+    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME_LENGTH, 0, &isaNameLength)
+            != HSA_STATUS_SUCCESS) {
+        return HSA_STATUS_ERROR;
+    }
+
+    char *isaName = (char*)alloca((size_t)isaNameLength + 1);
+    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME, 0, isaName)
+            != HSA_STATUS_SUCCESS) {
+        return HSA_STATUS_ERROR;
+    }
+    isaName[isaNameLength] = '\0';
+
+    std::string str(isaName);
+    std::vector<std::string> tokens;
+    size_t end, pos = 0;
+    do {
+        end = str.find_first_of(':', pos);
+        tokens.push_back(str.substr(pos, end-pos));
+        pos = end + 1;
+    } while (end != std::string::npos);
+
+    assert(tokens.size() == 5 && tokens[0] == "AMD" && tokens[1] == "AMDGPU");
+    uint major = atoi(tokens[2].c_str());
+    uint minor = atoi(tokens[3].c_str());
+    uint stepping = atoi(tokens[4].c_str());
+    assert(minor < 10 && stepping < 10 && "Invalid ISA string");
+
+    roc_device->deviceInfo_.gfxipVersion_ = major * 100 + minor * 10 + stepping;
+
+    if (!roc_device->mapHSADeviceToOpenCLDevice(agent)) {
+        LogError("Failed mapping of HsaDevice to Device.");
+        return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
+    }
+
+    if (!roc_device->create()) {
+        LogError("Error creating new instance of Device.");
+        return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
+    }
 
     roc_device->registerDevice();  // no return code for this function
 
@@ -1021,7 +1060,7 @@ Device::bindExternalDevice(
   match &= info_.deviceTopology_.pcie.device==info.pci_device;
   match &= info_.deviceTopology_.pcie.function==info.pci_function;
   match &= info_.vendorId_==info.vendor_id;
-  match &= deviceInfo_.pciDeviceId==info.device_id;
+  match &= deviceInfo_.pciDeviceId_==info.device_id;
 
   if(!validateOnly)
     mesa_=temp;

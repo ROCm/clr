@@ -12,7 +12,6 @@
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
-#include "opencl-c.amdgcn.inc"
 #include "builtins-irif.amdgcn.inc"
 #include "builtins-ockl.amdgcn.inc"
 #include "builtins-ocml.amdgcn.inc"
@@ -607,72 +606,106 @@ namespace roc {
 #if defined(WITH_LIGHTNING_COMPILER)
     bool HSAILProgram::linkImpl_LC(amd::option::Options *options)
     {
+        using namespace amd::opencl_driver;
+
         // call LinkLLVMBitcode
-        std::vector<amd::opencl_driver::Data*> inputs;
+        std::vector<Data*> inputs;
 
         // open the input IR source
         const std::string llvmIR = codeObjBinary_->getLlvmIR();
-        amd::opencl_driver::Data* llvm_src = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, llvmIR.c_str(), llvmIR.length());
+        Data* input = device().compiler()->NewBufferReference(
+            DT_LLVM_BC, llvmIR.c_str(), llvmIR.length());
 
-        if (!llvm_src) {
+        if (!input) {
             buildLog_ += "Error: Failed to open the compiled program.\n";
             return false;
         }
 
-        inputs.push_back(llvm_src); //< must be the first input
+        inputs.push_back(input); //< must be the first input
 
         // open the bitcode libraries
-        amd::opencl_driver::Data* opencl_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_opencl_amdgcn, builtins_opencl_amdgcn_size);
-        amd::opencl_driver::Data* ocml_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_ocml_amdgcn, builtins_ocml_amdgcn_size);
-        amd::opencl_driver::Data* ockl_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_ockl_amdgcn, builtins_ockl_amdgcn_size);
-        amd::opencl_driver::Data* irif_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) builtins_irif_amdgcn, builtins_irif_amdgcn_size);
+        Data* opencl_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) builtins_opencl_amdgcn, builtins_opencl_amdgcn_size);
+        Data* ocml_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) builtins_ocml_amdgcn, builtins_ocml_amdgcn_size);
+        Data* ockl_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) builtins_ockl_amdgcn, builtins_ockl_amdgcn_size);
+        Data* irif_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) builtins_irif_amdgcn, builtins_irif_amdgcn_size);
 
         if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
             buildLog_ += "Error: Failed to open the bitcode library.\n";
             return false;
         }
 
-        inputs.push_back(opencl_bc);
-        inputs.push_back(ocml_bc);
-        inputs.push_back(ockl_bc);
         inputs.push_back(irif_bc);
+        inputs.push_back(ocml_bc); // depends on irif
+        inputs.push_back(ockl_bc); // depends on irif
+        inputs.push_back(opencl_bc); // depends on oclm & ockl
 
         // open the control functions
-        amd::opencl_driver::Data* correctly_rounded_sqrt_off_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) correctly_rounded_sqrt_off_amdgcn, correctly_rounded_sqrt_off_amdgcn_size);
-        amd::opencl_driver::Data* daz_opt_off_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) daz_opt_off_amdgcn, daz_opt_off_amdgcn_size);
-        amd::opencl_driver::Data* finite_only_off_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) finite_only_off_amdgcn, finite_only_off_amdgcn_size);
-        amd::opencl_driver::Data* unsafe_math_off_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) unsafe_math_off_amdgcn, unsafe_math_off_amdgcn_size);
-        amd::opencl_driver::Data* isa_version_803_bc = device().compiler()->NewBufferReference(
-            amd::opencl_driver::DT_LLVM_BC, (const char*) isa_version_803_amdgcn, isa_version_803_amdgcn_size);
+        std::pair<const void*, size_t> isa_version;
+        switch (dev().deviceInfo().gfxipVersion_) {
+        case 701: isa_version = std::make_pair(isa_version_701_amdgcn, isa_version_701_amdgcn_size); break;
+        case 800: isa_version = std::make_pair(isa_version_800_amdgcn, isa_version_800_amdgcn_size); break;
+        case 801: isa_version = std::make_pair(isa_version_801_amdgcn, isa_version_801_amdgcn_size); break;
+        case 802: isa_version = std::make_pair(isa_version_802_amdgcn, isa_version_802_amdgcn_size); break;
+        case 803: isa_version = std::make_pair(isa_version_803_amdgcn, isa_version_803_amdgcn_size); break;
+        case 810: isa_version = std::make_pair(isa_version_810_amdgcn, isa_version_810_amdgcn_size); break;
+        default: buildLog_ += "Error: Linking for this device is not supported\n"; return false;
+        }
 
-        if (!correctly_rounded_sqrt_off_bc
-         || !daz_opt_off_bc
-         || !finite_only_off_bc
-         || !unsafe_math_off_bc
-         || !isa_version_803_bc) {
+        Data* isa_version_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) isa_version.first, isa_version.second);
+
+        if (!isa_version_bc) {
             buildLog_ += "Error: Failed to open the control functions.\n";
             return false;
         }
 
-        inputs.push_back(correctly_rounded_sqrt_off_bc);
-        inputs.push_back(daz_opt_off_bc);
-        inputs.push_back(finite_only_off_bc);
-        inputs.push_back(unsafe_math_off_bc);
-        inputs.push_back(isa_version_803_bc);
+        inputs.push_back(isa_version_bc);
+
+        auto correctly_rounded_sqrt = (options->oVariables->FP32RoundDivideSqrt)
+            ? std::make_pair(correctly_rounded_sqrt_on_amdgcn, correctly_rounded_sqrt_on_amdgcn_size)
+            : std::make_pair(correctly_rounded_sqrt_off_amdgcn, correctly_rounded_sqrt_off_amdgcn_size);
+
+        auto daz_opt = (dev().deviceInfo().gfxipVersion_ < 900
+                     || options->oVariables->DenormsAreZero)
+            ? std::make_pair(daz_opt_on_amdgcn, daz_opt_on_amdgcn_size)
+            : std::make_pair(daz_opt_off_amdgcn, daz_opt_off_amdgcn_size);
+
+        auto finite_only = (options->oVariables->FiniteMathOnly
+                         || options->oVariables->FastRelaxedMath)
+            ? std::make_pair(finite_only_on_amdgcn, finite_only_on_amdgcn_size)
+            : std::make_pair(finite_only_off_amdgcn, finite_only_off_amdgcn_size);
+
+        auto unsafe_math = (options->oVariables->UnsafeMathOpt
+                         || options->oVariables->FastRelaxedMath)
+            ? std::make_pair(unsafe_math_on_amdgcn, unsafe_math_on_amdgcn_size)
+            : std::make_pair(unsafe_math_off_amdgcn, unsafe_math_off_amdgcn_size);
+
+        Data* correctly_rounded_sqrt_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
+        Data* daz_opt_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) daz_opt.first, daz_opt.second);
+        Data* finite_only_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) finite_only.first, finite_only.second);
+        Data* unsafe_math_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+            (const char*) unsafe_math.first, unsafe_math.second);
+
+        if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+            buildLog_ += "Error: Failed to open the control functions.\n";
+            return false;
+        }
+
+        inputs.push_back(correctly_rounded_sqrt_bc);
+        inputs.push_back(daz_opt_bc);
+        inputs.push_back(finite_only_bc);
+        inputs.push_back(unsafe_math_bc);
 
         // open the linked output
         std::vector<std::string> linkOptions;
-        amd::opencl_driver::Data* linked_bc = device().compiler()->NewBuffer(
-            amd::opencl_driver::DT_LLVM_BC);
+        Data* linked_bc = device().compiler()->NewBuffer(DT_LLVM_BC);
 
         if (!linked_bc) {
             buildLog_ += "Error: Failed to open the linked program.\n";
@@ -689,21 +722,25 @@ namespace roc {
         inputs.clear();
         inputs.push_back(linked_bc);
 
-        amd::opencl_driver::Buffer* out_exec = device().compiler()->NewBuffer(
-                                                    amd::opencl_driver::DT_EXECUTABLE);
+        Buffer* out_exec = device().compiler()->NewBuffer(DT_EXECUTABLE);
         if (!out_exec) {
             buildLog_ += "Error: Failed to create the linked executable.\n";
             return false;
         }
 
+        std::string optionsstr = options->origOptionStr + hsailOptions();
+
+        // Set the machine target
+        optionsstr.append(" -mcpu=");
+        optionsstr.append(dev().deviceInfo().machineTarget_);
+
         // Tokenize the options string into a vector of strings
-        std::string optionsstr = options->origOptionStr + hsailOptions() + " -mcpu=fiji";
         std::istringstream strstr(optionsstr);
         std::istream_iterator<std::string> sit(strstr), end;
         std::vector<std::string> optionsvec(sit, end);
 
         ret = device().compiler()->CompileAndLinkExecutable(
-                inputs, (amd::opencl_driver::Data*) out_exec, optionsvec);
+                inputs, out_exec, optionsvec);
         buildLog_ += device().compiler()->Output().c_str();
         if (!ret) {
             buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exe.\n";
@@ -1184,18 +1221,14 @@ namespace roc {
         // All our devices support these options now
         hsailOptions.append(" -DFP_FAST_FMAF=1");
         hsailOptions.append(" -DFP_FAST_FMA=1");
-        //TODO: this is a quick fix to restore original f32 denorm flushing
-        //Make this target/option dependent
-#if defined(WITH_LIGHTNING_COMPILER)
-        hsailOptions.append(" -Xclang");
-#endif // defined(WITH_LIGHTNING_COMPILER)
-        hsailOptions.append(" -cl-denorms-are-zero");
-        //TODO(sramalin) : Query the device for opencl version
-        //                 and only set if -cl-std wasn't specified in
-        //                 original build options (app)
-        //hsailOptions.append(" -cl-std=CL1.2");
+
+        if (dev().deviceInfo().gfxipVersion_ < 900) {
+            hsailOptions.append(" -cl-denorms-are-zero");
+        }
+
         //check if the host is 64 bit or 32 bit
         LP64_ONLY(hsailOptions.append(" -m64"));
+
         //Now append each extension supported by the device
         // one by one
         std::string token;

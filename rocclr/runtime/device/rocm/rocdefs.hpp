@@ -16,7 +16,8 @@ struct AMDDeviceInfo {
     uint        memChannelBankWidth_;   //!< Memory channel bank width
     uint        localMemSizePerCU_;     //!< Local memory size per CU
     uint        localMemBanks_;         //!< Number of banks of local memory
-    uint        pciDeviceId;            //!< PCIe device id
+    uint        gfxipVersion_;          //!< The core engine GFXIP version
+    uint        pciDeviceId_;           //!< PCIe device id
 };
 
 //The device ID must match with the device's index into DeviceInfo
@@ -33,15 +34,15 @@ const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static const AMDDeviceInfo DeviceInfo[] = {
                           //  targetName  machineTarget
-    /* TARGET_KAVERI_SPECTRE */   {HSA_SPECTRE_ID, "Spectre", "Spectre", 4, 16, 1, 256, 64 * Ki, 32, 0 },
-    /* TARGET_KAVERI_SPOOKY */    {HSA_SPOOKY_ID, "Spooky", "Spooky", 4, 16, 1, 256, 64 * Ki, 32, 0 },
-    /* TARGET_TONGA */            {HSA_TONGA_ID, "Tonga", "Tonga", 4, 16, 1, 256, 64 * Ki, 32, 0},
-    /* TARGET_CARRIZO */          {HSA_CARRIZO_ID, "Carrizo", "Carrizo", 4, 16, 1, 256, 64 * Ki, 32, 0},
-    /* TARGET_ICELAND */          {HSA_ICELAND_ID, "Topaz", "Topaz", 4, 16, 1, 256, 64 * Ki, 32, 0},
-    /* TARGET_FIJI */             {HSA_FIJI_ID, "Fiji", "Fiji", 4, 16, 1, 256, 64 * Ki, 32, 0 },
-    /* TARGET HAWAII */           {HSA_HAWAII_ID, "Hawaii", "Hawaii", 4, 16, 1, 256, 64 * Ki, 32, 0 },
-    /* TARGET ELLESMERE */        {HSA_ELLESMERE_ID, "Ellesmere", "Ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 0 },
-    /* TARGET BAFFIN */           {HSA_BAFFIN_ID, "Baffin", "Baffin", 4, 16, 1, 256, 64 * Ki, 32, 0 }
+    /* TARGET_KAVERI_SPECTRE */   {HSA_SPECTRE_ID, "Spectre", "kaveri", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET_KAVERI_SPOOKY */    {HSA_SPOOKY_ID, "Spooky", "kaveri", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET_TONGA */            {HSA_TONGA_ID, "Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET_CARRIZO */          {HSA_CARRIZO_ID, "Carrizo", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET_ICELAND */          {HSA_ICELAND_ID, "Topaz", "iceland", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET_FIJI */             {HSA_FIJI_ID, "Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET HAWAII */           {HSA_HAWAII_ID, "Hawaii", "hawaii", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET ELLESMERE */        {HSA_ELLESMERE_ID, "Ellesmere", "polaris10", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET BAFFIN */           {HSA_BAFFIN_ID, "Baffin", "polaris11", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 }
 };
 
 }
