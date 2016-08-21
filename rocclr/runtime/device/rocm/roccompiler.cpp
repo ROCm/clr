@@ -40,14 +40,17 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 		                     const char** headerIncludeNames,
 		                     amd::option::Options* options)
 {
-    std::vector<amd::opencl_driver::Data*> inputs;
-    amd::opencl_driver::Data* src = device().compiler()->NewBufferReference(
-                                                amd::opencl_driver::DT_CL,sourceCode.c_str(),
-                                                sourceCode.length());
+    using namespace amd::opencl_driver;
+    std::vector<Data*> inputs;
+
+    Data* src = device().compiler()->NewBufferReference(DT_CL,
+        sourceCode.c_str(), sourceCode.length());
+
     if (src == NULL) {
         buildLog_ += "Error while creating data from source code";
         return false;
     }
+
     inputs.push_back(src);
 
     //Find the temp folder for the OS
@@ -94,9 +97,8 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         f.write(headers[i]->c_str(), headers[i]->length());
         f.close();
 
-        amd::opencl_driver::Data* inc = device().compiler()->NewFileReference(
-                                                amd::opencl_driver::DT_CL_HEADER,
-                                                headerFileNames[i]);
+        Data* inc = device().compiler()->NewFileReference(DT_CL_HEADER,
+            headerFileNames[i]);
         inputs.push_back(inc);
     }
 
@@ -108,30 +110,53 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         compileOptions_.append(tempFolder);
     }
 
-    //Add only for CL2.0 and later
-    if (options->oVariables->CLStd[2] >= '2') {
+    const char* xLang = options->oVariables->XLang;
+    if (xLang != NULL && strcmp(xLang, "cl")) {
+        buildLog_ += "Unsupported OpenCL language.\n";
+    }
+
+    //FIXME_Nikolay: the program manager should be setting the language
+    //compileOptions_.append(" -x cl");
+    //FIXME_Nikolay: the program manager shouls be setting the cl-std. -Xclang
+    //is not necessary, we add it to overridde the flag set in the comp driver.
+    compileOptions_.append(" -Xclang -cl-std=").append(options->oVariables->CLStd);
+
+    std::ostringstream optLevel;
+    optLevel << " -O" << options->oVariables->OptLevel;
+    compileOptions_.append(optLevel.str());
+
+    //FIXME_lmoriche: has the CL option been validated?
+    uint clVer = (options->oVariables->CLStd[2] - '0') * 100
+        + (options->oVariables->CLStd[4] - '0') * 10;
+
+    std::pair<const void*, size_t> hdr;
+    switch(clVer) {
+    case 120: hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size); break;
+    case 200: hdr = std::make_pair(opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size); break;
+    default:
+        buildLog_ += "Unsupported requested OpenCL C version (-cl-std).\n";
+        return false;
+    }
+
+    File* pch = device().compiler()->NewTempFile(DT_CL_HEADER);
+    if (pch == NULL || !pch->WriteData((const char*) hdr.first, hdr.second)) {
+        buildLog_ += "Error while opening the opencl-c header ";
+        return false;
+    }
+
+    compileOptions_.append(" -Xclang -include-pch -Xclang " + pch->Name());
+    compileOptions_.append(" -Xclang -fno-validate-pch");
+
+    compileOptions_.append(hsailOptions());
+    if (clVer >= 200) {
         std::stringstream opts;
+        //Add only for CL2.0 and later
         opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
             << device().info().maxGlobalVariableSize_;
         compileOptions_.append(opts.str());
     }
 
-    amd::opencl_driver::File* pch = device().compiler()->NewTempFile(
-            amd::opencl_driver::DT_CL_HEADER);
-    if (pch == NULL || !pch->WriteData((const char*) opencl2_0_c_amdgcn,
-            opencl2_0_c_amdgcn_size)) {
-        buildLog_ += "Error while opening the opencl-c header ";
-        return false;
-    }
-
-    // FIXME_lmoriche: Force OpenCL-C 2.0, since the built-ins are built that way.
-    compileOptions_.append(" -Xclang -cl-std=CL2.0");
-    compileOptions_.append(" -Xclang -include-pch -Xclang " + pch->Name());
-    compileOptions_.append(" -Xclang -fno-validate-pch");
-
-    compileOptions_.append(hsailOptions());
-
-    amd::opencl_driver::Buffer* output = device().compiler()->NewBuffer(amd::opencl_driver::DT_LLVM_BC);
+    Buffer* output = device().compiler()->NewBuffer(DT_LLVM_BC);
     if (output == NULL) {
         buildLog_ += "Error while creating buffer for the LLVM bitcode";
         return false;
@@ -146,8 +171,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     bool ret = device().compiler()->CompileToLLVMBitcode(inputs, output, optionsvec);
     buildLog_ += device().compiler()->Output().c_str();
     if (!ret) {
-        buildLog_ += "Error while compiling \
-                     opencl source: Compiling CL to IR";
+        buildLog_ += "Error while compiling opencl source: Compiling CL to IR";
         return false;
     }
 

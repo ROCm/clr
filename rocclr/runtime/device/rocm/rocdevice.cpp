@@ -882,6 +882,9 @@ Device::populateOCLDeviceConstants()
 
     assert(HSA_EXTENSION_IMAGES < 8);
     const bool image_is_supported =
+#if defined(WITH_LIGHTNING_COMPILER)
+        false && // FIXME_lmoriche: Enable this when the LC is ready.
+#endif // defined(WITH_LIGHTNING_COMPILER)
         ((hsa_extensions[0] & (1 << HSA_EXTENSION_IMAGES)) != 0);
     if (image_is_supported) {
         // Images

@@ -638,10 +638,10 @@ namespace roc {
             return false;
         }
 
-        inputs.push_back(irif_bc);
-        inputs.push_back(ocml_bc); // depends on irif
-        inputs.push_back(ockl_bc); // depends on irif
         inputs.push_back(opencl_bc); // depends on oclm & ockl
+        inputs.push_back(ockl_bc); // depends on irif
+        inputs.push_back(ocml_bc); // depends on irif
+        inputs.push_back(irif_bc);
 
         // open the control functions
         std::pair<const void*, size_t> isa_version;
@@ -733,6 +733,10 @@ namespace roc {
         // Set the machine target
         optionsstr.append(" -mcpu=");
         optionsstr.append(dev().deviceInfo().machineTarget_);
+
+        std::ostringstream optLevel;
+        optLevel << " -O" << options->oVariables->OptLevel;
+        optionsstr.append(optLevel.str());
 
         // Tokenize the options string into a vector of strings
         std::istringstream strstr(optionsstr);
