@@ -984,6 +984,9 @@ cl_int Program::link(const std::vector<Program*>& inputPrograms,
             f.write(logs.data(), logs.size());
             f.close();
         }
+    }
+
+    if (!buildLog_.empty()) {
         LogError(buildLog_.c_str());
     }
 
@@ -1079,6 +1082,9 @@ Program::build(const std::string& sourceCode,
             f.write(logs.data(), logs.size());
             f.close();
         }
+    }
+
+    if (!buildLog_.empty()) {
         LogError(buildLog_.c_str());
     }
 
