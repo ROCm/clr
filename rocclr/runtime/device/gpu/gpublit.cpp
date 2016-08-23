@@ -57,10 +57,12 @@ DmaBlitManager::readMemoryStaged(
     if (dev().xferRead().bufSize() < 128 * Ki) {
         chunkSize = dev().xferRead().bufSize();
     }
-    else {
+    else if (xferSize > 256 * Ki) {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferRead().bufSize());
-        chunkSize = std::max(chunkSize, 128 * Ki);
+    }
+    else {
+        chunkSize = xferSize;
     }
 
     // Find the partial transfer size
@@ -112,6 +114,7 @@ DmaBlitManager::readMemoryStaged(
         reinterpret_cast<char*>(dstHost) + offset - copySizeLast[0], dst, copySizeLast)) {
         return false;
     }
+
     return true;
 }
 
@@ -314,14 +317,19 @@ DmaBlitManager::writeMemoryStaged(
     amd::Coord3D src(0, 0, 0);
     size_t  tmpSize;
     size_t  chunkSize;
+    static const bool CopyRect = false;
+    // Flush DMA for ASYNC copy
+    static const bool FlushDMA = true;
 
     if (dev().xferRead().bufSize() < 128 * Ki) {
-        chunkSize = dev().xferRead().bufSize();
+        chunkSize = dev().xferWrite().bufSize();
+    }
+    else if (xferSize > 256 * Ki) {
+        chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
+            dev().xferWrite().bufSize());
     }
     else {
-        chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
-            dev().xferRead().bufSize());
-        chunkSize = std::max(chunkSize, 128 * Ki);
+        chunkSize = xferSize;
     }
 
     while (xferSize != 0) {
@@ -339,7 +347,7 @@ DmaBlitManager::writeMemoryStaged(
 
         // Copy data into the original destination memory
         if (!xferBuf.partialMemCopyTo(
-                gpu(), src, dst, copySize, dstMemory)) {
+                gpu(), src, dst, copySize, dstMemory, CopyRect, FlushDMA)) {
             return false;
         }
 
@@ -347,6 +355,7 @@ DmaBlitManager::writeMemoryStaged(
         offset += tmpSize;
         xferSize -= tmpSize;
     }
+
     return true;
 }
 
@@ -366,6 +375,7 @@ DmaBlitManager::writeBuffer(
             srcHost, dstMemory, origin, size, entire);
     }
     else {
+
         size_t  dstSize = size[0];
         size_t  tmpSize = 0;
         size_t  offset = 0;
@@ -431,6 +441,7 @@ DmaBlitManager::writeBuffer(
                 tmpHost = reinterpret_cast<char*>(tmpHost) + tmpSize + partial;
             }
         }
+
 
         if (dstSize != 0) {
             Memory& xferBuf = dev().xferWrite().acquire();
@@ -2247,6 +2258,7 @@ KernelBlitManager::writeBuffer(
 
     synchronize();
 
+
     return result;
 }
 
@@ -2723,7 +2735,6 @@ DmaBlitManager::pinHostMemory(
 
     amdMemory = new(*context_)
         amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
-
     if ((amdMemory != NULL) && !amdMemory->create(tmpHost, SysMem)) {
         amdMemory->release();
         return NULL;
