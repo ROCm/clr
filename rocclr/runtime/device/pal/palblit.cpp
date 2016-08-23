@@ -56,10 +56,12 @@ DmaBlitManager::readMemoryStaged(
     if (dev().xferRead().bufSize() < 128 * Ki) {
         chunkSize = dev().xferRead().bufSize();
     }
-    else {
+    else if (xferSize > 256 * Ki) {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferRead().bufSize());
-        chunkSize = std::max(chunkSize, 128 * Ki);
+    }
+    else {
+        chunkSize = xferSize;
     }
 
     // Find the partial transfer size
@@ -313,14 +315,19 @@ DmaBlitManager::writeMemoryStaged(
     amd::Coord3D src(0, 0, 0);
     size_t  tmpSize;
     size_t  chunkSize;
+    static const bool CopyRect = false;
+    // Flush DMA for ASYNC copy
+    static const bool FlushDMA = true;
 
     if (dev().xferRead().bufSize() < 128 * Ki) {
-        chunkSize = dev().xferRead().bufSize();
+        chunkSize = dev().xferWrite().bufSize();
+    }
+    else if (xferSize > 256 * Ki) {
+        chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
+            dev().xferWrite().bufSize());
     }
     else {
-        chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
-            dev().xferRead().bufSize());
-        chunkSize = std::max(chunkSize, 128 * Ki);
+        chunkSize = xferSize;
     }
 
     while (xferSize != 0) {
@@ -338,7 +345,7 @@ DmaBlitManager::writeMemoryStaged(
 
         // Copy data into the original destination memory
         if (!xferBuf.partialMemCopyTo(
-                gpu(), src, dst, copySize, dstMemory)) {
+            gpu(), src, dst, copySize, dstMemory, CopyRect, FlushDMA)) {
             return false;
         }
 
@@ -2761,7 +2768,7 @@ KernelBlitManager::createView(
         const Memory& gpuMem = static_cast<const Memory&>(parent);
 
         params.owner_       = parent.owner();
-        params.level_       = 0;
+        params.level_       = parent.desc().baseLevel_;
         params.layer_       = 0;
         params.resource_    = &gpuMem;
         params.memory_      = &gpuMem;
