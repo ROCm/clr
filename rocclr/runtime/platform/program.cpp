@@ -80,8 +80,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
     }
 #if defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && amd::isElfMagic((const char *) image)) {
-        assert(!"FIMXE_Wilkins: check the code below");
-        return CL_INVALID_BINARY;
+        // TODO: Wilkin: extract compiler options from the .comment section
     }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {

@@ -26,56 +26,6 @@ using namespace HSAIL_ASM;
 //! \namespace roc HSA Device Implementation
 namespace roc {
 
-#if defined(WITH_LIGHTNING_COMPILER)
-    class CodeObjBinary {
-    public:
-        CodeObjBinary()
-          : target_(""), kernelArgAlign_(0), capFlags_(0), encryptCode_(0),
-            binary_(NULL), binarySize_(0), llvmIR_(""), oclElf_(NULL), runtimeMD_(NULL) {}
-
-        void init(std::string& target, void* binary, size_t binarySize);
-        void fini();
-
-        std::string Target() const { return target_; }
-        uint32_t    KernelArgAlign() const { return kernelArgAlign_; }
-        void*       Binary() const { return binary_; }
-        size_t      BinarySize() const { return binarySize_; }
-
-        void saveIR(std::string llvmIR) { llvmIR_ = llvmIR; }
-        std::string   getLlvmIR() const { return llvmIR_; }
-
-        amd::OclElf*  oclElf() const { return oclElf_; }
-        RuntimeMD::Program::Metadata* runtimeMD() const { return runtimeMD_; }
-
-        const RuntimeMD::Program::Metadata* GetProgramMetadata() const;
-
-    private:
-        enum CapFlag {
-            capSaveSource   = 0,
-            capSaveLLVMIR   = 1,
-            capSaveCG       = 2,
-            capSaveEXE      = 3,
-            capSaveHSAIL    = 4,
-            capSaveISASM    = 5,
-            capEncryted     = 6
-        };
-
-        std::string target_;         // target device
-        uint32_t    kernelArgAlign_;
-        uint32_t    capFlags_;
-        uint32_t    encryptCode_;
-
-        void *      binary_;        //!< code object binary (ISA)
-        size_t      binarySize_;    //!< size of the code object binary
-
-        std::string llvmIR_;        //!< LLVM IR binary code
-
-        amd::OclElf*  oclElf_;      //!< ELF object to access runtime metadata
-
-        roc::RuntimeMD::Program::Metadata* runtimeMD_;   //!< runtime metadata
-    };
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
     //! \class empty program
     class HSAILProgram : public device::Program
     {
@@ -89,22 +39,20 @@ namespace roc {
         // Initialize Binary for GPU (used only for clCreateProgramWithBinary()).
         virtual bool initClBinary(char *binaryIn, size_t size);
 
-        //! Returns the aclBinary associated with the progrm
+        //! Returns the aclBinary associated with the program
         const aclBinary* binaryElf() const {
             return static_cast<const aclBinary*>(binaryElf_); }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-        //! Returns the code object binary associated with the progrm
-        const CodeObjBinary*  codeObjBinary() const {       //! Binary for the code object
-            return static_cast<const CodeObjBinary*>(codeObjBinary_); }
+        //! Returns the program metadata.
+        const RuntimeMD::Program::Metadata* metadata() const { return metadata_; }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-        const std::string& HsailText() {
-            return hsailProgram_;
-        }
+        //! Return a typecasted GPU device
+        const NullDevice& dev() const
+            { return static_cast<const NullDevice&>(device()); }
 
-        const NullDevice& dev() const { return device_; }
-        //! Returns the hsaBinary associated with the progrm
+        //! Returns the hsaBinary associated with the program
         hsa_agent_t hsaDevice() const {
             return dev().getBackendDevice();
         }
@@ -118,7 +66,7 @@ namespace roc {
 
         /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
         *
-        *  \return True if we successefully compiled a GPU program
+        *  \return True if we successfully compiled a GPU program
         */
         virtual bool compileImpl(
             const std::string& sourceCode,  //!< the program's source code
@@ -153,6 +101,11 @@ namespace roc {
         virtual bool linkImpl (const std::vector<Program*>& inputPrograms,
             amd::option::Options* options,
             bool createLibrary);
+#if defined(WITH_LIGHTNING_COMPILER)
+        virtual bool linkImpl_LC(const std::vector<Program*>& inputPrograms,
+            amd::option::Options* options,
+            bool createLibrary);
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
         virtual bool createBinary(amd::option::Options* options);
 
@@ -204,15 +157,12 @@ namespace roc {
 
         //! Returns all the options to be appended while passing to the
         //compiler
-        std::string hsailOptions();
+        std::string hsailOptions(amd::option::Options* options);
 
-        std::string     openCLSource_; //!< Original OpenCL source
-        std::string     hsailProgram_;     //!< HSAIL program after compilation.
-        std::string     llvmBinary_;    //!< LLVM IR binary code
-        //!< aclBinary and aclCompiler - for the compiler libray
-        aclBinary*      binaryElf_; //!<Binary for the new compiler library - shreyas edit
-        aclBinaryOptions binOpts_; //!<Binary options to create aclBinary
-        roc::NullDevice& device_; //!< Device related to the program
+        // aclBinary and aclCompiler - for the compiler library
+        aclBinary*      binaryElf_; //!< Binary for the new compiler library
+        aclBinaryOptions binOpts_; //!< Binary options to create aclBinary
+
         /* Brig and Brig modules */
         BrigModule_t brigModule_; //!< Brig that should be used in the HSA runtime
         BrigContainer* hsaBrigContainer_; //!< Container for the BRIG;
@@ -221,7 +171,7 @@ namespace roc {
         hsa_executable_t hsaExecutable_; //!< Handle to HSA executable
 
 #if defined(WITH_LIGHTNING_COMPILER)
-        CodeObjBinary*    codeObjBinary_;       //! Binary for the code object
+        RuntimeMD::Program::Metadata* metadata_; //!< Runtime metadata
 #endif // defined(WITH_LIGHTNING_COMPILER)
     };
 
