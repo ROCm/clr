@@ -2624,6 +2624,8 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd);
     gpu::Memory* gpuMemory = dev().getGpuMemory(&vcmd.memory());
+    GpuEvent    gpuEvent;
+    eventBegin(MainEngine);
     if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
         uint64_t surfAddr = gpuMemory->gslResource()->getPhysicalAddress(cs());
         uint64_t markerAddr = gpuMemory->gslResource()->getMarkerAddress(cs());
@@ -2632,14 +2634,13 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
             markerOffset, false);
     }
     else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
-        GpuEvent    gpuEvent;
-        eventBegin(MainEngine);
         cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(),  vcmd.markerOffset(), true);
-        eventEnd(MainEngine, gpuEvent);
-        gpuMemory->setBusy(*this, gpuEvent);
-        // Update the global GPU event
-        setGpuEvent(gpuEvent);
     }
+    eventEnd(MainEngine, gpuEvent);
+    gpuMemory->setBusy(*this, gpuEvent);
+    // Update the global GPU event
+    setGpuEvent(gpuEvent);
+
     profilingEnd(vcmd);
 }
 
