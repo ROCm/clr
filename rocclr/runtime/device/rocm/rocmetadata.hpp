@@ -50,7 +50,6 @@
 #include <ostream>
 
 #undef None
-#include "AMDGPU.h"
 #include "AMDGPURuntimeMetadata.h"
 
 namespace roc {
