@@ -389,16 +389,23 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     // Allocate HW resources for the real program only
     if (!prog().isNull()) {
         code_ = new Memory(dev(), amd::alignUp(codeSize_, akc_align));
-        Resource::MemoryType    type = Resource::RemoteUSWC;
+        Resource::MemoryType    type = Resource::Local;
         if (flags_.internalKernel_) {
             type = Resource::RemoteUSWC;
         }
+
         // Initialize kernel ISA code
         if (code_ && code_->create(type)) {
-            address cpuCodePtr = static_cast<address>(code_->map(nullptr, Resource::WriteOnly));
-            // Copy only amd_kernel_code_t
-            memcpy(cpuCodePtr,  reinterpret_cast<address>(akc), codeSize_);
-            code_->unmap(nullptr);
+            if (flags_.internalKernel_) {
+                address cpuCodePtr = static_cast<address>(code_->map(nullptr, Resource::WriteOnly));
+                // Copy only amd_kernel_code_t
+                memcpy(cpuCodePtr, reinterpret_cast<address>(akc), codeSize_);
+                code_->unmap(nullptr);
+            }
+            else {
+                static_cast<const KernelBlitManager&>(dev().xferMgr()).writeRawData(
+                    *code_, codeSize_, reinterpret_cast<void*>(akc));
+            }
         }
         else {
             LogError("Failed to allocate ISA code!");
