@@ -116,10 +116,10 @@ GetHSAILAddrQual(const RuntimeMD::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
         switch (lcArg->AddrQual()) {
-            case AMDGPUAS::GLOBAL_ADDRESS:
-            case AMDGPUAS::CONSTANT_ADDRESS:
+            case AMDGPU::RuntimeMD::KernelArg::Global:
+            case AMDGPU::RuntimeMD::KernelArg::Constant:
                 return HSAIL_ADDRESS_GLOBAL;
-            case AMDGPUAS::LOCAL_ADDRESS:
+            case AMDGPU::RuntimeMD::KernelArg::Local:
                 return HSAIL_ADDRESS_LOCAL;
             default:
                 LogError("Unsupported address type");
@@ -437,11 +437,11 @@ GetOclAddrQual(const RuntimeMD::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
         switch (lcArg->AddrQual()) {
-        case AMDGPUAS::GLOBAL_ADDRESS:
+        case AMDGPU::RuntimeMD::KernelArg::Global:
             return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-        case AMDGPUAS::CONSTANT_ADDRESS:
+        case AMDGPU::RuntimeMD::KernelArg::Constant:
             return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-        case AMDGPUAS::LOCAL_ADDRESS:
+        case AMDGPU::RuntimeMD::KernelArg::Local:
             return CL_KERNEL_ARG_ADDRESS_LOCAL;
         default:
             return CL_KERNEL_ARG_ADDRESS_PRIVATE;
