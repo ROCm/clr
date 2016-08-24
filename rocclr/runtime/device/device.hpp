@@ -1097,7 +1097,7 @@ public:
                  amd::option::Options* options);
 
     //! Returns the device object, associated with this program.
-    const amd::Device& device() { return device_(); }
+    const amd::Device& device() const { return device_(); }
 
     //! Return the compiler options used to build the program.
     const std::string& compileOptions() const { return compileOptions_; }

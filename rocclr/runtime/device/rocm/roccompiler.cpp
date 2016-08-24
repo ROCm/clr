@@ -41,17 +41,17 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 		                     amd::option::Options* options)
 {
     using namespace amd::opencl_driver;
+    Compiler* C = device().compiler();
     std::vector<Data*> inputs;
 
-    Data* src = device().compiler()->NewBufferReference(DT_CL,
+    Data* input = C->NewBufferReference(DT_CL,
         sourceCode.c_str(), sourceCode.length());
-
-    if (src == NULL) {
+    if (input == NULL) {
         buildLog_ += "Error while creating data from source code";
         return false;
     }
 
-    inputs.push_back(src);
+    inputs.push_back(input);
 
     //Find the temp folder for the OS
     std::string tempFolder = amd::Os::getEnvironment("TEMP");
@@ -97,17 +97,22 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         f.write(headers[i]->c_str(), headers[i]->length());
         f.close();
 
-        Data* inc = device().compiler()->NewFileReference(DT_CL_HEADER,
-            headerFileNames[i]);
+        Data* inc = C->NewFileReference(DT_CL_HEADER, headerFileNames[i]);
+        if (inc == NULL) {
+            buildLog_ += "Error while creating data from headers";
+            return false;
+        }
         inputs.push_back(inc);
     }
 
 
     //Set the options for the compiler
+    std::string driverOptions(compileOptions_);
+
     //Set the include path for the temp folder that contains the includes
     if(!headers.empty()) {
-        compileOptions_.append(" -I");
-        compileOptions_.append(tempFolder);
+        driverOptions.append(" -I");
+        driverOptions.append(tempFolder);
     }
 
     const char* xLang = options->oVariables->XLang;
@@ -116,14 +121,14 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     }
 
     //FIXME_Nikolay: the program manager should be setting the language
-    //compileOptions_.append(" -x cl");
+    //driverOptions.append(" -x cl");
     //FIXME_Nikolay: the program manager shouls be setting the cl-std. -Xclang
     //is not necessary, we add it to overridde the flag set in the comp driver.
-    compileOptions_.append(" -Xclang -cl-std=").append(options->oVariables->CLStd);
+    driverOptions.append(" -Xclang -cl-std=").append(options->oVariables->CLStd);
 
     std::ostringstream optLevel;
     optLevel << " -O" << options->oVariables->OptLevel;
-    compileOptions_.append(optLevel.str());
+    driverOptions.append(optLevel.str());
 
     //FIXME_lmoriche: has the CL option been validated?
     uint clVer = (options->oVariables->CLStd[2] - '0') * 100
@@ -131,56 +136,67 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 
     std::pair<const void*, size_t> hdr;
     switch(clVer) {
-    case 120: hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size); break;
-    case 200: hdr = std::make_pair(opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size); break;
+    case 120:
+        hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size);
+        break;
+    case 200:
+        hdr = std::make_pair(opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size);
+        break;
     default:
         buildLog_ += "Unsupported requested OpenCL C version (-cl-std).\n";
         return false;
     }
 
-    File* pch = device().compiler()->NewTempFile(DT_CL_HEADER);
+    File* pch = C->NewTempFile(DT_CL_HEADER);
     if (pch == NULL || !pch->WriteData((const char*) hdr.first, hdr.second)) {
         buildLog_ += "Error while opening the opencl-c header ";
         return false;
     }
 
-    compileOptions_.append(" -Xclang -include-pch -Xclang " + pch->Name());
-    compileOptions_.append(" -Xclang -fno-validate-pch");
+    driverOptions.append(" -Xclang -include-pch -Xclang " + pch->Name());
+    driverOptions.append(" -Xclang -fno-validate-pch");
 
-    compileOptions_.append(hsailOptions());
+    driverOptions.append(hsailOptions(options));
     if (clVer >= 200) {
         std::stringstream opts;
         //Add only for CL2.0 and later
         opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
             << device().info().maxGlobalVariableSize_;
-        compileOptions_.append(opts.str());
+        driverOptions.append(opts.str());
     }
 
-    Buffer* output = device().compiler()->NewBuffer(DT_LLVM_BC);
+    Buffer* output = C->NewBuffer(DT_LLVM_BC);
     if (output == NULL) {
         buildLog_ += "Error while creating buffer for the LLVM bitcode";
         return false;
     }
 
     // Tokenize the options string into a vector of strings
-    std::istringstream strstr(compileOptions_);
+    std::istringstream strstr(driverOptions);
     std::istream_iterator<std::string> sit(strstr), end;
-    std::vector<std::string> optionsvec(sit, end);
+    std::vector<std::string> params(sit, end);
 
     // Compile source to IR
-    bool ret = device().compiler()->CompileToLLVMBitcode(inputs, output, optionsvec);
-    buildLog_ += device().compiler()->Output().c_str();
+    bool ret = C->CompileToLLVMBitcode(inputs, output, params);
+    buildLog_ += C->Output();
     if (!ret) {
         buildLog_ += "Error while compiling opencl source: Compiling CL to IR";
         return false;
     }
 
-    //  save the source code
-    //Create Binary
-    codeObjBinary_ = new CodeObjBinary();
+    llvmBinary_.assign(output->Buf().data(), output->Size());
+    elfSectionType_ = amd::OclElf::LLVMIR;
 
-    openCLSource_ = sourceCode;
-    codeObjBinary_->saveIR(std::string(output->Buf().begin(), output->Buf().end()));
+    if (clBinary()->saveSOURCE()) {
+        clBinary()->elfOut()->addSection(
+            amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
+    }
+    if (clBinary()->saveLLVMIR()) {
+        clBinary()->elfOut()->addSection(
+            amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(), false);
+        // store the original compile options
+        clBinary()->storeCompileOptions(compileOptions_);
+    }
     return true;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
@@ -295,8 +311,8 @@ HSAILProgram::compileImpl(const std::string& sourceCode,
     }
 
     //Compile source to IR
-    this->compileOptions_.append(hsailOptions());
-    
+    this->compileOptions_.append(hsailOptions(options));
+
     errorCode = g_complibApi._aclCompile(device().compiler(),
         binaryElf_,
         //"-Wf,--support_all_extensions",

@@ -814,9 +814,7 @@ bool Kernel::init_LC(){
     hsa_agent_t hsaDevice = program_->hsaDevice();
 
     // Pull out metadata from the ELF
-    const CodeObjBinary* codeObj = program_->codeObjBinary();
-    const RuntimeMD::Program::Metadata* runtimeMD = codeObj->GetProgramMetadata();
-
+    const RuntimeMD::Program::Metadata* runtimeMD = program_->metadata();
     if (!runtimeMD) {
         return false;
     }

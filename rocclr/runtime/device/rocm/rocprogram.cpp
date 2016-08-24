@@ -83,16 +83,16 @@ namespace roc {
     }
 
     HSAILProgram::~HSAILProgram() {
+#if !defined(WITH_LIGHTNING_COMPILER)
         acl_error error;
         // Free the elf binary
         if (binaryElf_ != NULL) {
-#if !defined(WITH_LIGHTNING_COMPILER)
             error = g_complibApi._aclBinaryFini(binaryElf_);
             if (error != ACL_SUCCESS) {
                 LogWarning( "Error while destroying the acl binary \n" );
             }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         // Destroy the executable.
         if (hsaExecutable_.handle != 0) {
             hsa_executable_destroy(hsaExecutable_);
@@ -108,12 +108,15 @@ namespace roc {
         destroyBrigModule();
         destroyBrigContainer();
         releaseClBinary();
-   }
 
-    HSAILProgram::HSAILProgram(roc::NullDevice& device): device::Program(device),
-        llvmBinary_(),
+#if defined(WITH_LIGHTNING_COMPILER)
+        delete metadata_;
+#endif // defined(WITH_LIGHTNING_COMPILER)
+    }
+
+    HSAILProgram::HSAILProgram(roc::NullDevice& device)
+      : Program(device),
         binaryElf_(NULL),
-        device_(device),
         brigModule_(NULL),
         hsaBrigContainer_(NULL)
     {
@@ -126,12 +129,13 @@ namespace roc {
         binOpts_.bitness = ELFDATA2LSB;
         binOpts_.alloc = &::malloc;
         binOpts_.dealloc = &::free;
+
         hsaProgramHandle_.handle = 0;
         hsaProgramCodeObject_.handle = 0;
         hsaExecutable_.handle = 0;
 
 #if defined(WITH_LIGHTNING_COMPILER)
-        codeObjBinary_ = NULL;
+        metadata_ = NULL;
 #endif // defined(WITH_LIGHTNING_COMPILER)
     }
 
@@ -344,7 +348,7 @@ namespace roc {
             void *mem = const_cast<void *>(binary.first);
             acl_error errorCode;
 #if defined(WITH_LIGHTNING_COMPILER)
-            // TODO: FIXME_Wilkin
+            assert(!"FIXME_lmoriche: deserialize the code object, extract the metadata");
 #else // !defined(WITH_LIGHTNING_COMPILER)
             binaryElf_ = g_complibApi._aclReadFromMem(mem, binary.second, &errorCode);
             if (errorCode != ACL_SUCCESS) {
@@ -423,13 +427,32 @@ namespace roc {
         return continueCompileFrom;
     }
 
+    static hsa_status_t
+    allocFunc(size_t size, hsa_callback_data_t data, void **address) {
+        if (!address || 0 == size) {
+            return HSA_STATUS_ERROR_INVALID_ARGUMENT;
+        }
+
+        *address = (char*) malloc(size);
+        if (!*address) {
+            return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
+        }
+
+        return HSA_STATUS_SUCCESS;
+    }
+
     bool HSAILProgram::saveBinaryAndSetType(type_t type) {
         //Write binary to memory
         void *rawBinary = NULL;
         size_t size = 0;
 #if defined(WITH_LIGHTNING_COMPILER)
-        rawBinary = codeObjBinary_->Binary();
-        size = codeObjBinary_->BinarySize();
+        hsa_callback_data_t allocData = {0};
+        if (hsa_code_object_serialize(hsaProgramCodeObject_,
+                allocFunc, allocData,
+                NULL, &rawBinary, &size) != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Failed to write binary to memory \n";
+            return false;
+        }
 #else // !defined(WITH_LIGHTNING_COMPILER)
         if (g_complibApi._aclWriteToMem(binaryElf_, &rawBinary, &size)
             != ACL_SUCCESS) {
@@ -440,19 +463,110 @@ namespace roc {
         clBinary()->saveBIFBinary((char*)rawBinary, size);
         //Set the type of binary
         setType(type);
-#if !defined(WITH_LIGHTNING_COMPILER)
         //Free memory containing rawBinary
+#if !defined(WITH_LIGHTNING_COMPILER)
         binaryElf_->binOpts.dealloc(rawBinary);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
+#else // defined(WITH_LIGHTNING_COMPILER)
+        free(rawBinary);
+#endif // defined(WITH_LIGHTNING_COMPILER)
         return true;
     }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    bool HSAILProgram::linkImpl_LC(
+        const std::vector<Program *> &inputPrograms,
+        amd::option::Options *options,
+        bool createLibrary)
+    {
+        using namespace amd::opencl_driver;
+        Compiler* C = device().compiler();
+
+        std::vector<Data*> inputs;
+        for (auto program : (const std::vector<HSAILProgram*>&)inputPrograms) {
+            if (program->llvmBinary_.empty()) {
+                if (program->clBinary() == NULL) {
+                    buildLog_ += "Internal error: Input program not compiled!\n";
+                    return false;
+                }
+
+                // We are using CL binary directly.
+                // Setup elfIn() and try to load llvmIR from binary
+                // This elfIn() will be released at the end of build by finiBuild().
+                if (!program->clBinary()->setElfIn(ELFCLASS64)) {
+                    buildLog_ += "Internal error: Setting input OCL binary failed!\n";
+                    return false;
+                }
+                if (!program->clBinary()->loadLlvmBinary(program->llvmBinary_,
+                        program->elfSectionType_)) {
+                    buildLog_ += "Internal error: Failed loading compiled binary!\n";
+                    return false;
+                }
+            }
+
+            if (program->elfSectionType_ != amd::OclElf::LLVMIR) {
+                buildLog_ += "Error: Input binary format is not supported\n.";
+                return false;
+            }
+
+            Data* input = C->NewBufferReference(DT_LLVM_BC,
+                (const char*) program->llvmBinary_.data(),
+                program->llvmBinary_.size());
+
+            if (!input) {
+                buildLog_ += "Internal error: Failed to open the compiled programs.\n";
+                return false;
+            }
+
+            inputs.push_back(input);
+        }
+
+        // open the linked output
+        Buffer* output = C->NewBuffer(DT_LLVM_BC);
+
+        if (!output) {
+            buildLog_ += "Error: Failed to open the linked program.\n";
+            return false;
+        }
+
+        std::vector<std::string> linkOptions;
+        bool ret = C->LinkLLVMBitcode(inputs, output, linkOptions);
+        buildLog_ += C->Output();
+        if (!ret) {
+            buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+            return false;
+        }
+
+        llvmBinary_.assign(output->Buf().data(), output->Size());
+        elfSectionType_ = amd::OclElf::LLVMIR;
+
+        if (clBinary()->saveLLVMIR()) {
+            clBinary()->elfOut()->addSection(
+                amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(), false);
+            // store the original link options
+            clBinary()->storeLinkOptions(linkOptions_);
+            // store the original compile options
+            clBinary()->storeCompileOptions(compileOptions_);
+        }
+
+        // skip the rest if we are building an opencl library
+        if (createLibrary) {
+            setType(TYPE_LIBRARY);
+            if (!createBinary(options)) {
+                buildLog_ += "Internal error: creating OpenCL binary failed\n";
+                return false;
+            }
+            return true;
+        }
+
+        return linkImpl_LC(options);
+    }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     bool HSAILProgram::linkImpl(const std::vector<Program *> &inputPrograms,
         amd::option::Options *options,
         bool createLibrary) {
 #if defined(WITH_LIGHTNING_COMPILER)
-            assert(!"FIXME_Wilkin");
-            return false;
+            return linkImpl_LC(inputPrograms, options, createLibrary);
 #else // !defined(WITH_LIGHTNING_COMPILER)
             std::vector<device::Program *>::const_iterator it
                 = inputPrograms.begin();
@@ -607,14 +721,14 @@ namespace roc {
     bool HSAILProgram::linkImpl_LC(amd::option::Options *options)
     {
         using namespace amd::opencl_driver;
+        Compiler* C = device().compiler();
 
         // call LinkLLVMBitcode
         std::vector<Data*> inputs;
 
         // open the input IR source
-        const std::string llvmIR = codeObjBinary_->getLlvmIR();
-        Data* input = device().compiler()->NewBufferReference(
-            DT_LLVM_BC, llvmIR.c_str(), llvmIR.length());
+        Data* input = C->NewBufferReference(
+            DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
 
         if (!input) {
             buildLog_ += "Error: Failed to open the compiled program.\n";
@@ -624,13 +738,13 @@ namespace roc {
         inputs.push_back(input); //< must be the first input
 
         // open the bitcode libraries
-        Data* opencl_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* opencl_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) builtins_opencl_amdgcn, builtins_opencl_amdgcn_size);
-        Data* ocml_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) builtins_ocml_amdgcn, builtins_ocml_amdgcn_size);
-        Data* ockl_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) builtins_ockl_amdgcn, builtins_ockl_amdgcn_size);
-        Data* irif_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* irif_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) builtins_irif_amdgcn, builtins_irif_amdgcn_size);
 
         if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
@@ -655,7 +769,7 @@ namespace roc {
         default: buildLog_ += "Error: Linking for this device is not supported\n"; return false;
         }
 
-        Data* isa_version_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* isa_version_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) isa_version.first, isa_version.second);
 
         if (!isa_version_bc) {
@@ -684,13 +798,13 @@ namespace roc {
             ? std::make_pair(unsafe_math_on_amdgcn, unsafe_math_on_amdgcn_size)
             : std::make_pair(unsafe_math_off_amdgcn, unsafe_math_off_amdgcn_size);
 
-        Data* correctly_rounded_sqrt_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
-        Data* daz_opt_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) daz_opt.first, daz_opt.second);
-        Data* finite_only_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) finite_only.first, finite_only.second);
-        Data* unsafe_math_bc = device().compiler()->NewBufferReference(DT_LLVM_BC,
+        Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
             (const char*) unsafe_math.first, unsafe_math.second);
 
         if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
@@ -705,15 +819,15 @@ namespace roc {
 
         // open the linked output
         std::vector<std::string> linkOptions;
-        Data* linked_bc = device().compiler()->NewBuffer(DT_LLVM_BC);
+        Data* linked_bc = C->NewBuffer(DT_LLVM_BC);
 
         if (!linked_bc) {
             buildLog_ += "Error: Failed to open the linked program.\n";
             return false;
         }
 
-        bool ret = device().compiler()->LinkLLVMBitcode(inputs, linked_bc, linkOptions);
-        buildLog_ += device().compiler()->Output().c_str();
+        bool ret = C->LinkLLVMBitcode(inputs, linked_bc, linkOptions);
+        buildLog_ += C->Output();
         if (!ret) {
             buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
             return false;
@@ -722,13 +836,13 @@ namespace roc {
         inputs.clear();
         inputs.push_back(linked_bc);
 
-        Buffer* out_exec = device().compiler()->NewBuffer(DT_EXECUTABLE);
+        Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
         if (!out_exec) {
             buildLog_ += "Error: Failed to create the linked executable.\n";
             return false;
         }
 
-        std::string optionsstr = options->origOptionStr + hsailOptions();
+        std::string optionsstr = options->origOptionStr + hsailOptions(options);
 
         // Set the machine target
         optionsstr.append(" -mcpu=");
@@ -743,9 +857,8 @@ namespace roc {
         std::istream_iterator<std::string> sit(strstr), end;
         std::vector<std::string> optionsvec(sit, end);
 
-        ret = device().compiler()->CompileAndLinkExecutable(
-                inputs, out_exec, optionsvec);
-        buildLog_ += device().compiler()->Output().c_str();
+        ret = C->CompileAndLinkExecutable(inputs, out_exec, optionsvec);
+        buildLog_ += C->Output();
         if (!ret) {
             buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exe.\n";
             return false;
@@ -792,12 +905,23 @@ namespace roc {
             return false;
         }
 
-        //TODO: WC - use the proper target code based on the agent
-        std::string target = "AMD:AMDGPU:8:0:3";
-        codeObjBinary_->init( target, out_exec->Buf().data(), out_exec->Size());
-        saveBinaryAndSetType(TYPE_EXECUTABLE);
+        // load the runtime metadata
+        amd::OclElf elf(ELFCLASS64, out_exec->Buf().data(), out_exec->Size(), NULL, ELF_C_READ);
 
-        buildLog_ += device().compiler()->Output();
+        char* data;
+        size_t size;
+        if (!elf.getSection(amd::OclElf::RUNTIME_METADATA, &data, &size)) {
+             buildLog_ += "Error while access runtime metadata.\n";
+             return false;
+         }
+
+        metadata_ = new roc::RuntimeMD::Program::Metadata();
+        if (!metadata_->ReadFrom((void *) data, size)) {
+             buildLog_ += "Error while parsing runtime metadata.\n";
+             return false;
+         }
+
+        saveBinaryAndSetType(TYPE_EXECUTABLE);
 
         // Get the list of kernels
         std::vector<std::string> kernelNameList;
@@ -912,12 +1036,12 @@ namespace roc {
         acl_error errorCode;
         aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
         bool finalize = true;
+#if !defined(WITH_LIGHTNING_COMPILER)
         // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
-#if defined(WITH_LIGHTNING_COMPILER)
-        if (!codeObjBinary_)
-#else // !defined(WITH_LIGHTNING_COMPILER)
         if (!binaryElf_)
-#endif // !defined(WITH_LIGHTNING_COMPILER)
+#else // defined(WITH_LIGHTNING_COMPILER)
+        if (llvmBinary_.empty())
+#endif // defined(WITH_LIGHTNING_COMPILER)
         {
             continueCompileFrom = getNextCompilationStageFromBinary(options);
         }
@@ -939,7 +1063,7 @@ namespace roc {
                 return false;
             }
 #else // !defined(WITH_LIGHTNING_COMPILER)
-            std::string curOptions = options->origOptionStr + hsailOptions();
+            std::string curOptions = options->origOptionStr + hsailOptions(options);
             errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
                 curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
             buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
@@ -1198,7 +1322,15 @@ namespace roc {
     }
 
     bool HSAILProgram::createBinary(amd::option::Options *options) {
+#if defined(WITH_LIGHTNING_COMPILER)
+        if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
+            LogError("Failed to create ELF binary image!");
+            return false;
+        }
+        return true;
+#else // !defined(WITH_LIGHTNING_COMPILER)
         return false;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
 
     bool HSAILProgram::initClBinary() {
@@ -1218,13 +1350,13 @@ namespace roc {
         }
     }
 
-    std::string HSAILProgram::hsailOptions() {
+    std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
         std::string hsailOptions;
         //Set options for the standard device specific options
         //This is just for legacy compiler code
         // All our devices support these options now
-        hsailOptions.append(" -DFP_FAST_FMAF=1");
-        hsailOptions.append(" -DFP_FAST_FMA=1");
+        hsailOptions.append(" -DFP_FAST_FMAF");
+        hsailOptions.append(" -DFP_FAST_FMA");
 
         if (dev().deviceInfo().gfxipVersion_ < 900) {
             hsailOptions.append(" -cl-denorms-are-zero");
@@ -1240,57 +1372,18 @@ namespace roc {
         iss.str(device().info().extensions_);
         while (getline(iss, token, ' ')) {
             if (!token.empty()) {
+#if defined(WITH_LIGHTNING_COMPILER)
+                // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+                // remove it from the command line. Should we fix opencl-c.h?
+                if (options->oVariables->CLStd[2] >= '2'
+                 && token == "cl_khr_depth_images") continue;
+#endif // defined(WITH_LIGHTHNING_COMPILER)
                 hsailOptions.append(" -D");
                 hsailOptions.append(token);
-                hsailOptions.append("=1");
             }
         }
         return hsailOptions;
     }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-    void CodeObjBinary::init(std::string& target, void* binary, size_t binarySize)
-    {
-        target_ = target;
-        binary_ = binary;
-        binarySize_ = binarySize;
-
-        oclElf_ = new amd::OclElf(ELFCLASS64, (char *)binary_, binarySize_, NULL, ELF_C_READ);
-
-        // load the runtime metadata
-        runtimeMD_ = new roc::RuntimeMD::Program::Metadata();
-    }
-
-    void CodeObjBinary::fini()
-    {
-        if (oclElf_) {
-            delete oclElf_;
-        }
-
-        if (runtimeMD_) {
-            delete runtimeMD_;
-        }
-
-        target_ = "";
-        binary_ = NULL;
-        binarySize_ = 0;
-    }
-
-    const RuntimeMD::Program::Metadata* CodeObjBinary::GetProgramMetadata() const
-    {
-        char*   metaData;
-        size_t  metaSize;
-        if (!oclElf_->getSection(amd::OclElf::RUNTIME_METADATA, &metaData, &metaSize)) {
-            LogWarning( "Error while access runtime metadata section from the binary \n" );
-        }
-
-        if (!runtimeMD_->ReadFrom((void *) metaData, metaSize)) {
-            LogWarning( "Error while parsing runtime metadata \n" );
-        }
-
-        return runtimeMD_;
-    }
-#endif // defined(WITH_LIGHTNING_COMPILER)
 #endif  // WITHOUT_HSA_BACKEND
 }  // namespace roc
 
