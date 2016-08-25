@@ -690,6 +690,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Mo
     }
   }
 
+  fixupModulePostLink(LLVMBinary());
   CreateOptControlFunctions(LLVMBinary());
 
   if (Options()->oVariables->EnableBuildTiming) {
