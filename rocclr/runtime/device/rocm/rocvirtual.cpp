@@ -351,7 +351,7 @@ VirtualGPU::dispatchGenericAqlPacket(
         timestamp_->setAgent(gpu_device_);
     }
 
-    if ((index - read) == queueMask) {
+    if (blocking || (index - read) == queueMask) {
         if (packet->completion_signal.handle == 0) {
             packet->completion_signal = barrier_signal_;
         }
@@ -1661,7 +1661,7 @@ VirtualGPU::submitKernelInternal(
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
     //Dispatch the packet
-    if (!dispatchAqlPacket(&dispatchPacket, false)){
+    if (!dispatchAqlPacket(&dispatchPacket, GPU_FLUSH_ON_EXECUTION)){
         return false;
     }
 
