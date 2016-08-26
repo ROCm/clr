@@ -1498,6 +1498,7 @@ VirtualGPU::submitKernelInternal(
 
     address argPtr = argBuffer;
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     // The HLC generates Kernenv arguments, first 3 are global offsets.
     const uint extraAargs = ((roc::Kernel*)devKernel)->extraArgumentsNum();
     for (uint j = 0; j < extraAargs; ++j) {
@@ -1510,6 +1511,7 @@ VirtualGPU::submitKernelInternal(
             addArg(&argPtr, &offset, sizeof(void*)); //Should be uint32_t for small model and uint64_t for large!
         }
     }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     const amd::KernelSignature& signature = kernel.signature();
     const amd::KernelParameters& kernelParams = kernel.parameters();
@@ -1624,6 +1626,26 @@ VirtualGPU::submitKernelInternal(
           }
         }
     }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    const uint extraAargs = ((roc::Kernel*)devKernel)->extraArgumentsNum();
+    for (uint j = 0; j < extraAargs; ++j) {
+        switch(j) {
+        case 3: { // Printf buffer
+            address bufferPtr = printfDbg()->dbgBuffer();
+            addArg(&argPtr, &bufferPtr, sizeof(void*));
+            break;
+        }
+        case 0: case 1: case 2: { // Global offsets
+            const size_t offset = j < sizes.dimensions() ? sizes.offset()[j] : 0;
+            addArg(&argPtr, &offset, sizeof(size_t));
+            break;
+        }
+        default:
+            assert(!"Unknown hidden argument index");
+        }
+    }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     // Check there is no arguments' buffer overflow
     assert(argPtr <= argBuffer + gpuKernel.KernargSegmentByteSize());
