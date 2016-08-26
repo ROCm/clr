@@ -1024,7 +1024,7 @@ namespace roc {
             }
 
             // for OpenCL default hidden kernel arguments assuming there is no printf
-            size_t numHiddenKernelArgs = 0; // FIXME_lmoriche:3;
+            size_t numHiddenKernelArgs = 3; // FIXME_Wilkin
 
             // Fix the kernel name issue that causes string comparison does not work
             // due to an extra character at the end
@@ -1040,7 +1040,7 @@ namespace roc {
                 // TODO: remove the workaround
                 //   add 24 bytes for global offsets as workaround for LC reporting
                 //   excluded the hidden arguments
-                kernargSegmentByteSize /* FIXME_lmoriche:+24*/,
+                kernargSegmentByteSize + numHiddenKernelArgs * sizeof(size_t),
                 kernargSegmentAlignment,
                 numHiddenKernelArgs
             );
