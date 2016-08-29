@@ -60,6 +60,7 @@ DmaBlitManager::readMemoryStaged(
     else if (xferSize > 256 * Ki) {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferRead().bufSize());
+        chunkSize = std::max(chunkSize, 128 * Ki);
     }
     else {
         chunkSize = xferSize;
@@ -319,7 +320,9 @@ DmaBlitManager::writeMemoryStaged(
     size_t  chunkSize;
     static const bool CopyRect = false;
     // Flush DMA for ASYNC copy
-    static const bool FlushDMA = true;
+    // @todo Blocking write requires a flush to start earlier,
+    // but currently VDI doesn't provide that info
+    static const bool FlushDMA = false;
 
     if (dev().xferRead().bufSize() < 128 * Ki) {
         chunkSize = dev().xferWrite().bufSize();
@@ -327,6 +330,7 @@ DmaBlitManager::writeMemoryStaged(
     else if (xferSize > 256 * Ki) {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferWrite().bufSize());
+        chunkSize = std::max(chunkSize, 128 * Ki);
     }
     else {
         chunkSize = xferSize;
