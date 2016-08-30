@@ -180,10 +180,16 @@ namespace roc {
 
     bool HSAILProgram::initBuild(amd::option::Options *options) {
         compileOptions_ = options->origOptionStr;
-        
+
         if (!device::Program::initBuild(options)) {
             return false;
         }
+
+        const char* devName = dev().deviceInfo().machineTarget_;
+        options->setPerBuildInfo(
+            (devName && (devName[0] != '\0')) ? devName : "gpu",
+            clBinary()->getEncryptCode(), true);
+
         // Elf Binary setup
         std::string outFileName;
 
@@ -760,13 +766,33 @@ namespace roc {
         // open the control functions
         std::pair<const void*, size_t> isa_version;
         switch (dev().deviceInfo().gfxipVersion_) {
-        case 701: isa_version = std::make_pair(isa_version_701_amdgcn, isa_version_701_amdgcn_size); break;
-        case 800: isa_version = std::make_pair(isa_version_800_amdgcn, isa_version_800_amdgcn_size); break;
-        case 801: isa_version = std::make_pair(isa_version_801_amdgcn, isa_version_801_amdgcn_size); break;
-        case 802: isa_version = std::make_pair(isa_version_802_amdgcn, isa_version_802_amdgcn_size); break;
-        case 803: isa_version = std::make_pair(isa_version_803_amdgcn, isa_version_803_amdgcn_size); break;
-        case 810: isa_version = std::make_pair(isa_version_810_amdgcn, isa_version_810_amdgcn_size); break;
-        default: buildLog_ += "Error: Linking for this device is not supported\n"; return false;
+        case 701:
+            isa_version = std::make_pair(
+                isa_version_701_amdgcn, isa_version_701_amdgcn_size);
+            break;
+        case 800:
+            isa_version = std::make_pair(
+                isa_version_800_amdgcn, isa_version_800_amdgcn_size);
+            break;
+        case 801:
+            isa_version = std::make_pair(
+                isa_version_801_amdgcn, isa_version_801_amdgcn_size);
+            break;
+        case 802:
+            isa_version = std::make_pair(
+                isa_version_802_amdgcn, isa_version_802_amdgcn_size);
+            break;
+        case 803:
+            isa_version = std::make_pair(
+                isa_version_803_amdgcn, isa_version_803_amdgcn_size);
+            break;
+        case 810:
+            isa_version = std::make_pair(
+                isa_version_810_amdgcn, isa_version_810_amdgcn_size);
+            break;
+        default:
+            buildLog_ += "Error: Linking for this device is not supported\n";
+            return false;
         }
 
         Data* isa_version_bc = C->NewBufferReference(DT_LLVM_BC,
@@ -819,7 +845,7 @@ namespace roc {
 
         // open the linked output
         std::vector<std::string> linkOptions;
-        Data* linked_bc = C->NewBuffer(DT_LLVM_BC);
+        Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
 
         if (!linked_bc) {
             buildLog_ += "Error: Failed to open the linked program.\n";
@@ -833,8 +859,18 @@ namespace roc {
             return false;
         }
 
+        if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+            std::ofstream f(options->getDumpFileName("_linked.bc").c_str(), std::ios::trunc);
+            if(f.is_open()) {
+                f.write(linked_bc->Buf().data(), linked_bc->Size());
+            } else {
+                buildLog_ +=
+                    "Warning: opening the file to dump the linked IR failed.\n";
+            }
+        }
+
         // open the optimized output
-        Data* opt_bc = C->NewBuffer(DT_LLVM_BC);
+        Buffer* opt_bc = C->NewBuffer(DT_LLVM_BC);
 
         if (!opt_bc) {
             buildLog_ += "Error: Failed to open the optimized program.\n";
@@ -857,6 +893,16 @@ namespace roc {
             return false;
         }
 
+        if (options->isDumpFlagSet(amd::option::DUMP_BC_OPTIMIZED)) {
+            std::ofstream f(options->getDumpFileName("_optimized.bc").c_str(), std::ios::trunc);
+            if(f.is_open()) {
+                f.write(opt_bc->Buf().data(), opt_bc->Size());
+            } else {
+                buildLog_ +=
+                    "Warning: opening the file to dump the optimized IR failed.\n";
+            }
+        }
+
         inputs.clear();
         inputs.push_back(opt_bc);
 
@@ -866,25 +912,35 @@ namespace roc {
             return false;
         }
 
-        std::string optionsstr = options->origOptionStr + hsailOptions(options);
+        std::string codegenOptions(options->llvmOptions);
 
         // Set the machine target
-        optionsstr.append(" -mcpu=");
-        optionsstr.append(dev().deviceInfo().machineTarget_);
+        codegenOptions.append(" -mcpu=");
+        codegenOptions.append(dev().deviceInfo().machineTarget_);
 
         // Set the -O#
-        optionsstr.append(" ").append(optLevel.str());
+        codegenOptions.append(" ").append(optLevel.str());
 
         // Tokenize the options string into a vector of strings
-        std::istringstream strstr(optionsstr);
+        std::istringstream strstr(codegenOptions);
         std::istream_iterator<std::string> sit(strstr), end;
-        std::vector<std::string> optionsvec(sit, end);
+        std::vector<std::string> params(sit, end);
 
-        ret = C->CompileAndLinkExecutable(inputs, out_exec, optionsvec);
+        ret = C->CompileAndLinkExecutable(inputs, out_exec, params);
         buildLog_ += C->Output();
         if (!ret) {
             buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exe.\n";
             return false;
+        }
+
+        if (options->isDumpFlagSet(amd::option::DUMP_O)) {
+            std::ofstream f(options->getDumpFileName(".co").c_str(), std::ios::trunc);
+            if(f.is_open()) {
+                f.write(out_exec->Buf().data(), out_exec->Size());
+            } else {
+                buildLog_ +=
+                    "Warning: opening the file to dump the code object failed.\n";
+            }
         }
 
         hsa_status_t status;
