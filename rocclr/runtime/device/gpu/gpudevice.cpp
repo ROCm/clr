@@ -851,6 +851,10 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     calTarget_ = getAttribs().target;
     hwInfo_ = &DeviceInfo[calTarget_];
 
+    if ((GPU_ENABLE_PAL == 2) && (calTarget_ > CAL_TARGET_STONEY)) {
+        return false;
+    }
+
     // Creates device settings
     settings_ = new gpu::Settings();
     gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);

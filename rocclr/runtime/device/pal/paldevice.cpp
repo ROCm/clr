@@ -160,11 +160,14 @@ NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel)
     properties.gfxLevel = ipLevel;
 
     // Update HW info for the device
-    if (ipLevel == Pal::GfxIpLevel::_None) {
+    if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
         hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
     }
-    else {
+    else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
         hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel)];
+    }
+    else {
+        return false;
     }
 
     settings_ = new pal::Settings();
@@ -686,11 +689,14 @@ Device::create(Pal::IDevice* device)
     asicRevision_ = properties().revision;
 
     // Update HW info for the device
-    if (properties().revision == Pal::AsicRevision::Unknown) {
-        hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(properties().gfxLevel)];
+    if ((GPU_ENABLE_PAL == 1) && (properties().revision != Pal::AsicRevision::Unknown)) {
+        hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
+    }
+    else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
+        hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel_)];
     }
     else {
-        hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
+        return false;
     }
 
 
