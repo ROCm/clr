@@ -742,9 +742,17 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize)
 
         // Check if device has SDMA engines
         if (dev().numDMAEngines() != 0) {
+            uint sdma;
+            // If only 1 DMA engine is available then use that one
+            if ((dev().numDMAEngines() < 2) || (idx & 0x1)) {
+                sdma = 0;
+            }
+            else {
+                sdma = 1;
+            }
+
             queues_[SdmaEngine] = Queue::Create(
-                dev().iDev(), Pal::QueueTypeDma,
-                idx % dev().numDMAEngines(), cmdAllocator_);
+                dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_);
             if (nullptr == queues_[SdmaEngine]) {
                 return false;
             }
@@ -2117,26 +2125,25 @@ VirtualGPU::submitKernelInternal(
             if (!dev().settings().useDeviceQueue_) {
                 // Add the termination handshake to the host queue
                 eventBegin(MainEngine);
-                //iCmd()->CmdVirtualQueueHandshake(*gpuDefQueue->schedParams_->iMem(),
-                //    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
-                //    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
-                //    0, dev().settings().useDeviceQueue_);
+                iCmd()->CmdVirtualQueueHandshake(
+                    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                    0, dev().settings().useDeviceQueue_);
                 eventEnd(MainEngine, gpuEvent);
             }
 
             // Get the global loop start before the scheduler
-            //Pal::gpusize loopStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
-            //static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
-            //    *gpuDefQueue->virtualQueue_,
-            //    *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
-            //    gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
+            Pal::gpusize loopStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
+            static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr()).runScheduler(
+                *gpuDefQueue->virtualQueue_,
+                *gpuDefQueue->schedParams_, gpuDefQueue->schedParamIdx_,
+                gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
             const static bool FlushL2 = true;
             gpuDefQueue->flushCUCaches(FlushL2);
 
             // Get the address of PM4 template and add write it to params
             //! @note DMA flush must not occur between patch and the scheduler
-            Pal::gpusize patchStart = 0;
-            //Pal::gpusize patchStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
+            Pal::gpusize patchStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
             // Program parameters for the scheduler
             SchedulerParam* param = &reinterpret_cast<SchedulerParam*>
                 (gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
@@ -2178,9 +2185,9 @@ VirtualGPU::submitKernelInternal(
             Pal::gpusize  signalAddr = gpuDefQueue->schedParams_->vmAddress() +
                 gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
             gpuDefQueue->eventBegin(MainEngine);
-            //gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherEnd(
-            //    signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
-            //    (DeviceQueueMaskSize * maskGroups_));
+            gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherEnd(
+                signalAddr, loopStart, gpuDefQueue->vqHeader_->aql_slot_num /
+                (DeviceQueueMaskSize * maskGroups_));
             // Note: Device enqueue can't have extra commands after INDIRECT_BUFFER call.
             // Thus TS command for profiling has to follow in the next CB.
             constexpr bool ForceSubmitFirst = true;
@@ -2194,10 +2201,10 @@ VirtualGPU::submitKernelInternal(
             if (dev().settings().useDeviceQueue_) {
                 // Add the termination handshake to the host queue
                 eventBegin(MainEngine);
-                //iCmd()->CmdVirtualQueueHandshake(*gpuDefQueue->schedParams_->iMem(),
-                //    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
-                //    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
-                //    signalAddr, dev().settings().useDeviceQueue_);
+                iCmd()->CmdVirtualQueueHandshake(
+                    vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
+                    vmParentWrap + offsetof(AmdAqlWrap, child_counter),
+                    signalAddr, dev().settings().useDeviceQueue_);
                 eventEnd(MainEngine, gpuEvent);
             }
 
