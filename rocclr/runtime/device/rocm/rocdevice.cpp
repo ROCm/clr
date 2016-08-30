@@ -459,6 +459,12 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
 }
 
 bool Device::init() {
+#if defined(__linux__)
+    if (amd::Os::getEnvironment("HSA_ENABLE_SDMA").empty()) {
+        ::setenv("HSA_ENABLE_SDMA", "0", false);
+    }
+#endif // defined (__linux__)
+
     LogInfo("Initializing HSA stack.");
 
     //Initialize the compiler
