@@ -874,8 +874,11 @@ Device::initializeHeapResources()
         // Delay compilation due to brig_loader memory allocation
         const char* scheduler = nullptr;
         const char* ocl20 = nullptr;
+        std::string sch = SchedulerSourceCode;
         if (settings().oclVersion_ == OpenCL20) {
-            scheduler = SchedulerSourceCode;
+            size_t loc = sch.find("%s");
+            sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
+            scheduler = sch.c_str();
             ocl20 = "-cl-std=CL2.0";
         }
         blitProgram_ = new BlitProgram(context_);
