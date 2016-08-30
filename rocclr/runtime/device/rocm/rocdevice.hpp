@@ -77,7 +77,7 @@ public:
     //! Destructor for the Null device
     virtual ~NullDevice();
 
-    Compiler *compiler() const { return compilerHandle_; }
+    Compiler* compiler() const { return compilerHandle_; }
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
     virtual device::Program *createProgram(amd::option::Options* options = NULL);

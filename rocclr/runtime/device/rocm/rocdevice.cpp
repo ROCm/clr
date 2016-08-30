@@ -37,11 +37,6 @@
 #include <algorithm>
 #endif  // WITHOUT_HSA_BACKEND
 
-#if defined(ATI_OS_LINUX)
-#include <dlfcn.h>
-#include <libgen.h>
-#endif // defined(ATI_OS_LINUX)
-
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
@@ -235,39 +230,7 @@ Device::~Device()
     }
 }
 bool NullDevice::initCompiler(bool isOffline) {
-#if defined(WITH_LIGHTNING_COMPILER)
-    if (!compilerHandle_) {
-        std::string llvmbin = amd::Os::getEnvironment("LLVM_BIN");
-#if defined(ATI_OS_LINUX)
-        // FIXME_Wilkin: When no LLVM_BIN defined, use the default path
-        if (llvmbin.empty()) {
-            Dl_info info;
-            if (dladdr((const void*)&roc::NullDevice::initCompiler, &info)) {
-                llvmbin = dirname(strdup(info.dli_fname));
-                size_t pos = llvmbin.rfind("lib");
-                if (pos != std::string::npos) {
-                    llvmbin.replace(pos, 3, "bin");
-                }
-            }
-        }
-#if defined(DEBUG)
-        std::string clangbin(llvmbin);
-        clangbin.append("/clang");
-        struct stat buf;
-        if (stat(clangbin.c_str(), &buf)) {
-            std::string msg("Could not find the Clang binary in ");
-            msg.append(llvmbin);
-            LogWarning(msg.c_str());
-        }
-#endif // defined(DEBUG)
-#endif // defined(ATI_OS_LINUX)
-        compilerHandle_ = amd::opencl_driver::CompilerFactory()
-            .CreateAMDGPUCompiler(llvmbin);
-        if (!compilerHandle_) {
-            return false;
-        }
-    }
-#else // !defined(WITH_LIGHTNING_COMPILER)
+#if !defined(WITH_LIGHTNING_COMPILER)
      // Initializes g_complibModule and g_complibApi if they were not initialized
     if( g_complibModule == NULL ){
         if (!LoadCompLib(isOffline)) {

@@ -173,6 +173,8 @@ namespace roc {
 
 #if defined(WITH_LIGHTNING_COMPILER)
         RuntimeMD::Program::Metadata* metadata_; //!< Runtime metadata
+        //! Return a new transient compiler instance.
+        static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 #endif // defined(WITH_LIGHTNING_COMPILER)
     };
 

@@ -140,21 +140,19 @@ Device::BlitProgram::create(amd::Device* device,
     }
 
     // Build all kernels
-#if defined(WITH_LIGHTNING_COMPILER)
-    std::string opt = "";
-#else // !defined(WITH_LIGHTNING_COMPILER)
-    std::string opt = "-Wf,--force_disable_spir -fno-lib-no-inline "\
-        "-fno-sc-keep-calls -cl-internal-kernel ";
+    std::string opt = "-cl-internal-kernel "
+#if !defined(WITH_LIGHTNING_COMPILER)
+        "-Wf,--force_disable_spir -fno-lib-no-inline " \
+        "-fno-sc-keep-calls "
 #endif // !defined(WITH_LIGHTNING_COMPILER)
+        ;
 
     if (extraOptions != NULL) {
         opt += extraOptions;
     }
-#if !defined(WITH_LIGHTNING_COMPILER)
     if (!GPU_DUMP_BLIT_KERNELS) {
         opt += " -fno-enable-dump";
     }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
     if (CL_SUCCESS != program_->build(devices, opt.c_str(),
         NULL, NULL, GPU_DUMP_BLIT_KERNELS)) {
         return false;

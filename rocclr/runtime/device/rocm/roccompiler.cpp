@@ -41,7 +41,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 		                     amd::option::Options* options)
 {
     using namespace amd::opencl_driver;
-    Compiler* C = device().compiler();
+    std::auto_ptr<Compiler> C(newCompilerInstance());
     std::vector<Data*> inputs;
 
     if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
