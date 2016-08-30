@@ -44,6 +44,17 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     Compiler* C = device().compiler();
     std::vector<Data*> inputs;
 
+    if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
+        std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+            f << "/* Compiler options:\n" << options->origOptionStr
+              << "\n*/\n\n" << sourceCode;
+        } else {
+            buildLog_ +=
+                "Warning: opening the file to dump the OpenCL source failed.\n";
+        }
+    }
+
     Data* input = C->NewBufferReference(DT_CL,
         sourceCode.c_str(), sourceCode.length());
     if (input == NULL) {
@@ -107,7 +118,10 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 
 
     //Set the options for the compiler
-    std::string driverOptions(compileOptions_);
+    std::ostringstream ostrstr;
+    std::copy(options->clangOptions.begin(), options->clangOptions.end(),
+        std::ostream_iterator<std::string>(ostrstr, " "));
+    std::string driverOptions(ostrstr.str());
 
     //Set the include path for the temp folder that contains the includes
     if(!headers.empty()) {
@@ -172,8 +186,8 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     }
 
     // Tokenize the options string into a vector of strings
-    std::istringstream strstr(driverOptions);
-    std::istream_iterator<std::string> sit(strstr), end;
+    std::istringstream istrstr(driverOptions);
+    std::istream_iterator<std::string> sit(istrstr), end;
     std::vector<std::string> params(sit, end);
 
     // Compile source to IR
@@ -186,6 +200,16 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 
     llvmBinary_.assign(output->Buf().data(), output->Size());
     elfSectionType_ = amd::OclElf::LLVMIR;
+
+    if (options->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
+        std::ofstream f(options->getDumpFileName("_original.bc").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+            f.write(llvmBinary_.data(), llvmBinary_.size());
+        } else {
+            buildLog_ +=
+                "Warning: opening the file to dump the compiled IR failed.\n";
+        }
+    }
 
     if (clBinary()->saveSOURCE()) {
         clBinary()->elfOut()->addSection(

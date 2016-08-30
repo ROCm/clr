@@ -41,7 +41,8 @@ namespace roc {
 
         //! Returns the aclBinary associated with the program
         const aclBinary* binaryElf() const {
-            return static_cast<const aclBinary*>(binaryElf_); }
+            return static_cast<const aclBinary*>(binaryElf_);
+        }
 
 #if defined(WITH_LIGHTNING_COMPILER)
         //! Returns the program metadata.
