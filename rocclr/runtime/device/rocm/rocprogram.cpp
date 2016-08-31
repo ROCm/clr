@@ -44,11 +44,6 @@
 #include <iostream>
 #include <istream>
 
-#if defined(ATI_OS_LINUX)
-#include <dlfcn.h>
-#include <libgen.h>
-#endif // defined(ATI_OS_LINUX)
-
 #endif  // WITHOUT_HSA_BACKEND
 
 namespace roc {
@@ -1489,49 +1484,6 @@ namespace roc {
         }
         return hsailOptions;
     }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-
-static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
-
-#if defined(ATI_OS_LINUX)
-static pthread_once_t once = PTHREAD_ONCE_INIT;
-
-static void
-checkLLVM_BIN()
-{
-    if (llvmBin_.empty()) {
-        Dl_info info;
-        if (dladdr((const void*)&amd::Device::init, &info)) {
-            llvmBin_ = dirname(strdup(info.dli_fname));
-            size_t pos = llvmBin_.rfind("lib");
-            if (pos != std::string::npos) {
-                llvmBin_.replace(pos, 3, "bin");
-            }
-        }
-    }
-#if defined(DEBUG)
-    std::string clangExe(llvmBin_ + "/clang");
-    struct stat buf;
-    if (stat(clangExe.c_str(), &buf)) {
-        std::string msg("Could not find the Clang binary in " + llvmBin_);
-        LogWarning(msg.c_str());
-    }
-#endif // defined(DEBUG)
-}
-#endif // defined(ATI_OS_LINUX)
-
-std::auto_ptr<amd::opencl_driver::Compiler>
-HSAILProgram::newCompilerInstance()
-{
-#if defined(ATI_OS_LINUX)
-    pthread_once(&once, checkLLVM_BIN);
-#endif // defined(ATI_OS_LINUX)
-    return std::auto_ptr<amd::opencl_driver::Compiler>(
-        amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
-}
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
 #endif  // WITHOUT_HSA_BACKEND
 }  // namespace roc
 
