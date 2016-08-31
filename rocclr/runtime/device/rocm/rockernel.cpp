@@ -820,16 +820,16 @@ bool Kernel::init_LC(){
     }
 
     size_t idx = runtimeMD->KernelIndexByName(name());
-    const RuntimeMD::Kernel::Metadata* kernelMD = runtimeMD->GetKernelMetadata(idx);
+    const RuntimeMD::Kernel::Metadata& kernelMD = runtimeMD->GetKernelMetadata(idx);
 
-    size_t sizeOfArgList = kernelMD->KernelArgCount();
+    size_t sizeOfArgList = kernelMD.KernelArgCount();
 
     size_t kOffset = 0;
     size_t pOffset = 0;
     device::Kernel::parameters_t params;
     for (uint32_t i=0; i < sizeOfArgList; i++) {
-        const RuntimeMD::KernelArg::Metadata* kernelArg = kernelMD->GetKernelArgMetadata(i);
-        initArgsParams(kernelArg, &kOffset, params, &pOffset);
+        const RuntimeMD::KernelArg::Metadata& kernelArg = kernelMD.GetKernelArgMetadata(i);
+        initArgsParams(&kernelArg, &kOffset, params, &pOffset);
     }
     createSignature(params);
 
@@ -840,7 +840,7 @@ bool Kernel::init_LC(){
     workGroupInfo_.availableSGPRs_ = 0;
     workGroupInfo_.availableVGPRs_ = 0;
 
-    const uint32_t* workGroupSizeHint = kernelMD->WorkgroupSizeHint();
+    const uint32_t* workGroupSizeHint = kernelMD.WorkgroupSizeHint();
     size_t sizeOfWorkGroupSize = (workGroupSizeHint) ? *workGroupSizeHint : 0;
 
     uint32_t wavefront_size = 0;
