@@ -72,8 +72,8 @@ namespace RuntimeMD {
       Metadata();
       uint32_t Size() const { return size; }
       uint32_t Align() const { return align; }
-      std::string TypeName() const { return typeName; }
-      std::string Name() const { return name; }
+      const std::string& TypeName() const { return typeName; }
+      const std::string& Name() const { return name; }
       AMDGPU::RuntimeMD::KernelArg::TypeKind TypeKind() const { return typeKind; }
       AMDGPU::RuntimeMD::KernelArg::ValueType ValueType() const { return valueType; }
       uint8_t AddrQual() const { return addrQual; }
@@ -85,7 +85,6 @@ namespace RuntimeMD {
 
       bool ReadValue(std::istream& in, AMDGPU::RuntimeMD::Key key);
       void Print(std::ostream& out);
-      void PrintOut() const;
     };
   }
 
@@ -135,12 +134,12 @@ namespace RuntimeMD {
       bool HasMaxWorkgroupSize() const { return hasMaxWorkgroupSize; }
 
       size_t KernelArgCount() const { return args.size(); }
-      const KernelArg::Metadata* GetKernelArgMetadata(size_t index) const;
+      const KernelArg::Metadata& GetKernelArgMetadata(size_t index) const;
 
       const std::string& Name() const { return name; }
       const uint32_t* RequiredWorkgroupSize() const { return hasRequiredWorkgroupSize ? requiredWorkgroupSize : nullptr; }
       const uint32_t* WorkgroupSizeHint() const { return hasWorkgroupSizeHint ? workgroupSizeHint : nullptr; }
-      std::string VecTypeHint() const { return vectorTypeHint; }
+      const std::string& VecTypeHint() const { return vectorTypeHint; }
       uint32_t KernelIndex() const { return hasKernelIndex ? kernelIndex : UINT32_MAX; }
       uint32_t SGPRS() const { return hasSGPRs ? numSgprs : UINT32_MAX; }
       uint32_t VGPRS() const { return hasVGPRs ? numVgprs : UINT32_MAX; }
@@ -165,7 +164,7 @@ namespace RuntimeMD {
 
     public:
       size_t KernelCount() const { return kernels.size(); }
-      const Kernel::Metadata* GetKernelMetadata(size_t index) const;
+      const Kernel::Metadata& GetKernelMetadata(size_t index) const;
       size_t KernelIndexByName(const std::string& name) const;
 
       bool ReadFrom(std::istream& in);

@@ -42,6 +42,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <cassert>
 
 #include "rocmetadata.hpp"
 
@@ -199,34 +200,12 @@ namespace RuntimeMD {
 
       out
         << "  Access: " << AccessQualToString(accQual)
-        << "  Address: " << addrQual
+        << "  Address: " << (uint) addrQual
         << "  Size: " << size
         << "  Align: " << align
         << "  Type Name: " << typeName;
       if (!name.empty()) {
         out << "  Name: " << name;
-      }
-    }
-
-    void Metadata::PrintOut() const {
-      std::cout
-        << "Type: " << TypeKindToString(typeKind) << std::endl;
-      if (typeKind == Value) {
-        std::cout << "  ValueType:" << ValueTypeToString(valueType) << std::endl;
-      }
-      if (isConst) { std::cout << "  Const" << std::endl; }
-      if (isRestrict) { std::cout << "  Restrict" << std::endl; }
-      if (isVolatile) { std::cout << "  Volatile" << std::endl; }
-      if (isPipe) { std::cout << "  Pipe" << std::endl; }
-
-      std::cout
-        << "  Access: " << AccessQualToString(accQual)
-        << "  Address: " << addrQual
-        << "  Size: " << size
-        << "  Align: " << align
-        << "  Type Name: " << typeName << std::endl;
-      if (!name.empty()) {
-        std::cout << "  Name: " << name << std::endl;
       }
     }
 
@@ -255,9 +234,9 @@ namespace RuntimeMD {
       this->languageVersion = languageVersion;
     }
 
-    const KernelArg::Metadata* Metadata::GetKernelArgMetadata(size_t index) const {
+    const KernelArg::Metadata& Metadata::GetKernelArgMetadata(size_t index) const {
       assert((index < args.size()) && "kernel argument index too big");
-      return &(args[index]);
+      return args[index];
     }
 
     bool Metadata::ReadValue(std::istream& in, AMDGPU::RuntimeMD::Key key) {
@@ -267,6 +246,7 @@ namespace RuntimeMD {
 
       switch (key) {
       case KeyKernelName:
+        hasName = true;
         return Read(in, name);
       case KeyArgBegin:
         args.resize(args.size() + 1);
@@ -471,11 +451,11 @@ namespace RuntimeMD {
       return true;
     }
 
-    const Kernel::Metadata* Metadata::GetKernelMetadata(size_t index) const {
+    const Kernel::Metadata& Metadata::GetKernelMetadata(size_t index) const {
         assert(kernels.size() && "kernel metadata not found");
         assert((index < kernels.size()) && "kernel index too big");
 
-        return &(kernels[index]);
+        return kernels[index];
     }
 
     size_t Metadata::KernelIndexByName(const std::string& name) const {
@@ -496,7 +476,7 @@ namespace RuntimeMD {
     }
 
     void Metadata::Print(std::ostream& out) {
-      out << "roc runtime metadata (" << kernels.size() << " kernels):" << std::endl;
+      out << "AMDGPU runtime metadata (" << kernels.size() << " kernels):" << std::endl;
       for (Kernel::Metadata& kernel : kernels) {
         kernel.Print(out);
       }
