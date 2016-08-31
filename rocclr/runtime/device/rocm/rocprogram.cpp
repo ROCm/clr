@@ -1117,7 +1117,7 @@ namespace roc {
                 // TODO: remove the workaround
                 //   add 24 bytes for global offsets as workaround for LC reporting
                 //   excluded the hidden arguments
-                kernargSegmentByteSize + numHiddenKernelArgs * sizeof(size_t),
+                amd::alignUp(kernargSegmentByteSize, sizeof(size_t)) + numHiddenKernelArgs * sizeof(size_t),
                 kernargSegmentAlignment,
                 numHiddenKernelArgs
             );
