@@ -383,6 +383,7 @@ public:
 
 private:
     static const size_t MaxXferBuffers = 2;
+    static const uint   TransferSplitSize = 3;
 
     //! Copies a buffer object to an image object
     bool copyBufferToImageKernel(
