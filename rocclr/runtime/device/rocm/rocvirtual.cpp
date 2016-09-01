@@ -1522,9 +1522,10 @@ VirtualGPU::submitKernelInternal(
         const_address srcArgPtr = parameters + signature.at(i).offset_;
 
         if (arg->type_ == HSAIL_ARGTYPE_POINTER ) {
-            const size_t size = sizeof(void*);
+            const size_t size = arg->size_;
             if (arg->addrQual_ == HSAIL_ADDRESS_LOCAL) {
-                ldsUsage = amd::alignUp(ldsUsage, arg->alignment_);  //!< do we need this?
+                // Align the LDS on the alignment requirement of type pointed to
+                ldsUsage = amd::alignUp(ldsUsage, arg->alignment_);
                 addArg(&argPtr, &ldsUsage, size);
                 ldsUsage += *reinterpret_cast<const size_t *>(srcArgPtr);
                 continue;
