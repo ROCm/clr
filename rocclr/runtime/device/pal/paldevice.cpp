@@ -347,7 +347,7 @@ void NullDevice::fillDeviceInfo(
         info_.image3DMaxHeight_  = std::min(2 * Ki, maxTextureSize);
         info_.image3DMaxDepth_   = std::min(2 * Ki, maxTextureSize);
 
-        info_.imagePitchAlignment_       = 1;   // PAL uses LINEAR_GENERAL
+        info_.imagePitchAlignment_       = 256; // PAL uses LINEAR_ALIGNED
         info_.imageBaseAddressAlignment_ = 256; // XXX: 256 byte base address alignment for now
 
         info_.bufferFromImageSupport_ = CL_TRUE;

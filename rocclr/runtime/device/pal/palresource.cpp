@@ -819,6 +819,21 @@ Resource::create(MemoryType memType, CreateParams* params)
             else if (memoryType() == ImageView) {
                 tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
             }
+
+            if (memoryType() == ImageBuffer) {
+                uint32_t    rowPitch;
+                if ((params->owner_ != NULL) && params->owner_->asImage() &&
+                    (params->owner_->asImage()->getRowPitch() != 0)) {
+                    rowPitch = params->owner_->asImage()->getRowPitch() / elementSize();
+                }
+                else {
+                    rowPitch = desc().width_;
+                }
+                // Make sure the row pitch is aligned to pixels
+                imgCreateInfo.rowPitch = elementSize() *
+                    amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
+                imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+            }
             imgCreateInfo.tiling    = tiling;
 
             size_t imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
