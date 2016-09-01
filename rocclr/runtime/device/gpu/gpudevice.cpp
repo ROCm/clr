@@ -1800,6 +1800,7 @@ Device::bindExternalDevice(
             }
             return false;
         }
+        CloseInitializedAdapter();
     }
 
 #ifdef _WIN32
@@ -1816,6 +1817,7 @@ Device::bindExternalDevice(
             LogError("Failed gslD3D10Associate()");
             return false;
         }
+        CloseInitializedAdapter();
     }
 
     if (flags & amd::Context::Flags::D3D11DeviceKhr) {
@@ -1831,6 +1833,7 @@ Device::bindExternalDevice(
             LogError("Failed gslD3D11Associate()");
             return false;
         }
+        CloseInitializedAdapter();
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceKhr) {
@@ -1842,6 +1845,7 @@ Device::bindExternalDevice(
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
+        CloseInitializedAdapter();
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceEXKhr) {
@@ -1853,6 +1857,7 @@ Device::bindExternalDevice(
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
+        CloseInitializedAdapter();
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {
