@@ -2564,23 +2564,25 @@ KernelBlitManager::fillImage(
         }
     }
 
+    // Perform workload split to allow multiple operations in a single thread
+    globalWorkSize[0] = (size[0] + TransferSplitSize - 1) / TransferSplitSize;
     // Find the current blit type
     if (memView->desc().dimSize_ == 1) {
-        globalWorkSize[0] = amd::alignUp(size[0], 256);
+        globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 256);
         globalWorkSize[1] = amd::alignUp(size[1], 1);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = 256;
         localWorkSize[1] = localWorkSize[2] = 1;
     }
     else if (memView->desc().dimSize_ == 2) {
-        globalWorkSize[0] = amd::alignUp(size[0], 16);
+        globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 16);
         globalWorkSize[1] = amd::alignUp(size[1], 16);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = localWorkSize[1] = 16;
         localWorkSize[2] = 1;
     }
     else {
-        globalWorkSize[0] = amd::alignUp(size[0], 8);
+        globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 8);
         globalWorkSize[1] = amd::alignUp(size[1], 8);
         globalWorkSize[2] = amd::alignUp(size[2], 4);
         localWorkSize[0] = localWorkSize[1] = 8;
