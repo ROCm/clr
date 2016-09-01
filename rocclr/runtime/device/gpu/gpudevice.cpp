@@ -851,7 +851,7 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     calTarget_ = getAttribs().target;
     hwInfo_ = &DeviceInfo[calTarget_];
 
-    if ((GPU_ENABLE_PAL == 2) && (calTarget_ > CAL_TARGET_STONEY)) {
+    if ((GPU_ENABLE_PAL == 2) && (calTarget_ == CAL_TARGET_GREENLAND)) {
         return false;
     }
 
