@@ -17,7 +17,7 @@ namespace roc {
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static HSAIL_ARG_TYPE
-GetHSAILArgType(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetHSAILArgType(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     switch (lcArg->TypeKind()) {
         case AMDGPU::RuntimeMD::KernelArg::Pointer:
@@ -54,7 +54,7 @@ GetHSAILArgType(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static size_t
-GetHSAILArgAlignment(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetHSAILArgAlignment(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer)
         return lcArg->Align();
@@ -76,7 +76,7 @@ GetHSAILArgAlignment(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static HSAIL_ACCESS_TYPE
-GetHSAILArgAccessType(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetHSAILArgAccessType(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
         switch (lcArg->AccQual()) {
@@ -112,7 +112,7 @@ GetHSAILArgAccessType(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static HSAIL_ADDRESS_QUALIFIER
-GetHSAILAddrQual(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetHSAILAddrQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
         switch (lcArg->AddrQual()) {
@@ -163,7 +163,7 @@ GetHSAILAddrQual(const aclArgData* argInfo)
 #if defined(WITH_LIGHTNING_COMPILER)
 /* f16 returns f32 - workaround due to comp lib */
 inline static HSAIL_DATA_TYPE
-GetHSAILDataType(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetHSAILDataType(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     aclArgDataType dataType;
 
@@ -298,7 +298,7 @@ GetHSAILArgSize(const aclArgData *argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static clk_value_type_t
-GetOclType(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetOclType(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     static const clk_value_type_t   ClkValueMapType[6][6] = {
         { T_CHAR,   T_CHAR2,    T_CHAR3,    T_CHAR4,    T_CHAR8,    T_CHAR16   },
@@ -433,7 +433,7 @@ GetOclType(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static cl_kernel_arg_address_qualifier
-GetOclAddrQual(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetOclAddrQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
         switch (lcArg->AddrQual()) {
@@ -483,7 +483,7 @@ GetOclAddrQual(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static cl_kernel_arg_access_qualifier
-GetOclAccessQual(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetOclAccessQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) {
         switch (lcArg->AccQual()) {
@@ -521,7 +521,7 @@ GetOclAccessQual(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 inline static cl_kernel_arg_type_qualifier
-GetOclTypeQual(const RuntimeMD::KernelArg::Metadata* lcArg)
+GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
     cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
     if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
@@ -705,7 +705,7 @@ Kernel::initArgList(const aclArgData* aclArg)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void
-Kernel::initArgsParams( const RuntimeMD::KernelArg::Metadata* lcArg, size_t* kOffset,
+Kernel::initArgsParams( const amd::hsa::code::KernelArg::Metadata* lcArg, size_t* kOffset,
                         device::Kernel::parameters_t& params, size_t* pOffset )
 {
     HsailKernelArg* arg = new HsailKernelArg;
@@ -814,13 +814,13 @@ bool Kernel::init_LC(){
     hsa_agent_t hsaDevice = program_->hsaDevice();
 
     // Pull out metadata from the ELF
-    const RuntimeMD::Program::Metadata* runtimeMD = program_->metadata();
+    const amd::hsa::code::Program::Metadata* runtimeMD = program_->metadata();
     if (!runtimeMD) {
         return false;
     }
 
     size_t idx = runtimeMD->KernelIndexByName(name());
-    const RuntimeMD::Kernel::Metadata& kernelMD = runtimeMD->GetKernelMetadata(idx);
+    const amd::hsa::code::Kernel::Metadata& kernelMD = runtimeMD->GetKernelMetadata(idx);
 
     size_t sizeOfArgList = kernelMD.KernelArgCount();
 
@@ -828,7 +828,7 @@ bool Kernel::init_LC(){
     size_t pOffset = 0;
     device::Kernel::parameters_t params;
     for (uint32_t i=0; i < sizeOfArgList; i++) {
-        const RuntimeMD::KernelArg::Metadata& kernelArg = kernelMD.GetKernelArgMetadata(i);
+        const amd::hsa::code::KernelArg::Metadata& kernelArg = kernelMD.GetKernelArgMetadata(i);
         initArgsParams(&kernelArg, &kOffset, params, &pOffset);
     }
     createSignature(params);

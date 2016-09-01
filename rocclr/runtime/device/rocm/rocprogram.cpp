@@ -1038,7 +1038,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         return false;
     }
 
-    metadata_ = new roc::RuntimeMD::Program::Metadata();
+    metadata_ = new amd::hsa::code::Program::Metadata();
     if (!metadata_->ReadFrom((void *) data, size)) {
         buildLog_ += "Error while parsing runtime metadata.\n";
         return false;

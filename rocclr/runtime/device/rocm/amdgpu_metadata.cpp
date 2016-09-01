@@ -46,8 +46,9 @@
 
 #include "amdgpu_metadata.hpp"
 
-namespace roc {
-namespace RuntimeMD {
+namespace amd {
+namespace hsa {
+namespace code {
 
   template <typename T>
   bool Read(std::istream& in, T& v);
@@ -490,5 +491,6 @@ namespace RuntimeMD {
     }
   }
 
+}
 }
 }

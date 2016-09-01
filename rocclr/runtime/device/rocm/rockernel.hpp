@@ -179,7 +179,7 @@ private:
 
 #if defined(WITH_LIGHTNING_COMPILER)
     //! Initializes Hsail Argument metadata and info for LC
-    void initArgsParams( const RuntimeMD::KernelArg::Metadata* lcArg, size_t* kOffset,
+    void initArgsParams( const amd::hsa::code::KernelArg::Metadata* lcArg, size_t* kOffset,
                          device::Kernel::parameters_t& params, size_t* pOffset );
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
