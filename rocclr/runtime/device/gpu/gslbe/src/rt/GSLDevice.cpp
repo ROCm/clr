@@ -44,6 +44,7 @@ void CALGSLDevice::Initialize()
     m_isComputeRingIDForced = false;
     m_forcedComputeEngineID = GSL_ENGINEID_INVALID;
     gslDeviceOps_ = NULL;
+    m_initLite = 0;
 }
 
 CALGSLDevice::CALGSLDevice()
@@ -290,7 +291,22 @@ void
 CALGSLDevice::PerformAdapterInitialization() const
 {
     CALGSLDevice* mutable_this = const_cast<CALGSLDevice*>(this);
-    mutable_this->PerformAdapterInitialization_int(false);
+    // Win10 initialization is more exhaustive.
+    // @ToDo Check if Win7 can be simplified as well
+    mutable_this->PerformAdapterInitialization_int((bool)m_initLite);
+}
+
+void CALGSLDevice::CloseInitializedAdapter()
+{
+    // @ToDo Check if Win7 can be simplified as well
+    if (m_initLite)
+    {
+        //! @note: GSL device isn't thread safe
+        amd::ScopedLock k(gslDeviceOps());
+        // close the adaptor
+        gsAdaptor::closeAdaptor(m_adp);
+        m_adp = 0;
+    }
 }
 
 void
@@ -306,15 +322,14 @@ CALGSLDevice::PerformFullInitialization() const
 bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
-    bool initLite = false;
 #ifdef ATI_OS_WIN
     if(osGetVersion() >= AMD_OS_VERSION_WINDOWS_10)
     {
-        initLite = true;
+        m_initLite = 1;
     }
 #endif
 
-    PerformAdapterInitialization_int(initLite);
+    PerformAdapterInitialization_int((bool)m_initLite);
 
     if (m_adp == 0)
     {
