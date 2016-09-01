@@ -35,19 +35,21 @@ extern int openclFrontEnd(const char* cmdline, std::string*, std::string* typeIn
 namespace roc {
 
 /* Temporary log function for the compiler library */
-static void logFunction(const char* msg, size_t size)
+static void
+logFunction(const char* msg, size_t size)
 {
-	std::cout<< "Compiler Log: " << msg << std::endl;
+    std::cout<< "Compiler Log: " << msg << std::endl;
 }
 
 static int programsCount = 0;
 
 #if defined(WITH_LIGHTNING_COMPILER)
 bool
-HSAILProgram::compileImpl_LC(const std::string& sourceCode,
-                             const std::vector<const std::string*>& headers,
-		                     const char** headerIncludeNames,
-		                     amd::option::Options* options)
+HSAILProgram::compileImpl_LC(
+    const std::string& sourceCode,
+    const std::vector<const std::string*>& headers,
+    const char** headerIncludeNames,
+    amd::option::Options* options)
 {
     using namespace amd::opencl_driver;
     std::auto_ptr<Compiler> C(newCompilerInstance());
@@ -57,7 +59,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
         std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
         if(f.is_open()) {
             f << "/* Compiler options:\n" << options->origOptionStr
-              << "\n*/\n\n" << sourceCode;
+                << "\n*/\n\n" << sourceCode;
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the OpenCL source failed.\n";
@@ -93,7 +95,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
             for (std::string::iterator it = headerIncludeName.begin(),
                 end = headerIncludeName.end();
                 it != end;
-            ++it) {
+                ++it) {
                 if (*it == '/') *it = amd::Os::fileSeparator();
             }
         }
@@ -109,7 +111,7 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
             newDirs.push_back(headerPath);
         }
         std::string headerFullName
-            = headerPath + amd::Os::fileSeparator() + headerIncludeName;
+        = headerPath + amd::Os::fileSeparator() + headerIncludeName;
         headerFileNames[i] = headerFullName;
         f.open(headerFullName.c_str(), std::fstream::out);
         //Should we allow asserts
@@ -236,10 +238,11 @@ HSAILProgram::compileImpl_LC(const std::string& sourceCode,
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 bool
-HSAILProgram::compileImpl(const std::string& sourceCode,
-                       const std::vector<const std::string*>& headers,
-		       const char** headerIncludeNames,
-		       amd::option::Options* options)
+HSAILProgram::compileImpl(
+    const std::string& sourceCode,
+    const std::vector<const std::string*>& headers,
+    const char** headerIncludeNames,
+    amd::option::Options* options)
 {
 #if defined(WITH_LIGHTNING_COMPILER)
     return compileImpl_LC(sourceCode, headers, headerIncludeNames, options);
@@ -279,7 +282,7 @@ HSAILProgram::compileImpl(const std::string& sourceCode,
             for (std::string::iterator it = headerIncludeName.begin(),
                 end = headerIncludeName.end();
                 it != end;
-            ++it) {
+                ++it) {
                 if (*it == '/') *it = amd::Os::fileSeparator();
             }
         }
@@ -295,7 +298,7 @@ HSAILProgram::compileImpl(const std::string& sourceCode,
             newDirs.push_back(headerPath);
         }
         std::string headerFullName
-            = headerPath + amd::Os::fileSeparator() + headerIncludeName;
+        = headerPath + amd::Os::fileSeparator() + headerIncludeName;
         headerFileNames[i] = headerFullName;
         f.open(headerFullName.c_str(), std::fstream::out);
         //Should we allow asserts
