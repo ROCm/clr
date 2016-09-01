@@ -44,7 +44,7 @@
 #include <iostream>
 #include <cassert>
 
-#include "rocmetadata.hpp"
+#include "amdgpu_metadata.hpp"
 
 namespace roc {
 namespace RuntimeMD {
@@ -200,7 +200,7 @@ namespace RuntimeMD {
 
       out
         << "  Access: " << AccessQualToString(accQual)
-        << "  Address: " << (uint) addrQual
+        << "  Address: " << (unsigned) addrQual
         << "  Size: " << size
         << "  Align: " << align
         << "  Type Name: " << typeName;

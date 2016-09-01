@@ -6,7 +6,7 @@
 #include "SCHSAInterface.h"
 #include "amd_hsa_kernel_code.h"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "rocmetadata.hpp"
+#include "amdgpu_metadata.hpp"
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 #include <algorithm>
