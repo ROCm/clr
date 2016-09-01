@@ -2521,8 +2521,7 @@ KernelBlitManager::fillImage(
     bool rejected = false;
     bool    releaseView = false;
     // For depth, we need to create a view
-    if ((memView->desc().format_.image_channel_order == CL_DEPTH) ||
-        (memView->desc().format_.image_channel_order == CL_sRGBA)) {
+    if (memView->desc().format_.image_channel_order == CL_sRGBA) {
         // Find unsupported data type
         for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
             if (RejectedData[i].clOldType_ == newFormat.image_channel_data_type) {
@@ -2530,12 +2529,6 @@ KernelBlitManager::fillImage(
                 rejected = true;
                 break;
             }
-        }
-
-        // Below may not be correct. We need to find why unsigned int view doesn't work for DEPTH16.
-        if ((gpuMem(memory).desc().format_.image_channel_order == CL_DEPTH) &&
-            (gpuMem(memory).desc().format_.image_channel_data_type == CL_UNSIGNED_INT16)) {
-            newFormat.image_channel_data_type = CL_UNORM_INT16;
         }
 
         if (gpuMem(memory).desc().format_.image_channel_order == CL_sRGBA) {
