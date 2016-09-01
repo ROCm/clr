@@ -18,7 +18,7 @@
 #include "HSAILItems.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "rocmetadata.hpp"
+#include "amdgpu_metadata.hpp"
 #include "driver/AmdCompiler.h"
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
