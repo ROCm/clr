@@ -46,7 +46,7 @@ public:
 
 #if defined(WITH_LIGHTNING_COMPILER)
     //! Returns the program metadata.
-    const RuntimeMD::Program::Metadata* metadata() const { return metadata_; }
+    const amd::hsa::code::Program::Metadata* metadata() const { return metadata_; }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
     //! Return a typecasted GPU device
@@ -172,7 +172,7 @@ private:
     hsa_executable_t hsaExecutable_; //!< Handle to HSA executable
 
 #if defined(WITH_LIGHTNING_COMPILER)
-    RuntimeMD::Program::Metadata* metadata_; //!< Runtime metadata
+    amd::hsa::code::Program::Metadata* metadata_; //!< Runtime metadata
     //! Return a new transient compiler instance.
     static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 #endif // defined(WITH_LIGHTNING_COMPILER)

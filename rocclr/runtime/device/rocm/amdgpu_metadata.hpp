@@ -40,8 +40,8 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ROC_METADATA_HPP_
-#define ROC_METADATA_HPP_
+#ifndef AMDGPU_METADATA_HPP_
+#define AMDGPU_METADATA_HPP_
 
 #include <string>
 #include <cstdint>
@@ -52,8 +52,9 @@
 #undef None
 #include "AMDGPURuntimeMetadata.h"
 
-namespace roc {
-namespace RuntimeMD {
+namespace amd {
+namespace hsa {
+namespace code {
 
   namespace KernelArg {
     class Metadata {
@@ -187,5 +188,6 @@ namespace RuntimeMD {
 
 }
 }
+}
 
-#endif // ROC_METADATA_HPP_
+#endif // AMDGPU_METADATA_HPP_
