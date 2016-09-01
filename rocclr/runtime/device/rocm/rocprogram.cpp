@@ -63,13 +63,11 @@ namespace roc {
             uint32_t  len;
             hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &len);
 
-            char* symName = (char*) malloc(len);
+            char* symName = (char*) alloca(len);
             hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME, symName);
 
-            std::string kernelName(symName,len);
+            std::string kernelName(symName);
             symNameList->push_back(kernelName);
-
-            free(symName);
         }
 
         return HSA_STATUS_SUCCESS;
@@ -1102,11 +1100,6 @@ namespace roc {
 
             // for OpenCL default hidden kernel arguments assuming there is no printf
             size_t numHiddenKernelArgs = 3; // FIXME_Wilkin
-
-            // Fix the kernel name issue that causes string comparison does not work
-            // due to an extra character at the end
-            // TODO: find out the root cause
-            kernelName.resize(kernelName.length()-1);
 
             Kernel *aKernel = new roc::Kernel(
                 kernelName,
