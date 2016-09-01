@@ -557,7 +557,8 @@ int getIsaType(const aclTargetInfo *target)
         case VI_TONGA_P_A0: return 800;
         case VI_ELLESMERE_P_A0:
         case VI_BAFFIN_M_A0:
-        case VI_FIJI_P_A0: return 804;
+        case VI_FIJI_P_A0:
+        case VI_LEXA_V_A0: return 804;
       }
     case FAMILY_CZ:
       switch (Mapping.chip_enum) {
