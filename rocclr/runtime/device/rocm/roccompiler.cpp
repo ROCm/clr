@@ -180,7 +180,6 @@ HSAILProgram::compileImpl_LC(
 
     driverOptions.append(" -include-pch " + pch->Name());
     driverOptions.append(" -Xclang -fno-validate-pch");
-    driverOptions.append(" -isysroot " + llvmBin_ + "/../../include");
 
     driverOptions.append(hsailOptions(options));
     if (clVer >= 200) {
