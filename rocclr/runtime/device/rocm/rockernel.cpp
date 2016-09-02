@@ -56,9 +56,17 @@ GetHSAILArgType(const aclArgData* argInfo)
 inline static size_t
 GetHSAILArgAlignment(const amd::hsa::code::KernelArg::Metadata* lcArg)
 {
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer)
+    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
+        if (lcArg->AddrQual() == AMDGPU::RuntimeMD::KernelArg::Local) {
+            uint32_t align = lcArg->PointeeAlign();
+            if (align == 0) {
+                LogWarning("Missing dynamic_shared_pointer alignment");
+                align = 128; /* worst case alignment */;
+            }
+            return align;
+        }
         return lcArg->Align();
-
+    }
     return 1;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
