@@ -62,8 +62,9 @@ GetKernelNamesCallback(
         uint32_t  len;
         hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &len);
 
-        char* symName = (char*) alloca(len);
+        char* symName = (char*) alloca(len+1);
         hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_NAME, symName);
+        symName[len] = '\0';
 
         std::string kernelName(symName);
         symNameList->push_back(kernelName);
