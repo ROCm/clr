@@ -61,6 +61,7 @@ namespace code {
     private:
       uint32_t size;
       uint32_t align;
+      uint32_t pointeeAlign;
       std::string typeName;
       std::string name;
       AMDGPU::RuntimeMD::KernelArg::TypeKind typeKind;
@@ -73,6 +74,7 @@ namespace code {
       Metadata();
       uint32_t Size() const { return size; }
       uint32_t Align() const { return align; }
+      uint32_t PointeeAlign() const { return pointeeAlign; }
       const std::string& TypeName() const { return typeName; }
       const std::string& Name() const { return name; }
       AMDGPU::RuntimeMD::KernelArg::TypeKind TypeKind() const { return typeKind; }

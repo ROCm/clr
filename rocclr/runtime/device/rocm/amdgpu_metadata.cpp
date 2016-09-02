@@ -124,7 +124,7 @@ namespace code {
   namespace KernelArg {
     using namespace AMDGPU::RuntimeMD::KernelArg;
     Metadata::Metadata()
-    : size(0), align(0),
+    : size(0), align(0), pointeeAlign(0),
       isConst(false), isRestrict(false), isVolatile(false), isPipe(false)
     {}
 
@@ -177,6 +177,7 @@ namespace code {
       case KeyArgName: return Read(in, name);
       case KeyArgTypeKind: return Read(in, typeKind);
       case KeyArgValueType: return Read(in, valueType);
+      case KeyArgPointeeAlign: return Read(in, pointeeAlign);
       case KeyArgAddrQual: return Read(in, addrQual);
       case KeyArgAccQual: return Read(in, accQual);
       case KeyArgIsConst: isConst = true; return true;
@@ -261,6 +262,7 @@ namespace code {
       case KeyArgName:
       case KeyArgTypeKind:
       case KeyArgValueType:
+      case KeyArgPointeeAlign:
       case KeyArgAddrQual:
       case KeyArgAccQual:
       case KeyArgIsConst:
@@ -424,6 +426,7 @@ namespace code {
         case KeyArgName:
         case KeyArgTypeKind:
         case KeyArgValueType:
+        case KeyArgPointeeAlign:
         case KeyArgAddrQual:
         case KeyArgAccQual:
         case KeyArgIsConst:
