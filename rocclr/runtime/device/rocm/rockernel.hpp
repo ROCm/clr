@@ -14,106 +14,82 @@
 namespace roc {
 
 #define MAX_INFO_STRING_LEN 0x40
-enum HSAIL_ADDRESS_QUALIFIER{
-HSAIL_ADDRESS_ERROR=0,
-HSAIL_ADDRESS_GLOBAL,
-HSAIL_ADDRESS_LOCAL,
-HSAIL_MAX_ADDRESS_QUALIFIERS
-} ;
 
-enum HSAIL_ARG_TYPE{
-HSAIL_ARGTYPE_ERROR=0,
-HSAIL_ARGTYPE_POINTER,
-HSAIL_ARGTYPE_VALUE,
-HSAIL_ARGTYPE_IMAGE,
-HSAIL_ARGTYPE_SAMPLER,
-HSAIL_ARGMAX_ARG_TYPES
-};
-
-enum HSAIL_DATA_TYPE{
-HSAIL_DATATYPE_ERROR=0,
-HSAIL_DATATYPE_B1,
-HSAIL_DATATYPE_B8,
-HSAIL_DATATYPE_B16,
-HSAIL_DATATYPE_B32,
-HSAIL_DATATYPE_B64,
-HSAIL_DATATYPE_S8,
-HSAIL_DATATYPE_S16,
-HSAIL_DATATYPE_S32,
-HSAIL_DATATYPE_S64,
-HSAIL_DATATYPE_U8,
-HSAIL_DATATYPE_U16,
-HSAIL_DATATYPE_U32,
-HSAIL_DATATYPE_U64,
-HSAIL_DATATYPE_F16,
-HSAIL_DATATYPE_F32,
-HSAIL_DATATYPE_F64,
-HSAIL_DATATYPE_STRUCT,
-HSAIL_DATATYPE_OPAQUE,
-HSAIL_DATATYPE_MAX_TYPES
-};
-
-enum HSAIL_ACCESS_TYPE {
-    HSAIL_ACCESS_TYPE_NONE = 0,
-    HSAIL_ACCESS_TYPE_RO,
-    HSAIL_ACCESS_TYPE_WO,
-    HSAIL_ACCESS_TYPE_RW
-};
-
-struct HsailKernelArg
+enum ROC_ARG_TYPE
 {
-    std::string name_;          //!< Argument's name
-    std::string typeName_;      //!< Argument's type name
-    uint        size_;          //!< Size in bytes
-    uint        offset_;        //!< Argument's offset
-    uint        alignment_;     //!< Argument's alignment
-    HSAIL_ARG_TYPE type_;       //!< Type of the argument
-    HSAIL_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
-    HSAIL_DATA_TYPE dataType_;  //!< The type of data
-    uint        numElem_;       //!< Number of elements
-    HSAIL_ACCESS_TYPE access_;  //!< Access type for the argument
+    ROC_ARGTYPE_ERROR = 0,
+    ROC_ARGTYPE_POINTER,
+    ROC_ARGTYPE_VALUE,
+    ROC_ARGTYPE_IMAGE,
+    ROC_ARGTYPE_SAMPLER,
+    ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
+    ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
+    ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
+    ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER,
+    ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE,
+    ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION,
+    ROC_ARGTYPE_HIDDEN_NONE,
+    ROC_ARGMAX_ARG_TYPES
 };
 
-class KernelArg
+enum ROC_ADDRESS_QUALIFIER
 {
-public:
-    KernelArg(aclArgData* argInfo);
-    //! Return type of the argument 
-    clk_value_type_t amdoclType();
-    //! Global, local etc - returns amdocl types
-    clk_address_space_t amdoclAddrQual();
-    //! Global,localetc - returns opencl type 
-    cl_kernel_arg_address_qualifier oclAddrQual();
-    //! read , write etc - returns amdocl type
-    clk_arg_qualifier_t amdoclAccessQual();
-    //! read , write etc - returns opencl type type
-    cl_kernel_arg_access_qualifier oclAccessQual();
-    //! const,volatile,restrict etc - returns opencl type type
-    cl_kernel_arg_type_qualifier oclTypeQual();
+    ROC_ADDRESS_ERROR = 0,
+    ROC_ADDRESS_GLOBAL,
+    ROC_ADDRESS_CONSTANT,
+    ROC_ADDRESS_LOCAL,
+    ROC_MAX_ADDRESS_QUALIFIERS
+};
 
-    //! Name of the argument
-    std::string& name();
-    //! Name of the argument
-    std::string& typeName();
-    //! reflection 
-    std::string reflection(){ return name(); };
-    //! Returns the size of the argument 
-    int size();
-    //! returns the offset
-    int offset();
+enum ROC_DATA_TYPE
+{
+    ROC_DATATYPE_ERROR = 0,
+    ROC_DATATYPE_B1,
+    ROC_DATATYPE_B8,
+    ROC_DATATYPE_B16,
+    ROC_DATATYPE_B32,
+    ROC_DATATYPE_B64,
+    ROC_DATATYPE_S8,
+    ROC_DATATYPE_S16,
+    ROC_DATATYPE_S32,
+    ROC_DATATYPE_S64,
+    ROC_DATATYPE_U8,
+    ROC_DATATYPE_U16,
+    ROC_DATATYPE_U32,
+    ROC_DATATYPE_U64,
+    ROC_DATATYPE_F16,
+    ROC_DATATYPE_F32,
+    ROC_DATATYPE_F64,
+    ROC_DATATYPE_STRUCT,
+    ROC_DATATYPE_OPAQUE,
+    ROC_DATATYPE_MAX_TYPES
+};
 
-    void setOffset();
-
-private:
-    aclArgData* argInfo_;
-    int offset_;
-    std::string name_;
-    std::string typeName_;
+enum ROC_ACCESS_TYPE
+{
+    ROC_ACCESS_TYPE_NONE = 0,
+    ROC_ACCESS_TYPE_RO,
+    ROC_ACCESS_TYPE_WO,
+    ROC_ACCESS_TYPE_RW
 };
 
 class Kernel : public device::Kernel
 {
 public:
+    struct Argument
+    {
+        uint        index_;         //!< Argument's index in the OCL signature
+        std::string name_;          //!< Argument's name
+        std::string typeName_;      //!< Argument's type name
+        uint        size_;          //!< Size in bytes
+        uint        alignment_;     //!< Argument's alignment
+        uint        pointeeAlignment_; //!< Alignment of the data pointed to
+        ROC_ARG_TYPE type_;         //!< Type of the argument
+        ROC_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
+        ROC_DATA_TYPE dataType_;    //!< The type of data
+        ROC_ACCESS_TYPE access_;    //!< Access type for the argument
+    };
+
     Kernel(std::string name,
         HSAILProgram* prog,
         const uint64_t &kernelCodeHandle,
@@ -147,7 +123,6 @@ public:
 
     //! Initializes the metadata required for this kernel
     bool init();
-
 #if defined(WITH_LIGHTNING_COMPILER)
     //! Initializes the metadata required for this kernel
     bool init_LC();
@@ -157,9 +132,15 @@ public:
         return static_cast<const HSAILProgram*>(program_);
     }
 
+    //! Returns the kernel argument list
+    const std::vector<Argument*>& hsailArgs() const {
+        return hsailArgList_;
+    }
+
     //! Returns a pointer to the hsail argument at the specified index
-    HsailKernelArg* hsailArgAt(size_t index) const {
-        return hsailArgList_[index];
+    Argument* hsailArgAt(size_t index) const {
+        for (auto arg : hsailArgList_) if (arg->index_ == index) return arg;
+        assert(!"Should not reach here");
     }
 
     //! Max number of possible extra (hidden) kernel arguments
@@ -172,22 +153,17 @@ public:
 
 private:
     //! Populates hsailArgList_
-    void initArgList(const aclArgData* aclArg);
-
-    //! Initializes Hsail Argument metadata and info ;
-    void initHsailArgs(const aclArgData* aclArg);
-
+    void initArguments(const aclArgData* aclArg);
 #if defined(WITH_LIGHTNING_COMPILER)
     //! Initializes Hsail Argument metadata and info for LC
-    void initArgsParams( const amd::hsa::code::KernelArg::Metadata* lcArg, size_t* kOffset,
-                         device::Kernel::parameters_t& params, size_t* pOffset );
+    void initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD);
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
     //! Initializes HSAIL Printf metadata and info
     void initPrintf(const aclPrintfFmt* aclPrintf);
 
     HSAILProgram *program_; //!< The roc::HSAILProgram context
-    std::vector<HsailKernelArg*> hsailArgList_; //!< Vector list of HSAIL Arguments
+    std::vector<Argument*> hsailArgList_; //!< Vector list of HSAIL Arguments
     std::string compileOptions_; //!< compile used for finalizing this kernel
     uint64_t kernelCodeHandle_; //!< Kernel code handle (aka amd_kernel_code_t)
     const uint32_t workgroupGroupSegmentByteSize_;

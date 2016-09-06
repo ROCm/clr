@@ -16,205 +16,276 @@
 namespace roc {
 
 #if defined(WITH_LIGHTNING_COMPILER)
-inline static HSAIL_ARG_TYPE
-GetHSAILArgType(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline ROC_ARG_TYPE
+GetKernelArgType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    switch (lcArg->TypeKind()) {
-        case AMDGPU::RuntimeMD::KernelArg::Pointer:
-            return HSAIL_ARGTYPE_POINTER;
-        case AMDGPU::RuntimeMD::KernelArg::Value:
-            return HSAIL_ARGTYPE_VALUE;
-        case AMDGPU::RuntimeMD::KernelArg::Image:
-            return HSAIL_ARGTYPE_IMAGE;
-        case AMDGPU::RuntimeMD::KernelArg::Sampler:
-            return HSAIL_ARGTYPE_SAMPLER;
-        default:
-            return HSAIL_ARGTYPE_ERROR;
+    switch (lcArg.TypeKind()) {
+    case AMDGPU::RuntimeMD::KernelArg::Pointer:
+        return ROC_ARGTYPE_POINTER;
+    case AMDGPU::RuntimeMD::KernelArg::Value:
+        return ROC_ARGTYPE_VALUE;
+    case AMDGPU::RuntimeMD::KernelArg::Image:
+        return ROC_ARGTYPE_IMAGE;
+    case AMDGPU::RuntimeMD::KernelArg::Sampler:
+        return ROC_ARGTYPE_SAMPLER;
+    default:
+        return ROC_ARGTYPE_ERROR;
     }
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-inline static HSAIL_ARG_TYPE
-GetHSAILArgType(const aclArgData* argInfo)
+static inline ROC_ARG_TYPE
+GetKernelArgType(const aclArgData* argInfo)
 {
+    if (argInfo->argStr[0] == '_' && argInfo->argStr[1] == '.') {
+        if (strcmp(&argInfo->argStr[2], "global_offset_0") == 0) {
+            return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X;
+        }
+        else if (strcmp(&argInfo->argStr[2], "global_offset_1") == 0) {
+            return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y;
+        }
+        else if (strcmp(&argInfo->argStr[2], "global_offset_2") == 0) {
+            return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z;
+        }
+        else if (strcmp(&argInfo->argStr[2], "printf_buffer") == 0) {
+            return ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER;
+        }
+        else if (strcmp(&argInfo->argStr[2], "vqueue_pointer") == 0) {
+            return ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE;
+        }
+        else if (strcmp(&argInfo->argStr[2], "aqlwrap_pointer") == 0) {
+            return ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION;
+        }
+        return ROC_ARGTYPE_HIDDEN_NONE;
+    }
+
     switch (argInfo->type) {
-        case ARG_TYPE_POINTER:
-            return HSAIL_ARGTYPE_POINTER;
-        case ARG_TYPE_VALUE:
-            return HSAIL_ARGTYPE_VALUE;
-        case ARG_TYPE_IMAGE:
-            return HSAIL_ARGTYPE_IMAGE;
-        case ARG_TYPE_SAMPLER:
-            return HSAIL_ARGTYPE_SAMPLER;
-        case ARG_TYPE_ERROR:
-        default:
-            return HSAIL_ARGTYPE_ERROR;
+    case ARG_TYPE_POINTER:
+        return ROC_ARGTYPE_POINTER;
+    case ARG_TYPE_VALUE:
+        return ROC_ARGTYPE_VALUE;
+    case ARG_TYPE_IMAGE:
+        return ROC_ARGTYPE_IMAGE;
+    case ARG_TYPE_SAMPLER:
+        return ROC_ARGTYPE_SAMPLER;
+    case ARG_TYPE_ERROR:
+    default:
+        return ROC_ARGTYPE_ERROR;
     }
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-inline static size_t
-GetHSAILArgAlignment(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline size_t
+GetKernelArgAlignment(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        if (lcArg->AddrQual() == AMDGPU::RuntimeMD::KernelArg::Local) {
-            uint32_t align = lcArg->PointeeAlign();
-            if (align == 0) {
-                LogWarning("Missing dynamic_shared_pointer alignment");
-                align = 128; /* worst case alignment */;
-            }
-            return align;
+    return lcArg.Align();
+}
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
+static inline size_t
+GetKernelArgAlignment(const aclArgData* argInfo)
+{
+    switch (argInfo->type) {
+    case ARG_TYPE_POINTER:
+        return sizeof(void*);
+    case ARG_TYPE_VALUE:
+        switch (argInfo->arg.value.data) {
+        case DATATYPE_i8:
+        case DATATYPE_u8:
+            return 1;
+        case DATATYPE_u16:
+        case DATATYPE_i16:
+        case DATATYPE_f16:
+            return 2;
+        case DATATYPE_u32:
+        case DATATYPE_i32:
+        case DATATYPE_f32:
+            return 4;
+        case DATATYPE_i64:
+        case DATATYPE_u64:
+        case DATATYPE_f64:
+            return 8;
+        case DATATYPE_struct:
+            return 128;
+        case DATATYPE_ERROR:
+        default:
+            return -1;
         }
-        return lcArg->Align();
+    case ARG_TYPE_IMAGE: return sizeof(cl_mem);
+    case ARG_TYPE_SAMPLER: return sizeof(cl_sampler);
+    default: return -1;
+    }
+}
+
+#if defined(WITH_LIGHTNING_COMPILER)
+static inline size_t
+GetKernelArgPointeeAlignment(const amd::hsa::code::KernelArg::Metadata& lcArg)
+{
+    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer
+     && lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Local) {
+         uint32_t align = lcArg.PointeeAlign();
+         if (align == 0) {
+             LogWarning("Missing DynamicSharedPointer alignment");
+             align = 128; /* worst case alignment */;
+         }
+         return align;
     }
     return 1;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-inline static size_t
-GetHSAILArgAlignment(const aclArgData* argInfo)
-{
-    switch (argInfo->type) {
-        case ARG_TYPE_POINTER:
-            return argInfo->arg.pointer.align;
-        default:
-            return 1;
-    }
-}
-
-#if defined(WITH_LIGHTNING_COMPILER)
-inline static HSAIL_ACCESS_TYPE
-GetHSAILArgAccessType(const amd::hsa::code::KernelArg::Metadata* lcArg)
-{
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        switch (lcArg->AccQual()) {
-        case AMDGPU::RuntimeMD::KernelArg::ReadOnly:
-            return HSAIL_ACCESS_TYPE_RO;
-        case AMDGPU::RuntimeMD::KernelArg::WriteOnly:
-            return HSAIL_ACCESS_TYPE_WO;
-        case AMDGPU::RuntimeMD::KernelArg::ReadWrite:
-        default:
-            return HSAIL_ACCESS_TYPE_RW;
-        }
-    }
-    return HSAIL_ACCESS_TYPE_NONE;
-}
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
-inline static HSAIL_ACCESS_TYPE
-GetHSAILArgAccessType(const aclArgData* argInfo)
+static inline size_t
+GetKernelArgPointeeAlignment(const aclArgData* argInfo)
 {
     if (argInfo->type == ARG_TYPE_POINTER) {
-        switch (argInfo->arg.pointer.type) {
-        case ACCESS_TYPE_RO:
-            return HSAIL_ACCESS_TYPE_RO;
-        case ACCESS_TYPE_WO:
-            return HSAIL_ACCESS_TYPE_WO;
-        case ACCESS_TYPE_RW:
-        default:
-            return HSAIL_ACCESS_TYPE_RW;
-        }
+        return argInfo->arg.pointer.align;
     }
-    return HSAIL_ACCESS_TYPE_NONE;
+    return 1;
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-inline static HSAIL_ADDRESS_QUALIFIER
-GetHSAILAddrQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline ROC_ACCESS_TYPE
+GetKernelArgAccessType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        switch (lcArg->AddrQual()) {
-            case AMDGPU::RuntimeMD::KernelArg::Global:
-            case AMDGPU::RuntimeMD::KernelArg::Constant:
-                return HSAIL_ADDRESS_GLOBAL;
-            case AMDGPU::RuntimeMD::KernelArg::Local:
-                return HSAIL_ADDRESS_LOCAL;
-            default:
-                LogError("Unsupported address type");
-                return HSAIL_ADDRESS_ERROR;
+    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer
+     || lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) {
+        switch (lcArg.AccQual()) {
+        case AMDGPU::RuntimeMD::KernelArg::ReadOnly:
+            return ROC_ACCESS_TYPE_RO;
+        case AMDGPU::RuntimeMD::KernelArg::WriteOnly:
+            return ROC_ACCESS_TYPE_WO;
+        case AMDGPU::RuntimeMD::KernelArg::ReadWrite:
+        default:
+            return ROC_ACCESS_TYPE_RW;
         }
     }
-    else if ((lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) ||
-             (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Sampler)) {
-        return HSAIL_ADDRESS_GLOBAL;
-    }
-    return HSAIL_ADDRESS_ERROR;
+    return ROC_ACCESS_TYPE_NONE;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-inline static HSAIL_ADDRESS_QUALIFIER
-GetHSAILAddrQual(const aclArgData* argInfo)
+static inline ROC_ACCESS_TYPE
+GetKernelArgAccessType(const aclArgData* argInfo)
+{
+    aclAccessType accessType;
+
+    if (argInfo->type == ARG_TYPE_POINTER) {
+        accessType = argInfo->arg.pointer.type;
+    }
+    else if (argInfo->type == ARG_TYPE_IMAGE) {
+        accessType = argInfo->arg.image.type;
+    }
+    else {
+        return ROC_ACCESS_TYPE_NONE;
+    }
+    if (accessType == ACCESS_TYPE_RO) {
+        return ROC_ACCESS_TYPE_RO;
+        }
+    else if (accessType == ACCESS_TYPE_WO) {
+        return ROC_ACCESS_TYPE_WO;
+    }
+
+    return ROC_ACCESS_TYPE_RW;
+}
+
+#if defined(WITH_LIGHTNING_COMPILER)
+static inline ROC_ADDRESS_QUALIFIER
+GetKernelAddrQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
+{
+    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
+        switch (lcArg.AddrQual()) {
+            case AMDGPU::RuntimeMD::KernelArg::Global:
+            return ROC_ADDRESS_GLOBAL;
+            case AMDGPU::RuntimeMD::KernelArg::Constant:
+            return ROC_ADDRESS_CONSTANT;
+            case AMDGPU::RuntimeMD::KernelArg::Local:
+            return ROC_ADDRESS_LOCAL;
+            default:
+                LogError("Unsupported address type");
+            return ROC_ADDRESS_ERROR;
+        }
+    }
+    else if ((lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) ||
+             (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Sampler)) {
+        return ROC_ADDRESS_GLOBAL;
+    }
+    return ROC_ADDRESS_ERROR;
+}
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
+static inline ROC_ADDRESS_QUALIFIER
+GetKernelAddrQual(const aclArgData* argInfo)
 {
     if (argInfo->type == ARG_TYPE_POINTER) {
         switch (argInfo->arg.pointer.memory) {
-            case PTR_MT_CONSTANT_EMU:
-            case PTR_MT_CONSTANT:
-            case PTR_MT_UAV:
-            case PTR_MT_GLOBAL:
-                return HSAIL_ADDRESS_GLOBAL;
-            case PTR_MT_LDS_EMU:
-            case PTR_MT_LDS:
-                return HSAIL_ADDRESS_LOCAL;
-            case PTR_MT_ERROR:
-            default:
-                LogError("Unsupported address type");
-                return HSAIL_ADDRESS_ERROR;
+        case PTR_MT_CONSTANT_EMU:
+        case PTR_MT_UAV_CONSTANT:
+        case PTR_MT_CONSTANT:
+            return ROC_ADDRESS_CONSTANT;
+        case PTR_MT_UAV:
+        case PTR_MT_GLOBAL:
+            return ROC_ADDRESS_GLOBAL;
+        case PTR_MT_LDS_EMU:
+        case PTR_MT_LDS:
+            return ROC_ADDRESS_LOCAL;
+        case PTR_MT_ERROR:
+        default:
+            LogError("Unsupported address type");
+            return ROC_ADDRESS_ERROR;
         }
     }
     else if ((argInfo->type == ARG_TYPE_IMAGE) ||
              (argInfo->type == ARG_TYPE_SAMPLER)) {
-        return HSAIL_ADDRESS_GLOBAL;
+        return ROC_ADDRESS_GLOBAL;
     }
-    return HSAIL_ADDRESS_ERROR;
+    return ROC_ADDRESS_ERROR;
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-/* f16 returns f32 - workaround due to comp lib */
-inline static HSAIL_DATA_TYPE
-GetHSAILDataType(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline ROC_DATA_TYPE
+GetKernelDataType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
     aclArgDataType dataType;
 
-    if ((lcArg->TypeKind() != AMDGPU::RuntimeMD::KernelArg::Pointer) ||
-        (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Value))
+    if ((lcArg.TypeKind() != AMDGPU::RuntimeMD::KernelArg::Pointer) ||
+        (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Value))
     {
-            return HSAIL_DATATYPE_ERROR;
+        return ROC_DATATYPE_ERROR;
     }
 
-    switch (lcArg->ValueType()) {
-        case AMDGPU::RuntimeMD::KernelArg::I8:
-            return HSAIL_DATATYPE_S8;
-        case AMDGPU::RuntimeMD::KernelArg::I16:
-            return HSAIL_DATATYPE_S16;
-        case AMDGPU::RuntimeMD::KernelArg::I32:
-            return HSAIL_DATATYPE_S32;
-        case AMDGPU::RuntimeMD::KernelArg::I64:
-            return HSAIL_DATATYPE_S64;
-        case AMDGPU::RuntimeMD::KernelArg::U8:
-            return HSAIL_DATATYPE_U8;
-        case AMDGPU::RuntimeMD::KernelArg::U16:
-            return HSAIL_DATATYPE_U16;
-        case AMDGPU::RuntimeMD::KernelArg::U32:
-            return HSAIL_DATATYPE_U32;
-        case AMDGPU::RuntimeMD::KernelArg::U64:
-            return HSAIL_DATATYPE_U64;
-        case AMDGPU::RuntimeMD::KernelArg::F16:
-            return HSAIL_DATATYPE_F32;
-        case AMDGPU::RuntimeMD::KernelArg::F32:
-            return HSAIL_DATATYPE_F32;
-        case AMDGPU::RuntimeMD::KernelArg::F64:
-            return HSAIL_DATATYPE_F64;
-        case AMDGPU::RuntimeMD::KernelArg::Struct:
-            return HSAIL_DATATYPE_STRUCT;
-        default:
-            return HSAIL_DATATYPE_ERROR;
+    switch (lcArg.ValueType()) {
+    case AMDGPU::RuntimeMD::KernelArg::I8:
+        return ROC_DATATYPE_S8;
+    case AMDGPU::RuntimeMD::KernelArg::I16:
+        return ROC_DATATYPE_S16;
+    case AMDGPU::RuntimeMD::KernelArg::I32:
+        return ROC_DATATYPE_S32;
+    case AMDGPU::RuntimeMD::KernelArg::I64:
+        return ROC_DATATYPE_S64;
+    case AMDGPU::RuntimeMD::KernelArg::U8:
+        return ROC_DATATYPE_U8;
+    case AMDGPU::RuntimeMD::KernelArg::U16:
+        return ROC_DATATYPE_U16;
+    case AMDGPU::RuntimeMD::KernelArg::U32:
+        return ROC_DATATYPE_U32;
+    case AMDGPU::RuntimeMD::KernelArg::U64:
+        return ROC_DATATYPE_U64;
+    case AMDGPU::RuntimeMD::KernelArg::F16:
+        return ROC_DATATYPE_F16;
+    case AMDGPU::RuntimeMD::KernelArg::F32:
+        return ROC_DATATYPE_F32;
+    case AMDGPU::RuntimeMD::KernelArg::F64:
+        return ROC_DATATYPE_F64;
+    case AMDGPU::RuntimeMD::KernelArg::Struct:
+        return ROC_DATATYPE_STRUCT;
+    default:
+        return ROC_DATATYPE_ERROR;
     }
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 /* f16 returns f32 - workaround due to comp lib */
-inline static HSAIL_DATA_TYPE
-GetHSAILDataType(const aclArgData* argInfo)
+static inline ROC_DATA_TYPE
+GetKernelDataType(const aclArgData* argInfo)
 {
     aclArgDataType dataType;
 
@@ -225,88 +296,77 @@ GetHSAILDataType(const aclArgData* argInfo)
         dataType = argInfo->arg.value.data;
     }
     else {
-        return HSAIL_DATATYPE_ERROR;
+        return ROC_DATATYPE_ERROR;
     }
     switch (dataType) {
-        case DATATYPE_i1:
-            return HSAIL_DATATYPE_B1;
-        case DATATYPE_i8:
-            return HSAIL_DATATYPE_S8;
-        case DATATYPE_i16:
-            return HSAIL_DATATYPE_S16;
-        case DATATYPE_i32:
-            return HSAIL_DATATYPE_S32;
-        case DATATYPE_i64:
-            return HSAIL_DATATYPE_S64;
-        case DATATYPE_u8:
-            return HSAIL_DATATYPE_U8;
-        case DATATYPE_u16:
-            return HSAIL_DATATYPE_U16;
-        case DATATYPE_u32:
-            return HSAIL_DATATYPE_U32;
-        case DATATYPE_u64:
-            return HSAIL_DATATYPE_U64;
-        case DATATYPE_f16:
-            return HSAIL_DATATYPE_F32;
-        case DATATYPE_f32:
-            return HSAIL_DATATYPE_F32;
-        case DATATYPE_f64:
-            return HSAIL_DATATYPE_F64;
-        case DATATYPE_struct:
-            return HSAIL_DATATYPE_STRUCT;
-        case DATATYPE_opaque:
-            return HSAIL_DATATYPE_OPAQUE;
-        case DATATYPE_ERROR:
-        default:
-            return HSAIL_DATATYPE_ERROR;
+    case DATATYPE_i1:
+        return ROC_DATATYPE_B1;
+    case DATATYPE_i8:
+        return ROC_DATATYPE_S8;
+    case DATATYPE_i16:
+        return ROC_DATATYPE_S16;
+    case DATATYPE_i32:
+        return ROC_DATATYPE_S32;
+    case DATATYPE_i64:
+        return ROC_DATATYPE_S64;
+    case DATATYPE_u8:
+        return ROC_DATATYPE_U8;
+    case DATATYPE_u16:
+        return ROC_DATATYPE_U16;
+    case DATATYPE_u32:
+        return ROC_DATATYPE_U32;
+    case DATATYPE_u64:
+        return ROC_DATATYPE_U64;
+    case DATATYPE_f16:
+        return ROC_DATATYPE_F32;
+    case DATATYPE_f32:
+        return ROC_DATATYPE_F32;
+    case DATATYPE_f64:
+        return ROC_DATATYPE_F64;
+    case DATATYPE_struct:
+        return ROC_DATATYPE_STRUCT;
+    case DATATYPE_opaque:
+        return ROC_DATATYPE_OPAQUE;
+    case DATATYPE_ERROR:
+    default:
+        return ROC_DATATYPE_ERROR;
     }
 }
 
-// returns size in number of bytes
-inline static int
-GetHSAILArgSize(const aclArgData *argInfo)
+static inline int
+GetKernelArgSize(const aclArgData* argInfo)
 {
     switch (argInfo->type) {
+        case ARG_TYPE_POINTER: return sizeof(void *);
         case ARG_TYPE_VALUE:
-            switch (GetHSAILDataType(argInfo)) {
-                case HSAIL_DATATYPE_B1:
-                    return 1;
-                case HSAIL_DATATYPE_B8:
-                case HSAIL_DATATYPE_S8:
-                case HSAIL_DATATYPE_U8:
-                    return 1;
-                case HSAIL_DATATYPE_B16:
-                case HSAIL_DATATYPE_U16:
-                case HSAIL_DATATYPE_S16:
-                case HSAIL_DATATYPE_F16:
-                    return 2;
-                case HSAIL_DATATYPE_B32:
-                case HSAIL_DATATYPE_U32:
-                case HSAIL_DATATYPE_S32:
-                case HSAIL_DATATYPE_F32:
-                    return 4;
-                case HSAIL_DATATYPE_B64:
-                case HSAIL_DATATYPE_U64:
-                case HSAIL_DATATYPE_S64:
-                case HSAIL_DATATYPE_F64:
-                    return 8;
-                case HSAIL_DATATYPE_STRUCT:
-                    return argInfo->arg.value.numElements;
-                default:
-                    return -1;
+            switch (argInfo->arg.value.data) {
+            case DATATYPE_i8:
+            case DATATYPE_u8:
+            case DATATYPE_struct:
+                return 1 * argInfo->arg.value.numElements;
+            case DATATYPE_u16:
+            case DATATYPE_i16:
+            case DATATYPE_f16:
+                return 2 * argInfo->arg.value.numElements;
+            case DATATYPE_u32:
+            case DATATYPE_i32:
+            case DATATYPE_f32:
+                return 4 * argInfo->arg.value.numElements;
+            case DATATYPE_i64:
+            case DATATYPE_u64:
+            case DATATYPE_f64:
+                return 8 * argInfo->arg.value.numElements;
+            case DATATYPE_ERROR:
+            default: return -1;
             }
-        case ARG_TYPE_POINTER:
-        case ARG_TYPE_IMAGE:
-        case ARG_TYPE_SAMPLER:
-            return sizeof(void*);
-        default:
-            return -1;
+        case ARG_TYPE_IMAGE: return sizeof(cl_mem);
+        case ARG_TYPE_SAMPLER: return sizeof(cl_sampler);
+        default: return -1;
     }
 }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-inline static clk_value_type_t
-GetOclType(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline clk_value_type_t
+GetOclType(const Kernel::Argument* arg)
 {
     static const clk_value_type_t   ClkValueMapType[6][6] = {
         { T_CHAR,   T_CHAR2,    T_CHAR3,    T_CHAR4,    T_CHAR8,    T_CHAR16   },
@@ -319,43 +379,45 @@ GetOclType(const amd::hsa::code::KernelArg::Metadata* lcArg)
 
     uint sizeType;
     uint numElements;
-    if ((lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) ||
-        (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image)) {
+    if (arg->type_ == ROC_ARGTYPE_POINTER || arg->type_ == ROC_ARGTYPE_IMAGE) {
             return T_POINTER;
     }
-    else if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Value) {
-        switch (lcArg->ValueType()) {
-            case AMDGPU::RuntimeMD::KernelArg::I8:
-            case AMDGPU::RuntimeMD::KernelArg::U8:
-                sizeType = 0;
-                numElements  = lcArg->Size();
-                break;
-            case AMDGPU::RuntimeMD::KernelArg::I16:
-            case AMDGPU::RuntimeMD::KernelArg::U16:
-            case AMDGPU::RuntimeMD::KernelArg::F16:
-                sizeType = 1;
-                numElements  = lcArg->Size() / 2;
-                break;
-            case AMDGPU::RuntimeMD::KernelArg::I32:
-            case AMDGPU::RuntimeMD::KernelArg::U32:
-                sizeType = 2;
-                numElements  = lcArg->Size() / 4;
-                break;
-            case AMDGPU::RuntimeMD::KernelArg::I64:
-            case AMDGPU::RuntimeMD::KernelArg::U64:
-                sizeType = 3;
-                numElements  = lcArg->Size() / 8;
-                break;
-            case AMDGPU::RuntimeMD::KernelArg::F32:
-                sizeType = 4;
-                numElements  = lcArg->Size() / 4;
-                break;
-            case AMDGPU::RuntimeMD::KernelArg::F64:
-                sizeType = 5;
-                numElements  = lcArg->Size() / 8;
-                break;
-            default:
-                return T_VOID;
+    else if (arg->type_ == ROC_ARGTYPE_VALUE) {
+        switch (arg->dataType_) {
+        case ROC_DATATYPE_S8:
+        case ROC_DATATYPE_U8:
+            sizeType = 0;
+            numElements  = arg->size_;
+            break;
+        case ROC_DATATYPE_S16:
+        case ROC_DATATYPE_U16:
+            sizeType = 1;
+            numElements  = arg->size_ / 2;
+            break;
+        case ROC_DATATYPE_S32:
+        case ROC_DATATYPE_U32:
+            sizeType = 2;
+            numElements  = arg->size_ / 4;
+            break;
+        case ROC_DATATYPE_S64:
+        case ROC_DATATYPE_U64:
+            sizeType = 3;
+            numElements  = arg->size_ / 8;
+            break;
+        case ROC_DATATYPE_F16:
+            sizeType = 4;
+            numElements  = arg->size_ / 2;
+            break;
+        case ROC_DATATYPE_F32:
+            sizeType = 4;
+            numElements  = arg->size_ / 4;
+            break;
+        case ROC_DATATYPE_F64:
+            sizeType = 5;
+            numElements  = arg->size_ / 8;
+            break;
+        default:
+            return T_VOID;
         }
 
         switch (numElements) {
@@ -368,70 +430,7 @@ GetOclType(const amd::hsa::code::KernelArg::Metadata* lcArg)
             default: return T_VOID;
         }
     }
-    else if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Sampler) {
-        return T_SAMPLER;
-    }
-    else {
-        return T_VOID;
-    }
-}
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
-inline static clk_value_type_t
-GetOclType(const aclArgData* argInfo)
-{
-    static const clk_value_type_t   ClkValueMapType[6][6] = {
-        { T_CHAR,   T_CHAR2,    T_CHAR3,    T_CHAR4,    T_CHAR8,    T_CHAR16   },
-        { T_SHORT,  T_SHORT2,   T_SHORT3,   T_SHORT4,   T_SHORT8,   T_SHORT16  },
-        { T_INT,    T_INT2,     T_INT3,     T_INT4,     T_INT8,     T_INT16    },
-        { T_LONG,   T_LONG2,    T_LONG3,    T_LONG4,    T_LONG8,    T_LONG16   },
-        { T_FLOAT,  T_FLOAT2,   T_FLOAT3,   T_FLOAT4,   T_FLOAT8,   T_FLOAT16  },
-        { T_DOUBLE, T_DOUBLE2,  T_DOUBLE3,  T_DOUBLE4,  T_DOUBLE8,  T_DOUBLE16 },
-    };
-
-    uint sizeType;
-    if ((argInfo->type == ARG_TYPE_POINTER) || (argInfo->type == ARG_TYPE_IMAGE)) {
-        return T_POINTER;
-    }
-    else if (argInfo->type == ARG_TYPE_VALUE) {
-        switch (argInfo->arg.value.data) {
-            case DATATYPE_i8:
-            case DATATYPE_u8:
-                sizeType = 0;
-                break;
-            case DATATYPE_i16:
-            case DATATYPE_u16:
-                sizeType = 1;
-                break;
-            case DATATYPE_i32:
-            case DATATYPE_u32:
-                sizeType = 2;
-                break;
-            case DATATYPE_i64:
-            case DATATYPE_u64:
-                sizeType = 3;
-                break;
-            case DATATYPE_f16:
-            case DATATYPE_f32:
-                sizeType = 4;
-                break;
-            case DATATYPE_f64:
-                sizeType = 5;
-                break;
-            default:
-                return T_VOID;
-        }
-        switch (argInfo->arg.value.numElements) {
-            case 1: return ClkValueMapType[sizeType][0];
-            case 2: return ClkValueMapType[sizeType][1];
-            case 3: return ClkValueMapType[sizeType][2];
-            case 4: return ClkValueMapType[sizeType][3];
-            case 8: return ClkValueMapType[sizeType][4];
-            case 16: return ClkValueMapType[sizeType][5];
-            default: return T_VOID;
-        }
-    }
-    else if (argInfo->type == ARG_TYPE_SAMPLER) {
+    else if (arg->type_ == ROC_ARGTYPE_SAMPLER) {
         return T_SAMPLER;
     }
     else {
@@ -439,86 +438,38 @@ GetOclType(const aclArgData* argInfo)
     }
 }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-inline static cl_kernel_arg_address_qualifier
-GetOclAddrQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline cl_kernel_arg_address_qualifier
+GetOclAddrQual(const Kernel::Argument* arg)
 {
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        switch (lcArg->AddrQual()) {
-        case AMDGPU::RuntimeMD::KernelArg::Global:
+    if (arg->type_ == ROC_ARGTYPE_POINTER) {
+        switch (arg->addrQual_) {
+        case ROC_ADDRESS_GLOBAL:
             return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-        case AMDGPU::RuntimeMD::KernelArg::Constant:
+        case ROC_ADDRESS_CONSTANT:
             return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-        case AMDGPU::RuntimeMD::KernelArg::Local:
+        case ROC_ADDRESS_LOCAL:
             return CL_KERNEL_ARG_ADDRESS_LOCAL;
         default:
             return CL_KERNEL_ARG_ADDRESS_PRIVATE;
         }
     }
-    else if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) {
-        return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-    }
-    //default for all other cases
-    return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-}
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
-inline static cl_kernel_arg_address_qualifier
-GetOclAddrQual(const aclArgData* argInfo)
-{
-    if (argInfo->type == ARG_TYPE_POINTER) {
-        switch (argInfo->arg.pointer.memory) {
-        case PTR_MT_UAV:
-        case PTR_MT_GLOBAL:
-            return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-        case PTR_MT_CONSTANT:
-        case PTR_MT_UAV_CONSTANT:
-        case PTR_MT_CONSTANT_EMU:
-            return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-        case PTR_MT_LDS_EMU:
-        case PTR_MT_LDS:
-            return CL_KERNEL_ARG_ADDRESS_LOCAL;
-        default:
-            return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-        }
-    }
-    else if (argInfo->type == ARG_TYPE_IMAGE) {
+    else if (arg->type_ == ROC_ARGTYPE_IMAGE) {
         return CL_KERNEL_ARG_ADDRESS_GLOBAL;
     }
     //default for all other cases
     return CL_KERNEL_ARG_ADDRESS_PRIVATE;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-inline static cl_kernel_arg_access_qualifier
-GetOclAccessQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline cl_kernel_arg_access_qualifier
+GetOclAccessQual(const Kernel::Argument* arg)
 {
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) {
-        switch (lcArg->AccQual()) {
-        case AMDGPU::RuntimeMD::KernelArg::ReadOnly:
+    if (arg->type_ == ROC_ARGTYPE_IMAGE) {
+        switch (arg->access_) {
+        case ROC_ACCESS_TYPE_RO:
             return CL_KERNEL_ARG_ACCESS_READ_ONLY;
-        case AMDGPU::RuntimeMD::KernelArg::WriteOnly:
+        case ROC_ACCESS_TYPE_WO:
              return CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
-        case AMDGPU::RuntimeMD::KernelArg::ReadWrite:
-            return CL_KERNEL_ARG_ACCESS_READ_WRITE;
-        default:
-            return CL_KERNEL_ARG_ACCESS_NONE;
-        }
-    }
-    return CL_KERNEL_ARG_ACCESS_NONE;
-}
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
-inline static cl_kernel_arg_access_qualifier
-GetOclAccessQual(const aclArgData* argInfo)
-{
-    if (argInfo->type == ARG_TYPE_IMAGE) {
-        switch (argInfo->arg.image.type) {
-        case ACCESS_TYPE_RO:
-            return CL_KERNEL_ARG_ACCESS_READ_ONLY;
-        case ACCESS_TYPE_WO:
-             return CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
-        case ACCESS_TYPE_RW:
+        case ROC_ACCESS_TYPE_RW:
             return CL_KERNEL_ARG_ACCESS_READ_WRITE;
         default:
             return CL_KERNEL_ARG_ACCESS_NONE;
@@ -528,18 +479,18 @@ GetOclAccessQual(const aclArgData* argInfo)
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-inline static cl_kernel_arg_type_qualifier
-GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
+static inline cl_kernel_arg_type_qualifier
+GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
     cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
-    if (lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        if (lcArg->IsVolatile()) {
+    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
+        if (lcArg.IsVolatile()) {
             rv |= CL_KERNEL_ARG_TYPE_VOLATILE;
         }
-        if (lcArg->IsRestrict()) {
+        if (lcArg.IsRestrict()) {
             rv |= CL_KERNEL_ARG_TYPE_RESTRICT;
         }
-        if (lcArg->IsConst()) {
+        if (lcArg.IsConst()) {
             rv |= CL_KERNEL_ARG_TYPE_CONST;
         }
     }
@@ -547,7 +498,7 @@ GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata* lcArg)
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-inline static cl_kernel_arg_type_qualifier
+static inline cl_kernel_arg_type_qualifier
 GetOclTypeQual(const aclArgData* argInfo)
 {
     cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
@@ -574,138 +525,69 @@ GetOclTypeQual(const aclArgData* argInfo)
     return rv;
 }
 
-static int
-GetOclSize(const aclArgData* argInfo)
-{
-    switch (argInfo->type) {
-        case ARG_TYPE_POINTER: return sizeof(void *);
-        case ARG_TYPE_VALUE:
-            switch (argInfo->arg.value.data) {
-                case DATATYPE_i8:
-                case DATATYPE_u8:
-                case DATATYPE_struct:
-                    return 1 * argInfo->arg.value.numElements;
-                case DATATYPE_u16:
-                case DATATYPE_i16:
-                case DATATYPE_f16:
-                    return 2 * argInfo->arg.value.numElements;
-                case DATATYPE_u32:
-                case DATATYPE_i32:
-                case DATATYPE_f32:
-                    return 4 * argInfo->arg.value.numElements;
-                case DATATYPE_i64:
-                case DATATYPE_u64:
-                case DATATYPE_f64:
-                    return 8 * argInfo->arg.value.numElements;
-                case DATATYPE_ERROR:
-                default: return -1;
-            }
-        case ARG_TYPE_IMAGE: return sizeof(cl_mem);
-        case ARG_TYPE_SAMPLER: return sizeof(cl_sampler);
-        default: return -1;
-    }
-}
-
-KernelArg::KernelArg(aclArgData *argInfo) {
-    argInfo_ = argInfo;
-    name_ = argInfo_->argStr;
-    typeName_ = argInfo->typeStr;
-}
-
-int KernelArg::size() {
-  switch (argInfo_->type) {
-    case ARG_TYPE_POINTER: {
-      return sizeof(void *);
-    }
-    case ARG_TYPE_VALUE: {
-      switch (argInfo_->arg.value.data) {
-        case DATATYPE_ERROR: {
-          return -1;
-        }
-        case DATATYPE_i8:
-        case DATATYPE_u8:
-        case DATATYPE_struct: {
-          return 1 * argInfo_->arg.value.numElements;
-        }
-        case DATATYPE_u16:
-        case DATATYPE_i16:
-        case DATATYPE_f16: {
-          return 2 * argInfo_->arg.value.numElements;
-        }
-        case DATATYPE_u32:
-        case DATATYPE_i32:
-        case DATATYPE_f32: {
-          return 4 * argInfo_->arg.value.numElements;
-        }
-        case DATATYPE_i64:
-        case DATATYPE_u64:
-        case DATATYPE_f64: {
-          return 8 * argInfo_->arg.value.numElements;
-        }
-        default:
-          return -1;
-      }
-    }
-    case ARG_TYPE_IMAGE: {
-        return sizeof(cl_mem);
-    }
-    case ARG_TYPE_SAMPLER: {
-        return sizeof(cl_sampler);
-    }
-    default:
-      return -1;
-  }
-}
-
-std::string& KernelArg::name() {
-    return name_;
-}
-
-std::string& KernelArg::typeName()
-{
-    return typeName_;
-}
-
 void
-Kernel::initArgList(const aclArgData* aclArg)
+Kernel::initArguments(const aclArgData* aclArg)
 {
-    // Initialize the hsail argument list too
-    initHsailArgs(aclArg);
+    device::Kernel::parameters_t params;
 
     // Iterate through the arguments and insert into parameterList
-    device::Kernel::parameters_t params;
-    amd::KernelParameterDescriptor desc;
-    size_t offset = 0;
+    for (size_t offset = 0; aclArg->struct_size != 0; aclArg++) {
 
-    // Reserved arguments for HSAIL launch
-    aclArg += MaxExtraArgumentsNum;
-    for (uint i = 0; aclArg->struct_size != 0; i++, aclArg++) {
-        desc.name_ = hsailArgList_[i]->name_.c_str();
-        desc.type_ = GetOclType(aclArg);
-        desc.addressQualifier_ = GetOclAddrQual(aclArg);
-        desc.accessQualifier_ = GetOclAccessQual(aclArg);
+        // Initialize HSAIL kernel argument
+        Kernel::Argument* arg = new Kernel::Argument;
+        arg->name_      = aclArg->argStr;
+        arg->typeName_  = aclArg->typeStr;
+        arg->size_      = GetKernelArgSize(aclArg);
+        arg->type_      = GetKernelArgType(aclArg);
+        arg->addrQual_  = GetKernelAddrQual(aclArg);
+        arg->dataType_  = GetKernelDataType(aclArg);
+        arg->alignment_ = GetKernelArgAlignment(aclArg);
+        arg->access_    = GetKernelArgAccessType(aclArg);
+        arg->pointeeAlignment_ = GetKernelArgPointeeAlignment(aclArg);
+
+        bool isHidden = arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_NONE;
+
+        arg->index_ = isHidden ? uint(-1) : params.size();
+        hsailArgList_.push_back(arg);
+
+        if (isHidden) {
+            continue;
+        }
+
+        amd::KernelParameterDescriptor desc;
+        desc.name_ = arg->name_.c_str();
+        desc.type_ = GetOclType(arg);
+        desc.addressQualifier_ = GetOclAddrQual(arg);
+        desc.accessQualifier_ = GetOclAccessQual(arg);
         desc.typeQualifier_ = GetOclTypeQual(aclArg);
-        desc.typeName_ = hsailArgList_[i]->typeName_.c_str();
+        desc.typeName_ = arg->typeName_.c_str();
 
         // Make a check if it is local or global
         if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
             desc.size_ = 0;
         }
         else {
-            desc.size_ = GetOclSize(aclArg);
+            desc.size_ = arg->size_;
         }
 
         // Make offset alignment to match CPU metadata, since
         // in multidevice config abstraction layer has a single signature
-        // and CPU sends the paramaters as they are allocated in memory
+        // and CPU sends the parameters as they are allocated in memory
         size_t  size = desc.size_;
         if (size == 0) {
             // Local memory for CPU
             size = sizeof(cl_mem);
         }
         offset  = amd::alignUp(offset, std::min(size, size_t(16)));
-        desc.offset_    = offset;
-        offset          += amd::alignUp(size, sizeof(uint32_t));
+        desc.offset_ = offset;
+        offset += amd::alignUp(size, sizeof(uint32_t));
+
         params.push_back(desc);
     }
     createSignature(params);
@@ -713,95 +595,96 @@ Kernel::initArgList(const aclArgData* aclArg)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void
-Kernel::initArgsParams( const amd::hsa::code::KernelArg::Metadata* lcArg, size_t* kOffset,
-                        device::Kernel::parameters_t& params, size_t* pOffset )
+Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
 {
-    HsailKernelArg* arg = new HsailKernelArg;
+    device::Kernel::parameters_t params;
 
-    // Initialize HSAIL kernel argument
-    arg->name_      = lcArg->Name();
-    arg->typeName_  = lcArg->TypeName();
-    arg->size_      = lcArg->Size();  // LC doesn't distinguish vector or single element
-    arg->offset_    = *kOffset;
-    arg->type_      = GetHSAILArgType(lcArg);
-    arg->addrQual_  = GetHSAILAddrQual(lcArg);
-    arg->dataType_  = GetHSAILDataType(lcArg);
-    // If vector of args we add additional arguments to flatten it out
-    arg->numElem_   = ((lcArg->TypeKind() == AMDGPU::RuntimeMD::KernelArg::Value) &&
-                       (lcArg->ValueType() != AMDGPU::RuntimeMD::KernelArg::Struct)) ?
-                            (lcArg->Size() / arg->size_) : 1;
-    arg->alignment_ = GetHSAILArgAlignment(lcArg);
-    arg->access_    = GetHSAILArgAccessType(lcArg);
+    size_t offset = 0;
 
-    hsailArgList_.push_back(arg);
+    for (size_t i = 0; i < kernelMD.KernelArgCount(); ++i) {
+        const amd::hsa::code::KernelArg::Metadata& lcArg =
+            kernelMD.GetKernelArgMetadata(i);
 
-    *kOffset += lcArg->Size();
+        // Initialize HSAIL kernel argument
+        Kernel::Argument* arg = new Kernel::Argument;
+        arg->index_     = /* lcArg.IsHidden() ? uint(-1) : */ params.size();
+        arg->name_      = lcArg.Name();
+        arg->typeName_  = lcArg.TypeName();
+        arg->size_      = lcArg.Size();
+        arg->type_      = GetKernelArgType(lcArg);
+        arg->addrQual_  = GetKernelAddrQual(lcArg);
+        arg->dataType_  = GetKernelDataType(lcArg);
+        arg->alignment_ = GetKernelArgAlignment(lcArg);
+        arg->access_    = GetKernelArgAccessType(lcArg);
+        arg->pointeeAlignment_ = GetKernelArgPointeeAlignment(lcArg);
 
-    // Initialize Device kernel parameters
-    amd::KernelParameterDescriptor desc;
+        hsailArgList_.push_back(arg);
 
-    desc.name_ = lcArg->Name().c_str();
-    desc.type_ = GetOclType(lcArg);
-    desc.addressQualifier_ = GetOclAddrQual(lcArg);
-    desc.accessQualifier_ = GetOclAccessQual(lcArg);
-    desc.typeQualifier_ = GetOclTypeQual(lcArg);
-    desc.typeName_ = lcArg->TypeName().c_str();
+        /*if (lcArg.IsHidden()) {
+            continue;
+        }*/
 
-    // Make a check if it is local or global
-    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-        desc.size_ = 0;
+        // Initialize Device kernel parameters
+        amd::KernelParameterDescriptor desc;
+
+        desc.name_ = lcArg.Name().c_str();
+        desc.type_ = GetOclType(arg);
+        desc.addressQualifier_ = GetOclAddrQual(arg);
+        desc.accessQualifier_ = GetOclAccessQual(arg);
+        desc.typeQualifier_ = GetOclTypeQual(lcArg);
+        desc.typeName_ = lcArg.TypeName().c_str();
+
+        // Make a check if it is local or global
+        if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+            desc.size_ = 0;
+        }
+        else {
+            desc.size_ = arg->size_;
+        }
+
+        // Make offset alignment to match CPU metadata, since
+        // in multidevice config abstraction layer has a single signature
+        // and CPU sends the parameters as they are allocated in memory
+        size_t  size = desc.size_;
+        if (size == 0) {
+            // Local memory for CPU
+            size = sizeof(cl_mem);
+        }
+        offset  = (size_t) amd::alignUp(offset, std::min(size, size_t(16)));
+        desc.offset_ = offset;
+        offset += amd::alignUp(size, sizeof(uint32_t));
+
+        params.push_back(desc);
     }
-    else {
-        desc.size_ = lcArg->Size();
+
+    // Push the hidden arguments. These will be generated by LC at some point
+    static ROC_ARG_TYPE hiddenArgs[] = {
+        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
+        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
+        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
+    };
+    for (auto type : hiddenArgs) {
+        Kernel::Argument* arg = new Kernel::Argument;
+        arg->index_     = uint(-1);
+        arg->name_      = "";
+        arg->typeName_  = "size_t";
+        arg->size_      = sizeof(size_t);
+        arg->type_      = type;
+        arg->addrQual_  = ROC_ADDRESS_ERROR;
+        arg->dataType_  = ROC_DATATYPE_U64;
+        arg->alignment_ = arg->size_;
+        arg->access_    = ROC_ACCESS_TYPE_NONE;
+        arg->pointeeAlignment_ = 0;
+
+        hsailArgList_.push_back(arg);
     }
 
-    // Make offset alignment to match CPU metadata, since
-    // in multidevice config abstraction layer has a single signature
-    // and CPU sends the paramaters as they are allocated in memory
-    size_t  size = desc.size_;
-    if (size == 0) {
-        // Local memory for CPU
-        size = sizeof(cl_mem);
-    }
-    *pOffset  = (size_t) amd::alignUp(*pOffset, std::min(size, size_t(16)));
-    desc.offset_    = *pOffset;
-    *pOffset       += amd::alignUp(size, sizeof(uint32_t));
-
-    params.push_back(desc);
+    createSignature(params);
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-void
-Kernel::initHsailArgs(const aclArgData* aclArg)
-{
-    int offset = 0;
-
-    // Reserved arguments for HSAIL launch
-    aclArg += MaxExtraArgumentsNum;
-
-    // Iterate through the each kernel argument
-    for (; aclArg->struct_size != 0; aclArg++) {
-        HsailKernelArg* arg = new HsailKernelArg;
-        // Initialize HSAIL kernel argument
-        arg->name_      = aclArg->argStr;
-        arg->typeName_  = aclArg->typeStr;
-        arg->size_      = GetHSAILArgSize(aclArg);
-        arg->offset_    = offset;
-        arg->type_      = GetHSAILArgType(aclArg);
-        arg->addrQual_  = GetHSAILAddrQual(aclArg);
-        arg->dataType_  = GetHSAILDataType(aclArg);
-        // If vector of args we add additional arguments to flatten it out
-        arg->numElem_   = ((aclArg->type == ARG_TYPE_VALUE) &&
-             (aclArg->arg.value.data != DATATYPE_struct)) ?
-             aclArg->arg.value.numElements : 1;
-        arg->alignment_ = GetHSAILArgAlignment(aclArg);
-        arg->access_    = GetHSAILArgAccessType(aclArg);
-        offset += GetHSAILArgSize(aclArg);
-        hsailArgList_.push_back(arg);
-    }
-}
-
-Kernel::Kernel(std::string name, HSAILProgram* prog,
+Kernel::Kernel(
+    std::string name, HSAILProgram* prog,
                const uint64_t& kernelCodeHandle,
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize,
@@ -818,7 +701,8 @@ Kernel::Kernel(std::string name, HSAILProgram* prog,
       extraArgumentsNum_(extraArgsNum) {}
 
 #if defined(WITH_LIGHTNING_COMPILER)
-bool Kernel::init_LC(){
+bool Kernel::init_LC()
+{
     hsa_agent_t hsaDevice = program_->hsaDevice();
 
     // Pull out metadata from the ELF
@@ -829,17 +713,7 @@ bool Kernel::init_LC(){
 
     size_t idx = runtimeMD->KernelIndexByName(name());
     const amd::hsa::code::Kernel::Metadata& kernelMD = runtimeMD->GetKernelMetadata(idx);
-
-    size_t sizeOfArgList = kernelMD.KernelArgCount();
-
-    size_t kOffset = 0;
-    size_t pOffset = 0;
-    device::Kernel::parameters_t params;
-    for (uint32_t i=0; i < sizeOfArgList; i++) {
-        const amd::hsa::code::KernelArg::Metadata& kernelArg = kernelMD.GetKernelArgMetadata(i);
-        initArgsParams(&kernelArg, &kOffset, params, &pOffset);
-    }
-    createSignature(params);
+    initArguments_LC(kernelMD);
 
     //Set the workgroup information for the kernel
     memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
@@ -886,7 +760,8 @@ bool Kernel::init_LC(){
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-bool Kernel::init(){
+bool Kernel::init()
+{
 #if defined(WITH_LIGHTNING_COMPILER)
     return init_LC();
 #else // !defined(WITH_LIGHTNING_COMPILER)
@@ -916,8 +791,10 @@ bool Kernel::init(){
     if (errorCode != ACL_SUCCESS) {
         return false;
     }
+
     //Set the argList
-    initArgList((const aclArgData *) argList.get());
+    initArguments((const aclArgData *) argList.get());
+
     //Set the workgroup information for the kernel
     memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
     workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
@@ -1002,7 +879,8 @@ bool Kernel::init(){
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
-void Kernel::initPrintf(const aclPrintfFmt* aclPrintf) {
+void
+Kernel::initPrintf(const aclPrintfFmt* aclPrintf) {
   PrintfInfo info;
   uint index = 0;
   for (; aclPrintf->struct_size != 0; aclPrintf++) {
@@ -1066,9 +944,10 @@ void Kernel::initPrintf(const aclPrintfFmt* aclPrintf) {
 }
 
 
-Kernel::~Kernel() {
+Kernel::~Kernel()
+{
     while (!hsailArgList_.empty()) {
-        HsailKernelArg* kernelArgPointer = hsailArgList_.back();
+        Argument* kernelArgPointer = hsailArgList_.back();
         delete kernelArgPointer;
         hsailArgList_.pop_back();
     }
