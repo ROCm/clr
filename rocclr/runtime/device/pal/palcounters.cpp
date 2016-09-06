@@ -4,6 +4,7 @@
 
 #include "device/pal/palcounters.hpp"
 #include "device/pal/palvirtual.hpp"
+#include <array>
 
 namespace pal {
 
@@ -60,8 +61,13 @@ PalCounterReference::~PalCounterReference()
     }
 }
 
-uint64_t PalCounterReference::result(uint index)
+uint64_t PalCounterReference::result(int index)
 {
+    if (index < 0) {
+        // These are counters that have no corresponding PalSample created
+        return 0;
+    }
+
     if (layout_ != nullptr) {
         assert(index <= layout_->sampleCount && "index not in range");
         const Pal::GlobalSampleLayout& sample = layout_->samples[index];
@@ -118,6 +124,7 @@ bool PalCounterReference::finalize()
         Pal::GlobalCounterLayout layout = {};
         iPerf()->GetGlobalCounterLayout(&layout);
 
+        assert(layout.sampleCount == numExpCounters_);
         size_t size = sizeof(Pal::GlobalCounterLayout) + (sizeof(Pal::GlobalSampleLayout) * (layout.sampleCount - 1));
         layout_ = reinterpret_cast<Pal::GlobalCounterLayout*>(new char[size]);
         if (layout_ != nullptr) {
@@ -128,6 +135,223 @@ bool PalCounterReference::finalize()
     }
     else {
         return false;
+    }
+}
+
+// Converting from ORCA cmndefs.h to PAL palPerfExperiment.h
+static const
+std::array<std::pair<int, int>, 83> ciBlockIdOrcaToPal =
+{{
+    {0x0F, 0},      // CB0
+    {0x0F, 1},      // CB1
+    {0x0F, 2},      // CB2
+    {0x0F, 3},      // CB3
+    {0x01, 0},      // CPF
+    {0x0E, 0},      // DB0
+    {0x0E, 1},      // DB1
+    {0x0E, 2},      // DB2
+    {0x0E, 3},      // DB3
+    {0x12, 0},      // GRBM
+    {0x13, 0},      // GRBMSE
+    {0x04, 0},      // PA_SU
+    {0x04, 0},      // PA_SC
+    {0x06, 0},      // SPI
+    {0x07, 0},      // SQ
+    {0x07, 0},      // SQ_ES
+    {0x07, 0},      // SQ_GS
+    {0x07, 0},      // SQ_VS
+    {0x07, 0},      // SQ_PS
+    {0x07, 0},      // SQ_LS
+    {0x07, 0},      // SQ_HS
+    {0x07, 0},      // SQ_CS
+    {0x08, 0},      // SX
+    {0x09, 0},      // TA0
+    {0x09, 1},      // TA1
+    {0x09, 2},      // TA2
+    {0x09, 3},      // TA3
+    {0x09, 4},      // TA4
+    {0x09, 5},      // TA5
+    {0x09, 6},      // TA6
+    {0x09, 7},      // TA7
+    {0x09, 8},      // TA8
+    {0x09, 9},      // TA9
+    {0x09, 0x0a},   // TA10
+    {0x0D, 0},      // TCA0
+    {0x0D, 1},      // TCA1
+    {0x0C, 0},      // TCC0
+    {0x0C, 1},      // TCC1
+    {0x0C, 2},      // TCC2
+    {0x0C, 3},      // TCC3
+    {0x0C, 4},      // TCC4
+    {0x0C, 5},      // TCC5
+    {0x0C, 6},      // TCC6
+    {0x0C, 7},      // TCC7
+    {0x0C, 8},      // TCC8
+    {0x0C, 9},      // TCC9
+    {0x0C, 0x0a},   // TCC10
+    {0x0C, 0x0b},   // TCC11
+    {0x0C, 0x0c},   // TCC12
+    {0x0C, 0x0d},   // TCC13
+    {0x0C, 0x0e},   // TCC14
+    {0x0C, 0x0f},   // TCC15
+    {0x0A, 0},      // TD0
+    {0x0A, 1},      // TD1
+    {0x0A, 2},      // TD2
+    {0x0A, 3},      // TD3
+    {0x0A, 4},      // TD4
+    {0x0A, 5},      // TD5
+    {0x0A, 6},      // TD6
+    {0x0A, 7},      // TD7
+    {0x0A, 8},      // TD8
+    {0x0A, 9},      // TD9
+    {0x0A, 0x0a},   // TD10
+    {0x0B, 0},      // TCP0
+    {0x0B, 1},      // TCP1
+    {0x0B, 2},      // TCP2
+    {0x0B, 3},      // TCP3
+    {0x0B, 4},      // TCP4
+    {0x0B, 5},      // TCP5
+    {0x0B, 6},      // TCP6
+    {0x0B, 7},      // TCP7
+    {0x0B, 8},      // TCP8
+    {0x0B, 9},      // TCP9
+    {0x0B, 0x0a},   // TCP10
+    {0x10, 0},      // GDS
+    {0x03, 0},      // VGT
+    {0x02, 0},      // IA
+    {0x16, 0},      // MC
+    {0x11, 0},      // SRBM
+    {0x1a, 0},      // TCS
+    {0x19, 0},      // WD
+    {0x17, 0},      // CPG
+    {0x18, 0},      // CPC
+}};
+
+static const
+std::array<std::pair<int, int>, 98> viBlockIdOrcaToPal =
+{{
+    {0x0F, 0},      // CB0
+    {0x0F, 1},      // CB1
+    {0x0F, 2},      // CB2
+    {0x0F, 3},      // CB3
+    {0x01, 0},      // CPF
+    {0x0E, 0},      // DB0
+    {0x0E, 1},      // DB1
+    {0x0E, 2},      // DB2
+    {0x0E, 3},      // DB3
+    {0x12, 0},      // GRBM
+    {0x13, 0},      // GRBMSE
+    {0x04, 0},      // PA_SU
+    {0x04, 0},      // PA_SC
+    {0x06, 0},      // SPI
+    {0x07, 0},      // SQ
+    {0x07, 0},      // SQ_ES
+    {0x07, 0},      // SQ_GS
+    {0x07, 0},      // SQ_VS
+    {0x07, 0},      // SQ_PS
+    {0x07, 0},      // SQ_LS
+    {0x07, 0},      // SQ_HS
+    {0x07, 0},      // SQ_CS
+    {0x08, 0},      // SX
+    {0x09, 0},      // TA0
+    {0x09, 1},      // TA1
+    {0x09, 2},      // TA2
+    {0x09, 3},      // TA3
+    {0x09, 4},      // TA4
+    {0x09, 5},      // TA5
+    {0x09, 6},      // TA6
+    {0x09, 7},      // TA7
+    {0x09, 8},      // TA8
+    {0x09, 9},      // TA9
+    {0x09, 0x0a},   // TA10
+    {0x09, 0x0b},   // TA11
+    {0x09, 0x0c},   // TA12
+    {0x09, 0x0d},   // TA13
+    {0x09, 0x0e},   // TA14
+    {0x09, 0x0f},   // TA15
+    {0x0D, 0},      // TCA0
+    {0x0D, 1},      // TCA1
+    {0x0C, 0},      // TCC0
+    {0x0C, 1},      // TCC1
+    {0x0C, 2},      // TCC2
+    {0x0C, 3},      // TCC3
+    {0x0C, 4},      // TCC4
+    {0x0C, 5},      // TCC5
+    {0x0C, 6},      // TCC6
+    {0x0C, 7},      // TCC7
+    {0x0C, 8},      // TCC8
+    {0x0C, 9},      // TCC9
+    {0x0C, 0x0a},   // TCC10
+    {0x0C, 0x0b},   // TCC11
+    {0x0C, 0x0c},   // TCC12
+    {0x0C, 0x0d},   // TCC13
+    {0x0C, 0x0e},   // TCC14
+    {0x0C, 0x0f},   // TCC15
+    {0x0A, 0},      // TD0
+    {0x0A, 1},      // TD1
+    {0x0A, 2},      // TD2
+    {0x0A, 3},      // TD3
+    {0x0A, 4},      // TD4
+    {0x0A, 5},      // TD5
+    {0x0A, 6},      // TD6
+    {0x0A, 7},      // TD7
+    {0x0A, 8},      // TD8
+    {0x0A, 9},      // TD9
+    {0x0A, 0x0a},   // TD10
+    {0x0A, 0x0b},   // TD11
+    {0x0A, 0x0c},   // TD12
+    {0x0A, 0x0d},   // TD13
+    {0x0A, 0x0e},   // TD14
+    {0x0A, 0x0f},   // TD15
+    {0x0B, 0},      // TCP0
+    {0x0B, 1},      // TCP1
+    {0x0B, 2},      // TCP2
+    {0x0B, 3},      // TCP3
+    {0x0B, 4},      // TCP4
+    {0x0B, 5},      // TCP5
+    {0x0B, 6},      // TCP6
+    {0x0B, 7},      // TCP7
+    {0x0B, 8},      // TCP8
+    {0x0B, 9},      // TCP9
+    {0x0B, 0x0a},   // TCP10
+    {0x0B, 0x0b},   // TCP11
+    {0x0B, 0x0c},   // TCP12
+    {0x0B, 0x0d},   // TCP13
+    {0x0B, 0x0e},   // TCP14
+    {0x0B, 0x0f},   // TCP15
+    {0x10, 0},      // GDS
+    {0x03, 0},      // VGT
+    {0x02, 0},      // IA
+    {0x16, 0},      // MC
+    {0x11, 0},      // SRBM
+    {0x19, 0},      // WD
+    {0x17, 0},      // CPG
+    {0x18, 0},      // CPC
+}};
+
+void PerfCounter::convertInfo()
+{
+    switch (dev().ipLevel()) {
+    case Pal::GfxIpLevel::GfxIp7:
+        if (info_.blockIndex_ < ciBlockIdOrcaToPal.size()) {
+            auto p = ciBlockIdOrcaToPal[info_.blockIndex_];
+            info_.blockIndex_ = std::get<0>(p);
+            info_.counterIndex_ = std::get<1>(p);
+        }
+        break;
+    case Pal::GfxIpLevel::GfxIp8:
+        if (info_.blockIndex_ < viBlockIdOrcaToPal.size()) {
+            auto p = viBlockIdOrcaToPal[info_.blockIndex_];
+            info_.blockIndex_ = std::get<0>(p);
+            info_.counterIndex_ = std::get<1>(p);
+        }
+        break;
+    case Pal::GfxIpLevel::GfxIp9:
+        Unimplemented();
+        break;
+    default:
+        Unimplemented();
+        break;
     }
 }
 
@@ -144,7 +368,7 @@ PerfCounter::~PerfCounter()
 bool
 PerfCounter::create()
 {
-    index_ = palRef_->retain() - 2;
+    palRef_->retain();
 
     // Initialize the counter
     Pal::PerfCounterInfo counterInfo = {};
@@ -153,11 +377,15 @@ PerfCounter::create()
     counterInfo.instance    = info_.counterIndex_;
     counterInfo.eventId     = info_.eventIndex_;
     Pal::Result result = iPerf()->AddCounter(counterInfo);
-    if (result != Pal::Result::Success) {
+    if (result == Pal::Result::Success) {
+        index_ = palRef_->getPalCounterIndex();
+        return true;
+    }
+    else {
+        // Get here when there's no HW PerfCounter matching the counterInfo
+        index_ = -1;
         return false;
     }
-
-    return true;
 }
 
 uint64_t
