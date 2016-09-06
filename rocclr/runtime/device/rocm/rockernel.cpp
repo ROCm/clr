@@ -722,29 +722,48 @@ bool Kernel::init_LC()
     workGroupInfo_.availableSGPRs_ = 0;
     workGroupInfo_.availableVGPRs_ = 0;
 
-    const uint32_t* workGroupSizeHint = kernelMD.WorkgroupSizeHint();
-    size_t sizeOfWorkGroupSize = (workGroupSizeHint) ? *workGroupSizeHint : 0;
+    if (kernelMD.HasRequiredWorkgroupSize()) {
+        const uint32_t* requiredWorkgroupSize = kernelMD.RequiredWorkgroupSize();
+        workGroupInfo_.compileSize_[0] = requiredWorkgroupSize[0];
+        workGroupInfo_.compileSize_[1] = requiredWorkgroupSize[1];
+        workGroupInfo_.compileSize_[2] = requiredWorkgroupSize[2];
+    }
+
+    if (kernelMD.HasWorkgroupSizeHint()) {
+        const uint32_t* workgroupSizeHint = kernelMD.WorkgroupSizeHint();
+        workGroupInfo_.compileSizeHint_[0] = workgroupSizeHint[0];
+        workGroupInfo_.compileSizeHint_[1] = workgroupSizeHint[1];
+        workGroupInfo_.compileSizeHint_[2] = workgroupSizeHint[2];
+    }
+
+    if (kernelMD.HasVecTypeHint()) {
+        workGroupInfo_.compileVecTypeHint_ = kernelMD.VecTypeHint().c_str();
+    }
 
     uint32_t wavefront_size = 0;
-    if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(
-        program_->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
-        &wavefront_size)) {
+    if (hsa_agent_get_info(
+            program_->hsaDevice(),
+            HSA_AGENT_INFO_WAVEFRONT_SIZE,
+            &wavefront_size) != HSA_STATUS_SUCCESS) {
         return false;
     }
     assert(wavefront_size > 0);
 
-    // Setting it the same as used LDS.
-    workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
     workGroupInfo_.privateMemSize_ = workitemPrivateSegmentByteSize_;
+    workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
     workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
+
     workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
+
     workGroupInfo_.usedSGPRs_ = 0;
     workGroupInfo_.usedStackSize_ = 0;
     workGroupInfo_.usedVGPRs_ = 0;
+
     workGroupInfo_.wavefrontPerSIMD_ =
         program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;
+
     workGroupInfo_.wavefrontSize_ = wavefront_size;
+
     if (workGroupInfo_.compileSize_[0] != 0) {
         workGroupInfo_.size_ =
         workGroupInfo_.compileSize_[0] *
