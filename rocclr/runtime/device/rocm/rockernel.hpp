@@ -141,6 +141,7 @@ public:
     Argument* hsailArgAt(size_t index) const {
         for (auto arg : hsailArgList_) if (arg->index_ == index) return arg;
         assert(!"Should not reach here");
+        return NULL;
     }
 
     //! Max number of possible extra (hidden) kernel arguments
