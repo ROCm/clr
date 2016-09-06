@@ -56,13 +56,10 @@ DmaBlitManager::readMemoryStaged(
     if (dev().xferRead().bufSize() < 128 * Ki) {
         chunkSize = dev().xferRead().bufSize();
     }
-    else if (xferSize > 256 * Ki) {
+    else {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferRead().bufSize());
         chunkSize = std::max(chunkSize, 128 * Ki);
-    }
-    else {
-        chunkSize = xferSize;
     }
 
     // Find the partial transfer size
@@ -325,13 +322,10 @@ DmaBlitManager::writeMemoryStaged(
     if (dev().xferRead().bufSize() < 128 * Ki) {
         chunkSize = dev().xferWrite().bufSize();
     }
-    else if (xferSize > 256 * Ki) {
+    else {
         chunkSize = std::min(amd::alignUp(xferSize / 4, 256),
             dev().xferWrite().bufSize());
         chunkSize = std::max(chunkSize, 128 * Ki);
-    }
-    else {
-        chunkSize = xferSize;
     }
 
     while (xferSize != 0) {
