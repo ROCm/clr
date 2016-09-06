@@ -102,7 +102,6 @@ public:
 
     void             PerformAdapterInitialization() const;
     void             PerformFullInitialization() const;
-    void             CloseInitializedAdapter();
 
     CopyType         GetCopyType(gslMemObject srcMem, gslMemObject destMem, size_t* srcOffset,
                                      size_t* destOffset, bool allowDMA, uint32 flags, size_t size, bool enableCopyRect) const;
@@ -208,7 +207,6 @@ private:
             uint    m_PerformLazyDeviceInit : 1;
             uint    m_isComputeRingIDForced : 1;
             uint    m_isSDMAL2TConstrained  : 1;
-            uint    m_initLite              : 1;
         };
     };
 
