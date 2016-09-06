@@ -2344,19 +2344,16 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
                 return;
             }
             else if (gpuCounter->create()) {
-                amdCounter->setDeviceCounter(gpuCounter);
                 newExperiment = true;
             }
             else {
-                LogPrintfError("We failed to allocate a perfcounter in CAL.\
+                LogPrintfError("We failed to allocate a perfcounter in PAL.\
                     Block: %d, counter: #d, event: %d",
                     gpuCounter->info()->blockIndex_,
                     gpuCounter->info()->counterIndex_,
                     gpuCounter->info()->eventIndex_);
-                delete gpuCounter;
-                vcmd.setStatus(CL_INVALID_OPERATION);
-                return;
             }
+            amdCounter->setDeviceCounter(gpuCounter);
         }
     }
 

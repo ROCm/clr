@@ -25,7 +25,8 @@ public:
         , gpu_(gpu)
         , memory_(nullptr)
         , cpuAddr_(nullptr)
-        , layout_(nullptr) {}
+        , layout_(nullptr)
+        , numExpCounters_(0) {}
 
     //! Get PAL counter
     Pal::IPerfExperiment* iPerf() const { return perfExp_; }
@@ -37,7 +38,10 @@ public:
     bool finalize();
 
     //! Returns the PAL counter results
-    uint64_t result(uint index);
+    uint64_t result(int index);
+
+    //! Get the latest Experiment Counter index
+    uint getPalCounterIndex() { return numExpCounters_++; };
 
 protected:
     //! Default destructor
@@ -50,11 +54,12 @@ private:
     //! Disable operator=
     PalCounterReference& operator=(const PalCounterReference&);
 
-    VirtualGPU&                 gpu_;           //!< The virtual GPU device object
-    Pal::IPerfExperiment*       perfExp_;       //!< PAL performance experiment object
-    Pal::GlobalCounterLayout*   layout_;        //!< Layout of the result
-    Memory*                     memory_;
-    void*                       cpuAddr_;       //!< CPU address of memory_
+    VirtualGPU&                 gpu_;               //!< The virtual GPU device object
+    Pal::IPerfExperiment*       perfExp_;           //!< PAL performance experiment object
+    Pal::GlobalCounterLayout*   layout_;            //!< Layout of the result
+    Memory*                     memory_;            //!< Memory used by PAL performance experiment
+    void*                       cpuAddr_;           //!< CPU address of memory_
+    uint                        numExpCounters_;    //!< Number of Experiment Counter created
 };
 
 //! Performance counter implementation on GPU
@@ -83,6 +88,7 @@ public:
         info_.blockIndex_   = blockIndex;
         info_.counterIndex_ = counterIndex;
         info_.eventIndex_   = eventIndex;
+        convertInfo();
     }
 
     //! Destructor for the GPU PerfCounter object
@@ -102,7 +108,7 @@ public:
     //! Returns the virtual GPU device
     const VirtualGPU& gpu() const { return palRef_->gpu(); }
 
-    //! Returns the CAL performance counter descriptor
+    //! Returns the PAL performance counter descriptor
     const Info* info() const { return &info_; }
 
     //! Returns the Info structure for performance counter
@@ -115,10 +121,13 @@ private:
     //! Disable default operator=
     PerfCounter& operator=(const PerfCounter&);
 
+    //! Convert info from ORCA to PAL
+    void convertInfo();
+
     const Device&           gpuDevice_; //!< The backend device
     PalCounterReference*    palRef_;    //!< Reference counter
     Info                    info_;      //!< The info structure for perfcounter
-    uint                    index_;     //!< Counter index in the CAL container
+    int                     index_;     //!< Counter index in the PAL container
 };
 
 } // namespace pal
