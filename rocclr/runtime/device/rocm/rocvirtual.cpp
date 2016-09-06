@@ -7,12 +7,12 @@
 #include "device/rocm/rockernel.hpp"
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocblit.hpp"
-#include "../../platform/kernel.hpp"
-#include "../../platform/context.hpp"
-#include "../../platform/command.hpp"
-#include "../../platform/memory.hpp"
-#include "../../platform/sampler.hpp"
-#include "../../utils/debug.hpp"
+#include "platform/kernel.hpp"
+#include "platform/context.hpp"
+#include "platform/command.hpp"
+#include "platform/memory.hpp"
+#include "platform/sampler.hpp"
+#include "utils/debug.hpp"
 #include "os/os.hpp"
 #include "SCHSAInterface.h"
 #include "amd_hsa_kernel_code.h"
@@ -87,10 +87,10 @@ double Timestamp::ticksToTime_=0;
 * to correlate the cl kernel launch and HSA kernel dispatch
 */
 typedef hsa_status_t
-  (*hsa_ext_tools_set_correlation_handle)(const hsa_agent_t agent, 
+  (*hsa_ext_tools_set_correlation_handle)(const hsa_agent_t agent,
                                         void *correlation_handle);
 static void SetOclCorrelationHandle(void *tools_lib, const hsa_agent_t agent, void *handle) {
-  hsa_ext_tools_set_correlation_handle func = 
+  hsa_ext_tools_set_correlation_handle func =
     (hsa_ext_tools_set_correlation_handle)amd::Os::getSymbol(tools_lib, "hsa_ext_tools_set_correlation_handler");
   if (func) {
     func(agent, handle);
@@ -276,13 +276,13 @@ VirtualGPU::processMemObjects(
     // Check all parameters for the current kernel
     for (size_t i = 0; i < signature.numParameters(); ++i) {
         const amd::KernelParameterDescriptor& desc = signature.at(i);
-        const HsailKernelArg*  arg = hsaKernel.hsailArgAt(i);
+        const Kernel::Argument*  arg = hsaKernel.hsailArgAt(i);
         Memory* memory = NULL;
         bool    readOnly = false;
         amd::Memory* svmMem = NULL;
 
         // Find if current argument is a buffer
-        if ((desc.type_ == T_POINTER) && (arg->addrQual_ != HSAIL_ADDRESS_LOCAL)) {
+        if ((desc.type_ == T_POINTER) && (arg->addrQual_ != ROC_ADDRESS_LOCAL)) {
             if (kernelParams.boundToSvmPointer(dev(), params, i)) {
                 svmMem = amd::SvmManager::FindSvmBuffer(
                     *reinterpret_cast<void* const*>(params + desc.offset_));
@@ -308,11 +308,7 @@ VirtualGPU::processMemObjects(
             }
 
             if (memory != NULL) {
-                // Check image
-                readOnly = (desc.accessQualifier_ ==
-                    CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
-                // Check buffer
-                readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
+                readOnly |= (arg->access_ == ROC_ACCESS_TYPE_RO);
                 // Validate memory for a dependency in the queue
                 memoryDependency().validate(*this, memory, readOnly);
             }
@@ -977,7 +973,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd)
     // in-order semantics: previous commands need to be done before we start
     releaseGpuMemoryFence();
     profilingBegin(cmd);
-    amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1); 
+    amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1);
     profilingEnd(cmd);
 }
 
@@ -1362,34 +1358,33 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand &vcmd)
     profilingEnd(vcmd);
 }
 
-/*! \brief Writes to the buffer and incrememts the write pointer to the
+/*! \brief Writes to the buffer and increments the write pointer to the
  *         buffer. Also, ensures that the argument is written to an
- *         aligned memory as specified
+ *         aligned memory as specified. Return the new write pointer.
  *
  * @param dst The write pointer to the buffer
  * @param src The source pointer
  * @param size The size in bytes to copy
  * @param alignment The alignment to follow while writing to the buffer
  */
-static void
-addArg(unsigned char** dst, const void* src,
-                               size_t size, uint32_t alignment)
+static inline address
+addArg(address dst, const void* src, size_t size, uint32_t alignment)
 {
-    *dst = amd::alignUp(*dst, alignment);
-    memcpy(*dst, src, size);
-    *dst += size;
+    dst = amd::alignUp(dst, alignment);
+    ::memcpy(dst, src, size);
+    return dst + size;
 }
 
-static inline void
-addArg(unsigned char** dst, const void* src, size_t size)
+static inline address
+addArg(address dst, const void* src, size_t size)
 {
     assert(size < UINT32_MAX);
-    addArg(dst, src, size, size);
+    return addArg(dst, src, size, size);
 }
 
- //Over rides the workgroup size fields in the packet with runtime/compiler set sizes 
- void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket, 
-     amd::NDRangeContainer sizes, 
+ //Over rides the workgroup size fields in the packet with runtime/compiler set sizes
+ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
+     amd::NDRangeContainer sizes,
      const size_t* compile_size,
      const roc::Device &dev){
      //Todo (sramalin) need to check if compile_size is set to 0 if dimension is not valid
@@ -1467,9 +1462,10 @@ VirtualGPU::submitKernelInternal(
         SetOclCorrelationHandle(tools_lib_, this->gpu_device_, eventHandle);
     }
 
-    device::Kernel *devKernel = const_cast<device::Kernel *>
-                          (kernel.getDeviceKernel(dev()));
+    device::Kernel *devKernel = const_cast<device::Kernel*>(
+        kernel.getDeviceKernel(dev()));
     Kernel &gpuKernel = static_cast<Kernel &>(*devKernel);
+
     const size_t compilerLdsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
     size_t ldsUsage = compilerLdsUsage;
 
@@ -1487,9 +1483,9 @@ VirtualGPU::submitKernelInternal(
     }
 
     // Allocate buffer to hold kernel arguments
-    address argBuffer =
-        (address)allocKernArg(gpuKernel.KernargSegmentByteSize(),
-                              gpuKernel.KernargSegmentAlignment());
+    address argBuffer = (address)allocKernArg(
+        gpuKernel.KernargSegmentByteSize(),
+        gpuKernel.KernargSegmentAlignment());
 
     if (argBuffer == NULL) {
         LogError("Out of memory");
@@ -1497,55 +1493,69 @@ VirtualGPU::submitKernelInternal(
     }
 
     address argPtr = argBuffer;
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-    // The HLC generates Kernenv arguments, first 3 are global offsets.
-    const uint extraAargs = ((roc::Kernel*)devKernel)->extraArgumentsNum();
-    for (uint j = 0; j < extraAargs; ++j) {
-        // The 4th parameter is the pointer to print buffer
-        if (3 == j) {
-            address bufferPtr = printfDbg()->dbgBuffer();
-            addArg(&argPtr, &bufferPtr, sizeof(void*));
-        }else {
-            const size_t offset = j < sizes.dimensions() ? sizes.offset()[j] : 0;
-            addArg(&argPtr, &offset, sizeof(void*)); //Should be uint32_t for small model and uint64_t for large!
-        }
-    }
-#endif // defined(WITH_LIGHTNING_COMPILER)
-
     const amd::KernelSignature& signature = kernel.signature();
     const amd::KernelParameters& kernelParams = kernel.parameters();
 
     // Find all parameters for the current kernel
-    for (uint i = 0; i != signature.numParameters(); ++i) {
-        const HsailKernelArg* arg = gpuKernel.hsailArgAt(i);
-        const_address srcArgPtr = parameters + signature.at(i).offset_;
+    for (auto arg : gpuKernel.hsailArgs()) {
+        // Handle the hidden arguments first, as they do not have a
+        // matching parameter in the OCL signature (not a valid arg->index_)
+        if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X) {
+            size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
+            argPtr = addArg(argPtr, &offset_x, sizeof(void*));
+            continue;
+        }
+        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y) {
+            size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
+            argPtr = addArg(argPtr, &offset_y, sizeof(void*));
+            continue;
+        }
+        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z) {
+            size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
+            argPtr = addArg(argPtr, &offset_z, sizeof(void*));
+            continue;
+        }
+        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER) {
+            address bufferPtr = printfDbg()->dbgBuffer();
+            argPtr = addArg(argPtr, &bufferPtr, sizeof(void*));
+            continue;
+        }
+        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE
+              || arg->type_ == ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION
+              || arg->type_ == ROC_ARGTYPE_HIDDEN_NONE) {
+            void* zero = 0;
+            argPtr = addArg(argPtr, &zero, sizeof(void*));
+            continue;
+        }
 
-        if (arg->type_ == HSAIL_ARGTYPE_POINTER ) {
-            const size_t size = arg->size_;
-            if (arg->addrQual_ == HSAIL_ADDRESS_LOCAL) {
+        assert(arg->index_ != uint(-1) && "not a valid signature index");
+        const_address srcArgPtr = parameters + signature.at(arg->index_).offset_;
+
+        if (arg->type_ == ROC_ARGTYPE_POINTER) {
+            if (arg->addrQual_ == ROC_ADDRESS_LOCAL) {
                 // Align the LDS on the alignment requirement of type pointed to
-                ldsUsage = amd::alignUp(ldsUsage, arg->alignment_);
-                addArg(&argPtr, &ldsUsage, size);
+                ldsUsage = amd::alignUp(ldsUsage, arg->pointeeAlignment_);
+                argPtr = addArg(argPtr, &ldsUsage, arg->size_, arg->alignment_);
                 ldsUsage += *reinterpret_cast<const size_t *>(srcArgPtr);
                 continue;
             }
-            assert((arg->addrQual_ == HSAIL_ADDRESS_GLOBAL) &&
-                   "Unsupported address qualifier");
-            if (kernelParams.boundToSvmPointer(dev(), parameters, i)) {
-                addArg(&argPtr, srcArgPtr, size);
+            assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL
+                 || arg->addrQual_ == ROC_ADDRESS_CONSTANT)
+                     && "Unsupported address qualifier");
+            if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
+                argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
                 continue;
             }
             amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
             if (mem == NULL) {
-                addArg(&argPtr, srcArgPtr, size);
+                argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
                 continue;
             }
 
             Memory *devMem = static_cast<Memory *>(mem->getDeviceMemory(dev()));
             //! @todo add multi-devices synchronization when supported.
             void* globalAddress = devMem->getDeviceMemory();
-            addArg(&argPtr, &globalAddress, size);
+            argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
 
             //! @todo Compiler has to return read/write attributes
             const cl_mem_flags flags = mem->getMemFlags();
@@ -1553,23 +1563,21 @@ VirtualGPU::submitKernelInternal(
                 mem->signalWrite(&dev());
             }
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_VALUE) {
-            if (arg->dataType_ == HSAIL_DATATYPE_STRUCT) {
+        else if (arg->type_ == ROC_ARGTYPE_VALUE) {
+            if (arg->dataType_ == ROC_DATATYPE_STRUCT) {
                 void *mem = allocKernArg(arg->size_, arg->alignment_);
                 if (mem == NULL) {
                     LogError("Out of memory");
                     return false;
                 }
                 memcpy(mem, srcArgPtr, arg->size_);
-                addArg(&argPtr, &mem, sizeof(void*));
+                argPtr = addArg(argPtr, &mem, sizeof(void*));
                 continue;
             }
-            for (uint e = 0; e < arg->numElem_; ++e) {
-                addArg(&argPtr, srcArgPtr, arg->size_);
-                srcArgPtr += arg->size_;
-            }
+            argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
+            srcArgPtr += arg->size_;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_IMAGE) {
+        else if (arg->type_ == ROC_ARGTYPE_IMAGE) {
           amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
           Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
           if (image == NULL) {
@@ -1580,11 +1588,11 @@ VirtualGPU::submitKernelInternal(
           if (dev().settings().enableImageHandle_) {
             const uint64_t image_srd = image->getHsaImageObject().handle;
             assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
-            addArg(&argPtr, &image_srd, sizeof(image_srd));
+            argPtr = addArg(argPtr, &image_srd, sizeof(image_srd));
           }
           else {
             // Image arguments are of size 48 bytes and are aligned to 16 bytes
-            addArg(&argPtr, (void *)image->getHsaImageObject().handle,
+            argPtr = addArg(argPtr, (void *)image->getHsaImageObject().handle,
               HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
           }
 
@@ -1594,7 +1602,7 @@ VirtualGPU::submitKernelInternal(
             mem->signalWrite(&dev());
           }
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_SAMPLER) {
+        else if (arg->type_ == ROC_ARGTYPE_SAMPLER) {
           amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
           if (sampler == NULL) {
             LogError("Kernel sampler argument is not an sampler object");
@@ -1614,7 +1622,7 @@ VirtualGPU::submitKernelInternal(
 
           if (dev().settings().enableImageHandle_) {
             uint64_t sampler_srd = hsa_sampler.handle;
-            addArg(&argPtr, &sampler_srd, sizeof(sampler_srd));
+            argPtr = addArg(argPtr, &sampler_srd, sizeof(sampler_srd));
             samplerList_.push_back(hsa_sampler);
             // TODO: destroy sampler.
           }
@@ -1627,26 +1635,6 @@ VirtualGPU::submitKernelInternal(
           }
         }
     }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-    const uint extraAargs = ((roc::Kernel*)devKernel)->extraArgumentsNum();
-    for (uint j = 0; j < extraAargs; ++j) {
-        switch(j) {
-        case 3: { // Printf buffer
-            address bufferPtr = printfDbg()->dbgBuffer();
-            addArg(&argPtr, &bufferPtr, sizeof(void*));
-            break;
-        }
-        case 0: case 1: case 2: { // Global offsets
-            const size_t offset = j < sizes.dimensions() ? sizes.offset()[j] : 0;
-            addArg(&argPtr, &offset, sizeof(size_t));
-            break;
-        }
-        default:
-            assert(!"Unknown hidden argument index");
-        }
-    }
-#endif // defined(WITH_LIGHTNING_COMPILER)
 
     // Check there is no arguments' buffer overflow
     assert(argPtr <= argBuffer + gpuKernel.KernargSegmentByteSize());
@@ -1662,7 +1650,7 @@ VirtualGPU::submitKernelInternal(
     //Initialize the dispatch Packet
     hsa_kernel_dispatch_packet_t dispatchPacket;
     memset(&dispatchPacket, 0, sizeof(dispatchPacket));
-    
+
     dispatchPacket.kernel_object = gpuKernel.KernelCodeHandle();
 
     dispatchPacket.header = aqlHeader_;
