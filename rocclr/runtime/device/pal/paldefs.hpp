@@ -145,13 +145,14 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* Buffin */    { "Baffin",     "baffin",   4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
+// The GfxIpDeviceInfo table must match with GfxIpLevel enum
+// (located in //depot/stg/pal/inc/core/palDevice.h).
 static const AMDDeviceInfo GfxIpDeviceInfo[] = {
 /* Unknown  */    { "",         "unknown",     4, 16, 1, 256, 64 * Ki, 32, 000 },
 /* GFX6_0_0 */    { "",         "gfx6_0_0",    4, 16, 1, 256, 64 * Ki, 32, 600 },
 /* GFX7_0_0 */    { "",         "gfx7_0_0",    4, 16, 1, 256, 64 * Ki, 32, 700 },
 /* GFX8_0_0 */    { "",         "gfx8_0_0",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* GFX8_0_1 */    { "",         "gfx8_0_1",    4, 16, 1, 256, 64 * Ki, 32, 801 },
-/* GFX8_0_4 */    { "",         "gfx8_0_4",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* GFX9_0_0 */    { "Rabbit",  "rabbit",   4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
