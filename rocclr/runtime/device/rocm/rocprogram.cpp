@@ -914,42 +914,11 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         }
     }
 
-    // open the optimized output
-    Buffer* opt_bc = C->NewBuffer(DT_LLVM_BC);
-
-    if (!opt_bc) {
-        buildLog_ += "Error: Failed to open the optimized program.\n";
-        return false;
-    }
-
     std::ostringstream optLevel;
     optLevel << "-O" << options->oVariables->OptLevel;
 
-    std::vector<std::string> optOptions;
-    optOptions.push_back(optLevel.str());
-    optOptions.push_back("-strip");
-    optOptions.push_back("-instcombine");
-    optOptions.push_back("-always-inline");
-
-    ret = C->OptimizeLLVMBitcode(linked_bc, opt_bc, optOptions);
-    buildLog_ += C->Output();
-    if (!ret) {
-        buildLog_ += "Error: Optimizing bitcode failed: linking source & IR libraries.\n";
-        return false;
-    }
-
-    if (options->isDumpFlagSet(amd::option::DUMP_BC_OPTIMIZED)) {
-        std::ofstream f(options->getDumpFileName("_optimized.bc").c_str(), std::ios::trunc);
-        if(f.is_open()) {
-            f.write(opt_bc->Buf().data(), opt_bc->Size());
-        } else {
-            buildLog_ +=
-                "Warning: opening the file to dump the optimized IR failed.\n";
-        }
-    }
-
     inputs.clear();
-    inputs.push_back(opt_bc);
+    inputs.push_back(linked_bc);
 
     Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
     if (!out_exec) {
