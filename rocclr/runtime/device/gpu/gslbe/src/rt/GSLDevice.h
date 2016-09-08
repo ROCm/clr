@@ -100,8 +100,9 @@ public:
     bool             canDMA() const { return m_canDMA; }
     gslMemObject     m_srcDRMDMAMem, m_dstDRMDMAMem;    // memory object of flush buffer, used for DRMDMA flush
 
-    void             PerformAdapterInitialization() const;
+    void             PerformAdapterInitialization(bool ValidateOnly);
     void             PerformFullInitialization() const;
+    void             CloseInitializedAdapter(bool ValidateOnly);
 
     CopyType         GetCopyType(gslMemObject srcMem, gslMemObject destMem, size_t* srcOffset,
                                      size_t* destOffset, bool allowDMA, uint32 flags, size_t size, bool enableCopyRect) const;
@@ -207,7 +208,11 @@ private:
             uint    m_PerformLazyDeviceInit : 1;
             uint    m_isComputeRingIDForced : 1;
             uint    m_isSDMAL2TConstrained  : 1;
+            uint    m_initLite              : 1;
+            uint    m_fullInitialized       : 1;
         };
+
+        uint m_flags;
     };
 
     amd::Monitor*   gslDeviceOps_;  //!< Lock to serialize GSL device
