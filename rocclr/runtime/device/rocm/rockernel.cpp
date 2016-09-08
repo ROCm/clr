@@ -689,16 +689,14 @@ Kernel::Kernel(
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize,
                const uint32_t kernargSegmentByteSize,
-               const uint32_t kernargSegmentAlignment,
-               uint extraArgsNum)
+               const uint32_t kernargSegmentAlignment)
     : device::Kernel(name),
       program_(prog),
       kernelCodeHandle_(kernelCodeHandle),
       workgroupGroupSegmentByteSize_(workgroupGroupSegmentByteSize),
       workitemPrivateSegmentByteSize_(workitemPrivateSegmentByteSize),
       kernargSegmentByteSize_(kernargSegmentByteSize),
-      kernargSegmentAlignment_(kernargSegmentAlignment),
-      extraArgumentsNum_(extraArgsNum) {}
+      kernargSegmentAlignment_(kernargSegmentAlignment) {}
 
 #if defined(WITH_LIGHTNING_COMPILER)
 bool Kernel::init_LC()
