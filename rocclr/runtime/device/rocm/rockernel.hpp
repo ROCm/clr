@@ -96,8 +96,7 @@ public:
         const uint32_t workgroupGroupSegmentByteSize,
         const uint32_t workitemPrivateSegmentByteSize,
         const uint32_t kernargSegmentByteSize,
-        const uint32_t kernargSegmentAlignment,
-        uint extraArgsNum);
+        const uint32_t kernargSegmentAlignment);
 
     const uint64_t& KernelCodeHandle() {
         return kernelCodeHandle_;
@@ -144,11 +143,6 @@ public:
         return NULL;
     }
 
-    //! Max number of possible extra (hidden) kernel arguments
-    static const uint MaxExtraArgumentsNum = 6;
-
-    uint extraArgumentsNum() const { return extraArgumentsNum_; }
-
     //! Return printf info array
     const std::vector<PrintfInfo>& printfInfo() const {return printf_;}
 
@@ -172,7 +166,6 @@ private:
     const uint32_t kernargSegmentByteSize_;
     const uint32_t kernargSegmentAlignment_;
     size_t kernelDirectiveOffset_;
-    const uint extraArgumentsNum_; // Number of arguments in Kernenv
     std::vector<PrintfInfo> printf_;
 };
 

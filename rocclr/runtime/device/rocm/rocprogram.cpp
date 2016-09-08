@@ -1093,9 +1093,6 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
             return false;
         }
 
-        // for OpenCL default hidden kernel arguments assuming there is no printf
-        size_t numHiddenKernelArgs = 3; // FIXME_Wilkin
-
         Kernel *aKernel = new roc::Kernel(
             kernelName,
             this,
@@ -1105,10 +1102,8 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
             // TODO: remove the workaround
             //   add 24 bytes for global offsets as workaround for LC reporting
             //   excluded the hidden arguments
-            amd::alignUp(kernargSegmentByteSize, sizeof(size_t)) + numHiddenKernelArgs * sizeof(size_t),
-            kernargSegmentAlignment,
-            numHiddenKernelArgs
-        );
+            amd::alignUp(kernargSegmentByteSize, sizeof(size_t)) + 3 * sizeof(size_t),
+            amd::alignUp(kernargSegmentAlignment,device().info().globalMemCacheLineSize_));
         if (!aKernel->init()) {
             return false;
         }
@@ -1450,11 +1445,30 @@ std::string
 HSAILProgram::hsailOptions(amd::option::Options* options)
 {
     std::string hsailOptions;
+
     //Set options for the standard device specific options
+
+    hsailOptions.append(" -D__AMD__");
+
+    int major, minor;
+    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
+
+    std::stringstream ss;
+    ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+    hsailOptions.append(ss.str());
+
+    if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
+        hsailOptions.append(" -D__IMAGE_SUPPORT__");
+    }
+
     //This is just for legacy compiler code
     // All our devices support these options now
-    hsailOptions.append(" -DFP_FAST_FMAF");
-    hsailOptions.append(" -DFP_FAST_FMA");
+    if (options->oVariables->FastFMA) {
+        hsailOptions.append(" -DFP_FAST_FMA");
+    }
+    if (options->oVariables->FastFMAF) {
+        hsailOptions.append(" -DFP_FAST_FMAF");
+    }
 
     if (dev().deviceInfo().gfxipVersion_ < 900) {
         hsailOptions.append(" -cl-denorms-are-zero");

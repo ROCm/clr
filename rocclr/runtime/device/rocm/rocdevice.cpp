@@ -817,8 +817,18 @@ Device::populateOCLDeviceConstants()
     info_.maxSamplers_ = 16;
     info_.bufferFromImageSupport_ = CL_FALSE;
     info_.oclcVersion_ = "OpenCL C " OPENCL_VERSION_STR " ";
-    strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
-    info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
+
+    uint16_t major, minor;
+    if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MAJOR, &major)
+            != HSA_STATUS_SUCCESS
+     || hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MINOR, &minor)
+            != HSA_STATUS_SUCCESS) {
+        return false;
+    }
+    std::stringstream ss;
+    ss << major << "." << minor << " (hsa)";
+    strcpy(info_.driverVersion_, ss.str().c_str());
+    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
 
     info_.builtInKernels_ = "";
     info_.linkerAvailable_ = true;
