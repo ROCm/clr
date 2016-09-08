@@ -1830,15 +1830,16 @@ Device::bindExternalDevice(
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required to validate
         // GL interoperability.
-        PerformAdapterInitialization();
+        PerformAdapterInitialization(validateOnly);
 
         // Attempt to associate GSL-OGL
         if (!glAssociate((CALvoid*)pContext, pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx])) {
-            if (!validateOnly) {
-                LogError("Failed gslGLAssociate()");
-            }
+            CloseInitializedAdapter(validateOnly);
+            LogError("Failed gslGLAssociate()");
             return false;
         }
+
+        CloseInitializedAdapter(validateOnly);
     }
 
 #ifdef _WIN32
@@ -1847,14 +1848,17 @@ Device::bindExternalDevice(
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required
         // to validate D3D10 interoperability.
-        PerformAdapterInitialization();
+        PerformAdapterInitialization(validateOnly);
 
         // Associate GSL-D3D
         if (!associateD3D10Device(
             reinterpret_cast<ID3D10Device*>(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx]))) {
+            CloseInitializedAdapter(validateOnly);
             LogError("Failed gslD3D10Associate()");
             return false;
         }
+
+        CloseInitializedAdapter(validateOnly);
     }
 
     if (flags & amd::Context::Flags::D3D11DeviceKhr) {
@@ -1862,36 +1866,45 @@ Device::bindExternalDevice(
         // if the GSLDevice is still uninitialized.
         // Only adapter initialization is required to validate
         // D3D11 interoperability.
-        PerformAdapterInitialization();
+        PerformAdapterInitialization(validateOnly);
 
         // Associate GSL-D3D
         if (!associateD3D11Device(
             reinterpret_cast<ID3D11Device*>(pDevice[amd::Context::DeviceFlagIdx::D3D11DeviceKhrIdx]))) {
+            CloseInitializedAdapter(validateOnly);
             LogError("Failed gslD3D11Associate()");
             return false;
         }
+
+        CloseInitializedAdapter(validateOnly);
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceKhr) {
-        PerformAdapterInitialization();
+        PerformAdapterInitialization(validateOnly);
 
         // Associate GSL-D3D
         if (!associateD3D9Device(
             reinterpret_cast<IDirect3DDevice9*>(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx]))) {
+            CloseInitializedAdapter(validateOnly);
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
+
+        CloseInitializedAdapter(validateOnly);
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceEXKhr) {
-        PerformAdapterInitialization();
+        PerformAdapterInitialization(validateOnly);
 
         // Associate GSL-D3D
         if (!associateD3D9Device(
             reinterpret_cast<IDirect3DDevice9Ex*>(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceEXKhrIdx]))) {
+            CloseInitializedAdapter(validateOnly);
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
+
+        CloseInitializedAdapter(validateOnly);
     }
 
     if (flags & amd::Context::Flags::D3D9DeviceVAKhr) {

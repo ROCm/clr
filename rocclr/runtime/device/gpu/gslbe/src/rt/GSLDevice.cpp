@@ -31,18 +31,13 @@ void CALGSLDevice::Initialize()
     m_target = (CALtarget)0xffffffff;
     m_srcDRMDMAMem = NULL ;
     m_dstDRMDMAMem = NULL ;
-
+    m_flags = 0;
     m_nativeDisplayHandle = NULL;
     m_deviceMode = GSL_DEVICE_MODE_GFX;
-
     m_gpuIndex = 0;
-    m_usePerVPUAdapterModel = false;
     m_chainIndex = 0;
-    m_vpuMask = 1;
-    m_PerformLazyDeviceInit = false;
-    m_computeRing = false;
-    m_isComputeRingIDForced = false;
     m_forcedComputeEngineID = GSL_ENGINEID_INVALID;
+    m_vpuMask = 1;
     gslDeviceOps_ = NULL;
 }
 
@@ -249,6 +244,7 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
 void
 CALGSLDevice::close()
 {
+    m_fullInitialized = false;
     if (m_cs != NULL)
     {
         m_cs->Flush();
@@ -290,10 +286,27 @@ CALGSLDevice::close()
 }
 
 void
-CALGSLDevice::PerformAdapterInitialization() const
+CALGSLDevice::PerformAdapterInitialization(bool ValidateOnly)
 {
-    CALGSLDevice* mutable_this = const_cast<CALGSLDevice*>(this);
-    mutable_this->PerformAdapterInitialization_int(false);
+    // Win10 initialization is more exhaustive.
+    // @ToDo Check if Win7 can be simplified as well
+    // If we end up creating a paging fence on Win10 in IOL the slave may not go idle
+    PerformAdapterInitialization_int(ValidateOnly && m_initLite);
+}
+
+void CALGSLDevice::CloseInitializedAdapter(bool ValidateOnly)
+{
+    // @ToDo Check if Win7 can be simplified as well
+    // The adapter shouldnt be destroyed if its created when bindExternalDevice is called
+    // during context creation
+    if (m_initLite && ValidateOnly && !m_fullInitialized)
+    {
+        //! @note: GSL device isn't thread safe
+        amd::ScopedLock k(gslDeviceOps());
+        // close the adaptor
+        gsAdaptor::closeAdaptor(m_adp);
+        m_adp = 0;
+    }
 }
 
 void
@@ -309,15 +322,14 @@ CALGSLDevice::PerformFullInitialization() const
 bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
-    bool initLite = false;
 #ifdef ATI_OS_WIN
     if(osGetVersion() >= AMD_OS_VERSION_WINDOWS_10)
     {
-        initLite = true;
+        m_initLite = true;
     }
 #endif
 
-    PerformAdapterInitialization_int(initLite);
+    PerformAdapterInitialization_int(m_initLite);
 
     if (m_adp == 0)
     {
@@ -404,16 +416,9 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 bool
 CALGSLDevice::SetupContext(int32 &asic_id)
 {
-    bool initLite = false;
-#ifdef ATI_OS_WIN
-    if(osGetVersion() >= AMD_OS_VERSION_WINDOWS_10)
-    {
-        initLite = true;
-    }
-#endif
     gsl::gsCtx* temp_cs = m_adp->createComputeContext(m_computeRing ? (m_isComputeRingIDForced ? m_forcedComputeEngineID :
                                                      getFirstAvailableComputeEngineID()) : GSL_ENGINEID_3DCOMPUTE0,
-                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, initLite);
+                                                     m_canDMA ? GSL_ENGINEID_DRMDMA0 : GSL_ENGINEID_INVALID, m_initLite);
     temp_cs->getMainSubCtx()->setVPUMask(m_vpuMask);
 
     m_maxtexturesize = temp_cs->getMaxTextureSize();
@@ -542,6 +547,7 @@ CALGSLDevice::PerformAdapterInitialization_int(bool initLite)
 void
 CALGSLDevice::PerformFullInitialization_int()
 {
+    m_fullInitialized = true;
     if (m_adp == 0)
     {
         PerformAdapterInitialization_int(false);
