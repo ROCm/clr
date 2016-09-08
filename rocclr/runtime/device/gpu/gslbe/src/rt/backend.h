@@ -47,6 +47,7 @@ typedef enum CALbooleanEnum {
 typedef struct CALimageRec*  CALimage;
 
 #define CAL_ASIC_INFO_MAX_LEN 128
+#define CAL_DRIVER_STORE_MAX_LEN    200
 
 /** CAL device attributes */
 typedef struct CALdeviceattribsRec {
@@ -86,6 +87,7 @@ typedef struct CALdeviceattribsRec {
     bool       isWDDM2Enabled;                      /**< check if WDDM2 is enabled */
     CALuint    maxRTCUs;                            /**< The maximum number of RT CUs for RT queues */
     CALuint    asicRevision;                        /**< The ASIC revision ID */
+    CALchar    driverStore[CAL_DRIVER_STORE_MAX_LEN];/**< Driver store location. */
 } CALdeviceattribs;
 
 

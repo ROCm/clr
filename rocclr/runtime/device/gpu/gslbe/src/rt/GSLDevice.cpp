@@ -108,6 +108,9 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     const uint8* boardName = cs->getString(GSL_GS_RENDERER);
     ::strncpy(m_attribs.boardName, (char*)boardName, CAL_ASIC_INFO_MAX_LEN * sizeof(char));
 
+    const uint8* driverStore = cs->getString(GSL_GS_DRIVER_STORE_PATH);
+    ::strncpy(m_attribs.driverStore, (char*)driverStore, CAL_DRIVER_STORE_MAX_LEN * sizeof(char));
+
     m_attribs.counterFreq = cs->getCounterFreq();
     m_attribs.nanoSecondsPerTick = 1000000000.0 / cs->getCounterFreq();
     m_attribs.longIdleDetect = cs->getLongIdleDetect();
