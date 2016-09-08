@@ -571,6 +571,8 @@ struct Info : public amd::EmbeddedObject
     //! The maximum size of global scope variables
     size_t      maxGlobalVariableSize_;
     size_t      globalVariablePreferredTotalSize_;
+    //! Driver store location
+    char        driverStore_[200];
 };
 
 //! Device settings

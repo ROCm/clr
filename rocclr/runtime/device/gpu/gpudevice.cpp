@@ -178,6 +178,31 @@ NullDevice::create(CALtarget target)
     // Fill the device info structure
     fillDeviceInfo(calAttr, memInfo, 4096, 1, 0);
 
+    if (NULL == compiler_) {
+#if !defined(ATI_OS_LINUX)
+        char CompilerLibrary[220] = "";
+        strcpy_s(CompilerLibrary, calAttr.driverStore);
+        strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
+#endif
+        const char *library = getenv("COMPILER_LIBRARY");
+        aclCompilerOptions opts = {
+            sizeof(aclCompilerOptions_0_8),
+#if defined(ATI_OS_LINUX)
+            library ? library : LINUX_ONLY("lib") "amdocl12cl" \
+            LP64_SWITCH(LINUX_SWITCH("32",""),"64") LINUX_SWITCH(".so",".dll"),
+#else
+            library ? library : CompilerLibrary,
+#endif
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            AMD_OCL_SC_LIB
+        };
+        compiler_ = aclCompilerInit(&opts, NULL);
+    }
+
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         // Runtime doesn't know what local size could be on the real board
         info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
@@ -510,6 +535,7 @@ NullDevice::fillDeviceInfo(
     info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation&0x07);
 
     ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
+    ::strncpy(info_.driverStore_, calAttr.driverStore, sizeof(info_.driverStore_));
 
     // OpenCL1.2 device info fields
     info_.builtInKernels_ = "";
@@ -936,6 +962,32 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
         static_cast<size_t>(getMaxTextureSize()),
         engines().numComputeRings(), engines().numComputeRingsRT());
 
+    if (NULL == compiler_) {
+#if !defined(ATI_OS_LINUX)
+        char CompilerLibrary[220] = "";
+        strcpy_s(CompilerLibrary, getAttribs().driverStore);
+        strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
+#endif
+
+        const char *library = getenv("COMPILER_LIBRARY");
+        aclCompilerOptions opts = {
+            sizeof(aclCompilerOptions_0_8),
+#if defined(ATI_OS_LINUX)
+            library ? library : LINUX_ONLY("lib") "amdocl12cl" \
+            LP64_SWITCH(LINUX_SWITCH("32",""),"64") LINUX_SWITCH(".so",".dll"),
+#else
+            library ? library : CompilerLibrary,
+#endif
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            AMD_OCL_SC_LIB
+        };
+        compiler_ = aclCompilerInit(&opts, NULL);
+    }
+
     if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
         if (NULL == hsaCompiler_) {
             const char* library = getenv("HSA_COMPILER_LIBRARY");
@@ -1195,21 +1247,8 @@ Device::init()
     bool    useDeviceList = false;
     requestedDevices_t requestedDevices;
 
-    const char *library = getenv("COMPILER_LIBRARY");
-    aclCompilerOptions opts = {
-        sizeof(aclCompilerOptions_0_8),
-        library ? library : LINUX_ONLY("lib") "amdocl12cl" \
-            LP64_SWITCH(LINUX_SWITCH("32",""),"64") LINUX_SWITCH(".so",".dll"),
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        AMD_OCL_SC_LIB
-    };
-
     hsaCompiler_ = NULL;
-    compiler_ = aclCompilerInit(&opts, NULL);
+    compiler_ = NULL;
 
 #if defined(_WIN32) && !defined(_WIN64)
     // @toto: FIXME: remove this when CAL is fixed!!!
