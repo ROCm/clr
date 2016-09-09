@@ -492,7 +492,7 @@ NullDevice::fillDeviceInfo(
     }
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
-         AMD_BUILD_STRING "%s", " (VM)");
+         AMD_BUILD_STRING);
 
     info_.profile_ = "FULL_PROFILE";
     if (settings().oclVersion_ == OpenCL20) {
