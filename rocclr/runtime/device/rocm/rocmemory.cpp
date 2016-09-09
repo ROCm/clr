@@ -274,7 +274,7 @@ Buffer::destroy()
             }
         }
         else {
-            dev_.deviceLocalFree(deviceMemory_, size());
+            dev_.memFree(deviceMemory_, size());
         }
     }
 
@@ -359,7 +359,7 @@ Buffer::create()
                 amd::Coord3D(size()), true);
 
             if (!ret) {
-                dev_.deviceLocalFree(deviceMemory_, size());
+                dev_.memFree(deviceMemory_, size());
                 deviceMemory_ = NULL;
             }
 
@@ -484,7 +484,7 @@ Image::Image(const roc::Device& dev, amd::Memory& owner) :
     flags_ &= (~HostMemoryDirectAccess & ~HostMemoryRegistered);
     populateImageDescriptor();
     hsaImageObject_.handle = 0;
-    hsaImageData_ = NULL;
+    originalDeviceMemory_ = NULL;
 }
 
 void
@@ -594,9 +594,9 @@ Image::createInteropImage()
   if (obj->getGLTarget()==GL_TEXTURE_CUBE_MAP)
     desc.setFace(obj->getCubemapFace());
   
-  hsaImageData_=deviceMemory_;
+  originalDeviceMemory_=deviceMemory_;
 
-  hsa_status_t err=hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, hsaImageData_, permission_, &hsaImageObject_);
+  hsa_status_t err=hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, originalDeviceMemory_, permission_, &hsaImageObject_);
   if(err!=HSA_STATUS_SUCCESS)
     return false;
   
@@ -644,23 +644,23 @@ Image::create()
       : deviceImageInfo_.size + deviceImageInfo_.alignment;
 
     if (!(owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR)) {
-      deviceMemory_ = dev_.deviceLocalAlloc(alloc_size);
+      originalDeviceMemory_ = dev_.deviceLocalAlloc(alloc_size);
     }
 
-    if (deviceMemory_ == NULL) {
-        deviceMemory_ =
+    if (originalDeviceMemory_ == NULL) {
+        originalDeviceMemory_ =
           dev_.hostAlloc(alloc_size, 1, false);
     }
 
-    hsaImageData_ = reinterpret_cast<const void *>(
-      amd::alignUp(reinterpret_cast<uintptr_t>(deviceMemory_),
+    deviceMemory_ = reinterpret_cast<void *>(
+      amd::alignUp(reinterpret_cast<uintptr_t>(originalDeviceMemory_),
       deviceImageInfo_.alignment));
 
     assert(amd::isMultipleOf(
-      hsaImageData_, static_cast<size_t>(deviceImageInfo_.alignment)));
+      deviceMemory_, static_cast<size_t>(deviceImageInfo_.alignment)));
 
     status = hsa_ext_image_create(
-      dev_.getBackendDevice(), &imageDescriptor_, hsaImageData_,
+      dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_,
         permission_, &hsaImageObject_);
 
     if (status != HSA_STATUS_SUCCESS) {
@@ -676,17 +676,17 @@ Image::createView(Memory &parent)
 {
     deviceMemory_ = parent.getDeviceMemory();
 
-    hsaImageData_ = (parent.owner()->asBuffer() != NULL)
+    originalDeviceMemory_ = (parent.owner()->asBuffer() != NULL)
                         ? deviceMemory_
-                        : static_cast<Image &>(parent).hsaImageData_;
+                        : static_cast<Image &>(parent).originalDeviceMemory_;
 
     kind_=parent.getKind();
 
     hsa_status_t status;
     if(kind_==MEMORY_KIND_INTEROP)
-      status = hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, hsaImageData_, permission_, &hsaImageObject_);
+      status = hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
     else
-      status= hsa_ext_image_create(dev_.getBackendDevice(), &imageDescriptor_, hsaImageData_, permission_, &hsaImageObject_);
+      status= hsa_ext_image_create(dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_, &hsaImageObject_);
 
     if (status != HSA_STATUS_SUCCESS) {
         LogError("[OCL] Fail to allocate image memory");
@@ -756,27 +756,26 @@ Image::~Image()
 void
 Image::destroy()
 {
+  if (hsaImageObject_.handle != 0) {
+      hsa_status_t status =
+          hsa_ext_image_destroy(dev_.getBackendDevice(), hsaImageObject_);
+      assert(status == HSA_STATUS_SUCCESS);
+  }
+
   if (owner()->parent() != NULL) {
       return;
   }
 
   if(kind_==MEMORY_KIND_INTEROP)
   {
-    hsa_ext_image_destroy(dev_.getBackendDevice(), hsaImageObject_);
     free(amdImageDesc_);
     amdImageDesc_=NULL;
     destroyInteropBuffer();
     return;
   }
 
-  if (deviceMemory_ != NULL) {
-      dev_.hostFree(deviceMemory_, deviceImageInfo_.size);
-  }
-
-  if (hsaImageObject_.handle != 0) {
-      hsa_status_t status =
-          hsa_ext_image_destroy(dev_.getBackendDevice(), hsaImageObject_);
-      assert(status == HSA_STATUS_SUCCESS);
+  if (originalDeviceMemory_ != NULL) {
+      dev_.memFree(originalDeviceMemory_, deviceImageInfo_.size);
   }
 }
 }

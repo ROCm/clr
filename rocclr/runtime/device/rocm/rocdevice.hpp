@@ -320,7 +320,7 @@ public:
 
     void *deviceLocalAlloc(size_t size) const;
 
-    void deviceLocalFree(void *ptr, size_t size) const;
+    void memFree(void *ptr, size_t size) const;
 
     virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = NULL) const;
 

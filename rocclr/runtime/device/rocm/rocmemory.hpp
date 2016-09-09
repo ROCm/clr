@@ -180,7 +180,7 @@ private:
     hsa_ext_image_t hsaImageObject_;
     hsa_amd_image_descriptor_t* amdImageDesc_;
 
-    const void* hsaImageData_;
+    void* originalDeviceMemory_;
 };
 
 }
