@@ -1497,29 +1497,34 @@ VirtualGPU::submitKernelInternal(
         // matching parameter in the OCL signature (not a valid arg->index_)
         if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X) {
             size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
-            argPtr = addArg(argPtr, &offset_x, sizeof(void*));
+            assert(arg->size_ == sizeof(offset_x) && "check the sizes");
+            argPtr = addArg(argPtr, &offset_x, arg->size_, arg->alignment_);
             continue;
         }
         else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y) {
             size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
-            argPtr = addArg(argPtr, &offset_y, sizeof(void*));
+            assert(arg->size_ == sizeof(offset_y) && "check the sizes");
+            argPtr = addArg(argPtr, &offset_y, arg->size_, arg->alignment_);
             continue;
         }
         else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z) {
             size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
-            argPtr = addArg(argPtr, &offset_z, sizeof(void*));
+            assert(arg->size_ == sizeof(offset_z) && "check the sizes");
+            argPtr = addArg(argPtr, &offset_z, arg->size_, arg->alignment_);
             continue;
         }
         else if (arg->type_ == ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER) {
             address bufferPtr = printfDbg()->dbgBuffer();
-            argPtr = addArg(argPtr, &bufferPtr, sizeof(void*));
+            assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
+            argPtr = addArg(argPtr, &bufferPtr, arg->size_, arg->alignment_);
             continue;
         }
         else if (arg->type_ == ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE
               || arg->type_ == ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION
               || arg->type_ == ROC_ARGTYPE_HIDDEN_NONE) {
             void* zero = 0;
-            argPtr = addArg(argPtr, &zero, sizeof(void*));
+            assert(arg->size_ <= sizeof(zero) && "check the sizes");
+            argPtr = addArg(argPtr, &zero, arg->size_, arg->alignment_);
             continue;
         }
 
@@ -1558,76 +1563,74 @@ VirtualGPU::submitKernelInternal(
                 mem->signalWrite(&dev());
             }
         }
-        else if (arg->type_ == ROC_ARGTYPE_VALUE) {
-            if (arg->dataType_ == ROC_DATATYPE_STRUCT) {
-                void *mem = allocKernArg(arg->size_, arg->alignment_);
-                if (mem == NULL) {
-                    LogError("Out of memory");
-                    return false;
-                }
-                memcpy(mem, srcArgPtr, arg->size_);
-                argPtr = addArg(argPtr, &mem, sizeof(void*));
-                continue;
+        else if (arg->type_ == ROC_ARGTYPE_REFERENCE) {
+            void *mem = allocKernArg(arg->size_, arg->alignment_);
+            if (mem == NULL) {
+                LogError("Out of memory");
+                return false;
             }
+            memcpy(mem, srcArgPtr, arg->size_);
+            argPtr = addArg(argPtr, &mem, sizeof(void*));
+        }
+        else if (arg->type_ == ROC_ARGTYPE_VALUE) {
             argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-            srcArgPtr += arg->size_;
         }
         else if (arg->type_ == ROC_ARGTYPE_IMAGE) {
-          amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
-          Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
-          if (image == NULL) {
-            LogError("Kernel image argument is not an image object");
-            return false;
-          }
+            amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
+            Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
+            if (image == NULL) {
+                LogError("Kernel image argument is not an image object");
+                return false;
+            }
 
-          if (dev().settings().enableImageHandle_) {
-            const uint64_t image_srd = image->getHsaImageObject().handle;
-            assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
-            argPtr = addArg(argPtr, &image_srd, sizeof(image_srd));
-          }
-          else {
-            // Image arguments are of size 48 bytes and are aligned to 16 bytes
-            argPtr = addArg(argPtr, (void *)image->getHsaImageObject().handle,
-              HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
-          }
+            if (dev().settings().enableImageHandle_) {
+                const uint64_t image_srd = image->getHsaImageObject().handle;
+                assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
+                argPtr = addArg(argPtr, &image_srd, sizeof(image_srd));
+            }
+            else {
+                // Image arguments are of size 48 bytes and are aligned to 16 bytes
+                argPtr = addArg(argPtr, (void *)image->getHsaImageObject().handle,
+                    HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
+            }
 
-          //! @todo Compiler has to return read/write attributes
-          const cl_mem_flags flags = mem->getMemFlags();
-          if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
-            mem->signalWrite(&dev());
-          }
+            //! @todo Compiler has to return read/write attributes
+            const cl_mem_flags flags = mem->getMemFlags();
+            if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
+                mem->signalWrite(&dev());
+            }
         }
         else if (arg->type_ == ROC_ARGTYPE_SAMPLER) {
-          amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
-          if (sampler == NULL) {
-            LogError("Kernel sampler argument is not an sampler object");
-            return false;
-          }
+            amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
+            if (sampler == NULL) {
+                LogError("Kernel sampler argument is not an sampler object");
+                return false;
+            }
 
-          hsa_ext_sampler_descriptor_t samplerDescriptor;
-          fillSampleDescriptor(samplerDescriptor, *sampler);
+            hsa_ext_sampler_descriptor_t samplerDescriptor;
+            fillSampleDescriptor(samplerDescriptor, *sampler);
 
-          hsa_ext_sampler_t hsa_sampler;
-          hsa_status_t status = hsa_ext_sampler_create(dev().getBackendDevice(),
-            &samplerDescriptor, &hsa_sampler);
-          if (status != HSA_STATUS_SUCCESS) {
-            LogError("Error creating device sampler object!");
-            return false;
-          }
+            hsa_ext_sampler_t hsa_sampler;
+            hsa_status_t status = hsa_ext_sampler_create(dev().getBackendDevice(),
+                &samplerDescriptor, &hsa_sampler);
+            if (status != HSA_STATUS_SUCCESS) {
+                LogError("Error creating device sampler object!");
+                return false;
+            }
 
-          if (dev().settings().enableImageHandle_) {
-            uint64_t sampler_srd = hsa_sampler.handle;
-            argPtr = addArg(argPtr, &sampler_srd, sizeof(sampler_srd));
-            samplerList_.push_back(hsa_sampler);
-            // TODO: destroy sampler.
-          }
-          else {
-            argPtr = amd::alignUp(argPtr, HSA_SAMPLER_OBJECT_ALIGNMENT);
+            if (dev().settings().enableImageHandle_) {
+                uint64_t sampler_srd = hsa_sampler.handle;
+                argPtr = addArg(argPtr, &sampler_srd, sizeof(sampler_srd));
+                samplerList_.push_back(hsa_sampler);
+                // TODO: destroy sampler.
+            }
+            else {
+                argPtr = amd::alignUp(argPtr, HSA_SAMPLER_OBJECT_ALIGNMENT);
 
-            memcpy(argPtr, (void*)hsa_sampler.handle, HSA_SAMPLER_OBJECT_SIZE);
-            argPtr += HSA_SAMPLER_OBJECT_SIZE;
-            hsa_ext_sampler_destroy(dev().getBackendDevice(), hsa_sampler);
-          }
+                memcpy(argPtr, (void*)hsa_sampler.handle, HSA_SAMPLER_OBJECT_SIZE);
+                argPtr += HSA_SAMPLER_OBJECT_SIZE;
+                hsa_ext_sampler_destroy(dev().getBackendDevice(), hsa_sampler);
+            }
         }
     }
 

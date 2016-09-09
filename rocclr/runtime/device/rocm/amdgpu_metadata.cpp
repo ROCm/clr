@@ -102,7 +102,7 @@ namespace code {
   }
 
   template<>
-  bool Read<AMDGPU::RuntimeMD::KernelArg::TypeKind>(std::istream& in, AMDGPU::RuntimeMD::KernelArg::TypeKind& v) {
+  bool Read<AMDGPU::RuntimeMD::KernelArg::Kind>(std::istream& in, AMDGPU::RuntimeMD::KernelArg::Kind& v) {
     return ReadConvert<uint8_t>(in, v);
   }
 
@@ -124,17 +124,26 @@ namespace code {
   namespace KernelArg {
     using namespace AMDGPU::RuntimeMD::KernelArg;
     Metadata::Metadata()
-    : size(0), align(0), pointeeAlign(0),
+    : size(0), align(0), pointeeAlign(0), accQual(None),
       isConst(false), isRestrict(false), isVolatile(false), isPipe(false)
     {}
 
-    static const char* TypeKindToString(TypeKind typeKind) {
-      switch (typeKind) {
-      case Value: return "Value";
-      case Pointer: return "Pointer";
+    static const char* KindToString(Kind kind) {
+      switch (kind) {
+      case ByValue: return "ByValue";
+      case GlobalBuffer: return "GlobalBuffer";
+      case DynamicSharedPointer: return "DynamicSharedPointer";
       case Image: return "Image";
       case Sampler: return "Sampler";
+      case Pipe: return "Pipe";
       case Queue: return "Queue";
+      case HiddenGlobalOffsetX: return "HiddenGlobalOffsetX";
+      case HiddenGlobalOffsetY: return "HiddenGlobalOffsetY";
+      case HiddenGlobalOffsetZ: return "HiddenGlobalOffsetZ";
+      case HiddenPrintfBuffer: return "HiddenPrintfBuffer";
+      case HiddenDefaultQueue: return "HiddenDefaultQueue";
+      case HiddenCompletionAction: return "HiddenCompletionAction";
+      case HiddenNone: return "HiddenNone";
       default: return "<UnknownType>";
       }
     }
@@ -175,7 +184,7 @@ namespace code {
       case KeyArgAlign: return Read(in, align);
       case KeyArgTypeName: return Read(in, typeName);
       case KeyArgName: return Read(in, name);
-      case KeyArgTypeKind: return Read(in, typeKind);
+      case KeyArgKind: return Read(in, kind);
       case KeyArgValueType: return Read(in, valueType);
       case KeyArgPointeeAlign: return Read(in, pointeeAlign);
       case KeyArgAddrQual: return Read(in, addrQual);
@@ -191,23 +200,29 @@ namespace code {
 
     void Metadata::Print(std::ostream& out) {
       out
-        << "Type: " << TypeKindToString(typeKind);
-      if (typeKind == Value) {
+        << "Kind: " << KindToString(kind);
+      if (kind == ByValue) {
         out << "  ValueType:" << ValueTypeToString(valueType);
       }
       if (isConst) { out << "  Const"; }
       if (isRestrict) { out << "  Restrict"; }
       if (isVolatile) { out << "  Volatile"; }
       if (isPipe) { out << "  Pipe"; }
-
+      if (kind == Image || kind == Pipe) {
+        out << "  Access: " << AccessQualToString(accQual);
+      }
       out
-        << "  Access: " << AccessQualToString(accQual)
         << "  Address: " << (unsigned) addrQual
         << "  Size: " << size
-        << "  Align: " << align
-        << "  Type Name: " << typeName;
+        << "  Align: " << align;
+      if (kind == DynamicSharedPointer) {
+        out << "  Pointee Align: " << pointeeAlign;
+      }
+      if (!typeName.empty()) {
+        out << "  Type Name: \"" << typeName << "\"";
+      }
       if (!name.empty()) {
-        out << "  Name: " << name;
+        out << "  Name: \"" << name << "\"";
       }
     }
 
@@ -221,11 +236,11 @@ namespace code {
       hasWorkgroupSizeHint(false),
       hasVectorTypeHint(false),
       hasKernelIndex(false),
-      hasSGPRs(false), hasVGPRs(false),
       hasMinWavesPerSIMD(false), hasMaxWavesPerSIMD(false),
       hasFlatWorkgroupSizeLimits(false),
       hasMaxWorkgroupSize(false),
-      isNoPartialWorkgroups(false)
+      isNoPartialWorkgroups(false),
+      hasPrintfInfo(false)
     {}
 
     void Metadata::SetCommon(uint8_t mdVersion, uint8_t mdRevision,
@@ -260,7 +275,7 @@ namespace code {
       case KeyArgAlign:
       case KeyArgTypeName:
       case KeyArgName:
-      case KeyArgTypeKind:
+      case KeyArgKind:
       case KeyArgValueType:
       case KeyArgPointeeAlign:
       case KeyArgAddrQual:
@@ -284,12 +299,6 @@ namespace code {
       case KeyKernelIndex:
         hasKernelIndex = true;
         return Read(in, kernelIndex);
-      case KeySGPRs:
-        hasSGPRs = true;
-        return Read(in, numSgprs);
-      case KeyVGPRs:
-        hasVGPRs = true;
-        return Read(in, numVgprs);
       case KeyMinWavesPerSIMD:
         hasMinWavesPerSIMD = true;
         return Read(in, minWavesPerSimd);
@@ -306,6 +315,10 @@ namespace code {
         return Read3(in, maxWorkgroupSize);
       case KeyNoPartialWorkGroups:
         isNoPartialWorkgroups = true;
+        return true;
+      case KeyPrintfInfo:
+        hasPrintfInfo = true;
+        return Read(in, printfInfo);
       default:
         return false;
       }
@@ -345,12 +358,6 @@ namespace code {
       if (hasKernelIndex) {
         out << "    Kernel iIndex: " << kernelIndex << std::endl;
       }
-      if (hasSGPRs) {
-        out << "    SGPRs: " << numSgprs << std::endl;
-      }
-      if (hasVGPRs) {
-        out << "    VGPRs: " << numVgprs << std::endl;
-      }
       if (hasMinWavesPerSIMD) {
         out << "    Min waves per SIMD: " << minWavesPerSimd << std::endl;
       }
@@ -363,6 +370,9 @@ namespace code {
       }
       if (isNoPartialWorkgroups) {
         out << "    No partial workgroups" << std::endl;
+      }
+      if (hasPrintfInfo) {
+        out << "    Printf info: " << printfInfo << std::endl;
       }
       out << "    Arguments" << std::endl;
       for (uint32_t i = 0; i < args.size(); ++i) {
@@ -424,7 +434,7 @@ namespace code {
         case KeyArgAlign:
         case KeyArgTypeName:
         case KeyArgName:
-        case KeyArgTypeKind:
+        case KeyArgKind:
         case KeyArgValueType:
         case KeyArgPointeeAlign:
         case KeyArgAddrQual:
@@ -437,13 +447,12 @@ namespace code {
         case KeyWorkGroupSizeHint:
         case KeyVecTypeHint:
         case KeyKernelIndex:
-        case KeySGPRs:
-        case KeyVGPRs:
         case KeyMinWavesPerSIMD:
         case KeyMaxWavesPerSIMD:
         case KeyFlatWorkGroupSizeLimits:
         case KeyMaxWorkGroupSize:
         case KeyNoPartialWorkGroups:
+        case KeyPrintfInfo:
           if (!kernel) { return false; }
           if (!kernel->ReadValue(in, key)) { return false; }
           break;
