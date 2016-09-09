@@ -19,15 +19,30 @@ namespace roc {
 static inline ROC_ARG_TYPE
 GetKernelArgType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    switch (lcArg.TypeKind()) {
-    case AMDGPU::RuntimeMD::KernelArg::Pointer:
+    switch (lcArg.Kind()) {
+    case AMDGPU::RuntimeMD::KernelArg::GlobalBuffer:
+    case AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer:
         return ROC_ARGTYPE_POINTER;
-    case AMDGPU::RuntimeMD::KernelArg::Value:
+    case AMDGPU::RuntimeMD::KernelArg::ByValue:
         return ROC_ARGTYPE_VALUE;
     case AMDGPU::RuntimeMD::KernelArg::Image:
         return ROC_ARGTYPE_IMAGE;
     case AMDGPU::RuntimeMD::KernelArg::Sampler:
         return ROC_ARGTYPE_SAMPLER;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenGlobalOffsetX:
+        return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenGlobalOffsetY:
+        return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenGlobalOffsetZ:
+        return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenPrintfBuffer:
+        return ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenDefaultQueue:
+        return ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenCompletionAction:
+        return ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION;
+    case AMDGPU::RuntimeMD::KernelArg::HiddenNone:
+        return ROC_ARGTYPE_HIDDEN_NONE;
     default:
         return ROC_ARGTYPE_ERROR;
     }
@@ -63,7 +78,8 @@ GetKernelArgType(const aclArgData* argInfo)
     case ARG_TYPE_POINTER:
         return ROC_ARGTYPE_POINTER;
     case ARG_TYPE_VALUE:
-        return ROC_ARGTYPE_VALUE;
+        return (argInfo->arg.value.data == DATATYPE_struct)
+            ? ROC_ARGTYPE_REFERENCE : ROC_ARGTYPE_VALUE;
     case ARG_TYPE_IMAGE:
         return ROC_ARGTYPE_IMAGE;
     case ARG_TYPE_SAMPLER:
@@ -121,8 +137,7 @@ GetKernelArgAlignment(const aclArgData* argInfo)
 static inline size_t
 GetKernelArgPointeeAlignment(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer
-     && lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Local) {
+    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
          uint32_t align = lcArg.PointeeAlign();
          if (align == 0) {
              LogWarning("Missing DynamicSharedPointer alignment");
@@ -147,8 +162,8 @@ GetKernelArgPointeeAlignment(const aclArgData* argInfo)
 static inline ROC_ACCESS_TYPE
 GetKernelArgAccessType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer
-     || lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) {
+    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
+     || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Image) {
         switch (lcArg.AccQual()) {
         case AMDGPU::RuntimeMD::KernelArg::ReadOnly:
             return ROC_ACCESS_TYPE_RO;
@@ -191,21 +206,21 @@ GetKernelArgAccessType(const aclArgData* argInfo)
 static inline ROC_ADDRESS_QUALIFIER
 GetKernelAddrQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
-        switch (lcArg.AddrQual()) {
-            case AMDGPU::RuntimeMD::KernelArg::Global:
-            return ROC_ADDRESS_GLOBAL;
-            case AMDGPU::RuntimeMD::KernelArg::Constant:
-            return ROC_ADDRESS_CONSTANT;
-            case AMDGPU::RuntimeMD::KernelArg::Local:
-            return ROC_ADDRESS_LOCAL;
-            default:
-                LogError("Unsupported address type");
-            return ROC_ADDRESS_ERROR;
-        }
+    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
+        return ROC_ADDRESS_LOCAL;
     }
-    else if ((lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Image) ||
-             (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Sampler)) {
+    else if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer) {
+        if (lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Global) {
+            return ROC_ADDRESS_GLOBAL;
+        }
+        else if (lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Constant) {
+            return ROC_ADDRESS_CONSTANT;
+        }
+        LogError("Unsupported address type");
+        return ROC_ADDRESS_ERROR;
+    }
+    else if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Image
+        || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Sampler) {
         return ROC_ADDRESS_GLOBAL;
     }
     return ROC_ADDRESS_ERROR;
@@ -246,9 +261,7 @@ GetKernelDataType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
     aclArgDataType dataType;
 
-    if ((lcArg.TypeKind() != AMDGPU::RuntimeMD::KernelArg::Pointer) ||
-        (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Value))
-    {
+    if (lcArg.Kind() != AMDGPU::RuntimeMD::KernelArg::ByValue) {
         return ROC_DATATYPE_ERROR;
     }
 
@@ -382,7 +395,8 @@ GetOclType(const Kernel::Argument* arg)
     if (arg->type_ == ROC_ARGTYPE_POINTER || arg->type_ == ROC_ARGTYPE_IMAGE) {
             return T_POINTER;
     }
-    else if (arg->type_ == ROC_ARGTYPE_VALUE) {
+    else if (arg->type_ == ROC_ARGTYPE_VALUE
+         || arg->type_ == ROC_ARGTYPE_REFERENCE) {
         switch (arg->dataType_) {
         case ROC_DATATYPE_S8:
         case ROC_DATATYPE_U8:
@@ -483,7 +497,8 @@ static inline cl_kernel_arg_type_qualifier
 GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
     cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
-    if (lcArg.TypeKind() == AMDGPU::RuntimeMD::KernelArg::Pointer) {
+    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
+     || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
         if (lcArg.IsVolatile()) {
             rv |= CL_KERNEL_ARG_TYPE_VOLATILE;
         }
@@ -607,7 +622,6 @@ Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
 
         // Initialize HSAIL kernel argument
         Kernel::Argument* arg = new Kernel::Argument;
-        arg->index_     = /* lcArg.IsHidden() ? uint(-1) : */ params.size();
         arg->name_      = lcArg.Name();
         arg->typeName_  = lcArg.TypeName();
         arg->size_      = lcArg.Size();
@@ -618,11 +632,20 @@ Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
         arg->access_    = GetKernelArgAccessType(lcArg);
         arg->pointeeAlignment_ = GetKernelArgPointeeAlignment(lcArg);
 
+        bool isHidden = arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION
+            || arg->type_ == ROC_ARGTYPE_HIDDEN_NONE;
+
+        arg->index_ = isHidden ? uint(-1) : params.size();
         hsailArgList_.push_back(arg);
 
-        /*if (lcArg.IsHidden()) {
+        if (isHidden) {
             continue;
-        }*/
+        }
 
         // Initialize Device kernel parameters
         amd::KernelParameterDescriptor desc;
@@ -650,33 +673,11 @@ Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
             // Local memory for CPU
             size = sizeof(cl_mem);
         }
-        offset  = (size_t) amd::alignUp(offset, std::min(size, size_t(16)));
+        offset = (size_t) amd::alignUp(offset, std::min(size, size_t(16)));
         desc.offset_ = offset;
         offset += amd::alignUp(size, sizeof(uint32_t));
 
         params.push_back(desc);
-    }
-
-    // Push the hidden arguments. These will be generated by LC at some point
-    static ROC_ARG_TYPE hiddenArgs[] = {
-        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
-        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
-        ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
-    };
-    for (auto type : hiddenArgs) {
-        Kernel::Argument* arg = new Kernel::Argument;
-        arg->index_     = uint(-1);
-        arg->name_      = "";
-        arg->typeName_  = "size_t";
-        arg->size_      = sizeof(size_t);
-        arg->type_      = type;
-        arg->addrQual_  = ROC_ADDRESS_ERROR;
-        arg->dataType_  = ROC_DATATYPE_U64;
-        arg->alignment_ = arg->size_;
-        arg->access_    = ROC_ACCESS_TYPE_NONE;
-        arg->pointeeAlignment_ = 0;
-
-        hsailArgList_.push_back(arg);
     }
 
     createSignature(params);

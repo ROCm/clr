@@ -36,6 +36,8 @@
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 #include "utils/bif_section_labels.hpp"
 
+#include "amd_hsa_kernel_code.h"
+
 #include <string>
 #include <vector>
 #include <cstring>
@@ -1027,11 +1029,10 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         return false;
     }
 
-    for ( auto &kernelName : kernelNameList )
-    {
+    for (auto &kernelName : kernelNameList) {
         hsa_executable_symbol_t kernelSymbol;
-        hsa_executable_get_symbol ( hsaExecutable_, "", kernelName.c_str(),
-            hsaDevice, 0, &kernelSymbol );
+        hsa_executable_get_symbol(
+            hsaExecutable_, "", kernelName.c_str(), hsaDevice, 0, &kernelSymbol);
 
         uint64_t kernelCodeHandle;
         status = hsa_executable_symbol_get_info(
@@ -1092,6 +1093,22 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
             buildLog_ += "\n";
             return false;
         }
+
+#if 0
+        for (auto s = elf.nextSymbol(NULL); s != NULL; s = elf.nextSymbol(s)) {
+            amd::OclElf::SymbolInfo si;
+            if (!elf.getSymbolInfo(s, &si)
+                || strcmp(si.sec_name, ".text") != 0
+                || strcmp(si.sym_name, kernelName.c_str()) != 0) {
+                continue;
+            }
+            const amd_kernel_code_t* akc = (amd_kernel_code_t*)
+                ((address) out_exec->Buf().data() + (si.address - si.sec_addr));
+
+            // FIXME_lmoriche: this is where we could get the SGPRs and VGPRs
+            break;
+        }
+#endif
 
         Kernel *aKernel = new roc::Kernel(
             kernelName,

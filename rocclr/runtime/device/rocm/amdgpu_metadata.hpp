@@ -64,7 +64,7 @@ namespace code {
       uint32_t pointeeAlign;
       std::string typeName;
       std::string name;
-      AMDGPU::RuntimeMD::KernelArg::TypeKind typeKind;
+      AMDGPU::RuntimeMD::KernelArg::Kind kind;
       AMDGPU::RuntimeMD::KernelArg::ValueType valueType;
       uint8_t addrQual;
       AMDGPU::RuntimeMD::KernelArg::AccessQualifer accQual;
@@ -77,7 +77,7 @@ namespace code {
       uint32_t PointeeAlign() const { return pointeeAlign; }
       const std::string& TypeName() const { return typeName; }
       const std::string& Name() const { return name; }
-      AMDGPU::RuntimeMD::KernelArg::TypeKind TypeKind() const { return typeKind; }
+      AMDGPU::RuntimeMD::KernelArg::Kind Kind() const { return kind; }
       AMDGPU::RuntimeMD::KernelArg::ValueType ValueType() const { return valueType; }
       uint8_t AddrQual() const { return addrQual; }
       AMDGPU::RuntimeMD::KernelArg::AccessQualifer AccQual() const { return accQual; }
@@ -104,16 +104,17 @@ namespace code {
       unsigned hasWorkgroupSizeHint : 1;
       unsigned hasVectorTypeHint : 1;
       unsigned hasKernelIndex : 1;
-      unsigned hasSGPRs : 1, hasVGPRs : 1;
       unsigned hasMinWavesPerSIMD : 1, hasMaxWavesPerSIMD : 1;
       unsigned hasFlatWorkgroupSizeLimits : 1;
       unsigned hasMaxWorkgroupSize : 1;
       unsigned isNoPartialWorkgroups : 1;
+      unsigned hasPrintfInfo : 1;
 
       std::string name;
       uint32_t requiredWorkgroupSize[3];
       uint32_t workgroupSizeHint[3];
       std::string vectorTypeHint;
+      std::string printfInfo;
 
       uint32_t kernelIndex;
       uint32_t numSgprs, numVgprs;
@@ -129,12 +130,11 @@ namespace code {
       bool HasWorkgroupSizeHint() const { return hasWorkgroupSizeHint; }
       bool HasVecTypeHint() const { return hasVectorTypeHint; }
       bool HasKernelIndex() const { return hasKernelIndex; }
-      bool HasSGPRs() const { return hasSGPRs; }
-      bool HasVGPRs() const { return hasVGPRs; }
       bool HasMinWavesPerSIMD() const { return hasMinWavesPerSIMD; }
       bool HasMaxWavesPerSIMD() const { return hasMaxWavesPerSIMD; }
       bool HasFlatWorkgroupSizeLimits() const { return hasFlatWorkgroupSizeLimits; }
       bool HasMaxWorkgroupSize() const { return hasMaxWorkgroupSize; }
+      bool HasPrintfInfo() const { return hasPrintfInfo; }
 
       size_t KernelArgCount() const { return args.size(); }
       const KernelArg::Metadata& GetKernelArgMetadata(size_t index) const;
@@ -143,9 +143,8 @@ namespace code {
       const uint32_t* RequiredWorkgroupSize() const { return hasRequiredWorkgroupSize ? requiredWorkgroupSize : nullptr; }
       const uint32_t* WorkgroupSizeHint() const { return hasWorkgroupSizeHint ? workgroupSizeHint : nullptr; }
       const std::string& VecTypeHint() const { return vectorTypeHint; }
+      const std::string& PrintfInfo() const { return printfInfo; }
       uint32_t KernelIndex() const { return hasKernelIndex ? kernelIndex : UINT32_MAX; }
-      uint32_t SGPRS() const { return hasSGPRs ? numSgprs : UINT32_MAX; }
-      uint32_t VGPRS() const { return hasVGPRs ? numVgprs : UINT32_MAX; }
       uint32_t MinWavesPerSIMD() const { return hasMinWavesPerSIMD ? minWavesPerSimd : UINT32_MAX; }
       uint32_t MaxWavesPerSIMD() const { return hasMaxWavesPerSIMD ? maxWavesPerSimd : UINT32_MAX; }
       uint32_t MinFlatWorkgroupSize() const { return hasFlatWorkgroupSizeLimits ? minFlatWorkgroupSize : UINT32_MAX; }
