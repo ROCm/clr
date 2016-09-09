@@ -1407,9 +1407,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
                 workgroupGroupSegmentByteSize,
                 workitemPrivateSegmentByteSize,
                 kernargSegmentByteSize,
-                kernargSegmentAlignment,
-                md.numHiddenKernelArgs
-            );
+                kernargSegmentAlignment);
             if (!aKernel->init()) {
                 return false;
             }
