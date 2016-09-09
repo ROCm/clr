@@ -1246,12 +1246,7 @@ Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
 void
 Device::hostFree(void* ptr, size_t size) const
 {
-    hsa_status_t stat =
-        hsa_amd_memory_pool_free(ptr);
-    if (stat != HSA_STATUS_SUCCESS) {
-        LogError("Fail freeing host memory");
-        assert(stat == HSA_STATUS_SUCCESS);
-    }
+    memFree(ptr, size);
 }
 
 void *
@@ -1272,7 +1267,7 @@ Device::deviceLocalAlloc(size_t size) const
     stat = hsa_memory_assign_agent(ptr, _bkendDevice, HSA_ACCESS_PERMISSION_RW);
     if (stat != HSA_STATUS_SUCCESS) {
       LogError("Fail assigning local memory to agent");
-      deviceLocalFree(ptr, size);
+      memFree(ptr, size);
       return NULL;
     }
 
@@ -1280,7 +1275,7 @@ Device::deviceLocalAlloc(size_t size) const
 }
 
 void
-Device::deviceLocalFree(void *ptr, size_t size) const
+Device::memFree(void *ptr, size_t size) const
 {
     hsa_status_t stat =
         hsa_amd_memory_pool_free(ptr);
