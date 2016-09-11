@@ -377,13 +377,13 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
     }
 
     uint32_t isaNameLength = 0;
-    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME_LENGTH, 0, &isaNameLength)
+    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME_LENGTH, &isaNameLength)
             != HSA_STATUS_SUCCESS) {
         return HSA_STATUS_ERROR;
     }
 
     char *isaName = (char*)alloca((size_t)isaNameLength + 1);
-    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME, 0, isaName)
+    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, isaName)
             != HSA_STATUS_SUCCESS) {
         return HSA_STATUS_ERROR;
     }
@@ -615,7 +615,13 @@ Device::populateOCLDeviceConstants()
 
     roc::Settings* hsa_settings = static_cast<roc::Settings*>(settings_);
 
-    strcpy(info_.name_, "AMD HSA Device");
+    int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
+    int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
+    int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
+
+    std::ostringstream oss;
+    oss << "gfx" << gfxipMajor << gfxipMinor << gfxipStepping;
+    ::strcpy(info_.name_, oss.str().c_str());
 
     char device_name[64] = { 0 };
     if (HSA_STATUS_SUCCESS !=
@@ -623,8 +629,7 @@ Device::populateOCLDeviceConstants()
         _bkendDevice, HSA_AGENT_INFO_NAME, device_name)) {
         return false;
     }
-
-    strcpy(info_.boardName_, device_name);
+    ::strcpy(info_.boardName_, device_name);
 
     if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
                                                  HSA_AGENT_INFO_PROFILE,
@@ -826,7 +831,7 @@ Device::populateOCLDeviceConstants()
         return false;
     }
     std::stringstream ss;
-    ss << major << "." << minor << " (hsa)";
+    ss << major << "." << minor << " (HSA)";
     strcpy(info_.driverVersion_, ss.str().c_str());
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
 
