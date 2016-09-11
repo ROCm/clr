@@ -12,25 +12,7 @@
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
-#include "builtins-irif.amdgcn.inc"
-#include "builtins-ockl.amdgcn.inc"
-#include "builtins-ocml.amdgcn.inc"
-#include "builtins-opencl.amdgcn.inc"
-#include "control-correctly_rounded_sqrt_off.amdgcn.inc"
-#include "control-correctly_rounded_sqrt_on.amdgcn.inc"
-#include "control-daz_opt_off.amdgcn.inc"
-#include "control-daz_opt_on.amdgcn.inc"
-#include "control-finite_only_off.amdgcn.inc"
-#include "control-finite_only_on.amdgcn.inc"
-#include "control-isa_version_701.amdgcn.inc"
-#include "control-isa_version_800.amdgcn.inc"
-#include "control-isa_version_801.amdgcn.inc"
-#include "control-isa_version_802.amdgcn.inc"
-#include "control-isa_version_803.amdgcn.inc"
-#include "control-isa_version_804.amdgcn.inc"
-#include "control-isa_version_810.amdgcn.inc"
-#include "control-unsafe_math_off.amdgcn.inc"
-#include "control-unsafe_math_on.amdgcn.inc"
+#include "libraries.amdgcn.inc"
 #else // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -770,13 +752,13 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
 
     // open the bitcode libraries
     Data* opencl_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) builtins_opencl_amdgcn, builtins_opencl_amdgcn_size);
+        (const char*) opencl_amdgcn, opencl_amdgcn_size);
     Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) builtins_ocml_amdgcn, builtins_ocml_amdgcn_size);
+        (const char*) ocml_amdgcn, ocml_amdgcn_size);
     Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) builtins_ockl_amdgcn, builtins_ockl_amdgcn_size);
+        (const char*) ockl_amdgcn, ockl_amdgcn_size);
     Data* irif_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) builtins_irif_amdgcn, builtins_irif_amdgcn_size);
+        (const char*) irif_amdgcn, irif_amdgcn_size);
 
     if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
         buildLog_ += "Error: Failed to open the bitcode library.\n";
@@ -793,33 +775,27 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     switch (dev().deviceInfo().gfxipVersion_) {
     case 701:
         isa_version = std::make_pair(
-            control_isa_version_701_amdgcn,
-            control_isa_version_701_amdgcn_size);
+            oclc_isa_version_701_amdgcn, oclc_isa_version_701_amdgcn_size);
         break;
     case 800:
         isa_version = std::make_pair(
-            control_isa_version_800_amdgcn,
-            control_isa_version_800_amdgcn_size);
+            oclc_isa_version_800_amdgcn, oclc_isa_version_800_amdgcn_size);
         break;
     case 801:
         isa_version = std::make_pair(
-            control_isa_version_801_amdgcn,
-            control_isa_version_801_amdgcn_size);
+            oclc_isa_version_801_amdgcn, oclc_isa_version_801_amdgcn_size);
         break;
     case 802:
         isa_version = std::make_pair(
-            control_isa_version_802_amdgcn,
-            control_isa_version_802_amdgcn_size);
+            oclc_isa_version_802_amdgcn, oclc_isa_version_802_amdgcn_size);
         break;
     case 803:
         isa_version = std::make_pair(
-            control_isa_version_803_amdgcn,
-            control_isa_version_803_amdgcn_size);
+            oclc_isa_version_803_amdgcn, oclc_isa_version_803_amdgcn_size);
         break;
     case 810:
         isa_version = std::make_pair(
-            control_isa_version_810_amdgcn,
-            control_isa_version_810_amdgcn_size);
+            oclc_isa_version_810_amdgcn, oclc_isa_version_810_amdgcn_size);
         break;
     default:
         buildLog_ += "Error: Linking for this device is not supported\n";
@@ -837,39 +813,39 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     inputs.push_back(isa_version_bc);
 
     auto correctly_rounded_sqrt = (options->oVariables->FP32RoundDivideSqrt)
-                ? std::make_pair(
-                    control_correctly_rounded_sqrt_on_amdgcn,
-                    control_correctly_rounded_sqrt_on_amdgcn_size)
-    : std::make_pair(
-        control_correctly_rounded_sqrt_off_amdgcn,
-        control_correctly_rounded_sqrt_off_amdgcn_size);
+        ? std::make_pair(
+            oclc_correctly_rounded_sqrt_on_amdgcn,
+            oclc_correctly_rounded_sqrt_on_amdgcn_size)
+        : std::make_pair(
+            oclc_correctly_rounded_sqrt_off_amdgcn,
+            oclc_correctly_rounded_sqrt_off_amdgcn_size);
 
     auto daz_opt = (dev().deviceInfo().gfxipVersion_ < 900
-        || options->oVariables->DenormsAreZero)
-                ? std::make_pair(
-                    control_daz_opt_on_amdgcn,
-                    control_daz_opt_on_amdgcn_size)
-    : std::make_pair(
-        control_daz_opt_off_amdgcn,
-        control_daz_opt_off_amdgcn_size);
+                 || options->oVariables->DenormsAreZero)
+        ? std::make_pair(
+            oclc_daz_opt_on_amdgcn,
+            oclc_daz_opt_on_amdgcn_size)
+        : std::make_pair(
+            oclc_daz_opt_off_amdgcn,
+            oclc_daz_opt_off_amdgcn_size);
 
     auto finite_only = (options->oVariables->FiniteMathOnly
-        || options->oVariables->FastRelaxedMath)
-                ? std::make_pair(
-                    control_finite_only_on_amdgcn,
-                    control_finite_only_on_amdgcn_size)
-    : std::make_pair(
-        control_finite_only_off_amdgcn,
-        control_finite_only_off_amdgcn_size);
+                     || options->oVariables->FastRelaxedMath)
+        ? std::make_pair(
+            oclc_finite_only_on_amdgcn,
+            oclc_finite_only_on_amdgcn_size)
+        : std::make_pair(
+            oclc_finite_only_off_amdgcn,
+            oclc_finite_only_off_amdgcn_size);
 
     auto unsafe_math = (options->oVariables->UnsafeMathOpt
-        || options->oVariables->FastRelaxedMath)
-                ? std::make_pair(
-                    control_unsafe_math_on_amdgcn,
-                    control_unsafe_math_on_amdgcn_size)
-    : std::make_pair(
-        control_unsafe_math_off_amdgcn,
-        control_unsafe_math_off_amdgcn_size);
+                     || options->oVariables->FastRelaxedMath)
+        ? std::make_pair(
+            oclc_unsafe_math_on_amdgcn,
+            oclc_unsafe_math_on_amdgcn_size)
+        : std::make_pair(
+            oclc_unsafe_math_off_amdgcn,
+            oclc_unsafe_math_off_amdgcn_size);
 
     Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
         (const char*) correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
