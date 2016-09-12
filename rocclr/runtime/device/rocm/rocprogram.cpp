@@ -1142,7 +1142,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         }
 #else // !defined(WITH_LIGHTNING_COMPILER)
         std::string curOptions = options->origOptionStr
-            + preprocessorOptions(options) + commonOptions(options);
+            + preprocessorOptions(options) + codegenOptions(options);
         errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
             curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
         buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
