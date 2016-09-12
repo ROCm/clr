@@ -181,7 +181,7 @@ HSAILProgram::compileImpl_LC(
     driverOptions.append(" -include-pch " + pch->Name());
     driverOptions.append(" -Xclang -fno-validate-pch");
 
-    driverOptions.append(hsailOptions(options));
+    driverOptions.append(preprocessorOptions(options));
     if (clVer >= 200) {
         std::stringstream opts;
         //Add only for CL2.0 and later
@@ -197,7 +197,7 @@ HSAILProgram::compileImpl_LC(
     }
 
     // Tokenize the options string into a vector of strings
-    std::istringstream istrstr(driverOptions);
+    std::istringstream istrstr(driverOptions + codegenOptions(options));
     std::istream_iterator<std::string> sit(istrstr), end;
     std::vector<std::string> params(sit, end);
 
@@ -347,7 +347,8 @@ HSAILProgram::compileImpl(
     }
 
     //Compile source to IR
-    this->compileOptions_.append(hsailOptions(options));
+    this->compileOptions_.append(preprocessorOptions(options));
+    this->compileOptions_.append(codegenOptions(options));
 
     errorCode = g_complibApi._aclCompile(device().compiler(),
         binaryElf_,
