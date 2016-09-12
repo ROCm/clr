@@ -158,7 +158,8 @@ private:
 
     //! Returns all the options to be appended while passing to the
     //compiler
-    std::string hsailOptions(amd::option::Options* options);
+    std::string preprocessorOptions(amd::option::Options* options);
+    std::string codegenOptions(amd::option::Options* options);
 
     // aclBinary and aclCompiler - for the compiler library
     aclBinary*      binaryElf_; //!< Binary for the new compiler library

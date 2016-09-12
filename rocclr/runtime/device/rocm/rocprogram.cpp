@@ -914,7 +914,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     codegenOptions.append(" ").append(optLevel.str());
 
     // Tokenize the options string into a vector of strings
-    std::istringstream strstr(codegenOptions);
+    std::istringstream strstr(codegenOptions + this->codegenOptions(options));
     std::istream_iterator<std::string> sit(strstr), end;
     std::vector<std::string> params(sit, end);
 
@@ -1141,7 +1141,8 @@ HSAILProgram::linkImpl(amd::option::Options *options)
             return false;
         }
 #else // !defined(WITH_LIGHTNING_COMPILER)
-        std::string curOptions = options->origOptionStr + hsailOptions(options);
+        std::string curOptions = options->origOptionStr
+            + preprocessorOptions(options) + commonOptions(options);
         errorCode = g_complibApi._aclCompile(device().compiler(), binaryElf_,
             curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, logFunction);
         buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
@@ -1433,40 +1434,48 @@ HSAILProgram::releaseClBinary()
 }
 
 std::string
-HSAILProgram::hsailOptions(amd::option::Options* options)
+HSAILProgram::codegenOptions(amd::option::Options* options)
 {
-    std::string hsailOptions;
+    std::string optionsStr;
+
+    if (dev().deviceInfo().gfxipVersion_ < 900) {
+        optionsStr.append(" -cl-denorms-are-zero");
+    }
+
+    //check if the host is 64 bit or 32 bit
+    LP64_ONLY(optionsStr.append(" -m64"));
+
+    return optionsStr;
+}
+
+std::string
+HSAILProgram::preprocessorOptions(amd::option::Options* options)
+{
+    std::string optionsStr;
 
     //Set options for the standard device specific options
 
-    hsailOptions.append(" -D__AMD__");
+    optionsStr.append(" -D__AMD__");
 
     int major, minor;
     ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
     std::stringstream ss;
     ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-    hsailOptions.append(ss.str());
+    optionsStr.append(ss.str());
 
     if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-        hsailOptions.append(" -D__IMAGE_SUPPORT__");
+        optionsStr.append(" -D__IMAGE_SUPPORT__");
     }
 
     //This is just for legacy compiler code
     // All our devices support these options now
     if (options->oVariables->FastFMA) {
-        hsailOptions.append(" -DFP_FAST_FMA");
+        optionsStr.append(" -DFP_FAST_FMA");
     }
     if (options->oVariables->FastFMAF) {
-        hsailOptions.append(" -DFP_FAST_FMAF");
+        optionsStr.append(" -DFP_FAST_FMAF");
     }
-
-    if (dev().deviceInfo().gfxipVersion_ < 900) {
-        hsailOptions.append(" -cl-denorms-are-zero");
-    }
-
-    //check if the host is 64 bit or 32 bit
-    LP64_ONLY(hsailOptions.append(" -m64"));
 
     //Now append each extension supported by the device
     // one by one
@@ -1481,11 +1490,11 @@ HSAILProgram::hsailOptions(amd::option::Options* options)
             if (options->oVariables->CLStd[2] >= '2'
                 && token == "cl_khr_depth_images") continue;
 #endif // defined(WITH_LIGHTHNING_COMPILER)
-            hsailOptions.append(" -D");
-            hsailOptions.append(token);
+            optionsStr.append(" -D");
+            optionsStr.append(token);
         }
     }
-    return hsailOptions;
+    return optionsStr;
 }
 
 }  // namespace roc
