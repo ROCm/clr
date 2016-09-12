@@ -377,13 +377,13 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
     }
 
     uint32_t isaNameLength = 0;
-    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME_LENGTH, &isaNameLength)
+    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME_LENGTH, 0, &isaNameLength)
             != HSA_STATUS_SUCCESS) {
         return HSA_STATUS_ERROR;
     }
 
     char *isaName = (char*)alloca((size_t)isaNameLength + 1);
-    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, isaName)
+    if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME, 0, isaName)
             != HSA_STATUS_SUCCESS) {
         return HSA_STATUS_ERROR;
     }
