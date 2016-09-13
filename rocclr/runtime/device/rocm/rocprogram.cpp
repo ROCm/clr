@@ -914,7 +914,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     codegenOptions.append(" ").append(optLevel.str());
 
     // Tokenize the options string into a vector of strings
-    std::istringstream strstr(codegenOptions + this->codegenOptions(options));
+    std::istringstream strstr(codegenOptions);
     std::istream_iterator<std::string> sit(strstr), end;
     std::vector<std::string> params(sit, end);
 
@@ -1438,14 +1438,7 @@ HSAILProgram::codegenOptions(amd::option::Options* options)
 {
     std::string optionsStr;
 
-#if defined(WITH_LIGHTNING_COMPILER)
-    bool fp32Denormals = !options->oVariables->DenormsAreZero
-        && dev().deviceInfo().gfxipVersion_ >= 900;
-
-    optionsStr.append(" -Xclang -target-feature -Xclang ");
-    optionsStr.append(fp32Denormals ? "+" : "-")
-        .append("fp32-denormals,+fp64-denormals");
-#else // !defined(WITH_LIGHTNING_COMPILER)
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (dev().deviceInfo().gfxipVersion_ < 900) {
         optionsStr.append(" -cl-denorms-are-zero");
     }
