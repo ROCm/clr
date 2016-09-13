@@ -196,8 +196,16 @@ HSAILProgram::compileImpl_LC(
         return false;
     }
 
+    // Set fp32-denormals and fp64-denormals
+    bool fp32Denormals = !options->oVariables->DenormsAreZero
+        && dev().deviceInfo().gfxipVersion_ >= 900;
+
+    driverOptions.append(" -Xclang -target-feature -Xclang ");
+    driverOptions.append(fp32Denormals ? "+" : "-")
+        .append("fp32-denormals,+fp64-denormals");
+
     // Tokenize the options string into a vector of strings
-    std::istringstream istrstr(driverOptions + codegenOptions(options));
+    std::istringstream istrstr(driverOptions);
     std::istream_iterator<std::string> sit(istrstr), end;
     std::vector<std::string> params(sit, end);
 
