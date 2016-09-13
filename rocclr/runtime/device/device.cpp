@@ -1304,6 +1304,27 @@ Program::setBinary(char* binaryIn, size_t size)
 
     clBinary()->loadCompileOptions(compileOptions_);
     clBinary()->loadLinkOptions(linkOptions_);
+#if defined(WITH_LIGHTNING_COMPILER)
+    //TODO:  Remove this once BIF is no longer used as we should have a machinasm in
+    //       place to get the binary type correctly from above.
+    //       It is a workaround for executable build from the library. The code object
+    //       binary does not have the type information.
+
+    char *sect = NULL;
+    size_t sz = 0;
+    if (clBinary()->elfIn()->getSection(amd::OclElf::TEXT, &sect, &sz) && sect && sz > 0) {
+        setType(TYPE_EXECUTABLE);
+    }
+
+    sect = NULL;
+    sz = 0;
+    if (type != ET_DYN &&  // binary is not a library
+         (clBinary()->elfIn()->getSection(amd::OclElf::LLVMIR, &sect, &sz) && sect && sz > 0))
+    {
+        setType(TYPE_COMPILED);
+    }
+
+#endif
     clBinary()->resetElfIn();
     return true;
 }
@@ -1312,7 +1333,7 @@ bool
 Program::createBIFBinary(aclBinary* bin)
 {
 #if defined(WITH_LIGHTNING_COMPILER)
-    assert(!"FIXME_Wilkin");
+    assert(!"createBIFBinary() should not be called when using LC");
     return false;
 #else // defined(WITH_LIGHTNING_COMPILER)
     acl_error err;

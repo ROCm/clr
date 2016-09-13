@@ -78,11 +78,8 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
         options = &emptyOpts;
         emptyOptions = true;
     }
-#if defined(WITH_LIGHTNING_COMPILER)
-    if (image != NULL && length != 0 && amd::isElfMagic((const char *) image)) {
-        // TODO: Wilkin: extract compiler options from the .comment section
-    }
-#else // !defined(WITH_LIGHTNING_COMPILER)
+
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
         acl_error errorCode;
         aclBinary *binary = aclReadFromMem(image, length, &errorCode);
@@ -133,6 +130,18 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
             delete program;
             return CL_INVALID_BINARY;
         }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+        // load the compiler options from the binary if it is not provided
+        std::string sBinOptions = program->compileOptions();
+        if (!sBinOptions.empty() && emptyOptions) {
+            if (!amd::option::parseAllOptions(sBinOptions, *options)) {
+                programLog_ = options->optionsLog();
+                LogError("Parsing compilation options from binary failed.");
+                return CL_INVALID_COMPILER_OPTIONS;
+            }
+        }
+#endif
     }
 
     devicePrograms_[&rootDev] = program;

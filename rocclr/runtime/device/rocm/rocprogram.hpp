@@ -96,6 +96,7 @@ protected:
     virtual bool linkImpl(amd::option::Options* options);
 #if defined(WITH_LIGHTNING_COMPILER)
     virtual bool linkImpl_LC(amd::option::Options* options);
+    bool setKernels_LC(amd::option::Options* options, void *binary, size_t binSize);
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
     //! Link the device programs.
