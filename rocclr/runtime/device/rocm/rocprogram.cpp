@@ -1438,9 +1438,18 @@ HSAILProgram::codegenOptions(amd::option::Options* options)
 {
     std::string optionsStr;
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    bool fp32Denormals = !options->oVariables->DenormsAreZero
+        && dev().deviceInfo().gfxipVersion_ >= 900;
+
+    optionsStr.append(" -Xclang -target-feature -Xclang ");
+    optionsStr.append(fp32Denormals ? "+" : "-")
+        .append("fp32-denormals,+fp64-denormals");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     if (dev().deviceInfo().gfxipVersion_ < 900) {
         optionsStr.append(" -cl-denorms-are-zero");
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     //check if the host is 64 bit or 32 bit
     LP64_ONLY(optionsStr.append(" -m64"));
