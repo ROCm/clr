@@ -225,40 +225,33 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     size_t boolSize = sizeof(bool);
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     // Checking llvmir in .llvmir section
-    bool containsLlvmirText = true;
-#if defined(WITH_LIGHTNING_COMPILER)
-    // TODO:FIXME_Wilkin - Query
-    bool containsOpts = false;
     bool containsHsailText = false;
     bool containsBrig = false;
-#else // !defined(WITH_LIGHTNING_COMPILER)
+    bool containsLlvmirText = (type() == TYPE_COMPILED);
+    bool containsShaderIsa = (type() == TYPE_EXECUTABLE);
+    bool containsOpts = !(compileOptions_.empty() && linkOptions_.empty());
+#if !defined(WITH_LIGHTNING_COMPILER) // !defined(WITH_LIGHTNING_COMPILER)
     errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, NULL, &containsLlvmirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsLlvmirText = false;
     }
     // Checking compile & link options in .comment section
-    bool containsOpts = true;
     errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_OPTIONS, NULL, &containsOpts, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsOpts = false;
     }
-    if (containsLlvmirText && containsOpts) {
-        completeStages.push_back(from);
-        from = ACL_TYPE_LLVMIR_BINARY;
-    }
     // Checking HSAIL in .cg section
-    bool containsHsailText = true;
+    containsHsailText = true;
     errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_HSAIL, NULL, &containsHsailText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsHsailText = false;
     }
     // Checking BRIG sections
-    bool containsBrig = true;
+    containsBrig = true;
     errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_BRIG, NULL, &containsBrig, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsBrig = false;
     }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
     if (containsBrig) {
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_BINARY;
@@ -277,16 +270,15 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_TEXT;
     }
-    // Checking ISA in .text section
-    bool containsShaderIsa = true;
-#if defined(WITH_LIGHTNING_COMPILER)
-    assert(!"FIXME_Wilkin");
-    errorCode = ACL_ERROR;
-#else // !defined(WITH_LIGHTNING_COMPILER)
     errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, NULL, &containsShaderIsa, &boolSize);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
     if (errorCode != ACL_SUCCESS) {
         containsShaderIsa = false;
+    }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
+    if (containsLlvmirText && containsOpts) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_LLVMIR_BINARY;
     }
     if (containsShaderIsa) {
         completeStages.push_back(from);
@@ -316,6 +308,7 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
             needOptionsCheck = false;
         }
+#if !defined(WITH_LIGHTNING_COMPILER)
         if (containsBrig && containsHsailText && curOptions.oVariables->BinHSAIL) {
             needOptionsCheck = false;
             // recompile from prev. stage, if BRIG || HSAIL are absent
@@ -324,6 +317,7 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
             completeStages.pop_back();
             needOptionsCheck = true;
         }
+#endif
         break;
         // recompilation might be needed
     case ACL_TYPE_LLVMIR_BINARY:
@@ -341,25 +335,38 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options)
     binary_t binary = this->binary();
     // If the binary already exists
     if ((binary.first != NULL) && (binary.second > 0)) {
+#if defined(WITH_LIGHTNING_COMPILER)
+        hsa_status_t status = hsa_code_object_deserialize( (void *) binary.first,
+            binary.second, NULL, &hsaProgramCodeObject_ );
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error:  Deserialize code object failed.\n";
+            return continueCompileFrom;
+        }
+        void *mem = reinterpret_cast<void *>(hsaProgramCodeObject_.handle);
+#else // !defined(WITH_LIGHTNING_COMPILER)
         void *mem = const_cast<void *>(binary.first);
         acl_error errorCode;
-#if defined(WITH_LIGHTNING_COMPILER)
-        assert(!"FIXME_lmoriche: deserialize the code object, extract the metadata");
-#else // !defined(WITH_LIGHTNING_COMPILER)
         binaryElf_ = g_complibApi._aclReadFromMem(mem, binary.second, &errorCode);
         if (errorCode != ACL_SUCCESS) {
             buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n" ;
             return continueCompileFrom;
         }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
+
+        // save the current options
+        std::string sCurCompileOptions = compileOptions_;
+        std::string sCurLinkOptions = linkOptions_;
+        std::string sCurOptions = compileOptions_ + linkOptions_;
+
+        // Saving binary in the interface class,
+        // which also load compile & link options from binary
+        setBinary(static_cast<char*>(mem), binary.second);
+
         // Calculate the next stage to compile from, based on sections in binaryElf_;
         // No any validity checks here
         std::vector<aclType> completeStages;
         bool needOptionsCheck = true;
         continueCompileFrom = getCompilationStagesFromBinary(completeStages, needOptionsCheck);
-        // Saving binary in the interface class,
-        // which also load compile & link options from binary
-        setBinary(static_cast<char*>(mem), binary.second);
         if (!options || !needOptionsCheck) {
             return continueCompileFrom;
         }
@@ -373,23 +380,27 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options)
             // If compile options are absent in binary, do not compare and recompile
             if (compileOptions_.empty())
                 break;
+
+#if defined(WITH_LIGHTNING_COMPILER)
+            std::string sBinOptions = compileOptions_ + linkOptions_;
+#else // !defined(WITH_LIGHTNING_COMPILER)
             const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
             assert(symbol && "symbol not found");
             std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
             size_t symSize = 0;
-#if defined(WITH_LIGHTNING_COMPILER)
-            assert(!"FIXME_Wilkin");
-            const void *opts = NULL;
-#else // !defined(WITH_LIGHTNING_COMPILER)
+
             const void *opts = g_complibApi._aclExtractSymbol(device().compiler(),
                 binaryElf_, &symSize, aclCOMMENT, symName.c_str(), &errorCode);
             if (errorCode != ACL_SUCCESS) {
                 recompile = true;
                 break;
             }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
             std::string sBinOptions = std::string((char*)opts, symSize);
-            std::string sCurOptions = compileOptions_ + linkOptions_;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
+            compileOptions_ = sCurCompileOptions;
+            linkOptions_ = sCurLinkOptions;
+
             amd::option::Options curOptions, binOptions;
             if (!amd::option::parseAllOptions(sBinOptions, binOptions)) {
                 buildLog_ += binOptions.optionsLog();
@@ -445,12 +456,22 @@ HSAILProgram::saveBinaryAndSetType(type_t type)
     void *rawBinary = NULL;
     size_t size = 0;
 #if defined(WITH_LIGHTNING_COMPILER)
-    hsa_callback_data_t allocData = {0};
-    if (hsa_code_object_serialize(hsaProgramCodeObject_,
-        allocFunc, allocData,
-        NULL, &rawBinary, &size) != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Failed to write binary to memory \n";
-        return false;
+    if (type == TYPE_EXECUTABLE) {     // handle code object binary
+        hsa_callback_data_t allocData = {0};
+        if (hsa_code_object_serialize(hsaProgramCodeObject_,
+            allocFunc, allocData,
+            NULL, &rawBinary, &size) != HSA_STATUS_SUCCESS) {
+            buildLog_ += "ERROR: Failed to write code object binary to memory \n";
+            return false;
+        }
+    }
+    else {                  // handle LLVM binary
+        if (llvmBinary_.empty()) {
+            buildLog_ += "ERROR: Tried to save emtpy LLVM binary \n";
+            return false;
+        }
+        rawBinary = (void*) llvmBinary_.data();
+        size = llvmBinary_.size();
     }
 #else // !defined(WITH_LIGHTNING_COMPILER)
     if (g_complibApi._aclWriteToMem(binaryElf_, &rawBinary, &size)
@@ -462,12 +483,15 @@ HSAILProgram::saveBinaryAndSetType(type_t type)
     clBinary()->saveBIFBinary((char*)rawBinary, size);
     //Set the type of binary
     setType(type);
+
     //Free memory containing rawBinary
-#if !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER)
+    if (type == TYPE_EXECUTABLE) {     // handle code object binary
+        free(rawBinary);
+    }
+#else
     binaryElf_->binOpts.dealloc(rawBinary);
-#else // defined(WITH_LIGHTNING_COMPILER)
-    free(rawBinary);
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif
     return true;
 }
 
@@ -517,6 +541,9 @@ HSAILProgram::linkImpl_LC(
             return false;
         }
 
+        // release elfIn() for the program
+        program->clBinary()->resetElfIn();
+
         inputs.push_back(input);
     }
 
@@ -554,7 +581,7 @@ HSAILProgram::linkImpl_LC(
         if (!createBinary(options)) {
             buildLog_ += "Internal error: creating OpenCL binary failed\n";
             return false;
-        }
+       }
         return true;
     }
 
@@ -935,10 +962,14 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         }
     }
 
+    return setKernels_LC( options, out_exec->Buf().data(), out_exec->Size() );
+}
+
+bool
+HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t binSize)
+{
     hsa_status_t status;
-    status = hsa_code_object_deserialize( out_exec->Buf().data(),
-        out_exec->Size(),
-        NULL, &hsaProgramCodeObject_ );
+    status = hsa_code_object_deserialize( binary, binSize, NULL, &hsaProgramCodeObject_ );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Failed to deserialize the AMD HSA Code Object: ";
         buildLog_ += hsa_strerror(status);
@@ -977,7 +1008,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     }
 
     // load the runtime metadata
-    amd::OclElf elf(ELFCLASS64, out_exec->Buf().data(), out_exec->Size(), NULL, ELF_C_READ);
+    amd::OclElf elf(ELFCLASS64, (char*) binary, binSize, NULL, ELF_C_READ);
 
     char* data;
     size_t size;
@@ -1155,9 +1186,20 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     }
     case ACL_TYPE_CG:
         break;
-    case ACL_TYPE_ISA:
+    case ACL_TYPE_ISA: {
+#if defined(WITH_LIGHTNING_COMPILER)
+       binary_t isaBinary = binary();
+       if ((isaBinary.first != NULL) && (isaBinary.second > 0)) {
+            return setKernels_LC(options, (void*) isaBinary.first, isaBinary.second );
+        }
+       else {
+            buildLog_ += "Error: code object is empty \n" ;
+            return false;
+        }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         finalize = false;
         break;
+    }
     default:
         buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n" ;
         return false;
