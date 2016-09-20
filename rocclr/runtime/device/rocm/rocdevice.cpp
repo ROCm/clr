@@ -803,7 +803,7 @@ Device::populateOCLDeviceConstants()
     if (agent_profile_ == HSA_PROFILE_FULL) { // full-profile = participating in coherent memory,
                                               // base-profile = NUMA based non-coherent memory
 	info_.hostUnifiedMemory_ = CL_TRUE;
-	}
+    }
     info_.memBaseAddrAlign_ = 8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ?
         sizeof(cl_long16) : MEMOBJ_BASE_ADDR_ALIGN);
     info_.minDataTypeAlignSize_ = sizeof(cl_long16);
