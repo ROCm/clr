@@ -1585,7 +1585,6 @@ Device::createView(amd::Memory& owner, const device::Memory& parent) const
     return gpuImage;
 }
 
-
 //! Attempt to bind with external graphics API's device/context
 bool
 Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
@@ -1607,9 +1606,15 @@ Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContext, bo
         }
     }
 
-    if (flags & (amd::Context::Flags::D3D9DeviceKhr |
-                      amd::Context::Flags::D3D9DeviceEXKhr)) {
+    if (flags & amd::Context::Flags::D3D9DeviceKhr) {
         if (!associateD3D9Device(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx])) {
+            LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
+            return false;
+        }
+    }
+
+    if (flags & amd::Context::Flags::D3D9DeviceEXKhr) {
+        if (!associateD3D9Device(pDevice[amd::Context::DeviceFlagIdx::D3D9DeviceEXKhrIdx])) {
             LogWarning("D3D9<->OpenCL adapter mismatch or D3D9Associate() failure");
             return false;
         }
