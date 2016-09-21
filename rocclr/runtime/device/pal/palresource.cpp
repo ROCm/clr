@@ -946,7 +946,6 @@ Resource::create(MemoryType memType, CreateParams* params)
 
             pinAddress = tmpHost;
 
-            // Align width to avoid GSL useless assert with a view
             if (hostMemOffset != 0) {
                 allocSize += hostMemOffset;
             }
@@ -1045,8 +1044,8 @@ Resource::free()
                 }
 
                 // Add resource to the cache
-                if (wait && !dev().resourceCache().addGpuMemory(&desc_, memRef_)) {
-                    gslFree();
+                if (!dev().resourceCache().addGpuMemory(&desc_, memRef_)) {
+                    palFree();
                 }
             }
         }
@@ -1064,7 +1063,7 @@ Resource::free()
                             dev().vgpus()[idx]->releaseMemory(iMem());
                         }
                     }
-                    gslFree();
+                    palFree();
                 }
             }
         }
@@ -1072,10 +1071,10 @@ Resource::free()
     else {
         if (renames_.size() == 0) {
             // Destroy GSL resource
-            if (wait && (iMem() != 0)) {
+            if (iMem() != 0) {
                 // Release virtual memory object on the specified virtual GPU
                 gpu_->releaseMemory(iMem(), wait);
-                gslFree();
+                palFree();
             }
         }
         else for (size_t i = 0; i < renames_.size(); ++i) {
@@ -1084,7 +1083,7 @@ Resource::free()
             if (iMem() != 0) {
                 // Release virtual memory object on the specified virtual GPUs
                 gpu_->releaseMemory(iMem());
-                gslFree();
+                palFree();
             }
         }
     }
@@ -1496,7 +1495,13 @@ Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resource) con
     else {
         amd::ScopedLock lk(dev().lockPAL());
         void*   address;
-        *pitch = desc().width_ * elementSize();
+        if (image_ != nullptr) {
+            constexpr  Pal::SubresId ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
+            Pal::SubresLayout layout;
+            image_->GetSubresourceLayout(ImgSubresId, &layout);
+            *pitch = layout.rowPitch / elementSize();
+        }
+        *pitch = desc().width_;
         if (Pal::Result::Success == resource->Map(&address)) {
             return address;
         }
@@ -1524,7 +1529,7 @@ Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const
 }
 
 bool
-Resource::gslGLAcquire()
+Resource::glAcquire()
 {
     bool retVal = true;
     if (desc().type_ == OGLInterop) {
@@ -1534,7 +1539,7 @@ Resource::gslGLAcquire()
 }
 
 bool
-Resource::gslGLRelease()
+Resource::glRelease()
 {
     bool retVal = true;
     if (desc().type_ == OGLInterop) {
@@ -1543,7 +1548,7 @@ Resource::gslGLRelease()
     return retVal;
 }
 void
-Resource::gslFree() const
+Resource::palFree() const
 {
     amd::ScopedLock lk(dev().lockPAL());
 

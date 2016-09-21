@@ -13,6 +13,7 @@
 #include "palCmdBuffer.h"
 #include "palCmdAllocator.h"
 #include "palQueue.h"
+#include "palLinearAllocator.h"
 
 /*! \addtogroup PAL PAL Resource Implementation
  *  @{
@@ -53,14 +54,15 @@ public:
 
         Queue(Pal::IDevice* palDev)
             : iDev_(palDev), iQueue_(NULL),
-              cmdBufIdSlot_(StartCmdBufIdx), cmdBufIdCurrent_(StartCmdBufIdx),
-              cmbBufIdRetired_(0), cmdCnt_(0)
-            {
-                for (uint i = 0; i < MaxCmdBuffers; ++i) {
-                    iCmdBuffs_[i] = NULL;
-                    iCmdFences_[i] = NULL;
-                }
+            cmdBufIdSlot_(StartCmdBufIdx), cmdBufIdCurrent_(StartCmdBufIdx),
+            cmbBufIdRetired_(0), cmdCnt_(0), vlAlloc_(64 * Ki)
+        {
+            for (uint i = 0; i < MaxCmdBuffers; ++i) {
+                iCmdBuffs_[i] = NULL;
+                iCmdFences_[i] = NULL;
             }
+            vlAlloc_.Init();
+        }
 
         ~Queue();
 
@@ -102,6 +104,7 @@ public:
         uint    cmbBufIdRetired_;   //!< The last retired command buffer ID
         uint    cmdCnt_;            //!< Counter of commands
         std::map<Pal::IGpuMemory*, uint>  memReferences_;
+        Util::VirtualLinearAllocator  vlAlloc_;
     };
 
     struct CommandBatch : public amd::HeapObject

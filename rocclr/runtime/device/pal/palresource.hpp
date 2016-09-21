@@ -174,10 +174,10 @@ public:
         union {
             struct {
                 uint    dimSize_        : 2;    //!< Dimension size
-                uint    cardMemory_     : 1;    //!< GSL resource is in video memory
-                uint    imageArray_     : 1;    //!< GSL resource is an array of images
-                uint    buffer_         : 1;    //!< GSL resource is a buffer
-                uint    tiled_          : 1;    //!< GSL resource is tiled
+                uint    cardMemory_     : 1;    //!< PAL resource is in video memory
+                uint    imageArray_     : 1;    //!< PAL resource is an array of images
+                uint    buffer_         : 1;    //!< PAL resource is a buffer
+                uint    tiled_          : 1;    //!< PAL resource is tiled
                 uint    SVMRes_         : 1;    //!< SVM flag to the cal resource
                 uint    scratch_        : 1;    //!< Scratch buffer
                 uint    isAllocExecute_ : 1;    //!< SVM resource allocation attribute for shader\cmdbuf
@@ -351,8 +351,8 @@ public:
     bool isCacheable() const
         { return (isMemoryType(Remote) || isMemoryType(Pinned)) ? true : false; }
 
-    bool gslGLAcquire() ;
-    bool gslGLRelease() ;
+    bool glAcquire() ;
+    bool glRelease() ;
 
     //! Returns HW state for the resource (used for images only)
     const void*   hwState() const { return hwState_; }
@@ -407,20 +407,20 @@ private:
         VirtualGPU* gpu             //!< Virtual GPU device object
         );
 
-    //! Calls GSL to map a resource
+    //! Calls PAL to map a resource
     void* gpuMemoryMap(
         size_t* pitch,              //!< Pitch value for the image
         uint    flags,              //!< Map flags
-        Pal::IGpuMemory* resource   //!< GSL memory object
+        Pal::IGpuMemory* resource   //!< PAL memory object
         ) const;
 
-    //! Uses GSL to unmap a resource
+    //! Uses PAL to unmap a resource
     void gpuMemoryUnmap(
-        Pal::IGpuMemory* resource   //!< GSL memory object
+        Pal::IGpuMemory* resource   //!< PAL memory object
         ) const;
 
-    //! Fress all GSL resources associated with OCL resource
-    void gslFree() const;
+    //! Fress all PAL resources associated with OCL resource
+    void palFree() const;
 
     //! Converts Resource memory type to the PAL heaps
     void memTypeToHeap(
@@ -434,7 +434,7 @@ private:
     size_t          offset_;        //!< Resource offset
     size_t          curRename_;     //!< Current active rename in the list
     RenameList      renames_;       //!< Rename resource list
-    GpuMemoryReference* memRef_;    //!< GSL resource reference
+    GpuMemoryReference* memRef_;    //!< PAL resource reference
     const Resource* viewOwner_;     //!< GPU resource, which owns this view
     uint64_t        pinOffset_;     //!< Pinned memory offset
     void*           glInteropMbRes_;//!< Mb Res handle
