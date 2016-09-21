@@ -800,28 +800,25 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     // open the control functions
     std::pair<const void*, size_t> isa_version;
     switch (dev().deviceInfo().gfxipVersion_) {
-    case 701:
-        isa_version = std::make_pair(
+    case 700: isa_version = std::make_pair(
+            oclc_isa_version_700_amdgcn, oclc_isa_version_700_amdgcn_size);
+        break;
+    case 701: isa_version = std::make_pair(
             oclc_isa_version_701_amdgcn, oclc_isa_version_701_amdgcn_size);
         break;
-    case 800:
-        isa_version = std::make_pair(
+    case 800: isa_version = std::make_pair(
             oclc_isa_version_800_amdgcn, oclc_isa_version_800_amdgcn_size);
         break;
-    case 801:
-        isa_version = std::make_pair(
+    case 801: isa_version = std::make_pair(
             oclc_isa_version_801_amdgcn, oclc_isa_version_801_amdgcn_size);
         break;
-    case 802:
-        isa_version = std::make_pair(
+    case 802: isa_version = std::make_pair(
             oclc_isa_version_802_amdgcn, oclc_isa_version_802_amdgcn_size);
         break;
-    case 803:
-        isa_version = std::make_pair(
+    case 803: isa_version = std::make_pair(
             oclc_isa_version_803_amdgcn, oclc_isa_version_803_amdgcn_size);
         break;
-    case 810:
-        isa_version = std::make_pair(
+    case 810: isa_version = std::make_pair(
             oclc_isa_version_810_amdgcn, oclc_isa_version_810_amdgcn_size);
         break;
     default:
@@ -919,9 +916,6 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         }
     }
 
-    std::ostringstream optLevel;
-    optLevel << "-O" << options->oVariables->OptLevel;
-
     inputs.clear();
     inputs.push_back(linked_bc);
 
@@ -938,6 +932,8 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     codegenOptions.append(dev().deviceInfo().machineTarget_);
 
     // Set the -O#
+    std::ostringstream optLevel;
+    optLevel << "-O" << options->oVariables->OptLevel;
     codegenOptions.append(" ").append(optLevel.str());
 
     // Tokenize the options string into a vector of strings
@@ -953,7 +949,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     }
 
     if (options->isDumpFlagSet(amd::option::DUMP_O)) {
-        std::ofstream f(options->getDumpFileName(".co").c_str(), std::ios::trunc);
+        std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::trunc);
         if(f.is_open()) {
             f.write(out_exec->Buf().data(), out_exec->Size());
         } else {
@@ -1499,7 +1495,10 @@ HSAILProgram::preprocessorOptions(amd::option::Options* options)
 
     //Set options for the standard device specific options
 
-    optionsStr.append(" -D__AMD__");
+    optionsStr.append(" -D__AMD__=1");
+
+    optionsStr.append(" -D__").append(device().info().name_).append("__=1");
+    optionsStr.append(" -D__").append(device().info().name_).append("=1");
 
     int major, minor;
     ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
@@ -1509,16 +1508,27 @@ HSAILProgram::preprocessorOptions(amd::option::Options* options)
     optionsStr.append(ss.str());
 
     if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-        optionsStr.append(" -D__IMAGE_SUPPORT__");
+        optionsStr.append(" -D__IMAGE_SUPPORT__=1");
     }
 
     //This is just for legacy compiler code
     // All our devices support these options now
     if (options->oVariables->FastFMA) {
-        optionsStr.append(" -DFP_FAST_FMA");
+        optionsStr.append(" -DFP_FAST_FMA=1");
     }
     if (options->oVariables->FastFMAF) {
-        optionsStr.append(" -DFP_FAST_FMAF");
+        optionsStr.append(" -DFP_FAST_FMAF=1");
+    }
+
+    uint clcStd = (options->oVariables->CLStd[2] - '0') * 100
+        + (options->oVariables->CLStd[4] - '0') * 10;
+
+    if (clcStd >= 200) {
+        std::stringstream opts;
+        //Add only for CL2.0 and later
+        opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
+            << device().info().maxGlobalVariableSize_;
+        optionsStr.append(opts.str());
     }
 
     //Now append each extension supported by the device
@@ -1534,8 +1544,7 @@ HSAILProgram::preprocessorOptions(amd::option::Options* options)
             if (options->oVariables->CLStd[2] >= '2'
                 && token == "cl_khr_depth_images") continue;
 #endif // defined(WITH_LIGHTHNING_COMPILER)
-            optionsStr.append(" -D");
-            optionsStr.append(token);
+            optionsStr.append(" -D").append(token).append("=1");
         }
     }
     return optionsStr;

@@ -55,17 +55,6 @@ HSAILProgram::compileImpl_LC(
     std::auto_ptr<Compiler> C(newCompilerInstance());
     std::vector<Data*> inputs;
 
-    if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
-        std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
-        if(f.is_open()) {
-            f << "/* Compiler options:\n" << options->origOptionStr
-                << "\n*/\n\n" << sourceCode;
-        } else {
-            buildLog_ +=
-                "Warning: opening the file to dump the OpenCL source failed.\n";
-        }
-    }
-
     Data* input = C->NewBufferReference(DT_CL,
         sourceCode.c_str(), sourceCode.length());
     if (input == NULL) {
@@ -147,20 +136,50 @@ HSAILProgram::compileImpl_LC(
 
     //FIXME_Nikolay: the program manager should be setting the language
     //driverOptions.append(" -x cl");
-    //FIXME_Nikolay: the program manager shouls be setting the cl-std. -Xclang
-    //is not necessary, we add it to overridde the flag set in the comp driver.
-    driverOptions.append(" -Xclang -cl-std=").append(options->oVariables->CLStd);
 
+    driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
+
+    // Set the -O#
     std::ostringstream optLevel;
     optLevel << " -O" << options->oVariables->OptLevel;
     driverOptions.append(optLevel.str());
 
     //FIXME_lmoriche: has the CL option been validated?
-    uint clVer = (options->oVariables->CLStd[2] - '0') * 100
+    uint clcStd = (options->oVariables->CLStd[2] - '0') * 100
         + (options->oVariables->CLStd[4] - '0') * 10;
 
+    driverOptions.append(preprocessorOptions(options));
+
+    Buffer* output = C->NewBuffer(DT_LLVM_BC);
+    if (output == NULL) {
+        buildLog_ += "Error while creating buffer for the LLVM bitcode";
+        return false;
+    }
+
+    // Set fp32-denormals and fp64-denormals
+    bool fp32Denormals = !options->oVariables->DenormsAreZero
+        && dev().deviceInfo().gfxipVersion_ >= 900;
+
+    driverOptions.append(" -Xclang -target-feature -Xclang ");
+    driverOptions.append(fp32Denormals ? "+" : "-")
+        .append("fp32-denormals,+fp64-denormals");
+
+    if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
+        std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+            f << "/* Original options: " << options->origOptionStr
+                << "\n   Generated options:\n"
+                << " -c -emit-llvm -target amdgcn--amdhsa -x cl"
+                << " -include opencl-c.h " << driverOptions
+                << "\n*/\n\n" << sourceCode;
+        } else {
+            buildLog_ +=
+                "Warning: opening the file to dump the OpenCL source failed.\n";
+        }
+    }
+
     std::pair<const void*, size_t> hdr;
-    switch(clVer) {
+    switch(clcStd) {
     case 120:
         hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size);
         break;
@@ -180,29 +199,6 @@ HSAILProgram::compileImpl_LC(
 
     driverOptions.append(" -include-pch " + pch->Name());
     driverOptions.append(" -Xclang -fno-validate-pch");
-
-    driverOptions.append(preprocessorOptions(options));
-    if (clVer >= 200) {
-        std::stringstream opts;
-        //Add only for CL2.0 and later
-        opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
-            << device().info().maxGlobalVariableSize_;
-        driverOptions.append(opts.str());
-    }
-
-    Buffer* output = C->NewBuffer(DT_LLVM_BC);
-    if (output == NULL) {
-        buildLog_ += "Error while creating buffer for the LLVM bitcode";
-        return false;
-    }
-
-    // Set fp32-denormals and fp64-denormals
-    bool fp32Denormals = !options->oVariables->DenormsAreZero
-        && dev().deviceInfo().gfxipVersion_ >= 900;
-
-    driverOptions.append(" -Xclang -target-feature -Xclang ");
-    driverOptions.append(fp32Denormals ? "+" : "-")
-        .append("fp32-denormals,+fp64-denormals");
 
     // Tokenize the options string into a vector of strings
     std::istringstream istrstr(driverOptions);
