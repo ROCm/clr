@@ -211,8 +211,11 @@ namespace code {
       if (kind == Image || kind == Pipe) {
         out << "  Access: " << AccessQualToString(accQual);
       }
+      if (kind == GlobalBuffer || kind == DynamicSharedPointer) {
+        out
+          << "  Address: " << (unsigned) addrQual;
+      }
       out
-        << "  Address: " << (unsigned) addrQual
         << "  Size: " << size
         << "  Align: " << align;
       if (kind == DynamicSharedPointer) {
