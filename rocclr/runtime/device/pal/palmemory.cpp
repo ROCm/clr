@@ -190,10 +190,10 @@ bool Memory::processGLResource(GLResourceOP operation)
     switch (operation)
     {
         case GLDecompressResource:
-            retVal = gslGLAcquire();
+            retVal = glAcquire();
         break;
         case GLInvalidateFBO:
-            retVal = gslGLRelease();
+            retVal = glRelease();
         break;
         default:
              assert(false && "unknown GLResourceOP");

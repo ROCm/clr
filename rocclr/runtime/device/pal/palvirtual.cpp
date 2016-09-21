@@ -251,6 +251,7 @@ VirtualGPU::Queue::flush()
     }
     // Start command buffer building
     Pal::CmdBufferBuildInfo cmdBuildInfo = {};
+    cmdBuildInfo.pMemAllocator = &vlAlloc_;
     if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo)) {
         LogError("PAL failed CB building initialization!");
         return false;
