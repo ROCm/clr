@@ -157,6 +157,10 @@ private:
 
     //! Initializes HSAIL Printf metadata and info
     void initPrintf(const aclPrintfFmt* aclPrintf);
+#if defined(WITH_LIGHTNING_COMPILER)
+    //! Initializes HSAIL Printf metadata and info for LC
+    void initPrintf_LC(const std::vector<std::string>& printfInfoStrings);
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     HSAILProgram *program_; //!< The roc::HSAILProgram context
     std::vector<Argument*> hsailArgList_; //!< Vector list of HSAIL Arguments
