@@ -242,8 +242,7 @@ namespace code {
       hasMinWavesPerSIMD(false), hasMaxWavesPerSIMD(false),
       hasFlatWorkgroupSizeLimits(false),
       hasMaxWorkgroupSize(false),
-      isNoPartialWorkgroups(false),
-      hasPrintfInfo(false)
+      isNoPartialWorkgroups(false)
     {}
 
     void Metadata::SetCommon(uint8_t mdVersion, uint8_t mdRevision,
@@ -319,9 +318,6 @@ namespace code {
       case KeyNoPartialWorkGroups:
         isNoPartialWorkgroups = true;
         return true;
-      case KeyPrintfInfo:
-        hasPrintfInfo = true;
-        return Read(in, printfInfo);
       default:
         return false;
       }
@@ -373,9 +369,6 @@ namespace code {
       }
       if (isNoPartialWorkgroups) {
         out << "    No partial workgroups" << std::endl;
-      }
-      if (hasPrintfInfo) {
-        out << "    Printf info: " << printfInfo << std::endl;
       }
       out << "    Arguments" << std::endl;
       for (uint32_t i = 0; i < args.size(); ++i) {
@@ -432,6 +425,12 @@ namespace code {
           if (!kernel || !arg) { return false; }
           arg = false;
           break;
+        case KeyPrintfInfo: {
+          std::string formatString;
+          if (!Read(in, formatString)) { return false; }
+          printfInfo.push_back(formatString);
+          break;
+        }
         case KeyKernelName:
         case KeyArgSize:
         case KeyArgAlign:
@@ -455,7 +454,6 @@ namespace code {
         case KeyFlatWorkGroupSizeLimits:
         case KeyMaxWorkGroupSize:
         case KeyNoPartialWorkGroups:
-        case KeyPrintfInfo:
           if (!kernel) { return false; }
           if (!kernel->ReadValue(in, key)) { return false; }
           break;
@@ -492,9 +490,18 @@ namespace code {
     }
 
     void Metadata::Print(std::ostream& out) {
-      out << "AMDGPU runtime metadata (" << kernels.size() << " kernels):" << std::endl;
+      out << "AMDGPU runtime metadata (" << kernels.size() << " kernel";
+      if (kernels.size() > 1) out << "s";
+      if (printfInfo.size() > 0) {
+        out << ", " << printfInfo.size() << " printf info string";
+        if (printfInfo.size() > 1) out << "s";
+      }
+      out << "):" << std::endl;
       for (Kernel::Metadata& kernel : kernels) {
         kernel.Print(out);
+      }
+      for (auto str : printfInfo) {
+        out << "  PrintfInfo \"" << str << "\"" << std::endl;
       }
     }
   }

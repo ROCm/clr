@@ -108,13 +108,11 @@ namespace code {
       unsigned hasFlatWorkgroupSizeLimits : 1;
       unsigned hasMaxWorkgroupSize : 1;
       unsigned isNoPartialWorkgroups : 1;
-      unsigned hasPrintfInfo : 1;
 
       std::string name;
       uint32_t requiredWorkgroupSize[3];
       uint32_t workgroupSizeHint[3];
       std::string vectorTypeHint;
-      std::string printfInfo;
 
       uint32_t kernelIndex;
       uint32_t numSgprs, numVgprs;
@@ -134,7 +132,6 @@ namespace code {
       bool HasMaxWavesPerSIMD() const { return hasMaxWavesPerSIMD; }
       bool HasFlatWorkgroupSizeLimits() const { return hasFlatWorkgroupSizeLimits; }
       bool HasMaxWorkgroupSize() const { return hasMaxWorkgroupSize; }
-      bool HasPrintfInfo() const { return hasPrintfInfo; }
 
       size_t KernelArgCount() const { return args.size(); }
       const KernelArg::Metadata& GetKernelArgMetadata(size_t index) const;
@@ -143,7 +140,6 @@ namespace code {
       const uint32_t* RequiredWorkgroupSize() const { return hasRequiredWorkgroupSize ? requiredWorkgroupSize : nullptr; }
       const uint32_t* WorkgroupSizeHint() const { return hasWorkgroupSizeHint ? workgroupSizeHint : nullptr; }
       const std::string& VecTypeHint() const { return vectorTypeHint; }
-      const std::string& PrintfInfo() const { return printfInfo; }
       uint32_t KernelIndex() const { return hasKernelIndex ? kernelIndex : UINT32_MAX; }
       uint32_t MinWavesPerSIMD() const { return hasMinWavesPerSIMD ? minWavesPerSimd : UINT32_MAX; }
       uint32_t MaxWavesPerSIMD() const { return hasMaxWavesPerSIMD ? maxWavesPerSimd : UINT32_MAX; }
@@ -163,11 +159,13 @@ namespace code {
     private:
       uint16_t version;
       std::vector<Kernel::Metadata> kernels;
+      std::vector<std::string> printfInfo;
 
     public:
       size_t KernelCount() const { return kernels.size(); }
       const Kernel::Metadata& GetKernelMetadata(size_t index) const;
       size_t KernelIndexByName(const std::string& name) const;
+      const std::vector<std::string>& PrintfInfo() const { return printfInfo; }
 
       bool ReadFrom(std::istream& in);
       bool ReadFrom(const void* buffer, size_t size);

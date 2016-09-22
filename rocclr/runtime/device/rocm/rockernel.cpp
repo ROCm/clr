@@ -773,7 +773,8 @@ bool Kernel::init_LC()
         workGroupInfo_.size_ = program_->dev().info().maxWorkGroupSize_;
     }
 
-    //TODO: WC - handle printf
+    initPrintf_LC(runtimeMD->PrintfInfo());
+
     return true;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
@@ -897,68 +898,164 @@ bool Kernel::init()
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
+#if defined(WITH_LIGHTNING_COMPILER)
 void
-Kernel::initPrintf(const aclPrintfFmt* aclPrintf) {
-  PrintfInfo info;
-  uint index = 0;
-  for (; aclPrintf->struct_size != 0; aclPrintf++) {
-    index = aclPrintf->ID;
-    if (printf_.size() <= index) {
-      printf_.resize(index + 1);
-    }
-    std::string pfmt = aclPrintf->fmtStr;
-    size_t pos = 0;
-    for (size_t i = 0; i < pfmt.size(); ++i) {
-      char symbol = pfmt[pos++];
-      if (symbol == '\\') {
-        // Rest of the C escape sequences (e.g. \') are handled correctly
-        // by the MDParser, we are not sure exactly how!
-        switch (pfmt[pos]) {
-          case 'a':
-            pos++;
-            symbol = '\a';
-            break;
-          case 'b':
-            pos++;
-            symbol = '\b';
-            break;
-          case 'f':
-            pos++;
-            symbol = '\f';
-            break;
-          case 'n':
-            pos++;
-            symbol = '\n';
-            break;
-          case 'r':
-            pos++;
-            symbol = '\r';
-            break;
-          case 'v':
-            pos++;
-            symbol = '\v';
-            break;
-          case '7':
-            if (pfmt[++pos] == '2') {
-              pos++;
-              i++;
-              symbol = '\72';
-            }
-            break;
-          default:
-            break;
+Kernel::initPrintf_LC(const std::vector<std::string>& printfInfoStrings)
+{
+    for (auto str : printfInfoStrings) {
+        std::vector<std::string> tokens;
+
+        size_t end, pos = 0;
+        do {
+            end = str.find_first_of(':', pos);
+            tokens.push_back(str.substr(pos, end-pos));
+            pos = end + 1;
+        } while (end != std::string::npos);
+
+        if (tokens.size() < 2) {
+            LogPrintfWarning("Invalid PrintInfo string: \"%s\"", str.c_str());
+            continue;
         }
-      }
-      info.fmtString_.push_back(symbol);
+
+        pos = 0;
+        size_t printfInfoID = std::stoi(tokens[pos++]);
+        if (printf_.size() <= printfInfoID) {
+            printf_.resize(printfInfoID + 1);
+        }
+        PrintfInfo& info = printf_[printfInfoID];
+
+        size_t numSizes = std::stoi(tokens[pos++]);
+        end = pos + numSizes;
+
+        // ensure that we have the correct number of tokens
+        if (tokens.size() < end + 1/*last token is the fmtString*/) {
+            LogPrintfWarning("Invalid PrintInfo string: \"%s\"", str.c_str());
+            continue;
+        }
+
+        // push the argument sizes
+        while (pos < end) {
+            info.arguments_.push_back(std::stoi(tokens[pos++]));
+        }
+
+        // FIXME: We should not need this! [
+        std::string& fmt = tokens[pos];
+        bool need_nl = true;
+
+        for (pos = 0; pos < fmt.size(); ++pos) {
+            char symbol = fmt[pos];
+            need_nl = true;
+            if (symbol == '\\') {
+                switch (fmt[pos+1]) {
+                case 'a':
+                    pos++;
+                    symbol = '\a';
+                    break;
+                case 'b':
+                    pos++;
+                    symbol = '\b';
+                    break;
+                case 'f':
+                    pos++;
+                    symbol = '\f';
+                    break;
+                case 'n':
+                    pos++;
+                    symbol = '\n';
+                    need_nl = false;
+                    break;
+                case 'r':
+                    pos++;
+                    symbol = '\r';
+                    break;
+                case 'v':
+                    pos++;
+                    symbol = '\v';
+                    break;
+                case '7':
+                    if (fmt[pos+2] == '2') {
+                        pos += 2;
+                        symbol = '\72';
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            info.fmtString_.push_back(symbol);
+        }
+        if (need_nl) {
+            info.fmtString_ += "\n";
+        }
+        // ]
     }
-    info.fmtString_ += "\n";
-    uint32_t* tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
-    for (uint i = 0; i < aclPrintf->numSizes; i++, tmp_ptr++) {
-      info.arguments_.push_back(*tmp_ptr);
+}
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
+void
+Kernel::initPrintf(const aclPrintfFmt* aclPrintf)
+{
+    PrintfInfo info;
+    uint index = 0;
+    for (; aclPrintf->struct_size != 0; aclPrintf++) {
+        index = aclPrintf->ID;
+        if (printf_.size() <= index) {
+            printf_.resize(index + 1);
+        }
+        std::string pfmt = aclPrintf->fmtStr;
+        bool need_nl = true;
+        for (size_t pos = 0; pos < pfmt.size(); ++pos) {
+            char symbol = pfmt[pos];
+            need_nl = true;
+            if (symbol == '\\') {
+                switch (pfmt[pos+1]) {
+                case 'a':
+                    pos++;
+                    symbol = '\a';
+                    break;
+                case 'b':
+                    pos++;
+                    symbol = '\b';
+                    break;
+                case 'f':
+                    pos++;
+                    symbol = '\f';
+                    break;
+                case 'n':
+                    pos++;
+                    symbol = '\n';
+                    need_nl = false;
+                    break;
+                case 'r':
+                    pos++;
+                    symbol = '\r';
+                    break;
+                case 'v':
+                    pos++;
+                    symbol = '\v';
+                    break;
+                case '7':
+                    if (pfmt[pos+2] == '2') {
+                        pos += 2;
+                        symbol = '\72';
+                    }
+                    break;
+                default:
+                    break;
+                }
+            }
+            info.fmtString_.push_back(symbol);
+        }
+        if (need_nl) {
+            info.fmtString_ += "\n";
+        }
+        uint32_t* tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
+        for (uint i = 0; i < aclPrintf->numSizes; i++, tmp_ptr++) {
+            info.arguments_.push_back(*tmp_ptr);
+        }
+        printf_[index] = info;
+        info.arguments_.clear();
     }
-    printf_[index] = info;
-    info.arguments_.clear();
-  }
 }
 
 
