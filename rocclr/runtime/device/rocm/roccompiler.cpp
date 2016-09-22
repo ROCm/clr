@@ -167,10 +167,9 @@ HSAILProgram::compileImpl_LC(
     if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
         std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
         if(f.is_open()) {
-            f << "/* Original options: " << options->origOptionStr
-                << "\n   Generated options:\n"
-                << " -c -emit-llvm -target amdgcn--amdhsa -x cl"
-                << " -include opencl-c.h " << driverOptions
+            f << "/* Compiler options:\n" \
+                   "-c -emit-llvm -target amdgcn--amdhsa-opencl -x cl" \
+                   " -include opencl-c.h " << driverOptions
                 << "\n*/\n\n" << sourceCode;
         } else {
             buildLog_ +=
