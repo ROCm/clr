@@ -624,12 +624,13 @@ Device::populateOCLDeviceConstants()
     ::strcpy(info_.name_, oss.str().c_str());
 
     char device_name[64] = { 0 };
-    if (HSA_STATUS_SUCCESS !=
+    if (HSA_STATUS_SUCCESS ==
         hsa_agent_get_info(
-        _bkendDevice, HSA_AGENT_INFO_NAME, device_name)) {
-        return false;
+            _bkendDevice,
+            (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,
+            device_name)) {
+        ::strcpy(info_.boardName_, device_name);
     }
-    ::strcpy(info_.boardName_, device_name);
 
     if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
                                                  HSA_AGENT_INFO_PROFILE,
