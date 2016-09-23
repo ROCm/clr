@@ -1119,10 +1119,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
             kernelCodeHandle,
             workgroupGroupSegmentByteSize,
             workitemPrivateSegmentByteSize,
-            // TODO: remove the workaround
-            //   add 24 bytes for global offsets as workaround for LC reporting
-            //   excluded the hidden arguments
-            amd::alignUp(kernargSegmentByteSize, sizeof(size_t)) + 3 * sizeof(size_t),
+            kernargSegmentByteSize,
             amd::alignUp(kernargSegmentAlignment,device().info().globalMemCacheLineSize_));
         if (!aKernel->init()) {
             return false;

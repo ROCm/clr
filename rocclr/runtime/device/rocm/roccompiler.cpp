@@ -168,7 +168,7 @@ HSAILProgram::compileImpl_LC(
         std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
         if(f.is_open()) {
             f << "/* Compiler options:\n" \
-                   "-c -emit-llvm -target amdgcn--amdhsa-opencl -x cl" \
+                   "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl" \
                    " -include opencl-c.h " << driverOptions
                 << "\n*/\n\n" << sourceCode;
         } else {
