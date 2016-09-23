@@ -478,7 +478,7 @@ public:
     typedef std::vector<VirtualGPU*> VirtualGPUs;
 
     //! Returns the list of all virtual GPUs running on this device
-    const VirtualGPUs vgpus() const { return vgpus_; }
+    const VirtualGPUs& vgpus() const { return vgpus_; }
     VirtualGPUs     vgpus_; //!< The list of all running virtual gpus (lock protected)
 
     //! Scratch buffer allocation
