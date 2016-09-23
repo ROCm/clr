@@ -283,6 +283,9 @@ Resource::~Resource()
     case Local:
         heap = Pal::GpuHeapInvisible;
         break;
+    default:
+        heap = Pal::GpuHeapLocal;
+        break;
     }
     if ((memRef_ != nullptr) && (heap != Pal::GpuHeapCount)) {
         // Update free memory size counters
@@ -379,6 +382,9 @@ Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo)
         createInfo->heaps[0] = Pal::GpuHeapInvisible;
         createInfo->heaps[1] = Pal::GpuHeapLocal;
         break;
+    default:
+        createInfo->heaps[0] = Pal::GpuHeapLocal;
+        break;    
     }
 }
 

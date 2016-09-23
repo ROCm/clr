@@ -54,7 +54,7 @@ public:
             );
 
         Queue(Pal::IDevice* palDev)
-            : iDev_(palDev), iQueue_(NULL),
+            : iQueue_(NULL), iDev_(palDev),
             cmdBufIdSlot_(StartCmdBufIdx), cmdBufIdCurrent_(StartCmdBufIdx),
             cmbBufIdRetired_(0), cmdCnt_(0), vlAlloc_(64 * Ki)
         {

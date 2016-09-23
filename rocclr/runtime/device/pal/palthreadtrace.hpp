@@ -22,10 +22,11 @@ public:
     PalThreadTraceReference(
         VirtualGPU&     gpu             //!< Virtual GPU device object
         )
-        : perfExp_(nullptr)
-        , gpu_(gpu)
+        : gpu_(gpu)
+        , perfExp_(nullptr)
+        , layout_(nullptr)
         , memory_(nullptr)
-        , layout_(nullptr) {}
+        {}
 
     //! Get PAL thread race object
     Pal::IPerfExperiment* iPerf() const { return perfExp_; }
@@ -70,16 +71,14 @@ public:
         )
         : gpuDevice_(device)
         , palRef_(palRef)
-        , memObj_(memObjs)
         , numSe_(numSe)
-    {
-
-    }
+        , memObj_(memObjs)
+        {}
 
     //! Destructor for the GPU ThreadTrace object
     virtual ~ThreadTrace();
 
-    //! Creates the current object
+    //! Creates the current object4
     bool create();
 
     // Populate ThreadTrace memory with PerfExperiment memory

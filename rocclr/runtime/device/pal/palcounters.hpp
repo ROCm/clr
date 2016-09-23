@@ -21,11 +21,11 @@ public:
     PalCounterReference(
         VirtualGPU&     gpu //!< Virtual GPU device object
         )
-        : perfExp_(nullptr)
-        , gpu_(gpu)
+        : gpu_(gpu)
+        , perfExp_(nullptr)
+        , layout_(nullptr)
         , memory_(nullptr)
         , cpuAddr_(nullptr)
-        , layout_(nullptr)
         , numExpCounters_(0) {}
 
     //! Get PAL counter
