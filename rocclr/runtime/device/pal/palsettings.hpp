@@ -5,7 +5,7 @@
 
 #include "top.hpp"
 #include "library.hpp"
-#include "inc\core\palDevice.h"
+#include "inc/core/palDevice.h"
 
 /*! \addtogroup pal PAL Resource Implementation
  *  @{

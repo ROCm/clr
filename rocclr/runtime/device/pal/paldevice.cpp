@@ -264,17 +264,11 @@ void NullDevice::fillDeviceInfo(
 
     uint64_t localRAM = heaps[Pal::GpuHeapLocal].heapSize +
          heaps[Pal::GpuHeapInvisible].heapSize;
-#if defined(ATI_OS_LINUX)
-    info_.globalMemSize_   =
-        (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-        // globalMemSize is the actual available size for app on Linux
-        // Because Linux base driver doesn't support paging
-        static_cast<cl_ulong>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / 100u);
-#else
+
     info_.globalMemSize_   =
         (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
         static_cast<cl_ulong>(localRAM) / 100u);
-#endif
+
     if (settings().apuSystem_) {
         info_.globalMemSize_   +=
             (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * Mi * 75)/100;

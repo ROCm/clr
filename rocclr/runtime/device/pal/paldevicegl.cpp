@@ -76,9 +76,6 @@ Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceContext) 
 
     if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD ||
         !glXResourceDetachAMD
-#ifndef BRAHMA
-        || !glXGetContextMVPUInfoAMD
-#endif
         ) {
         return false;
     }
@@ -132,22 +129,7 @@ Device::glCanInterop(void* GLplatformContext, void* GLdeviceContext) const
             ((1 << properties().gpuIndex) == glChainBitMask);
     }
 #else
-#ifdef BRAHMA
     canInteroperate = true;
-#else
-    GLuint glDeviceId = 0 ;
-    GLuint glChainMask = 0 ;
-    GLXContext ctx = (GLXContext)GLplatformContext;
-    
-    if (glXGetContextMVPUInfoAMD(ctx, &glDeviceId, &glChainMask)) {
-        // we allow intoperability only with GL context reside on a single GPU
-        canInteroperate =
-            (properties().deviceId == glDeviceId) &&
-            ((1 << properties().gpuIndex) == glChainBitMask);
-
-        }
-    }
-#endif
 #endif
     return canInteroperate;
 }
@@ -219,7 +201,7 @@ Device::resGLAssociate(
 #ifdef ATI_OS_LINUX
     GLXContext ctx = (GLXContext)GLContext;
     if (glXResourceAttachAMD(ctx, &hRes, &hData)) {
-        attribs.dynamicSharedBufferID = hData->sharedBufferID;
+        //attribs.dynamicSharedBufferID = hData->sharedBufferID;
         status = true;
     }
 #else
