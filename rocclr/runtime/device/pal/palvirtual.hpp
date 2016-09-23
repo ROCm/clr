@@ -3,6 +3,7 @@
 //
 #pragma once
 
+#include <stack>
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palconstbuf.hpp"
 #include "device/pal/palprintf.hpp"
@@ -105,6 +106,8 @@ public:
         uint    cmdCnt_;            //!< Counter of commands
         std::map<Pal::IGpuMemory*, uint>  memReferences_;
         Util::VirtualLinearAllocator  vlAlloc_;
+        std::vector<Pal::GpuMemoryRef>  palMemRefs_;
+        std::vector<Pal::IGpuMemory*>   palMems_;
     };
 
     struct CommandBatch : public amd::HeapObject
@@ -118,10 +121,22 @@ public:
             amd::Command*   head,       //!< Command batch head
             const GpuEvent* events,     //!< HW events on all engines
             TimeStamp*      lastTS      //!< Last TS in command batch
-            ): head_(head), lastTS_(lastTS)
+            )
         {
+            init(head, events, lastTS);
+        }
+
+        void  init(
+            amd::Command*   head,       //!< Command batch head
+            const GpuEvent* events,     //!< HW events on all engines
+            TimeStamp*      lastTS      //!< Last TS in command batch
+            )
+        {
+            head_ = head;
+            lastTS_ = lastTS;
             memcpy(&events_, events, AllEngines * sizeof(GpuEvent));
         }
+
     };
 
     //! The virtual GPU states
@@ -511,8 +526,7 @@ private:
     bool processMemObjectsHSA(
         const amd::Kernel&  kernel,     //!< AMD kernel object for execution
         const_address       params,     //!< Pointer to the param's store
-        bool                nativeMem,  //!< Native memory objects
-        std::vector<const Memory*>* memList //!< Memory list for KMD tracking
+        bool                nativeMem   //!< Native memory objects
         );
 
     //! Common function for fill memory used by both svm Fill and non-svm fill
@@ -563,11 +577,12 @@ private:
 
     DmaFlushMgmt    dmaFlushMgmt_;      //!< DMA flush management
 
-    std::list<Memory*>    xferWriteBuffers_;  //!< Stage write buffers
-    std::list<amd::Memory*> pinnedMems_;//!< Pinned memory list
+    std::vector<Memory*>    xferWriteBuffers_;  //!< Stage write buffers
+    std::vector<amd::Memory*> pinnedMems_;//!< Pinned memory list
 
-    typedef std::list<CommandBatch*> CommandBatchList;
+    typedef std::stack<CommandBatch*> CommandBatchList;
     CommandBatchList    cbList_;        //!< List of command batches
+    CommandBatchList    freeCbList_;    //!< List of command batches
 
     uint            hwRing_;        //!< HW ring used on this virtual device
 
@@ -585,6 +600,7 @@ private:
     Pal::ICmdAllocator* cmdAllocator_;      //!< Command buffer allocator
     Queue*          queues_[AllEngines];    //!< HW queues for all engines
     MemoryRange     sdmaRange_;     //!< SDMA memory range for write access
+    std::vector<const Memory*>  dispMemList_;   //!< Memory list of all mem objects used in the disaptch
 };
 
 /*@}*/} // namespace pal

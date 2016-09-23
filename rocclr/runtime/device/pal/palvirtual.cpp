@@ -170,7 +170,7 @@ VirtualGPU::Queue::submit(bool forceFlush)
 bool
 VirtualGPU::Queue::flush()
 {
-    std::vector<Pal::GpuMemoryRef>   memRefs;
+    palMemRefs_.resize(0);
     // Stop commands building
     if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
         LogError("PAL failed to finalize a command buffer!");
@@ -182,12 +182,12 @@ VirtualGPU::Queue::flush()
             it->second &= ~FirstMemoryReference;
             Pal::GpuMemoryRef   memRef = {};
             memRef.pGpuMemory = it->first;
-            memRefs.push_back(memRef);
+            palMemRefs_.push_back(memRef);
         }
     }
 
-    if (memRefs.size() != 0) {
-        iDev_->AddGpuMemoryReferences(memRefs.size(), &memRefs[0], iQueue_,
+    if (palMemRefs_.size() != 0) {
+        iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
              Pal::GpuMemoryRefCantTrim);
     }
 
@@ -257,20 +257,19 @@ VirtualGPU::Queue::flush()
         return false;
     }
 
-    memRefs.clear();
-    std::vector<Pal::IGpuMemory*>   iMems;
+    palMems_.resize(0);
     // Remove old memory references
     for (auto it = memReferences_.begin(); it != memReferences_.end();) {
         if (it->second == cmdBufIdSlot_) {
-            iMems.push_back(it->first);
+            palMems_.push_back(it->first);
             it = memReferences_.erase(it);
         }
         else {
             ++it;
         }
     }
-    if (iMems.size() != 0) {
-        iDev_->RemoveGpuMemoryReferences(iMems.size(), &iMems[0], iQueue_);
+    if (palMems_.size() != 0) {
+        iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
     }
 
     return true;
@@ -484,7 +483,7 @@ VirtualGPU::addXferWrite(Memory& memory)
 {
     if (xferWriteBuffers_.size() > 7) {
         dev().xferWrite().release(*this, *xferWriteBuffers_.front());
-        xferWriteBuffers_.pop_front();
+        xferWriteBuffers_.erase(xferWriteBuffers_.begin());
     }
 
     // Delay destruction
@@ -497,7 +496,7 @@ VirtualGPU::releaseXferWrite()
     for (auto& memory : xferWriteBuffers_) {
         dev().xferWrite().release(*this, *memory);
     }
-    xferWriteBuffers_.clear();
+    xferWriteBuffers_.resize(0);
 }
 
 void
@@ -506,7 +505,7 @@ VirtualGPU::addPinnedMem(amd::Memory* mem)
     if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
         if (pinnedMems_.size() > 7) {
             pinnedMems_.front()->release();
-            pinnedMems_.pop_front();
+            pinnedMems_.erase(pinnedMems_.begin());
         }
 
         // Start operation, since we should release mem object
@@ -523,7 +522,7 @@ VirtualGPU::releasePinnedMem()
     for (auto& amdMemory : pinnedMems_) {
         amdMemory->release();
     }
-    pinnedMems_.clear();
+    pinnedMems_.resize(0);
 }
 
 amd::Memory*
@@ -875,6 +874,12 @@ VirtualGPU::~VirtualGPU()
     // Destroy all memories
     static const bool SkipScratch = false;
     releaseMemObjects(SkipScratch);
+
+    while (!freeCbList_.empty()) {
+        auto cb = freeCbList_.top();
+        delete cb;
+        freeCbList_.pop();
+    }
 
     // Destroy printf object
     delete printfDbg_;
@@ -1892,7 +1897,7 @@ VirtualGPU::submitKernelInternal(
     // Get the HSA kernel object
     const HSAILKernel& hsaKernel =
         static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
-    std::vector<const Memory*>    memList;
+    dispMemList_.resize(0);
 
     bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true:false;
     if (!printfDbgHSA().init(*this, printfEnabled )) {
@@ -1901,7 +1906,7 @@ VirtualGPU::submitKernelInternal(
     }
 
     // Check memory dependency and SVM objects
-    if (!processMemObjectsHSA(kernel, parameters, nativeMem, &memList)) {
+    if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
         LogError("Wrong memory objects!");
         return false;
     }
@@ -1927,9 +1932,9 @@ VirtualGPU::submitKernelInternal(
         vmDefQueue = gpuDefQueue->virtualQueue_->vmAddress();
 
         // Add memory handles before the actual dispatch
-        memList.push_back(gpuDefQueue->virtualQueue_);
-        memList.push_back(gpuDefQueue->schedParams_);
-        memList.push_back(hsaKernel.prog().kernelTable());
+        dispMemList_.push_back(gpuDefQueue->virtualQueue_);
+        dispMemList_.push_back(gpuDefQueue->schedParams_);
+        dispMemList_.push_back(hsaKernel.prog().kernelTable());
         gpuDefQueue->writeVQueueHeader(*this,
             hsaKernel.prog().kernelTable()->vmAddress());
     }
@@ -1985,7 +1990,7 @@ VirtualGPU::submitKernelInternal(
         // Program the kernel arguments for the GPU execution
         hsa_kernel_dispatch_packet_t*  aqlPkt =
             hsaKernel.loadArguments(*this, kernel, tmpSizes, parameters, nativeMem,
-            vmDefQueue, &vmParentWrap, memList);
+            vmDefQueue, &vmParentWrap, dispMemList_);
         if (nullptr == aqlPkt) {
             LogError("Couldn't load kernel arguments");
             return false;
@@ -1995,12 +2000,12 @@ VirtualGPU::submitKernelInternal(
         // Check if the device allocated more registers than the old setup
         if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
             scratch = dev().scratch(hwRing());
-            memList.push_back(scratch->memObj_);
+            dispMemList_.push_back(scratch->memObj_);
         }
 
         // Add GSL handle to the memory list for VidMM
-        for (uint i = 0; i < memList.size(); ++i) {
-            addVmMemory(memList[i]);
+        for (uint i = 0; i < dispMemList_.size(); ++i) {
+            addVmMemory(dispMemList_[i]);
         }
 
         // HW Debug for the kernel?
@@ -2165,7 +2170,7 @@ VirtualGPU::submitKernelInternal(
                 param->scratch = scratchBuf->vmAddress();
                 param->numMaxWaves = 32 * dev().info().maxComputeUnits_;
                 param->scratchOffset = dev().scratch(gpuDefQueue->hwRing())->offset_;
-                memList.push_back(scratchBuf);
+                dispMemList_.push_back(scratchBuf);
             }
             else {
                 param->numMaxWaves = 0;
@@ -2176,11 +2181,11 @@ VirtualGPU::submitKernelInternal(
 
             // Add all kernels in the program to the mem list.
             //! \note Runtime doesn't know which one will be called
-            hsaKernel.prog().fillResListWithKernels(memList);
+            hsaKernel.prog().fillResListWithKernels(dispMemList_);
 
             // Add GPU memory handle to the memory list for VidMM
-            for (uint i = 0; i < memList.size(); ++i) {
-                gpuDefQueue->addVmMemory(memList[i]);
+            for (uint i = 0; i < dispMemList_.size(); ++i) {
+                gpuDefQueue->addVmMemory(dispMemList_[i]);
             }
 
             Pal::gpusize  signalAddr = gpuDefQueue->schedParams_->vmAddress() +
@@ -2195,8 +2200,8 @@ VirtualGPU::submitKernelInternal(
             gpuDefQueue->eventEnd(MainEngine, gpuEvent, ForceSubmitFirst);
 
             // Set GPU event for the used resources
-            for (uint i = 0; i < memList.size(); ++i) {
-                memList[i]->setBusy(*gpuDefQueue, gpuEvent);
+            for (uint i = 0; i < dispMemList_.size(); ++i) {
+                dispMemList_[i]->setBusy(*gpuDefQueue, gpuEvent);
             }
 
             if (dev().settings().useDeviceQueue_) {
@@ -2218,8 +2223,8 @@ VirtualGPU::submitKernelInternal(
         }
 
         // Set GPU event for the used resources
-        for (uint i = 0; i < memList.size(); ++i) {
-            memList[i]->setBusy(*this, gpuEvent);
+        for (uint i = 0; i < dispMemList_.size(); ++i) {
+            dispMemList_[i]->setBusy(*this, gpuEvent);
         }
 
         // Update the global GPU event
@@ -2253,13 +2258,13 @@ VirtualGPU::submitMarker(amd::Marker& vcmd)
 
         // Loop through all outstanding command batches
         while (!cbList_.empty()) {
-            CommandBatchList::const_iterator it = cbList_.begin();
+            auto cb = cbList_.top();
             // Wait for completion
-            foundEvent = awaitCompletion(*it, vcmd.waitingEvent());
+            foundEvent = awaitCompletion(cb, vcmd.waitingEvent());
             // Release a command batch
-            delete *it;
+            freeCbList_.push(cb);
             // Remove command batch from the list
-            cbList_.pop_front();
+            cbList_.pop();
             // Early exit if we found a command
             if (foundEvent) break;
         }
@@ -2724,7 +2729,17 @@ VirtualGPU::flush(amd::Command* list, bool wait)
 
     // Insert the current batch into a list
     if (nullptr != list) {
-        cb = new CommandBatch(list, cal()->events_, cal()->lastTS_);
+        if (!freeCbList_.empty()) {
+            cb = freeCbList_.top();
+        }
+
+        if (nullptr == cb) {
+            cb = new CommandBatch(list, cal()->events_, cal()->lastTS_);
+        }
+        else {
+            freeCbList_.pop();
+            cb->init(list, cal()->events_, cal()->lastTS_);
+        }
     }
 
     {
@@ -2743,25 +2758,25 @@ VirtualGPU::flush(amd::Command* list, bool wait)
     // Mark last TS as nullptr, so runtime won't process empty batches with the old TS
     cal_.lastTS_ = nullptr;
     if (nullptr != cb) {
-        cbList_.push_back(cb);
+        cbList_.push(cb);
     }
 
     wait |= state_.forceWait_;
     // Loop through all outstanding command batches
     while (!cbList_.empty()) {
-        CommandBatchList::const_iterator it = cbList_.begin();
+        auto cb = cbList_.top();
         // Check if command batch finished without a wait
         bool    finished = true;
         for (uint i = 0; i < AllEngines; ++i) {
-            finished &= isDone(&(*it)->events_[i]);
+            finished &= isDone(&cb->events_[i]);
         }
         if (finished || wait) {
             // Wait for completion
-            awaitCompletion(*it);
+            awaitCompletion(cb);
             // Release a command batch
-            delete *it;
+            freeCbList_.push(cb);
             // Remove command batch from the list
-            cbList_.pop_front();
+            cbList_.pop();
         }
         else {
             // Early exit if no finished
@@ -3066,8 +3081,7 @@ bool
 VirtualGPU::processMemObjectsHSA(
     const amd::Kernel&  kernel,
     const_address       params,
-    bool                nativeMem,
-    std::vector<const Memory*>* memList)
+    bool                nativeMem)
 {
     static const bool NoAlias = true;
     const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>
@@ -3129,7 +3143,7 @@ VirtualGPU::processMemObjectsHSA(
                 // Validate SVM passed in the non argument list
                 memoryDependency().validate(*this, gpuMemory, IsReadOnly);
 
-                memList->push_back(gpuMemory);
+                dispMemList_.push_back(gpuMemory);
             }
             else {
                 return false;
