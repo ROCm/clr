@@ -1897,7 +1897,7 @@ VirtualGPU::submitKernelInternal(
     // Get the HSA kernel object
     const HSAILKernel& hsaKernel =
         static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
-    dispMemList_.resize(0);
+    std::vector<const Memory*>  dispMemList;   //!< Memory list of all mem objects used in the disaptch
 
     bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true:false;
     if (!printfDbgHSA().init(*this, printfEnabled )) {
@@ -1906,7 +1906,7 @@ VirtualGPU::submitKernelInternal(
     }
 
     // Check memory dependency and SVM objects
-    if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
+    if (!processMemObjectsHSA(kernel, parameters, nativeMem, &dispMemList)) {
         LogError("Wrong memory objects!");
         return false;
     }
@@ -1932,9 +1932,9 @@ VirtualGPU::submitKernelInternal(
         vmDefQueue = gpuDefQueue->virtualQueue_->vmAddress();
 
         // Add memory handles before the actual dispatch
-        dispMemList_.push_back(gpuDefQueue->virtualQueue_);
-        dispMemList_.push_back(gpuDefQueue->schedParams_);
-        dispMemList_.push_back(hsaKernel.prog().kernelTable());
+        dispMemList.push_back(gpuDefQueue->virtualQueue_);
+        dispMemList.push_back(gpuDefQueue->schedParams_);
+        dispMemList.push_back(hsaKernel.prog().kernelTable());
         gpuDefQueue->writeVQueueHeader(*this,
             hsaKernel.prog().kernelTable()->vmAddress());
     }
@@ -1990,7 +1990,7 @@ VirtualGPU::submitKernelInternal(
         // Program the kernel arguments for the GPU execution
         hsa_kernel_dispatch_packet_t*  aqlPkt =
             hsaKernel.loadArguments(*this, kernel, tmpSizes, parameters, nativeMem,
-            vmDefQueue, &vmParentWrap, dispMemList_);
+            vmDefQueue, &vmParentWrap, dispMemList);
         if (nullptr == aqlPkt) {
             LogError("Couldn't load kernel arguments");
             return false;
@@ -2000,12 +2000,12 @@ VirtualGPU::submitKernelInternal(
         // Check if the device allocated more registers than the old setup
         if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
             scratch = dev().scratch(hwRing());
-            dispMemList_.push_back(scratch->memObj_);
+            dispMemList.push_back(scratch->memObj_);
         }
 
         // Add GSL handle to the memory list for VidMM
-        for (uint i = 0; i < dispMemList_.size(); ++i) {
-            addVmMemory(dispMemList_[i]);
+        for (uint i = 0; i < dispMemList.size(); ++i) {
+            addVmMemory(dispMemList[i]);
         }
 
         // HW Debug for the kernel?
@@ -2170,7 +2170,7 @@ VirtualGPU::submitKernelInternal(
                 param->scratch = scratchBuf->vmAddress();
                 param->numMaxWaves = 32 * dev().info().maxComputeUnits_;
                 param->scratchOffset = dev().scratch(gpuDefQueue->hwRing())->offset_;
-                dispMemList_.push_back(scratchBuf);
+                dispMemList.push_back(scratchBuf);
             }
             else {
                 param->numMaxWaves = 0;
@@ -2181,11 +2181,11 @@ VirtualGPU::submitKernelInternal(
 
             // Add all kernels in the program to the mem list.
             //! \note Runtime doesn't know which one will be called
-            hsaKernel.prog().fillResListWithKernels(dispMemList_);
+            hsaKernel.prog().fillResListWithKernels(dispMemList);
 
             // Add GPU memory handle to the memory list for VidMM
-            for (uint i = 0; i < dispMemList_.size(); ++i) {
-                gpuDefQueue->addVmMemory(dispMemList_[i]);
+            for (uint i = 0; i < dispMemList.size(); ++i) {
+                gpuDefQueue->addVmMemory(dispMemList[i]);
             }
 
             Pal::gpusize  signalAddr = gpuDefQueue->schedParams_->vmAddress() +
@@ -2200,8 +2200,8 @@ VirtualGPU::submitKernelInternal(
             gpuDefQueue->eventEnd(MainEngine, gpuEvent, ForceSubmitFirst);
 
             // Set GPU event for the used resources
-            for (uint i = 0; i < dispMemList_.size(); ++i) {
-                dispMemList_[i]->setBusy(*gpuDefQueue, gpuEvent);
+            for (uint i = 0; i < dispMemList.size(); ++i) {
+                dispMemList[i]->setBusy(*gpuDefQueue, gpuEvent);
             }
 
             if (dev().settings().useDeviceQueue_) {
@@ -2223,8 +2223,8 @@ VirtualGPU::submitKernelInternal(
         }
 
         // Set GPU event for the used resources
-        for (uint i = 0; i < dispMemList_.size(); ++i) {
-            dispMemList_[i]->setBusy(*this, gpuEvent);
+        for (uint i = 0; i < dispMemList.size(); ++i) {
+            dispMemList[i]->setBusy(*this, gpuEvent);
         }
 
         // Update the global GPU event
@@ -3081,7 +3081,8 @@ bool
 VirtualGPU::processMemObjectsHSA(
     const amd::Kernel&  kernel,
     const_address       params,
-    bool                nativeMem)
+    bool                nativeMem,
+    std::vector<const Memory*>* memList)
 {
     static const bool NoAlias = true;
     const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>
@@ -3143,7 +3144,7 @@ VirtualGPU::processMemObjectsHSA(
                 // Validate SVM passed in the non argument list
                 memoryDependency().validate(*this, gpuMemory, IsReadOnly);
 
-                dispMemList_.push_back(gpuMemory);
+                memList->push_back(gpuMemory);
             }
             else {
                 return false;
@@ -3206,6 +3207,9 @@ VirtualGPU::processMemObjectsHSA(
         // Validate global store for a dependency in the queue
         memoryDependency().validate(*this, mem, IsReadOnly);
     }
+
+    // Mark the tracker with the processed kernel
+    memoryDependency().newKernel();
 
     return true;
 }

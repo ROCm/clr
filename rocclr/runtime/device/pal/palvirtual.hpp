@@ -526,7 +526,8 @@ private:
     bool processMemObjectsHSA(
         const amd::Kernel&  kernel,     //!< AMD kernel object for execution
         const_address       params,     //!< Pointer to the param's store
-        bool                nativeMem   //!< Native memory objects
+        bool                nativeMem,   //!< Native memory objects
+        std::vector<const Memory*>* memList //!< Memory list for KMD tracking
         );
 
     //! Common function for fill memory used by both svm Fill and non-svm fill
@@ -600,7 +601,6 @@ private:
     Pal::ICmdAllocator* cmdAllocator_;      //!< Command buffer allocator
     Queue*          queues_[AllEngines];    //!< HW queues for all engines
     MemoryRange     sdmaRange_;     //!< SDMA memory range for write access
-    std::vector<const Memory*>  dispMemList_;   //!< Memory list of all mem objects used in the disaptch
 };
 
 /*@}*/} // namespace pal
