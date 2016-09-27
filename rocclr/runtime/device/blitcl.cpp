@@ -80,9 +80,6 @@ __kernel void fillBuffer(
 {
     __amd_fillBuffer(bufUChar, bufUInt, pattern, patternSize, offset, size);
 }
-)
-#if !defined(WITH_LIGHTNING_COMPILER)
-BLIT_KERNELS(
 extern void __amd_copyBufferToImage(
     __global uint*, __write_only image2d_array_t, ulong4,
     int4, int4, uint4, ulong4);
@@ -164,7 +161,6 @@ __kernel void fillImage(
                       origin, size, type);
 }
 )
-#endif // !defined(WITH_LIGHTNING_COMPILER)
 ;
 
 } // namespace device
