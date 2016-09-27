@@ -1509,22 +1509,21 @@ KernelBlitManager::createProgram(Device& device)
     program_ = device.blitProgram()->program_;
     program_->retain();
 
-    bool result = false;
-    do {
-        // Create kernel objects for all blits
-        for (uint i = 0; i < BlitTotal; ++i) {
-            const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
-            if (symbol == NULL) {
-                break;
-            }
-            kernels_[i] = new amd::Kernel(*program_, *symbol, BlitName[i]);
-            if (kernels_[i] == NULL) {
-                break;
-            }
-        }
+    bool result = true;
 
-        result = true;
-    } while(!result);
+    // Create kernel objects for all blits
+    for (uint i = 0; i < BlitTotal; ++i) {
+        const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
+        if (symbol == NULL) {
+            result = false;
+            continue;
+        }
+        kernels_[i] = new amd::Kernel(*program_, *symbol, BlitName[i]);
+        if (kernels_[i] == NULL) {
+            result = false;
+            continue;
+        }
+    }
 
     return result;
 }
