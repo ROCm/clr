@@ -3208,9 +3208,6 @@ VirtualGPU::processMemObjectsHSA(
         memoryDependency().validate(*this, mem, IsReadOnly);
     }
 
-    // Mark the tracker with the processed kernel
-    memoryDependency().newKernel();
-
     return true;
 }
 
