@@ -80,6 +80,8 @@ Settings::create(bool doublePrecision)
         // Also enable AMD double precision extension?
         enableExtension(ClAmdFp64);
     }
+    
+    enableExtension(ClKhrSubGroups);
 
     enableExtension(ClKhrDepthImages);
     supportDepthsRGB_ = true;

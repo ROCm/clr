@@ -970,6 +970,13 @@ Device::populateOCLDeviceConstants()
         }
     }
 
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice,
+                           HSA_AGENT_INFO_WAVEFRONT_SIZE,
+                           &info_.wavefrontWidth_)) {
+        return false;
+    }
+
     return true;
 }
 
