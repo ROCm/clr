@@ -595,8 +595,9 @@ TransferBufferFileCommand::submit(device::VirtualDevice& device)
         void* srcDstBuffer = mem->cpuMap(device);
         // Make HD transfer to the host accessible memory
         bool writeBuffer(type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
-        if (!file()->transferBlock(writeBuffer, srcDstBuffer,
+        if (!file()->transferBlock(writeBuffer, srcDstBuffer, mem->size(),
                                    fileOffset(), origin()[0], size()[0])) {
+            setStatus(CL_INVALID_OPERATION);
             return;
         }
         mem->cpuUnmap(device);
