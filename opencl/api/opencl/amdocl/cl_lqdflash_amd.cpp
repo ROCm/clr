@@ -73,8 +73,9 @@ LiquidFlashFile::close()
 
 bool
 LiquidFlashFile::transferBlock(
-    bool writeBuffer,
-    void* srcDst,
+    bool    writeBuffer,
+    void*   srcDst,
+    uint64_t bufferSize,
     uint64_t fileOffset,
     uint64_t bufferOffset,
     uint64_t size) const
@@ -85,10 +86,10 @@ LiquidFlashFile::transferBlock(
     lf_region_descriptor    region =
         { fileOffset / blockSize(), bufferOffset / blockSize(), size / blockSize() };
     if (writeBuffer) {
-        status = lfReadFile(srcDst, size, (lf_file)handle_, 1, &region, NULL);
+        status = lfReadFile(srcDst, bufferSize, (lf_file)handle_, 1, &region, NULL);
     }
     else {
-        status = lfWriteFile(srcDst, size, (lf_file)handle_, 1, &region, NULL);
+        status = lfWriteFile(srcDst, bufferSize, (lf_file)handle_, 1, &region, NULL);
     }
     if (lf_success == status) {
         return true;
