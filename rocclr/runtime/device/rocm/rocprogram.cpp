@@ -15,6 +15,7 @@
 #include "libraries.amdgcn.inc"
 #else // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
+#include "amd_hsa_code.hpp"
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 #include "utils/bif_section_labels.hpp"
 
@@ -1429,6 +1430,23 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     }
     saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
+
+    if (options->isDumpFlagSet(amd::option::DUMP_O) || options->isDumpFlagSet(amd::option::DUMP_ISA)) {
+        amd::hsa::code::AmdHsaCode code;
+        if (!code.InitAsHandle(hsaProgramCodeObject_)) {
+            LogWarning("Error: Printing AMD HSA Code Object failed.");
+        } else {
+            if (options->isDumpFlagSet(amd::option::DUMP_O)) {
+                std::string dumpFileName = options->getDumpFileName(".co");
+                code.SaveToFile(dumpFileName);
+            }
+            if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
+                std::string dumpFileName = options->getDumpFileName(".isa");
+                code.PrintToFile(dumpFileName);
+            }
+        }
+    }
+
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
