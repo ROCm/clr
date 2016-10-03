@@ -102,6 +102,7 @@ Program::addDeviceProgram(Device& device, const void* image, size_t length,
             }
         }
         options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
+        aclBinaryFini(binary);
     }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     options->oVariables->BinaryIsSpirv = isSPIRV_;
@@ -332,6 +333,7 @@ Program::link(
                 } else if (isAMDILTarget(*aclutGetTargetInfo(aclBin))) {
                     parsedOptions.oVariables->Frontend = "edg";
                 }
+                aclBinaryFini(aclBin);
             }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
             found = true;
