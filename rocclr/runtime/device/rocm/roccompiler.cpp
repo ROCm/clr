@@ -252,11 +252,8 @@ HSAILProgram::compileImpl(
     acl_error errorCode;
     aclTargetInfo target;
 
-    //Defaulting to bonaire
-    //Todo (sramalin) : Query the device for asic type-
-    //Defaulting to Bonair for now.
-    target = g_complibApi._aclGetTargetInfo(LP64_SWITCH("hsail","hsail64"), "Bonaire",
-        &errorCode);
+    target = g_complibApi._aclGetTargetInfo(LP64_SWITCH("hsail","hsail64"),
+        dev().deviceInfo().complibTarget_, &errorCode);
 
     //end if asic info is ready
     // We dump the source code for each program (param: headers)
