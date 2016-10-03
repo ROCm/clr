@@ -695,6 +695,7 @@ public:
     bool transferBlock(
         bool read,
         void* dst,
+        uint64_t bufferSize,
         uint64_t fileOffset,
         uint64_t bufferOffset,
         uint64_t size) const;

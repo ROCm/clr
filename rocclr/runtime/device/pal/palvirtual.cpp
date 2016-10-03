@@ -3434,7 +3434,9 @@ VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd)
         size_t srcDstSize = amd::TransferBufferFileCommand::StagingBufferSize;
         srcDstSize = std::min(srcDstSize, copySize);
         void* srcDstBuffer = staging->cpuMap(*this);
-        if (!cmd.file()->transferBlock(writeBuffer, srcDstBuffer, fileOffset, 0, srcDstSize)) {
+        if (!cmd.file()->transferBlock(writeBuffer,
+            srcDstBuffer, staging->size(), fileOffset, 0, srcDstSize)) {
+            cmd.setStatus(CL_INVALID_OPERATION);
             return;
         }
         staging->cpuUnmap(*this);
