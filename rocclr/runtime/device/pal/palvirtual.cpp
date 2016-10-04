@@ -875,10 +875,10 @@ VirtualGPU::~VirtualGPU()
     static const bool SkipScratch = false;
     releaseMemObjects(SkipScratch);
 
-    while (!freeCbList_.empty()) {
-        auto cb = freeCbList_.top();
+    while (!freeCbQueue_.empty()) {
+        auto cb = freeCbQueue_.front();
         delete cb;
-        freeCbList_.pop();
+        freeCbQueue_.pop();
     }
 
     // Destroy printf object
@@ -2257,14 +2257,14 @@ VirtualGPU::submitMarker(amd::Marker& vcmd)
         bool foundEvent = false;
 
         // Loop through all outstanding command batches
-        while (!cbList_.empty()) {
-            auto cb = cbList_.top();
+        while (!cbQueue_.empty()) {
+            auto cb = cbQueue_.front();
             // Wait for completion
             foundEvent = awaitCompletion(cb, vcmd.waitingEvent());
             // Release a command batch
-            freeCbList_.push(cb);
+            freeCbQueue_.push(cb);
             // Remove command batch from the list
-            cbList_.pop();
+            cbQueue_.pop();
             // Early exit if we found a command
             if (foundEvent) break;
         }
@@ -2274,7 +2274,7 @@ VirtualGPU::submitMarker(amd::Marker& vcmd)
             state_.forceWait_ = true;
         }
         // If we don't have any more batches, then assume GPU is idle
-        else if (cbList_.empty()) {
+        else if (cbQueue_.empty()) {
             dmaFlushMgmt_.resetCbWorkload(dev());
         }
     }
@@ -2723,21 +2723,21 @@ VirtualGPU::flush(amd::Command* list, bool wait)
     }
 
     // If the batch doesn't have any GPU command and the list is empty
-    if (!gpuCommand && cbList_.empty()) {
+    if (!gpuCommand && cbQueue_.empty()) {
         state_.forceWait_ = true;
     }
 
     // Insert the current batch into a list
     if (nullptr != list) {
-        if (!freeCbList_.empty()) {
-            cb = freeCbList_.top();
+        if (!freeCbQueue_.empty()) {
+            cb = freeCbQueue_.front();
         }
 
         if (nullptr == cb) {
             cb = new CommandBatch(list, cal()->events_, cal()->lastTS_);
         }
         else {
-            freeCbList_.pop();
+            freeCbQueue_.pop();
             cb->init(list, cal()->events_, cal()->lastTS_);
         }
     }
@@ -2758,13 +2758,13 @@ VirtualGPU::flush(amd::Command* list, bool wait)
     // Mark last TS as nullptr, so runtime won't process empty batches with the old TS
     cal_.lastTS_ = nullptr;
     if (nullptr != cb) {
-        cbList_.push(cb);
+        cbQueue_.push(cb);
     }
 
     wait |= state_.forceWait_;
     // Loop through all outstanding command batches
-    while (!cbList_.empty()) {
-        auto cb = cbList_.top();
+    while (!cbQueue_.empty()) {
+        auto cb = cbQueue_.front();
         // Check if command batch finished without a wait
         bool    finished = true;
         for (uint i = 0; i < AllEngines; ++i) {
@@ -2774,9 +2774,9 @@ VirtualGPU::flush(amd::Command* list, bool wait)
             // Wait for completion
             awaitCompletion(cb);
             // Release a command batch
-            freeCbList_.push(cb);
+            freeCbQueue_.push(cb);
             // Remove command batch from the list
-            cbList_.pop();
+            cbQueue_.pop();
         }
         else {
             // Early exit if no finished
@@ -2891,7 +2891,7 @@ VirtualGPU::waitEventLock(CommandBatch* cb)
             //! \note Workaround for APU(s).
             //! GPU-CPU timelines may go off too much, thus always
             //! force calibration with the last batch in the list
-            (cbList_.size() <= 1) ||
+            (cbQueue_.size() <= 1) ||
             (readjustTimeGPU_ == 0)) {
             uint64_t    startTimeStampGPU = 0;
             uint64_t    endTimeStampGPU = 0;

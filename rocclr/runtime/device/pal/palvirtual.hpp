@@ -3,7 +3,7 @@
 //
 #pragma once
 
-#include <stack>
+#include <queue>
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palconstbuf.hpp"
 #include "device/pal/palprintf.hpp"
@@ -581,9 +581,9 @@ private:
     std::vector<Memory*>    xferWriteBuffers_;  //!< Stage write buffers
     std::vector<amd::Memory*> pinnedMems_;//!< Pinned memory list
 
-    typedef std::stack<CommandBatch*> CommandBatchList;
-    CommandBatchList    cbList_;        //!< List of command batches
-    CommandBatchList    freeCbList_;    //!< List of command batches
+    typedef std::queue<CommandBatch*> CommandBatchQueue;
+    CommandBatchQueue   cbQueue_;        //!< Queue of command batches
+    CommandBatchQueue   freeCbQueue_;    //!< Queue of free command batches
 
     uint            hwRing_;        //!< HW ring used on this virtual device
 
