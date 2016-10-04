@@ -889,6 +889,9 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
             }
             else if (((OptionIdentifier)OptDescTableIx) == OID_WBComma) {
                 Opts.llvmOptions.append(" ");
+#if defined(WITH_LIGHTNING_COMPILER)
+                Opts.llvmOptions.append("-mllvm ");
+#endif
                 Opts.llvmOptions.append(sval);
             }
             else if (((OptionIdentifier)OptDescTableIx) == OID_WHComma) {

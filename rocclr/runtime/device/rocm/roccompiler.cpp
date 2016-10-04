@@ -156,6 +156,8 @@ HSAILProgram::compileImpl_LC(
         return false;
     }
 
+    driverOptions.append(options->llvmOptions);
+
     // Set fp32-denormals and fp64-denormals
     bool fp32Denormals = !options->oVariables->DenormsAreZero
         && dev().deviceInfo().gfxipVersion_ >= 900;
