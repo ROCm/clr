@@ -460,8 +460,8 @@ typedef CL_API_ENTRY cl_int
 ***********************/
 #define cl_amd_liquid_flash 1
 
-#define CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD 0x4083
-#define CL_COMMAND_READ_BUFFER_FROM_FILE_AMD  0x4087
+#define CL_COMMAND_READ_SSG_FILE_AMD 0x4083
+#define CL_COMMAND_WRITE_SSG_FILE_AMD  0x4087
 
 #define CL_INVALID_FILE_OBJECT_AMD 0x4084
 
@@ -477,47 +477,47 @@ typedef cl_uint cl_file_info_amd;
 #define CL_FILE_SIZE_AMD       0x4086
 
 typedef CL_API_ENTRY cl_file_amd
-(CL_API_CALL * clCreateFileObjectAMD_fn)( cl_context /*context*/,
-                                          cl_file_flags_amd /*flags*/,
-                                          const wchar_t * /*file_name*/,
-                                          cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clCreateSsgFileObjectAMD_fn)(cl_context /*context*/,
+                                            cl_file_flags_amd /*flags*/,
+                                            const wchar_t * /*file_name*/,
+                                            cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clGetFileObjectInfoAMD_fn)(cl_file_amd /* file */,
-                                          cl_file_info_amd /* param_name */,
-                                          size_t /* param_value_size */,
-                                          void * /* param_value */,
-                                          size_t * /* param_value_size_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clGetSsgFileObjectInfoAMD_fn)(cl_file_amd /* file */,
+                                            cl_file_info_amd /* param_name */,
+                                            size_t /* param_value_size */,
+                                            void * /* param_value */,
+                                            size_t * /* param_value_size_ret */) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clRetainFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clRetainSsgFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clReleaseFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clReleaseSsgFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clEnqueueWriteBufferFromFileAMD_fn)(cl_command_queue /*command_queue*/,
-                                                   cl_mem /*buffer*/,
-                                                   cl_bool /*blocking_write*/,
-                                                   size_t /*buffer_offset*/,
-                                                   size_t /*cb*/,
-                                                   cl_file_amd /*file*/,
-                                                   size_t /*file_offset*/,
-                                                   cl_uint /*num_events_in_wait_list*/,
-                                                   const cl_event * /*event_wait_list*/,
-                                                   cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clEnqueueReadSsgFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                           cl_mem /*buffer*/,
+                                           cl_bool /*blocking_write*/,
+                                           size_t /*buffer_offset*/,
+                                           size_t /*cb*/,
+                                           cl_file_amd /*file*/,
+                                           size_t /*file_offset*/,
+                                           cl_uint /*num_events_in_wait_list*/,
+                                           const cl_event * /*event_wait_list*/,
+                                           cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 typedef CL_API_ENTRY cl_int
-(CL_API_CALL * clEnqueueReadBufferToFileAMD_fn)(cl_command_queue /*command_queue*/,
-                                                cl_mem /*buffer*/,
-                                                cl_bool /*blocking_read*/,
-                                                size_t /*buffer_offset*/,
-                                                size_t /*cb*/,
-                                                cl_file_amd /*file*/,
-                                                size_t /*file_offset*/,
-                                                cl_uint /*num_events_in_wait_list*/,
-                                                const cl_event * /*event_wait_list*/,
-                                                cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+(CL_API_CALL * clEnqueueWriteSsgFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                            cl_mem /*buffer*/,
+                                            cl_bool /*blocking_read*/,
+                                            size_t /*buffer_offset*/,
+                                            size_t /*cb*/,
+                                            cl_file_amd /*file*/,
+                                            size_t /*file_offset*/,
+                                            cl_uint /*num_events_in_wait_list*/,
+                                            const cl_event * /*event_wait_list*/,
+                                            cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 #endif /* CL_VERSION_1_2 */
 
