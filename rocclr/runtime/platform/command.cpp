@@ -594,7 +594,7 @@ TransferBufferFileCommand::submit(device::VirtualDevice& device)
         CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD)) {
         void* srcDstBuffer = mem->cpuMap(device);
         // Make HD transfer to the host accessible memory
-        bool writeBuffer(type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
+        bool writeBuffer(type() == CL_COMMAND_READ_SSG_FILE_AMD);
         if (!file()->transferBlock(writeBuffer, srcDstBuffer, mem->size(),
                                    fileOffset(), origin()[0], size()[0])) {
             setStatus(CL_INVALID_OPERATION);

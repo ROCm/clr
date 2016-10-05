@@ -3566,9 +3566,9 @@ VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd)
     Memory* mem = dev().getGpuMemory(&cmd.memory());
     uint    idx = 0;
 
-    assert((cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD) ||
-           (cmd.type() == CL_COMMAND_READ_BUFFER_FROM_FILE_AMD));
-    bool writeBuffer(cmd.type() == CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD);
+    assert((cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD) ||
+           (cmd.type() == CL_COMMAND_WRITE_SSG_FILE_AMD));
+    bool writeBuffer(cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD);
 
     while (copySize > 0) {
         Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
