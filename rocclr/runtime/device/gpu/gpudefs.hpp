@@ -125,9 +125,9 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_CARRIZO */    { ED_ATI_CAL_MACHINE_CARRIZO_ISA,   "Carrizo" ,     "carrizo",      4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_ELLESMERE */  { ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "Ellesmere",    "ellesmere",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_BAFFIN */     { ED_ATI_CAL_MACHINE_BAFFIN_ISA,    "Baffin",       "baffin",       4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "Rabbit", "rabbit", 4, 16, 1, 256, 64 * Ki, 32, 900 },
+/* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "gfx900",       "gfx900",       4, 16, 1, 256, 64 * Ki, 32, 900 },
 /* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",       "stoney",       4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* CAL_TARGET_LEXA */       { ED_ATI_CAL_MACHINE_LEXA_ISA, "Bee", "bee",   4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_LEXA */       { ED_ATI_CAL_MACHINE_LEXA_ISA,      "gfx804",       "gfx804",       4, 16, 1, 256, 64 * Ki, 32, 804 },
 };
 
 enum gfx_handle {
