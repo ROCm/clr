@@ -152,11 +152,21 @@ clGetInfo(
     std::tie(valuePtr, valueSize)
         = detail::ParamInfo<typename std::remove_const<T>::type>::get(field);
 
+    *not_null(param_value_size_ret) = valueSize;
+
+    cl_int ret = CL_SUCCESS;
     if (param_value != NULL && param_value_size < valueSize) {
-        return CL_INVALID_VALUE;
+        if (!std::is_pointer<T>() || !std::is_same<typename std::remove_const<
+                typename std::remove_pointer<T>::type>::type, char>()) {
+            return CL_INVALID_VALUE;
+        }
+	// For char* and char[] params, we will at least fill up to
+        // param_value_size, then return an error.
+        valueSize = param_value_size;
+        static_cast<char*>(param_value)[--valueSize] = '\0';
+        ret = CL_INVALID_VALUE;
     }
 
-    *not_null(param_value_size_ret) = valueSize;
     if (param_value != NULL) {
         ::memcpy(param_value, valuePtr, valueSize);
         if (param_value_size > valueSize) {
@@ -165,7 +175,7 @@ clGetInfo(
         }
     }
 
-    return CL_SUCCESS;
+    return ret;
 }
 
 static inline cl_int
