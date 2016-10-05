@@ -148,12 +148,12 @@ static const AMDDeviceInfo DeviceInfo[] = {
 // The GfxIpDeviceInfo table must match with GfxIpLevel enum
 // (located in //depot/stg/pal/inc/core/palDevice.h).
 static const AMDDeviceInfo GfxIpDeviceInfo[] = {
-/* Unknown  */    { "",         "unknown",     4, 16, 1, 256, 64 * Ki, 32, 000 },
-/* GFX6_0_0 */    { "",         "gfx6_0_0",    4, 16, 1, 256, 64 * Ki, 32, 600 },
-/* GFX7_0_0 */    { "",         "gfx7_0_0",    4, 16, 1, 256, 64 * Ki, 32, 700 },
-/* GFX8_0_0 */    { "",         "gfx8_0_0",    4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* GFX8_0_1 */    { "",         "gfx8_0_1",    4, 16, 1, 256, 64 * Ki, 32, 801 },
-/* GFX9_0_0 */    { "Rabbit",  "rabbit",   4, 16, 1, 256, 64 * Ki, 32, 900 },
+/* Unknown  */    { "unknown",    "unknown",    4, 16, 1, 256, 64 * Ki, 32, 000 },
+/* GFX600 */      { "gfx600",     "gfx600",     4, 16, 1, 256, 64 * Ki, 32, 600 },
+/* GFX700 */      { "gfx700",     "gfx700",     4, 16, 1, 256, 64 * Ki, 32, 700 },
+/* GFX800 */      { "gfx800",     "gfx800",     4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* GFX801 */      { "gfx801",     "gfx801",     4, 16, 1, 256, 64 * Ki, 32, 801 },
+/* GFX900 */      { "gfx900",     "gfx900",     4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
 enum gfx_handle {

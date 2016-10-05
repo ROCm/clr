@@ -582,7 +582,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Mo
                 || chip == "Tahiti"
                 || chip == "Hawaii"
                 || chip == "Carrizo"
-                || chip == "Rabbit");
+                || chip == "gfx900");
   setISAVersion(getIsaType(aclutGetTargetInfo(Elf())));
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
