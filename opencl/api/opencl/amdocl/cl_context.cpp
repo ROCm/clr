@@ -457,7 +457,7 @@ RUNTIME_EXIT
 
 /*! \brief returns the address of the extension function named by
  *  funcname for a given platform. The pointer returned should be cast
- *  to a function pointer type matching the extension function’s definition
+ *  to a function pointer type matching the extension functions definition
  *  defined in the appropriate extension specification and header file.
  *  A return value of NULL indicates that the specified function does not
  *  exist for the implementation or platform is not a valid platform.
@@ -514,7 +514,7 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
 #endif // cl_khr_il_program
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFileObjectAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
 #endif // cl_amd_liquid_flash
         break;
     case 'D':
@@ -536,8 +536,8 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
         CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteBufferFromFileAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadBufferToFileAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadSsgFileAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSsgFileAMD);
 #endif // cl_amd_liquid_flash
         break;
     case 'G':
@@ -554,7 +554,7 @@ clGetExtensionFunctionAddress(const char* func_name)
 #endif //_WIN32
         CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetFileObjectInfoAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
 #endif // cl_amd_liquid_flash
         break;
     case 'H':
@@ -602,8 +602,8 @@ clGetExtensionFunctionAddress(const char* func_name)
         CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
 #endif // cl_ext_device_fission
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainFileObjectAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseFileObjectAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
+        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);
 #endif // cl_amd_liquid_flash
         break;
     case 'S':

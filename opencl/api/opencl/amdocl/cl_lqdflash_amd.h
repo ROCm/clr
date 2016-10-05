@@ -8,14 +8,14 @@ extern "C" {
 #endif /*__cplusplus*/
 
 extern CL_API_ENTRY cl_file_amd CL_API_CALL
-clCreateFileObjectAMD(
+clCreateSsgFileObjectAMD(
     cl_context context,
     cl_file_flags_amd flags,
     const wchar_t * file_name,
     cl_int * errcode_ret) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clGetFileObjectInfoAMD(
+clGetSsgFileObjectInfoAMD(
     cl_file_amd file,
     cl_file_info_amd param_name,
     size_t param_value_size,
@@ -23,15 +23,15 @@ clGetFileObjectInfoAMD(
     size_t * param_value_size_ret) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clRetainFileObjectAMD(
+clRetainSsgFileObjectAMD(
     cl_file_amd file) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseFileObjectAMD(
+clReleaseSsgFileObjectAMD(
     cl_file_amd file) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueWriteBufferFromFileAMD(
+clEnqueueReadSsgFileAMD(
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,
@@ -44,7 +44,7 @@ clEnqueueWriteBufferFromFileAMD(
     cl_event * event) CL_EXT_SUFFIX__VERSION_1_2;
 
 extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueReadBufferToFileAMD(
+clEnqueueWriteSsgFileAMD(
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,

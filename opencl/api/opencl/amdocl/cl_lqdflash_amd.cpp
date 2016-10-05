@@ -112,7 +112,7 @@ LiquidFlashFile::transferBlock(
  *
  */
 
-RUNTIME_ENTRY_RET(cl_file_amd, clCreateFileObjectAMD, (
+RUNTIME_ENTRY_RET(cl_file_amd, clCreateSsgFileObjectAMD, (
     cl_context context,
     cl_file_flags_amd flags,
     const wchar_t* file_name,
@@ -136,7 +136,7 @@ RUNTIME_ENTRY_RET(cl_file_amd, clCreateFileObjectAMD, (
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY(cl_int, clGetFileObjectInfoAMD, (
+RUNTIME_ENTRY(cl_int, clGetSsgFileObjectInfoAMD, (
     cl_file_amd file,
     cl_file_info_amd param_name,
     size_t param_value_size,
@@ -166,7 +166,7 @@ RUNTIME_ENTRY(cl_int, clGetFileObjectInfoAMD, (
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY(cl_int, clRetainFileObjectAMD, (
+RUNTIME_ENTRY(cl_int, clRetainSsgFileObjectAMD, (
     cl_file_amd file))
 {
     if (!is_valid(file)) {
@@ -177,7 +177,7 @@ RUNTIME_ENTRY(cl_int, clRetainFileObjectAMD, (
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY(cl_int, clReleaseFileObjectAMD, (
+RUNTIME_ENTRY(cl_int, clReleaseSsgFileObjectAMD, (
     cl_file_amd file))
 {
     if (!is_valid(file)) {
@@ -188,7 +188,8 @@ RUNTIME_ENTRY(cl_int, clReleaseFileObjectAMD, (
 }
 RUNTIME_EXIT
 
-cl_int EnqueueTransferBufferFromFileAMD(
+static cl_int
+EnqueueTransferBufferFromSsgFileAMD(
     cl_bool isWrite,
     cl_command_queue command_queue,
     cl_mem buffer,
@@ -252,12 +253,10 @@ cl_int EnqueueTransferBufferFromFileAMD(
     }
 
     amd::TransferBufferFileCommand *command;
-    command = new amd::TransferBufferFileCommand((isWrite
-                                                        ? CL_COMMAND_WRITE_BUFFER_FROM_FILE_AMD
-                                                        : CL_COMMAND_READ_BUFFER_FROM_FILE_AMD),
-                                                 hostQueue, eventWaitList,
-                                                 *pBuffer, bufferOffset, bufferSize,
-                                                 amdFile, file_offset);
+    command = new amd::TransferBufferFileCommand(
+        isWrite ? CL_COMMAND_READ_SSG_FILE_AMD : CL_COMMAND_WRITE_SSG_FILE_AMD,
+        hostQueue, eventWaitList, *pBuffer, bufferOffset, bufferSize,
+        amdFile, file_offset);
 
     if (command == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
@@ -281,7 +280,7 @@ cl_int EnqueueTransferBufferFromFileAMD(
     return CL_SUCCESS;
 }
 
-RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
+RUNTIME_ENTRY(cl_int, clEnqueueReadSsgFileAMD, (
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,
@@ -293,21 +292,22 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferFromFileAMD, (
     const cl_event *event_wait_list,
     cl_event *event))
 {
-    return EnqueueTransferBufferFromFileAMD(CL_TRUE,
-                                            command_queue,
-                                            buffer,
-                                            blocking_write,
-                                            buffer_offset,
-                                            cb,
-                                            file,
-                                            file_offset,
-                                            num_events_in_wait_list,
-                                            event_wait_list,
-                                            event);
+    return EnqueueTransferBufferFromSsgFileAMD(
+        CL_TRUE,
+        command_queue,
+        buffer,
+        blocking_write,
+        buffer_offset,
+        cb,
+        file,
+        file_offset,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY(cl_int, clEnqueueReadBufferToFileAMD, (
+RUNTIME_ENTRY(cl_int, clEnqueueWriteSsgFileAMD, (
     cl_command_queue command_queue,
     cl_mem buffer,
     cl_bool blocking_write,
@@ -319,16 +319,17 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadBufferToFileAMD, (
     const cl_event * event_wait_list,
     cl_event * event))
 {
-    return EnqueueTransferBufferFromFileAMD(CL_FALSE,
-                                            command_queue,
-                                            buffer,
-                                            blocking_write,
-                                            buffer_offset,
-                                            cb,
-                                            file,
-                                            file_offset,
-                                            num_events_in_wait_list,
-                                            event_wait_list,
-                                            event);
+    return EnqueueTransferBufferFromSsgFileAMD(
+        CL_FALSE,
+        command_queue,
+        buffer,
+        blocking_write,
+        buffer_offset,
+        cb,
+        file,
+        file_offset,
+        num_events_in_wait_list,
+        event_wait_list,
+        event);
 }
 RUNTIME_EXIT
