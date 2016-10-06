@@ -64,6 +64,43 @@ HSAILProgram::compileImpl_LC(
 
     inputs.push_back(input);
 
+    Buffer* output = C->NewBuffer(DT_LLVM_BC);
+    if (output == NULL) {
+        buildLog_ += "Error while creating buffer for the LLVM bitcode";
+        return false;
+    }
+
+    //Set the options for the compiler
+    std::ostringstream ostrstr;
+    std::copy(options->clangOptions.begin(), options->clangOptions.end(),
+        std::ostream_iterator<std::string>(ostrstr, " "));
+
+    ostrstr << " -m" << sizeof(void*) * 8;
+    std::string driverOptions(ostrstr.str());
+
+    const char* xLang = options->oVariables->XLang;
+    if (xLang != NULL && strcmp(xLang, "cl")) {
+        buildLog_ += "Unsupported OpenCL language.\n";
+    }
+
+    //FIXME_Nikolay: the program manager should be setting the language
+    //driverOptions.append(" -x cl");
+
+    driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
+
+    // Set the -O#
+    std::ostringstream optLevel;
+    optLevel << " -O" << options->oVariables->OptLevel;
+    driverOptions.append(optLevel.str());
+
+    // Set the machine target
+    driverOptions.append(" -mcpu=");
+    driverOptions.append(dev().deviceInfo().machineTarget_);
+
+    driverOptions.append(options->llvmOptions);
+
+    driverOptions.append(preprocessorOptions(options));
+
     //Find the temp folder for the OS
     std::string tempFolder = amd::Os::getEnvironment("TEMP");
     if (tempFolder.empty()) {
@@ -116,68 +153,28 @@ HSAILProgram::compileImpl_LC(
         inputs.push_back(inc);
     }
 
-
-    //Set the options for the compiler
-    std::ostringstream ostrstr;
-    std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-        std::ostream_iterator<std::string>(ostrstr, " "));
-    std::string driverOptions(ostrstr.str());
-
     //Set the include path for the temp folder that contains the includes
     if(!headers.empty()) {
         driverOptions.append(" -I");
         driverOptions.append(tempFolder);
     }
 
-    const char* xLang = options->oVariables->XLang;
-    if (xLang != NULL && strcmp(xLang, "cl")) {
-        buildLog_ += "Unsupported OpenCL language.\n";
-    }
-
-    //FIXME_Nikolay: the program manager should be setting the language
-    //driverOptions.append(" -x cl");
-
-    driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
-
-    // Set the -O#
-    std::ostringstream optLevel;
-    optLevel << " -O" << options->oVariables->OptLevel;
-    driverOptions.append(optLevel.str());
-
-    //FIXME_lmoriche: has the CL option been validated?
-    uint clcStd = (options->oVariables->CLStd[2] - '0') * 100
-        + (options->oVariables->CLStd[4] - '0') * 10;
-
-    driverOptions.append(preprocessorOptions(options));
-
-    Buffer* output = C->NewBuffer(DT_LLVM_BC);
-    if (output == NULL) {
-        buildLog_ += "Error while creating buffer for the LLVM bitcode";
-        return false;
-    }
-
-    driverOptions.append(options->llvmOptions);
-
-    // Set fp32-denormals and fp64-denormals
-    bool fp32Denormals = !options->oVariables->DenormsAreZero
-        && dev().deviceInfo().gfxipVersion_ >= 900;
-
-    driverOptions.append(" -Xclang -target-feature -Xclang ");
-    driverOptions.append(fp32Denormals ? "+" : "-")
-        .append("fp32-denormals,+fp64-denormals");
-
     if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
         std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
         if(f.is_open()) {
             f << "/* Compiler options:\n" \
-                   "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl" \
-                   " -include opencl-c.h " << driverOptions
+                   "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl "
+                   << driverOptions << " -include opencl-c.h "
                 << "\n*/\n\n" << sourceCode;
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the OpenCL source failed.\n";
         }
     }
+
+    //FIXME_lmoriche: has the CL option been validated?
+    uint clcStd = (options->oVariables->CLStd[2] - '0') * 100
+        + (options->oVariables->CLStd[4] - '0') * 10;
 
     std::pair<const void*, size_t> hdr;
     switch(clcStd) {
