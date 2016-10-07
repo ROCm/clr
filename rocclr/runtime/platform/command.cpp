@@ -592,7 +592,15 @@ TransferBufferFileCommand::submit(device::VirtualDevice& device)
     device::Memory* mem = memory_->getDeviceMemory(queue()->device());
     if (memory_->getMemFlags() & (CL_MEM_USE_HOST_PTR |
         CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD)) {
-        void* srcDstBuffer = mem->cpuMap(device);
+        void* srcDstBuffer = nullptr;
+        if (memory_->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
+            // Lock protected multiple maps for persistent memory
+            amd::ScopedLock lock(mem->owner()->lockMemoryOps());
+            srcDstBuffer = mem->cpuMap(device);
+        }
+        else {
+            srcDstBuffer = mem->cpuMap(device);
+        }
         // Make HD transfer to the host accessible memory
         bool writeBuffer(type() == CL_COMMAND_READ_SSG_FILE_AMD);
         if (!file()->transferBlock(writeBuffer, srcDstBuffer, mem->size(),
@@ -600,7 +608,14 @@ TransferBufferFileCommand::submit(device::VirtualDevice& device)
             setStatus(CL_INVALID_OPERATION);
             return;
         }
-        mem->cpuUnmap(device);
+        if (memory_->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
+            // Lock protected multiple maps for persistent memory
+            amd::ScopedLock lock(mem->owner()->lockMemoryOps());
+            mem->cpuUnmap(device);
+        }
+        else {
+            mem->cpuUnmap(device);
+        }
     }
     else {
         device.submitTransferBufferFromFile(*this);

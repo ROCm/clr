@@ -171,7 +171,6 @@ Memory::create(
     // Check if CAL created a resource
     if (result) {
         switch (memoryType()) {
-        case Resource::Persistent:
         case Resource::Pinned:
         case Resource::ExternalPhysical:
             // Marks memory object for direct GPU access to the host memory
