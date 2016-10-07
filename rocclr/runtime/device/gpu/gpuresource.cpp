@@ -1567,7 +1567,9 @@ Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers)
     // guarantee that the address will be valid,
     // since GSL could still process the first map
     if (address_ == NULL) {
-        amd::Os::sleep(10);
+        for (uint i = 0; address_ == NULL && i < 10; ++i) {
+            amd::Os::sleep(1);
+        }
         assert((address_ != NULL) && "Multiple maps failed!");
     }
 
