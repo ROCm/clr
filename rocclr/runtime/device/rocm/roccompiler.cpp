@@ -178,7 +178,7 @@ HSAILProgram::compileImpl_LC(
 
     std::pair<const void*, size_t> hdr;
     switch(clcStd) {
-    case 120:
+    case 100: case 110: case 120:
         hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size);
         break;
     case 200:
