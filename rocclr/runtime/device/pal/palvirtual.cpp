@@ -2018,18 +2018,21 @@ VirtualGPU::submitKernelInternal(
         }
 
         GpuEvent    gpuEvent;
+        // Set up the dispatch information
+        Pal::DispatchAqlParams  dispatchParam = {};
+        dispatchParam.pAqlPacket = aqlPkt;
+        if (nullptr != scratch) {
+            dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
+            dispatchParam.scratchSize = scratch->size_;
+            dispatchParam.scratchOffset = scratch->offset_;
+        }
+        dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
+        dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
+        dispatchParam.wavesPerSh = hsaKernel.getWavesPerSH(this);
 
         // Run AQL dispatch in HW
         eventBegin(MainEngine);
-        if (nullptr == scratch) {
-            iCmd()->CmdDispatchAql(aqlPkt, 0, 0, 0,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), hsaKernel.getWavesPerSH(this));
-        }
-        else {
-            iCmd()->CmdDispatchAql(aqlPkt, scratch->memObj_->vmAddress(),
-                scratch->size_, scratch->offset_,
-                hsaKernel.cpuAqlCode(), hsaQueueMem_->vmAddress(), hsaKernel.getWavesPerSH(this));
-        }
+        iCmd()->CmdDispatchAql(dispatchParam);
         eventEnd(MainEngine, gpuEvent);
 
         if (dbgManager && (nullptr != dbgManager->postDispatchCallBackFunc())) {
