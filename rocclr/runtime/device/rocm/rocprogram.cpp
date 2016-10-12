@@ -1216,66 +1216,6 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         buildLog_ += "Failed to create Brig Container";
         return false;
     }
-#if defined(USE_HSART_FINALIZER)
-    // Create a program.
-    hsa_status_t status = hsa_ext_program_create(
-        HSA_MACHINE_MODEL_LARGE,
-        HSA_PROFILE_FULL,
-        HSA_DEFAULT_FLOAT_ROUNDING_MODE_ZERO,
-        NULL,
-        &hsaProgramHandle_
-    );
-    if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Failed to create hsail program: ";
-        buildLog_ += hsa_strerror(status);
-        return false;
-    }
-
-    // Add module to a program.
-    hsa_ext_module_t programModule =
-        reinterpret_cast<hsa_ext_module_t>(brigModule_);
-    status = hsa_ext_program_add_module(
-        hsaProgramHandle_, programModule
-    );
-    if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Error: Failed to add a module to the program: ";
-        buildLog_ += hsa_strerror(status);
-        buildLog_ += "\n";
-        return false;
-    }
-
-    // Obtain agent's Isa.
-    hsa_isa_t hsaDeviceIsa;
-    status = hsa_agent_get_info(
-        hsaDevice, HSA_AGENT_INFO_ISA, &hsaDeviceIsa
-    );
-    if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Error: Failed to create hsail program: ";
-        buildLog_ += hsa_strerror(status);
-        buildLog_ += "\n";
-        return false;
-    }
-
-    // Finalize a program.
-    hsa_ext_control_directives_t hsaControlDirectives;
-    memset(&hsaControlDirectives, 0, sizeof(hsa_ext_control_directives_t));
-    status = hsa_ext_program_finalize(
-        hsaProgramHandle_,
-        hsaDeviceIsa,
-        0,
-        hsaControlDirectives,
-        NULL,
-        HSA_CODE_OBJECT_TYPE_PROGRAM,
-        &hsaProgramCodeObject_
-    );
-    if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Error: Failed to finalize hsail program: ";
-        buildLog_ += hsa_strerror(status);
-        buildLog_ += "\n";
-        return false;
-    }
-
-#else // ! USE_HSART_FINALIZER
     std::string fin_options(options->origOptionStr);
     // Append an option so that we can selectively enable a SCOption on CZ
     // whenever IOMMUv2 is enabled.
@@ -1302,8 +1242,6 @@ HSAILProgram::linkImpl(amd::option::Options *options)
       buildLog_ += "Error: failed to load finalized code object.\n";
       return false;
     }
-
-#endif // USE_HSART_FINALIZER
 
     // HLC always generates full profile
     hsa_profile_t profile = HSA_PROFILE_FULL;
@@ -1462,23 +1400,6 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
 
-#if defined(USE_HSART_FINALIZER)
-    if (options->isDumpFlagSet(amd::option::DUMP_O) || options->isDumpFlagSet(amd::option::DUMP_ISA)) {
-        amd::hsa::code::AmdHsaCode code;
-        if (!code.InitAsHandle(hsaProgramCodeObject_)) {
-            LogWarning("Error: Printing AMD HSA Code Object failed.");
-        } else {
-            if (options->isDumpFlagSet(amd::option::DUMP_O)) {
-                std::string dumpFileName = options->getDumpFileName(".co");
-                code.SaveToFile(dumpFileName);
-            }
-            if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
-                std::string dumpFileName = options->getDumpFileName(".isa");
-                code.PrintToFile(dumpFileName);
-            }
-        }
-    }
-#endif // defined(USE_HSART_FINALIZER)
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
