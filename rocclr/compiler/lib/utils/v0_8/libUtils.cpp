@@ -18,6 +18,8 @@ static const std::string sgfx700 = "AMD:AMDGPU:7:0:0";
 static const std::string sgfx701 = "AMD:AMDGPU:7:0:1";
 static const std::string sgfx800 = "AMD:AMDGPU:8:0:0";
 static const std::string sgfx801 = "AMD:AMDGPU:8:0:1";
+static const std::string sgfx802 = "AMD:AMDGPU:8:0:2";
+static const std::string sgfx803 = "AMD:AMDGPU:8:0:3";
 static const std::string sgfx804 = "AMD:AMDGPU:8:0:4";
 static const std::string sgfx810 = "AMD:AMDGPU:8:1:0";
 static const std::string sgfx900 = "AMD:AMDGPU:9:0:0";
@@ -518,6 +520,8 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 701: return sgfx701;
   case 800: return sgfx800;
   case 801: return sgfx801;
+  case 802: return sgfx802;
+  case 803: return sgfx803;
   case 804: return sgfx804;
   case 810: return sgfx810;
   case 900: return sgfx900;
@@ -553,11 +557,19 @@ int getIsaType(const aclTargetInfo *target)
     case FAMILY_VI:
       switch (Mapping.chip_enum) {
         default: return 800;
-        case VI_ICELAND_M_A0:
-        case VI_TONGA_P_A0: return 800;
+        case VI_TONGA_P_A0:
+#if defined(BUILD_HSA_TARGET)
+          return 802; // Special case - Boltzmann Tonga
+          // Otherwise fall through
+#endif
+        case VI_ICELAND_M_A0: return 800;
+        case VI_FIJI_P_A0:
+#if defined(BUILD_HSA_TARGET)
+          return 803; // Special case - Boltzmann Fiji
+          // Otherwise fall through
+#endif
         case VI_ELLESMERE_P_A0:
         case VI_BAFFIN_M_A0:
-        case VI_FIJI_P_A0:
         case VI_LEXA_V_A0: return 804;
       }
     case FAMILY_CZ:
