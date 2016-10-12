@@ -1216,6 +1216,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         buildLog_ += "Failed to create Brig Container";
         return false;
     }
+#if defined(USE_HSART_FINALIZER)
     // Create a program.
     hsa_status_t status = hsa_ext_program_create(
         HSA_MACHINE_MODEL_LARGE,
@@ -1273,6 +1274,36 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         buildLog_ += "\n";
         return false;
     }
+
+#else // ! USE_HSART_FINALIZER
+    std::string fin_options(options->origOptionStr);
+    // Append an option so that we can selectively enable a SCOption on CZ
+    // whenever IOMMUv2 is enabled.
+    if (dev().isFineGrainedSystem(true)) {
+        fin_options.append(" -sc-xnack-iommu");
+    }
+    errorCode = aclCompile(dev().compiler(), binaryElf_,
+        fin_options.c_str(), ACL_TYPE_CG, ACL_TYPE_ISA, logFunction);
+    buildLog_ += aclGetCompilerLog(dev().compiler());
+    if (errorCode != ACL_SUCCESS) {
+        buildLog_ += "Error: BRIG finalization to ISA failed.\n";
+        return false;
+    }
+    size_t secSize;
+    void *data = (void*)aclExtractSection(device().compiler(),
+        binaryElf_, &secSize, aclTEXT, &errorCode);
+    if (errorCode != ACL_SUCCESS) {
+        buildLog_ += "Error: cannot extract ISA from compiled binary.\n";
+        return false;
+    }
+    hsa_status_t status = hsa_code_object_deserialize(data, secSize,
+        NULL, &hsaProgramCodeObject_ );
+    if (status != HSA_STATUS_SUCCESS) {
+      buildLog_ += "Error: failed to load finalized code object.\n";
+      return false;
+    }
+
+#endif // USE_HSART_FINALIZER
 
     // HLC always generates full profile
     hsa_profile_t profile = HSA_PROFILE_FULL;
@@ -1431,6 +1462,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
 
+#if defined(USE_HSART_FINALIZER)
     if (options->isDumpFlagSet(amd::option::DUMP_O) || options->isDumpFlagSet(amd::option::DUMP_ISA)) {
         amd::hsa::code::AmdHsaCode code;
         if (!code.InitAsHandle(hsaProgramCodeObject_)) {
@@ -1446,7 +1478,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
             }
         }
     }
-
+#endif // defined(USE_HSART_FINALIZER)
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
