@@ -57,12 +57,12 @@ BEGIN
             VALUE "Comments", " \0"
             VALUE "CompanyName", "Advanced Micro Devices Inc.\0"
             VALUE "FileDescription", AMD_PLATFORM_NAME " OpenCL " XSTR(VERSION_PREFIX_MAJOR) "." XSTR(VERSION_PREFIX_MINOR) " Runtime\0"
-            VALUE "FileVersion", "10, 0, " XSTR(AMD_PLATFORM_BUILD_NUMBER) ", " XSTR(AMD_PLATFORM_REVISION_NUMBER)
+            VALUE "FileVersion", "10.0." XSTR(AMD_PLATFORM_BUILD_NUMBER) "." XSTR(AMD_PLATFORM_REVISION_NUMBER)
             VALUE "InternalName", "OpenCL"
             VALUE "LegalCopyright", "Copyright (C) 2011 Advanced Micro Devices Inc.\0"
             VALUE "OriginalFilename", "OpenCL.dll"
             VALUE "ProductName", "OpenCL " XSTR(VERSION_PREFIX_MAJOR) "." XSTR(VERSION_PREFIX_MINOR) " " AMD_PLATFORM_INFO "\0"
-            VALUE "ProductVersion", "10, 0, " XSTR(AMD_PLATFORM_BUILD_NUMBER) ", " XSTR(AMD_PLATFORM_REVISION_NUMBER)
+            VALUE "ProductVersion", "10.0." XSTR(AMD_PLATFORM_BUILD_NUMBER) "." XSTR(AMD_PLATFORM_REVISION_NUMBER)
         END
     END
     BLOCK "VarFileInfo"
