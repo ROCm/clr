@@ -69,7 +69,7 @@ uint64_t PalCounterReference::result(int index)
     }
 
     if (layout_ != nullptr) {
-        assert(index <= layout_->sampleCount && "index not in range");
+        assert(index <= static_cast<int>(layout_->sampleCount) && "index not in range");
         const Pal::GlobalSampleLayout& sample = layout_->samples[index];
         if (sample.dataType == Pal::PerfCounterDataType::Uint32) {
             uint32_t beginVal = *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(cpuAddr_) + sample.beginValueOffset);
