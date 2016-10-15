@@ -7,10 +7,10 @@
 
 #include "rocprogram.hpp"
 
-#include "compiler/lib/loaders/elf/elf.hpp"
 #include "compiler/lib/utils/options.hpp"
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
+#include "libelf/gelf.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #else // !defined(WITH_LIGHTNING_COMPILER)
@@ -1004,21 +1004,63 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
         return false;
     }
 
-    // load the runtime metadata
-    amd::OclElf elf(ELFCLASS64, (char*) binary, binSize, NULL, ELF_C_READ);
+    size_t progvarsTotalSize = 0;
 
-    char* data;
-    size_t size;
-    if (!elf.getSection(amd::OclElf::RUNTIME_METADATA, &data, &size)) {
-        buildLog_ += "Error while access runtime metadata.\n";
+    // Begin the Elf image from memory
+    Elf* e = elf_memory((char*) binary, binSize, NULL);
+    if (elf_kind(e) != ELF_K_ELF) {
+        buildLog_ += "Error while reading the ELF program binary\n";
+        return false;
+    }
+    size_t shstrndx;
+    if (elf_getshdrstrndx(e, &shstrndx) != 0) {
+        buildLog_ += "Error while reading the ELF program binary\n";
         return false;
     }
 
-    metadata_ = new amd::hsa::code::Program::Metadata();
-    if (!metadata_->ReadFrom((void *) data, size)) {
-        buildLog_ += "Error while parsing runtime metadata.\n";
+    // Iterate over the sections
+    for (Elf_Scn* scn = elf_nextscn(e, 0); scn; scn = elf_nextscn(e, scn)) {
+        GElf_Shdr shdr;
+        if (gelf_getshdr(scn, &shdr) != &shdr) {
+            continue;
+        }
+        // Skip non-program sections
+        if (shdr.sh_type != SHT_PROGBITS) {
+            continue;
+        }
+        // Accumulate the size of A & !X sections
+        if ((shdr.sh_flags & SHF_ALLOC) && !(shdr.sh_flags & SHF_EXECINSTR)) {
+            progvarsTotalSize += shdr.sh_size;
+        }
+        // Check if this is the metadata section
+        const char* name = elf_strptr(e, shstrndx , shdr.sh_name);
+        if (name && !strcmp(name, ".AMDGPU.runtime_metadata")) {
+            // Assume a single Elf_Data, the parser will fail if it isn't
+            Elf_Data* data = elf_getdata(scn, NULL);
+            if (!data) {
+                buildLog_ += "Error while reading ELF program binary " \
+                    "runtime metadata section\n";
+                return false;
+            }
+
+            metadata_ = new amd::hsa::code::Program::Metadata();
+            if (!metadata_ || !metadata_->ReadFrom(data->d_buf, data->d_size)) {
+                buildLog_ += "Error while parsing ELF program binary " \
+                    "runtime metadata section\n";
+                return false;
+            }
+        }
+    }
+
+    elf_end(e);
+
+    if (!metadata_) {
+        buildLog_ += "Error: runtime metadata section not present in " \
+            "ELF program binary\n";
         return false;
     }
+
+    setGlobalVariableTotalSize(progvarsTotalSize);
 
     saveBinaryAndSetType(TYPE_EXECUTABLE);
 
@@ -1097,22 +1139,6 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
             buildLog_ += "\n";
             return false;
         }
-
-#if 0
-        for (auto s = elf.nextSymbol(NULL); s != NULL; s = elf.nextSymbol(s)) {
-            amd::OclElf::SymbolInfo si;
-            if (!elf.getSymbolInfo(s, &si)
-                || strcmp(si.sec_name, ".text") != 0
-                || strcmp(si.sym_name, kernelName.c_str()) != 0) {
-                continue;
-            }
-            const amd_kernel_code_t* akc = (amd_kernel_code_t*)
-                ((address) out_exec->Buf().data() + (si.address - si.sec_addr));
-
-            // FIXME_lmoriche: this is where we could get the SGPRs and VGPRs
-            break;
-        }
-#endif
 
         Kernel *aKernel = new roc::Kernel(
             kernelName,
