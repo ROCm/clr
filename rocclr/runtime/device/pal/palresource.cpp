@@ -1964,11 +1964,14 @@ Resource::rename(VirtualGPU& gpu, bool force)
 void
 Resource::warmUpRenames(VirtualGPU& gpu)
 {
-    for (uint i = 0; i < dev().settings().maxRenames_; ++i) {
+    // Make sure OCL touches every command buffer in the queue to avoid delays on the first submit
+    uint flush = dev().settings().maxRenames_ / VirtualGPU::Queue::MaxCmdBuffers;
+    flush = (flush == 0) ? 1 : flush;
+    for (uint i = 1; i <= dev().settings().maxRenames_; ++i) {
         uint    dummy = 0;
-        const bool NoWait = false;
+        const bool Wait = (i % flush == 0) ? true : false;
         // Write 0 for the buffer paging by VidMM
-        writeRawData(gpu, 0, sizeof(dummy), &dummy, NoWait);
+        writeRawData(gpu, 0, sizeof(dummy), &dummy, Wait);
         const bool Force = true;
         rename(gpu, Force);
     }

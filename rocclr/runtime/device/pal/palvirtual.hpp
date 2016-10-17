@@ -11,9 +11,11 @@
 #include "device/pal/palsched.hpp"
 #include "device/pal/paldebugger.hpp"
 #include "device/blit.hpp"
+#include "palUtil.h"
 #include "palCmdBuffer.h"
 #include "palCmdAllocator.h"
 #include "palQueue.h"
+#include "palFence.h"
 #include "palLinearAllocator.h"
 
 /*! \addtogroup PAL PAL Resource Implementation
@@ -44,7 +46,7 @@ public:
         static const uint  MaxCommands = 512;
         static const uint  StartCmdBufIdx = 1;
         static const uint  FirstMemoryReference = 0x80000000;
-        static const uint64_t WaitTimeoutInNsec = 60000000000;
+        static const uint64_t WaitTimeoutInNsec = 6000000000;
 
         static Queue* Create(
             Pal::IDevice*   palDev,     //!< PAL device object
@@ -80,6 +82,30 @@ public:
         void removeMemRef(Pal::IGpuMemory* iMem) const
         {
             iDev_->RemoveGpuMemoryReferences(1, &iMem, NULL);
+        }
+
+        bool waifForFence(uint cbId) const
+        {
+            Pal::Result result = Pal::Result::Success;
+            while (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus())) {
+                if (result == Pal::Result::ErrorFenceNeverSubmitted) {
+                    result = Pal::Result::Success;
+                    break;
+                }
+                result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true, WaitTimeoutInNsec);
+                if (Pal::Result::Success == result) {
+                    break;
+                }
+                else if ((Pal::Result::NotReady == result) ||
+                         (Pal::Result::Timeout == result)) {
+                    LogWarning("PAL fence isn't ready!");
+                }
+                else {
+                    LogError("PAL wait for a fence failed!");
+                    break;
+                }
+            }
+            return (result == Pal::Result::Success) ? true : false;
         }
 
         //! Flushes the current command buffer to HW

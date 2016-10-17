@@ -782,20 +782,6 @@ Device::create(Pal::IDevice* device)
     mapCache_->push_back(nullptr);
 
     size_t  resourceCacheSize = settings().resourceCacheSize_;
-
-#ifdef DEBUG
-    std::stringstream  message;
-    if (settings().remoteAlloc_) {
-        message << "Using *Remote* memory";
-    }
-    else {
-        message << "Using *Local* memory";
-    }
-
-    message << std::endl;
-    LogInfo(message.str().c_str());
-#endif // DEBUG
-
     // Create resource cache.
     // \note Cache must be created before any resource creation to avoid nullptr check
     resourceCache_ = new ResourceCache(resourceCacheSize);
@@ -805,6 +791,20 @@ Device::create(Pal::IDevice* device)
 
     // Fill the device info structure
     fillDeviceInfo(properties(), heaps, 16*Ki, numComputeEngines());
+
+#ifdef DEBUG
+    std::stringstream  message;
+    message << info_.name_;
+    if (settings().remoteAlloc_) {
+        message << ": Using *Remote* memory";
+    }
+    else {
+        message << ": Using *Local* memory";
+    }
+
+    message << std::endl;
+    LogInfo(message.str().c_str());
+#endif // DEBUG
 
     for (uint i = 0; i < Pal::GpuHeap::GpuHeapCount; ++i) {
         freeMem[i] = heaps[i].heapSize;
