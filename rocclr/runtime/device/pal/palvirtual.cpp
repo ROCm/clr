@@ -187,8 +187,11 @@ VirtualGPU::Queue::flush()
     }
 
     if (palMemRefs_.size() != 0) {
-        iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
-             Pal::GpuMemoryRefCantTrim);
+        if (Pal::Result::Success != iDev_->AddGpuMemoryReferences(
+            palMemRefs_.size(), &palMemRefs_[0], iQueue_, Pal::GpuMemoryRefCantTrim)) {
+            LogError("PAL failed to make resident resources!");
+            return false;
+        }
     }
 
     Pal::SubmitInfo submitInfo = {};
@@ -202,11 +205,7 @@ VirtualGPU::Queue::flush()
         return false;
     }
     if (GPU_FLUSH_ON_EXECUTION) {
-        if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, WaitTimeoutInNsec)) {
-            LogError("PAL wait for a fence failed!");
-            return false;
-        }
+        waifForFence(cmdBufIdSlot_);
     }
 
     // Reset the counter of commands
@@ -216,7 +215,8 @@ VirtualGPU::Queue::flush()
     cmdBufIdCurrent_++;
 
     if (cmdBufIdCurrent_ == GpuEvent::InvalidID) {
-        ///@todo handle wrapping
+        // Wait for the last one
+        waifForFence(cmdBufIdSlot_);
         cmdBufIdCurrent_ = 1;
         cmbBufIdRetired_ = 0;
     }
@@ -225,13 +225,8 @@ VirtualGPU::Queue::flush()
     cmdBufIdSlot_ = cmdBufIdCurrent_ % MaxCmdBuffers;
 
     // Make sure the slot isn't busy
-    if (Pal::Result::NotReady == iCmdFences_[cmdBufIdSlot_]->GetStatus()) {
-        if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[cmdBufIdSlot_], true, WaitTimeoutInNsec)) {
-            LogError("PAL wait for a fence failed!");
-            return false;
-        }
-    }
+    waifForFence(cmdBufIdSlot_);
+
     // Progress retired TS 
     if ((cmdBufIdCurrent_ > MaxCmdBuffers) &&
         (cmbBufIdRetired_ < (cmdBufIdCurrent_ - MaxCmdBuffers))) {
@@ -282,18 +277,10 @@ VirtualGPU::Queue::waitForEvent(uint id)
         return true;
     }
 
-    uint slotId = id % MaxCmdBuffers;
-
-    // Wait for the specified fence
-    if (Pal::Result::Success != iCmdFences_[slotId]->GetStatus()) {
-        if (Pal::Result::Success !=
-            iDev_->WaitForFences(1, &iCmdFences_[slotId], true, WaitTimeoutInNsec)) {
-            LogError("PAL wait for a fence failed!");
-            return false;
-        }
-    }
+    uint    slotId = id % MaxCmdBuffers;
+    bool    result = waifForFence(slotId);
     cmbBufIdRetired_ = id; 
-    return true;
+    return result;
 }
 
 bool
@@ -729,13 +716,17 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize)
     }
 
     if (dev().numComputeEngines()) {
-        uint    idx = index() % dev().numComputeEngines();
+        //! @todo There is a hang with a mix of user and non user queues.
+        //! Currently there is no simple way to detect which queue is what.
+        //! Disable first for now.
+        const uint  firstQueue = (dev().numComputeEngines() > 2) ? 1 : 0;
+        uint    idx = index() % (dev().numComputeEngines() - firstQueue);
 
         // hwRing_ should be set 0 if forced to have single scratch buffer
         hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
         queues_[MainEngine] = Queue::Create(
-            dev().iDev(), Pal::QueueTypeCompute, idx, cmdAllocator_);
+            dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue, cmdAllocator_);
         if (nullptr == queues_[MainEngine]) {
             return false;
         }
