@@ -10,6 +10,7 @@
 #include "device/pal/paltimestamp.hpp"
 #include "device/pal/palsched.hpp"
 #include "device/pal/paldebugger.hpp"
+#include "platform/commandqueue.hpp"
 #include "device/blit.hpp"
 #include "palUtil.h"
 #include "palCmdBuffer.h"
@@ -47,12 +48,15 @@ public:
         static const uint  StartCmdBufIdx = 1;
         static const uint  FirstMemoryReference = 0x80000000;
         static const uint64_t WaitTimeoutInNsec = 6000000000;
+        static const uint64_t PollIntervalInNsec = 500000;
 
         static Queue* Create(
-            Pal::IDevice*   palDev,     //!< PAL device object
-            Pal::QueueType  queueType,  //!< PAL queue type
-            uint            engineIdx,  //!< Select particular engine index
-            Pal::ICmdAllocator* cmdAlloc//!< PAL CMD buffer allocator
+            Pal::IDevice*   palDev,         //!< PAL device object
+            Pal::QueueType  queueType,      //!< PAL queue type
+            uint            engineIdx,      //!< Select particular engine index
+            Pal::ICmdAllocator* cmdAlloc,   //!< PAL CMD buffer allocator
+            uint            rtCU,           //!< The number of reserved CUs
+            amd::CommandQueue::Priority priority    //!< Queue priority
             );
 
         Queue(Pal::IDevice* palDev)
@@ -87,11 +91,14 @@ public:
         bool waifForFence(uint cbId) const
         {
             Pal::Result result = Pal::Result::Success;
+            uint64_t start = amd::Os::timeNanos();
             while (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus())) {
                 if (result == Pal::Result::ErrorFenceNeverSubmitted) {
                     result = Pal::Result::Success;
                     break;
                 }
+                uint64_t end = amd::Os::timeNanos();
+                if ((end - start) < PollIntervalInNsec) continue;
                 result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true, WaitTimeoutInNsec);
                 if (Pal::Result::Success == result) {
                     break;
@@ -170,11 +177,8 @@ public:
     {
         struct
         {
-            uint    boundGlobal_ : 1;   //!< Global buffer was bound
             uint    profiling_   : 1;   //!< Profiling is enabled
             uint    forceWait_   : 1;   //!< Forces wait in flush()
-            uint    boundCb_     : 1;   //!< Constant buffer was bound
-            uint    boundPrintf_ : 1;   //!< Printf buffer was bound
             uint    profileEnabled_: 1; //!< Profiling is enabled for WaveLimiter
         };
         uint    value_;
@@ -265,8 +269,10 @@ public:
     VirtualGPU(Device& device);
     //! Creates virtual gpu object
     bool create(
-        bool    profiling,          //!< Enables profilng on the queue
-        uint  deviceQueueSize = 0   //!< Device queue size, 0 if host queue
+        bool    profiling,                  //!< Enables profilng on the queue
+        uint    deviceQueueSize = 0,        //!< Device queue size, 0 if host queue
+        uint    rtCUs = amd::CommandQueue::RealTimeDisabled,
+        amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal
         );
     ~VirtualGPU();
 

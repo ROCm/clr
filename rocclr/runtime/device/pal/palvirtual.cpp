@@ -37,21 +37,41 @@ VirtualGPU::Queue::Create(
     Pal::IDevice*   palDev,
     Pal::QueueType  queueType,
     uint            engineIdx,
-    Pal::ICmdAllocator* cmdAllocator)
+    Pal::ICmdAllocator* cmdAllocator,
+    uint            rtCU,
+    amd::CommandQueue::Priority priority)
 {
     Pal::Result result;
+    Pal::CmdBufferCreateInfo    cmdCreateInfo = {};
     Pal::QueueCreateInfo        qCreateInfo = {};
-    qCreateInfo.engineType = queueType;
     qCreateInfo.engineIndex = engineIdx;
-    qCreateInfo.aqlQueue = true;
+    qCreateInfo.aqlQueue    = true;
+    qCreateInfo.queueType   = queueType;
 
+    if (queueType == Pal::QueueTypeDma) {
+        cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeDma;
+    }
+    else {
+        cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeCompute;
+    }
+/*
+    if (priority == amd::CommandQueue::Priority::Medium) {
+        qCreateInfo.engineIndex = 0x1;
+        cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
+    }
+    else if (amd::CommandQueue::RealTimeDisabled != rtCU) {
+        qCreateInfo.numReservedCu = rtCU;
+        qCreateInfo.engineIndex = 0x0;
+        cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
+        cmdCreateInfo.flags.rtCu = true;
+    }
+*/
     // Find queue object size
     size_t qSize = palDev->GetQueueSize(qCreateInfo, &result);
     if (result != Pal::Result::Success) {
         return nullptr;
     }
 
-    Pal::CmdBufferCreateInfo    cmdCreateInfo = {};
     cmdCreateInfo.pCmdAllocator = cmdAllocator;
     cmdCreateInfo.queueType = queueType;
 
@@ -678,7 +698,8 @@ VirtualGPU::VirtualGPU(
 }
 
 bool
-VirtualGPU::create(bool profiling, uint  deviceQueueSize)
+VirtualGPU::create(bool profiling, uint  deviceQueueSize, uint rtCUs,
+    amd::CommandQueue::Priority priority)
 {
     device::BlitManager::Setup  blitSetup;
 
@@ -726,7 +747,7 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize)
         hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
         queues_[MainEngine] = Queue::Create(
-            dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue, cmdAllocator_);
+            dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue, cmdAllocator_, rtCUs, priority);
         if (nullptr == queues_[MainEngine]) {
             return false;
         }
@@ -743,7 +764,8 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize)
             }
 
             queues_[SdmaEngine] = Queue::Create(
-                dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_);
+                dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_,
+                amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal);
             if (nullptr == queues_[SdmaEngine]) {
                 return false;
             }
@@ -2011,15 +2033,15 @@ VirtualGPU::submitKernelInternal(
         GpuEvent    gpuEvent;
         // Set up the dispatch information
         Pal::DispatchAqlParams  dispatchParam = {};
-        dispatchParam.pAqlPacket = aqlPkt;
+        dispatchParam.pAqlPacket     = aqlPkt;
         if (nullptr != scratch) {
-            dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
-            dispatchParam.scratchSize = scratch->size_;
-            dispatchParam.scratchOffset = scratch->offset_;
+            dispatchParam.scratchAddr    = scratch->memObj_->vmAddress();
+            dispatchParam.scratchSize    = scratch->size_;
+            dispatchParam.scratchOffset  = scratch->offset_;
         }
-        dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
-        dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-        dispatchParam.wavesPerSh = hsaKernel.getWavesPerSH(this);
+        dispatchParam.pCpuAqlCode    = hsaKernel.cpuAqlCode();
+        dispatchParam.hsaQueueVa     = hsaQueueMem_->vmAddress();
+        dispatchParam.wavesPerSh     = hsaKernel.getWavesPerSH(this);
 
         // Run AQL dispatch in HW
         eventBegin(MainEngine);
@@ -3415,31 +3437,56 @@ VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd)
 {
     size_t copySize = cmd.size()[0];
     size_t fileOffset = cmd.fileOffset();
-    size_t srcDstOffset = cmd.origin()[0];
     Memory* mem = dev().getGpuMemory(&cmd.memory());
     uint    idx = 0;
 
     assert((cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD) ||
         (cmd.type() == CL_COMMAND_WRITE_SSG_FILE_AMD));
-    bool writeBuffer(cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD);
+    const bool writeBuffer(cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD);
 
-    while (copySize > 0) {
-        Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
-        size_t srcDstSize = amd::TransferBufferFileCommand::StagingBufferSize;
-        srcDstSize = std::min(srcDstSize, copySize);
-        void* srcDstBuffer = staging->cpuMap(*this);
-        if (!cmd.file()->transferBlock(writeBuffer,
-            srcDstBuffer, staging->size(), fileOffset, 0, srcDstSize)) {
-            cmd.setStatus(CL_INVALID_OPERATION);
-            return;
+    if (writeBuffer) {
+        size_t dstOffset = cmd.origin()[0];
+        while (copySize > 0) {
+            Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
+            size_t dstSize = amd::TransferBufferFileCommand::StagingBufferSize;
+            dstSize = std::min(dstSize, copySize);
+            void* dstBuffer = staging->cpuMap(*this);
+            if (!cmd.file()->transferBlock(writeBuffer,
+                dstBuffer, staging->size(), fileOffset, 0, dstSize)) {
+                cmd.setStatus(CL_INVALID_OPERATION);
+                return;
+            }
+            staging->cpuUnmap(*this);
+
+            bool result = blitMgr().copyBuffer(*staging, *mem,
+                0, dstOffset, dstSize, false);
+            flushDMA(getGpuEvent(staging->iMem())->engineId_);
+            fileOffset += dstSize;
+            dstOffset += dstSize;
+            copySize -= dstSize;
         }
-        staging->cpuUnmap(*this);
+    }
+    else {
+        size_t  srcOffset = cmd.origin()[0];
+        while (copySize > 0) {
+            Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
+            size_t srcSize = amd::TransferBufferFileCommand::StagingBufferSize;
+            srcSize = std::min(srcSize, copySize);
+            bool result = blitMgr().copyBuffer(*mem, *staging,
+                srcOffset, 0, srcSize, false);
 
-        bool result = blitMgr().copyBuffer(*staging, *mem,
-            fileOffset, srcDstOffset, srcDstSize, false);
-        flushDMA(getGpuEvent(staging->iMem())->engineId_);
-        srcDstOffset += srcDstSize;
-        copySize -= srcDstSize;
+            void* srcBuffer = staging->cpuMap(*this);
+            if (!cmd.file()->transferBlock(writeBuffer,
+                srcBuffer, staging->size(), fileOffset, 0, srcSize)) {
+                cmd.setStatus(CL_INVALID_OPERATION);
+                return;
+            }
+            staging->cpuUnmap(*this);
+
+            fileOffset += srcSize;
+            srcOffset += srcSize;
+            copySize -= srcSize;
+        }
     }
 }
 } // namespace pal
