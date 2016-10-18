@@ -466,8 +466,10 @@ void NullDevice::fillDeviceInfo(
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
         info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
         info_.numAsyncQueues_       = numComputeRings;
-        info_.numRTQueues_          = 2;
-        info_.numRTCUs_             = 4;
+        info_.numRTQueues_          =
+            palProp.engineProperties[Pal::EngineTypeExclusiveCompute].engineCount  - 1;
+        info_.numRTCUs_             = 0x8;
+            //palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
 }
@@ -693,13 +695,11 @@ Device::create(Pal::IDevice* device)
         return false;
     }
 
-
     // Find the number of available engines
     numComputeEngines_ =
-        properties().engineProperties[Pal::QueueTypeCompute].engineCount -
-        properties().engineProperties[Pal::QueueTypeCompute].numExclusiveComputeEngines;
+        properties().engineProperties[Pal::EngineTypeCompute].engineCount;
     numDmaEngines_ =
-        properties().engineProperties[Pal::QueueTypeDma].engineCount;
+        properties().engineProperties[Pal::EngineTypeDma].engineCount;
 
     Pal::PalPublicSettings*const palSettings = iDev()->GetPublicSettings();
     // Modify settings here
@@ -715,9 +715,13 @@ Device::create(Pal::IDevice* device)
         Pal::DeviceFinalizeInfo finalizeInfo = {};
 
         // Request all compute engines
-        finalizeInfo.engineCounts[Pal::QueueTypeCompute] = numComputeEngines_;
+        finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
+            ((1 << numComputeEngines_) - 1);
+        // Request real time compute engines
+        //finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines = 3;
         // Request all SDMA engines
-        finalizeInfo.engineCounts[Pal::QueueTypeDma] = numDmaEngines_;
+        finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines =
+            (1 << numDmaEngines_) - 1;
 
         result = iDev()->Finalize(finalizeInfo);
     }
@@ -943,10 +947,7 @@ Device::createVirtualDevice(
     }
 
     VirtualGPU* vgpu = new VirtualGPU(*this);
-    if (vgpu && vgpu->create(
-        profiling
-        , deviceQueueSize
-        )) {
+    if (vgpu && vgpu->create(profiling, deviceQueueSize, rtCUs, queue->priority())) {
         return vgpu;
     } else {
         delete vgpu;
