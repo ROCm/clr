@@ -65,6 +65,8 @@ Settings::create(bool doublePrecision)
     enableExtension(ClKhrGlobalInt32ExtendedAtomics);
     enableExtension(ClKhrLocalInt32BaseAtomics);
     enableExtension(ClKhrLocalInt32ExtendedAtomics);
+    enableExtension(ClKhrInt64BaseAtomics);
+    enableExtension(ClKhrInt64ExtendedAtomics);
     enableExtension(ClKhr3DImageWrites);
     enableExtension(ClAmdMediaOps);
     enableExtension(ClAmdMediaOps2);
