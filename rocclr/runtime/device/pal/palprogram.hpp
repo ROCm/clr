@@ -178,6 +178,9 @@ public:
     //! Returns TRUE if the program just compiled
     bool isNull() const { return isNull_; }
 
+    //! Returns TRUE if the program used internally by runtime
+    bool isInternal() const { return internal_; }
+
     //! Returns TRUE if the program contains static samplers
     bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
 
@@ -267,7 +270,13 @@ private:
     Memory*         kernels_;       //!< Table with kernel object pointers
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
     std::list<Sampler*>     staticSamplers_;    //!< List od internal static samplers
-    bool            isNull_;        //!< Null program no memory allocations
+    union {
+        struct {
+            uint32_t    isNull_     : 1;    //!< Null program no memory allocations
+            uint32_t    internal_   : 1;    //!< Internal blit program
+        };
+        uint32_t    flags_;  //!< Program flags
+    };
     amd::hsa::loader::Loader* loader_; //!< Loader object
     amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
     ORCAHSALoaderContext loaderContext_;    //!< Context for HSA Loader
