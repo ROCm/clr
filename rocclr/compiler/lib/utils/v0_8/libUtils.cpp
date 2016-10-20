@@ -559,18 +559,20 @@ int getIsaType(const aclTargetInfo *target)
         default: return 800;
         case VI_TONGA_P_A0:
 #if defined(BUILD_HSA_TARGET)
-          return 802; // Special case - Boltzmann Tonga
+        return 802; // Special case - Boltzmann Tonga
           // Otherwise fall through
 #endif
         case VI_ICELAND_M_A0: return 800;
         case VI_FIJI_P_A0:
-#if defined(BUILD_HSA_TARGET)
-          return 803; // Special case - Boltzmann Fiji
-          // Otherwise fall through
-#endif
-        case VI_ELLESMERE_P_A0:
         case VI_BAFFIN_M_A0:
-        case VI_LEXA_V_A0: return 804;
+        case VI_ELLESMERE_P_A0:
+        case VI_LEXA_V_A0:
+#if defined(BUILD_HSA_TARGET)
+        return 803; // Special case - Boltzmann FIJI, BAFFIN, ELLESMERE, LEXA
+          // Otherwise fall through
+#else
+        return 804;
+#endif
       }
     case FAMILY_CZ:
       switch (Mapping.chip_enum) {
@@ -583,7 +585,7 @@ int getIsaType(const aclTargetInfo *target)
         default: return 900;
         case AI_GREENLAND_P_A0: return 900;
       }
-  }
+    }
 }
 
 std::string getFeatureString(const aclTargetInfo& target, amd::option::Options *OptionsObj)
