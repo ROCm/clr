@@ -28,7 +28,7 @@ HSAILProgram::HSAILProgram(Device& device)
     , rawBinary_(nullptr)
     , kernels_(nullptr)
     , maxScratchRegs_(0)
-    , isNull_(false)
+    , flags_(0)
     , executable_(nullptr)
     , loaderContext_(this)
 {
@@ -48,7 +48,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
     , rawBinary_(nullptr)
     , kernels_(nullptr)
     , maxScratchRegs_(0)
-    , isNull_(true)
+    , flags_(0)
     , executable_(nullptr)
     , loaderContext_(this)
 {
@@ -442,6 +442,9 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
     bool finalize = true;
     bool hsaLoad = true;
+    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
+        std::string::npos) ? true : false;
+
     // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
     if (!binaryElf_) {
         continueCompileFrom = getNextCompilationStageFromBinary(options);
@@ -911,7 +914,7 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
-    if (program_->isNull()) {
+    if (program_->isNull() || program_->isInternal()) {
         return new char[size];
     }
 
@@ -937,7 +940,7 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
     if (0 == size) {
         return true;
     }
-    if (program_->isNull()) {
+    if (program_->isNull() || program_->isInternal()) {
         memcpy(reinterpret_cast<address>(dst) + offset, src, size);
         return true;
     }
@@ -949,7 +952,7 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
 
 void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
 {
-    if (program_->isNull()) {
+    if (program_->isNull() || program_->isInternal()) {
         delete[] reinterpret_cast<char*>(ptr);
     }
     else {
