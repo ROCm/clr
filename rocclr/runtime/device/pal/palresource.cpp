@@ -1118,13 +1118,17 @@ Resource::writeRawData(
     gpu.iCmd()->CmdUpdateMemory(*iMem(), offset, size, reinterpret_cast<const uint32_t*>(data));
     gpu.eventEnd(MainEngine, event);
 
-    setBusy(gpu, event);
-    // Update the global GPU event
-    gpu.setGpuEvent(event, false);
-
     if (waitForEvent) {
+        //! @note: We don't really have to mark the allocations as busy
+        //! if we are waiting for a transfer
+
         // Wait for event to complete
         gpu.waitForEvent(&event);
+    }
+    else {
+        setBusy(gpu, event);
+        // Update the global GPU event
+        gpu.setGpuEvent(event, false);
     }
 }
 static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement)
