@@ -469,8 +469,6 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
     bool finalize = true;
     bool hsaLoad = true;
-    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
-        std::string::npos) ? true : false;
 
     // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
     if (!binaryElf_) {
@@ -936,7 +934,7 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
-    if (program_->isNull() || program_->isInternal()) {
+    if (program_->isNull()) {
         return new char[size];
     }
 
@@ -962,19 +960,20 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
     if (0 == size) {
         return true;
     }
-    if (program_->isNull() || program_->isInternal()) {
+    if (program_->isNull()) {
         memcpy(reinterpret_cast<address>(dst) + offset, src, size);
         return true;
     }
     assert(program_->dev().xferQueue());
     pal::Memory* mem = reinterpret_cast<pal::Memory*>(dst);
-    return program_->dev().xferMgr().writeBuffer(src, *mem, amd::Coord3D(offset), amd::Coord3D(size), true);
+    constexpr bool WaitForCopy = true;
+    mem->writeRawData(*mem->dev().xferQueue(), offset, size, src, WaitForCopy);
     return true;
 }
 
 void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
 {
-    if (program_->isNull() || program_->isInternal()) {
+    if (program_->isNull()) {
         delete[] reinterpret_cast<char*>(ptr);
     }
     else {
@@ -1019,9 +1018,6 @@ bool
 LightningProgram::linkImpl(amd::option::Options *options)
 {
     using namespace amd::opencl_driver;
-
-    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
-        std::string::npos) ? true : false;
 
     aclType continueCompileFrom = llvmBinary_.empty()
         ? getNextCompilationStageFromBinary(options)

@@ -63,7 +63,7 @@ VirtualGPU::Queue::Create(
         qCreateInfo.numReservedCu = rtCU;
         qCreateInfo.engineIndex = 0x0;
         cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
-        cmdCreateInfo.flags.rtCu = true;
+        cmdCreateInfo.flags.realtimeComputeUnits = true;
     }
 */
     // Find queue object size
@@ -801,28 +801,6 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize, uint rtCUs,
         return false;
     }
 
-    // Choose the appropriate class for blit engine
-    switch (dev().settings().blitEngine_) {
-        default:
-            // Fall through ...
-        case Settings::BlitEngineHost:
-            blitSetup.disableAll();
-            // Fall through ...
-        case Settings::BlitEngineCAL:
-        case Settings::BlitEngineKernel:
-            // use host blit for HW debug
-            if (dev().settings().enableHwDebug_) {
-                blitSetup.disableCopyImageToBuffer_   = true;
-                blitSetup.disableCopyBufferToImage_   = true;
-            }
-            blitMgr_ = new KernelBlitManager(*this, blitSetup);
-            break;
-    }
-    if ((nullptr == blitMgr_) || !blitMgr_->create(gpuDevice_)) {
-        LogError("Could not create BlitManager!");
-        return false;
-    }
-
     tsCache_ = new TimeStampCache(*this);
     if (nullptr == tsCache_) {
         LogError("Could not create TimeStamp cache!");
@@ -843,6 +821,28 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize, uint rtCUs,
     if (dev().settings().useDeviceQueue_ &&
         (0 != deviceQueueSize) && !createVirtualQueue(deviceQueueSize)) {
         LogError("Could not create a virtual queue!");
+        return false;
+    }
+
+    // Choose the appropriate class for blit engine
+    switch (dev().settings().blitEngine_) {
+    default:
+        // Fall through ...
+    case Settings::BlitEngineHost:
+        blitSetup.disableAll();
+        // Fall through ...
+    case Settings::BlitEngineCAL:
+    case Settings::BlitEngineKernel:
+        // use host blit for HW debug
+        if (dev().settings().enableHwDebug_) {
+            blitSetup.disableCopyImageToBuffer_ = true;
+            blitSetup.disableCopyBufferToImage_ = true;
+        }
+        blitMgr_ = new KernelBlitManager(*this, blitSetup);
+        break;
+    }
+    if ((nullptr == blitMgr_) || !blitMgr_->create(gpuDevice_)) {
+        LogError("Could not create BlitManager!");
         return false;
     }
 

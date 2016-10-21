@@ -482,6 +482,9 @@ public:
         bool free               //!< TRUE if runtime frees memory
         );
 
+    //! Create internal blit program
+    bool createBlitProgram();
+
     //! Interop for GL device
     bool initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceContext) const;
     bool glCanInterop(void* GLplatformContext, void* GLdeviceContext) const;

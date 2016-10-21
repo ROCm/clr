@@ -182,9 +182,6 @@ public:
     //! Returns TRUE if the program just compiled
     bool isNull() const { return isNull_; }
 
-    //! Returns TRUE if the program used internally by runtime
-    bool isInternal() const { return internal_; }
-
     //! Returns TRUE if the program contains static samplers
     bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
 
@@ -278,7 +275,6 @@ protected:
     union {
         struct {
             uint32_t    isNull_     : 1;    //!< Null program no memory allocations
-            uint32_t    internal_   : 1;    //!< Internal blit program
         };
         uint32_t    flags_;  //!< Program flags
     };

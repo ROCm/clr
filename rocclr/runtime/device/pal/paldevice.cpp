@@ -478,7 +478,7 @@ void NullDevice::fillDeviceInfo(
         info_.numAsyncQueues_       = numComputeRings;
         info_.numRTQueues_          =
             palProp.engineProperties[Pal::EngineTypeExclusiveCompute].engineCount  - 1;
-        info_.numRTCUs_             = 0x8;
+        info_.numRTCUs_             = 8;
             //palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
@@ -718,6 +718,8 @@ Device::create(Pal::IDevice* device)
     palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
     palSettings->longRunningSubmissions = true;
     palSettings->cmdBufBatchedSubmitChainLimit = 0;
+    //palSettings->disableResourceProcessingManager = true;
+    //palSettings->disableScManager = true;
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
@@ -883,28 +885,6 @@ Device::initializeHeapResources()
                     return false;
                 }
             }
-        }
-
-        // Delay compilation due to brig_loader memory allocation
-        const char* scheduler = nullptr;
-        const char* ocl20 = nullptr;
-#if !defined(WITH_LIGHTNING_COMPILER)
-        std::string sch = SchedulerSourceCode;
-        if (settings().oclVersion_ == OpenCL20) {
-            size_t loc = sch.find("%s");
-            sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
-            scheduler = sch.c_str();
-            ocl20 = "-cl-std=CL2.0";
-        }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
-        blitProgram_ = new BlitProgram(context_);
-        // Create blit programs
-        if (blitProgram_ == nullptr ||
-            !blitProgram_->create(this, scheduler, ocl20)) {
-            delete blitProgram_;
-            blitProgram_ = nullptr;
-            LogError("Couldn't create blit kernels!");
-            return false;
         }
 
         // Create a synchronized transfer queue
@@ -2174,6 +2154,35 @@ Device::updateFreeMemory(Pal::GpuHeap heap, Pal::gpusize size, bool free)
     else {
         freeMem[heap] -= size;
     }
+}
+
+bool
+Device::createBlitProgram()
+{
+    bool result = true;
+
+    // Delayed compilation due to brig_loader memory allocation
+    const char* scheduler = nullptr;
+    const char* ocl20 = nullptr;
+#if !defined(WITH_LIGHTNING_COMPILER)
+    std::string sch = SchedulerSourceCode;
+    if (settings().oclVersion_ == OpenCL20) {
+        size_t loc = sch.find("%s");
+        sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
+        scheduler = sch.c_str();
+        ocl20 = "-cl-std=CL2.0";
+    }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+    blitProgram_ = new BlitProgram(context_);
+    // Create blit programs
+    if (blitProgram_ == nullptr ||
+        !blitProgram_->create(this, scheduler, ocl20)) {
+        delete blitProgram_;
+        blitProgram_ = nullptr;
+        LogError("Couldn't create blit kernels!");
+        result = false;
+    }
+    return result;
 }
 
 void
