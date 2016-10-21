@@ -60,7 +60,7 @@ PalDeviceUnload()
 
 namespace pal {
 
-aclCompiler* NullDevice::compiler_;
+NullDevice::Compiler* NullDevice::compiler_;
 AppProfile Device::appProfile_;
 
 NullDevice::NullDevice()
@@ -195,7 +195,11 @@ device::Program*
 NullDevice::createProgram(amd::option::Options* options)
 {
     device::Program* program;
+#if defined(WITH_LIGHTNING_COMPILER)
+    program = new LightningProgram(*this);
+#else // !defined(WITH_LIGHTNING_COMPILER)
     program = new HSAILProgram(*this);
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
     if (program == nullptr) {
         LogError("Memory allocation has failed!");
@@ -378,7 +382,13 @@ void NullDevice::fillDeviceInfo(
     }
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
     ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1,
-         AMD_BUILD_STRING "%s", " (PAL)");
+         AMD_BUILD_STRING " (PAL%s)",
+#if defined(WITH_LIGHTNING_COMPILER)
+         ",LC"
+#else // ! defined(WITH_LIGHTNING_COMPILER)
+         ",HSAIL"
+#endif // ! defined(WITH_LIGHTNING_COMPILER)
+         );
 
     info_.profile_ = "FULL_PROFILE";
     if (settings().oclVersion_ == OpenCL20) {
@@ -878,6 +888,7 @@ Device::initializeHeapResources()
         // Delay compilation due to brig_loader memory allocation
         const char* scheduler = nullptr;
         const char* ocl20 = nullptr;
+#if !defined(WITH_LIGHTNING_COMPILER)
         std::string sch = SchedulerSourceCode;
         if (settings().oclVersion_ == OpenCL20) {
             size_t loc = sch.find("%s");
@@ -885,6 +896,7 @@ Device::initializeHeapResources()
             scheduler = sch.c_str();
             ocl20 = "-cl-std=CL2.0";
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
         blitProgram_ = new BlitProgram(context_);
         // Create blit programs
         if (blitProgram_ == nullptr ||
@@ -959,7 +971,11 @@ device::Program*
 Device::createProgram(amd::option::Options* options)
 {
     device::Program* program;
+#if defined(WITH_LIGHTNING_COMPILER)
+    program = new LightningProgram(*this);
+#else // !defined(WITH_LIGHTNING_COMPILER)
     program = new HSAILProgram(*this);
+#endif // defined(WITH_LIGHTNING_COMPILER)
     if (program == nullptr) {
         LogError("We failed memory allocation for program!");
     }
@@ -1023,6 +1039,7 @@ Device::init()
     bool        useDeviceList = false;
     requestedDevices_t requestedDevices;
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = {
         sizeof(aclCompilerOptions_0_8),
@@ -1041,6 +1058,7 @@ Device::init()
         LogError("Error initializing the compiler");
         return false;
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     size_t size = Pal::GetPlatformSize();
     platformObj = new char[size];
@@ -1098,9 +1116,11 @@ Device::tearDown()
     platform->Destroy();
     delete platformObj;
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (compiler_ != nullptr) {
         aclCompilerFini(compiler_);
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 Memory*

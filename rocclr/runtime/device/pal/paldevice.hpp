@@ -32,9 +32,9 @@ namespace pal {
 class NullDevice : public amd::Device
 {
 protected:
-    static aclCompiler* compiler_;
+    static Compiler* compiler_;
 public:
-    aclCompiler* compiler() const { return compiler_; }
+    Compiler* compiler() const { return compiler_; }
 
 public:
     static bool init(void);

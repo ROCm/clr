@@ -7,6 +7,10 @@
 #include "device/pal/palbinary.hpp"
 #include "amd_hsa_loader.hpp"
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "libamdhsacode/amdgpu_metadata.hpp"
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
 namespace amd {
 namespace option {
 class Options;
@@ -148,7 +152,7 @@ public:
     HSAILProgram(Device& device);
     HSAILProgram(NullDevice& device);
     //! Default destructor
-    ~HSAILProgram();
+    virtual ~HSAILProgram();
 
     //! Returns the aclBinary associated with the progrm
     aclBinary* binaryElf() const {
@@ -253,6 +257,7 @@ private:
     //! Disable operator=
     HSAILProgram& operator=(const HSAILProgram&);
 
+protected:
     //! Returns all the options to be appended while passing to the
     //compiler library
     std::string hsailOptions();
@@ -281,5 +286,41 @@ private:
     amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
     ORCAHSALoaderContext loaderContext_;    //!< Context for HSA Loader
 };
+
+#if defined(WITH_LIGHTNING_COMPILER)
+//! \class Lightning Compiler Program
+class LightningProgram : public HSAILProgram
+{
+public:
+    LightningProgram(NullDevice& device)
+        : HSAILProgram(device),
+          metadata_(nullptr)
+    {}
+
+    const amd::hsa::code::Program::Metadata* metadata() const {
+        return metadata_;
+    }
+private:
+    virtual ~LightningProgram();
+
+protected:
+    virtual bool compileImpl(
+        const std::string& sourceCode,  //!< the program's source code
+        const std::vector<const std::string*>& headers,
+        const char** headerIncludeNames,
+        amd::option::Options* options   //!< compile options's object
+    ) override;
+
+    virtual bool linkImpl(amd::option::Options* options) override;
+
+    bool setKernels(amd::option::Options *options, void* binary, size_t size);
+
+    //! Return a new transient compiler instance.
+    static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
+
+private:
+    amd::hsa::code::Program::Metadata* metadata_; //!< Runtime metadata
+};
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 /*@}*/} // namespace pal
