@@ -21,6 +21,11 @@ namespace hsa {
 namespace loader {
 class Symbol;
 } // loader
+namespace code {
+namespace Kernel {
+class Metadata;
+} // Kernel
+} // code
 } // hsa
 } // amd
 
@@ -31,6 +36,7 @@ class VirtualGPU;
 class Device;
 class NullDevice;
 class HSAILProgram;
+class LightningProgram;
 
 /*! \addtogroup pal PAL Device Implementation
  *  @{
@@ -40,6 +46,7 @@ enum HSAIL_ADDRESS_QUALIFIER{
     HSAIL_ADDRESS_ERROR = 0,
     HSAIL_ADDRESS_GLOBAL,
     HSAIL_ADDRESS_LOCAL,
+    HSAIL_ADDRESS_CONSTANT,
     HSAIL_MAX_ADDRESS_QUALIFIERS
 } ;
 
@@ -47,9 +54,17 @@ enum HSAIL_ARG_TYPE{
     HSAIL_ARGTYPE_ERROR = 0,
     HSAIL_ARGTYPE_POINTER,
     HSAIL_ARGTYPE_VALUE,
+    HSAIL_ARGTYPE_REFERENCE,
     HSAIL_ARGTYPE_IMAGE,
     HSAIL_ARGTYPE_SAMPLER,
     HSAIL_ARGTYPE_QUEUE,
+    HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
+    HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
+    HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
+    HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER,
+    HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE,
+    HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION,
+    HSAIL_ARGTYPE_HIDDEN_NONE,
     HSAIL_ARGMAX_ARG_TYPES
 };
 
@@ -88,11 +103,13 @@ class HSAILKernel : public device::Kernel
 public:
     struct Argument
     {
+        uint        index_;         //!< Argument's index in the OCL signature
         std::string name_;          //!< Argument's name
         std::string typeName_;      //!< Argument's type name
         uint        size_;          //!< Size in bytes
         uint        offset_;        //!< Argument's offset
         uint        alignment_;     //!< Argument's alignment
+        uint        pointeeAlignment_; //!< Alignment of the data pointed to
         HSAIL_ARG_TYPE type_;       //!< Type of the argument
         HSAIL_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
         HSAIL_DATA_TYPE dataType_;  //!< The type of data
@@ -166,13 +183,13 @@ public:
         ) const;
 
     //! Returns AQL packet in CPU memory
-    //! if the kerenl arguments were successfully loaded, otherwise NULL
+    //! if the kernel arguments were successfully loaded, otherwise NULL
     hsa_kernel_dispatch_packet_t* loadArguments(
         VirtualGPU&                     gpu,        //!< Running GPU context
         const amd::Kernel&              kernel,     //!< AMD kernel object
         const amd::NDRangeContainer&    sizes,      //!< NDrange container
         const_address               parameters,     //!< Application arguments for the kernel
-        bool                        nativeMem,      //!< Native memory objectes are passed
+        bool                        nativeMem,      //!< Native memory objects are passed
         uint64_t                    vmDefQueue,     //!< GPU VM default queue pointer
         uint64_t*                   vmParentWrap,   //!< GPU VM parent aql wrap object
         std::vector<const Memory*>&     memList     //!< Memory list for GSL/VidMM handles
@@ -205,6 +222,7 @@ private:
     //! Disable operator=
     HSAILKernel& operator=(const HSAILKernel&);
 
+protected:
     //! Creates AQL kernel HW info
     bool aqlCreateHWInfo(amd::hsa::loader::Symbol *sym);
 
@@ -251,6 +269,30 @@ private:
 
     WaveLimiterManager waveLimiter_; //!< adaptively control number of waves
 };
+
+#if defined(WITH_LIGHTNING_COMPILER)
+class LightningKernel : public HSAILKernel
+{
+public:
+    LightningKernel(const std::string& name,
+        HSAILProgram* prog,
+        const std::string& compileOptions
+        ): HSAILKernel(name, prog, compileOptions, 0)
+    {}
+
+    //! Returns Lightning program associated with this kernel
+    const LightningProgram& prog() const;
+
+    //! Initializes the metadata required for this kernel,
+    bool init(amd::hsa::loader::Symbol* symbol);
+
+    //! Initializes Hsail Argument metadata and info for LC
+    void initArgList(const amd::hsa::code::Kernel::Metadata& kernelMD);
+
+    //! Initializes HSAIL Printf metadata and info for LC
+    void initPrintf(const std::vector<std::string>& printfInfoStrings);
+};
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 /*@}*/} // namespace pal
 

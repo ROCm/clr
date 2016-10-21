@@ -18,6 +18,12 @@
 #include "hsa.h"
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "libamdhsacode/amdgpu_metadata.hpp"
+#include "driver/AmdCompiler.h"
+#include "libraries.amdgcn.inc"
+#include "gelf.h"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
 namespace pal {
 
@@ -67,6 +73,7 @@ HSAILProgram::~HSAILProgram()
     for (auto& it : staticSamplers_) {
         delete it;
     }
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (rawBinary_ != nullptr) {
         aclFreeMem(binaryElf_, rawBinary_);
     }
@@ -78,6 +85,7 @@ HSAILProgram::~HSAILProgram()
             LogWarning( "Error while destroying the acl binary \n" );
         }
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     releaseClBinary();
     if (executable_ != nullptr) {
         loader_->DestroyExecutable(executable_);
@@ -135,6 +143,10 @@ HSAILProgram::linkImpl(
     amd::option::Options *options,
     bool createLibrary)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+    return false;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     std::vector<device::Program *>::const_iterator it
         = inputPrograms.begin();
     std::vector<device::Program *>::const_iterator itEnd
@@ -222,11 +234,16 @@ HSAILProgram::linkImpl(
     }
     // Now call linkImpl with the new options
     return linkImpl(options);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 aclType
 HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStages, bool& needOptionsCheck)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+    return ACL_TYPE_DEFAULT;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     acl_error errorCode;
     size_t secSize = 0;
     completeStages.clear();
@@ -343,10 +360,15 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         break;
     }
     return from;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 aclType
 HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+    return ACL_TYPE_DEFAULT;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     aclType continueCompileFrom = ACL_TYPE_DEFAULT;
     binary_t binary = this->binary();
     // If the binary already exists
@@ -423,6 +445,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options) {
       }
     }
     return continueCompileFrom;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 inline static std::vector<std::string>
@@ -438,6 +461,10 @@ splitSpaceSeparatedString(char *str)
 bool
 HSAILProgram::linkImpl(amd::option::Options* options)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+    return false;
+#else // !defined(WITH_LIGHTNING_COMPILER)
     acl_error errorCode;
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
     bool finalize = true;
@@ -580,6 +607,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += aclGetCompilerLog(dev().compiler());
     return true;
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 bool
@@ -621,9 +649,11 @@ HSAILProgram::hsailOptions()
     if (dev().settings().reportFMA_) {
         hsailOptions.append(" -DFP_FAST_FMA=1");
     }
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (!dev().settings().singleFpDenorm_) {
         hsailOptions.append(" -cl-denorms-are-zero");
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
     // Check if the host is 64 bit or 32 bit
     LP64_ONLY(hsailOptions.append(" -m64"));
@@ -677,7 +707,11 @@ HSAILProgram::fillResListWithKernels(
 }
 
 const aclTargetInfo &
-HSAILProgram::info(const char * str) {
+HSAILProgram::info(const char * str)
+{
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     acl_error err;
     std::string arch = "hsail";
     if (dev().settings().use64BitPtr_) {
@@ -688,12 +722,16 @@ HSAILProgram::info(const char * str) {
     if (err != ACL_SUCCESS) {
         LogWarning("aclGetTargetInfo failed");
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     return info_;
 }
 
 bool
 HSAILProgram::saveBinaryAndSetType(type_t type)
 {
+#if defined(WITH_LIGHTNING_COMPILER)
+    assert(!"Should not reach here");
+#else // !defined(WITH_LIGHTNING_COMPILER)
     //Write binary to memory
     if (rawBinary_ != nullptr) {
         //Free memory containing rawBinary
@@ -708,6 +746,7 @@ HSAILProgram::saveBinaryAndSetType(type_t type)
     setBinary(static_cast<char*>(rawBinary_), size);
     //Set the type of binary
     setType(type);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
 
@@ -729,38 +768,21 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
     default:
         LogError("Unsupported gfxip version");
         return false;
-    case gfx700:
-    case gfx701:
-    case gfx702:
+    case gfx700: case gfx701: case gfx702:
         // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
         return isa.handle == gfx700 || isa.handle == gfx701;
     case gfx800:
-        switch (program_->dev().asicRevision()) {
-        case Pal::AsicRevision::Iceland:
-        case Pal::AsicRevision::Tonga:
-            return isa.handle == gfx800;
-        case Pal::AsicRevision::Carrizo:
-            return isa.handle == gfx801;
-        case Pal::AsicRevision::Fiji:
-        case Pal::AsicRevision::Ellesmere:
-        case Pal::AsicRevision::Baffin:
-            // gfx800 ISA has only sgrps limited and can be loaded.
-            // gfx801 ISA has XNACK limitations and can be loaded.
-            return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
-        case Pal::AsicRevision::Stoney:
+        return isa.handle == gfx800;
+    case gfx801:
+        return isa.handle == gfx801;
+    case gfx804:
+        // gfx800 ISA has only sgrps limited and can be loaded.
+        // gfx801 ISA has XNACK limitations and can be loaded.
+        return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
+    case gfx810:
             return isa.handle == gfx810;
-        default:
-            assert(0 && "Unknown asic!");
-            return false;
-        }
-    case gfx900:
-        switch (program_->dev().ipLevel()) {
-        case Pal::GfxIpLevel::GfxIp9:
-            return isa.handle == gfx900 || isa.handle == gfx901;
-        default:
-            assert(0 && "Unknown asic!");
-            return false;
-        }
+    case gfx900: case gfx901:
+        return isa.handle == gfx900 || isa.handle == gfx901;
     }
 }
 
@@ -959,5 +981,411 @@ void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
         delete reinterpret_cast<pal::Memory*>(ptr);
     }
 }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+
+static hsa_status_t
+GetKernelNamesCallback(
+    hsa_executable_t hExec,
+    hsa_executable_symbol_t hSymbol,
+    void *data)
+{
+    auto symbol = Symbol::Object(hSymbol);
+    auto symbolNameList = reinterpret_cast<std::vector<std::string>*>(data);
+
+    hsa_symbol_kind_t type;
+    if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_TYPE, &type)) {
+        return HSA_STATUS_ERROR;
+    }
+
+    if (type == HSA_SYMBOL_KIND_KERNEL) {
+        uint32_t length;
+        if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &length)) {
+            return HSA_STATUS_ERROR;
+        }
+
+        char* name = (char*) alloca(length+1);
+        if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME, name)) {
+            return HSA_STATUS_ERROR;
+        }
+        name[length] = '\0';
+
+        symbolNameList->push_back(std::string(name));
+    }
+    return HSA_STATUS_SUCCESS;
+}
+
+bool
+LightningProgram::linkImpl(amd::option::Options *options)
+{
+    using namespace amd::opencl_driver;
+
+    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
+        std::string::npos) ? true : false;
+
+    aclType continueCompileFrom = llvmBinary_.empty()
+        ? getNextCompilationStageFromBinary(options)
+        : ACL_TYPE_LLVMIR_BINARY;
+
+    if (continueCompileFrom == ACL_TYPE_ISA) {
+        binary_t isa = binary();
+        if ((isa.first != NULL) && (isa.second > 0)) {
+            return setKernels(options, (void*) isa.first, isa.second );
+        }
+        else {
+            buildLog_ += "Error: code object is empty \n" ;
+            return false;
+        }
+        return true;
+    }
+    if (continueCompileFrom != ACL_TYPE_LLVMIR_BINARY) {
+        buildLog_ += "Error while Codegen phase: the binary is incomplete \n" ;
+        return false;
+    }
+
+    std::auto_ptr<Compiler> C(newCompilerInstance());
+    // call LinkLLVMBitcode
+    std::vector<Data*> inputs;
+
+    // open the input IR source
+    Data* input = C->NewBufferReference(
+        DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
+
+    if (!input) {
+        buildLog_ += "Error: Failed to open the compiled program.\n";
+        return false;
+    }
+
+    inputs.push_back(input); //< must be the first input
+
+    // open the bitcode libraries
+    Data* opencl_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) opencl_amdgcn, opencl_amdgcn_size);
+    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) ocml_amdgcn, ocml_amdgcn_size);
+    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) ockl_amdgcn, ockl_amdgcn_size);
+    Data* irif_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) irif_amdgcn, irif_amdgcn_size);
+
+    if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
+        buildLog_ += "Error: Failed to open the bitcode library.\n";
+        return false;
+    }
+
+    inputs.push_back(opencl_bc); // depends on oclm & ockl
+    inputs.push_back(ockl_bc); // depends on irif
+    inputs.push_back(ocml_bc); // depends on irif
+    inputs.push_back(irif_bc);
+
+    // open the control functions
+    std::pair<const void*, size_t> isa_version;
+    switch (dev().hwInfo()->gfxipVersion_) {
+    case 700: isa_version = std::make_pair(
+            oclc_isa_version_700_amdgcn, oclc_isa_version_700_amdgcn_size);
+        break;
+    case 701: isa_version = std::make_pair(
+            oclc_isa_version_701_amdgcn, oclc_isa_version_701_amdgcn_size);
+        break;
+    case 800: isa_version = std::make_pair(
+            oclc_isa_version_800_amdgcn, oclc_isa_version_800_amdgcn_size);
+        break;
+    case 801: isa_version = std::make_pair(
+            oclc_isa_version_801_amdgcn, oclc_isa_version_801_amdgcn_size);
+        break;
+    case 802: isa_version = std::make_pair(
+            oclc_isa_version_802_amdgcn, oclc_isa_version_802_amdgcn_size);
+        break;
+    case 803: case 804: isa_version = std::make_pair(
+            oclc_isa_version_803_amdgcn, oclc_isa_version_803_amdgcn_size);
+        break;
+    case 810: isa_version = std::make_pair(
+            oclc_isa_version_810_amdgcn, oclc_isa_version_810_amdgcn_size);
+        break;
+    default:
+        buildLog_ += "Error: Linking for this device is not supported\n";
+        return false;
+    }
+
+    Data* isa_version_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) isa_version.first, isa_version.second);
+
+    if (!isa_version_bc) {
+        buildLog_ += "Error: Failed to open the control functions.\n";
+        return false;
+    }
+
+    inputs.push_back(isa_version_bc);
+
+    auto correctly_rounded_sqrt = (options->oVariables->FP32RoundDivideSqrt)
+        ? std::make_pair(
+            oclc_correctly_rounded_sqrt_on_amdgcn,
+            oclc_correctly_rounded_sqrt_on_amdgcn_size)
+        : std::make_pair(
+            oclc_correctly_rounded_sqrt_off_amdgcn,
+            oclc_correctly_rounded_sqrt_off_amdgcn_size);
+
+    auto daz_opt = (dev().hwInfo()->gfxipVersion_ < 900
+                 || options->oVariables->DenormsAreZero)
+        ? std::make_pair(
+            oclc_daz_opt_on_amdgcn,
+            oclc_daz_opt_on_amdgcn_size)
+        : std::make_pair(
+            oclc_daz_opt_off_amdgcn,
+            oclc_daz_opt_off_amdgcn_size);
+
+    auto finite_only = (options->oVariables->FiniteMathOnly
+                     || options->oVariables->FastRelaxedMath)
+        ? std::make_pair(
+            oclc_finite_only_on_amdgcn,
+            oclc_finite_only_on_amdgcn_size)
+        : std::make_pair(
+            oclc_finite_only_off_amdgcn,
+            oclc_finite_only_off_amdgcn_size);
+
+    auto unsafe_math = (options->oVariables->UnsafeMathOpt
+                     || options->oVariables->FastRelaxedMath)
+        ? std::make_pair(
+            oclc_unsafe_math_on_amdgcn,
+            oclc_unsafe_math_on_amdgcn_size)
+        : std::make_pair(
+            oclc_unsafe_math_off_amdgcn,
+            oclc_unsafe_math_off_amdgcn_size);
+
+    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
+    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) daz_opt.first, daz_opt.second);
+    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) finite_only.first, finite_only.second);
+    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
+        (const char*) unsafe_math.first, unsafe_math.second);
+
+    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+        buildLog_ += "Error: Failed to open the control functions.\n";
+        return false;
+    }
+
+    inputs.push_back(correctly_rounded_sqrt_bc);
+    inputs.push_back(daz_opt_bc);
+    inputs.push_back(finite_only_bc);
+    inputs.push_back(unsafe_math_bc);
+
+    // open the linked output
+    std::vector<std::string> linkOptions;
+    amd::opencl_driver::Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
+
+    if (!linked_bc) {
+        buildLog_ += "Error: Failed to open the linked program.\n";
+        return false;
+    }
+
+    bool ret = C->LinkLLVMBitcode(inputs, linked_bc, linkOptions);
+    buildLog_ += C->Output();
+    if (!ret) {
+        buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+        return false;
+    }
+
+    if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+        std::ofstream f(options->getDumpFileName("_linked.bc").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+            f.write(linked_bc->Buf().data(), linked_bc->Size());
+        } else {
+            buildLog_ +=
+                "Warning: opening the file to dump the linked IR failed.\n";
+        }
+    }
+
+    inputs.clear();
+    inputs.push_back(linked_bc);
+
+    amd::opencl_driver::Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
+    if (!out_exec) {
+        buildLog_ += "Error: Failed to create the linked executable.\n";
+        return false;
+    }
+
+    std::string codegenOptions(options->llvmOptions);
+
+    // Set the machine target
+    std::ostringstream mCPU;
+    mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
+    codegenOptions.append(mCPU.str());
+
+    // Set the -O#
+    std::ostringstream optLevel;
+    optLevel << "-O" << options->oVariables->OptLevel;
+    codegenOptions.append(" ").append(optLevel.str());
+
+    // Tokenize the options string into a vector of strings
+    std::istringstream strstr(codegenOptions);
+    std::istream_iterator<std::string> sit(strstr), end;
+    std::vector<std::string> params(sit, end);
+
+    ret = C->CompileAndLinkExecutable(inputs, out_exec, params);
+    buildLog_ += C->Output();
+    if (!ret) {
+        buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exe.\n";
+        return false;
+    }
+
+    if (options->isDumpFlagSet(amd::option::DUMP_O)) {
+        std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::trunc);
+        if(f.is_open()) {
+            f.write(out_exec->Buf().data(), out_exec->Size());
+        } else {
+            buildLog_ +=
+                "Warning: opening the file to dump the code object failed.\n";
+        }
+    }
+
+    return setKernels(options, out_exec->Buf().data(), out_exec->Size());
+}
+
+bool
+LightningProgram::setKernels(
+    amd::option::Options *options,
+    void* binary,
+    size_t size
+    )
+{
+    hsa_agent_t agent;
+    agent.handle = 1;
+
+    executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
+    if (executable_ == nullptr) {
+        buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
+        return false;
+    }
+
+    hsa_code_object_t code_object;
+    code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+    hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
+        return false;
+    }
+
+    /* FIXME_lmoriche: We need to call this!
+    status = executable_->Freeze(nullptr);
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: Freezing the executable failed: ";
+        return false;
+    }*/
+
+    size_t progvarsTotalSize = 0;
+
+    // Begin the Elf image from memory
+    Elf* e = elf_memory((char*) binary, size, NULL);
+    if (elf_kind(e) != ELF_K_ELF) {
+        buildLog_ += "Error while reading the ELF program binary\n";
+        return false;
+    }
+    size_t shstrndx;
+    if (elf_getshdrstrndx(e, &shstrndx) != 0) {
+        buildLog_ += "Error while reading the ELF program binary\n";
+        return false;
+    }
+
+    // Iterate over the sections
+    for (Elf_Scn* scn = elf_nextscn(e, 0); scn; scn = elf_nextscn(e, scn)) {
+        GElf_Shdr shdr;
+        if (gelf_getshdr(scn, &shdr) != &shdr) {
+            continue;
+        }
+        // Skip non-program sections
+        if (shdr.sh_type != SHT_PROGBITS) {
+            continue;
+        }
+        // Accumulate the size of A & !X sections
+        if ((shdr.sh_flags & SHF_ALLOC) && !(shdr.sh_flags & SHF_EXECINSTR)) {
+            progvarsTotalSize += shdr.sh_size;
+        }
+        // Check if this is the metadata section
+        const char* name = elf_strptr(e, shstrndx , shdr.sh_name);
+        if (name && !strcmp(name, ".AMDGPU.runtime_metadata")) {
+            // Assume a single Elf_Data, the parser will fail if it isn't
+            Elf_Data* data = elf_getdata(scn, NULL);
+            if (!data) {
+                buildLog_ += "Error while reading ELF program binary " \
+                    "runtime metadata section\n";
+                return false;
+            }
+
+            metadata_ = new amd::hsa::code::Program::Metadata();
+            if (!metadata_ || !metadata_->ReadFrom(data->d_buf, data->d_size)) {
+                buildLog_ += "Error while parsing ELF program binary " \
+                    "runtime metadata section\n";
+                return false;
+            }
+        }
+    }
+
+    elf_end(e);
+
+    if (!metadata_) {
+        buildLog_ += "Error: runtime metadata section not present in " \
+            "ELF program binary\n";
+        return false;
+    }
+
+    setGlobalVariableTotalSize(progvarsTotalSize);
+
+    // Get the list of kernels
+    std::vector<std::string> kernelNameList;
+    status = executable_->IterateSymbols(GetKernelNamesCallback,
+        (void *) &kernelNameList );
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: Failed to get kernel names\n";
+        return false;
+    }
+
+    for (auto &kernelName : kernelNameList) {
+        auto kernel = new LightningKernel(
+            kernelName, this, options->origOptionStr + hsailOptions());
+
+        kernels()[kernelName] = kernel;
+
+        auto symbol = executable_->GetSymbol("", kernelName.c_str(), agent, 0);
+        if (!symbol) {
+            buildLog_ += "Error: Getting kernel symbol '" + kernelName
+                + "' from AMD HSA Code Object failed. " \
+                "Kernel initialization failed.\n";
+            return false;
+        }
+        if (!kernel->init(symbol)) {
+            buildLog_ += "Error: Kernel '" + kernelName
+                + "' initialization failed.\n";
+            return false;
+        }
+        buildLog_ += kernel->buildLog();
+
+        kernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+
+        // Find max scratch regs used in the program. It's used for scratch buffer preallocation
+        // with dynamic parallelism, since runtime doesn't know which child kernel will be called
+        maxScratchRegs_ = std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
+    }
+
+    // Allocate kernel table for device enqueuing
+    if (!isNull() && false/*dynamicParallelism*/ && !allocKernelTable()) {
+        return false;
+    }
+
+    // Save the binary and type
+    clBinary()->saveBIFBinary((char*)binary, size);
+    setType(TYPE_EXECUTABLE);
+
+    return true;
+}
+
+LightningProgram::~LightningProgram()
+{
+    delete metadata_;
+}
+
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 } // namespace pal

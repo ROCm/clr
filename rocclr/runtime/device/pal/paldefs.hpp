@@ -123,26 +123,26 @@ struct AMDDeviceInfo {
 };
 
 static const AMDDeviceInfo DeviceInfo[] = {
-/* Unknown */   { "",           "unknown",  4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Tahiti */    { "",           "tahiti",   4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Pitcairn */  { "",           "pitcairn", 4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Capeverde */ { "",           "bonaire",  4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Oland */     { "",           "oland",    4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Hainan */    { "",           "hainan",   4, 16, 1, 256, 64 * Ki, 32, 702 },
+/* Unknown */   { "",           "unknown",  4, 16, 1, 256, 64 * Ki, 32,   0 },
+/* Tahiti */    { "",           "tahiti",   4, 16, 1, 256, 64 * Ki, 32, 600 },
+/* Pitcairn */  { "",           "pitcairn", 4, 16, 1, 256, 64 * Ki, 32, 600 },
+/* Capeverde */ { "",           "bonaire",  4, 16, 1, 256, 64 * Ki, 32, 700 },
+/* Oland */     { "",           "oland",    4, 16, 1, 256, 64 * Ki, 32, 600 },
+/* Hainan */    { "",           "hainan",   4, 16, 1, 256, 64 * Ki, 32, 600 },
 
-/* Bonaire */   { "Bonaire",    "bonaire",  4, 16, 1, 256, 64 * Ki, 32, 702 },
-/* Hawaii */    { "Hawaii",     "hawaii",   4, 16, 1, 256, 64 * Ki, 32, 702 },
+/* Bonaire */   { "Bonaire",    "bonaire",  4, 16, 1, 256, 64 * Ki, 32, 700 },
+/* Hawaii */    { "Hawaii",     "hawaii",   4, 16, 1, 256, 64 * Ki, 32, 701 },
 /* Kalindi */   { "Kalindi",    "kalindi",  4, 16, 1, 256, 64 * Ki, 32, 702 },
 /* Spectre */   { "Spectre",    "spectre",  4, 16, 1, 256, 64 * Ki, 32, 701 },
 
-/* Carrizo */   { "Carrizo" ,   "carrizo",  4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Stoney */    { "Stoney",     "stoney",   4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* Carrizo */   { "Carrizo" ,   "carrizo",  4, 16, 1, 256, 64 * Ki, 32, 801 },
+/* Stoney */    { "Stoney",     "stoney",   4, 16, 1, 256, 64 * Ki, 32, 810 },
 
 /* Iceland */   { "Iceland",    "iceland",  4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* Tonga */     { "Tonga",      "tonga",    4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Fiji */      { "Fiji",       "fiji",     4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Ellesmere */ { "Ellesmere",  "ellesmere",4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* Buffin */    { "Baffin",     "baffin",   4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* Fiji */      { "Fiji",       "fiji",     4, 16, 1, 256, 64 * Ki, 32, 804 },
+/* Ellesmere */ { "Ellesmere",  "ellesmere",4, 16, 1, 256, 64 * Ki, 32, 804 },
+/* Baffin */    { "Baffin",     "baffin",   4, 16, 1, 256, 64 * Ki, 32, 804 },
 };
 
 // The GfxIpDeviceInfo table must match with GfxIpLevel enum
