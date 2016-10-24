@@ -377,11 +377,11 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     if (!sym) {
         return false;
     }
-    uint64_t akc_addr = 0;
-    if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, reinterpret_cast<void*>(&akc_addr))) {
+    if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, reinterpret_cast<void*>(&code_))) {
         return false;
     }
-    amd_kernel_code_t *akc = reinterpret_cast<amd_kernel_code_t*>(akc_addr);
+
+    amd_kernel_code_t *akc = reinterpret_cast<amd_kernel_code_t*>(prog().findHostKernelAddress(code_));
     cpuAqlCode_ = akc;
     if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_SIZE, reinterpret_cast<void*>(&codeSize_))) {
         return false;
@@ -389,22 +389,6 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     size_t akc_align = 0;
     if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_ALIGN, reinterpret_cast<void*>(&akc_align))) {
         return false;
-    }
-    // Allocate HW resources for the real program only
-    if (!prog().isNull()) {
-        code_ = new Memory(dev(), amd::alignUp(codeSize_, akc_align));
-        Resource::MemoryType    type = Resource::Local;
-
-        // Initialize kernel ISA code
-        if (code_ && code_->create(type)) {
-            constexpr bool WaitForUpload = true;
-            code_->writeRawData(*code_->dev().xferQueue(), 0, codeSize_,
-                reinterpret_cast<void*>(akc), WaitForUpload);
-        }
-        else {
-            LogError("Failed to allocate ISA code!");
-            return false;
-        }
     }
 
     assert((akc->workitem_private_segment_byte_size & 3) == 0 &&
@@ -591,9 +575,8 @@ HSAILKernel::HSAILKernel(std::string name,
     , dev_(prog->dev())
     , prog_(*prog)
     , index_(0)
-    , code_(nullptr)
+    , code_(0)
     , codeSize_(0)
-    , hwMetaData_(nullptr)
     , extraArgumentsNum_(extraArgsNum)
     , waveLimiter_(this, (prog->isNull() ? 1 :
         dev().properties().gfxipProperties.shaderCore.numCusPerShaderArray) * dev().hwInfo()->simdPerCU_)
@@ -608,10 +591,6 @@ HSAILKernel::~HSAILKernel()
         delete arg;
         arguments_.pop_back();
     }
-
-    delete [] hwMetaData_;
-
-    delete code_;
 }
 
 bool
@@ -1217,7 +1196,7 @@ HSAILKernel::loadArguments(
     // Initialize kernel ISA and execution buffer requirements
     hsaDisp->private_segment_size   = spillSegSize();
     hsaDisp->group_segment_size     = ldsAddress - ldsSize();
-    hsaDisp->kernel_object  = gpuAqlCode()->vmAddress();
+    hsaDisp->kernel_object  = gpuAqlCode();
 
     ConstBuffer* cb = gpu.constBufs_[0];
     cb->uploadDataToHw(argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t));
@@ -1228,7 +1207,7 @@ HSAILKernel::loadArguments(
     hsaDisp->completion_signal.handle = 0;
 
     memList.push_back(cb);
-    memList.push_back(gpuAqlCode());
+    memList.push_back(&prog().codeSegGpu());
     for (pal::Memory * mem : prog().globalStores()) {
         memList.push_back(mem);
     }
