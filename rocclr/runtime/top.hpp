@@ -10,7 +10,46 @@
 #endif /*ATI_ARCH_ARM*/
 
 #ifdef _WIN32
-# define NOMINMAX 1
+// Disable unneeded features of <windows.h> for efficiency.
+# define NOGDICAPMASKS
+# define NOVIRTUALKEYCODES
+# define NOWINMESSAGES
+# define NOWINSTYLES
+# define NOSYSMETRICS
+# define NOMENUS
+# define NOICONS
+# define NOKEYSTATES
+# define NOSYSCOMMANDS
+# define NORASTEROPS
+# define NOSHOWWINDOW
+# define OEMRESOURCE
+# define NOATOM
+# define NOCLIPBOARD
+# define NOCOLOR
+# define NOCTLMGR
+# define NODRAWTEXT
+# define NOGDI
+# define NOKERNEL
+# define NOMB
+# define NOMEMMGR
+# define NOMETAFILE
+# define NOMINMAX
+# define NOOPENFILE
+# define NOSCROLL
+# define NOSERVICE
+# define NOSOUND
+# define NOTEXTMETRIC
+# define NOWH
+# define NOWINOFFSETS
+# define NOCOMM
+# define NOKANJI
+# define NOHELP
+# define NOPROFILER
+# define NODEFERWINDOWPOS
+# define NOMCX
+# ifndef NOCRYPT
+#  define NOCRYPT
+# endif
 # define WIN32_LEAN_AND_MEAN 1
 #endif /*_WIN32*/
 
@@ -50,7 +89,9 @@ typedef __int32 ssize_t;
 #ifdef _WIN32
 # define SIZE_T_FMT "%Iu"
 # define PTR_FMT    "0x%p"
-# define snprintf sprintf_s
+# if _MSC_VER < 1900
+#  define snprintf sprintf_s
+# endif
 #else /*!_WIN32*/
 # define SIZE_T_FMT "%zu"
 # define PTR_FMT    "%p"

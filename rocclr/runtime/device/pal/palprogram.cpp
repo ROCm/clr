@@ -14,6 +14,7 @@
 #include <sstream>
 #include <cstdio>
 #include <algorithm>
+#include <iterator>
 #include "utils/options.hpp"
 #include "hsa.h"
 #include "hsa_ext_image.h"
@@ -1205,9 +1206,14 @@ LightningProgram::linkImpl(amd::option::Options *options)
     std::string codegenOptions(options->llvmOptions);
 
     // Set the machine target
+#if 0
     std::ostringstream mCPU;
     mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
     codegenOptions.append(mCPU.str());
+#else
+    codegenOptions.append(" -mcpu=");
+    codegenOptions.append(dev().hwInfo()->machineTarget_);
+#endif
 
     // Set the -O#
     std::ostringstream optLevel;
