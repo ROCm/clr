@@ -11,45 +11,8 @@
 
 #ifdef _WIN32
 // Disable unneeded features of <windows.h> for efficiency.
-# define NOGDICAPMASKS
-# define NOVIRTUALKEYCODES
-# define NOWINMESSAGES
-# define NOWINSTYLES
-# define NOSYSMETRICS
-# define NOMENUS
-# define NOICONS
-# define NOKEYSTATES
-# define NOSYSCOMMANDS
-# define NORASTEROPS
-# define NOSHOWWINDOW
-# define OEMRESOURCE
-# define NOATOM
-# define NOCLIPBOARD
-# define NOCOLOR
-# define NOCTLMGR
-# define NODRAWTEXT
-# define NOGDI
-# define NOKERNEL
-# define NOMB
-# define NOMEMMGR
-# define NOMETAFILE
-# define NOMINMAX
-# define NOOPENFILE
-# define NOSCROLL
-# define NOSERVICE
-# define NOSOUND
-# define NOTEXTMETRIC
-# define NOWH
-# define NOWINOFFSETS
-# define NOCOMM
-# define NOKANJI
-# define NOHELP
-# define NOPROFILER
-# define NODEFERWINDOWPOS
-# define NOMCX
-# ifndef NOCRYPT
-#  define NOCRYPT
-# endif
+# define NODRAWTEXT 1
+# define NOMINMAX 1
 # define WIN32_LEAN_AND_MEAN 1
 #endif /*_WIN32*/
 
