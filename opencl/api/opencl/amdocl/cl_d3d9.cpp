@@ -4,6 +4,8 @@
 
 #ifdef _WIN32
 
+#include "top.hpp"
+
 #include <d3d9.h>
 #include "cl_common.hpp"
 #include "cl_d3d9_amd.hpp"
