@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <sstream>
+#include <iterator>
 #include <cassert>
 #include "options.hpp"
 

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 
 #include "os/os.hpp"
 #include "device/pal/paldevice.hpp"
@@ -242,9 +243,14 @@ LightningProgram::compileImpl(
     driverOptions.append(optLevel.str());
 
     // Set the machine target
+#if 0
     std::ostringstream mCPU;
     mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
     driverOptions.append(mCPU.str());
+#else
+    driverOptions.append(" -mcpu=");
+    driverOptions.append(dev().hwInfo()->machineTarget_);
+#endif
 
     driverOptions.append(options->llvmOptions);
     driverOptions.append(hsailOptions());

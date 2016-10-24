@@ -1440,8 +1440,6 @@ GetKernelAddrQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
 static inline HSAIL_DATA_TYPE
 GetKernelDataType(const amd::hsa::code::KernelArg::Metadata& lcArg)
 {
-    aclArgDataType dataType;
-
     if (lcArg.Kind() != AMDGPU::RuntimeMD::KernelArg::ByValue) {
         return HSAIL_DATATYPE_ERROR;
     }
