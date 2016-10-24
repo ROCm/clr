@@ -2,6 +2,8 @@
 // Copyright 2010 Advanced Micro Devices, Inc. All rights reserved.
 //
 
+#include "top.hpp"
+
 #ifdef _WIN32
 #include <d3d10_1.h>
 #include <d3d9.h>

@@ -4,6 +4,8 @@
 
 #ifdef _WIN32
 
+#include "top.hpp"
+
 #include <d3d11.h>
 #include <dxgi.h>
 
