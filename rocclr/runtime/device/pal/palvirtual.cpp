@@ -3300,7 +3300,7 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
     kernelInfo.pAqlQueuePtr = reinterpret_cast<void*>(hsaQueueMem_->vmAddress());
 
     // Get the address of the kernel code and its size for CPU access
-    pal::Memory* aqlCode = hsaKernel.gpuAqlCode();
+/*    pal::Memory* aqlCode = hsaKernel.gpuAqlCode();
     if (nullptr != aqlCode) {
         address aqlCodeAddr = static_cast<address>(aqlCode->map(nullptr, 0));
         dbgManager->setKernelCodeInfo(aqlCodeAddr, hsaKernel.aqlCodeSize());
@@ -3309,7 +3309,7 @@ VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel,
     else {
         dbgManager->setKernelCodeInfo(nullptr, 0);
     }
-
+*/
     kernelInfo.trapPresent = false;
     kernelInfo.trapHandler = nullptr;
     kernelInfo.trapHandlerBuffer = nullptr;

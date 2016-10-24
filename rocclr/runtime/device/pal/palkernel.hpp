@@ -154,7 +154,7 @@ public:
     const amd_kernel_code_t* cpuAqlCode() const { return cpuAqlCode_; }
 
     //! Returns memory object with AQL code
-    pal::Memory* gpuAqlCode() const { return code_; }
+    uint64_t gpuAqlCode() const { return code_; }
 
     //! Returns size of AQL code
     size_t aqlCodeSize() const { return codeSize_; }
@@ -249,12 +249,10 @@ protected:
     std::vector<PrintfInfo> printf_;    //!< Format strings for GPU printf support
     uint    index_;                     //!< Kernel index in the program
 
-    pal::Memory*    code_;      //!< Memory object with ISA code
+    uint64_t        code_;      //!< GPU memory pointer to the kernel
     size_t          codeSize_;  //!< Size of ISA code
 
-    char*       hwMetaData_;    //!< SI metadata
-
-    uint extraArgumentsNum_; //! Number of extra (hidden) kernel arguments
+    uint extraArgumentsNum_;    //! Number of extra (hidden) kernel arguments
 
     union Flags {
         struct {

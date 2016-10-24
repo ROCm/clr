@@ -34,11 +34,11 @@ namespace pal {
 using namespace amd::hsa::loader;
 class HSAILProgram;
 
-class ORCAHSALoaderContext final: public Context {
+class PALHSALoaderContext final: public Context {
 public:
-    ORCAHSALoaderContext(HSAILProgram* program): program_(program) {}
+    PALHSALoaderContext(HSAILProgram* program): program_(program) {}
 
-    virtual ~ORCAHSALoaderContext() {}
+    virtual ~PALHSALoaderContext() {}
 
     hsa_isa_t IsaFromName(const char *name) override;
 
@@ -58,12 +58,10 @@ public:
         hsa_agent_t agent, void* seg, size_t offset) override;
 
     void* SegmentHostAddress(amdgpu_hsa_elf_segment_t segment,
-        hsa_agent_t agent, void* seg, size_t offset) override {
-      return nullptr;
-    }
+        hsa_agent_t agent, void* seg, size_t offset) override;
 
     bool SegmentFreeze(amdgpu_hsa_elf_segment_t segment,
-        hsa_agent_t agent, void* seg, size_t size) override { return false; }
+        hsa_agent_t agent, void* seg, size_t size) override;
 
     bool ImageExtensionSupported() override { return false; }
 
@@ -109,20 +107,13 @@ private:
         GpuMemFree(ptr, size);
     }
 
-    void* KernelCodeAlloc(
-        hsa_agent_t agent, size_t size, size_t align, bool zero) {
-        return CpuMemAlloc(size, align, zero);
-    }
+    void* KernelCodeAlloc(size_t size, size_t align, bool zero);
 
-    bool KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size) {
-        return CpuMemCopy(dst, offset, src, size);
-    }
+    bool KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size);
 
-    void KernelCodeFree(void *ptr, size_t size) {
-        CpuMemFree(ptr, size);
-    }
+    void KernelCodeFree(void *ptr, size_t size);
 
-    void* CpuMemAlloc(size_t size, size_t align, bool zero);
+    address CpuMemAlloc(size_t size, size_t align, bool zero);
 
     bool CpuMemCopy(void *dst, size_t offset, const void* src, size_t size);
 
@@ -136,9 +127,9 @@ private:
 
     void GpuMemFree(void *ptr, size_t size = 0);
 
-    ORCAHSALoaderContext(const ORCAHSALoaderContext &c);
+    PALHSALoaderContext(const PALHSALoaderContext &c);
 
-    ORCAHSALoaderContext& operator=(const ORCAHSALoaderContext &c);
+    PALHSALoaderContext& operator=(const PALHSALoaderContext &c);
 
     pal::HSAILProgram* program_;
 };
@@ -159,6 +150,9 @@ public:
         return static_cast<aclBinary*>(binaryElf_); }
 
     void addGlobalStore(Memory* mem) { globalStores_.push_back(mem); }
+
+    void setCodeObjects(Memory* codeGpu, address codeCpu)
+        { codeSegGpu_ = codeGpu; codeSegCpu_ = codeCpu; }
 
     const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
@@ -182,8 +176,23 @@ public:
     //! Returns TRUE if the program just compiled
     bool isNull() const { return isNull_; }
 
+    //! Returns TRUE if the program used internally by runtime
+    bool isInternal() const { return internal_; }
+
     //! Returns TRUE if the program contains static samplers
     bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
+
+    //! Returns code segement on GPU
+    const Memory& codeSegGpu()  const { return *codeSegGpu_; }
+
+    //! Returns code segement on CPU
+    address codeSegCpu() const { return codeSegCpu_; }
+
+    //! Returns CPU address for a kernel
+    uint64_t findHostKernelAddress(uint64_t devAddr) const
+    {
+        return loader_->FindHostAddress(devAddr);
+    }
 
 protected:
     //! pre-compile setup for GPU
@@ -270,17 +279,20 @@ protected:
     aclBinaryOptions binOpts_;      //!< Binary options to create aclBinary
     std::vector<Memory*>    globalStores_;   //!< Global memory for the program
     Memory*         kernels_;       //!< Table with kernel object pointers
+    Memory*         codeSegGpu_;    //!< GPU memory with code objects
+    address         codeSegCpu_;    //!< CPU memory with code objects
     uint    maxScratchRegs_;    //!< Maximum number of scratch regs used in the program by individual kernel
     std::list<Sampler*>     staticSamplers_;    //!< List od internal static samplers
     union {
         struct {
             uint32_t    isNull_     : 1;    //!< Null program no memory allocations
+            uint32_t    internal_   : 1;    //!< Internal blit program
         };
         uint32_t    flags_;  //!< Program flags
     };
     amd::hsa::loader::Loader* loader_; //!< Loader object
     amd::hsa::loader::Executable* executable_;    //!< Executable for HSA Loader
-    ORCAHSALoaderContext loaderContext_;    //!< Context for HSA Loader
+    PALHSALoaderContext loaderContext_;    //!< Context for HSA Loader
 };
 
 #if defined(WITH_LIGHTNING_COMPILER)

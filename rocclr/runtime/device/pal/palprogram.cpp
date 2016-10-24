@@ -34,6 +34,8 @@ HSAILProgram::HSAILProgram(Device& device)
     , binaryElf_(nullptr)
     , rawBinary_(nullptr)
     , kernels_(nullptr)
+    , codeSegGpu_(nullptr)
+    , codeSegCpu_(nullptr)
     , maxScratchRegs_(0)
     , flags_(0)
     , executable_(nullptr)
@@ -54,6 +56,8 @@ HSAILProgram::HSAILProgram(NullDevice& device)
     , binaryElf_(nullptr)
     , rawBinary_(nullptr)
     , kernels_(nullptr)
+    , codeSegGpu_(nullptr)
+    , codeSegCpu_(nullptr)
     , maxScratchRegs_(0)
     , flags_(0)
     , executable_(nullptr)
@@ -93,6 +97,8 @@ HSAILProgram::~HSAILProgram()
     }
     delete kernels_;
     amd::hsa::loader::Loader::Destroy(loader_);
+    assert((codeSegGpu_ == nullptr) && "Loader didn't destroy code!");
+    assert((codeSegCpu_ == nullptr) && "Loader didn't destroy code!");
 }
 
 bool
@@ -470,6 +476,9 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
     bool finalize = true;
     bool hsaLoad = true;
+    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
+        std::string::npos) ? true : false;
+
 
     // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
     if (!binaryElf_) {
@@ -543,6 +552,11 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
         if (status != HSA_STATUS_SUCCESS) {
             buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
+            return false;
+        }
+        status  = executable_->Freeze(nullptr);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
             return false;
         }
     }
@@ -687,8 +701,7 @@ HSAILProgram::allocKernelTable()
             kernels_->map(nullptr, pal::Resource::WriteOnly));
         for (auto& it : kernels()) {
             HSAILKernel* kernel = static_cast<HSAILKernel*>(it.second);
-            table[kernel->index()] = static_cast<size_t>(
-                kernel->gpuAqlCode()->vmAddress());
+            table[kernel->index()] = static_cast<size_t>(kernel->gpuAqlCode());
         }
         kernels_->unmap(nullptr);
     }
@@ -699,10 +712,7 @@ void
 HSAILProgram::fillResListWithKernels(
     std::vector<const Memory*>& memList) const
 {
-    for (auto& it : kernels()) {
-        memList.push_back(
-            static_cast<HSAILKernel*>(it.second)->gpuAqlCode());
-    }
+    memList.push_back(&codeSegGpu());
 }
 
 const aclTargetInfo &
@@ -749,7 +759,7 @@ HSAILProgram::saveBinaryAndSetType(type_t type)
     return true;
 }
 
-hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char *name) {
+hsa_isa_t PALHSALoaderContext::IsaFromName(const char *name) {
     hsa_isa_t isa = {0};
     if (!strcmp(Gfx700, name)) { isa.handle = gfx700; return isa; }
     if (!strcmp(Gfx701, name)) { isa.handle = gfx701; return isa; }
@@ -762,7 +772,7 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char *name) {
     return isa;
 }
 
-bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
+bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
     switch (program_->dev().hwInfo()->gfxipVersion_) {
     default:
         LogError("Unsupported gfxip version");
@@ -785,7 +795,7 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
     }
 }
 
-void* ORCAHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
+void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
     hsa_agent_t agent, size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
@@ -795,13 +805,13 @@ void* ORCAHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
     case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
         return AgentGlobalAlloc(agent, size, align, zero);
     case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-        return KernelCodeAlloc(agent, size, align, zero);
+        return KernelCodeAlloc(size, align, zero);
     default:
         assert(false); return 0;
     }
 }
 
-bool ORCAHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment,
+bool PALHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment,
     hsa_agent_t agent, void* dst, size_t offset, const void* src, size_t size) {
     switch (segment) {
     case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
@@ -815,8 +825,9 @@ bool ORCAHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment,
     }
 }
 
-void ORCAHSALoaderContext::SegmentFree(amdgpu_hsa_elf_segment_t segment,
-    hsa_agent_t agent, void* seg, size_t size) {
+void PALHSALoaderContext::SegmentFree(
+    amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t size)
+{
     switch (segment) {
     case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
     case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
@@ -827,25 +838,72 @@ void ORCAHSALoaderContext::SegmentFree(amdgpu_hsa_elf_segment_t segment,
     }
 }
 
-void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment,
-    hsa_agent_t agent, void* seg, size_t offset) {
+void* PALHSALoaderContext::SegmentAddress(
+    amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t offset)
+{
     assert(seg);
     switch (segment) {
     case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
     case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
     case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
         if (!program_->isNull()) {
             pal::Memory *gpuMem = reinterpret_cast<pal::Memory*>(seg);
             return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
         }
+        else {
+            return reinterpret_cast<address>(seg) + offset;
+        }
     }
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT: return (char*) seg + offset;
     default:
         assert(false); return nullptr;
     }
 }
 
-hsa_status_t ORCAHSALoaderContext::SamplerCreate(
+void* PALHSALoaderContext::SegmentHostAddress(
+    amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t offset)
+{
+    void* host = nullptr;
+    assert(seg);
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
+        host = program_->codeSegCpu() + offset;
+        break;
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
+    default:
+        break;
+    }
+    return host;
+}
+
+bool PALHSALoaderContext::SegmentFreeze(
+    amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t size)
+{
+    assert(seg);
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
+        return true;
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT: {
+        if (program_->isNull()) {
+            return true;
+        }
+
+        const pal::Memory& mem = program_->codeSegGpu();
+        constexpr bool WaitForCopy = true;
+        mem.writeRawData(*mem.dev().xferQueue(), 0, size, program_->codeSegCpu(), WaitForCopy);
+        return true;
+    }
+    default:
+        assert(false); 
+        return false;
+    }
+}
+
+hsa_status_t PALHSALoaderContext::SamplerCreate(
     hsa_agent_t agent,
     const hsa_ext_sampler_descriptor_t *sampler_descriptor,
     hsa_ext_sampler_t *sampler_handle)
@@ -897,8 +955,9 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
     return HSA_STATUS_SUCCESS;
 }
 
-hsa_status_t ORCAHSALoaderContext::SamplerDestroy(
-    hsa_agent_t agent, hsa_ext_sampler_t sampler_handle) {
+hsa_status_t PALHSALoaderContext::SamplerDestroy(
+    hsa_agent_t agent, hsa_ext_sampler_t sampler_handle)
+{
     if (!agent.handle) {
         return HSA_STATUS_ERROR_INVALID_AGENT;
     }
@@ -908,7 +967,8 @@ hsa_status_t ORCAHSALoaderContext::SamplerDestroy(
     return HSA_STATUS_SUCCESS;
 }
 
-void* ORCAHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero) {
+address PALHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero)
+{
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
@@ -917,26 +977,21 @@ void* ORCAHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero) {
     if (zero) {
         memset(ptr, 0, size);
     }
-    return ptr;
+    return reinterpret_cast<address>(ptr);
 }
 
-bool ORCAHSALoaderContext::CpuMemCopy(void *dst, size_t offset, const void* src, size_t size) {
-  if (!dst || !src || dst == src) {
-      return false;
-  }
-  if (0 == size) {
-      return true;
-  }
-  amd::Os::fastMemcpy((char*)dst + offset, src, size);
-  return true;
+bool PALHSALoaderContext::CpuMemCopy(void *dst, size_t offset, const void* src, size_t size)
+{
+    amd::Os::fastMemcpy((char*)dst + offset, src, size);
+    return true;
 }
 
-void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
+void* PALHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     assert(size);
     assert(align);
     assert(sizeof(void*) == 8 || sizeof(void*) == 4);
     if (program_->isNull()) {
-        return new char[size];
+        return CpuMemAlloc(size, align, zero);
     }
 
     pal::Memory* mem = new pal::Memory(program_->dev(), amd::alignUp(size, align));
@@ -945,7 +1000,7 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
         return nullptr;
     }
     assert(program_->dev().xferQueue());
-    if (zero) {
+    if (zero && !program_->isInternal()) {
         char pattern = 0;
         program_->dev().xferMgr().fillBuffer(*mem, &pattern, sizeof(pattern), amd::Coord3D(0), amd::Coord3D(size));
     }
@@ -954,7 +1009,7 @@ void* ORCAHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
     return mem;
 }
 
-bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src, size_t size) {
+bool PALHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src, size_t size) {
     if (!dst || !src || dst == src) {
         return false;
     }
@@ -962,7 +1017,7 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
         return true;
     }
     if (program_->isNull()) {
-        memcpy(reinterpret_cast<address>(dst) + offset, src, size);
+        CpuMemCopy(dst, offset, src, size);
         return true;
     }
     assert(program_->dev().xferQueue());
@@ -972,14 +1027,60 @@ bool ORCAHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src,
     return true;
 }
 
-void ORCAHSALoaderContext::GpuMemFree(void *ptr, size_t size)
+void PALHSALoaderContext::GpuMemFree(void *ptr, size_t size)
 {
     if (program_->isNull()) {
-        delete[] reinterpret_cast<char*>(ptr);
+       CpuMemFree(ptr, size);
     }
     else {
         delete reinterpret_cast<pal::Memory*>(ptr);
     }
+}
+
+void* PALHSALoaderContext::KernelCodeAlloc(
+    size_t size, size_t align, bool zero)
+{
+    address host = CpuMemAlloc(size, align, zero);
+    pal::Memory* mem = nullptr;
+
+    if (!program_->isNull()) {
+        mem = new pal::Memory(program_->dev(), amd::alignUp(size, align));
+        if (!mem || !mem->create(pal::Resource::Local)) {
+            delete mem;
+            mem = nullptr;
+        }
+    }
+    program_->setCodeObjects(mem, host);
+    return ((host == nullptr || mem == nullptr) ? nullptr : mem);
+}
+
+bool PALHSALoaderContext::KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size)
+{
+    if (!dst || !src || dst == src) {
+        return false;
+    }
+    if (0 == size) {
+        return true;
+    }
+    if (program_->isNull()) {
+        return CpuMemCopy(dst, offset, src, size);
+    }
+    assert(program_->dev().xferQueue());
+    pal::Memory* mem = reinterpret_cast<pal::Memory*>(dst);
+    if (mem == &program_->codeSegGpu()) {
+        return CpuMemCopy(program_->codeSegCpu(), offset, src, size);
+    }
+    assert(!"The segement doesn't match code segment in the program!");
+    return false;
+}
+
+void PALHSALoaderContext::KernelCodeFree(void *ptr, size_t size)
+{
+    CpuMemFree(program_->codeSegCpu(), size);
+    if (!program_->isNull()) {
+        delete reinterpret_cast<pal::Memory*>(ptr);
+    }
+    program_->setCodeObjects(nullptr, nullptr);
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -1019,6 +1120,8 @@ bool
 LightningProgram::linkImpl(amd::option::Options *options)
 {
     using namespace amd::opencl_driver;
+    internal_ = (compileOptions_.find("-cl-internal-kernel") !=
+        std::string::npos) ? true : false;
 
     aclType continueCompileFrom = llvmBinary_.empty()
         ? getNextCompilationStageFromBinary(options)
@@ -1270,12 +1373,11 @@ LightningProgram::setKernels(
         return false;
     }
 
-    /* FIXME_lmoriche: We need to call this!
     status = executable_->Freeze(nullptr);
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Freezing the executable failed: ";
         return false;
-    }*/
+    }
 
     size_t progvarsTotalSize = 0;
 
