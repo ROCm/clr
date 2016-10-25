@@ -54,7 +54,7 @@ VirtualGPU::Queue::Create(
     else {
         cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeCompute;
     }
-/*
+
     if (priority == amd::CommandQueue::Priority::Medium) {
         qCreateInfo.engineIndex = 0x1;
         cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
@@ -65,7 +65,7 @@ VirtualGPU::Queue::Create(
         cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
         cmdCreateInfo.flags.realtimeComputeUnits = true;
     }
-*/
+
     // Find queue object size
     size_t qSize = palDev->GetQueueSize(qCreateInfo, &result);
     if (result != Pal::Result::Success) {
