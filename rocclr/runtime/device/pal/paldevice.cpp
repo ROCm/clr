@@ -478,8 +478,8 @@ void NullDevice::fillDeviceInfo(
         info_.numAsyncQueues_       = numComputeRings;
         info_.numRTQueues_          =
             palProp.engineProperties[Pal::EngineTypeExclusiveCompute].engineCount  - 1;
-        info_.numRTCUs_             = 8;
-            //palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
+        info_.numRTCUs_             =
+            palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
     }
 }
@@ -730,7 +730,7 @@ Device::create(Pal::IDevice* device)
         finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
             ((1 << numComputeEngines_) - 1);
         // Request real time compute engines
-        //finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines = 3;
+        finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines = 3;
         // Request all SDMA engines
         finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines =
             (1 << numDmaEngines_) - 1;
