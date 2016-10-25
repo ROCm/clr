@@ -820,7 +820,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
         correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
 
-    auto daz_opt = get_oclc_daz_opt(dev().hwInfo()->gfxipVersion_ < 900
+    auto daz_opt = get_oclc_daz_opt(dev().deviceInfo().gfxipVersion_ < 900
         || options->oVariables->DenormsAreZero);
     Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
         daz_opt.first, daz_opt.second);
