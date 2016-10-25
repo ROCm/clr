@@ -799,30 +799,8 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     inputs.push_back(irif_bc);
 
     // open the control functions
-    std::pair<const void*, size_t> isa_version;
-    switch (dev().deviceInfo().gfxipVersion_) {
-    case 700: isa_version = std::make_pair(
-            oclc_isa_version_700_amdgcn, oclc_isa_version_700_amdgcn_size);
-        break;
-    case 701: isa_version = std::make_pair(
-            oclc_isa_version_701_amdgcn, oclc_isa_version_701_amdgcn_size);
-        break;
-    case 800: isa_version = std::make_pair(
-            oclc_isa_version_800_amdgcn, oclc_isa_version_800_amdgcn_size);
-        break;
-    case 801: isa_version = std::make_pair(
-            oclc_isa_version_801_amdgcn, oclc_isa_version_801_amdgcn_size);
-        break;
-    case 802: isa_version = std::make_pair(
-            oclc_isa_version_802_amdgcn, oclc_isa_version_802_amdgcn_size);
-        break;
-    case 803: isa_version = std::make_pair(
-            oclc_isa_version_803_amdgcn, oclc_isa_version_803_amdgcn_size);
-        break;
-    case 810: isa_version = std::make_pair(
-            oclc_isa_version_810_amdgcn, oclc_isa_version_810_amdgcn_size);
-        break;
-    default:
+    auto isa_version = get_oclc_isa_version(dev().deviceInfo().gfxipVersion_);
+    if (!isa_version.first) {
         buildLog_ += "Error: Linking for this device is not supported\n";
         return false;
     }
@@ -837,51 +815,28 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
 
     inputs.push_back(isa_version_bc);
 
-    auto correctly_rounded_sqrt = (options->oVariables->FP32RoundDivideSqrt)
-        ? std::make_pair(
-            oclc_correctly_rounded_sqrt_on_amdgcn,
-            oclc_correctly_rounded_sqrt_on_amdgcn_size)
-        : std::make_pair(
-            oclc_correctly_rounded_sqrt_off_amdgcn,
-            oclc_correctly_rounded_sqrt_off_amdgcn_size);
-
-    auto daz_opt = (dev().deviceInfo().gfxipVersion_ < 900
-                 || options->oVariables->DenormsAreZero)
-        ? std::make_pair(
-            oclc_daz_opt_on_amdgcn,
-            oclc_daz_opt_on_amdgcn_size)
-        : std::make_pair(
-            oclc_daz_opt_off_amdgcn,
-            oclc_daz_opt_off_amdgcn_size);
-
-    auto finite_only = (options->oVariables->FiniteMathOnly
-                     || options->oVariables->FastRelaxedMath)
-        ? std::make_pair(
-            oclc_finite_only_on_amdgcn,
-            oclc_finite_only_on_amdgcn_size)
-        : std::make_pair(
-            oclc_finite_only_off_amdgcn,
-            oclc_finite_only_off_amdgcn_size);
-
-    auto unsafe_math = (options->oVariables->UnsafeMathOpt
-                     || options->oVariables->FastRelaxedMath)
-        ? std::make_pair(
-            oclc_unsafe_math_on_amdgcn,
-            oclc_unsafe_math_on_amdgcn_size)
-        : std::make_pair(
-            oclc_unsafe_math_off_amdgcn,
-            oclc_unsafe_math_off_amdgcn_size);
-
+    auto correctly_rounded_sqrt = get_oclc_correctly_rounded_sqrt(
+        options->oVariables->FP32RoundDivideSqrt);
     Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
-    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) daz_opt.first, daz_opt.second);
-    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) finite_only.first, finite_only.second);
-    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
-        (const char*) unsafe_math.first, unsafe_math.second);
+        correctly_rounded_sqrt.first, correctly_rounded_sqrt.second);
 
-    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+    auto daz_opt = get_oclc_daz_opt(dev().hwInfo()->gfxipVersion_ < 900
+        || options->oVariables->DenormsAreZero);
+    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
+        daz_opt.first, daz_opt.second);
+
+    auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly
+        || options->oVariables->FastRelaxedMath);
+    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
+        finite_only.first, finite_only.second);
+
+    auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt
+        || options->oVariables->FastRelaxedMath);
+    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
+        unsafe_math.first, unsafe_math.second);
+
+    if (!correctly_rounded_sqrt_bc || !daz_opt_bc
+        || !finite_only_bc || !unsafe_math_bc) {
         buildLog_ += "Error: Failed to open the control functions.\n";
         return false;
     }
