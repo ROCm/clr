@@ -1162,7 +1162,7 @@ HSAILKernel::loadArguments(
 
 #if defined(WITH_LIGHTNING_COMPILER)
     //!!!!!FIXME_lmoriche: fix the hidden args
-    size_t zero;
+    size_t zero = 0;
     WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
     WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
     WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
