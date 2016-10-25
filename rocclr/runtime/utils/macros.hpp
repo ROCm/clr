@@ -98,6 +98,13 @@
 # define NOT_WIN64(x) x
 #endif /*!_WIN64*/
 
+#ifdef WITH_LIGHTNING_COMPILER
+# define LIGHTNING_ONLY(x) x
+# define IS_LIGHTNING true
+#else /* !WITH_LIGHTNING_COMPILER */
+# define LIGHTNING_ONLY(x)
+#endif /* !WITH_LIGHTNING_COMPILER */
+
 #ifndef IS_LINUX
 # define IS_LINUX false
 #endif
@@ -106,6 +113,9 @@
 #endif
 #ifndef IS_WINDOWS
 # define IS_WINDOWS false
+#endif
+#ifndef IS_LIGHTNING
+# define IS_LIGHTNING false
 #endif
 
 #define IF_LEFT_true(x) x
