@@ -964,10 +964,12 @@ Device::populateOCLDeviceConstants()
         if (agent_profile_ == HSA_PROFILE_FULL) {
           info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
         }
+#if !defined(WITH_LIGHTNING_COMPILER)
       // Report atomics capability based on GFX IP, control on Hawaii
         if (info_.hostUnifiedMemory_ || deviceInfo_.gfxipVersion_ >= 800) {
           info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
         }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
 
     if (HSA_STATUS_SUCCESS !=
