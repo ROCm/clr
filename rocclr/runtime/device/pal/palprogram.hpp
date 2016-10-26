@@ -34,6 +34,32 @@ namespace pal {
 using namespace amd::hsa::loader;
 class HSAILProgram;
 
+class Segment : public amd::HeapObject {
+public:
+    Segment();
+    ~Segment();
+
+    //! Allocates a segment
+    bool alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment,
+        size_t size, size_t align, bool zero);
+
+    //! Copies data from host to the segment
+    void copy(size_t offset, const void* src, size_t size);
+
+    //! Segment freeze
+    bool freeze(bool destroySysmem);
+
+    //! Returns address for GPU access in the segment
+    uint64_t    gpuAddress(size_t offset) const { return gpuAccess_->vmAddress() + offset; }
+
+    //! Returns address for CPU access in the segment
+    void*       cpuAddress(size_t offset) const { return cpuAccess_->data() + offset; }
+
+private:
+    Memory*     gpuAccess_;     //!< GPU memory for segment access
+    Memory*     cpuAccess_;     //!< CPU memory for segment (backing store)
+};
+
 class PALHSALoaderContext final: public Context {
 public:
     PALHSALoaderContext(HSAILProgram* program): program_(program) {}
@@ -93,42 +119,7 @@ public:
         hsa_agent_t agent, hsa_ext_sampler_t sampler_handle) override;
 
 private:
-
-    void* AgentGlobalAlloc(
-        hsa_agent_t agent, size_t size, size_t align, bool zero) {
-        return GpuMemAlloc(size, align, zero);
-    }
-
-    bool AgentGlobalCopy(void *dst, size_t offset, const void *src, size_t size) {
-        return GpuMemCopy(dst, offset, src, size);
-    }
-
-    void AgentGlobalFree(void *ptr, size_t size) {
-        GpuMemFree(ptr, size);
-    }
-
-    void* KernelCodeAlloc(size_t size, size_t align, bool zero);
-
-    bool KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size);
-
-    void KernelCodeFree(void *ptr, size_t size);
-
-    address CpuMemAlloc(size_t size, size_t align, bool zero);
-
-    bool CpuMemCopy(void *dst, size_t offset, const void* src, size_t size);
-
-    void CpuMemFree(void *ptr, size_t size) {
-        amd::Os::alignedFree(ptr);
-    }
-
-    void* GpuMemAlloc(size_t size, size_t align, bool zero);
-
-    bool GpuMemCopy(void *dst, size_t offset, const void *src, size_t size);
-
-    void GpuMemFree(void *ptr, size_t size = 0);
-
     PALHSALoaderContext(const PALHSALoaderContext &c);
-
     PALHSALoaderContext& operator=(const PALHSALoaderContext &c);
 
     pal::HSAILProgram* program_;

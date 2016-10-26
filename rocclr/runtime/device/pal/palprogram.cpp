@@ -28,6 +28,107 @@
 
 namespace pal {
 
+Segment::Segment()
+    : gpuAccess_(nullptr)
+    , cpuAccess_(nullptr)
+{}
+
+Segment::~Segment()
+{
+    delete gpuAccess_;
+    if (cpuAccess_ != nullptr) {
+        cpuAccess_->unmap(nullptr);
+        delete cpuAccess_;
+    }
+}
+
+bool
+Segment::alloc(
+    HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment,
+    size_t size, size_t align, bool zero)
+{
+    align = amd::alignUp(align, sizeof(uint32_t));
+    gpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
+    if ((gpuAccess_ == nullptr) || !gpuAccess_->create(pal::Resource::Local)) {
+        delete gpuAccess_;
+        gpuAccess_ = nullptr;
+        return false;
+    }
+    if (segment == AMDGPU_HSA_SEGMENT_CODE_AGENT) {
+        cpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
+        if ((cpuAccess_ == nullptr) || !cpuAccess_->create(pal::Resource::Remote)) {
+            delete cpuAccess_;
+            cpuAccess_ = nullptr;
+            return false;
+        }
+        void* ptr = cpuAccess_->map(nullptr, 0);
+        if (zero) {
+            memset(ptr, 0, size);
+        }
+    }
+
+    if (zero && !prog.isInternal()) {
+        char pattern = 0;
+        prog.dev().xferMgr().fillBuffer(*gpuAccess_, &pattern, sizeof(pattern),
+            amd::Coord3D(0), amd::Coord3D(size));
+    }
+
+    switch (segment) {
+    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
+    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
+    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
+        prog.addGlobalStore(gpuAccess_);
+        prog.setGlobalVariableTotalSize(prog.globalVariableTotalSize() + size);
+        break;
+    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
+        prog.setCodeObjects(gpuAccess_, cpuAccess_->data());
+        break;
+    default:
+        break;
+    }
+    return true;
+}
+
+void 
+Segment::copy(size_t offset, const void* src, size_t size)
+{
+    if (cpuAccess_ != nullptr) {
+        amd::Os::fastMemcpy(cpuAddress(offset), src, size);
+    }
+    else {
+        VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
+        Memory& xferBuf = gpuAccess_->dev().xferWrite().acquire();
+        size_t tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
+        size_t srcOffs = 0;
+        while (size != 0) {
+            xferBuf.hostWrite(&gpu,
+                reinterpret_cast<const_address>(src) + srcOffs, 0, tmpSize);
+            bool result = xferBuf.partialMemCopyTo(gpu,
+                0, (offset + srcOffs), tmpSize, *gpuAccess_, false, true);
+            size -= tmpSize;
+            srcOffs += tmpSize;
+            tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
+        }
+        gpu.releaseMemObjects();
+        gpu.waitAllEngines();
+    }
+}
+
+bool
+Segment::freeze(bool destroySysmem)
+{
+    VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
+    bool result = true;
+    if (cpuAccess_ != nullptr) {
+        result = cpuAccess_->partialMemCopyTo(gpu,
+            0, 0, gpuAccess_->vmSize(), *gpuAccess_, false, true);
+        gpu.releaseMemObjects();
+        gpu.waitAllEngines();
+    }
+    assert(!destroySysmem || (cpuAccess_ == nullptr));
+    return result;
+}
+
 HSAILProgram::HSAILProgram(Device& device)
     : Program(device)
     , llvmBinary_()
@@ -97,8 +198,6 @@ HSAILProgram::~HSAILProgram()
     }
     delete kernels_;
     amd::hsa::loader::Loader::Destroy(loader_);
-    assert((codeSegGpu_ == nullptr) && "Loader didn't destroy code!");
-    assert((codeSegCpu_ == nullptr) && "Loader didn't destroy code!");
 }
 
 bool
@@ -786,46 +885,47 @@ bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) 
     }
 }
 
-void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment,
-    hsa_agent_t agent, size_t size, size_t align, bool zero) {
+void* PALHSALoaderContext::SegmentAlloc(
+    amdgpu_hsa_elf_segment_t segment,
+    hsa_agent_t agent, size_t size, size_t align, bool zero)
+{
     assert(size);
     assert(align);
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
-        return AgentGlobalAlloc(agent, size, align, zero);
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-        return KernelCodeAlloc(size, align, zero);
-    default:
-        assert(false); return 0;
+    if (program_->isNull()) {
+        void* ptr = amd::Os::alignedMalloc(size, align);
+        if (zero) {
+            memset(ptr, 0, size);
+        }
+        return ptr;
     }
+    Segment* seg  = new Segment();
+    if (seg != nullptr && !seg->alloc(*program_, segment, size, align, zero)) {
+        return nullptr;
+    }
+    return seg;
 }
 
 bool PALHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment,
-    hsa_agent_t agent, void* dst, size_t offset, const void* src, size_t size) {
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
-      return AgentGlobalCopy(dst, offset, src, size);
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-      return KernelCodeCopy(dst, offset, src, size);
-    default:
-      assert(false); return false;
+    hsa_agent_t agent, void* dst, size_t offset, const void* src, size_t size)
+{
+    if (program_->isNull()) {
+        amd::Os::fastMemcpy(reinterpret_cast<address>(dst) + offset, src, size);
+        return true;
     }
+    Segment* s = reinterpret_cast<Segment*>(dst);
+    s->copy(offset, src, size);
+    return true;
 }
 
 void PALHSALoaderContext::SegmentFree(
     amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t size)
 {
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT: AgentGlobalFree(seg, size); break;
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT: KernelCodeFree(seg, size); break;
-    default:
-        assert(false); return;
+    if (program_->isNull()) {
+        amd::Os::alignedFree(seg);
+    }
+    else {
+        Segment* s = reinterpret_cast<Segment*>(seg);
+        delete s ;
     }
 }
 
@@ -833,65 +933,32 @@ void* PALHSALoaderContext::SegmentAddress(
     amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t offset)
 {
     assert(seg);
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT: {
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-        if (!program_->isNull()) {
-            pal::Memory *gpuMem = reinterpret_cast<pal::Memory*>(seg);
-            return reinterpret_cast<void*>(gpuMem->vmAddress() + offset);
-        }
-        else {
-            return reinterpret_cast<address>(seg) + offset;
-        }
+    if (program_->isNull()) {
+        return (reinterpret_cast<address>(seg) + offset);
     }
-    default:
-        assert(false); return nullptr;
-    }
+    Segment* s = reinterpret_cast<Segment*>(seg);
+    return reinterpret_cast<void*>(s->gpuAddress(offset));
 }
 
 void* PALHSALoaderContext::SegmentHostAddress(
     amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t offset)
 {
-    void* host = nullptr;
     assert(seg);
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-        host = program_->codeSegCpu() + offset;
-        break;
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
-    default:
-        break;
+    if (program_->isNull()) {
+        return (reinterpret_cast<address>(seg) + offset);
     }
-    return host;
+    Segment* s = reinterpret_cast<Segment*>(seg);
+    return s ->cpuAddress(offset);
 }
 
 bool PALHSALoaderContext::SegmentFreeze(
     amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent, void* seg, size_t size)
 {
-    assert(seg);
-    switch (segment) {
-    case AMDGPU_HSA_SEGMENT_GLOBAL_PROGRAM:
-    case AMDGPU_HSA_SEGMENT_GLOBAL_AGENT:
-    case AMDGPU_HSA_SEGMENT_READONLY_AGENT:
-        return true;
-    case AMDGPU_HSA_SEGMENT_CODE_AGENT: {
-        if (program_->isNull()) {
-            return true;
-        }
-
-        const pal::Memory& mem = program_->codeSegGpu();
-        constexpr bool WaitForCopy = true;
-        mem.writeRawData(*mem.dev().xferQueue(), 0, size, program_->codeSegCpu(), WaitForCopy);
+    if (program_->isNull()) {
         return true;
     }
-    default:
-        assert(false); 
-        return false;
-    }
+    Segment* s = reinterpret_cast<Segment*>(seg);
+    return s->freeze((segment == AMDGPU_HSA_SEGMENT_CODE_AGENT) ? false : true);
 }
 
 hsa_status_t PALHSALoaderContext::SamplerCreate(
@@ -956,122 +1023,6 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(
         return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
     return HSA_STATUS_SUCCESS;
-}
-
-address PALHSALoaderContext::CpuMemAlloc(size_t size, size_t align, bool zero)
-{
-    assert(size);
-    assert(align);
-    assert(sizeof(void*) == 8 || sizeof(void*) == 4);
-
-    void* ptr = amd::Os::alignedMalloc(size, align);
-    if (zero) {
-        memset(ptr, 0, size);
-    }
-    return reinterpret_cast<address>(ptr);
-}
-
-bool PALHSALoaderContext::CpuMemCopy(void *dst, size_t offset, const void* src, size_t size)
-{
-    amd::Os::fastMemcpy((char*)dst + offset, src, size);
-    return true;
-}
-
-void* PALHSALoaderContext::GpuMemAlloc(size_t size, size_t align, bool zero) {
-    assert(size);
-    assert(align);
-    assert(sizeof(void*) == 8 || sizeof(void*) == 4);
-    if (program_->isNull()) {
-        return CpuMemAlloc(size, align, zero);
-    }
-
-    pal::Memory* mem = new pal::Memory(program_->dev(), amd::alignUp(size, align));
-    if (!mem || !mem->create(pal::Resource::Local)) {
-        delete mem;
-        return nullptr;
-    }
-    assert(program_->dev().xferQueue());
-    if (zero && !program_->isInternal()) {
-        char pattern = 0;
-        program_->dev().xferMgr().fillBuffer(*mem, &pattern, sizeof(pattern), amd::Coord3D(0), amd::Coord3D(size));
-    }
-    program_->addGlobalStore(mem);
-    program_->setGlobalVariableTotalSize(program_->globalVariableTotalSize() + size);
-    return mem;
-}
-
-bool PALHSALoaderContext::GpuMemCopy(void *dst, size_t offset, const void *src, size_t size) {
-    if (!dst || !src || dst == src) {
-        return false;
-    }
-    if (0 == size) {
-        return true;
-    }
-    if (program_->isNull()) {
-        CpuMemCopy(dst, offset, src, size);
-        return true;
-    }
-    assert(program_->dev().xferQueue());
-    pal::Memory* mem = reinterpret_cast<pal::Memory*>(dst);
-    constexpr bool WaitForCopy = true;
-    mem->writeRawData(*mem->dev().xferQueue(), offset, size, src, WaitForCopy);
-    return true;
-}
-
-void PALHSALoaderContext::GpuMemFree(void *ptr, size_t size)
-{
-    if (program_->isNull()) {
-       CpuMemFree(ptr, size);
-    }
-    else {
-        delete reinterpret_cast<pal::Memory*>(ptr);
-    }
-}
-
-void* PALHSALoaderContext::KernelCodeAlloc(
-    size_t size, size_t align, bool zero)
-{
-    address host = CpuMemAlloc(size, align, zero);
-    pal::Memory* mem = nullptr;
-
-    if (!program_->isNull()) {
-        mem = new pal::Memory(program_->dev(), amd::alignUp(size, align));
-        if (!mem || !mem->create(pal::Resource::Local)) {
-            delete mem;
-            mem = nullptr;
-        }
-    }
-    program_->setCodeObjects(mem, host);
-    return ((host == nullptr || mem == nullptr) ? nullptr : mem);
-}
-
-bool PALHSALoaderContext::KernelCodeCopy(void *dst, size_t offset, const void *src, size_t size)
-{
-    if (!dst || !src || dst == src) {
-        return false;
-    }
-    if (0 == size) {
-        return true;
-    }
-    if (program_->isNull()) {
-        return CpuMemCopy(dst, offset, src, size);
-    }
-    assert(program_->dev().xferQueue());
-    pal::Memory* mem = reinterpret_cast<pal::Memory*>(dst);
-    if (mem == &program_->codeSegGpu()) {
-        return CpuMemCopy(program_->codeSegCpu(), offset, src, size);
-    }
-    assert(!"The segement doesn't match code segment in the program!");
-    return false;
-}
-
-void PALHSALoaderContext::KernelCodeFree(void *ptr, size_t size)
-{
-    CpuMemFree(program_->codeSegCpu(), size);
-    if (!program_->isNull()) {
-        delete reinterpret_cast<pal::Memory*>(ptr);
-    }
-    program_->setCodeObjects(nullptr, nullptr);
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)

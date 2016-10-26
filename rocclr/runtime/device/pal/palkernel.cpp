@@ -1070,7 +1070,7 @@ HSAILKernel::loadArguments(
                 else if ((dev().info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) == 0) {
                     return nullptr;
                 }
-                break;
+                continue;
             }
             if (nativeMem) {
                 gpuMem = *reinterpret_cast<Memory* const*>(paramaddr);
@@ -1179,7 +1179,6 @@ HSAILKernel::loadArguments(
             assert(arg->size_ == sizeof(srd) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
             srdResource = true;
-            break;
         }
         else if (arg->type_ == HSAIL_ARGTYPE_QUEUE) {
             const amd::DeviceQueue* queue =
@@ -1198,7 +1197,6 @@ HSAILKernel::loadArguments(
             }
             assert(arg->size_ == sizeof(vmQueue) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue));
-            break;
         }
         else {
             LogError(" Unsupported address type ");
