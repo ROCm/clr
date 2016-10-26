@@ -2122,21 +2122,31 @@ VirtualGPU::submitKernelInternal(
                             gpuDefQueue->virtualQueue_->vmAddress();
                         address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
                         print << "Kernel: " << child->name() << "\n";
-                        static const char* Names[HSAILKernel::MaxExtraArgumentsNum] = {
-                        "Offset0: ", "Offset1: ","Offset2: ","PrintfBuf: ", "VqueuePtr: ", "AqlWrap: "};
-                        for (j = 0; j < child->extraArgumentsNum(); ++j) {
-                            print << "\t" << Names[j] << *(size_t*)argum;
-                            print << "\n";
-                            argum += sizeof(size_t);
-                        }
-                        for (j = 0; j < child->numArguments(); ++j) {
-                            print << "\t" << child->argument(j)->name_ << ": ";
-                            for (int s = child->argument(j)->size_ - 1; s >= 0; --s) {
+                        for (auto arg : child->arguments()) {
+                            const char* extraArgName = nullptr;
+                            switch (arg->type_) {
+                            case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: extraArgName = "Offset0: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: extraArgName = "Offset1: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: extraArgName = "Offset2: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER: extraArgName = "PrintfBuf: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE: extraArgName = "VqueuePtr: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION: extraArgName = "AqlWrap: "; break;
+                            case HSAIL_ARGTYPE_HIDDEN_NONE: extraArgName = "Unknown: "; break;
+                            default: break;
+                            }
+                            if (extraArgName) {
+                                print << "\t" << extraArgName << *(size_t*)argum;
+                                print << "\n";
+                                argum += sizeof(size_t);
+                                continue;
+                            }
+                            print << "\t" << arg->name_ << ": ";
+                            for (int s = arg->size_ - 1; s >= 0; --s) {
                                 print.width(2);
                                 print.fill('0');
                                 print << (uint32_t)(argum[s]);
                             }
-                            argum += child->argument(j)->size_;
+                            argum += arg->size_;
                             print << "\n";
                         }
                         printf("%s", print.str().c_str());
@@ -3171,7 +3181,7 @@ VirtualGPU::processMemObjectsHSA(
     // Check all parameters for the current kernel
     for (size_t i = 0; i < signature.numParameters(); ++i) {
         const amd::KernelParameterDescriptor& desc = signature.at(i);
-        const HSAILKernel::Argument*  arg = hsaKernel.argument(i);
+        const HSAILKernel::Argument*  arg = hsaKernel.argumentAt(i);
         Memory* memory = nullptr;
         bool    readOnly = false;
         amd::Memory* svmMem = nullptr;
