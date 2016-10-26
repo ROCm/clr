@@ -517,6 +517,16 @@ HSAILKernel::initHsailArgs(const aclArgData* aclArg)
         arg->access_    = GetHSAILArgAccessType(aclArg);
         arg->pointeeAlignment_ = GetHSAILArgPointeeAlignment(aclArg);
 
+        bool isHidden = arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION
+            || arg->type_ == HSAIL_ARGTYPE_HIDDEN_NONE;
+
+        arg->index_ = isHidden ? uint(-1) : arguments_.size();
+
         arguments_.push_back(arg);
     }
 }
