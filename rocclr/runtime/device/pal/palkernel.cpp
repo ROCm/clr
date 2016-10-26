@@ -503,7 +503,7 @@ void
 HSAILKernel::initHsailArgs(const aclArgData* aclArg)
 {
     // Iterate through the each kernel argument
-    for (; aclArg->struct_size != 0; aclArg++) {
+    for (uint index = 0; aclArg->struct_size != 0; aclArg++) {
         Argument* arg = new Argument;
 
         // Initialize HSAIL kernel argument
@@ -525,7 +525,7 @@ HSAILKernel::initHsailArgs(const aclArgData* aclArg)
             || arg->type_ == HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION
             || arg->type_ == HSAIL_ARGTYPE_HIDDEN_NONE;
 
-        arg->index_ = isHidden ? uint(-1) : arguments_.size();
+        arg->index_ = isHidden ? uint(-1) : index++;
 
         arguments_.push_back(arg);
     }
