@@ -578,22 +578,13 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         delete kernelNames;
         std::vector<std::string>::iterator it = vKernels.begin();
         bool dynamicParallelism = false;
-        aclMetadata md;
-        md.numHiddenKernelArgs = 0;
-        size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
         for (it; it != vKernels.end(); ++it) {
             std::string kernelName(*it);
             std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
-            errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
-                openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
-            if (errorCode != ACL_SUCCESS) {
-                buildLog_ += "Error: Querying of kernel '" + openclKernelName +
-                    "' extra arguments count from AMD HSA Code Object failed. Kernel initialization failed.\n";
-                return false;
-            }
-            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(),
-                md.numHiddenKernelArgs);
+
+            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions());
             kernels()[kernelName] = aKernel;
+
             amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", openclKernelName.c_str(), agent, 0);
             if (!sym) {
                 buildLog_ += "Error: Getting kernel ISA code symbol '" + openclKernelName +
