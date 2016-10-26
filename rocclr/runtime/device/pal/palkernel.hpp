@@ -107,23 +107,17 @@ public:
         std::string name_;          //!< Argument's name
         std::string typeName_;      //!< Argument's type name
         uint        size_;          //!< Size in bytes
-        uint        offset_;        //!< Argument's offset
         uint        alignment_;     //!< Argument's alignment
         uint        pointeeAlignment_; //!< Alignment of the data pointed to
         HSAIL_ARG_TYPE type_;       //!< Type of the argument
         HSAIL_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
         HSAIL_DATA_TYPE dataType_;  //!< The type of data
-        uint        numElem_;       //!< Number of elements
         HSAIL_ACCESS_TYPE access_;  //!< Access type for the argument
     };
 
-    // Max number of possible extra (hidden) kernel arguments
-    static const uint MaxExtraArgumentsNum = 6;
-
     HSAILKernel(std::string name,
         HSAILProgram* prog,
-        std::string compileOptions,
-        uint extraArgsNum);
+        std::string compileOptions);
 
     virtual ~HSAILKernel();
 
@@ -134,11 +128,15 @@ public:
     //! Returns true if memory is valid for execution
     virtual bool validateMemory(uint idx, amd::Memory* amdMem) const;
 
-    //! Returns a pointer to the hsail argument
-    const Argument* argument(size_t i) const { return arguments_[i]; }
+    //! Returns the kernel argument list
+    const std::vector<Argument*>& arguments() const { return arguments_; }
 
-    //! Returns the number of hsail arguments
-    size_t numArguments() const { return arguments_.size(); }
+    //! Returns a pointer to the hsail argument at the specified index
+    Argument* argumentAt(size_t index) const {
+        for (auto arg : arguments_) if (arg->index_ == index) return arg;
+        assert(!"Should not reach here");
+        return NULL;
+    }
 
     //! Returns GPU device object, associated with this kernel
     const Device& dev() const;
@@ -195,14 +193,12 @@ public:
         std::vector<const Memory*>&     memList     //!< Memory list for GSL/VidMM handles
         ) const;
 
+
     //! Returns pritnf info array
     const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
 
     //! Returns the kernel index in the program
     uint index() const { return index_; }
-
-    //! Returns kernel's extra argument count
-    uint extraArgumentsNum() const { return extraArgumentsNum_; }
 
     //! Get profiling callback object
     virtual amd::ProfilingCallback* getProfilingCallback(
@@ -252,8 +248,6 @@ protected:
     uint64_t        code_;      //!< GPU memory pointer to the kernel
     size_t          codeSize_;  //!< Size of ISA code
 
-    uint extraArgumentsNum_;    //! Number of extra (hidden) kernel arguments
-
     union Flags {
         struct {
             uint    imageEna_: 1;           //!< Kernel uses images
@@ -275,7 +269,7 @@ public:
     LightningKernel(const std::string& name,
         HSAILProgram* prog,
         const std::string& compileOptions
-        ): HSAILKernel(name, prog, compileOptions, 0)
+        ): HSAILKernel(name, prog, compileOptions)
     {}
 
     //! Returns Lightning program associated with this kernel
