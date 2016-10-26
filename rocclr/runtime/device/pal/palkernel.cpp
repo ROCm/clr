@@ -618,10 +618,6 @@ HSAILKernel::init(amd::hsa::loader::Symbol *sym, bool finalize)
 #if defined(WITH_LIGHTNING_COMPILER)
     assert(!"Should not reach here");
 #else // !defined(WITH_LIGHTNING_COMPILER)
-    if (extraArgumentsNum_ > MaxExtraArgumentsNum) {
-        LogError("Failed to initialize kernel: extra arguments number is bigger than is supported");
-        return false;
-    }
     acl_error error = ACL_SUCCESS;
     std::string openClKernelName = openclMangledName(name());
     flags_.internalKernel_ = (compileOptions_.find("-cl-internal-kernel") !=
