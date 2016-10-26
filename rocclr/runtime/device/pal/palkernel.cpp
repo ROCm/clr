@@ -1162,14 +1162,21 @@ HSAILKernel::loadArguments(
 
 #if defined(WITH_LIGHTNING_COMPILER)
     //!!!!!FIXME_lmoriche: fix the hidden args
-    size_t zero = 0;
-    WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
-    WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
-    WriteAqlArg(&aqlArgBuf, &zero, sizeof(zero));
+    size_t extraArgs[] = { 0, 0, 0, 0 };
+    // The HLC generates up to 3 additional arguments for the global offsets
+    for (uint i = 0; i < sizes.dimensions(); ++i) {
+        extraArgs[i] = sizes.offset()[i];
+    }
+    WriteAqlArg(&aqlArgBuf, &extraArgs[0], sizeof(size_t));
+    WriteAqlArg(&aqlArgBuf, &extraArgs[1], sizeof(size_t));
+    WriteAqlArg(&aqlArgBuf, &extraArgs[2], sizeof(size_t));
+    WriteAqlArg(&aqlArgBuf, &extraArgs[3], sizeof(size_t));
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     // HSAIL kernarg segment size is rounded up to multiple of 16.
     aqlArgBuf = amd::alignUp(aqlArgBuf, 16);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     assert((aqlArgBuf == (gpu.cb(0)->sysMemCopy() + argsBufferSize())) &&
         "Size and the number of arguments don't match!");
     hsa_kernel_dispatch_packet_t* hsaDisp =
