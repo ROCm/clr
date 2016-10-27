@@ -183,7 +183,7 @@ NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel)
     }
 
     // Fill the device info structure
-    fillDeviceInfo(properties, heaps, 4096, 1);
+    fillDeviceInfo(properties, heaps, 4096, 1, 0);
 
     // Runtime doesn't know what local size could be on the real board
     info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
@@ -212,7 +212,8 @@ void NullDevice::fillDeviceInfo(
     const Pal::DeviceProperties& palProp,
     const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
     size_t  maxTextureSize,
-    uint    numComputeRings)
+    uint    numComputeRings,
+    uint    numExclusiveComputeRings)
 {
     info_.type_     = CL_DEVICE_TYPE_GPU;
     info_.vendorId_ = palProp.vendorId;
@@ -476,8 +477,7 @@ void NullDevice::fillDeviceInfo(
         info_.localMemBanks_        = hwInfo()->localMemBanks_;
         info_.gfxipVersion_         = hwInfo()->gfxipVersion_;
         info_.numAsyncQueues_       = numComputeRings;
-        info_.numRTQueues_          =
-            palProp.engineProperties[Pal::EngineTypeExclusiveCompute].engineCount  - 1;
+        info_.numRTQueues_          = numExclusiveComputeRings;
         info_.numRTCUs_             =
             palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
         info_.threadTraceEnable_    = settings().threadTraceEnable_;
@@ -615,6 +615,7 @@ Device::Device()
     , mapCache_(nullptr)
     , resourceCache_(nullptr)
     , numComputeEngines_(0)
+    , numExclusiveComputeEngines_(0)
     , numDmaEngines_(0)
     , heapInitComplete_(false)
     , xferQueue_(nullptr)
@@ -708,6 +709,18 @@ Device::create(Pal::IDevice* device)
     // Find the number of available engines
     numComputeEngines_ =
         properties().engineProperties[Pal::EngineTypeCompute].engineCount;
+    if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].
+        maxNumDedicatedCu > 0) {
+        for (uint i = 0; i < properties().engineProperties[
+            Pal::EngineTypeExclusiveCompute].engineCount; ++i) {
+            if (properties().engineProperties[
+                Pal::EngineTypeExclusiveCompute].capabilities[i].rtCuHighCompute ||
+                properties().engineProperties[
+                Pal::EngineTypeExclusiveCompute].capabilities[i].rtCuMedCompute) {
+                numExclusiveComputeEngines_++;
+            }
+        }
+    }
     numDmaEngines_ =
         properties().engineProperties[Pal::EngineTypeDma].engineCount;
 
@@ -730,12 +743,16 @@ Device::create(Pal::IDevice* device)
         finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
             ((1 << numComputeEngines_) - 1);
         // Request real time compute engines
-        finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines = 3;
+        finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines =
+            ((1 << numExclusiveComputeEngines_) - 1);
         // Request all SDMA engines
         finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines =
             (1 << numDmaEngines_) - 1;
 
         result = iDev()->Finalize(finalizeInfo);
+        if (result != Pal::Result::Success) {
+            return false;
+        }
     }
 
     Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
@@ -806,7 +823,7 @@ Device::create(Pal::IDevice* device)
     }
 
     // Fill the device info structure
-    fillDeviceInfo(properties(), heaps, 16*Ki, numComputeEngines());
+    fillDeviceInfo(properties(), heaps, 16*Ki, numComputeEngines(), numExclusiveComputeEngines());
 
 #ifdef DEBUG
     std::stringstream  message;
