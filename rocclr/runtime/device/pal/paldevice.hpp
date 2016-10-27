@@ -122,7 +122,8 @@ protected:
         const Pal::DeviceProperties& palProp,//!< PAL device properties
         const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
         size_t  maxTextureSize,             //!< Maximum texture size supported in HW
-        uint    numComputeRings             //!< Number of compute rings
+        uint    numComputeRings,            //!< Number of compute rings
+        uint    numExclusiveComputeRings    //!< Number of exclusive compute rings
         );
 };
 
@@ -412,6 +413,9 @@ public:
     //! Returns the number of available compute rings
     uint numComputeEngines() const { return numComputeEngines_; }
 
+    //! Returns the number of available compute rings
+    uint numExclusiveComputeEngines() const { return numExclusiveComputeEngines_; }
+
     //! Returns the number of available DMA engines
     uint numDMAEngines() const { return numDmaEngines_; }
 
@@ -548,6 +552,7 @@ private:
     std::vector<amd::Memory*>*  mapCache_;  //!< Map cache info structure
     ResourceCache*  resourceCache_; //!< Resource cache
     uint            numComputeEngines_; //!< The number of available compute engines
+    uint            numExclusiveComputeEngines_; //!< The number of available compute engines
     uint            numDmaEngines_; //!< The number of available compute engines
     bool            heapInitComplete_;  //!< Keep track of initialization status of heap resources
     VirtualGPU*     xferQueue_;     //!< Transfer queue
