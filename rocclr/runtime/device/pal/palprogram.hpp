@@ -257,7 +257,7 @@ private:
 protected:
     //! Returns all the options to be appended while passing to the
     //compiler library
-    std::string hsailOptions();
+    std::string hsailOptions(amd::option::Options* options);
 
     //! Allocate kernel table
     bool allocKernelTable();

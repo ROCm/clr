@@ -135,7 +135,7 @@ HSAILProgram::compileImpl(
 #endif
 
     // Compile source to IR
-    compileOptions_.append(hsailOptions());
+    compileOptions_.append(hsailOptions(options));
     errorCode = aclCompile(dev().compiler(), binaryElf_, compileOptions_.c_str(),
         ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY, nullptr);
     buildLog_ += aclGetCompilerLog(dev().compiler());
@@ -248,7 +248,7 @@ LightningProgram::compileImpl(
     driverOptions.append(mCPU.str());
 
     driverOptions.append(options->llvmOptions);
-    driverOptions.append(hsailOptions());
+    driverOptions.append(hsailOptions(options));
 
     //Find the temp folder for the OS
     std::string tempFolder = amd::Os::getEnvironment("TEMP");
