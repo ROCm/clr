@@ -24,6 +24,9 @@
 #include <dlfcn.h>
 #include <libgen.h>
 #endif // defined(ATI_OS_LINUX)
+#if defined(ATI_OS_WIN)
+#include <windows.h>
+#endif // defined(ATI_OS_WIN)
 
 //CLC_IN_PROCESS_CHANGE
 extern int openclFrontEnd(const char* cmdline, std::string*, std::string* typeInfo = nullptr);
@@ -156,6 +159,28 @@ HSAILProgram::compileImpl(
 #if defined(WITH_LIGHTNING_COMPILER)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 
+#if defined(ATI_OS_WIN)
+static BOOL CALLBACK
+checkLLVM_BIN(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContex)
+{
+    if (llvmBin_.empty()) {
+        HMODULE hm = NULL;
+        if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+                | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                (LPCSTR) &amd::Device::init, &hm)) {
+            char path[1024];
+            GetModuleFileNameA(hm, path, sizeof(path));
+            llvmBin_ = path;
+            size_t pos = llvmBin_.rfind('\\');
+            if (pos != std::string::npos) {
+                llvmBin_.resize(pos);
+            }
+        }
+    }
+    return TRUE;
+}
+#endif // defined (ATI_OS_WINDOWS)
+
 #if defined(ATI_OS_LINUX)
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
@@ -172,6 +197,19 @@ checkLLVM_BIN()
             }
         }
     }
+}
+#endif // defined(ATI_OS_LINUX)
+
+std::auto_ptr<amd::opencl_driver::Compiler>
+LightningProgram::newCompilerInstance()
+{
+#if defined(ATI_OS_WIN)
+    static INIT_ONCE initOnce;
+    InitOnceExecuteOnce(&initOnce, checkLLVM_BIN, NULL, NULL);
+#endif // defined(ATI_OS_WIN)
+#if defined(ATI_OS_LINUX)
+    pthread_once(&once, checkLLVM_BIN);
+#endif // defined(ATI_OS_LINUX)
 #if defined(DEBUG)
     std::string clangExe(llvmBin_ + "/clang");
     struct stat buf;
@@ -180,15 +218,7 @@ checkLLVM_BIN()
         LogWarning(msg.c_str());
     }
 #endif // defined(DEBUG)
-}
-#endif // defined(ATI_OS_LINUX)
-
-std::auto_ptr<amd::opencl_driver::Compiler>
-LightningProgram::newCompilerInstance()
-{
-#if defined(ATI_OS_LINUX)
-    pthread_once(&once, checkLLVM_BIN);
-#endif // defined(ATI_OS_LINUX)
+    
     return std::auto_ptr<amd::opencl_driver::Compiler>(
         amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
 }
