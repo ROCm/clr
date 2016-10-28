@@ -123,9 +123,12 @@ ReferenceCountedObject::release()
 static int
 reportHook(int reportType, char *message, int *returnValue)
 {
-        std::cerr << message;
-        ::exit(3);
-        return TRUE;
+    if (returnValue) {
+        *returnValue = 1;
+    }
+    std::cerr << message;
+    ::exit(3);
+    return TRUE;
 }
 #endif // DEBUG
 
@@ -135,7 +138,7 @@ DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
     switch (reason) {
     case DLL_PROCESS_ATTACH:
 #   ifdef DEBUG
-        if (AMD_OCL_SUPPRESS_MESSAGE_BOX) {
+        if (!AMD_OCL_ENABLE_MESSAGE_BOX) {
             _CrtSetReportHook(reportHook);
             _set_error_mode(_OUT_TO_STDERR);
         }
