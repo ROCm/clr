@@ -1006,12 +1006,12 @@ HSAILKernel::loadArguments(
             continue;
         }
         else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER) {
-            uint64_t bufferPtr = 0;
+            size_t bufferPtr = 0;
             if ((printfInfo().size() > 0) &&
                 // and printf buffer was allocated
                 (gpu.printfDbgHSA().dbgBuffer() != nullptr)) {
                 // and set the fourth argument as the printf_buffer pointer
-                bufferPtr = gpu.printfDbgHSA().dbgBuffer()->vmAddress();
+                bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
                 memList.push_back(gpu.printfDbgHSA().dbgBuffer());
             }
             assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
@@ -1019,12 +1019,12 @@ HSAILKernel::loadArguments(
             continue;
         }
         else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE) {
-            assert(arg->size_ == sizeof(vmDefQueue) && "check the sizes");
+            assert(arg->size_ == sizeof(static_cast<size_t>(vmDefQueue)) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &vmDefQueue, arg->size_, arg->alignment_);
             continue;
         }
         else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION) {
-            assert(arg->size_ == sizeof(*vmParentWrap) && "check the sizes");
+            assert(arg->size_ == sizeof(static_cast<size_t>(*vmParentWrap)) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, vmParentWrap, arg->size_, arg->alignment_);
             continue;
         }
