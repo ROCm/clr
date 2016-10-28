@@ -598,7 +598,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
     // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
     // 1. if the program is created with binary and contains only hsail text
     case ACL_TYPE_HSAIL_TEXT: {
-        std::string curOptions = options->origOptionStr + hsailOptions();
+        std::string curOptions = options->origOptionStr + hsailOptions(options);
         errorCode = aclCompile(dev().compiler(), binaryElf_,
             curOptions.c_str(), continueCompileFrom, ACL_TYPE_CG, nullptr);
         buildLog_ += aclGetCompilerLog(dev().compiler());
@@ -618,7 +618,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
         return false;
     }
     if (finalize) {
-        std::string fin_options(options->origOptionStr + hsailOptions());
+        std::string fin_options(options->origOptionStr + hsailOptions(options));
         // Append an option so that we can selectively enable a SCOption on CZ
         // whenever IOMMUv2 is enabled.
         if (dev().settings().svmFineGrainSystem_) {
@@ -681,7 +681,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             std::string kernelName(*it);
             std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
 
-            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions());
+            HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(options));
             kernels()[kernelName] = aKernel;
 
             amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", openclKernelName.c_str(), agent, 0);
@@ -741,7 +741,7 @@ HSAILProgram::releaseClBinary()
 }
 
 std::string
-HSAILProgram::hsailOptions()
+HSAILProgram::hsailOptions(amd::option::Options* options)
 {
     std::string hsailOptions;
     // Set options for the standard device specific options
@@ -767,9 +767,13 @@ HSAILProgram::hsailOptions()
     iss.str(device().info().extensions_);
     while (getline(iss, token, ' ')) {
         if (!token.empty()) {
-            hsailOptions.append(" -D");
-            hsailOptions.append(token);
-            hsailOptions.append("=1");
+#if defined(WITH_LIGHTNING_COMPILER)
+            // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+            // remove it from the command line. Should we fix opencl-c.h?
+            if (options->oVariables->CLStd[2] >= '2'
+                && token == "cl_khr_depth_images") continue;
+#endif // defined(WITH_LIGHTHNING_COMPILER)
+            hsailOptions.append(" -D").append(token).append("=1");
         }
     }
     return hsailOptions;
@@ -1347,7 +1351,7 @@ LightningProgram::setKernels(
 
     for (auto &kernelName : kernelNameList) {
         auto kernel = new LightningKernel(
-            kernelName, this, options->origOptionStr + hsailOptions());
+            kernelName, this, options->origOptionStr + hsailOptions(options));
 
         kernels()[kernelName] = kernel;
 
