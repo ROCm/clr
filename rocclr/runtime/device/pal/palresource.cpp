@@ -698,7 +698,13 @@ Resource::create(MemoryType memType, CreateParams* params)
             viewInfo.subresRange = ImgSubresRange;
 
             dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
-
+            //! It's a workaround for D24S8 format, since PAL doesn't support this format
+            //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
+            if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
+                (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
+                hwState_[1] &= ~0x3c000000;
+                hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
+            }
             hwState_[8] = GetHSAILImageFormatType(desc().format_);
             hwState_[9] = GetHSAILImageOrderType(desc().format_);
             hwState_[10] = static_cast<uint32_t>(desc().width_);
