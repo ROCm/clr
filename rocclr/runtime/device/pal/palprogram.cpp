@@ -1338,7 +1338,8 @@ LightningProgram::setKernels(
         return false;
     }
 
-    setGlobalVariableTotalSize(progvarsTotalSize);
+    // note: The global variable size is updated in the context loader
+    //setGlobalVariableTotalSize(progvarsTotalSize);
 
     // Get the list of kernels
     std::vector<std::string> kernelNameList;

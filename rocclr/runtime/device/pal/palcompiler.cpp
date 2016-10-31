@@ -211,7 +211,7 @@ LightningProgram::newCompilerInstance()
     pthread_once(&once, checkLLVM_BIN);
 #endif // defined(ATI_OS_LINUX)
 #if defined(DEBUG)
-    std::string clangExe(llvmBin_ + "/clang");
+    std::string clangExe(llvmBin_ + LINUX_SWITCH("/clang", "\\clang.exe"));
     struct stat buf;
     if (stat(clangExe.c_str(), &buf)) {
         std::string msg("Could not find the Clang binary in " + llvmBin_);
