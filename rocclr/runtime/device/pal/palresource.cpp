@@ -83,6 +83,32 @@ GpuMemoryReference::Create(
 GpuMemoryReference*
 GpuMemoryReference::Create(
     const Device&   dev,
+    const Pal::SvmGpuMemoryCreateInfo& createInfo)
+{
+    Pal::Result result;
+    size_t gpuMemSize = dev.iDev()->GetSvmGpuMemorySize(createInfo, &result);
+    if (result != Pal::Result::Success) {
+        return nullptr;
+    }
+
+    GpuMemoryReference*  memRef = new (gpuMemSize) GpuMemoryReference();
+    if (memRef != nullptr) {
+        result = dev.iDev()->CreateSvmGpuMemory(createInfo,
+            &memRef[1], &memRef->gpuMem_);
+        if (result != Pal::Result::Success) {
+            memRef->release();
+            return nullptr;
+        }
+    }
+    // Update free memory size counters
+    const_cast<Device&>(dev).updateFreeMemory(
+        Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
+    return memRef;
+}
+
+GpuMemoryReference*
+GpuMemoryReference::Create(
+    const Device&   dev,
     const Pal::ExternalResourceOpenInfo& openInfo)
 {
     Pal::Result result;
@@ -994,6 +1020,36 @@ Resource::create(MemoryType memType, CreateParams* params)
             return false;
         }
         desc_.cardMemory_ = false;
+        return true;
+    }
+
+    if ((nullptr != params) &&
+        (nullptr != params->owner_) &&
+        (nullptr != params->owner_->getSvmPtr())) {
+        // @todo 64K alignment is too big
+        uint allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
+        if (memoryType() == Remote) {
+            Pal::SvmGpuMemoryCreateInfo createInfo = {};
+            createInfo.size = allocSize;
+            createInfo.alignment = MaxGpuAlignment;
+            memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+        }
+        else {
+            Pal::GpuMemoryCreateInfo createInfo = {};
+            createInfo.size = allocSize;
+            createInfo.alignment = MaxGpuAlignment;
+            createInfo.vaRange = Pal::VaRange::Svm;
+            createInfo.priority = Pal::GpuMemPriority::Normal;
+            memTypeToHeap(&createInfo);
+            memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+        }
+        if (nullptr == memRef_) {
+            LogError("Failed PAL memory allocation!");
+            return false;
+        }
+        desc_.cardMemory_ = false;
+        desc_.SVMRes_ = true;
+        params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
         return true;
     }
 

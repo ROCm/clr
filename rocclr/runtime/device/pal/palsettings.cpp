@@ -74,6 +74,9 @@ Settings::Settings()
     // GPU device by default
     apuSystem_  = false;
 
+    // Fine-Grained System is disabled by default
+    svmFineGrainSystem_  = false;
+
     // Disable 64 bit pointers support by default
     use64BitPtr_ = false;
 
