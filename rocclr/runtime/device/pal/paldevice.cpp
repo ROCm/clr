@@ -1063,8 +1063,12 @@ Device::init()
     info.flags.disableGpuTimeout = true;
 #ifdef ATI_BITS_32
     info.flags.force32BitVaSpace = true;
+    info.flags.enableSvmMode     = false;
+#else
+    info.flags.enableSvmMode     = true;
 #endif
     info.pSettingsPath = "OCL";
+    info.maxSvmSize    = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
 
     // PAL init
     if (Pal::Result::Success !=

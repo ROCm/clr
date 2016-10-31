@@ -3192,8 +3192,7 @@ VirtualGPU::processMemObjectsHSA(
                 svmMem = amd::SvmManager::FindSvmBuffer(
                     *reinterpret_cast<void* const*>(params + desc.offset_));
                 if (!svmMem) {
-                    Unimplemented();
-                    //flushCUCaches();
+                    flushCUCaches();
                     // Clear memory dependency state
                     const static bool All = true;
                     memoryDependency().clear(!All);

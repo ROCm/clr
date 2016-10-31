@@ -30,6 +30,10 @@ public:
 
     static GpuMemoryReference* Create(
         const Device&   dev,
+        const Pal::SvmGpuMemoryCreateInfo& createInfo);
+
+    static GpuMemoryReference* Create(
+        const Device&   dev,
         const Pal::ExternalResourceOpenInfo& openInfo);
 
     static GpuMemoryReference* Create(
