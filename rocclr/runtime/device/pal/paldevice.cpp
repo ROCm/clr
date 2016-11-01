@@ -331,7 +331,7 @@ void NullDevice::fillDeviceInfo(
     //! should be able to create a view with 256 bytes alignement
     info_.memBaseAddrAlign_ = 8 * MemBaseAlignment;
 
-    info_.maxConstantBufferSize_ = 64 * Ki;
+    info_.maxConstantBufferSize_ = info_.maxMemAllocSize_;
     info_.maxConstantArgs_       = MaxConstArguments;
 
     // Image support fields
