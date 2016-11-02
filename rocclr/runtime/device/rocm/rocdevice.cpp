@@ -835,7 +835,8 @@ Device::populateOCLDeviceConstants()
         return false;
     }
     std::stringstream ss;
-    ss << major << "." << minor << " (HSA)";
+    ss << major << "." << minor << " (HSA," IF(IS_LIGHTNING,"LC","HSAIL") ")";
+
     strcpy(info_.driverVersion_, ss.str().c_str());
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
 
