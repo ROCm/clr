@@ -302,6 +302,16 @@ public:
 private:
     virtual ~LightningProgram();
 
+    /* \brief Returns the next stage to compile from, based on sections in binary,
+    *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
+    *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
+    */
+    aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages, bool& needOptionsCheck);
+
+    /* \brief Returns the next stage to compile from, based on sections and options in binary
+    */
+    aclType getNextCompilationStageFromBinary(amd::option::Options* options);
+
 protected:
     virtual bool compileImpl(
         const std::string& sourceCode,  //!< the program's source code
@@ -312,7 +322,14 @@ protected:
 
     virtual bool linkImpl(amd::option::Options* options) override;
 
+    //! Link the device programs.
+    virtual bool linkImpl (const std::vector<device::Program*>& inputPrograms,
+        amd::option::Options* options,
+        bool createLibrary) override;
+
     bool setKernels(amd::option::Options *options, void* binary, size_t size);
+
+    virtual bool createBinary(amd::option::Options* options) override;
 
     //! Return a new transient compiler instance.
     static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
