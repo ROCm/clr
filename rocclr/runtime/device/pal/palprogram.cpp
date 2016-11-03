@@ -1063,6 +1063,229 @@ GetKernelNamesCallback(
     return HSA_STATUS_SUCCESS;
 }
 
+aclType
+LightningProgram::getCompilationStagesFromBinary(
+    std::vector<aclType>& completeStages,
+    bool& needOptionsCheck
+    )
+{
+    completeStages.clear();
+    aclType from = ACL_TYPE_DEFAULT;
+    needOptionsCheck = true;
+
+    bool containsLlvmirText = (type() == TYPE_COMPILED);
+    bool containsShaderIsa = (type() == TYPE_EXECUTABLE);
+    bool containsOpts = !(compileOptions_.empty() && linkOptions_.empty());
+
+    if (containsLlvmirText && containsOpts) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_LLVMIR_BINARY;
+    }
+    if (containsShaderIsa) {
+        completeStages.push_back(from);
+        from = ACL_TYPE_ISA;
+    }
+    std::string sCurOptions = compileOptions_ + linkOptions_;
+    amd::option::Options curOptions;
+    if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+        buildLog_ += curOptions.optionsLog();
+        LogError("Parsing compile options failed.");
+        return ACL_TYPE_DEFAULT;
+    }
+    switch (from) {
+    case ACL_TYPE_ISA:
+        // do not check options, if LLVMIR is absent or might be absent or options are absent
+        if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
+            needOptionsCheck = false;
+        }
+        break;
+        // recompilation might be needed
+    case ACL_TYPE_LLVMIR_BINARY:
+    case ACL_TYPE_DEFAULT:
+    default:
+        break;
+    }
+    return from;
+}
+
+
+aclType
+LightningProgram::getNextCompilationStageFromBinary(amd::option::Options* options)
+{
+    aclType continueCompileFrom = ACL_TYPE_DEFAULT;
+    binary_t binary = this->binary();
+
+    // If the binary already exists
+    if ((binary.first != NULL) && (binary.second > 0)) {
+        void *mem = const_cast<void *>(binary.first);
+
+        // save the current options
+        std::string sCurCompileOptions = compileOptions_;
+        std::string sCurLinkOptions = linkOptions_;
+        std::string sCurOptions = compileOptions_ + linkOptions_;
+
+        // Saving binary in the interface class,
+        // which also load compile & link options from binary
+        setBinary(static_cast<char*>(mem), binary.second);
+
+        // Calculate the next stage to compile from, based on sections in binaryElf_;
+        // No any validity checks here
+        std::vector<aclType> completeStages;
+        bool needOptionsCheck = true;
+        continueCompileFrom = getCompilationStagesFromBinary(completeStages, needOptionsCheck);
+        if (!options || !needOptionsCheck) {
+            return continueCompileFrom;
+        }
+        bool recompile = false;
+        //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
+        switch (continueCompileFrom) {
+        case ACL_TYPE_ISA: {
+            // Compare options loaded from binary with current ones, recompile if differ;
+            // If compile options are absent in binary, do not compare and recompile
+            if (compileOptions_.empty())
+                break;
+
+            std::string sBinOptions = compileOptions_ + linkOptions_;
+
+            compileOptions_ = sCurCompileOptions;
+            linkOptions_ = sCurLinkOptions;
+
+            amd::option::Options curOptions, binOptions;
+            if (!amd::option::parseAllOptions(sBinOptions, binOptions)) {
+                buildLog_ += binOptions.optionsLog();
+                LogError("Parsing compile options from binary failed.");
+                return ACL_TYPE_DEFAULT;
+            }
+            if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+                buildLog_ += curOptions.optionsLog();
+                LogError("Parsing compile options failed.");
+                return ACL_TYPE_DEFAULT;
+            }
+            if (!curOptions.equals(binOptions)) {
+                recompile = true;
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        if (recompile) {
+            while (!completeStages.empty()) {
+                continueCompileFrom = completeStages.back();
+                if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+                    continueCompileFrom == ACL_TYPE_DEFAULT) {
+                    break;
+                }
+                completeStages.pop_back();
+            }
+        }
+    }
+    return continueCompileFrom;
+}
+
+bool
+LightningProgram::createBinary(amd::option::Options *options)
+{
+    if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
+        LogError("Failed to create ELF binary image!");
+        return false;
+    }
+    return true;
+}
+
+bool
+LightningProgram::linkImpl(
+    const std::vector<Program *> &inputPrograms,
+    amd::option::Options *options,
+    bool createLibrary)
+{
+    using namespace amd::opencl_driver;
+    std::auto_ptr<Compiler> C(newCompilerInstance());
+
+    std::vector<Data*> inputs;
+    for (auto program : (const std::vector<LightningProgram*>&)inputPrograms) {
+        if (program->llvmBinary_.empty()) {
+            if (program->clBinary() == NULL) {
+                buildLog_ += "Internal error: Input program not compiled!\n";
+                return false;
+            }
+
+            // We are using CL binary directly.
+            // Setup elfIn() and try to load llvmIR from binary
+            // This elfIn() will be released at the end of build by finiBuild().
+            if (!program->clBinary()->setElfIn(ELFCLASS64)) {
+                buildLog_ += "Internal error: Setting input OCL binary failed!\n";
+                return false;
+            }
+            if (!program->clBinary()->loadLlvmBinary(program->llvmBinary_,
+                program->elfSectionType_)) {
+                buildLog_ += "Internal error: Failed loading compiled binary!\n";
+                return false;
+            }
+        }
+
+        if (program->elfSectionType_ != amd::OclElf::LLVMIR) {
+            buildLog_ += "Error: Input binary format is not supported\n.";
+            return false;
+        }
+
+        Data* input = C->NewBufferReference(DT_LLVM_BC,
+            (const char*) program->llvmBinary_.data(),
+            program->llvmBinary_.size());
+
+        if (!input) {
+            buildLog_ += "Internal error: Failed to open the compiled programs.\n";
+            return false;
+        }
+
+        // release elfIn() for the program
+        program->clBinary()->resetElfIn();
+
+        inputs.push_back(input);
+    }
+
+    // open the linked output
+    amd::opencl_driver::Buffer* output = C->NewBuffer(DT_LLVM_BC);
+
+    if (!output) {
+        buildLog_ += "Error: Failed to open the linked program.\n";
+        return false;
+    }
+
+    std::vector<std::string> linkOptions;
+    bool ret = C->LinkLLVMBitcode(inputs, output, linkOptions);
+    buildLog_ += C->Output();
+    if (!ret) {
+        buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+        return false;
+    }
+
+    llvmBinary_.assign(output->Buf().data(), output->Size());
+    elfSectionType_ = amd::OclElf::LLVMIR;
+
+
+    if (clBinary()->saveLLVMIR()) {
+        clBinary()->elfOut()->addSection(
+            amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(), false);
+        // store the original link options
+        clBinary()->storeLinkOptions(linkOptions_);
+        // store the original compile options
+        clBinary()->storeCompileOptions(compileOptions_);
+    }
+
+    // skip the rest if we are building an opencl library
+    if (createLibrary) {
+        setType(TYPE_LIBRARY);
+        if (!createBinary(options)) {
+            buildLog_ += "Internal error: creating OpenCL binary failed\n";
+            return false;
+       }
+        return true;
+    }
+
+    return linkImpl(options);
+}
+
 bool
 LightningProgram::linkImpl(amd::option::Options *options)
 {
