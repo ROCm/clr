@@ -345,6 +345,7 @@ LightningProgram::compileImpl(
                    "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl "
                    << driverOptions << " -include opencl-c.h "
                 << "\n*/\n\n" << sourceCode;
+            f.close();
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the OpenCL source failed.\n";
@@ -394,9 +395,11 @@ LightningProgram::compileImpl(
     elfSectionType_ = amd::OclElf::LLVMIR;
 
     if (options->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
-        std::ofstream f(options->getDumpFileName("_original.bc").c_str(), std::ios::trunc);
+        std::ofstream f(options->getDumpFileName("_original.bc").c_str(),
+            std::ios::binary | std::ios::trunc);
         if(f.is_open()) {
             f.write(llvmBinary_.data(), llvmBinary_.size());
+            f.close();
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the compiled IR failed.\n";
