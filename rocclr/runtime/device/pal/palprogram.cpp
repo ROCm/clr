@@ -1196,9 +1196,11 @@ LightningProgram::linkImpl(amd::option::Options *options)
     }
 
     if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
-        std::ofstream f(options->getDumpFileName("_linked.bc").c_str(), std::ios::trunc);
+        std::ofstream f(options->getDumpFileName("_linked.bc").c_str(),
+            std::ios::binary | std::ios::trunc);
         if(f.is_open()) {
             f.write(linked_bc->Buf().data(), linked_bc->Size());
+            f.close();
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the linked IR failed.\n";
@@ -1239,9 +1241,11 @@ LightningProgram::linkImpl(amd::option::Options *options)
     }
 
     if (options->isDumpFlagSet(amd::option::DUMP_O)) {
-        std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::trunc);
+        std::ofstream f(options->getDumpFileName(".so").c_str(),
+            std::ios::binary | std::ios::trunc);
         if(f.is_open()) {
             f.write(out_exec->Buf().data(), out_exec->Size());
+            f.close();
         } else {
             buildLog_ +=
                 "Warning: opening the file to dump the code object failed.\n";
