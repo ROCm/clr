@@ -120,8 +120,9 @@ Segment::freeze(bool destroySysmem)
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
     bool result = true;
     if (cpuAccess_ != nullptr) {
+        assert(gpuAccess_->size() == cpuAccess_->size() && "Backing store size mismatch!");
         result = cpuAccess_->partialMemCopyTo(gpu,
-            0, 0, gpuAccess_->vmSize(), *gpuAccess_, false, true);
+            0, 0, gpuAccess_->size(), *gpuAccess_, false, true);
         gpu.releaseMemObjects();
         gpu.waitAllEngines();
     }
