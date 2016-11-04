@@ -1804,15 +1804,21 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
         // Serialize the scratch buffer allocation code
         amd::ScopedLock lk(*scratchAlloc_);
         uint    sb = vgpu->hwRing();
-
+        static const uint WaveSizeLimit = ((1 << 21) - 256);
+        const uint threadSizeLimit = WaveSizeLimit /
+            properties().gfxipProperties.shaderCore.wavefrontSize;
+        if (regNum > threadSizeLimit) {
+            LogError("Requested private memory is bigger than HW supports!");
+            regNum = threadSizeLimit;
+        }
         // Check if the current buffer isn't big enough
         if (regNum > scratch_[sb]->regNum_) {
             // Stall all command queues, since runtime will reallocate memory
             ScopedLockVgpus lock(*this);
 
             scratch_[sb]->regNum_ = regNum;
-            size_t size = 0;
-            uint offset = 0;
+            uint64_t size = 0;
+            uint64_t offset = 0;
 
             // Destroy all views
             for (uint s = 0; s < scratch_.size(); ++s) {
@@ -1823,8 +1829,11 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
                     uint32_t numTotalCUs = info().maxComputeUnits_;
                     uint32_t numMaxWaves =
                         properties().gfxipProperties.shaderCore.maxScratchWavesPerCu * numTotalCUs;
-                    scratchBuf->size_ = properties().gfxipProperties.shaderCore.wavefrontSize *
+                    scratchBuf->size_ = static_cast<uint64_t>(properties().
+                        gfxipProperties.shaderCore.wavefrontSize) *
                         scratchBuf->regNum_ * numMaxWaves * sizeof(uint32_t);
+                    scratchBuf->size_ = std::min(scratchBuf->size_, info().maxMemAllocSize_);
+                    scratchBuf->size_ = std::min(scratchBuf->size_, uint64_t(3 * Gi));
                     scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 0xFFFF);
                     scratchBuf->offset_ = offset;
                     size += scratchBuf->size_;
@@ -1835,7 +1844,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
             delete globalScratchBuf_;
 
             // Allocate new buffer.
-            globalScratchBuf_ = new pal::Memory(*this, size);
+            globalScratchBuf_ = new pal::Memory(*this, static_cast<size_t>(size));
             if ((globalScratchBuf_ == nullptr) ||
                 !globalScratchBuf_->create(Resource::Scratch)) {
                 LogError("Couldn't allocate scratch memory");
