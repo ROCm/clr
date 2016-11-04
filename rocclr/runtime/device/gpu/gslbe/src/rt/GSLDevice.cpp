@@ -1263,7 +1263,7 @@ CALGSLDevice::GetCopyType(
     return type;
 }
 
-uint32
+uint64
 CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
 {
     gslProgramTargetEnum target = GSL_COMPUTE_PROGRAM;
@@ -1290,13 +1290,11 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
     //   be 64K alignment)
     if (scratchBufferSizes[target] > 0)
     {
-        scratchBufferSizes[target] = (scratchBufferSizes[target] >> 2) & 0xFFFF0000;
+        scratchBufferSizes[target] = (scratchBufferSizes[target] >> 2);
 
         if (scratchBufferSizes[target] == 0) {  // assign minimum scratch buffer size of 64K
             scratchBufferSizes[target] = 0x10000;
         }
-
-        assert(scratchBufferSizes[target] <= 0xFFFFFFFF);     // scratch buffer size < 4GB
     }
 
     return scratchBufferSizes[target];

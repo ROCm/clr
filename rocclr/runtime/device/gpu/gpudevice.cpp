@@ -2072,6 +2072,13 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
         // Serialize the scratch buffer allocation code
         amd::ScopedLock lk(*scratchAlloc_);
         uint    sb = vgpu->hwRing();
+        
+        static const uint WaveSizeLimit = ((1 << 21) - 256);
+        const uint threadSizeLimit = WaveSizeLimit / getAttribs().wavefrontSize;
+        if (regNum > threadSizeLimit) {
+            LogError("Requested private memory is bigger than HW supports!");
+            regNum = threadSizeLimit;
+        }
 
         // Check if the current buffer isn't big enough
         if (regNum > scratch_[sb]->regNum_) {
@@ -2079,8 +2086,8 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
             ScopedLockVgpus lock(*this);
 
             scratch_[sb]->regNum_ = regNum;
-            size_t size = 0;
-            uint offset = 0;
+            uint64_t size = 0;
+            uint64_t offset = 0;
 
             // Destroy all views
             for (uint s = 0; s < scratch_.size(); ++s) {
@@ -2089,6 +2096,9 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
                     scratchBuf->destroyMemory();
                     // Calculate the size of the scratch buffer for a queue
                     scratchBuf->size_ = calcScratchBufferSize(scratchBuf->regNum_);
+                    scratchBuf->size_ = std::min(scratchBuf->size_, info().maxMemAllocSize_);
+                    scratchBuf->size_ = std::min(scratchBuf->size_, uint64_t(3 * Gi));
+                    scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 0xFFFF);
                     scratchBuf->offset_ = offset;
                     size += scratchBuf->size_;
                     offset += scratchBuf->size_;
@@ -2098,7 +2108,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
             delete globalScratchBuf_;
 
             // Allocate new buffer.
-            globalScratchBuf_ = new gpu::Memory(*this, size);
+            globalScratchBuf_ = new gpu::Memory(*this, static_cast<size_t>(size));
             if ((globalScratchBuf_ == NULL) ||
                 !globalScratchBuf_->create(Resource::Scratch)) {
                 LogError("Couldn't allocate scratch memory");

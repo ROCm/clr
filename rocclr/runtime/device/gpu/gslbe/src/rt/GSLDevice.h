@@ -107,7 +107,7 @@ public:
     CopyType         GetCopyType(gslMemObject srcMem, gslMemObject destMem, size_t* srcOffset,
                                      size_t* destOffset, bool allowDMA, uint32 flags, size_t size, bool enableCopyRect) const;
 
-    uint32          calcScratchBufferSize(uint32 regNum) const;
+    uint64           calcScratchBufferSize(uint32 regNum) const;
 
     amd::Monitor& gslDeviceOps() const { return *gslDeviceOps_; }
 
