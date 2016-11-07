@@ -928,7 +928,7 @@ Device::createVirtualDevice(
 {
     bool    profiling = false;
     bool    interopQueue = false;
-    uint    rtCUs  = 0;
+    uint    rtCUs  = amd::CommandQueue::RealTimeDisabled;
     uint    deviceQueueSize = 0;
 
     if (queue != nullptr) {

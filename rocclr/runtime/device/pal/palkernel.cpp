@@ -141,8 +141,10 @@ GetHSAILAddrQual(const aclArgData* argInfo)
 {
     if (argInfo->type == ARG_TYPE_POINTER) {
         switch (argInfo->arg.pointer.memory) {
+            case PTR_MT_UAV_CONSTANT:
             case PTR_MT_CONSTANT_EMU:
             case PTR_MT_CONSTANT:
+                return HSAIL_ADDRESS_CONSTANT;
             case PTR_MT_UAV:
             case PTR_MT_GLOBAL:
                 return HSAIL_ADDRESS_GLOBAL;
