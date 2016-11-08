@@ -410,7 +410,7 @@ Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo)
         break;
     default:
         createInfo->heaps[0] = Pal::GpuHeapLocal;
-        break;    
+        break;
     }
 }
 
@@ -512,9 +512,11 @@ Resource::create(MemoryType memType, CreateParams* params)
             mipLevel = oglRes->mipLevel_;
 
             if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_,
-                    glType_, &openInfo.hExternalResource, &glInteropMbRes_, &offset_)) {
+                    glType_, &openInfo.hExternalResource, &glInteropMbRes_, &offset_,
+                    openInfo.doppDesktopInfo)) {
                 return false;
             }
+            desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
         }
         else {
             D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
@@ -849,7 +851,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             imgCreateInfo.fragments = 1;
             Pal::ImageTiling    tiling =  Pal::ImageTiling::Optimal;
 
-            if (((memoryType() == Persistent) && 
+            if (((memoryType() == Persistent) &&
                  dev().settings().linearPersistentImage_) ||
                 (memoryType() == ImageBuffer)) {
                 tiling    = Pal::ImageTiling::Linear;
@@ -1275,7 +1277,7 @@ Resource::partialMemCopyTo(
         if (((copyRegion.gpuMemoryRowPitch % 4) != 0) ||
             // another DRM restriciton... SI has 4 pixels
             (copyRegion.gpuMemoryOffset % 4 != 0) ||
-            (dev().settings().sdamPageFaultWar_ && 
+            (dev().settings().sdamPageFaultWar_ &&
              (copyRegion.imageOffset.x % dstResource.elementSize() != 0))) {
             result = false;
         }

@@ -156,7 +156,7 @@ VirtualGPU::Queue::~Queue()
 
 void
 VirtualGPU::Queue::addCmdMemRef(Pal::IGpuMemory* iMem)
-{            
+{
     auto it = memReferences_.find(iMem);
     if (it != memReferences_.end()) {
         it->second = (it->second & FirstMemoryReference) | cmdBufIdSlot_;
@@ -172,6 +172,37 @@ VirtualGPU::Queue::removeCmdMemRef(Pal::IGpuMemory* iMem)
     if (0 != memReferences_.erase(iMem)) {
         iDev_->RemoveGpuMemoryReferences(1, &iMem, iQueue_);
     }
+}
+
+void
+VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, bool pfpaDoppCmd)
+{
+    for (int i = 0; i < palDoppRefs_.size(); i++) {
+        if (palDoppRefs_[i].pGpuMemory == iMem) {
+            // If both LAST_DOPP_SUBMISSION and PFPA_DOPP_SUBMISSION VCOPs are requested,
+            // the LAST_DOPP_SUBMISSION is send as requsted by KMD
+            //
+            if (palDoppRefs_[i].flags.lastPfpaCmd == 1) {
+                return;             // no need to override the last submission command
+            }
+
+            if (lastDoppCmd) {
+                palDoppRefs_[i].flags.lastPfpaCmd = 1;
+                palDoppRefs_[i].flags.pfpa = 0;
+            }
+            else if (pfpaDoppCmd) {
+                palDoppRefs_[i].flags.pfpa = 1;
+            }
+            return;
+        }
+    }
+
+    //  this is the first reference of the DOPP desktop texture, add it in the vector
+    Pal::DoppRef doppRef = {};
+    doppRef.flags.pfpa = pfpaDoppCmd ? 1 : 0;
+    doppRef.flags.lastPfpaCmd = lastDoppCmd ? 1 : 0;
+    doppRef.pGpuMemory = iMem;
+    palDoppRefs_.push_back(doppRef);
 }
 
 uint
@@ -196,6 +227,7 @@ VirtualGPU::Queue::flush()
         LogError("PAL failed to finalize a command buffer!");
         return false;
     }
+
     // Add memory references
     for (auto it = memReferences_.begin(); it != memReferences_.end(); ++it) {
         if (it->second & FirstMemoryReference) {
@@ -218,6 +250,8 @@ VirtualGPU::Queue::flush()
     submitInfo.cmdBufferCount = 1;
     submitInfo.ppCmdBuffers = &iCmdBuffs_[cmdBufIdSlot_];
     submitInfo.pFence = iCmdFences_[cmdBufIdSlot_];
+    submitInfo.doppRefCount = palDoppRefs_.size();
+    submitInfo.pDoppRefs = palDoppRefs_.data();
 
     // Submit command buffer to OS
     if (Pal::Result::Success != iQueue_->Submit(submitInfo)) {
@@ -247,7 +281,7 @@ VirtualGPU::Queue::flush()
     // Make sure the slot isn't busy
     waifForFence(cmdBufIdSlot_);
 
-    // Progress retired TS 
+    // Progress retired TS
     if ((cmdBufIdCurrent_ > MaxCmdBuffers) &&
         (cmbBufIdRetired_ < (cmdBufIdCurrent_ - MaxCmdBuffers))) {
         cmbBufIdRetired_ = cmdBufIdCurrent_ - MaxCmdBuffers;
@@ -271,6 +305,9 @@ VirtualGPU::Queue::flush()
         LogError("PAL failed CB building initialization!");
         return false;
     }
+
+    // Clear dopp references
+    palDoppRefs_.resize(0);
 
     palMems_.resize(0);
     // Remove old memory references
@@ -299,7 +336,7 @@ VirtualGPU::Queue::waitForEvent(uint id)
 
     uint    slotId = id % MaxCmdBuffers;
     bool    result = waifForFence(slotId);
-    cmbBufIdRetired_ = id; 
+    cmbBufIdRetired_ = id;
     return result;
 }
 
@@ -318,7 +355,7 @@ VirtualGPU::Queue::isDone(uint id)
     if (Pal::Result::Success != iCmdFences_[id % MaxCmdBuffers]->GetStatus()) {
         return false;
     }
-    cmbBufIdRetired_ = id; 
+    cmbBufIdRetired_ = id;
     return true;
 }
 
@@ -384,7 +421,7 @@ VirtualGPU::MemoryDependency::validate(
     if (flushL1Cache) {
         // Flush cache
         gpu.flushCUCaches();
-    
+
         // Clear memory dependency state
         const static bool All = true;
         clear(!All);
@@ -2019,6 +2056,11 @@ VirtualGPU::submitKernelInternal(
         // Add GSL handle to the memory list for VidMM
         for (uint i = 0; i < dispMemList.size(); ++i) {
             addVmMemory(dispMemList[i]);
+            if (dispMemList[i]->desc().isDoppTexture_) {
+                addDoppRef(dispMemList[i],
+                           kernel.parameters().getExecNewVcop(),
+                           kernel.parameters().getExecPfpaVcop());
+            }
         }
 
         // HW Debug for the kernel?
@@ -2312,9 +2354,9 @@ VirtualGPU::getGpuEvent(Pal::IGpuMemory* iMem)
     return &gpuEvents_[iMem];
 }
 
-void 
+void
 VirtualGPU::assignGpuEvent(Pal::IGpuMemory* iMem, GpuEvent gpuEvent)
-{ 
+{
     auto it = gpuEvents_.find(iMem);
 
     if (it != gpuEvents_.end()) {
@@ -3086,6 +3128,13 @@ bool
 VirtualGPU::addVmMemory(const Memory* memory)
 {
     queues_[MainEngine]->addCmdMemRef(memory->iMem());
+    return true;
+}
+
+bool
+VirtualGPU::addDoppRef(const Memory* memory, bool lastDoppCmd, bool pfpaDoppCmd)
+{
+    queues_[MainEngine]->addCmdDoppRef(memory->iMem(), lastDoppCmd, pfpaDoppCmd);
     return true;
 }
 
