@@ -185,7 +185,11 @@ Device::resGLAssociate(
     uint    type,
     void**  handle,
     void**  mbResHandle,
-    size_t* offset) const
+    size_t* offset
+#ifdef ATI_OS_WIN
+    , Pal::DoppDesktopInfo& doppDesktopInfo
+#endif
+    ) const
 {
     amd::ScopedLock lk(lockPAL());
 
@@ -218,6 +222,16 @@ Device::resGLAssociate(
     *handle = reinterpret_cast<void*>(hData.handle);
     *mbResHandle = reinterpret_cast<void*>(hData.mbResHandle);
     *offset = static_cast<size_t>(hData.offset);
+#ifdef ATI_OS_WIN
+    if (hData.isDoppDesktopTexture) {
+        doppDesktopInfo.gpuVirtAddr = hData.cardAddr;
+        doppDesktopInfo.vidPnSourceId = hData.vidpnSourceId;
+    }
+    else {
+        doppDesktopInfo.gpuVirtAddr = 0;
+        doppDesktopInfo.vidPnSourceId = 0;
+    }
+#endif
 
     return status;
 }

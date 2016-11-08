@@ -169,7 +169,7 @@ public:
         size_t      height_;        //!< Resource height
         size_t      depth_;         //!< Resource depth
         uint        baseLevel_;     //!< The base level for the view
-        uint        mipLevels_;     //!< Number of mip levels 
+        uint        mipLevels_;     //!< Number of mip levels
         uint        flags_;         //!< Resource flags, used in creation
         size_t      pitch_;         //!< Resource pitch, valid if locked
         size_t      slice_;         //!< Resource slice, valid if locked
@@ -185,6 +185,7 @@ public:
                 uint    SVMRes_         : 1;    //!< SVM flag to the cal resource
                 uint    scratch_        : 1;    //!< Scratch buffer
                 uint    isAllocExecute_ : 1;    //!< SVM resource allocation attribute for shader\cmdbuf
+                uint    isDoppTexture_  : 1;    //!< PAL resource is for a DOPP desktop texture
             };
             uint    state_;
         };

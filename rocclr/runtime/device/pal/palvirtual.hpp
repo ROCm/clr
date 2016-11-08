@@ -76,6 +76,8 @@ public:
         void addCmdMemRef(Pal::IGpuMemory* iMem);
         void removeCmdMemRef(Pal::IGpuMemory* iMem);
 
+        void addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, bool pfpaDoppCmd);
+
         void addMemRef(Pal::IGpuMemory* iMem) const
         {
             Pal::GpuMemoryRef memRef = {};
@@ -141,6 +143,7 @@ public:
         Util::VirtualLinearAllocator  vlAlloc_;
         std::vector<Pal::GpuMemoryRef>  palMemRefs_;
         std::vector<Pal::IGpuMemory*>   palMems_;
+        std::vector<Pal::DoppRef>       palDoppRefs_;
     };
 
     struct CommandBatch : public amd::HeapObject
@@ -377,6 +380,13 @@ public:
     //! Adds a memory handle into the GSL memory array for Virtual Heap
     bool addVmMemory(
         const Memory*   memory  //!< GPU memory object
+        );
+
+    //! Adds a dopp desktop texture reference
+    bool addDoppRef(
+        const Memory*   memory,         //!< GPU memory object
+        bool            lastDoopCmd,    //!< is the last submission for the pre-present primary
+        bool            pfpaDoppCmd     //!< is a submission for the pre-present primary
         );
 
     //! Adds a stage write buffer into a list

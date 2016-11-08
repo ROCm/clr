@@ -492,8 +492,11 @@ public:
     //! Interop for GL device
     bool initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceContext) const;
     bool glCanInterop(void* GLplatformContext, void* GLdeviceContext) const;
-    bool resGLAssociate(void* GLContext, uint name, uint type,
-        void** handle, void** mbResHandle, size_t* offset) const;
+    bool resGLAssociate(void* GLContext, uint name, uint type, void** handle, void** mbResHandle, size_t* offset
+#ifdef ATI_OS_WIN
+                        , Pal::DoppDesktopInfo& doppDesktopInfo
+#endif
+                       ) const;
     bool resGLAcquire(void* GLplatformContext, void* mbResHandle, uint type) const;
     bool resGLRelease(void* GLplatformContext, void* mbResHandle, uint type) const;
     bool resGLFree(void* GLplatformContext, void* mbResHandle, uint type) const;
