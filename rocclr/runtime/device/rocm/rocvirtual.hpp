@@ -247,7 +247,6 @@ private:
     uint  kernarg_pool_cur_offset_;
 
     std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
-    Device&        gpuDevice_;   //!< Roc device obj
     const uint     index_; //!< Virtual gpu unique index
     friend class Timestamp;
 };
