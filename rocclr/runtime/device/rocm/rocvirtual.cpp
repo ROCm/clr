@@ -451,7 +451,6 @@ VirtualGPU::VirtualGPU(Device &device)
     : device::VirtualDevice(device)
     , roc_device_(device)
     , index_(device.numOfVgpus_++) // Virtual gpu unique index incrementing
-    , gpuDevice_(device)
 {
     gpu_device_ = device.getBackendDevice();
     // Initialize the last signal and dispatch flags
@@ -479,7 +478,7 @@ VirtualGPU::~VirtualGPU()
     }
 
     tools_lib_ = NULL;
-    --gpuDevice_.numOfVgpus_; // Virtual gpu unique index decrementing
+    --roc_device_.numOfVgpus_; // Virtual gpu unique index decrementing
 }
 
 bool
