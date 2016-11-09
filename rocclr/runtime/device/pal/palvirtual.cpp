@@ -468,7 +468,7 @@ VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev)
     aluCnt_ = dev.info().simdPerCU_ * dev.info().simdWidth_ * dev.info().maxComputeUnits_;
     maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
         // find time in us
-        100 * dev.settings().maxWorkloadTime_ *
+        dev.settings().maxWorkloadTime_ *
         aluCnt_;
     resetCbWorkload(dev);
 }
@@ -479,7 +479,7 @@ VirtualGPU::DmaFlushMgmt::resetCbWorkload(const Device& dev)
     cbWorkload_ = 0;
     maxCbWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
         // find time in us
-        100 * dev.settings().minWorkloadTime_ * aluCnt_;
+        dev.settings().minWorkloadTime_ * aluCnt_;
 }
 
 void
@@ -1995,6 +1995,12 @@ VirtualGPU::submitKernelInternal(
         dbgManager->allocParamMemList(numParams);
     }
 
+    bool needFlush = false;
+    dmaFlushMgmt_.findSplitSize(dev(), sizes.global().product(), hsaKernel.aqlCodeSize());
+    if (dmaFlushMgmt().dispatchSplitSize() != 0) {
+        needFlush = true;
+    }
+
     size_t newOffset[3] = {0, 0, 0};
     size_t newGlobalSize[3] = {0, 0, 0};
 
@@ -2296,7 +2302,7 @@ VirtualGPU::submitKernelInternal(
         }
 
         // Update the global GPU event
-        setGpuEvent(gpuEvent);
+        setGpuEvent(gpuEvent, needFlush);
 
         if (!printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
             LogError("Couldn't read printf data from the buffer!\n");
