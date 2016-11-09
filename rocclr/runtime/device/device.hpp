@@ -594,6 +594,8 @@ public:
         uint    value_;
     };
 
+    uint commandQueues_; //!< Field value for maximum number
+                         //!< concurrent Virtual GPUs for each backend
     //! Default constructor
     Settings();
 

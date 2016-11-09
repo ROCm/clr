@@ -52,6 +52,8 @@ Settings::Settings()
     partialDispatch = getenv("OPENCL_DISABLE_PARTIAL_DISPATCH");
     enablePartialDispatch_ = (partialDispatch) ? false : true;
     partialDispatch_ = (partialDispatch) ? false : true;
+    commandQueues_ = 100 //!< Field value set to maximum number
+	                 //!< concurrent Virtual GPUs for ROCm backend
 }
 
 bool
@@ -97,6 +99,11 @@ Settings::create(bool doublePrecision)
 void
 Settings::override()
 {
+    if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
+        commandQueues_ = GPU_MAX_COMMAND_QUEUES;
+    }
+}
+
 }
 
 } // namespace roc

@@ -628,6 +628,8 @@ Settings::Settings()
     waitCommand_         = AMD_OCL_WAIT_COMMAND;
     supportDepthsRGB_    = false;
     enableHwDebug_       = false;
+    commandQueues_        = 200;  //!< Field value set to maximum number
+                                  //!< concurrent Virtual GPUs for default
 }
 
 bool

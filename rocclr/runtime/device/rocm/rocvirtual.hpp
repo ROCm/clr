@@ -193,7 +193,10 @@ public:
     bool processMemObjects(
         const amd::Kernel&  kernel, //!< AMD kernel object for execution
         const_address       params  //!< Pointer to the param's store
-        );
+	);
+    //Retun the virtual gpu unique index
+    uint index() const { return index_;  }
+
 
 // } roc OpenCL integration
 private:
@@ -244,7 +247,8 @@ private:
     uint  kernarg_pool_cur_offset_;
 
     std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
-
+    Device&        gpuDevice_;   //!< Roc device obj
+    const uint     index_; //!< Virtual gpu unique index
     friend class Timestamp;
 };
 }
