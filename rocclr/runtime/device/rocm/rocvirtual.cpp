@@ -450,7 +450,7 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 VirtualGPU::VirtualGPU(Device &device)
     : device::VirtualDevice(device)
     , roc_device_(device)
-    , index_(device_.numOfVgpus_++) // Virtual gpu unique index incrementing
+    , index_(device.numOfVgpus_++) // Virtual gpu unique index incrementing
     , gpuDevice_(device)
 {
     gpu_device_ = device.getBackendDevice();

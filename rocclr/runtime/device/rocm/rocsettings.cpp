@@ -52,7 +52,7 @@ Settings::Settings()
     partialDispatch = getenv("OPENCL_DISABLE_PARTIAL_DISPATCH");
     enablePartialDispatch_ = (partialDispatch) ? false : true;
     partialDispatch_ = (partialDispatch) ? false : true;
-    commandQueues_ = 100 //!< Field value set to maximum number
+    commandQueues_ = 100; //!< Field value set to maximum number
 	                 //!< concurrent Virtual GPUs for ROCm backend
 }
 
