@@ -186,6 +186,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , alloc_granularity_(0)
     , context_(nullptr)
     , xferQueue_(nullptr)
+    , numOfVgpus_(0)
 {
     group_segment_.handle = 0;
     system_segment_.handle = 0;

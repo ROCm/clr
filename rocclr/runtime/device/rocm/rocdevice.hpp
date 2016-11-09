@@ -221,6 +221,8 @@ public:
 
     static bool loadHsaModules();
 
+    amd::Atomic<uint>   numOfVgpus_; //!< Virtual gpu unique index
+
     bool create();
 
     //! Construct a new physical HSA device

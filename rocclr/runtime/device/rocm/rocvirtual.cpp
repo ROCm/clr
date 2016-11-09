@@ -450,6 +450,8 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 VirtualGPU::VirtualGPU(Device &device)
     : device::VirtualDevice(device)
     , roc_device_(device)
+    , index_(device_.numOfVgpus_++) // Virtual gpu unique index incrementing
+    , gpuDevice_(device)
 {
     gpu_device_ = device.getBackendDevice();
     // Initialize the last signal and dispatch flags
@@ -477,6 +479,7 @@ VirtualGPU::~VirtualGPU()
     }
 
     tools_lib_ = NULL;
+    --gpuDevice_.numOfVgpus_; // Virtual gpu unique index decrementing
 }
 
 bool
@@ -492,6 +495,11 @@ VirtualGPU::create(bool profilingEna)
         const char *tools_lib_name = "libhsa-runtime-tools" LP64_SWITCH("", "64") ".so.1";
 #endif
         tools_lib_ = amd::Os::loadLibrary(tools_lib_name);
+    }
+
+    // Checking Virtual gpu unique index for ROCm backend
+    if (index() > device().settings().commandQueues_) {
+        return false;
     }
 
     uint32_t queue_max_packets = 0;
