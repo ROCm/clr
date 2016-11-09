@@ -104,8 +104,6 @@ Settings::override()
     }
 }
 
-}
-
 } // namespace roc
 
 #endif // WITHOUT_GPU_BACKEND
