@@ -9,6 +9,11 @@
 
 #include <algorithm>
 
+#if defined(_WIN32)
+#include "Windows.h"
+#include "VersionHelpers.h"
+#endif
+
 namespace pal {
 
 /*! \brief information for adjusting maximum workload time
@@ -20,6 +25,9 @@ struct ModifyMaxWorkload
 {
     uint32_t time;          //!< max work load time (10x ms)
     uint32_t minorVersion;  //!< OS minor version
+#if defined(_WIN32)
+    BYTE comparisonOps; //!< Comparison option
+#endif
 };
 
 
@@ -104,7 +112,7 @@ Settings::Settings()
     numComputeRings_ = 0;
 
     minWorkloadTime_ = 1;       // 0.1 ms
-    maxWorkloadTime_ = 5000;    // 500 ms
+    maxWorkloadTime_ = 500000;  // 500 ms
 
     // Controls tiled images in persistent
     //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
@@ -171,6 +179,13 @@ Settings::create(
         if (!aiPlus_) {
             // APU systems for VI
             apuSystem_  = true;
+            // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
+            minWorkloadTime_ = 1000;
+            modifyMaxWorkload.time = 1000;         // Decided by experiment
+            modifyMaxWorkload.minorVersion = 1; // Win 7
+#if defined(_WIN32)
+            modifyMaxWorkload.comparisonOps = VER_EQUAL; // Limit to Win 7 only
+#endif
         }
     case Pal::AsicRevision::Iceland:
     case Pal::AsicRevision::Tonga:
@@ -192,8 +207,11 @@ Settings::create(
             // APU systems for CI
             apuSystem_  = true;
             // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
-            modifyMaxWorkload.time = 2500;      // 250ms
+            modifyMaxWorkload.time = 250000;      // 250ms
             modifyMaxWorkload.minorVersion = 1; // Win 7
+#if defined(_WIN32)
+            modifyMaxWorkload.comparisonOps = VER_EQUAL; // limit to Win 7
+#endif
         }
         // Fall through ...
     case Pal::AsicRevision::Bonaire:
@@ -257,6 +275,22 @@ Settings::create(
         assert(0 && "Unknown ASIC type!");
         return false;
     }
+
+#if defined(_WIN32)
+    if (modifyMaxWorkload.time > 0) {
+        OSVERSIONINFOEX versionInfo = { 0 };
+        versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+        versionInfo.dwMajorVersion = 6;
+        versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
+
+        DWORDLONG conditionMask = 0;
+        VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, modifyMaxWorkload.comparisonOps);
+        VER_SET_CONDITION(conditionMask, VER_MINORVERSION, modifyMaxWorkload.comparisonOps);
+        if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
+            maxWorkloadTime_ = modifyMaxWorkload.time;
+        }
+    }
+#endif // defined(_WIN32)
 
     // Enable atomics support
     enableExtension(ClKhrInt64BaseAtomics);
