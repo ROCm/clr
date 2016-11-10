@@ -221,8 +221,6 @@ public:
 
     static bool loadHsaModules();
 
-    amd::Atomic<uint>   numOfVgpus_; //!< Virtual gpu unique index
-
     bool create();
 
     //! Construct a new physical HSA device
@@ -367,6 +365,9 @@ private:
     VirtualGPU *xferQueue_; //!< Transfer queue, created on demand
 
     VirtualGPU* xferQueue() const;
+
+public:
+    amd::Atomic<uint>   numOfVgpus_; //!< Virtual gpu unique index
 };  // class roc::Device
 }  // namespace roc
 
