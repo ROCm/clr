@@ -81,10 +81,12 @@ Settings::create(bool doublePrecision)
     if (doublePrecision_) {
         // Enable KHR double precision extension
         enableExtension(ClKhrFp64);
+#if !defined(WITH_LIGHTNING_COMPILER)
         // Also enable AMD double precision extension?
         enableExtension(ClAmdFp64);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
-    
+
     enableExtension(ClKhrSubGroups);
 
     enableExtension(ClKhrDepthImages);

@@ -302,13 +302,15 @@ Settings::create(
     enableExtension(ClKhrByteAddressableStore);
     enableExtension(ClKhrGlSharing);
     enableExtension(ClKhrGlEvent);
+    enableExtension(ClKhr3DImageWrites);
+    enableExtension(ClKhrImage2dFromBuffer);
     enableExtension(ClAmdMediaOps);
     enableExtension(ClAmdMediaOps2);
+#if !defined(WITH_LIGHTNING_COMPILER)
     enableExtension(ClAmdPopcnt);
-    enableExtension(ClKhr3DImageWrites);
     enableExtension(ClAmdVec3);
     enableExtension(ClAmdPrintf);
-    enableExtension(ClKhrImage2dFromBuffer);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     // Enable some platform extensions
     enableExtension(ClAmdDeviceAttributeQuery);
     enableExtension(ClKhrSpir);
@@ -332,13 +334,15 @@ Settings::create(
         enableExtension(ClKhrFp64);
     }
 
+#if !defined(WITH_LIGHTNING_COMPILER)
     if (doublePrecision) {
         // Enable AMD double precision extension
         doublePrecision_ = true;
         enableExtension(ClAmdFp64);
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
-//! @todo 
+//! @todo
 /*
     if (calAttr.totalSDIHeap > 0) {
         //Enable bus addressable memory extension
