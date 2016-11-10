@@ -1122,7 +1122,7 @@ HSAILKernel::loadArguments(
             cb->uploadDataToHw(arg->size_);
             // Then use a pointer in aqlArgBuffer to CB1
             uint64_t gpuPtr = cb->vmAddress() + cb->wrtOffset();
-            WriteAqlArg(&aqlArgBuf, &gpuPtr, arg->size_, arg->alignment_);
+            WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(void*));
             memList.push_back(cb);
         }
         else if (arg->type_ == HSAIL_ARGTYPE_VALUE) {
