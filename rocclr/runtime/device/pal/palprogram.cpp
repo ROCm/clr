@@ -1562,43 +1562,52 @@ LightningProgram::setKernels(
         buildLog_ += "Error while reading the ELF program binary\n";
         return false;
     }
-    size_t shstrndx;
-    if (elf_getshdrstrndx(e, &shstrndx) != 0) {
+
+    size_t numpHdrs;
+    if (elf_getphdrnum(e, &numpHdrs) != 0) {
         buildLog_ += "Error while reading the ELF program binary\n";
         return false;
     }
 
-    // Iterate over the sections
-    for (Elf_Scn* scn = elf_nextscn(e, 0); scn; scn = elf_nextscn(e, scn)) {
-        GElf_Shdr shdr;
-        if (gelf_getshdr(scn, &shdr) != &shdr) {
+    for (size_t i = 0; i < numpHdrs; ++i) {
+        GElf_Phdr pHdr;
+        if (gelf_getphdr(e, i, &pHdr) != &pHdr) {
             continue;
         }
-        // Skip non-program sections
-        if (shdr.sh_type != SHT_PROGBITS) {
-            continue;
-        }
-        // Accumulate the size of A & !X sections
-        if ((shdr.sh_flags & SHF_ALLOC) && !(shdr.sh_flags & SHF_EXECINSTR)) {
-            progvarsTotalSize += shdr.sh_size;
-        }
-        // Check if this is the metadata section
-        const char* name = elf_strptr(e, shstrndx , shdr.sh_name);
-        if (name && !strcmp(name, ".AMDGPU.runtime_metadata")) {
-            // Assume a single Elf_Data, the parser will fail if it isn't
-            Elf_Data* data = elf_getdata(scn, NULL);
-            if (!data) {
-                buildLog_ += "Error while reading ELF program binary " \
-                    "runtime metadata section\n";
-                return false;
-            }
+        // Look for the runtime metadata note
+        if (pHdr.p_type == PT_NOTE && pHdr.p_align >= sizeof(int)) {
+            // Iterate over the notes in this segment
+            address ptr = (address) binary + pHdr.p_offset;
+            address segmentEnd = ptr + pHdr.p_filesz;
 
-            metadata_ = new amd::hsa::code::Program::Metadata();
-            if (!metadata_ || !metadata_->ReadFrom(data->d_buf, data->d_size)) {
-                buildLog_ += "Error while parsing ELF program binary " \
-                    "runtime metadata section\n";
-                return false;
+            while (ptr < segmentEnd) {
+                Elf_Note* note = (Elf_Note*) ptr;
+                address name = (address) &note[1];
+                address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
+
+                if (note->n_type == 7 /*NT_AMDGPU_HSA_RUNTIME_METADATA_1_0*/
+                    && note->n_namesz == sizeof "AMD"
+                    && !memcmp(name, "AMD", note->n_namesz)) {
+                    metadata_ = new amd::hsa::code::Program::Metadata();
+                    if (metadata_ && metadata_->ReadFrom(desc,note->n_descsz)) {
+                        // We've found and loaded the runtime metadata, exit the
+                        // note record loop now.
+                        break;
+                    }
+
+                    buildLog_ += "Error while parsing ELF program binary " \
+                        "runtime metadata section\n";
+                    return false;
+                }
+                ptr += sizeof(*note)
+                    + amd::alignUp(note->n_namesz, sizeof(int))
+                    + amd::alignUp(note->n_descsz, sizeof(int));
             }
+        }
+        // Accumulate the size of R & !X loadable segments
+        else if (pHdr.p_type == PT_LOAD
+                 && (pHdr.p_flags & PF_R) && !(pHdr.p_flags & PF_X)) {
+            progvarsTotalSize += pHdr.p_memsz;
         }
     }
 
