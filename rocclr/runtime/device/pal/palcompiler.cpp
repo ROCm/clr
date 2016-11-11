@@ -121,14 +121,6 @@ HSAILProgram::compileImpl(
         compileOptions_.append(tempFolder);
     }
 
-    //Add only for CL2.0 and above
-    if (options->oVariables->CLStd[2] >= '2') {
-        std::stringstream opts;
-        opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
-            << device().info().maxGlobalVariableSize_;
-        compileOptions_.append(opts.str());
-    }
-
 #if !defined(_LP64) && defined(ATI_OS_LINUX)
     if (options->origOptionStr.find("-cl-std=CL2.0") != std::string::npos && !dev().settings().force32BitOcl20_) {
         errorCode = ACL_UNSUPPORTED;

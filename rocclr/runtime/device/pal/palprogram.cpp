@@ -745,6 +745,23 @@ std::string
 HSAILProgram::hsailOptions(amd::option::Options* options)
 {
     std::string hsailOptions;
+
+    hsailOptions.append(" -D__AMD__=1");
+
+    hsailOptions.append(" -D__").append(device().info().name_).append("__=1");
+    hsailOptions.append(" -D__").append(device().info().name_).append("=1");
+
+    int major, minor;
+    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
+
+    std::stringstream ss;
+    ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+    hsailOptions.append(ss.str());
+
+    if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
+        hsailOptions.append(" -D__IMAGE_SUPPORT__=1");
+    }
+
     // Set options for the standard device specific options
     // All our devices support these options now
     if (dev().settings().reportFMAF_) {
@@ -753,6 +770,18 @@ HSAILProgram::hsailOptions(amd::option::Options* options)
     if (dev().settings().reportFMA_) {
         hsailOptions.append(" -DFP_FAST_FMA=1");
     }
+
+    uint clcStd = (options->oVariables->CLStd[2] - '0') * 100
+        + (options->oVariables->CLStd[4] - '0') * 10;
+
+    if (clcStd >= 200) {
+        std::stringstream opts;
+        //Add only for CL2.0 and later
+        opts << " -D" << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE="
+            << device().info().maxGlobalVariableSize_;
+        hsailOptions.append(opts.str());
+    }
+
 #if !defined(WITH_LIGHTNING_COMPILER)
     if (!dev().settings().singleFpDenorm_) {
         hsailOptions.append(" -cl-denorms-are-zero");
@@ -762,21 +791,36 @@ HSAILProgram::hsailOptions(amd::option::Options* options)
     // Check if the host is 64 bit or 32 bit
     LP64_ONLY(hsailOptions.append(" -m64"));
 
-    // Append each extension supported by the device
-    std::string token;
-    std::istringstream iss("");
-    iss.str(device().info().extensions_);
-    while (getline(iss, token, ' ')) {
-        if (!token.empty()) {
+    // Tokenize the extensions string into a vector of strings
+    std::istringstream istrstr(device().info().extensions_);
+    std::istream_iterator<std::string> sit(istrstr), end;
+    std::vector<std::string> extensions(sit, end);
+
 #if defined(WITH_LIGHTNING_COMPILER)
-            // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-            // remove it from the command line. Should we fix opencl-c.h?
-            if (options->oVariables->CLStd[2] >= '2'
-                && token == "cl_khr_depth_images") continue;
-#endif // defined(WITH_LIGHTHNING_COMPILER)
-            hsailOptions.append(" -D").append(token).append("=1");
-        }
+    // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+    // remove it from the command line. Should we fix opencl-c.h?
+    auto found = std::find(extensions.begin(), extensions.end(),
+        "cl_khr_depth_images");
+    if (found != extensions.end()) {
+        extensions.erase(found);
     }
+
+    if (!extensions.empty()) {
+        std::ostringstream clext;
+
+        clext << " -Xclang -cl-ext=+";
+        std::copy(extensions.begin(), extensions.end() - 1,
+            std::ostream_iterator<std::string>(clext, ",+"));
+        clext << extensions.back();
+
+        hsailOptions.append(clext.str());
+    }
+#else // !defined(WITH_LIGHTNING_COMPILER)
+    for (auto e : extensions) {
+        hsailOptions.append(" -D").append(e).append("=1");
+    }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
     return hsailOptions;
 }
 

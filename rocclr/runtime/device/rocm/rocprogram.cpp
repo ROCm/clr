@@ -1480,22 +1480,36 @@ HSAILProgram::preprocessorOptions(amd::option::Options* options)
         optionsStr.append(opts.str());
     }
 
-    //Now append each extension supported by the device
-    // one by one
-    std::string token;
-    std::istringstream iss("");
-    iss.str(device().info().extensions_);
-    while (getline(iss, token, ' ')) {
-        if (!token.empty()) {
+    // Tokenize the extensions string into a vector of strings
+    std::istringstream istrstr(device().info().extensions_);
+    std::istream_iterator<std::string> sit(istrstr), end;
+    std::vector<std::string> extensions(sit, end);
+
 #if defined(WITH_LIGHTNING_COMPILER)
-            // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-            // remove it from the command line. Should we fix opencl-c.h?
-            if (options->oVariables->CLStd[2] >= '2'
-                && token == "cl_khr_depth_images") continue;
-#endif // defined(WITH_LIGHTHNING_COMPILER)
-            optionsStr.append(" -D").append(token).append("=1");
-        }
+    // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+    // remove it from the command line. Should we fix opencl-c.h?
+    auto found = std::find(extensions.begin(), extensions.end(),
+        "cl_khr_depth_images");
+    if (found != extensions.end()) {
+        extensions.erase(found);
     }
+
+    if (!extensions.empty()) {
+        std::ostringstream clext;
+
+        clext << " -Xclang -cl-ext=+";
+        std::copy(extensions.begin(), extensions.end() - 1,
+            std::ostream_iterator<std::string>(clext, ",+"));
+        clext << extensions.back();
+
+        optionsStr.append(clext.str());
+    }
+#else // !defined(WITH_LIGHTNING_COMPILER)
+    for (auto e : extensions) {
+        optionsStr.append(" -D").append(e).append("=1");
+    }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
     return optionsStr;
 }
 
