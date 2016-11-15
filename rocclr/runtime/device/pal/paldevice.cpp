@@ -731,8 +731,8 @@ Device::create(Pal::IDevice* device)
     palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
     palSettings->longRunningSubmissions = true;
     palSettings->cmdBufBatchedSubmitChainLimit = 0;
-    //palSettings->disableResourceProcessingManager = true;
-    //palSettings->disableScManager = true;
+    palSettings->disableResourceProcessingManager = true;
+    palSettings->disableScManager = true;
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
