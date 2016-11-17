@@ -128,6 +128,7 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "gfx900",       "gfx900",       4, 16, 1, 256, 64 * Ki, 32, 900 },
 /* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",       "stoney",       4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_LEXA */       { ED_ATI_CAL_MACHINE_LEXA_ISA,      "gfx804",       "gfx804",       4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_RAVEN */      { ED_ATI_CAL_MACHINE_RAVEN_ISA,     "gfx901",       "gfx901",       4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
 enum gfx_handle {

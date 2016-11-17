@@ -156,6 +156,9 @@ static const AMDDeviceInfo GfxIpDeviceInfo[] = {
 /* GFX900 */      { "gfx900",     "gfx900",     4, 16, 1, 256, 64 * Ki, 32, 900 },
 };
 
+static const AMDDeviceInfo Gfx901DeviceInfo =
+/* GFX901 */      { "gfx901",     "gfx901",     4, 16, 1, 256, 64 * Ki, 32, 901 };
+
 enum gfx_handle {
     gfx700 = 700,
     gfx701 = 701,

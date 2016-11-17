@@ -700,7 +700,12 @@ Device::create(Pal::IDevice* device)
         hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
     }
     else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
-        hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel_)];
+        if (properties().gpuType == Pal::GpuType::Integrated) {
+            hwInfo_ = &Gfx901DeviceInfo;
+        }
+        else {
+            hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel_)];
+        }
     }
     else {
         return false;

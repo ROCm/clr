@@ -167,6 +167,9 @@ Settings::create(
     ModifyMaxWorkload modifyMaxWorkload = {0};
 
     switch (target) {
+    case CAL_TARGET_RAVEN:
+        // APU systems for AI
+        apuSystem_ = true;
     case CAL_TARGET_GREENLAND:
         //TODO: specific codes for AI
         aiPlus_ = true;

@@ -585,6 +585,11 @@ int getIsaType(const aclTargetInfo *target)
         default: return 900;
         case AI_GREENLAND_P_A0: return 900;
       }
+    case FAMILY_RV:
+      switch (Mapping.chip_enum) {
+        default: return 901;
+        case RAVEN_A0:          return 901;
+      }
     }
 }
 
