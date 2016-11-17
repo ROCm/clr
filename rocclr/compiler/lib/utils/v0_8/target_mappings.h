@@ -206,7 +206,7 @@ static const char* calTargetMapping[] = {
       "Hainan", "Hawaii",
       "Iceland", "Tonga", "Mullins", "Fiji",
       "Carrizo", "Ellesmere", "Baffin",
-      "gfx900", "Stoney", "gfx804",
+      "gfx900", "Stoney", "gfx804", "gfx901",
     };
 
 #include "utils/v0_8/target_mappings_amdil.h"

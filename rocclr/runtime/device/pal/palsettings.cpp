@@ -163,6 +163,11 @@ Settings::create(
     // Update GPU specific settings and info structure if we have any
     ModifyMaxWorkload modifyMaxWorkload = {0};
 
+    // APU systems
+    if (palProp.gpuType == Pal::GpuType::Integrated) {
+        apuSystem_ = true;
+    }
+
     switch (palProp.revision) {
     case Pal::AsicRevision::Unknown:
         switch (palProp.gfxLevel) {
@@ -177,8 +182,6 @@ Settings::create(
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Stoney:
         if (!aiPlus_) {
-            // APU systems for VI
-            apuSystem_  = true;
             // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
             minWorkloadTime_ = 1000;
             modifyMaxWorkload.time = 1000;         // Decided by experiment
@@ -204,8 +207,6 @@ Settings::create(
     case Pal::AsicRevision::Kalindi:
     case Pal::AsicRevision::Spectre:
         if (!viPlus_) {
-            // APU systems for CI
-            apuSystem_  = true;
             // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
             modifyMaxWorkload.time = 250000;      // 250ms
             modifyMaxWorkload.minorVersion = 1; // Win 7
