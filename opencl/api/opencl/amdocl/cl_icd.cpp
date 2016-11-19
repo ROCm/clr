@@ -208,20 +208,127 @@ amd::ICDDispatchedObject::icdVendorDispatch_[] = {{
     clCreateProgramWithILKHR
 }};
 
+#if defined(ATI_OS_WIN)
+#include <Shlwapi.h>
+
+#pragma comment( lib, "shlwapi.lib")
+
+static bool
+ShouldLoadPlatform()
+{
+    // Get the OpenCL ICD registry values
+    HKEY platformsKey = NULL;
+    if (RegOpenKeyExA(
+        HKEY_LOCAL_MACHINE, "SOFTWARE\\Khronos\\OpenCL\\Vendors",
+        0, KEY_READ, &platformsKey)
+        != ERROR_SUCCESS) return true;
+
+    std::vector<std::string> registryValues;
+    DWORD dwIndex = 0;
+    while (true) {
+        char cszLibraryName[1024] = {0};
+        DWORD dwLibraryNameSize = sizeof(cszLibraryName);
+        DWORD dwLibraryNameType = 0;
+        DWORD dwValue = 0;
+        DWORD dwValueSize = sizeof(dwValue);
+
+        if (RegEnumValueA(
+            platformsKey, dwIndex++, cszLibraryName, &dwLibraryNameSize,
+            NULL, &dwLibraryNameType, (LPBYTE) &dwValue, &dwValueSize)
+            !=  ERROR_SUCCESS) break;
+        // Require that the value be a DWORD and equal zero
+        if (dwLibraryNameType != REG_DWORD || dwValue != 0) {
+            continue;
+        }
+        registryValues.push_back(cszLibraryName);
+    }
+    RegCloseKey(platformsKey);
+
+    HMODULE hm = NULL;
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+        | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR) &ShouldLoadPlatform, &hm)) return true;
+
+    char cszDllPath[1024] = {0};
+    if (!GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath)))
+        return true;
+
+    // If we are loaded from the DriverStore, then there should be a registry
+    // value matching our current module absolute path.
+    if (std::find(registryValues.begin(), registryValues.end(), cszDllPath)
+        == registryValues.end()) return true;
+
+    LPSTR cszFileName;
+    char buffer[1024];
+    if (!GetFullPathNameA(cszDllPath, sizeof(buffer), buffer, &cszFileName))
+        return true;
+
+    // We found an absolute path in the registry that matched this DLL, now
+    // check if there is also an entry with the same filename.
+    if (std::find(registryValues.begin(), registryValues.end(), cszFileName)
+        == registryValues.end()) return true;
+
+    // Lastly, check if there is a DLL with the same name in the System folder.
+    char cszSystemPath[1024] = {0};
+#if defined(ATI_BITS_32)
+    if (!GetSystemWow64DirectoryA(cszSystemPath, sizeof(cszSystemPath)))
+#endif // defined(ATI_BITS_32)
+    if (!GetSystemDirectoryA(cszSystemPath, sizeof(cszSystemPath)))
+        return true;
+
+    std::string systemDllPath;
+    systemDllPath.append(cszSystemPath).append("\\").append(cszFileName);
+    if (!PathFileExistsA(systemDllPath.c_str())) {
+        return true;
+    }
+
+    // If we get here, then all 3 conditions are true:
+    // - An entry in the registry with an absolute path matches the current DLL
+    // - An entry in the registry with a relative path matches the current DLL
+    // - A DLL with the same name was found in the system directory
+    //
+    // We should not load this platform!
+
+    return false;
+}
+
+static BOOL CALLBACK
+ShouldLoadPlatformInit(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContex)
+{
+    *reinterpret_cast<bool*>(Parameter) = ShouldLoadPlatform();
+    return TRUE;
+}
+
+
+#endif // defined(ATI_OS_WIN)
+
 CL_API_ENTRY cl_int CL_API_CALL
 clIcdGetPlatformIDsKHR(
     cl_uint num_entries,
     cl_platform_id * platforms,
     cl_uint * num_platforms)
 {
+    if (((num_entries > 0 || num_platforms == NULL) && platforms == NULL)
+        || (num_entries == 0 && platforms != NULL)) {
+        return CL_INVALID_VALUE;
+    }
+
+#if defined(ATI_OS_WIN)
+    static bool shouldLoad = true;
+
+    static INIT_ONCE initOnce;
+    InitOnceExecuteOnce(&initOnce, ShouldLoadPlatformInit, &shouldLoad, NULL);
+
+    if (!shouldLoad) {
+        *not_null(num_platforms) = 0;
+        return CL_SUCCESS;
+    }
+#endif // defined(ATI_OS_WIN)
+
     if (!amd::Runtime::initialized()) {
         amd::Runtime::init();
     }
 
-    if (((num_entries > 0 || num_platforms == NULL) && platforms == NULL)
-            || (num_entries == 0 && platforms != NULL)) {
-        return CL_INVALID_VALUE;
-    }
     if (num_platforms != NULL && platforms == NULL) {
         *num_platforms = 1;
         return CL_SUCCESS;
