@@ -754,9 +754,20 @@ bool Kernel::init_LC()
 
     workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
 
-    workGroupInfo_.usedSGPRs_ = 0;
+    const void* kernelHostPtr = nullptr;
+    if (Device::loaderQueryHostAddress(
+            reinterpret_cast<const void*>(kernelCodeHandle_), &kernelHostPtr
+            ) == HSA_STATUS_SUCCESS) {
+        auto akc = reinterpret_cast<const amd_kernel_code_t*>(kernelHostPtr);
+        workGroupInfo_.usedSGPRs_ = akc->wavefront_sgpr_count;
+        workGroupInfo_.usedVGPRs_ = akc->workitem_vgpr_count;
+    }
+    else {
+        workGroupInfo_.usedSGPRs_ = 0;
+        workGroupInfo_.usedVGPRs_ = 0;
+    }
+
     workGroupInfo_.usedStackSize_ = 0;
-    workGroupInfo_.usedVGPRs_ = 0;
 
     workGroupInfo_.wavefrontPerSIMD_ =
         program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;

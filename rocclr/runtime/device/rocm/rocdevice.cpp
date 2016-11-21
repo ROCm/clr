@@ -282,6 +282,7 @@ bool NullDevice::init() {
     if (!initCompiler(offlineDevice_)){
         return false;
     }
+#if !defined(WITH_LIGHTNING_COMPILER)
     //If there is an HSA enabled device online then skip any offline device
     std::vector<Device*> devices;
     devices = getDevices(CL_DEVICE_TYPE_GPU | CL_HSA_ENABLED_AMD, false);
@@ -308,6 +309,7 @@ bool NullDevice::init() {
         }
         nullDevice->registerDevice();
     }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
 NullDevice::~NullDevice() {
@@ -343,8 +345,19 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void *data) {
     return HSA_STATUS_SUCCESS;
 }
 
+hsa_ven_amd_loader_1_00_pfn_t
+Device::amd_loader_ext_table = {nullptr};
 
-bool Device::init() {
+hsa_status_t
+Device::loaderQueryHostAddress(const void* device, const void** host)
+{
+    return amd_loader_ext_table.hsa_ven_amd_loader_query_host_address
+        ? amd_loader_ext_table.hsa_ven_amd_loader_query_host_address(device, host)
+        : HSA_STATUS_ERROR;
+}
+
+bool Device::init()
+{
 #if defined(__linux__)
     if (amd::Os::getEnvironment("HSA_ENABLE_SDMA").empty()) {
         ::setenv("HSA_ENABLE_SDMA", "0", false);
@@ -362,6 +375,9 @@ bool Device::init() {
         LogError("hsa_init failed.");
         return false;
     }
+
+    hsa_system_get_major_extension_table(HSA_EXTENSION_AMD_LOADER, 1,
+        sizeof(amd_loader_ext_table), &amd_loader_ext_table);
 
     if (HSA_STATUS_SUCCESS !=
         hsa_iterate_agents(iterateAgentCallback, NULL)) {
@@ -387,7 +403,8 @@ bool Device::init() {
 
     size_t ordinal = 0;
     for (auto agent : gpu_agents_ ) {
-        Device *roc_device = new Device(agent);
+        std::unique_ptr<Device> roc_device(new Device(agent));
+
         if (!roc_device) {
             LogError("Error creating new instance of Device on then heap.");
             return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
@@ -445,33 +462,36 @@ bool Device::init() {
             pos = end + 1;
         } while (end != std::string::npos);
 
-        assert(tokens.size()==5 && tokens[0]=="AMD" && tokens[1]=="AMDGPU");
+        if (tokens.size() != 5 || tokens[0] != "AMD" || tokens[1] != "AMDGPU") {
+            LogError("Not an AMD:AMDGPU ISA name");
+            continue;
+        }
+
         uint major = atoi(tokens[2].c_str());
         uint minor = atoi(tokens[3].c_str());
         uint stepping = atoi(tokens[4].c_str());
-        assert(minor < 10 && stepping < 10 && "Invalid ISA string");
+        if (minor >= 10 && stepping >= 10) {
+            LogError("Invalid ISA string");
+            continue;
+        }
 
-        roc_device->deviceInfo_.gfxipVersion_ = major*100 + minor*10 + stepping;
+        roc_device->deviceInfo_.gfxipVersion_ =
+            major * 100 + minor * 10 + stepping;
 
         if (!roc_device->mapHSADeviceToOpenCLDevice(agent)) {
             LogError("Failed mapping of HsaDevice to Device.");
-            delete roc_device;
             continue;
         }
 
         if (!roc_device->create()) {
             LogError("Error creating new instance of Device.");
-            delete roc_device;
             continue;
         }
 
         if (selectedDevices[ordinal++] && (flagIsDefault(GPU_DEVICE_NAME)
             || GPU_DEVICE_NAME == 0 || GPU_DEVICE_NAME[0] == '\0'
-            || !strcmp(GPU_DEVICE_NAME, roc_device->info_.name_))) {
-            roc_device->registerDevice();  // no return code for this function
-        }
-        else {
-            delete roc_device;
+                || !strcmp(GPU_DEVICE_NAME, roc_device->info_.name_))) {
+            roc_device.release()->registerDevice();
         }
     }
 
