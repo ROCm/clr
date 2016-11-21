@@ -27,6 +27,7 @@
 #include "hsa_ext_image.h"
 #include "hsa_ext_finalize.h"
 #include "hsa_ext_amd.h"
+#include "hsa_ven_amd_loader.h"
 
 #include <iostream>
 #include <vector>
@@ -217,7 +218,9 @@ public:
     static hsa_status_t iterateGpuMemoryPoolCallback(
         hsa_amd_memory_pool_t region, void* data);
     static hsa_status_t iterateCpuMemoryPoolCallback(
-      hsa_amd_memory_pool_t region, void* data);
+        hsa_amd_memory_pool_t region, void* data);
+    static hsa_status_t loaderQueryHostAddress(
+        const void* device, const void** host);
 
     static bool loadHsaModules();
 
@@ -344,6 +347,8 @@ public:
     bool addMapTarget(amd::Memory* memory) const;
 
 private:
+    static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
+
     amd::Monitor*   mapCacheOps_;   //!< Lock to serialise cache for the map resources
     std::vector<amd::Memory*>*  mapCache_;  //!< Map cache info structure
 
