@@ -259,7 +259,7 @@ ShouldLoadPlatform()
         == registryValues.end()) return true;
 
     LPSTR cszFileName;
-    char buffer[1024];
+    char buffer[1024] = {0};
     if (!GetFullPathNameA(cszDllPath, sizeof(buffer), buffer, &cszFileName))
         return true;
 
