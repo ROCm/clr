@@ -426,8 +426,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
     offsetSize = *dbgBufferPtr;
 
     if (offsetSize == 0) {
-      LogError("\n The printf buffer is empty!");
-      return false;
+      return true;
     }
 
     // Get a pointer to the buffer data
