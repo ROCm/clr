@@ -658,9 +658,9 @@ PrintfDbgHSA::output(
         xferBufRead_->unmap(&gpu);
 
         if (offsetSize == 0) {
-            LogError("\n The printf buffer is empty!");
+            LogInfo("The printf buffer is empty!");
             dev().xferRead().release(gpu, *xferBufRead_);
-            return false;
+            return true;
         }
 
         size_t bufSize = dev().xferRead().bufSize();
