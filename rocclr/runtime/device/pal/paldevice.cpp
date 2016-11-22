@@ -731,6 +731,8 @@ Device::create(Pal::IDevice* device)
     numDmaEngines_ =
         properties().engineProperties[Pal::EngineTypeDma].engineCount;
 
+    // Creates device settings
+    settings_ = new pal::Settings();
     Pal::PalPublicSettings*const palSettings = iDev()->GetPublicSettings();
     // Modify settings here
     // palSettings ...
@@ -740,6 +742,7 @@ Device::create(Pal::IDevice* device)
     palSettings->cmdBufBatchedSubmitChainLimit = 0;
     palSettings->disableResourceProcessingManager = true;
     palSettings->disableScManager = true;
+    palSettings->numScratchWavesPerCu = settings().numScratchWavesPerCu_;
 
     // Commit the new settings for the device
     result = iDev()->CommitSettingsAndInit();
@@ -768,8 +771,6 @@ Device::create(Pal::IDevice* device)
     Pal::WorkStationCaps wscaps = {};
     iDev()->QueryWorkStationCaps(&wscaps);
 
-    // Creates device settings
-    settings_ = new pal::Settings();
     pal::Settings* gpuSettings = reinterpret_cast<pal::Settings*>(settings_);
     if ((gpuSettings == nullptr) || !gpuSettings->create(properties(), heaps,
          wscaps, appProfile_.reportAsOCL12Device())) {
@@ -1202,7 +1203,6 @@ Device::createBuffer(
             LogError("Can't get the owner object for subbuffer allocation");
             return nullptr;
         }
-
         return gpuParent->createBufferView(owner);
     }
 
@@ -1838,7 +1838,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
                     // Calculate the size of the scratch buffer for a queue
                     uint32_t numTotalCUs = info().maxComputeUnits_;
                     uint32_t numMaxWaves =
-                        properties().gfxipProperties.shaderCore.maxScratchWavesPerCu * numTotalCUs;
+                        settings().numScratchWavesPerCu_* numTotalCUs;
                     scratchBuf->size_ = static_cast<uint64_t>(properties().
                         gfxipProperties.shaderCore.wavefrontSize) *
                         scratchBuf->regNum_ * numMaxWaves * sizeof(uint32_t);
