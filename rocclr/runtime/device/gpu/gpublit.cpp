@@ -1360,7 +1360,10 @@ KernelBlitManager::copyImageToBuffer(
                 ((slicePitch == 0) || (slicePitch == imgSlicePitch))))) {
         // First attempt to do this all with DMA,
         // but there are restriciton with older hardware
-        if (dev().settings().imageDMA_) {
+        // If the dest buffer is external physical(SDI), copy two step as
+        // single step SDMA is causing corruption and the cause is under investigation
+        if (dev().settings().imageDMA_ &&
+            gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical) {
             result = DmaBlitManager::copyImageToBuffer(
                 srcMemory, dstMemory, srcOrigin, dstOrigin,
                 size, entire, rowPitch, slicePitch);
