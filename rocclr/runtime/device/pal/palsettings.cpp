@@ -141,6 +141,7 @@ bool
 Settings::create(
     const Pal::DeviceProperties& palProp,
     const Pal::GpuMemoryHeapProperties* heaps,
+    const Pal::WorkStationCaps& wscaps,
     bool reportAsOCL12Device
 )
 {
@@ -257,7 +258,7 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            if (GPU_ENABLE_LARGE_ALLOCATION /*&& calAttr.isWorkstation*/) {
+            if (GPU_ENABLE_LARGE_ALLOCATION && wscaps.workStationBoard) {
                 maxAllocSize_   = 64ULL * Gi;
             }
             else {
