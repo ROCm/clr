@@ -441,13 +441,13 @@ bool Device::init()
         }
 
         uint32_t isaNameLength = 0;
-        if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME_LENGTH, 0, &isaNameLength)
+        if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME_LENGTH, &isaNameLength)
             != HSA_STATUS_SUCCESS) {
             continue;
         }
 
         char *isaName = (char*)alloca((size_t)isaNameLength + 1);
-        if (hsa_isa_get_info(isa, HSA_ISA_INFO_NAME, 0, isaName)
+        if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, isaName)
             != HSA_STATUS_SUCCESS) {
             continue;
         }

@@ -31,10 +31,10 @@
 
 namespace roc {
 
-#if defined(WITH_LIGHTNING_COMPILER)
 static hsa_status_t
 GetKernelNamesCallback(
     hsa_executable_t exec,
+    hsa_agent_t agent,
     hsa_executable_symbol_t symbol,
     void *data)
 {
@@ -57,7 +57,6 @@ GetKernelNamesCallback(
 
     return HSA_STATUS_SUCCESS;
 }
-#endif // defined(WITH_LIGHTNING_COMPILER)
 
 /* Temporary log function for the compiler library */
 static void
@@ -82,16 +81,10 @@ HSAILProgram::~HSAILProgram()
     if (hsaExecutable_.handle != 0) {
         hsa_executable_destroy(hsaExecutable_);
     }
-    // Destroy the code object.
-    if (hsaProgramCodeObject_.handle != 0) {
-        hsa_code_object_destroy(hsaProgramCodeObject_);
-    }
     // Destroy the program handle.
     if (hsaProgramHandle_.handle != 0) {
         hsa_ext_program_destroy(hsaProgramHandle_);
     }
-    destroyBrigModule();
-    destroyBrigContainer();
     releaseClBinary();
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -101,9 +94,7 @@ HSAILProgram::~HSAILProgram()
 
 HSAILProgram::HSAILProgram(roc::NullDevice& device)
     : Program(device),
-      binaryElf_(NULL),
-      brigModule_(NULL),
-      hsaBrigContainer_(NULL)
+      binaryElf_(NULL)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
     binOpts_.struct_size = sizeof(binOpts_);
@@ -116,7 +107,6 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device)
     binOpts_.dealloc = &::free;
 
     hsaProgramHandle_.handle = 0;
-    hsaProgramCodeObject_.handle = 0;
     hsaExecutable_.handle = 0;
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -337,13 +327,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options)
     // If the binary already exists
     if ((binary.first != NULL) && (binary.second > 0)) {
 #if defined(WITH_LIGHTNING_COMPILER)
-        hsa_status_t status = hsa_code_object_deserialize( (void *) binary.first,
-            binary.second, NULL, &hsaProgramCodeObject_ );
-        if (status != HSA_STATUS_SUCCESS) {
-            buildLog_ += "Error:  Deserialize code object failed.\n";
-            return continueCompileFrom;
-        }
-        void *mem = reinterpret_cast<void *>(hsaProgramCodeObject_.handle);
+        void *mem = (void *) binary.first;
 #else // !defined(WITH_LIGHTNING_COMPILER)
         void *mem = const_cast<void *>(binary.first);
         acl_error errorCode;
@@ -451,20 +435,12 @@ allocFunc(size_t size, hsa_callback_data_t data, void **address)
 }
 
 bool
-HSAILProgram::saveBinaryAndSetType(type_t type)
+HSAILProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t size)
 {
     //Write binary to memory
-    void *rawBinary = NULL;
-    size_t size = 0;
 #if defined(WITH_LIGHTNING_COMPILER)
     if (type == TYPE_EXECUTABLE) {     // handle code object binary
-        hsa_callback_data_t allocData = {0};
-        if (hsa_code_object_serialize(hsaProgramCodeObject_,
-            allocFunc, allocData,
-            NULL, &rawBinary, &size) != HSA_STATUS_SUCCESS) {
-            buildLog_ += "ERROR: Failed to write code object binary to memory \n";
-            return false;
-        }
+        assert(rawBinary != NULL && size != 0 && "must pass in the binary");
     }
     else {                  // handle LLVM binary
         if (llvmBinary_.empty()) {
@@ -486,11 +462,7 @@ HSAILProgram::saveBinaryAndSetType(type_t type)
     setType(type);
 
     //Free memory containing rawBinary
-#if defined(WITH_LIGHTNING_COMPILER)
-    if (type == TYPE_EXECUTABLE) {     // handle code object binary
-        free(rawBinary);
-    }
-#else
+#if !defined(WITH_LIGHTNING_COMPILER)
     binaryElf_->binOpts.dealloc(rawBinary);
 #endif
     return true;
@@ -688,65 +660,6 @@ HSAILProgram::linkImpl(
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 }
 
-bool
-HSAILProgram::initBrigModule()
-{
-#if defined(WITH_LIGHTNING_COMPILER)
-    brigModule_ = NULL;
-#else // !defined(WITH_LIGHTNING_COMPILER)
-    const char *symbol_name = "__BRIG__";
-    BrigModuleHeader* brig;
-    acl_error error_code;
-    size_t size;
-    const void* symbol_data = g_complibApi._aclExtractSymbol(
-        device().compiler(),
-        binaryElf_,
-        &size,
-        aclBRIG,
-        symbol_name,
-        &error_code);
-    if (error_code != ACL_SUCCESS) {
-        std::string error = "Could not find Brig in BIF: ";
-        error += symbol_name;
-        LogError(error.c_str());
-        buildLog_ +=  error;
-        return false;
-    }
-    brig = (BrigModuleHeader*)malloc(size);
-    memcpy(brig, symbol_data, size);
-    brigModule_ = brig;
-#endif // !defined(WITH_LIGHTNING_COMPILER)
-    return true;
-}
-void HSAILProgram::destroyBrigModule() {
-    if (brigModule_ != NULL) {
-        free(brigModule_);
-    }
-}
-
-bool
-HSAILProgram::initBrigContainer()
-{
-#if defined(WITH_LIGHTNING_COMPILER)
-    hsaBrigContainer_ = NULL;
-#else // !defined(WITH_LIGHTNING_COMPILER)
-    assert(brigModule_ != NULL);
-
-    //Create a BRIG container
-    hsaBrigContainer_ = new BrigContainer(brigModule_);
-    if (!hsaBrigContainer_) {
-        return false;
-    }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
-    return true;
-}
-
-void
-HSAILProgram::destroyBrigContainer()
-{
-    delete (hsaBrigContainer_);
-}
-
 static inline const char*
 hsa_strerror(hsa_status_t status)
 {
@@ -920,17 +833,11 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
 bool
 HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t binSize)
 {
+    hsa_agent_t agent = dev().getBackendDevice();
     hsa_status_t status;
-    status = hsa_code_object_deserialize( binary, binSize, NULL, &hsaProgramCodeObject_ );
-    if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Error: Failed to deserialize the AMD HSA Code Object: ";
-        buildLog_ += hsa_strerror(status);
-        buildLog_ += "\n";
-        return false;
-    }
 
-    status = hsa_executable_create( HSA_PROFILE_FULL,
-        HSA_EXECUTABLE_STATE_UNFROZEN,
+    status = hsa_executable_create_alt(
+        HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
         NULL, &hsaExecutable_ );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Executable for AMD HSA Code Object isn't created: ";
@@ -940,15 +847,26 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
     }
 
     // Load the code object.
-    hsa_agent_t hsaDevice = dev().getBackendDevice();
-    status = hsa_executable_load_code_object( hsaExecutable_, hsaDevice,
-        hsaProgramCodeObject_, NULL );
+    hsa_code_object_reader_t codeObjectReader;
+    status = hsa_code_object_reader_create_from_memory(
+        binary, binSize, &codeObjectReader);
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
+        buildLog_ += hsa_strerror(status);
+        buildLog_ += "\n";
+        return false;
+    }
+
+    status = hsa_executable_load_agent_code_object(
+        hsaExecutable_, agent, codeObjectReader, NULL, NULL );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: AMD HSA Code Object loading failed: ";
         buildLog_ += hsa_strerror(status);
         buildLog_ += "\n";
         return false;
     }
+
+    hsa_code_object_reader_destroy(codeObjectReader);
 
     // Freeze the executable.
     status = hsa_executable_freeze( hsaExecutable_, NULL );
@@ -990,7 +908,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
                 address name = (address) &note[1];
                 address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
 
-                if (note->n_type == 7 /*NT_AMDGPU_HSA_RUNTIME_METADATA_1_0*/
+                if (note->n_type == 7 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA*/
                     && note->n_namesz == sizeof "AMD"
                     && !memcmp(name, "AMD", note->n_namesz)) {
                     metadata_ = new amd::hsa::code::Program::Metadata();
@@ -1026,12 +944,12 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
 
     setGlobalVariableTotalSize(progvarsTotalSize);
 
-    saveBinaryAndSetType(TYPE_EXECUTABLE);
+    saveBinaryAndSetType(TYPE_EXECUTABLE, binary, binSize);
 
     // Get the list of kernels
     std::vector<std::string> kernelNameList;
-    status = hsa_executable_iterate_symbols( hsaExecutable_, GetKernelNamesCallback,
-        (void *) &kernelNameList );
+    status = hsa_executable_iterate_agent_symbols( hsaExecutable_,
+        agent, GetKernelNamesCallback, (void *) &kernelNameList );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Failed to get kernel names: ";
         buildLog_ += hsa_strerror(status);
@@ -1041,8 +959,15 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
 
     for (auto &kernelName : kernelNameList) {
         hsa_executable_symbol_t kernelSymbol;
-        hsa_executable_get_symbol(
-            hsaExecutable_, "", kernelName.c_str(), hsaDevice, 0, &kernelSymbol);
+
+        status = hsa_executable_get_symbol_by_name(
+            hsaExecutable_, kernelName.c_str(), &agent, &kernelSymbol);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get the symbol: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
 
         uint64_t kernelCodeHandle;
         status = hsa_executable_symbol_get_info(
@@ -1196,16 +1121,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
 
 #if !defined(WITH_LIGHTNING_COMPILER)
     hsa_agent_t hsaDevice = dev().getBackendDevice();
-    if (!initBrigModule()) {
-        buildLog_ += "Failed to create Brig Module";
-        return false;
-    }
 
-    // Create a BrigContainer.
-    if (!initBrigContainer()) {
-        buildLog_ += "Failed to create Brig Container";
-        return false;
-    }
     std::string fin_options(options->origOptionStr);
     // Append an option so that we can selectively enable a SCOption on CZ
     // whenever IOMMUv2 is enabled.
@@ -1226,22 +1142,11 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         buildLog_ += "Error: cannot extract ISA from compiled binary.\n";
         return false;
     }
-    hsa_status_t status = hsa_code_object_deserialize(data, secSize,
-        NULL, &hsaProgramCodeObject_ );
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: failed to load finalized code object.\n";
-      return false;
-    }
-
-    // HLC always generates full profile
-    hsa_profile_t profile = HSA_PROFILE_FULL;
 
     // Create an executable.
-    status = hsa_executable_create(
-        profile,
-        HSA_EXECUTABLE_STATE_UNFROZEN,
-        "",
-        &hsaExecutable_
+    hsa_status_t status = hsa_executable_create_alt(
+        HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
+        NULL, &hsaExecutable_
     );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Failed to create executable: ";
@@ -1251,15 +1156,26 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     }
 
     // Load the code object.
-    status = hsa_executable_load_code_object(
-        hsaExecutable_, hsaDevice, hsaProgramCodeObject_, NULL
-    );
+    hsa_code_object_reader_t codeObjectReader;
+    status = hsa_code_object_reader_create_from_memory(
+        data, secSize, &codeObjectReader);
     if (status != HSA_STATUS_SUCCESS) {
-        buildLog_ += "Error: Failed to load code object: ";
+        buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
         buildLog_ += hsa_strerror(status);
         buildLog_ += "\n";
         return false;
     }
+
+    status = hsa_executable_load_agent_code_object(
+        hsaExecutable_, hsaDevice, codeObjectReader, NULL, NULL );
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: AMD HSA Code Object loading failed: ";
+        buildLog_ += hsa_strerror(status);
+        buildLog_ += "\n";
+        return false;
+    }
+
+    hsa_code_object_reader_destroy(codeObjectReader);
 
     // Freeze the executable.
     status = hsa_executable_freeze(hsaExecutable_, NULL);
@@ -1270,126 +1186,121 @@ HSAILProgram::linkImpl(amd::option::Options *options)
         return false;
     }
 
-    Code first_d = hsaBrigContainer_->code().begin();
-    Code last_d = hsaBrigContainer_->code().end();
-    //Iterate through the symbols using brig assembler
-    for (;first_d != last_d;first_d = first_d.next()) {
-        if (DirectiveExecutable de = first_d) {
-            // Disable function compilation unconditionally.
-            // TODO: May remove this after the finalizer supports function compilation.
-            if (DirectiveFunction df = first_d) {
-                continue;
-            }
+    // Get the list of kernels
+    std::vector<std::string> kernelNameList;
+    status = hsa_executable_iterate_agent_symbols( hsaExecutable_,
+        hsaDevice, GetKernelNamesCallback, (void *) &kernelNameList );
+    if (status != HSA_STATUS_SUCCESS) {
+        buildLog_ += "Error: Failed to get kernel names: ";
+        buildLog_ += hsa_strerror(status);
+        buildLog_ += "\n";
+        return false;
+    }
 
-            std::string kernelName = (SRef)de.name();
-            if (de.linkage() != BRIG_LINKAGE_PROGRAM) {
-                kernelName.insert(0, "am::");
-            }
-            // Query symbol handle for this symbol.
-            hsa_executable_symbol_t kernelSymbol;
-            status = hsa_executable_get_symbol(
-                hsaExecutable_, NULL, kernelName.c_str(), hsaDevice, 0, &kernelSymbol
-            );
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get executable symbol: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            // Query code handle for this symbol.
-            uint64_t kernelCodeHandle;
-            status = hsa_executable_symbol_get_info(
-                kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &kernelCodeHandle
-            );
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get executable symbol info: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            std::string openclKernelName = kernelName;
-            // Strip the opencl and kernel name
-            kernelName = kernelName.substr(strlen("&__OpenCL_"), kernelName.size());
-            kernelName = kernelName.substr(0,kernelName.size() - strlen("_kernel"));
-            aclMetadata md;
-            md.numHiddenKernelArgs = 0;
-
-            size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
-            errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
-                openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
-            if (errorCode != ACL_SUCCESS) {
-                buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
-                return false;
-            }
-
-            uint32_t workgroupGroupSegmentByteSize;
-            status = hsa_executable_symbol_get_info(
-                kernelSymbol,
-                HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_GROUP_SEGMENT_SIZE,
-                &workgroupGroupSegmentByteSize);
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get group segment size info: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            uint32_t workitemPrivateSegmentByteSize;
-            status = hsa_executable_symbol_get_info(
-                kernelSymbol,
-                HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE,
-                &workitemPrivateSegmentByteSize);
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get private segment size info: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            uint32_t kernargSegmentByteSize;
-            status = hsa_executable_symbol_get_info(
-                kernelSymbol,
-                HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE,
-                &kernargSegmentByteSize);
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get kernarg segment size info: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            uint32_t kernargSegmentAlignment;
-            status = hsa_executable_symbol_get_info(
-                kernelSymbol,
-                HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_ALIGNMENT,
-                &kernargSegmentAlignment);
-            if (status != HSA_STATUS_SUCCESS) {
-                buildLog_ += "Error: Failed to get kernarg segment alignment info: ";
-                buildLog_ += hsa_strerror(status);
-                buildLog_ += "\n";
-                return false;
-            }
-
-            Kernel *aKernel = new roc::Kernel(
-                kernelName,
-                this,
-                kernelCodeHandle,
-                workgroupGroupSegmentByteSize,
-                workitemPrivateSegmentByteSize,
-                kernargSegmentByteSize,
-                kernargSegmentAlignment);
-            if (!aKernel->init()) {
-                return false;
-            }
-            aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-            kernels()[kernelName] = aKernel;
+    for (auto &kernelName : kernelNameList) {
+        // Query symbol handle for this symbol.
+        hsa_executable_symbol_t kernelSymbol;
+        status = hsa_executable_get_symbol_by_name(
+            hsaExecutable_, kernelName.c_str(), &hsaDevice, &kernelSymbol
+        );
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get executable symbol: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
         }
+
+        // Query code handle for this symbol.
+        uint64_t kernelCodeHandle;
+        status = hsa_executable_symbol_get_info(
+            kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &kernelCodeHandle
+        );
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get executable symbol info: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
+
+        std::string openclKernelName = kernelName;
+        // Strip the opencl and kernel name
+        kernelName = kernelName.substr(strlen("&__OpenCL_"), kernelName.size());
+        kernelName = kernelName.substr(0,kernelName.size() - strlen("_kernel"));
+        aclMetadata md;
+        md.numHiddenKernelArgs = 0;
+
+        size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
+        errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
+            openclKernelName.c_str(), &md.numHiddenKernelArgs, &sizeOfnumHiddenKernelArgs);
+        if (errorCode != ACL_SUCCESS) {
+            buildLog_ += "Error while Finalization phase: Kernel extra arguments count querying from the ELF failed\n";
+            return false;
+        }
+
+        uint32_t workgroupGroupSegmentByteSize;
+        status = hsa_executable_symbol_get_info(
+            kernelSymbol,
+            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_GROUP_SEGMENT_SIZE,
+            &workgroupGroupSegmentByteSize);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get group segment size info: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
+
+        uint32_t workitemPrivateSegmentByteSize;
+        status = hsa_executable_symbol_get_info(
+            kernelSymbol,
+            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE,
+            &workitemPrivateSegmentByteSize);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get private segment size info: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
+
+        uint32_t kernargSegmentByteSize;
+        status = hsa_executable_symbol_get_info(
+            kernelSymbol,
+            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE,
+            &kernargSegmentByteSize);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get kernarg segment size info: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
+
+        uint32_t kernargSegmentAlignment;
+        status = hsa_executable_symbol_get_info(
+            kernelSymbol,
+            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_ALIGNMENT,
+            &kernargSegmentAlignment);
+        if (status != HSA_STATUS_SUCCESS) {
+            buildLog_ += "Error: Failed to get kernarg segment alignment info: ";
+            buildLog_ += hsa_strerror(status);
+            buildLog_ += "\n";
+            return false;
+        }
+
+        Kernel *aKernel = new roc::Kernel(
+            kernelName,
+            this,
+            kernelCodeHandle,
+            workgroupGroupSegmentByteSize,
+            workitemPrivateSegmentByteSize,
+            kernargSegmentByteSize,
+            kernargSegmentAlignment);
+        if (!aKernel->init()) {
+            return false;
+        }
+        aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+        kernels()[kernelName] = aKernel;
     }
     saveBinaryAndSetType(TYPE_EXECUTABLE);
     buildLog_ += g_complibApi._aclGetCompilerLog(device().compiler());
-
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     return true;
 }
