@@ -88,6 +88,7 @@ public:
     uint    numDeviceEvents_;   //!< The number of device events
     uint    numWaitEvents_;     //!< The number of wait events for device enqueue
     uint    hostMemDirectAccess_;   //!< Enables direct access to the host memory
+    uint    numScratchWavesPerCu_;  //!< Maximum number of waves when scratch is enabled
     size_t  xferBufSize_;       //!< Transfer buffer size for image copy optimization
     size_t  stagedXferSize_;    //!< Staged buffer size
     size_t  pinnedXferSize_;    //!< Pinned buffer size for transfer
