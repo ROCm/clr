@@ -105,6 +105,7 @@ public:
     bool create(
         const Pal::DeviceProperties& palProp,       //!< PAL  device properties
         const Pal::GpuMemoryHeapProperties* heaps,  //!< PAL heap settings
+        const Pal::WorkStationCaps& wscaps,         //!< PAL  workstation settings
         bool reportAsOCL12Device = false            //!< Report As OpenCL1.2 Device
         );
 

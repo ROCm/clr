@@ -177,8 +177,10 @@ NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel)
     Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
     heaps[Pal::GpuHeapLocal].heapSize = 512 * Mi;
 
+    Pal::WorkStationCaps wscaps = {};
+
     // Create setting for the offline target
-    if ((palSettings == nullptr) || !palSettings->create(properties, heaps)) {
+    if ((palSettings == nullptr) || !palSettings->create(properties, heaps, wscaps)) {
         return false;
     }
 
@@ -763,11 +765,14 @@ Device::create(Pal::IDevice* device)
     Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
     iDev()->GetGpuMemoryHeapProperties(heaps);
 
+    Pal::WorkStationCaps wscaps = {};
+    iDev()->QueryWorkStationCaps(&wscaps);
+
     // Creates device settings
     settings_ = new pal::Settings();
     pal::Settings* gpuSettings = reinterpret_cast<pal::Settings*>(settings_);
     if ((gpuSettings == nullptr) || !gpuSettings->create(properties(), heaps,
-        appProfile_.reportAsOCL12Device())) {
+         wscaps, appProfile_.reportAsOCL12Device())) {
         return false;
     }
     numComputeEngines_ = std::min(numComputeEngines_, settings().numComputeRings_);
