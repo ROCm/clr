@@ -145,17 +145,12 @@ private:
     /* \brief Returns the next stage to compile from, based on sections and options in binary
      */
     aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-    bool saveBinaryAndSetType(type_t type);
-    bool initBrigContainer();
-    void destroyBrigContainer();
-    //Initializes BRIG module
-    bool initBrigModule();
-    void destroyBrigModule();
-    //! Disable default copy constructor
-    HSAILProgram(const HSAILProgram&);
+    bool saveBinaryAndSetType(type_t type, void* binary = NULL, size_t size = 0);
 
+    //! Disable default copy constructor
+    HSAILProgram(const HSAILProgram&) = delete;
     //! Disable operator=
-    HSAILProgram& operator=(const HSAILProgram&);
+    HSAILProgram& operator=(const HSAILProgram&) = delete;
 
     //! Returns all the options to be appended while passing to the
     //compiler
@@ -166,11 +161,8 @@ private:
     aclBinary*      binaryElf_; //!< Binary for the new compiler library
     aclBinaryOptions binOpts_; //!< Binary options to create aclBinary
 
-    /* Brig and Brig modules */
-    BrigModule_t brigModule_; //!< Brig that should be used in the HSA runtime
-    BrigContainer* hsaBrigContainer_; //!< Container for the BRIG;
+    /* HSA executable */
     hsa_ext_program_t hsaProgramHandle_; //!< Handle to HSA runtime program
-    hsa_code_object_t hsaProgramCodeObject_; //!< Handle to HSA code object
     hsa_executable_t hsaExecutable_; //!< Handle to HSA executable
 
 #if defined(WITH_LIGHTNING_COMPILER)
