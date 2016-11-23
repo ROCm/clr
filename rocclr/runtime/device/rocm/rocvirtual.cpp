@@ -453,6 +453,8 @@ VirtualGPU::VirtualGPU(Device &device)
     , index_(device.numOfVgpus_++) // Virtual gpu unique index incrementing
 {
     gpu_device_ = device.getBackendDevice();
+    printfdbg_ = NULL;
+
     // Initialize the last signal and dispatch flags
     timestamp_ = NULL;
     hasPendingDispatch_ = false;
