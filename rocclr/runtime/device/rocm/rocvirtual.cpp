@@ -1169,10 +1169,19 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
         }
         else if (type == CL_COMMAND_MAP_IMAGE) {
             amd::Image* image = cmd.memory().asImage();
-            result = blitMgr().readImage(
-                *hsaMemory, hostPtr, amd::Coord3D(0),
-                image->getRegion(), image->getRowPitch(),
-                image->getSlicePitch(), true);
+            if (mapMemory != nullptr) {
+                roc::Memory *mapMemory = static_cast<roc::Memory *>(
+                    devMemory->mapMemory()->getDeviceMemory(dev(), false));
+                result = blitMgr().copyImageToBuffer(
+                  *hsaMemory, *mapMemory, cmd.origin(),
+                  cmd.origin(), cmd.size(), true);
+            }
+            else {
+                result = blitMgr().readImage(
+                    *hsaMemory, hostPtr, amd::Coord3D(0),
+                    image->getRegion(), image->getRowPitch(),
+                    image->getSlicePitch(), true);
+            }
         }
         else {
             ShouldNotReachHere();
@@ -1217,14 +1226,23 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
             if (cmd.memory().asImage() && !imageBuffer) {
                 amd::Image *image = cmd.memory().asImage();
                 amd::Memory* mapMemory = devMemory->mapMemory();
-                void *hostPtr = mapMemory == NULL ?
-                    devMemory->owner()->getHostMem() :
-                    mapMemory->getHostMem();
+                if (devMemory->mapMemory() != nullptr) {
+                    roc::Memory *mapMemory = static_cast<roc::Memory *>(
+                        devMemory->mapMemory()->getDeviceMemory(dev(), false));
+                    result = blitMgr().copyBufferToImage(
+                      *mapMemory, *devMemory, mapInfo->origin_,
+                      mapInfo->origin_, mapInfo->region_, true);
+                }
+                else {
+                    void *hostPtr = mapMemory == NULL ?
+                        devMemory->owner()->getHostMem() :
+                        mapMemory->getHostMem();
 
-                result = blitMgr().writeImage(
-                    hostPtr, *devMemory,
-                    amd::Coord3D(0), image->getRegion(),
-                    image->getRowPitch(), image->getSlicePitch(), true);
+                    result = blitMgr().writeImage(
+                        hostPtr, *devMemory,
+                        amd::Coord3D(0), image->getRegion(),
+                        image->getRowPitch(), image->getSlicePitch(), true);
+                }
             }
             else {
                 amd::Coord3D origin(mapInfo->origin_[0]);
