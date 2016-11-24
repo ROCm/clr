@@ -433,7 +433,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (
             return (cl_mem) 0;
         }
         mem = new(amdContext) amd::Buffer(*svmMem, flags, offset, size);
-        host_ptr = NULL;
+        svmMem->setHostMem(host_ptr);
     }
     else {
         mem = new(amdContext) amd::Buffer(amdContext, flags, size);
