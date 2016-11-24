@@ -459,6 +459,10 @@ Memory::signalWrite(const Device* writer)
     // section needed)
     ++version_;
     lastWriter_ = writer;
+    // Update all subbuffers for this object
+    for (auto buf : subBuffers_) {
+        buf->signalWrite(writer);
+    }
 }
 
 void
