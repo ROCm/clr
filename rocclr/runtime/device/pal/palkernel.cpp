@@ -1073,7 +1073,7 @@ HSAILKernel::loadArguments(
                 }
                 // If finegrainsystem is present then the pointer can be malloced by the app and
                 // passed to kernel directly. If so copy the pointer location to aqlArgBuf
-                else if ((dev().info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) == 0) {
+                else if (!dev().isFineGrainedSystem(true)) {
                     return nullptr;
                 }
                 continue;

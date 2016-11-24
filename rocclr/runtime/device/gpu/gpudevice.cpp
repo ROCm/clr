@@ -1405,10 +1405,23 @@ Device::createBuffer(
             return NULL;
         }
 
+        if (nullptr != owner.parent()->getSvmPtr()) {
+            amd::Memory* amdParent = owner.parent();
+            {
+                // Lock memory object, so only one commitment will occur
+                amd::ScopedLock lock(amdParent->lockMemoryOps());
+                amdParent->commitSvmMemory();
+                amdParent->setHostMem(amdParent->getSvmPtr());
+            }
+            // Ignore a possible pinning error. Runtime will fallback to SW emulation
+            //bool ok = gpuParent->pinSystemMemory(
+            //    amdParent->getHostMem(), amdParent->getSize());
+        }
         return gpuParent->createBufferView(owner);
     }
 
-    Resource::MemoryType    type = (owner.forceSysMemAlloc() || (owner.getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) ?
+    Resource::MemoryType    type = (owner.forceSysMemAlloc() ||
+        (owner.getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) ?
         Resource::Remote : Resource::Local;
 
     if (owner.getMemFlags() & CL_MEM_BUS_ADDRESSABLE_AMD) {

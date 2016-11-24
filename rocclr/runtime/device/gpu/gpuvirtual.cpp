@@ -1035,18 +1035,18 @@ VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd)
     cl_command_type type = vcmd.type();
     //no op for FGS supported device
     if (!dev().isFineGrainedSystem()) {
-
         amd::Coord3D srcOrigin(0, 0, 0);
         amd::Coord3D dstOrigin(0, 0, 0);
         amd::Coord3D size(vcmd.srcSize(), 1, 1);
         amd::BufferRect srcRect;
         amd::BufferRect dstRect;
 
-
         bool result = false;
         amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
         amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
-        if (NULL != srcMem) {
+
+        device::Memory::SyncFlags syncFlags;
+        if (nullptr != srcMem) {
             srcMem->commitSvmMemory();
             srcOrigin.c[0] = static_cast<const_address>(vcmd.src()) - static_cast<address>(srcMem->getSvmPtr());
             if (!(srcMem->validateRegion(srcOrigin, size))) {
@@ -1054,7 +1054,7 @@ VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd)
                 return;
             }
         }
-        if (NULL != dstMem) {
+        if (nullptr != dstMem) {
             dstMem->commitSvmMemory();
             dstOrigin.c[0] = static_cast<const_address>(vcmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
             if (!(dstMem->validateRegion(dstOrigin, size))) {
@@ -1063,19 +1063,28 @@ VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd)
             }
         }
 
-        if (NULL == srcMem && NULL != dstMem) {             //src not in svm space
-            gpu::Memory* memory = dev().getGpuMemory(dstMem);
+        if (nullptr == srcMem && nullptr != dstMem) {             //src not in svm space
+            Memory* memory = dev().getGpuMemory(dstMem);
+            // Synchronize source and destination memory
+            syncFlags.skipEntire_ = dstMem->isEntirelyCovered(dstOrigin, size);
+            memory->syncCacheFromHost(*this, syncFlags);
+
             result = blitMgr().writeBuffer(vcmd.src(), *memory,
                 dstOrigin, size, dstMem->isEntirelyCovered(dstOrigin, size));
+            // Mark this as the most-recently written cache of the destination
+            dstMem->signalWrite(&gpuDevice_);
         }
-        else if (NULL != srcMem && NULL == dstMem) {        //dst not in svm space
-            gpu::Memory* memory = dev().getGpuMemory(srcMem);
+        else if (nullptr != srcMem && nullptr == dstMem) {        //dst not in svm space
+            Memory* memory = dev().getGpuMemory(srcMem);
+            // Synchronize source and destination memory
+            memory->syncCacheFromHost(*this);
+
             result = blitMgr().readBuffer(*memory, vcmd.dst(),
                 srcOrigin, size, srcMem->isEntirelyCovered(srcOrigin, size));
         }
-        else if (NULL != srcMem && NULL != dstMem) {        //both not in svm space
+        else if (nullptr != srcMem && nullptr != dstMem) {        //both not in svm space
             bool entire = srcMem->isEntirelyCovered(srcOrigin, size) &&
-                          dstMem->isEntirelyCovered(dstOrigin, size);
+                dstMem->isEntirelyCovered(dstOrigin, size);
             result = copyMemory(type, *srcMem, *dstMem, entire, srcOrigin, dstOrigin,
                 size, srcRect, dstRect);
         }
@@ -1222,7 +1231,7 @@ VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd)
 
     // We used host memory
     if ((owner->getHostMem() != NULL) && memory->isDirectMap()) {
-        if (writeMapInfo->isUnmapWrite() && !owner->usesSvmPointer()) {
+        if (writeMapInfo->isUnmapWrite()) {
             // Target is the backing store, so sync
             owner->signalWrite(NULL);
             memory->syncCacheFromHost(*this);
@@ -1423,6 +1432,16 @@ VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd)
                 }
             }
         }
+        else if ((memory->owner()->getHostMem() != nullptr) && memory->isDirectMap()) {
+            if (!memory->isHostMemDirectAccess()) {
+                // Make sure GPU finished operation before
+                // synchronization with the backing store
+                memory->wait(*this);
+            }
+
+            // Target is the backing store, so just ensure that owner is up-to-date
+            memory->owner()->cacheWriteBack();
+        }
         else {
             LogError("Unhandled svm map!");
         }
@@ -1454,6 +1473,13 @@ VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& vcmd)
                     LogError("submitSvmUnmapMemory() - copy failed");
                     vcmd.setStatus(CL_OUT_OF_RESOURCES);
                 }
+            }
+        }
+        else if ((memory->owner()->getHostMem() != nullptr) && memory->isDirectMap()) {
+            if (writeMapInfo->isUnmapWrite()) {
+                // Target is the backing store, so sync
+                memory->owner()->signalWrite(nullptr);
+                memory->syncCacheFromHost(*this);
             }
         }
         memory->clearUnmapInfo(vcmd.svmPtr());
@@ -1490,6 +1516,8 @@ VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd)
             vcmd.patternSize(), origin, size)) {
             vcmd.setStatus(CL_INVALID_OPERATION);
         }
+        // Mark this as the most-recently written cache of the destination
+        dstMemory->signalWrite(&gpuDevice_);
     }
     else {
         // for FGS capable device, fill CPU memory directly
@@ -3309,6 +3337,12 @@ VirtualGPU::processMemObjectsHSA(
                 const static bool IsReadOnly = false;
                 // Validate SVM passed in the non argument list
                 memoryDependency().validate(*this, gpuMemory, IsReadOnly);
+
+                // Mark signal write for cache coherency,
+                // since this object isn't a part of kernel arg setup
+                if ((memory->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
+                    memory->signalWrite(&dev());
+                }
 
                 memList->push_back(gpuMemory);
             }

@@ -807,6 +807,8 @@ Memory::allocMapTarget(
             if (!owner()->allocHostMemory(nullptr, forceAllocHostMem)) {
                 return nullptr;
             }
+            //! \note Ignore pinning result
+            bool ok = pinSystemMemory(owner()->getHostMem(), owner()->getSize());
         }
     }
 
@@ -914,10 +916,9 @@ Memory::pinSystemMemory(void* hostPtr, size_t size)
         return true;
     }
 
-    // Destroy the old pinned memory if it was already allocated
+    // Memory was pinned already
     if (flags_ & PinnedMemoryAlloced) {
-        delete pinnedMemory_;
-        flags_ &= ~PinnedMemoryAlloced;
+        return true;
     }
 
     // Allocate memory for the pinned object
@@ -1064,16 +1065,20 @@ Memory::mgpuCacheWriteBack()
 
     // Attempt to allocate a staging buffer if don't have any
     if (owner()->getHostMem() == nullptr) {
-        static const bool forceAllocHostMem = true;
-        if (owner()->allocHostMemory(nullptr, forceAllocHostMem)) {
-            //! \note Ignore pinning result
-            bool ok = pinSystemMemory(
-                owner()->getHostMem(), owner()->getHostMemRef()->size());
+        if (nullptr != owner()->getSvmPtr()) {
+            owner()->commitSvmMemory();
+            owner()->setHostMem(owner()->getSvmPtr());
+        }
+        else {
+            static const bool forceAllocHostMem = true;
+            owner()->allocHostMemory(nullptr, forceAllocHostMem);
         }
     }
 
     // Make synchronization
     if (owner()->getHostMem() != nullptr) {
+        //! \note Ignore pinning result
+        bool ok = pinSystemMemory(owner()->getHostMem(), owner()->getSize());
         owner()->cacheWriteBack();
     }
 }
