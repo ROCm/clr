@@ -248,7 +248,7 @@ GetHSAILArgSize(const aclArgData *argInfo)
         case ARG_TYPE_IMAGE:
         case ARG_TYPE_SAMPLER:
         case ARG_TYPE_QUEUE:
-            return sizeof(uint64_t);
+            return sizeof(void*);
         default:
             return -1;
     }
@@ -1157,13 +1157,11 @@ HSAILKernel::loadArguments(
                 cb->uploadDataToHw(HsaImageObjectSize);
                 // Then use a pointer in aqlArgBuffer to CB1
                 uint64_t srd = cb->vmAddress() + cb->wrtOffset();
-                assert(arg->size_ == sizeof(srd) && "check the sizes");
                 WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
                 memList.push_back(cb);
             }
             else {
                 uint64_t srd = image->hwSrd();
-                assert(arg->size_ == sizeof(srd) && "check the sizes");
                 WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
                 srdResource = true;
             }
@@ -1182,7 +1180,6 @@ HSAILKernel::loadArguments(
             const Sampler* gpuSampler = static_cast<Sampler*>
                     (sampler->getDeviceSampler(dev()));
             uint64_t srd = gpuSampler->hwSrd();
-            assert(arg->size_ == sizeof(srd) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
             srdResource = true;
         }
@@ -1201,7 +1198,6 @@ HSAILKernel::loadArguments(
                 }
                 vmQueue = gpu.vQueue()->vmAddress();
             }
-            assert(arg->size_ == sizeof(vmQueue) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue));
         }
         else {
