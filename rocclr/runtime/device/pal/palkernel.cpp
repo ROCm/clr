@@ -248,7 +248,7 @@ GetHSAILArgSize(const aclArgData *argInfo)
         case ARG_TYPE_IMAGE:
         case ARG_TYPE_SAMPLER:
         case ARG_TYPE_QUEUE:
-            return sizeof(void*);
+            return sizeof(uint64_t);
         default:
             return -1;
     }
