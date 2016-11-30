@@ -685,7 +685,7 @@ HSAILProgram::linkImpl(amd::option::Options* options)
             HSAILKernel *aKernel = new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(options));
             kernels()[kernelName] = aKernel;
 
-            amd::hsa::loader::Symbol *sym = executable_->GetSymbol("", openclKernelName.c_str(), agent, 0);
+            amd::hsa::loader::Symbol *sym = executable_->GetSymbol(openclKernelName.c_str(), &agent);
             if (!sym) {
                 buildLog_ += "Error: Getting kernel ISA code symbol '" + openclKernelName +
                     "' from AMD HSA Code Object failed. Kernel initialization failed.\n";
@@ -1637,7 +1637,7 @@ LightningProgram::setKernels(
 
         kernels()[kernelName] = kernel;
 
-        auto symbol = executable_->GetSymbol("", kernelName.c_str(), agent, 0);
+        auto symbol = executable_->GetSymbol(kernelName.c_str(), &agent);
         if (!symbol) {
             buildLog_ += "Error: Getting kernel symbol '" + kernelName
                 + "' from AMD HSA Code Object failed. " \
