@@ -957,6 +957,10 @@ OclElf::nextSymbol(Sym_Handle symHandle) const
 
 /*
    Given a symbol handle, return info for this symbol
+
+   Fails with symbols which have special section indexes (like absolute symbols).
+   It is impossible to return valid SymbolInfo for such symbols because
+   correct section names are unknown (unspecified in ELF).
    */
   bool
 OclElf::getSymbolInfo(Sym_Handle  symHandle, SymbolInfo* symInfo) const
@@ -970,6 +974,9 @@ OclElf::getSymbolInfo(Sym_Handle  symHandle, SymbolInfo* symInfo) const
 
   if (_eclass == ELFCLASS64) {
     Elf64_Sym* sym64 = reinterpret_cast<Elf64_Sym*>(symHandle);
+    if (sym64->st_shndx >= SHN_LORESERVE && sym64->st_shndx <= SHN_HIRESERVE) {
+      return false;
+    }
 
     sym_name = elf_strptr(_e, _strtab_ndx, sym64->st_name);
     st_value = (Elf64_Addr)(sym64->st_value);
@@ -980,6 +987,9 @@ OclElf::getSymbolInfo(Sym_Handle  symHandle, SymbolInfo* symInfo) const
   }
   else {
     Elf32_Sym* sym32 = reinterpret_cast<Elf32_Sym*>(symHandle);
+    if (sym32->st_shndx >= SHN_LORESERVE && sym32->st_shndx <= SHN_HIRESERVE) {
+      return false;
+    }
 
     sym_name = elf_strptr(_e, _strtab_ndx, sym32->st_name);
     st_value = (Elf64_Addr)(sym32->st_value);
