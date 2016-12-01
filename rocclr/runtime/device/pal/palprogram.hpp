@@ -296,6 +296,11 @@ public:
           metadata_(nullptr)
     {}
 
+    LightningProgram(Device& device)
+        : HSAILProgram(device),
+        metadata_(nullptr)
+    {}
+
     const amd::hsa::code::Program::Metadata* metadata() const {
         return metadata_;
     }
