@@ -166,6 +166,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
     , loaderContext_(this)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
+    isNull_ = true;
     binOpts_.struct_size = sizeof(binOpts_);
     binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
     binOpts_.bitness = ELFDATA2LSB;
@@ -754,9 +755,11 @@ HSAILProgram::hsailOptions(amd::option::Options* options)
     int major, minor;
     ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
+#ifdef WITH_LIGHTNING_COMPILER
     std::stringstream ss;
     ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
     hsailOptions.append(ss.str());
+#endif
 
     if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
         hsailOptions.append(" -D__IMAGE_SUPPORT__=1");
