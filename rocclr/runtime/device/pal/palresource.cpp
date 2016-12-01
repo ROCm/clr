@@ -850,6 +850,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             imgCreateInfo.samples   = 1;
             imgCreateInfo.fragments = 1;
             Pal::ImageTiling    tiling =  Pal::ImageTiling::Optimal;
+            uint32_t    rowPitch = 0;
 
             if (((memoryType() == Persistent) &&
                  dev().settings().linearPersistentImage_) ||
@@ -858,10 +859,12 @@ Resource::create(MemoryType memType, CreateParams* params)
             }
             else if (memoryType() == ImageView) {
                 tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
+                // Find the new pitch in pixels for the new format
+                rowPitch = viewOwner_->desc().pitch_ *
+                    viewOwner_->elementSize() / elementSize();
             }
 
             if (memoryType() == ImageBuffer) {
-                uint32_t    rowPitch;
                 if ((params->owner_ != NULL) && params->owner_->asImage() &&
                     (params->owner_->asImage()->getRowPitch() != 0)) {
                     rowPitch = params->owner_->asImage()->getRowPitch() / elementSize();
@@ -869,11 +872,12 @@ Resource::create(MemoryType memType, CreateParams* params)
                 else {
                     rowPitch = desc().width_;
                 }
-                // Make sure the row pitch is aligned to pixels
-                imgCreateInfo.rowPitch = elementSize() *
-                    amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
-                imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
             }
+            desc_.pitch_ = rowPitch;
+            // Make sure the row pitch is aligned to pixels
+            imgCreateInfo.rowPitch = elementSize() *
+                amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
+            imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
             imgCreateInfo.tiling    = tiling;
 
             size_t imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
@@ -950,8 +954,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         if (nullptr != view->resource_) {
             viewOwner_ = view->resource_;
             offset_ += viewOwner_->offset();
-
-            if (viewOwner_->isMemoryType(Pinned)) {
+            if (viewOwner_->data() != nullptr) {
                 address_ = viewOwner_->data() + view->offset_;
             }
             pinOffset_ = viewOwner_->pinOffset();
@@ -1025,15 +1028,19 @@ Resource::create(MemoryType memType, CreateParams* params)
         return true;
     }
 
+    
     if ((nullptr != params) &&
         (nullptr != params->owner_) &&
         (nullptr != params->owner_->getSvmPtr())) {
+        Pal::gpusize svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+        svmPtr = (svmPtr == 1) ? 0 : svmPtr;
         // @todo 64K alignment is too big
         uint allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
         if (memoryType() == Remote) {
             Pal::SvmGpuMemoryCreateInfo createInfo = {};
             createInfo.size = allocSize;
             createInfo.alignment = MaxGpuAlignment;
+            //createInfo.gpuVirtAddr = svmPtr;
             memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         }
         else {
@@ -1042,6 +1049,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             createInfo.alignment = MaxGpuAlignment;
             createInfo.vaRange = Pal::VaRange::Svm;
             createInfo.priority = Pal::GpuMemPriority::Normal;
+            //createInfo.gpuVirtAddr = svmPtr;
             memTypeToHeap(&createInfo);
             memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         }
