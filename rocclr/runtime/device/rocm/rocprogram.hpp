@@ -58,6 +58,8 @@ public:
         return dev().getBackendDevice();
     }
 
+    bool hasGlobalStores() const { return hasGlobalStores_; }
+
 protected:
     //! pre-compile setup for GPU
     virtual bool initBuild(amd::option::Options* options);
@@ -160,6 +162,7 @@ private:
     // aclBinary and aclCompiler - for the compiler library
     aclBinary*      binaryElf_; //!< Binary for the new compiler library
     aclBinaryOptions binOpts_; //!< Binary options to create aclBinary
+    bool hasGlobalStores_; //!< program has writable program scope variables
 
     /* HSA executable */
     hsa_ext_program_t hsaProgramHandle_; //!< Handle to HSA runtime program

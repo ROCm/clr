@@ -128,7 +128,7 @@ public:
     bool init_LC();
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
-    const HSAILProgram* program() {
+    const HSAILProgram* program() const {
         return static_cast<const HSAILProgram*>(program_);
     }
 

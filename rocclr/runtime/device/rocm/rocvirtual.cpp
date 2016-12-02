@@ -315,6 +315,14 @@ VirtualGPU::processMemObjects(
         }
     }
 
+    if (hsaKernel.program()->hasGlobalStores()) {
+        // Sync AQL packets
+        setAqlHeader(kDispatchPacketHeader);
+        // Clear memory dependency state
+        const static bool All = true;
+        memoryDependency().clear(!All);
+    }
+
     return true;
 }
 
