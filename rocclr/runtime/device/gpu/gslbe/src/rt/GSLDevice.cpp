@@ -323,10 +323,7 @@ bool
 CALGSLDevice::SetupAdapter(int32 &asic_id)
 {
 #ifdef ATI_OS_WIN
-    if(osGetVersion() >= AMD_OS_VERSION_WINDOWS_10)
-    {
-        m_initLite = true;
-    }
+    m_initLite = true;
 #endif
 
     PerformAdapterInitialization_int(m_initLite);
