@@ -31,6 +31,7 @@ const HsaDeviceId HSA_FIJI_ID = 5;
 const HsaDeviceId HSA_HAWAII_ID = 6;
 const HsaDeviceId HSA_ELLESMERE_ID = 7;
 const HsaDeviceId HSA_BAFFIN_ID = 8;
+const HsaDeviceId HSA_VEGA10_ID = 9;
 const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static const AMDDeviceInfo DeviceInfo[] = {
@@ -43,7 +44,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET_FIJI */             {HSA_FIJI_ID, "", "fiji", "Fiji", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
     /* TARGET HAWAII */           {HSA_HAWAII_ID, "", "hawaii", "Hawaii", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
     /* TARGET ELLESMERE */        {HSA_ELLESMERE_ID, "", "polaris10", "Ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
-    /* TARGET BAFFIN */           {HSA_BAFFIN_ID, "", "polaris11", "Baffin", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 }
+    /* TARGET BAFFIN */           {HSA_BAFFIN_ID, "", "polaris11", "Baffin", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 },
+    /* TARGET VEGA10 */           {HSA_VEGA10_ID, "", "gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 0, 0 }
 };
 
 }
