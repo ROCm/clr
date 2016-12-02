@@ -109,6 +109,8 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device)
     hsaProgramHandle_.handle = 0;
     hsaExecutable_.handle = 0;
 
+    hasGlobalStores_ = false;
+
 #if defined(WITH_LIGHTNING_COMPILER)
     metadata_ = NULL;
 #endif // defined(WITH_LIGHTNING_COMPILER)
@@ -886,6 +888,8 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
     }
 
     size_t progvarsTotalSize = 0;
+    size_t dynamicSize = 0;
+    size_t progvarsWriteSize = 0;
 
     // Begin the Elf image from memory
     Elf* e = elf_memory((char*) binary, binSize, NULL);
@@ -936,9 +940,16 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
             }
         }
         // Accumulate the size of R & !X loadable segments
-        else if (pHdr.p_type == PT_LOAD
-                 && (pHdr.p_flags & PF_R) && !(pHdr.p_flags & PF_X)) {
-            progvarsTotalSize += pHdr.p_memsz;
+        else if (pHdr.p_type == PT_LOAD && !(pHdr.p_flags & PF_X)) {
+            if (pHdr.p_flags & PF_R) {
+                progvarsTotalSize += pHdr.p_memsz;
+            }
+            if (pHdr.p_flags & PF_W) {
+                progvarsWriteSize += pHdr.p_memsz;
+            }
+        }
+        else if (pHdr.p_type == PT_DYNAMIC) {
+            dynamicSize += pHdr.p_memsz;
         }
     }
 
@@ -950,6 +961,10 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
         return false;
     }
 
+    if (progvarsWriteSize != dynamicSize) {
+        hasGlobalStores_ = true;
+    }
+    progvarsTotalSize -= dynamicSize;
     setGlobalVariableTotalSize(progvarsTotalSize);
 
     saveBinaryAndSetType(TYPE_EXECUTABLE, binary, binSize);
@@ -1036,6 +1051,11 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
             buildLog_ += "\n";
             return false;
         }
+
+        // FIME_lmoriche: the compiler should set the kernarg alignment based
+        // on the alignment requirement of the parameters. For now, bump it to
+        // the worse case: 128byte aligned.
+        kernargSegmentAlignment = std::max(kernargSegmentAlignment, 128u);
 
         Kernel *aKernel = new roc::Kernel(
             kernelName,
