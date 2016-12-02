@@ -827,6 +827,14 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         }
     }
 
+    if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
+        std::string name = options->getDumpFileName(".s");
+        File *dump = C->NewFile(DT_INTERNAL, name);
+        if (!C->DumpExecutableAsText(out_exec, dump)) {
+            buildLog_ += "Warning: failed to dump code object.\n";
+        }
+    }
+
     return setKernels_LC( options, out_exec->Buf().data(), out_exec->Size() );
 }
 
