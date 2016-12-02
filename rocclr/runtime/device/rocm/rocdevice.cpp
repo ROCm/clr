@@ -29,6 +29,7 @@
 #include "vi_id.h"
 #include "cz_id.h"
 #include "ci_id.h"
+#include "ai_id.h"
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -147,6 +148,8 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
         case DEVICE_ID_VI_BAFFIN_M_67E7:
         case DEVICE_ID_VI_BAFFIN_M_67E9:
             return HSA_BAFFIN_ID;
+        case DEVICE_ID_AI_GREENLAND_P_687F:
+            return HSA_VEGA10_ID;
     default:
         return HSA_INVALID_DEVICE_ID;
   }
