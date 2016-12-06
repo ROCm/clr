@@ -1257,6 +1257,9 @@ KernelBlitManager::copyImageToBuffer(
   address parameters = kernels_[blitType]->parameters().capture(dev_);
   bool result = gpu().submitKernelInternal(ndrange, *kernels_[blitType],
                                            parameters, NULL);
+
+  gpu().releaseGpuMemoryFence();
+
   kernels_[blitType]->parameters().release(const_cast<address>(parameters),
                                            dev_);
 
@@ -1372,6 +1375,9 @@ bool KernelBlitManager::copyBufferToImage(device::Memory& srcMemory,
   address parameters = kernels_[blitType]->parameters().capture(dev_);
   bool result = gpu().submitKernelInternal(ndrange, *kernels_[blitType],
                                            parameters, NULL);
+
+  gpu().releaseGpuMemoryFence();
+
   kernels_[blitType]->parameters().release(const_cast<address>(parameters),
                                            dev_);
 
