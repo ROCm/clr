@@ -720,10 +720,12 @@ Device::create(Pal::IDevice* device)
         maxNumDedicatedCu > 0) {
         for (uint i = 0; i < properties().engineProperties[
             Pal::EngineTypeExclusiveCompute].engineCount; ++i) {
-            if (properties().engineProperties[
-                Pal::EngineTypeExclusiveCompute].capabilities[i].rtCuHighCompute ||
-                properties().engineProperties[
-                Pal::EngineTypeExclusiveCompute].capabilities[i].rtCuMedCompute) {
+            if ((properties().engineProperties[
+                 Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
+                 Pal::EngineSubType::RtCuHighCompute) ||
+                (properties().engineProperties[
+                 Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
+                 Pal::EngineSubType::RtCuMedCompute)) {
                 numExclusiveComputeEngines_++;
             }
         }
