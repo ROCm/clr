@@ -991,27 +991,33 @@ HSAILKernel::loadArguments(
 
     // Find all parameters for the current kernel
     for (auto arg : arguments_) {
+        const_address   paramaddr;
+        if (arg->index_ != uint(-1)) {
+            paramaddr = parameters + signature.at(arg->index_).offset_;
+        }
+
         // Handle the hidden arguments first, as they do not have a
         // matching parameter in the OCL signature (not a valid arg->index_)
-        if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X) {
+        switch (arg->type_) {
+        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: {
             size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
             assert(arg->size_ == sizeof(offset_x) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &offset_x, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y) {
+        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: {
             size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
             assert(arg->size_ == sizeof(offset_y) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &offset_y, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z) {
+        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: {
             size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
             assert(arg->size_ == sizeof(offset_z) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &offset_z, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER) {
+        case HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER: {
             size_t bufferPtr = 0;
             if ((printfInfo().size() > 0) &&
                 // and printf buffer was allocated
@@ -1022,39 +1028,32 @@ HSAILKernel::loadArguments(
             }
             assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &bufferPtr, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE) {
+        case HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
             assert(arg->size_ == sizeof(static_cast<size_t>(vmDefQueue)) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &vmDefQueue, arg->size_, arg->alignment_);
-            continue;
-        }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION) {
+            break;
+        case HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION:
             assert(arg->size_ == sizeof(static_cast<size_t>(*vmParentWrap)) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, vmParentWrap, arg->size_, arg->alignment_);
-            continue;
-        }
-        else if (arg->type_ == HSAIL_ARGTYPE_HIDDEN_NONE) {
+            break;
+        case HSAIL_ARGTYPE_HIDDEN_NONE: {
             void* zero = 0;
             assert(arg->size_ <= sizeof(zero) && "check the sizes");
             WriteAqlArg(&aqlArgBuf, &zero, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-
-        assert(arg->index_ != uint(-1) && "not a valid signature index");
-        const_address paramaddr = parameters + signature.at(arg->index_).offset_;
-
-        if (arg->type_ == HSAIL_ARGTYPE_POINTER) {
+        case HSAIL_ARGTYPE_POINTER: {
             // If it is a local pointer
             if (arg->addrQual_ == HSAIL_ADDRESS_LOCAL) {
                 ldsAddress = amd::alignUp(ldsAddress, arg->pointeeAlignment_);
                 WriteAqlArg(&aqlArgBuf, &ldsAddress, arg->size_, arg->alignment_);
                 ldsAddress += *reinterpret_cast<const size_t *>(paramaddr);
-                continue;
+                break;
             }
-            assert((arg->addrQual_ == HSAIL_ADDRESS_GLOBAL
-                 || arg->addrQual_ == HSAIL_ADDRESS_CONSTANT)
-                     && "Unsupported address qualifier");
+            assert((arg->addrQual_ == HSAIL_ADDRESS_GLOBAL ||
+                    arg->addrQual_ == HSAIL_ADDRESS_CONSTANT) && "Unsupported address qualifier");
 
             // If it is a global pointer
             Memory* gpuMem = nullptr;
@@ -1076,7 +1075,7 @@ HSAILKernel::loadArguments(
                 else if (!dev().isFineGrainedSystem(true)) {
                     return nullptr;
                 }
-                continue;
+                break;
             }
             if (nativeMem) {
                 gpuMem = *reinterpret_cast<Memory* const*>(paramaddr);
@@ -1092,7 +1091,7 @@ HSAILKernel::loadArguments(
             }
             if (gpuMem == nullptr) {
                 WriteAqlArg(&aqlArgBuf, &gpuMem, arg->size_, arg->alignment_);
-                continue;
+                break;
             }
 
             //! 64 bit isn't supported with 32 bit binary
@@ -1114,21 +1113,23 @@ HSAILKernel::loadArguments(
             if (nullptr != dev().hwDebugMgr())  {
                 dev().hwDebugMgr()->assignKernelParamMem(arg->index_, gpuMem->owner());
             }
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_REFERENCE) {
+        case HSAIL_ARGTYPE_REFERENCE: {
             // Copy the current structure into CB1
             memcpy(aqlStruct, paramaddr, arg->size_);
             ConstBuffer* cb = gpu.constBufs_[1];
             cb->uploadDataToHw(arg->size_);
             // Then use a pointer in aqlArgBuffer to CB1
-            uint64_t gpuPtr = cb->vmAddress() + cb->wrtOffset();
-            WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(void*));
+            size_t gpuPtr = static_cast<size_t>(cb->vmAddress() + cb->wrtOffset());
+            WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t));
             memList.push_back(cb);
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_VALUE) {
+        case HSAIL_ARGTYPE_VALUE:
             WriteAqlArg(&aqlArgBuf, paramaddr, arg->size_, arg->alignment_);
-        }
-        else if (arg->type_ == HSAIL_ARGTYPE_IMAGE) {
+            break;
+        case HSAIL_ARGTYPE_IMAGE: {
             Image* image = nullptr;
             amd::Memory* mem = nullptr;
             if (nativeMem) {
@@ -1173,8 +1174,9 @@ HSAILKernel::loadArguments(
             }
 
             memList.push_back(image);
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_SAMPLER) {
+        case HSAIL_ARGTYPE_SAMPLER: {
             const amd::Sampler* sampler =
                 *reinterpret_cast<amd::Sampler* const*>(paramaddr);
             const Sampler* gpuSampler = static_cast<Sampler*>
@@ -1182,8 +1184,9 @@ HSAILKernel::loadArguments(
             uint64_t srd = gpuSampler->hwSrd();
             WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
             srdResource = true;
+            break;
         }
-        else if (arg->type_ == HSAIL_ARGTYPE_QUEUE) {
+        case HSAIL_ARGTYPE_QUEUE: {
             const amd::DeviceQueue* queue =
                 *reinterpret_cast<amd::DeviceQueue* const*>(paramaddr);
             VirtualGPU* gpuQueue = static_cast<VirtualGPU*>(queue->vDev());
@@ -1199,9 +1202,10 @@ HSAILKernel::loadArguments(
                 vmQueue = gpu.vQueue()->vmAddress();
             }
             WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue));
+            break;
         }
-        else {
-            LogError(" Unsupported address type ");
+        default:
+            LogError(" Unsupported argument type ");
             return nullptr;
         }
     }
