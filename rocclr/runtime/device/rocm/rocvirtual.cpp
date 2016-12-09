@@ -1528,7 +1528,7 @@ VirtualGPU::submitKernelInternal(
 
     // Find all parameters for the current kernel
     for (auto arg : gpuKernel.hsailArgs()) {
-        const_address   srcArgPtr;
+        const_address   srcArgPtr = NULL;
         if (arg->index_ != uint(-1)) {
             srcArgPtr = parameters + signature.at(arg->index_).offset_;
         }
