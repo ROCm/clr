@@ -1528,63 +1528,65 @@ VirtualGPU::submitKernelInternal(
 
     // Find all parameters for the current kernel
     for (auto arg : gpuKernel.hsailArgs()) {
+        const_address   srcArgPtr;
+        if (arg->index_ != uint(-1)) {
+            srcArgPtr = parameters + signature.at(arg->index_).offset_;
+        }
+
         // Handle the hidden arguments first, as they do not have a
         // matching parameter in the OCL signature (not a valid arg->index_)
-        if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X) {
+        switch (arg->type_) {
+        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: {
             size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
             assert(arg->size_ == sizeof(offset_x) && "check the sizes");
             argPtr = addArg(argPtr, &offset_x, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y) {
+        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: {
             size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
             assert(arg->size_ == sizeof(offset_y) && "check the sizes");
             argPtr = addArg(argPtr, &offset_y, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z) {
+        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: {
             size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
             assert(arg->size_ == sizeof(offset_z) && "check the sizes");
             argPtr = addArg(argPtr, &offset_z, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER) {
+        case ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER: {
             address bufferPtr = printfDbg()->dbgBuffer();
             assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
             argPtr = addArg(argPtr, &bufferPtr, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE
-              || arg->type_ == ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION
-              || arg->type_ == ROC_ARGTYPE_HIDDEN_NONE) {
+        case ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
+        case ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION:
+        case ROC_ARGTYPE_HIDDEN_NONE: {
             void* zero = 0;
             assert(arg->size_ <= sizeof(zero) && "check the sizes");
             argPtr = addArg(argPtr, &zero, arg->size_, arg->alignment_);
-            continue;
+            break;
         }
-
-        assert(arg->index_ != uint(-1) && "not a valid signature index");
-        const_address srcArgPtr = parameters + signature.at(arg->index_).offset_;
-
-        if (arg->type_ == ROC_ARGTYPE_POINTER) {
+        case ROC_ARGTYPE_POINTER: {
             if (arg->addrQual_ == ROC_ADDRESS_LOCAL) {
                 // Align the LDS on the alignment requirement of type pointed to
                 ldsUsage = amd::alignUp(ldsUsage, arg->pointeeAlignment_);
                 argPtr = addArg(argPtr, &ldsUsage, arg->size_, arg->alignment_);
                 ldsUsage += *reinterpret_cast<const size_t *>(srcArgPtr);
-                continue;
+                break;
             }
             assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL
                  || arg->addrQual_ == ROC_ADDRESS_CONSTANT)
                      && "Unsupported address qualifier");
             if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
                 argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-                continue;
+                break;
             }
             amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
             if (mem == NULL) {
                 argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-                continue;
+                break;
             }
 
             Memory *devMem = static_cast<Memory *>(mem->getDeviceMemory(dev()));
@@ -1597,8 +1599,9 @@ VirtualGPU::submitKernelInternal(
             if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
                 mem->signalWrite(&dev());
             }
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_REFERENCE) {
+        case ROC_ARGTYPE_REFERENCE: {
             void *mem = allocKernArg(arg->size_, arg->alignment_);
             if (mem == NULL) {
                 LogError("Out of memory");
@@ -1606,11 +1609,12 @@ VirtualGPU::submitKernelInternal(
             }
             memcpy(mem, srcArgPtr, arg->size_);
             argPtr = addArg(argPtr, &mem, sizeof(void*));
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_VALUE) {
+        case ROC_ARGTYPE_VALUE:
             argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-        }
-        else if (arg->type_ == ROC_ARGTYPE_IMAGE) {
+            break;
+        case ROC_ARGTYPE_IMAGE: {
             amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
             Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
             if (image == NULL) {
@@ -1634,8 +1638,9 @@ VirtualGPU::submitKernelInternal(
             if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
                 mem->signalWrite(&dev());
             }
+            break;
         }
-        else if (arg->type_ == ROC_ARGTYPE_SAMPLER) {
+        case ROC_ARGTYPE_SAMPLER: {
             amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
             if (sampler == NULL) {
                 LogError("Kernel sampler argument is not an sampler object");
@@ -1666,6 +1671,10 @@ VirtualGPU::submitKernelInternal(
                 argPtr += HSA_SAMPLER_OBJECT_SIZE;
                 hsa_ext_sampler_destroy(dev().getBackendDevice(), hsa_sampler);
             }
+            break;
+        }
+        default:
+            return false;
         }
     }
 
