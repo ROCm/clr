@@ -991,7 +991,7 @@ HSAILKernel::loadArguments(
 
     // Find all parameters for the current kernel
     for (auto arg : arguments_) {
-        const_address   paramaddr;
+        const_address   paramaddr = nullptr;
         if (arg->index_ != uint(-1)) {
             paramaddr = parameters + signature.at(arg->index_).offset_;
         }
