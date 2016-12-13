@@ -1182,13 +1182,14 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
                     devMemory->mapMemory()->getDeviceMemory(dev(), false));
                 result = blitMgr().copyImageToBuffer(
                   *hsaMemory, *mapMemory, cmd.origin(),
-                  cmd.origin(), cmd.size(), true);
+                  cmd.origin(), cmd.size(), cmd.isEntireMemory(),
+                  image->getRowPitch(), image->getSlicePitch());
             }
             else {
                 result = blitMgr().readImage(
-                    *hsaMemory, hostPtr, amd::Coord3D(0),
-                    image->getRegion(), image->getRowPitch(),
-                    image->getSlicePitch(), true);
+                    *hsaMemory, const_cast<void*>(cmd.mapPtr()), cmd.origin(),
+                    cmd.size(), image->getRowPitch(),
+                    image->getSlicePitch(), cmd.isEntireMemory());
             }
         }
         else {
@@ -1239,17 +1240,14 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
                         devMemory->mapMemory()->getDeviceMemory(dev(), false));
                     result = blitMgr().copyBufferToImage(
                       *mapMemory, *devMemory, mapInfo->origin_,
-                      mapInfo->origin_, mapInfo->region_, true);
+                      mapInfo->origin_, mapInfo->region_, mapInfo->isEntire(),
+                      image->getRowPitch(), image->getSlicePitch());
                 }
                 else {
-                    void *hostPtr = mapMemory == NULL ?
-                        devMemory->owner()->getHostMem() :
-                        mapMemory->getHostMem();
-
                     result = blitMgr().writeImage(
-                        hostPtr, *devMemory,
-                        amd::Coord3D(0), image->getRegion(),
-                        image->getRowPitch(), image->getSlicePitch(), true);
+                        cmd.mapPtr(), *devMemory,
+                        mapInfo->origin_, mapInfo->region_,
+                        image->getRowPitch(), image->getSlicePitch(), mapInfo->isEntire());
                 }
             }
             else {
