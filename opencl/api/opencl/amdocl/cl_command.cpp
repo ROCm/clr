@@ -103,8 +103,8 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
         case CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD:
             queueRTCUs = p->value.size;
             break;
-#define CL_QUEUE_MEDIUM_PRIORITY        0x4050
-        case CL_QUEUE_MEDIUM_PRIORITY:
+#define CL_QUEUE_MEDIUM_PRIORITY_AMD        0x4050
+        case CL_QUEUE_MEDIUM_PRIORITY_AMD:
             priority = amd::CommandQueue::Priority::Medium;
             break;
         default:
@@ -138,9 +138,10 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
             // Is it a device default queue
             if (properties & CL_QUEUE_ON_DEVICE_DEFAULT) {
                 queue = amdContext.defDeviceQueue(amdDevice);
-                // If current context has one already then retunr it
+                // If current context has one already then return it
                 if (NULL != queue) {
                     queue->retain();
+                    *not_null(errcode_ret) = CL_SUCCESS;
                     return as_cl(queue);
                 }
             }
