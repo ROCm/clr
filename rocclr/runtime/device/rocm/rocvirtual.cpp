@@ -1182,8 +1182,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
                     devMemory->mapMemory()->getDeviceMemory(dev(), false));
                 result = blitMgr().copyImageToBuffer(
                   *hsaMemory, *mapMemory, cmd.origin(),
-                  cmd.origin(), cmd.size(), cmd.isEntireMemory(),
-                  image->getRowPitch(), image->getSlicePitch());
+                  amd::Coord3D(0,0,0), cmd.size(), cmd.isEntireMemory());
             }
             else {
                 result = blitMgr().readImage(
@@ -1239,9 +1238,8 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
                     roc::Memory *mapMemory = static_cast<roc::Memory *>(
                         devMemory->mapMemory()->getDeviceMemory(dev(), false));
                     result = blitMgr().copyBufferToImage(
-                      *mapMemory, *devMemory, mapInfo->origin_,
-                      mapInfo->origin_, mapInfo->region_, mapInfo->isEntire(),
-                      image->getRowPitch(), image->getSlicePitch());
+                      *mapMemory, *devMemory, amd::Coord3D(0,0,0),
+                      mapInfo->origin_, mapInfo->region_, mapInfo->isEntire());
                 }
                 else {
                     result = blitMgr().writeImage(

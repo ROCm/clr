@@ -710,6 +710,12 @@ Image::allocMapTarget(
 
     void* pHostMem = owner()->getHostMem();
 
+    amd::Image* image = owner()->asImage();
+
+    size_t elementSize = image->getImageFormat().getElementSize();
+
+    size_t  offset = origin[0] * elementSize;
+
     if (pHostMem == NULL) {
         if (indirectMapCount_ == 1) {
             if (!allocateMapMemory(owner()->getSize())) {
@@ -726,13 +732,23 @@ Image::allocMapTarget(
         }
 
         pHostMem = mapMemory_->getHostMem();
+
+        *rowPitch = region[0] * elementSize;
+
+        size_t slicePitchTmp = 0;
+
+        if (imageDescriptor_.geometry == HSA_EXT_IMAGE_GEOMETRY_1DA) {
+            slicePitchTmp = *rowPitch;
+        }
+        else {
+            slicePitchTmp = *rowPitch * region[1];
+        }
+        if (slicePitch != NULL) {
+            *slicePitch = slicePitchTmp;
+        }
+
+        return pHostMem;
     }
-
-    amd::Image* image = owner()->asImage();
-
-    size_t elementSize = image->getImageFormat().getElementSize();
-
-    size_t  offset = origin[0] * elementSize;
 
     // Adjust offset with Y dimension
     offset += image->getRowPitch() * origin[1];
