@@ -1186,9 +1186,9 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
             }
             else {
                 result = blitMgr().readImage(
-                    *hsaMemory, const_cast<void*>(cmd.mapPtr()), cmd.origin(),
-                    cmd.size(), image->getRowPitch(),
-                    image->getSlicePitch(), cmd.isEntireMemory());
+                    *hsaMemory, hostPtr, amd::Coord3D(0),
+                    image->getRegion(), image->getRowPitch(),
+                    image->getSlicePitch(), true);
             }
         }
         else {
@@ -1242,10 +1242,12 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
                       mapInfo->origin_, mapInfo->region_, mapInfo->isEntire());
                 }
                 else {
+                    void *hostPtr = devMemory->owner()->getHostMem();
+
                     result = blitMgr().writeImage(
-                        cmd.mapPtr(), *devMemory,
-                        mapInfo->origin_, mapInfo->region_,
-                        image->getRowPitch(), image->getSlicePitch(), mapInfo->isEntire());
+                        hostPtr, *devMemory,
+                        amd::Coord3D(0), image->getRegion(),
+                        image->getRowPitch(), image->getSlicePitch(), true);
                 }
             }
             else {
