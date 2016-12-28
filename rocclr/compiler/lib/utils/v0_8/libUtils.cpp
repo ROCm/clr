@@ -525,6 +525,7 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 804: return sgfx804;
   case 810: return sgfx810;
   case 900: return sgfx900;
+  case 901: return sgfx901;
   }
 }
 
