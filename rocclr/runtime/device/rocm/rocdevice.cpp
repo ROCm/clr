@@ -296,7 +296,7 @@ bool NullDevice::init() {
         bool isOnline = false;
         //Check if the particular device is online
         for (unsigned int i=0; i< devices.size(); i++) {
-            if (static_cast<NullDevice*>(devices[i])->deviceInfo_.hsaDeviceId_ == 
+            if (static_cast<NullDevice*>(devices[i])->deviceInfo_.hsaDeviceId_ ==
                 DeviceInfo[id].hsaDeviceId_){
                     isOnline = true;
             }
@@ -587,6 +587,29 @@ Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev)
             return false;
         }
     }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    //  create compilation object with cache support
+    int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
+    int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
+    int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
+
+    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+    // with dash as delimiter to be compatible with Windows directory name
+    std::ostringstream cacheTarget;
+    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+
+    amd::CacheCompilation* compObj = new amd::CacheCompilation(cacheTarget.str(),
+                                                               "_rocm",
+                                                               hsaSettings->enableCodeCache_,
+                                                               hsaSettings->resetCodeCache_);
+    if (!compObj) {
+        LogError("Unable to create cache compilation object!");
+        return false;
+    }
+
+    cacheCompilation_.reset(compObj);
+#endif
 
     return true;
 }
@@ -1076,7 +1099,7 @@ Device::bindExternalDevice(
 #else
   if((flags&amd::Context::GLDeviceKhr)==0)
     return false;
-  
+
   MesaInterop::MESA_INTEROP_KIND kind=MesaInterop::MESA_INTEROP_NONE;
   MesaInterop::DisplayHandle display;
   MesaInterop::ContextHandle context;

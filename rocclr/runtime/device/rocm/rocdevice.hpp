@@ -80,6 +80,8 @@ public:
 
     Compiler* compiler() const { return compilerHandle_; }
 
+    const Settings &settings() const { return reinterpret_cast<Settings &>(*settings_); }
+
     //! Construct an HSAIL program object from the ELF assuming it is valid
     virtual device::Program *createProgram(amd::option::Options* options = NULL);
     const AMDDeviceInfo& deviceInfo() const {
@@ -193,6 +195,10 @@ public:
         return false;
     }
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
+#endif
+
 protected:
     //! Initialize compiler instance and handle
     static bool initCompiler(bool isOffline);
@@ -202,6 +208,10 @@ protected:
     static Compiler* compilerHandle_;
     //! Device Id for an HsaDevice
     AMDDeviceInfo deviceInfo_;
+#if defined(WITH_LIGHTNING_COMPILER)
+    //! Compilation with cache support
+    std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
+#endif
 private:
     static const bool offlineDevice_;
 };
@@ -328,8 +338,6 @@ public:
     virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = NULL) const;
 
     virtual void svmFree(void* ptr) const;
-
-    const Settings &settings() const { return reinterpret_cast<Settings &>(*settings_); }
 
     //! Returns transfer engine object
     const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }

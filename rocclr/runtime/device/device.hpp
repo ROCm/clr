@@ -17,6 +17,7 @@
 #include "appprofile.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
+#include "caching/cache.hpp"
 #include "driver/AmdCompiler.h"
 #endif // defined(WITH_LIGHTNING_COMPILER)
 #include "acl.h"
@@ -1632,7 +1633,7 @@ public:
     inline bool isFineGrainedSystem(bool FGSOPT = false) const {
         return FGSOPT && (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true : false;
     }
- 
+
     //! Return this device's type.
     cl_device_type type() const {
         return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT | CL_HSA_ENABLED_AMD
@@ -1842,6 +1843,71 @@ struct KernelParameterDescriptor
     cl_kernel_arg_type_qualifier    typeQualifier_;
     const char* typeName_;  //!< Argument's type name
 };
+
+#if defined(WITH_LIGHTNING_COMPILER)
+
+//! Compilation process with cache support.
+class CacheCompilation : public amd::HeapObject
+{
+public:
+
+    enum COMPILER_OPERATION {
+        LINK_LLVM_BITCODES = 0,
+        COMPILE_TO_LLVM,
+        COMPILE_AND_LINK_EXEC
+    };
+
+    //! Constructor
+    CacheCompilation(std::string    targetStr,
+                     std::string    postfix,
+                     bool           enableCache,
+                     bool           resetCache);
+
+    //! return the log string of the operation
+    std::string  buildLog() const { return buildLog_; }
+
+    //! NB, the cacheOpt argument is used for specifying the operation
+    //!     condition, normally would be the same as the options argument.
+    //!     However, the cacheOpt argument should not include any option
+    //!     that would be modified each time but not affect the operation,
+    //!     e.g.  output file name.
+
+    //! Link LLVM bitcode
+    bool linkLLVMBitcode(amd::opencl_driver::Compiler* C,
+                         std::vector<amd::opencl_driver::Data*>& inputs,
+                         amd::opencl_driver::Buffer* output,
+                         std::vector<std::string>& options,
+                         std::string cacheOpt);
+
+    //! Compile to LLVM bitcode
+    bool compileToLLVMBitcode(amd::opencl_driver::Compiler* C,
+                              std::vector<amd::opencl_driver::Data*>& inputs,
+                              amd::opencl_driver::Buffer* output,
+                              std::vector<std::string>& options,
+                              std::string cacheOpt);
+
+    //! Compile and link executable
+    bool compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
+                                  std::vector<amd::opencl_driver::Data*>& inputs,
+                                  amd::opencl_driver::Buffer* output,
+                                  std::vector<std::string>& options,
+                                  std::string cacheOpt);
+
+private:
+    //! Invoke operations with cache support
+    bool cacheProcess(amd::opencl_driver::Compiler*           C,
+                      std::vector<amd::opencl_driver::Data*>  inputs,
+                      amd::opencl_driver::Buffer*             output,
+                      std::vector<std::string>                options,
+                      std::string                             cacheOpt,
+                      COMPILER_OPERATION                      operation);
+
+    StringCache codeCache_;             //! Cached codes
+    const bool  isCodeCacheEnabled_;    //! Code cache enable
+    std::string buildLog_;              //! log of the operation
+};
+
+#endif
 
 /*! @}
  *  @}
