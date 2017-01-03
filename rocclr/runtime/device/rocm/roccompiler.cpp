@@ -195,19 +195,20 @@ HSAILProgram::compileImpl_LC(
         return false;
     }
 
-    driverOptions.append(" -include-pch " + pch->Name());
     driverOptions.append(" -Xclang -fno-validate-pch");
+
+    // save the options for caching before including the temporary header file for amdgcn
+    std::string cacheOpts = driverOptions + std::to_string(clcStd);
+
+    driverOptions.append(" -include-pch " + pch->Name());
 
     // Tokenize the options string into a vector of strings
     std::istringstream istrstr(driverOptions);
     std::istream_iterator<std::string> sit(istrstr), end;
     std::vector<std::string> params(sit, end);
 
-    // Compile source to IR
-    bool ret = C->CompileToLLVMBitcode(inputs, output, params);
-    buildLog_ += C->Output();
-    if (!ret) {
-        buildLog_ += "Error: Failed to compile opencl source (from CL to LLVM IR).\n";
+    if (!dev().cacheCompilation()->compileToLLVMBitcode(C.get(), inputs, output, params, cacheOpts)) {
+        buildLog_ += dev().cacheCompilation()->buildLog();
         return false;
     }
 

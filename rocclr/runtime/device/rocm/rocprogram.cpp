@@ -531,10 +531,8 @@ HSAILProgram::linkImpl_LC(
     }
 
     std::vector<std::string> linkOptions;
-    bool ret = C->LinkLLVMBitcode(inputs, output, linkOptions);
-    buildLog_ += C->Output();
-    if (!ret) {
-        buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+    if (!dev().cacheCompilation()->linkLLVMBitcode(C.get(), inputs, output, linkOptions, "")) {
+        buildLog_ += dev().cacheCompilation()->buildLog();
         return false;
     }
 
@@ -770,10 +768,8 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
         return false;
     }
 
-    bool ret = C->LinkLLVMBitcode(inputs, linked_bc, linkOptions);
-    buildLog_ += C->Output();
-    if (!ret) {
-        buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+    if (!dev().cacheCompilation()->linkLLVMBitcode(C.get(), inputs, linked_bc, linkOptions, "")) {
+        buildLog_ += dev().cacheCompilation()->buildLog();
         return false;
     }
 
@@ -812,10 +808,9 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     std::istream_iterator<std::string> sit(strstr), end;
     std::vector<std::string> params(sit, end);
 
-    ret = C->CompileAndLinkExecutable(inputs, out_exec, params);
-    buildLog_ += C->Output();
-    if (!ret) {
-        buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exe.\n";
+    if (!dev().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
+                                                    codegenOptions)) {
+        buildLog_ += dev().cacheCompilation()->buildLog();
         return false;
     }
 

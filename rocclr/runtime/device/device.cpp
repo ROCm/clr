@@ -7,6 +7,9 @@
 #include "thread/monitor.hpp"
 
 #if defined(WITH_HSA_DEVICE)
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "SCLib_Ver.h"
+#endif
 #include "device/rocm/rocdevice.hpp"
 extern amd::AppProfile* rocCreateAppProfile();
 #endif
@@ -613,6 +616,207 @@ Device::allocMapTarget(
     // Pass request over to memory
     return devMem->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
 }
+
+
+#if defined(WITH_LIGHTNING_COMPILER)
+CacheCompilation::CacheCompilation(std::string targetStr, std::string postfix, bool enableCache, bool resetCache)
+    : codeCache_ ( targetStr, SC_BUILD_NUMBER, AMD_PLATFORM_BUILD_NUMBER, postfix )
+    , isCodeCacheEnabled_ (enableCache)
+{
+    if (resetCache) {
+        // clean up the cached data of the target device
+        StringCache emptyCache(targetStr, 0, 0, postfix);
+    }
+}
+
+bool
+CacheCompilation::cacheProcess(
+    amd::opencl_driver::Compiler*           C,
+    std::vector<amd::opencl_driver::Data*>  inputs,
+    amd::opencl_driver::Buffer*             output,
+    std::vector<std::string>                options,
+    std::string                             cacheOpt,
+    COMPILER_OPERATION                      operation)
+{
+    using namespace amd::opencl_driver;
+
+    std::vector<StringCache::CachedData> bcSet;
+    bool cachedCodeExist = false;
+    std::string cacheMsg;
+
+    bool checkCache = true;
+    switch (operation) { // for link LLVM bitcodes
+    case LINK_LLVM_BITCODES:
+        cacheMsg = "Link LLVM Bitcodes";
+        for (auto &input : inputs) {
+            assert(input->Type() == DT_LLVM_BC);
+
+            BufferReference* bc = reinterpret_cast<BufferReference*>(input);
+            StringCache::CachedData cachedData = { bc->Ptr(), bc->Size() };
+            bcSet.push_back(cachedData);
+        }
+        break;
+    case COMPILE_TO_LLVM:
+        cacheMsg = "Compile to LLVM Bitcodes";
+        for (auto &input : inputs) {
+            if (input->Type() == DT_CL) {
+                BufferReference* bc = reinterpret_cast<BufferReference*>(input);
+                StringCache::CachedData cachedData = { bc->Ptr(), bc->Size() };
+                bcSet.push_back(cachedData);
+            }
+            else if (input->Type() == DT_CL_HEADER) {
+                FileReference* bcFile = reinterpret_cast<FileReference*>(input);
+                std::string bc;
+                bcFile->ReadToString(bc);
+                StringCache::CachedData cachedData = { bc.c_str(), bc.size() };
+                bcSet.push_back(cachedData);
+            }
+            else {
+                buildLog_ += "Error: unsupported bitcode type for checking cache.\n";
+                checkCache = false;
+                break;
+            }
+        }
+        break;
+    case COMPILE_AND_LINK_EXEC:
+        cacheMsg = "Compile and Link Executable";
+        for (auto &input : inputs) {
+            assert(input->Type() == DT_LLVM_BC);
+
+            amd::opencl_driver::Buffer* bc = (amd::opencl_driver::Buffer*) input;
+            StringCache::CachedData cachedData = { bc->Buf().data(), bc->Size() };
+            bcSet.push_back(cachedData);
+        }
+        break;
+    default:
+        assert(!"Unknown compiler operation");
+        checkCache = false;
+        break;
+    }
+
+    std::string dstData = "";
+    if (checkCache &&
+        codeCache_.getCacheEntry(isCodeCacheEnabled_, bcSet.data(), bcSet.size(),
+                                 cacheOpt, dstData, cacheMsg)) {
+            std::copy(dstData.begin(), dstData.end(), std::back_inserter(output->Buf()));
+            cachedCodeExist = true;
+    }
+
+    if (!cachedCodeExist) {      //  bitcodes not found in cache
+        bool ret = false;
+        switch (operation) { // for link LLVM bitcodes
+        case LINK_LLVM_BITCODES:
+            ret = C->LinkLLVMBitcode(inputs, output, options);
+            break;
+        case COMPILE_TO_LLVM:
+            ret = C->CompileToLLVMBitcode(inputs, output, options);
+            break;
+        case COMPILE_AND_LINK_EXEC:
+            ret = C->CompileAndLinkExecutable(inputs, output, options);
+            break;
+        }
+
+        if (!ret) {
+            return false;
+        }
+
+        std::string dstData(output->Buf().data(), output->Buf().size());
+        if (!codeCache_.makeCacheEntry(bcSet.data(), bcSet.size(), cacheOpt, dstData)) {
+            buildLog_ += "Error: Failed to caching codes.\n";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool
+CacheCompilation::linkLLVMBitcode(amd::opencl_driver::Compiler* C,
+                                  std::vector<amd::opencl_driver::Data*>& inputs,
+                                  amd::opencl_driver::Buffer* output,
+                                  std::vector<std::string>& options,
+                                  std::string cacheOpt)
+{
+    buildLog_.clear();
+
+    bool ret = false;
+    if (isCodeCacheEnabled_) {
+        ret = cacheProcess(C, inputs, output, options, cacheOpt, LINK_LLVM_BITCODES);
+        if (!ret) {
+            LogWarning("Cache look-up failed!");
+        }
+    }
+
+    if (!ret) {
+        ret = C->LinkLLVMBitcode(inputs, output, options);
+        buildLog_ += C->Output();
+    }
+
+    if (!ret) {
+        buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+    }
+
+    return ret;
+}
+
+bool
+CacheCompilation::compileToLLVMBitcode(amd::opencl_driver::Compiler* C,
+                                       std::vector<amd::opencl_driver::Data*>& inputs,
+                                       amd::opencl_driver::Buffer* output,
+                                       std::vector<std::string>& options,
+                                       std::string cacheOpt)
+{
+    buildLog_.clear();
+
+    bool ret = false;
+    if (isCodeCacheEnabled_) {
+        ret = cacheProcess(C, inputs, output, options, cacheOpt, COMPILE_TO_LLVM);
+        if (!ret) {
+            LogWarning("Cache look-up failed!");
+        }
+    }
+
+    if (!ret) {
+        ret = C->CompileToLLVMBitcode(inputs, output, options);
+        buildLog_ += C->Output();
+    }
+
+    if (!ret) {
+        buildLog_ += "Error: Failed to compile opencl source (from CL to LLVM IR).\n";
+    }
+
+    return ret;
+}
+
+bool
+CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
+                                           std::vector<amd::opencl_driver::Data*>& inputs,
+                                           amd::opencl_driver::Buffer* output,
+                                           std::vector<std::string>& options,
+                                           std::string cacheOpt)
+{
+    buildLog_.clear();
+
+    bool ret = false;
+    if (isCodeCacheEnabled_) {
+        ret = cacheProcess(C, inputs, output, options, cacheOpt, COMPILE_AND_LINK_EXEC);
+        if (!ret) {
+            LogWarning("Cache look-up failed!");
+        }
+    }
+
+    if (!ret) {
+        ret = C->CompileAndLinkExecutable(inputs, output, options);
+        buildLog_ += C->Output();
+    }
+
+    if (!ret) {
+        buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exeutable\n";
+    }
+
+    return ret;
+}
+#endif
 
 } // namespace amd
 
