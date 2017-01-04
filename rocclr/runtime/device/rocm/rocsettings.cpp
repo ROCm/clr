@@ -54,14 +54,6 @@ Settings::Settings()
     partialDispatch_ = (partialDispatch) ? false : true;
     commandQueues_ = 100; //!< Field value set to maximum number
 	                 //!< concurrent Virtual GPUs for ROCm backend
-
-    // Determine if user is requesting code caching for
-    // compiling and linking when using Lightening Compiler
-    enableCodeCache_ = OCL_CODE_CACHE_ENABLE;
-
-    // Determine if user is requesting reset the code cache
-    // storage (note that code cache must be enable)
-    resetCodeCache_  = OCL_CODE_CACHE_RESET;
 }
 
 bool
