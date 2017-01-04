@@ -198,11 +198,8 @@ release_on_stg(uint, GPU_WAVE_LIMIT_DSC_THRESH, 10,                           \
 release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
         "File path prefix for dumping wave limiter output")                   \
 release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
-        "File path prefix for tracing wave limiter")                          \
-release(bool, OCL_CODE_CACHE_ENABLE, false,                                   \
-        "1 = Enable compiler code cache")                                     \
-release(bool, OCL_CODE_CACHE_RESET, false,                                    \
-        "1 =  Reset the compiler code cache storage")
+        "File path prefix for tracing wave limiter")
+
 
 
 namespace amd {
