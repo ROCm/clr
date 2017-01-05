@@ -101,6 +101,11 @@ Settings::create(bool doublePrecision)
 void
 Settings::override()
 {
+    // Limit reported workgroup size
+    if (GPU_MAX_WORKGROUP_SIZE != 0) {
+        maxWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
+    }
+
     if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
         commandQueues_ = GPU_MAX_COMMAND_QUEUES;
     }
