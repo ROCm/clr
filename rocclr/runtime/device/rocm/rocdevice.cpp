@@ -823,15 +823,15 @@ Device::populateOCLDeviceConstants()
     info_.maxParameterSize_ = 1024;  // [TODO]: CAL stack values: 1024*
     // constant
 
-    uint32_t max_work_group_size = settings().maxWorkGroupSize_;
-    /*
+    uint32_t max_work_group_size = 0;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(
         _bkendDevice, HSA_AGENT_INFO_WORKGROUP_MAX_SIZE, &max_work_group_size)) {
         return false;
     }
-    */
     assert(max_work_group_size > 0);
+    max_work_group_size = std::min(max_work_group_size,
+        static_cast<uint32_t>(settings().maxWorkGroupSize_));
     info_.maxWorkGroupSize_ = max_work_group_size;
 
     uint16_t max_workgroup_size[3] = { 0, 0, 0 };
@@ -840,13 +840,13 @@ Device::populateOCLDeviceConstants()
         _bkendDevice, HSA_AGENT_INFO_WORKGROUP_MAX_DIM, &max_workgroup_size)) {
         return false;
     }
-
     assert(max_workgroup_size[0] != 0 && max_workgroup_size[1] != 0 &&
            max_workgroup_size[2] != 0);
 
-    info_.maxWorkItemSizes_[0] = max_workgroup_size[0];
-    info_.maxWorkItemSizes_[1] = max_workgroup_size[1];
-    info_.maxWorkItemSizes_[2] = max_workgroup_size[2];
+    uint16_t max_work_item_size = static_cast<uint16_t>(max_work_group_size);
+    info_.maxWorkItemSizes_[0] = std::min(max_workgroup_size[0], max_work_item_size);
+    info_.maxWorkItemSizes_[1] = std::min(max_workgroup_size[1], max_work_item_size);
+    info_.maxWorkItemSizes_[2] = std::min(max_workgroup_size[2], max_work_item_size);
 
     info_.nativeVectorWidthChar_ = info_.preferredVectorWidthChar_ = 4;
     info_.nativeVectorWidthShort_ = info_.preferredVectorWidthShort_ = 2;
