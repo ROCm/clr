@@ -168,6 +168,9 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_scfg.bEnableHighPerformanceState.hasValue = true;
     m_scfg.bEnableHighPerformanceState.value = enableHighPerformanceState;
 
+    m_scfg.bEnableReusableMemCache.hasValue = true;
+    m_scfg.bEnableReusableMemCache.value = false;
+
     m_dcfg.disableMarkUsedInCmdBuf.hasValue = true;
     m_dcfg.disableMarkUsedInCmdBuf.value    = false;
 
