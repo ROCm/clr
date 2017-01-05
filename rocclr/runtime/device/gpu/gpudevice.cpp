@@ -156,6 +156,7 @@ NullDevice::create(CALtarget target)
     case CAL_TARGET_STONEY:
     case CAL_TARGET_LEXA:
     case CAL_TARGET_RAVEN:
+    case CAL_TARGET_POLARIS22:
         calAttr.doublePrecision = CAL_TRUE;
         calAttr.isOpenCL200Device = CAL_TRUE;
         break;

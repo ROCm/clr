@@ -568,6 +568,7 @@ int getIsaType(const aclTargetInfo *target)
         case VI_BAFFIN_M_A0:
         case VI_ELLESMERE_P_A0:
         case VI_LEXA_V_A0:
+        case VI_POLARIS22_P_A0:
 #if defined(BUILD_HSA_TARGET)
         return 803; // Special case - Boltzmann FIJI, BAFFIN, ELLESMERE, LEXA
           // Otherwise fall through
