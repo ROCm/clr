@@ -457,7 +457,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         desc.mipLevels      = cal()->mipLevels_;
         desc.systemMemory   = NULL;
 
-        uint allocAttempt = 0; 
+        uint allocAttempt = 0;
         do {
             // Find a type for allocation
             if (memoryType() == Persistent) {
@@ -606,11 +606,6 @@ Resource::create(MemoryType memType, CreateParams* params)
         // Ensure page alignment
         if ((CALuint64)desc.systemMemory & (amd::Os::pageSize() - 1)) {
             return false;
-        }
-
-        if(dev().settings().svmFineGrainSystem_) {
-            cal_.isAllocExecute_ = desc.isAllocExecute = true;
-            cal_.isAllocSVM_ = desc.isAllocSVM = true;
         }
 
         gslResource = dev().resAlloc(&desc);
