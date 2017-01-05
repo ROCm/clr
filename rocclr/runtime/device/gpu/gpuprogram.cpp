@@ -2391,6 +2391,7 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         case ED_ATI_CAL_MACHINE_ELLESMERE_ISA:
         case ED_ATI_CAL_MACHINE_BAFFIN_ISA:
         case ED_ATI_CAL_MACHINE_LEXA_ISA:
+        case ED_ATI_CAL_MACHINE_POLARIS22_ISA:
             // gfx800 ISA has only sgrps limited and can be loaded.
             // gfx801 ISA has XNACK limitations and can be loaded.
             return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
