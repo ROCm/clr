@@ -285,6 +285,10 @@ bool NullDevice::init() {
     if (!initCompiler(offlineDevice_)){
         return false;
     }
+
+    // Return without initializing offline device list
+    return true;
+
 #if !defined(WITH_LIGHTNING_COMPILER)
     //If there is an HSA enabled device online then skip any offline device
     std::vector<Device*> devices;
