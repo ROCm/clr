@@ -276,9 +276,11 @@ void NullDevice::fillDeviceInfo(
         (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
         static_cast<cl_ulong>(localRAM) / 100u);
 
+    uint uswcPercentAvailable = ((static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) / Mi) > 1536 && IS_WINDOWS)
+                                ? 75 : 50;
     if (settings().apuSystem_) {
-        info_.globalMemSize_   +=
-            (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * Mi * 75)/100;
+        info_.globalMemSize_ +=
+            (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100;
     }
 
     // Find the largest heap form FB memory
@@ -289,7 +291,7 @@ void NullDevice::fillDeviceInfo(
 #if defined(ATI_OS_WIN)
     if (settings().apuSystem_) {
         info_.maxMemAllocSize_ = std::max(
-            (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * Mi * 75)/100,
+            (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable)/100,
             info_.maxMemAllocSize_);
     }
 #endif

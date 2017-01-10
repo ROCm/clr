@@ -124,12 +124,45 @@ Memory::create(
     Resource::CreateParams* params)
 {
     bool    result;
-
+    uint allocAttempt = 0;
     // Reset the flag in case we reallocate the heap in local/remote
     flags_ &= ~HostMemoryDirectAccess;
 
-    // Create a resource in CAL
-    result = Resource::create(memType, params);
+    do {
+        // Create a resource in CAL
+        result = Resource::create(memType, params);
+        if (!result) {
+            size_t  freeMemory[2];
+            // if requested memory is greater than available then exit the loop
+            dev().globalFreeMemory(freeMemory);
+
+            // Local to Persistent
+            if (memoryType() == Local) {
+                // For dgpu freeMemory[0] reports a sum of visible+invisible fb
+                if (owner()->getSize() > (freeMemory[0] * Ki)) {
+                    break;
+                }
+                memType = Persistent;
+            }
+            // Don't switch to USWC if persistent memory was explicitly asked
+            else if ((allocAttempt > 0) && (memoryType() == Persistent)) {
+                memType = RemoteUSWC;
+            }
+            // Remote cacheable to uncacheable
+            else if (memoryType() == Remote) {
+                memType = RemoteUSWC;
+            }
+            else if (dev().settings().apuSystem_ && memoryType() == RemoteUSWC) {
+                if (owner()->getSize() > (freeMemory[0] * Ki)) {
+                    break;
+                }
+            }
+            else {
+                break;
+            }
+            allocAttempt++;
+        }
+    } while (!result);
 
     // Check if CAL created a resource
     if (result) {
