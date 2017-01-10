@@ -1302,6 +1302,7 @@ Device::createBuffer(
         Resource::CreateParams  params;
         params.owner_ = &owner;
         params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
+        params.svmBase_ = static_cast<Memory*>(owner.svmBase());
 
         // Create memory object
         result = gpuMemory->create(type, &params);

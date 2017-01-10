@@ -81,7 +81,8 @@ public:
     struct CreateParams : public amd::StackObject {
         amd::Memory*    owner_;     //!< Resource's owner
         VirtualGPU*     gpu_;       //!< Resource won't be shared between multiple queues
-        CreateParams(): owner_(NULL), gpu_(NULL) {}
+        const Resource* svmBase_;   //!< SVM base for MGPU allocations
+        CreateParams(): owner_(nullptr), gpu_(nullptr), svmBase_(nullptr) {}
     };
 
     struct PinnedParams : public CreateParams {

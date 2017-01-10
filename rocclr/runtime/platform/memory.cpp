@@ -330,6 +330,9 @@ Memory::addDeviceMemory(const Device* dev)
 
             // Mark the allocation with the complete flag
             deviceAlloced_[dev] = AllocComplete;
+            if (getSvmPtr() != nullptr) {
+                svmBase_ = dm;
+            }
         }
         else {
             // Mark the allocation as an empty
@@ -629,7 +632,7 @@ Image::Image(
     initDimension();
 }
 
-bool 
+bool
 Image::validateDimensions(
     const std::vector<amd::Device*>& devices,
     cl_mem_object_type  type,
@@ -669,7 +672,7 @@ Image::validateDimensions(
         case CL_MEM_OBJECT_IMAGE2D:
             if ((width == 0) || (height == 0)) {
                 return false;
-            }   
+            }
             for (const auto dev : devices) {
                 if ((dev->info().image2DMaxHeight_ >= height) &&
                     (dev->info().image2DMaxWidth_ >= width)) {
@@ -1027,7 +1030,7 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
     bool supportRA = false;
     bool supportDepthsRGB = false;
     bool supportDepthStencil = false;
- 
+
     // Add RA if RA is supported.
     for (uint i = 0; i < devices.size(); i++) {
         if (devices[i]->settings().supportRA_) {
@@ -1076,7 +1079,7 @@ Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type
 
 cl_uint
 Image::getSupportedFormats(
-    const Context& context, 
+    const Context& context,
     cl_mem_object_type image_type,
     const cl_uint num_entries,
     cl_image_format *image_formats,
@@ -1088,7 +1091,7 @@ Image::getSupportedFormats(
     bool supportRA = false;
     bool supportDepthsRGB = false;
     bool supportDepthStencil = false;
- 
+
     // Add RA if RA is supported.
     for (uint i = 0; i < devices.size(); i++) {
         if (devices[i]->settings().supportRA_) {
@@ -1255,7 +1258,7 @@ Image::copyToBackingStore(void* initFrom)
     size_t  cpySize = getWidth() * getImageFormat().getElementSize();
 
     for (uint z = 0; z < getDepth(); ++z) {
-        src = reinterpret_cast<char*>(initFrom) + z * getSlicePitch();  
+        src = reinterpret_cast<char*>(initFrom) + z * getSlicePitch();
         for (uint y = 0; y < getHeight(); ++y) {
             memcpy(dst, src, cpySize);
             dst += cpySize;
@@ -1290,7 +1293,7 @@ round_to_even(float v)
         v += magicVal;
         v -= magicVal;
     }
-    
+
     return static_cast<int>(v);
 }
 
@@ -1300,7 +1303,7 @@ float2half_rtz(float f)
     union{ float f; cl_uint u; } u = {f};
     cl_uint sign = (u.u >> 16) & 0x8000;
     float x = fabsf(f);
-    
+
     //Nan
     if (x != x) {
         u.u >>= (24-11);
@@ -1316,21 +1319,21 @@ float2half_rtz(float f)
         }
         return 0x7bff | sign;
     }
-    
+
     // underflow
     if (x < *reinterpret_cast<float*>(&values[1])) {
         return sign;    // The halfway case can return 0x0001 or 0. 0 is even.
     }
-    
+
     // half denormal
     if (x < *reinterpret_cast<float*>(&values[2])) {
         x *= *reinterpret_cast<float*>(&values[3]);
         return static_cast<uint16_t>((int) x | sign);
     }
-    
+
     u.u &= 0xFFFFE000U;
     u.u -= 0x38000000U;
-    
+
     return (u.u >> (24-11)) | sign;
 }
 

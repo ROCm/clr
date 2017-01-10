@@ -173,7 +173,8 @@ protected:
     std::atomic_uint  mapCount_;	//!< Keep track of number of mappings for a memory object
     void *  svmHostAddress_;    //!< svm host address;
     bool    svmPtrCommited_;    //!< svm host address committed flag;
-    bool    canBeCached_;         //!< flag to if the object can be cached;
+    bool    canBeCached_;       //!< flag to if the object can be cached;
+
 private:
     //! Disable default assignment operator
     Memory& operator=(const Memory&);
@@ -183,6 +184,8 @@ private:
 
     Monitor             lockMemoryOps_; //!< Lock to serialize memory operations
     std::list<Memory*>  subBuffers_;    //!< List of all subbuffers for this memory object
+    device::Memory*     svmBase_;       //!< svmBase allocation for MGPU case
+
 protected:
     //! The constructor creates a memory object but does not allocate either host memory
     //! or device memory. Default parameters are appropriate for Buffer creation.
@@ -359,6 +362,7 @@ public:
     void commitSvmMemory();                                     //!< svm host address committed accessor;
     void setCacheStatus(bool canBeCached) { canBeCached_ = canBeCached; }//!< set the memobject cached status;
     bool canBeCached() const { return canBeCached_; }                    //!< get the memobject cached status;
+    device::Memory* svmBase() const { return svmBase_; }    //!< Returns SVM base for MGPU case
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,
@@ -418,7 +422,7 @@ protected:
 
     virtual void initDeviceMemory();
 public:
-    Pipe(Context& context, Flags flags, size_t size, size_t pipe_packet_size, size_t pipe_max_packets) 
+    Pipe(Context& context, Flags flags, size_t size, size_t pipe_packet_size, size_t pipe_max_packets)
         : Buffer(context, CL_MEM_OBJECT_PIPE, flags, size)
         , initialized_(false)
     {

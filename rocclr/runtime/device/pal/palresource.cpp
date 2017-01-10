@@ -529,7 +529,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         //! @todo PAL query for image/buffer object doesn't work properly!
 #if 0
         bool    isImage = false;
-        if (Pal::Result::Success != 
+        if (Pal::Result::Success !=
             dev().iDev()->DetermineExternalSharedResourceType(openInfo, &isImage)) {
             return false;
         }
@@ -1028,7 +1028,6 @@ Resource::create(MemoryType memType, CreateParams* params)
         return true;
     }
 
-    
     if ((nullptr != params) &&
         (nullptr != params->owner_) &&
         (nullptr != params->owner_->getSvmPtr())) {
@@ -1040,7 +1039,10 @@ Resource::create(MemoryType memType, CreateParams* params)
             Pal::SvmGpuMemoryCreateInfo createInfo = {};
             createInfo.size = allocSize;
             createInfo.alignment = MaxGpuAlignment;
-            //createInfo.gpuVirtAddr = svmPtr;
+            if (svmPtr != 0) {
+                createInfo.flags.useReservedGpuVa = true;
+                createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+            }
             memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         }
         else {
@@ -1049,7 +1051,10 @@ Resource::create(MemoryType memType, CreateParams* params)
             createInfo.alignment = MaxGpuAlignment;
             createInfo.vaRange = Pal::VaRange::Svm;
             createInfo.priority = Pal::GpuMemPriority::Normal;
-            //createInfo.gpuVirtAddr = svmPtr;
+            if (svmPtr != 0) {
+                createInfo.flags.useReservedGpuVa = true;
+                createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+            }
             memTypeToHeap(&createInfo);
             memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         }
