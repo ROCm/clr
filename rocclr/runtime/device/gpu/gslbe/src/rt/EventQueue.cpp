@@ -168,7 +168,7 @@ EventQueue::waitForEvent(uint32 event, uint32 waitType)
         flush();
     }
     uint64 param;
-    m_queries[slot]->GetResult(m_cs, &param, waitType);
+    m_queries[slot]->GetResult(m_cs, &param, (IOSyncWaitType) waitType);
 
     // cache the most recently retired event
     if ((event < m_headId) && (event > m_latestRetired))
