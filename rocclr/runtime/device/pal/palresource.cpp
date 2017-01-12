@@ -1245,11 +1245,6 @@ Resource::partialMemCopyTo(
 
     assert(!(desc().cardMemory_ && dstResource.desc().cardMemory_) &&
         "Unsupported configuraiton!");
-    gpu.engineID_ = SdmaEngine;
-
-    // Wait for the resources, since runtime may use async transfers
-    wait(gpu, waitOnBusyEngine);
-    dstResource.wait(gpu, waitOnBusyEngine);
 
     size_t     calSrcOrigin[3], calDstOrigin[3], calSize[3];
     calSrcOrigin[0] = srcOrigin[0] + pinOffset();
@@ -1261,6 +1256,42 @@ Resource::partialMemCopyTo(
     calSize[0] = size[0];
     calSize[1] = size[1];
     calSize[2] = size[2];
+
+    uint64_t gpuMemoryOffset, gpuMemoryRowPitch, imageOffsetx;
+
+    if (desc().buffer_ && !dstResource.desc().buffer_) {
+        imageOffsetx = calDstOrigin[0] % dstResource.elementSize();
+        gpuMemoryOffset = calSrcOrigin[0] + offset();
+        gpuMemoryRowPitch = (calSrcOrigin[1]) ? calSrcOrigin[1] :
+            calSize[0] * dstResource.elementSize();
+    }
+    else if (!desc().buffer_ && dstResource.desc().buffer_) {
+        imageOffsetx = calSrcOrigin[0] % elementSize();
+        gpuMemoryOffset = calDstOrigin[0] + dstResource.offset();
+        gpuMemoryRowPitch = (calDstOrigin[1]) ? calDstOrigin[1] :
+            calSize[0] * elementSize();
+    }
+
+    if ((desc().buffer_ && !dstResource.desc().buffer_) ||
+       (!desc().buffer_ && dstResource.desc().buffer_)) {
+
+        //sDMA cannot be used for the below conditions
+        // Make sure linear pitch in bytes is 4 bytes aligned
+        if (((gpuMemoryRowPitch % 4) != 0) ||
+            // another DRM restriciton... SI has 4 pixels
+            (gpuMemoryOffset % 4 != 0) ||
+            (dev().settings().sdamPageFaultWar_ &&
+            (imageOffsetx != 0))) {
+            return false;
+        }
+
+    }
+
+    gpu.engineID_ = SdmaEngine;
+
+    // Wait for the resources, since runtime may use async transfers
+    wait(gpu, waitOnBusyEngine);
+    dstResource.wait(gpu, waitOnBusyEngine);
 
     if (gpu.validateSdmaOverlap(*this, dstResource)) {
         gpu.flushDMA(SdmaEngine);
@@ -1281,23 +1312,12 @@ Resource::partialMemCopyTo(
         copyRegion.imageExtent.height = calSize[1];
         copyRegion.imageExtent.depth = calSize[2];
         copyRegion.numSlices = 1;
-        copyRegion.gpuMemoryOffset = calSrcOrigin[0] + offset();
-        copyRegion.gpuMemoryRowPitch = (calSrcOrigin[1]) ? calSrcOrigin[1] :
-            calSize[0] * dstResource.elementSize();
+        copyRegion.gpuMemoryOffset = gpuMemoryOffset;
+        copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
         copyRegion.gpuMemoryDepthPitch = (calSrcOrigin[2]) ? calSrcOrigin[2] :
             copyRegion.gpuMemoryRowPitch * calSize[1];
-        // Make sure linear pitch in bytes is 4 bytes aligned
-        if (((copyRegion.gpuMemoryRowPitch % 4) != 0) ||
-            // another DRM restriciton... SI has 4 pixels
-            (copyRegion.gpuMemoryOffset % 4 != 0) ||
-            (dev().settings().sdamPageFaultWar_ &&
-             (copyRegion.imageOffset.x % dstResource.elementSize() != 0))) {
-            result = false;
-        }
-        else {
             gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_,
                 imgLayout, 1, &copyRegion);
-        }
     }
     else if (!desc().buffer_ && dstResource.desc().buffer_) {
         Pal::MemoryImageCopyRegion copyRegion = {};
@@ -1310,23 +1330,12 @@ Resource::partialMemCopyTo(
         copyRegion.imageExtent.height = calSize[1];
         copyRegion.imageExtent.depth = calSize[2];
         copyRegion.numSlices = 1;
-        copyRegion.gpuMemoryOffset = calDstOrigin[0] + dstResource.offset();
-        copyRegion.gpuMemoryRowPitch = (calDstOrigin[1]) ? calDstOrigin[1] :
-            calSize[0] * elementSize();
+        copyRegion.gpuMemoryOffset = gpuMemoryOffset;
+        copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
         copyRegion.gpuMemoryDepthPitch = (calDstOrigin[2]) ? calDstOrigin[2] :
             copyRegion.gpuMemoryRowPitch * calSize[1];
-        // Make sure linear pitch in bytes is 4 bytes aligned
-        if (((copyRegion.gpuMemoryRowPitch % 4) != 0) ||
-            // another DRM restriciton... SI has 4 pixels
-            (copyRegion.gpuMemoryOffset % 4 != 0) ||
-            (dev().settings().sdamPageFaultWar_ &&
-             (copyRegion.imageOffset.x % elementSize() != 0))) {
-            result = false;
-        }
-        else {
             gpu.iCmd()->CmdCopyImageToMemory(*image_, imgLayout,
                 *dstResource.iMem(), 1, &copyRegion);
-        }
     }
     else {
         if (enableCopyRect) {
