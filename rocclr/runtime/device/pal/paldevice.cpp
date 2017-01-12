@@ -870,6 +870,29 @@ Device::create(Pal::IDevice* device)
         hwDebugMgr_ = new GpuDebugManager(this);
     }
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    //  create compilation object with cache support
+    int gfxipMajor = hwInfo()->gfxipVersion_ / 100;
+    int gfxipMinor = hwInfo()->gfxipVersion_ / 10 % 10;
+    int gfxipStepping = hwInfo()->gfxipVersion_ % 10;
+
+    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+    // with dash as delimiter to be compatible with Windows directory name
+    std::ostringstream cacheTarget;
+    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+
+    amd::CacheCompilation* compObj = new amd::CacheCompilation(cacheTarget.str(),
+                                                               "_pal",
+                                                               OCL_CODE_CACHE_ENABLE,
+                                                               OCL_CODE_CACHE_RESET);
+    if (!compObj) {
+        LogError("Unable to create cache compilation object!");
+        return false;
+    }
+
+    cacheCompilation_.reset(compObj);
+#endif
+
     return true;
 }
 

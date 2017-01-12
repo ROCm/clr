@@ -112,10 +112,18 @@ public:
     virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const { return NULL; }
     virtual void svmFree(void* ptr) const {return;}
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
+#endif
+
 protected:
     Pal::AsicRevision   asicRevision_;  //!< ASIC revision
     Pal::GfxIpLevel     ipLevel_;       //!< Device IP level
     const AMDDeviceInfo* hwInfo_;       //!< Device HW info structure
+
+#if defined(WITH_LIGHTNING_COMPILER)
+    std::unique_ptr<amd::CacheCompilation> cacheCompilation_;   //! Compilation with cache support
+#endif
 
     //! Fills OpenCL device info structure
     void fillDeviceInfo(
