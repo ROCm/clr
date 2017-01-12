@@ -204,7 +204,7 @@ HSAILProgram::compileImpl_LC(
     std::vector<std::string> params(sit, end);
 
     // Compile source to IR
-    bool ret = C->CompileToLLVMBitcode(inputs, output, params);
+    bool ret = dev().cacheCompilation()->compileToLLVMBitcode(C.get(), inputs, output, params, buildLog_);
     buildLog_ += C->Output();
     if (!ret) {
         buildLog_ += "Error: Failed to compile opencl source (from CL to LLVM IR).\n";

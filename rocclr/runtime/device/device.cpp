@@ -50,6 +50,7 @@ extern void DeviceUnload();
 #include <fstream>
 #include <set>
 #include <algorithm>
+#include <numeric>
 
 
 
@@ -613,6 +614,185 @@ Device::allocMapTarget(
     // Pass request over to memory
     return devMem->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
 }
+
+
+#if defined(WITH_LIGHTNING_COMPILER)
+CacheCompilation::CacheCompilation(std::string targetStr, std::string postfix, bool enableCache, bool resetCache)
+    : codeCache_ ( targetStr, 0, AMD_PLATFORM_BUILD_NUMBER, postfix )
+    , isCodeCacheEnabled_ (enableCache)
+{
+    if (resetCache) {
+        // clean up the cached data of the target device
+        StringCache emptyCache(targetStr, 0, 0, postfix);
+    }
+}
+
+bool
+CacheCompilation::linkLLVMBitcode(amd::opencl_driver::Compiler* C,
+                                  std::vector<amd::opencl_driver::Data*>& inputs,
+                                  amd::opencl_driver::Buffer* output,
+                                  std::vector<std::string>& options,
+                                  std::string& buildLog)
+{
+    std::string cacheOpt;
+    cacheOpt = std::accumulate(begin(options), end(options), cacheOpt);
+
+    bool ret = false;
+    bool cachedCodeExist = false;
+    std::vector<StringCache::CachedData> bcSet;
+    if (isCodeCacheEnabled_) {
+        using namespace amd::opencl_driver;
+
+        for (auto &input : inputs) {
+            assert(input->Type() == DT_LLVM_BC);
+
+            BufferReference* bc = reinterpret_cast<BufferReference*>(input);
+            StringCache::CachedData cachedData = { bc->Ptr(), bc->Size() };
+            bcSet.push_back(cachedData);
+        }
+
+        std::string dstData = "";
+        if (codeCache_.getCacheEntry(isCodeCacheEnabled_, bcSet.data(), bcSet.size(),
+                                     cacheOpt, dstData, "Link LLVM Bitcodes")) {
+            std::copy(dstData.begin(), dstData.end(), std::back_inserter(output->Buf()));
+            cachedCodeExist = true;
+        }
+    }
+
+    if (!cachedCodeExist) {
+        if (!C->LinkLLVMBitcode(inputs, output, options)) {
+            return false;
+        }
+
+        if (isCodeCacheEnabled_) {
+            std::string dstData(output->Buf().data(), output->Buf().size());
+            if (!codeCache_.makeCacheEntry(bcSet.data(), bcSet.size(), cacheOpt, dstData)) {
+                buildLog += "Warning: Failed to caching codes.\n";
+                LogWarning("Caching codes failed!");
+            }
+        }
+    }
+
+    return true;
+}
+
+bool
+CacheCompilation::compileToLLVMBitcode(amd::opencl_driver::Compiler* C,
+                                       std::vector<amd::opencl_driver::Data*>& inputs,
+                                       amd::opencl_driver::Buffer* output,
+                                       std::vector<std::string>& options,
+                                       std::string& buildLog)
+{
+    std::string cacheOpt;
+    for (uint i=0; i < options.size(); i++) {
+        // skip the header file option, which is associated with the -cl-std=<CLstd> option
+        if (options[i].compare("-include-pch") == 0) {
+            i++;
+            continue;
+        }
+        cacheOpt += options[i];
+    }
+
+    bool ret = false;
+    bool cachedCodeExist = false;
+    std::vector<StringCache::CachedData> bcSet;
+    if (isCodeCacheEnabled_) {
+        using namespace amd::opencl_driver;
+
+        bool checkCache = true;
+        for (auto &input : inputs) {
+            if (input->Type() == DT_CL) {
+                BufferReference* bc = reinterpret_cast<BufferReference*>(input);
+                StringCache::CachedData cachedData = { bc->Ptr(), bc->Size() };
+                bcSet.push_back(cachedData);
+            }
+            else if (input->Type() == DT_CL_HEADER) {
+                FileReference* bcFile = reinterpret_cast<FileReference*>(input);
+                std::string bc;
+                bcFile->ReadToString(bc);
+                StringCache::CachedData cachedData = { bc.c_str(), bc.size() };
+                bcSet.push_back(cachedData);
+            }
+            else {
+                buildLog += "Error: unsupported bitcode type for checking cache.\n";
+                checkCache = false;
+                break;
+            }
+        }
+
+        std::string dstData = "";
+        if (checkCache &&
+            codeCache_.getCacheEntry(isCodeCacheEnabled_, bcSet.data(), bcSet.size(),
+                                     cacheOpt, dstData, "Compile to LLVM Bitcodes")) {
+                std::copy(dstData.begin(), dstData.end(), std::back_inserter(output->Buf()));
+                cachedCodeExist = true;
+        }
+    }
+
+    if (!cachedCodeExist) {
+        if (!C->CompileToLLVMBitcode(inputs, output, options)) {
+            return false;
+        }
+
+        if (isCodeCacheEnabled_) {
+            std::string dstData(output->Buf().data(), output->Buf().size());
+            if (!codeCache_.makeCacheEntry(bcSet.data(), bcSet.size(), cacheOpt, dstData)) {
+                buildLog += "Warning: Failed to caching codes.\n";
+                LogWarning("Caching codes failed!");
+            }
+        }
+    }
+
+    return true;
+}
+
+bool
+CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
+                                           std::vector<amd::opencl_driver::Data*>& inputs,
+                                           amd::opencl_driver::Buffer* output,
+                                           std::vector<std::string>& options,
+                                           std::string& buildLog)
+{
+    std::string cacheOpt;
+    cacheOpt = std::accumulate(begin(options), end(options), cacheOpt);
+
+    bool ret = false;
+    bool cachedCodeExist = false;
+    std::vector<StringCache::CachedData> bcSet;
+    if (isCodeCacheEnabled_) {
+        for (auto &input : inputs) {
+            assert(input->Type() == amd::opencl_driver::DT_LLVM_BC);
+
+            amd::opencl_driver::Buffer* bc = (amd::opencl_driver::Buffer*) input;
+            StringCache::CachedData cachedData = { bc->Buf().data(), bc->Size() };
+            bcSet.push_back(cachedData);
+        }
+
+        std::string dstData = "";
+        if (codeCache_.getCacheEntry(isCodeCacheEnabled_, bcSet.data(), bcSet.size(),
+                                     cacheOpt, dstData, "Compile and Link Executable")) {
+            std::copy(dstData.begin(), dstData.end(), std::back_inserter(output->Buf()));
+            cachedCodeExist = true;
+        }
+    }
+
+    if (!cachedCodeExist) {
+        if (!C->CompileAndLinkExecutable(inputs, output, options)) {
+            return false;
+        }
+
+        if (isCodeCacheEnabled_) {
+            std::string dstData(output->Buf().data(), output->Buf().size());
+            if (!codeCache_.makeCacheEntry(bcSet.data(), bcSet.size(), cacheOpt, dstData)) {
+                buildLog += "Warning: Failed to caching codes.\n";
+                LogWarning("Caching codes failed!");
+            }
+        }
+    }
+
+    return true;
+}
+#endif
 
 } // namespace amd
 
