@@ -824,13 +824,13 @@ OPTION(OT_INT32, \
       "Set AMDIL shader compiler optimization level -1,0,1,2,3,4 (default -1 "
       "auto).")
 
-// -ilcth=int or --inline-cost-threshold (default 400)
+// -ilcth=int or --inline-cost-threshold (default 14000)
 OPTION(OT_UINT32, \
        OA_LINK_EXE|OA_RUNTIME|OVIS_SUPPORT|OVA_REQUIRED|OA_SEPARATOR_EQUAL, \
        "ilcth", "inline-cost-threshold", \
        InlineCostThreshold, \
-       400, 0, 0xFFFFFFFF, NULL, \
-       "Set cost threshold for inliner (default 400).")
+       14000, 0, 0xFFFFFFFF, NULL, \
+       "Set cost threshold for inliner (default 14000).")
 
 // -ilsth=int or --inline-size-threshold (default 50)
 OPTION(OT_UINT32, \
