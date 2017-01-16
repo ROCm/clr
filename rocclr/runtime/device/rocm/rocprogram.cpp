@@ -930,16 +930,11 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
                 if (note->n_type == 7 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA*/
                     && note->n_namesz == sizeof "AMD"
                     && !memcmp(name, "AMD", note->n_namesz)) {
-                    metadata_ = new amd::hsa::code::Program::Metadata();
-                    if (metadata_ && metadata_->ReadFrom(desc,note->n_descsz)) {
-                        // We've found and loaded the runtime metadata, exit the
-                        // note record loop now.
-                        break;
-                    }
-
-                    buildLog_ += "Error while parsing ELF program binary " \
-                        "runtime metadata section\n";
-                    return false;
+                    std::string metadataStr((const char *) desc, (size_t) note->n_descsz);
+                    metadata_ = new AMDGPU::RuntimeMD::Program::Metadata(metadataStr);
+                    // We've found and loaded the runtime metadata, exit the
+                    // note record loop now.
+                    break;
                 }
                 ptr += sizeof(*note)
                     + amd::alignUp(note->n_namesz, sizeof(int))

@@ -5,9 +5,6 @@
 #include "rockernel.hpp"
 #include "SCHSAInterface.h"
 #include "amd_hsa_kernel_code.h"
-#if defined(WITH_LIGHTNING_COMPILER)
-#include "amdgpu_metadata.hpp"
-#endif // defined(WITH_LIGHTNING_COMPILER)
 
 #include <algorithm>
 
@@ -17,9 +14,9 @@ namespace roc {
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline ROC_ARG_TYPE
-GetKernelArgType(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelArgType(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
-    switch (lcArg.Kind()) {
+    switch (lcArg.Kind) {
     case AMDGPU::RuntimeMD::KernelArg::GlobalBuffer:
     case AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer:
         return ROC_ARGTYPE_POINTER;
@@ -92,9 +89,9 @@ GetKernelArgType(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline size_t
-GetKernelArgAlignment(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelArgAlignment(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
-    return lcArg.Align();
+    return lcArg.Align;
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
@@ -135,10 +132,10 @@ GetKernelArgAlignment(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline size_t
-GetKernelArgPointeeAlignment(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelArgPointeeAlignment(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
-         uint32_t align = lcArg.PointeeAlign();
+    if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
+         uint32_t align = lcArg.PointeeAlign;
          if (align == 0) {
              LogWarning("Missing DynamicSharedPointer alignment");
              align = 128; /* worst case alignment */;
@@ -160,11 +157,11 @@ GetKernelArgPointeeAlignment(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline ROC_ACCESS_TYPE
-GetKernelArgAccessType(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelArgAccessType(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
-     || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Image) {
-        switch (lcArg.AccQual()) {
+    if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
+     || lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::Image) {
+        switch (lcArg.AccQual) {
         case AMDGPU::RuntimeMD::KernelArg::ReadOnly:
             return ROC_ACCESS_TYPE_RO;
         case AMDGPU::RuntimeMD::KernelArg::WriteOnly:
@@ -204,23 +201,23 @@ GetKernelArgAccessType(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline ROC_ADDRESS_QUALIFIER
-GetKernelAddrQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelAddrQual(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
-    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
+    if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
         return ROC_ADDRESS_LOCAL;
     }
-    else if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer) {
-        if (lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Global) {
+    else if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer) {
+        if (lcArg.AddrQual == AMDGPU::RuntimeMD::KernelArg::Global) {
             return ROC_ADDRESS_GLOBAL;
         }
-        else if (lcArg.AddrQual() == AMDGPU::RuntimeMD::KernelArg::Constant) {
+        else if (lcArg.AddrQual == AMDGPU::RuntimeMD::KernelArg::Constant) {
             return ROC_ADDRESS_CONSTANT;
         }
         LogError("Unsupported address type");
         return ROC_ADDRESS_ERROR;
     }
-    else if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Image
-        || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::Sampler) {
+    else if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::Image
+        || lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::Sampler) {
         return ROC_ADDRESS_GLOBAL;
     }
     return ROC_ADDRESS_ERROR;
@@ -257,15 +254,15 @@ GetKernelAddrQual(const aclArgData* argInfo)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline ROC_DATA_TYPE
-GetKernelDataType(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetKernelDataType(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
     aclArgDataType dataType;
 
-    if (lcArg.Kind() != AMDGPU::RuntimeMD::KernelArg::ByValue) {
+    if (lcArg.Kind != AMDGPU::RuntimeMD::KernelArg::ByValue) {
         return ROC_DATATYPE_ERROR;
     }
 
-    switch (lcArg.ValueType()) {
+    switch (lcArg.ValueType) {
     case AMDGPU::RuntimeMD::KernelArg::I8:
         return ROC_DATATYPE_S8;
     case AMDGPU::RuntimeMD::KernelArg::I16:
@@ -494,18 +491,18 @@ GetOclAccessQual(const Kernel::Argument* arg)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_type_qualifier
-GetOclTypeQual(const amd::hsa::code::KernelArg::Metadata& lcArg)
+GetOclTypeQual(const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg)
 {
     cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
-    if (lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
-     || lcArg.Kind() == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
-        if (lcArg.IsVolatile()) {
+    if (lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::GlobalBuffer
+     || lcArg.Kind == AMDGPU::RuntimeMD::KernelArg::DynamicSharedPointer) {
+        if (lcArg.IsVolatile) {
             rv |= CL_KERNEL_ARG_TYPE_VOLATILE;
         }
-        if (lcArg.IsRestrict()) {
+        if (lcArg.IsRestrict) {
             rv |= CL_KERNEL_ARG_TYPE_RESTRICT;
         }
-        if (lcArg.IsConst()) {
+        if (lcArg.IsConst) {
             rv |= CL_KERNEL_ARG_TYPE_CONST;
         }
     }
@@ -610,21 +607,21 @@ Kernel::initArguments(const aclArgData* aclArg)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void
-Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
+Kernel::initArguments_LC(const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD)
 {
     device::Kernel::parameters_t params;
 
     size_t offset = 0;
 
-    for (size_t i = 0; i < kernelMD.KernelArgCount(); ++i) {
-        const amd::hsa::code::KernelArg::Metadata& lcArg =
-            kernelMD.GetKernelArgMetadata(i);
+    for (size_t i = 0; i < kernelMD.Args.size(); ++i) {
+        const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg =
+            kernelMD.Args[i];
 
         // Initialize HSAIL kernel argument
         Kernel::Argument* arg = new Kernel::Argument;
-        arg->name_      = lcArg.Name();
-        arg->typeName_  = lcArg.TypeName();
-        arg->size_      = lcArg.Size();
+        arg->name_      = lcArg.Name;
+        arg->typeName_  = lcArg.TypeName;
+        arg->size_      = lcArg.Size;
         arg->type_      = GetKernelArgType(lcArg);
         arg->addrQual_  = GetKernelAddrQual(lcArg);
         arg->dataType_  = GetKernelDataType(lcArg);
@@ -650,12 +647,12 @@ Kernel::initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD)
         // Initialize Device kernel parameters
         amd::KernelParameterDescriptor desc;
 
-        desc.name_ = lcArg.Name().c_str();
+        desc.name_ = lcArg.Name.c_str();
         desc.type_ = GetOclType(arg);
         desc.addressQualifier_ = GetOclAddrQual(arg);
         desc.accessQualifier_ = GetOclAccessQual(arg);
         desc.typeQualifier_ = GetOclTypeQual(lcArg);
-        desc.typeName_ = lcArg.TypeName().c_str();
+        desc.typeName_ = lcArg.TypeName.c_str();
 
         // Make a check if it is local or global
         if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
@@ -700,19 +697,27 @@ Kernel::Kernel(
       kernargSegmentAlignment_(kernargSegmentAlignment) {}
 
 #if defined(WITH_LIGHTNING_COMPILER)
+
+static const AMDGPU::RuntimeMD::Kernel::Metadata* FindKernelMetadata(const AMDGPU::RuntimeMD::Program::Metadata* programMD, const std::string& name) {
+    for (const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD : programMD->Kernels) {
+        if (kernelMD.Name == name) { return &kernelMD; }
+    }
+    return nullptr;
+}
+
 bool Kernel::init_LC()
 {
     hsa_agent_t hsaDevice = program_->hsaDevice();
 
     // Pull out metadata from the ELF
-    const amd::hsa::code::Program::Metadata* runtimeMD = program_->metadata();
-    if (!runtimeMD) {
+    const AMDGPU::RuntimeMD::Program::Metadata* programMD = program_->metadata();
+    assert(programMD != nullptr);
+
+    const AMDGPU::RuntimeMD::Kernel::Metadata* kernelMD = FindKernelMetadata(programMD, name());
+    if (kernelMD == nullptr) {
         return false;
     }
-
-    size_t idx = runtimeMD->KernelIndexByName(name());
-    const amd::hsa::code::Kernel::Metadata& kernelMD = runtimeMD->GetKernelMetadata(idx);
-    initArguments_LC(kernelMD);
+    initArguments_LC(*kernelMD);
 
     //Set the workgroup information for the kernel
     memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
@@ -721,22 +726,22 @@ bool Kernel::init_LC()
     workGroupInfo_.availableSGPRs_ = 0;
     workGroupInfo_.availableVGPRs_ = 0;
 
-    if (kernelMD.HasRequiredWorkgroupSize()) {
-        const uint32_t* requiredWorkgroupSize = kernelMD.RequiredWorkgroupSize();
+    if (!kernelMD->ReqdWorkGroupSize.empty()) {
+        const auto& requiredWorkgroupSize = kernelMD->ReqdWorkGroupSize;
         workGroupInfo_.compileSize_[0] = requiredWorkgroupSize[0];
         workGroupInfo_.compileSize_[1] = requiredWorkgroupSize[1];
         workGroupInfo_.compileSize_[2] = requiredWorkgroupSize[2];
     }
 
-    if (kernelMD.HasWorkgroupSizeHint()) {
-        const uint32_t* workgroupSizeHint = kernelMD.WorkgroupSizeHint();
+    if (!kernelMD->WorkGroupSizeHint.empty()) {
+        const auto& workgroupSizeHint = kernelMD->WorkGroupSizeHint;
         workGroupInfo_.compileSizeHint_[0] = workgroupSizeHint[0];
         workGroupInfo_.compileSizeHint_[1] = workgroupSizeHint[1];
         workGroupInfo_.compileSizeHint_[2] = workgroupSizeHint[2];
     }
 
-    if (kernelMD.HasVecTypeHint()) {
-        workGroupInfo_.compileVecTypeHint_ = kernelMD.VecTypeHint().c_str();
+    if (!kernelMD->VecTypeHint.empty()) {
+        workGroupInfo_.compileVecTypeHint_ = kernelMD->VecTypeHint.c_str();
     }
 
     uint32_t wavefront_size = 0;
@@ -784,7 +789,7 @@ bool Kernel::init_LC()
         workGroupInfo_.size_ = program_->dev().info().maxWorkGroupSize_;
     }
 
-    initPrintf_LC(runtimeMD->PrintfInfo());
+    initPrintf_LC(programMD->PrintfInfo);
 
     return true;
 }

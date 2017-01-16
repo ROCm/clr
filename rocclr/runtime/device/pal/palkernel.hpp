@@ -279,7 +279,7 @@ public:
     bool init(amd::hsa::loader::Symbol* symbol);
 
     //! Initializes Hsail Argument metadata and info for LC
-    void initArgList(const amd::hsa::code::Kernel::Metadata& kernelMD);
+    void initArgList(const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD);
 
     //! Initializes HSAIL Printf metadata and info for LC
     void initPrintf(const std::vector<std::string>& printfInfoStrings);
