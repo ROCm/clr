@@ -152,7 +152,7 @@ private:
     void initArguments(const aclArgData* aclArg);
 #if defined(WITH_LIGHTNING_COMPILER)
     //! Initializes Hsail Argument metadata and info for LC
-    void initArguments_LC(const amd::hsa::code::Kernel::Metadata& kernelMD);
+    void initArguments_LC(const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD);
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
     //! Initializes HSAIL Printf metadata and info
