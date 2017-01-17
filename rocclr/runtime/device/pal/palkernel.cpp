@@ -1529,7 +1529,7 @@ LightningKernel::initArgList(const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD
 
     size_t offset = 0;
 
-    for (size_t i = 0; i < kernelMD->KernelArgCount(); ++i) {
+    for (size_t i = 0; i < kernelMD.Args.size(); ++i) {
         const AMDGPU::RuntimeMD::KernelArg::Metadata& lcArg =
             kernelMD.Args[i];
 
@@ -1615,7 +1615,7 @@ LightningKernel::init(amd::hsa::loader::Symbol* symbol)
     assert(programMD != nullptr);
 
     const AMDGPU::RuntimeMD::Kernel::Metadata* kernelMD =
-        FindKernelMetadata(programMd, name());
+        FindKernelMetadata(programMD, name());
 
     if (kernelMD == nullptr) {
         return false;
@@ -1656,7 +1656,7 @@ LightningKernel::init(amd::hsa::loader::Symbol* symbol)
         workGroupInfo_.size_ = dev().info().maxWorkGroupSize_;
     }
 
-    initPrintf(programMD->PrintfInfo());
+    initPrintf(programMD->PrintfInfo);
 
     /*FIXME_lmoriche:
     size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);

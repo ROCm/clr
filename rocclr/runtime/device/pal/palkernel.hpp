@@ -16,6 +16,10 @@
 #include "device/pal/palwavelimiter.hpp"
 #include "hsa.h"
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "AMDGPURuntimeMetadata.h"
+#endif // defined(WITH_LIGHTNING_COMPILER)
+
 namespace amd {
 namespace hsa {
 namespace loader {
