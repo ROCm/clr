@@ -2507,7 +2507,15 @@ VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd)
             palPerf = counter->iPerf();
             // Find the state and sends the command to PAL
             if (vcmd.getState() == amd::PerfCounterCommand::Begin) {
+                Pal::SetClockModeInput  input;
+                Pal::SetClockModeOutput output = {};
+                input.clockMode = Pal::DeviceClockMode::Profiling;
+                dev().iDev()->SetClockMode(input, &output);
+                GpuEvent event;
+                eventBegin(MainEngine);
                 iCmd()->CmdBeginPerfExperiment(palPerf);
+                eventEnd(MainEngine, event);
+                setGpuEvent(event);
             }
             else if (vcmd.getState() == amd::PerfCounterCommand::End) {
                 GpuEvent event;
