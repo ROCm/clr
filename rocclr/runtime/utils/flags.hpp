@@ -202,7 +202,9 @@ release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
 release(bool, OCL_CODE_CACHE_ENABLE, false,                                   \
         "1 = Enable compiler code cache")                                     \
 release(bool, OCL_CODE_CACHE_RESET, false,                                    \
-        "1 =  Reset the compiler code cache storage")
+        "1 =  Reset the compiler code cache storage")                         \
+release(bool, GPU_DISABLE_SDMA_MEMORY_TO_IMAGE, true,                         \
+        "0 = Enable sDMA for Memory to Image and Image to Memory copies")
 
 
 namespace amd {

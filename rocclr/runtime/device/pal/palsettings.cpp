@@ -137,6 +137,9 @@ Settings::Settings()
 
     // Disable SDMA workaround by default
     sdamPageFaultWar_ = false;
+
+    // Disable SDMA copy for Image to Mem and Mem to Image by default
+    disableSdmaMemoryToImage_ = false;
 }
 
 bool
@@ -176,6 +179,11 @@ Settings::create(
         switch (palProp.gfxLevel) {
         case Pal::GfxIpLevel::GfxIp9:
             aiPlus_ = true;
+            if (!apuSystem_)
+                // This is a temporary workaround to disable sDMA for MemToImage and
+                // ImageToMem copies and needs be removed later once we have a fix
+                // for Conf. images(mipmaps) 1Darray failures on Vega10
+                disableSdmaMemoryToImage_ = GPU_DISABLE_SDMA_MEMORY_TO_IMAGE;
             break;
         default:
             assert(0 && "Unknown GfxIP type!");

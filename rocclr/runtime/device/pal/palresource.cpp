@@ -1258,18 +1258,22 @@ Resource::partialMemCopyTo(
     calSize[2] = size[2];
 
     uint64_t gpuMemoryOffset, gpuMemoryRowPitch, imageOffsetx;
+    bool img1Darray = false;
 
     if (desc().buffer_ && !dstResource.desc().buffer_) {
         imageOffsetx = calDstOrigin[0] % dstResource.elementSize();
         gpuMemoryOffset = calSrcOrigin[0] + offset();
         gpuMemoryRowPitch = (calSrcOrigin[1]) ? calSrcOrigin[1] :
             calSize[0] * dstResource.elementSize();
+        img1Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
     }
     else if (!desc().buffer_ && dstResource.desc().buffer_) {
         imageOffsetx = calSrcOrigin[0] % elementSize();
         gpuMemoryOffset = calDstOrigin[0] + dstResource.offset();
         gpuMemoryRowPitch = (calDstOrigin[1]) ? calDstOrigin[1] :
             calSize[0] * elementSize();
+        img1Darray = (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
+
     }
 
     if ((desc().buffer_ && !dstResource.desc().buffer_) ||
@@ -1281,7 +1285,8 @@ Resource::partialMemCopyTo(
             // another DRM restriciton... SI has 4 pixels
             (gpuMemoryOffset % 4 != 0) ||
             (dev().settings().sdamPageFaultWar_ &&
-            (imageOffsetx != 0))) {
+            (imageOffsetx != 0)) ||
+            (dev().settings().disableSdmaMemoryToImage_ && img1Darray)) {
             return false;
         }
 
