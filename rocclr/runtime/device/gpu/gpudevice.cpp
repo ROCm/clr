@@ -183,7 +183,6 @@ NullDevice::create(CALtarget target)
     if (NULL == compiler_) {
 #if !defined(ATI_OS_LINUX)
         char CompilerLibrary[220] = "";
-        strcpy_s(CompilerLibrary, calAttr.driverStore);
         strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
 #endif
         const char *library = getenv("COMPILER_LIBRARY");
@@ -969,7 +968,6 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
     if (NULL == compiler_) {
 #if !defined(ATI_OS_LINUX)
         char CompilerLibrary[220] = "";
-        strcpy_s(CompilerLibrary, getAttribs().driverStore);
         strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
 #endif
 

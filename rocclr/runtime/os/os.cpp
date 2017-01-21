@@ -59,6 +59,32 @@ Os::loadLibrary(const char* libraryname)
         return handle;
     }
 
+#if defined(ATI_OS_WIN)
+    // Try with the DriverStore path
+    HMODULE hm = NULL;
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+        | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+        (LPCSTR)&loadLibrary, &hm)) return NULL;
+
+    char cszDllPath[1024] = { 0 };
+    if (!GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath)))
+        return NULL;
+
+    LPSTR cszFileName;
+    char buffer[1024] = { 0 };
+    if (!GetFullPathNameA(cszDllPath, sizeof(buffer), buffer, &cszFileName))
+        return NULL;
+
+    std::string newPath;
+    newPath = cszDllPath;
+    newPath.replace(newPath.find(cszFileName), strlen(libraryname), libraryname);
+
+    handle = Os::loadLibrary_(newPath.c_str());
+    if (handle != NULL) {
+        return handle;
+    }
+#endif
+
     // Try to find the lib in the current directory.
     return Os::loadLibrary((std::string(".") + fileSeparator()
         + std::string(libraryname)).c_str());
