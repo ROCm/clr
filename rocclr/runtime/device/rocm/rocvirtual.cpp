@@ -446,6 +446,9 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
     hasPendingDispatch_ = false;
 
+    // Release all transfer buffers on this command queue
+    releaseXferWrite();
+
     // Release all memory dependencies
     memoryDependency().clear();
 
@@ -1774,8 +1777,66 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd)
   profilingEnd(vcmd);
 }
 
-void VirtualGPU::flush(amd::Command *list, bool wait) {
+void VirtualGPU::flush(amd::Command *list, bool wait)
+{
     releaseGpuMemoryFence();
     updateCommandsState(list);
+    // Rlease all pinned memory
+    releasePinnedMem();
+}
+
+void
+VirtualGPU::addXferWrite(Memory& memory)
+{
+    if (xferWriteBuffers_.size() > 7) {
+        dev().xferWrite().release(*this, *xferWriteBuffers_.front());
+        xferWriteBuffers_.erase(xferWriteBuffers_.begin());
+    }
+
+    // Delay destruction
+    xferWriteBuffers_.push_back(&memory);
+}
+
+void
+VirtualGPU::releaseXferWrite()
+{
+    for (auto& memory : xferWriteBuffers_) {
+        dev().xferWrite().release(*this, *memory);
+    }
+    xferWriteBuffers_.resize(0);
+}
+
+void
+VirtualGPU::addPinnedMem(amd::Memory* mem)
+{
+    if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
+        if (pinnedMems_.size() > 7) {
+            pinnedMems_.front()->release();
+            pinnedMems_.erase(pinnedMems_.begin());
+        }
+
+        // Delay destruction
+        pinnedMems_.push_back(mem);
+    }
+}
+
+void
+VirtualGPU::releasePinnedMem()
+{
+    for (auto& amdMemory : pinnedMems_) {
+        amdMemory->release();
+    }
+    pinnedMems_.resize(0);
+}
+
+amd::Memory*
+VirtualGPU::findPinnedMem(void* addr, size_t size)
+{
+    for (auto& amdMemory : pinnedMems_) {
+        if ((amdMemory->getHostMem() == addr) && (size <= amdMemory->getSize())) {
+            return amdMemory;
+        }
+    }
+    return nullptr;
 }
 }  // End of roc namespace

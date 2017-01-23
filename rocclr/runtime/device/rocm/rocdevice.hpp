@@ -219,6 +219,54 @@ private:
 //! A HSA device ordinal (physical HSA device)
 class Device : public NullDevice {
 public:
+    //! Transfer buffers
+    class XferBuffers : public amd::HeapObject
+    {
+    public:
+        static const size_t MaxXferBufListSize = 8;
+
+        //! Default constructor
+        XferBuffers(const Device& device, size_t bufSize)
+            : bufSize_(bufSize)
+            , acquiredCnt_(0)
+            , gpuDevice_(device)
+            {}
+
+        //! Default destructor
+        ~XferBuffers();
+
+        //! Creates the xfer buffers object
+        bool create();
+
+        //! Acquires an instance of the transfer buffers
+        Memory& acquire();
+
+        //! Releases transfer buffer
+        void release(
+            VirtualGPU& gpu,    //!< Virual GPU object used with the buffer
+            Memory& buffer    //!< Transfer buffer for release
+            );
+
+        //! Returns the buffer's size for transfer
+        size_t  bufSize() const { return bufSize_; }
+
+    private:
+        //! Disable copy constructor
+        XferBuffers(const XferBuffers&);
+
+        //! Disable assignment operator
+        XferBuffers& operator=(const XferBuffers&);
+
+        //! Get device object
+        const Device& dev() const { return gpuDevice_; }
+
+        size_t                  bufSize_;       //!< Staged buffer size
+        std::list<Memory*>      freeBuffers_;   //!< The list of free buffers
+        amd::Atomic<uint>       acquiredCnt_;   //!< The total number of acquired buffers
+        amd::Monitor            lock_;          //!< Stgaed buffer acquire/release lock
+        const Device&           gpuDevice_;     //!< GPU device object
+    };
+
     //! Initialise the whole HSA device subsystem (CAL init, device enumeration, etc).
     static bool init();
     static void tearDown();
@@ -354,6 +402,17 @@ public:
     //! Adds a map target to the cache
     bool addMapTarget(amd::Memory* memory) const;
 
+    //! Returns transfer buffer object
+    XferBuffers& xferWrite() const { return *xferWrite_; }
+
+    //! Returns transfer buffer object
+    XferBuffers& xferRead() const { return *xferRead_; }
+
+    //! Returns a ROC memory object from AMD memory object
+    roc::Memory* getRocMemory(
+        amd::Memory* mem    //!< Pointer to AMD memory object
+        ) const;
+
 private:
     static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -378,6 +437,9 @@ private:
     VirtualGPU *xferQueue_; //!< Transfer queue, created on demand
 
     VirtualGPU* xferQueue() const;
+
+    XferBuffers*    xferRead_;      //!< Transfer buffers read
+    XferBuffers*    xferWrite_;     //!< Transfer buffers write
 
 public:
     amd::Atomic<uint>   numOfVgpus_; //!< Virtual gpu unique index

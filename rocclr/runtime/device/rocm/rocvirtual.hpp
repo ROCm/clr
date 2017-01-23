@@ -149,7 +149,7 @@ public:
     void submitAcquireExtObjects(amd::AcquireExtObjectsCommand& cmd);
     void submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& cmd);
     void submitPerfCounter(amd::PerfCounterCommand& cmd){};
-  
+
     void flush(amd::Command* list = NULL, bool wait = false);
     void submitFillMemory(amd::FillMemoryCommand& cmd);
     void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
@@ -193,10 +193,24 @@ public:
     bool processMemObjects(
         const amd::Kernel&  kernel, //!< AMD kernel object for execution
         const_address       params  //!< Pointer to the param's store
-	);
+    );
     //Retun the virtual gpu unique index
     uint index() const { return index_;  }
 
+    //! Adds a stage write buffer into a list
+    void addXferWrite(Memory& memory);
+
+    //! Releases stage write buffers
+    void releaseXferWrite();
+
+    //! Adds a pinned memory object into a map
+    void addPinnedMem(amd::Memory* mem);
+
+    //! Release pinned memory objects
+    void releasePinnedMem();
+
+    //! Finds if pinned memory is cached
+    amd::Memory* findPinnedMem(void* addr, size_t size);
 
 // } roc OpenCL integration
 private:
@@ -219,6 +233,9 @@ private:
     //! Updates AQL header for the upcomming dispatch
     void setAqlHeader(uint16_t header) { aqlHeader_ = header; }
 
+    std::vector<Memory*>    xferWriteBuffers_;  //!< Stage write buffers
+    std::vector<amd::Memory*> pinnedMems_;      //!< Pinned memory list
+
     /**
      * @brief Maintains the list of sampler allocated for one or more kernel
      * submissions.
@@ -231,16 +248,16 @@ private:
      */
     bool hasPendingDispatch_;
     Timestamp*    timestamp_;
-    hsa_agent_t    gpu_device_;      //!< Physical device
-    hsa_queue_t*  gpu_queue_;       //!< Queue associated with a gpu
+    hsa_agent_t    gpu_device_; //!< Physical device
+    hsa_queue_t*  gpu_queue_;   //!< Queue associated with a gpu
     hsa_barrier_and_packet_t barrier_packet_;
     hsa_signal_t barrier_signal_;
-    uint32_t      dispatch_id_;     //!< This variable must be updated atomically.
-    Device&       roc_device_;   //!< roc device object
+    uint32_t      dispatch_id_; //!< This variable must be updated atomically.
+    Device&       roc_device_;  //!< roc device object
     void *        tools_lib_;
     PrintfDbg*    printfdbg_;
     MemoryDependency memoryDependency_; //!< Memory dependency class
-    uint16_t      aqlHeader_;       //!< AQL header for dispatch
+    uint16_t      aqlHeader_;   //!< AQL header for dispatch
 
     char* kernarg_pool_base_;
     size_t kernarg_pool_size_;

@@ -164,9 +164,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
 
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-    if ((hsaSettings == NULL) ||
-        // @Todo sramalin Use double precision from constsant
-        !hsaSettings->create((true) & 0x1)) {
+    if ((hsaSettings == NULL) || !hsaSettings->create(false)) {
             LogError("Error creating settings for NULL HSA device");
             return false;
     }
@@ -189,6 +187,8 @@ Device::Device(hsa_agent_t bkendDevice)
     , alloc_granularity_(0)
     , context_(nullptr)
     , xferQueue_(nullptr)
+    , xferRead_(nullptr)
+    , xferWrite_(nullptr)
     , numOfVgpus_(0)
 {
     group_segment_.handle = 0;
@@ -207,6 +207,10 @@ Device::~Device()
     }
     delete mapCache_;
     delete mapCacheOps_;
+
+    // Destroy temporary buffers for read/write
+    delete xferRead_;
+    delete xferWrite_;
 
     // Destroy transfer queue
     if (xferQueue_ && xferQueue_->terminate()) {
@@ -361,6 +365,85 @@ Device::loaderQueryHostAddress(const void* device, const void** host)
     return amd_loader_ext_table.hsa_ven_amd_loader_query_host_address
         ? amd_loader_ext_table.hsa_ven_amd_loader_query_host_address(device, host)
         : HSA_STATUS_ERROR;
+}
+
+Device::XferBuffers::~XferBuffers()
+{
+    // Destroy temporary buffer for reads
+    for (const auto& buf : freeBuffers_) {
+        delete buf;
+    }
+    freeBuffers_.clear();
+}
+
+bool
+Device::XferBuffers::create()
+{
+    Memory*     xferBuf = nullptr;
+    bool        result = false;
+
+    // Create a buffer object
+    xferBuf = new Buffer(dev(), bufSize_);
+
+    // Try to allocate memory for the transfer buffer
+    if ((nullptr == xferBuf) || !xferBuf->create()) {
+        delete xferBuf;
+        xferBuf = nullptr;
+        LogError("Couldn't allocate a transfer buffer!");
+    }
+    else {
+        result = true;
+        freeBuffers_.push_back(xferBuf);
+    }
+
+    return result;
+}
+
+Memory&
+Device::XferBuffers::acquire()
+{
+    Memory*     xferBuf = nullptr;
+    size_t      listSize;
+
+    // Lock the operations with the staged buffer list
+    amd::ScopedLock  l(lock_);
+    listSize = freeBuffers_.size();
+
+    // If the list is empty, then attempt to allocate a staged buffer
+    if (listSize == 0) {
+        // Allocate memory
+        xferBuf = new Buffer(dev(), bufSize_);
+
+        // Allocate memory for the transfer buffer
+        if ((nullptr == xferBuf) || !xferBuf->create()) {
+            delete xferBuf;
+            xferBuf = nullptr;
+            LogError("Couldn't allocate a transfer buffer!");
+        }
+        else {
+            ++acquiredCnt_;
+        }
+    }
+
+    if (xferBuf == nullptr) {
+        xferBuf = *(freeBuffers_.begin());
+        freeBuffers_.erase(freeBuffers_.begin());
+        ++acquiredCnt_;
+    }
+
+    return *xferBuf;
+}
+
+void
+Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer)
+{
+    // Make sure buffer isn't busy on the current VirtualGPU, because
+    // the next aquire can come from different queue
+//    buffer.wait(gpu);
+    // Lock the operations with the staged buffer list
+    amd::ScopedLock  l(lock_);
+    freeBuffers_.push_back(&buffer);
+    --acquiredCnt_;
 }
 
 bool Device::init()
@@ -550,6 +633,28 @@ Device::create()
     // Use just 1 entry by default for the map cache
     mapCache_->push_back(NULL);
 
+    if (settings().stagedXferSize_ != 0) {
+        // Initialize staged write buffers
+        if (settings().stagedXferWrite_) {
+            xferWrite_ = new XferBuffers(*this,
+                amd::alignUp(settings().stagedXferSize_, 4 * Ki));
+            if ((xferWrite_ == nullptr) || !xferWrite_->create()) {
+                LogError("Couldn't allocate transfer buffer objects for read");
+                return false;
+            }
+        }
+
+        // Initialize staged read buffers
+        if (settings().stagedXferRead_) {
+            xferRead_ = new XferBuffers(*this,
+                amd::alignUp(settings().stagedXferSize_, 4 * Ki));
+            if ((xferRead_ == nullptr) || !xferRead_->create()) {
+                LogError("Couldn't allocate transfer buffer objects for write");
+                return false;
+            }
+        }
+    }
+
     xferQueue();
 
     return true;
@@ -568,11 +673,17 @@ Device::createProgram(amd::option::Options* options) {
 bool
 Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev)
 {
+    if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
+                                                 HSA_AGENT_INFO_PROFILE,
+                                                 &agent_profile_)) {
+        return false;
+    }
+
     // Create HSA settings
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
     if ((hsaSettings == NULL) ||
-        !hsaSettings->create((true) & 0x1)) {
+        !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL))) {
         return false;
     }
 
@@ -710,12 +821,6 @@ Device::populateOCLDeviceConstants()
             (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,
             device_name)) {
         ::strcpy(info_.boardName_, device_name);
-    }
-
-    if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
-                                                 HSA_AGENT_INFO_PROFILE,
-                                                 &agent_profile_)) {
-        return false;
     }
 
     if (HSA_STATUS_SUCCESS !=
@@ -883,7 +988,7 @@ Device::populateOCLDeviceConstants()
 
     if (agent_profile_ == HSA_PROFILE_FULL) { // full-profile = participating in coherent memory,
                                               // base-profile = NUMA based non-coherent memory
-	info_.hostUnifiedMemory_ = CL_TRUE;
+        info_.hostUnifiedMemory_ = CL_TRUE;
     }
     info_.memBaseAddrAlign_ = 8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ?
         sizeof(cl_long16) : MEMOBJ_BASE_ADDR_ALIGN);
@@ -1244,6 +1349,13 @@ Device::addMapTarget(amd::Memory* memory) const
     return true;
 }
 
+Memory*
+Device::getRocMemory(amd::Memory* mem) const
+{
+    return static_cast<roc::Memory*>(mem->getDeviceMemory(*this));
+}
+
+
 device::Memory*
 Device::createMemory(amd::Memory &owner) const
 {
@@ -1302,9 +1414,9 @@ Device::createMemory(amd::Memory &owner) const
         imageView->replaceDeviceMemory(this, devImageView);
 
         result = xferMgr().writeImage(owner.getHostMem(), *devImageView,
-                                      amd::Coord3D(0), imageView->getRegion(),
-                                      imageView->getRowPitch(),
-                                      imageView->getSlicePitch(), true);
+                                      amd::Coord3D(0, 0, 0), imageView->getRegion(),
+                                      0,
+                                      0, true);
 
         imageView->release();
     }

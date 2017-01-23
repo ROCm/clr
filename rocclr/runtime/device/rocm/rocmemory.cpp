@@ -25,10 +25,18 @@ namespace roc {
 
 /////////////////////////////////roc::Memory//////////////////////////////
 Memory::Memory(const roc::Device &dev, amd::Memory &owner)
-    : device::Memory(owner),
-      dev_(dev),
-      deviceMemory_(NULL),
-      kind_(MEMORY_KIND_NORMAL)
+    : device::Memory(owner)
+    , dev_(dev)
+    , deviceMemory_(NULL)
+    , kind_(MEMORY_KIND_NORMAL)
+{
+}
+
+Memory::Memory(const roc::Device &dev, size_t size)
+    : device::Memory(size)
+    , dev_(dev)
+    , deviceMemory_(NULL)
+    , kind_(MEMORY_KIND_NORMAL)
 {
 }
 
@@ -64,8 +72,8 @@ Memory::allocateMapMemory(size_t allocationSize)
         roc::Memory* hsaMapMemory = reinterpret_cast<roc::Memory *>(
             mapMemory->getDeviceMemory(dev_));
         if (hsaMapMemory == nullptr) {
-        	 mapMemory->release();
-        	 return false;
+             mapMemory->release();
+             return false;
         }
     }
 
@@ -191,7 +199,7 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metada
   return false;
 #else
   assert(owner()->isInterop() && "Object is not an interop object.");
-  
+
   mesa_glinterop_export_in in;
   mesa_glinterop_export_out out;
 
@@ -213,7 +221,7 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metada
 
   if(!dev_.mesa().Export(in, out))
     return false;
-  
+
   size_t size;
   hsa_agent_t agent=dev_.getBackendDevice();
   hsa_status_t status=hsa_amd_interop_map_buffer(1, &agent, out.dmabuf_fd, 0, &size, &deviceMemory_, metadata_size, (const void**)metadata);
@@ -242,9 +250,18 @@ Buffer::Buffer(const roc::Device &dev, amd::Memory &owner)
     : roc::Memory(dev, owner)
 {}
 
+Buffer::Buffer(const roc::Device &dev, size_t size)
+    : roc::Memory(dev, size)
+{}
+
 Buffer::~Buffer()
 {
-    destroy();
+    if (owner() == nullptr) {
+        dev_.hostFree(deviceMemory_, size());
+    }
+    else {
+        destroy();
+    }
 }
 
 void
@@ -288,6 +305,15 @@ Buffer::destroy()
 bool
 Buffer::create()
 {
+    if (owner() == nullptr) {
+        deviceMemory_ = dev_.hostAlloc(size(), 1, false);
+        if (deviceMemory_ != nullptr) {
+            flags_ |= HostMemoryDirectAccess;
+            return true;
+        }
+        return false;
+    }
+
     //Interop buffer
     if(owner()->isInterop())
       return createInteropBuffer(GL_ARRAY_BUFFER, 0, NULL, NULL);
@@ -303,8 +329,7 @@ Buffer::create()
         }
 
         const size_t offset = owner()->getOrigin();
-        deviceMemory_ =
-            static_cast<char *>(parentBuffer->getDeviceMemory()) + offset;
+        deviceMemory_ = parentBuffer->getDeviceMemory() + offset;
 
         flags_ |= SubMemoryObject;
         flags_ |=
@@ -562,10 +587,10 @@ Image::createInteropImage()
 {
   auto obj=owner()->getInteropObj()->asGLObject();
   assert(obj->getCLGLObjectType()!=CL_GL_OBJECT_BUFFER && "Non-image OpenGL object used with interop image API.");
-  
+
   const hsa_amd_image_descriptor_t* meta;
   size_t size=0;
-  
+
   GLenum glTarget = obj->getGLTarget();
   if (glTarget == GL_TEXTURE_CUBE_MAP) {
     glTarget = obj->getCubemapFace();
@@ -593,13 +618,13 @@ Image::createInteropImage()
 
   if (obj->getGLTarget()==GL_TEXTURE_CUBE_MAP)
     desc.setFace(obj->getCubemapFace());
-  
+
   originalDeviceMemory_=deviceMemory_;
 
   hsa_status_t err=hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, originalDeviceMemory_, permission_, &hsaImageObject_);
   if(err!=HSA_STATUS_SUCCESS)
     return false;
-  
+
   BufferGuard.Dismiss();
   DescGuard.Dismiss();
   return true;
@@ -672,13 +697,13 @@ Image::create()
 }
 
 bool
-Image::createView(Memory &parent)
+Image::createView(const Memory &parent)
 {
     deviceMemory_ = parent.getDeviceMemory();
 
     originalDeviceMemory_ = (parent.owner()->asBuffer() != NULL)
                         ? deviceMemory_
-                        : static_cast<Image &>(parent).originalDeviceMemory_;
+                        : static_cast<const Image&>(parent).originalDeviceMemory_;
 
     kind_=parent.getKind();
 

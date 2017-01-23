@@ -53,13 +53,37 @@ Settings::Settings()
     enablePartialDispatch_ = (partialDispatch) ? false : true;
     partialDispatch_ = (partialDispatch) ? false : true;
     commandQueues_ = 100; //!< Field value set to maximum number
-	                 //!< concurrent Virtual GPUs for ROCm backend
+                     //!< concurrent Virtual GPUs for ROCm backend
+
+    // Disable image DMA by default (ROCM runtime doesn't support it)
+    imageDMA_       = false;
+
+    stagedXferRead_     = true;
+    stagedXferWrite_    = true;
+    stagedXferSize_     = GPU_STAGING_BUFFER_SIZE * Ki;
+
+    // Initialize transfer buffer size to 1MB by default
+    xferBufSize_    = 1024 * Ki;
+
+    const static size_t MaxPinnedXferSize = 32;
+    pinnedXferSize_     = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
+    pinnedMinXferSize_  = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
 }
 
 bool
-Settings::create(bool doublePrecision)
+Settings::create(bool fullProfile)
 {
     customHostAllocator_ = true;
+
+    if (fullProfile) {
+        pinnedXferSize_ = 0;
+        stagedXferSize_ = 0;
+        xferBufSize_    = 0;
+    }
+    else {
+        pinnedXferSize_ = std::max(pinnedXferSize_, pinnedMinXferSize_);
+        stagedXferSize_ = std::max(stagedXferSize_, pinnedMinXferSize_ + 4 * Ki);
+    }
 
     // Enable extensions
     enableExtension(ClKhrByteAddressableStore);
@@ -72,21 +96,16 @@ Settings::create(bool doublePrecision)
     enableExtension(ClKhr3DImageWrites);
     enableExtension(ClAmdMediaOps);
     enableExtension(ClAmdMediaOps2);
-    if(MesaInterop::Supported())
-      enableExtension(ClKhrGlSharing);
-
-    // Make sure device supports doubles
-    doublePrecision_ &= doublePrecision;
-
-    if (doublePrecision_) {
-        // Enable KHR double precision extension
-        enableExtension(ClKhrFp64);
-#if !defined(WITH_LIGHTNING_COMPILER)
-        // Also enable AMD double precision extension?
-        enableExtension(ClAmdFp64);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
+    if(MesaInterop::Supported()) {
+       enableExtension(ClKhrGlSharing);
     }
 
+    // Enable KHR double precision extension
+    enableExtension(ClKhrFp64);
+#if !defined(WITH_LIGHTNING_COMPILER)
+    // Also enable AMD double precision extension?
+    enableExtension(ClAmdFp64);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
     enableExtension(ClKhrSubGroups);
 
     enableExtension(ClKhrDepthImages);
@@ -108,6 +127,18 @@ Settings::override()
 
     if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
         commandQueues_ = GPU_MAX_COMMAND_QUEUES;
+    }
+
+    if (!flagIsDefault(GPU_IMAGE_DMA)) {
+        commandQueues_ = GPU_IMAGE_DMA;
+    }
+
+    if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
+        xferBufSize_ = GPU_XFER_BUFFER_SIZE * Ki;
+    }
+
+    if (!flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)) {
+        pinnedMinXferSize_  = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
     }
 }
 
