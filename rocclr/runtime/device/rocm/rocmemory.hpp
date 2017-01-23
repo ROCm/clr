@@ -18,10 +18,12 @@ class Memory : public device::Memory {
 
     Memory(const roc::Device &dev, amd::Memory &owner);
 
+    Memory(const roc::Device &dev, size_t size);
+
     virtual ~Memory();
 
-    // Getter for deviceMemory_.
-    void *getDeviceMemory() const { return deviceMemory_; }
+    // Getter for deviceMemory_
+    address getDeviceMemory() const { return reinterpret_cast<address>(deviceMemory_); }
 
     // Gets a pointer to a region of host-visible memory for use as the target
     // of an indirect map for a given memory object
@@ -41,7 +43,7 @@ class Memory : public device::Memory {
         Unimplemented();
         return true;
     }
-  
+
     // Immediate blocking write from device cache to owners's backing store.
     // Marks owner as "current" by resetting the last writer to NULL.
     virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags())
@@ -112,6 +114,7 @@ class Memory : public device::Memory {
 class Buffer : public roc::Memory {
  public:
     Buffer(const roc::Device &dev, amd::Memory &owner);
+    Buffer(const roc::Device &dev, size_t size);
 
     virtual ~Buffer();
 
@@ -143,7 +146,7 @@ public:
     virtual bool create();
 
     //! Create an image view
-    bool createView(Memory &parent);
+    bool createView(const Memory &parent);
 
     //! Gets a pointer to a region of host-visible memory for use as the target
     //! of an indirect map for a given memory object

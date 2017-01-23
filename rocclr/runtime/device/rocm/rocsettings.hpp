@@ -26,7 +26,10 @@ public:
             uint    enableImageHandle_: 1;      //!< Use HSAIL image/sampler pointer
             uint    enableNCMode_: 1;           //!< Enable Non Coherent mode for system memory
             uint    enablePartialDispatch_: 1;  //!< Enable support for Partial Dispatch
-            uint    reserved_: 26;
+            uint    imageDMA_: 1;               //!< Enable direct image DMA transfers
+            uint    stagedXferRead_: 1;         //!< Uses a staged buffer read
+            uint    stagedXferWrite_: 1;        //!< Uses a staged buffer write
+            uint    reserved_: 22;
         };
         uint    value_;
     };
@@ -46,11 +49,16 @@ public:
     uint kernargPoolSize_;
     uint signalPoolSize_;
 
+    size_t  xferBufSize_;       //!< Transfer buffer size for image copy optimization
+    size_t  stagedXferSize_;    //!< Staged buffer size
+    size_t  pinnedXferSize_;    //!< Pinned buffer size for transfer
+    size_t  pinnedMinXferSize_; //!< Minimal buffer size for pinned transfer
+
     //! Default constructor
     Settings();
 
     //! Creates settings
-    bool create(bool doublePrecision);
+    bool create(bool fullProfile);
 
 private:
     //! Disable copy constructor

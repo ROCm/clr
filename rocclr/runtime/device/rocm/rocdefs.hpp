@@ -4,6 +4,9 @@
 
 namespace roc {
 
+//! Alignment restriciton for the pinned memory
+const static size_t PinnedMemoryAlignment = 4 * Ki;
+
 typedef uint HsaDeviceId;
 
 struct AMDDeviceInfo {
