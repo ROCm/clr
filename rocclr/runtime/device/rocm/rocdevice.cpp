@@ -159,7 +159,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
     online_ = false;
     deviceInfo_ = deviceInfo;
     // Mark the device as GPU type
-    info_.type_     = CL_DEVICE_TYPE_GPU | CL_HSA_ENABLED_AMD;
+    info_.type_     = CL_DEVICE_TYPE_GPU;
     info_.vendorId_ = 0x1002;
 
     settings_ = new Settings();
@@ -173,7 +173,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
     info_.extensions_ = getExtensionString();
     info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
     ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
-    info_.oclcVersion_ = "OpenCL C " OPENCL_VERSION_STR " ";
+    info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING,OPENCL_VERSION_STR,"1.2") " ";
     strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
     info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
     return true;
@@ -296,7 +296,7 @@ bool NullDevice::init() {
 #if !defined(WITH_LIGHTNING_COMPILER)
     //If there is an HSA enabled device online then skip any offline device
     std::vector<Device*> devices;
-    devices = getDevices(CL_DEVICE_TYPE_GPU | CL_HSA_ENABLED_AMD, false);
+    devices = getDevices(CL_DEVICE_TYPE_GPU, false);
 
     //Load the offline devices
     //Iterate through the set of available offline devices
@@ -850,7 +850,7 @@ Device::populateOCLDeviceConstants()
 
     info_.globalMemCacheType_ = CL_READ_WRITE_CACHE;
 
-    info_.type_ = CL_DEVICE_TYPE_GPU | CL_HSA_ENABLED_AMD;
+    info_.type_ = CL_DEVICE_TYPE_GPU;
 
     uint32_t hsa_bdf_id = 0;
     if (HSA_STATUS_SUCCESS !=
@@ -1010,7 +1010,7 @@ Device::populateOCLDeviceConstants()
     info_.addressBits_ = LP64_SWITCH(32, 64);
     info_.maxSamplers_ = 16;
     info_.bufferFromImageSupport_ = CL_FALSE;
-    info_.oclcVersion_ = "OpenCL C " OPENCL_VERSION_STR " ";
+    info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING,OPENCL_VERSION_STR,"1.2") " ";
 
     uint16_t major, minor;
     if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MAJOR, &major)

@@ -32,8 +32,6 @@
 #include <iostream>
 #include <vector>
 
-// extern hsa::Runtime* g_hsaruntime;
-
 /*! \addtogroup HSA
  *  @{
  */
@@ -45,7 +43,7 @@ namespace roc {
  * @brief List of environment variables that could be used to
  * configure the behavior of Hsa Runtime
  */
-#define ENVVAR_HSA_POLL_KERNEL_COMPLETION     "HSA_POLL_COMPLETION"
+#define ENVVAR_HSA_POLL_KERNEL_COMPLETION "HSA_POLL_COMPLETION"
 
 //! Forward declarations
 class Command;

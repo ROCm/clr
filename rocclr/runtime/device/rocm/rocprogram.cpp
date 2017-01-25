@@ -822,7 +822,7 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     ret = dev().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params, buildLog_);
     buildLog_ += C->Output();
     if (!ret) {
-        buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exeutable\n";
+        buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to executable\n";
         return false;
     }
 

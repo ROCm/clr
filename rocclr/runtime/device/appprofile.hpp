@@ -16,8 +16,6 @@ public:
 
     bool init();
 
-    cl_device_type ApplyHsaDeviceHintFlag(const cl_device_type& type);
-    bool IsHsaInitDisabled() { return noHsaInit_; }
     const std::string& GetBuildOptsAppend() const { return buildOptsAppend_; }
 protected:
     enum DataTypes
@@ -41,10 +39,7 @@ protected:
 
     virtual bool ParseApplicationProfile();
 
-    cl_device_type hsaDeviceHint_;  // valid values: CL_HSA_ENABLED_AMD
-                                    // or CL_HSA_DISABLED_AMD
     bool gpuvmHighAddr_;  // Currently not used.
-    bool noHsaInit_;      // Do not even initialize HSA.
     bool profileOverridesAllSettings_; // Overrides hint flags and env.var.
     std::string buildOptsAppend_;
 };

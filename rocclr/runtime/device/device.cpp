@@ -61,13 +61,7 @@ extern const char* BlitSourceCode;
 namespace amd {
 
 std::vector<Device*> *Device::devices_ = NULL;
-bool Device::isHsaDeviceAvailable_ = false;
-bool Device::isGpuDeviceAvailable_ = false;
 AppProfile Device::appProfile_;
-
-#if defined(WITH_HSA_DEVICE)
-AppProfile* Device::rocAppProfile_ = NULL;
-#endif
 
 amd::Monitor SvmManager::AllocatedLock_("Guards SVM allocation list");
 std::map<uintptr_t, amd::Memory*> SvmManager::svmBufferMap_;
@@ -175,20 +169,17 @@ Device::init()
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-    rocAppProfile_ = rocCreateAppProfile();
-    if (rocAppProfile_ && !rocAppProfile_->IsHsaInitDisabled()) {
-        // Return value of roc::Device::init()
-        // If returned false, error initializing HSA stack.
-        // If returned true, either HSA not installed or HSA stack
-        //                   successfully initialized.
-        if (!roc::Device::init() ) {
-            // abort() commentted because this is the only indication
-            // that KFD is not installed.
-            // Ignore the failure and assume KFD is not installed.
-            //abort();
-        }
-        ret |= roc::NullDevice::init();
+    // Return value of roc::Device::init()
+    // If returned false, error initializing HSA stack.
+    // If returned true, either HSA not installed or HSA stack
+    //                   successfully initialized.
+    if (!roc::Device::init() ) {
+        // abort() commentted because this is the only indication
+        // that KFD is not installed.
+        // Ignore the failure and assume KFD is not installed.
+        //abort();
     }
+    ret |= roc::NullDevice::init();
 #endif // WITH_HSA_DEVICE
 #if defined(WITH_GPU_DEVICE)
     if (GPU_ENABLE_PAL != 1) {
@@ -217,11 +208,7 @@ Device::tearDown()
         delete devices_;
     }
 #if defined(WITH_HSA_DEVICE)
-    if (rocAppProfile_ && !rocAppProfile_->IsHsaInitDisabled()) {
-        roc::Device::tearDown();
-        delete rocAppProfile_;
-        rocAppProfile_ = NULL;
-    }
+    roc::Device::tearDown();
 #endif // WITH_HSA_DEVICE
 #if defined(WITH_GPU_DEVICE)
     if (GPU_ENABLE_PAL != 1) {
@@ -305,54 +292,21 @@ Device::isAncestor(const Device* sub) const
     return false;
 }
 
-bool Device::IsHsaCapableDevice() {
-    static bool init = false;
-    typedef std::vector<std::string> ListType;
-    typedef std::vector<std::string>::const_iterator  ListIterType;
-    static ListType hsaNames;
-
-    if (!init) {
-        hsaNames.push_back("Spectre");
-        hsaNames.push_back("Spooky");
-        init = true;
-    }
-
-    for (ListIterType itr = hsaNames.begin(); itr != hsaNames.end(); itr++) {
-        if ((*itr) == info_.name_  // If name is in list then HSA capable.
-        || (info_.type_ & CL_HSA_ENABLED_AMD)) { // HSA enabled is HSA capable.
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
 void
 Device::registerDevice()
 {
     assert(Runtime::singleThreaded() && "this is not thread-safe");
 
-    static bool nonhsaDefaultIsAssigned = false;
-    static bool hsaDefaultIsAssigned = false;
+    static bool defaultIsAssigned = false;
 
     if (devices_ == NULL) {
         devices_ = new std::vector<Device*>;
     }
 
     if (info_.available_) {
-        bool dvHsaEnabled = (info_.type_ & CL_HSA_ENABLED_AMD) != 0;
-        if (IsHsaCapableDevice()) {
-            if (dvHsaEnabled && !hsaDefaultIsAssigned) {
-                hsaDefaultIsAssigned = true;
-                info_.type_ |= CL_DEVICE_TYPE_DEFAULT;
-                isHsaDeviceAvailable_ = true;
-            }
-        }
-        if (!dvHsaEnabled && !nonhsaDefaultIsAssigned) {
-            nonhsaDefaultIsAssigned = true;
+        if (!defaultIsAssigned) {
+            defaultIsAssigned = true;
             info_.type_ |= CL_DEVICE_TYPE_DEFAULT;
-            isGpuDeviceAvailable_ = true;
         }
     }
     devices_->push_back(this);
@@ -415,74 +369,12 @@ Device::findMemoryFromVA(const void* ptr, size_t* offset) const
     return nullptr;
 }
 
-bool IsHsaRequested(cl_device_type requestedType) {
-// Depending on HSA_RUNTIME and hint flags CL_HSA_XXXXX_AMD,
-// decide to use Gpu or HSA device.
-
-    if (requestedType == CL_DEVICE_TYPE_ALL) {
-        // hint flags are masked by ALL (0xFFFFFFFF) so HSA_RUNTIME decides.
-        return HSA_RUNTIME;
-    }
-
-    bool hsabit = (requestedType & CL_HSA_ENABLED_AMD) != 0;
-    bool nonhsabit = (requestedType & CL_HSA_DISABLED_AMD) != 0;
-
-    // Condition where both hsabit and nonhsabit set
-    // is checked in getDevices() and
-    // numDevices(). So that condition will never occur in this code path
-    if (hsabit ^ nonhsabit) {
-        // Eithere ENABLE or DISABLE HSA specified via hint flags.
-        return (requestedType & CL_HSA_ENABLED_AMD) != 0;
-    } else {
-        // Niethre ENABLE nor DISABLE HSA specified via hint flags.
-        return HSA_RUNTIME;
-    }
-}
-
 bool Device::IsTypeMatching(cl_device_type type, bool offlineDevices) {
     if (!(isOnline() || offlineDevices)) {
         return false;
     }
 
-    cl_device_type hintAndDefaultMask = (CL_HSA_ENABLED_AMD
-                        | CL_HSA_DISABLED_AMD | CL_DEVICE_TYPE_DEFAULT);
-    if ((info_.type_ & type & ~hintAndDefaultMask)
-    || (info_.type_ & type & CL_DEVICE_TYPE_DEFAULT)) {
-
-        // HSA and ORCA stack will never be running side-by-side.
-        // Hence device selection is mute.
-        // Instead of removing the code just returning true always.
-        // To reinstate, simply remove this "return true;" statement.
-        return true;
-
-        bool dvHsaEnabled = (info_.type_ & CL_HSA_ENABLED_AMD) != 0;
-        bool isHsaReq = IsHsaRequested(type);
-
-        // If not HSA capable device then always a match.
-        if (!IsHsaCapableDevice()) {
-            return true;
-        }
-
-        // ASSUMPTION: In the following two if statements,
-        // assumption is, either HSA or GPU stacks always available
-        // for HSA capable devcie.
-
-        // Requested stack not available - ignore hint.
-        if (isHsaReq && !isHsaDeviceAvailable_) {
-            return isGpuDeviceAvailable_;
-        }
-        // Requested stack not available - ignore hint.
-        if (!isHsaReq && !isGpuDeviceAvailable_) {
-            return isHsaDeviceAvailable_;
-        }
-
-        // If HSA capable device then request type(hsa or not) must
-        // match device hsa enablement(HSA enabled or not).
-        if (!(dvHsaEnabled ^ isHsaReq)) {
-            return true;
-        }
-    }
-    return false;
+    return (info_.type_ & type) != 0;
 }
 
 std::vector<Device*>
@@ -493,10 +385,6 @@ Device::getDevices(cl_device_type type, bool offlineDevices)
     if (devices_ == NULL) {
         return result;
     }
-
-#if defined(WITH_HSA_DEVICE)
-    type = rocAppProfile_->ApplyHsaDeviceHintFlag(type);
-#endif
 
     // Create the list of available devices
     for (device_iterator it = devices_->begin(); it != devices_->end(); ++it) {
@@ -517,10 +405,6 @@ Device::numDevices(cl_device_type type, bool offlineDevices)
     if (devices_ == NULL) {
         return 0;
     }
-
-#if defined(WITH_HSA_DEVICE)
-    type = rocAppProfile_->ApplyHsaDeviceHintFlag(type);
-#endif
 
     for (device_iterator it = devices_->begin(); it != devices_->end(); ++it) {
         // Check if the device type is matched
