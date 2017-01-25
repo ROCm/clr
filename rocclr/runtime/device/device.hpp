@@ -1636,8 +1636,7 @@ public:
 
     //! Return this device's type.
     cl_device_type type() const {
-        return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT | CL_HSA_ENABLED_AMD
-                                  | CL_HSA_DISABLED_AMD);
+        return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT);
     }
 
     //! Create sub-devices according to the given partition scheme.
@@ -1812,14 +1811,11 @@ protected:
     HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
 
 private:
-    bool IsHsaCapableDevice();
     bool IsTypeMatching(cl_device_type type, bool offlineDevices);
 
 #if defined(WITH_HSA_DEVICE)
     static AppProfile* rocAppProfile_;
 #endif
-    static bool isHsaDeviceAvailable_;
-    static bool isGpuDeviceAvailable_;
 
     typedef std::vector<Device*>::iterator device_iterator;
     static std::vector<Device*>* devices_; //!< All known devices

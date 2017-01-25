@@ -131,9 +131,7 @@ bool ADL::init()
 
 #endif //BRAHMA
 
-AppProfile::AppProfile(): hsaDeviceHint_(0),
-                          gpuvmHighAddr_(false),
-                          noHsaInit_(false),
+AppProfile::AppProfile(): gpuvmHighAddr_(false),
                           profileOverridesAllSettings_(false)
 {
     appFileName_ = amd::Os::getAppFileName();
@@ -169,29 +167,6 @@ bool AppProfile::init()
     ParseApplicationProfile();
 
     return true;
-}
-
-cl_device_type AppProfile::ApplyHsaDeviceHintFlag(const cl_device_type& type)
-{
-    cl_device_type ret_type = type;
-
-    bool isHsaHintSpecified = (type & (CL_HSA_ENABLED_AMD|CL_HSA_DISABLED_AMD))
-                                != 0;
-    // Apply app profile hsa device hint only if
-    // HSA_RUNTIME is not set/defined *and*
-    // no hsa hint flag already specified.
-    // OR
-    // Profile overridess all other settings (HSA_RUNTIME and hint flags).
-    if ( profileOverridesAllSettings_
-      || (flagIsDefault(HSA_RUNTIME) && !isHsaHintSpecified)) {
-        // Clear current hsa hint.
-        ret_type = type & ~(CL_HSA_ENABLED_AMD | CL_HSA_DISABLED_AMD);
-        // Apply hsa hint from app profile.
-        return (ret_type | hsaDeviceHint_);
-    }
-
-    // Do not apply app profile hsa device hint.
-    return type;
 }
 
 bool AppProfile::ParseApplicationProfile()
