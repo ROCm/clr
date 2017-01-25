@@ -209,12 +209,6 @@ typedef union
 
 #define CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD            1
 
-/*************
-* cl_amd_hsa *
-**************/
-#define CL_HSA_ENABLED_AMD                          (1ull << 62)
-#define CL_HSA_DISABLED_AMD                         (1ull << 63)
-
 // <amd_internal>
 /***************************
 * cl_amd_command_intercept *

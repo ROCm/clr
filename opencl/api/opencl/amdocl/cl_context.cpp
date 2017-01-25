@@ -186,11 +186,6 @@ RUNTIME_ENTRY_RET(cl_context, clCreateContextFromType, (
         return (cl_context) 0;
     }
 
-    if (device_type & CL_HSA_ENABLED_AMD &&
-        device_type & CL_HSA_DISABLED_AMD) {
-        device_type ^= (CL_HSA_ENABLED_AMD | CL_HSA_DISABLED_AMD);
-    }
-
     // Get the devices of the given type.
     cl_uint num_devices;
     bool offlineDevices =

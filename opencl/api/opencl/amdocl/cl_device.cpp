@@ -200,11 +200,6 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDs, (
         return CL_INVALID_VALUE;
     }
 
-    if (device_type & CL_HSA_ENABLED_AMD &&
-        device_type & CL_HSA_DISABLED_AMD) {
-        device_type ^= (CL_HSA_ENABLED_AMD | CL_HSA_DISABLED_AMD);
-    }
-
     // Get all available devices
     if (!amd::Device::getDeviceIDs(device_type, num_entries,
             devices, num_devices, false)) {
