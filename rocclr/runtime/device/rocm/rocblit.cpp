@@ -22,10 +22,12 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
 inline void
 DmaBlitManager::synchronize() const
 {
+    // todo TS tracking isn't implemented
     gpu().releaseGpuMemoryFence();
 
     if (syncOperation_) {
 //        gpu().waitAllEngines();
+        gpu().releasePinnedMem();
     }
 }
 

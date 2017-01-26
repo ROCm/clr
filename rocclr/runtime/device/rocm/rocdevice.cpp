@@ -1417,6 +1417,7 @@ Device::createMemory(amd::Memory &owner) const
                                       amd::Coord3D(0, 0, 0), imageView->getRegion(),
                                       0,
                                       0, true);
+        owner.setHostMem(nullptr);
 
         imageView->release();
     }
@@ -1564,6 +1565,7 @@ Device::xferQueue() const
             LogError("Couldn't create the device transfer manager!");
         }
     }
+    xferQueue_->enableSyncBlit();
     return xferQueue_;
 }
 

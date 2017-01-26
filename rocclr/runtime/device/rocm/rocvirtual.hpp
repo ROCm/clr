@@ -212,6 +212,8 @@ public:
     //! Finds if pinned memory is cached
     amd::Memory* findPinnedMem(void* addr, size_t size);
 
+    void enableSyncBlit() const;
+
 // } roc OpenCL integration
 private:
     bool dispatchAqlPacket(

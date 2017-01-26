@@ -73,7 +73,7 @@ Settings::Settings()
 bool
 Settings::create(bool fullProfile)
 {
-    customHostAllocator_ = true;
+    customHostAllocator_ = false;
 
     if (fullProfile) {
         pinnedXferSize_ = 0;

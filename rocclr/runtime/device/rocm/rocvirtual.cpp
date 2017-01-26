@@ -1839,4 +1839,10 @@ VirtualGPU::findPinnedMem(void* addr, size_t size)
     }
     return nullptr;
 }
+
+void
+VirtualGPU::enableSyncBlit() const
+{
+    blitMgr_->enableSynchronization();
+}
 }  // End of roc namespace
