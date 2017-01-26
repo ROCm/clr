@@ -2063,7 +2063,7 @@ KernelBlitManager::fillBuffer(
         if (gpuCB == NULL) {
             return false;
         }
-        void* constBuf = gpuCB->getDeviceMemory();
+        void* constBuf = constantBuffer_->getHostMem();
         memcpy(constBuf, pattern, patternSize);
 
         mem = as_cl<amd::Memory>(gpuCB->owner());
