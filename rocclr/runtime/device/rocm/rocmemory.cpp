@@ -43,6 +43,9 @@ Memory::Memory(const roc::Device &dev, size_t size)
 Memory::~Memory()
 {
     dev_.removeVACache(this);
+    if (nullptr != mapMemory_) {
+        mapMemory_->release();
+    }
 }
 
 bool
@@ -62,7 +65,6 @@ Memory::allocateMapMemory(size_t allocationSize)
 
         if ((mapMemory == NULL) || (!mapMemory->create())) {
             LogError("[OCL] Fail to allocate map target object");
-            dev_.hostFree(mapData);
             if (mapMemory) {
               mapMemory->release();
             }
@@ -125,9 +127,7 @@ Memory::allocMapTarget(
         }
     }
 
-    roc::Memory* hsaMapMemory = reinterpret_cast<roc::Memory *>(
-        mapMemory_->getDeviceMemory(dev_));
-    return reinterpret_cast<address>(hsaMapMemory->getDeviceMemory()) + origin[0];
+    return reinterpret_cast<address>(mapMemory_->getHostMem()) + origin[0];
 }
 
 void
@@ -284,7 +284,7 @@ Buffer::destroy()
         // if they are identical, the host pointer will be
         // deallocated later on => avoid double deallocation
         if (isHostMemDirectAccess()) {
-            if (memFlags & CL_MEM_USE_HOST_PTR) {
+            if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
                 if (dev_.agent_profile() != HSA_PROFILE_FULL) {
                     hsa_amd_memory_unlock(owner()->getHostMem());
                 }
@@ -318,12 +318,13 @@ Buffer::create()
     if(owner()->isInterop())
       return createInteropBuffer(GL_ARRAY_BUFFER, 0, NULL, NULL);
 
-    if (owner()->parent()) {
+    if (nullptr != owner()->parent()) {
+        amd::Memory& parent = *owner()->parent();
         // Sub-Buffer creation.
-        roc::Memory *parentBuffer =
-          static_cast<roc::Memory *>(owner()->parent()->getDeviceMemory(dev_));
+        roc:Memory* parentBuffer =
+          static_cast<roc::Memory*>(parent.getDeviceMemory(dev_));
 
-        if (parentBuffer == NULL) {
+        if (parentBuffer == nullptr) {
             LogError("[OCL] Fail to allocate parent buffer");
             return false;
         }
@@ -332,8 +333,19 @@ Buffer::create()
         deviceMemory_ = parentBuffer->getDeviceMemory() + offset;
 
         flags_ |= SubMemoryObject;
-        flags_ |=
-            parentBuffer->isHostMemDirectAccess() ? HostMemoryDirectAccess : 0;
+        flags_ |= parentBuffer->isHostMemDirectAccess() ?
+                  HostMemoryDirectAccess : 0;
+
+        // Explicitly set the host memory location,
+        // because the parent location could change after reallocation
+        if (nullptr != parent.getHostMem()) {
+            owner()->setHostMem(
+                reinterpret_cast<char*>(parent.getHostMem()) + offset);
+        }
+        else {
+            owner()->setHostMem(nullptr);
+        }
+
         return true;
     }
 
@@ -383,10 +395,7 @@ Buffer::create()
                 owner()->getHostMem(), *devBufferView, amd::Coord3D(0),
                 amd::Coord3D(size()), true);
 
-            if (!ret) {
-                dev_.memFree(deviceMemory_, size());
-                deviceMemory_ = NULL;
-            }
+            owner()->setHostMem(nullptr);
 
             bufferView->release();
             return ret;
@@ -420,7 +429,7 @@ Buffer::create()
     }
 
     if (owner()->getSvmPtr() != owner()->getHostMem()) {
-        if (memFlags & CL_MEM_USE_HOST_PTR) {
+        if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
             hsa_agent_t agent = dev_.getBackendDevice();
             hsa_status_t status = hsa_amd_memory_lock(
                 owner()->getHostMem(), owner()->getSize(), &agent, 1, &deviceMemory_);
