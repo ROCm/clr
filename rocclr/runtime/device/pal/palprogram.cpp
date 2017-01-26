@@ -20,7 +20,6 @@
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUPTNote.h"
 #include "AMDGPURuntimeMetadata.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
@@ -1604,14 +1603,17 @@ LightningProgram::setKernels(
                 address name = (address) &note[1];
                 address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
 
-                if (note->n_type == AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1) {
+                //! @todo: Use constants and enums defined in AMDGPUPTNote.h.
+                //! In order to switch to using constants and enums defined in
+                //! AMDGPUPTNote.h, we need to clean up internal header files.
+                if (note->n_type == 7 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1*/) {
                     buildLog_ += "Error: object code with metadata v1 is not " \
                       "supported\n";
                     return false;
                 }
-                else if (note->n_type == AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA
-                         && note->n_namesz == sizeof AMDGPU::PT_NOTE::NoteName
-                         && !memcmp(name, AMDGPU::PT_NOTE::NoteName, note->n_namesz)) {
+                else if (note->n_type == 8 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA*/
+                         && note->n_namesz == sizeof "AMD"
+                         && !memcmp(name, "AMD", note->n_namesz)) {
                     std::string metadataStr((const char *) desc, (size_t) note->n_descsz);
                     metadata_ = new AMDGPU::RuntimeMD::Program::Metadata(metadataStr);
                     // We've found and loaded the runtime metadata, exit the
