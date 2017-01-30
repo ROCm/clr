@@ -1070,7 +1070,8 @@ KernelBlitManager::copyBufferToImageKernel(
     // Fall into the host path if the image format was rejected
     if (rejected) {
         return DmaBlitManager::copyBufferToImage(
-            srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire);
+            srcMemory, dstMemory, srcOrigin, dstOrigin,
+            size, entire, rowPitch, slicePitch);
     }
 
     // Use a common blit type with three dimensions by default
@@ -1273,7 +1274,8 @@ KernelBlitManager::copyImageToBufferKernel(
     // Fall into the host path if the image format was rejected
     if (rejected) {
         return DmaBlitManager::copyImageToBuffer(
-            srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire);
+            srcMemory, dstMemory, srcOrigin, dstOrigin,
+            size, entire, rowPitch, slicePitch);
     }
 
     uint    blitType = BlitCopyImageToBuffer;
