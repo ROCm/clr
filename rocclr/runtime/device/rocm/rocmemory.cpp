@@ -714,13 +714,23 @@ Image::createView(const Memory &parent)
                         ? deviceMemory_
                         : static_cast<const Image&>(parent).originalDeviceMemory_;
 
+    amd::Memory* oldestParent = parent.owner();
+    while (oldestParent->parent() != nullptr) {
+        oldestParent = oldestParent->parent();
+    }
+
     kind_=parent.getKind();
 
     hsa_status_t status;
     if(kind_==MEMORY_KIND_INTEROP)
       status = hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
-    else
+    else if (oldestParent->asBuffer()) {
+      status = hsa_ext_image_create_with_layout(dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+        HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, owner()->asImage()->getRowPitch(), 0,
+        &hsaImageObject_);
+    } else {
       status= hsa_ext_image_create(dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_, &hsaImageObject_);
+    }
 
     if (status != HSA_STATUS_SUCCESS) {
         LogError("[OCL] Fail to allocate image memory");
