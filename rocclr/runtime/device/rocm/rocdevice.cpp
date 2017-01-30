@@ -1183,7 +1183,7 @@ Device::createVirtualDevice(amd::CommandQueue* queue)
         return NULL;
     }
 
-    if(profiling) {
+    if (profiling) {
         hsa_amd_profiling_set_profiler_enabled(virtualDevice->gpu_queue(), 1);
     }
 
@@ -1417,7 +1417,9 @@ Device::createMemory(amd::Memory &owner) const
                                       amd::Coord3D(0, 0, 0), imageView->getRegion(),
                                       0,
                                       0, true);
-        owner.setHostMem(nullptr);
+        if (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) {
+            owner.setHostMem(nullptr);
+        }
 
         imageView->release();
     }
