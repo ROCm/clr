@@ -1417,7 +1417,9 @@ Device::createMemory(amd::Memory &owner) const
                                       amd::Coord3D(0, 0, 0), imageView->getRegion(),
                                       0,
                                       0, true);
-        if (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) {
+        // Release host memory for single device, since runtime copied data
+        if ((owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
+            (owner.getContext().devices().size() == 1)) {
             owner.setHostMem(nullptr);
         }
 

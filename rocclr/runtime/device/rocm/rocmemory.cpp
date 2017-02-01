@@ -395,7 +395,11 @@ Buffer::create()
                 owner()->getHostMem(), *devBufferView, amd::Coord3D(0),
                 amd::Coord3D(size()), true);
 
-            owner()->setHostMem(nullptr);
+            // Release host memory for single device,
+            // since runtime copied data
+            if (owner()->getContext().devices().size() == 1) {
+                owner()->setHostMem(nullptr);
+            }
 
             bufferView->release();
             return ret;
@@ -419,13 +423,13 @@ Buffer::create()
     flags_ |= HostMemoryDirectAccess;
 
     if (dev_.agent_profile() == HSA_PROFILE_FULL) {
-      deviceMemory_ = owner()->getHostMem();
+        deviceMemory_ = owner()->getHostMem();
 
-      if (memFlags & CL_MEM_USE_HOST_PTR) {
-        hsa_memory_register(deviceMemory_, size());
-      }
+        if (memFlags & CL_MEM_USE_HOST_PTR) {
+            hsa_memory_register(deviceMemory_, size());
+        }
 
-      return deviceMemory_ != NULL;
+        return deviceMemory_ != NULL;
     }
 
     if (owner()->getSvmPtr() != owner()->getHostMem()) {
@@ -656,8 +660,9 @@ Image::create()
     }
 
     //Interop image
-    if(owner()->isInterop())
-      return createInteropImage();
+    if (owner()->isInterop()) {
+        return createInteropImage();
+    }
 
     // Get memory size requirement for device specific image.
     hsa_status_t status = hsa_ext_image_data_get_info(
@@ -673,28 +678,27 @@ Image::create()
     // support alignment larger than HSA memory region allocation granularity.
     // In this case, the user manages the alignment.
     const size_t alloc_size =
-      (deviceImageInfo_.alignment <= dev_.alloc_granularity())
-      ? deviceImageInfo_.size
-      : deviceImageInfo_.size + deviceImageInfo_.alignment;
+        (deviceImageInfo_.alignment <= dev_.alloc_granularity())
+        ? deviceImageInfo_.size
+        : deviceImageInfo_.size + deviceImageInfo_.alignment;
 
     if (!(owner()->getMemFlags() & CL_MEM_ALLOC_HOST_PTR)) {
-      originalDeviceMemory_ = dev_.deviceLocalAlloc(alloc_size);
+        originalDeviceMemory_ = dev_.deviceLocalAlloc(alloc_size);
     }
 
     if (originalDeviceMemory_ == NULL) {
-        originalDeviceMemory_ =
-          dev_.hostAlloc(alloc_size, 1, false);
+        originalDeviceMemory_ = dev_.hostAlloc(alloc_size, 1, false);
     }
 
     deviceMemory_ = reinterpret_cast<void *>(
-      amd::alignUp(reinterpret_cast<uintptr_t>(originalDeviceMemory_),
-      deviceImageInfo_.alignment));
+        amd::alignUp(reinterpret_cast<uintptr_t>(originalDeviceMemory_),
+        deviceImageInfo_.alignment));
 
     assert(amd::isMultipleOf(
-      deviceMemory_, static_cast<size_t>(deviceImageInfo_.alignment)));
+        deviceMemory_, static_cast<size_t>(deviceImageInfo_.alignment)));
 
     status = hsa_ext_image_create(
-      dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_,
+        dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_,
         permission_, &hsaImageObject_);
 
     if (status != HSA_STATUS_SUCCESS) {
@@ -719,17 +723,22 @@ Image::createView(const Memory &parent)
         oldestParent = oldestParent->parent();
     }
 
-    kind_=parent.getKind();
+    kind_ = parent.getKind();
 
     hsa_status_t status;
-    if(kind_==MEMORY_KIND_INTEROP)
-      status = hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_, amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
+    if (kind_ == MEMORY_KIND_INTEROP) {
+        status = hsa_amd_image_create(dev_.getBackendDevice(), &imageDescriptor_,
+            amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
+    }
     else if (oldestParent->asBuffer()) {
-      status = hsa_ext_image_create_with_layout(dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
-        HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, owner()->asImage()->getRowPitch(), 0,
-        &hsaImageObject_);
-    } else {
-      status= hsa_ext_image_create(dev_.getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_, &hsaImageObject_);
+        status = hsa_ext_image_create_with_layout(dev_.getBackendDevice(),
+            &imageDescriptor_, deviceMemory_, permission_,
+            HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, owner()->asImage()->getRowPitch(), 0,
+            &hsaImageObject_);
+    }
+    else {
+        status= hsa_ext_image_create(dev_.getBackendDevice(), &imageDescriptor_,
+            deviceMemory_, permission_, &hsaImageObject_);
     }
 
     if (status != HSA_STATUS_SUCCESS) {
