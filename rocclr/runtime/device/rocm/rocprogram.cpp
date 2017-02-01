@@ -813,6 +813,9 @@ HSAILProgram::linkImpl_LC(amd::option::Options *options)
     optLevel << "-O" << options->oVariables->OptLevel;
     codegenOptions.append(" ").append(optLevel.str());
 
+    // Set whole program mode
+    codegenOptions.append(" -mllvm -amdgpu-internalize-symbols");
+
     // Tokenize the options string into a vector of strings
     std::istringstream strstr(codegenOptions);
     std::istream_iterator<std::string> sit(strstr), end;
