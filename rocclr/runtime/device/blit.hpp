@@ -37,6 +37,7 @@ public:
             uint    disableFillBuffer_          : 1;
             uint    disableFillImage_           : 1;
             uint    disableCopyBufferToImageOpt_: 1;
+            uint    disableHwlCopyBuffer_       : 1;
         };
         uint32_t    value_;
         Setup() : value_(0) {}
