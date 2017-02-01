@@ -411,6 +411,8 @@ public:
         amd::Memory* mem    //!< Pointer to AMD memory object
         ) const;
 
+    amd::Monitor& hsaCopyOps() const { return *hsaCopyOps_; }
+
 private:
     static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -438,6 +440,10 @@ private:
 
     XferBuffers*    xferRead_;      //!< Transfer buffers read
     XferBuffers*    xferWrite_;     //!< Transfer buffers write
+
+    //! todo it shouldn't require a lock proteciton,
+    //! but currently it causes a HW hang in MT environment
+    amd::Monitor*   hsaCopyOps_;    //!< HSA copy is protected under lock
 
 public:
     amd::Atomic<uint>   numOfVgpus_; //!< Virtual gpu unique index
