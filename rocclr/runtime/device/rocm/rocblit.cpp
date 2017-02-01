@@ -2106,8 +2106,9 @@ KernelBlitManager::copyBuffer(
     amd::ScopedLock k(lockXferOps_);
     bool    result = false;
 
-    if (!gpuMem(srcMemory).isHostMemDirectAccess() &&
-        !gpuMem(dstMemory).isHostMemDirectAccess()) {
+    if (setup_.disableHwlCopyBuffer_ ||
+        (!gpuMem(srcMemory).isHostMemDirectAccess() &&
+         !gpuMem(dstMemory).isHostMemDirectAccess())) {
         uint    blitType = BlitCopyBuffer;
         size_t  dim = 1;
         size_t  globalWorkOffset[3] = { 0, 0, 0 };

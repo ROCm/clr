@@ -539,6 +539,8 @@ VirtualGPU::create(bool profilingEna)
     }
 
     device::BlitManager::Setup  blitSetup;
+    // todo ROCr hangs in a heavy MT environment(integer_ops long_math)
+    blitSetup.disableHwlCopyBuffer_ = true; 
     blitMgr_ = new KernelBlitManager(*this, blitSetup);
     if ((NULL == blitMgr_) || !blitMgr_->create(roc_device_)) {
         LogError("Could not create BlitManager!");
