@@ -189,7 +189,6 @@ Device::Device(hsa_agent_t bkendDevice)
     , xferQueue_(nullptr)
     , xferRead_(nullptr)
     , xferWrite_(nullptr)
-    , hsaCopyOps_(nullptr)
     , numOfVgpus_(0)
 {
     group_segment_.handle = 0;
@@ -208,7 +207,6 @@ Device::~Device()
     }
     delete mapCache_;
     delete mapCacheOps_;
-    delete hsaCopyOps_;
 
     // Destroy temporary buffers for read/write
     delete xferRead_;
@@ -625,11 +623,6 @@ Device::create()
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
     if (NULL == mapCacheOps_) {
-        return false;
-    }
-
-    hsaCopyOps_ = new amd::Monitor("HSA copy Lock", true);
-    if (nullptr == hsaCopyOps_) {
         return false;
     }
 

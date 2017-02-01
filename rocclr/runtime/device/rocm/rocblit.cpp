@@ -616,9 +616,6 @@ bool DmaBlitManager::hsaCopy(
     bool                enableCopyRect,
     bool                flushDMA) const
 {
-    // todo integerops long_math test exposes
-    // a HW hang without lock protection. note: Runtime kernel copy works fine
-    amd::ScopedLock k(dev().hsaCopyOps());
     address src = reinterpret_cast<address>(srcMemory.getDeviceMemory());
     address dst = reinterpret_cast<address>(dstMemory.getDeviceMemory());
 
@@ -666,8 +663,6 @@ bool DmaBlitManager::hsaCopy(
 bool DmaBlitManager::hsaCopyStaged(
     const_address hostSrc, address hostDst, size_t size, address staging, bool hostToDev) const
 {
-    amd::ScopedLock k(dev().hsaCopyOps());
-
     // No allocation is necessary for Full Profile
     hsa_status_t status;
     if (dev().agent_profile() == HSA_PROFILE_FULL) {
