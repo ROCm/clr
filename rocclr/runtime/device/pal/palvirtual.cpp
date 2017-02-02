@@ -1264,6 +1264,7 @@ VirtualGPU::copyMemory(cl_command_type type
 
     // Check if HW can be used for memory copy
     switch (type) {
+    case CL_COMMAND_MAKE_BUFFERS_RESIDENT_AMD:
     case CL_COMMAND_SVM_MEMCPY:
     case CL_COMMAND_COPY_BUFFER: {
         amd::Coord3D    realSrcOrigin(srcOrigin[0]);
@@ -2731,28 +2732,28 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
 {
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd);
-    pal::Memory* gpuMemory = dev().getGpuMemory(&vcmd.memory());
-    Unimplemented();
-/*
+    pal::Memory* pGpuMemory = dev().getGpuMemory(&vcmd.memory());
+
+    GpuEvent    gpuEvent;
+    eventBegin(MainEngine);
+
+    uint32_t value = vcmd.markerValue();
+    uint32_t size = vcmd.memory().getSize();
+
+    addVmMemory(pGpuMemory);
+
     if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
-        uint64_t surfAddr = gpuMemory->iMem()->getPhysicalAddress(cs());
-        uint64_t markerAddr = gpuMemory->iMem()->getMarkerAddress(cs());
-        uint64_t markerOffset = markerAddr - surfAddr;
-        cs()->p2pMarkerOp(gpuMemory->iMem(), vcmd.markerValue(),
-            markerOffset, false);
+        iCmd()->CmdWaitMemoryValue(*(pGpuMemory->iMem()), size, value, 0xFFFFFFFF, Pal::CompareFunc::GreaterEqual);
     }
     else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
-        GpuEvent    gpuEvent;
-        eventBegin(MainEngine);
-        cs()->p2pMarkerOp(gpuMemory->iMem(), vcmd.markerValue(),  vcmd.markerOffset(), true);
-        //! @todo We don't need flush if an event is tracked.
-        cs()->Flush();
-        eventEnd(MainEngine, gpuEvent);
-        gpuMemory->setBusy(*this, gpuEvent);
-        // Update the global GPU event
-        setGpuEvent(gpuEvent);
+        iCmd()->CmdUpdateMemory(*(pGpuMemory->iMem()), size, 4, &value);
     }
-*/
+
+    eventEnd(MainEngine, gpuEvent);
+    pGpuMemory->setBusy(*this, gpuEvent);
+    // Update the global GPU event
+    setGpuEvent(gpuEvent);
+
     profilingEnd(vcmd);
 }
 
@@ -2761,39 +2762,24 @@ VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand & vcmd)
 {
     amd::ScopedLock lock(execution());
     profilingBegin(vcmd);
+
     std::vector<amd::Memory*> memObjects = vcmd.memObjects();
-    cl_uint numObjects = memObjects.size();
-    Pal::IGpuMemory** pGpuMemObjects = new Pal::IGpuMemory*[numObjects];
+    uint32_t numObjects = memObjects.size();
 
-    for(cl_uint i = 0; i < numObjects; ++i)
+    for (int i = 0; i < numObjects; i++)
     {
-        pal::Memory* gpuMemory = dev().getGpuMemory(memObjects[i]);
-        pGpuMemObjects[i] = gpuMemory->iMem();
-        gpuMemory->syncCacheFromHost(*this);
-    }
+        // dummy render into the SDI surfaces so that KMD will be able to provide the bus addresses
+        uint dummy = 0;
+        static_cast<const KernelBlitManager&>(dev().xferMgr())
+            .writeRawData(*(dev().getGpuMemory(memObjects[i])), sizeof(dummy), &dummy);
 
-    uint64_t* surfBusAddr = new uint64_t[numObjects];
-    uint64_t* markerBusAddr = new uint64_t[numObjects];
-    Unimplemented();
-/*
-    gslErrorCode res = cs()->makeBuffersResident(numObjects, pGpuMemObjects,
-        surfBusAddr, markerBusAddr);
-    if(res != GSL_NO_ERROR) {
-        LogError("MakeBuffersResident failed");
-        vcmd.setStatus(CL_INVALID_OPERATION);
+        pal::Memory* pGpuMemory = dev().getGpuMemory(memObjects[i]);
+
+        pGpuMemory->syncCacheFromHost(*this);
+
+        vcmd.busAddress()[i].surface_bus_address = pGpuMemory->iMem()->Desc().surfaceBusAddr;
+        vcmd.busAddress()[i].marker_bus_address = pGpuMemory->iMem()->Desc().markerBusAddr;
     }
-    else {
-        cl_bus_address_amd* busAddr = vcmd.busAddress();
-        for(cl_uint i = 0; i < numObjects; ++i)
-        {
-            busAddr[i].surface_bus_address = surfBusAddr[i];
-            busAddr[i].marker_bus_address = markerBusAddr[i];
-        }
-    }
-*/
-    delete[] pGpuMemObjects;
-    delete[] surfBusAddr;
-    delete[] markerBusAddr;
     profilingEnd(vcmd);
 }
 

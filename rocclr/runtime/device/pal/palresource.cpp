@@ -399,9 +399,9 @@ Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo)
         createInfo->heaps[0] = Pal::GpuHeapGartCacheable;
         desc_.cardMemory_ = false;
         break;
-    case Shader:
-    case BusAddressable:
     case ExternalPhysical:
+        desc_.cardMemory_ = false;
+    case Shader:
         // Fall through to process the memory allocation ...
     case Local:
         createInfo->heapCount = 2;
@@ -1075,6 +1075,18 @@ Resource::create(MemoryType memType, CreateParams* params)
     createInfo.alignment = MaxGpuAlignment;
     createInfo.vaRange = Pal::VaRange::Default;
     createInfo.priority  = Pal::GpuMemPriority::Normal;
+
+    if (memoryType() == ExternalPhysical){
+        cl_bus_address_amd bus_address =
+            (reinterpret_cast<amd::Buffer*>(params->owner_))->busAddress();
+        createInfo.surfaceBusAddr = bus_address.surface_bus_address;
+        createInfo.markerBusAddr = bus_address.marker_bus_address;
+        createInfo.flags.sdiExternal = true;
+    }
+    else if (memoryType() == BusAddressable){
+        createInfo.flags.busAddressable = true;
+    }
+
     memTypeToHeap(&createInfo);
     // createInfo.priority;
     memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
