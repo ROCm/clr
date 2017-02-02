@@ -353,13 +353,12 @@ Settings::create(
     }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 
-//! @todo
-/*
-    if (calAttr.totalSDIHeap > 0) {
+    if (palProp.gpuMemoryProperties.busAddressableMemSize > 0) {
         //Enable bus addressable memory extension
         enableExtension(ClAMDBusAddressableMemory);
     }
-
+//! @todo
+/*
     if (calAttr.longIdleDetect) {
         // KMD is unable to detect if we map the visible memory for CPU access, so
         // accessing persistent staged buffer may fail if LongIdleDetct is enabled.
