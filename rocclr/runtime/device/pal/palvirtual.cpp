@@ -2766,7 +2766,7 @@ VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand & vcmd)
     std::vector<amd::Memory*> memObjects = vcmd.memObjects();
     uint32_t numObjects = memObjects.size();
 
-    for (int i = 0; i < numObjects; i++)
+    for (uint i = 0; i < numObjects; i++)
     {
         // dummy render into the SDI surfaces so that KMD will be able to provide the bus addresses
         uint dummy = 0;
