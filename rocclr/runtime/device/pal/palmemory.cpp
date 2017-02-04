@@ -139,7 +139,7 @@ Memory::create(
             // Local to Persistent
             if (memoryType() == Local) {
                 // For dgpu freeMemory[0] reports a sum of visible+invisible fb
-                if (owner()->getSize() > (freeMemory[0] * Ki)) {
+                if (size() > (freeMemory[0] * Ki)) {
                     break;
                 }
                 memType = Persistent;
@@ -153,7 +153,7 @@ Memory::create(
                 memType = RemoteUSWC;
             }
             else if (dev().settings().apuSystem_ && memoryType() == RemoteUSWC) {
-                if (owner()->getSize() > (freeMemory[0] * Ki)) {
+                if (size() > (freeMemory[0] * Ki)) {
                     break;
                 }
             }
