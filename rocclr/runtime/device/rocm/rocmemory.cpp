@@ -731,9 +731,24 @@ Image::createView(const Memory &parent)
             amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
     }
     else if (oldestParent->asBuffer()) {
+        size_t rowPitch;
+        amd::Image& ownerImage = *owner()->asImage();
+        size_t elementSize = ownerImage.getImageFormat().getElementSize();
+        // First get the row pitch in pixels
+        if (ownerImage.getRowPitch() != 0) {
+            rowPitch = ownerImage.getRowPitch() / elementSize;
+        }
+        else {
+            rowPitch = ownerImage.getWidth();
+        }
+
+        // Make sure the row pitch is aligned to pixels
+        rowPitch = elementSize *
+            amd::alignUp(rowPitch, dev_.info().imagePitchAlignment_);
+
         status = hsa_ext_image_create_with_layout(dev_.getBackendDevice(),
             &imageDescriptor_, deviceMemory_, permission_,
-            HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, owner()->asImage()->getRowPitch(), 0,
+            HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0,
             &hsaImageObject_);
     }
     else {
