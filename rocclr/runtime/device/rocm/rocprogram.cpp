@@ -1080,6 +1080,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
             return false;
         }
         aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+        aKernel->setInternalKernelFlag(compileOptions_.find("-cl-internal-kernel") != std::string::npos);
         kernels()[kernelName] = aKernel;
     }
 
@@ -1336,6 +1337,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
             return false;
         }
         aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+        aKernel->setInternalKernelFlag(compileOptions_.find("-cl-internal-kernel") != std::string::npos);
         kernels()[kernelName] = aKernel;
     }
     saveBinaryAndSetType(TYPE_EXECUTABLE);

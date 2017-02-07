@@ -29,53 +29,80 @@ struct ProfilingSignal : public amd::HeapObject
 // including EnqueueNDRangeKernel and clEnqueueCopyBuffer.
 class Timestamp {
 private:
-  uint64_t  start_;
-  uint64_t  end_;
-  ProfilingSignal* profilingSignal_;
-  hsa_agent_t agent_;
-  static double ticksToTime_;
+    uint64_t          start_;
+    uint64_t          end_;
+    ProfilingSignal*  profilingSignal_;
+    hsa_agent_t       agent_;
+    static double     ticksToTime_;
+    bool              splittedDispatch_;
+    std::vector<hsa_signal_t>  splittedSignals_;
 
 public:
-  uint64_t getStart() { checkGpuTime(); return start_; }
+    uint64_t getStart() { checkGpuTime(); return start_; }
 
-  uint64_t getEnd() { checkGpuTime(); return end_; }
+    uint64_t getEnd() { checkGpuTime(); return end_; }
 
-  void setProfilingSignal(ProfilingSignal* signal) { profilingSignal_ = signal; }
+    void setProfilingSignal(ProfilingSignal* signal) {
+        profilingSignal_ = signal;
+            if (splittedDispatch_) {
+                splittedSignals_.push_back(profilingSignal_->signal_);
+        }
+    }
+    const ProfilingSignal* getProfilingSignal() const { return profilingSignal_; }
 
-  const ProfilingSignal* getProfilingSignal() const { return profilingSignal_; }
+    void setAgent(hsa_agent_t agent) { agent_ = agent; }
 
-  void setAgent(hsa_agent_t agent) { agent_ = agent; }
+    Timestamp() : start_(0), end_(0), profilingSignal_(nullptr), splittedDispatch_(false)  {
+        agent_.handle = 0;
+    }
 
-  Timestamp() : start_(0), end_(0), profilingSignal_(nullptr)  {
-    agent_.handle = 0;
-  }
+    ~Timestamp() {}
 
-  ~Timestamp() {}
+    //! Finds execution ticks on GPU
+    void checkGpuTime() {
+        if (profilingSignal_ != nullptr) {
+            hsa_amd_profiling_dispatch_time_t time;
 
-  //! Finds execution ticks on GPU
-  void checkGpuTime() {
-      if (profilingSignal_ != nullptr) {
-          hsa_amd_profiling_dispatch_time_t time;
-          hsa_amd_profiling_get_dispatch_time(agent_, profilingSignal_->signal_, &time);
-          start_ = time.start * ticksToTime_;
-          end_ = time.end * ticksToTime_;
-          profilingSignal_->ts_ = nullptr;
-          profilingSignal_ = nullptr;
-      }
-  }
+            if (splittedDispatch_) {
+                uint64_t start = UINT64_MAX;
+                uint64_t end = 0;
+                for (auto it = splittedSignals_.begin(); it < splittedSignals_.end(); it++) {
+                    hsa_amd_profiling_get_dispatch_time(agent_, *it, &time);
+                    if (time.start < start) {
+                        start = time.start;
+                    }
+                    if (time.end > end) {
+                        end = time.end;
+                    }
+                }
+                 start_ = start * ticksToTime_;
+                end_ = end * ticksToTime_;
+            }
+            else {
+                hsa_amd_profiling_get_dispatch_time(agent_, profilingSignal_->signal_, &time);
+                start_ = time.start * ticksToTime_;
+                end_ = time.end * ticksToTime_;
+            }
+            profilingSignal_->ts_ = nullptr;
+            profilingSignal_ = nullptr;
+        }
+    }
 
-  // Start a timestamp (get timestamp from OS)
-  void start() {
-      start_ = amd::Os::timeNanos();
-  }
+    // Start a timestamp (get timestamp from OS)
+    void start() {
+        start_ = amd::Os::timeNanos();
+    }
 
-  // End a timestamp (get timestamp from OS)
-  void end() {
-      end_ = amd::Os::timeNanos();
-  }
+    // End a timestamp (get timestamp from OS)
+    void end() {
+        end_ = amd::Os::timeNanos();
+    }
 
-  static void setGpuTicksToTime(double ticksToTime) { ticksToTime_=ticksToTime; }
-  static double getGpuTicksToTime() { return ticksToTime_; }
+    bool isSplittedDispatch() const { return splittedDispatch_; }
+    void setSplittedDispatch() { splittedDispatch_ = true; }
+
+    static void setGpuTicksToTime(double ticksToTime) { ticksToTime_=ticksToTime; }
+    static double getGpuTicksToTime() { return ticksToTime_; }
 };
 
 class VirtualGPU : public device::VirtualDevice {
