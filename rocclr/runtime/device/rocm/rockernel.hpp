@@ -147,7 +147,21 @@ public:
     //! Return printf info array
     const std::vector<PrintfInfo>& printfInfo() const {return printf_;}
 
+    //! Return TRUE if kernel is internal blit kernel
+    bool isInternalKernel() const { return (flags_.internalKernel_) ? true : false; }
+
+    //! set internal kernel flag
+    void setInternalKernelFlag(bool flag) { flags_.internalKernel_ = flag; }
+
 private:
+    union Flags {
+        struct {
+            uint internalKernel_: 1;   //!< Is a blit kernel?
+        };
+        uint    value_;
+        Flags(): value_(0) {}
+    } flags_;
+
     //! Populates hsailArgList_
     void initArguments(const aclArgData* aclArg);
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -164,7 +178,6 @@ private:
 
     HSAILProgram *program_; //!< The roc::HSAILProgram context
     std::vector<Argument*> hsailArgList_; //!< Vector list of HSAIL Arguments
-    std::string compileOptions_; //!< compile used for finalizing this kernel
     uint64_t kernelCodeHandle_; //!< Kernel code handle (aka amd_kernel_code_t)
     const uint32_t workgroupGroupSegmentByteSize_;
     const uint32_t workitemPrivateSegmentByteSize_;

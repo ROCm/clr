@@ -1513,210 +1513,257 @@ VirtualGPU::submitKernelInternal(
         return false;
     }
 
-    // Allocate buffer to hold kernel arguments
-    address argBuffer = (address)allocKernArg(
-        gpuKernel.KernargSegmentByteSize(),
-        gpuKernel.KernargSegmentAlignment());
-
-    if (argBuffer == NULL) {
-        LogError("Out of memory");
-        return false;
-    }
-
-    address argPtr = argBuffer;
     const amd::KernelSignature& signature = kernel.signature();
     const amd::KernelParameters& kernelParams = kernel.parameters();
 
-    // Find all parameters for the current kernel
-    for (auto arg : gpuKernel.hsailArgs()) {
-        const_address   srcArgPtr = NULL;
-        if (arg->index_ != uint(-1)) {
-            srcArgPtr = parameters + signature.at(arg->index_).offset_;
-        }
+    size_t newOffset[3] = {0, 0, 0};
+    size_t newGlobalSize[3] = {0, 0, 0};
 
-        // Handle the hidden arguments first, as they do not have a
-        // matching parameter in the OCL signature (not a valid arg->index_)
-        switch (arg->type_) {
-        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: {
-            size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
-            assert(arg->size_ == sizeof(offset_x) && "check the sizes");
-            argPtr = addArg(argPtr, &offset_x, arg->size_, arg->alignment_);
-            break;
-        }
-        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: {
-            size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
-            assert(arg->size_ == sizeof(offset_y) && "check the sizes");
-            argPtr = addArg(argPtr, &offset_y, arg->size_, arg->alignment_);
-            break;
-        }
-        case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: {
-            size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
-            assert(arg->size_ == sizeof(offset_z) && "check the sizes");
-            argPtr = addArg(argPtr, &offset_z, arg->size_, arg->alignment_);
-            break;
-        }
-        case ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER: {
-            address bufferPtr = printfDbg()->dbgBuffer();
-            assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
-            argPtr = addArg(argPtr, &bufferPtr, arg->size_, arg->alignment_);
-            break;
-        }
-        case ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
-        case ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION:
-        case ROC_ARGTYPE_HIDDEN_NONE: {
-            void* zero = 0;
-            assert(arg->size_ <= sizeof(zero) && "check the sizes");
-            argPtr = addArg(argPtr, &zero, arg->size_, arg->alignment_);
-            break;
-        }
-        case ROC_ARGTYPE_POINTER: {
-            if (arg->addrQual_ == ROC_ADDRESS_LOCAL) {
-                // Align the LDS on the alignment requirement of type pointed to
-                ldsUsage = amd::alignUp(ldsUsage, arg->pointeeAlignment_);
-                argPtr = addArg(argPtr, &ldsUsage, arg->size_, arg->alignment_);
-                ldsUsage += *reinterpret_cast<const size_t *>(srcArgPtr);
+    int dim = -1;
+    int iteration = 1;
+    size_t globalStep = 0;
+    for (uint i = 0; i < sizes.dimensions(); i++) {
+        newGlobalSize[i] = sizes.global()[i];
+        newOffset[i] = sizes.offset()[i];
+    }
+
+    if (gpuKernel.isInternalKernel()) {
+        // Calculate new group size for each submission
+        for (uint i = 0; i < sizes.dimensions(); i++) {
+            if (sizes.global()[i] > static_cast<size_t>(0xffffffff)) {
+                dim = i;
+                iteration = sizes.global()[i] / 0xC0000000
+                            + ((sizes.global()[i] % 0xC0000000) ? 1: 0);
+                globalStep = (sizes.global()[i] / sizes.local()[i]) / iteration
+                             * sizes.local()[dim];
+                if (timestamp_ != nullptr) {
+                    timestamp_->setSplittedDispatch();
+                }
                 break;
             }
-            assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL
-                 || arg->addrQual_ == ROC_ADDRESS_CONSTANT)
-                     && "Unsupported address qualifier");
-            if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
-                argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-                break;
-            }
-            amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
-            if (mem == NULL) {
-                argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-                break;
-            }
-
-            Memory *devMem = static_cast<Memory *>(mem->getDeviceMemory(dev()));
-            //! @todo add multi-devices synchronization when supported.
-            void* globalAddress = devMem->getDeviceMemory();
-            argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
-
-            //! @todo Compiler has to return read/write attributes
-            const cl_mem_flags flags = mem->getMemFlags();
-            if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
-                mem->signalWrite(&dev());
-            }
-            break;
         }
-        case ROC_ARGTYPE_REFERENCE: {
-            void *mem = allocKernArg(arg->size_, arg->alignment_);
-            if (mem == NULL) {
-                LogError("Out of memory");
-                return false;
-            }
-            memcpy(mem, srcArgPtr, arg->size_);
-            argPtr = addArg(argPtr, &mem, sizeof(void*));
-            break;
-        }
-        case ROC_ARGTYPE_VALUE:
-            argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-            break;
-        case ROC_ARGTYPE_IMAGE: {
-            amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
-            Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
-            if (image == NULL) {
-                LogError("Kernel image argument is not an image object");
-                return false;
-            }
+    }
 
-            if (dev().settings().enableImageHandle_) {
-                const uint64_t image_srd = image->getHsaImageObject().handle;
-                assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
-                argPtr = addArg(argPtr, &image_srd, sizeof(image_srd));
+    for (int j = 0; j < iteration; j++) {
+        // Reset global size for dimension dim if split is needed
+        if (dim != -1) {
+            newOffset[dim] = sizes.offset()[dim] + globalStep * j;
+            if (((newOffset[dim] + globalStep) < sizes.global()[dim]) &&
+                (j != (iteration - 1))) {
+                newGlobalSize[dim] = globalStep;
             }
             else {
-                // Image arguments are of size 48 bytes and are aligned to 16 bytes
-                argPtr = addArg(argPtr, (void *)image->getHsaImageObject().handle,
-                    HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
+                newGlobalSize[dim] = sizes.global()[dim] - newOffset[dim];
             }
-
-            //! @todo Compiler has to return read/write attributes
-            const cl_mem_flags flags = mem->getMemFlags();
-            if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
-                mem->signalWrite(&dev());
-            }
-            break;
         }
-        case ROC_ARGTYPE_SAMPLER: {
-            amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
-            if (sampler == NULL) {
-                LogError("Kernel sampler argument is not an sampler object");
-                return false;
-            }
 
-            hsa_ext_sampler_descriptor_t samplerDescriptor;
-            fillSampleDescriptor(samplerDescriptor, *sampler);
+        // Find all parameters for the current kernel
 
-            hsa_ext_sampler_t hsa_sampler;
-            hsa_status_t status = hsa_ext_sampler_create(dev().getBackendDevice(),
-                &samplerDescriptor, &hsa_sampler);
-            if (status != HSA_STATUS_SUCCESS) {
-                LogError("Error creating device sampler object!");
-                return false;
-            }
+        // Allocate buffer to hold kernel arguments
+        address argBuffer = (address)allocKernArg(
+            gpuKernel.KernargSegmentByteSize(),
+            gpuKernel.KernargSegmentAlignment());
 
-            if (dev().settings().enableImageHandle_) {
-                uint64_t sampler_srd = hsa_sampler.handle;
-                argPtr = addArg(argPtr, &sampler_srd, sizeof(sampler_srd));
-                samplerList_.push_back(hsa_sampler);
-                // TODO: destroy sampler.
-            }
-            else {
-                argPtr = amd::alignUp(argPtr, HSA_SAMPLER_OBJECT_ALIGNMENT);
-
-                memcpy(argPtr, (void*)hsa_sampler.handle, HSA_SAMPLER_OBJECT_SIZE);
-                argPtr += HSA_SAMPLER_OBJECT_SIZE;
-                hsa_ext_sampler_destroy(dev().getBackendDevice(), hsa_sampler);
-            }
-            break;
-        }
-        default:
+        if (argBuffer == NULL) {
+            LogError("Out of memory");
             return false;
         }
-    }
 
-    // Check there is no arguments' buffer overflow
-    assert(argPtr <= argBuffer + gpuKernel.KernargSegmentByteSize());
+        address argPtr = argBuffer;
+        for (auto arg : gpuKernel.hsailArgs()) {
+            const_address   srcArgPtr = NULL;
+            if (arg->index_ != uint(-1)) {
+                srcArgPtr = parameters + signature.at(arg->index_).offset_;
+            }
 
-    // Check for group memory overflow
-    //! @todo Check should be in HSA - here we should have at most an assert
-    assert(roc_device_.info().localMemSizePerCU_ > 0);
-    if (ldsUsage > roc_device_.info().localMemSizePerCU_) {
-        LogError("No local memory available\n");
-        return false;
-    }
+            // Handle the hidden arguments first, as they do not have a
+            // matching parameter in the OCL signature (not a valid arg->index_)
+            switch (arg->type_) {
+            case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: {
+                size_t offset_x = sizes.dimensions() >= 1 ? newOffset[0] : 0;
+                assert(arg->size_ == sizeof(offset_x) && "check the sizes");
+                argPtr = addArg(argPtr, &offset_x, arg->size_, arg->alignment_);
+                break;
+            }
+            case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: {
+                size_t offset_y = sizes.dimensions() >= 2 ? newOffset[1] : 0;
+                assert(arg->size_ == sizeof(offset_y) && "check the sizes");
+                argPtr = addArg(argPtr, &offset_y, arg->size_, arg->alignment_);
+                break;
+            }
+            case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: {
+                size_t offset_z = sizes.dimensions() == 3 ? newOffset[2] : 0;
+                assert(arg->size_ == sizeof(offset_z) && "check the sizes");
+                argPtr = addArg(argPtr, &offset_z, arg->size_, arg->alignment_);
+                break;
+            }
+            case ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER: {
+                address bufferPtr = printfDbg()->dbgBuffer();
+                assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
+                argPtr = addArg(argPtr, &bufferPtr, arg->size_, arg->alignment_);
+                break;
+            }
+            case ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
+            case ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION:
+            case ROC_ARGTYPE_HIDDEN_NONE: {
+                void* zero = 0;
+                assert(arg->size_ <= sizeof(zero) && "check the sizes");
+                argPtr = addArg(argPtr, &zero, arg->size_, arg->alignment_);
+                break;
+            }
+            case ROC_ARGTYPE_POINTER: {
+                if (arg->addrQual_ == ROC_ADDRESS_LOCAL) {
+                    // Align the LDS on the alignment requirement of type pointed to
+                    ldsUsage = amd::alignUp(ldsUsage, arg->pointeeAlignment_);
+                    argPtr = addArg(argPtr, &ldsUsage, arg->size_, arg->alignment_);
+                    ldsUsage += *reinterpret_cast<const size_t *>(srcArgPtr);
+                    break;
+                }
+                assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL
+                     || arg->addrQual_ == ROC_ADDRESS_CONSTANT)
+                         && "Unsupported address qualifier");
+                if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
+                    argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
+                    break;
+                }
+                amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
+                if (mem == NULL) {
+                    argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
+                    break;
+                }
 
-    //Initialize the dispatch Packet
-    hsa_kernel_dispatch_packet_t dispatchPacket;
-    memset(&dispatchPacket, 0, sizeof(dispatchPacket));
+                Memory *devMem = static_cast<Memory *>(mem->getDeviceMemory(dev()));
+                //! @todo add multi-devices synchronization when supported.
+                void* globalAddress = devMem->getDeviceMemory();
+                argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
 
-    dispatchPacket.kernel_object = gpuKernel.KernelCodeHandle();
+                //! @todo Compiler has to return read/write attributes
+                const cl_mem_flags flags = mem->getMemFlags();
+                if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
+                    mem->signalWrite(&dev());
+                }
+                break;
+            }
+            case ROC_ARGTYPE_REFERENCE: {
+                void *mem = allocKernArg(arg->size_, arg->alignment_);
+                if (mem == NULL) {
+                    LogError("Out of memory");
+                    return false;
+                }
+                memcpy(mem, srcArgPtr, arg->size_);
+                argPtr = addArg(argPtr, &mem, sizeof(void*));
+                break;
+            }
+            case ROC_ARGTYPE_VALUE:
+                argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
+                break;
+            case ROC_ARGTYPE_IMAGE: {
+                amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
+                Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
+                if (image == NULL) {
+                    LogError("Kernel image argument is not an image object");
+                    return false;
+                }
 
-    dispatchPacket.header = aqlHeader_;
-    dispatchPacket.setup |= sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
-    dispatchPacket.grid_size_x = sizes.dimensions()>0 ? sizes.global()[0] : 1;
-    dispatchPacket.grid_size_y = sizes.dimensions()>1 ? sizes.global()[1] : 1;
-    dispatchPacket.grid_size_z = sizes.dimensions()>2 ? sizes.global()[2] : 1;
+                if (dev().settings().enableImageHandle_) {
+                    const uint64_t image_srd = image->getHsaImageObject().handle;
+                    assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
+                    argPtr = addArg(argPtr, &image_srd, sizeof(image_srd));
+                }
+                else {
+                    // Image arguments are of size 48 bytes and are aligned to 16 bytes
+                    argPtr = addArg(argPtr, (void *)image->getHsaImageObject().handle,
+                        HSA_IMAGE_OBJECT_SIZE, HSA_IMAGE_OBJECT_ALIGNMENT);
+                }
 
-    const size_t* compile_size = devKernel->workGroupInfo()->compileSize_;
-    if (sizes.local().product() != 0) {
-        dispatchPacket.workgroup_size_x = sizes.dimensions()>0 ? sizes.local()[0] : 1;
-        dispatchPacket.workgroup_size_y = sizes.dimensions()>1 ? sizes.local()[1] : 1;
-        dispatchPacket.workgroup_size_z = sizes.dimensions()>2 ? sizes.local()[2] : 1;
-    } else {
-        setRuntimeCompilerLocalSize(dispatchPacket, sizes, compile_size, dev());
-    }
-    dispatchPacket.kernarg_address = argBuffer;
-    dispatchPacket.group_segment_size = ldsUsage;
-    dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
+                //! @todo Compiler has to return read/write attributes
+                const cl_mem_flags flags = mem->getMemFlags();
+                if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
+                    mem->signalWrite(&dev());
+                }
+                break;
+            }
+            case ROC_ARGTYPE_SAMPLER: {
+                amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
+                if (sampler == NULL) {
+                    LogError("Kernel sampler argument is not an sampler object");
+                    return false;
+                }
 
-    //Dispatch the packet
-    if (!dispatchAqlPacket(&dispatchPacket, GPU_FLUSH_ON_EXECUTION)){
-        return false;
+                hsa_ext_sampler_descriptor_t samplerDescriptor;
+                fillSampleDescriptor(samplerDescriptor, *sampler);
+
+                hsa_ext_sampler_t hsa_sampler;
+                hsa_status_t status = hsa_ext_sampler_create(dev().getBackendDevice(),
+                    &samplerDescriptor, &hsa_sampler);
+                if (status != HSA_STATUS_SUCCESS) {
+                    LogError("Error creating device sampler object!");
+                    return false;
+                }
+
+                if (dev().settings().enableImageHandle_) {
+                    uint64_t sampler_srd = hsa_sampler.handle;
+                    argPtr = addArg(argPtr, &sampler_srd, sizeof(sampler_srd));
+                    samplerList_.push_back(hsa_sampler);
+                    // TODO: destroy sampler.
+                }
+                else {
+                    argPtr = amd::alignUp(argPtr, HSA_SAMPLER_OBJECT_ALIGNMENT);
+
+                    memcpy(argPtr, (void*)hsa_sampler.handle, HSA_SAMPLER_OBJECT_SIZE);
+                    argPtr += HSA_SAMPLER_OBJECT_SIZE;
+                    hsa_ext_sampler_destroy(dev().getBackendDevice(), hsa_sampler);
+                }
+                break;
+            }
+            default:
+                return false;
+            }
+        }
+
+        // Check there is no arguments' buffer overflow
+        assert(argPtr <= argBuffer + gpuKernel.KernargSegmentByteSize());
+
+        // Check for group memory overflow
+        //! @todo Check should be in HSA - here we should have at most an assert
+        assert(roc_device_.info().localMemSizePerCU_ > 0);
+        if (ldsUsage > roc_device_.info().localMemSizePerCU_) {
+            LogError("No local memory available\n");
+            return false;
+        }
+
+        //Initialize the dispatch Packet
+        hsa_kernel_dispatch_packet_t dispatchPacket;
+        memset(&dispatchPacket, 0, sizeof(dispatchPacket));
+
+        dispatchPacket.kernel_object = gpuKernel.KernelCodeHandle();
+
+        dispatchPacket.header = aqlHeader_;
+        dispatchPacket.setup |= sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
+        dispatchPacket.grid_size_x = sizes.dimensions()>0 ? newGlobalSize[0] : 1;
+        dispatchPacket.grid_size_y = sizes.dimensions()>1 ? newGlobalSize[1] : 1;
+        dispatchPacket.grid_size_z = sizes.dimensions()>2 ? newGlobalSize[2] : 1;
+
+        const size_t* compile_size = devKernel->workGroupInfo()->compileSize_;
+        if (sizes.local().product() != 0) {
+            dispatchPacket.workgroup_size_x = sizes.dimensions()>0 ? sizes.local()[0] : 1;
+            dispatchPacket.workgroup_size_y = sizes.dimensions()>1 ? sizes.local()[1] : 1;
+            dispatchPacket.workgroup_size_z = sizes.dimensions()>2 ? sizes.local()[2] : 1;
+        } else {
+            amd::NDRangeContainer  tmpSizes(sizes.dimensions(),
+                &newOffset[0], &newGlobalSize[0],
+                &(const_cast<amd::NDRangeContainer&>(sizes).local()[0]));
+
+            setRuntimeCompilerLocalSize(dispatchPacket, tmpSizes, compile_size, dev());
+        }
+        dispatchPacket.kernarg_address = argBuffer;
+        dispatchPacket.group_segment_size = ldsUsage;
+        dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
+
+        //Dispatch the packet
+        if (!dispatchAqlPacket(&dispatchPacket, GPU_FLUSH_ON_EXECUTION)){
+            return false;
+        }
     }
 
     // Mark the flag indicating if a dispatch is outstanding.
