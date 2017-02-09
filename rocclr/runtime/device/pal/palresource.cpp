@@ -1271,6 +1271,7 @@ Resource::partialMemCopyTo(
 
     uint64_t gpuMemoryOffset, gpuMemoryRowPitch, imageOffsetx;
     bool img1Darray = false;
+    bool img2Darray = false;
 
     if (desc().buffer_ && !dstResource.desc().buffer_) {
         imageOffsetx = calDstOrigin[0] % dstResource.elementSize();
@@ -1278,6 +1279,7 @@ Resource::partialMemCopyTo(
         gpuMemoryRowPitch = (calSrcOrigin[1]) ? calSrcOrigin[1] :
             calSize[0] * dstResource.elementSize();
         img1Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
+        img2Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY);
     }
     else if (!desc().buffer_ && dstResource.desc().buffer_) {
         imageOffsetx = calSrcOrigin[0] % elementSize();
@@ -1285,6 +1287,7 @@ Resource::partialMemCopyTo(
         gpuMemoryRowPitch = (calDstOrigin[1]) ? calDstOrigin[1] :
             calSize[0] * elementSize();
         img1Darray = (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
+        img2Darray = (desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY);
 
     }
 
@@ -1297,8 +1300,7 @@ Resource::partialMemCopyTo(
             // another DRM restriciton... SI has 4 pixels
             (gpuMemoryOffset % 4 != 0) ||
             (dev().settings().sdamPageFaultWar_ &&
-            (imageOffsetx != 0)) ||
-            (dev().settings().disableSdmaMemoryToImage_ && img1Darray)) {
+            (imageOffsetx != 0))) {
             return false;
         }
 
@@ -1329,12 +1331,20 @@ Resource::partialMemCopyTo(
         copyRegion.imageExtent.height = calSize[1];
         copyRegion.imageExtent.depth = calSize[2];
         copyRegion.numSlices = 1;
+        if (img1Darray) {
+            copyRegion.numSlices = copyRegion.imageExtent.height;
+            copyRegion.imageExtent.height = 1;
+        }
+        else if (img2Darray) {
+            copyRegion.numSlices = copyRegion.imageExtent.depth;
+            copyRegion.imageExtent.depth = 1;
+        }
         copyRegion.gpuMemoryOffset = gpuMemoryOffset;
         copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
         copyRegion.gpuMemoryDepthPitch = (calSrcOrigin[2]) ? calSrcOrigin[2] :
-            copyRegion.gpuMemoryRowPitch * calSize[1];
-            gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_,
-                imgLayout, 1, &copyRegion);
+            copyRegion.gpuMemoryRowPitch * copyRegion.imageExtent.height;
+        gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_,
+            imgLayout, 1, &copyRegion);
     }
     else if (!desc().buffer_ && dstResource.desc().buffer_) {
         Pal::MemoryImageCopyRegion copyRegion = {};
@@ -1347,12 +1357,20 @@ Resource::partialMemCopyTo(
         copyRegion.imageExtent.height = calSize[1];
         copyRegion.imageExtent.depth = calSize[2];
         copyRegion.numSlices = 1;
+        if (img1Darray) {
+            copyRegion.numSlices = copyRegion.imageExtent.height;
+            copyRegion.imageExtent.height = 1;
+        }
+        else if (img2Darray) {
+            copyRegion.numSlices = copyRegion.imageExtent.depth;
+            copyRegion.imageExtent.depth = 1;
+        }
         copyRegion.gpuMemoryOffset = gpuMemoryOffset;
         copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
         copyRegion.gpuMemoryDepthPitch = (calDstOrigin[2]) ? calDstOrigin[2] :
-            copyRegion.gpuMemoryRowPitch * calSize[1];
-            gpu.iCmd()->CmdCopyImageToMemory(*image_, imgLayout,
-                *dstResource.iMem(), 1, &copyRegion);
+            copyRegion.gpuMemoryRowPitch * copyRegion.imageExtent.height;
+        gpu.iCmd()->CmdCopyImageToMemory(*image_, imgLayout,
+            *dstResource.iMem(), 1, &copyRegion);
     }
     else {
         if (enableCopyRect) {
