@@ -15,6 +15,7 @@
 #include <sstream>
 #include <cstdio>
 #include <algorithm>
+#include <iterator>
 #include "utils/options.hpp"
 #include "hsa.h"
 #include "hsa_ext_image.h"
