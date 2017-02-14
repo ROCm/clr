@@ -351,8 +351,7 @@ Buffer::create()
 
     // Allocate backing storage in device local memory unless UHP or AHP are set
     const cl_mem_flags memFlags = owner()->getMemFlags();
-    if (!(memFlags & (CL_MEM_USE_HOST_PTR |
-        CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
+    if (!(memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
         deviceMemory_ = dev_.deviceLocalAlloc(size());
 
         if (deviceMemory_ == NULL) {
@@ -407,17 +406,6 @@ Buffer::create()
 
         return deviceMemory_ != NULL;
     }
-    else if (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) {
-        deviceMemory_ = dev_.hostAlloc(size(), 1, false);
-        if (deviceMemory_ != nullptr) {
-            if (owner()->getHostMem() != nullptr) {
-                memcpy(deviceMemory_, owner()->getHostMem(), size());
-            }
-            flags_ |= HostMemoryDirectAccess;
-        }
-        return deviceMemory_ != nullptr;
-    }
-
     assert(owner()->getHostMem() != NULL);
 
     flags_ |= HostMemoryDirectAccess;
