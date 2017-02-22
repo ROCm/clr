@@ -10,6 +10,14 @@
 
 namespace pal {
 
+enum class PCIndexSelect : uint
+{
+    None = 0,                   ///< no index
+    Instance,                   ///< index by block instance
+    ShaderEngine,               ///< index by shader engine
+    ShaderEngineAndInstance,    ///< index by shader and instance
+};
+
 class VirtualGPU;
 
 class PalCounterReference : public amd::ReferenceCountedObject
@@ -38,7 +46,7 @@ public:
     bool finalize();
 
     //! Returns the PAL counter results
-    uint64_t result(int index);
+    uint64_t result(const std::vector<int>& index);
 
     //! Get the latest Experiment Counter index
     uint getPalCounterIndex() { return numExpCounters_++; };
@@ -69,9 +77,10 @@ public:
     //! The performance counter info
     struct Info : public amd::EmbeddedObject
     {
-        uint        blockIndex_;    //!< Index of the block to configure
-        uint        counterIndex_;  //!< Index of the hardware counter
-        uint        eventIndex_;    //!< Event you wish to count with the counter
+        uint            blockIndex_;    //!< Index of the block to configure
+        uint            counterIndex_;  //!< Index of the hardware counter
+        uint            eventIndex_;    //!< Event you wish to count with the counter
+        PCIndexSelect   indexSelect_;   //!< IndexSelect type of the counter
     };
 
     //! Constructor for the GPU PerfCounter object
@@ -83,7 +92,6 @@ public:
         cl_uint             eventIndex)     //!< Event index for profiling
         : gpuDevice_(device)
         , palRef_(palRef)
-        , index_(0)
     {
         info_.blockIndex_   = blockIndex;
         info_.counterIndex_ = counterIndex;
@@ -127,7 +135,7 @@ private:
     const Device&           gpuDevice_; //!< The backend device
     PalCounterReference*    palRef_;    //!< Reference counter
     Info                    info_;      //!< The info structure for perfcounter
-    int                     index_;     //!< Counter index in the PAL container
+    std::vector<int>        index_;     //!< Counter index in the PAL container
 };
 
 } // namespace pal
