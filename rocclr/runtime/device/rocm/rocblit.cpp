@@ -79,7 +79,7 @@ DmaBlitManager::readBuffer(
 
         // Check if a pinned transfer can be executed
         if (pinSize && (srcSize > MinSizeForPinnedTransfer)) {
-            // Allign offset to 4K boundary (Vista/Win7 limitation)
+            // Align offset to 4K boundary
             char* tmpHost = const_cast<char*>(
                 amd::alignDown(reinterpret_cast<const char*>(dstHost),
                 PinnedMemoryAlignment));
@@ -262,7 +262,7 @@ DmaBlitManager::writeBuffer(
 
         // Check if a pinned transfer can be executed
         if (pinSize && (dstSize > MinSizeForPinnedTransfer)) {
-            // Allign offset to 4K boundary (Vista/Win7 limitation)
+            // Align offset to 4K boundary
             char* tmpHost = const_cast<char*>(
                 amd::alignDown(reinterpret_cast<const char*>(srcHost),
                 PinnedMemoryAlignment));
@@ -474,7 +474,7 @@ DmaBlitManager::copyBufferRect(
 
         hsa_signal_value_t val =
             hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ,
-            0, uint64_t(-1), HSA_WAIT_STATE_ACTIVE);
+            0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
 
         if (val != 0) {
             LogError("Async copy failed");
@@ -644,18 +644,19 @@ bool DmaBlitManager::hsaCopy(
     // Use SDMA to transfer the data
     status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
         size[0], 0, nullptr, completion_signal_);
+
     if (status == HSA_STATUS_SUCCESS) {
         hsa_signal_value_t val = hsa_signal_wait_acquire(
             completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-            uint64_t(-1), HSA_WAIT_STATE_ACTIVE);
+            uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
         if (val != (kInitVal - 1)) {
             LogError("Async copy failed");
             status = HSA_STATUS_ERROR;
         }
-   }
-   else {
+    }
+    else {
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
-   }
+    }
 
     return (status == HSA_STATUS_SUCCESS);
 }
@@ -695,7 +696,7 @@ bool DmaBlitManager::hsaCopyStaged(
                 hsa_signal_value_t val =
                 hsa_signal_wait_acquire(completion_signal_,
                 HSA_SIGNAL_CONDITION_EQ, 0,
-                uint64_t(-1), HSA_WAIT_STATE_ACTIVE);
+                uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
 
                 if (val != (kInitVal - 1)) {
                     LogError("Async copy failed");
@@ -718,7 +719,7 @@ bool DmaBlitManager::hsaCopyStaged(
         if (status == HSA_STATUS_SUCCESS) {
             hsa_signal_value_t val = hsa_signal_wait_acquire(
             completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-            HSA_WAIT_STATE_ACTIVE);
+            HSA_WAIT_STATE_BLOCKED);
 
             if (val != (kInitVal - 1)) {
                 LogError("Async copy failed");
@@ -2371,7 +2372,7 @@ DmaBlitManager::pinHostMemory(
     const static bool SysMem = true;
     amd::Memory* amdMemory;
 
-    // Allign offset to 4K boundary (Vista/Win7 limitation)
+    // Align offset to 4K boundary
     char* tmpHost = const_cast<char*>(
         amd::alignDown(reinterpret_cast<const char*>(hostMem),
         PinnedMemoryAlignment));
