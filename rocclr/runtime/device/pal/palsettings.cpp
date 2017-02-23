@@ -209,6 +209,7 @@ Settings::create(
         // SDMA may have memory access outside of
         // the valid buffer range and cause a page fault
         sdamPageFaultWar_ = true;
+        enableExtension(ClKhrFp16);
         // Fall through to CI ...
     case Pal::AsicRevision::Kalindi:
     case Pal::AsicRevision::Spectre:
