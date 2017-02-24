@@ -153,7 +153,7 @@ Memory::create(
                 memType = RemoteUSWC;
             }
             else if (dev().settings().apuSystem_ && memoryType() == RemoteUSWC) {
-                if (size() > (freeMemory[0] * Ki)) {
+                if (size() > (freeMemory[0] * Ki) || allocAttempt >= 2) {
                     break;
                 }
             }
