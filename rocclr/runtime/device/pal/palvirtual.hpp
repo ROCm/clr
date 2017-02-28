@@ -48,7 +48,7 @@ public:
         static const uint  StartCmdBufIdx = 1;
         static const uint  FirstMemoryReference = 0x80000000;
         static const uint64_t WaitTimeoutInNsec = 6000000000;
-        static const uint64_t PollIntervalInNsec = 500000;
+        static const uint64_t PollIntervalInNsec = 200000;
 
         static Queue* Create(
             Pal::IDevice*   palDev,         //!< PAL device object
@@ -100,7 +100,10 @@ public:
                     break;
                 }
                 uint64_t end = amd::Os::timeNanos();
-                if ((end - start) < PollIntervalInNsec) continue;
+                if ((end - start) < PollIntervalInNsec) {
+                    amd::Os::yield();
+                    continue;
+                }
                 result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true, WaitTimeoutInNsec);
                 if (Pal::Result::Success == result) {
                     break;
