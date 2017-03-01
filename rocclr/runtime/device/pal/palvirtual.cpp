@@ -793,8 +793,7 @@ VirtualGPU::create(bool profiling, uint  deviceQueueSize, uint rtCUs,
         if (dev().numDMAEngines() != 0) {
             uint sdma;
             // If only 1 DMA engine is available then use that one
-            if ((dev().numDMAEngines() < 2) || (idx & 0x1) ||
-                (dev().settings().apuSystem_ && !dev().settings().svmFineGrainSystem_)) {
+            if ((dev().numDMAEngines() < 2) || ((idx & 0x1) && !dev().settings().svmFineGrainSystem_)) {
                 sdma = 0;
             }
             else {
@@ -2144,7 +2143,7 @@ VirtualGPU::submitKernelInternal(
         dispatchParam.pCpuAqlCode    = hsaKernel.cpuAqlCode();
         dispatchParam.hsaQueueVa     = hsaQueueMem_->vmAddress();
         dispatchParam.wavesPerSh     = hsaKernel.getWavesPerSH(this);
-
+        dispatchParam.useAtc         = dev().settings().svmFineGrainSystem_ ? true : false;
         // Run AQL dispatch in HW
         eventBegin(MainEngine);
         iCmd()->CmdDispatchAql(dispatchParam);
