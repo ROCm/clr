@@ -437,6 +437,10 @@ Resource::create(MemoryType memType, CreateParams* params)
     amd::ScopedLock lk(dev().lockPAL());
 
     if (memType == Shader) {
+        if(dev().settings().svmFineGrainSystem_) {
+            desc_.isAllocExecute_ = true;
+            desc_.SVMRes_     = true;
+        }
         // force to use remote memory for HW DEBUG or use
         // local memory once we determine if FGS is supported
         // memType = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
@@ -573,6 +577,7 @@ Resource::create(MemoryType memType, CreateParams* params)
                 imgCreateInfo.samples   = 1;
                 imgCreateInfo.fragments = 1;
                 imgCreateInfo.tiling    = Pal::ImageTiling::Linear;
+                imgCreateInfo.depthPitch = desc().height_ * imgCreateInfo.rowPitch;
 
                 switch (misc) {
                 case 1:     // NV12 format
@@ -635,6 +640,9 @@ Resource::create(MemoryType memType, CreateParams* params)
                     }
                 }
                 result = image_->BindGpuMemory(iMem(), viewOffset);
+                if (result != Pal::Result::Success) {
+                    return false;
+                }
                 offset_ = static_cast<size_t>(viewOffset);
                 hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
                 if ((0 == hwSrd_) && (memoryType() != ImageView)) {
@@ -1010,6 +1018,10 @@ Resource::create(MemoryType memType, CreateParams* params)
             return false;
         }
 
+        if(dev().settings().svmFineGrainSystem_) {
+            desc_.SVMRes_ = true;
+        }
+
         // Ensure page alignment
         if ((uint64_t)(pinAddress) & (amd::Os::pageSize() - 1)) {
             return false;
@@ -1028,20 +1040,30 @@ Resource::create(MemoryType memType, CreateParams* params)
         return true;
     }
 
+    Pal::gpusize svmPtr = 0;
     if ((nullptr != params) &&
         (nullptr != params->owner_) &&
         (nullptr != params->owner_->getSvmPtr())) {
-        Pal::gpusize svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+        svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+        desc_.SVMRes_ = true;
         svmPtr = (svmPtr == 1) ? 0 : svmPtr;
+    }
+    if (desc_.SVMRes_) {
         // @todo 64K alignment is too big
         uint allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
-        if (memoryType() == Remote) {
+        if ((memoryType() == RemoteUSWC) ||
+            (memoryType() == Remote))  {
             Pal::SvmGpuMemoryCreateInfo createInfo = {};
+            createInfo.isUsedForKernel = desc_.isAllocExecute_;
             createInfo.size = allocSize;
             createInfo.alignment = MaxGpuAlignment;
             if (svmPtr != 0) {
                 createInfo.flags.useReservedGpuVa = true;
                 createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+            }
+            else {
+                createInfo.flags.useReservedGpuVa = false;
+                createInfo.pReservedGpuVaOwner = nullptr;
             }
             memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         }
@@ -1063,8 +1085,11 @@ Resource::create(MemoryType memType, CreateParams* params)
             return false;
         }
         desc_.cardMemory_ = false;
-        desc_.SVMRes_ = true;
-        params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+        if ((nullptr != params) &&
+            (nullptr != params->owner_) &&
+            (nullptr != params->owner_->getSvmPtr())) {
+            params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+        }
         return true;
     }
 

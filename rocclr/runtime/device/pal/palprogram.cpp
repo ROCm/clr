@@ -49,7 +49,7 @@ Segment::alloc(
 {
     align = amd::alignUp(align, sizeof(uint32_t));
     gpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
-    if ((gpuAccess_ == nullptr) || !gpuAccess_->create(pal::Resource::Local)) {
+    if ((gpuAccess_ == nullptr) || !gpuAccess_->create(pal::Resource::Shader)) {
         delete gpuAccess_;
         gpuAccess_ = nullptr;
         return false;

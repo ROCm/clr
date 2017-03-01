@@ -82,9 +82,6 @@ Settings::Settings()
     // GPU device by default
     apuSystem_  = false;
 
-    // Fine-Grained System is disabled by default
-    svmFineGrainSystem_  = false;
-
     // Disable 64 bit pointers support by default
     use64BitPtr_ = false;
 
@@ -361,11 +358,10 @@ Settings::create(
         // accessing persistent staged buffer may fail if LongIdleDetct is enabled.
         disablePersistent_ = true;
     }
-
-    svmFineGrainSystem_ = calAttr.isSVMFineGrainSystem;
-
-    svmAtomics_ = (calAttr.svmAtomics || calAttr.isSVMFineGrainSystem) ? true : false;
 */
+
+    svmFineGrainSystem_ = palProp.gpuMemoryProperties.flags.iommuv2Support;
+    svmAtomics_         = svmFineGrainSystem_;
 
     // SVM is not currently supported for DX Interop
 #if defined(_WIN32)
