@@ -437,14 +437,17 @@ Resource::create(MemoryType memType, CreateParams* params)
     amd::ScopedLock lk(dev().lockPAL());
 
     if (memType == Shader) {
-        if(dev().settings().svmFineGrainSystem_) {
+        if (dev().settings().svmFineGrainSystem_) {
             desc_.isAllocExecute_ = true;
             desc_.SVMRes_     = true;
+            memType = RemoteUSWC;
+        }
+        else {
+            memType = Local;
         }
         // force to use remote memory for HW DEBUG or use
         // local memory once we determine if FGS is supported
         // memType = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
-        memType = RemoteUSWC;
     }
 
     // Get the element size
