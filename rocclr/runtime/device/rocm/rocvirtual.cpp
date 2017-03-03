@@ -261,11 +261,14 @@ VirtualGPU::processMemObjects(
             }
         }
         else {
-            Memory* gpuMemory = static_cast<Memory*>(memory->getDeviceMemory(dev()));
-            if (NULL != gpuMemory) {
+            Memory* rocMemory = static_cast<Memory*>(memory->getDeviceMemory(dev()));
+            if (NULL != rocMemory) {
+                // Synchronize data with other memory instances if necessary
+                rocMemory->syncCacheFromHost(*this);
+
                 const static bool IsReadOnly = false;
                 // Validate SVM passed in the non argument list
-                memoryDependency().validate(*this, gpuMemory, IsReadOnly);
+                memoryDependency().validate(*this, rocMemory, IsReadOnly);
             }
             else {
                 return false;
@@ -304,6 +307,12 @@ VirtualGPU::processMemObjects(
                 }
                 else {
                     memory = static_cast<Memory*>(svmMem->getDeviceMemory(dev()));
+                }
+                // Don't sync for internal objects,
+                // since they are not shared between devices
+                if (memory->owner()->getVirtualDevice() == nullptr) {
+                    // Synchronize data with other memory instances if necessary
+                    memory->syncCacheFromHost(*this);
                 }
             }
 
@@ -480,6 +489,8 @@ VirtualGPU::VirtualGPU(Device &device)
 
 VirtualGPU::~VirtualGPU()
 {
+    releasePinnedMem();
+
     if (timestamp_ != NULL) {
         delete timestamp_;
         timestamp_ = NULL;
@@ -821,7 +832,10 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand &cmd)
     // Find if virtual address is a CL allocation
     device::Memory* hostMemory = dev().findMemoryFromVA(cmd.destination(), &offset);
 
-    device::Memory *devMem = cmd.source().getDeviceMemory(dev());
+    Memory* devMem = dev().getRocMemory(&cmd.source());
+    // Synchronize data with other memory instances if necessary
+    devMem->syncCacheFromHost(*this);
+
     void *dst = cmd.destination();
     amd::Coord3D size = cmd.size();
 
@@ -896,8 +910,14 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand &cmd)
     // Find if virtual address is a CL allocation
     device::Memory* hostMemory = dev().findMemoryFromVA(cmd.source(), &offset);
 
-    device::Memory *devMem = cmd.destination().getDeviceMemory(dev());
-    const char *src = static_cast<const char *>(cmd.source());
+    Memory* devMem = dev().getRocMemory(&cmd.destination());
+
+    // Synchronize memory from host if necessary
+    device::Memory::SyncFlags syncFlags;
+    syncFlags.skipEntire_ = cmd.isEntireMemory();
+    devMem->syncCacheFromHost(*this, syncFlags);
+
+    const char* src = static_cast<const char*>(cmd.source());
     amd::Coord3D size = cmd.size();
 
     //! @todo add multi-devices synchronization when supported.
@@ -1008,11 +1028,16 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand &cmd)
 
     profilingBegin(cmd);
 
-    device::Memory *srcDevMem = cmd.source().getDeviceMemory(dev());
-    device::Memory *destDevMem = cmd.destination().getDeviceMemory(dev());
-    amd::Coord3D size = cmd.size();
+    Memory* srcDevMem = dev().getRocMemory(&cmd.source());
+    Memory* dstDevMem = dev().getRocMemory(&cmd.destination());
 
-    //! @todo add multi-devices synchronization when supported.
+    // Synchronize source and destination memory
+    device::Memory::SyncFlags syncFlags;
+    syncFlags.skipEntire_ = cmd.isEntireMemory();
+    dstDevMem->syncCacheFromHost(*this, syncFlags);
+    srcDevMem->syncCacheFromHost(*this);
+
+    amd::Coord3D size = cmd.size();
 
     cl_command_type type = cmd.type();
     bool result = false;
@@ -1051,31 +1076,31 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand &cmd)
             }
 
             result = blitMgr().copyBuffer(
-                        *srcDevMem, *destDevMem, srcOrigin,
+                        *srcDevMem, *dstDevMem, srcOrigin,
                         dstOrigin, size, cmd.isEntireMemory());
             break;
         }
         case CL_COMMAND_COPY_BUFFER_RECT: {
             result = blitMgr().copyBufferRect(
-                        *srcDevMem, *destDevMem, cmd.srcRect(),
+                        *srcDevMem, *dstDevMem, cmd.srcRect(),
                         cmd.dstRect(), size, cmd.isEntireMemory());
             break;
         }
         case CL_COMMAND_COPY_IMAGE: {
             result = blitMgr().copyImage(
-              *srcDevMem, *destDevMem, cmd.srcOrigin(),
+              *srcDevMem, *dstDevMem, cmd.srcOrigin(),
               cmd.dstOrigin(), size, cmd.isEntireMemory());
             break;
         }
         case CL_COMMAND_COPY_IMAGE_TO_BUFFER: {
             result = blitMgr().copyImageToBuffer(
-              *srcDevMem, *destDevMem, cmd.srcOrigin(),
+              *srcDevMem, *dstDevMem, cmd.srcOrigin(),
               cmd.dstOrigin(), size, cmd.isEntireMemory());
             break;
         }
         case CL_COMMAND_COPY_BUFFER_TO_IMAGE: {
             result = blitMgr().copyBufferToImage(
-              *srcDevMem, *destDevMem, cmd.srcOrigin(),
+              *srcDevMem, *dstDevMem, cmd.srcOrigin(),
               cmd.dstOrigin(), size, cmd.isEntireMemory());
             break;
         }
@@ -1121,7 +1146,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
 
     //! @todo add multi-devices synchronization when supported.
 
-    roc::Memory *devMemory = reinterpret_cast<roc::Memory *>(
+    roc::Memory* devMemory = reinterpret_cast<roc::Memory *>(
         cmd.memory().getDeviceMemory(dev(), false));
 
     cl_command_type type = cmd.type();
@@ -1139,12 +1164,17 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
         mapFlag, cmd.isEntireMemory());
 
     // Sync to the map target.
-    if (devMemory->isHostMemDirectAccess()) {
-        // Add memory to VA cache, so rutnime can detect direct access to VA
-        dev().addVACache(devMemory);
+    // If we have host memory, use it
+    if (devMemory->owner()->getHostMem() != nullptr) {
+        // Target is the backing store, so just ensure that owner is up-to-date
+        devMemory->owner()->cacheWriteBack();
+
+        if (devMemory->isHostMemDirectAccess()) {
+            // Add memory to VA cache, so rutnime can detect direct access to VA
+            dev().addVACache(devMemory);
+        }
     }
-    if ((!devMemory->isHostMemDirectAccess()) &&
-        (mapFlag & (CL_MAP_READ | CL_MAP_WRITE))) {
+    else if (mapFlag & (CL_MAP_READ | CL_MAP_WRITE)) {
         bool result = false;
         roc::Memory *hsaMemory = static_cast<roc::Memory *>(devMemory);
 
@@ -1176,7 +1206,6 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
                     *hsaMemory, static_cast<char *>(hostPtr)+origin[0],
                     origin, size, cmd.isEntireMemory());
             }
-
         }
         else if (type == CL_COMMAND_MAP_IMAGE) {
             amd::Image* image = cmd.memory().asImage();
@@ -1225,11 +1254,19 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand &cmd)
     // Force buffer write for IMAGE1D_BUFFER
     bool imageBuffer = (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER);
 
-    if (devMemory->isHostMemDirectAccess()) {
-        // Remove memory from VA cache
-        dev().removeVACache(devMemory);
+    // We used host memory
+    if (devMemory->owner()->getHostMem() != nullptr) {
+        if (mapInfo->isUnmapWrite()) {
+            // Target is the backing store, so sync
+            devMemory->owner()->signalWrite(nullptr);
+            devMemory->syncCacheFromHost(*this);
+        }
+        if (devMemory->isHostMemDirectAccess()) {
+            // Remove memory from VA cache
+            dev().removeVACache(devMemory);
+        }
     }
-    if (mapInfo->isUnmapWrite()) {
+    else if (mapInfo->isUnmapWrite()) {
         // Commit the changes made by the user.
         if (!devMemory->isHostMemDirectAccess()) {
             bool result = false;
@@ -1299,9 +1336,13 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand &cmd)
 
     profilingBegin(cmd);
 
-    device::Memory *devMemory = cmd.memory().getDeviceMemory(dev(), false);
+    Memory* memory = dev().getRocMemory(&cmd.memory());
 
-    //! @todo add multi-devices synchronization when supported.
+    bool    entire = cmd.isEntireMemory();
+    // Synchronize memory from host if necessary
+    device::Memory::SyncFlags syncFlags;
+    syncFlags.skipEntire_ = entire;
+    memory->syncCacheFromHost(*this, syncFlags);
 
     cl_command_type type = cmd.type();
     bool result = false;
@@ -1335,14 +1376,12 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand &cmd)
                 patternSize = elemSize;
             }
             result = blitMgr().fillBuffer(
-                        *devMemory, pattern, patternSize, origin, size,
-                        cmd.isEntireMemory());
+                *memory, pattern, patternSize, origin, size, entire);
             break;
         }
         case CL_COMMAND_FILL_IMAGE: {
             result = blitMgr().fillImage(
-              *devMemory, cmd.pattern(), cmd.origin(), cmd.size(),
-              cmd.isEntireMemory());
+              *memory, cmd.pattern(), cmd.origin(), cmd.size(), entire);
             break;
         }
         default:
@@ -1367,21 +1406,21 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand &vcmd)
 
     profilingBegin(vcmd);
 
-    std::vector<amd::Memory *>::const_iterator itr;
-
-    for (itr = vcmd.memObjects().begin();
-         itr != vcmd.memObjects().end();
-         itr++) {
+    for (auto itr : vcmd.memObjects()) {
         // Find device memory
-        device::Memory *m = (*itr)->getDeviceMemory(dev());
-        roc::Memory *memory = static_cast<roc::Memory *>(m);
+        Memory* memory = dev().getRocMemory(&(*itr));
 
         if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_HOST) {
-            //! @todo revisit this when multi devices is supported.
-        } else if (vcmd.migrationFlags() &
-                   CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) {
-            //! @todo revisit this when multi devices is supported.
-        } else {
+            memory->mgpuCacheWriteBack();
+        }
+        else if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) {
+            // Synchronize memory from host if necessary.
+            // The sync function will perform memory migration from
+            // another device if necessary
+            device::Memory::SyncFlags syncFlags;
+            memory->syncCacheFromHost(*this, syncFlags);
+        }
+        else {
             LogWarning("Unknown operation for memory migration!");
         }
     }
@@ -1638,8 +1677,7 @@ VirtualGPU::submitKernelInternal(
                 argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
 
                 //! @todo Compiler has to return read/write attributes
-                const cl_mem_flags flags = mem->getMemFlags();
-                if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
+                if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
                     mem->signalWrite(&dev());
                 }
                 break;
@@ -1677,8 +1715,7 @@ VirtualGPU::submitKernelInternal(
                 }
 
                 //! @todo Compiler has to return read/write attributes
-                const cl_mem_flags flags = mem->getMemFlags();
-                if (!flags || (flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY))) {
+                if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
                     mem->signalWrite(&dev());
                 }
                 break;
@@ -1828,7 +1865,7 @@ void VirtualGPU::flush(amd::Command *list, bool wait)
 {
     releaseGpuMemoryFence();
     updateCommandsState(list);
-    // Rlease all pinned memory
+    // Release all pinned memory
     releasePinnedMem();
 }
 

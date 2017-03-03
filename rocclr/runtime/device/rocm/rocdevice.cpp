@@ -1382,9 +1382,12 @@ Device::createMemory(amd::Memory &owner) const
         return NULL;
     }
 
+    // Transfer data only if OCL context has one device.
+    // Cache coherency layer will update data for multiple devices
     if (!memory->isHostMemDirectAccess() && owner.asImage() &&
-        owner.parent() == NULL &&
-        (owner.getMemFlags() & (CL_MEM_COPY_HOST_PTR | CL_MEM_USE_HOST_PTR))) {
+        (owner.parent() == nullptr) &&
+        (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
+        (owner.getContext().devices().size() == 1)) {
         // To avoid recurssive call to Device::createMemory, we perform
         // data transfer to the view of the image.
         amd::Image* imageView = owner.asImage()->createView(
@@ -1417,13 +1420,16 @@ Device::createMemory(amd::Memory &owner) const
                                       amd::Coord3D(0, 0, 0), imageView->getRegion(),
                                       0,
                                       0, true);
-        // Release host memory for single device, since runtime copied data
-        if ((owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
-            (owner.getContext().devices().size() == 1)) {
-            owner.setHostMem(nullptr);
-        }
+
+        // Release host memory, since runtime copied data
+        owner.setHostMem(nullptr);
 
         imageView->release();
+    }
+
+    // Prepin sysmem buffer for possible data synchronization between CPU and GPU
+    if (!memory->isHostMemDirectAccess() && (owner.getHostMem() != nullptr)) {
+        memory->pinSystemMemory(owner.getHostMem(), owner.getSize());
     }
 
     if (!result) {
