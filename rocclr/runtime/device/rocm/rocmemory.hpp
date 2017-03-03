@@ -39,17 +39,21 @@ class Memory : public device::Memory {
     // Pins system memory associated with this memory object.
     virtual bool pinSystemMemory(void *hostPtr, // System memory address
                                  size_t size    // Size of allocated system memory
-                                 ) {
-        Unimplemented();
-        return true;
-    }
+                                 );
+
+    //! Updates device memory from the owner's host allocation
+    void syncCacheFromHost(
+        VirtualGPU& gpu,            //!< Virtual GPU device object
+        //! Synchronization flags
+        device::Memory::SyncFlags   syncFlags = device::Memory::SyncFlags()
+        );
 
     // Immediate blocking write from device cache to owners's backing store.
     // Marks owner as "current" by resetting the last writer to NULL.
-    virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags())
-    {
-        // Need to revisit this when multi-devices is supported.
-    }
+    virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags());
+
+    //! Allocates host memory for synchronization with MGPU context
+    void mgpuCacheWriteBack();
 
     // Releases indirect map surface
     void releaseIndirectMap() { decIndMapCount(); }
@@ -78,6 +82,10 @@ class Memory : public device::Memory {
 
     MEMORY_KIND getKind() const { return kind_; }
 
+    const roc::Device& dev() const { return dev_; }
+
+    size_t version() const { return version_; }
+
  protected:
 
     bool allocateMapMemory(size_t allocationSize);
@@ -102,13 +110,14 @@ class Memory : public device::Memory {
     // Track if this memory is interop, lock, gart, or normal.
     MEMORY_KIND kind_;
 
-   private:
+private:
     // Disable copy constructor
     Memory(const Memory &);
 
     // Disable operator=
     Memory &operator=(const Memory &);
 
+    amd::Memory*    pinnedMemory_;  //!< Memory used as pinned system memory
 };
 
 class Buffer : public roc::Memory {

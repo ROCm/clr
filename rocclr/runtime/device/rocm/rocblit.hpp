@@ -439,8 +439,9 @@ private:
 
     //! Creates a view memory object
     Memory* createView(
-        const Memory&         parent,     //!< Parent memory object
-        const cl_image_format format    //!< The new format for a view
+        const Memory&   parent,     //!< Parent memory object
+        cl_image_format format,     //!< The new format for a view
+        cl_mem_flags    flags       //!< Memory flags
         ) const;
 
     //! Disable copy constructor

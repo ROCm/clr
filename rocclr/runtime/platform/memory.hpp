@@ -170,7 +170,7 @@ protected:
     bool        isParent_;      //!< This object is a parent
     device::VirtualDevice* vDev_;   //!< Memory object belongs to a virtual device only
     bool        forceSysMemAlloc_;  //!< Forces system memory allocation
-    std::atomic_uint  mapCount_;	//!< Keep track of number of mappings for a memory object
+    std::atomic_uint  mapCount_;    //!< Keep track of number of mappings for a memory object
     void *  svmHostAddress_;    //!< svm host address;
     bool    svmPtrCommited_;    //!< svm host address committed flag;
     bool    canBeCached_;       //!< flag to if the object can be cached;
@@ -516,7 +516,8 @@ protected:
     Image(
         const Format&   format,
         Image&          parent,
-        uint            baseMipLevel = 0);
+        uint            baseMipLevel = 0,
+        cl_mem_flags    flags = 0);
 
     ///! Initializes the device memory array which is nested
     // after'Image' object in memory layout.
@@ -593,7 +594,8 @@ public:
         const Context& context,         //!< Context for a view creation
         const Format&   format,         //!< The new format for a view
         device::VirtualDevice* vDev,    //!< Virtual device object
-        uint    baseMipLevel = 0        //!< Base mip level for a view
+        uint    baseMipLevel = 0,       //!< Base mip level for a view
+        cl_mem_flags    flags = 0       //!< Memory allocation flags
         );
 
     //! Returns the impl for this image.

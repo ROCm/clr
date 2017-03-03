@@ -125,6 +125,9 @@ Memory::Memory(
     parent_->retain();
     parent_->isParent_ = true;
 
+    if (parent.getHostMem() != nullptr) {
+        setHostMem(reinterpret_cast<address>(parent.getHostMem()) + origin);
+    }
     // Inherit memory flags from the parent
     if ((flags_ & (CL_MEM_READ_WRITE | CL_MEM_READ_ONLY |
             CL_MEM_WRITE_ONLY)) == 0) {
@@ -407,7 +410,7 @@ Memory::~Memory()
     // Release the parent.
     if (NULL != parent_) {
         // Update cache if runtime destroys a subbuffer
-        if (NULL != parent_->getHostMem()) {
+        if (NULL != parent_->getHostMem() && (vDev_ == NULL)) {
             cacheWriteBack();
         }
         parent_->removeSubBuffer(this);
@@ -567,8 +570,9 @@ Pipe::initDeviceMemory()
 Image::Image(
     const Format&   format,
     Image&          parent,
-    uint            baseMipLevel)
-    : Memory(parent, 0, 0, parent.getWidth() * parent.getHeight() *
+    uint            baseMipLevel,
+    cl_mem_flags    flags)
+    : Memory(parent, flags, 0, parent.getWidth() * parent.getHeight() *
             parent.getDepth() * format.getElementSize())
     , impl_(format, Coord3D(parent.getWidth() *
             parent.getImageFormat().getElementSize() /
@@ -1193,12 +1197,13 @@ Image::createView(
     const Context& context,
     const Format&   format,
     device::VirtualDevice* vDev,
-    uint            baseMipLevel)
+    uint            baseMipLevel,
+    cl_mem_flags    flags)
 {
     Image* view = NULL;
 
     // Find the image dimensions and create a corresponding object
-    view = new (context) Image(format, *this, baseMipLevel);
+    view = new (context) Image(format, *this, baseMipLevel, flags);
 
     // Set GPU virtual device for this view
     view->setVirtualDevice(vDev);

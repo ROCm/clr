@@ -411,6 +411,8 @@ public:
         amd::Memory* mem    //!< Pointer to AMD memory object
         ) const;
 
+    amd::Context& context() const { return *context_; }
+
 private:
     static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -431,8 +433,8 @@ private:
     size_t gpuvm_segment_max_alloc_;
     size_t alloc_granularity_;
     static const bool offlineDevice_;
-    amd::Context *context_; //!< A dummy context for internal data transfer
-    VirtualGPU *xferQueue_; //!< Transfer queue, created on demand
+    amd::Context*   context_;   //!< A dummy context for internal data transfer
+    VirtualGPU*     xferQueue_; //!< Transfer queue, created on demand
 
     VirtualGPU* xferQueue() const;
 

@@ -953,7 +953,7 @@ KernelBlitManager::copyBufferToImage(
     size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyBufferToImage_) {
-        result = DmaBlitManager::copyBufferToImage(
+        result = HostBlitManager::copyBufferToImage(
             srcMemory, dstMemory, srcOrigin, dstOrigin, size,
             entire, rowPitch, slicePitch);
         synchronize();
@@ -1061,7 +1061,7 @@ KernelBlitManager::copyBufferToImageKernel(
         // todo ROC runtime has a problem with a view for this format
         (gpuMem(dstMemory).owner()->asImage()->
          getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
-        dstView = createView(gpuMem(dstMemory), newFormat);
+        dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
         if (dstView != NULL) {
             rejected = false;
             releaseView = true;
@@ -1189,7 +1189,7 @@ KernelBlitManager::copyImageToBuffer(
     size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyImageToBuffer_) {
-        result = HostBlitManager::copyImageToBuffer(
+        result = DmaBlitManager::copyImageToBuffer(
             srcMemory, dstMemory, srcOrigin, dstOrigin,
             size, entire, rowPitch, slicePitch);
         synchronize();
@@ -1265,7 +1265,7 @@ KernelBlitManager::copyImageToBufferKernel(
         // todo ROC runtime has a problem with a view for this format
         (gpuMem(srcMemory).owner()->asImage()->
          getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
-        srcView = createView(gpuMem(srcMemory), newFormat);
+        srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
         if (srcView != NULL) {
             rejected = false;
             releaseView = true;
@@ -1417,9 +1417,9 @@ KernelBlitManager::copyImage(
 
     // Attempt to create a view if the format was rejected
     if (rejected) {
-        srcView = createView(gpuMem(srcMemory), newFormat);
+        srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
         if (srcView != NULL) {
-            dstView = createView(gpuMem(dstMemory), newFormat);
+            dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
             if (dstView != NULL) {
                 rejected = false;
                 releaseView = true;
@@ -1433,7 +1433,7 @@ KernelBlitManager::copyImage(
     // Fall into the host path for the entire 2D copy or
     // if the image format was rejected
     if (rejected) {
-        result = HostBlitManager::copyImage(srcMemory, dstMemory,
+        result = DmaBlitManager::copyImage(srcMemory, dstMemory,
             srcOrigin, dstOrigin, size, entire);
         synchronize();
         return result;
@@ -1584,7 +1584,7 @@ KernelBlitManager::readImage(
 
         if (amdMemory == NULL) {
             // Force SW copy
-            result = HostBlitManager::readImage(srcMemory, dstHost,
+            result = DmaBlitManager::readImage(srcMemory, dstHost,
                 origin, size, rowPitch, slicePitch, entire);
             synchronize();
             return result;
@@ -1638,7 +1638,7 @@ KernelBlitManager::writeImage(
 
         if (amdMemory == NULL) {
             // Force SW copy
-            result = HostBlitManager::writeImage(
+            result = DmaBlitManager::writeImage(
                 srcHost, dstMemory, origin, size, rowPitch, slicePitch, entire);
             synchronize();
             return result;
@@ -1679,7 +1679,7 @@ KernelBlitManager::copyBufferRect(
     // Fall into the ROC path for rejected transfers
     if (setup_.disableCopyBufferRect_ ||
         gpuMem(srcMemory).isHostMemDirectAccess() || gpuMem(dstMemory).isHostMemDirectAccess()) {
-        result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory,
+        result = HostBlitManager::copyBufferRect(srcMemory, dstMemory,
             srcRectIn, dstRectIn, sizeIn, entire);
 
         if (result) {
@@ -1819,7 +1819,7 @@ KernelBlitManager::readBuffer(
 
             if (amdMemory == NULL) {
                 // Force SW copy
-                result = HostBlitManager::readBuffer(
+                result = DmaBlitManager::readBuffer(
                     srcMemory, dstHost, origin, size, entire);
                 synchronize();
                 return result;
@@ -1875,7 +1875,7 @@ KernelBlitManager::readBufferRect(
 
         if (amdMemory == NULL) {
             // Force SW copy
-            result = HostBlitManager::readBufferRect(
+            result = DmaBlitManager::readBufferRect(
                 srcMemory, dstHost, bufRect, hostRect, size, entire);
             synchronize();
             return result;
@@ -1933,7 +1933,7 @@ KernelBlitManager::writeBuffer(
 
             if (amdMemory == NULL) {
                 // Force SW copy
-                result = HostBlitManager::writeBuffer(
+                result = DmaBlitManager::writeBuffer(
                     srcHost, dstMemory, origin, size, entire);
                 synchronize();
                 return result;
@@ -2264,7 +2264,7 @@ KernelBlitManager::fillImage(
     }
     // If the image format was rejected, then attempt to create a view
     if (rejected) {
-        memView = createView(gpuMem(memory), newFormat);
+        memView = createView(gpuMem(memory), newFormat, CL_MEM_WRITE_ONLY);
         if (memView != NULL) {
             rejected = false;
             releaseView = true;
@@ -2419,11 +2419,12 @@ DmaBlitManager::pinHostMemory(
 Memory*
 KernelBlitManager::createView(
     const Memory&   parent,
-    const cl_image_format   format) const
+    cl_image_format format,
+    cl_mem_flags    flags) const
 {
     assert((parent.owner()->asBuffer() == nullptr) && "View supports images only");
-    amd::Image *image =
-        parent.owner()->asImage()->createView(parent.owner()->getContext(), format, &gpu());
+    amd::Image *image = parent.owner()->asImage()->createView(
+        parent.owner()->getContext(), format, &gpu(), 0, flags);
 
     if (image == NULL) {
         LogError("[OCL] Fail to allocate view of image object");
