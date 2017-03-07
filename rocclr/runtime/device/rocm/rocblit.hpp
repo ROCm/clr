@@ -407,6 +407,7 @@ public:
 private:
     static const size_t MaxXferBuffers = 2;
     static const uint   TransferSplitSize = 1;
+    static const uint   MaxNumIssuedTransfers = 3;
 
     //! Copies a buffer object to an image object
     bool copyBufferToImageKernel(
@@ -443,6 +444,9 @@ private:
         cl_image_format format,     //!< The new format for a view
         cl_mem_flags    flags       //!< Memory flags
         ) const;
+
+    address captureArguments(const amd::Kernel* kernel) const;
+    void    releaseArguments(address args) const;
 
     //! Disable copy constructor
     KernelBlitManager(const KernelBlitManager&);

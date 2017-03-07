@@ -949,7 +949,8 @@ KernelBlitManager::copyBufferToImage(
     static const bool CopyRect = false;
     // Flush DMA for ASYNC copy
     static const bool FlushDMA = true;
-    size_t imgRowPitch = size[0] * gpuMem(dstMemory).owner()->asImage()->getImageFormat().getElementSize();
+    amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
+    size_t imgRowPitch = size[0] * dstImage->getImageFormat().getElementSize();
     size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyBufferToImage_) {
@@ -992,7 +993,8 @@ CalcRowSlicePitches(
     cl_ulong* pitch, const cl_int* copySize,
     size_t rowPitch, size_t slicePitch, const Memory& mem)
 {
-    uint32_t memFmtSize = mem.owner()->asImage()->getImageFormat().getElementSize();
+    amd::Image* image = static_cast<amd::Image*>(mem.owner());
+    uint32_t memFmtSize = image->getImageFormat().getElementSize();
     bool img1Darray = (mem.owner()->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ? true : false;
 
     if (rowPitch == 0) {
@@ -1015,7 +1017,7 @@ CalcRowSlicePitches(
     }
 }
 
-static void
+static inline void
 setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value)
 {
     kernel->parameters().set(index, size, value);
@@ -1036,7 +1038,9 @@ KernelBlitManager::copyBufferToImageKernel(
     Memory* dstView = &gpuMem(dstMemory);
     bool    releaseView = false;
     bool    result = false;
-    amd::Image::Format newFormat(gpuMem(dstMemory).owner()->asImage()->getImageFormat());
+    amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
+    amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
+    amd::Image::Format newFormat(dstImage->getImageFormat());
 
     // Find unsupported formats
     for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1059,8 +1063,7 @@ KernelBlitManager::copyBufferToImageKernel(
     // If the image format was rejected, then attempt to create a view
     if (rejected &&
         // todo ROC runtime has a problem with a view for this format
-        (gpuMem(dstMemory).owner()->asImage()->
-         getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
+        (dstImage->getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
         dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
         if (dstView != NULL) {
             rejected = false;
@@ -1084,14 +1087,14 @@ KernelBlitManager::copyBufferToImageKernel(
 
     // Program the kernels workload depending on the blit dimensions
     dim = 3;
-    if (dstMemory.owner()->asImage()->getDims() == 1) {
+    if (dstImage->getDims() == 1) {
         globalWorkSize[0] = amd::alignUp(size[0], 256);
         globalWorkSize[1] = amd::alignUp(size[1], 1);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = 256;
         localWorkSize[1] = localWorkSize[2] = 1;
     }
-    else if (dstMemory.owner()->asImage()->getDims() == 2) {
+    else if (dstImage->getDims() == 2) {
         globalWorkSize[0] = amd::alignUp(size[0], 16);
         globalWorkSize[1] = amd::alignUp(size[1], 16);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
@@ -1111,8 +1114,8 @@ KernelBlitManager::copyBufferToImageKernel(
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem);
     mem = as_cl<amd::Memory>(dstView->owner());
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
-    uint32_t memFmtSize = dstMemory.owner()->asImage()->getImageFormat().getElementSize();
-    uint32_t components = dstMemory.owner()->asImage()->getImageFormat().getNumChannels();
+    uint32_t memFmtSize = dstImage->getImageFormat().getElementSize();
+    uint32_t components = dstImage->getImageFormat().getNumChannels();
 
     // 1 element granularity for writes by default
     cl_int  granularity = 1;
@@ -1156,10 +1159,9 @@ KernelBlitManager::copyBufferToImageKernel(
         globalWorkOffset, globalWorkSize, localWorkSize);
 
     // Execute the blit
-    address parameters = kernels_[blitType]->parameters().capture(dev());
+    address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
-    kernels_[blitType]->parameters().release(const_cast<address>(parameters), dev());
-
+    releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
         gpu().releaseGpuMemoryFence();
@@ -1185,7 +1187,8 @@ KernelBlitManager::copyImageToBuffer(
     static const bool CopyRect = false;
     // Flush DMA for ASYNC copy
     static const bool FlushDMA = true;
-    size_t imgRowPitch = size[0] * gpuMem(srcMemory).owner()->asImage()->getImageFormat().getElementSize();
+    amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
+    size_t imgRowPitch = size[0] * srcImage->getImageFormat().getElementSize();
     size_t imgSlicePitch = imgRowPitch * size[1];
 
     if (setup_.disableCopyImageToBuffer_) {
@@ -1240,7 +1243,8 @@ KernelBlitManager::copyImageToBufferKernel(
     Memory* srcView = &gpuMem(srcMemory);
     bool    releaseView = false;
     bool    result = false;
-    amd::Image::Format newFormat(gpuMem(srcMemory).owner()->asImage()->getImageFormat());
+    amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
+    amd::Image::Format newFormat(srcImage->getImageFormat());
 
     // Find unsupported formats
     for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1263,8 +1267,7 @@ KernelBlitManager::copyImageToBufferKernel(
     // If the image format was rejected, then attempt to create a view
     if (rejected &&
         // todo ROC runtime has a problem with a view for this format
-        (gpuMem(srcMemory).owner()->asImage()->
-         getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
+        (srcImage->getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
         srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
         if (srcView != NULL) {
             rejected = false;
@@ -1288,14 +1291,14 @@ KernelBlitManager::copyImageToBufferKernel(
     // Program the kernels workload depending on the blit dimensions
     dim = 3;
     // Find the current blit type
-    if (srcMemory.owner()->asImage()->getDims() == 1) {
+    if (srcImage->getDims() == 1) {
         globalWorkSize[0] = amd::alignUp(size[0], 256);
         globalWorkSize[1] = amd::alignUp(size[1], 1);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = 256;
         localWorkSize[1] = localWorkSize[2] = 1;
     }
-    else if (srcMemory.owner()->asImage()->getDims() == 2) {
+    else if (srcImage->getDims() == 2) {
         globalWorkSize[0] = amd::alignUp(size[0], 16);
         globalWorkSize[1] = amd::alignUp(size[1], 16);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
@@ -1329,8 +1332,8 @@ KernelBlitManager::copyImageToBufferKernel(
                             (cl_int)size[1],
                             (cl_int)size[2], 0 };
     setArgument(kernels_[blitType], 4, sizeof(srcOrg), srcOrg);
-    uint32_t memFmtSize = srcMemory.owner()->asImage()->getImageFormat().getElementSize();
-    uint32_t components = srcMemory.owner()->asImage()->getImageFormat().getNumChannels();
+    uint32_t memFmtSize = srcImage->getImageFormat().getElementSize();
+    uint32_t components = srcImage->getImageFormat().getNumChannels();
 
     // 1 element granularity for writes by default
     cl_int  granularity = 1;
@@ -1365,9 +1368,9 @@ KernelBlitManager::copyImageToBufferKernel(
         globalWorkOffset, globalWorkSize, localWorkSize);
 
     // Execute the blit
-    address parameters = kernels_[blitType]->parameters().capture(dev());
+    address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
-    kernels_[blitType]->parameters().release(const_cast<address>(parameters), dev());
+    releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
         gpu().releaseGpuMemoryFence();
@@ -1392,7 +1395,9 @@ KernelBlitManager::copyImage(
     Memory* dstView = &gpuMem(dstMemory);
     bool    releaseView = false;
     bool    result = false;
-    amd::Image::Format newFormat(gpuMem(srcMemory).owner()->asImage()->getImageFormat());
+    amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
+    amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
+    amd::Image::Format newFormat(srcImage->getImageFormat());
 
     // Find unsupported formats
     for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1448,16 +1453,16 @@ KernelBlitManager::copyImage(
     // Program the kernels workload depending on the blit dimensions
     dim = 3;
     // Find the current blit type
-    if ((srcMemory.owner()->asImage()->getDims() == 1) ||
-        (dstMemory.owner()->asImage()->getDims() == 1)) {
+    if ((srcImage->getDims() == 1) ||
+        (dstImage->getDims() == 1)) {
         globalWorkSize[0] = amd::alignUp(size[0], 256);
         globalWorkSize[1] = amd::alignUp(size[1], 1);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = 256;
         localWorkSize[1] = localWorkSize[2] = 1;
     }
-    else if ((srcMemory.owner()->asImage()->getDims() == 2) ||
-             (dstMemory.owner()->asImage()->getDims() == 2)) {
+    else if ((srcImage->getDims() == 2) ||
+             (dstImage->getDims() == 2)) {
         globalWorkSize[0] = amd::alignUp(size[0], 16);
         globalWorkSize[1] = amd::alignUp(size[1], 16);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
@@ -1507,9 +1512,9 @@ KernelBlitManager::copyImage(
         globalWorkOffset, globalWorkSize, localWorkSize);
 
     // Execute the blit
-    address parameters = kernels_[blitType]->parameters().capture(dev());
+    address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
-    kernels_[blitType]->parameters().release(const_cast<address>(parameters), dev());
+    releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
         gpu().releaseGpuMemoryFence();
@@ -1527,7 +1532,8 @@ FindPinSize(
     size_t& pinSize, const amd::Coord3D& size,
     size_t& rowPitch, size_t& slicePitch, const Memory& mem)
 {
-    pinSize = size[0] * mem.owner()->asImage()->getImageFormat().getElementSize();
+    amd::Image* image = static_cast<amd::Image*>(mem.owner());
+    pinSize = size[0] * image->getImageFormat().getElementSize();
     if ((rowPitch == 0) || (rowPitch == pinSize)) {
         rowPitch = 0;
     }
@@ -1536,7 +1542,7 @@ FindPinSize(
     }
 
     // Calculate the pin size, which should be equal to the copy size
-    for (uint i = 1; i < mem.owner()->asImage()->getDims(); ++i) {
+    for (uint i = 1; i < image->getDims(); ++i) {
         pinSize *= size[i];
         if (i == 1) {
             if ((slicePitch == 0) || (slicePitch == pinSize)) {
@@ -1782,10 +1788,9 @@ KernelBlitManager::copyBufferRect(
         globalWorkOffset, globalWorkSize, localWorkSize);
 
     // Execute the blit
-    address parameters = kernels_[blitType]->parameters().capture(dev());
+    address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
-    kernels_[blitType]->parameters().release(const_cast<address>(parameters), dev());
-
+    releaseArguments(parameters);
     synchronize();
 
     return result;
@@ -2085,9 +2090,9 @@ KernelBlitManager::fillBuffer(
             globalWorkOffset, &globalWorkSize, &localWorkSize);
 
         // Execute the blit
-        address parameters = kernels_[fillType]->parameters().capture(dev());
+        address parameters = captureArguments(kernels_[fillType]);
         result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, NULL);
-        kernels_[fillType]->parameters().release(const_cast<address>(parameters), dev());
+        releaseArguments(parameters);
     }
 
     synchronize();
@@ -2181,9 +2186,9 @@ KernelBlitManager::copyBuffer(
             globalWorkOffset, &globalWorkSize, &localWorkSize);
 
         // Execute the blit
-        address parameters = kernels_[blitType]->parameters().capture(dev());
+        address parameters = captureArguments(kernels_[blitType]);
         result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
-        kernels_[blitType]->parameters().release(const_cast<address>(parameters), dev());
+        releaseArguments(parameters);
     }
     else {
         result = DmaBlitManager::copyBuffer(
@@ -2222,7 +2227,8 @@ KernelBlitManager::fillImage(
     size_t  globalWorkSize[3];
     size_t  localWorkSize[3];
     Memory* memView = &gpuMem(memory);
-    amd::Image::Format newFormat(gpuMem(memory).owner()->asImage()->getImageFormat());
+    amd::Image* image = static_cast<amd::Image*>(memory.owner());
+    amd::Image::Format newFormat(image->getImageFormat());
 
     // Program the kernels workload depending on the fill dimensions
     fillType = FillImage;
@@ -2278,14 +2284,14 @@ KernelBlitManager::fillImage(
     // Perform workload split to allow multiple operations in a single thread
     globalWorkSize[0] = (size[0] + TransferSplitSize - 1) / TransferSplitSize;
     // Find the current blit type
-    if (memView->owner()->asImage()->getDims() == 1) {
+    if (image->getDims() == 1) {
         globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 256);
         globalWorkSize[1] = amd::alignUp(size[1], 1);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
         localWorkSize[0] = 256;
         localWorkSize[1] = localWorkSize[2] = 1;
     }
-    else if (memView->owner()->asImage()->getDims()== 2) {
+    else if (image->getDims()== 2) {
         globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 16);
         globalWorkSize[1] = amd::alignUp(size[1], 16);
         globalWorkSize[2] = amd::alignUp(size[2], 1);
@@ -2348,9 +2354,9 @@ KernelBlitManager::fillImage(
         globalWorkOffset, globalWorkSize, localWorkSize);
 
     // Execute the blit
-    address parameters = kernels_[fillType]->parameters().capture(dev());
+    address parameters = captureArguments(kernels_[fillType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, NULL);
-    kernels_[fillType]->parameters().release(const_cast<address>(parameters), dev());
+    releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
         gpu().releaseGpuMemoryFence();
@@ -2423,7 +2429,8 @@ KernelBlitManager::createView(
     cl_mem_flags    flags) const
 {
     assert((parent.owner()->asBuffer() == nullptr) && "View supports images only");
-    amd::Image *image = parent.owner()->asImage()->createView(
+    amd::Image* parentImage = static_cast<amd::Image*>(parent.owner());
+    amd::Image* image = parentImage->createView(
         parent.owner()->getContext(), format, &gpu(), 0, flags);
 
     if (image == NULL) {
@@ -2448,6 +2455,28 @@ KernelBlitManager::createView(
     image->replaceDeviceMemory(&dev_, devImage);
 
     return devImage;
+}
+
+address
+KernelBlitManager::captureArguments(const amd::Kernel* kernel) const
+{
+    const size_t stackSize = kernel->signature().paramsSize();
+    const size_t svmInfoSize = kernel->signature().numParameters() * sizeof(bool);
+    address args = reinterpret_cast<address>(amd::AlignedMemory::allocate(
+        stackSize + svmInfoSize, PARAMETERS_MIN_ALIGNMENT));
+    if (args == nullptr) {
+        LogWarning("Failed to allocate memory for arguments");
+        return nullptr;
+    }
+    memcpy(args, kernel->parameters().values(), kernel->signature().paramsSize());
+    memset(args + stackSize, 0, svmInfoSize);
+    return args;
+}
+
+void
+KernelBlitManager::releaseArguments(address args) const
+{
+    amd::AlignedMemory::deallocate(args);
 }
 
 } // namespace pal
