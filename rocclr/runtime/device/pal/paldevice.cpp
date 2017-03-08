@@ -424,10 +424,10 @@ void NullDevice::fillDeviceInfo(
     info_.extensions_   = getExtensionString();
 
     info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-/*    info_.deviceTopology_.pcie.bus  = palProp.pciProperties.busNumber;
+    info_.deviceTopology_.pcie.bus  = palProp.pciProperties.busNumber;
     info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
     info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
-*/
+
     ::strncpy(info_.boardName_, palProp.gpuName,
         ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
 
