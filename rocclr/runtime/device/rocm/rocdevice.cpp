@@ -1152,7 +1152,9 @@ Device::populateOCLDeviceConstants()
         }
 #if !defined(WITH_LIGHTNING_COMPILER)
       // Report atomics capability based on GFX IP, control on Hawaii
-        if (info_.hostUnifiedMemory_ || deviceInfo_.gfxipVersion_ >= 800) {
+      // and Vega10.
+        if (info_.hostUnifiedMemory_ || ((deviceInfo_.gfxipVersion_ >= 800) &&
+           (deviceInfo_.gfxipVersion_ < 900))) {
           info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
         }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
