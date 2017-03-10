@@ -1044,20 +1044,18 @@ Image::createView(const Memory &parent)
                         ? deviceMemory_
                         : static_cast<const Image&>(parent).originalDeviceMemory_;
 
-    amd::Memory* oldestParent = parent.owner();
-    while (oldestParent->parent() != nullptr) {
-        oldestParent = oldestParent->parent();
+    //Detect image view from buffer to distinguish linear paths from tiled.
+    amd::Memory* ancestor = parent.owner();
+    while ((ancestor->asBuffer() == nullptr) && (ancestor->parent() != nullptr)) {
+        ancestor = ancestor->parent();
     }
+    bool linearLayout = (ancestor->asBuffer() != nullptr);
 
     kind_ = parent.getKind();
     version_ = parent.version();
 
     hsa_status_t status;
-    if (kind_ == MEMORY_KIND_INTEROP) {
-        status = hsa_amd_image_create(dev().getBackendDevice(), &imageDescriptor_,
-            amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
-    }
-    else if (oldestParent->asBuffer()) {
+    if (linearLayout) {
         size_t rowPitch;
         amd::Image& ownerImage = *owner()->asImage();
         size_t elementSize = ownerImage.getImageFormat().getElementSize();
@@ -1077,8 +1075,11 @@ Image::createView(const Memory &parent)
             &imageDescriptor_, deviceMemory_, permission_,
             HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0,
             &hsaImageObject_);
-    }
-    else {
+    } else if (kind_ == MEMORY_KIND_INTEROP) {
+        amdImageDesc_ = static_cast<Image*>(parent.owner()->getDeviceMemory(dev()))->amdImageDesc_;
+        status = hsa_amd_image_create(dev().getBackendDevice(), &imageDescriptor_,
+            amdImageDesc_, deviceMemory_, permission_, &hsaImageObject_);
+    } else {
         status= hsa_ext_image_create(dev().getBackendDevice(), &imageDescriptor_,
             deviceMemory_, permission_, &hsaImageObject_);
     }
