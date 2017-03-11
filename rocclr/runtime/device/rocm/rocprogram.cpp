@@ -931,14 +931,14 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
                 address name = (address) &note[1];
                 address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
 
-                if (note->n_type == AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1) {
+                if (note->n_type == AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1) {
                     buildLog_ += "Error: object code with metadata v1 is not " \
                       "supported\n";
                     return false;
                 }
-                else if (note->n_type == AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA
-                         && note->n_namesz == sizeof AMDGPU::PT_NOTE::NoteName
-                         && !memcmp(name, AMDGPU::PT_NOTE::NoteName, note->n_namesz)) {
+                else if (note->n_type == AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA
+                         && note->n_namesz == sizeof AMDGPU::ElfNote::NoteName
+                         && !memcmp(name, AMDGPU::ElfNote::NoteName, note->n_namesz)) {
                     std::string metadataStr((const char *) desc, (size_t) note->n_descsz);
                     metadata_ = new AMDGPU::RuntimeMD::Program::Metadata(metadataStr);
                     // We've found and loaded the runtime metadata, exit the
