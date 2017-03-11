@@ -1609,12 +1609,12 @@ LightningProgram::setKernels(
                 //! @todo: Use constants and enums defined in AMDGPUPTNote.h.
                 //! In order to switch to using constants and enums defined in
                 //! AMDGPUPTNote.h, we need to clean up internal header files.
-                if (note->n_type == 7 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1*/) {
+                if (note->n_type == 7 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1*/) {
                     buildLog_ += "Error: object code with metadata v1 is not " \
                       "supported\n";
                     return false;
                 }
-                else if (note->n_type == 8 /*AMDGPU::PT_NOTE::NT_AMDGPU_HSA_RUNTIME_METADATA*/
+                else if (note->n_type == 8 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA*/
                          && note->n_namesz == sizeof "AMD"
                          && !memcmp(name, "AMD", note->n_namesz)) {
                     std::string metadataStr((const char *) desc, (size_t) note->n_descsz);
