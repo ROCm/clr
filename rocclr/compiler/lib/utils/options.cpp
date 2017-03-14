@@ -745,12 +745,14 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         Opts.setFlag(OID_FiniteMathOnly, 1);
         tod = &OptDescTable[OID_FiniteMathOnly];
         (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-finite-math-only");
         break;
 
     case OID_NoSignedZeros:
         Opts.setFlag(OID_NoSignedZeros, 1);
         tod = &OptDescTable[OID_NoSignedZeros];
         (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-no-signed-zeros");
         break;
 
     case OID_FastRelaxedMath:
@@ -767,6 +769,7 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
 
         Opts.clcOptions.append(" -D__FAST_RELAXED_MATH__=1");
         Opts.clangOptions.push_back("-D__FAST_RELAXED_MATH__=1");
+        Opts.clangOptions.push_back("-cl-fast-relaxed-math");
 
         // fall-through to handle UnsafeMathOpt
     case OID_UnsafeMathOpt:
@@ -780,6 +783,28 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         Opts.setFlag(OID_MadEnable, 1);
         tod = &OptDescTable[OID_MadEnable];
         (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-unsafe-math-optimizations");
+        break;
+
+    case OID_DenormsAreZero:
+        Opts.setFlag(OID_DenormsAreZero, 1);
+        tod = &OptDescTable[OID_DenormsAreZero];
+        (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-denorms-are-zero");
+        break;
+
+    case OID_StricAliasing:
+        Opts.setFlag(OID_StricAliasing, 1);
+        tod = &OptDescTable[OID_StricAliasing];
+        (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-strict-aliasing");
+        break;
+
+    case OID_MadEnable:
+        Opts.setFlag(OID_MadEnable, 1);
+        tod = &OptDescTable[OID_MadEnable];
+        (void)setOptionVariable (tod, ovars, (int64_t)1, NULL);
+        Opts.clangOptions.push_back("-cl-mad-enable");
         break;
 
     case OID_EnableDebug:
