@@ -41,7 +41,7 @@ public:
 
     //! Creates DmaBlitManager object
     virtual bool create(amd::Device& device) {
-        if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, NULL, &completion_signal_)) {
+        if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &completion_signal_)) {
             false;
         }
         return true;

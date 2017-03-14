@@ -43,7 +43,7 @@ class PrintfDbg : public amd::HeapObject {
   static const uint WorkitemDebugSize = 4096;
 
   //! constructor
-  PrintfDbg(Device& device, FILE* file = NULL);
+  PrintfDbg(Device& device, FILE* file = nullptr);
 
   //! Destructor
   ~PrintfDbg();

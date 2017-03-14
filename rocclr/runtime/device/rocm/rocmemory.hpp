@@ -49,7 +49,7 @@ class Memory : public device::Memory {
         );
 
     // Immediate blocking write from device cache to owners's backing store.
-    // Marks owner as "current" by resetting the last writer to NULL.
+    // Marks owner as "current" by resetting the last writer to nullptr.
     virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags());
 
     //! Allocates host memory for synchronization with MGPU context
@@ -65,8 +65,8 @@ class Memory : public device::Memory {
         // Optimization for multilayer map/unmap
         uint startLayer = 0,    //!< Start layer for multilayer map
         uint numLayers = 0,     //!< End layer for multilayer map
-        size_t* rowPitch = NULL,//!< Row pitch for the device memory
-        size_t* slicePitch = NULL   //!< Slice pitch for the device memory
+        size_t* rowPitch = nullptr,     //!< Row pitch for the device memory
+        size_t* slicePitch = nullptr    //!< Slice pitch for the device memory
         );
 
     //! Unmap the device memory

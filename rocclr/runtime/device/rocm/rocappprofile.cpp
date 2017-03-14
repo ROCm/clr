@@ -16,8 +16,8 @@ amd::AppProfile* rocCreateAppProfile()
 {
     amd::AppProfile* appProfile = new roc::AppProfile;
 
-    if ((appProfile == NULL) || !appProfile->init()) {
-        return NULL;
+    if ((appProfile == nullptr) || !appProfile->init()) {
+        return nullptr;
     }
 
     return appProfile;

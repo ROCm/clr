@@ -105,7 +105,7 @@ VirtualGPU::MemoryDependency::create(size_t numMemObj)
     if (numMemObj > 0) {
         // Allocate the array of memory objects for dependency tracking
         memObjectsInQueue_ = new MemoryState[numMemObj];
-        if (NULL == memObjectsInQueue_) {
+        if (nullptr == memObjectsInQueue_) {
             return false;
         }
         memset(memObjectsInQueue_, 0, sizeof(MemoryState) * numMemObj);
@@ -241,13 +241,13 @@ VirtualGPU::processMemObjects(
     size_t execInfoOffset = kernelParams.getExecInfoOffset();
     bool sync = true;
 
-    amd::Memory* memory = NULL;
+    amd::Memory* memory = nullptr;
     //get svm non arugment information
     void* const* svmPtrArray =
         reinterpret_cast<void* const*>(params + execInfoOffset);
     for (size_t i = 0; i < count; i++) {
         memory =  amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
-        if (NULL == memory) {
+        if (nullptr == memory) {
             if (!supportFineGrainedSystem) {
                 return false;
             }
@@ -262,7 +262,7 @@ VirtualGPU::processMemObjects(
         }
         else {
             Memory* rocMemory = static_cast<Memory*>(memory->getDeviceMemory(dev()));
-            if (NULL != rocMemory) {
+            if (nullptr != rocMemory) {
                 // Synchronize data with other memory instances if necessary
                 rocMemory->syncCacheFromHost(*this);
 
@@ -280,9 +280,9 @@ VirtualGPU::processMemObjects(
     for (size_t i = 0; i < signature.numParameters(); ++i) {
         const amd::KernelParameterDescriptor& desc = signature.at(i);
         const Kernel::Argument*  arg = hsaKernel.hsailArgAt(i);
-        Memory* memory = NULL;
+        Memory* memory = nullptr;
         bool    readOnly = false;
-        amd::Memory* svmMem = NULL;
+        amd::Memory* svmMem = nullptr;
 
         // Find if current argument is a buffer
         if ((desc.type_ == T_POINTER) && (arg->addrQual_ != ROC_ADDRESS_LOCAL)) {
@@ -300,8 +300,8 @@ VirtualGPU::processMemObjects(
             }
 
             if (*reinterpret_cast<amd::Memory* const*>
-                    (params + desc.offset_) != NULL) {
-                if (NULL == svmMem) {
+                    (params + desc.offset_) != nullptr) {
+                if (nullptr == svmMem) {
                     memory = static_cast<Memory*>((*reinterpret_cast<amd::Memory* const*>
                             (params + desc.offset_))->getDeviceMemory(dev()));
                 }
@@ -316,7 +316,7 @@ VirtualGPU::processMemObjects(
                 }
             }
 
-            if (memory != NULL) {
+            if (memory != nullptr) {
                 readOnly |= (arg->access_ == ROC_ACCESS_TYPE_RO);
                 // Validate memory for a dependency in the queue
                 memoryDependency().validate(*this, memory, readOnly);
@@ -473,14 +473,14 @@ VirtualGPU::VirtualGPU(Device &device)
     , index_(device.numOfVgpus_++) // Virtual gpu unique index incrementing
 {
     gpu_device_ = device.getBackendDevice();
-    printfdbg_ = NULL;
+    printfdbg_ = nullptr;
 
     // Initialize the last signal and dispatch flags
-    timestamp_ = NULL;
+    timestamp_ = nullptr;
     hasPendingDispatch_ = false;
-    tools_lib_ = NULL;
+    tools_lib_ = nullptr;
 
-    kernarg_pool_base_ = NULL;
+    kernarg_pool_base_ = nullptr;
     kernarg_pool_size_ = 0;
     kernarg_pool_cur_offset_ = 0;
     aqlHeader_ = kDispatchPacketHeaderNoSync;
@@ -491,17 +491,17 @@ VirtualGPU::~VirtualGPU()
 {
     releasePinnedMem();
 
-    if (timestamp_ != NULL) {
+    if (timestamp_ != nullptr) {
         delete timestamp_;
-        timestamp_ = NULL;
+        timestamp_ = nullptr;
         LogError("There was a timestamp that was not used; deleting.");
     }
-    if (printfdbg_ != NULL){
+    if (printfdbg_ != nullptr){
         delete printfdbg_;
-        printfdbg_ = NULL;
+        printfdbg_ = nullptr;
     }
 
-    tools_lib_ = NULL;
+    tools_lib_ = nullptr;
     --roc_device_.numOfVgpus_; // Virtual gpu unique index decrementing
 }
 
@@ -536,7 +536,7 @@ VirtualGPU::create(bool profilingEna)
     uint32_t queue_size = 1024;
     queue_size = (queue_max_packets < queue_size) ? queue_max_packets : queue_size;
     while (hsa_queue_create(gpu_device_,
-        queue_size, HSA_QUEUE_TYPE_MULTI, NULL, NULL, UINT_MAX, UINT_MAX,
+        queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr, UINT_MAX, UINT_MAX,
         &gpu_queue_) != HSA_STATUS_SUCCESS) {
         queue_size >>= 1;
         if (queue_size < 64) {
@@ -551,7 +551,7 @@ VirtualGPU::create(bool profilingEna)
 
     device::BlitManager::Setup  blitSetup;
     blitMgr_ = new KernelBlitManager(*this, blitSetup);
-    if ((NULL == blitMgr_) || !blitMgr_->create(roc_device_)) {
+    if ((nullptr == blitMgr_) || !blitMgr_->create(roc_device_)) {
         LogError("Could not create BlitManager!");
         return false;
     }
@@ -559,7 +559,7 @@ VirtualGPU::create(bool profilingEna)
     // Create signal for the barrier packet.
     hsa_signal_t signal = { 0 };
     if (HSA_STATUS_SUCCESS !=
-        hsa_signal_create(InitSignalValue, 0, NULL, &signal)) {
+        hsa_signal_create(InitSignalValue, 0, nullptr, &signal)) {
         return false;
     }
     barrier_signal_ = signal;
@@ -571,7 +571,7 @@ VirtualGPU::create(bool profilingEna)
 
     // Create a object of PrintfDbg
     printfdbg_ = new PrintfDbg(roc_device_);
-    if (NULL == printfdbg_) {
+    if (nullptr == printfdbg_) {
         LogError("\nCould not create printfDbg Object!");
         return false;
     }
@@ -609,7 +609,7 @@ VirtualGPU::terminate()
 
     if (tools_lib_) {
         amd::Os::unloadLibrary(tools_lib_);
-        tools_lib_ = NULL;
+        tools_lib_ = nullptr;
     }
 
     destroyPool();
@@ -696,7 +696,7 @@ VirtualGPU::allocKernArg(size_t size, size_t alignment)
 void VirtualGPU::profilingBegin(amd::Command &command, bool drmProfiling)
 {
     if (command.profilingInfo().enabled_) {
-        if (timestamp_ != NULL) {
+        if (timestamp_ != nullptr) {
             LogWarning("Trying to create a second timestamp in VirtualGPU. \
                         This could have unintended consequences.");
             return;
@@ -718,7 +718,7 @@ void VirtualGPU::profilingEnd(amd::Command &command)
             timestamp_->end();
         }
         command.setData(reinterpret_cast<void*>(timestamp_));
-        timestamp_ = NULL;
+        timestamp_ = nullptr;
     }
 }
 
@@ -733,12 +733,12 @@ struct DestroySampler : public std::binary_function<hsa_ext_sampler_t,
 
 void VirtualGPU::updateCommandsState(amd::Command *list)
 {
-    Timestamp *ts = NULL;
+    Timestamp *ts = nullptr;
 
     amd::Command* current = list;
-    amd::Command* next = NULL;
+    amd::Command* next = nullptr;
 
-    if (current == NULL) {
+    if (current == nullptr) {
         return;
     }
 
@@ -754,8 +754,8 @@ void VirtualGPU::updateCommandsState(amd::Command *list)
         // that has one. This timestamp is used below to mark any command that
         // came before it to start and end with this first valid start time.
         current = list;
-        while (current != NULL) {
-            if (current->data() != NULL) {
+        while (current != nullptr) {
+            if (current->data() != nullptr) {
                 ts = reinterpret_cast<Timestamp*>(current->data());
                     startTimeStamp = ts->getStart();
                     endTimeStamp = ts->getStart();
@@ -777,16 +777,16 @@ void VirtualGPU::updateCommandsState(amd::Command *list)
     // with the COMPLETE (end) timestamp of the previous command, A. This is
     // also true for any command B, which falls between A and C.
     current = list;
-    while (current != NULL) {
+    while (current != nullptr) {
         if (current->profilingInfo().enabled_) {
-            if (current->data() != NULL) {
+            if (current->data() != nullptr) {
                 // Since this is a valid command to get a timestamp, we use the
                 // timestamp provided by the runtime (saved in the data())
                 ts = reinterpret_cast<Timestamp*>(current->data());
                     startTimeStamp = ts->getStart();
                     endTimeStamp = ts->getEnd();
                 delete ts;
-                current->setData(NULL);
+                current->setData(nullptr);
             }
             else {
                 // If we don't have a command that contains a valid timestamp,
@@ -990,7 +990,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd)
 
     profilingBegin(cmd);
     const std::vector<void*>& svmPointers = cmd.svmPointers();
-    if (cmd.pfnFreeFunc() == NULL) {
+    if (cmd.pfnFreeFunc() == nullptr) {
         // pointers allocated using clSVMAlloc
         for (cl_uint i = 0; i < svmPointers.size(); i++) {
             amd::SvmBuffer::free(cmd.context(), svmPointers[i]);
@@ -1179,7 +1179,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand &cmd)
         roc::Memory *hsaMemory = static_cast<roc::Memory *>(devMemory);
 
         amd::Memory* mapMemory = hsaMemory->mapMemory();
-        void *hostPtr = mapMemory == NULL ?
+        void *hostPtr = mapMemory == nullptr ?
             hsaMemory->owner()->getHostMem() :
             mapMemory->getHostMem();
 
@@ -1603,14 +1603,14 @@ VirtualGPU::submitKernelInternal(
             gpuKernel.KernargSegmentByteSize(),
             gpuKernel.KernargSegmentAlignment());
 
-        if (argBuffer == NULL) {
+        if (argBuffer == nullptr) {
             LogError("Out of memory");
             return false;
         }
 
         address argPtr = argBuffer;
         for (auto arg : gpuKernel.hsailArgs()) {
-            const_address   srcArgPtr = NULL;
+            const_address   srcArgPtr = nullptr;
             if (arg->index_ != uint(-1)) {
                 srcArgPtr = parameters + signature.at(arg->index_).offset_;
             }
@@ -1666,7 +1666,7 @@ VirtualGPU::submitKernelInternal(
                     break;
                 }
                 amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
-                if (mem == NULL) {
+                if (mem == nullptr) {
                     argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
                     break;
                 }
@@ -1684,7 +1684,7 @@ VirtualGPU::submitKernelInternal(
             }
             case ROC_ARGTYPE_REFERENCE: {
                 void *mem = allocKernArg(arg->size_, arg->alignment_);
-                if (mem == NULL) {
+                if (mem == nullptr) {
                     LogError("Out of memory");
                     return false;
                 }
@@ -1698,7 +1698,7 @@ VirtualGPU::submitKernelInternal(
             case ROC_ARGTYPE_IMAGE: {
                 amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
                 Image* image = static_cast<Image *>(mem->getDeviceMemory(dev()));
-                if (image == NULL) {
+                if (image == nullptr) {
                     LogError("Kernel image argument is not an image object");
                     return false;
                 }
@@ -1722,7 +1722,7 @@ VirtualGPU::submitKernelInternal(
             }
             case ROC_ARGTYPE_SAMPLER: {
                 amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
-                if (sampler == NULL) {
+                if (sampler == nullptr) {
                     LogError("Kernel sampler argument is not an sampler object");
                     return false;
                 }

@@ -18,7 +18,7 @@
 namespace roc {
 
 PrintfDbg::PrintfDbg(Device& device, FILE* file)
-    : dbgBuffer_(NULL),
+    : dbgBuffer_(nullptr),
       dbgBuffer_size_(0),
       dbgFile_(file),
       gpuDevice_(device) {}
@@ -26,7 +26,7 @@ PrintfDbg::PrintfDbg(Device& device, FILE* file)
 PrintfDbg::~PrintfDbg() { dev().hostFree(dbgBuffer_, dbgBuffer_size_); }
 
 bool PrintfDbg::allocate(bool realloc) {
-  if (NULL == dbgBuffer_) {
+  if (nullptr == dbgBuffer_) {
     dbgBuffer_size_ = dev().info().printfBufferSize_;
     dbgBuffer_ = reinterpret_cast<address>(
         dev().hostAlloc(dbgBuffer_size_, sizeof(void*)));
@@ -38,7 +38,7 @@ bool PrintfDbg::allocate(bool realloc) {
     dbgBuffer_ = reinterpret_cast<address>(dbgBuffer_size_, sizeof(void*));
   }
 
-  return (NULL != dbgBuffer_) ? true : false;
+  return (nullptr != dbgBuffer_) ? true : false;
 }
 
 bool PrintfDbg::checkFloat(const std::string& fmt) const {
@@ -142,7 +142,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
 
   // Print the argument(except for string ), using standard PrintfDbg()
   else {
-    bool hlModifier = (strstr(fmt.c_str(), "hl") != NULL);
+    bool hlModifier = (strstr(fmt.c_str(), "hl") != nullptr);
     std::string hlFmt;
     if (hlModifier) {
       hlFmt = fmt;
@@ -190,7 +190,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
             amd::Os::printf(fmt.data(), fArg);
           }
         } else {
-          bool hhModifier = (strstr(fmt.c_str(), "hh") != NULL);
+          bool hhModifier = (strstr(fmt.c_str(), "hh") != nullptr);
           if (hhModifier) {
             // current implementation of printf in gcc 4.5.2 runtime libraries,
             // doesn`t recognize "hh" modifier ==>
@@ -419,7 +419,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
 
     // Get memory pointer to the staged buffer
     uint32_t* dbgBufferPtr = reinterpret_cast<uint32_t*>(dbgBuffer_);
-    if (NULL == dbgBufferPtr) {
+    if (nullptr == dbgBufferPtr) {
       return false;
     }
 
@@ -432,7 +432,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
     // Get a pointer to the buffer data
     dbgBufferPtr =
         reinterpret_cast<uint32_t*>(dbgBuffer_ + 2 * sizeof(uint32_t));
-    if (NULL == dbgBufferPtr) {
+    if (nullptr == dbgBufferPtr) {
       return false;
     }
 

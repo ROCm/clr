@@ -30,7 +30,7 @@ static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 //CLC_IN_PROCESS_CHANGE
-extern int openclFrontEnd(const char* cmdline, std::string*, std::string* typeInfo = NULL);
+extern int openclFrontEnd(const char* cmdline, std::string*, std::string* typeInfo = nullptr);
 
 namespace roc {
 
@@ -57,7 +57,7 @@ HSAILProgram::compileImpl_LC(
 
     Data* input = C->NewBufferReference(DT_CL,
         sourceCode.c_str(), sourceCode.length());
-    if (input == NULL) {
+    if (input == nullptr) {
         buildLog_ += "Error while creating data from source code";
         return false;
     }
@@ -65,7 +65,7 @@ HSAILProgram::compileImpl_LC(
     inputs.push_back(input);
 
     Buffer* output = C->NewBuffer(DT_LLVM_BC);
-    if (output == NULL) {
+    if (output == nullptr) {
         buildLog_ += "Error while creating buffer for the LLVM bitcode";
         return false;
     }
@@ -79,7 +79,7 @@ HSAILProgram::compileImpl_LC(
     std::string driverOptions(ostrstr.str());
 
     const char* xLang = options->oVariables->XLang;
-    if (xLang != NULL && strcmp(xLang, "cl")) {
+    if (xLang != nullptr && strcmp(xLang, "cl")) {
         buildLog_ += "Unsupported OpenCL language.\n";
     }
 
@@ -146,7 +146,7 @@ HSAILProgram::compileImpl_LC(
         f.close();
 
         Data* inc = C->NewFileReference(DT_CL_HEADER, headerFileNames[i]);
-        if (inc == NULL) {
+        if (inc == nullptr) {
             buildLog_ += "Error while creating data from headers";
             return false;
         }
@@ -190,7 +190,7 @@ HSAILProgram::compileImpl_LC(
     }
 
     File* pch = C->NewTempFile(DT_CL_HEADER);
-    if (pch == NULL || !pch->WriteData((const char*) hdr.first, hdr.second)) {
+    if (pch == nullptr || !pch->WriteData((const char*) hdr.first, hdr.second)) {
         buildLog_ += "Error while opening the opencl-c header ";
         return false;
     }

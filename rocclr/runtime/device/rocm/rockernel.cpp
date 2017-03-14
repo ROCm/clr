@@ -811,7 +811,7 @@ bool Kernel::init()
         program_->binaryElf(),
         RT_ARGUMENT_ARRAY,
         openClKernelName.c_str(),
-        NULL,
+        nullptr,
         &sizeOfArgList);
     if (errorCode != ACL_SUCCESS) {
         return false;
@@ -841,7 +841,7 @@ bool Kernel::init()
         program_->binaryElf(),
         RT_WORK_GROUP_SIZE,
         openClKernelName.c_str(),
-        NULL,
+        nullptr,
         &sizeOfWorkGroupSize);
     if (errorCode != ACL_SUCCESS) {
         return false;
@@ -903,7 +903,7 @@ bool Kernel::init()
     // Pull out printf metadata from the ELF
     size_t sizeOfPrintfList;
     errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_GPU_PRINTF_ARRAY,
-                                            openClKernelName.c_str(), NULL, &sizeOfPrintfList);
+                                            openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
     if (errorCode != ACL_SUCCESS){
     return false;
     }

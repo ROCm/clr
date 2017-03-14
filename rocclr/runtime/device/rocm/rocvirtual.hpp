@@ -115,7 +115,7 @@ public:
     public:
         //! Default constructor
         MemoryDependency()
-            : memObjectsInQueue_(NULL)
+            : memObjectsInQueue_(nullptr)
             , numMemObjectsInQueue_(0)
             , maxMemObjectsInQueue_(0) {}
 
@@ -177,7 +177,7 @@ public:
     void submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& cmd);
     void submitPerfCounter(amd::PerfCounterCommand& cmd){};
 
-    void flush(amd::Command* list = NULL, bool wait = false);
+    void flush(amd::Command* list = nullptr, bool wait = false);
     void submitFillMemory(amd::FillMemoryCommand& cmd);
     void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
 
