@@ -71,7 +71,7 @@ HSAILProgram::~HSAILProgram()
 #if !defined(WITH_LIGHTNING_COMPILER)
     acl_error error;
     // Free the elf binary
-    if (binaryElf_ != NULL) {
+    if (binaryElf_ != nullptr) {
         error = g_complibApi._aclBinaryFini(binaryElf_);
         if (error != ACL_SUCCESS) {
             LogWarning( "Error while destroying the acl binary \n" );
@@ -95,7 +95,7 @@ HSAILProgram::~HSAILProgram()
 
 HSAILProgram::HSAILProgram(roc::NullDevice& device)
     : Program(device),
-      binaryElf_(NULL)
+      binaryElf_(nullptr)
 {
     memset(&binOpts_, 0, sizeof(binOpts_));
     binOpts_.struct_size = sizeof(binOpts_);
@@ -113,7 +113,7 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device)
     hasGlobalStores_ = false;
 
 #if defined(WITH_LIGHTNING_COMPILER)
-    metadata_ = NULL;
+    metadata_ = nullptr;
 #endif // defined(WITH_LIGHTNING_COMPILER)
 }
 
@@ -134,7 +134,7 @@ HSAILProgram::initClBinary(char *binaryIn, size_t size)
         &decryptedBin, &decryptedSize, &encryptCode)) {
         return false;
     }
-    if (decryptedBin != NULL) {
+    if (decryptedBin != nullptr) {
         // It is decrypted binary.
         bin = decryptedBin;
         sz = decryptedSize;
@@ -143,7 +143,7 @@ HSAILProgram::initClBinary(char *binaryIn, size_t size)
     // Both 32-bit and 64-bit are allowed!
     if (!amd::isElfMagic(bin)) {
         // Invalid binary.
-        if (decryptedBin != NULL) {
+        if (decryptedBin != nullptr) {
             delete[]decryptedBin;
         }
         return false;
@@ -151,7 +151,7 @@ HSAILProgram::initClBinary(char *binaryIn, size_t size)
 
     clBinary()->setFlags(encryptCode);
 
-    return clBinary()->setBinary(bin, sz, (decryptedBin != NULL));
+    return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
 }
 
 
@@ -185,7 +185,7 @@ HSAILProgram::initBuild(amd::option::Options *options)
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     if (!clBinary()->setElfOut(useELF64 ? ELFCLASS64 : ELFCLASS32,
         (outFileName.size() >
-    0) ? outFileName.c_str() : NULL)) {
+    0) ? outFileName.c_str() : nullptr)) {
         LogError("Setup elf out for gpu failed");
         return false;
     }
@@ -201,7 +201,7 @@ HSAILProgram::finiBuild(bool isBuildGood)
 
     if (!isBuildGood) {
         // Prevent the encrypted binary form leaking out
-        clBinary()->setBinary(NULL, 0);
+        clBinary()->setBinary(nullptr, 0);
 
     }
 
@@ -225,24 +225,24 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
     bool containsShaderIsa = (type() == TYPE_EXECUTABLE);
     bool containsOpts = !(compileOptions_.empty() && linkOptions_.empty());
 #if !defined(WITH_LIGHTNING_COMPILER) // !defined(WITH_LIGHTNING_COMPILER)
-    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, NULL, &containsLlvmirText, &boolSize);
+    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, nullptr, &containsLlvmirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsLlvmirText = false;
     }
     // Checking compile & link options in .comment section
-    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_OPTIONS, NULL, &containsOpts, &boolSize);
+    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_OPTIONS, nullptr, &containsOpts, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsOpts = false;
     }
     // Checking HSAIL in .cg section
     containsHsailText = true;
-    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_HSAIL, NULL, &containsHsailText, &boolSize);
+    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_HSAIL, nullptr, &containsHsailText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsHsailText = false;
     }
     // Checking BRIG sections
     containsBrig = true;
-    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_BRIG, NULL, &containsBrig, &boolSize);
+    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_BRIG, nullptr, &containsBrig, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsBrig = false;
     }
@@ -264,7 +264,7 @@ HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& completeStage
         completeStages.push_back(from);
         from = ACL_TYPE_HSAIL_TEXT;
     }
-    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, NULL, &containsShaderIsa, &boolSize);
+    errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, nullptr, &containsShaderIsa, &boolSize);
     if (errorCode != ACL_SUCCESS) {
         containsShaderIsa = false;
     }
@@ -328,7 +328,7 @@ HSAILProgram::getNextCompilationStageFromBinary(amd::option::Options* options)
     aclType continueCompileFrom = ACL_TYPE_DEFAULT;
     binary_t binary = this->binary();
     // If the binary already exists
-    if ((binary.first != NULL) && (binary.second > 0)) {
+    if ((binary.first != nullptr) && (binary.second > 0)) {
 #if defined(WITH_LIGHTNING_COMPILER)
         void *mem = (void *) binary.first;
 #else // !defined(WITH_LIGHTNING_COMPILER)
@@ -443,7 +443,7 @@ HSAILProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t size)
     //Write binary to memory
 #if defined(WITH_LIGHTNING_COMPILER)
     if (type == TYPE_EXECUTABLE) {     // handle code object binary
-        assert(rawBinary != NULL && size != 0 && "must pass in the binary");
+        assert(rawBinary != nullptr && size != 0 && "must pass in the binary");
     }
     else {                  // handle LLVM binary
         if (llvmBinary_.empty()) {
@@ -484,7 +484,7 @@ HSAILProgram::linkImpl_LC(
     std::vector<Data*> inputs;
     for (auto program : (const std::vector<HSAILProgram*>&)inputPrograms) {
         if (program->llvmBinary_.empty()) {
-            if (program->clBinary() == NULL) {
+            if (program->clBinary() == nullptr) {
                 buildLog_ += "Internal error: Input program not compiled!\n";
                 return false;
             }
@@ -591,7 +591,7 @@ HSAILProgram::linkImpl(
         HSAILProgram *program = (HSAILProgram *)*it;
         // Check if the program was created with clCreateProgramWIthBinary
         binary_t binary = program->binary();
-        if ((binary.first != NULL) && (binary.second > 0)) {
+        if ((binary.first != nullptr) && (binary.second > 0)) {
             // Binary already exists -- we can also check if there is no
             // opencl source code
             // Need to check if LLVMIR exists in the binary
@@ -614,7 +614,7 @@ HSAILProgram::linkImpl(
         size_t boolSize = sizeof(bool);
         bool containsLLLVMIR = false;
         errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_,
-            RT_CONTAINS_LLVMIR, NULL, &containsLLLVMIR, &boolSize);
+            RT_CONTAINS_LLVMIR, nullptr, &containsLLLVMIR, &boolSize);
         if (errorCode != ACL_SUCCESS || !containsLLLVMIR) {
             buildLog_ +="Error while linking : Invalid binary (Missing LLVMIR section)";
             return false;
@@ -635,16 +635,16 @@ HSAILProgram::linkImpl(
             &binaries_to_link[1],
             ACL_TYPE_LLVMIR_BINARY,
             "-create-library",
-            NULL);
+            nullptr);
     }
     else {
         errorCode = g_complibApi._aclLink(device().compiler(),
             binaries_to_link[0],
             0,
-            NULL,
+            nullptr,
             ACL_TYPE_LLVMIR_BINARY,
             "-create-library",
-            NULL);
+            nullptr);
     }
     if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Failed to link programs";
@@ -669,7 +669,7 @@ HSAILProgram::linkImpl(
 static inline const char*
 hsa_strerror(hsa_status_t status)
 {
-    const char* str = NULL;
+    const char* str = nullptr;
     if (hsa_status_string(status, &str) == HSA_STATUS_SUCCESS) {
         return str;
     }
@@ -865,7 +865,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
 
     status = hsa_executable_create_alt(
         HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
-        NULL, &hsaExecutable_ );
+        nullptr, &hsaExecutable_ );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Executable for AMD HSA Code Object isn't created: ";
         buildLog_ += hsa_strerror(status);
@@ -885,7 +885,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
     }
 
     status = hsa_executable_load_agent_code_object(
-        hsaExecutable_, agent, codeObjectReader, NULL, NULL );
+        hsaExecutable_, agent, codeObjectReader, nullptr, nullptr );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: AMD HSA Code Object loading failed: ";
         buildLog_ += hsa_strerror(status);
@@ -896,7 +896,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
     hsa_code_object_reader_destroy(codeObjectReader);
 
     // Freeze the executable.
-    status = hsa_executable_freeze( hsaExecutable_, NULL );
+    status = hsa_executable_freeze( hsaExecutable_, nullptr );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Freezing the executable failed: ";
         buildLog_ += hsa_strerror(status);
@@ -909,7 +909,7 @@ HSAILProgram::setKernels_LC(amd::option::Options *options, void* binary, size_t 
     size_t progvarsWriteSize = 0;
 
     // Begin the Elf image from memory
-    Elf* e = elf_memory((char*) binary, binSize, NULL);
+    Elf* e = elf_memory((char*) binary, binSize, nullptr);
     if (elf_kind(e) != ELF_K_ELF) {
         buildLog_ += "Error while reading the ELF program binary\n";
         return false;
@@ -1144,7 +1144,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     case ACL_TYPE_ISA: {
 #if defined(WITH_LIGHTNING_COMPILER)
        binary_t isaBinary = binary();
-       if ((isaBinary.first != NULL) && (isaBinary.second > 0)) {
+       if ((isaBinary.first != nullptr) && (isaBinary.second > 0)) {
             return setKernels_LC(options, (void*) isaBinary.first, isaBinary.second );
         }
        else {
@@ -1192,7 +1192,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     // Create an executable.
     hsa_status_t status = hsa_executable_create_alt(
         HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
-        NULL, &hsaExecutable_
+        nullptr, &hsaExecutable_
     );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Failed to create executable: ";
@@ -1213,7 +1213,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     }
 
     status = hsa_executable_load_agent_code_object(
-        hsaExecutable_, hsaDevice, codeObjectReader, NULL, NULL );
+        hsaExecutable_, hsaDevice, codeObjectReader, nullptr, nullptr );
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: AMD HSA Code Object loading failed: ";
         buildLog_ += hsa_strerror(status);
@@ -1224,7 +1224,7 @@ HSAILProgram::linkImpl(amd::option::Options *options)
     hsa_code_object_reader_destroy(codeObjectReader);
 
     // Freeze the executable.
-    status = hsa_executable_freeze(hsaExecutable_, NULL);
+    status = hsa_executable_freeze(hsaExecutable_, nullptr);
     if (status != HSA_STATUS_SUCCESS) {
         buildLog_ += "Error: Failed to freeze executable: ";
         buildLog_ += hsa_strerror(status);
@@ -1369,9 +1369,9 @@ HSAILProgram::createBinary(amd::option::Options *options)
 bool
 HSAILProgram::initClBinary()
 {
-    if (clBinary_ == NULL) {
+    if (clBinary_ == nullptr) {
         clBinary_ = new ClBinary(static_cast<const Device &>(device()));
-        if (clBinary_ == NULL) {
+        if (clBinary_ == nullptr) {
             return false;
         }
     }
@@ -1381,9 +1381,9 @@ HSAILProgram::initClBinary()
 void
 HSAILProgram::releaseClBinary()
 {
-    if (clBinary_ != NULL) {
+    if (clBinary_ != nullptr) {
         delete clBinary_;
-        clBinary_ = NULL;
+        clBinary_ = nullptr;
     }
 }
 

@@ -5,7 +5,7 @@
 
 namespace roc {
 
-void* g_complibModule = NULL;
+void* g_complibModule = nullptr;
 struct CompLibApi g_complibApi;
 
 //
@@ -13,7 +13,7 @@ struct CompLibApi g_complibApi;
 //
 #define LOADSYMBOL(api) \
     g_complibApi._##api  = (pfn_##api) amd::Os::getSymbol(g_complibModule, #api); \
-    if( g_complibApi._##api == NULL ) { \
+    if( g_complibApi._##api == nullptr ) { \
     LogError ("amd::Os::getSymbol() for exported func " #api " failed."); \
         amd::Os::unloadLibrary(g_complibModule); \
         return false; \
@@ -22,7 +22,7 @@ struct CompLibApi g_complibApi;
 bool LoadCompLib(bool offline)
 {
     g_complibModule = amd::Os::loadLibrary("amdhsacl" LP64_SWITCH(LINUX_SWITCH("32",""), "64"));
-    if( g_complibModule == NULL ) {
+    if( g_complibModule == nullptr ) {
         if (!offline) {
             LogError( "amd::Os::loadLibrary() for loading of amdhsacl.dll failed.");
         }

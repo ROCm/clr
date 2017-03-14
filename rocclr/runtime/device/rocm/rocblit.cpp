@@ -15,7 +15,7 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup)
     , MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_)
     , completeOperation_(false)
-    , context_(NULL)
+    , context_(nullptr)
 {
 }
 
@@ -87,7 +87,7 @@ DmaBlitManager::readBuffer(
             // Find the partial size for unaligned copy
             size_t partial = reinterpret_cast<const char*>(dstHost) - tmpHost;
 
-            amd::Memory* pinned = NULL;
+            amd::Memory* pinned = nullptr;
             bool    first = true;
             size_t  tmpSize;
             size_t  pinAllocSize;
@@ -114,7 +114,7 @@ DmaBlitManager::readBuffer(
 
                 // Allocate a GPU resource for pinning
                 pinned = pinHostMemory(tmpHost, pinAllocSize, partial2);
-                if (pinned != NULL) {
+                if (pinned != nullptr) {
                     // Get device memory for this virtual device
                     Memory* dstMemory = dev().getRocMemory(pinned);
 
@@ -270,7 +270,7 @@ DmaBlitManager::writeBuffer(
             // Find the partial size for unaligned copy
             size_t partial = reinterpret_cast<const char*>(srcHost) - tmpHost;
 
-            amd::Memory* pinned = NULL;
+            amd::Memory* pinned = nullptr;
             bool    first = true;
             size_t  tmpSize;
             size_t  pinAllocSize;
@@ -298,7 +298,7 @@ DmaBlitManager::writeBuffer(
                 // Allocate a GPU resource for pinning
                 pinned = pinHostMemory(tmpHost, pinAllocSize, partial2);
 
-                if (pinned != NULL) {
+                if (pinned != nullptr) {
                     // Get device memory for this virtual device
                     Memory* srcMemory = dev().getRocMemory(pinned);
 
@@ -464,7 +464,7 @@ DmaBlitManager::copyBufferRect(
                 hsa_status_t status = hsa_amd_memory_async_copy(
                     (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
                     (reinterpret_cast<const_address>(src) + srcOffset),
-                    srcAgent, size[0], 0, NULL, completion_signal_);
+                    srcAgent, size[0], 0, nullptr, completion_signal_);
                 if (status != HSA_STATUS_SUCCESS) {
                     LogPrintfError("DMA buffer failed with code %d", status);
                     return false;
@@ -691,7 +691,7 @@ bool DmaBlitManager::hsaCopyStaged(
             memcpy(hsaBuffer, hostSrc + offset, size);
             status = hsa_amd_memory_async_copy(
                 hostDst + offset, dev().getBackendDevice(), hsaBuffer,
-                dev().getCpuAgent(), size, 0, NULL, completion_signal_);
+                dev().getCpuAgent(), size, 0, nullptr, completion_signal_);
             if (status == HSA_STATUS_SUCCESS) {
                 hsa_signal_value_t val =
                 hsa_signal_wait_acquire(completion_signal_,
@@ -715,7 +715,7 @@ bool DmaBlitManager::hsaCopyStaged(
         // Copy data from Device to Host
         status = hsa_amd_memory_async_copy(hsaBuffer,
             dev().getCpuAgent(), hostSrc + offset, dev().getBackendDevice(),
-            size, 0, NULL, completion_signal_);
+            size, 0, nullptr, completion_signal_);
         if (status == HSA_STATUS_SUCCESS) {
             hsa_signal_value_t val = hsa_signal_wait_acquire(
             completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
@@ -741,17 +741,17 @@ bool DmaBlitManager::hsaCopyStaged(
 KernelBlitManager::KernelBlitManager(
     VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup)
-    , program_(NULL)
-    , constantBuffer_(NULL)
+    , program_(nullptr)
+    , constantBuffer_(nullptr)
     , xferBufferSize_(0)
-    , lockXferOps_(NULL)
+    , lockXferOps_(nullptr)
 {
     for (uint i = 0; i < BlitTotal; ++i) {
-        kernels_[i] = NULL;
+        kernels_[i] = nullptr;
     }
 
     for (uint i = 0; i < MaxXferBuffers; ++i) {
-        xferBuffers_[i] = NULL;
+        xferBuffers_[i] = nullptr;
     }
 
     completeOperation_ = false;
@@ -760,25 +760,25 @@ KernelBlitManager::KernelBlitManager(
 KernelBlitManager::~KernelBlitManager()
 {
     for (uint i = 0; i < BlitTotal; ++i) {
-        if (NULL != kernels_[i]) {
+        if (nullptr != kernels_[i]) {
             kernels_[i]->release();
         }
     }
-    if (NULL != program_) {
+    if (nullptr != program_) {
         program_->release();
     }
 
-    if (NULL != context_) {
+    if (nullptr != context_) {
         // Release a dummy context
         context_->release();
     }
 
-    if (NULL != constantBuffer_) {
+    if (nullptr != constantBuffer_) {
         constantBuffer_->release();
     }
 
     for (uint i = 0; i < MaxXferBuffers; ++i) {
-        if (NULL != xferBuffers_[i]) {
+        if (nullptr != xferBuffers_[i]) {
             xferBuffers_[i]->release();
         }
     }
@@ -820,11 +820,11 @@ KernelBlitManager::createProgram(Device& device)
         // Create kernel objects for all blits
         for (uint i = 0; i < BlitTotal; ++i) {
             const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
-            if (symbol == NULL) {
+            if (symbol == nullptr) {
                 break;
             }
             kernels_[i] = new amd::Kernel(*program_, *symbol, BlitName[i]);
-            if (kernels_[i] == NULL) {
+            if (kernels_[i] == nullptr) {
                 break;
             }
             // Validate blit kernels for the scratch memory usage (pre SI)
@@ -840,12 +840,12 @@ KernelBlitManager::createProgram(Device& device)
     constantBuffer_ = new (*context_)
         amd::Buffer(*context_, CL_MEM_ALLOC_HOST_PTR, 4 * Ki);
 
-    if ((constantBuffer_ != NULL) && !constantBuffer_->create(NULL)) {
+    if ((constantBuffer_ != nullptr) && !constantBuffer_->create(nullptr)) {
         constantBuffer_->release();
-        constantBuffer_ = NULL;
+        constantBuffer_ = nullptr;
         return false;
     }
-    else if (constantBuffer_ == NULL) {
+    else if (constantBuffer_ == nullptr) {
         return false;
     }
 
@@ -859,12 +859,12 @@ KernelBlitManager::createProgram(Device& device)
             xferBuffers_[i] = new (*context_)
                 amd::Buffer(*context_, 0, xferBufferSize_);
 
-            if ((xferBuffers_[i] != NULL) && !xferBuffers_[i]->create(NULL)) {
+            if ((xferBuffers_[i] != nullptr) && !xferBuffers_[i]->create(nullptr)) {
                 xferBuffers_[i]->release();
-                xferBuffers_[i] = NULL;
+                xferBuffers_[i] = nullptr;
                 return false;
             }
-            else if (xferBuffers_[i] == NULL) {
+            else if (xferBuffers_[i] == nullptr) {
                 return false;
             }
 
@@ -882,7 +882,7 @@ KernelBlitManager::createProgram(Device& device)
     }
 
     lockXferOps_ = new amd::Monitor("Transfer Ops Lock", true);
-    if (NULL == lockXferOps_) {
+    if (nullptr == lockXferOps_) {
         return false;
     }
 
@@ -1065,7 +1065,7 @@ KernelBlitManager::copyBufferToImageKernel(
         // todo ROC runtime has a problem with a view for this format
         (dstImage->getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
         dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
-        if (dstView != NULL) {
+        if (dstView != nullptr) {
             rejected = false;
             releaseView = true;
         }
@@ -1160,7 +1160,7 @@ KernelBlitManager::copyBufferToImageKernel(
 
     // Execute the blit
     address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
@@ -1269,7 +1269,7 @@ KernelBlitManager::copyImageToBufferKernel(
         // todo ROC runtime has a problem with a view for this format
         (srcImage->getImageFormat().image_channel_data_type != CL_UNORM_INT_101010)) {
         srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
-        if (srcView != NULL) {
+        if (srcView != nullptr) {
             rejected = false;
             releaseView = true;
         }
@@ -1369,7 +1369,7 @@ KernelBlitManager::copyImageToBufferKernel(
 
     // Execute the blit
     address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
@@ -1423,9 +1423,9 @@ KernelBlitManager::copyImage(
     // Attempt to create a view if the format was rejected
     if (rejected) {
         srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
-        if (srcView != NULL) {
+        if (srcView != nullptr) {
             dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
-            if (dstView != NULL) {
+            if (dstView != nullptr) {
                 rejected = false;
                 releaseView = true;
             }
@@ -1513,7 +1513,7 @@ KernelBlitManager::copyImage(
 
     // Execute the blit
     address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
@@ -1588,7 +1588,7 @@ KernelBlitManager::readImage(
         size_t  partial;
         amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
 
-        if (amdMemory == NULL) {
+        if (amdMemory == nullptr) {
             // Force SW copy
             result = DmaBlitManager::readImage(srcMemory, dstHost,
                 origin, size, rowPitch, slicePitch, entire);
@@ -1642,7 +1642,7 @@ KernelBlitManager::writeImage(
         size_t  partial;
         amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
 
-        if (amdMemory == NULL) {
+        if (amdMemory == nullptr) {
             // Force SW copy
             result = DmaBlitManager::writeImage(
                 srcHost, dstMemory, origin, size, rowPitch, slicePitch, entire);
@@ -1789,7 +1789,7 @@ KernelBlitManager::copyBufferRect(
 
     // Execute the blit
     address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
     synchronize();
 
@@ -1822,7 +1822,7 @@ KernelBlitManager::readBuffer(
             size_t  partial;
             amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
 
-            if (amdMemory == NULL) {
+            if (amdMemory == nullptr) {
                 // Force SW copy
                 result = DmaBlitManager::readBuffer(
                     srcMemory, dstHost, origin, size, entire);
@@ -1878,7 +1878,7 @@ KernelBlitManager::readBufferRect(
         size_t  partial;
         amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
 
-        if (amdMemory == NULL) {
+        if (amdMemory == nullptr) {
             // Force SW copy
             result = DmaBlitManager::readBufferRect(
                 srcMemory, dstHost, bufRect, hostRect, size, entire);
@@ -1936,7 +1936,7 @@ KernelBlitManager::writeBuffer(
             size_t  partial;
             amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
 
-            if (amdMemory == NULL) {
+            if (amdMemory == nullptr) {
                 // Force SW copy
                 result = DmaBlitManager::writeBuffer(
                     srcHost, dstMemory, origin, size, entire);
@@ -1993,7 +1993,7 @@ KernelBlitManager::writeBufferRect(
         size_t  partial;
         amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
 
-        if (amdMemory == NULL) {
+        if (amdMemory == nullptr) {
             // Force DMA copy with staging
             result = DmaBlitManager::writeBufferRect(
                 srcHost, dstMemory, hostRect, bufRect, size, entire);
@@ -2060,15 +2060,15 @@ KernelBlitManager::fillBuffer(
         // Program kernels arguments for the fill operation
         cl_mem  mem = as_cl<amd::Memory>(memory.owner());
         if (dwordAligned) {
-            setArgument(kernels_[fillType], 0, sizeof(cl_mem), NULL);
+            setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
             setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
         }
         else {
             setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-            setArgument(kernels_[fillType], 1, sizeof(cl_mem), NULL);
+            setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
         }
         Memory* gpuCB = dev().getRocMemory(constantBuffer_);
-        if (gpuCB == NULL) {
+        if (gpuCB == nullptr) {
             return false;
         }
         void* constBuf = constantBuffer_->getHostMem();
@@ -2091,7 +2091,7 @@ KernelBlitManager::fillBuffer(
 
         // Execute the blit
         address parameters = captureArguments(kernels_[fillType]);
-        result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, NULL);
+        result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
         releaseArguments(parameters);
     }
 
@@ -2187,7 +2187,7 @@ KernelBlitManager::copyBuffer(
 
         // Execute the blit
         address parameters = captureArguments(kernels_[blitType]);
-        result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, NULL);
+        result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
         releaseArguments(parameters);
     }
     else {
@@ -2271,7 +2271,7 @@ KernelBlitManager::fillImage(
     // If the image format was rejected, then attempt to create a view
     if (rejected) {
         memView = createView(gpuMem(memory), newFormat, CL_MEM_WRITE_ONLY);
-        if (memView != NULL) {
+        if (memView != nullptr) {
             rejected = false;
             releaseView = true;
         }
@@ -2355,7 +2355,7 @@ KernelBlitManager::fillImage(
 
     // Execute the blit
     address parameters = captureArguments(kernels_[fillType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, NULL);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
     releaseArguments(parameters);
     if (releaseView) {
         // todo SRD programming could be changed to avoid a stall
@@ -2391,16 +2391,16 @@ DmaBlitManager::pinHostMemory(
 
     amdMemory = gpu().findPinnedMem(tmpHost, pinAllocSize);
 
-    if (NULL != amdMemory) {
+    if (nullptr != amdMemory) {
         return amdMemory;
     }
 
     amdMemory = new(*context_)
         amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
 
-    if ((amdMemory != NULL) && !amdMemory->create(tmpHost, SysMem)) {
+    if ((amdMemory != nullptr) && !amdMemory->create(tmpHost, SysMem)) {
         amdMemory->release();
-        return NULL;
+        return nullptr;
     }
 
     // Get device memory for this virtual device
@@ -2408,14 +2408,14 @@ DmaBlitManager::pinHostMemory(
     amdMemory->setVirtualDevice(&gpu());
     Memory* srcMemory = dev().getRocMemory(amdMemory);
 
-    if (srcMemory == NULL) {
+    if (srcMemory == nullptr) {
         // Release all pinned memory and attempt pinning again
         gpu().releasePinnedMem();
         srcMemory = dev().getRocMemory(amdMemory);
-        if (srcMemory == NULL) {
+        if (srcMemory == nullptr) {
             // Release memory
             amdMemory->release();
-            amdMemory = NULL;
+            amdMemory = nullptr;
         }
     }
 
@@ -2433,23 +2433,23 @@ KernelBlitManager::createView(
     amd::Image* image = parentImage->createView(
         parent.owner()->getContext(), format, &gpu(), 0, flags);
 
-    if (image == NULL) {
+    if (image == nullptr) {
         LogError("[OCL] Fail to allocate view of image object");
-        return NULL;
+        return nullptr;
     }
 
     Image* devImage = new roc::Image(dev(), *image);
-    if (devImage == NULL) {
+    if (devImage == nullptr) {
         LogError("[OCL] Fail to allocate device mem object for the view");
         image->release();
-        return NULL;
+        return nullptr;
     }
 
     if (!devImage->createView(parent)) {
         LogError("[OCL] Fail to create device mem object for the view");
         delete devImage;
         image->release();
-        return NULL;
+        return nullptr;
     }
 
     image->replaceDeviceMemory(&dev_, devImage);

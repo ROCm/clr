@@ -81,11 +81,11 @@ public:
     const Settings &settings() const { return reinterpret_cast<Settings &>(*settings_); }
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
-    virtual device::Program *createProgram(amd::option::Options* options = NULL);
+    virtual device::Program *createProgram(amd::option::Options* options = nullptr);
     const AMDDeviceInfo& deviceInfo() const {
         return deviceInfo_;
     }
-    //! Gets the backend device for the NULL device type
+    //! Gets the backend device for the Null device type
     virtual hsa_agent_t getBackendDevice() const {
         ShouldNotReachHere();
         const hsa_agent_t kInvalidAgent = { 0 };
@@ -105,9 +105,9 @@ public:
 
     //! Create a new virtual device environment.
     virtual device::VirtualDevice* createVirtualDevice(
-        amd::CommandQueue* queue = NULL) {
+        amd::CommandQueue* queue = nullptr) {
         ShouldNotReachHere();
-        return NULL;
+        return nullptr;
     }
 
     virtual bool registerSvmMemory(void* ptr, size_t size) const {
@@ -119,10 +119,10 @@ public:
         ShouldNotReachHere();
     }
 
-    //! Just returns NULL for the dummy device
+    //! Just returns nullptr for the dummy device
     virtual device::Memory* createMemory(amd::Memory& owner) const {
         ShouldNotReachHere();
-        return NULL; }
+        return nullptr; }
 
     //! Sampler object allocation
     virtual bool createSampler(
@@ -134,16 +134,16 @@ public:
         return true;
     }
 
-    //! Just returns NULL for the dummy device
+    //! Just returns nullptr for the dummy device
     virtual device::Memory* createView(
         amd::Memory& owner,             //!< Owner memory object
         const device::Memory& parent    //!< Parent device memory object for the view
         ) const {
             ShouldNotReachHere();
-            return NULL;
+            return nullptr;
     }
 
-    //! Just returns NULL for the dummy device
+    //! Just returns nullptr for the dummy device
     virtual void* svmAlloc(
         amd::Context& context,    //!< The context used to create a buffer
         size_t size,                    //!< size of svm spaces
@@ -152,10 +152,10 @@ public:
         void* svmPtr                    //!< existing svm pointer for mGPU case
         ) const {
             ShouldNotReachHere();
-            return NULL;
+            return nullptr;
     }
 
-    //! Just returns NULL for the dummy device
+    //! Just returns nullptr for the dummy device
     virtual void svmFree(
         void* ptr                    //!< svm pointer needed to be freed
         ) const {
@@ -322,10 +322,10 @@ public:
 
     //! Instantiate a new virtual device
     virtual device::VirtualDevice *createVirtualDevice(
-        amd::CommandQueue* queue = NULL);
+        amd::CommandQueue* queue = nullptr);
 
     //! Construct an HSAIL program object from the ELF assuming it is valid
-    virtual device::Program *createProgram(amd::option::Options* options = NULL);
+    virtual device::Program *createProgram(amd::option::Options* options = nullptr);
 
     virtual device::Memory *createMemory(amd::Memory &owner) const;
 
@@ -336,16 +336,16 @@ public:
         ) const
     {
         //! \todo HSA team has to implement sampler allocation
-        *sampler = NULL;
+        *sampler = nullptr;
         return true;
     }
 
 
-    //! Just returns NULL for the dummy device
+    //! Just returns nullptr for the dummy device
     virtual device::Memory *createView(
         amd::Memory &owner,     //!< Owner memory object
         const device::Memory &parent //!< Parent device memory object for the view
-        ) const { return NULL; }
+        ) const { return nullptr; }
 
     //! Reallocates the provided buffer object
     virtual bool reallocMemory(amd::Memory &owner) const {return true; }
@@ -381,7 +381,7 @@ public:
 
     void memFree(void *ptr, size_t size) const;
 
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = NULL) const;
+    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = nullptr) const;
 
     virtual void svmFree(void* ptr) const;
 

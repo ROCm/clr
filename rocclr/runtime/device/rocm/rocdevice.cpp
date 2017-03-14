@@ -164,8 +164,8 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
 
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-    if ((hsaSettings == NULL) || !hsaSettings->create(false)) {
-            LogError("Error creating settings for NULL HSA device");
+    if ((hsaSettings == nullptr) || !hsaSettings->create(false)) {
+            LogError("Error creating settings for nullptr HSA device");
             return false;
     }
     // Report the device name
@@ -200,8 +200,8 @@ Device::Device(hsa_agent_t bkendDevice)
 Device::~Device()
 {
     // Release cached map targets
-    for (uint i = 0; mapCache_ != NULL && i < mapCache_->size(); ++i) {
-        if ((*mapCache_)[i] != NULL) {
+    for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
+        if ((*mapCache_)[i] != nullptr) {
             (*mapCache_)[i]->release();
         }
     }
@@ -215,32 +215,32 @@ Device::~Device()
     // Destroy transfer queue
     if (xferQueue_ && xferQueue_->terminate()) {
         delete xferQueue_;
-        xferQueue_ = NULL;
+        xferQueue_ = nullptr;
     }
 
     if (blitProgram_) {
         delete blitProgram_;
-        blitProgram_ = NULL;
+        blitProgram_ = nullptr;
     }
 
-    if (context_ != NULL) {
+    if (context_ != nullptr) {
         context_->release();
     }
 
     if (info_.extensions_) {
         delete[]info_.extensions_;
-        info_.extensions_ = NULL;
+        info_.extensions_ = nullptr;
     }
 
     if (settings_) {
         delete settings_;
-        settings_ = NULL;
+        settings_ = nullptr;
     }
 }
 bool NullDevice::initCompiler(bool isOffline) {
 #if !defined(WITH_LIGHTNING_COMPILER)
      // Initializes g_complibModule and g_complibApi if they were not initialized
-    if( g_complibModule == NULL ){
+    if( g_complibModule == nullptr ){
         if (!LoadCompLib(isOffline)) {
             if (!isOffline) {
                 LogError("Error - could not find the compiler library");
@@ -252,7 +252,7 @@ bool NullDevice::initCompiler(bool isOffline) {
     //This is destroyed in Device::teardown
     acl_error error;
     if (!compilerHandle_) {
-        compilerHandle_ = g_complibApi._aclCompilerInit(NULL, &error);
+        compilerHandle_ = g_complibApi._aclCompilerInit(nullptr, &error);
         if (error != ACL_SUCCESS) {
             LogError("Error initializing the compiler handle");
             return false;
@@ -265,16 +265,16 @@ bool NullDevice::initCompiler(bool isOffline) {
 bool NullDevice::destroyCompiler() {
 #if defined(WITH_LIGHTNING_COMPILER)
     delete compilerHandle_;
-    compilerHandle_ = NULL;
+    compilerHandle_ = nullptr;
 #else // !defined(WITH_LIGHTNING_COMPILER)
-    if (compilerHandle_ != NULL) {
+    if (compilerHandle_ != nullptr) {
         acl_error error = g_complibApi._aclCompilerFini(compilerHandle_);
         if (error != ACL_SUCCESS) {
             LogError("Error closing the compiler");
             return false;
         }
     }
-    if( g_complibModule != NULL ){
+    if( g_complibModule != nullptr ){
         UnloadCompLib();
     }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
@@ -326,12 +326,12 @@ bool NullDevice::init() {
 NullDevice::~NullDevice() {
         if (info_.extensions_) {
             delete[]info_.extensions_;
-            info_.extensions_ = NULL;
+            info_.extensions_ = nullptr;
         }
 
         if (settings_) {
             delete settings_;
-            settings_ = NULL;
+            settings_ = nullptr;
         }
 }
 
@@ -470,7 +470,7 @@ bool Device::init()
         sizeof(amd_loader_ext_table), &amd_loader_ext_table);
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_iterate_agents(iterateAgentCallback, NULL)) {
+        hsa_iterate_agents(iterateAgentCallback, nullptr)) {
         return false;
     }
 
@@ -608,30 +608,30 @@ Device::create()
 
     // Create a dummy context
     context_ = new amd::Context(devices, info);
-    if (context_ == NULL) {
+    if (context_ == nullptr) {
         return false;
     }
 
     blitProgram_ = new BlitProgram(context_);
     // Create blit programs
-    if (blitProgram_ == NULL || !blitProgram_->create(this)) {
+    if (blitProgram_ == nullptr || !blitProgram_->create(this)) {
         delete blitProgram_;
-        blitProgram_ = NULL;
+        blitProgram_ = nullptr;
         LogError("Couldn't create blit kernels!");
         return false;
     }
 
     mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
-    if (NULL == mapCacheOps_) {
+    if (nullptr == mapCacheOps_) {
         return false;
     }
 
     mapCache_ = new std::vector<amd::Memory*>();
-    if (mapCache_ == NULL) {
+    if (mapCache_ == nullptr) {
         return false;
     }
     // Use just 1 entry by default for the map cache
-    mapCache_->push_back(NULL);
+    mapCache_->push_back(nullptr);
 
     if (settings().stagedXferSize_ != 0) {
         // Initialize staged write buffers
@@ -682,7 +682,7 @@ Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev)
     // Create HSA settings
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-    if ((hsaSettings == NULL) ||
+    if ((hsaSettings == nullptr) ||
         !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL))) {
         return false;
     }
@@ -731,7 +731,7 @@ Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev)
 
 hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool,
                                                   void* data) {
-    if (data == NULL) {
+    if (data == nullptr) {
         return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
 
@@ -764,7 +764,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool,
 
 hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool,
                                                   void* data) {
-    if (data == NULL) {
+    if (data == nullptr) {
         return HSA_STATUS_ERROR_INVALID_ARGUMENT;
     }
 
@@ -1173,7 +1173,7 @@ Device::populateOCLDeviceConstants()
 device::VirtualDevice*
 Device::createVirtualDevice(amd::CommandQueue* queue)
 {
-    bool profiling = (queue != NULL) &&
+    bool profiling = (queue != nullptr) &&
         queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
 
     // Initialization of heap and other resources occur during the command
@@ -1182,7 +1182,7 @@ Device::createVirtualDevice(amd::CommandQueue* queue)
 
     if (!virtualDevice->create(profiling)) {
         delete virtualDevice;
-        return NULL;
+        return nullptr;
     }
 
     if (profiling) {
@@ -1281,7 +1281,7 @@ Device::findMapTarget(size_t size) const
     // Must be serialised for access
     amd::ScopedLock lk(*mapCacheOps_);
 
-    amd::Memory*    map = NULL;
+    amd::Memory*    map = nullptr;
     size_t          minSize = 0;
     size_t          maxSize = 0;
     uint            mapId = mapCache_->size();
@@ -1289,7 +1289,7 @@ Device::findMapTarget(size_t size) const
 
     // Find if the list has a map target of appropriate size
     for (uint i = 0; i < mapCache_->size(); i++) {
-        if ((*mapCache_)[i] != NULL) {
+        if ((*mapCache_)[i] != nullptr) {
             // Requested size is smaller than the entry size
             if (size < (*mapCache_)[i]->getSize()) {
                 if ((minSize == 0) ||
@@ -1316,12 +1316,12 @@ Device::findMapTarget(size_t size) const
     // Check if we found any map target
     if (mapId < mapCache_->size()) {
         map = (*mapCache_)[mapId];
-        (*mapCache_)[mapId] = NULL;
+        (*mapCache_)[mapId] = nullptr;
     }
     // If cache is full, then release the biggest map target
     else if (releaseId < mapCache_->size()) {
         (*mapCache_)[releaseId]->release();
-        (*mapCache_)[releaseId] = NULL;
+        (*mapCache_)[releaseId] = nullptr;
     }
 
     return map;
@@ -1339,7 +1339,7 @@ Device::addMapTarget(amd::Memory* memory) const
     }
     // Find if the list has a map target of appropriate size
     for (uint i = 0; i < mapCache_->size(); ++i) {
-        if ((*mapCache_)[i] == NULL) {
+        if ((*mapCache_)[i] == nullptr) {
             (*mapCache_)[i] = memory;
             return true;
         }
@@ -1361,7 +1361,7 @@ Device::getRocMemory(amd::Memory* mem) const
 device::Memory*
 Device::createMemory(amd::Memory &owner) const
 {
-    roc::Memory* memory = NULL;
+    roc::Memory* memory = nullptr;
     if (owner.asBuffer()) {
         memory = new roc::Buffer(*this, owner);
     }
@@ -1372,8 +1372,8 @@ Device::createMemory(amd::Memory &owner) const
         LogError("Unknown memory type");
     }
 
-    if (memory == NULL) {
-        return NULL;
+    if (memory == nullptr) {
+        return nullptr;
     }
 
     bool result = memory->create();
@@ -1381,7 +1381,7 @@ Device::createMemory(amd::Memory &owner) const
     if (!result) {
         LogError("Failed creating memory");
         delete memory;
-        return NULL;
+        return nullptr;
     }
 
     // Transfer data only if OCL context has one device.
@@ -1395,25 +1395,25 @@ Device::createMemory(amd::Memory &owner) const
         amd::Image* imageView = owner.asImage()->createView(
             owner.getContext(), owner.asImage()->getImageFormat(), xferQueue());
 
-        if (imageView == NULL) {
+        if (imageView == nullptr) {
           LogError("[OCL] Fail to allocate view of image object");
-          return NULL;
+          return nullptr;
         }
 
         Image* devImageView =
             new roc::Image(static_cast<const Device&>(*this), *imageView);
-        if (devImageView == NULL) {
+        if (devImageView == nullptr) {
           LogError("[OCL] Fail to allocate device mem object for the view");
           imageView->release();
-          return NULL;
+          return nullptr;
         }
 
-        if (devImageView != NULL &&
+        if (devImageView != nullptr &&
             !devImageView->createView(static_cast<roc::Image&>(*memory))) {
           LogError("[OCL] Fail to create device mem object for the view");
           delete devImageView;
           imageView->release();
-          return NULL;
+          return nullptr;
         }
 
         imageView->replaceDeviceMemory(this, devImageView);
@@ -1436,7 +1436,7 @@ Device::createMemory(amd::Memory &owner) const
 
     if (!result) {
         delete memory;
-        return NULL;
+        return nullptr;
     }
 
     return memory;
@@ -1444,7 +1444,7 @@ Device::createMemory(amd::Memory &owner) const
 
 void*
 Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
-    void* ptr = NULL;
+    void* ptr = nullptr;
     const hsa_amd_memory_pool_t segment =
         (!atomics)
             ? (system_coarse_segment_.handle != 0) ? system_coarse_segment_
@@ -1454,14 +1454,14 @@ Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
     hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
     if (stat != HSA_STATUS_SUCCESS) {
         LogError("Fail allocation host memory");
-        return NULL;
+        return nullptr;
     }
 
     stat = hsa_amd_agents_allow_access(gpu_agents_.size(), &gpu_agents_[0],
-                                       NULL, ptr);
+                                       nullptr, ptr);
     if (stat != HSA_STATUS_SUCCESS) {
       LogError("Fail hsa_amd_agents_allow_access");
-      return NULL;
+      return nullptr;
     }
 
     return ptr;
@@ -1477,22 +1477,22 @@ void *
 Device::deviceLocalAlloc(size_t size) const
 {
     if (gpuvm_segment_.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
-        return NULL;
+        return nullptr;
     }
 
-    void *ptr = NULL;
+    void *ptr = nullptr;
     hsa_status_t stat =
         hsa_amd_memory_pool_allocate(gpuvm_segment_, size, 0, &ptr);
     if (stat != HSA_STATUS_SUCCESS) {
         LogError("Fail allocation local memory");
-        return NULL;
+        return nullptr;
     }
 
     stat = hsa_memory_assign_agent(ptr, _bkendDevice, HSA_ACCESS_PERMISSION_RW);
     if (stat != HSA_STATUS_SUCCESS) {
       LogError("Fail assigning local memory to agent");
       memFree(ptr, size);
-      return NULL;
+      return nullptr;
     }
 
     return ptr;
@@ -1511,25 +1511,25 @@ Device::memFree(void *ptr, size_t size) const
 void*
 Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const
 {
-    amd::Memory* mem = NULL;
-    if (NULL == svmPtr) {
+    amd::Memory* mem = nullptr;
+    if (nullptr == svmPtr) {
         bool atomics = (flags & CL_MEM_SVM_ATOMICS) != 0;
         void* ptr = hostAlloc(size, alignment, atomics);
 
-        if (ptr != NULL) {
+        if (ptr != nullptr) {
             // Copy paste from ORCA code.
             // create a hidden buffer, which will allocated on the device later
             mem = new (context)
                 amd::Buffer(context, CL_MEM_USE_HOST_PTR, size, ptr);
-            if (mem == NULL) {
+            if (mem == nullptr) {
               LogError("failed to create a svm mem object!");
-              return NULL;
+              return nullptr;
             }
 
             if (!mem->create(ptr)) {
               LogError("failed to create a svm hidden buffer!");
               mem->release();
-              return NULL;
+              return nullptr;
             }
 
             // add the information to context so that we can use it later.
@@ -1538,15 +1538,15 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
             return ptr;
         }
         else {
-            return NULL;
+            return nullptr;
         }
     } else {
         // Copy paste from ORCA code.
         // Find the existing amd::mem object
         mem = amd::SvmManager::FindSvmBuffer(svmPtr);
 
-        if (NULL == mem) {
-          return NULL;
+        if (nullptr == mem) {
+          return nullptr;
         }
 
         return svmPtr;
@@ -1556,9 +1556,9 @@ Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_me
 void
 Device::svmFree(void* ptr) const
 {
-    amd::Memory * svmMem = NULL;
+    amd::Memory * svmMem = nullptr;
     svmMem = amd::SvmManager::FindSvmBuffer(ptr);
-    if (NULL != svmMem) {
+    if (nullptr != svmMem) {
         svmMem->release();
         amd::SvmManager::RemoveSvmBuffer(ptr);
         hostFree(ptr);

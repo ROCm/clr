@@ -147,7 +147,7 @@ private:
     /* \brief Returns the next stage to compile from, based on sections and options in binary
      */
     aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-    bool saveBinaryAndSetType(type_t type, void* binary = NULL, size_t size = 0);
+    bool saveBinaryAndSetType(type_t type, void* binary = nullptr, size_t size = 0);
 
     //! Disable default copy constructor
     HSAILProgram(const HSAILProgram&) = delete;

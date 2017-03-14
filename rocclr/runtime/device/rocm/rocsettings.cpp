@@ -38,7 +38,7 @@ Settings::Settings()
     // operates or is programmed to be in Coherent mode.
     // Users can turn it off for hardware that does not
     // support this feature naturally
-    char *nonCoherentMode = NULL;
+    char *nonCoherentMode = nullptr;
     nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
     enableNCMode_ = (nonCoherentMode)? true : false;
 
@@ -48,7 +48,7 @@ Settings::Settings()
     // devices that do not support this feature.
     //
     // @note Update appropriate field of device::Settings
-    char *partialDispatch = NULL;
+    char *partialDispatch = nullptr;
     partialDispatch = getenv("OPENCL_DISABLE_PARTIAL_DISPATCH");
     enablePartialDispatch_ = (partialDispatch) ? false : true;
     partialDispatch_ = (partialDispatch) ? false : true;

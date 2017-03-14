@@ -27,7 +27,7 @@ namespace roc {
 Memory::Memory(const roc::Device &dev, amd::Memory &owner)
     : device::Memory(owner)
     , dev_(dev)
-    , deviceMemory_(NULL)
+    , deviceMemory_(nullptr)
     , kind_(MEMORY_KIND_NORMAL)
     , pinnedMemory_(nullptr)
 {
@@ -36,7 +36,7 @@ Memory::Memory(const roc::Device &dev, amd::Memory &owner)
 Memory::Memory(const roc::Device &dev, size_t size)
     : device::Memory(size)
     , dev_(dev)
-    , deviceMemory_(NULL)
+    , deviceMemory_(nullptr)
     , kind_(MEMORY_KIND_NORMAL)
     , pinnedMemory_(nullptr)
 {
@@ -58,9 +58,9 @@ Memory::~Memory()
 bool
 Memory::allocateMapMemory(size_t allocationSize)
 {
-    assert(mapMemory_ == NULL);
+    assert(mapMemory_ == nullptr);
 
-    void *mapData = NULL;
+    void *mapData = nullptr;
 
     amd::Memory* mapMemory = dev().findMapTarget(owner()->getSize());
     if (mapMemory == nullptr) {
@@ -68,7 +68,7 @@ Memory::allocateMapMemory(size_t allocationSize)
         mapMemory = new (dev().context()) amd::Buffer(
             dev().context(), CL_MEM_ALLOC_HOST_PTR, owner()->getSize());
 
-        if ((mapMemory == NULL) || (!mapMemory->create())) {
+        if ((mapMemory == nullptr) || (!mapMemory->create())) {
             LogError("[OCL] Fail to allocate map target object");
             if (mapMemory) {
               mapMemory->release();
@@ -112,7 +112,7 @@ Memory::allocMapTarget(
 
     // Otherwise, check for host memory.
     void *hostMem = owner()->getHostMem();
-    if (hostMem != NULL) {
+    if (hostMem != nullptr) {
         return (static_cast<char *>(hostMem) + origin[0]);
     }
 
@@ -120,14 +120,14 @@ Memory::allocMapTarget(
     if (indirectMapCount_ == 1) {
         if (!allocateMapMemory(owner()->getSize())) {
             decIndMapCount();
-            return NULL;
+            return nullptr;
         }
     }
     else {
         // Did the map resource allocation fail?
-        if (mapMemory_ == NULL) {
+        if (mapMemory_ == nullptr) {
             LogError("Could not map target resource");
-            return NULL;
+            return nullptr;
         }
     }
     return reinterpret_cast<address>(mapMemory_->getHostMem()) + origin[0];
@@ -146,7 +146,7 @@ Memory::decIndMapCount()
 
     // Decrement the counter and release indirect map if it's the last op
     if (--indirectMapCount_ == 0 &&
-        mapMemory_ != NULL) {
+        mapMemory_ != nullptr) {
         if (!dev().addMapTarget(mapMemory_)) {
             // Release the buffer object containing the map data.
             mapMemory_->release();
@@ -168,13 +168,13 @@ Memory::cpuMap(
     void * mapTarget =
         allocMapTarget(amd::Coord3D(0), amd::Coord3D(0), 0, rowPitch, slicePitch);
 
-    assert(mapTarget != NULL);
+    assert(mapTarget != nullptr);
 
     if (!isHostMemDirectAccess()) {
         if (!vDev.blitMgr().readBuffer(
             *this, mapTarget, amd::Coord3D(0), amd::Coord3D(size()), true)) {
             decIndMapCount();
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -220,7 +220,7 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metada
   in.obj=owner()->getInteropObj()->asGLObject()->getGLName();
   in.miplevel=miplevel;
   in.out_driver_data_size=0;
-  in.out_driver_data=NULL;
+  in.out_driver_data=nullptr;
 
   if(!dev().mesa().Export(in, out))
     return false;
@@ -234,7 +234,7 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metada
     return false;
 
   kind_=MEMORY_KIND_INTEROP;
-  assert(deviceMemory_!=NULL && "Interop map failed to produce a pointer!");
+  assert(deviceMemory_!=nullptr && "Interop map failed to produce a pointer!");
 
   return true;
 #endif
@@ -244,7 +244,7 @@ void Memory::destroyInteropBuffer()
 {
   assert(kind_==MEMORY_KIND_INTEROP && "Memory must be interop type.");
   hsa_amd_interop_unmap_buffer(deviceMemory_);
-  deviceMemory_=NULL;
+  deviceMemory_=nullptr;
 }
 
 bool
@@ -608,7 +608,7 @@ Buffer::~Buffer()
 void
 Buffer::destroy()
 {
-    if (owner()->parent()  != NULL)  {
+    if (owner()->parent()  != nullptr)  {
         return;
     }
 
@@ -657,7 +657,7 @@ Buffer::create()
 
     //Interop buffer
     if(owner()->isInterop())
-      return createInteropBuffer(GL_ARRAY_BUFFER, 0, NULL, NULL);
+      return createInteropBuffer(GL_ARRAY_BUFFER, 0, nullptr, nullptr);
 
     if (nullptr != owner()->parent()) {
         amd::Memory& parent = *owner()->parent();
@@ -694,12 +694,12 @@ Buffer::create()
     if (!(memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
         deviceMemory_ = dev().deviceLocalAlloc(size());
 
-        if (deviceMemory_ == NULL) {
+        if (deviceMemory_ == nullptr) {
             // TODO: device memory is not enabled yet.
             // Fallback to system memory if exist.
             flags_ |= HostMemoryDirectAccess;
             if (dev().agent_profile() == HSA_PROFILE_FULL &&
-                owner()->getHostMem() != NULL) {
+                owner()->getHostMem() != nullptr) {
                 deviceMemory_ = owner()->getHostMem();
                 assert(
                     amd::isMultipleOf(
@@ -743,9 +743,9 @@ Buffer::create()
             return ret;
         }
 
-        return deviceMemory_ != NULL;
+        return deviceMemory_ != nullptr;
     }
-    assert(owner()->getHostMem() != NULL);
+    assert(owner()->getHostMem() != nullptr);
 
     flags_ |= HostMemoryDirectAccess;
 
@@ -756,7 +756,7 @@ Buffer::create()
             hsa_memory_register(deviceMemory_, size());
         }
 
-        return deviceMemory_ != NULL;
+        return deviceMemory_ != nullptr;
     }
 
     if (owner()->getSvmPtr() != owner()->getHostMem()) {
@@ -775,7 +775,7 @@ Buffer::create()
         deviceMemory_ = owner()->getHostMem();
     }
 
-    return deviceMemory_ != NULL;
+    return deviceMemory_ != nullptr;
 }
 
 /////////////////////////////////roc::Image//////////////////////////////
@@ -848,7 +848,7 @@ Image::Image(const roc::Device& dev, amd::Memory& owner) :
     flags_ &= (~HostMemoryDirectAccess & ~HostMemoryRegistered);
     populateImageDescriptor();
     hsaImageObject_.handle = 0;
-    originalDeviceMemory_ = NULL;
+    originalDeviceMemory_ = nullptr;
 }
 
 void
@@ -942,9 +942,9 @@ Image::createInteropImage()
   MAKE_SCOPE_GUARD(BufferGuard, [&](){ destroyInteropBuffer(); });
 
   amdImageDesc_=(hsa_amd_image_descriptor_t*)malloc(size);
-  if(amdImageDesc_==NULL)
+  if(amdImageDesc_==nullptr)
     return false;
-  MAKE_SCOPE_GUARD(DescGuard, [&](){ free(amdImageDesc_); amdImageDesc_=NULL; });
+  MAKE_SCOPE_GUARD(DescGuard, [&](){ free(amdImageDesc_); amdImageDesc_=nullptr; });
 
   memcpy(amdImageDesc_, meta, size);
 
@@ -977,7 +977,7 @@ Image::create()
         roc::Memory *parent =
           static_cast<roc::Memory *>(owner()->parent()->getDeviceMemory(dev_));
 
-        if (parent == NULL) {
+        if (parent == nullptr) {
             LogError("[OCL] Fail to allocate parent image");
             return false;
         }
@@ -1012,7 +1012,7 @@ Image::create()
         originalDeviceMemory_ = dev().deviceLocalAlloc(alloc_size);
     }
 
-    if (originalDeviceMemory_ == NULL) {
+    if (originalDeviceMemory_ == nullptr) {
         originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, false);
     }
 
@@ -1040,7 +1040,7 @@ Image::createView(const Memory &parent)
 {
     deviceMemory_ = parent.getDeviceMemory();
 
-    originalDeviceMemory_ = (parent.owner()->asBuffer() != NULL)
+    originalDeviceMemory_ = (parent.owner()->asBuffer() != nullptr)
                         ? deviceMemory_
                         : static_cast<const Image&>(parent).originalDeviceMemory_;
 
@@ -1112,18 +1112,18 @@ Image::allocMapTarget(
 
     size_t  offset = origin[0] * elementSize;
 
-    if (pHostMem == NULL) {
+    if (pHostMem == nullptr) {
         if (indirectMapCount_ == 1) {
             if (!allocateMapMemory(owner()->getSize())) {
                 decIndMapCount();
-                return NULL;
+                return nullptr;
             }
         }
         else {
             // Did the map resource allocation fail?
-            if (mapMemory_ == NULL) {
+            if (mapMemory_ == nullptr) {
                 LogError("Could not map target resource");
-                return NULL;
+                return nullptr;
             }
         }
 
@@ -1139,7 +1139,7 @@ Image::allocMapTarget(
         else {
             slicePitchTmp = *rowPitch * region[1];
         }
-        if (slicePitch != NULL) {
+        if (slicePitch != nullptr) {
             *slicePitch = slicePitchTmp;
         }
 
@@ -1153,7 +1153,7 @@ Image::allocMapTarget(
     offset += image->getSlicePitch() * origin[2];
 
     *rowPitch = image->getRowPitch();
-    if (slicePitch != NULL) {
+    if (slicePitch != nullptr) {
         *slicePitch = image->getSlicePitch();
     }
 
@@ -1174,19 +1174,19 @@ Image::destroy()
       assert(status == HSA_STATUS_SUCCESS);
   }
 
-  if (owner()->parent() != NULL) {
+  if (owner()->parent() != nullptr) {
       return;
   }
 
   if(kind_==MEMORY_KIND_INTEROP)
   {
     free(amdImageDesc_);
-    amdImageDesc_=NULL;
+    amdImageDesc_=nullptr;
     destroyInteropBuffer();
     return;
   }
 
-  if (originalDeviceMemory_ != NULL) {
+  if (originalDeviceMemory_ != nullptr) {
       dev().memFree(originalDeviceMemory_, deviceImageInfo_.size);
   }
 }
