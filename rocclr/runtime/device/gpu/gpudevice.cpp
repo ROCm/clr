@@ -884,6 +884,15 @@ Device::create(CALuint ordinal, CALuint numOfDevices)
         return false;
     }
 
+#if defined(BRAHMA)
+    if (calTarget_ == CAL_TARGET_GREENLAND ||
+        calTarget_ == CAL_TARGET_LEXA ||
+        calTarget_ == CAL_TARGET_RAVEN ||
+        calTarget_ == CAL_TARGET_POLARIS22) {
+        return false;
+    }
+#endif
+
     // Creates device settings
     settings_ = new gpu::Settings();
     gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);
@@ -2086,7 +2095,7 @@ Device::allocScratch(uint regNum, const VirtualGPU* vgpu)
         // Serialize the scratch buffer allocation code
         amd::ScopedLock lk(*scratchAlloc_);
         uint    sb = vgpu->hwRing();
-        
+
         static const uint WaveSizeLimit = ((1 << 21) - 256);
         const uint threadSizeLimit = WaveSizeLimit / getAttribs().wavefrontSize;
         if (regNum > threadSizeLimit) {

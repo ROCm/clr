@@ -125,11 +125,11 @@ static const AMDDeviceInfo DeviceInfo[] = {
 /* CAL_TARGET_CARRIZO */    { ED_ATI_CAL_MACHINE_CARRIZO_ISA,   "Carrizo" ,     "carrizo",      4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_ELLESMERE */  { ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "Ellesmere",    "ellesmere",    4, 16, 1, 256, 64 * Ki, 32, 800 },
 /* CAL_TARGET_BAFFIN */     { ED_ATI_CAL_MACHINE_BAFFIN_ISA,    "Baffin",       "baffin",       4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, "gfx900",       "gfx900",       4, 16, 1, 256, 64 * Ki, 32, 900 },
+/* CAL_TARGET_GREENLAND */  { ED_ATI_CAL_MACHINE_GREENLAND_ISA, IF(IS_BRAHMA,"","gfx900"),      IF(IS_BRAHMA,"","gfx900"),  4, 16, 1, 256, 64 * Ki, 32, 900 },
 /* CAL_TARGET_STONEY */     { ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",       "stoney",       4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* CAL_TARGET_LEXA */       { ED_ATI_CAL_MACHINE_LEXA_ISA,      "gfx804",       "gfx804",       4, 16, 1, 256, 64 * Ki, 32, 800 },
-/* CAL_TARGET_RAVEN */      { ED_ATI_CAL_MACHINE_RAVEN_ISA,     "gfx901",       "gfx901",       4, 16, 1, 256, 64 * Ki, 32, 900 },
-/* CAL_TARGET_POLARIS22 */  { ED_ATI_CAL_MACHINE_POLARIS22_ISA, "gfx804",       "gfx804",       4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_LEXA */       { ED_ATI_CAL_MACHINE_LEXA_ISA,      IF(IS_BRAHMA,"","gfx804"),      IF(IS_BRAHMA,"","gfx804"),  4, 16, 1, 256, 64 * Ki, 32, 800 },
+/* CAL_TARGET_RAVEN */      { ED_ATI_CAL_MACHINE_RAVEN_ISA,     IF(IS_BRAHMA,"","gfx901"),      IF(IS_BRAHMA,"","gfx901"),  4, 16, 1, 256, 64 * Ki, 32, 900 },
+/* CAL_TARGET_POLARIS22 */  { ED_ATI_CAL_MACHINE_POLARIS22_ISA, IF(IS_BRAHMA,"","gfx804"),      IF(IS_BRAHMA,"","gfx804"),  4, 16, 1, 256, 64 * Ki, 32, 800 },
 };
 
 enum gfx_handle {

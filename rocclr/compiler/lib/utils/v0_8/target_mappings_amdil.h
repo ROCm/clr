@@ -52,7 +52,7 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "Sumo", "Loveland",    "cedar",   amd::GPU_Library_Evergreen,  WRESTLER_A1, F_REDWOOD, false , false, FAMILY_SUMO },
   { "Sumo", "Loveland",    "cedar",   amd::GPU_Library_Evergreen,  WRESTLER_B0, F_REDWOOD, false , false, FAMILY_SUMO },
   { "Sumo", "Loveland",    "cedar",   amd::GPU_Library_Evergreen,  WRESTLER_C0, F_REDWOOD, false , true , FAMILY_SUMO },
-  { "Sumo", "Bheem",       "cedar",   amd::GPU_Library_Evergreen,     BHEEM_A0, F_REDWOOD, false , true , FAMILY_SUMO }, 
+  { "Sumo", "Bheem",       "cedar",   amd::GPU_Library_Evergreen,     BHEEM_A0, F_REDWOOD, false , true , FAMILY_SUMO },
   { "SI", "Tahiti",    "tahiti",   amd::GPU_Library_SI, SI_TAHITI_P_A11,    F_SI_BASE, true ,false, FAMILY_SI },
   { "SI", "Tahiti",    "tahiti",   amd::GPU_Library_SI, SI_TAHITI_P_A0,     F_SI_BASE, true ,false, FAMILY_SI },
   { "SI", "Tahiti",    "tahiti",   amd::GPU_Library_SI, SI_TAHITI_P_A21,    F_SI_BASE, true ,false, FAMILY_SI },
@@ -100,7 +100,11 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "CZ", "Stoney",     "stoney",  amd::GPU_Library_CI,        STONEY_A0,               F_SI_BASE, true, true, FAMILY_CZ },
   { "VI", "Baffin",     "baffin",  amd::GPU_Library_CI,        VI_BAFFIN_M_A0,          F_SI_BASE, true,  true, FAMILY_VI },
   { "VI", "Ellesmere",  "ellesmere", amd::GPU_Library_CI,      VI_ELLESMERE_P_A0,       F_SI_BASE, true,  true, FAMILY_VI },
+#ifndef BRAHMA
   { "VI", "gfx804",     "gfx804",    amd::GPU_Library_CI,      VI_LEXA_V_A0,            F_SI_BASE, true,  true, FAMILY_VI },
+#else
+  UnknownTarget,
+#endif
   InvalidTarget
 };
 
