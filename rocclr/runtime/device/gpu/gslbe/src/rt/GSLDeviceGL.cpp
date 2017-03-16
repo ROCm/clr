@@ -750,12 +750,12 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
         attribs.isDOPPDesktopTexture = ATIGL_TRUE;
         attribs.displayable = GSL_MOA_DISPLAYABLE_LAYOUT;
     }
-    if (hData->isDoppPresentTexture == GL_TRUE)
+    if ((hData->isDoppPresentTexture == GL_TRUE) || 
+        (hData->isDisplayable == GL_TRUE))
     {
         attribs.displayable = GSL_MOA_DISPLAYABLE_LAYOUT;
     }
     attribs.doppVidpnSourceId = hData->vidpnSourceId;
-
 
     // VBOs are hardcoded to have a UINT8 type format
     if (hRes.type == GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD)
