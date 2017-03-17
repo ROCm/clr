@@ -646,8 +646,8 @@ void SyncD3D10Objects(std::vector<amd::Memory*>& memObjects)
         return;
     }
     query->End();
-    BOOL data;
-    while(S_OK != query->GetData(&data, sizeof(BOOL), 0) && data != TRUE)
+    BOOL data = FALSE;
+    while(S_OK != query->GetData(&data, sizeof(BOOL), 0))
     {
     }
 }
