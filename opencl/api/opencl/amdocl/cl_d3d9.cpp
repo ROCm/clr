@@ -329,8 +329,8 @@ void SyncD3D9Objects(std::vector<amd::Memory*>& memObjects)
     }
     ScopedLock sl(d3d9Obj->getResLock());
     query->Issue(D3DISSUE_END);
-    BOOL data;
-    while(S_OK != query->GetData(&data, sizeof(BOOL), D3DGETDATA_FLUSH) && data != TRUE)
+    BOOL data = FALSE;
+    while(S_OK != query->GetData(&data, sizeof(BOOL), D3DGETDATA_FLUSH))
     {
     }
 }

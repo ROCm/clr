@@ -1004,19 +1004,19 @@ D3D11Object::copyOrigToShared()
     // Any usage source can be read by GPU
     pImmediateContext->CopySubresourceRegion(pD3D11Res_, 0, 0, 0, 0,
         pD3D11ResOrig_, subRes_, NULL);
-    pImmediateContext->Release();
 
      // Flush D3D queues and make sure D3D stuff is finished
     {
-        ScopedLock sl(resLock_);//protect from multiple 
+        ScopedLock sl(resLock_);//protect from multiple
         pImmediateContext->Flush();
         pImmediateContext->End(pQuery_);
-        BOOL data;
-        while(S_OK != pImmediateContext->GetData(pQuery_, &data, sizeof(BOOL), 0) && data != TRUE)
+        BOOL data = FALSE;
+        while(S_OK != pImmediateContext->GetData(pQuery_, &data, sizeof(BOOL), 0));
         {
         }
     }
 
+    pImmediateContext->Release();
     d3dDev->Release();
     return true;
 }
