@@ -99,6 +99,9 @@ HSAILProgram::compileImpl_LC(
 
     driverOptions.append(options->llvmOptions);
 
+    // Set whole program mode
+    driverOptions.append(" -mllvm -amdgpu-internalize-symbols");
+
     driverOptions.append(preprocessorOptions(options));
 
     //Find the temp folder for the OS
