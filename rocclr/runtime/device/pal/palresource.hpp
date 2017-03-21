@@ -34,7 +34,7 @@ public:
 
     static GpuMemoryReference* Create(
         const Device&   dev,
-        const Pal::ExternalResourceOpenInfo& openInfo);
+        const Pal::ExternalGpuMemoryOpenInfo& openInfo);
 
     static GpuMemoryReference* Create(
         const Device&   dev,

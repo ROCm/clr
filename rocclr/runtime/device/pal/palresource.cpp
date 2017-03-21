@@ -109,7 +109,7 @@ GpuMemoryReference::Create(
 GpuMemoryReference*
 GpuMemoryReference::Create(
     const Device&   dev,
-    const Pal::ExternalResourceOpenInfo& openInfo)
+    const Pal::ExternalGpuMemoryOpenInfo& openInfo)
 {
     Pal::Result result;
     size_t gpuMemSize = dev.iDev()->GetExternalSharedGpuMemorySize(&result);
@@ -486,7 +486,8 @@ Resource::create(MemoryType memType, CreateParams* params)
         (memoryType() == D3D9Interop) ||
         (memoryType() == D3D10Interop) ||
         (memoryType() == D3D11Interop)) {
-        Pal::ExternalResourceOpenInfo openInfo = {};
+        Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
+        Pal::ExternalResourceOpenInfo& openInfo = gpuMemOpenInfo.resourceInfo;
         uint misc = 0;
         uint layer = 0;
         uint mipLevel = 0;
@@ -542,7 +543,7 @@ Resource::create(MemoryType memType, CreateParams* params)
         }
 #endif // 0
         if (desc().buffer_ || misc) {
-            memRef_ = GpuMemoryReference::Create(dev(), openInfo);
+            memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
             if (nullptr == memRef_) {
                 return false;
             }
@@ -666,7 +667,7 @@ Resource::create(MemoryType memType, CreateParams* params)
             }
         }
         else if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
-            memRef_ = GpuMemoryReference::Create(dev(), openInfo);
+            memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
             if (nullptr == memRef_) {
                 return false;
             }
