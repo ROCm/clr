@@ -769,7 +769,9 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
 
         Opts.clcOptions.append(" -D__FAST_RELAXED_MATH__=1");
         Opts.clangOptions.push_back("-D__FAST_RELAXED_MATH__=1");
+#if defined(WITH_LIGHTNING_COMPILER) // w/a for SWDEV-116690
         Opts.clangOptions.push_back("-cl-fast-relaxed-math");
+#endif
 
         // fall-through to handle UnsafeMathOpt
     case OID_UnsafeMathOpt:
