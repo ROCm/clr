@@ -20,7 +20,7 @@
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPURuntimeMetadata.h"
+#include "AMDGPUCodeObjectMetadata.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
@@ -1615,16 +1615,20 @@ LightningProgram::setKernels(
                 //! @todo: Use constants and enums defined in AMDGPUPTNote.h.
                 //! In order to switch to using constants and enums defined in
                 //! AMDGPUPTNote.h, we need to clean up internal header files.
-                if (note->n_type == 7 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA_V_1*/) {
-                    buildLog_ += "Error: object code with metadata v1 is not " \
+                if (note->n_type == 7 || note->n_type == 8) {
+                    buildLog_ += "Error: object code with old metadata is not " \
                       "supported\n";
                     return false;
                 }
-                else if (note->n_type == 8 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_RUNTIME_METADATA*/
+                else if (note->n_type == 10 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_CODE_OBJECT_METADATA*/
                          && note->n_namesz == sizeof "AMD"
                          && !memcmp(name, "AMD", note->n_namesz)) {
                     std::string metadataStr((const char *) desc, (size_t) note->n_descsz);
-                    metadata_ = new AMDGPU::RuntimeMD::Program::Metadata(metadataStr);
+                    metadata_ = new CodeObjectMD();
+                    if (CodeObjectMD::fromYamlString(metadataStr, *metadata_)) {
+                      buildLog_ += "Error: failed to process metadata\n";
+                      return false;
+                    }
                     // We've found and loaded the runtime metadata, exit the
                     // note record loop now.
                     break;

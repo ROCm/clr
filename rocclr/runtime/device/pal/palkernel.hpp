@@ -17,7 +17,10 @@
 #include "hsa.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPURuntimeMetadata.h"
+#include "AMDGPUCodeObjectMetadata.h"
+
+typedef llvm::AMDGPU::CodeObject::Kernel::Metadata KernelMD;
+typedef llvm::AMDGPU::CodeObject::Kernel::Arg::Metadata KernelArgMD;
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
@@ -283,7 +286,7 @@ public:
     bool init(amd::hsa::loader::Symbol* symbol);
 
     //! Initializes Hsail Argument metadata and info for LC
-    void initArgList(const AMDGPU::RuntimeMD::Kernel::Metadata& kernelMD);
+    void initArgList(const KernelMD& kernelMD);
 
     //! Initializes HSAIL Printf metadata and info for LC
     void initPrintf(const std::vector<std::string>& printfInfoStrings);
