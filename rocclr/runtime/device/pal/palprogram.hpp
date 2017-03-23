@@ -8,7 +8,9 @@
 #include "amd_hsa_loader.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPURuntimeMetadata.h"
+#include "AMDGPUCodeObjectMetadata.h"
+
+typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
@@ -301,7 +303,7 @@ public:
         metadata_(nullptr)
     {}
 
-    const AMDGPU::RuntimeMD::Program::Metadata* metadata() const {
+    const CodeObjectMD* metadata() const {
         return metadata_;
     }
 private:
@@ -340,7 +342,7 @@ protected:
     static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 
 private:
-    AMDGPU::RuntimeMD::Program::Metadata* metadata_; //!< Runtime metadata
+    CodeObjectMD* metadata_; //!< Runtime metadata
 };
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
