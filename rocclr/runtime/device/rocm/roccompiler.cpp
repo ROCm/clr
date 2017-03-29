@@ -100,7 +100,7 @@ HSAILProgram::compileImpl_LC(
     driverOptions.append(options->llvmOptions);
 
     // Set whole program mode
-    driverOptions.append(" -mllvm -amdgpu-internalize-symbols");
+    driverOptions.append(" -mllvm -amdgpu-early-inline-all");
 
     driverOptions.append(preprocessorOptions(options));
 
