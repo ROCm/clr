@@ -273,7 +273,7 @@ LightningProgram::compileImpl(
     driverOptions.append(hsailOptions(options));
 
     // Set whole program mode
-    driverOptions.append(" -mllvm -amdgpu-internalize-symbols");
+    driverOptions.append(" -mllvm -amdgpu-early-inline-all");
 
     //Find the temp folder for the OS
     std::string tempFolder = amd::Os::getEnvironment("TEMP");

@@ -1511,7 +1511,7 @@ LightningProgram::linkImpl(amd::option::Options *options)
     codegenOptions.append(" ").append(ostrstr.str());
 
     // Set whole program mode
-    codegenOptions.append(" -mllvm -amdgpu-internalize-symbols");
+    codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
     // Tokenize the options string into a vector of strings
     std::istringstream strstr(codegenOptions);
