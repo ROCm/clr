@@ -106,6 +106,14 @@ public:
                 }
                 result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true, WaitTimeoutInNsec);
                 if (Pal::Result::Success == result) {
+                    // Note: This is a workaround for a timing sensitive issue when OS event
+                    // succeeded without the actual GPU operation completion.
+                    // The issue occurs under heavy GPU load with more than 1 OCL app running and
+                    // HWS enabled under Win10
+                    while (GPU_PAL_FENCE_VALIDATION &&
+                           (Pal::Result::Success != iCmdFences_[cbId]->GetStatus())) {
+                        amd::Os::yield();
+                    }
                     break;
                 }
                 else if ((Pal::Result::NotReady == result) ||
