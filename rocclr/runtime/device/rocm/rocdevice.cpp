@@ -55,104 +55,31 @@ const bool roc::NullDevice::offlineDevice_= true;
 
 
 static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
-  /*
-   * Use the device id to determine the ASIC family
-   */
-    // TODO: translate from hsa_agent to internal AMD device id.
-    if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(
-        device, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CHIP_ID,
-        &pci_id)) {
+    char agent_name[64] = { 0 };
+
+    if (HSA_STATUS_SUCCESS != hsa_agent_get_info(device, HSA_AGENT_INFO_NAME, agent_name)) {
         return HSA_INVALID_DEVICE_ID;
     }
 
-    switch (pci_id) {
-        case DEVICE_ID_SPECTRE_MOBILE:
-        case DEVICE_ID_SPECTRE_DESKTOP:
-        case DEVICE_ID_SPECTRE_LITE_MOBILE_1309:
-        case DEVICE_ID_SPECTRE_LITE_MOBILE_130A:
-        case DEVICE_ID_SPECTRE_SL_MOBILE_130B:
-        case DEVICE_ID_SPECTRE_MOBILE_130C:
-        case DEVICE_ID_SPECTRE_LITE_MOBILE_130D:
-        case DEVICE_ID_SPECTRE_SL_MOBILE_130E:
-        case DEVICE_ID_SPECTRE_DESKTOP_130F:
-        case DEVICE_ID_SPECTRE_WORKSTATION_1310:
-        case DEVICE_ID_SPECTRE_WORKSTATION_1311:
-        case DEVICE_ID_SPECTRE_LITE_DESKTOP_1313:
-        case DEVICE_ID_SPECTRE_SL_DESKTOP_1315:
-        case DEVICE_ID_SPECTRE_SL_MOBILE_1318:
-        case DEVICE_ID_SPECTRE_SL_EMBEDDED_131B:
-        case DEVICE_ID_SPECTRE_EMBEDDED_131C:
-        case DEVICE_ID_SPECTRE_LITE_EMBEDDED_131D:
-            return HSA_SPECTRE_ID;
-        case DEVICE_ID_SPOOKY_MOBILE:
-        case DEVICE_ID_SPOOKY_DESKTOP:
-        case DEVICE_ID_SPOOKY_DESKTOP_1312:
-        case DEVICE_ID_SPOOKY_DESKTOP_1316:
-        case DEVICE_ID_SPOOKY_MOBILE_1317:
-            return HSA_SPOOKY_ID;
-        case DEVICE_ID_VI_TONGA_P_6920:
-        case DEVICE_ID_VI_TONGA_P_6921:
-        case DEVICE_ID_VI_TONGA_P_6928:
-        case DEVICE_ID_VI_TONGA_P_692B:
-        case DEVICE_ID_VI_TONGA_P_692F:
-        case DEVICE_ID_VI_TONGA_P_6938:
-        case DEVICE_ID_VI_TONGA_P_6939:
-            return HSA_TONGA_ID;
-        case DEVICE_ID_VI_FIJI_P_7300:
-            return HSA_FIJI_ID;
-        case DEVICE_ID_CZ_9870:
-        case DEVICE_ID_CZ_9874:
-        case DEVICE_ID_CZ_9875:
-        case DEVICE_ID_CZ_9876:
-        case DEVICE_ID_CZ_9877:
-            return HSA_CARRIZO_ID;
-        case DEVICE_ID_VI_ICELAND_M_6900:
-        case DEVICE_ID_VI_ICELAND_M_6901:
-        case DEVICE_ID_VI_ICELAND_M_6902:
-        case DEVICE_ID_VI_ICELAND_M_6903:
-        case DEVICE_ID_VI_ICELAND_M_6907:
-            return HSA_ICELAND_ID;
-        case DEVICE_ID_CI_HAWAII_P_67A0:
-        case DEVICE_ID_CI_HAWAII_P_67A1:
-        case DEVICE_ID_CI_HAWAII_P_67A2:
-        case DEVICE_ID_CI_HAWAII_P_67A8:
-        case DEVICE_ID_CI_HAWAII_P_67A9:
-        case DEVICE_ID_CI_HAWAII_P_67AA:
-        case DEVICE_ID_CI_HAWAII_P_67B0:
-        case DEVICE_ID_CI_HAWAII_P_67B1:
-        case DEVICE_ID_CI_HAWAII_P_67B8:
-        case DEVICE_ID_CI_HAWAII_P_67B9:
-        case DEVICE_ID_CI_HAWAII_P_67BE:
-            return HSA_HAWAII_ID;
-        case DEVICE_ID_VI_ELLESMERE_P_67C0:
-        case DEVICE_ID_VI_ELLESMERE_P_67C1:
-        case DEVICE_ID_VI_ELLESMERE_P_67C2:
-        case DEVICE_ID_VI_ELLESMERE_P_67C4:
-        case DEVICE_ID_VI_ELLESMERE_P_67C7:
-        case DEVICE_ID_VI_ELLESMERE_P_67DF:
-        case DEVICE_ID_VI_ELLESMERE_P_67D0:
-        case DEVICE_ID_VI_ELLESMERE_P_67C8:
-        case DEVICE_ID_VI_ELLESMERE_P_67C9:
-        case DEVICE_ID_VI_ELLESMERE_P_67CA:
-        case DEVICE_ID_VI_ELLESMERE_P_67CC:
-        case DEVICE_ID_VI_ELLESMERE_P_67CF:
-            return HSA_ELLESMERE_ID;
-        case DEVICE_ID_VI_BAFFIN_M_67E0:
-        case DEVICE_ID_VI_BAFFIN_M_67E3:
-        case DEVICE_ID_VI_BAFFIN_M_67E8:
-        case DEVICE_ID_VI_BAFFIN_M_67EB:
-        case DEVICE_ID_VI_BAFFIN_M_67EF:
-        case DEVICE_ID_VI_BAFFIN_M_67FF:
-        case DEVICE_ID_VI_BAFFIN_M_67E1:
-        case DEVICE_ID_VI_BAFFIN_M_67E7:
-        case DEVICE_ID_VI_BAFFIN_M_67E9:
-            return HSA_BAFFIN_ID;
-        case DEVICE_ID_AI_GREENLAND_P_687F:
-            return HSA_VEGA10_ID;
-    default:
+    if (strncmp(agent_name, "gfx", 3) != 0) {
         return HSA_INVALID_DEVICE_ID;
-  }
+    }
+
+    uint gfxipVersion = atoi(&agent_name[3]);
+    switch (gfxipVersion) {
+        case 701:
+            return HSA_HAWAII_ID;
+        case 801:
+            return HSA_CARRIZO_ID;
+        case 802:
+            return HSA_TONGA_ID;
+        case 803:
+            return HSA_FIJI_ID;
+        case 900:
+            return HSA_VEGA10_ID;
+        default:
+            return HSA_INVALID_DEVICE_ID;
+    }
 }
 
 bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
