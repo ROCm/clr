@@ -55,6 +55,14 @@ const bool roc::NullDevice::offlineDevice_= true;
 
 
 static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
+
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(
+        device, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CHIP_ID,
+        &pci_id)) {
+        return HSA_INVALID_DEVICE_ID;
+    }
+
     char agent_name[64] = { 0 };
 
     if (HSA_STATUS_SUCCESS != hsa_agent_get_info(device, HSA_AGENT_INFO_NAME, agent_name)) {
