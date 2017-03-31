@@ -77,6 +77,9 @@ public:
     typedef std::map<std::string, Symbol> symbols_t;
 
 private:
+    //! Replaces the compiled program with the new version from HD
+    void StubProgramSource(const std::string& app_name);
+
     //! The context this program is part of.
     SharedReference<Context> context_;
 

@@ -181,6 +181,8 @@ release(uint, GPU_WAVES_PER_SIMD, 0,                                          \
         "Force the number of waves per SIMD (1-10)")                          \
 release(bool, GPU_WAVE_LIMIT_ENABLE, false,                                   \
         "1 = Enable adaptive wave limiter")                                   \
+release(bool, OCL_STUB_PROGRAMS, false,                                       \
+        "1 = Enables OCL programs stubing")                                   \
 release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
         "Assume the number of CU per SH for wave limiter")                    \
 release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \

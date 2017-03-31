@@ -12,6 +12,9 @@
 
 #include <cstdlib> // for malloc
 #include <cstring> // for strcmp
+#include <sstream>
+#include <fstream>
+#include <iostream>
 #include <utility>
 
 namespace amd {
@@ -413,6 +416,46 @@ Program::link(
     return retval;
 }
 
+void Program::StubProgramSource(const std::string& app_name)
+{
+    static uint program_counter = 0;
+    std::fstream        stub_read;
+    std::stringstream   file_name;
+    std::string         app_name_no_ext;
+
+    std::size_t length = app_name.rfind(".exe");
+    if (length == std::string::npos) {
+        length = app_name.size();
+    }
+    app_name_no_ext.assign(app_name.c_str(), length);
+
+    // Construct a unique file name for the CL program
+    file_name << app_name_no_ext << "_program_" << program_counter << ".cl";
+
+    stub_read.open(file_name.str().c_str(), (std::fstream::in | std::fstream::binary));
+    // Check if we have OpenCL program
+    if (stub_read.is_open()) {
+        // Find the stream size
+        stub_read.seekg(0, std::fstream::end);
+        size_t size = stub_read.tellg();
+        stub_read.seekg(0, std::ios::beg);
+
+        char* data = new char[size];
+        stub_read.read(data, size);
+        stub_read.close();
+
+        sourceCode_.assign(data, size);
+        delete[] data;
+    }
+    else {
+        std::fstream    stub_write;
+        stub_write.open(file_name.str().c_str(), (std::fstream::out | std::fstream::binary));
+        stub_write << sourceCode_;
+        stub_write.close();
+    }
+    program_counter++;
+}
+
 cl_int
 Program::build(
     const std::vector<Device*>& devices,
@@ -429,6 +472,11 @@ Program::build(
         if (symbolTable_ == NULL) {
              return CL_OUT_OF_HOST_MEMORY;
         }
+    }
+
+    if (OCL_STUB_PROGRAMS && !sourceCode_.empty()) {
+        // The app name should be the samme for all device
+        StubProgramSource(devices[0]->appProfile()->appFileName());
     }
 
     // Clear the program object

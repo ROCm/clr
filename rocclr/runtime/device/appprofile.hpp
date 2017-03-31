@@ -17,6 +17,9 @@ public:
     bool init();
 
     const std::string& GetBuildOptsAppend() const { return buildOptsAppend_; }
+
+    const std::string& appFileName() const { return appFileName_; }
+
 protected:
     enum DataTypes
     {
