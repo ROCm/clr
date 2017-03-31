@@ -135,8 +135,6 @@ Settings::Settings()
     // Disable SDMA workaround by default
     sdamPageFaultWar_ = false;
 
-    // Disable SDMA copy for Image to Mem and Mem to Image by default
-    disableSdmaMemoryToImage_ = false;
 }
 
 bool

@@ -67,8 +67,7 @@ public:
             uint    useDeviceQueue_: 1;     //!< Submit to separate device queue
             uint    singleFpDenorm_: 1;     //!< Support Single FP Denorm
             uint    sdamPageFaultWar_: 1;   //!< SDMA page fault workaround
-            uint    disableSdmaMemoryToImage_ : 1;//!< Disable sDMA copy for Memory to Image
-            uint    reserved_: 8;
+            uint    reserved_: 9;
         };
         uint    value_;
     };
