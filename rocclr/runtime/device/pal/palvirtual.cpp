@@ -246,6 +246,12 @@ VirtualGPU::Queue::flush()
         }
     }
 
+    // Reset the fence. PAL will reset OS event
+    if (Pal::Result::Success != iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_])) {
+        LogError("PAL failed to reset a fence!");
+        return false;
+    }
+
     Pal::SubmitInfo submitInfo = {};
     submitInfo.cmdBufferCount = 1;
     submitInfo.ppCmdBuffers = &iCmdBuffs_[cmdBufIdSlot_];
@@ -279,18 +285,13 @@ VirtualGPU::Queue::flush()
     cmdBufIdSlot_ = cmdBufIdCurrent_ % MaxCmdBuffers;
 
     // Make sure the slot isn't busy
-    waifForFence(cmdBufIdSlot_);
+    constexpr bool IbReuse = true;
+    waifForFence(cmdBufIdSlot_, IbReuse);
 
     // Progress retired TS
     if ((cmdBufIdCurrent_ > MaxCmdBuffers) &&
         (cmbBufIdRetired_ < (cmdBufIdCurrent_ - MaxCmdBuffers))) {
         cmbBufIdRetired_ = cmdBufIdCurrent_ - MaxCmdBuffers;
-    }
-
-    if (Pal::Result::Success !=
-        iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_])) {
-        LogError("PAL failed to reset a fence!");
-        return false;
     }
 
     // Reset command buffer, so CB chunks could be reused
