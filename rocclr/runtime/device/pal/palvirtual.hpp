@@ -50,6 +50,9 @@ public:
         static const uint64_t WaitTimeoutInNsec = 6000000000;
         static const uint64_t PollIntervalInNsec = 200000;
 
+        Queue(const Queue&) = delete;
+        Queue& operator=(const Queue&) = delete;
+
         static Queue* Create(
             Pal::IDevice*   palDev,         //!< PAL device object
             Pal::QueueType  queueType,      //!< PAL queue type
@@ -60,13 +63,13 @@ public:
             );
 
         Queue(Pal::IDevice* palDev)
-            : iQueue_(NULL), iDev_(palDev),
+            : iQueue_(nullptr), last_kernel_(nullptr), iDev_(palDev),
             cmdBufIdSlot_(StartCmdBufIdx), cmdBufIdCurrent_(StartCmdBufIdx),
             cmbBufIdRetired_(0), cmdCnt_(0), vlAlloc_(64 * Ki)
         {
             for (uint i = 0; i < MaxCmdBuffers; ++i) {
-                iCmdBuffs_[i] = NULL;
-                iCmdFences_[i] = NULL;
+                iCmdBuffs_[i] = nullptr;
+                iCmdFences_[i] = nullptr;
             }
             vlAlloc_.Init();
         }
@@ -82,12 +85,12 @@ public:
         {
             Pal::GpuMemoryRef memRef = {};
             memRef.pGpuMemory = iMem;
-            iDev_->AddGpuMemoryReferences(1, &memRef, NULL,
+            iDev_->AddGpuMemoryReferences(1, &memRef, nullptr,
                 Pal::GpuMemoryRefCantTrim);
         }
         void removeMemRef(Pal::IGpuMemory* iMem) const
         {
-            iDev_->RemoveGpuMemoryReferences(1, &iMem, NULL);
+            iDev_->RemoveGpuMemoryReferences(1, &iMem, nullptr);
         }
 
         // ibReuse forces event wait without polling, to make sure event occured
@@ -112,6 +115,9 @@ public:
                 else if ((Pal::Result::NotReady == result) ||
                          (Pal::Result::Timeout == result)) {
                     LogWarning("PAL fence isn't ready!");
+                    if (GPU_ANALYZE_HANG) {
+                        DumpMemoryReferences();
+                    }
                 }
                 else {
                     LogError("PAL wait for a fence failed!");
@@ -134,10 +140,12 @@ public:
         Pal::ICmdBuffer* iCmd() const { return iCmdBuffs_[cmdBufIdSlot_]; }
 
         Pal::IQueue*     iQueue_;   //!< PAL queue object
-        Pal::ICmdBuffer* iCmdBuffs_[MaxCmdBuffers];  //!< PAL command buffers
-        Pal::IFence*     iCmdFences_[MaxCmdBuffers]; //!< PAL fences, associated with CMD
+        Pal::ICmdBuffer* iCmdBuffs_[MaxCmdBuffers]; //!< PAL command buffers
+        Pal::IFence*     iCmdFences_[MaxCmdBuffers];//!< PAL fences, associated with CMD
+        const amd::Kernel*  last_kernel_;           //!< Last submitted kernel
 
     private:
+        void DumpMemoryReferences() const;
         Pal::IDevice* iDev_;        //!< PAL device
         uint    cmdBufIdSlot_;      //!< Command buffer ID slot for submissions
         uint    cmdBufIdCurrent_;   //!< Current global command buffer ID
@@ -207,7 +215,7 @@ public:
     public:
         //! Default constructor
         MemoryDependency()
-            : memObjectsInQueue_(NULL)
+            : memObjectsInQueue_(nullptr)
             , numMemObjectsInQueue_(0)
             , maxMemObjectsInQueue_(0) {}
 
@@ -294,7 +302,7 @@ public:
         const amd::Kernel&  kernel,         //!< Kernel for execution
         const_address parameters,           //!< Parameters for the kernel
         bool     nativeMem = true,          //!< Native memory objects
-        amd::Event* enqueueEvent = NULL     //!< Event provided in the enqueue kernel command
+        amd::Event* enqueueEvent = nullptr     //!< Event provided in the enqueue kernel command
         );
     void submitNativeFn(amd::NativeFnCommand& vcmd);
     void submitFillMemory(amd::FillMemoryCommand& vcmd);
@@ -316,7 +324,7 @@ public:
 
     void releaseMemory(Pal::IGpuMemory* iMem, bool wait = true);
 
-    void flush(amd::Command* list = NULL, bool wait = false);
+    void flush(amd::Command* list = nullptr, bool wait = false);
     bool terminate() { return true; }
 
     //! Returns GPU device object associated with this kernel
@@ -350,7 +358,7 @@ public:
     //! Wait for all engines on this Virtual GPU
     //! Returns TRUE if CPU didn't wait for GPU
     bool waitAllEngines(
-        CommandBatch* cb = NULL //!< Command batch
+        CommandBatch* cb = nullptr //!< Command batch
         );
 
     //! Waits for the latest GPU event with a lock to prevent multiple entries
@@ -382,12 +390,17 @@ public:
         );
 
     //! Adds a memory handle into the GSL memory array for Virtual Heap
-    bool addVmMemory(
+    void addVmMemory(
         const Memory*   memory  //!< GPU memory object
         );
 
+    //! Adds the last submitted kernel to the queue for tracking a possible hang
+    void AddKernel(
+        const amd::Kernel&  kernel      //!< AMD kernel object
+    ) const;
+
     //! Adds a dopp desktop texture reference
-    bool addDoppRef(
+    void addDoppRef(
         const Memory*   memory,         //!< GPU memory object
         bool            lastDoopCmd,    //!< is the last submission for the pre-present primary
         bool            pfpaDoppCmd     //!< is a submission for the pre-present primary
@@ -565,7 +578,7 @@ private:
     //! Awaits a command batch with a waiting event
     bool    awaitCompletion(
         CommandBatch*   cb,                     //!< Command batch for to wait
-        const amd::Event*   waitingEvent = NULL //!< A waiting event
+        const amd::Event*   waitingEvent = nullptr //!< A waiting event
         );
 
     //! Detects memory dependency for HSAIL kernels and flushes caches

@@ -360,6 +360,57 @@ VirtualGPU::Queue::isDone(uint id)
     return true;
 }
 
+void
+VirtualGPU::Queue::DumpMemoryReferences() const
+{
+    std::fstream        dump;
+    std::stringstream   file_name("ocl_hang_dump.txt");
+    uint64_t            start = amd::Os::timeNanos() / 1e9;
+
+    dump.open(file_name.str().c_str(), (std::fstream::out | std::fstream::app));
+    // Check if we have OpenCL program
+    if (dump.is_open()) {
+        dump << start << " Queue: ";
+        switch (iQueue_->Type()) {
+        case Pal::QueueTypeCompute:
+            dump << "Compute";
+            break;
+        case Pal::QueueTypeDma:
+            dump << "SDMA";
+            break;
+        default:
+            dump << "unknown";
+            break;
+        }
+        dump << "\n" << "Resident memory resources:\n";
+        uint idx = 0;
+        for (auto it : memReferences_) {
+            dump << " " << idx << "\t[";
+            dump.setf(std::ios::hex, std::ios::basefield);
+            dump.setf(std::ios::showbase);
+            dump << (it.first)->Desc().gpuVirtAddr << ", " <<
+                (it.first)->Desc().gpuVirtAddr + (it.first)->Desc().size;
+            dump.setf(std::ios::dec);
+            dump << "] CbId:" << it.second << "\n";
+            idx++;
+        }
+    }
+    if (last_kernel_ != nullptr) {
+        const amd::KernelSignature& signature = last_kernel_->signature();
+        const amd::KernelParameters& params = last_kernel_->parameters();
+        dump << last_kernel_->name() << std::endl;
+        for (size_t i = 0; i < signature.numParameters(); ++i) {
+            const amd::KernelParameterDescriptor& desc = signature.at(i);
+            // Find if the current argument is a memory object
+            if ((desc.type_ == T_POINTER) &&
+                (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
+                  dump << " " << desc.name_ << ": " << std::endl;
+            }
+        }   
+    }
+    dump.close();
+}
+
 bool
 VirtualGPU::MemoryDependency::create(size_t numMemObj)
 {
@@ -1998,6 +2049,8 @@ VirtualGPU::submitKernelInternal(
     VirtualGPU*  gpuDefQueue = nullptr;
     amd::HwDebugManager * dbgManager = dev().hwDebugMgr();
 
+    AddKernel(kernel);
+
     // Get the HSA kernel object
     const HSAILKernel& hsaKernel =
         static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
@@ -3177,18 +3230,21 @@ VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* waitingE
     return found;
 }
 
-bool
+void
 VirtualGPU::addVmMemory(const Memory* memory)
 {
     queues_[MainEngine]->addCmdMemRef(memory->iMem());
-    return true;
+}
+void 
+VirtualGPU::AddKernel(const amd::Kernel&  kernel) const
+{
+    queues_[MainEngine]->last_kernel_ = &kernel;
 }
 
-bool
+void
 VirtualGPU::addDoppRef(const Memory* memory, bool lastDoppCmd, bool pfpaDoppCmd)
 {
     queues_[MainEngine]->addCmdDoppRef(memory->iMem(), lastDoppCmd, pfpaDoppCmd);
-    return true;
 }
 
 void
