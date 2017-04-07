@@ -24,16 +24,46 @@ namespace amd {
 void*
 Os::loadLibrary(const char* libraryname)
 {
-    void* handle = Os::loadLibrary_(libraryname);
-    if (handle != NULL) {
-        return handle;
-    }
+    void* handle;
 
     // Try with the system library prefix and extension instead.
     std::string str = libraryname;
 
     size_t namestart = str.rfind(fileSeparator());
     namestart = (namestart != std::string::npos) ? namestart + 1 : 0;
+
+    if (namestart == 0) {
+#if defined(ATI_OS_WIN)
+        // Try with the path of the current loaded dll(OCL runtime) first
+        HMODULE hm = NULL;
+        if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+            | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCSTR)&loadLibrary, &hm)) return NULL;
+
+        char cszDllPath[1024] = { 0 };
+        if (!GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath)))
+            return NULL;
+
+        LPSTR cszFileName;
+        char buffer[1024] = { 0 };
+        if (!GetFullPathNameA(cszDllPath, sizeof(buffer), buffer, &cszFileName))
+            return NULL;
+
+        std::string newPath;
+        newPath = cszDllPath;
+        newPath.replace(newPath.find(cszFileName), strlen(libraryname), libraryname);
+
+        handle = Os::loadLibrary_(newPath.c_str());
+        if (handle != NULL) {
+            return handle;
+        }
+#endif
+    }
+
+    handle = Os::loadLibrary_(libraryname);
+    if (handle != NULL) {
+        return handle;
+    }
 
     const char* prefix = Os::libraryPrefix();
     if (prefix != NULL
@@ -58,32 +88,6 @@ Os::loadLibrary(const char* libraryname)
     if (handle != NULL || str.find(fileSeparator()) != std::string::npos) {
         return handle;
     }
-
-#if defined(ATI_OS_WIN)
-    // Try with the DriverStore path
-    HMODULE hm = NULL;
-    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-        | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-        (LPCSTR)&loadLibrary, &hm)) return NULL;
-
-    char cszDllPath[1024] = { 0 };
-    if (!GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath)))
-        return NULL;
-
-    LPSTR cszFileName;
-    char buffer[1024] = { 0 };
-    if (!GetFullPathNameA(cszDllPath, sizeof(buffer), buffer, &cszFileName))
-        return NULL;
-
-    std::string newPath;
-    newPath = cszDllPath;
-    newPath.replace(newPath.find(cszFileName), strlen(libraryname), libraryname);
-
-    handle = Os::loadLibrary_(newPath.c_str());
-    if (handle != NULL) {
-        return handle;
-    }
-#endif
 
     // Try to find the lib in the current directory.
     return Os::loadLibrary((std::string(".") + fileSeparator()
