@@ -2794,9 +2794,11 @@ VirtualGPU::submitSignal(amd::SignalCommand & vcmd)
     uint32_t size = vcmd.memory().getSize();
 
     addVmMemory(pGpuMemory);
+    
+    uint32_t offset = pGpuMemory->iMem()->Desc().markerBusAddr - pGpuMemory->iMem()->Desc().surfaceBusAddr;
 
     if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
-        iCmd()->CmdWaitMemoryValue(*(pGpuMemory->iMem()), size, value, 0xFFFFFFFF, Pal::CompareFunc::GreaterEqual);
+        iCmd()->CmdWaitMemoryValue(*(pGpuMemory->iMem()), offset, value, 0xFFFFFFFF, Pal::CompareFunc::GreaterEqual);
     }
     else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
         iCmd()->CmdUpdateMemory(*(pGpuMemory->iMem()), size, 4, &value);
