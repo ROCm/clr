@@ -179,8 +179,12 @@ Settings::create(
             assert(0 && "Unknown GfxIP type!");
             return false;
         }
+    case Pal::AsicRevision::Vega10:
+    case Pal::AsicRevision::Raven:
+        aiPlus_ = true;
         // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:
+    case Pal::AsicRevision::Bristol:
     case Pal::AsicRevision::Stoney:
         if (!aiPlus_) {
             // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
@@ -207,7 +211,9 @@ Settings::create(
         enableExtension(ClKhrFp16);
         // Fall through to CI ...
     case Pal::AsicRevision::Kalindi:
+    case Pal::AsicRevision::Godavari:
     case Pal::AsicRevision::Spectre:
+    case Pal::AsicRevision::Spooky:
         if (!viPlus_) {
             // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
             modifyMaxWorkload.time = 250000;      // 250ms
