@@ -700,7 +700,7 @@ Device::create(Pal::IDevice* device)
     asicRevision_ = properties().revision;
 
     // Update HW info for the device
-    if ((GPU_ENABLE_PAL == 1) && (properties().revision != Pal::AsicRevision::Unknown)) {
+    if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Baffin)) {
         hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
     }
     else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {

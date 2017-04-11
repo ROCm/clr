@@ -132,10 +132,16 @@ static const AMDDeviceInfo DeviceInfo[] = {
 
 /* Bonaire */   { "Bonaire",    "bonaire",  4, 16, 1, 256, 64 * Ki, 32, 700 },
 /* Hawaii */    { "Hawaii",     "hawaii",   4, 16, 1, 256, 64 * Ki, 32, 701 },
+/* Hawaii */    { "",           "grenada",  4, 16, 1, 256, 64 * Ki, 32, 701 },
+/* Hawaii */    { "",           "maui",     4, 16, 1, 256, 64 * Ki, 32, 701 },
+
 /* Kalindi */   { "Kalindi",    "kalindi",  4, 16, 1, 256, 64 * Ki, 32, 702 },
+/* Godavari */  { "Mullins",    "mullins",  4, 16, 1, 256, 64 * Ki, 32, 702 },
 /* Spectre */   { "Spectre",    "spectre",  4, 16, 1, 256, 64 * Ki, 32, 701 },
+/* Spooky */    { "Spooky",     "spooky",   4, 16, 1, 256, 64 * Ki, 32, 701 },
 
 /* Carrizo */   { "Carrizo" ,   "carrizo",  4, 16, 1, 256, 64 * Ki, 32, 801 },
+/* Bristol */   { "Bristol Ridge" ,  "carrizo",  4, 16, 1, 256, 64 * Ki, 32, 801 },
 /* Stoney */    { "Stoney",     "stoney",   4, 16, 1, 256, 64 * Ki, 32, 810 },
 
 /* Iceland */   { "Iceland",    "iceland",  4, 16, 1, 256, 64 * Ki, 32, 800 },
