@@ -265,7 +265,7 @@ Settings::create(
             supportDepthsRGB_ = true;
         }
         if (use64BitPtr_) {
-            if (GPU_ENABLE_LARGE_ALLOCATION && wscaps.workStationBoard) {
+            if (GPU_ENABLE_LARGE_ALLOCATION && false/*wscaps.workStationBoard*/) {
                 maxAllocSize_   = 64ULL * Gi;
             }
             else {
