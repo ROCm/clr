@@ -429,12 +429,14 @@ HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol *sym)
     workGroupInfo_.usedVGPRs_ = akc->workitem_vgpr_count;
 
     if (!prog().isNull()) {
+        workGroupInfo_.availableLDSSize_ = dev().properties().gfxipProperties.shaderCore.ldsSizePerCu;
         workGroupInfo_.availableSGPRs_ = dev().properties().gfxipProperties.shaderCore.numAvailableSgprs;
         workGroupInfo_.availableVGPRs_ = dev().properties().gfxipProperties.shaderCore.numAvailableVgprs;
         workGroupInfo_.preferredSizeMultiple_ =
         workGroupInfo_.wavefrontPerSIMD_ =  dev().properties().gfxipProperties.shaderCore.wavefrontSize;
     }
     else {
+        workGroupInfo_.availableLDSSize_ = 64 * Ki;
         workGroupInfo_.availableSGPRs_ = 104;
         workGroupInfo_.availableVGPRs_ = 256;
         workGroupInfo_.preferredSizeMultiple_ =
