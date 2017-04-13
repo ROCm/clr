@@ -99,20 +99,19 @@ jurisdiction and venue of these courts.
 extern "C" {
 #endif /*__cplusplus*/
 
-typedef struct _cl_perfcounter_amd * cl_perfcounter_amd;
+typedef struct _cl_perfcounter_amd* cl_perfcounter_amd;
 typedef cl_ulong cl_perfcounter_property;
 typedef cl_uint cl_perfcounter_info;
 
 /* cl_perfcounter_info */
-enum PerfcounterInfo
-{
-    CL_PERFCOUNTER_NONE                 = 0x0,
-    CL_PERFCOUNTER_REFERENCE_COUNT      = 0x1,
-    CL_PERFCOUNTER_DATA                 = 0x2,
-    CL_PERFCOUNTER_GPU_BLOCK_INDEX      = 0x3,
-    CL_PERFCOUNTER_GPU_COUNTER_INDEX    = 0x4,
-    CL_PERFCOUNTER_GPU_EVENT_INDEX      = 0x5,
-    CL_PERFCOUNTER_LAST
+enum PerfcounterInfo {
+  CL_PERFCOUNTER_NONE = 0x0,
+  CL_PERFCOUNTER_REFERENCE_COUNT = 0x1,
+  CL_PERFCOUNTER_DATA = 0x2,
+  CL_PERFCOUNTER_GPU_BLOCK_INDEX = 0x3,
+  CL_PERFCOUNTER_GPU_COUNTER_INDEX = 0x4,
+  CL_PERFCOUNTER_GPU_EVENT_INDEX = 0x5,
+  CL_PERFCOUNTER_LAST
 };
 
 /*! \brief Creates a new HW performance counter
@@ -129,12 +128,9 @@ enum PerfcounterInfo
  *
  *  \return the created perfcounter object
  */
-extern CL_API_ENTRY cl_perfcounter_amd CL_API_CALL
-clCreatePerfCounterAMD(
-    cl_device_id                /* device */,
-    cl_perfcounter_property*    /* properties */,
-    cl_int*                     /* errcode_ret */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_perfcounter_amd CL_API_CALL clCreatePerfCounterAMD(
+    cl_device_id /* device */, cl_perfcounter_property* /* properties */, cl_int* /* errcode_ret */
+    ) CL_API_SUFFIX__VERSION_1_0;
 
 /*! \brief Destroy a performance counter object.
  *
@@ -144,10 +140,8 @@ clCreatePerfCounterAMD(
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to release the object
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clReleasePerfCounterAMD(
-    cl_perfcounter_amd  /* perf_counter */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clReleasePerfCounterAMD(cl_perfcounter_amd /* perf_counter */
+                                                               ) CL_API_SUFFIX__VERSION_1_0;
 
 /*! \brief Increments the perfcounter object reference count.
  *
@@ -157,10 +151,8 @@ clReleasePerfCounterAMD(
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to release the object
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clRetainPerfCounterAMD(
-    cl_perfcounter_amd  /* perf_counter */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clRetainPerfCounterAMD(cl_perfcounter_amd /* perf_counter */
+                                                              ) CL_API_SUFFIX__VERSION_1_0;
 
 /*! \brief Enqueues the begin command for the specified counters.
  *
@@ -174,15 +166,11 @@ clRetainPerfCounterAMD(
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to enqueue the begin operation
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueBeginPerfCounterAMD(
-    cl_command_queue    /* command_queue */,
-    cl_uint             /* num_perf_counters */,
-    cl_perfcounter_amd* /* perf_counters */,
-    cl_uint             /* num_events_in_wait_list */,
-    const cl_event*     /* event_wait_list */,
-    cl_event*           /* event */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clEnqueueBeginPerfCounterAMD(
+    cl_command_queue /* command_queue */, cl_uint /* num_perf_counters */,
+    cl_perfcounter_amd* /* perf_counters */, cl_uint /* num_events_in_wait_list */,
+    const cl_event* /* event_wait_list */, cl_event* /* event */
+    ) CL_API_SUFFIX__VERSION_1_0;
 
 /*! \brief Enqueues the end command for the specified counters.
  *
@@ -198,15 +186,11 @@ clEnqueueBeginPerfCounterAMD(
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to enqueue the end operation
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueEndPerfCounterAMD(
-    cl_command_queue    /* command_queue */,
-    cl_uint             /* num_perf_counters */,
-    cl_perfcounter_amd* /* perf_counters */,
-    cl_uint             /* num_events_in_wait_list */,
-    const cl_event*     /* event_wait_list */,
-    cl_event*           /* event */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clEnqueueEndPerfCounterAMD(
+    cl_command_queue /* command_queue */, cl_uint /* num_perf_counters */,
+    cl_perfcounter_amd* /* perf_counters */, cl_uint /* num_events_in_wait_list */,
+    const cl_event* /* event_wait_list */, cl_event* /* event */
+    ) CL_API_SUFFIX__VERSION_1_0;
 
 /*! \brief Retrieves the results from the counter objects.
  *
@@ -231,17 +215,13 @@ clEnqueueEndPerfCounterAMD(
  *  - CL_PROFILING_INFO_NOT_AVAILABLE if event isn't finished.
  *  - CL_INVALID_OPERATION if we failed to get the data
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetPerfCounterInfoAMD(
-    cl_perfcounter_amd  /* perf_counter */,
-    cl_perfcounter_info /* param_name */,
-    size_t              /* param_value_size */,
-    void*               /* param_value */,
-    size_t*             /* param_value_size_ret */
-) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clGetPerfCounterInfoAMD(
+    cl_perfcounter_amd /* perf_counter */, cl_perfcounter_info /* param_name */,
+    size_t /* param_value_size */, void* /* param_value */, size_t* /* param_value_size_ret */
+    ) CL_API_SUFFIX__VERSION_1_0;
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif /*__cplusplus*/
 
-#endif  /*__CL_PROFILE_AMD_H*/
+#endif /*__CL_PROFILE_AMD_H*/

@@ -12,52 +12,47 @@
 
 #include <vector>
 
-static amd::Program* createProgram(
-    cl_context context,
-    cl_uint num_devices,
-    const cl_device_id *device_list,
-    cl_int *errcode_ret)
-{
-    // Create the program
-    amd::Program* program = new amd::Program(*as_amd(context));
-    if (program == NULL) {
+static amd::Program* createProgram(cl_context context, cl_uint num_devices,
+                                   const cl_device_id* device_list, cl_int* errcode_ret) {
+  // Create the program
+  amd::Program* program = new amd::Program(*as_amd(context));
+  if (program == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return NULL;
+  }
+
+  // Add programs for all devices in the context.
+  if (device_list == NULL) {
+    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+    std::vector<amd::Device*>::const_iterator it;
+    for (it = devices.begin(); it != devices.end(); ++it) {
+      if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
         *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+        program->release();
         return NULL;
-    }
-
-    // Add programs for all devices in the context.
-    if (device_list == NULL) {
-        const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-        std::vector<amd::Device*>::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-            if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
-                *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-                program->release();
-                return NULL;
-            }
-        }
-        return program;
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    for (cl_uint i = 0; i < num_devices; ++i) {
-        cl_device_id device = device_list[i];
-
-        if (!is_valid(device)
-            || !as_amd(context)->containsDevice(as_amd(device))) {
-            *not_null(errcode_ret) = CL_INVALID_DEVICE;
-            program->release();
-            return NULL;
-        }
-
-        cl_int status = program->addDeviceProgram(*as_amd(device));
-        if (status == CL_OUT_OF_HOST_MEMORY) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            program->release();
-            return NULL;
-        }
+      }
     }
     return program;
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  for (cl_uint i = 0; i < num_devices; ++i) {
+    cl_device_id device = device_list[i];
+
+    if (!is_valid(device) || !as_amd(context)->containsDevice(as_amd(device))) {
+      *not_null(errcode_ret) = CL_INVALID_DEVICE;
+      program->release();
+      return NULL;
+    }
+
+    cl_int status = program->addDeviceProgram(*as_amd(device));
+    if (status == CL_OUT_OF_HOST_MEMORY) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      program->release();
+      return NULL;
+    }
+  }
+  return program;
 }
 
 /*! \addtogroup API
@@ -109,60 +104,55 @@ static amd::Program* createProgram(
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource, (
-    cl_context context,
-    cl_uint count,
-    const char **strings,
-    const size_t *lengths,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_program)0;
-    }
-    if (count == 0 || strings == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
-    }
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource,
+                  (cl_context context, cl_uint count, const char** strings, const size_t* lengths,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_program)0;
+  }
+  if (count == 0 || strings == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
 
-    std::string sourceCode;
-    for (cl_uint i = 0; i < count; ++i) {
-        if (strings[i] == NULL) {
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            return (cl_program)0;
-        }
-        if (lengths && lengths[i] != 0) {
-            sourceCode.append(strings[i], lengths[i]);
-        }
-        else {
-            sourceCode.append(strings[i]);
-        }
+  std::string sourceCode;
+  for (cl_uint i = 0; i < count; ++i) {
+    if (strings[i] == NULL) {
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      return (cl_program)0;
     }
-    if (sourceCode.empty()) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
+    if (lengths && lengths[i] != 0) {
+      sourceCode.append(strings[i], lengths[i]);
+    } else {
+      sourceCode.append(strings[i]);
     }
+  }
+  if (sourceCode.empty()) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
 
-    // Create the program
-    amd::Program* program = new amd::Program(*as_amd(context), sourceCode);
-    if (program == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_program)0;
-    }
+  // Create the program
+  amd::Program* program = new amd::Program(*as_amd(context), sourceCode);
+  if (program == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_program)0;
+  }
 
-    // Add programs for all devices in the context.
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            program->release();
-            return (cl_program)0;
-        }
+  // Add programs for all devices in the context.
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      program->release();
+      return (cl_program)0;
     }
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(program);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(program);
 }
 RUNTIME_EXIT
 
@@ -194,42 +184,37 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithILKHR, (
-    cl_context context,
-    const void *il,
-    size_t length,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_program)0;
-    }
-    if (length == 0 || il == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
-    }
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithILKHR,
+                  (cl_context context, const void* il, size_t length, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_program)0;
+  }
+  if (length == 0 || il == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
 
-    // Create the program
-    amd::Program* program = new amd::Program(*as_amd(context), "", true);
-    if (program == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_program)0;
-    }
+  // Create the program
+  amd::Program* program = new amd::Program(*as_amd(context), "", true);
+  if (program == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_program)0;
+  }
 
-    // Add programs for all devices in the context.
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if (program->addDeviceProgram(**it, il, length) ==
-            CL_OUT_OF_HOST_MEMORY) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            program->release();
-            return (cl_program)0;
-        }
+  // Add programs for all devices in the context.
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if (program->addDeviceProgram(**it, il, length) == CL_OUT_OF_HOST_MEMORY) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      program->release();
+      return (cl_program)0;
     }
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(program);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(program);
 }
 RUNTIME_EXIT
 
@@ -291,65 +276,57 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithBinary, (
-    cl_context context,
-    cl_uint num_devices,
-    const cl_device_id *device_list,
-    const size_t *lengths,
-    const unsigned char **binaries,
-    cl_int *binary_status,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_program)0;
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithBinary,
+                  (cl_context context, cl_uint num_devices, const cl_device_id* device_list,
+                   const size_t* lengths, const unsigned char** binaries, cl_int* binary_status,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_program)0;
+  }
+  if (num_devices == 0 || device_list == NULL || binaries == NULL || lengths == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  amd::Program* program = new amd::Program(*as_amd(context));
+  if (program == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_program)0;
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  for (cl_uint i = 0; i < num_devices; ++i) {
+    cl_device_id device = device_list[i];
+
+    if (!is_valid(device) || !as_amd(context)->containsDevice(as_amd(device))) {
+      *not_null(errcode_ret) = CL_INVALID_DEVICE;
+      program->release();
+      return (cl_program)0;
     }
-    if (num_devices == 0 || device_list == NULL
-        || binaries == NULL || lengths == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
+    if (binaries[i] == NULL || lengths[i] == 0) {
+      if (binary_status != NULL) {
+        binary_status[i] = CL_INVALID_VALUE;
+      }
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      continue;
     }
 
-    amd::Program* program = new amd::Program(*as_amd(context));
-    if (program == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_program)0;
+    cl_int status = program->addDeviceProgram(*as_amd(device), binaries[i], lengths[i]);
+
+    *not_null(errcode_ret) = status;
+
+    if (status == CL_OUT_OF_HOST_MEMORY) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      program->release();
+      return (cl_program)0;
     }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    for (cl_uint i = 0; i < num_devices; ++i) {
-        cl_device_id device = device_list[i];
-
-        if (!is_valid(device)
-                || !as_amd(context)->containsDevice(as_amd(device))) {
-            *not_null(errcode_ret) = CL_INVALID_DEVICE;
-            program->release();
-            return (cl_program)0;
-        }
-        if (binaries[i] == NULL || lengths[i] == 0) {
-            if (binary_status != NULL) {
-                binary_status[i] = CL_INVALID_VALUE;
-            }
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            continue;
-        }
-
-        cl_int status = program->addDeviceProgram(
-            *as_amd(device), binaries[i], lengths[i]);
-
-        *not_null(errcode_ret) = status;
-
-        if (status == CL_OUT_OF_HOST_MEMORY) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            program->release();
-            return (cl_program)0;
-        }
-
-        if (binary_status != NULL) {
-            binary_status[i] = status;
-        }
+    if (binary_status != NULL) {
+      binary_status[i] = status;
     }
-    return as_cl(program);
+  }
+  return as_cl(program);
 }
 RUNTIME_EXIT
 
@@ -362,13 +339,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainProgram, (cl_program program))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
-    as_amd(program)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainProgram, (cl_program program)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  as_amd(program)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -382,13 +358,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int,  clReleaseProgram, (cl_program program))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
-    as_amd(program)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseProgram, (cl_program program)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  as_amd(program)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -450,39 +425,34 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clBuildProgram, (
-    cl_program program,
-    cl_uint num_devices,
-    const cl_device_id *device_list,
-    const char *options,
-    void (CL_CALLBACK * pfn_notify)(cl_program program, void *user_data),
-    void *user_data))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
-    if ((num_devices > 0 && device_list == NULL)
-        || (num_devices == 0 && device_list != NULL)) {
-        return CL_INVALID_VALUE;
-    }
+RUNTIME_ENTRY(cl_int, clBuildProgram,
+              (cl_program program, cl_uint num_devices, const cl_device_id* device_list,
+               const char* options,
+               void(CL_CALLBACK* pfn_notify)(cl_program program, void* user_data),
+               void* user_data)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  if ((num_devices > 0 && device_list == NULL) || (num_devices == 0 && device_list != NULL)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Program*   amdProgram = as_amd(program);
+  amd::Program* amdProgram = as_amd(program);
 
-    if (device_list == NULL) {
-        // build for all devices in the context.
-        return amdProgram->build(amdProgram->context().devices(),
-            options, pfn_notify, user_data);
-    }
+  if (device_list == NULL) {
+    // build for all devices in the context.
+    return amdProgram->build(amdProgram->context().devices(), options, pfn_notify, user_data);
+  }
 
-    std::vector<amd::Device*> devices(num_devices);
-    while (num_devices--) {
-        amd::Device* device = as_amd(*device_list++);
-        if (!amdProgram->context().containsDevice(device)) {
-            return CL_INVALID_DEVICE;
-        }
-        devices[num_devices] = device;
+  std::vector<amd::Device*> devices(num_devices);
+  while (num_devices--) {
+    amd::Device* device = as_amd(*device_list++);
+    if (!amdProgram->context().containsDevice(device)) {
+      return CL_INVALID_DEVICE;
     }
-    return amdProgram->build(devices, options, pfn_notify, user_data);
+    devices[num_devices] = device;
+  }
+  return amdProgram->build(devices, options, pfn_notify, user_data);
 }
 RUNTIME_EXIT
 
@@ -523,7 +493,7 @@ RUNTIME_EXIT
  *  section 5.6.4.1). If multiple entries in header_include_names refer to the same
  *  header name, the first one encountered will be used.
  *
- *  \param pfn_notify is a function pointer to a notification routine. The 
+ *  \param pfn_notify is a function pointer to a notification routine. The
  *  notification routine is a callback function that an application can register
  *  and which will be called when the program executable has been built
  *  (successfully or unsuccessfully). If pfn_notify is not NULL,
@@ -567,69 +537,58 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clCompileProgram, (
-    cl_program program,
-    cl_uint num_devices,
-    const cl_device_id *device_list,
-    const char *options,
-    cl_uint num_input_headers,
-    const cl_program *input_headers,
-    const char **header_include_names,
-    void (CL_CALLBACK *pfn_notify)(cl_program program, void *user_data),
-    void *user_data))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
-    if ((num_devices > 0 && device_list == NULL)
-        || (num_devices == 0 && device_list != NULL)) {
-        return CL_INVALID_VALUE;
-    }
-    if ((num_input_headers > 0
-         && (input_headers == NULL || header_include_names == NULL))
-        || (num_input_headers == 0
-            && (input_headers != NULL || header_include_names != NULL))) {
-        return CL_INVALID_VALUE;
-    }
-    if (pfn_notify == NULL && user_data != NULL) {
-        return CL_INVALID_VALUE;
-    }
+RUNTIME_ENTRY(cl_int, clCompileProgram,
+              (cl_program program, cl_uint num_devices, const cl_device_id* device_list,
+               const char* options, cl_uint num_input_headers, const cl_program* input_headers,
+               const char** header_include_names,
+               void(CL_CALLBACK* pfn_notify)(cl_program program, void* user_data),
+               void* user_data)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  if ((num_devices > 0 && device_list == NULL) || (num_devices == 0 && device_list != NULL)) {
+    return CL_INVALID_VALUE;
+  }
+  if ((num_input_headers > 0 && (input_headers == NULL || header_include_names == NULL)) ||
+      (num_input_headers == 0 && (input_headers != NULL || header_include_names != NULL))) {
+    return CL_INVALID_VALUE;
+  }
+  if (pfn_notify == NULL && user_data != NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Program*   amdProgram = as_amd(program);
-    if (amdProgram->referenceCount() > 1) {
-        return CL_INVALID_OPERATION;
+  amd::Program* amdProgram = as_amd(program);
+  if (amdProgram->referenceCount() > 1) {
+    return CL_INVALID_OPERATION;
+  }
+
+  std::vector<const amd::Program*> headerPrograms(num_input_headers);
+  for (cl_uint i = 0; i < num_input_headers; ++i) {
+    if (!is_valid(input_headers[i])) {
+      return CL_INVALID_OPERATION;
     }
+    const amd::Program* headerProgram = as_amd(input_headers[i]);
+    headerPrograms[i] = headerProgram;
+  }
 
-    std::vector<const amd::Program*> headerPrograms(num_input_headers);
-    for (cl_uint i = 0; i < num_input_headers; ++i) {
-        if (!is_valid(input_headers[i])) {
-            return CL_INVALID_OPERATION;
-        }
-        const amd::Program* headerProgram = as_amd(input_headers[i]);
-        headerPrograms[i] = headerProgram;
+  if (device_list == NULL) {
+    // compile for all devices in the context.
+    return amdProgram->compile(amdProgram->context().devices(), num_input_headers, headerPrograms,
+                               header_include_names, options, pfn_notify, user_data);
+  }
+
+  std::vector<amd::Device*> devices(num_devices);
+
+  while (num_devices--) {
+    amd::Device* device = as_amd(*device_list++);
+    if (!amdProgram->context().containsDevice(device)) {
+      return CL_INVALID_DEVICE;
     }
+    devices[num_devices] = device;
+  }
 
-    if (device_list == NULL) {
-        // compile for all devices in the context.
-        return amdProgram->compile(amdProgram->context().devices(),
-                                   num_input_headers, headerPrograms,
-                                   header_include_names, options,
-                                   pfn_notify, user_data);
-    }
-
-    std::vector<amd::Device*> devices(num_devices);
-
-    while (num_devices--) {
-        amd::Device* device = as_amd(*device_list++);
-        if (!amdProgram->context().containsDevice(device)) {
-            return CL_INVALID_DEVICE;
-        }
-        devices[num_devices] = device;
-    }
-
-    return amdProgram->compile(devices, num_input_headers,
-                               headerPrograms, header_include_names, options,
-                               pfn_notify, user_data);
+  return amdProgram->compile(devices, num_input_headers, headerPrograms, header_include_names,
+                             options, pfn_notify, user_data);
 }
 RUNTIME_EXIT
 
@@ -644,7 +603,7 @@ RUNTIME_EXIT
  *  the list of devices associated with context.
  *
  *  \param context must be a valid OpenCL context.
- * 
+ *
  *  \param device_list is a pointer to a list of devices that are in context.
  *  If device_list is a NULL value, the link is performed for all devices
  *  associated with context for which a compiled object is available.
@@ -661,7 +620,7 @@ RUNTIME_EXIT
  *  referenced by input_programs.
  *
  *  \param input_programs is an array of program objects that are compiled
- *  binaries or libraries that are to be linked to create the program executable. 
+ *  binaries or libraries that are to be linked to create the program executable.
  *  For each device in device_list or if device_list is NULL the list of devices
  *  associated with context, the following cases occur:
  *  All programs specified by input_programs contain a compiled binary or
@@ -725,85 +684,75 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(cl_program, clLinkProgram, (
-    cl_context context,
-    cl_uint num_devices,
-    const cl_device_id* device_list,
-    const char* options,
-    cl_uint num_input_programs,
-    const cl_program* input_programs,
-    void (CL_CALLBACK *pfn_notify)(cl_program program, void* user_data),
-    void* user_data,
-    cl_int* errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_program)0;
-    }
-
-    if ((num_devices > 0 && device_list == NULL) ||
-        (num_devices == 0 && device_list != NULL)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
-    }
-
-    if (num_input_programs == 0 || input_programs == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
-    }
-
-    if (pfn_notify == NULL && user_data != NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_program)0;
-    }
-
-    std::vector<amd::Program*> inputPrograms(num_input_programs);
-    for (cl_uint i = 0; i < num_input_programs; ++i) {
-        if (!is_valid(input_programs[i])) {
-            *not_null(errcode_ret) = CL_INVALID_PROGRAM;
-            return (cl_program)0;
-        }
-        amd::Program* inputProgram = as_amd(input_programs[i]);
-        inputPrograms[i] = inputProgram;
-    }
-
-    amd::Program* program =
-        createProgram( context, num_devices, device_list, errcode_ret);
-    if (program == NULL)
-        return (cl_program)0;
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    cl_int status;
-
-    if (device_list == NULL) {
-        // compile for all devices in the context.
-        status = program->link(as_amd(context)->devices(),
-                               num_input_programs, inputPrograms,
-                               options, pfn_notify, user_data);
-    }
-    else {
-        std::vector<amd::Device*> devices(num_devices);
-
-        while (num_devices--) {
-            amd::Device* device = as_amd(*device_list++);
-            if (!as_amd(context)->containsDevice(device)) {
-                program->release();
-                *not_null(errcode_ret) = CL_INVALID_DEVICE;
-                return (cl_program)0;
-            }
-            devices[num_devices] = device;
-        }
-
-        status = program->link(devices, num_input_programs, inputPrograms,
-                               options, pfn_notify, user_data);
-    }
-    *not_null(errcode_ret) = status;
-    if (status == CL_SUCCESS) {
-        return as_cl(program);
-    }
-
-    program->release();
+RUNTIME_ENTRY_RET(cl_program, clLinkProgram,
+                  (cl_context context, cl_uint num_devices, const cl_device_id* device_list,
+                   const char* options, cl_uint num_input_programs,
+                   const cl_program* input_programs,
+                   void(CL_CALLBACK* pfn_notify)(cl_program program, void* user_data),
+                   void* user_data, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
     return (cl_program)0;
+  }
+
+  if ((num_devices > 0 && device_list == NULL) || (num_devices == 0 && device_list != NULL)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  if (num_input_programs == 0 || input_programs == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  if (pfn_notify == NULL && user_data != NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  std::vector<amd::Program*> inputPrograms(num_input_programs);
+  for (cl_uint i = 0; i < num_input_programs; ++i) {
+    if (!is_valid(input_programs[i])) {
+      *not_null(errcode_ret) = CL_INVALID_PROGRAM;
+      return (cl_program)0;
+    }
+    amd::Program* inputProgram = as_amd(input_programs[i]);
+    inputPrograms[i] = inputProgram;
+  }
+
+  amd::Program* program = createProgram(context, num_devices, device_list, errcode_ret);
+  if (program == NULL) return (cl_program)0;
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  cl_int status;
+
+  if (device_list == NULL) {
+    // compile for all devices in the context.
+    status = program->link(as_amd(context)->devices(), num_input_programs, inputPrograms, options,
+                           pfn_notify, user_data);
+  } else {
+    std::vector<amd::Device*> devices(num_devices);
+
+    while (num_devices--) {
+      amd::Device* device = as_amd(*device_list++);
+      if (!as_amd(context)->containsDevice(device)) {
+        program->release();
+        *not_null(errcode_ret) = CL_INVALID_DEVICE;
+        return (cl_program)0;
+      }
+      devices[num_devices] = device;
+    }
+
+    status =
+        program->link(devices, num_input_programs, inputPrograms, options, pfn_notify, user_data);
+  }
+  *not_null(errcode_ret) = status;
+  if (status == CL_SUCCESS) {
+    return as_cl(program);
+  }
+
+  program->release();
+  return (cl_program)0;
 }
 RUNTIME_EXIT
 
@@ -840,17 +789,13 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithBuiltInKernels, (
-    cl_context context,
-    cl_uint num_devices,
-    const cl_device_id *device_list,
-    const char *kernel_names,
-    cl_int *errcode_ret))
-{
-    //!@todo Add implementation
-    amd::Program*   program = NULL;
-    Unimplemented();
-    return as_cl(program);
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithBuiltInKernels,
+                  (cl_context context, cl_uint num_devices, const cl_device_id* device_list,
+                   const char* kernel_names, cl_int* errcode_ret)) {
+  //!@todo Add implementation
+  amd::Program* program = NULL;
+  Unimplemented();
+  return as_cl(program);
 }
 RUNTIME_EXIT
 
@@ -873,14 +818,13 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clUnloadPlatformCompiler, (cl_platform_id platform))
-{
-    if (platform != NULL && platform != AMD_PLATFORM) {
-        return CL_INVALID_PLATFORM;
-    }
+RUNTIME_ENTRY(cl_int, clUnloadPlatformCompiler, (cl_platform_id platform)) {
+  if (platform != NULL && platform != AMD_PLATFORM) {
+    return CL_INVALID_PLATFORM;
+  }
 
-    //! @todo: Implement Compiler::unload()
-    return CL_SUCCESS;
+  //! @todo: Implement Compiler::unload()
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -898,10 +842,9 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clUnloadCompiler, (void))
-{
-    //! @todo: Implement Compiler::unload()
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clUnloadCompiler, (void)) {
+  //! @todo: Implement Compiler::unload()
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -930,7 +873,7 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if \a param_name is not valid, or if size in bytes
  *    specified by \a param_value_size is < size of return type and
  *    \a param_value is not NULL
- *  - CL_INVALID_PROGRAM_EXECUTABLE if param_name is 
+ *  - CL_INVALID_PROGRAM_EXECUTABLE if param_name is
  *    CL_PROGRAM_NUM_KERNELS or CL_PROGRAM_KERNEL_NAMES and a successful
  *    program executable has not been built for at least one device in the list
  *    of devices associated with program.
@@ -938,134 +881,120 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clGetProgramInfo, (
-    cl_program program,
-    cl_program_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
+RUNTIME_ENTRY(cl_int, clGetProgramInfo,
+              (cl_program program, cl_program_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_PROGRAM_REFERENCE_COUNT: {
-        cl_uint count = as_amd(program)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(program)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_CONTEXT: {
-        cl_context context = const_cast<cl_context>(
-            as_cl(&as_amd(program)->context()));
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      cl_context context = const_cast<cl_context>(as_cl(&as_amd(program)->context()));
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_NUM_DEVICES: {
-        cl_uint numDevices = (cl_uint)as_amd(program)->deviceList().size();
-        return amd::clGetInfo(
-            numDevices, param_value_size, param_value, param_value_size_ret);
+      cl_uint numDevices = (cl_uint)as_amd(program)->deviceList().size();
+      return amd::clGetInfo(numDevices, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_DEVICES: {
-        const amd::Program::devicelist_t& devices =
-            as_amd(program)->deviceList();
-        const size_t numDevices = devices.size();
-        const size_t valueSize = numDevices * sizeof(cl_device_id);
+      const amd::Program::devicelist_t& devices = as_amd(program)->deviceList();
+      const size_t numDevices = devices.size();
+      const size_t valueSize = numDevices * sizeof(cl_device_id);
 
-        if (param_value != NULL && param_value_size < valueSize) {
-            return CL_INVALID_VALUE;
+      if (param_value != NULL && param_value_size < valueSize) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = valueSize;
+      if (param_value != NULL) {
+        cl_device_id* device_list = (cl_device_id*)param_value;
+        amd::Program::devicelist_t::const_iterator it;
+        for (it = devices.begin(); it != devices.end(); ++it) {
+          *device_list++ = const_cast<cl_device_id>(as_cl(*it));
         }
-        *not_null(param_value_size_ret) = valueSize;
-        if (param_value != NULL) {
-            cl_device_id* device_list = (cl_device_id*) param_value;
-            amd::Program::devicelist_t::const_iterator it;
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                *device_list++ = const_cast<cl_device_id>(as_cl(*it));
-            }
-            if (param_value_size > valueSize) {
-                ::memset(static_cast<address>(param_value) + valueSize,
-                    '\0', param_value_size - valueSize);
-            }
+        if (param_value_size > valueSize) {
+          ::memset(static_cast<address>(param_value) + valueSize, '\0',
+                   param_value_size - valueSize);
         }
-        return CL_SUCCESS;
+      }
+      return CL_SUCCESS;
     }
     case CL_PROGRAM_SOURCE: {
-        const char* source = as_amd(program)->sourceCode().c_str();
-        return amd::clGetInfo(
-            source, param_value_size, param_value, param_value_size_ret);
+      const char* source = as_amd(program)->sourceCode().c_str();
+      return amd::clGetInfo(source, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_BINARY_SIZES: {
-        amd::Program* amdProgram = as_amd(program);
-        const amd::Program::devicelist_t& devices = amdProgram->deviceList();
-        const size_t numBinaries = devices.size();
-        const size_t valueSize = numBinaries * sizeof(size_t);
+      amd::Program* amdProgram = as_amd(program);
+      const amd::Program::devicelist_t& devices = amdProgram->deviceList();
+      const size_t numBinaries = devices.size();
+      const size_t valueSize = numBinaries * sizeof(size_t);
 
-        if (param_value != NULL && param_value_size < valueSize) {
-            return CL_INVALID_VALUE;
+      if (param_value != NULL && param_value_size < valueSize) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = valueSize;
+      if (param_value != NULL) {
+        size_t* binary_sizes = (size_t*)param_value;
+        amd::Program::devicelist_t::const_iterator it;
+        for (it = devices.begin(); it != devices.end(); ++it) {
+          *binary_sizes++ = amdProgram->getDeviceProgram(**it)->binary().second;
         }
-        *not_null(param_value_size_ret) = valueSize;
-        if (param_value != NULL) {
-            size_t* binary_sizes = (size_t*) param_value;
-            amd::Program::devicelist_t::const_iterator it;
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                *binary_sizes++ =
-                    amdProgram->getDeviceProgram(**it)->binary().second;
-            }
-            if (param_value_size > valueSize) {
-                ::memset(static_cast<address>(param_value) + valueSize,
-                    '\0', param_value_size - valueSize);
-            }
+        if (param_value_size > valueSize) {
+          ::memset(static_cast<address>(param_value) + valueSize, '\0',
+                   param_value_size - valueSize);
         }
-        return CL_SUCCESS;
+      }
+      return CL_SUCCESS;
     }
     case CL_PROGRAM_BINARIES: {
-        amd::Program* amdProgram = as_amd(program);
-        const amd::Program::devicelist_t& devices = amdProgram->deviceList();
-        const size_t numBinaries = devices.size();
-        const size_t valueSize = numBinaries * sizeof(char*);
+      amd::Program* amdProgram = as_amd(program);
+      const amd::Program::devicelist_t& devices = amdProgram->deviceList();
+      const size_t numBinaries = devices.size();
+      const size_t valueSize = numBinaries * sizeof(char*);
 
-        if (param_value != NULL && param_value_size < valueSize) {
-            return CL_INVALID_VALUE;
+      if (param_value != NULL && param_value_size < valueSize) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = valueSize;
+      if (param_value != NULL) {
+        char** binaries = (char**)param_value;
+        amd::Program::devicelist_t::const_iterator it;
+        for (it = devices.begin(); it != devices.end(); ++it) {
+          const device::Program::binary_t& binary = amdProgram->getDeviceProgram(**it)->binary();
+          // If an entry value in the array is NULL,
+          // then runtime should skip copying the program binary
+          if (*binaries != NULL) {
+            ::memcpy(*binaries, binary.first, binary.second);
+          }
+          binaries++;
         }
-        *not_null(param_value_size_ret) = valueSize;
-        if (param_value != NULL) {
-            char** binaries = (char**) param_value;
-            amd::Program::devicelist_t::const_iterator it;
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                const device::Program::binary_t& binary =
-                    amdProgram->getDeviceProgram(**it)->binary();
-                // If an entry value in the array is NULL,
-                // then runtime should skip copying the program binary
-                if (*binaries != NULL) {
-                    ::memcpy(*binaries, binary.first, binary.second);
-                }
-                binaries++;
-            }
-            if (param_value_size > valueSize) {
-                ::memset(static_cast<address>(param_value) + valueSize,
-                    '\0', param_value_size - valueSize);
-            }
+        if (param_value_size > valueSize) {
+          ::memset(static_cast<address>(param_value) + valueSize, '\0',
+                   param_value_size - valueSize);
         }
-        return CL_SUCCESS;
+      }
+      return CL_SUCCESS;
     }
     case CL_PROGRAM_NUM_KERNELS: {
-        if (as_amd(program)->symbolsPtr() == NULL) {
-            return CL_INVALID_PROGRAM_EXECUTABLE;
-        }
-        size_t numKernels = as_amd(program)->symbols().size();
-        return amd::clGetInfo(
-            numKernels, param_value_size, param_value, param_value_size_ret);
+      if (as_amd(program)->symbolsPtr() == NULL) {
+        return CL_INVALID_PROGRAM_EXECUTABLE;
+      }
+      size_t numKernels = as_amd(program)->symbols().size();
+      return amd::clGetInfo(numKernels, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_KERNEL_NAMES: {
-        const char* kernelNames = as_amd(program)->kernelNames().c_str();
-        return amd::clGetInfo(
-            kernelNames, param_value_size, param_value, param_value_size_ret);
+      const char* kernelNames = as_amd(program)->kernelNames().c_str();
+      return amd::clGetInfo(kernelNames, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -1098,90 +1027,73 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetProgramBuildInfo, (
-    cl_program program,
-    cl_device_id device,
-    cl_program_build_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clGetProgramBuildInfo,
+              (cl_program program, cl_device_id device, cl_program_build_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    const device::Program* devProgram =
-        as_amd(program)->getDeviceProgram(*as_amd(device));
-    if (devProgram == NULL) {
-        return CL_INVALID_DEVICE;
-    }
+  const device::Program* devProgram = as_amd(program)->getDeviceProgram(*as_amd(device));
+  if (devProgram == NULL) {
+    return CL_INVALID_DEVICE;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_PROGRAM_BUILD_STATUS: {
-        cl_build_status status = devProgram->buildStatus();
-        return amd::clGetInfo(
-            status, param_value_size, param_value, param_value_size_ret);
+      cl_build_status status = devProgram->buildStatus();
+      return amd::clGetInfo(status, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_BUILD_OPTIONS: {
-        const std::string optionsStr = devProgram->lastBuildOptionsArg();
-        const char* options = optionsStr.c_str();
-        return amd::clGetInfo(
-            options, param_value_size, param_value, param_value_size_ret);
+      const std::string optionsStr = devProgram->lastBuildOptionsArg();
+      const char* options = optionsStr.c_str();
+      return amd::clGetInfo(options, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_BUILD_LOG: {
-        const std::string logstr =
-            as_amd(program)->programLog() + devProgram->buildLog().c_str();
-        const char* log = logstr.c_str();
-        return amd::clGetInfo(
-            log, param_value_size, param_value, param_value_size_ret);
+      const std::string logstr = as_amd(program)->programLog() + devProgram->buildLog().c_str();
+      const char* log = logstr.c_str();
+      return amd::clGetInfo(log, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_BINARY_TYPE: {
-        const device::Program::type_t devProgramType = devProgram->type();
-        cl_uint type;
-        switch (devProgramType) {
-            case device::Program::TYPE_NONE:
-            {
-                type = CL_PROGRAM_BINARY_TYPE_NONE;
-                break;
-            }
-            case device::Program::TYPE_COMPILED:
-            {
-                type = CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT;
-                break;
-            }
-            case device::Program::TYPE_LIBRARY:
-            {
-                type = CL_PROGRAM_BINARY_TYPE_LIBRARY;
-                break;
-            }
-            case device::Program::TYPE_EXECUTABLE:
-            {
-                type = CL_PROGRAM_BINARY_TYPE_EXECUTABLE;
-                break;
-            }
-            case device::Program::TYPE_INTERMEDIATE:
-            {
-                type = CL_PROGRAM_BINARY_TYPE_INTERMEDIATE;
-                break;
-            }
-            default:
-                return CL_INVALID_VALUE;
+      const device::Program::type_t devProgramType = devProgram->type();
+      cl_uint type;
+      switch (devProgramType) {
+        case device::Program::TYPE_NONE: {
+          type = CL_PROGRAM_BINARY_TYPE_NONE;
+          break;
         }
-        return amd::clGetInfo(
-            type, param_value_size, param_value, param_value_size_ret);
+        case device::Program::TYPE_COMPILED: {
+          type = CL_PROGRAM_BINARY_TYPE_COMPILED_OBJECT;
+          break;
+        }
+        case device::Program::TYPE_LIBRARY: {
+          type = CL_PROGRAM_BINARY_TYPE_LIBRARY;
+          break;
+        }
+        case device::Program::TYPE_EXECUTABLE: {
+          type = CL_PROGRAM_BINARY_TYPE_EXECUTABLE;
+          break;
+        }
+        case device::Program::TYPE_INTERMEDIATE: {
+          type = CL_PROGRAM_BINARY_TYPE_INTERMEDIATE;
+          break;
+        }
+        default:
+          return CL_INVALID_VALUE;
+      }
+      return amd::clGetInfo(type, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PROGRAM_BUILD_GLOBAL_VARIABLE_TOTAL_SIZE: {
-        size_t size = devProgram->globalVariableTotalSize();
-        return amd::clGetInfo(
-            size, param_value_size, param_value, param_value_size_ret);
+      size_t size = devProgram->globalVariableTotalSize();
+      return amd::clGetInfo(size, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
-    return CL_INVALID_VALUE;
+      break;
+  }
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -1228,42 +1140,38 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_kernel, clCreateKernel, (
-    cl_program program,
-    const char *kernel_name,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(program)) {
-        *not_null(errcode_ret) = CL_INVALID_PROGRAM;
-        return (cl_kernel) 0;
-    }
-    if (kernel_name == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_kernel) 0;
-    }
-    /* FIXME_lmoriche, FIXME_spec: What are we supposed to do here?
-     * if (!as_amd(program)->containsOneSuccesfullyBuiltProgram())
-     * {
-     *     *NotNull(errcode) = CL_INVALID_PROGRAM_EXECUTABLE;
-     *     return (cl_kernel) 0;
-     * }
-     */
-    amd::Program* amd_program = as_amd(program);
-    const amd::Symbol* symbol = amd_program->findSymbol(kernel_name);
-    if (symbol == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_KERNEL_NAME;
-        return (cl_kernel) 0;
-    }
+RUNTIME_ENTRY_RET(cl_kernel, clCreateKernel,
+                  (cl_program program, const char* kernel_name, cl_int* errcode_ret)) {
+  if (!is_valid(program)) {
+    *not_null(errcode_ret) = CL_INVALID_PROGRAM;
+    return (cl_kernel)0;
+  }
+  if (kernel_name == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_kernel)0;
+  }
+  /* FIXME_lmoriche, FIXME_spec: What are we supposed to do here?
+   * if (!as_amd(program)->containsOneSuccesfullyBuiltProgram())
+   * {
+   *     *NotNull(errcode) = CL_INVALID_PROGRAM_EXECUTABLE;
+   *     return (cl_kernel) 0;
+   * }
+   */
+  amd::Program* amd_program = as_amd(program);
+  const amd::Symbol* symbol = amd_program->findSymbol(kernel_name);
+  if (symbol == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_KERNEL_NAME;
+    return (cl_kernel)0;
+  }
 
-    amd::Kernel* kernel =
-        new amd::Kernel(*amd_program, *symbol, kernel_name);
-    if (kernel == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_kernel)0;
-    }
+  amd::Kernel* kernel = new amd::Kernel(*amd_program, *symbol, kernel_name);
+  if (kernel == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_kernel)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(kernel);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(kernel);
 }
 RUNTIME_EXIT
 
@@ -1310,44 +1218,38 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clCreateKernelsInProgram, (
-    cl_program program,
-    cl_uint num_kernels,
-    cl_kernel *kernels,
-    cl_uint *num_kernels_ret))
-{
-    if (!is_valid(program)) {
-        return CL_INVALID_PROGRAM;
-    }
+RUNTIME_ENTRY(cl_int, clCreateKernelsInProgram, (cl_program program, cl_uint num_kernels,
+                                                 cl_kernel* kernels, cl_uint* num_kernels_ret)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
 
-    cl_uint numKernels = (cl_uint) as_amd(program)->symbols().size();
+  cl_uint numKernels = (cl_uint)as_amd(program)->symbols().size();
 
-    if (kernels != NULL && num_kernels < numKernels) {
-        return CL_INVALID_VALUE;
-    }
-    *not_null(num_kernels_ret) = numKernels;
-    if (kernels == NULL) {
-        return CL_SUCCESS;
-    }
-
-    const amd::Program::symbols_t& symbols = as_amd(program)->symbols();
-    cl_kernel* result = kernels;
-
-    amd::Program::symbols_t::const_iterator it;
-    for (it = symbols.begin(); it != symbols.end(); ++it) {
-
-        amd::Kernel* kernel = new amd::Kernel(
-            *as_amd(program), it->second, it->first);
-        if (kernel == NULL) {
-            while (--result >= kernels) {
-                as_amd(*result)->release();
-            }
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        *result++ = as_cl(kernel);
-    }
-
+  if (kernels != NULL && num_kernels < numKernels) {
+    return CL_INVALID_VALUE;
+  }
+  *not_null(num_kernels_ret) = numKernels;
+  if (kernels == NULL) {
     return CL_SUCCESS;
+  }
+
+  const amd::Program::symbols_t& symbols = as_amd(program)->symbols();
+  cl_kernel* result = kernels;
+
+  amd::Program::symbols_t::const_iterator it;
+  for (it = symbols.begin(); it != symbols.end(); ++it) {
+    amd::Kernel* kernel = new amd::Kernel(*as_amd(program), it->second, it->first);
+    if (kernel == NULL) {
+      while (--result >= kernels) {
+        as_amd(*result)->release();
+      }
+      return CL_OUT_OF_HOST_MEMORY;
+    }
+    *result++ = as_cl(kernel);
+  }
+
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1360,13 +1262,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainKernel, (cl_kernel kernel))
-{
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
-    as_amd(kernel)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainKernel, (cl_kernel kernel)) {
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
+  as_amd(kernel)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1381,13 +1282,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseKernel, (cl_kernel kernel))
-{
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
-    as_amd(kernel)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseKernel, (cl_kernel kernel)) {
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
+  as_amd(kernel)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1452,58 +1352,48 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clSetKernelArg, (
-    cl_kernel kernel,
-    cl_uint arg_index,
-    size_t arg_size,
-    const void *arg_value))
-{
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+RUNTIME_ENTRY(cl_int, clSetKernelArg,
+              (cl_kernel kernel, cl_uint arg_index, size_t arg_size, const void* arg_value)) {
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    const amd::KernelSignature& signature = as_amd(kernel)->signature();
-    if (arg_index >= signature.numParameters()) {
-        return CL_INVALID_ARG_INDEX;
-    }
+  const amd::KernelSignature& signature = as_amd(kernel)->signature();
+  if (arg_index >= signature.numParameters()) {
+    return CL_INVALID_ARG_INDEX;
+  }
 
-    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
+  as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
 
-    const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
-    const bool is_local = desc.size_ == 0;
-    if (((arg_value == NULL) && !is_local && (desc.type_ != T_POINTER)) ||
-        ((arg_value != NULL) && is_local)) {
-        return CL_INVALID_ARG_VALUE;
+  const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
+  const bool is_local = desc.size_ == 0;
+  if (((arg_value == NULL) && !is_local && (desc.type_ != T_POINTER)) ||
+      ((arg_value != NULL) && is_local)) {
+    return CL_INVALID_ARG_VALUE;
+  }
+  if (!is_local && (desc.type_ == T_POINTER) && (arg_value != NULL)) {
+    cl_mem memObj = *static_cast<const cl_mem*>(arg_value);
+    amd::RuntimeObject* pObject = as_amd(memObj);
+    if (NULL != memObj && amd::RuntimeObject::ObjectTypeMemory != pObject->objectType()) {
+      return CL_INVALID_MEM_OBJECT;
     }
-    if (!is_local && (desc.type_ == T_POINTER) && (arg_value != NULL))
-    {
-        cl_mem memObj = *static_cast<const cl_mem*>(arg_value);
-        amd::RuntimeObject * pObject = as_amd(memObj);
-        if (NULL != memObj &&
-            amd::RuntimeObject::ObjectTypeMemory != pObject->objectType()) {
-            return CL_INVALID_MEM_OBJECT;
-        }
+  } else if ((desc.type_ == T_SAMPLER) && !is_valid(*static_cast<const cl_sampler*>(arg_value))) {
+    return CL_INVALID_SAMPLER;
+  } else if (desc.type_ == T_QUEUE) {
+    cl_command_queue queue = *static_cast<const cl_command_queue*>(arg_value);
+    if (!is_valid(queue)) {
+      return CL_INVALID_DEVICE_QUEUE;
     }
-    else if ((desc.type_ == T_SAMPLER) &&
-        !is_valid(*static_cast<const cl_sampler*>(arg_value))) {
-        return CL_INVALID_SAMPLER;
+    if (NULL == as_amd(queue)->asDeviceQueue()) {
+      return CL_INVALID_DEVICE_QUEUE;
     }
-    else if (desc.type_ == T_QUEUE) {
-        cl_command_queue queue = *static_cast<const cl_command_queue*>(arg_value);
-        if (!is_valid(queue)) {
-            return CL_INVALID_DEVICE_QUEUE;
-        }
-        if (NULL == as_amd(queue)->asDeviceQueue()) {
-            return CL_INVALID_DEVICE_QUEUE;
-        }
-    }
-    if ((!is_local && (arg_size != desc.size_)) || (is_local && (arg_size == 0))) {
-        return CL_INVALID_ARG_SIZE;
-    }
+  }
+  if ((!is_local && (arg_size != desc.size_)) || (is_local && (arg_size == 0))) {
+    return CL_INVALID_ARG_SIZE;
+  }
 
-    as_amd(kernel)->parameters().set(
-        static_cast<size_t>(arg_index), arg_size, arg_value);
-    return CL_SUCCESS;
+  as_amd(kernel)->parameters().set(static_cast<size_t>(arg_index), arg_size, arg_value);
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1536,66 +1426,53 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetKernelInfo, (
-    cl_kernel kernel,
-    cl_kernel_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    // Check if we have a valid kernel
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+RUNTIME_ENTRY(cl_int, clGetKernelInfo,
+              (cl_kernel kernel, cl_kernel_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid kernel
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    const amd::Kernel* amdKernel = as_amd(kernel);
+  const amd::Kernel* amdKernel = as_amd(kernel);
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_KERNEL_FUNCTION_NAME: {
-        const char* name = amdKernel->name().c_str();
-        // Return the kernel's name
-        return amd::clGetInfo(
-            name, param_value_size, param_value, param_value_size_ret);
+      const char* name = amdKernel->name().c_str();
+      // Return the kernel's name
+      return amd::clGetInfo(name, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_NUM_ARGS: {
-        cl_uint numParam =
-            static_cast<cl_uint>(amdKernel->signature().numParameters());
-        // Return the number of kernel's parameters
-        return amd::clGetInfo(
-            numParam, param_value_size, param_value, param_value_size_ret);
+      cl_uint numParam = static_cast<cl_uint>(amdKernel->signature().numParameters());
+      // Return the number of kernel's parameters
+      return amd::clGetInfo(numParam, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_REFERENCE_COUNT: {
-        cl_uint count = amdKernel->referenceCount();
-        // Return the reference counter
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = amdKernel->referenceCount();
+      // Return the reference counter
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_CONTEXT: {
-        cl_context context = const_cast<cl_context>(
-            as_cl(&amdKernel->program().context()));
-        // Return the context, associated with the program
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      cl_context context = const_cast<cl_context>(as_cl(&amdKernel->program().context()));
+      // Return the context, associated with the program
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_PROGRAM: {
-        cl_program program = const_cast<cl_program>(
-            as_cl(&amdKernel->program()));
-        // Return the program, associated with the kernel
-        return amd::clGetInfo(
-            program, param_value_size, param_value, param_value_size_ret);
+      cl_program program = const_cast<cl_program>(as_cl(&amdKernel->program()));
+      // Return the program, associated with the kernel
+      return amd::clGetInfo(program, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ATTRIBUTES: {
-        const char* name = amdKernel->signature().attributes().c_str();
-        // Return the kernel attributes
-        return amd::clGetInfo(
-            name, param_value_size, param_value, param_value_size_ret);
+      const char* name = amdKernel->signature().attributes().c_str();
+      // Return the kernel attributes
+      return amd::clGetInfo(name, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1627,60 +1504,50 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clGetKernelArgInfo, (
-    cl_kernel kernel,
-    cl_uint arg_indx,
-    cl_kernel_arg_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    // Check if we have a valid kernel
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+RUNTIME_ENTRY(cl_int, clGetKernelArgInfo,
+              (cl_kernel kernel, cl_uint arg_indx, cl_kernel_arg_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid kernel
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    amd::Kernel* amdKernel = as_amd(kernel);
+  amd::Kernel* amdKernel = as_amd(kernel);
 
-    const amd::KernelSignature& signature = amdKernel->signature();
-    if (arg_indx >= signature.numParameters()) {
-        return CL_INVALID_ARG_INDEX;
-    }
+  const amd::KernelSignature& signature = amdKernel->signature();
+  if (arg_indx >= signature.numParameters()) {
+    return CL_INVALID_ARG_INDEX;
+  }
 
-    const amd::KernelParameterDescriptor& desc = signature.at(arg_indx);
+  const amd::KernelParameterDescriptor& desc = signature.at(arg_indx);
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_KERNEL_ARG_ADDRESS_QUALIFIER: {
-        cl_kernel_arg_address_qualifier qualifier = desc.addressQualifier_;
-        return amd::clGetInfo(
-            qualifier, param_value_size, param_value, param_value_size_ret);
+      cl_kernel_arg_address_qualifier qualifier = desc.addressQualifier_;
+      return amd::clGetInfo(qualifier, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_ACCESS_QUALIFIER: {
-        cl_kernel_arg_access_qualifier qualifier = desc.accessQualifier_;
-        return amd::clGetInfo(
-            qualifier, param_value_size, param_value, param_value_size_ret);
+      cl_kernel_arg_access_qualifier qualifier = desc.accessQualifier_;
+      return amd::clGetInfo(qualifier, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_TYPE_NAME: {
-        // Return the argument's type name
-        return amd::clGetInfo(
-            desc.typeName_, param_value_size, param_value, param_value_size_ret);
+      // Return the argument's type name
+      return amd::clGetInfo(desc.typeName_, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_TYPE_QUALIFIER: {
-        cl_kernel_arg_type_qualifier qualifier = desc.typeQualifier_;
-        return amd::clGetInfo(
-            qualifier, param_value_size, param_value, param_value_size_ret);
+      cl_kernel_arg_type_qualifier qualifier = desc.typeQualifier_;
+      return amd::clGetInfo(qualifier, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_NAME: {
-        // Return the argument's name
-        return amd::clGetInfo(
-            desc.name_, param_value_size, param_value, param_value_size_ret);
+      // Return the argument's name
+      return amd::clGetInfo(desc.name_, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1717,78 +1584,70 @@ RUNTIME_EXIT
  *
  *  \version 1.2r15
  */
-RUNTIME_ENTRY(cl_int, clGetKernelWorkGroupInfo, (
-    cl_kernel kernel,
-    cl_device_id device,
-    cl_kernel_work_group_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    // Check if we have a valid device
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clGetKernelWorkGroupInfo,
+              (cl_kernel kernel, cl_device_id device, cl_kernel_work_group_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid device
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    // Check if we have a valid kernel
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+  // Check if we have a valid kernel
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
 
-    const amd::Device& amdDevice = *as_amd(device);
-    // Find the kernel, associated with the specified device
-    const device::Kernel* devKernel =
-        as_amd(kernel)->getDeviceKernel(amdDevice);
+  const amd::Device& amdDevice = *as_amd(device);
+  // Find the kernel, associated with the specified device
+  const device::Kernel* devKernel = as_amd(kernel)->getDeviceKernel(amdDevice);
 
-    // Make sure we found a valid kernel
-    if (devKernel == NULL) {
-        return CL_INVALID_KERNEL;
-    }
+  // Make sure we found a valid kernel
+  if (devKernel == NULL) {
+    return CL_INVALID_KERNEL;
+  }
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_KERNEL_WORK_GROUP_SIZE: {
-        // Return workgroup size
-        return amd::clGetInfo(devKernel->workGroupInfo()->size_,
-            param_value_size, param_value, param_value_size_ret);
+      // Return workgroup size
+      return amd::clGetInfo(devKernel->workGroupInfo()->size_, param_value_size, param_value,
+                            param_value_size_ret);
     }
     case CL_KERNEL_COMPILE_WORK_GROUP_SIZE: {
-        // Return the compile workgroup size
-        return amd::clGetInfo(devKernel->workGroupInfo()->compileSize_,
-            param_value_size, param_value, param_value_size_ret);
+      // Return the compile workgroup size
+      return amd::clGetInfo(devKernel->workGroupInfo()->compileSize_, param_value_size, param_value,
+                            param_value_size_ret);
     }
     case CL_KERNEL_LOCAL_MEM_SIZE: {
-        // Return the amount of used local memory
-        const size_t align = amdDevice.info().minDataTypeAlignSize_;
-        cl_ulong memSize = as_amd(kernel)->parameters().localMemSize(align)
-            + amd::alignUp(devKernel->workGroupInfo()->localMemSize_, align);
-        return amd::clGetInfo(
-            memSize, param_value_size, param_value, param_value_size_ret);
+      // Return the amount of used local memory
+      const size_t align = amdDevice.info().minDataTypeAlignSize_;
+      cl_ulong memSize = as_amd(kernel)->parameters().localMemSize(align) +
+          amd::alignUp(devKernel->workGroupInfo()->localMemSize_, align);
+      return amd::clGetInfo(memSize, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE: {
-        // Return the compile workgroup size
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->preferredSizeMultiple_,
-            param_value_size, param_value, param_value_size_ret);
+      // Return the compile workgroup size
+      return amd::clGetInfo(devKernel->workGroupInfo()->preferredSizeMultiple_, param_value_size,
+                            param_value, param_value_size_ret);
     }
     case CL_KERNEL_PRIVATE_MEM_SIZE: {
-        // Return the compile workgroup size
-        return amd::clGetInfo(devKernel->workGroupInfo()->privateMemSize_,
-            param_value_size, param_value, param_value_size_ret);
+      // Return the compile workgroup size
+      return amd::clGetInfo(devKernel->workGroupInfo()->privateMemSize_, param_value_size,
+                            param_value, param_value_size_ret);
     }
     case CL_KERNEL_GLOBAL_WORK_SIZE: {
-        return CL_INVALID_VALUE;
+      return CL_INVALID_VALUE;
     }
     case CL_KERNEL_MAX_SEMAPHORE_SIZE_AMD: {
-        return amd::clGetInfo(amdDevice.info().maxSemaphoreSize_,
-            param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(amdDevice.info().maxSemaphoreSize_, param_value_size, param_value,
+                            param_value_size_ret);
     }
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1843,72 +1702,66 @@ RUNTIME_EXIT
  *
  *  \version 2.0r12
  */
-RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR, (
-    cl_kernel kernel,
-    cl_device_id device,
-    cl_kernel_sub_group_info param_name,
-    size_t input_value_size,
-    const void * input_value,
-    size_t param_value_size,
-    void * param_value,
-    size_t * param_value_size_ret))
-{
-    // Check if we have a valid device
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR,
+              (cl_kernel kernel, cl_device_id device, cl_kernel_sub_group_info param_name,
+               size_t input_value_size, const void* input_value, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid device
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    // Check if we have a valid kernel
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+  // Check if we have a valid kernel
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
 
-    const amd::Device& amdDevice = *as_amd(device);
-    // Find the kernel, associated with the specified device
-    const device::Kernel* devKernel =
-        as_amd(kernel)->getDeviceKernel(amdDevice);
+  const amd::Device& amdDevice = *as_amd(device);
+  // Find the kernel, associated with the specified device
+  const device::Kernel* devKernel = as_amd(kernel)->getDeviceKernel(amdDevice);
 
-    // Make sure we found a valid kernel
-    if (devKernel == NULL) {
-        return CL_INVALID_KERNEL;
-    }
+  // Make sure we found a valid kernel
+  if (devKernel == NULL) {
+    return CL_INVALID_KERNEL;
+  }
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR:
     case CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR: {
+      // Infer the number of dimensions from 'input_value_size'
+      size_t dims = input_value_size / sizeof(size_t);
+      if (dims == 0 || dims > 3 || input_value_size != dims * sizeof(size_t)) {
+        return CL_INVALID_VALUE;
+      }
 
-        // Infer the number of dimensions from 'input_value_size'
-        size_t dims = input_value_size / sizeof(size_t);
-        if (dims == 0 || dims > 3 || input_value_size != dims * sizeof(size_t)) {
-            return CL_INVALID_VALUE;
-        }
+      // Get the linear workgroup size
+      size_t workGroupSize = ((size_t*)input_value)[0];
+      for (size_t i = 1; i < dims; ++i) {
+        workGroupSize *= ((size_t*)input_value)[i];
+      }
 
-        // Get the linear workgroup size
-        size_t workGroupSize = ((size_t*)input_value)[0];
-        for (size_t i = 1; i < dims; ++i) {
-            workGroupSize *= ((size_t*)input_value)[i];
-        }
+      // Get the subgroup size. CPU devices only have one subgroup
+      // per workgroup. GPU devices sub-groups are wavefronts.
+      size_t subGroupSize = as_amd(device)->type() == CL_DEVICE_TYPE_CPU
+          ? workGroupSize
+          : as_amd(device)->info().wavefrontWidth_;
 
-        // Get the subgroup size. CPU devices only have one subgroup
-        // per workgroup. GPU devices sub-groups are wavefronts.
-        size_t subGroupSize = as_amd(device)->type() == CL_DEVICE_TYPE_CPU
-            ? workGroupSize : as_amd(device)->info().wavefrontWidth_;
-
-        size_t numSubGroups = (workGroupSize + subGroupSize - 1) / subGroupSize;
+      size_t numSubGroups = (workGroupSize + subGroupSize - 1) / subGroupSize;
 
 
-        return amd::clGetInfo(
-            (param_name == CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR)
-                ? subGroupSize : numSubGroups,
-            param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo((param_name == CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR)
+                                ? subGroupSize
+                                : numSubGroups,
+                            param_value_size, param_value, param_value_size_ret);
     }
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;}
+  return CL_SUCCESS;
+}
 RUNTIME_EXIT
 
 /*! @}

@@ -14,7 +14,7 @@
 #include "cl_d3d9_amd.hpp"
 #include "cl_d3d10_amd.hpp"
 #include "cl_d3d11_amd.hpp"
-#endif //_WIN32
+#endif  //_WIN32
 
 #include <cstring>
 
@@ -47,46 +47,42 @@
  *              false: don't check the falg CL_MEM_KERNEL_READ_AND_WRITE
  *  \return true of flags are valid, otherwise - false
 */
-static bool
-validateFlags( cl_mem_flags flags, bool chkReadWrite=false)
-{
-    // check flags for validity
-    cl_bitfield temp = flags
-        & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY);
-    if (chkReadWrite) {
-        temp |= (flags & CL_MEM_KERNEL_READ_AND_WRITE) ;
-    }
+static bool validateFlags(cl_mem_flags flags, bool chkReadWrite = false) {
+  // check flags for validity
+  cl_bitfield temp = flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY);
+  if (chkReadWrite) {
+    temp |= (flags & CL_MEM_KERNEL_READ_AND_WRITE);
+  }
 
-    if(temp
-        && !(CL_MEM_READ_WRITE == temp
-        || CL_MEM_WRITE_ONLY == temp
-        || (chkReadWrite && (CL_MEM_KERNEL_READ_AND_WRITE == temp 
-                         || (CL_MEM_KERNEL_READ_AND_WRITE | CL_MEM_READ_WRITE) == temp))
-        || CL_MEM_READ_ONLY == temp)) {
-        return false;
-    }
+  if (temp &&
+      !(CL_MEM_READ_WRITE == temp || CL_MEM_WRITE_ONLY == temp ||
+        (chkReadWrite && (CL_MEM_KERNEL_READ_AND_WRITE == temp ||
+                          (CL_MEM_KERNEL_READ_AND_WRITE | CL_MEM_READ_WRITE) == temp)) ||
+        CL_MEM_READ_ONLY == temp)) {
+    return false;
+  }
 
-    if((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))
-        == (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-        return false;
-    }
-    if((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))
-        == (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
-        return false;
-    }
+  if ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) ==
+      (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
+    return false;
+  }
+  if ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) ==
+      (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
+    return false;
+  }
 
-    if ((flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) && (flags & (CL_MEM_USE_HOST_PTR
-        | CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_READ_WRITE
-        | CL_MEM_READ_ONLY))) {
-        return false;
-    }
+  if ((flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) &&
+      (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR |
+                CL_MEM_READ_WRITE | CL_MEM_READ_ONLY))) {
+    return false;
+  }
 
-    if ((flags & CL_MEM_BUS_ADDRESSABLE_AMD) && (flags & (CL_MEM_USE_HOST_PTR
-        | CL_MEM_ALLOC_HOST_PTR))) {
-        return false;
-    }
+  if ((flags & CL_MEM_BUS_ADDRESSABLE_AMD) &&
+      (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 /*! \brief Helper function to validate cl_image_desc
@@ -145,138 +141,134 @@ validateFlags( cl_mem_flags flags, bool chkReadWrite=false)
  *  and vice-versa at corresponding sychronization points. The image_width
  *  size of element in bytes must be <= size of buffer object data store.
  */
-static bool
-validateImageDescriptor(
-    const std::vector<amd::Device*>& devices,
-    const amd::Image::Format imageFormat,
-    const cl_image_desc* desc,
-    void* hostPtr,
-    size_t& imageRowPitch,
-    size_t& imageSlicePitch)
-{
-    if (desc == NULL) {
-        return false;
+static bool validateImageDescriptor(const std::vector<amd::Device*>& devices,
+                                    const amd::Image::Format imageFormat, const cl_image_desc* desc,
+                                    void* hostPtr, size_t& imageRowPitch, size_t& imageSlicePitch) {
+  if (desc == NULL) {
+    return false;
+  }
+
+  // Check if any device supports mipmaps
+  bool mipMapSupport = false;
+  for (auto& dev : devices) {
+    if (dev->settings().checkExtension(ClKhrMipMapImage)) {
+      mipMapSupport = true;
+      break;
     }
+  }
 
-    // Check if any device supports mipmaps
-    bool mipMapSupport = false;
-    for (auto& dev : devices) {
-        if (dev->settings().checkExtension(ClKhrMipMapImage)) {
-            mipMapSupport = true;
-            break;
-        }
+  // Check if any device can accept mipmaps
+  if ((desc->num_mip_levels != 0) && (!mipMapSupport || (hostPtr != NULL))) {
+    return false;
+  }
+
+  if (desc->num_samples != 0) {
+    return false;
+  }
+
+  amd::Buffer* buffer = NULL;
+  size_t elemSize = imageFormat.getElementSize();
+  bool imageBuffer = false;
+
+  if (desc->image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER ||
+      (desc->mem_object != NULL && desc->image_type == CL_MEM_OBJECT_IMAGE2D)) {
+    if (desc->mem_object == NULL) {
+      return false;
     }
-
-    // Check if any device can accept mipmaps
-    if ((desc->num_mip_levels != 0) && (!mipMapSupport || (hostPtr != NULL))) {
-        return false;
+    buffer = as_amd(desc->mem_object)->asBuffer();
+    if (buffer == NULL) {
+      return false;
     }
-
-    if (desc->num_samples != 0) {
-        return false;
+    if ((desc->image_width * desc->image_height * elemSize) > buffer->getSize()) {
+      return false;
     }
+    imageBuffer = true;
+  } else if (desc->mem_object != NULL) {
+    return false;
+  }
 
-    amd::Buffer* buffer = NULL;
-    size_t  elemSize = imageFormat.getElementSize();
-    bool imageBuffer = false;
+  imageRowPitch = desc->image_row_pitch;
+  imageSlicePitch = desc->image_slice_pitch;
 
-    if (desc->image_type == CL_MEM_OBJECT_IMAGE1D_BUFFER ||
-        (desc->mem_object != NULL && desc->image_type == CL_MEM_OBJECT_IMAGE2D)) {
-        if (desc->mem_object == NULL) {
-            return false;
-        }
-        buffer = as_amd(desc->mem_object)->asBuffer();
-        if (buffer == NULL) {
-            return false;
-        }
-        if ((desc->image_width * desc->image_height * elemSize) > buffer->getSize()) {
-            return false;
-        }
-        imageBuffer = true;
-    }
-    else if (desc->mem_object != NULL) {
-        return false;
-    }
-
-    imageRowPitch = desc->image_row_pitch;
-    imageSlicePitch = desc->image_slice_pitch;
-
-    switch (desc->image_type) {
-        case CL_MEM_OBJECT_IMAGE3D:
-        case CL_MEM_OBJECT_IMAGE2D_ARRAY:
-        case CL_MEM_OBJECT_IMAGE1D_ARRAY:
-            // check slice pitch
-            if (hostPtr == NULL) {
-                if (imageSlicePitch != 0) {
-                    return false;
-                }
-            }
-            // Fall through to process pitch...
-        case CL_MEM_OBJECT_IMAGE2D:
-        case CL_MEM_OBJECT_IMAGE1D:
-            // check row pitch rules
-            if (hostPtr == NULL && !imageBuffer) {
-                if (imageRowPitch != 0) {
-                    return false;
-                }
-            }
-            else if (imageRowPitch != 0) {
-                if ((imageRowPitch < desc->image_width * elemSize) ||
-                    ((imageRowPitch % elemSize) != 0)) {
-                    return false;
-                }
-            }
-            if (imageRowPitch == 0) {
-                imageRowPitch = desc->image_width * elemSize;
-            }
-            break;
-        case CL_MEM_OBJECT_IMAGE1D_BUFFER:
-            break;
-        default:
-            return false;
-            break;
-    }
-
-    // Extra slice validation for three dimensional images
-    if ((desc->image_type == CL_MEM_OBJECT_IMAGE3D) ||
-        (desc->image_type == CL_MEM_OBJECT_IMAGE2D_ARRAY)) {
+  switch (desc->image_type) {
+    case CL_MEM_OBJECT_IMAGE3D:
+    case CL_MEM_OBJECT_IMAGE2D_ARRAY:
+    case CL_MEM_OBJECT_IMAGE1D_ARRAY:
+      // check slice pitch
+      if (hostPtr == NULL) {
         if (imageSlicePitch != 0) {
-            if ((imageSlicePitch < (imageRowPitch * desc->image_height)) ||
-                ((imageSlicePitch % imageRowPitch) != 0)) {
-                return false;
-            }
+          return false;
         }
-        if (imageSlicePitch == 0) {
-            imageSlicePitch = imageRowPitch * desc->image_height;
+      }
+    // Fall through to process pitch...
+    case CL_MEM_OBJECT_IMAGE2D:
+    case CL_MEM_OBJECT_IMAGE1D:
+      // check row pitch rules
+      if (hostPtr == NULL && !imageBuffer) {
+        if (imageRowPitch != 0) {
+          return false;
         }
-    }
-    else if (desc->image_type == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
-        if (imageSlicePitch != 0) {
-            if ((imageSlicePitch % imageRowPitch) != 0) {
-                return false;
-            }
+      } else if (imageRowPitch != 0) {
+        if ((imageRowPitch < desc->image_width * elemSize) || ((imageRowPitch % elemSize) != 0)) {
+          return false;
         }
-        if (imageSlicePitch == 0) {
-            imageSlicePitch = imageRowPitch;
-        }
-    }
+      }
+      if (imageRowPitch == 0) {
+        imageRowPitch = desc->image_width * elemSize;
+      }
+      break;
+    case CL_MEM_OBJECT_IMAGE1D_BUFFER:
+      break;
+    default:
+      return false;
+      break;
+  }
 
-    return true;
+  // Extra slice validation for three dimensional images
+  if ((desc->image_type == CL_MEM_OBJECT_IMAGE3D) ||
+      (desc->image_type == CL_MEM_OBJECT_IMAGE2D_ARRAY)) {
+    if (imageSlicePitch != 0) {
+      if ((imageSlicePitch < (imageRowPitch * desc->image_height)) ||
+          ((imageSlicePitch % imageRowPitch) != 0)) {
+        return false;
+      }
+    }
+    if (imageSlicePitch == 0) {
+      imageSlicePitch = imageRowPitch * desc->image_height;
+    }
+  } else if (desc->image_type == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
+    if (imageSlicePitch != 0) {
+      if ((imageSlicePitch % imageRowPitch) != 0) {
+        return false;
+      }
+    }
+    if (imageSlicePitch == 0) {
+      imageSlicePitch = imageRowPitch;
+    }
+  }
+
+  return true;
 }
 
-class ImageViewRef : public amd::EmbeddedObject
-{
-private:
-    amd::Image* ref_;
-    // Do not copy image view references.
-    ImageViewRef& operator = (const ImageViewRef& sref);
+class ImageViewRef : public amd::EmbeddedObject {
+ private:
+  amd::Image* ref_;
+  // Do not copy image view references.
+  ImageViewRef& operator=(const ImageViewRef& sref);
 
-public:
-    explicit ImageViewRef(): ref_(NULL) { }
-    ~ImageViewRef() { if (ref_ != NULL) { ref_->release(); } }
+ public:
+  explicit ImageViewRef() : ref_(NULL) {}
+  ~ImageViewRef() {
+    if (ref_ != NULL) {
+      ref_->release();
+    }
+  }
 
-    ImageViewRef& operator = (amd::Image* sref) { ref_ = sref; return *this;}
-    amd::Image* operator ()() const { return ref_; }
+  ImageViewRef& operator=(amd::Image* sref) {
+    ref_ = sref;
+    return *this;
+  }
+  amd::Image* operator()() const { return ref_; }
 };
 
 /*! \brief Create a buffer object.
@@ -318,213 +310,189 @@ public:
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (
-    cl_context context,
-    cl_mem_flags flags,
-    size_t size,
-    void *host_ptr,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (cl_context context, cl_mem_flags flags, size_t size,
+                                           void* host_ptr, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return NULL;
+  }
+  // check flags for validity
+  if (!validateFlags(flags)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return (cl_mem)0;
+  }
+  // check size
+  if (size == 0) {
+    *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
+    LogWarning("invalid parameter \"size = 0\"");
+    return (cl_mem)0;
+  }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool sizePass = false;
+  for (auto& dev : devices) {
+    if ((dev->info().maxMemAllocSize_ >= size) ||
+        (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
+      sizePass = true;
+      break;
     }
-    // check flags for validity
-    if (!validateFlags(flags)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return (cl_mem) 0;
+  }
+  if (!sizePass) {
+    *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
+    LogWarning("invalid parameter \"size\"");
+    return (cl_mem)0;
+  }
+
+  // check host_ptr consistency
+  if (host_ptr == NULL) {
+    if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR | CL_MEM_EXTERNAL_PHYSICAL_AMD)) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
-    // check size
-    if (size == 0) {
-        *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
-        LogWarning("invalid parameter \"size = 0\"");
-        return (cl_mem)0;
-    }
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool sizePass = false;
-    for (auto& dev : devices) {
-        if ((dev->info().maxMemAllocSize_ >= size) ||
-            (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
-            sizePass = true;
-            break;
-        }
-    }
-    if (!sizePass) {
-        *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
-        LogWarning("invalid parameter \"size\"");
-        return (cl_mem) 0;
-    }
-
-    // check host_ptr consistency
-    if (host_ptr == NULL) {
-        if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR
-            | CL_MEM_EXTERNAL_PHYSICAL_AMD)) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-    }
-    else {
-        if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR
-            | CL_MEM_EXTERNAL_PHYSICAL_AMD))) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-
-        if (flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) {
-
-            flags |= CL_MEM_WRITE_ONLY;
-
-            cl_bus_address_amd * bus_address =
-                reinterpret_cast<cl_bus_address_amd*>(host_ptr);
-
-            if (bus_address->surface_bus_address == 0) {
-                *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-                LogWarning("invalid parameter \"surface bus address\"");
-                return static_cast<cl_mem>(NULL);
-            }
-
-            if (bus_address->surface_bus_address & (amd::Os::pageSize()-1)) {
-                *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-                LogWarning("invalid parameter \"surface bus address\"");
-                return static_cast<cl_mem>(NULL);
-            }
-
-            if (bus_address->marker_bus_address == 0) {
-                *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-                LogWarning("invalid parameter \"marker bus address\"");
-                return static_cast<cl_mem>(NULL);
-            }
-
-            if (bus_address->marker_bus_address & (amd::Os::pageSize()-1)) {
-                *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-                LogWarning("invalid parameter \"marker bus address\"");
-                return static_cast<cl_mem>(NULL);
-            }
-
-        }
+  } else {
+    if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR | CL_MEM_EXTERNAL_PHYSICAL_AMD))) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
 
-    // check extensions flag consistency
-    if ((flags & CL_MEM_USE_PERSISTENT_MEM_AMD) &&
-        (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR |
-                  CL_MEM_EXTERNAL_PHYSICAL_AMD | CL_MEM_BUS_ADDRESSABLE_AMD))) {
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("conflicting flags CL_MEM_USE_PERSISTENT_MEM_AMD and host memory specific flags");
-            return (cl_mem) 0;
-        }
+    if (flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) {
+      flags |= CL_MEM_WRITE_ONLY;
 
-    if ((flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) ||
-        (flags & CL_MEM_BUS_ADDRESSABLE_AMD)) {
-        size = (size+(amd::Os::pageSize()-1))&(~(amd::Os::pageSize()-1));
-    }
+      cl_bus_address_amd* bus_address = reinterpret_cast<cl_bus_address_amd*>(host_ptr);
 
-    amd::Context& amdContext = *as_amd(context);
-    amd::Memory* mem = NULL;
-    //check if the ptr is in the svm space, if yes, we need return SVM buffer
-    amd::Memory * svmMem = amd::SvmManager::FindSvmBuffer(host_ptr);
-    if ((NULL != svmMem) && (flags & CL_MEM_USE_HOST_PTR)) {
-        size_t svmSize = svmMem->getSize();
-        size_t offset = static_cast<address>(host_ptr) - static_cast<address>(svmMem->getSvmPtr());
-        if (size + offset > svmSize) {
-            LogWarning("invalid parameter \"size\"");
-            return (cl_mem) 0;
-        }
-        mem = new(amdContext) amd::Buffer(*svmMem, flags, offset, size);
-        svmMem->setHostMem(host_ptr);
-    }
-    else {
-        mem = new(amdContext) amd::Buffer(amdContext, flags, size);
-    }
+      if (bus_address->surface_bus_address == 0) {
+        *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+        LogWarning("invalid parameter \"surface bus address\"");
+        return static_cast<cl_mem>(NULL);
+      }
 
-    if (mem == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem)0;
-    }
+      if (bus_address->surface_bus_address & (amd::Os::pageSize() - 1)) {
+        *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+        LogWarning("invalid parameter \"surface bus address\"");
+        return static_cast<cl_mem>(NULL);
+      }
 
-    if (!mem->create(host_ptr)) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        mem->release();
-        return NULL;
-    }
+      if (bus_address->marker_bus_address == 0) {
+        *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+        LogWarning("invalid parameter \"marker bus address\"");
+        return static_cast<cl_mem>(NULL);
+      }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(mem);
+      if (bus_address->marker_bus_address & (amd::Os::pageSize() - 1)) {
+        *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+        LogWarning("invalid parameter \"marker bus address\"");
+        return static_cast<cl_mem>(NULL);
+      }
+    }
+  }
+
+  // check extensions flag consistency
+  if ((flags & CL_MEM_USE_PERSISTENT_MEM_AMD) &&
+      (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_EXTERNAL_PHYSICAL_AMD |
+                CL_MEM_BUS_ADDRESSABLE_AMD))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("conflicting flags CL_MEM_USE_PERSISTENT_MEM_AMD and host memory specific flags");
+    return (cl_mem)0;
+  }
+
+  if ((flags & CL_MEM_EXTERNAL_PHYSICAL_AMD) || (flags & CL_MEM_BUS_ADDRESSABLE_AMD)) {
+    size = (size + (amd::Os::pageSize() - 1)) & (~(amd::Os::pageSize() - 1));
+  }
+
+  amd::Context& amdContext = *as_amd(context);
+  amd::Memory* mem = NULL;
+  // check if the ptr is in the svm space, if yes, we need return SVM buffer
+  amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(host_ptr);
+  if ((NULL != svmMem) && (flags & CL_MEM_USE_HOST_PTR)) {
+    size_t svmSize = svmMem->getSize();
+    size_t offset = static_cast<address>(host_ptr) - static_cast<address>(svmMem->getSvmPtr());
+    if (size + offset > svmSize) {
+      LogWarning("invalid parameter \"size\"");
+      return (cl_mem)0;
+    }
+    mem = new (amdContext) amd::Buffer(*svmMem, flags, offset, size);
+    svmMem->setHostMem(host_ptr);
+  } else {
+    mem = new (amdContext) amd::Buffer(amdContext, flags, size);
+  }
+
+  if (mem == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
+
+  if (!mem->create(host_ptr)) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    mem->release();
+    return NULL;
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(mem);
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY_RET(cl_mem, clCreateSubBuffer, (
-    cl_mem mem,
-    cl_mem_flags flags,
-    cl_buffer_create_type buffer_create_type,
-    const void *buffer_create_info,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(mem) || as_amd(mem)->asBuffer() == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateSubBuffer,
+                  (cl_mem mem, cl_mem_flags flags, cl_buffer_create_type buffer_create_type,
+                   const void* buffer_create_info, cl_int* errcode_ret)) {
+  if (!is_valid(mem) || as_amd(mem)->asBuffer() == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
+  amd::Buffer& buffer = *as_amd(mem)->asBuffer();
+
+  // check flags for validity
+  if (!validateFlags(flags) || (buffer_create_type != CL_BUFFER_CREATE_TYPE_REGION)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
+
+  if (buffer.getMemFlags() & (CL_MEM_EXTERNAL_PHYSICAL_AMD | CL_MEM_BUS_ADDRESSABLE_AMD)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
+
+  const cl_buffer_region* region = (const cl_buffer_region*)buffer_create_info;
+
+  // Check sub buffer offset alignment
+  bool alignmentPass = false;
+  const std::vector<amd::Device*>& devices = buffer.getContext().devices();
+  for (auto& dev : devices) {
+    cl_uint deviceAlignmentBytes = dev->info().memBaseAddrAlign_ >> 3;
+    if (region->origin == amd::alignDown(region->origin, deviceAlignmentBytes)) {
+      alignmentPass = true;
     }
-    amd::Buffer& buffer = *as_amd(mem)->asBuffer();
+  }
 
-    // check flags for validity
-    if (!validateFlags(flags) ||
-        (buffer_create_type != CL_BUFFER_CREATE_TYPE_REGION)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
+  // Return an error if the offset is misaligned on all devices
+  if (!alignmentPass) {
+    *not_null(errcode_ret) = CL_MISALIGNED_SUB_BUFFER_OFFSET;
+    return NULL;
+  }
 
-    if (buffer.getMemFlags() &
-        (CL_MEM_EXTERNAL_PHYSICAL_AMD|CL_MEM_BUS_ADDRESSABLE_AMD)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
+  // check size
+  if ((region->size == 0) || (region->origin + region->size) > buffer.getSize()) {
+    *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
+    return NULL;
+  }
 
-    const cl_buffer_region* region =
-        (const cl_buffer_region*) buffer_create_info;
+  amd::Memory* mem = new (buffer.getContext())
+      amd::Buffer(buffer, (flags) ? flags : buffer.getMemFlags(), region->origin, region->size);
+  if (mem == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return NULL;
+  }
 
-    // Check sub buffer offset alignment
-    bool alignmentPass = false;
-    const std::vector<amd::Device*>& devices =
-        buffer.getContext().devices();
-    for (auto& dev : devices) {
-        cl_uint deviceAlignmentBytes = dev->info().memBaseAddrAlign_>>3;
-        if (region->origin ==
-            amd::alignDown(region->origin, deviceAlignmentBytes)) {
-            alignmentPass = true;
-        }
-    }
+  if (!mem->create(NULL)) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    mem->release();
+    return NULL;
+  }
 
-    // Return an error if the offset is misaligned on all devices
-    if (!alignmentPass) {
-        *not_null(errcode_ret) = CL_MISALIGNED_SUB_BUFFER_OFFSET;
-        return NULL;
-    }
-
-    // check size
-    if ((region->size == 0) ||
-        (region->origin + region->size) > buffer.getSize()) {
-        *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
-        return NULL;
-    }
-
-    amd::Memory* mem = new(buffer.getContext()) amd::Buffer(
-        buffer, (flags) ? flags : buffer.getMemFlags(),
-        region->origin, region->size);
-    if (mem == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return NULL;
-    }
-
-    if (!mem->create(NULL)) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        mem->release();
-        return NULL;
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(mem);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(mem);
 }
 RUNTIME_EXIT
 
@@ -598,89 +566,77 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueReadBuffer, (
-    cl_command_queue command_queue,
-    cl_mem buffer,
-    cl_bool blocking_read,
-    size_t offset,
-    size_t cb,
-    void *ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueReadBuffer,
+              (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_read, size_t offset,
+               size_t cb, void* ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
-    if (srcBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
+  if (srcBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (srcBuffer->getMemFlags() &
-        (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (srcBuffer->getMemFlags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != srcBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != srcBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    srcOffset(offset, 0, 0);
-    amd::Coord3D    srcSize(cb, 1, 1);
+  amd::Coord3D srcOffset(offset, 0, 0);
+  amd::Coord3D srcSize(cb, 1, 1);
 
-    if(!srcBuffer->validateRegion(srcOffset, srcSize)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::ReadMemoryCommand *command = new amd::ReadMemoryCommand(
-        hostQueue,
-        CL_COMMAND_READ_BUFFER,
-        eventWaitList,
-        *srcBuffer,
-        srcOffset, srcSize, ptr);
+  amd::ReadMemoryCommand* command = new amd::ReadMemoryCommand(
+      hostQueue, CL_COMMAND_READ_BUFFER, eventWaitList, *srcBuffer, srcOffset, srcSize, ptr);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
-    if (blocking_read) {
-        command->awaitCompletion();
-    }
+  command->enqueue();
+  if (blocking_read) {
+    command->awaitCompletion();
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -750,89 +706,77 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueWriteBuffer, (
-    cl_command_queue command_queue,
-    cl_mem buffer,
-    cl_bool blocking_write,
-    size_t offset,
-    size_t cb,
-    const void *ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueWriteBuffer,
+              (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_write, size_t offset,
+               size_t cb, const void* ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
-    if (dstBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
+  if (dstBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (dstBuffer->getMemFlags() &
-        (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (dstBuffer->getMemFlags() & (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if(hostQueue.context() != dstBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != dstBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    dstOffset(offset, 0, 0);
-    amd::Coord3D    dstSize(cb, 1, 1);
+  amd::Coord3D dstOffset(offset, 0, 0);
+  amd::Coord3D dstSize(cb, 1, 1);
 
-    if(!dstBuffer->validateRegion(dstOffset, dstSize)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!dstBuffer->validateRegion(dstOffset, dstSize)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::WriteMemoryCommand *command = new amd::WriteMemoryCommand(
-        hostQueue,
-        CL_COMMAND_WRITE_BUFFER,
-        eventWaitList,
-        *dstBuffer,
-        dstOffset, dstSize, ptr);
+  amd::WriteMemoryCommand* command = new amd::WriteMemoryCommand(
+      hostQueue, CL_COMMAND_WRITE_BUFFER, eventWaitList, *dstBuffer, dstOffset, dstSize, ptr);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
-    if (blocking_write) {
-        command->awaitCompletion();
-    }
+  command->enqueue();
+  if (blocking_write) {
+    command->awaitCompletion();
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -891,89 +835,75 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueCopyBuffer, (
-    cl_command_queue command_queue,
-    cl_mem src_buffer,
-    cl_mem dst_buffer,
-    size_t src_offset,
-    size_t dst_offset,
-    size_t cb,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueCopyBuffer,
+              (cl_command_queue command_queue, cl_mem src_buffer, cl_mem dst_buffer,
+               size_t src_offset, size_t dst_offset, size_t cb, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(src_buffer) || !is_valid(dst_buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
-    amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
-    if (srcBuffer == NULL || dstBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(src_buffer) || !is_valid(dst_buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
+  amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
+  if (srcBuffer == NULL || dstBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != srcBuffer->getContext()
-        || hostQueue.context() != dstBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != srcBuffer->getContext() ||
+      hostQueue.context() != dstBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    amd::Coord3D    srcOffset(src_offset, 0, 0);
-    amd::Coord3D    dstOffset(dst_offset, 0, 0);
-    amd::Coord3D    size(cb, 1, 1);
+  amd::Coord3D srcOffset(src_offset, 0, 0);
+  amd::Coord3D dstOffset(dst_offset, 0, 0);
+  amd::Coord3D size(cb, 1, 1);
 
-    if(!srcBuffer->validateRegion(srcOffset, size) ||
-       !dstBuffer->validateRegion(dstOffset, size)) {
-            return CL_INVALID_VALUE;
-    }
+  if (!srcBuffer->validateRegion(srcOffset, size) || !dstBuffer->validateRegion(dstOffset, size)) {
+    return CL_INVALID_VALUE;
+  }
 
-    if(srcBuffer == dstBuffer
-        && ((src_offset <= dst_offset && dst_offset < src_offset + cb)
-        || (dst_offset <= src_offset && src_offset < dst_offset + cb))) {
-        return CL_MEM_COPY_OVERLAP;
-    }
+  if (srcBuffer == dstBuffer && ((src_offset <= dst_offset && dst_offset < src_offset + cb) ||
+                                 (dst_offset <= src_offset && src_offset < dst_offset + cb))) {
+    return CL_MEM_COPY_OVERLAP;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::CopyMemoryCommand *command = new amd::CopyMemoryCommand(
-        hostQueue,
-        CL_COMMAND_COPY_BUFFER,
-        eventWaitList,
-        *srcBuffer, *dstBuffer,
-        srcOffset,
-        dstOffset,
-        size);
+  amd::CopyMemoryCommand* command =
+      new amd::CopyMemoryCommand(hostQueue, CL_COMMAND_COPY_BUFFER, eventWaitList, *srcBuffer,
+                                 *dstBuffer, srcOffset, dstOffset, size);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1075,107 +1005,91 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueReadBufferRect, (
-    cl_command_queue    command_queue,
-    cl_mem              buffer,
-    cl_bool             blocking_read,
-    const size_t*       buffer_origin,
-    const size_t*       host_origin,
-    const size_t*       region,
-    size_t              buffer_row_pitch,
-    size_t              buffer_slice_pitch,
-    size_t              host_row_pitch,
-    size_t              host_slice_pitch,
-    void*               ptr,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    // Validate command queue
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueReadBufferRect,
+              (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_read,
+               const size_t* buffer_origin, const size_t* host_origin, const size_t* region,
+               size_t buffer_row_pitch, size_t buffer_slice_pitch, size_t host_row_pitch,
+               size_t host_slice_pitch, void* ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  // Validate command queue
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    // Validate opencl buffer
-    if (!is_valid(buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
-    if (srcBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  // Validate opencl buffer
+  if (!is_valid(buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
+  if (srcBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (srcBuffer->getMemFlags() &
-        (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (srcBuffer->getMemFlags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != srcBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
-    // Make sure we have a valid system memory pointer
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (hostQueue.context() != srcBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
+  // Make sure we have a valid system memory pointer
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    // Create buffer rectangle info structure
-    amd::BufferRect bufRect;
-    amd::BufferRect hostRect;
+  // Create buffer rectangle info structure
+  amd::BufferRect bufRect;
+  amd::BufferRect hostRect;
 
-    if (!bufRect.create(buffer_origin, region, buffer_row_pitch, buffer_slice_pitch) ||
-        !hostRect.create(host_origin, region, host_row_pitch, host_slice_pitch)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!bufRect.create(buffer_origin, region, buffer_row_pitch, buffer_slice_pitch) ||
+      !hostRect.create(host_origin, region, host_row_pitch, host_slice_pitch)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    srcStart(bufRect.start_, 0, 0);
-    amd::Coord3D    srcEnd(bufRect.end_, 1, 1);
+  amd::Coord3D srcStart(bufRect.start_, 0, 0);
+  amd::Coord3D srcEnd(bufRect.end_, 1, 1);
 
-    if (!srcBuffer->validateRegion(srcStart, srcEnd)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!srcBuffer->validateRegion(srcStart, srcEnd)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Coord3D    size(region[0], region[1], region[2]);
-    amd::ReadMemoryCommand *command = new amd::ReadMemoryCommand(
-        hostQueue,
-        CL_COMMAND_READ_BUFFER_RECT,
-        eventWaitList,
-        *srcBuffer,
-        srcStart, size, ptr,
-        bufRect,
-        hostRect);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::Coord3D size(region[0], region[1], region[2]);
+  amd::ReadMemoryCommand* command =
+      new amd::ReadMemoryCommand(hostQueue, CL_COMMAND_READ_BUFFER_RECT, eventWaitList, *srcBuffer,
+                                 srcStart, size, ptr, bufRect, hostRect);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
-    if (blocking_read) {
-        command->awaitCompletion();
-    }
+  command->enqueue();
+  if (blocking_read) {
+    command->awaitCompletion();
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1277,105 +1191,89 @@ RUNTIME_EXIT
  *   - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources
  *     required by the OpenCL implementation on the host.
  */
-RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferRect, (
-    cl_command_queue command_queue,
-    cl_mem buffer,
-    cl_bool blocking_write,
-    const size_t* buffer_origin,
-    const size_t* host_origin,
-    const size_t* region,
-    size_t buffer_row_pitch,
-    size_t buffer_slice_pitch,
-    size_t host_row_pitch,
-    size_t host_slice_pitch,
-    const void *ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferRect,
+              (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_write,
+               const size_t* buffer_origin, const size_t* host_origin, const size_t* region,
+               size_t buffer_row_pitch, size_t buffer_slice_pitch, size_t host_row_pitch,
+               size_t host_slice_pitch, const void* ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
-    if (dstBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* dstBuffer = as_amd(buffer)->asBuffer();
+  if (dstBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (dstBuffer->getMemFlags() &
-        (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (dstBuffer->getMemFlags() & (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if(hostQueue.context() != dstBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != dstBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    // Create buffer rectangle info structure
-    amd::BufferRect bufRect;
-    amd::BufferRect hostRect;
+  // Create buffer rectangle info structure
+  amd::BufferRect bufRect;
+  amd::BufferRect hostRect;
 
-    if (!bufRect.create(buffer_origin, region, buffer_row_pitch, buffer_slice_pitch) ||
-        !hostRect.create(host_origin, region, host_row_pitch, host_slice_pitch)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!bufRect.create(buffer_origin, region, buffer_row_pitch, buffer_slice_pitch) ||
+      !hostRect.create(host_origin, region, host_row_pitch, host_slice_pitch)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    dstStart(bufRect.start_, 0, 0);
-    amd::Coord3D    dstEnd(bufRect.end_, 1, 1);
+  amd::Coord3D dstStart(bufRect.start_, 0, 0);
+  amd::Coord3D dstEnd(bufRect.end_, 1, 1);
 
-    if(!dstBuffer->validateRegion(dstStart, dstEnd)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!dstBuffer->validateRegion(dstStart, dstEnd)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Coord3D    size(region[0], region[1], region[2]);
-    amd::WriteMemoryCommand *command = new amd::WriteMemoryCommand(
-        hostQueue,
-        CL_COMMAND_WRITE_BUFFER_RECT,
-        eventWaitList,
-        *dstBuffer,
-        dstStart, size, ptr,
-        bufRect,
-        hostRect);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::Coord3D size(region[0], region[1], region[2]);
+  amd::WriteMemoryCommand* command =
+      new amd::WriteMemoryCommand(hostQueue, CL_COMMAND_WRITE_BUFFER_RECT, eventWaitList,
+                                  *dstBuffer, dstStart, size, ptr, bufRect, hostRect);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
-    if (blocking_write) {
-        command->awaitCompletion();
-    }
+  command->enqueue();
+  if (blocking_write) {
+    command->awaitCompletion();
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1466,111 +1364,95 @@ RUNTIME_EXIT
  *     required by the OpenCL implementation on the host
  *
  */
-RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferRect, (
-    cl_command_queue command_queue,
-    cl_mem src_buffer,
-    cl_mem dst_buffer,
-    const size_t* src_origin,
-    const size_t* dst_origin,
-    const size_t* region,
-    size_t src_row_pitch,
-    size_t src_slice_pitch,
-    size_t dst_row_pitch,
-    size_t dst_slice_pitch,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferRect,
+              (cl_command_queue command_queue, cl_mem src_buffer, cl_mem dst_buffer,
+               const size_t* src_origin, const size_t* dst_origin, const size_t* region,
+               size_t src_row_pitch, size_t src_slice_pitch, size_t dst_row_pitch,
+               size_t dst_slice_pitch, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(src_buffer) || !is_valid(dst_buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
-    amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
-    if (srcBuffer == NULL || dstBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(src_buffer) || !is_valid(dst_buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
+  amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
+  if (srcBuffer == NULL || dstBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != srcBuffer->getContext()
-        || hostQueue.context() != dstBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != srcBuffer->getContext() ||
+      hostQueue.context() != dstBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    // Create buffer rectangle info structure
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
+  // Create buffer rectangle info structure
+  amd::BufferRect srcRect;
+  amd::BufferRect dstRect;
 
-    if (!srcRect.create(src_origin, region, src_row_pitch, src_slice_pitch) ||
-        !dstRect.create(dst_origin, region, dst_row_pitch, dst_slice_pitch)) {
-        return CL_INVALID_VALUE;
-    }
+  if (!srcRect.create(src_origin, region, src_row_pitch, src_slice_pitch) ||
+      !dstRect.create(dst_origin, region, dst_row_pitch, dst_slice_pitch)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    srcStart(srcRect.start_, 0, 0);
-    amd::Coord3D    dstStart(dstRect.start_, 0, 0);
-    amd::Coord3D    srcEnd(srcRect.end_, 1, 1);
-    amd::Coord3D    dstEnd(dstRect.end_, 1, 1);
+  amd::Coord3D srcStart(srcRect.start_, 0, 0);
+  amd::Coord3D dstStart(dstRect.start_, 0, 0);
+  amd::Coord3D srcEnd(srcRect.end_, 1, 1);
+  amd::Coord3D dstEnd(dstRect.end_, 1, 1);
 
-    if (!srcBuffer->validateRegion(srcStart, srcEnd) ||
-        !dstBuffer->validateRegion(dstStart, dstEnd)) {
-       return CL_INVALID_VALUE;
-    }
+  if (!srcBuffer->validateRegion(srcStart, srcEnd) ||
+      !dstBuffer->validateRegion(dstStart, dstEnd)) {
+    return CL_INVALID_VALUE;
+  }
 
-    // Check if regions overlap each other
-    if ((srcBuffer == dstBuffer) &&
-        (std::abs(static_cast<long>(src_origin[0]) -
-            static_cast<long>(dst_origin[0])) < static_cast<long>(region[0])) &&
-        (std::abs(static_cast<long>(src_origin[1]) -
-            static_cast<long>(dst_origin[1])) < static_cast<long>(region[1])) &&
-        (std::abs(static_cast<long>(src_origin[2]) -
-            static_cast<long>(dst_origin[2])) < static_cast<long>(region[2]))){
-        return CL_MEM_COPY_OVERLAP;
-    }
+  // Check if regions overlap each other
+  if ((srcBuffer == dstBuffer) &&
+      (std::abs(static_cast<long>(src_origin[0]) - static_cast<long>(dst_origin[0])) <
+       static_cast<long>(region[0])) &&
+      (std::abs(static_cast<long>(src_origin[1]) - static_cast<long>(dst_origin[1])) <
+       static_cast<long>(region[1])) &&
+      (std::abs(static_cast<long>(src_origin[2]) - static_cast<long>(dst_origin[2])) <
+       static_cast<long>(region[2]))) {
+    return CL_MEM_COPY_OVERLAP;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Coord3D    size(region[0], region[1], region[2]);
-    amd::CopyMemoryCommand *command = new amd::CopyMemoryCommand(
-        hostQueue,
-        CL_COMMAND_COPY_BUFFER_RECT,
-        eventWaitList,
-        *srcBuffer, *dstBuffer,
-        srcStart,
-        dstStart,
-        size,
-        srcRect,
-        dstRect);
+  amd::Coord3D size(region[0], region[1], region[2]);
+  amd::CopyMemoryCommand* command =
+      new amd::CopyMemoryCommand(hostQueue, CL_COMMAND_COPY_BUFFER_RECT, eventWaitList, *srcBuffer,
+                                 *dstBuffer, srcStart, dstStart, size, srcRect, dstRect);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1620,24 +1502,22 @@ RUNTIME_EXIT
  *
  *  \version 1.1r17
  */
-RUNTIME_ENTRY(cl_int, clSetMemObjectDestructorCallback, (
-    cl_mem memobj,
-    void (CL_CALLBACK * pfn_notify)(cl_mem memobj, void *user_data),
-    void *user_data))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clSetMemObjectDestructorCallback,
+              (cl_mem memobj, void(CL_CALLBACK* pfn_notify)(cl_mem memobj, void* user_data),
+               void* user_data)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (pfn_notify == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (pfn_notify == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!as_amd(memobj)->setDestructorCallback(pfn_notify, user_data)) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (!as_amd(memobj)->setDestructorCallback(pfn_notify, user_data)) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1655,13 +1535,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainMemObject, (cl_mem memobj))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    as_amd(memobj)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainMemObject, (cl_mem memobj)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  as_amd(memobj)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1676,13 +1555,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseMemObject, (cl_mem memobj))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    as_amd(memobj)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseMemObject, (cl_mem memobj)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  as_amd(memobj)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1751,141 +1629,124 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateImage2D, (
-    cl_context context,
-    cl_mem_flags flags,
-    const cl_image_format *image_format,
-    size_t image_width,
-    size_t image_height,
-    size_t image_row_pitch,
-    void *host_ptr,
-    cl_int *errcode_ret))
-{
-    if(!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return (cl_mem) 0;
-    }
-    // check flags for validity
-    if(!validateFlags(flags)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return (cl_mem) 0;
-    }
-    // check format
-    if(image_format == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
-    }
+RUNTIME_ENTRY_RET(cl_mem, clCreateImage2D,
+                  (cl_context context, cl_mem_flags flags, const cl_image_format* image_format,
+                   size_t image_width, size_t image_height, size_t image_row_pitch, void* host_ptr,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return (cl_mem)0;
+  }
+  // check flags for validity
+  if (!validateFlags(flags)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return (cl_mem)0;
+  }
+  // check format
+  if (image_format == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
 
-    const amd::Image::Format imageFormat(*image_format);
-    if(!imageFormat.isValid()) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
-    }
+  const amd::Image::Format imageFormat(*image_format);
+  if (!imageFormat.isValid()) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    if(!imageFormat.isSupported(amdContext)) {
-        *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
+  amd::Context& amdContext = *as_amd(context);
+  if (!imageFormat.isSupported(amdContext)) {
+    *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
+  // check size parameters
+  if (image_width == 0 || image_height == 0) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+    LogWarning("invalid parameter \"image_width\" or \"image_height\"");
+    return (cl_mem)0;
+  }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  for (auto& dev : devices) {
+    if (dev->info().imageSupport_) {
+      supportPass = true;
+      if (dev->info().image2DMaxWidth_ >= image_width &&
+          dev->info().image2DMaxHeight_ >= image_height) {
+        sizePass = true;
+        break;
+      }
     }
-    // check size parameters
-    if(image_width == 0 || image_height == 0) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-        LogWarning("invalid parameter \"image_width\" or \"image_height\"");
-        return (cl_mem) 0;
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return (cl_mem)0;
+  }
+  if (!sizePass) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+    LogWarning("invalid parameter \"image_width\" or \"image_height\"");
+    return (cl_mem)0;
+  }
+  // check row pitch rules
+  if (host_ptr == NULL) {
+    if (image_row_pitch) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    for (auto& dev : devices) {
-        if (dev->info().imageSupport_) {
-            supportPass = true;
-            if (dev->info().image2DMaxWidth_ >= image_width
-                && dev->info().image2DMaxHeight_ >= image_height) {
-                sizePass = true;
-                break;
-            }
-        }
+  } else if (image_row_pitch) {
+    size_t elemSize = imageFormat.getElementSize();
+    if ((image_row_pitch < image_width * elemSize) || (image_row_pitch % elemSize)) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    if(!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return (cl_mem) 0;
+  }
+  // check host_ptr consistency
+  if (host_ptr == NULL) {
+    if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
-    if(!sizePass) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-        LogWarning("invalid parameter \"image_width\" or \"image_height\"");
-        return (cl_mem) 0;
+  } else {
+    if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
-    // check row pitch rules
-    if(host_ptr == NULL) {
-        if(image_row_pitch) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
-    }
-    else if(image_row_pitch) {
-        size_t elemSize = imageFormat.getElementSize();
-        if((image_row_pitch < image_width * elemSize)
-            || (image_row_pitch % elemSize)) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
-    }
-    // check host_ptr consistency
-    if(host_ptr == NULL) {
-        if(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-    }
-    else {
-        if(!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-    }
+  }
 
-    // CL_IMAGE_FORMAT_NOT_SUPPORTED ???
+  // CL_IMAGE_FORMAT_NOT_SUPPORTED ???
 
-    if(image_row_pitch == 0) {
-        image_row_pitch = image_width * imageFormat.getElementSize();
-    }
+  if (image_row_pitch == 0) {
+    image_row_pitch = image_width * imageFormat.getElementSize();
+  }
 
-    amd::Image* image = new(amdContext)
-        amd::Image(
-        amdContext,
-        CL_MEM_OBJECT_IMAGE2D,
-        flags,
-        imageFormat,
-        image_width,
-        image_height,
-        1,
-        image_row_pitch,
-        0);
-    if(image == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("cannot allocate resources");
-        return (cl_mem) 0;
-    }
+  amd::Image* image =
+      new (amdContext) amd::Image(amdContext, CL_MEM_OBJECT_IMAGE2D, flags, imageFormat,
+                                  image_width, image_height, 1, image_row_pitch, 0);
+  if (image == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("cannot allocate resources");
+    return (cl_mem)0;
+  }
 
-    // CL_MEM_OBJECT_ALLOCATION_FAILURE
-    if(!image->create(host_ptr)) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        image->release();
-        return (cl_mem) 0;
-    }
+  // CL_MEM_OBJECT_ALLOCATION_FAILURE
+  if (!image->create(host_ptr)) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    image->release();
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return (cl_mem) as_cl<amd::Memory>(image);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return (cl_mem)as_cl<amd::Memory>(image);
 }
 RUNTIME_EXIT
 
@@ -1958,164 +1819,145 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateImage3D, (
-    cl_context context,
-    cl_mem_flags flags,
-    const cl_image_format *image_format,
-    size_t image_width,
-    size_t image_height,
-    size_t image_depth,
-    size_t image_row_pitch,
-    size_t image_slice_pitch,
-    void *host_ptr,
-    cl_int *errcode_ret))
-{
-    if(!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return (cl_mem) 0;
-    }
-    // check flags for validity
-    if(!validateFlags(flags)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return (cl_mem) 0;
-    }
-    // check format
-    if(image_format == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
-    }
-    amd::Image::Format imageFormat(*image_format);
+RUNTIME_ENTRY_RET(cl_mem, clCreateImage3D,
+                  (cl_context context, cl_mem_flags flags, const cl_image_format* image_format,
+                   size_t image_width, size_t image_height, size_t image_depth,
+                   size_t image_row_pitch, size_t image_slice_pitch, void* host_ptr,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return (cl_mem)0;
+  }
+  // check flags for validity
+  if (!validateFlags(flags)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return (cl_mem)0;
+  }
+  // check format
+  if (image_format == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
+  amd::Image::Format imageFormat(*image_format);
 
-    if(!imageFormat.isValid()) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
-    }
+  if (!imageFormat.isValid()) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    if(!imageFormat.isSupported(amdContext)) {
-        *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
-        LogWarning("invalid parameter \"image_format\"");
-        return (cl_mem) 0;
+  amd::Context& amdContext = *as_amd(context);
+  if (!imageFormat.isSupported(amdContext)) {
+    *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
+    LogWarning("invalid parameter \"image_format\"");
+    return (cl_mem)0;
+  }
+  // check size parameters
+  if (image_width == 0 || image_height == 0 || image_depth <= 1) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+    LogWarning("invalid size parameter(s)");
+    return (cl_mem)0;
+  }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  for (auto& dev : devices) {
+    if (dev->info().imageSupport_) {
+      supportPass = true;
+      if ((dev->info().image3DMaxWidth_ >= image_width) &&
+          (dev->info().image3DMaxHeight_ >= image_height) &&
+          (dev->info().image3DMaxDepth_ >= image_depth)) {
+        sizePass = true;
+        break;
+      }
     }
-    // check size parameters
-    if(image_width == 0 || image_height == 0 || image_depth <= 1) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-        LogWarning("invalid size parameter(s)");
-        return (cl_mem) 0;
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return (cl_mem)0;
+  }
+  if (!sizePass) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+    LogWarning("invalid size parameter(s)");
+    return (cl_mem)0;
+  }
+  // check row pitch rules
+  if (host_ptr == NULL) {
+    if (image_row_pitch) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    for (auto& dev : devices) {
-        if (dev->info().imageSupport_) {
-            supportPass = true;
-            if ((dev->info().image3DMaxWidth_ >= image_width) &&
-                (dev->info().image3DMaxHeight_ >= image_height) &&
-                (dev->info().image3DMaxDepth_ >= image_depth)) {
-                sizePass = true;
-                break;
-            }
-        }
+  } else if (image_row_pitch) {
+    size_t elemSize = imageFormat.getElementSize();
+    if ((image_row_pitch < image_width * elemSize) || (image_row_pitch % elemSize)) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    if(!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return (cl_mem) 0;
+  }
+  // check slice pitch
+  if (host_ptr == NULL) {
+    if (image_slice_pitch) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    if(!sizePass) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-        LogWarning("invalid size parameter(s)");
-        return (cl_mem) 0;
+  } else if (image_slice_pitch) {
+    size_t elemSize = imageFormat.getElementSize();
+    if ((image_slice_pitch < image_row_pitch * image_height) ||
+        (image_slice_pitch % image_row_pitch)) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+      LogWarning("invalid parameter \"image_row_pitch\"");
+      return (cl_mem)0;
     }
-    // check row pitch rules
-    if(host_ptr == NULL) {
-        if(image_row_pitch) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
+  }
+  // check host_ptr consistency
+  if (host_ptr == NULL) {
+    if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
-    else if(image_row_pitch) {
-        size_t elemSize = imageFormat.getElementSize();
-        if((image_row_pitch < image_width * elemSize)
-            || (image_row_pitch % elemSize)) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
+  } else {
+    if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter \"host_ptr\"");
+      return (cl_mem)0;
     }
-    // check slice pitch
-    if(host_ptr == NULL) {
-        if(image_slice_pitch) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
-    }
-    else if(image_slice_pitch) {
-        size_t elemSize = imageFormat.getElementSize();
-        if((image_slice_pitch < image_row_pitch * image_height)
-            || (image_slice_pitch % image_row_pitch)) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-            LogWarning("invalid parameter \"image_row_pitch\"");
-            return (cl_mem) 0;
-        }
-    }
-    // check host_ptr consistency
-    if(host_ptr == NULL) {
-        if(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-    }
-    else {
-        if(!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter \"host_ptr\"");
-            return (cl_mem) 0;
-        }
-    }
+  }
 
-    // CL_IMAGE_FORMAT_NOT_SUPPORTED ???
+  // CL_IMAGE_FORMAT_NOT_SUPPORTED ???
 
-    if(image_row_pitch == 0) {
-        image_row_pitch = image_width * imageFormat.getElementSize();
-    }
-    if(image_slice_pitch == 0) {
-        image_slice_pitch = image_row_pitch * image_height;
-    }
+  if (image_row_pitch == 0) {
+    image_row_pitch = image_width * imageFormat.getElementSize();
+  }
+  if (image_slice_pitch == 0) {
+    image_slice_pitch = image_row_pitch * image_height;
+  }
 
-    amd::Image* image = new(amdContext)
-        amd::Image(
-        amdContext,
-        CL_MEM_OBJECT_IMAGE3D,
-        flags,
-        imageFormat,
-        image_width,
-        image_height,
-        image_depth,
-        image_row_pitch,
-        image_slice_pitch);
-    if(image == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("cannot allocate resources");
-        return (cl_mem) 0;
-    }
+  amd::Image* image = new (amdContext)
+      amd::Image(amdContext, CL_MEM_OBJECT_IMAGE3D, flags, imageFormat, image_width, image_height,
+                 image_depth, image_row_pitch, image_slice_pitch);
+  if (image == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("cannot allocate resources");
+    return (cl_mem)0;
+  }
 
-    // CL_MEM_OBJECT_ALLOCATION_FAILURE
-    if(!image->create(host_ptr)) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        image->release();
-        return (cl_mem) 0;
-    }
+  // CL_MEM_OBJECT_ALLOCATION_FAILURE
+  if (!image->create(host_ptr)) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    image->release();
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return (cl_mem) as_cl<amd::Memory>(image);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return (cl_mem)as_cl<amd::Memory>(image);
 }
 RUNTIME_EXIT
 
@@ -2157,53 +1999,47 @@ RUNTIME_EXIT
  *
  *  \version 1.2r08
  */
-RUNTIME_ENTRY(cl_int, clGetSupportedImageFormats, (
-    cl_context context,
-    cl_mem_flags flags,
-    cl_mem_object_type image_type,
-    cl_uint num_entries,
-    cl_image_format *image_formats,
-    cl_uint *num_image_formats))
-{
-    if(!is_valid(context)) {
-        LogWarning("invalid parameter \"context\"");
-        return CL_INVALID_CONTEXT;
-    }
-    // check flags for validity
-    if(!validateFlags(flags, true)) {
-        LogWarning("invalid parameter \"flags\"");
-        return CL_INVALID_VALUE;
-    }
-    // chack image_type
-    switch(image_type)
-    {
+RUNTIME_ENTRY(cl_int, clGetSupportedImageFormats,
+              (cl_context context, cl_mem_flags flags, cl_mem_object_type image_type,
+               cl_uint num_entries, cl_image_format* image_formats, cl_uint* num_image_formats)) {
+  if (!is_valid(context)) {
+    LogWarning("invalid parameter \"context\"");
+    return CL_INVALID_CONTEXT;
+  }
+  // check flags for validity
+  if (!validateFlags(flags, true)) {
+    LogWarning("invalid parameter \"flags\"");
+    return CL_INVALID_VALUE;
+  }
+  // chack image_type
+  switch (image_type) {
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
     case CL_MEM_OBJECT_IMAGE1D:
     case CL_MEM_OBJECT_IMAGE1D_ARRAY:
     case CL_MEM_OBJECT_IMAGE2D:
     case CL_MEM_OBJECT_IMAGE2D_ARRAY:
     case CL_MEM_OBJECT_IMAGE3D:
-        break;
+      break;
 
     default:
-        LogWarning("invalid parameter \"image_type\"");
-        return CL_INVALID_VALUE;
-    }
-    if(num_entries == 0 && image_formats != NULL) {
-        LogWarning("invalid parameter \"num_entries\"");
-        return CL_INVALID_VALUE;
-    }
+      LogWarning("invalid parameter \"image_type\"");
+      return CL_INVALID_VALUE;
+  }
+  if (num_entries == 0 && image_formats != NULL) {
+    LogWarning("invalid parameter \"num_entries\"");
+    return CL_INVALID_VALUE;
+  }
 
-    const amd::Context& amdContext = *as_amd(context);
+  const amd::Context& amdContext = *as_amd(context);
 
-    if(image_formats != NULL) {
-        amd::Image::getSupportedFormats(amdContext, image_type, num_entries, image_formats, flags);
-    }
-    if(num_image_formats != NULL) {
-        *num_image_formats = amd::Image::numSupportedFormats(amdContext, image_type, flags);
-    }
+  if (image_formats != NULL) {
+    amd::Image::getSupportedFormats(amdContext, image_type, num_entries, image_formats, flags);
+  }
+  if (num_image_formats != NULL) {
+    *num_image_formats = amd::Image::numSupportedFormats(amdContext, image_type, flags);
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -2296,116 +2132,100 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueReadImage, (
-    cl_command_queue command_queue,
-    cl_mem image,
-    cl_bool blocking_read,
-    const size_t* origin,
-    const size_t* region,
-    size_t row_pitch,
-    size_t slice_pitch,
-    void *ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueReadImage,
+              (cl_command_queue command_queue, cl_mem image, cl_bool blocking_read,
+               const size_t* origin, const size_t* region, size_t row_pitch, size_t slice_pitch,
+               void* ptr, cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
+               cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if (!is_valid(image)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Image* srcImage = as_amd(image)->asImage();
+  if (srcImage == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+
+  if (srcImage->getMemFlags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
+
+  if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (hostQueue.context() != srcImage->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
+
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
+
+  amd::Coord3D srcOrigin(origin[0], origin[1], origin[2]);
+  amd::Coord3D srcRegion(region[0], region[1], region[2]);
+
+  ImageViewRef mip;
+  if (srcImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = srcImage->createView(srcImage->getContext(), srcImage->getImageFormat(), NULL,
+                               origin[srcImage->getDims()]);
+    if (mip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-
-    if (!is_valid(image)) {
-        return CL_INVALID_MEM_OBJECT;
+    // Reset the mip level value to 0, since a view was created
+    if (srcImage->getDims() < 3) {
+      srcOrigin.c[srcImage->getDims()] = 0;
     }
-    amd::Image* srcImage = as_amd(image)->asImage();
-    if (srcImage == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+    srcImage = mip();
+  }
 
-    if (srcImage->getMemFlags() &
-        (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
+      !srcImage->isRowSliceValid(row_pitch, slice_pitch, region[0], region[1])) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::ReadMemoryCommand* command =
+      new amd::ReadMemoryCommand(hostQueue, CL_COMMAND_READ_IMAGE, eventWaitList, *srcImage,
+                                 srcOrigin, srcRegion, ptr, row_pitch, slice_pitch);
 
-    if (hostQueue.context() != srcImage->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    amd::Coord3D    srcOrigin(origin[0], origin[1], origin[2]);
-    amd::Coord3D    srcRegion(region[0], region[1], region[2]);
+  command->enqueue();
+  if (blocking_read) {
+    command->awaitCompletion();
+  }
 
-    ImageViewRef    mip;
-    if (srcImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        mip = srcImage->createView(srcImage->getContext(),
-            srcImage->getImageFormat(), NULL, origin[srcImage->getDims()]);
-        if (mip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (srcImage->getDims() < 3) {
-            srcOrigin.c[srcImage->getDims()] = 0;
-        }
-        srcImage = mip();
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
-        !srcImage->isRowSliceValid(row_pitch, slice_pitch, region[0], region[1])) {
-        return CL_INVALID_VALUE;
-    }
-
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
-
-    amd::ReadMemoryCommand *command = new amd::ReadMemoryCommand(
-        hostQueue,
-        CL_COMMAND_READ_IMAGE,
-        eventWaitList,
-        *srcImage,
-        srcOrigin,
-        srcRegion,
-        ptr,
-        row_pitch,
-        slice_pitch);
-
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
-
-    command->enqueue();
-    if (blocking_read) {
-        command->awaitCompletion();
-    }
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -2495,114 +2315,98 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueWriteImage, (
-    cl_command_queue command_queue,
-    cl_mem image,
-    cl_bool blocking_write,
-    const size_t* origin,
-    const size_t* region,
-    size_t input_row_pitch,
-    size_t input_slice_pitch,
-    const void *ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueWriteImage,
+              (cl_command_queue command_queue, cl_mem image, cl_bool blocking_write,
+               const size_t* origin, const size_t* region, size_t input_row_pitch,
+               size_t input_slice_pitch, const void* ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(image)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Image* dstImage = as_amd(image)->asImage();
-    if (dstImage == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(image)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Image* dstImage = as_amd(image)->asImage();
+  if (dstImage == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (dstImage->getMemFlags() &
-        (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
-        return CL_INVALID_OPERATION;
-    }
+  if (dstImage->getMemFlags() & (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
-    }
+  if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if(hostQueue.context() != dstImage->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != dstImage->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Coord3D    dstOrigin(origin[0], origin[1], origin[2]);
-    amd::Coord3D    dstRegion(region[0], region[1], region[2]);
-    ImageViewRef    mip;
-    if (dstImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        mip = dstImage->createView(dstImage->getContext(),
-            dstImage->getImageFormat(), NULL, origin[dstImage->getDims()]);
-        if (mip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (dstImage->getDims() < 3) {
-            dstOrigin.c[dstImage->getDims()] = 0;
-        }
-        dstImage = mip();
+  amd::Coord3D dstOrigin(origin[0], origin[1], origin[2]);
+  amd::Coord3D dstRegion(region[0], region[1], region[2]);
+  ImageViewRef mip;
+  if (dstImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = dstImage->createView(dstImage->getContext(), dstImage->getImageFormat(), NULL,
+                               origin[dstImage->getDims()]);
+    if (mip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-
-    if (!dstImage->validateRegion(dstOrigin, dstRegion) ||
-        !dstImage->isRowSliceValid(input_row_pitch, input_slice_pitch, region[0], region[1])) {
-        return CL_INVALID_VALUE;
+    // Reset the mip level value to 0, since a view was created
+    if (dstImage->getDims() < 3) {
+      dstOrigin.c[dstImage->getDims()] = 0;
     }
+    dstImage = mip();
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list , event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  if (!dstImage->validateRegion(dstOrigin, dstRegion) ||
+      !dstImage->isRowSliceValid(input_row_pitch, input_slice_pitch, region[0], region[1])) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::WriteMemoryCommand *command = new amd::WriteMemoryCommand(
-        hostQueue,
-        CL_COMMAND_WRITE_IMAGE,
-        eventWaitList,
-        *dstImage,
-        dstOrigin,
-        dstRegion,
-        ptr,
-        input_row_pitch,
-        input_slice_pitch);
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::WriteMemoryCommand* command =
+      new amd::WriteMemoryCommand(hostQueue, CL_COMMAND_WRITE_IMAGE, eventWaitList, *dstImage,
+                                  dstOrigin, dstRegion, ptr, input_row_pitch, input_slice_pitch);
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    command->enqueue();
-    if (blocking_write) {
-        command->awaitCompletion();
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  command->enqueue();
+  if (blocking_write) {
+    command->awaitCompletion();
+  }
+
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -2676,142 +2480,124 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueCopyImage, (
-    cl_command_queue command_queue,
-    cl_mem src_image,
-    cl_mem dst_image,
-    const size_t* src_origin,
-    const size_t* dst_origin,
-    const size_t* region,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueCopyImage,
+              (cl_command_queue command_queue, cl_mem src_image, cl_mem dst_image,
+               const size_t* src_origin, const size_t* dst_origin, const size_t* region,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if (!is_valid(src_image) || !is_valid(dst_image)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Image* srcImage = as_amd(src_image)->asImage();
+  amd::Image* dstImage = as_amd(dst_image)->asImage();
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (hostQueue.context() != srcImage->getContext() ||
+      hostQueue.context() != dstImage->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
+
+  if (srcImage->getImageFormat() != dstImage->getImageFormat()) {
+    return CL_IMAGE_FORMAT_MISMATCH;
+  }
+
+  if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::Coord3D srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
+  amd::Coord3D dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
+  amd::Coord3D copyRegion(region[0], region[1], region[2]);
+
+  ImageViewRef srcMip;
+  if (srcImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    srcMip = srcImage->createView(srcImage->getContext(), srcImage->getImageFormat(), NULL,
+                                  src_origin[srcImage->getDims()]);
+    if (srcMip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-
-    if (!is_valid(src_image) || !is_valid(dst_image)) {
-        return CL_INVALID_MEM_OBJECT;
+    // Reset the mip level value to 0, since a view was created
+    if (srcImage->getDims() < 3) {
+      srcOrigin.c[srcImage->getDims()] = 0;
     }
-    amd::Image* srcImage = as_amd(src_image)->asImage();
-    amd::Image* dstImage = as_amd(dst_image)->asImage();
+    srcImage = srcMip();
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
+  if (!srcImage->validateRegion(srcOrigin, copyRegion)) {
+    return CL_INVALID_VALUE;
+  }
+
+  ImageViewRef dstMip;
+  if (dstImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    dstMip = dstImage->createView(dstImage->getContext(), dstImage->getImageFormat(), NULL,
+                                  dst_origin[dstImage->getDims()]);
+    if (dstMip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-    amd::HostQueue& hostQueue = *queue;
-
-    if (hostQueue.context() != srcImage->getContext()
-        || hostQueue.context() != dstImage->getContext()) {
-        return CL_INVALID_CONTEXT;
+    // Reset the mip level value to 0, since a view was created
+    if (dstImage->getDims() < 3) {
+      dstOrigin.c[dstImage->getDims()] = 0;
     }
+    dstImage = dstMip();
+  }
 
-    if (srcImage->getImageFormat() != dstImage->getImageFormat()) {
-        return CL_IMAGE_FORMAT_MISMATCH;
+  if (!dstImage->validateRegion(dstOrigin, copyRegion)) {
+    return CL_INVALID_VALUE;
+  }
+
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
+
+  if (src_image == dst_image) {
+    if ((src_origin[0] <= dst_origin[0] && dst_origin[0] < src_origin[0] + region[0]) ||
+        (dst_origin[0] <= src_origin[0] && src_origin[0] < dst_origin[0] + region[0]) ||
+        (src_origin[1] <= dst_origin[1] && dst_origin[1] < src_origin[1] + region[1]) ||
+        (dst_origin[1] <= src_origin[1] && src_origin[1] < dst_origin[1] + region[1])) {
+      return CL_MEM_COPY_OVERLAP;
     }
-
-    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
+    if (srcImage->getDims() > 2) {
+      if ((src_origin[2] <= dst_origin[2] && dst_origin[2] < src_origin[2] + region[2]) ||
+          (dst_origin[2] <= src_origin[2] && src_origin[2] < dst_origin[2] + region[2])) {
+        return CL_MEM_COPY_OVERLAP;
+      }
     }
+  }
 
-    amd::Coord3D    srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
-    amd::Coord3D    dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
-    amd::Coord3D    copyRegion(region[0], region[1], region[2]);
+  amd::CopyMemoryCommand* command =
+      new amd::CopyMemoryCommand(hostQueue, CL_COMMAND_COPY_IMAGE, eventWaitList, *srcImage,
+                                 *dstImage, srcOrigin, dstOrigin, copyRegion);
 
-    ImageViewRef    srcMip;
-    if (srcImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        srcMip = srcImage->createView(srcImage->getContext(),
-            srcImage->getImageFormat(), NULL, src_origin[srcImage->getDims()]);
-        if (srcMip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (srcImage->getDims() < 3) {
-            srcOrigin.c[srcImage->getDims()] = 0;
-        }
-        srcImage = srcMip();
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    if (!srcImage->validateRegion(srcOrigin, copyRegion)) {
-        return CL_INVALID_VALUE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    ImageViewRef    dstMip;
-    if (dstImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        dstMip = dstImage->createView(dstImage->getContext(),
-            dstImage->getImageFormat(), NULL, dst_origin[dstImage->getDims()]);
-        if (dstMip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (dstImage->getDims() < 3) {
-            dstOrigin.c[dstImage->getDims()] = 0;
-        }
-        dstImage = dstMip();
-    }
+  command->enqueue();
 
-    if (!dstImage->validateRegion(dstOrigin, copyRegion)) {
-        return CL_INVALID_VALUE;
-    }
-
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    if(src_image == dst_image) {
-        if((src_origin[0] <= dst_origin[0]
-                && dst_origin[0] < src_origin[0] + region[0])
-            || (dst_origin[0] <= src_origin[0]
-                && src_origin[0] < dst_origin[0] + region[0])
-            || (src_origin[1] <= dst_origin[1]
-                && dst_origin[1] < src_origin[1] + region[1])
-            || (dst_origin[1] <= src_origin[1]
-                && src_origin[1] < dst_origin[1] + region[1])) {
-            return CL_MEM_COPY_OVERLAP;
-        }
-        if(srcImage->getDims() > 2) {
-            if((src_origin[2] <= dst_origin[2]
-                    && dst_origin[2] < src_origin[2] + region[2])
-                || (dst_origin[2] <= src_origin[2]
-                    && src_origin[2] < dst_origin[2] + region[2])) {
-                return CL_MEM_COPY_OVERLAP;
-            }
-        }
-    }
-
-    amd::CopyMemoryCommand *command = new amd::CopyMemoryCommand(
-        hostQueue,
-        CL_COMMAND_COPY_IMAGE,
-        eventWaitList,
-        *srcImage, *dstImage,
-        srcOrigin,
-        dstOrigin,
-        copyRegion);
-
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -2884,105 +2670,93 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueCopyImageToBuffer, (
-    cl_command_queue command_queue,
-    cl_mem src_image,
-    cl_mem dst_buffer,
-    const size_t* src_origin,
-    const size_t* region,
-    size_t dst_offset,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueCopyImageToBuffer,
+              (cl_command_queue command_queue, cl_mem src_image, cl_mem dst_buffer,
+               const size_t* src_origin, const size_t* region, size_t dst_offset,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if (!is_valid(src_image) || !is_valid(dst_buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+
+  amd::Image* srcImage = as_amd(src_image)->asImage();
+  amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
+  if (srcImage == NULL || dstBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (hostQueue.context() != srcImage->getContext() ||
+      hostQueue.context() != dstBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
+
+  if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::Coord3D srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
+  amd::Coord3D dstOffset(dst_offset, 0, 0);
+  amd::Coord3D srcRegion(region[0], region[1], region[2]);
+  amd::Coord3D copySize(
+      region[0] * region[1] * region[2] * srcImage->getImageFormat().getElementSize(), 0, 0);
+
+  ImageViewRef mip;
+  if (srcImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = srcImage->createView(srcImage->getContext(), srcImage->getImageFormat(), NULL,
+                               src_origin[srcImage->getDims()]);
+    if (mip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-
-    if (!is_valid(src_image) || !is_valid(dst_buffer)) {
-        return CL_INVALID_MEM_OBJECT;
+    // Reset the mip level value to 0, since a view was created
+    if (srcImage->getDims() < 3) {
+      srcOrigin.c[srcImage->getDims()] = 0;
     }
+    srcImage = mip();
+  }
 
-    amd::Image* srcImage = as_amd(src_image)->asImage();
-    amd::Buffer* dstBuffer = as_amd(dst_buffer)->asBuffer();
-    if (srcImage == NULL || dstBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
+      !dstBuffer->validateRegion(dstOffset, copySize)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    if (hostQueue.context() != srcImage->getContext()
-        || hostQueue.context() != dstBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  amd::CopyMemoryCommand* command =
+      new amd::CopyMemoryCommand(hostQueue, CL_COMMAND_COPY_IMAGE_TO_BUFFER, eventWaitList,
+                                 *srcImage, *dstBuffer, srcOrigin, dstOffset, srcRegion);
 
-    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    amd::Coord3D    srcOrigin(src_origin[0], src_origin[1], src_origin[2]);
-    amd::Coord3D    dstOffset(dst_offset, 0, 0);
-    amd::Coord3D    srcRegion(region[0], region[1], region[2]);
-    amd::Coord3D    copySize(region[0] * region[1] * region[2] *
-        srcImage->getImageFormat().getElementSize(), 0, 0);
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    ImageViewRef    mip;
-    if (srcImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        mip = srcImage->createView(srcImage->getContext(),
-            srcImage->getImageFormat(), NULL, src_origin[srcImage->getDims()]);
-        if (mip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (srcImage->getDims() < 3) {
-            srcOrigin.c[srcImage->getDims()] = 0;
-        }
-        srcImage = mip();
-    }
+  command->enqueue();
 
-    if (!srcImage->validateRegion(srcOrigin, srcRegion) ||
-        !dstBuffer->validateRegion(dstOffset, copySize)) {
-        return CL_INVALID_VALUE;
-    }
-
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    amd::CopyMemoryCommand *command = new amd::CopyMemoryCommand(
-        hostQueue,
-        CL_COMMAND_COPY_IMAGE_TO_BUFFER,
-        eventWaitList,
-        *srcImage, *dstBuffer,
-        srcOrigin,
-        dstOffset,
-        srcRegion);
-
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -3051,104 +2825,92 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferToImage, (
-    cl_command_queue command_queue,
-    cl_mem src_buffer,
-    cl_mem dst_image,
-    size_t src_offset,
-    const size_t* dst_origin,
-    const size_t* region,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferToImage,
+              (cl_command_queue command_queue, cl_mem src_buffer, cl_mem dst_image,
+               size_t src_offset, const size_t* dst_origin, const size_t* region,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if (!is_valid(src_buffer) || !is_valid(dst_image)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
+  amd::Image* dstImage = as_amd(dst_image)->asImage();
+  if (srcBuffer == NULL || dstImage == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (hostQueue.context() != srcBuffer->getContext() ||
+      hostQueue.context() != dstImage->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
+
+  if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::Coord3D dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
+  amd::Coord3D srcOffset(src_offset, 0, 0);
+  amd::Coord3D dstRegion(region[0], region[1], region[2]);
+  amd::Coord3D copySize(
+      region[0] * region[1] * region[2] * dstImage->getImageFormat().getElementSize(), 0, 0);
+
+  ImageViewRef mip;
+  if (dstImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = dstImage->createView(dstImage->getContext(), dstImage->getImageFormat(), NULL,
+                               dst_origin[dstImage->getDims()]);
+    if (mip() == NULL) {
+      return CL_OUT_OF_HOST_MEMORY;
     }
-
-    if (!is_valid(src_buffer) || !is_valid(dst_image)) {
-        return CL_INVALID_MEM_OBJECT;
+    // Reset the mip level value to 0, since a view was created
+    if (dstImage->getDims() < 3) {
+      dstOrigin.c[dstImage->getDims()] = 0;
     }
-    amd::Buffer* srcBuffer = as_amd(src_buffer)->asBuffer();
-    amd::Image* dstImage = as_amd(dst_image)->asImage();
-    if (srcBuffer == NULL || dstImage == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+    dstImage = mip();
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  if (!srcBuffer->validateRegion(srcOffset, copySize) ||
+      !dstImage->validateRegion(dstOrigin, dstRegion)) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (hostQueue.context() != srcBuffer->getContext()
-        || hostQueue.context() != dstImage->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    if (dstImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
-    }
+  amd::CopyMemoryCommand* command =
+      new amd::CopyMemoryCommand(hostQueue, CL_COMMAND_COPY_BUFFER_TO_IMAGE, eventWaitList,
+                                 *srcBuffer, *dstImage, srcOffset, dstOrigin, dstRegion);
 
-    amd::Coord3D    dstOrigin(dst_origin[0], dst_origin[1], dst_origin[2]);
-    amd::Coord3D    srcOffset(src_offset, 0, 0);
-    amd::Coord3D    dstRegion(region[0], region[1], region[2]);
-    amd::Coord3D    copySize(region[0] * region[1] * region[2] *
-        dstImage->getImageFormat().getElementSize(), 0, 0);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    ImageViewRef    mip;
-    if (dstImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        mip = dstImage->createView(dstImage->getContext(),
-            dstImage->getImageFormat(), NULL, dst_origin[dstImage->getDims()]);
-        if (mip() == NULL) {
-            return CL_OUT_OF_HOST_MEMORY;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (dstImage->getDims() < 3) {
-            dstOrigin.c[dstImage->getDims()] = 0;
-        }
-        dstImage = mip();
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    if (!srcBuffer->validateRegion(srcOffset, copySize) ||
-        !dstImage->validateRegion(dstOrigin, dstRegion)) {
-        return CL_INVALID_VALUE;
-    }
+  command->enqueue();
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    amd::CopyMemoryCommand *command = new amd::CopyMemoryCommand(
-        hostQueue,
-        CL_COMMAND_COPY_BUFFER_TO_IMAGE,
-        eventWaitList,
-        *srcBuffer, *dstImage,
-        srcOffset,
-        dstOrigin,
-        dstRegion);
-
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -3240,137 +3002,118 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(void *, clEnqueueMapBuffer, (
-    cl_command_queue command_queue,
-    cl_mem buffer,
-    cl_bool blocking_map,
-    cl_map_flags map_flags,
-    size_t offset,
-    size_t cb,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(command_queue)) {
-        *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
-        return NULL;
-    }
+RUNTIME_ENTRY_RET(void*, clEnqueueMapBuffer,
+                  (cl_command_queue command_queue, cl_mem buffer, cl_bool blocking_map,
+                   cl_map_flags map_flags, size_t offset, size_t cb,
+                   cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
+                   cl_event* event, cl_int* errcode_ret)) {
+  if (!is_valid(command_queue)) {
+    *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
+    return NULL;
+  }
 
-    if (!is_valid(buffer)) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
-    }
-    amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
-    if (srcBuffer == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
-    }
+  if (!is_valid(buffer)) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
+  amd::Buffer* srcBuffer = as_amd(buffer)->asBuffer();
+  if (srcBuffer == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != srcBuffer->getContext()) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return NULL;
-    }
+  if (hostQueue.context() != srcBuffer->getContext()) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return NULL;
+  }
 
-    if ((srcBuffer->getMemFlags() &
-         (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
-        (map_flags & CL_MAP_READ)) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
+  if ((srcBuffer->getMemFlags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
+      (map_flags & CL_MAP_READ)) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
 
-    if ((srcBuffer->getMemFlags() &
-         (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
-        (map_flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION))) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
+  if ((srcBuffer->getMemFlags() & (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
+      (map_flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION))) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
 
-    if (srcBuffer->getMemFlags() & CL_MEM_EXTERNAL_PHYSICAL_AMD) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
+  if (srcBuffer->getMemFlags() & CL_MEM_EXTERNAL_PHYSICAL_AMD) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
 
-    amd::Coord3D    srcOffset(offset);
-    amd::Coord3D    srcSize(cb);
+  amd::Coord3D srcOffset(offset);
+  amd::Coord3D srcSize(cb);
 
-    if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
+  if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
 
-    // Wait for possible pending operations
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        *not_null(errcode_ret) = err;
-        return (void*) 0;
-    }
+  // Wait for possible pending operations
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    *not_null(errcode_ret) = err;
+    return (void*)0;
+  }
 
-    // Attempt to allocate the map target now (whether blocking or non-blocking)
-    void* mapPtr = hostQueue.device().allocMapTarget(
-        *srcBuffer, srcOffset, srcSize, map_flags);
-    if (NULL == mapPtr) {
-        *not_null(errcode_ret) = CL_MAP_FAILURE;
-        return NULL;
-    }
+  // Attempt to allocate the map target now (whether blocking or non-blocking)
+  void* mapPtr = hostQueue.device().allocMapTarget(*srcBuffer, srcOffset, srcSize, map_flags);
+  if (NULL == mapPtr) {
+    *not_null(errcode_ret) = CL_MAP_FAILURE;
+    return NULL;
+  }
 
-    // Allocate a map command for the queue thread
-    amd::MapMemoryCommand *command = new amd::MapMemoryCommand(
-        hostQueue,
-        CL_COMMAND_MAP_BUFFER,
-        eventWaitList,
-        *srcBuffer,
-        map_flags,
-        blocking_map ? true : false,
-        srcOffset,
-        srcSize,
-        nullptr,
-        nullptr,
-        mapPtr);
-    if (command == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return NULL;
-    }
+  // Allocate a map command for the queue thread
+  amd::MapMemoryCommand* command = new amd::MapMemoryCommand(
+      hostQueue, CL_COMMAND_MAP_BUFFER, eventWaitList, *srcBuffer, map_flags,
+      blocking_map ? true : false, srcOffset, srcSize, nullptr, nullptr, mapPtr);
+  if (command == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return NULL;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        return NULL;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    return NULL;
+  }
 
-    if (srcBuffer->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
-        // [Windows VidMM restriction]
-        // Runtime can't map persistent memory if it's still busy or
-        // even wasn't submitted to HW from the worker thread yet
-        hostQueue.finish();
-    }
+  if (srcBuffer->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
+    // [Windows VidMM restriction]
+    // Runtime can't map persistent memory if it's still busy or
+    // even wasn't submitted to HW from the worker thread yet
+    hostQueue.finish();
+  }
 
-    // Send the map command for processing
-    command->enqueue();
+  // Send the map command for processing
+  command->enqueue();
 
-    // A blocking map has to wait for completion
-    if (blocking_map) {
-        command->awaitCompletion();
-    }
+  // A blocking map has to wait for completion
+  if (blocking_map) {
+    command->awaitCompletion();
+  }
 
-    // Save the command event if applicaiton has requested it
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
+  // Save the command event if applicaiton has requested it
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    srcBuffer->incMapCount();
-    return mapPtr;
+  *not_null(errcode_ret) = CL_SUCCESS;
+  srcBuffer->incMapCount();
+  return mapPtr;
 }
 RUNTIME_EXIT
 
@@ -3494,170 +3237,150 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(void *, clEnqueueMapImage, (
-    cl_command_queue command_queue,
-    cl_mem image,
-    cl_bool blocking_map,
-    cl_map_flags map_flags,
-    const size_t* origin,
-    const size_t* region,
-    size_t *image_row_pitch,
-    size_t *image_slice_pitch,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(command_queue)) {
-        *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
-        return NULL;
+RUNTIME_ENTRY_RET(void*, clEnqueueMapImage,
+                  (cl_command_queue command_queue, cl_mem image, cl_bool blocking_map,
+                   cl_map_flags map_flags, const size_t* origin, const size_t* region,
+                   size_t* image_row_pitch, size_t* image_slice_pitch,
+                   cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
+                   cl_event* event, cl_int* errcode_ret)) {
+  if (!is_valid(command_queue)) {
+    *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
+    return NULL;
+  }
+
+  if (!is_valid(image)) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
+  amd::Image* srcImage = as_amd(image)->asImage();
+  if (srcImage == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
+
+  if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (hostQueue.context() != srcImage->getContext()) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return NULL;
+  }
+
+  if ((srcImage->getMemFlags() & (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
+      (map_flags & CL_MAP_READ)) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
+
+  if ((srcImage->getMemFlags() & (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
+      (map_flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION))) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
+
+  if ((srcImage->getDims() == 1) && ((region[1] != 1) || (region[2] != 1))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
+
+  if ((srcImage->getDims() == 2) && (region[2] != 1)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
+
+  amd::Coord3D srcOrigin(origin[0], origin[1], origin[2]);
+  amd::Coord3D srcRegion(region[0], region[1], region[2]);
+
+  ImageViewRef mip;
+  if (srcImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = srcImage->createView(srcImage->getContext(), srcImage->getImageFormat(), hostQueue.vdev(),
+                               origin[srcImage->getDims()]);
+    if (mip() == NULL) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      return NULL;
     }
-
-    if (!is_valid(image)) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
+    // Reset the mip level value to 0, since a view was created
+    if (srcImage->getDims() < 3) {
+      srcOrigin.c[srcImage->getDims()] = 0;
     }
-    amd::Image* srcImage = as_amd(image)->asImage();
-    if (srcImage == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
-    }
-
-    if (srcImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
-
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        *not_null(errcode_ret) = CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
-
-    if (hostQueue.context() != srcImage->getContext()) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return NULL;
-    }
-
-    if ((srcImage->getMemFlags() &
-         (CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
-        (map_flags & CL_MAP_READ)) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
-
-    if ((srcImage->getMemFlags() &
-         (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_NO_ACCESS)) &&
-        (map_flags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION))) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
-
-    if ((srcImage->getDims() == 1) &&
-        ((region[1] != 1) || (region[2] != 1))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
-
-    if ((srcImage->getDims() == 2) && (region[2] != 1)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
-
-    amd::Coord3D    srcOrigin(origin[0], origin[1], origin[2]);
-    amd::Coord3D    srcRegion(region[0], region[1], region[2]);
-
-    ImageViewRef    mip;
-    if (srcImage->getMipLevels() > 1) {
-        // Create a view for the specified mip level
-        mip = srcImage->createView(srcImage->getContext(),
-            srcImage->getImageFormat(), hostQueue.vdev(), origin[srcImage->getDims()]);
-        if (mip() == NULL) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            return NULL;
-        }
-        // Reset the mip level value to 0, since a view was created
-        if (srcImage->getDims() < 3) {
-            srcOrigin.c[srcImage->getDims()] = 0;
-        }
-        srcImage->incMapCount();
-        srcImage = mip();
-        // Retain this view until unmap is done
-        srcImage->retain();
-    }
-
-    if (!srcImage->validateRegion(srcOrigin, srcRegion)) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return NULL;
-    }
-
-    // Wait for possible pending operations
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        *not_null(errcode_ret) = err;
-        return (void*) 0;
-    }
-
-    // Attempt to allocate the map target now (whether blocking or non-blocking)
-    void *mapPtr = hostQueue.device().allocMapTarget(
-        *srcImage, srcOrigin, srcRegion, map_flags, image_row_pitch, image_slice_pitch);
-    if (NULL == mapPtr) {
-        *not_null(errcode_ret) = CL_MAP_FAILURE;
-        return NULL;
-    }
-
-    // Allocate a map command for the queue thread
-    amd::MapMemoryCommand *command = new amd::MapMemoryCommand(
-        hostQueue,
-        CL_COMMAND_MAP_IMAGE,
-        eventWaitList,
-        *srcImage,
-        map_flags,
-        blocking_map ? true : false,
-        srcOrigin,
-        srcRegion,
-        nullptr,
-        nullptr,
-        mapPtr);
-    if (command == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return NULL;
-    }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        return NULL;
-    }
-
-    if (srcImage->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
-        // [Windows VidMM restriction]
-        // Runtime can't map persistent memory if it's still busy or
-        // even wasn't submitted to HW from the worker thread yet
-        hostQueue.finish();
-    }
-
-    // Send the map command for processing
-    command->enqueue();
-
-    // A blocking map has to wait for completion
-    if (blocking_map) {
-        command->awaitCompletion();
-    }
-
-    // Save the command event if applicaiton has requested it
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
     srcImage->incMapCount();
+    srcImage = mip();
+    // Retain this view until unmap is done
+    srcImage->retain();
+  }
 
-    return mapPtr;
+  if (!srcImage->validateRegion(srcOrigin, srcRegion)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return NULL;
+  }
+
+  // Wait for possible pending operations
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    *not_null(errcode_ret) = err;
+    return (void*)0;
+  }
+
+  // Attempt to allocate the map target now (whether blocking or non-blocking)
+  void* mapPtr = hostQueue.device().allocMapTarget(*srcImage, srcOrigin, srcRegion, map_flags,
+                                                   image_row_pitch, image_slice_pitch);
+  if (NULL == mapPtr) {
+    *not_null(errcode_ret) = CL_MAP_FAILURE;
+    return NULL;
+  }
+
+  // Allocate a map command for the queue thread
+  amd::MapMemoryCommand* command = new amd::MapMemoryCommand(
+      hostQueue, CL_COMMAND_MAP_IMAGE, eventWaitList, *srcImage, map_flags,
+      blocking_map ? true : false, srcOrigin, srcRegion, nullptr, nullptr, mapPtr);
+  if (command == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return NULL;
+  }
+
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    return NULL;
+  }
+
+  if (srcImage->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
+    // [Windows VidMM restriction]
+    // Runtime can't map persistent memory if it's still busy or
+    // even wasn't submitted to HW from the worker thread yet
+    hostQueue.finish();
+  }
+
+  // Send the map command for processing
+  command->enqueue();
+
+  // A blocking map has to wait for completion
+  if (blocking_map) {
+    command->awaitCompletion();
+  }
+
+  // Save the command event if applicaiton has requested it
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  srcImage->incMapCount();
+
+  return mapPtr;
 }
 RUNTIME_EXIT
 
@@ -3717,65 +3440,57 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueUnmapMemObject, (
-    cl_command_queue command_queue,
-    cl_mem memobj,
-    void *mapped_ptr,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueUnmapMemObject,
+              (cl_command_queue command_queue, cl_mem memobj, void* mapped_ptr,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::Memory* amdMemory = as_amd(memobj);
+  amd::Memory* amdMemory = as_amd(memobj);
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != amdMemory->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != amdMemory->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::UnmapMemoryCommand *command = new amd::UnmapMemoryCommand(
-        hostQueue,
-        CL_COMMAND_UNMAP_MEM_OBJECT,
-        eventWaitList,
-        *amdMemory, mapped_ptr);
+  amd::UnmapMemoryCommand* command = new amd::UnmapMemoryCommand(
+      hostQueue, CL_COMMAND_UNMAP_MEM_OBJECT, eventWaitList, *amdMemory, mapped_ptr);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    amdMemory->decMapCount();
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  amdMemory->decMapCount();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -3809,144 +3524,126 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetMemObjectInfo, (
-    cl_mem memobj,
-    cl_mem_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clGetMemObjectInfo,
+              (cl_mem memobj, cl_mem_info param_name, size_t param_value_size, void* param_value,
+               size_t* param_value_size_ret)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_MEM_TYPE: {
-        cl_mem_object_type type = as_amd(memobj)->getType();
-        return amd::clGetInfo(
-            type, param_value_size, param_value, param_value_size_ret);
+      cl_mem_object_type type = as_amd(memobj)->getType();
+      return amd::clGetInfo(type, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_FLAGS: {
-        cl_mem_flags flags = as_amd(memobj)->getMemFlags();
-        return amd::clGetInfo(
-            flags, param_value_size, param_value, param_value_size_ret);
+      cl_mem_flags flags = as_amd(memobj)->getMemFlags();
+      return amd::clGetInfo(flags, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_SIZE: {
-        size_t size = as_amd(memobj)->getSize();
-        return amd::clGetInfo(
-            size, param_value_size, param_value, param_value_size_ret);
+      size_t size = as_amd(memobj)->getSize();
+      return amd::clGetInfo(size, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_HOST_PTR: {
-        amd::Memory* memory = as_amd(memobj);
-        const void* hostPtr = (memory->getMemFlags() & CL_MEM_USE_HOST_PTR) ?
-            memory->getHostMem() : NULL;
-        return amd::clGetInfo(
-            hostPtr, param_value_size, param_value, param_value_size_ret);
+      amd::Memory* memory = as_amd(memobj);
+      const void* hostPtr =
+          (memory->getMemFlags() & CL_MEM_USE_HOST_PTR) ? memory->getHostMem() : NULL;
+      return amd::clGetInfo(hostPtr, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_MAP_COUNT: {
-        cl_uint count = as_amd(memobj)->mapCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(memobj)->mapCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_REFERENCE_COUNT: {
-        cl_uint count = as_amd(memobj)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(memobj)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_CONTEXT: {
-        cl_context context = as_cl(&as_amd(memobj)->getContext());
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      cl_context context = as_cl(&as_amd(memobj)->getContext());
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_ASSOCIATED_MEMOBJECT: {
-        amd::Memory* amdParent = as_amd(memobj)->parent();
-        if ((NULL != amdParent) && (NULL != amdParent->getSvmPtr()) &&
-            (NULL == amdParent->parent())) {
-            amdParent = NULL;
-        }
-        cl_mem parent = as_cl(amdParent);
-        return amd::clGetInfo(
-            parent, param_value_size, param_value, param_value_size_ret);
+      amd::Memory* amdParent = as_amd(memobj)->parent();
+      if ((NULL != amdParent) && (NULL != amdParent->getSvmPtr()) &&
+          (NULL == amdParent->parent())) {
+        amdParent = NULL;
+      }
+      cl_mem parent = as_cl(amdParent);
+      return amd::clGetInfo(parent, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_OFFSET: {
-        size_t mem_offset = as_amd(memobj)->getOrigin();
-        return amd::clGetInfo(
-            mem_offset, param_value_size, param_value, param_value_size_ret);
+      size_t mem_offset = as_amd(memobj)->getOrigin();
+      return amd::clGetInfo(mem_offset, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_USES_SVM_POINTER: {
-        cl_bool usesSvmPointer = as_amd(memobj)->usesSvmPointer();
-        return amd::clGetInfo(
-                usesSvmPointer, param_value_size, param_value, param_value_size_ret);
+      cl_bool usesSvmPointer = as_amd(memobj)->usesSvmPointer();
+      return amd::clGetInfo(usesSvmPointer, param_value_size, param_value, param_value_size_ret);
     }
 #ifdef _WIN32
     case CL_MEM_D3D10_RESOURCE_KHR: {
-        ID3D10Resource *pRes;
+      ID3D10Resource* pRes;
 
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(interop) {
-            amd::D3D10Object *d3d10obj = interop->asD3D10Object();
-            if(d3d10obj) {
-                pRes = d3d10obj->getD3D10ResOrig();
-                if(!pRes) {
-                    pRes = d3d10obj->getD3D10Resource();
-                }
-            }
-            return amd::clGetInfo(
-                pRes, param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (interop) {
+        amd::D3D10Object* d3d10obj = interop->asD3D10Object();
+        if (d3d10obj) {
+          pRes = d3d10obj->getD3D10ResOrig();
+          if (!pRes) {
+            pRes = d3d10obj->getD3D10Resource();
+          }
         }
-        break;
+        return amd::clGetInfo(pRes, param_value_size, param_value, param_value_size_ret);
+      }
+      break;
     }
     case CL_MEM_D3D11_RESOURCE_KHR: {
-        ID3D11Resource *pRes;
+      ID3D11Resource* pRes;
 
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(interop) {
-            amd::D3D11Object *d3d11obj = interop->asD3D11Object();
-            if(d3d11obj) {
-                pRes = d3d11obj->getD3D11ResOrig();
-                if(!pRes) {
-                    pRes = d3d11obj->getD3D11Resource();
-                }
-            }
-            return amd::clGetInfo(
-                pRes, param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (interop) {
+        amd::D3D11Object* d3d11obj = interop->asD3D11Object();
+        if (d3d11obj) {
+          pRes = d3d11obj->getD3D11ResOrig();
+          if (!pRes) {
+            pRes = d3d11obj->getD3D11Resource();
+          }
         }
-        break;
+        return amd::clGetInfo(pRes, param_value_size, param_value, param_value_size_ret);
+      }
+      break;
     }
     case CL_MEM_DX9_MEDIA_SURFACE_INFO_KHR: {
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(interop) {
-            amd::D3D9Object *d3d9obj = interop->asD3D9Object();
-            if(d3d9obj)
-                return amd::clGetInfo(d3d9obj->getSurfInfo(), param_value_size,
-                    param_value, param_value_size_ret);
-            else
-                return CL_INVALID_MEM_OBJECT;
-        }
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (interop) {
+        amd::D3D9Object* d3d9obj = interop->asD3D9Object();
+        if (d3d9obj)
+          return amd::clGetInfo(d3d9obj->getSurfInfo(), param_value_size, param_value,
+                                param_value_size_ret);
         else
-            return CL_INVALID_MEM_OBJECT;
-        break;
+          return CL_INVALID_MEM_OBJECT;
+      } else
+        return CL_INVALID_MEM_OBJECT;
+      break;
     }
     case CL_MEM_DX9_MEDIA_ADAPTER_TYPE_KHR: {
-        cl_dx9_media_adapter_type_khr adapterType;
+      cl_dx9_media_adapter_type_khr adapterType;
 
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(interop) {
-            amd::D3D9Object *d3d9obj = interop->asD3D9Object();
-            if(d3d9obj) {
-                adapterType = d3d9obj->getAdapterType();
-            }
-            return amd::clGetInfo(
-                adapterType, param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (interop) {
+        amd::D3D9Object* d3d9obj = interop->asD3D9Object();
+        if (d3d9obj) {
+          adapterType = d3d9obj->getAdapterType();
         }
-        break;
+        return amd::clGetInfo(adapterType, param_value_size, param_value, param_value_size_ret);
+      }
+      break;
     }
-#endif //_WIN32
+#endif  //_WIN32
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -3975,163 +3672,142 @@ RUNTIME_EXIT
  *
  *  \version 1.2r09
  */
-RUNTIME_ENTRY(cl_int, clGetImageInfo, (
-    cl_mem memobj,
-    cl_image_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::Image* image = as_amd(memobj)->asImage();
-    if (image == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clGetImageInfo,
+              (cl_mem memobj, cl_image_info param_name, size_t param_value_size, void* param_value,
+               size_t* param_value_size_ret)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::Image* image = as_amd(memobj)->asImage();
+  if (image == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    switch(param_name)
-    {
+  switch (param_name) {
     case CL_IMAGE_FORMAT: {
-        cl_image_format format = image->getImageFormat();
-        return amd::clGetInfo(
-            format, param_value_size, param_value, param_value_size_ret);
+      cl_image_format format = image->getImageFormat();
+      return amd::clGetInfo(format, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_ELEMENT_SIZE: {
-        size_t elementSize = image->getImageFormat().getElementSize();
-        return amd::clGetInfo(
-            elementSize, param_value_size, param_value, param_value_size_ret);
+      size_t elementSize = image->getImageFormat().getElementSize();
+      return amd::clGetInfo(elementSize, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_ROW_PITCH: {
-        size_t rowPitch = image->getRowPitch();
-        return amd::clGetInfo(
-            rowPitch, param_value_size, param_value, param_value_size_ret);
+      size_t rowPitch = image->getRowPitch();
+      return amd::clGetInfo(rowPitch, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_SLICE_PITCH: {
-        size_t slicePitch = image->getSlicePitch();
-        return amd::clGetInfo(
-            slicePitch, param_value_size, param_value, param_value_size_ret);
+      size_t slicePitch = image->getSlicePitch();
+      return amd::clGetInfo(slicePitch, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_WIDTH: {
-        size_t width = image->getWidth();
-        return amd::clGetInfo(
-            width, param_value_size, param_value, param_value_size_ret);
+      size_t width = image->getWidth();
+      return amd::clGetInfo(width, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_HEIGHT: {
-        size_t height = image->getHeight();
-        if ((image->getType() == CL_MEM_OBJECT_IMAGE1D) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
-            height = 0;
-        }
-        return amd::clGetInfo(
-            height, param_value_size, param_value, param_value_size_ret);
+      size_t height = image->getHeight();
+      if ((image->getType() == CL_MEM_OBJECT_IMAGE1D) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
+        height = 0;
+      }
+      return amd::clGetInfo(height, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_DEPTH: {
-        size_t depth = image->getDepth();
-        if ((image->getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE2D_ARRAY) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE1D) ||
-            (image->getType() == CL_MEM_OBJECT_IMAGE2D)) {
-            depth = 0;
-        }
-        return amd::clGetInfo(
-            depth, param_value_size, param_value, param_value_size_ret);
+      size_t depth = image->getDepth();
+      if ((image->getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE2D_ARRAY) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE1D) ||
+          (image->getType() == CL_MEM_OBJECT_IMAGE2D)) {
+        depth = 0;
+      }
+      return amd::clGetInfo(depth, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_ARRAY_SIZE: {
-        size_t  arraySize = 0;
-        if (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
-            arraySize = image->getHeight();
-        }
-        else if (image->getType() == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
-            arraySize = image->getDepth();
-        }
-        return amd::clGetInfo(
-            arraySize, param_value_size, param_value, param_value_size_ret);
+      size_t arraySize = 0;
+      if (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
+        arraySize = image->getHeight();
+      } else if (image->getType() == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
+        arraySize = image->getDepth();
+      }
+      return amd::clGetInfo(arraySize, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_BUFFER: {
-        cl_mem buffer = 0;
-        amd::Memory* parent = image->parent();
-        while (parent && (parent->asBuffer() == NULL)) {
-            parent = parent->parent();
-        }
-        buffer = as_cl(parent);
-        return amd::clGetInfo(
-            buffer, param_value_size, param_value, param_value_size_ret);
+      cl_mem buffer = 0;
+      amd::Memory* parent = image->parent();
+      while (parent && (parent->asBuffer() == NULL)) {
+        parent = parent->parent();
+      }
+      buffer = as_cl(parent);
+      return amd::clGetInfo(buffer, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_NUM_MIP_LEVELS: {
-        cl_uint numMipLevels = image->getMipLevels();
-        return amd::clGetInfo(
-            numMipLevels, param_value_size, param_value, param_value_size_ret);
+      cl_uint numMipLevels = image->getMipLevels();
+      return amd::clGetInfo(numMipLevels, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_NUM_SAMPLES: {
-        cl_uint numSamples = 0;
-        return amd::clGetInfo(
-            numSamples, param_value_size, param_value, param_value_size_ret);
+      cl_uint numSamples = 0;
+      return amd::clGetInfo(numSamples, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_BYTE_PITCH_AMD: {
-        size_t bytePitch = image->getBytePitch();
-        return amd::clGetInfo(
-            bytePitch, param_value_size, param_value, param_value_size_ret);
+      size_t bytePitch = image->getBytePitch();
+      return amd::clGetInfo(bytePitch, param_value_size, param_value, param_value_size_ret);
     }
 #ifdef _WIN32
     case CL_IMAGE_D3D10_SUBRESOURCE_KHR: {
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(!interop) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        amd::D3D10Object *d3d10obj = interop->asD3D10Object();
-        if(!d3d10obj) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        UINT subresource = d3d10obj->getSubresource();
-        return amd::clGetInfo( subresource,
-            param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (!interop) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      amd::D3D10Object* d3d10obj = interop->asD3D10Object();
+      if (!d3d10obj) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      UINT subresource = d3d10obj->getSubresource();
+      return amd::clGetInfo(subresource, param_value_size, param_value, param_value_size_ret);
     }
     case CL_IMAGE_D3D11_SUBRESOURCE_KHR: {
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(!interop) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        amd::D3D11Object *d3d11obj = interop->asD3D11Object();
-        if(!d3d11obj) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        UINT subresource = d3d11obj->getSubresource();
-        return amd::clGetInfo( subresource,
-            param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (!interop) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      amd::D3D11Object* d3d11obj = interop->asD3D11Object();
+      if (!d3d11obj) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      UINT subresource = d3d11obj->getSubresource();
+      return amd::clGetInfo(subresource, param_value_size, param_value, param_value_size_ret);
     }
     case CL_MEM_DX9_MEDIA_SURFACE_INFO_KHR: {
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(!interop) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        amd::D3D9Object *d3d9obj = interop->asD3D9Object();
-        if(!d3d9obj) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        return amd::clGetInfo( d3d9obj->getSurfInfo(),
-            param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (!interop) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      amd::D3D9Object* d3d9obj = interop->asD3D9Object();
+      if (!d3d9obj) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      return amd::clGetInfo(d3d9obj->getSurfInfo(), param_value_size, param_value,
+                            param_value_size_ret);
     }
     case CL_IMAGE_DX9_MEDIA_PLANE_KHR: {
-        amd::InteropObject* interop = ((amd::Memory*) as_amd(memobj))->getInteropObj();
-        if(!interop) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        amd::D3D9Object *d3d9obj = interop->asD3D9Object();
-        if(!d3d9obj) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        cl_uint plane = d3d9obj->getPlane();
-        return amd::clGetInfo( plane,
-            param_value_size, param_value, param_value_size_ret);
+      amd::InteropObject* interop = ((amd::Memory*)as_amd(memobj))->getInteropObj();
+      if (!interop) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      amd::D3D9Object* d3d9obj = interop->asD3D9Object();
+      if (!d3d9obj) {
+        return CL_INVALID_MEM_OBJECT;
+      }
+      cl_uint plane = d3d9obj->getPlane();
+      return amd::clGetInfo(plane, param_value_size, param_value, param_value_size_ret);
     }
-#endif //_WIN32
+#endif  //_WIN32
     default:
-        break;
-    }
-    return CL_INVALID_VALUE;
+      break;
+  }
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -4211,269 +3887,205 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateImage, (
-    cl_context context,
-    cl_mem_flags flags,
-    const cl_image_format *image_format,
-    const cl_image_desc *image_desc,
-    void* host_ptr,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
+RUNTIME_ENTRY_RET(cl_mem, clCreateImage,
+                  (cl_context context, cl_mem_flags flags, const cl_image_format* image_format,
+                   const cl_image_desc* image_desc, void* host_ptr, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter: context");
+    return (cl_mem)0;
+  }
+  // check flags for validity
+  if (!validateFlags(flags)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter: flags");
+    return (cl_mem)0;
+  }
+  // check format
+  if (image_format == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
+
+  const amd::Image::Format imageFormat(*image_format);
+  if (!imageFormat.isValid()) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
+
+  amd::Context& amdContext = *as_amd(context);
+
+  if (!imageFormat.isSupported(amdContext, image_desc->image_type)) {
+    *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
+
+  // check host_ptr consistency
+  if (host_ptr == NULL) {
+    if (flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter: host_ptr");
+      return (cl_mem)0;
+    }
+  } else {
+    if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
+      *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
+      LogWarning("invalid parameter: host_ptr");
+      return (cl_mem)0;
+    }
+  }
+
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  for (auto& dev : devices) {
+    if (dev->info().imageSupport_) {
+      supportPass = true;
+      break;
+    }
+  }
+
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return (cl_mem)0;
+  }
+
+  if (!amd::Image::validateDimensions(devices, image_desc->image_type, image_desc->image_width,
+                                      image_desc->image_height, image_desc->image_depth,
+                                      image_desc->image_array_size)) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
+    LogWarning("invalid parameter: image dimensions exceeding max");
+    return (cl_mem)0;
+  }
+
+  size_t imageRowPitch = 0;
+  size_t imageSlicePitch = 0;
+  if (!validateImageDescriptor(devices, imageFormat, image_desc, host_ptr, imageRowPitch,
+                               imageSlicePitch)) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_DESCRIPTOR;
+    LogWarning("invalid parameter: image_desc");
+    return (cl_mem)0;
+  }
+
+  // Validate mip level
+  if (image_desc->num_mip_levels != 0) {
+    size_t maxDim = std::max(image_desc->image_width, image_desc->image_height);
+    maxDim = std::max(maxDim, image_desc->image_depth);
+    uint mipLevels;
+    for (mipLevels = 0; maxDim > 0; maxDim >>= 1, mipLevels++)
+      ;
+    if (mipLevels < image_desc->num_mip_levels) {
+      *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+      LogWarning("Invalid mip level");
+      return (cl_mem)0;
+    }
+  }
+  amd::Image* image = NULL;
+
+  switch (image_desc->image_type) {
+    case CL_MEM_OBJECT_IMAGE1D:
+      image = new (amdContext)
+          amd::Image(amdContext, CL_MEM_OBJECT_IMAGE1D, flags, imageFormat, image_desc->image_width,
+                     1, 1, imageRowPitch, 0, image_desc->num_mip_levels);
+      break;
+    case CL_MEM_OBJECT_IMAGE2D:
+      if (image_desc->mem_object != NULL) {
+        amd::Buffer& buffer = *(as_amd(image_desc->mem_object)->asBuffer());
+        if (&amdContext != &buffer.getContext()) {
+          *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+          LogWarning("invalid parameter: context");
+          return (cl_mem)0;
+        }
+
+        // host_ptr is not supported, the buffer object is used instead.
+        if ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR)) != 0) {
+          *not_null(errcode_ret) = CL_INVALID_VALUE;
+          LogWarning("invalid parameter: flags");
+          return (cl_mem)0;
+        }
+
+        cl_uint pitchAlignment = 0;
+        for (unsigned int i = 0; i < devices.size(); ++i) {
+          if (pitchAlignment < devices[i]->info().imagePitchAlignment_) {
+            pitchAlignment = devices[i]->info().imagePitchAlignment_;
+          }
+        }
+        if ((imageRowPitch % pitchAlignment) != 0) {
+          *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+          LogWarning("invalid parameter: flags");
+          return (cl_mem)0;
+        }
+
+        image = new (amdContext) amd::Image(
+            buffer, CL_MEM_OBJECT_IMAGE2D, (flags != 0) ? flags : buffer.getMemFlags(), imageFormat,
+            image_desc->image_width, image_desc->image_height, 1, imageRowPitch, imageSlicePitch);
+      } else {
+        image = new (amdContext) amd::Image(amdContext, CL_MEM_OBJECT_IMAGE2D, flags, imageFormat,
+                                            image_desc->image_width, image_desc->image_height, 1,
+                                            imageRowPitch, 0, image_desc->num_mip_levels);
+      }
+      break;
+    case CL_MEM_OBJECT_IMAGE3D:
+      image = new (amdContext)
+          amd::Image(amdContext, CL_MEM_OBJECT_IMAGE3D, flags, imageFormat, image_desc->image_width,
+                     image_desc->image_height, image_desc->image_depth, imageRowPitch,
+                     imageSlicePitch, image_desc->num_mip_levels);
+      break;
+    case CL_MEM_OBJECT_IMAGE1D_BUFFER: {
+      amd::Buffer& buffer = *(as_amd(image_desc->mem_object)->asBuffer());
+      if (&amdContext != &buffer.getContext()) {
         *not_null(errcode_ret) = CL_INVALID_CONTEXT;
         LogWarning("invalid parameter: context");
-        return (cl_mem) 0;
-    }
-    // check flags for validity
-    if (!validateFlags(flags)) {
+        return (cl_mem)0;
+      }
+
+      // host_ptr is not supported, the buffer object is used instead.
+      if ((flags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR)) != 0) {
         *not_null(errcode_ret) = CL_INVALID_VALUE;
         LogWarning("invalid parameter: flags");
-        return (cl_mem) 0;
-    }
-    // check format
-    if (image_format == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
+        return (cl_mem)0;
+      }
 
-    const amd::Image::Format imageFormat(*image_format);
-    if (!imageFormat.isValid()) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
+      image = new (amdContext) amd::Image(
+          buffer, CL_MEM_OBJECT_IMAGE1D_BUFFER, (flags != 0) ? flags : buffer.getMemFlags(),
+          imageFormat, image_desc->image_width, 1, 1, imageRowPitch, imageSlicePitch);
+    } break;
+    case CL_MEM_OBJECT_IMAGE1D_ARRAY:
+      image =
+          new (amdContext) amd::Image(amdContext, CL_MEM_OBJECT_IMAGE1D_ARRAY, flags, imageFormat,
+                                      image_desc->image_width, image_desc->image_array_size, 1,
+                                      imageRowPitch, imageSlicePitch, image_desc->num_mip_levels);
+      break;
+    case CL_MEM_OBJECT_IMAGE2D_ARRAY:
+      image = new (amdContext) amd::Image(
+          amdContext, CL_MEM_OBJECT_IMAGE2D_ARRAY, flags, imageFormat, image_desc->image_width,
+          image_desc->image_height, image_desc->image_array_size, imageRowPitch, imageSlicePitch,
+          image_desc->num_mip_levels);
+      break;
+    default: {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_DESCRIPTOR;
+      LogWarning("invalid parameter: image_desc");
+      return reinterpret_cast<cl_mem>(image);
+    } break;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
+  if (image == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("cannot allocate resources");
+    return (cl_mem)0;
+  }
 
-    if (!imageFormat.isSupported(amdContext, image_desc->image_type)) {
-        *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
+  if (!image->create(host_ptr)) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    image->release();
+    return (cl_mem)0;
+  }
 
-    // check host_ptr consistency
-    if (host_ptr == NULL) {
-        if(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR)) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter: host_ptr");
-            return (cl_mem) 0;
-        }
-    }
-    else {
-        if(!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
-            *not_null(errcode_ret) = CL_INVALID_HOST_PTR;
-            LogWarning("invalid parameter: host_ptr");
-            return (cl_mem) 0;
-        }
-    }
-
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    for (auto& dev : devices) {
-        if (dev->info().imageSupport_) {
-            supportPass = true;
-            break;
-        }
-    }
-
-    if (!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return (cl_mem) 0;
-    }
-
-    if (!amd::Image::validateDimensions(
-        devices, image_desc->image_type, image_desc->image_width,
-        image_desc->image_height, image_desc->image_depth, image_desc->image_array_size)) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_SIZE;
-        LogWarning("invalid parameter: image dimensions exceeding max");
-        return (cl_mem) 0;
-    }
-
-    size_t  imageRowPitch = 0;
-    size_t  imageSlicePitch = 0;
-    if (!validateImageDescriptor(devices, imageFormat,
-            image_desc, host_ptr, imageRowPitch, imageSlicePitch)) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_DESCRIPTOR;
-        LogWarning("invalid parameter: image_desc");
-        return (cl_mem) 0;
-    }
-
-    // Validate mip level
-    if (image_desc->num_mip_levels != 0) {
-        size_t maxDim = std::max(image_desc->image_width, image_desc->image_height);
-        maxDim = std::max(maxDim, image_desc->image_depth);
-        uint mipLevels;
-        for (mipLevels = 0; maxDim > 0; maxDim >>= 1, mipLevels++);
-        if (mipLevels < image_desc->num_mip_levels) {
-            *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
-            LogWarning("Invalid mip level");
-            return (cl_mem) 0;
-        }
-    }
-    amd::Image* image = NULL;
-
-    switch (image_desc->image_type) {
-        case CL_MEM_OBJECT_IMAGE1D:
-            image = new (amdContext) amd::Image(
-                amdContext,
-                CL_MEM_OBJECT_IMAGE1D,
-                flags,
-                imageFormat,
-                image_desc->image_width,
-                1,
-                1,
-                imageRowPitch,
-                0,
-                image_desc->num_mip_levels);
-            break;
-        case CL_MEM_OBJECT_IMAGE2D:
-            if (image_desc->mem_object != NULL) {
-                amd::Buffer& buffer = *(as_amd(image_desc->mem_object)->asBuffer());
-                if (&amdContext != &buffer.getContext()) {
-                    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-                    LogWarning("invalid parameter: context");
-                    return (cl_mem) 0;
-                }
-
-                // host_ptr is not supported, the buffer object is used instead.
-                if ((flags & (CL_MEM_USE_HOST_PTR   |
-                              CL_MEM_ALLOC_HOST_PTR |
-                              CL_MEM_COPY_HOST_PTR)) != 0) {
-                    *not_null(errcode_ret) = CL_INVALID_VALUE;
-                    LogWarning("invalid parameter: flags");
-                    return (cl_mem) 0;
-                }
-
-                cl_uint pitchAlignment = 0;
-                for (unsigned int i=0; i<devices.size(); ++i) {
-                    if (pitchAlignment < devices[i]->info().imagePitchAlignment_) {
-                        pitchAlignment = devices[i]->info().imagePitchAlignment_;
-                    }
-                }
-                if ((imageRowPitch % pitchAlignment) != 0) {
-                    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                    LogWarning("invalid parameter: flags");
-                    return (cl_mem) 0;
-                }
-
-                image = new (amdContext) amd::Image(
-                    buffer,
-                    CL_MEM_OBJECT_IMAGE2D,
-                    (flags != 0) ? flags : buffer.getMemFlags(),
-                    imageFormat,
-                    image_desc->image_width,
-                    image_desc->image_height,
-                    1,
-                    imageRowPitch,
-                    imageSlicePitch);
-            }
-            else {
-                image = new (amdContext) amd::Image(
-                    amdContext,
-                    CL_MEM_OBJECT_IMAGE2D,
-                    flags,
-                    imageFormat,
-                    image_desc->image_width,
-                    image_desc->image_height,
-                    1,
-                    imageRowPitch,
-                    0,
-                    image_desc->num_mip_levels);
-            }
-            break;
-        case CL_MEM_OBJECT_IMAGE3D:
-            image = new (amdContext) amd::Image(
-                amdContext,
-                CL_MEM_OBJECT_IMAGE3D,
-                flags,
-                imageFormat,
-                image_desc->image_width,
-                image_desc->image_height,
-                image_desc->image_depth,
-                imageRowPitch,
-                imageSlicePitch,
-                image_desc->num_mip_levels);
-            break;
-        case CL_MEM_OBJECT_IMAGE1D_BUFFER:
-            {
-            amd::Buffer& buffer = *(as_amd(image_desc->mem_object)->asBuffer());
-            if (&amdContext != &buffer.getContext()) {
-                *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-                LogWarning("invalid parameter: context");
-                return (cl_mem) 0;
-            }
-
-            // host_ptr is not supported, the buffer object is used instead.
-            if ((flags & (CL_MEM_USE_HOST_PTR   |
-                          CL_MEM_ALLOC_HOST_PTR |
-                          CL_MEM_COPY_HOST_PTR)) != 0) {
-                *not_null(errcode_ret) = CL_INVALID_VALUE;
-                LogWarning("invalid parameter: flags");
-                return (cl_mem) 0;
-            }
-
-            image = new (amdContext) amd::Image(
-                buffer,
-                CL_MEM_OBJECT_IMAGE1D_BUFFER,
-                (flags != 0) ? flags : buffer.getMemFlags(),
-                imageFormat,
-                image_desc->image_width,
-                1,
-                1,
-                imageRowPitch,
-                imageSlicePitch);
-            }
-            break;
-        case CL_MEM_OBJECT_IMAGE1D_ARRAY:
-            image = new (amdContext) amd::Image(
-                amdContext,
-                CL_MEM_OBJECT_IMAGE1D_ARRAY,
-                flags,
-                imageFormat,
-                image_desc->image_width,
-                image_desc->image_array_size,
-                1,
-                imageRowPitch,
-                imageSlicePitch,
-                image_desc->num_mip_levels);
-            break;
-        case CL_MEM_OBJECT_IMAGE2D_ARRAY:
-            image = new (amdContext) amd::Image(
-                amdContext,
-                CL_MEM_OBJECT_IMAGE2D_ARRAY,
-                flags,
-                imageFormat,
-                image_desc->image_width,
-                image_desc->image_height,
-                image_desc->image_array_size,
-                imageRowPitch,
-                imageSlicePitch,
-                image_desc->num_mip_levels);
-            break;
-        default: {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_DESCRIPTOR;
-            LogWarning("invalid parameter: image_desc");
-            return reinterpret_cast<cl_mem>(image);
-        }
-            break;
-    }
-
-    if (image == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("cannot allocate resources");
-        return (cl_mem) 0;
-    }
-
-    if(!image->create(host_ptr)) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        image->release();
-        return (cl_mem) 0;
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return (cl_mem) as_cl<amd::Memory>(image);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return (cl_mem)as_cl<amd::Memory>(image);
 }
 RUNTIME_EXIT
 
@@ -4544,94 +4156,81 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer, (
-    cl_command_queue command_queue,
-    cl_mem buffer,
-    const void* pattern,
-    size_t pattern_size,
-    size_t offset,
-    size_t size,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    amd::Buffer* fillBuffer;
+RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer,
+              (cl_command_queue command_queue, cl_mem buffer, const void* pattern,
+               size_t pattern_size, size_t offset, size_t size, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  amd::Buffer* fillBuffer;
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(buffer)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(buffer)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    fillBuffer = as_amd(buffer)->asBuffer();
-    if (fillBuffer == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  fillBuffer = as_amd(buffer)->asBuffer();
+  if (fillBuffer == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if ((pattern == NULL) || (pattern_size == 0) ||
-        (pattern_size > amd::FillMemoryCommand::MaxFillPatterSize) ||
-        ((pattern_size & (pattern_size - 1)) != 0)) {
-        return CL_INVALID_VALUE;
-    }
+  if ((pattern == NULL) || (pattern_size == 0) ||
+      (pattern_size > amd::FillMemoryCommand::MaxFillPatterSize) ||
+      ((pattern_size & (pattern_size - 1)) != 0)) {
+    return CL_INVALID_VALUE;
+  }
 
-    // Offset must be a multiple of pattern_size
-    if ((offset % pattern_size) != 0) {
-        return CL_INVALID_VALUE;
-    }
+  // Offset must be a multiple of pattern_size
+  if ((offset % pattern_size) != 0) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != fillBuffer->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != fillBuffer->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    amd::Coord3D    fillOffset(offset, 0, 0);
-    amd::Coord3D    fillSize(size, 1, 1);
-    if(!fillBuffer->validateRegion(fillOffset, fillSize)) {
-        return CL_INVALID_VALUE;
-    }
+  amd::Coord3D fillOffset(offset, 0, 0);
+  amd::Coord3D fillSize(size, 1, 1);
+  if (!fillBuffer->validateRegion(fillOffset, fillSize)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::FillMemoryCommand *command = new amd::FillMemoryCommand(
-        hostQueue,
-        CL_COMMAND_FILL_BUFFER,
-        eventWaitList,
-        *fillBuffer,
-        pattern,
-        pattern_size,
-        fillOffset,
-        fillSize);
+  amd::FillMemoryCommand* command =
+      new amd::FillMemoryCommand(hostQueue, CL_COMMAND_FILL_BUFFER, eventWaitList, *fillBuffer,
+                                 pattern, pattern_size, fillOffset, fillSize);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -4719,90 +4318,79 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueFillImage, (
-    cl_command_queue command_queue,
-    cl_mem image,
-    const void* fill_color,
-    const size_t* origin,
-    const size_t* region,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    amd::Image* fillImage;
+RUNTIME_ENTRY(cl_int, clEnqueueFillImage,
+              (cl_command_queue command_queue, cl_mem image, const void* fill_color,
+               const size_t* origin, const size_t* region, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  amd::Image* fillImage;
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(image)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  if (!is_valid(image)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    if (fill_color == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (fill_color == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    fillImage = as_amd(image)->asImage();
-    if (fillImage == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  fillImage = as_amd(image)->asImage();
+  if (fillImage == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (hostQueue.context() != fillImage->getContext()) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (hostQueue.context() != fillImage->getContext()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (fillImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
-        return CL_INVALID_OPERATION;
-    }
+  if (fillImage->getImageFormat().image_channel_order == CL_DEPTH_STENCIL) {
+    return CL_INVALID_OPERATION;
+  }
 
-    amd::Coord3D    fillOrigin(origin[0], origin[1], origin[2]);
-    amd::Coord3D    fillRegion(region[0], region[1], region[2]);
-    if(!fillImage->validateRegion(fillOrigin, fillRegion)) {
-        return CL_INVALID_VALUE;
-    }
+  amd::Coord3D fillOrigin(origin[0], origin[1], origin[2]);
+  amd::Coord3D fillRegion(region[0], region[1], region[2]);
+  if (!fillImage->validateRegion(fillOrigin, fillRegion)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::FillMemoryCommand *command = new amd::FillMemoryCommand(
-        hostQueue,
-        CL_COMMAND_FILL_IMAGE,
-        eventWaitList,
-        *fillImage,
-        fill_color,
-        sizeof(cl_float4),  // @note color size is always 16 bytes value
-        fillOrigin,
-        fillRegion);
+  amd::FillMemoryCommand* command = new amd::FillMemoryCommand(
+      hostQueue, CL_COMMAND_FILL_IMAGE, eventWaitList, *fillImage, fill_color,
+      sizeof(cl_float4),  // @note color size is always 16 bytes value
+      fillOrigin, fillRegion);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -4890,172 +4478,156 @@ RUNTIME_EXIT
  *
  *  \version 1.2r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueMigrateMemObjects, (
-    cl_command_queue command_queue,
-    cl_uint num_mem_objects,
-    const cl_mem* mem_objects,
-    cl_mem_migration_flags flags,
-    cl_uint num_events_in_wait_list,
-    const cl_event* event_wait_list,
-    cl_event* event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueMigrateMemObjects,
+              (cl_command_queue command_queue, cl_uint num_mem_objects, const cl_mem* mem_objects,
+               cl_mem_migration_flags flags, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if ((num_mem_objects == 0) || (mem_objects == NULL)) {
+    return CL_INVALID_VALUE;
+  }
+
+  if (flags & ~(CL_MIGRATE_MEM_OBJECT_HOST | CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)) {
+    return CL_INVALID_VALUE;
+  }
+
+  std::vector<amd::Memory*> memObjects;
+  for (uint i = 0; i < num_mem_objects; ++i) {
+    if (!is_valid(mem_objects[i])) {
+      return CL_INVALID_MEM_OBJECT;
     }
-
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
+    amd::Memory* memory = as_amd(mem_objects[i]);
+    if (hostQueue.context() != memory->getContext()) {
+      return CL_INVALID_CONTEXT;
     }
-    amd::HostQueue& hostQueue = *queue;
+    memObjects.push_back(memory);
+  }
 
-    if ((num_mem_objects == 0) || (mem_objects == NULL)) {
-        return CL_INVALID_VALUE;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    if (flags & ~(CL_MIGRATE_MEM_OBJECT_HOST |
-                  CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)) {
-        return CL_INVALID_VALUE;
-    }
+  amd::MigrateMemObjectsCommand* command = new amd::MigrateMemObjectsCommand(
+      hostQueue, CL_COMMAND_MIGRATE_MEM_OBJECTS, eventWaitList, memObjects, flags);
 
-    std::vector<amd::Memory*> memObjects;
-    for (uint i = 0; i < num_mem_objects; ++i) {
-        if (!is_valid(mem_objects[i])) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-        amd::Memory* memory = as_amd(mem_objects[i]);
-        if (hostQueue.context() != memory->getContext()) {
-            return CL_INVALID_CONTEXT;
-        }
-        memObjects.push_back(memory);
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    amd::MigrateMemObjectsCommand* command = new amd::MigrateMemObjectsCommand(
-        hostQueue,
-        CL_COMMAND_MIGRATE_MEM_OBJECTS,
-        eventWaitList,
-        memObjects,
-        flags);
+  command->enqueue();
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY_RET(cl_mem, clConvertImageAMD, (
-    cl_context              context,
-    cl_mem                  image,
-    const cl_image_format * image_format,
-    cl_int *                errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter: context");
-        return (cl_mem) 0;
-    }
-    // check format
-    if (image_format == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
-    const amd::Image::Format imageFormat(*image_format);
-    if (!imageFormat.isValid()) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
+RUNTIME_ENTRY_RET(cl_mem, clConvertImageAMD,
+                  (cl_context context, cl_mem image, const cl_image_format* image_format,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter: context");
+    return (cl_mem)0;
+  }
+  // check format
+  if (image_format == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
+  const amd::Image::Format imageFormat(*image_format);
+  if (!imageFormat.isValid()) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    if (!imageFormat.isSupported(amdContext)) {
-        *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
-        LogWarning("invalid parameter: image_format");
-        return (cl_mem) 0;
-    }
-    amd::Image* amdImage = as_amd(image)->asImage();
-    amd::Image* converted_image = amdImage->createView(amdContext, imageFormat, NULL);
+  amd::Context& amdContext = *as_amd(context);
+  if (!imageFormat.isSupported(amdContext)) {
+    *not_null(errcode_ret) = CL_IMAGE_FORMAT_NOT_SUPPORTED;
+    LogWarning("invalid parameter: image_format");
+    return (cl_mem)0;
+  }
+  amd::Image* amdImage = as_amd(image)->asImage();
+  amd::Image* converted_image = amdImage->createView(amdContext, imageFormat, NULL);
 
-    if (converted_image == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        LogWarning("cannot allocate resources");
-        return (cl_mem) 0;
-    }
+  if (converted_image == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    LogWarning("cannot allocate resources");
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return (cl_mem) as_cl<amd::Memory>(converted_image);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return (cl_mem)as_cl<amd::Memory>(converted_image);
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY_RET(cl_mem, clCreateBufferFromImageAMD, (
-    cl_context              context,
-    cl_mem                  image,
-    cl_int *                errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter: context");
-        return (cl_mem) 0;
-    }
+RUNTIME_ENTRY_RET(cl_mem, clCreateBufferFromImageAMD,
+                  (cl_context context, cl_mem image, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter: context");
+    return (cl_mem)0;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    const std::vector<amd::Device*>& devices = amdContext.devices();
-    bool supportPass = false;
-    for (auto&  dev : devices) {
-        if (dev->info().bufferFromImageSupport_) {
-            supportPass = true;
-            break;
-        }
+  amd::Context& amdContext = *as_amd(context);
+  const std::vector<amd::Device*>& devices = amdContext.devices();
+  bool supportPass = false;
+  for (auto& dev : devices) {
+    if (dev->info().bufferFromImageSupport_) {
+      supportPass = true;
+      break;
     }
+  }
 
-    if (!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support buffer from image");
-        return (cl_mem) 0;
-    }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support buffer from image");
+    return (cl_mem)0;
+  }
 
-    amd::Image* amdImage = as_amd(image)->asImage();
-    if (!is_valid(image) || amdImage == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
-        return NULL;
-    }
+  amd::Image* amdImage = as_amd(image)->asImage();
+  if (!is_valid(image) || amdImage == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_MEM_OBJECT;
+    return NULL;
+  }
 
-    amd::Memory* mem = new(amdContext) amd::Buffer(*amdImage, 0, 0, amdImage->getSize());
-    if (mem == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem)0;
-    }
+  amd::Memory* mem = new (amdContext) amd::Buffer(*amdImage, 0, 0, amdImage->getSize());
+  if (mem == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
 
-    if (!mem->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        mem->release();
-        return NULL;
-    }
+  if (!mem->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    mem->release();
+    return NULL;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return (cl_mem) as_cl<amd::Memory>(mem);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return (cl_mem)as_cl<amd::Memory>(mem);
 }
 RUNTIME_EXIT
 

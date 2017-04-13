@@ -54,132 +54,122 @@
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties, (
-    cl_context context,
-    cl_device_id device,
-    const cl_queue_properties *queue_properties,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_command_queue) 0;
-    }
+RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties,
+                  (cl_context context, cl_device_id device,
+                   const cl_queue_properties* queue_properties, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_command_queue)0;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    amd::Device&  amdDevice = *as_amd(device);
+  amd::Context& amdContext = *as_amd(context);
+  amd::Device& amdDevice = *as_amd(device);
 
-    if (!is_valid(device) ||
-        !amdContext.containsDevice(&amdDevice)) {
-        *not_null(errcode_ret) = CL_INVALID_DEVICE;
-        return (cl_command_queue) 0;
-    }
+  if (!is_valid(device) || !amdContext.containsDevice(&amdDevice)) {
+    *not_null(errcode_ret) = CL_INVALID_DEVICE;
+    return (cl_command_queue)0;
+  }
 
-    cl_command_queue_properties properties = 0;
-    const struct QueueProperty {
-        cl_queue_properties name;
-        union {
-            cl_queue_properties raw;
-            //FIXME_lmoriche: Check with Khronos. cl_queue_properties is an intptr,
-            //but cl_command_queue_properties is a bitfield (truncate?).
-            //cl_command_queue_properties properties;
-            cl_uint size;
-        } value;
-    } *p = reinterpret_cast<const QueueProperty*>(queue_properties);
+  cl_command_queue_properties properties = 0;
+  const struct QueueProperty {
+    cl_queue_properties name;
+    union {
+      cl_queue_properties raw;
+      // FIXME_lmoriche: Check with Khronos. cl_queue_properties is an intptr,
+      // but cl_command_queue_properties is a bitfield (truncate?).
+      // cl_command_queue_properties properties;
+      cl_uint size;
+    } value;
+  }* p = reinterpret_cast<const QueueProperty*>(queue_properties);
 
-    uint queueSize = amdDevice.info().queueOnDevicePreferredSize_;
-    uint queueRTCUs = amd::CommandQueue::RealTimeDisabled;
-    amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal;
-    if (p != NULL) while(p->name != 0) {
-        switch(p->name) {
+  uint queueSize = amdDevice.info().queueOnDevicePreferredSize_;
+  uint queueRTCUs = amd::CommandQueue::RealTimeDisabled;
+  amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal;
+  if (p != NULL)
+    while (p->name != 0) {
+      switch (p->name) {
         case CL_QUEUE_PROPERTIES:
-            //FIXME_lmoriche: See comment above.
-            //properties = p->value.properties;
-            properties = static_cast<cl_command_queue_properties>(p->value.raw);
-            break;
+          // FIXME_lmoriche: See comment above.
+          // properties = p->value.properties;
+          properties = static_cast<cl_command_queue_properties>(p->value.raw);
+          break;
         case CL_QUEUE_SIZE:
-            queueSize = p->value.size;
-            break;
-#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD        0x404f
+          queueSize = p->value.size;
+          break;
+#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD 0x404f
         case CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD:
-            queueRTCUs = p->value.size;
-            break;
-#define CL_QUEUE_MEDIUM_PRIORITY_AMD        0x4050
+          queueRTCUs = p->value.size;
+          break;
+#define CL_QUEUE_MEDIUM_PRIORITY_AMD 0x4050
         case CL_QUEUE_MEDIUM_PRIORITY_AMD:
-            priority = amd::CommandQueue::Priority::Medium;
-            break;
+          priority = amd::CommandQueue::Priority::Medium;
+          break;
         default:
-            *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
-            LogWarning("invalid property name");
-            return (cl_command_queue) 0;
+          *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
+          LogWarning("invalid property name");
+          return (cl_command_queue)0;
+      }
+      ++p;
+    }
+
+  if (queueSize > amdDevice.info().queueOnDeviceMaxSize_) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_command_queue)0;
+  }
+
+  if ((queueRTCUs != amd::CommandQueue::RealTimeDisabled) &&
+      ((queueRTCUs > amdDevice.info().numRTCUs_) || (queueRTCUs == 0))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_command_queue)0;
+  }
+
+  amd::CommandQueue* queue = NULL;
+  {
+    amd::ScopedLock lock(amdContext.lock());
+
+    // Check if the app creates a host queue
+    if (!(properties & CL_QUEUE_ON_DEVICE)) {
+      queue = new amd::HostQueue(amdContext, amdDevice, properties, queueRTCUs, priority);
+    } else {
+      // Is it a device default queue
+      if (properties & CL_QUEUE_ON_DEVICE_DEFAULT) {
+        queue = amdContext.defDeviceQueue(amdDevice);
+        // If current context has one already then return it
+        if (NULL != queue) {
+          queue->retain();
+          *not_null(errcode_ret) = CL_SUCCESS;
+          return as_cl(queue);
         }
-        ++p;
+      }
+      // Check if runtime can allocate a new device queue on this context
+      if (amdContext.isDevQueuePossible(amdDevice)) {
+        queue = new amd::DeviceQueue(amdContext, amdDevice, properties, queueSize);
+      }
     }
 
-    if (queueSize > amdDevice.info().queueOnDeviceMaxSize_) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_command_queue) 0;
+    if (queue == NULL || !queue->create()) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      delete queue;
+      return (cl_command_queue)0;
     }
+  }
 
-    if ((queueRTCUs != amd::CommandQueue::RealTimeDisabled) &&
-        ((queueRTCUs > amdDevice.info().numRTCUs_) || (queueRTCUs == 0))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_command_queue) 0;
-    }
+  if (amd::Agent::shouldPostCommandQueueEvents()) {
+    amd::Agent::postCommandQueueCreate(as_cl(queue->asCommandQueue()));
+  }
 
-    amd::CommandQueue* queue = NULL;
-    {
-        amd::ScopedLock  lock(amdContext.lock());
-
-        // Check if the app creates a host queue
-        if (!(properties & CL_QUEUE_ON_DEVICE)) {
-            queue = new amd::HostQueue(amdContext, amdDevice, properties, queueRTCUs, priority);
-        }
-        else {
-            // Is it a device default queue
-            if (properties & CL_QUEUE_ON_DEVICE_DEFAULT) {
-                queue = amdContext.defDeviceQueue(amdDevice);
-                // If current context has one already then return it
-                if (NULL != queue) {
-                    queue->retain();
-                    *not_null(errcode_ret) = CL_SUCCESS;
-                    return as_cl(queue);
-                }
-            }
-            // Check if runtime can allocate a new device queue on this context
-            if (amdContext.isDevQueuePossible(amdDevice)) {
-                queue = new amd::DeviceQueue(
-                    amdContext, amdDevice, properties, queueSize);
-            }
-        }
-
-        if (queue == NULL || !queue->create()) {
-            *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-            delete queue;
-            return (cl_command_queue) 0;
-        }
-    }
-
-    if (amd::Agent::shouldPostCommandQueueEvents()) {
-        amd::Agent::postCommandQueueCreate(as_cl(queue->asCommandQueue()));
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(queue);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(queue);
 }
 RUNTIME_EXIT
 
-RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueue, (
-    cl_context context,
-    cl_device_id device,
-    cl_command_queue_properties properties,
-    cl_int *errcode_ret))
-{
-    const cl_queue_properties cprops[] = {
-        CL_QUEUE_PROPERTIES,
-            static_cast<cl_queue_properties>(properties),
-        0 };
-    return clCreateCommandQueueWithProperties(
-        context, device, properties ? cprops : NULL, errcode_ret);
+RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueue,
+                  (cl_context context, cl_device_id device, cl_command_queue_properties properties,
+                   cl_int* errcode_ret)) {
+  const cl_queue_properties cprops[] = {CL_QUEUE_PROPERTIES,
+                                        static_cast<cl_queue_properties>(properties), 0};
+  return clCreateCommandQueueWithProperties(context, device, properties ? cprops : NULL,
+                                            errcode_ret);
 }
 RUNTIME_EXIT
 
@@ -199,13 +189,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainCommandQueue, (cl_command_queue command_queue))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    as_amd(command_queue)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainCommandQueue, (cl_command_queue command_queue)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  as_amd(command_queue)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -222,13 +211,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseCommandQueue, (cl_command_queue command_queue))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    as_amd(command_queue)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseCommandQueue, (cl_command_queue command_queue)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  as_amd(command_queue)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -259,64 +247,51 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetCommandQueueInfo, (
-    cl_command_queue command_queue,
-    cl_command_queue_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clGetCommandQueueInfo,
+              (cl_command_queue command_queue, cl_command_queue_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_QUEUE_CONTEXT: {
-        cl_context context = const_cast<cl_context>(
-            as_cl(&as_amd(command_queue)->context()));
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      cl_context context = const_cast<cl_context>(as_cl(&as_amd(command_queue)->context()));
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_QUEUE_DEVICE: {
-        cl_device_id device = const_cast<cl_device_id>(
-            as_cl(&as_amd(command_queue)->device()));
-        return amd::clGetInfo(
-            device, param_value_size, param_value, param_value_size_ret);
+      cl_device_id device = const_cast<cl_device_id>(as_cl(&as_amd(command_queue)->device()));
+      return amd::clGetInfo(device, param_value_size, param_value, param_value_size_ret);
     }
     case CL_QUEUE_PROPERTIES: {
-        cl_command_queue_properties properties
-            = as_amd(command_queue)->properties().value_;
-        return amd::clGetInfo(
-            properties, param_value_size, param_value, param_value_size_ret);
+      cl_command_queue_properties properties = as_amd(command_queue)->properties().value_;
+      return amd::clGetInfo(properties, param_value_size, param_value, param_value_size_ret);
     }
     case CL_QUEUE_REFERENCE_COUNT: {
-        cl_uint count = as_amd(command_queue)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(command_queue)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_QUEUE_SIZE: {
-        const amd::DeviceQueue* deviceQueue = as_amd(command_queue)->asDeviceQueue();
-        if (NULL == deviceQueue) {
-            return CL_INVALID_COMMAND_QUEUE;
-        }
-        cl_uint size = deviceQueue->size();
-        return amd::clGetInfo(
-            size, param_value_size, param_value, param_value_size_ret);
+      const amd::DeviceQueue* deviceQueue = as_amd(command_queue)->asDeviceQueue();
+      if (NULL == deviceQueue) {
+        return CL_INVALID_COMMAND_QUEUE;
+      }
+      cl_uint size = deviceQueue->size();
+      return amd::clGetInfo(size, param_value_size, param_value, param_value_size_ret);
     }
     case CL_QUEUE_THREAD_HANDLE_AMD: {
-        const amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-        if (NULL == hostQueue) {
-            return CL_INVALID_COMMAND_QUEUE;
-        }
-        const void* handle = hostQueue->thread().handle();
-        return amd::clGetInfo(
-            handle, param_value_size, param_value, param_value_size_ret);
+      const amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+      if (NULL == hostQueue) {
+        return CL_INVALID_COMMAND_QUEUE;
+      }
+      const void* handle = hostQueue->thread().handle();
+      return amd::clGetInfo(handle, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -344,32 +319,27 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clSetCommandQueueProperty, (
-    cl_command_queue command_queue,
-    cl_command_queue_properties properties,
-    cl_bool enable,
-    cl_command_queue_properties *old_properties))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clSetCommandQueueProperty,
+              (cl_command_queue command_queue, cl_command_queue_properties properties,
+               cl_bool enable, cl_command_queue_properties* old_properties)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    *not_null(old_properties)
-        = as_amd(command_queue)->properties().value_;
+  *not_null(old_properties) = as_amd(command_queue)->properties().value_;
 
-    if (properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) {
-        clFinish(command_queue);
-    }
+  if (properties & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) {
+    clFinish(command_queue);
+  }
 
-    bool success;
-    if (enable == CL_TRUE) {
-        success = as_amd(command_queue)->properties().set(properties);
-    }
-    else {
-        success = as_amd(command_queue)->properties().clear(properties);
-    }
+  bool success;
+  if (enable == CL_TRUE) {
+    success = as_amd(command_queue)->properties().set(properties);
+  } else {
+    success = as_amd(command_queue)->properties().clear(properties);
+  }
 
-    return success ? CL_SUCCESS : CL_INVALID_QUEUE_PROPERTIES;
+  return success ? CL_SUCCESS : CL_INVALID_QUEUE_PROPERTIES;
 }
 RUNTIME_EXIT
 

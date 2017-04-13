@@ -150,144 +150,134 @@
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueNDRangeKernel, (
-    cl_command_queue command_queue,
-    cl_kernel kernel,
-    cl_uint work_dim,
-    const size_t *global_work_offset,
-    const size_t *global_work_size,
-    const size_t *local_work_size,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    *not_null(event) = NULL;
+RUNTIME_ENTRY(cl_int, clEnqueueNDRangeKernel,
+              (cl_command_queue command_queue, cl_kernel kernel, cl_uint work_dim,
+               const size_t* global_work_offset, const size_t* global_work_size,
+               const size_t* local_work_size, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  *not_null(event) = NULL;
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    const amd::Kernel* amdKernel = as_amd(kernel);
-    if (&hostQueue.context() != &amdKernel->program().context()) {
-        return CL_INVALID_CONTEXT;
-    }
+  const amd::Kernel* amdKernel = as_amd(kernel);
+  if (&hostQueue.context() != &amdKernel->program().context()) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    const amd::Device& device = hostQueue.device();
-    const device::Kernel* devKernel = amdKernel->getDeviceKernel(device);
-    if (devKernel == NULL) {
-        return CL_INVALID_PROGRAM_EXECUTABLE;
-    }
+  const amd::Device& device = hostQueue.device();
+  const device::Kernel* devKernel = amdKernel->getDeviceKernel(device);
+  if (devKernel == NULL) {
+    return CL_INVALID_PROGRAM_EXECUTABLE;
+  }
 
-    if (amdKernel->parameters().getSvmSystemPointersSupport() == FGS_YES &&
-        !(device.info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM)) {
-        // The user indicated that this kernel will access SVM system pointers,
-        // but the device does not support them.
-        return CL_INVALID_OPERATION;
-    }
+  if (amdKernel->parameters().getSvmSystemPointersSupport() == FGS_YES &&
+      !(device.info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM)) {
+    // The user indicated that this kernel will access SVM system pointers,
+    // but the device does not support them.
+    return CL_INVALID_OPERATION;
+  }
 
-    if (work_dim < 1 || work_dim > 3) {
-        return CL_INVALID_WORK_DIMENSION;
-    }
+  if (work_dim < 1 || work_dim > 3) {
+    return CL_INVALID_WORK_DIMENSION;
+  }
 #if !defined(CL_VERSION_1_1)
-    if (global_work_offset != NULL) {
-        return CL_INVALID_GLOBAL_OFFSET;
+  if (global_work_offset != NULL) {
+    return CL_INVALID_GLOBAL_OFFSET;
+  }
+#endif  // CL_VERSION
+  if (global_work_size == NULL) {
+    return CL_INVALID_VALUE;
+  } else {
+    // >32bits global work size is not supported.
+    for (cl_uint dim = 0; dim < work_dim; ++dim) {
+      if (global_work_size[dim] > static_cast<size_t>(0xffffffff)) {
+        return CL_INVALID_GLOBAL_WORK_SIZE;
+      }
     }
-#endif // CL_VERSION
-    if (global_work_size == NULL) {
-        return CL_INVALID_VALUE;
-    }
-    else {
-        // >32bits global work size is not supported.
-        for (cl_uint dim = 0; dim < work_dim; ++dim) {
-            if (global_work_size[dim] > static_cast<size_t>(0xffffffff)) {
-                return CL_INVALID_GLOBAL_WORK_SIZE;
-            }
-        }
-    }
+  }
 
-    if (local_work_size == NULL) {
-        static size_t zeroes[3] = { 0, 0, 0 };
-        local_work_size = zeroes;
+  if (local_work_size == NULL) {
+    static size_t zeroes[3] = {0, 0, 0};
+    local_work_size = zeroes;
+  } else {
+    size_t numWorkItems = 1;
+    for (cl_uint dim = 0; dim < work_dim; ++dim) {
+      if (local_work_size[dim] == 0 ||
+          local_work_size[dim] > device.info().maxWorkItemSizes_[dim]) {
+        return CL_INVALID_WORK_ITEM_SIZE;
+      }
+      if ((local_work_size[dim] != 0) && (devKernel->workGroupInfo()->compileSize_[0] != 0) &&
+          (local_work_size[dim] != devKernel->workGroupInfo()->compileSize_[dim])) {
+        return CL_INVALID_WORK_GROUP_SIZE;
+      }
+      if ((global_work_size[dim] == 0) || (((global_work_size[dim] % local_work_size[dim]) != 0) &&
+                                           (!device.settings().partialDispatch_ ||
+                                            devKernel->workGroupInfo()->uniformWorkGroupSize_))) {
+        return CL_INVALID_WORK_GROUP_SIZE;
+      }
+      numWorkItems *= local_work_size[dim];
     }
-    else {
-        size_t numWorkItems = 1;
-        for (cl_uint dim = 0; dim < work_dim; ++dim) {
-            if (local_work_size[dim] == 0 || local_work_size[dim]
-                    > device.info().maxWorkItemSizes_[dim]) {
-                return CL_INVALID_WORK_ITEM_SIZE;
-            }
-            if ((local_work_size[dim] != 0) &&
-                (devKernel->workGroupInfo()->compileSize_[0] != 0) && (local_work_size[dim] !=
-                devKernel->workGroupInfo()->compileSize_[dim])) {
-                return CL_INVALID_WORK_GROUP_SIZE;
-            }
-            if ((global_work_size[dim] == 0) ||
-                (((global_work_size[dim] % local_work_size[dim]) != 0) &&
-                (!device.settings().partialDispatch_ ||
-                devKernel->workGroupInfo()->uniformWorkGroupSize_))) {
-                return CL_INVALID_WORK_GROUP_SIZE;
-            }
-            numWorkItems *= local_work_size[dim];
-        }
-        if (numWorkItems > devKernel->workGroupInfo()->size_) {
-            return CL_INVALID_WORK_GROUP_SIZE;
-        }
+    if (numWorkItems > devKernel->workGroupInfo()->size_) {
+      return CL_INVALID_WORK_GROUP_SIZE;
     }
+  }
 
-    // Check that all parameters have been defined.
-    if (!amdKernel->parameters().check()) {
-        return CL_INVALID_KERNEL_ARGS;
-    }
+  // Check that all parameters have been defined.
+  if (!amdKernel->parameters().check()) {
+    return CL_INVALID_KERNEL_ARGS;
+  }
 
-    // Check that we do not exceed the amount of available local memory.
-    const size_t align = device.info().minDataTypeAlignSize_;
-    cl_ulong requiredLocalMemSize =
-        static_cast<cl_ulong>(amdKernel->parameters().localMemSize(align)) +
-        amd::alignUp(devKernel->workGroupInfo()->localMemSize_, align);
+  // Check that we do not exceed the amount of available local memory.
+  const size_t align = device.info().minDataTypeAlignSize_;
+  cl_ulong requiredLocalMemSize =
+      static_cast<cl_ulong>(amdKernel->parameters().localMemSize(align)) +
+      amd::alignUp(devKernel->workGroupInfo()->localMemSize_, align);
 
-    if (requiredLocalMemSize > device.info().localMemSize_) {
-         return CL_OUT_OF_RESOURCES;
-    }
+  if (requiredLocalMemSize > device.info().localMemSize_) {
+    return CL_OUT_OF_RESOURCES;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::NDRangeContainer ndrange((size_t) work_dim,
-        global_work_offset, global_work_size, local_work_size);
-    amd::NDRangeKernelCommand* command = new amd::NDRangeKernelCommand(
-        hostQueue, eventWaitList, *as_amd(kernel), ndrange);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-    // ndrange is now owned by command. Do not delete it!
+  amd::NDRangeContainer ndrange((size_t)work_dim, global_work_offset, global_work_size,
+                                local_work_size);
+  amd::NDRangeKernelCommand* command =
+      new amd::NDRangeKernelCommand(hostQueue, eventWaitList, *as_amd(kernel), ndrange);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+  // ndrange is now owned by command. Do not delete it!
 
-    // Make sure we have memory for the command execution
-    cl_int  result = command->validateMemory();
-    if (result != CL_SUCCESS) {
-        delete command;
-        return result;
-    }
+  // Make sure we have memory for the command execution
+  cl_int result = command->validateMemory();
+  if (result != CL_SUCCESS) {
+    delete command;
+    return result;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -352,28 +342,24 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueTask, (
-    cl_command_queue command_queue,
-    cl_kernel kernel,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    static size_t const globalWorkSize[3] = {1, 0, 0};
-    static size_t const localWorkSize[3] = {1, 0, 0};
+RUNTIME_ENTRY(cl_int, clEnqueueTask,
+              (cl_command_queue command_queue, cl_kernel kernel, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  static size_t const globalWorkSize[3] = {1, 0, 0};
+  static size_t const localWorkSize[3] = {1, 0, 0};
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    return hostQueue->dispatch_->clEnqueueNDRangeKernel(
-        command_queue, kernel, 1, NULL, globalWorkSize, localWorkSize,
-        num_events_in_wait_list, event_wait_list, event);
+  return hostQueue->dispatch_->clEnqueueNDRangeKernel(
+      command_queue, kernel, 1, NULL, globalWorkSize, localWorkSize, num_events_in_wait_list,
+      event_wait_list, event);
 }
 RUNTIME_EXIT
 
@@ -442,72 +428,62 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueNativeKernel, (
-    cl_command_queue command_queue,
-    void (CL_CALLBACK * user_func)(void *),
-    void *args,
-    size_t cb_args,
-    cl_uint num_mem_objects,
-    const cl_mem *mem_list,
-    const void **args_mem_loc,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    *not_null(event) = NULL;
+RUNTIME_ENTRY(cl_int, clEnqueueNativeKernel,
+              (cl_command_queue command_queue, void(CL_CALLBACK* user_func)(void*), void* args,
+               size_t cb_args, cl_uint num_mem_objects, const cl_mem* mem_list,
+               const void** args_mem_loc, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  *not_null(event) = NULL;
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  const amd::Device& device = hostQueue.device();
+
+  if (!(device.info().executionCapabilities_ & CL_EXEC_NATIVE_KERNEL)) {
+    return CL_INVALID_OPERATION;
+  }
+
+  if (user_func == NULL || (num_mem_objects > 0 && (mem_list == NULL || args_mem_loc == NULL)) ||
+      (num_mem_objects == 0 && (mem_list != NULL || args_mem_loc != NULL)) ||
+      (args == NULL && (cb_args > 0 || num_mem_objects > 0)) || (args != NULL && cb_args == 0)) {
+    return CL_INVALID_VALUE;
+  }
+
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
+
+  for (size_t i = 0; i < num_mem_objects; ++i) {
+    cl_mem obj = mem_list[i];
+    if (!is_valid(obj)) {
+      return CL_INVALID_MEM_OBJECT;
     }
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::NativeFnCommand* command = new amd::NativeFnCommand(
+      hostQueue, eventWaitList, user_func, args, cb_args, num_mem_objects, mem_list, args_mem_loc);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    const amd::Device& device = hostQueue.device();
+  command->enqueue();
 
-    if (!(device.info().executionCapabilities_ &  CL_EXEC_NATIVE_KERNEL)) {
-        return CL_INVALID_OPERATION;
-    }
-
-    if (user_func == NULL
-        || (num_mem_objects > 0 && (mem_list == NULL || args_mem_loc == NULL))
-        || (num_mem_objects == 0 && (mem_list != NULL || args_mem_loc != NULL))
-        || (args == NULL && (cb_args > 0 || num_mem_objects > 0))
-        || (args != NULL && cb_args == 0)) {
-        return CL_INVALID_VALUE;
-    }
-
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    for (size_t i = 0; i < num_mem_objects; ++i) {
-        cl_mem obj = mem_list[i];
-        if (!is_valid(obj)) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-    }
-
-    amd::NativeFnCommand* command = new amd::NativeFnCommand(
-        hostQueue, eventWaitList,
-        user_func, args, cb_args, num_mem_objects, mem_list, args_mem_loc);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -581,31 +557,28 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueMarker, (
-    cl_command_queue command_queue,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueMarker, (cl_command_queue command_queue, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::Command* command = new amd::Marker(*hostQueue, true);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::Command* command = new amd::Marker(*hostQueue, true);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -653,39 +626,36 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueMarkerWithWaitList, (
-    cl_command_queue command_queue,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueMarkerWithWaitList,
+              (cl_command_queue command_queue, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue->context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command* command = new amd::Marker(*hostQueue, true, eventWaitList);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-    command->enqueue();
+  amd::Command* command = new amd::Marker(*hostQueue, true, eventWaitList);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -719,35 +689,31 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueWaitForEvents, (
-    cl_command_queue command_queue,
-    cl_uint num_events,
-    const cl_event *event_list))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+RUNTIME_ENTRY(cl_int, clEnqueueWaitForEvents,
+              (cl_command_queue command_queue, cl_uint num_events, const cl_event* event_list)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events, event_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events, event_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command* command = new amd::Marker(hostQueue, false, eventWaitList);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::Command* command = new amd::Marker(hostQueue, false, eventWaitList);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    command->enqueue();
-    command->release();
-    return CL_SUCCESS;
+  command->enqueue();
+  command->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -765,10 +731,9 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clEnqueueBarrier, (cl_command_queue command_queue))
-{
-    //! @todo: Unimplemented();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clEnqueueBarrier, (cl_command_queue command_queue)) {
+  //! @todo: Unimplemented();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -817,41 +782,38 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY(cl_int, clEnqueueBarrierWithWaitList, (
-    cl_command_queue command_queue,
-    cl_uint num_events_in_wait_list,
-    const cl_event *event_wait_list,
-    cl_event *event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueBarrierWithWaitList,
+              (cl_command_queue command_queue, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue->context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    //!@note: with the current runtime architecture and in-order execution
-    //! barrier and marker should be the same operation
-    amd::Command* command = new amd::Marker(*hostQueue, true, eventWaitList);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-    command->enqueue();
+  //!@note: with the current runtime architecture and in-order execution
+  //! barrier and marker should be the same operation
+  amd::Command* command = new amd::Marker(*hostQueue, true, eventWaitList);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -914,55 +876,51 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetEventProfilingInfo, (
-    cl_event event,
-    cl_profiling_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
+RUNTIME_ENTRY(cl_int, clGetEventProfilingInfo,
+              (cl_event event, cl_profiling_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
 
-    if (!as_amd(event)->profilingInfo().enabled_) {
-        return CL_PROFILING_INFO_NOT_AVAILABLE;
-    }
+  if (!as_amd(event)->profilingInfo().enabled_) {
+    return CL_PROFILING_INFO_NOT_AVAILABLE;
+  }
 
-    if (param_value != NULL && param_value_size < sizeof(cl_ulong)) {
+  if (param_value != NULL && param_value_size < sizeof(cl_ulong)) {
+    return CL_INVALID_VALUE;
+  }
+
+  *not_null(param_value_size_ret) = sizeof(cl_ulong);
+  if (param_value != NULL) {
+    cl_ulong value = 0;
+    switch (param_name) {
+      case CL_PROFILING_COMMAND_END:
+        value = as_amd(event)->profilingInfo().end_;
+        break;
+
+      case CL_PROFILING_COMMAND_START:
+        value = as_amd(event)->profilingInfo().start_;
+        break;
+
+      case CL_PROFILING_COMMAND_SUBMIT:
+        value = as_amd(event)->profilingInfo().submitted_;
+        break;
+
+      case CL_PROFILING_COMMAND_QUEUED:
+        value = as_amd(event)->profilingInfo().queued_;
+        break;
+
+      default:
         return CL_INVALID_VALUE;
     }
-
-    *not_null(param_value_size_ret) = sizeof(cl_ulong);
-    if (param_value != NULL) {
-        cl_ulong value = 0;
-        switch (param_name) {
-        case CL_PROFILING_COMMAND_END:
-            value = as_amd(event)->profilingInfo().end_;
-            break;
-
-        case CL_PROFILING_COMMAND_START:
-            value = as_amd(event)->profilingInfo().start_;
-            break;
-
-        case CL_PROFILING_COMMAND_SUBMIT:
-            value = as_amd(event)->profilingInfo().submitted_;
-            break;
-
-        case CL_PROFILING_COMMAND_QUEUED:
-            value = as_amd(event)->profilingInfo().queued_;
-            break;
-
-        default:
-            return CL_INVALID_VALUE;
-        }
-        if (value == 0) {
-           return CL_PROFILING_INFO_NOT_AVAILABLE;
-        }
-        *(cl_ulong*)param_value = value;
+    if (value == 0) {
+      return CL_PROFILING_INFO_NOT_AVAILABLE;
     }
+    *(cl_ulong*)param_value = value;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -992,26 +950,25 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clFlush, (cl_command_queue command_queue))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clFlush, (cl_command_queue command_queue)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::Command* command = new amd::Marker(*hostQueue, false);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  amd::Command* command = new amd::Marker(*hostQueue, false);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-   command->enqueue();
-   command->release();
+  command->enqueue();
+  command->release();
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1029,20 +986,19 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clFinish, (cl_command_queue command_queue))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clFinish, (cl_command_queue command_queue)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    hostQueue->finish();
+  hostQueue->finish();
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 

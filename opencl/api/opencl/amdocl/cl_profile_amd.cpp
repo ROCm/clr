@@ -38,46 +38,40 @@
  *
  *  \return Created perfcounter object
  */
-RUNTIME_ENTRY_RET(cl_perfcounter_amd, clCreatePerfCounterAMD, (
-    cl_device_id                device,
-    cl_perfcounter_property*    properties,
-    cl_int*                     errcode_ret))
-{
-    // Make sure we have a valid device object
-    if (!is_valid(device)) {
-        *not_null(errcode_ret) = CL_INVALID_DEVICE;
-        return NULL;
+RUNTIME_ENTRY_RET(cl_perfcounter_amd, clCreatePerfCounterAMD,
+                  (cl_device_id device, cl_perfcounter_property* properties, cl_int* errcode_ret)) {
+  // Make sure we have a valid device object
+  if (!is_valid(device)) {
+    *not_null(errcode_ret) = CL_INVALID_DEVICE;
+    return NULL;
+  }
+
+  // Make sure we have a valid pointer to the performance counter properties
+  if (NULL == properties) {
+    return NULL;
+  }
+
+  amd::PerfCounter::Properties perfProperties;
+  size_t size = 0;
+  while (properties[size] != CL_PERFCOUNTER_NONE) {
+    if (properties[size] < CL_PERFCOUNTER_LAST) {
+      perfProperties[properties[size]] = static_cast<ulong>(properties[size + 1]);
+      size += 2;
+    } else {
+      return NULL;
     }
+  }
 
-    // Make sure we have a valid pointer to the performance counter properties
-    if (NULL == properties) {
-        return NULL;
-    }
+  // Create the device perf counter
+  amd::PerfCounter* perfCounter = new amd::PerfCounter(*as_amd(device), perfProperties);
 
-    amd::PerfCounter::Properties    perfProperties;
-    size_t  size = 0;
-    while (properties[size] != CL_PERFCOUNTER_NONE) {
-        if (properties[size] < CL_PERFCOUNTER_LAST) {
-            perfProperties[properties[size]] =
-                static_cast<ulong>(properties[size+1]);
-            size += 2;
-        }
-        else {
-            return NULL;
-        }
-    }
+  if (perfCounter == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    return NULL;
+  }
 
-    // Create the device perf counter
-    amd::PerfCounter* perfCounter =
-        new amd::PerfCounter(*as_amd(device), perfProperties);
-
-    if (perfCounter == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        return NULL;
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(perfCounter);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(perfCounter);
 }
 RUNTIME_EXIT
 
@@ -89,14 +83,12 @@ RUNTIME_EXIT
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to release the object
  */
-RUNTIME_ENTRY(cl_int, clReleasePerfCounterAMD, (
-    cl_perfcounter_amd  perf_counter))
-{
-    if (!is_valid(perf_counter)) {
-        return CL_INVALID_OPERATION;
-    }
-    as_amd(perf_counter)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleasePerfCounterAMD, (cl_perfcounter_amd perf_counter)) {
+  if (!is_valid(perf_counter)) {
+    return CL_INVALID_OPERATION;
+  }
+  as_amd(perf_counter)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -108,14 +100,12 @@ RUNTIME_EXIT
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to release the object
  */
-RUNTIME_ENTRY(cl_int, clRetainPerfCounterAMD, (
-    cl_perfcounter_amd  perf_counter))
-{
-    if (!is_valid(perf_counter)) {
-        return CL_INVALID_OPERATION;
-    }
-    as_amd(perf_counter)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainPerfCounterAMD, (cl_perfcounter_amd perf_counter)) {
+  if (!is_valid(perf_counter)) {
+    return CL_INVALID_OPERATION;
+  }
+  as_amd(perf_counter)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -151,64 +141,58 @@ RUNTIME_EXIT
  *  - CL_INVALID_OPERATION if we failed to enqueue the begin operation
  *  - CL_INVALID_COMMAND_QUEUE if the queue is
  */
-RUNTIME_ENTRY(cl_int, clEnqueueBeginPerfCounterAMD, (
-    cl_command_queue    command_queue,
-    cl_uint             num_perf_counters,
-    cl_perfcounter_amd* perf_counters,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueBeginPerfCounterAMD,
+              (cl_command_queue command_queue, cl_uint num_perf_counters,
+               cl_perfcounter_amd* perf_counters, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if ((num_perf_counters == 0) || (perf_counters == NULL)) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  amd::PerfCounterCommand::PerfCounterList counters;
+
+  // Place all counters into the list
+  for (cl_uint i = 0; i < num_perf_counters; ++i) {
+    amd::PerfCounter* amdPerf = as_amd(perf_counters[i]);
+    if (&hostQueue->device() == &amdPerf->device()) {
+      counters.push_back(amdPerf);
+    } else {
+      return CL_INVALID_DEVICE;
     }
+  }
 
-    if ((num_perf_counters == 0) || (perf_counters == NULL)) {
-        return CL_INVALID_OPERATION;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  // Create a new command for the performance counters
+  amd::PerfCounterCommand* command = new amd::PerfCounterCommand(
+      *hostQueue, eventWaitList, counters, amd::PerfCounterCommand::Begin);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    amd::PerfCounterCommand::PerfCounterList counters;
+  // Submit the command to the device
+  command->enqueue();
 
-    // Place all counters into the list
-    for (cl_uint i = 0; i < num_perf_counters; ++i) {
-        amd::PerfCounter* amdPerf = as_amd(perf_counters[i]);
-        if (&hostQueue->device() == &amdPerf->device()) {
-            counters.push_back(amdPerf);
-        }
-        else {
-            return CL_INVALID_DEVICE;
-        }
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue->context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    // Create a new command for the performance counters
-    amd::PerfCounterCommand* command =
-        new amd::PerfCounterCommand(*hostQueue, eventWaitList, counters,
-            amd::PerfCounterCommand::Begin);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Submit the command to the device
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -243,64 +227,58 @@ RUNTIME_EXIT
  *  - CL_SUCCESS if the function is executed successfully.
  *  - CL_INVALID_OPERATION if we failed to enqueue the end operation
  */
-RUNTIME_ENTRY(cl_int, clEnqueueEndPerfCounterAMD, (
-    cl_command_queue    command_queue,
-    cl_uint             num_perf_counters,
-    cl_perfcounter_amd* perf_counters,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueEndPerfCounterAMD,
+              (cl_command_queue command_queue, cl_uint num_perf_counters,
+               cl_perfcounter_amd* perf_counters, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if ((num_perf_counters == 0) || (perf_counters == NULL)) {
+    return CL_INVALID_OPERATION;
+  }
+
+  amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
+  if (NULL == hostQueue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  amd::PerfCounterCommand::PerfCounterList counters;
+
+  // Place all counters into the list
+  for (cl_uint i = 0; i < num_perf_counters; ++i) {
+    amd::PerfCounter* amdPerf = as_amd(perf_counters[i]);
+    if (&hostQueue->device() == &amdPerf->device()) {
+      counters.push_back(amdPerf);
+    } else {
+      return CL_INVALID_DEVICE;
     }
+  }
 
-    if ((num_perf_counters == 0) || (perf_counters == NULL)) {
-        return CL_INVALID_OPERATION;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::HostQueue* hostQueue = as_amd(command_queue)->asHostQueue();
-    if (NULL == hostQueue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  // Create a new command for the performance counters
+  amd::PerfCounterCommand* command = new amd::PerfCounterCommand(
+      *hostQueue, eventWaitList, counters, amd::PerfCounterCommand::End);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    amd::PerfCounterCommand::PerfCounterList counters;
+  // Submit the command to the device
+  command->enqueue();
 
-    // Place all counters into the list
-    for (cl_uint i = 0; i < num_perf_counters; ++i) {
-        amd::PerfCounter* amdPerf = as_amd(perf_counters[i]);
-        if (&hostQueue->device() == &amdPerf->device()) {
-            counters.push_back(amdPerf);
-        }
-        else {
-            return CL_INVALID_DEVICE;
-        }
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue->context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
-
-    // Create a new command for the performance counters
-    amd::PerfCounterCommand* command =
-        new amd::PerfCounterCommand(*hostQueue, eventWaitList, counters,
-            amd::PerfCounterCommand::End);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    // Submit the command to the device
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -323,57 +301,49 @@ RUNTIME_EXIT
  *  - CL_PROFILING_INFO_NOT_AVAILABLE if event isn't finished.
  *  - CL_INVALID_OPERATION if we failed to get the data
  */
-RUNTIME_ENTRY(cl_int, clGetPerfCounterInfoAMD, (
-    cl_perfcounter_amd  perf_counter,
-    cl_perfcounter_info param_name,
-    size_t              param_value_size,
-    void*               param_value,
-    size_t*             param_value_size_ret))
-{
-    // Check if we have a valid performance counter
-    if (!is_valid(perf_counter)) {
-        return CL_INVALID_OPERATION;
-    }
+RUNTIME_ENTRY(cl_int, clGetPerfCounterInfoAMD,
+              (cl_perfcounter_amd perf_counter, cl_perfcounter_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid performance counter
+  if (!is_valid(perf_counter)) {
+    return CL_INVALID_OPERATION;
+  }
 
-    // Find the kernel, associated with the specified device
-    const device::PerfCounter*   devCounter =
-        as_amd(perf_counter)->getDeviceCounter();
+  // Find the kernel, associated with the specified device
+  const device::PerfCounter* devCounter = as_amd(perf_counter)->getDeviceCounter();
 
-    // Make sure we found a valid performance counter
-    if (devCounter == NULL) {
-        return CL_INVALID_OPERATION;
-    }
+  // Make sure we found a valid performance counter
+  if (devCounter == NULL) {
+    return CL_INVALID_OPERATION;
+  }
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_PERFCOUNTER_REFERENCE_COUNT: {
-        cl_uint count = as_amd(perf_counter)->referenceCount();
-        // Return the reference counter
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(perf_counter)->referenceCount();
+      // Return the reference counter
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PERFCOUNTER_GPU_BLOCK_INDEX:
     case CL_PERFCOUNTER_GPU_COUNTER_INDEX:
     case CL_PERFCOUNTER_GPU_EVENT_INDEX: {
-        cl_ulong    data = devCounter->getInfo(param_name);
-        // Return the device performance counter information
-        return amd::clGetInfo(data,
-            param_value_size, param_value, param_value_size_ret);
+      cl_ulong data = devCounter->getInfo(param_name);
+      // Return the device performance counter information
+      return amd::clGetInfo(data, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PERFCOUNTER_DATA: {
-        cl_ulong    data = devCounter->getInfo(param_name);
-        if (static_cast<cl_ulong>(0xffffffffffffffffULL) == data) {
-            return CL_PROFILING_INFO_NOT_AVAILABLE;
-        }
-        // Return the device performance counter result
-        return amd::clGetInfo(data,
-            param_value_size, param_value, param_value_size_ret);
+      cl_ulong data = devCounter->getInfo(param_name);
+      if (static_cast<cl_ulong>(0xffffffffffffffffULL) == data) {
+        return CL_PROFILING_INFO_NOT_AVAILABLE;
+      }
+      // Return the device performance counter result
+      return amd::clGetInfo(data, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 

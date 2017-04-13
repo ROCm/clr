@@ -57,67 +57,62 @@
  *
  * \version 2.0r19
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreatePipe, (
-    cl_context context,
-    cl_mem_flags flags,
-    cl_uint pipe_packet_size,
-    cl_uint pipe_max_packets,
-    const cl_pipe_properties *properties,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
+                  (cl_context context, cl_mem_flags flags, cl_uint pipe_packet_size,
+                   cl_uint pipe_max_packets, const cl_pipe_properties* properties,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return NULL;
+  }
+
+  // check flags for validity
+  cl_bitfield temp =
+      flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS);
+
+  if (temp &&
+      !(CL_MEM_READ_WRITE == temp || CL_MEM_WRITE_ONLY == temp || CL_MEM_READ_ONLY == temp ||
+        CL_MEM_HOST_NO_ACCESS == temp)) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return (cl_mem)0;
+  }
+
+  size_t size = sizeof(struct clk_pipe_t) + pipe_packet_size * pipe_max_packets;
+
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  std::vector<amd::Device*>::const_iterator it;
+  bool sizePass = false;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if (((*it)->info().maxMemAllocSize_ >= size)) {
+      sizePass = true;
+      break;
     }
+  }
 
-    // check flags for validity
-    cl_bitfield temp = flags
-        & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS);
+  // check size
+  if (pipe_packet_size == 0 || pipe_max_packets == 0 || !sizePass) {
+    *not_null(errcode_ret) = CL_INVALID_PIPE_SIZE;
+    LogWarning("invalid parameter \"size = 0 or size > CL_DEVICE_PIPE_MAX_PACKET_SIZE\"");
+    return (cl_mem)0;
+  }
 
-    if(temp
-        && !(CL_MEM_READ_WRITE == temp
-        || CL_MEM_WRITE_ONLY == temp
-        || CL_MEM_READ_ONLY == temp
-        || CL_MEM_HOST_NO_ACCESS == temp)) {
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid parameter \"flags\"");
-            return (cl_mem) 0;
-    }
+  amd::Context& amdContext = *as_amd(context);
+  amd::Memory* mem = new (amdContext)
+      amd::Pipe(amdContext, flags, size, (size_t)pipe_packet_size, (size_t)pipe_max_packets);
+  if (mem == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
 
-    size_t size = sizeof(struct clk_pipe_t) + pipe_packet_size * pipe_max_packets;
+  if (!mem->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    mem->release();
+    return NULL;
+  }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    std::vector<amd::Device*>::const_iterator it;
-    bool sizePass = false;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        if (((*it)->info().maxMemAllocSize_ >= size)) {
-            sizePass = true;
-            break;
-        }
-    }
-
-    // check size
-    if (pipe_packet_size == 0 || pipe_max_packets == 0 || !sizePass ) {
-        *not_null(errcode_ret) = CL_INVALID_PIPE_SIZE;
-        LogWarning("invalid parameter \"size = 0 or size > CL_DEVICE_PIPE_MAX_PACKET_SIZE\"");
-        return (cl_mem)0;
-    }
-
-    amd::Context& amdContext = *as_amd(context);
-    amd::Memory* mem = new(amdContext) amd::Pipe(amdContext, flags, size, (size_t)pipe_packet_size, (size_t)pipe_max_packets);
-    if (mem == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem)0;
-    }
-
-    if (!mem->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        mem->release();
-        return NULL;
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(mem);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(mem);
 }
 RUNTIME_EXIT
 
@@ -141,44 +136,37 @@ RUNTIME_EXIT
  * - CL_INVALID_MEM_OBJECT if pipe is a not a valid pipe object.
  * - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
  *   by the OpenCL implementation on the device.
- * - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required 
+ * - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required
  *   by the OpenCL implementation on the host.
  *
  * \version 2.0r19
  */
-RUNTIME_ENTRY(cl_int, clGetPipeInfo, (
-    cl_mem memobj,
-    cl_image_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(memobj)) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clGetPipeInfo,
+              (cl_mem memobj, cl_image_info param_name, size_t param_value_size, void* param_value,
+               size_t* param_value_size_ret)) {
+  if (!is_valid(memobj)) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::Pipe* pipe = as_amd(memobj)->asPipe();
-    if (pipe == NULL) {
-        return CL_INVALID_MEM_OBJECT;
-    }
+  amd::Pipe* pipe = as_amd(memobj)->asPipe();
+  if (pipe == NULL) {
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_PIPE_PACKET_SIZE: {
-        cl_uint packetSize = pipe->getPacketSize();
-        return amd::clGetInfo(
-            packetSize, param_value_size, param_value, param_value_size_ret);
+      cl_uint packetSize = pipe->getPacketSize();
+      return amd::clGetInfo(packetSize, param_value_size, param_value, param_value_size_ret);
     }
     case CL_PIPE_MAX_PACKETS: {
-        cl_uint count = pipe->getMaxNumPackets();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = pipe->getMaxNumPackets();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
-
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 

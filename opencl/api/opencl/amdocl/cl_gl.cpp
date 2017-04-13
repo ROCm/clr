@@ -12,7 +12,7 @@
 #include "cl_d3d9_amd.hpp"
 #include "cl_d3d10_amd.hpp"
 #include "cl_d3d11_amd.hpp"
-#endif //_WIN32
+#endif  //_WIN32
 
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -27,8 +27,8 @@
 #include "device/device.hpp"
 
 /* The pixel internal format for DOPP texture defined in gl_enum.h */
-#define GL_BGR8_ATI         0x8083
-#define GL_BGRA8_ATI        0x8088
+#define GL_BGR8_ATI 0x8083
+#define GL_BGRA8_ATI 0x8088
 
 #include <cstring>
 #include <vector>
@@ -102,29 +102,25 @@
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLBuffer, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    GLuint          bufobj,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLBuffer,
+                  (cl_context context, cl_mem_flags flags, GLuint bufobj, cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
 
-    if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
 
-    return(amd::clCreateFromGLBufferAMD(*as_amd(context), flags, bufobj, errcode_ret));
+  return (amd::clCreateFromGLBufferAMD(*as_amd(context), flags, bufobj, errcode_ret));
 }
 RUNTIME_EXIT
 
@@ -181,47 +177,42 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    GLenum          texture_target,
-    GLint           miplevel,
-    GLuint          texture,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture,
+                  (cl_context context, cl_mem_flags flags, GLenum texture_target, GLint miplevel,
+                   GLuint texture, cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
 
-    if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if ((*it)->info().imageSupport_) {
-            supportPass = true;
-        }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if ((*it)->info().imageSupport_) {
+      supportPass = true;
     }
-    if (!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return static_cast<cl_mem>(0);
-    }
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return static_cast<cl_mem>(0);
+  }
 
-    return amd::clCreateFromGLTextureAMD(*as_amd(context), flags,
-        texture_target, miplevel, texture, errcode_ret);
+  return amd::clCreateFromGLTextureAMD(*as_amd(context), flags, texture_target, miplevel, texture,
+                                       errcode_ret);
 }
 RUNTIME_EXIT
 
@@ -272,47 +263,42 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture2D, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    GLenum          target,
-    GLint           miplevel,
-    GLuint          texture,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture2D,
+                  (cl_context context, cl_mem_flags flags, GLenum target, GLint miplevel,
+                   GLuint texture, cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
 
-    if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if ((*it)->info().imageSupport_) {
-            supportPass = true;
-        }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if ((*it)->info().imageSupport_) {
+      supportPass = true;
     }
-    if (!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return static_cast<cl_mem>(0);
-    }
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return static_cast<cl_mem>(0);
+  }
 
-    return amd::clCreateFromGLTextureAMD(*as_amd(context), flags, target,
-        miplevel, texture, errcode_ret);
+  return amd::clCreateFromGLTextureAMD(*as_amd(context), flags, target, miplevel, texture,
+                                       errcode_ret);
 }
 RUNTIME_EXIT
 
@@ -358,47 +344,42 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture3D, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    GLenum          target,
-    GLint           miplevel,
-    GLuint          texture,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture3D,
+                  (cl_context context, cl_mem_flags flags, GLenum target, GLint miplevel,
+                   GLuint texture, cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
 
-    if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if ((*it)->info().imageSupport_) {
-            supportPass = true;
-        }
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if ((*it)->info().imageSupport_) {
+      supportPass = true;
     }
-    if (!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return static_cast<cl_mem>(0);
-    }
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return static_cast<cl_mem>(0);
+  }
 
-    return amd::clCreateFromGLTextureAMD(*as_amd(context), flags, target,
-        miplevel, texture, errcode_ret);
+  return amd::clCreateFromGLTextureAMD(*as_amd(context), flags, target, miplevel, texture,
+                                       errcode_ret);
 }
 RUNTIME_EXIT
 
@@ -437,30 +418,25 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLRenderbuffer, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    GLuint          renderbuffer,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLRenderbuffer, (cl_context context, cl_mem_flags flags,
+                                                       GLuint renderbuffer, cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
 
-    if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
 
-    return(amd::clCreateFromGLRenderbufferAMD(*as_amd(context), flags,
-        renderbuffer, errcode_ret));
+  return (amd::clCreateFromGLRenderbufferAMD(*as_amd(context), flags, renderbuffer, errcode_ret));
 }
 RUNTIME_EXIT
 
@@ -488,38 +464,34 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY(cl_int, clGetGLObjectInfo, (
-    cl_mem              memobj,
-    cl_gl_object_type*  gl_object_type,
-    GLuint*             gl_object_name))
-{
-    if (!is_valid(memobj)) {
-        LogWarning("\"memobj\" is not a  valid cl_mem object");
-        return CL_INVALID_MEM_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clGetGLObjectInfo,
+              (cl_mem memobj, cl_gl_object_type* gl_object_type, GLuint* gl_object_name)) {
+  if (!is_valid(memobj)) {
+    LogWarning("\"memobj\" is not a  valid cl_mem object");
+    return CL_INVALID_MEM_OBJECT;
+  }
 
-    amd::InteropObject* interop = as_amd(memobj)->getInteropObj();
-    if (NULL == interop) {
-        LogWarning("CL object \"memobj\" is not created from GL object");
-        return CL_INVALID_GL_OBJECT;
-    }
+  amd::InteropObject* interop = as_amd(memobj)->getInteropObj();
+  if (NULL == interop) {
+    LogWarning("CL object \"memobj\" is not created from GL object");
+    return CL_INVALID_GL_OBJECT;
+  }
 
-    amd::GLObject* glObject = interop->asGLObject();
-    if (NULL == glObject) {
-        LogWarning("CL object \"memobj\" is not created from GL object");
-        return CL_INVALID_GL_OBJECT;
-    }
+  amd::GLObject* glObject = interop->asGLObject();
+  if (NULL == glObject) {
+    LogWarning("CL object \"memobj\" is not created from GL object");
+    return CL_INVALID_GL_OBJECT;
+  }
 
-    cl_int result;
+  cl_int result;
 
-    cl_gl_object_type   clGLType = glObject->getCLGLObjectType();
-    result = amd::clGetInfo(clGLType,
-        sizeof(cl_gl_object_type), gl_object_type, NULL);
+  cl_gl_object_type clGLType = glObject->getCLGLObjectType();
+  result = amd::clGetInfo(clGLType, sizeof(cl_gl_object_type), gl_object_type, NULL);
 
-    GLuint  glName = glObject->getGLName();
-    result |= amd::clGetInfo(glName, sizeof(GLuint), gl_object_name, NULL);
+  GLuint glName = glObject->getGLName();
+  result |= amd::clGetInfo(glName, sizeof(GLuint), gl_object_name, NULL);
 
-    return result;
+  return result;
 }
 RUNTIME_EXIT
 
@@ -561,53 +533,46 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY(cl_int, clGetGLTextureInfo, (
-    cl_mem              memobj,
-    cl_gl_texture_info  param_name,
-    size_t              param_value_size,
-    void*               param_value,
-    size_t*             param_value_size_ret))
-{
-    if (!is_valid(memobj)) {
-        LogWarning("\"memobj\" is not a  valid cl_mem object");
-        return CL_INVALID_MEM_OBJECT;
-    }
-    amd::InteropObject* interop = as_amd(memobj)->getInteropObj();
-    if (NULL == interop) {
-        LogWarning("CL object \"memobj\" is not created from GL object");
-        return CL_INVALID_GL_OBJECT;
-    }
-    amd::GLObject* glObject = interop->asGLObject();
-    if ((NULL == glObject) || (NULL != glObject->asBufferGL())) {
-        LogWarning("CL object \"memobj\" is not created from GL texture");
-        return CL_INVALID_GL_OBJECT;
-    }
+RUNTIME_ENTRY(cl_int, clGetGLTextureInfo,
+              (cl_mem memobj, cl_gl_texture_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(memobj)) {
+    LogWarning("\"memobj\" is not a  valid cl_mem object");
+    return CL_INVALID_MEM_OBJECT;
+  }
+  amd::InteropObject* interop = as_amd(memobj)->getInteropObj();
+  if (NULL == interop) {
+    LogWarning("CL object \"memobj\" is not created from GL object");
+    return CL_INVALID_GL_OBJECT;
+  }
+  amd::GLObject* glObject = interop->asGLObject();
+  if ((NULL == glObject) || (NULL != glObject->asBufferGL())) {
+    LogWarning("CL object \"memobj\" is not created from GL texture");
+    return CL_INVALID_GL_OBJECT;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_GL_TEXTURE_TARGET: {
-        GLenum glTarget = glObject->getGLTarget();
-        if (glTarget == GL_TEXTURE_CUBE_MAP) {
-            glTarget = glObject->getCubemapFace();
-        }
-        return amd::clGetInfo(
-            glTarget, param_value_size, param_value, param_value_size_ret);
+      GLenum glTarget = glObject->getGLTarget();
+      if (glTarget == GL_TEXTURE_CUBE_MAP) {
+        glTarget = glObject->getCubemapFace();
+      }
+      return amd::clGetInfo(glTarget, param_value_size, param_value, param_value_size_ret);
     }
     case CL_GL_MIPMAP_LEVEL: {
-        GLint mipLevel = glObject->getGLMipLevel();
-        return amd::clGetInfo(
-            mipLevel, param_value_size, param_value, param_value_size_ret);
+      GLint mipLevel = glObject->getGLMipLevel();
+      return amd::clGetInfo(mipLevel, param_value_size, param_value, param_value_size_ret);
     }
     case CL_GL_NUM_SAMPLES: {
-        GLsizei numSamples = glObject->getNumSamples();
-        return amd::clGetInfo(
-            numSamples,param_value_size, param_value, param_value_size_ret);
+      GLsizei numSamples = glObject->getNumSamples();
+      return amd::clGetInfo(numSamples, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        LogWarning("Unknown param_name in clGetGLTextureInfoAMD");
-        break;
-    }
+      LogWarning("Unknown param_name in clGetGLTextureInfoAMD");
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -668,22 +633,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY(cl_int, clEnqueueAcquireGLObjects, (
-    cl_command_queue    command_queue,
-    cl_uint             num_objects,
-    const cl_mem*       mem_objects,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    return amd::clEnqueueAcquireExtObjectsAMD(
-        command_queue,
-        num_objects,
-        mem_objects,
-        num_events_in_wait_list,
-        event_wait_list,
-        event,
-        CL_COMMAND_ACQUIRE_GL_OBJECTS);
+RUNTIME_ENTRY(cl_int, clEnqueueAcquireGLObjects,
+              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  return amd::clEnqueueAcquireExtObjectsAMD(command_queue, num_objects, mem_objects,
+                                            num_events_in_wait_list, event_wait_list, event,
+                                            CL_COMMAND_ACQUIRE_GL_OBJECTS);
 }
 RUNTIME_EXIT
 
@@ -745,22 +700,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r29
  */
-RUNTIME_ENTRY(cl_int, clEnqueueReleaseGLObjects, (
-    cl_command_queue    command_queue,
-    cl_uint             num_objects,
-    const cl_mem*       mem_objects,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    return amd::clEnqueueReleaseExtObjectsAMD(
-        command_queue,
-        num_objects,
-        mem_objects,
-        num_events_in_wait_list,
-        event_wait_list,
-        event,
-        CL_COMMAND_RELEASE_GL_OBJECTS);
+RUNTIME_ENTRY(cl_int, clEnqueueReleaseGLObjects,
+              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  return amd::clEnqueueReleaseExtObjectsAMD(command_queue, num_objects, mem_objects,
+                                            num_events_in_wait_list, event_wait_list, event,
+                                            CL_COMMAND_RELEASE_GL_OBJECTS);
 }
 RUNTIME_EXIT
 
@@ -793,21 +738,18 @@ RUNTIME_EXIT
 *  \version 1.1
 */
 
-RUNTIME_ENTRY_RET(cl_event, clCreateEventFromGLsyncKHR, (
-cl_context  context,
-cl_GLsync clGLsync,
-cl_int* errcode_ret))
-{
-    // create event of fence sync type
-    amd::ClGlEvent* clglEvent = new amd::ClGlEvent(*as_amd(context));
-    clglEvent->context().glenv()->glFlush_();
-    // initially set the status of fence as queued
-    clglEvent->setStatus(CL_SUBMITTED);
-    // store GLsync id of the fence in event in order to associate them together
-    clglEvent->setData(clGLsync);
-    amd::Event* evt = dynamic_cast<amd::Event*>(clglEvent);
-    evt->retain();
-    return as_cl(evt);
+RUNTIME_ENTRY_RET(cl_event, clCreateEventFromGLsyncKHR,
+                  (cl_context context, cl_GLsync clGLsync, cl_int* errcode_ret)) {
+  // create event of fence sync type
+  amd::ClGlEvent* clglEvent = new amd::ClGlEvent(*as_amd(context));
+  clglEvent->context().glenv()->glFlush_();
+  // initially set the status of fence as queued
+  clglEvent->setStatus(CL_SUBMITTED);
+  // store GLsync id of the fence in event in order to associate them together
+  clglEvent->setData(clGLsync);
+  amd::Event* evt = dynamic_cast<amd::Event*>(clglEvent);
+  evt->retain();
+  return as_cl(evt);
 }
 RUNTIME_EXIT
 
@@ -870,132 +812,122 @@ RUNTIME_EXIT
  *
  *  \version 1.0r47
  */
-RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR, (
-    const cl_context_properties *properties,
-    cl_gl_context_info      param_name,
-    size_t                  param_value_size,
-    void                    *param_value,
-    size_t                  *param_value_size_ret))
-{
-    cl_int errcode;
-    cl_device_id* gpu_devices;
-    cl_device_id* cpu_devices;
-    cl_uint num_gpu_devices = 0;
-    cl_uint num_cpu_devices = 0;
-    amd::Context::Info  info;
-    static const bool VALIDATE_ONLY = true;
+RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR,
+              (const cl_context_properties* properties, cl_gl_context_info param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  cl_int errcode;
+  cl_device_id* gpu_devices;
+  cl_device_id* cpu_devices;
+  cl_uint num_gpu_devices = 0;
+  cl_uint num_cpu_devices = 0;
+  amd::Context::Info info;
+  static const bool VALIDATE_ONLY = true;
 
-    errcode = amd::Context::checkProperties(properties, &info);
-    if (CL_SUCCESS != errcode) {
-        return errcode;
-    }
+  errcode = amd::Context::checkProperties(properties, &info);
+  if (CL_SUCCESS != errcode) {
+    return errcode;
+  }
 
-    if (!(info.flags_ & amd::Context::GLDeviceKhr)) {
-        // No GL context is specified
-        return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
-    }
+  if (!(info.flags_ & amd::Context::GLDeviceKhr)) {
+    // No GL context is specified
+    return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
+  }
 
-    // Get devices
-    errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &num_gpu_devices);
-    if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
-        return CL_INVALID_VALUE;
-    }
-    errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, 0, NULL, &num_cpu_devices);
-    if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
-        return CL_INVALID_VALUE;
-    }
+  // Get devices
+  errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &num_gpu_devices);
+  if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
+    return CL_INVALID_VALUE;
+  }
+  errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, 0, NULL, &num_cpu_devices);
+  if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!num_gpu_devices && !num_cpu_devices) {
-        return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
-    }
+  if (!num_gpu_devices && !num_cpu_devices) {
+    return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
+  }
 
-    switch(param_name) {
-
+  switch (param_name) {
     case CL_CURRENT_DEVICE_FOR_GL_CONTEXT_KHR:
-        // Return the CL device currently associated with the specified OpenGL context.
-        if (num_gpu_devices) {
-            gpu_devices = (cl_device_id *) alloca(num_gpu_devices * sizeof(cl_device_id));
+      // Return the CL device currently associated with the specified OpenGL context.
+      if (num_gpu_devices) {
+        gpu_devices = (cl_device_id*)alloca(num_gpu_devices * sizeof(cl_device_id));
 
-            errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU,
-                num_gpu_devices, gpu_devices, NULL);
-            if (errcode != CL_SUCCESS) {
-                return errcode;
-            }
-
-            for (cl_uint i = 0; i < num_gpu_devices; ++i) {
-                cl_device_id device = gpu_devices[i];
-                if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
-                    return amd::clGetInfo(
-                        device, param_value_size, param_value, param_value_size_ret);
-                }
-            }
-
-            *not_null(param_value_size_ret) = 0;
+        errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, num_gpu_devices, gpu_devices, NULL);
+        if (errcode != CL_SUCCESS) {
+          return errcode;
         }
-        else {
-            cpu_devices = (cl_device_id *) alloca(num_cpu_devices * sizeof(cl_device_id));
 
-            errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU,
-                num_cpu_devices, cpu_devices, NULL);
-            if (errcode != CL_SUCCESS) {
-                return errcode;
-            }
-            return amd::clGetInfo(
-                cpu_devices[0], param_value_size, param_value, param_value_size_ret);
+        for (cl_uint i = 0; i < num_gpu_devices; ++i) {
+          cl_device_id device = gpu_devices[i];
+          if (is_valid(device) &&
+              as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_,
+                                                 VALIDATE_ONLY)) {
+            return amd::clGetInfo(device, param_value_size, param_value, param_value_size_ret);
+          }
         }
-        break;
 
-    case CL_DEVICES_FOR_GL_CONTEXT_KHR:
-        {
-            //List of all CL devices that can be associated with the specified OpenGL context.
-            cl_uint total_devices = num_gpu_devices + num_cpu_devices;
-            size_t size = total_devices * sizeof(cl_device_id);
+        *not_null(param_value_size_ret) = 0;
+      } else {
+        cpu_devices = (cl_device_id*)alloca(num_cpu_devices * sizeof(cl_device_id));
 
-            cl_device_id* devices = (cl_device_id *) alloca(size);
-
-            errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_CPU,
-                total_devices, devices, NULL);
-            if (errcode != CL_SUCCESS) {
-                return errcode;
-            }
-
-            std::vector<amd::Device*> compatible_devices;
-
-            for (cl_uint i = 0; i < total_devices; ++i) {
-                cl_device_id device = devices[i];
-                if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_, VALIDATE_ONLY)) {
-                    compatible_devices.push_back(as_amd(device));
-                }
-            }
-
-            size_t deviceCount = compatible_devices.size();
-            size_t deviceCountSize = deviceCount * sizeof(cl_device_id);
-
-            if (param_value != NULL && param_value_size < deviceCountSize) {
-                return CL_INVALID_VALUE;
-            }
-
-            *not_null(param_value_size_ret) = deviceCountSize;
-
-            if (param_value != NULL) {
-                cl_device_id* deviceList = (cl_device_id*) param_value;
-                std::vector<amd::Device*>::const_iterator it;
-                for (it = compatible_devices.begin(); it != compatible_devices.end(); ++it) {
-                    *deviceList++ = as_cl(*it);
-                }
-            }
-
-            return CL_SUCCESS;
+        errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, num_cpu_devices, cpu_devices, NULL);
+        if (errcode != CL_SUCCESS) {
+          return errcode;
         }
-        break;
+        return amd::clGetInfo(cpu_devices[0], param_value_size, param_value, param_value_size_ret);
+      }
+      break;
+
+    case CL_DEVICES_FOR_GL_CONTEXT_KHR: {
+      // List of all CL devices that can be associated with the specified OpenGL context.
+      cl_uint total_devices = num_gpu_devices + num_cpu_devices;
+      size_t size = total_devices * sizeof(cl_device_id);
+
+      cl_device_id* devices = (cl_device_id*)alloca(size);
+
+      errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_CPU, total_devices,
+                               devices, NULL);
+      if (errcode != CL_SUCCESS) {
+        return errcode;
+      }
+
+      std::vector<amd::Device*> compatible_devices;
+
+      for (cl_uint i = 0; i < total_devices; ++i) {
+        cl_device_id device = devices[i];
+        if (is_valid(device) &&
+            as_amd(device)->bindExternalDevice(info.flags_, info.hDev_, info.hCtx_,
+                                               VALIDATE_ONLY)) {
+          compatible_devices.push_back(as_amd(device));
+        }
+      }
+
+      size_t deviceCount = compatible_devices.size();
+      size_t deviceCountSize = deviceCount * sizeof(cl_device_id);
+
+      if (param_value != NULL && param_value_size < deviceCountSize) {
+        return CL_INVALID_VALUE;
+      }
+
+      *not_null(param_value_size_ret) = deviceCountSize;
+
+      if (param_value != NULL) {
+        cl_device_id* deviceList = (cl_device_id*)param_value;
+        std::vector<amd::Device*>::const_iterator it;
+        for (it = compatible_devices.begin(); it != compatible_devices.end(); ++it) {
+          *deviceList++ = as_cl(*it);
+        }
+      }
+
+      return CL_SUCCESS;
+    } break;
 
     default:
-        LogWarning("\"param_name\" is not valid");
-        return CL_INVALID_VALUE;
-    }
-    return CL_SUCCESS;
+      LogWarning("\"param_name\" is not valid");
+      return CL_INVALID_VALUE;
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1004,13 +936,11 @@ RUNTIME_EXIT
 //          namespace amd
 //
 //
-namespace amd
-{
+namespace amd {
 
-typedef struct
-{
-    GLenum glBinding;
-    GLenum glTarget;
+typedef struct {
+  GLenum glBinding;
+  GLenum glTarget;
 } TargetBindings_t;
 
 /*! @}
@@ -1019,591 +949,578 @@ typedef struct
  */
 
 //! Function clearGLErrors() to clear all GL error bits, if any
-void
-clearGLErrors(const Context &amdContext)
-{
-    GLenum glErr, glLastErr = GL_NO_ERROR;
-    while(1) {
-        glErr = amdContext.glenv()->glGetError_();
-        if (glErr == GL_NO_ERROR || glErr == glLastErr) {
-            break;
-        }
-        glLastErr = glErr;
-        LogWarning("GL error");
+void clearGLErrors(const Context& amdContext) {
+  GLenum glErr, glLastErr = GL_NO_ERROR;
+  while (1) {
+    glErr = amdContext.glenv()->glGetError_();
+    if (glErr == GL_NO_ERROR || glErr == glLastErr) {
+      break;
     }
+    glLastErr = glErr;
+    LogWarning("GL error");
+  }
 }
 
-GLenum
-checkForGLError(const Context &amdContext)
-{
-    GLenum glRetErr = GL_NO_ERROR;
-    GLenum glErr;
-    while(GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))
-    {
-        glRetErr = glErr;   // Just return the last GL error
-        LogWarning("Check GL error");
-    }
-    return glRetErr;
+GLenum checkForGLError(const Context& amdContext) {
+  GLenum glRetErr = GL_NO_ERROR;
+  GLenum glErr;
+  while (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+    glRetErr = glErr;  // Just return the last GL error
+    LogWarning("Check GL error");
+  }
+  return glRetErr;
 }
 
 //! Function getCLFormatFromGL returns "true" if GL format
 //! is compatible with CL format, "false" otherwise.
-bool
-getCLFormatFromGL(const Context& amdContext, GLint gliInternalFormat,
-    cl_image_format* pclImageFormat,
-    int* piBytesPerPixel,
-    cl_mem_flags flags)
-{
-    bool bRetVal = false;
+bool getCLFormatFromGL(const Context& amdContext, GLint gliInternalFormat,
+                       cl_image_format* pclImageFormat, int* piBytesPerPixel, cl_mem_flags flags) {
+  bool bRetVal = false;
 
-/*
-Available values for "image_channel_order"
-==========================================
-CL_R
-CL_A
-CL_INTENSITY
-CL_LUMINANCE
-CL_RG
-CL_RA
-CL_RGB
-CL_RGBA
-CL_ARGB
-CL_BGRA
+  /*
+  Available values for "image_channel_order"
+  ==========================================
+  CL_R
+  CL_A
+  CL_INTENSITY
+  CL_LUMINANCE
+  CL_RG
+  CL_RA
+  CL_RGB
+  CL_RGBA
+  CL_ARGB
+  CL_BGRA
 
-Available values for "image_channel_data_type"
-==============================================
-CL_SNORM_INT8
-CL_SNORM_INT16
-CL_UNORM_INT8
-CL_UNORM_INT16
-CL_UNORM_SHORT_565
-CL_UNORM_SHORT_555
-CL_UNORM_INT_101010
-CL_SIGNED_INT8
-CL_SIGNED_INT16
-CL_SIGNED_INT32
-CL_UNSIGNED_INT8
-CL_UNSIGNED_INT16
-CL_UNSIGNED_INT32
-CL_HALF_FLOAT
-CL_FLOAT
-*/
+  Available values for "image_channel_data_type"
+  ==============================================
+  CL_SNORM_INT8
+  CL_SNORM_INT16
+  CL_UNORM_INT8
+  CL_UNORM_INT16
+  CL_UNORM_SHORT_565
+  CL_UNORM_SHORT_555
+  CL_UNORM_INT_101010
+  CL_SIGNED_INT8
+  CL_SIGNED_INT16
+  CL_SIGNED_INT32
+  CL_UNSIGNED_INT8
+  CL_UNSIGNED_INT16
+  CL_UNSIGNED_INT32
+  CL_HALF_FLOAT
+  CL_FLOAT
+  */
 
-    switch(gliInternalFormat)
-    {
+  switch (gliInternalFormat) {
     case GL_RGB10_A2:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_UNORM_INT_101010;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_UNORM_INT_101010;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_BGR8_ATI:
     case GL_BGRA8_ATI:
-        pclImageFormat->image_channel_order = CL_BGRA;
-        pclImageFormat->image_channel_data_type = CL_UNORM_INT8;//CL_UNSIGNED_INT8;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_BGRA;
+      pclImageFormat->image_channel_data_type = CL_UNORM_INT8;  // CL_UNSIGNED_INT8;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_ALPHA8:
-        pclImageFormat->image_channel_order = CL_A;
-        pclImageFormat->image_channel_data_type = CL_UNORM_INT8;//CL_UNSIGNED_INT8;
-        *piBytesPerPixel = 1;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_A;
+      pclImageFormat->image_channel_data_type = CL_UNORM_INT8;  // CL_UNSIGNED_INT8;
+      *piBytesPerPixel = 1;
+      bRetVal = true;
+      break;
 
     case GL_R8:
     case GL_R8UI:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_R8)? CL_UNORM_INT8:CL_UNSIGNED_INT8;
-        *piBytesPerPixel = 1;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_R8) ? CL_UNORM_INT8 : CL_UNSIGNED_INT8;
+      *piBytesPerPixel = 1;
+      bRetVal = true;
+      break;
 
     case GL_R8I:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
-        *piBytesPerPixel = 1;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
+      *piBytesPerPixel = 1;
+      bRetVal = true;
+      break;
 
     case GL_RG8:
     case GL_RG8UI:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RG8)? CL_UNORM_INT8:CL_UNSIGNED_INT8;
-        *piBytesPerPixel = 2;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RG8) ? CL_UNORM_INT8 : CL_UNSIGNED_INT8;
+      *piBytesPerPixel = 2;
+      bRetVal = true;
+      break;
 
     case GL_RG8I:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
-        *piBytesPerPixel = 2;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
+      *piBytesPerPixel = 2;
+      bRetVal = true;
+      break;
 
     case GL_RGB8:
     case GL_RGB8UI:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RGB8)? CL_UNORM_INT8:CL_UNSIGNED_INT8;
-        *piBytesPerPixel = 3;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RGB8) ? CL_UNORM_INT8 : CL_UNSIGNED_INT8;
+      *piBytesPerPixel = 3;
+      bRetVal = true;
+      break;
 
     case GL_RGB8I:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
-        *piBytesPerPixel = 3;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
+      *piBytesPerPixel = 3;
+      bRetVal = true;
+      break;
 
     case GL_RGBA:
     case GL_RGBA8:
     case GL_RGBA8UI:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RGBA8UI)? CL_UNSIGNED_INT8:CL_UNORM_INT8;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RGBA8UI) ? CL_UNSIGNED_INT8 : CL_UNORM_INT8;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_RGBA8I:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT8;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_R16:
     case GL_R16UI:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_R16)? CL_UNORM_INT16:CL_UNSIGNED_INT16;
-        bRetVal = true;
-        *piBytesPerPixel = 2;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_R16) ? CL_UNORM_INT16 : CL_UNSIGNED_INT16;
+      bRetVal = true;
+      *piBytesPerPixel = 2;
+      break;
 
     case GL_R16I:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
-        *piBytesPerPixel = 2;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
+      *piBytesPerPixel = 2;
+      bRetVal = true;
+      break;
 
     case GL_R16F:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
-        *piBytesPerPixel = 2;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
+      *piBytesPerPixel = 2;
+      bRetVal = true;
+      break;
 
     case GL_RG16:
     case GL_RG16UI:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RG16)? CL_UNORM_INT16:CL_UNSIGNED_INT16;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RG16) ? CL_UNORM_INT16 : CL_UNSIGNED_INT16;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_RG16I:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_RG16F:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_RGB16:
     case GL_RGB16UI:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RGB16)? CL_UNORM_INT16:CL_UNSIGNED_INT16;
-        *piBytesPerPixel = 6;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RGB16) ? CL_UNORM_INT16 : CL_UNSIGNED_INT16;
+      *piBytesPerPixel = 6;
+      bRetVal = true;
+      break;
 
     case GL_RGB16I:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
-        *piBytesPerPixel = 6;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
+      *piBytesPerPixel = 6;
+      bRetVal = true;
+      break;
 
     case GL_RGB16F:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
-        *piBytesPerPixel = 6;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
+      *piBytesPerPixel = 6;
+      bRetVal = true;
+      break;
 
     case GL_RGBA16:
     case GL_RGBA16UI:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = (gliInternalFormat == GL_RGBA16)? CL_UNORM_INT16:CL_UNSIGNED_INT16;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type =
+          (gliInternalFormat == GL_RGBA16) ? CL_UNORM_INT16 : CL_UNSIGNED_INT16;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_RGBA16I:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT16;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_RGBA16F:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_HALF_FLOAT;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_R32I:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_R32UI:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_R32F:
-        pclImageFormat->image_channel_order = CL_R;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_R;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
 
     case GL_RG32I:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_RG32UI:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_RG32F:
-        pclImageFormat->image_channel_order = CL_RG;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 8;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RG;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 8;
+      bRetVal = true;
+      break;
 
     case GL_RGB32I:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
-        *piBytesPerPixel = 12;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
+      *piBytesPerPixel = 12;
+      bRetVal = true;
+      break;
 
     case GL_RGB32UI:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
-        *piBytesPerPixel = 12;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
+      *piBytesPerPixel = 12;
+      bRetVal = true;
+      break;
 
     case GL_RGB32F:
-        pclImageFormat->image_channel_order = CL_RGB;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 12;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 12;
+      bRetVal = true;
+      break;
 
     case GL_RGBA32I:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
-        *piBytesPerPixel = 16;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_SIGNED_INT32;
+      *piBytesPerPixel = 16;
+      bRetVal = true;
+      break;
 
     case GL_RGBA32UI:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
-        *piBytesPerPixel = 16;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_UNSIGNED_INT32;
+      *piBytesPerPixel = 16;
+      bRetVal = true;
+      break;
 
     case GL_RGBA32F:
-        pclImageFormat->image_channel_order = CL_RGBA;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 16;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_RGBA;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 16;
+      bRetVal = true;
+      break;
     case GL_DEPTH_COMPONENT32F:
-        pclImageFormat->image_channel_order = CL_DEPTH;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_DEPTH;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
     case GL_DEPTH_COMPONENT16:
-        pclImageFormat->image_channel_order = CL_DEPTH;
-        pclImageFormat->image_channel_data_type = CL_UNORM_INT16;
-        *piBytesPerPixel = 2;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_DEPTH;
+      pclImageFormat->image_channel_data_type = CL_UNORM_INT16;
+      *piBytesPerPixel = 2;
+      bRetVal = true;
+      break;
     case GL_DEPTH24_STENCIL8:
-        pclImageFormat->image_channel_order = CL_DEPTH_STENCIL;
-        pclImageFormat->image_channel_data_type = CL_UNORM_INT24;
-        *piBytesPerPixel = 4;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_DEPTH_STENCIL;
+      pclImageFormat->image_channel_data_type = CL_UNORM_INT24;
+      *piBytesPerPixel = 4;
+      bRetVal = true;
+      break;
     case GL_DEPTH32F_STENCIL8:
-        pclImageFormat->image_channel_order = CL_DEPTH_STENCIL;
-        pclImageFormat->image_channel_data_type = CL_FLOAT;
-        *piBytesPerPixel = 5;
-        bRetVal = true;
-        break;
+      pclImageFormat->image_channel_order = CL_DEPTH_STENCIL;
+      pclImageFormat->image_channel_data_type = CL_FLOAT;
+      *piBytesPerPixel = 5;
+      bRetVal = true;
+      break;
     default:
-        LogWarning("unsupported GL internal format");
-        break;
-    }
-    amd::Image::Format imageFormat(*pclImageFormat);
-    if (bRetVal && !imageFormat.isSupported(amdContext, 0, flags)) {
-        bRetVal = false;
-    }
-    return bRetVal;
+      LogWarning("unsupported GL internal format");
+      break;
+  }
+  amd::Image::Format imageFormat(*pclImageFormat);
+  if (bRetVal && !imageFormat.isSupported(amdContext, 0, flags)) {
+    bRetVal = false;
+  }
+  return bRetVal;
 }
 
-void
-BufferGL::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(BufferGL));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void BufferGL::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(BufferGL));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool
-BufferGL::mapExtObjectInCQThread()
-{
-    assert(!context_().glenv()->isEGL());
-    GLFunctions::SetIntEnv ie(context_().glenv());
-    if (!ie.isValid()) {
-        return false;
-    }
+bool BufferGL::mapExtObjectInCQThread() {
+  assert(!context_().glenv()->isEGL());
+  GLFunctions::SetIntEnv ie(context_().glenv());
+  if (!ie.isValid()) {
+    return false;
+  }
 
-    GLenum glAccess = GL_READ_WRITE;  // Default
-    if (getMemFlags() & CL_MEM_READ_ONLY) {
-        glAccess = GL_READ_ONLY;
-    }
-    else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-        glAccess = GL_WRITE_ONLY;
-    }
-    clearGLErrors(context_());
-    context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
+  GLenum glAccess = GL_READ_WRITE;  // Default
+  if (getMemFlags() & CL_MEM_READ_ONLY) {
+    glAccess = GL_READ_ONLY;
+  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
+    glAccess = GL_WRITE_ONLY;
+  }
+  clearGLErrors(context_());
+  context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
 
-    void* pCpuMem = context_().glenv()->glMapBuffer_(GL_ARRAY_BUFFER, glAccess);
+  void* pCpuMem = context_().glenv()->glMapBuffer_(GL_ARRAY_BUFFER, glAccess);
 
-    if (checkForGLError(context_()) != GL_NO_ERROR || !pCpuMem) {
-        LogError("cannot map GL buffer");
-        return false;
-    }
+  if (checkForGLError(context_()) != GL_NO_ERROR || !pCpuMem) {
+    LogError("cannot map GL buffer");
+    return false;
+  }
 
-    setHostMem(pCpuMem);
+  setHostMem(pCpuMem);
 
-    return true;
+  return true;
 }
 
-bool
-BufferGL::unmapExtObjectInCQThread()
-{
-    assert(!context_().glenv()->isEGL());
-    GLFunctions::SetIntEnv ie(context_().glenv());
-    if (!ie.isValid()) {
-        return false;
-    }
+bool BufferGL::unmapExtObjectInCQThread() {
+  assert(!context_().glenv()->isEGL());
+  GLFunctions::SetIntEnv ie(context_().glenv());
+  if (!ie.isValid()) {
+    return false;
+  }
 
-    clearGLErrors(context_());
-    context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
+  clearGLErrors(context_());
+  context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
 
-    if (GL_FALSE == context_().glenv()->glUnmapBuffer_(GL_ARRAY_BUFFER)) {
-        LogError("context_().glenv()->glUnmapBuffer_ returned GL_FALSE - buffer may be corrupted");
-        return false;
-    }
-    if (checkForGLError(context_()) != GL_NO_ERROR) {
-        LogWarning("Error unmapping GL buffer");
-        return false;
-    }
+  if (GL_FALSE == context_().glenv()->glUnmapBuffer_(GL_ARRAY_BUFFER)) {
+    LogError("context_().glenv()->glUnmapBuffer_ returned GL_FALSE - buffer may be corrupted");
+    return false;
+  }
+  if (checkForGLError(context_()) != GL_NO_ERROR) {
+    LogWarning("Error unmapping GL buffer");
+    return false;
+  }
 
-    setHostMem(NULL);
+  setHostMem(NULL);
 
-    return true;
+  return true;
 }
 
-static GLenum
-clChannelDataTypeToGlType(cl_channel_type channel_type)
-{
-    // Pick
-    // GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT,
-    // GL_UNSIGNED_INT, GL_FLOAT, GL_2_BYTES, GL_3_BYTES, GL_4_BYTES
-    // or GL_DOUBLE
-    switch (channel_type) {
-    case CL_SNORM_INT8:         return GL_BYTE;
-    case CL_SNORM_INT16:        return GL_SHORT;
-    case CL_UNORM_INT8:         return GL_UNSIGNED_BYTE;
-    case CL_UNORM_INT16:        return GL_UNSIGNED_SHORT;
-    case CL_SIGNED_INT8:        return GL_BYTE;
-    case CL_SIGNED_INT16:       return GL_SHORT;
-    case CL_SIGNED_INT32:       return GL_INT;
-    case CL_UNSIGNED_INT8:      return GL_UNSIGNED_BYTE;
-    case CL_UNSIGNED_INT16:     return GL_UNSIGNED_SHORT;
-    case CL_UNSIGNED_INT32:     return GL_UNSIGNED_INT;
-    case CL_FLOAT:              return GL_FLOAT;
-    case CL_UNORM_INT_101010:   return GL_UNSIGNED_INT_10_10_10_2;
+static GLenum clChannelDataTypeToGlType(cl_channel_type channel_type) {
+  // Pick
+  // GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT,
+  // GL_UNSIGNED_INT, GL_FLOAT, GL_2_BYTES, GL_3_BYTES, GL_4_BYTES
+  // or GL_DOUBLE
+  switch (channel_type) {
+    case CL_SNORM_INT8:
+      return GL_BYTE;
+    case CL_SNORM_INT16:
+      return GL_SHORT;
+    case CL_UNORM_INT8:
+      return GL_UNSIGNED_BYTE;
+    case CL_UNORM_INT16:
+      return GL_UNSIGNED_SHORT;
+    case CL_SIGNED_INT8:
+      return GL_BYTE;
+    case CL_SIGNED_INT16:
+      return GL_SHORT;
+    case CL_SIGNED_INT32:
+      return GL_INT;
+    case CL_UNSIGNED_INT8:
+      return GL_UNSIGNED_BYTE;
+    case CL_UNSIGNED_INT16:
+      return GL_UNSIGNED_SHORT;
+    case CL_UNSIGNED_INT32:
+      return GL_UNSIGNED_INT;
+    case CL_FLOAT:
+      return GL_FLOAT;
+    case CL_UNORM_INT_101010:
+      return GL_UNSIGNED_INT_10_10_10_2;
     case CL_HALF_FLOAT:
     case CL_UNORM_SHORT_565:
     case CL_UNORM_SHORT_555:
     default:
-        guarantee(false && "Unexpected CL type.");
-        return 0;
-    }
+      guarantee(false && "Unexpected CL type.");
+      return 0;
+  }
 }
 
-static GLenum
-glInternalFormatToGlFormat(GLenum internalFormat)
-{
-    switch (internalFormat) {
+static GLenum glInternalFormatToGlFormat(GLenum internalFormat) {
+  switch (internalFormat) {
     // Base internal formats
     case GL_RGBA:
     case GL_BGRA:
-        return internalFormat;
+      return internalFormat;
     // Sized internal formats
     case GL_RGBA8:
     case GL_RGBA16:
     case GL_RGBA16F:
     case GL_RGBA32F:
-        return GL_RGBA;
+      return GL_RGBA;
     case GL_RGBA8I:
     case GL_RGBA8UI:
     case GL_RGBA16I:
     case GL_RGBA16UI:
     case GL_RGBA32I:
     case GL_RGBA32UI:
-        return GL_RGBA_INTEGER;
+      return GL_RGBA_INTEGER;
 
     default:
-        guarantee(false && "Unexpected GL internal format.");
-        return 0;
-    }
+      guarantee(false && "Unexpected GL internal format.");
+      return 0;
+  }
 }
 
-void
-ImageGL::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(ImageGL));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void ImageGL::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(ImageGL));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool
-ImageGL::mapExtObjectInCQThread()
-{
-    assert(!context_().glenv()->isEGL());
-    GLFunctions::SetIntEnv ie(context_().glenv());
-    if (!ie.isValid()) {
-        return false;
-    }
+bool ImageGL::mapExtObjectInCQThread() {
+  assert(!context_().glenv()->isEGL());
+  GLFunctions::SetIntEnv ie(context_().glenv());
+  if (!ie.isValid()) {
+    return false;
+  }
 
-    GLenum glAccess = GL_READ_WRITE;  // Default
+  GLenum glAccess = GL_READ_WRITE;  // Default
 
-    if (getMemFlags() & CL_MEM_READ_ONLY) {
-        glAccess = GL_READ_ONLY;
-    }
-    else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-        glAccess = GL_WRITE_ONLY;
-    }
-    clearGLErrors(context_());
-    context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
+  if (getMemFlags() & CL_MEM_READ_ONLY) {
+    glAccess = GL_READ_ONLY;
+  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
+    glAccess = GL_WRITE_ONLY;
+  }
+  clearGLErrors(context_());
+  context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
 
-    size_t mem_size = getSize();
+  size_t mem_size = getSize();
 
-    char* pCpuMem = new char[mem_size];
-    if (pCpuMem == NULL) {
-        LogError("Cannot alloc host memory for ImageGL");
-        return false;
-    }
+  char* pCpuMem = new char[mem_size];
+  if (pCpuMem == NULL) {
+    LogError("Cannot alloc host memory for ImageGL");
+    return false;
+  }
 
-    context_().glenv()->glGetTexImage_(
-        getGLTarget(),
-        gliMipLevel_,
-        glInternalFormatToGlFormat(glInternalFormat_),
-        clChannelDataTypeToGlType(getImageFormat().image_channel_data_type),
-        pCpuMem);
+  context_().glenv()->glGetTexImage_(
+      getGLTarget(), gliMipLevel_, glInternalFormatToGlFormat(glInternalFormat_),
+      clChannelDataTypeToGlType(getImageFormat().image_channel_data_type), pCpuMem);
 
-    if (checkForGLError(context_()) != GL_NO_ERROR) {
-        LogError("cannot map GL texture");
-        free(pCpuMem);
-        return false;
-    }
+  if (checkForGLError(context_()) != GL_NO_ERROR) {
+    LogError("cannot map GL texture");
+    free(pCpuMem);
+    return false;
+  }
 
-    setHostMem(pCpuMem);
+  setHostMem(pCpuMem);
 
-    return true;
+  return true;
 }
 
-bool
-ImageGL::unmapExtObjectInCQThread()
-{
-    assert(!context_().glenv()->isEGL());
-    GLFunctions::SetIntEnv ie(context_().glenv());
-    if (!ie.isValid()) {
-        return false;
-    }
+bool ImageGL::unmapExtObjectInCQThread() {
+  assert(!context_().glenv()->isEGL());
+  GLFunctions::SetIntEnv ie(context_().glenv());
+  if (!ie.isValid()) {
+    return false;
+  }
 
-    bool status = true;
+  bool status = true;
 
-    clearGLErrors(context_());
-    context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
+  clearGLErrors(context_());
+  context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
 
-    char* pCpuMem = (char *)getHostMem();
+  char* pCpuMem = (char*)getHostMem();
 
-    if (checkForGLError(context_()) != GL_NO_ERROR) {
-        LogError("Cannot map GL texture");
-        status = false;
-        goto cleanup;
-    }
+  if (checkForGLError(context_()) != GL_NO_ERROR) {
+    LogError("Cannot map GL texture");
+    status = false;
+    goto cleanup;
+  }
 
-    context_().glenv()->glTexImage2D_(
-        getGLTarget(),          // target
-        gliMipLevel_,           // miplevel
-        glInternalFormat_,      // internalFormat or bytes per pixel
-        gliWidth_,              // width
-        gliHeight_,             // height
-        0,                      // border
-        // format
-        glInternalFormatToGlFormat(glInternalFormat_),
-        // type
-        clChannelDataTypeToGlType(getImageFormat().image_channel_data_type),
-        pCpuMem);               // data
+  context_().glenv()->glTexImage2D_(
+      getGLTarget(),      // target
+      gliMipLevel_,       // miplevel
+      glInternalFormat_,  // internalFormat or bytes per pixel
+      gliWidth_,          // width
+      gliHeight_,         // height
+      0,                  // border
+      // format
+      glInternalFormatToGlFormat(glInternalFormat_),
+      // type
+      clChannelDataTypeToGlType(getImageFormat().image_channel_data_type),
+      pCpuMem);  // data
 
-    if (checkForGLError(context_()) != GL_NO_ERROR) {
-        LogError("Cannot update GL texture");
-        status = false;
-        goto cleanup;
-    }
+  if (checkForGLError(context_()) != GL_NO_ERROR) {
+    LogError("Cannot update GL texture");
+    status = false;
+    goto cleanup;
+  }
 
-  cleanup:
-    delete [] pCpuMem;
-    setHostMem(NULL);
+cleanup:
+  delete[] pCpuMem;
+  setHostMem(NULL);
 
-    return status;
+  return status;
 }
 
 //*******************************************************************
@@ -1615,767 +1532,744 @@ ImageGL::unmapExtObjectInCQThread()
 //
 //      clCreateFromGLBufferAMD
 //
-cl_mem
-clCreateFromGLBufferAMD(
-    Context&        amdContext,
-    cl_mem_flags    flags,
-    GLuint          bufobj,
-    cl_int*         errcode_ret)
-{
-    BufferGL* pBufferGL = NULL;
-    GLenum glErr;
-    GLenum glTarget = GL_ARRAY_BUFFER;
-    GLint gliSize = 0;
-    GLint gliMapped = 0;
+cl_mem clCreateFromGLBufferAMD(Context& amdContext, cl_mem_flags flags, GLuint bufobj,
+                               cl_int* errcode_ret) {
+  BufferGL* pBufferGL = NULL;
+  GLenum glErr;
+  GLenum glTarget = GL_ARRAY_BUFFER;
+  GLint gliSize = 0;
+  GLint gliMapped = 0;
 
-    // Verify context init'ed for interop
-    if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("\"amdContext\" is not created from GL context or share list");
-        return (cl_mem) 0;
+  // Verify context init'ed for interop
+  if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("\"amdContext\" is not created from GL context or share list");
+    return (cl_mem)0;
+  }
+
+  // Add this scope to bound the scoped lock
+  {
+    GLFunctions::SetIntEnv ie(amdContext.glenv());
+    if (!ie.isValid()) {
+      *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+      LogWarning("\"amdContext\" is not created from GL context or share list");
+      return as_cl<Memory>(0);
     }
 
-    // Add this scope to bound the scoped lock
-    {
-        GLFunctions::SetIntEnv ie(amdContext.glenv());
-        if (!ie.isValid()) {
-            *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-            LogWarning("\"amdContext\" is not created from GL context or share list");
-            return as_cl<Memory>(0);
-        }
-
-        // Verify GL buffer object
-        clearGLErrors(amdContext);
-        if ((GL_FALSE == amdContext.glenv()->glIsBuffer_(bufobj))
-            || (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("\"bufobj\" is not a GL buffer object");
-            return (cl_mem) 0;
-        }
-
-        // It seems that CL spec is not concerned with GL_BUFFER_USAGE, so skip it
-
-        // Check if size is available - data store is created
-
-        amdContext.glenv()->glBindBuffer_(glTarget, bufobj);
-        clearGLErrors(amdContext);
-        amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &gliSize);
-        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("cannot get the GL buffer size");
-            return (cl_mem) 0;
-        }
-        if (gliSize == 0) {
-            //@todo - check why sometime the size is zero
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("the GL buffer's data store is not created");
-            return (cl_mem) 0;
-        }
-
-        // Mapping will be done at acquire time (sync point)
-
-    } // Release scoped lock
-
-    // Now create BufferGL object
-    pBufferGL = new(amdContext) BufferGL(amdContext, flags, gliSize, 0, bufobj);
-
-    if (!pBufferGL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("cannot create object of class BufferGL");
-        return (cl_mem) 0;
+    // Verify GL buffer object
+    clearGLErrors(amdContext);
+    if ((GL_FALSE == amdContext.glenv()->glIsBuffer_(bufobj)) ||
+        (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("\"bufobj\" is not a GL buffer object");
+      return (cl_mem)0;
     }
 
-    if (!pBufferGL->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pBufferGL->release();
-        return (cl_mem) 0;
+    // It seems that CL spec is not concerned with GL_BUFFER_USAGE, so skip it
+
+    // Check if size is available - data store is created
+
+    amdContext.glenv()->glBindBuffer_(glTarget, bufobj);
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &gliSize);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("cannot get the GL buffer size");
+      return (cl_mem)0;
+    }
+    if (gliSize == 0) {
+      //@todo - check why sometime the size is zero
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("the GL buffer's data store is not created");
+      return (cl_mem)0;
     }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
+    // Mapping will be done at acquire time (sync point)
 
-    // Create interop object
-    if (pBufferGL->getInteropObj() == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-        LogWarning("cannot create object of class BufferGL");
-        return (cl_mem)0;
+  }  // Release scoped lock
+
+  // Now create BufferGL object
+  pBufferGL = new (amdContext) BufferGL(amdContext, flags, gliSize, 0, bufobj);
+
+  if (!pBufferGL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("cannot create object of class BufferGL");
+    return (cl_mem)0;
+  }
+
+  if (!pBufferGL->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pBufferGL->release();
+    return (cl_mem)0;
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+
+  // Create interop object
+  if (pBufferGL->getInteropObj() == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+    LogWarning("cannot create object of class BufferGL");
+    return (cl_mem)0;
+  }
+
+  // Fixme: If more than one device is present in the context, we choose the first device.
+  // We should come up with a more elegant solution to handle this.
+  assert(amdContext.devices().size() == 1);
+
+  std::vector<amd::Device*>::const_iterator itr = amdContext.devices().begin();
+  amd::Device& dev = *(*itr);
+
+  if (dev.type() != CL_DEVICE_TYPE_CPU) {
+    device::Memory* mem = pBufferGL->getDeviceMemory(dev);
+    if (NULL == mem) {
+      LogPrintfError("Can't allocate memory size - 0x%08X bytes!", pBufferGL->getSize());
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
     }
+    mem->processGLResource(device::Memory::GLDecompressResource);
+  }
 
-    // Fixme: If more than one device is present in the context, we choose the first device.
-    // We should come up with a more elegant solution to handle this.
-    assert(amdContext.devices().size() == 1);
-
-    std::vector<amd::Device*>::const_iterator itr = amdContext.devices().begin();
-    amd::Device& dev = *(*itr);
-
-    if (dev.type() != CL_DEVICE_TYPE_CPU){
-        device::Memory* mem = pBufferGL->getDeviceMemory(dev);
-        if (NULL == mem) {
-            LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
-                pBufferGL->getSize());
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-        }
-        mem->processGLResource(device::Memory::GLDecompressResource);
-    }
-
-    return as_cl<Memory>(pBufferGL);
+  return as_cl<Memory>(pBufferGL);
 }
 
-cl_mem
-clCreateFromGLTextureAMD(
-    Context&        amdContext,
-    cl_mem_flags    clFlags,
-    GLenum          target,
-    GLint           miplevel,
-    GLuint          texture,
-    int*            errcode_ret)
-{
-    ImageGL*    pImageGL = NULL;
-    GLenum      glErr;
-    GLenum      glTarget = 0;
-    GLenum      glInternalFormat;
-    cl_image_format clImageFormat;
-    uint        dim = 1;
-    cl_mem_object_type  clType;
-    cl_gl_object_type   clGLType;
-    GLsizei     numSamples = 1;
+cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenum target,
+                                GLint miplevel, GLuint texture, int* errcode_ret) {
+  ImageGL* pImageGL = NULL;
+  GLenum glErr;
+  GLenum glTarget = 0;
+  GLenum glInternalFormat;
+  cl_image_format clImageFormat;
+  uint dim = 1;
+  cl_mem_object_type clType;
+  cl_gl_object_type clGLType;
+  GLsizei numSamples = 1;
 
-    // Verify context init'ed for interop
-    if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("\"amdContext\" is not created from GL context or share list");
-        return static_cast<cl_mem>(0);
+  // Verify context init'ed for interop
+  if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("\"amdContext\" is not created from GL context or share list");
+    return static_cast<cl_mem>(0);
+  }
+
+  GLint gliTexWidth = 1;
+  GLint gliTexHeight = 1;
+  GLint gliTexDepth = 1;
+
+  // Add this scope to bound the scoped lock
+  {
+    GLFunctions::SetIntEnv ie(amdContext.glenv());
+    if (!ie.isValid()) {
+      *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+      LogWarning("\"amdContext\" is not created from GL context or share list");
+      return as_cl<Memory>(0);
     }
 
-    GLint gliTexWidth = 1;
-    GLint gliTexHeight = 1;
-    GLint gliTexDepth = 1;
+    // Verify GL texture object
+    clearGLErrors(amdContext);
+    if ((GL_FALSE == amdContext.glenv()->glIsTexture_(texture)) ||
+        (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("\"texture\" is not a GL texture object");
+      return static_cast<cl_mem>(0);
+    }
 
-    // Add this scope to bound the scoped lock
-    {
-        GLFunctions::SetIntEnv ie(amdContext.glenv());
-        if (!ie.isValid()) {
-            *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-            LogWarning("\"amdContext\" is not created from GL context or share list");
-            return as_cl<Memory>(0);
-        }
+    bool image = true;
 
-        // Verify GL texture object
-        clearGLErrors(amdContext);
-        if ((GL_FALSE == amdContext.glenv()->glIsTexture_(texture))
-            || (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
+    // Check target value validity
+    switch (target) {
+      case GL_TEXTURE_BUFFER:
+        glTarget = GL_TEXTURE_BUFFER;
+        dim = 1;
+        clType = CL_MEM_OBJECT_IMAGE1D_BUFFER;
+        clGLType = CL_GL_OBJECT_TEXTURE_BUFFER;
+        image = false;
+        break;
+
+      case GL_TEXTURE_1D:
+        glTarget = GL_TEXTURE_1D;
+        dim = 1;
+        clType = CL_MEM_OBJECT_IMAGE1D;
+        clGLType = CL_GL_OBJECT_TEXTURE1D;
+        break;
+
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+      case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+      case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+        glTarget = GL_TEXTURE_CUBE_MAP;
+        dim = 2;
+        clType = CL_MEM_OBJECT_IMAGE2D;
+        clGLType = CL_GL_OBJECT_TEXTURE2D;
+        break;
+
+      case GL_TEXTURE_1D_ARRAY:
+        glTarget = GL_TEXTURE_1D_ARRAY;
+        dim = 2;
+        clType = CL_MEM_OBJECT_IMAGE1D_ARRAY;
+        clGLType = CL_GL_OBJECT_TEXTURE1D_ARRAY;
+        break;
+
+      case GL_TEXTURE_2D:
+        glTarget = GL_TEXTURE_2D;
+        dim = 2;
+        clType = CL_MEM_OBJECT_IMAGE2D;
+        clGLType = CL_GL_OBJECT_TEXTURE2D;
+        break;
+
+      case GL_TEXTURE_2D_MULTISAMPLE:
+        glTarget = GL_TEXTURE_2D_MULTISAMPLE;
+        dim = 2;
+        clType = CL_MEM_OBJECT_IMAGE2D;
+        clGLType = CL_GL_OBJECT_TEXTURE2D;
+        break;
+
+      case GL_TEXTURE_RECTANGLE_ARB:
+        glTarget = GL_TEXTURE_RECTANGLE_ARB;
+        dim = 2;
+        clType = CL_MEM_OBJECT_IMAGE2D;
+        clGLType = CL_GL_OBJECT_TEXTURE2D;
+        break;
+
+      case GL_TEXTURE_2D_ARRAY:
+        glTarget = GL_TEXTURE_2D_ARRAY;
+        dim = 3;
+        clType = CL_MEM_OBJECT_IMAGE2D_ARRAY;
+        clGLType = CL_GL_OBJECT_TEXTURE2D_ARRAY;
+        break;
+
+      case GL_TEXTURE_3D:
+        glTarget = GL_TEXTURE_3D;
+        dim = 3;
+        clType = CL_MEM_OBJECT_IMAGE3D;
+        clGLType = CL_GL_OBJECT_TEXTURE3D;
+        break;
+
+      default:
+        // wrong value
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        LogWarning("invalid \"target\" value");
+        return static_cast<cl_mem>(0);
+        break;
+    }
+
+    amdContext.glenv()->glBindTexture_(glTarget, texture);
+
+    // Check if size is available - data store is created
+    if (image) {
+      // Check mipmap level for "texture" name
+      GLint gliTexBaseLevel;
+      GLint gliTexMaxLevel;
+
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_BASE_LEVEL, &gliTexBaseLevel);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+        LogWarning("Cannot get base mipmap level of a GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_MAX_LEVEL, &gliTexMaxLevel);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+        LogWarning("Cannot get max mipmap level of a GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+      if ((gliTexBaseLevel > miplevel) || (miplevel > gliTexMaxLevel)) {
+        *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+        LogWarning("\"miplevel\" is not a valid mipmap level of the GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+
+      // Get GL texture format and check if it's compatible with CL format
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_INTERNAL_FORMAT,
+                                                    (GLint*)&glInternalFormat);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+
+      amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_SAMPLES,
+                                                    (GLint*)&numSamples);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("Cannot get  numbers of samples of GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+      if (numSamples > 1) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("MSAA \"texture\" object is not suppoerted for the device");
+        return static_cast<cl_mem>(0);
+      }
+
+      // Now get CL format from GL format and bytes per pixel
+      int iBytesPerPixel = 0;
+      if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+                             clFlags)) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("\"texture\" format does not map to an appropriate CL image format");
+        return static_cast<cl_mem>(0);
+      }
+
+      switch (dim) {
+        case 3:
+          clearGLErrors(amdContext);
+          amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_DEPTH,
+                                                        &gliTexDepth);
+          if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
             *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("\"texture\" is not a GL texture object");
+            LogWarning("Cannot get the depth of \"miplevel\" of GL \"texure\"");
             return static_cast<cl_mem>(0);
-        }
-
-        bool image = true;
-
-        // Check target value validity
-        switch(target)
-        {
-        case GL_TEXTURE_BUFFER:
-            glTarget    = GL_TEXTURE_BUFFER;
-            dim         = 1;
-            clType      = CL_MEM_OBJECT_IMAGE1D_BUFFER;
-            clGLType    = CL_GL_OBJECT_TEXTURE_BUFFER;
-            image       = false;
-            break;
-
-        case GL_TEXTURE_1D:
-            glTarget    = GL_TEXTURE_1D;
-            dim         = 1;
-            clType      = CL_MEM_OBJECT_IMAGE1D;
-            clGLType    = CL_GL_OBJECT_TEXTURE1D;
-            break;
-
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
-        case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
-        case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
-            glTarget    = GL_TEXTURE_CUBE_MAP;
-            dim         = 2;
-            clType      = CL_MEM_OBJECT_IMAGE2D;
-            clGLType    = CL_GL_OBJECT_TEXTURE2D;
-            break;
-
-        case GL_TEXTURE_1D_ARRAY:
-            glTarget    = GL_TEXTURE_1D_ARRAY;
-            dim         = 2;
-            clType      = CL_MEM_OBJECT_IMAGE1D_ARRAY;
-            clGLType    = CL_GL_OBJECT_TEXTURE1D_ARRAY;
-            break;
-
-        case GL_TEXTURE_2D:
-            glTarget    = GL_TEXTURE_2D;
-            dim         = 2;
-            clType      = CL_MEM_OBJECT_IMAGE2D;
-            clGLType    = CL_GL_OBJECT_TEXTURE2D;
-            break;
-
-        case GL_TEXTURE_2D_MULTISAMPLE:
-            glTarget    = GL_TEXTURE_2D_MULTISAMPLE;
-            dim         = 2;
-            clType      = CL_MEM_OBJECT_IMAGE2D;
-            clGLType    = CL_GL_OBJECT_TEXTURE2D;
-            break;
-
-        case GL_TEXTURE_RECTANGLE_ARB:
-            glTarget    = GL_TEXTURE_RECTANGLE_ARB;
-            dim         = 2;
-            clType      = CL_MEM_OBJECT_IMAGE2D;
-            clGLType    = CL_GL_OBJECT_TEXTURE2D;
-            break;
-
-        case GL_TEXTURE_2D_ARRAY:
-            glTarget    = GL_TEXTURE_2D_ARRAY;
-            dim         = 3;
-            clType      = CL_MEM_OBJECT_IMAGE2D_ARRAY;
-            clGLType    = CL_GL_OBJECT_TEXTURE2D_ARRAY;
-            break;
-
-        case GL_TEXTURE_3D:
-            glTarget    = GL_TEXTURE_3D;
-            dim         = 3;
-            clType      = CL_MEM_OBJECT_IMAGE3D;
-            clGLType    = CL_GL_OBJECT_TEXTURE3D;
-            break;
-
+          }
+        // Fall trough to process other dimensions...
+        case 2:
+          clearGLErrors(amdContext);
+          amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_HEIGHT,
+                                                        &gliTexHeight);
+          if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+            LogWarning("Cannot get the height of \"miplevel\" of GL \"texure\"");
+            return static_cast<cl_mem>(0);
+          }
+        // Fall trough to process other dimensions...
+        case 1:
+          clearGLErrors(amdContext);
+          amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_WIDTH,
+                                                        &gliTexWidth);
+          if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+            LogWarning("Cannot get the width of \"miplevel\" of GL \"texure\"");
+            return static_cast<cl_mem>(0);
+          }
+          break;
         default:
-            // wrong value
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid \"target\" value");
-            return static_cast<cl_mem>(0);
-            break;
-        }
+          *not_null(errcode_ret) = CL_INVALID_VALUE;
+          LogWarning("invalid \"target\" value");
+          return static_cast<cl_mem>(0);
+      }
+    } else {
+      GLint size;
 
-        amdContext.glenv()->glBindTexture_(glTarget, texture);
+      // In case target is GL_TEXTURE_BUFFER
+      amdContext.glenv()->glBindBuffer_(glTarget, texture);
 
-        // Check if size is available - data store is created
-        if (image) {
-            // Check mipmap level for "texture" name
-            GLint gliTexBaseLevel;
-            GLint gliTexMaxLevel;
-
-            clearGLErrors(amdContext);
-            amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_BASE_LEVEL, &gliTexBaseLevel);
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
-                LogWarning("Cannot get base mipmap level of a GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-            clearGLErrors(amdContext);
-            amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_MAX_LEVEL, &gliTexMaxLevel);
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
-                LogWarning("Cannot get max mipmap level of a GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-            if ((gliTexBaseLevel > miplevel) || (miplevel > gliTexMaxLevel)) {
-                *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
-                LogWarning("\"miplevel\" is not a valid mipmap level of the GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-
-            // Get GL texture format and check if it's compatible with CL format
-            clearGLErrors(amdContext);
-            amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_INTERNAL_FORMAT,
-                (GLint*) &glInternalFormat);
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-
-            amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_SAMPLES,
-                (GLint*) &numSamples);
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("Cannot get  numbers of samples of GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-            if (numSamples > 1) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("MSAA \"texture\" object is not suppoerted for the device");
-                return static_cast<cl_mem>(0);
-            }
-
-            // Now get CL format from GL format and bytes per pixel
-            int iBytesPerPixel = 0;
-            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("\"texture\" format does not map to an appropriate CL image format");
-                return static_cast<cl_mem>(0);
-            }
-
-            switch (dim) {
-            case 3:
-                clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_DEPTH, &gliTexDepth);
-                if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                    *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-                    LogWarning("Cannot get the depth of \"miplevel\" of GL \"texure\"");
-                    return static_cast<cl_mem>(0);
-                }
-                // Fall trough to process other dimensions...
-            case 2:
-                clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_HEIGHT, &gliTexHeight);
-                if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                    *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-                    LogWarning("Cannot get the height of \"miplevel\" of GL \"texure\"");
-                    return static_cast<cl_mem>(0);
-                }
-                // Fall trough to process other dimensions...
-            case 1:
-                clearGLErrors(amdContext);
-                amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_WIDTH, &gliTexWidth);
-                if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                    *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-                    LogWarning("Cannot get the width of \"miplevel\" of GL \"texure\"");
-                    return static_cast<cl_mem>(0);
-                }
-                break;
-            default:
-                *not_null(errcode_ret) = CL_INVALID_VALUE;
-                LogWarning("invalid \"target\" value");
-                return static_cast<cl_mem>(0);
-            }
-        }
-        else {
-            GLint   size;
-
-            // In case target is GL_TEXTURE_BUFFER
-            amdContext.glenv()->glBindBuffer_(glTarget, texture);
-
-            // Get GL texture format and check if it's compatible with CL format
-            clearGLErrors(amdContext);
-            amdContext.glenv()->glGetIntegerv_(GL_TEXTURE_BUFFER_FORMAT,
-                reinterpret_cast<GLint*>(&glInternalFormat));
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-
-            // Now get CL format from GL format and bytes per pixel
-            int iBytesPerPixel = 0;
-            if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("\"texture\" format does not map to an appropriate CL image format");
-                return static_cast<cl_mem>(0);
-            }
-
-            clearGLErrors(amdContext);
-            amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &size);
-            if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-                *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-                LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
-                return static_cast<cl_mem>(0);
-            }
-
-            gliTexWidth = size / iBytesPerPixel;
-        }
-        size_t imageSize = (clType == CL_MEM_OBJECT_IMAGE1D_ARRAY) ?
-            static_cast<size_t>(gliTexHeight) : static_cast<size_t>(gliTexDepth);
-
-        if (!amd::Image::validateDimensions(
-                amdContext.devices(), clType,
-                static_cast<size_t>(gliTexWidth), static_cast<size_t>(gliTexHeight),
-                static_cast<size_t>(gliTexDepth), imageSize)) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("The GL \"texture\" data store is not created or out of supported dimensions");
-            return static_cast<cl_mem>(0);
-        }
-
-        // PBO and mapping will be done at "acquire" time (sync point)
-
-    } // Release scoped lock
-
-    target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
-
-    pImageGL = new(amdContext)
-        ImageGL(amdContext, clType, clFlags, clImageFormat,
-            static_cast<size_t>(gliTexWidth), static_cast<size_t>(gliTexHeight),
-            static_cast<size_t>(gliTexDepth),
-            glTarget, texture, miplevel, glInternalFormat, clGLType,numSamples,
-            target);
-
-    if (!pImageGL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("Cannot create class ImageGL - out of memory?");
+      // Get GL texture format and check if it's compatible with CL format
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetIntegerv_(GL_TEXTURE_BUFFER_FORMAT,
+                                         reinterpret_cast<GLint*>(&glInternalFormat));
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
         return static_cast<cl_mem>(0);
+      }
+
+      // Now get CL format from GL format and bytes per pixel
+      int iBytesPerPixel = 0;
+      if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+                             clFlags)) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("\"texture\" format does not map to an appropriate CL image format");
+        return static_cast<cl_mem>(0);
+      }
+
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &size);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
+        return static_cast<cl_mem>(0);
+      }
+
+      gliTexWidth = size / iBytesPerPixel;
+    }
+    size_t imageSize = (clType == CL_MEM_OBJECT_IMAGE1D_ARRAY) ? static_cast<size_t>(gliTexHeight)
+                                                               : static_cast<size_t>(gliTexDepth);
+
+    if (!amd::Image::validateDimensions(
+            amdContext.devices(), clType, static_cast<size_t>(gliTexWidth),
+            static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), imageSize)) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("The GL \"texture\" data store is not created or out of supported dimensions");
+      return static_cast<cl_mem>(0);
     }
 
-    if (!pImageGL->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pImageGL->release();
-        return static_cast<cl_mem>(0);
-    }
+    // PBO and mapping will be done at "acquire" time (sync point)
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<Memory>(pImageGL);
+  }  // Release scoped lock
+
+  target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
+
+  pImageGL = new (amdContext)
+      ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
+              static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
+              texture, miplevel, glInternalFormat, clGLType, numSamples, target);
+
+  if (!pImageGL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("Cannot create class ImageGL - out of memory?");
+    return static_cast<cl_mem>(0);
+  }
+
+  if (!pImageGL->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pImageGL->release();
+    return static_cast<cl_mem>(0);
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<Memory>(pImageGL);
 }
 
 //
 //      clCreateFromGLRenderbufferDAMD
 //
-cl_mem
-clCreateFromGLRenderbufferAMD(
-    Context&        amdContext,
-    cl_mem_flags    clFlags,
-    GLuint          renderbuffer,
-    int*            errcode_ret)
-{
-    ImageGL* pImageGL = NULL;
-    GLenum glErr;
+cl_mem clCreateFromGLRenderbufferAMD(Context& amdContext, cl_mem_flags clFlags, GLuint renderbuffer,
+                                     int* errcode_ret) {
+  ImageGL* pImageGL = NULL;
+  GLenum glErr;
 
-    GLenum glTarget = GL_RENDERBUFFER;
-    GLenum glInternalFormat;
-    cl_image_format clImageFormat;
+  GLenum glTarget = GL_RENDERBUFFER;
+  GLenum glInternalFormat;
+  cl_image_format clImageFormat;
 
-    // Verify context init'ed for interop
-    if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("\"amdContext\" is not created from GL context or share list");
-        return (cl_mem) 0;
+  // Verify context init'ed for interop
+  if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("\"amdContext\" is not created from GL context or share list");
+    return (cl_mem)0;
+  }
+
+  GLint gliRbWidth;
+  GLint gliRbHeight;
+
+  // Add this scope to bound the scoped lock
+  {
+    GLFunctions::SetIntEnv ie(amdContext.glenv());
+    if (!ie.isValid()) {
+      *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+      LogWarning("\"amdContext\" is not created from GL context or share list");
+      return as_cl<Memory>(0);
     }
 
-    GLint gliRbWidth;
-    GLint gliRbHeight;
-
-    // Add this scope to bound the scoped lock
-    {
-        GLFunctions::SetIntEnv ie(amdContext.glenv());
-        if (!ie.isValid()) {
-            *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-            LogWarning("\"amdContext\" is not created from GL context or share list");
-            return as_cl<Memory>(0);
-        }
-
-        // Verify GL renderbuffer object
-        clearGLErrors(amdContext);
-        if ((GL_FALSE == amdContext.glenv()->glIsRenderbufferEXT_(renderbuffer))
-            || (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("\"renderbuffer\" is not a GL texture object");
-            return (cl_mem) 0;
-        }
-
-        amdContext.glenv()->glBindRenderbuffer_(glTarget, renderbuffer);
-
-        // Get GL RB format and check if it's compatible with CL format
-        clearGLErrors(amdContext);
-        amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_INTERNAL_FORMAT,
-            (GLint*) &glInternalFormat);
-        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-            LogWarning("Cannot get internal format of GL \"renderbuffer\" object");
-            return (cl_mem) 0;
-        }
-
-        // Now get CL format from GL format and bytes per pixel
-        int iBytesPerPixel = 0;
-        if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel, clFlags)) {
-            *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-            LogWarning("\"renderbuffer\" format does not map to an appropriate CL image format");
-            return (cl_mem) 0;
-        }
-
-        // Check if size is available - data store is created
-        clearGLErrors(amdContext);
-        amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_WIDTH,
-            &gliRbWidth);
-        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("Cannot get the width of GL \"renderbuffer\"");
-            return (cl_mem) 0;
-        }
-        if (gliRbWidth == 0) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("The GL \"renderbuffer\" data store is not created");
-            return (cl_mem) 0;
-        }
-        clearGLErrors(amdContext);
-        amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_HEIGHT,
-            &gliRbHeight);
-        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("Cannot get the height of GL \"renderbuffer\"");
-            return (cl_mem) 0;
-        }
-        if (gliRbHeight == 0) {
-            *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-            LogWarning("The GL \"renderbuffer\" data store is not created");
-            return (cl_mem) 0;
-        }
-
-        // PBO and mapping will be done at "acquire" time (sync point)
-
-    } // Release scoped lock
-
-    pImageGL = new(amdContext)
-        ImageGL(amdContext, CL_MEM_OBJECT_IMAGE2D, clFlags, clImageFormat,
-            (size_t) gliRbWidth, (size_t) gliRbHeight, 1,
-            glTarget, renderbuffer, 0, glInternalFormat, CL_GL_OBJECT_RENDERBUFFER, 0);
-
-    if (!pImageGL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("Cannot create class ImageGL from renderbuffer - out of memory?");
-        return (cl_mem) 0;
+    // Verify GL renderbuffer object
+    clearGLErrors(amdContext);
+    if ((GL_FALSE == amdContext.glenv()->glIsRenderbufferEXT_(renderbuffer)) ||
+        (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("\"renderbuffer\" is not a GL texture object");
+      return (cl_mem)0;
     }
 
-    if (!pImageGL->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pImageGL->release();
-        return (cl_mem) 0;
+    amdContext.glenv()->glBindRenderbuffer_(glTarget, renderbuffer);
+
+    // Get GL RB format and check if it's compatible with CL format
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_INTERNAL_FORMAT,
+                                                         (GLint*)&glInternalFormat);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+      LogWarning("Cannot get internal format of GL \"renderbuffer\" object");
+      return (cl_mem)0;
     }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<Memory>(pImageGL);
+    // Now get CL format from GL format and bytes per pixel
+    int iBytesPerPixel = 0;
+    if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+                           clFlags)) {
+      *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+      LogWarning("\"renderbuffer\" format does not map to an appropriate CL image format");
+      return (cl_mem)0;
+    }
+
+    // Check if size is available - data store is created
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_WIDTH,
+                                                         &gliRbWidth);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("Cannot get the width of GL \"renderbuffer\"");
+      return (cl_mem)0;
+    }
+    if (gliRbWidth == 0) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("The GL \"renderbuffer\" data store is not created");
+      return (cl_mem)0;
+    }
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetRenderbufferParameterivEXT_(glTarget, GL_RENDERBUFFER_HEIGHT,
+                                                         &gliRbHeight);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("Cannot get the height of GL \"renderbuffer\"");
+      return (cl_mem)0;
+    }
+    if (gliRbHeight == 0) {
+      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+      LogWarning("The GL \"renderbuffer\" data store is not created");
+      return (cl_mem)0;
+    }
+
+    // PBO and mapping will be done at "acquire" time (sync point)
+
+  }  // Release scoped lock
+
+  pImageGL =
+      new (amdContext) ImageGL(amdContext, CL_MEM_OBJECT_IMAGE2D, clFlags, clImageFormat,
+                               (size_t)gliRbWidth, (size_t)gliRbHeight, 1, glTarget, renderbuffer,
+                               0, glInternalFormat, CL_GL_OBJECT_RENDERBUFFER, 0);
+
+  if (!pImageGL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("Cannot create class ImageGL from renderbuffer - out of memory?");
+    return (cl_mem)0;
+  }
+
+  if (!pImageGL->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pImageGL->release();
+    return (cl_mem)0;
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<Memory>(pImageGL);
 }
 
 //
 //      clEnqueueAcquireExtObjectsAMD
 //
 
-static cl_int
-clSetInteropObjects(cl_uint num_objects,
-    const cl_mem* mem_objects,
-    std::vector<amd::Memory*>& interopObjects)
-{
-    if ((num_objects == 0 && mem_objects != NULL)
-            || (num_objects != 0 && mem_objects == NULL)) {
-        return CL_INVALID_VALUE;
+static cl_int clSetInteropObjects(cl_uint num_objects, const cl_mem* mem_objects,
+                                  std::vector<amd::Memory*>& interopObjects) {
+  if ((num_objects == 0 && mem_objects != NULL) || (num_objects != 0 && mem_objects == NULL)) {
+    return CL_INVALID_VALUE;
+  }
+
+  while (num_objects-- > 0) {
+    cl_mem obj = *mem_objects++;
+    if (!is_valid(obj)) {
+      return CL_INVALID_MEM_OBJECT;
     }
 
-    while (num_objects-- > 0) {
-
-        cl_mem obj = *mem_objects++;
-        if (!is_valid(obj)) {
-            return CL_INVALID_MEM_OBJECT;
-        }
-
-        amd::Memory* mem = as_amd(obj);
-        if (mem->getInteropObj() == NULL) {
-            return CL_INVALID_GL_OBJECT;
-        }
-
-        interopObjects.push_back(mem);
+    amd::Memory* mem = as_amd(obj);
+    if (mem->getInteropObj() == NULL) {
+      return CL_INVALID_GL_OBJECT;
     }
-    return CL_SUCCESS;
+
+    interopObjects.push_back(mem);
+  }
+  return CL_SUCCESS;
 }
 
-cl_int
-clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue,
-    cl_uint num_objects, const cl_mem* mem_objects,
-    cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
-    cl_event* event, cl_command_type cmd_type)
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+cl_int clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue, cl_uint num_objects,
+                                     const cl_mem* mem_objects, cl_uint num_events_in_wait_list,
+                                     const cl_event* event_wait_list, cl_event* event,
+                                     cl_command_type cmd_type) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    if (cmd_type == CL_COMMAND_ACQUIRE_GL_OBJECTS) {
-        // Verify context init'ed for interop
-        if (!hostQueue.context().glenv() || !hostQueue.context().glenv()->isAssociated()) {
-            LogWarning("\"amdContext\" is not created from GL context or share list");
-            return CL_INVALID_CONTEXT;
-        }
+  if (cmd_type == CL_COMMAND_ACQUIRE_GL_OBJECTS) {
+    // Verify context init'ed for interop
+    if (!hostQueue.context().glenv() || !hostQueue.context().glenv()->isAssociated()) {
+      LogWarning("\"amdContext\" is not created from GL context or share list");
+      return CL_INVALID_CONTEXT;
     }
+  }
 
-    std::vector<amd::Memory*> memObjects;
-    cl_int err = clSetInteropObjects(num_objects, mem_objects, memObjects);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  std::vector<amd::Memory*> memObjects;
+  cl_int err = clSetInteropObjects(num_objects, mem_objects, memObjects);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
 #ifdef _WIN32
-    if ((hostQueue.context().info().flags_ & amd::Context::InteropUserSync) == 0)
-    {
-        //! Make sure D3D10 queues are flushed and all commands are finished
-        //! before CL side would access interop objects
-        if (cmd_type == CL_COMMAND_ACQUIRE_D3D10_OBJECTS_KHR) {
-            SyncD3D10Objects(memObjects);
-        }
-        //! Make sure D3D11 queues are flushed and all commands are finished
-        //! before CL side would access interop objects
-        if (cmd_type == CL_COMMAND_ACQUIRE_D3D11_OBJECTS_KHR) {
-            SyncD3D11Objects(memObjects);
-        }
-        //! Make sure D3D9 queues are flushed and all commands are finished
-        //! before CL side would access interop objects
-        if (cmd_type == CL_COMMAND_ACQUIRE_DX9_MEDIA_SURFACES_KHR) {
-            SyncD3D9Objects(memObjects);
-        }
+  if ((hostQueue.context().info().flags_ & amd::Context::InteropUserSync) == 0) {
+    //! Make sure D3D10 queues are flushed and all commands are finished
+    //! before CL side would access interop objects
+    if (cmd_type == CL_COMMAND_ACQUIRE_D3D10_OBJECTS_KHR) {
+      SyncD3D10Objects(memObjects);
     }
-#endif //_WIN32
-
-    //! Now create command and enqueue
-    amd::AcquireExtObjectsCommand* command = new amd::AcquireExtObjectsCommand(
-        hostQueue, eventWaitList, num_objects, memObjects, cmd_type);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
+    //! Make sure D3D11 queues are flushed and all commands are finished
+    //! before CL side would access interop objects
+    if (cmd_type == CL_COMMAND_ACQUIRE_D3D11_OBJECTS_KHR) {
+      SyncD3D11Objects(memObjects);
     }
-
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    //! Make sure D3D9 queues are flushed and all commands are finished
+    //! before CL side would access interop objects
+    if (cmd_type == CL_COMMAND_ACQUIRE_DX9_MEDIA_SURFACES_KHR) {
+      SyncD3D9Objects(memObjects);
     }
+  }
+#endif  //_WIN32
 
-    command->enqueue();
+  //! Now create command and enqueue
+  amd::AcquireExtObjectsCommand* command = new amd::AcquireExtObjectsCommand(
+      hostQueue, eventWaitList, num_objects, memObjects, cmd_type);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
+
+  command->enqueue();
+
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 
 
 //
 //      clEnqueueReleaseExtObjectsAMD
 //
-cl_int
-clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue,
-    cl_uint num_objects, const cl_mem* mem_objects,
-    cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
-    cl_event* event, cl_command_type cmd_type)
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue, cl_uint num_objects,
+                                     const cl_mem* mem_objects, cl_uint num_events_in_wait_list,
+                                     const cl_event* event_wait_list, cl_event* event,
+                                     cl_command_type cmd_type) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    std::vector<amd::Memory*> memObjects;
-    cl_int err = clSetInteropObjects(num_objects, mem_objects, memObjects);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  std::vector<amd::Memory*> memObjects;
+  cl_int err = clSetInteropObjects(num_objects, mem_objects, memObjects);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    //! Now create command and enqueue
-    amd::ReleaseExtObjectsCommand* command = new amd::ReleaseExtObjectsCommand(
-        hostQueue, eventWaitList, num_objects, memObjects, cmd_type);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  //! Now create command and enqueue
+  amd::ReleaseExtObjectsCommand* command = new amd::ReleaseExtObjectsCommand(
+      hostQueue, eventWaitList, num_objects, memObjects, cmd_type);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    // Make sure we have memory for the command execution
-    if (!command->validateMemory()) {
-        delete command;
-        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    }
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
 #ifdef _WIN32
-    if ((hostQueue.context().info().flags_ & amd::Context::InteropUserSync) == 0)
-    {
-        //! Make sure CL command queue is flushed and all commands are finished
-        //! before D3D10 side would access interop resources
-        if (cmd_type == CL_COMMAND_RELEASE_DX9_MEDIA_SURFACES_KHR ||
-            cmd_type == CL_COMMAND_RELEASE_D3D10_OBJECTS_KHR ||
-            cmd_type == CL_COMMAND_RELEASE_D3D11_OBJECTS_KHR) {
-            command->awaitCompletion();
-        }
+  if ((hostQueue.context().info().flags_ & amd::Context::InteropUserSync) == 0) {
+    //! Make sure CL command queue is flushed and all commands are finished
+    //! before D3D10 side would access interop resources
+    if (cmd_type == CL_COMMAND_RELEASE_DX9_MEDIA_SURFACES_KHR ||
+        cmd_type == CL_COMMAND_RELEASE_D3D10_OBJECTS_KHR ||
+        cmd_type == CL_COMMAND_RELEASE_D3D11_OBJECTS_KHR) {
+      command->awaitCompletion();
     }
-#endif //_WIN32
+  }
+#endif  //_WIN32
 
-    *not_null(event) = as_cl(&command->event());
+  *not_null(event) = as_cl(&command->event());
 
-    if (event == NULL) {
-        command->release();
-    }
+  if (event == NULL) {
+    command->release();
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 
 // Placed here as opposed to command.cpp, as glext.h and cl_gl_amd.hpp will have
 // to be included because of the GL calls
-bool ClGlEvent::waitForFence()
-{
-    GLenum ret;
-    // get fence id associated with fence event
-    GLsync gs = reinterpret_cast<GLsync> (command().data());
-    if (!gs) return false;
+bool ClGlEvent::waitForFence() {
+  GLenum ret;
+  // get fence id associated with fence event
+  GLsync gs = reinterpret_cast<GLsync>(command().data());
+  if (!gs) return false;
 
-    // Try to use DC and GLRC of current thread, if it doesn't exist
-    // create a new GL context on this thread, which is shared with the original context
+// Try to use DC and GLRC of current thread, if it doesn't exist
+// create a new GL context on this thread, which is shared with the original context
 
 #ifdef _WIN32
-    HDC tempDC_ = wglGetCurrentDC();
-    HGLRC tempGLRC_ = wglGetCurrentContext();
-    // Set DC and GLRC
-    if (tempDC_ && tempGLRC_) {
-        ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT, static_cast<GLuint64>(-1));
-        if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-    }
-    else
-    {
-        tempDC_ = context().glenv()->getDC();
-        tempGLRC_ = context().glenv()->getIntGLRC();
-        if (!context().glenv()->init(reinterpret_cast<intptr_t>(tempDC_), reinterpret_cast<intptr_t>(tempGLRC_))) return false;
+  HDC tempDC_ = wglGetCurrentDC();
+  HGLRC tempGLRC_ = wglGetCurrentContext();
+  // Set DC and GLRC
+  if (tempDC_ && tempGLRC_) {
+    ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
+                                               static_cast<GLuint64>(-1));
+    if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
+  } else {
+    tempDC_ = context().glenv()->getDC();
+    tempGLRC_ = context().glenv()->getIntGLRC();
+    if (!context().glenv()->init(reinterpret_cast<intptr_t>(tempDC_),
+                                 reinterpret_cast<intptr_t>(tempGLRC_)))
+      return false;
 
-        // Make the newly created GL context current to this thread
-        context().glenv()->setIntEnv();
-        // If fence has not yet executed, wait till it finishes
-        ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT, static_cast<GLuint64>(-1));
-        if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-        // Since we're done making GL calls, restore whatever context was previously current to this thread
-        context().glenv()->restoreEnv();
-    }
-#else // Lnx
-    Display* tempDpy_ = context().glenv()->glXGetCurrentDisplay_();
-    GLXDrawable tempDrawable_ = context().glenv()->glXGetCurrentDrawable_();
-    GLXContext tempCtx_ = context().glenv()->glXGetCurrentContext_();
-    // Set internal Display and GLXContext
-    if (tempDpy_ && tempCtx_) {
-            ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT, static_cast<GLuint64>(-1));
-            if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-    }
-    else {
-        if (!context().glenv()->init(reinterpret_cast<intptr_t>(context().glenv()->getIntDpy()),
-            reinterpret_cast<intptr_t>(context().glenv()->getIntCtx()))) return false;
+    // Make the newly created GL context current to this thread
+    context().glenv()->setIntEnv();
+    // If fence has not yet executed, wait till it finishes
+    ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
+                                               static_cast<GLuint64>(-1));
+    if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
+    // Since we're done making GL calls, restore whatever context was previously current to this
+    // thread
+    context().glenv()->restoreEnv();
+  }
+#else  // Lnx
+  Display* tempDpy_ = context().glenv()->glXGetCurrentDisplay_();
+  GLXDrawable tempDrawable_ = context().glenv()->glXGetCurrentDrawable_();
+  GLXContext tempCtx_ = context().glenv()->glXGetCurrentContext_();
+  // Set internal Display and GLXContext
+  if (tempDpy_ && tempCtx_) {
+    ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
+                                               static_cast<GLuint64>(-1));
+    if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
+  } else {
+    if (!context().glenv()->init(reinterpret_cast<intptr_t>(context().glenv()->getIntDpy()),
+                                 reinterpret_cast<intptr_t>(context().glenv()->getIntCtx())))
+      return false;
 
-        // Make the newly created GL context current to this thread
-        context().glenv()->setIntEnv();
-        // If fence has not yet executed, wait till it finishes
-        ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT, static_cast<GLuint64>(-1));
-        if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-        // Since we're done making GL calls, restore whatever context was previously current to this thread
-        context().glenv()->restoreEnv();
-    }
+    // Make the newly created GL context current to this thread
+    context().glenv()->setIntEnv();
+    // If fence has not yet executed, wait till it finishes
+    ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
+                                               static_cast<GLuint64>(-1));
+    if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
+    // Since we're done making GL calls, restore whatever context was previously current to this
+    // thread
+    context().glenv()->restoreEnv();
+  }
 #endif
-    // If we reach this point, fence should have completed
-    setStatus(CL_COMPLETE);
-    return true;
+  // If we reach this point, fence should have completed
+  setStatus(CL_COMPLETE);
+  return true;
 }
 
 //
@@ -2384,301 +2278,281 @@ bool ClGlEvent::waitForFence()
 
 #ifdef _WIN32
 #define CONVERT_CHAR_GLUBYTE
-#else //!_WIN32
-#define CONVERT_CHAR_GLUBYTE    (GLubyte*)
-#endif //!_WIN32
+#else  //!_WIN32
+#define CONVERT_CHAR_GLUBYTE (GLubyte*)
+#endif  //!_WIN32
 
-#define GLPREFIX(rtype, fcn, dclargs)   \
-    if (!(fcn##_ = (PFN_##fcn) GETPROCADDRESS(   \
-                                libHandle_, #fcn))) {  \
-        if (!(fcn##_ = (PFN_##fcn) GetProcAddress_(  \
-            reinterpret_cast<FCN_STR_TYPE>(#fcn)))) ++missed_;  \
-    }
+#define GLPREFIX(rtype, fcn, dclargs)                                                              \
+  if (!(fcn##_ = (PFN_##fcn)GETPROCADDRESS(libHandle_, #fcn))) {                                   \
+    if (!(fcn##_ = (PFN_##fcn)GetProcAddress_(reinterpret_cast<FCN_STR_TYPE>(#fcn)))) ++missed_;   \
+  }
 
-GLFunctions::SetIntEnv::SetIntEnv(GLFunctions* env)
-    : env_(env)
-{
-    env_->getLock().lock();
+GLFunctions::SetIntEnv::SetIntEnv(GLFunctions* env) : env_(env) {
+  env_->getLock().lock();
 
-    // Set environment (DC and GLRC)
-    isValid_ = env_->setIntEnv();
-
+  // Set environment (DC and GLRC)
+  isValid_ = env_->setIntEnv();
 }
 
-GLFunctions::SetIntEnv::~SetIntEnv()
-{
-    // Restore environment (CL DC and CL GLRC)
-    env_->restoreEnv();
+GLFunctions::SetIntEnv::~SetIntEnv() {
+  // Restore environment (CL DC and CL GLRC)
+  env_->restoreEnv();
 
-    env_->getLock().unlock();
+  env_->getLock().unlock();
 }
 
-GLFunctions::GLFunctions(HMODULE h, bool isEGL) :
-    libHandle_(h),
-    missed_(0),
-    eglDisplay_(EGL_NO_DISPLAY),
-    eglOriginalContext_(EGL_NO_CONTEXT),
-    eglInternalContext_(EGL_NO_CONTEXT),
-    eglTempContext_(EGL_NO_CONTEXT),
-    isEGL_(isEGL),
+GLFunctions::GLFunctions(HMODULE h, bool isEGL)
+    : libHandle_(h),
+      missed_(0),
+      eglDisplay_(EGL_NO_DISPLAY),
+      eglOriginalContext_(EGL_NO_CONTEXT),
+      eglInternalContext_(EGL_NO_CONTEXT),
+      eglTempContext_(EGL_NO_CONTEXT),
+      isEGL_(isEGL),
 #ifdef _WIN32
-    hOrigGLRC_(0),
-    hDC_(0),
-    hIntGLRC_(0)
-#else //!_WIN32
-    Dpy_(0),
-    Drawable_(0),
-    origCtx_(0),
-    intDpy_(0),
-    intDrawable_(0),
-    intCtx_(0),
-    XOpenDisplay_(NULL),
-    XCloseDisplay_(NULL),
-    glXGetCurrentDrawable_(NULL),
-    glXGetCurrentDisplay_(NULL),
-    glXGetCurrentContext_(NULL),
-    glXChooseVisual_(NULL),
-    glXCreateContext_(NULL),
-    glXDestroyContext_(NULL),
-    glXMakeCurrent_(NULL)
-#endif //!_WIN32
+      hOrigGLRC_(0),
+      hDC_(0),
+      hIntGLRC_(0)
+#else   //!_WIN32
+      Dpy_(0),
+      Drawable_(0),
+      origCtx_(0),
+      intDpy_(0),
+      intDrawable_(0),
+      intCtx_(0),
+      XOpenDisplay_(NULL),
+      XCloseDisplay_(NULL),
+      glXGetCurrentDrawable_(NULL),
+      glXGetCurrentDisplay_(NULL),
+      glXGetCurrentContext_(NULL),
+      glXChooseVisual_(NULL),
+      glXCreateContext_(NULL),
+      glXDestroyContext_(NULL),
+      glXMakeCurrent_(NULL)
+#endif  //!_WIN32
 {
-#define VERIFY_POINTER(p) if (NULL == p) {missed_++;}
+#define VERIFY_POINTER(p)                                                                          \
+  if (NULL == p) {                                                                                 \
+    missed_++;                                                                                     \
+  }
 
-    if (isEGL_)
-    {
-        GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, "eglGetProcAddress");
-    }
-    else {
-        GetProcAddress_ = (PFN_xxxGetProcAddress) GETPROCADDRESS(h, API_GETPROCADDR);
-    }
+  if (isEGL_) {
+    GetProcAddress_ = (PFN_xxxGetProcAddress)GETPROCADDRESS(h, "eglGetProcAddress");
+  } else {
+    GetProcAddress_ = (PFN_xxxGetProcAddress)GETPROCADDRESS(h, API_GETPROCADDR);
+  }
 #ifndef _WIN32
-    // Initialize pointers to X11/GLX functions
-    // We can not link with these functions on compile time since we need to support
-    // console mode. In console mode X server and X server components may be absent.
-    // Hence linking with X11 or libGL will fail module image loading in console mode.-tzachi cohen
+  // Initialize pointers to X11/GLX functions
+  // We can not link with these functions on compile time since we need to support
+  // console mode. In console mode X server and X server components may be absent.
+  // Hence linking with X11 or libGL will fail module image loading in console mode.-tzachi cohen
 
-    if (!isEGL_) {
-        glXGetCurrentDrawable_ = (PFNglXGetCurrentDrawable)GETPROCADDRESS(h,"glXGetCurrentDrawable");
-        VERIFY_POINTER(glXGetCurrentDrawable_)
-        glXGetCurrentDisplay_ = (PFNglXGetCurrentDisplay)GETPROCADDRESS(h,"glXGetCurrentDisplay");
-        VERIFY_POINTER(glXGetCurrentDisplay_)
-        glXGetCurrentContext_ = (PFNglXGetCurrentContext) GETPROCADDRESS(h,"glXGetCurrentContext");
-        VERIFY_POINTER(glXGetCurrentContext_)
-        glXChooseVisual_ = (PFNglXChooseVisual)GETPROCADDRESS(h,"glXChooseVisual");
-        VERIFY_POINTER(glXChooseVisual_)
-        glXCreateContext_ = (PFNglXCreateContext)GETPROCADDRESS(h,"glXCreateContext");
-        VERIFY_POINTER(glXCreateContext_)
-        glXDestroyContext_ = (PFNglXDestroyContext) GETPROCADDRESS(h,"glXDestroyContext");
-        VERIFY_POINTER(glXDestroyContext_)
-        glXMakeCurrent_ = (PFNglXMakeCurrent) GETPROCADDRESS(h,"glXMakeCurrent");
-        VERIFY_POINTER(glXMakeCurrent_)
+  if (!isEGL_) {
+    glXGetCurrentDrawable_ = (PFNglXGetCurrentDrawable)GETPROCADDRESS(h, "glXGetCurrentDrawable");
+    VERIFY_POINTER(glXGetCurrentDrawable_)
+    glXGetCurrentDisplay_ = (PFNglXGetCurrentDisplay)GETPROCADDRESS(h, "glXGetCurrentDisplay");
+    VERIFY_POINTER(glXGetCurrentDisplay_)
+    glXGetCurrentContext_ = (PFNglXGetCurrentContext)GETPROCADDRESS(h, "glXGetCurrentContext");
+    VERIFY_POINTER(glXGetCurrentContext_)
+    glXChooseVisual_ = (PFNglXChooseVisual)GETPROCADDRESS(h, "glXChooseVisual");
+    VERIFY_POINTER(glXChooseVisual_)
+    glXCreateContext_ = (PFNglXCreateContext)GETPROCADDRESS(h, "glXCreateContext");
+    VERIFY_POINTER(glXCreateContext_)
+    glXDestroyContext_ = (PFNglXDestroyContext)GETPROCADDRESS(h, "glXDestroyContext");
+    VERIFY_POINTER(glXDestroyContext_)
+    glXMakeCurrent_ = (PFNglXMakeCurrent)GETPROCADDRESS(h, "glXMakeCurrent");
+    VERIFY_POINTER(glXMakeCurrent_)
 
-        HMODULE hXModule = (HMODULE) Os::loadLibrary("libX11.so.6");
-        if (NULL != hXModule) {
-                XOpenDisplay_ = (PFNXOpenDisplay)GETPROCADDRESS(hXModule,"XOpenDisplay");
-                VERIFY_POINTER(XOpenDisplay_)
-                XCloseDisplay_= (PFNXCloseDisplay)GETPROCADDRESS(hXModule,"XCloseDisplay");
-                VERIFY_POINTER(XCloseDisplay_)
-        }
-        else {
-            missed_ += 2;
-        }
+    HMODULE hXModule = (HMODULE)Os::loadLibrary("libX11.so.6");
+    if (NULL != hXModule) {
+      XOpenDisplay_ = (PFNXOpenDisplay)GETPROCADDRESS(hXModule, "XOpenDisplay");
+      VERIFY_POINTER(XOpenDisplay_)
+      XCloseDisplay_ = (PFNXCloseDisplay)GETPROCADDRESS(hXModule, "XCloseDisplay");
+      VERIFY_POINTER(XCloseDisplay_)
+    } else {
+      missed_ += 2;
     }
-    // Initialize pointers to GL functions
-    #include "gl_functions.hpp"
+  }
+// Initialize pointers to GL functions
+#include "gl_functions.hpp"
 #else
-    if (!isEGL_) {
-        wglCreateContext_ = (PFN_wglCreateContext)GETPROCADDRESS(h,"wglCreateContext");
-        VERIFY_POINTER(wglCreateContext_)
-        wglGetCurrentContext_ = (PFN_wglGetCurrentContext)GETPROCADDRESS(h,"wglGetCurrentContext");
-        VERIFY_POINTER(wglGetCurrentContext_)
-        wglGetCurrentDC_ = (PFN_wglGetCurrentDC)GETPROCADDRESS(h,"wglGetCurrentDC");
-        VERIFY_POINTER(wglGetCurrentDC_)
-        wglDeleteContext_ = (PFN_wglDeleteContext)GETPROCADDRESS(h,"wglDeleteContext");
-        VERIFY_POINTER(wglDeleteContext_)
-        wglMakeCurrent_ = (PFN_wglMakeCurrent)GETPROCADDRESS(h,"wglMakeCurrent");
-        VERIFY_POINTER(wglMakeCurrent_)
-        wglShareLists_ = (PFN_wglShareLists)GETPROCADDRESS(h,"wglShareLists");
-        VERIFY_POINTER(wglShareLists_)
-    }
+  if (!isEGL_) {
+    wglCreateContext_ = (PFN_wglCreateContext)GETPROCADDRESS(h, "wglCreateContext");
+    VERIFY_POINTER(wglCreateContext_)
+    wglGetCurrentContext_ = (PFN_wglGetCurrentContext)GETPROCADDRESS(h, "wglGetCurrentContext");
+    VERIFY_POINTER(wglGetCurrentContext_)
+    wglGetCurrentDC_ = (PFN_wglGetCurrentDC)GETPROCADDRESS(h, "wglGetCurrentDC");
+    VERIFY_POINTER(wglGetCurrentDC_)
+    wglDeleteContext_ = (PFN_wglDeleteContext)GETPROCADDRESS(h, "wglDeleteContext");
+    VERIFY_POINTER(wglDeleteContext_)
+    wglMakeCurrent_ = (PFN_wglMakeCurrent)GETPROCADDRESS(h, "wglMakeCurrent");
+    VERIFY_POINTER(wglMakeCurrent_)
+    wglShareLists_ = (PFN_wglShareLists)GETPROCADDRESS(h, "wglShareLists");
+    VERIFY_POINTER(wglShareLists_)
+  }
 #endif
 }
 
-GLFunctions::~GLFunctions()
-{
+GLFunctions::~GLFunctions() {
 #ifdef _WIN32
-    if (hIntGLRC_) {
-        if (!wglDeleteContext_(hIntGLRC_)) {
-            DWORD dwErr = GetLastError();
-            LogWarning("Cannot delete GLRC");
-        }
+  if (hIntGLRC_) {
+    if (!wglDeleteContext_(hIntGLRC_)) {
+      DWORD dwErr = GetLastError();
+      LogWarning("Cannot delete GLRC");
     }
-#else //!_WIN32
-    if (intDpy_) {
-        if (intCtx_) {
-            glXDestroyContext_(intDpy_, intCtx_);
-            intCtx_ = NULL;
-        }
-        XCloseDisplay_(intDpy_);
-        intDpy_ = NULL;
+  }
+#else   //!_WIN32
+  if (intDpy_) {
+    if (intCtx_) {
+      glXDestroyContext_(intDpy_, intCtx_);
+      intCtx_ = NULL;
     }
-#endif //!_WIN32
+    XCloseDisplay_(intDpy_);
+    intDpy_ = NULL;
+  }
+#endif  //!_WIN32
 }
 
-bool
-GLFunctions::init(intptr_t hdc, intptr_t hglrc)
-{
-    if (isEGL_) {
-        eglDisplay_ = (EGLDisplay)hdc;
-        eglOriginalContext_ = (EGLContext)hglrc;
-        return true;
-    }
+bool GLFunctions::init(intptr_t hdc, intptr_t hglrc) {
+  if (isEGL_) {
+    eglDisplay_ = (EGLDisplay)hdc;
+    eglOriginalContext_ = (EGLContext)hglrc;
+    return true;
+  }
 
 #ifdef _WIN32
-    DWORD err;
+  DWORD err;
 
-    if (missed_) {
-        return false;
-    }
-
-    if (!hdc) {
-        hDC_ = wglGetCurrentDC_();
-    }
-    else
-    {
-        hDC_ = (HDC) hdc;
-    }
-    hOrigGLRC_ = (HGLRC) hglrc;
-    if (!(hIntGLRC_ = wglCreateContext_(hDC_))) {
-        err = GetLastError();
-        return false;
-    }
-    if (!wglShareLists_(hOrigGLRC_, hIntGLRC_)) {
-        err = GetLastError();
-        return false;
-    }
-
-    bool makeCurrentNull = false;
-
-    if (wglGetCurrentContext_() == NULL) {
-        wglMakeCurrent_(hDC_, hIntGLRC_);
-
-        makeCurrentNull = true;
-    }
-
-    // Initialize pointers to GL functions
-    #include "gl_functions.hpp"
-
-    if (makeCurrentNull) {
-        wglMakeCurrent_(NULL, NULL);
-    }
-
-    if (missed_ == 0) {
-        return true;
-    }
-#else //!_WIN32
-    if (!missed_) {
-        if (!hdc) {
-            Dpy_ = glXGetCurrentDisplay_();
-        }
-        else {
-            Dpy_ = (Display*) hdc;
-        }
-        Drawable_ = glXGetCurrentDrawable_();
-        origCtx_ = (GLXContext) hglrc;
-
-        int attribList[] = {
-            GLX_RGBA,
-            None};
-        if (!(intDpy_ = XOpenDisplay_(DisplayString(Dpy_)))) {
-#if defined(ATI_ARCH_X86)
-            asm("int $3");
-#endif
-        }
-        intDrawable_ = DefaultRootWindow(intDpy_);
-
-        XVisualInfo* vis;
-        int defaultScreen =  DefaultScreen(intDpy_);
-        if (!(vis = glXChooseVisual_(intDpy_, defaultScreen , attribList))) {
-            return false;
-        }
-        if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
-            return false;
-        }
-        return true;
-    }
-#endif //!_WIN32
+  if (missed_) {
     return false;
-}
+  }
 
-bool
-GLFunctions::setIntEnv()
-{
-    if (isEGL_) {
-        return true;
-    }
-#ifdef _WIN32
-    // Save current DC and GLRC
-    tempDC_ = wglGetCurrentDC_();
-    tempGLRC_ = wglGetCurrentContext_();
-    // Set internal DC and GLRC
-    if (tempDC_ != getDC() || tempGLRC_ != getIntGLRC()) {
-        if (!wglMakeCurrent_(getDC(), getIntGLRC())) {
-            DWORD err = GetLastError();
-            LogWarning("cannot set internal GL environment");
-            return false;
-        }
-    }
-#else //!_WIN32
-    tempDpy_ = glXGetCurrentDisplay_();
-    tempDrawable_ = glXGetCurrentDrawable_();
-    tempCtx_ = glXGetCurrentContext_();
-    // Set internal Display and GLXContext
-    if (tempDpy_ != getDpy() || tempCtx_ != getIntCtx()) {
-        if (!glXMakeCurrent_(
-            getIntDpy(), getIntDrawable(), getIntCtx())) {
-            LogWarning("cannot set internal GL environment");
-            return false;
-        }
-    }
-#endif //!_WIN32
+  if (!hdc) {
+    hDC_ = wglGetCurrentDC_();
+  } else {
+    hDC_ = (HDC)hdc;
+  }
+  hOrigGLRC_ = (HGLRC)hglrc;
+  if (!(hIntGLRC_ = wglCreateContext_(hDC_))) {
+    err = GetLastError();
+    return false;
+  }
+  if (!wglShareLists_(hOrigGLRC_, hIntGLRC_)) {
+    err = GetLastError();
+    return false;
+  }
 
+  bool makeCurrentNull = false;
+
+  if (wglGetCurrentContext_() == NULL) {
+    wglMakeCurrent_(hDC_, hIntGLRC_);
+
+    makeCurrentNull = true;
+  }
+
+// Initialize pointers to GL functions
+#include "gl_functions.hpp"
+
+  if (makeCurrentNull) {
+    wglMakeCurrent_(NULL, NULL);
+  }
+
+  if (missed_ == 0) {
     return true;
-}
+  }
+#else  //!_WIN32
+  if (!missed_) {
+    if (!hdc) {
+      Dpy_ = glXGetCurrentDisplay_();
+    } else {
+      Dpy_ = (Display*)hdc;
+    }
+    Drawable_ = glXGetCurrentDrawable_();
+    origCtx_ = (GLXContext)hglrc;
 
-bool
-GLFunctions::restoreEnv()
-{
-    if (isEGL_) {
-        // eglMakeCurrent( );
-        return true;
+    int attribList[] = {GLX_RGBA, None};
+    if (!(intDpy_ = XOpenDisplay_(DisplayString(Dpy_)))) {
+#if defined(ATI_ARCH_X86)
+      asm("int $3");
+#endif
     }
-#ifdef _WIN32
-    // Restore original DC and GLRC
-    if (!wglMakeCurrent_(tempDC_, tempGLRC_)) {
-        DWORD err = GetLastError();
-        LogWarning("cannot restore original GL environment");
-        return false;
-    }
-#else //!_WIN32
-    // Restore Display and GLXContext
-    if (tempDpy_) {
-        if (!glXMakeCurrent_(tempDpy_, tempDrawable_, tempCtx_)) {
-            LogWarning("cannot restore original GL environment");
-            return false;
-        }
-    }
-    else {
-        // Just release internal context
-        if (!glXMakeCurrent_(getIntDpy(), None, NULL)) {
-            LogWarning("cannot reelase internal GL environment");
-            return false;
-        }
-    }
-#endif //!_WIN32
+    intDrawable_ = DefaultRootWindow(intDpy_);
 
+    XVisualInfo* vis;
+    int defaultScreen = DefaultScreen(intDpy_);
+    if (!(vis = glXChooseVisual_(intDpy_, defaultScreen, attribList))) {
+      return false;
+    }
+    if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
+      return false;
+    }
     return true;
+  }
+#endif  //!_WIN32
+  return false;
 }
 
-}   //namespace amd
+bool GLFunctions::setIntEnv() {
+  if (isEGL_) {
+    return true;
+  }
+#ifdef _WIN32
+  // Save current DC and GLRC
+  tempDC_ = wglGetCurrentDC_();
+  tempGLRC_ = wglGetCurrentContext_();
+  // Set internal DC and GLRC
+  if (tempDC_ != getDC() || tempGLRC_ != getIntGLRC()) {
+    if (!wglMakeCurrent_(getDC(), getIntGLRC())) {
+      DWORD err = GetLastError();
+      LogWarning("cannot set internal GL environment");
+      return false;
+    }
+  }
+#else   //!_WIN32
+  tempDpy_ = glXGetCurrentDisplay_();
+  tempDrawable_ = glXGetCurrentDrawable_();
+  tempCtx_ = glXGetCurrentContext_();
+  // Set internal Display and GLXContext
+  if (tempDpy_ != getDpy() || tempCtx_ != getIntCtx()) {
+    if (!glXMakeCurrent_(getIntDpy(), getIntDrawable(), getIntCtx())) {
+      LogWarning("cannot set internal GL environment");
+      return false;
+    }
+  }
+#endif  //!_WIN32
+
+  return true;
+}
+
+bool GLFunctions::restoreEnv() {
+  if (isEGL_) {
+    // eglMakeCurrent( );
+    return true;
+  }
+#ifdef _WIN32
+  // Restore original DC and GLRC
+  if (!wglMakeCurrent_(tempDC_, tempGLRC_)) {
+    DWORD err = GetLastError();
+    LogWarning("cannot restore original GL environment");
+    return false;
+  }
+#else   //!_WIN32
+  // Restore Display and GLXContext
+  if (tempDpy_) {
+    if (!glXMakeCurrent_(tempDpy_, tempDrawable_, tempCtx_)) {
+      LogWarning("cannot restore original GL environment");
+      return false;
+    }
+  } else {
+    // Just release internal context
+    if (!glXMakeCurrent_(getIntDpy(), None, NULL)) {
+      LogWarning("cannot reelase internal GL environment");
+      return false;
+    }
+  }
+#endif  //!_WIN32
+
+  return true;
+}
+
+}  // namespace amd
