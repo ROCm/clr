@@ -29,7 +29,8 @@ public:
             uint    imageDMA_: 1;               //!< Enable direct image DMA transfers
             uint    stagedXferRead_: 1;         //!< Uses a staged buffer read
             uint    stagedXferWrite_: 1;        //!< Uses a staged buffer write
-            uint    reserved_: 22;
+            uint    singleFpDenorm_: 1;         //!< Support Single FP Denorm
+            uint    reserved_: 21;
         };
         uint    value_;
     };
@@ -58,7 +59,7 @@ public:
     Settings();
 
     //! Creates settings
-    bool create(bool fullProfile);
+    bool create(bool fullProfile, int gfxipVersion);
 
 private:
     //! Disable copy constructor

@@ -1397,7 +1397,8 @@ HSAILProgram::codegenOptions(amd::option::Options* options)
     std::string optionsStr;
 
 #if !defined(WITH_LIGHTNING_COMPILER)
-    if (dev().deviceInfo().gfxipVersion_ < 900) {
+    if (dev().deviceInfo().gfxipVersion_ < 900 ||
+            !dev().settings().singleFpDenorm_) {
         optionsStr.append(" -cl-denorms-are-zero");
     }
 #endif // !defined(WITH_LIGHTNING_COMPILER)
