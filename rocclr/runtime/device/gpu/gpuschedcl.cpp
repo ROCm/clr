@@ -292,4 +292,4 @@ scheduler(
 \n
 );
 
-} // namespace gpu
+}  // namespace gpu

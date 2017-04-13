@@ -21,9 +21,9 @@
 namespace cpu {
 
 //! Maximum number of the supported samplers
-const static uint32_t MaxSamplers   = 16;
+const static uint32_t MaxSamplers = 16;
 //! Maximum number of supported read images
-const static uint32_t MaxReadImage  = 128;
+const static uint32_t MaxReadImage = 128;
 //! Maximum number of supported write images
 const static uint32_t MaxWriteImage = 64;
 //! Maximum number of supported read/write images
@@ -40,203 +40,169 @@ const static uint32_t MaxReadWriteImage = 64;
  */
 
 //! A CPU device ordinal
-class Device : public amd::Device
-{
-protected:
-    static aclCompiler* compiler_;
-public:
-    aclCompiler* compiler() const { return compiler_; }
+class Device : public amd::Device {
+ protected:
+  static aclCompiler* compiler_;
 
-public:
-    static bool init(void);
+ public:
+  aclCompiler* compiler() const { return compiler_; }
 
-    //! Shutdown CPU device
-    static void tearDown();
+ public:
+  static bool init(void);
 
-    //! Construct a new identifier
-    Device(Device* parent = NULL) : 
-        amd::Device(parent), 
-        workerThreadsAffinity_(NULL)
-    {}
+  //! Shutdown CPU device
+  static void tearDown();
 
-    virtual ~Device();
+  //! Construct a new identifier
+  Device(Device* parent = NULL) : amd::Device(parent), workerThreadsAffinity_(NULL) {}
 
-    bool create();
+  virtual ~Device();
 
-    virtual cl_int createSubDevices(
-        device::CreateSubDevicesInfo& create_info,
-        cl_uint num_entries,
-        cl_device_id* devices,
-        cl_uint* num_devices);
+  bool create();
 
-    //! Instantiate a new virtual device
-    virtual device::VirtualDevice* createVirtualDevice(
-        amd::CommandQueue* queue = NULL
-        )
-    {
-        VirtualCPU* virtualCpu = new VirtualCPU(*this);
-        if (virtualCpu != NULL && !virtualCpu->acceptingCommands()) {
-            virtualCpu->terminate();
-            delete virtualCpu;
-            virtualCpu = NULL;
-        }
-        return virtualCpu;
+  virtual cl_int createSubDevices(device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
+                                  cl_device_id* devices, cl_uint* num_devices);
+
+  //! Instantiate a new virtual device
+  virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = NULL) {
+    VirtualCPU* virtualCpu = new VirtualCPU(*this);
+    if (virtualCpu != NULL && !virtualCpu->acceptingCommands()) {
+      virtualCpu->terminate();
+      delete virtualCpu;
+      virtualCpu = NULL;
     }
+    return virtualCpu;
+  }
 
-    //! Compile the given source code.
-    virtual device::Program* createProgram(amd::option::Options* options = NULL);
+  //! Compile the given source code.
+  virtual device::Program* createProgram(amd::option::Options* options = NULL);
 
-    //! Just returns NULL as CPU devices use the host memory
-    virtual device::Memory* createMemory(amd::Memory& owner) const
-    {
-        return NULL;
-    }
+  //! Just returns NULL as CPU devices use the host memory
+  virtual device::Memory* createMemory(amd::Memory& owner) const { return NULL; }
 
-    //! Sampler object allocation
-    virtual bool createSampler(
-        const amd::Sampler& owner,  //!< abstraction layer sampler object
-        device::Sampler**   sampler //!< device sampler object
-        ) const
-    {
-        // Just return NULL on CPU device
-        *sampler = NULL;
-        return true;
-    }
+  //! Sampler object allocation
+  virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
+                             device::Sampler** sampler   //!< device sampler object
+                             ) const {
+    // Just return NULL on CPU device
+    *sampler = NULL;
+    return true;
+  }
 
-    //! Reallocates device memory obje
-    virtual bool reallocMemory(amd::Memory& owner) const
-    {
-        return true;
-    }
+  //! Reallocates device memory obje
+  virtual bool reallocMemory(amd::Memory& owner) const { return true; }
 
-    //! Just returns NULL as CPU devices use the host memory
-    virtual device::Memory* createView(
-        amd::Memory&            owner,  //!< Owner memory object
-        const device::Memory&   parent  //!< Parent device memory object for the view
-        ) const
-    {
-        return NULL;
-    }
+  //! Just returns NULL as CPU devices use the host memory
+  virtual device::Memory* createView(
+      amd::Memory& owner,           //!< Owner memory object
+      const device::Memory& parent  //!< Parent device memory object for the view
+      ) const {
+    return NULL;
+  }
 
-    //! Acquire external graphics API object in the host thread
-    //! Needed for OpenGL objects on CPU device
+  //! Acquire external graphics API object in the host thread
+  //! Needed for OpenGL objects on CPU device
 
-    //! Return true if initialized interoperability, otherwise false
-    virtual bool bindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
-    {
-        return true;    // On CPU always avail if pD3DDevice is not NULL
-    }
+  //! Return true if initialized interoperability, otherwise false
+  virtual bool bindExternalDevice(uint flags, void* const pDevice[], void* pContext,
+                                  bool validateOnly) {
+    return true;  // On CPU always avail if pD3DDevice is not NULL
+  }
 
-    virtual bool unbindExternalDevice(uint flags, void* const pDevice[], void* pContext, bool validateOnly)
-    {
-        return true;
-    }
+  virtual bool unbindExternalDevice(uint flags, void* const pDevice[], void* pContext,
+                                    bool validateOnly) {
+    return true;
+  }
 
-    //! Gets a pointer to a region of host-visible memory for use as the target
-    //! of a non-blocking map for a given memory object
-    virtual void* allocMapTarget(
-        amd::Memory&    mem,        //!< Abstraction layer memory object
-        const amd::Coord3D& origin, //!< The map location in memory
-        const amd::Coord3D& region, //!< The map region in memory
-        uint    mapFlags,           //!< Map flags
-        size_t* rowPitch = NULL,    //!< Row pitch for the mapped memory
-        size_t* slicePitch = NULL   //!< Slice for the mapped memory
-        );
+  //! Gets a pointer to a region of host-visible memory for use as the target
+  //! of a non-blocking map for a given memory object
+  virtual void* allocMapTarget(amd::Memory& mem,            //!< Abstraction layer memory object
+                               const amd::Coord3D& origin,  //!< The map location in memory
+                               const amd::Coord3D& region,  //!< The map region in memory
+                               uint mapFlags,               //!< Map flags
+                               size_t* rowPitch = NULL,     //!< Row pitch for the mapped memory
+                               size_t* slicePitch = NULL    //!< Slice for the mapped memory
+                               );
 
-    //! Releases non-blocking map target memory
-    virtual void freeMapTarget(amd::Memory& mem, void* target);
+  //! Releases non-blocking map target memory
+  virtual void freeMapTarget(amd::Memory& mem, void* target);
 
-    //! Empty implementation on a CPU device
-    virtual bool globalFreeMemory(size_t* freeMemory) const { return false; }
+  //! Empty implementation on a CPU device
+  virtual bool globalFreeMemory(size_t* freeMemory) const { return false; }
 
-     //! Get CPU device settings
-    const cpu::Settings& settings() const
-        { return reinterpret_cast<cpu::Settings&>(*settings_); }
+  //! Get CPU device settings
+  const cpu::Settings& settings() const { return reinterpret_cast<cpu::Settings&>(*settings_); }
 
-    bool hasAVXInstructions() const
-        { return (settings().cpuFeatures_ & Settings::AVXInstructions) ? true : false; }
+  bool hasAVXInstructions() const {
+    return (settings().cpuFeatures_ & Settings::AVXInstructions) ? true : false;
+  }
 
-    bool hasFMA4Instructions() const
-        { return (settings().cpuFeatures_ & Settings::FMA4Instructions) ? true : false; }
+  bool hasFMA4Instructions() const {
+    return (settings().cpuFeatures_ & Settings::FMA4Instructions) ? true : false;
+  }
 
-    static size_t getMaxWorkerThreadsNumber() { return maxWorkerThreads_; }
+  static size_t getMaxWorkerThreadsNumber() { return maxWorkerThreads_; }
 
-    void setWorkerThreadsAffinity(
-        cl_uint numWorkerThreads, 
-        const amd::Os::ThreadAffinityMask* threadsAffinityMask,
-        uint& baseCoreId);
+  void setWorkerThreadsAffinity(cl_uint numWorkerThreads,
+                                const amd::Os::ThreadAffinityMask* threadsAffinityMask,
+                                uint& baseCoreId);
 
-    const amd::Os::ThreadAffinityMask* getWorkerThreadsAffinity() const
-    {
-        return workerThreadsAffinity_;
-    }
-    //! host memory alloc
-    virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags, void* svmPtr) const
-    {
-        return NULL;
-    }
+  const amd::Os::ThreadAffinityMask* getWorkerThreadsAffinity() const {
+    return workerThreadsAffinity_;
+  }
+  //! host memory alloc
+  virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment,
+                         cl_svm_mem_flags flags, void* svmPtr) const {
+    return NULL;
+  }
 
-    //! host memory deallocation
-    virtual void svmFree(void* ptr) const
-    {
-        return;
-    }
-private:
-    bool initSubDevice(
-        device::Info& info,
-        cl_uint maxComputeUnits,
-        const device::CreateSubDevicesInfo& create_info);
+  //! host memory deallocation
+  virtual void svmFree(void* ptr) const { return; }
 
-    cl_int partitionEqually(
-        const device::CreateSubDevicesInfo& create_info,
-        cl_uint num_entries,
-        cl_device_id* devices,
-        cl_uint* num_devices);
+ private:
+  bool initSubDevice(device::Info& info, cl_uint maxComputeUnits,
+                     const device::CreateSubDevicesInfo& create_info);
 
-    cl_int partitionByCounts(
-        const device::CreateSubDevicesInfo& create_info,
-        cl_uint num_entries,
-        cl_device_id* devices,
-        cl_uint* num_devices);
+  cl_int partitionEqually(const device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
+                          cl_device_id* devices, cl_uint* num_devices);
 
-    cl_int partitionByAffinityDomainNUMA(
-        const device::CreateSubDevicesInfo& create_info,
-        cl_uint num_entries,
-        cl_device_id* devices,
-        cl_uint* num_devices);
+  cl_int partitionByCounts(const device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
+                           cl_device_id* devices, cl_uint* num_devices);
 
-    cl_int partitionByAffinityDomainCacheLevel(
-        const device::CreateSubDevicesInfo& create_info,
-        cl_uint num_entries,
-        cl_device_id* devices,
-        cl_uint* num_devices);
+  cl_int partitionByAffinityDomainNUMA(const device::CreateSubDevicesInfo& create_info,
+                                       cl_uint num_entries, cl_device_id* devices,
+                                       cl_uint* num_devices);
 
-private:
+  cl_int partitionByAffinityDomainCacheLevel(const device::CreateSubDevicesInfo& create_info,
+                                             cl_uint num_entries, cl_device_id* devices,
+                                             cl_uint* num_devices);
+
+ private:
 #if defined(__linux__) && defined(NUMA_SUPPORT)
-public:
-    const nodemask_t* getNumaMask() const
-    {
-        return (info_.partitionCreateInfo_.type_ == device::PartitionType::BY_AFFINITY_DOMAIN &&
-            info_.partitionCreateInfo_.byAffinityDomain_.numa_) ? 
-            numaMask_ : NULL;
-    }
+ public:
+  const nodemask_t* getNumaMask() const {
+    return (info_.partitionCreateInfo_.type_ == device::PartitionType::BY_AFFINITY_DOMAIN &&
+            info_.partitionCreateInfo_.byAffinityDomain_.numa_)
+        ? numaMask_
+        : NULL;
+  }
 
-private:
-    union {
-        nodemask_t* numaMask_;
-        amd::Os::ThreadAffinityMask* workerThreadsAffinity_; //!< As the number of compute units.
-    };
+ private:
+  union {
+    nodemask_t* numaMask_;
+    amd::Os::ThreadAffinityMask* workerThreadsAffinity_;  //!< As the number of compute units.
+  };
 #else
-    amd::Os::ThreadAffinityMask* workerThreadsAffinity_; //!< As the number of compute units.
+  amd::Os::ThreadAffinityMask* workerThreadsAffinity_;  //!< As the number of compute units.
 #endif
 
-    static size_t maxWorkerThreads_;  //!< Maximum number of Worker Threads
+  static size_t maxWorkerThreads_;  //!< Maximum number of Worker Threads
 };
 
 /*! @}
  *  @}
  */
 
-} // namespace cpu
+}  // namespace cpu
 
-#endif // CPUDEVICE_HPP_
+#endif  // CPUDEVICE_HPP_

@@ -213,62 +213,57 @@ namespace amd {
 //! \addtogroup Utils
 //  @{
 
-struct Flag
-{
-    enum Type
-    {
-        Tinvalid = 0,
-        Tbool,    //!< A boolean type flag (true, false).
-        Tint,     //!< An integer type flag (signed).
-        Tuint,    //!< An integer type flag (unsigned).
-        Tsize_t,  //!< A size_t type flag.
-        Tcstring  //!< A string type flag.
-    };
+struct Flag {
+  enum Type {
+    Tinvalid = 0,
+    Tbool,    //!< A boolean type flag (true, false).
+    Tint,     //!< An integer type flag (signed).
+    Tuint,    //!< An integer type flag (unsigned).
+    Tsize_t,  //!< A size_t type flag.
+    Tcstring  //!< A string type flag.
+  };
 
 #define DEFINE_FLAG_NAME(type, name, value, help) k##name,
-    enum Name
-    {
-        RUNTIME_FLAGS(DEFINE_FLAG_NAME, DEFINE_FLAG_NAME, DEFINE_FLAG_NAME)
-        numFlags_
-    };
+  enum Name {
+    RUNTIME_FLAGS(DEFINE_FLAG_NAME, DEFINE_FLAG_NAME, DEFINE_FLAG_NAME)
+    numFlags_
+  };
 #undef DEFINE_FLAG_NAME
 
 #define CAN_SET(type, name, v, h)    static const bool cannotSet##name = false;
 #define CANNOT_SET(type, name, v, h) static const bool cannotSet##name = true;
 
 #ifdef DEBUG
-    RUNTIME_FLAGS(CAN_SET, CAN_SET, CAN_SET)
+  RUNTIME_FLAGS(CAN_SET, CAN_SET, CAN_SET)
 #else // !DEBUG
-    RUNTIME_FLAGS(CANNOT_SET, CAN_SET, CANNOT_SET)
+  RUNTIME_FLAGS(CANNOT_SET, CAN_SET, CANNOT_SET)
 #endif // !DEBUG
 
 #undef CAN_SET
 #undef CANNOT_SET
 
-private:
+ private:
+  static Flag flags_[];
 
-    static Flag flags_[];
+ public:
+  static char* envstr_;
+  const char* name_;
+  const void* value_;
+  Type type_;
+  bool isDefault_;
 
-public:
-    static char* envstr_;
-    const char* name_;
-    const void* value_;
-    Type type_;
-    bool isDefault_;
+ public:
+  static bool init();
 
-public:
+  static void tearDown();
 
-    static bool init();
+  bool setValue(const char* value);
 
-    static void tearDown();
-
-    bool setValue(const char* value);
-
-    static bool isDefault(Name name) { return flags_[name].isDefault_; }
+  static bool isDefault(Name name) { return flags_[name].isDefault_; }
 };
 
 #define flagIsDefault(name) \
-    (amd::Flag::cannotSet##name || amd::Flag::isDefault(amd::Flag::k##name))
+  (amd::Flag::cannotSet##name || amd::Flag::isDefault(amd::Flag::k##name))
 
 #define setIfNotDefault(var, opt, other) \
   if (!flagIsDefault(opt)) \

@@ -8,81 +8,68 @@
 
 namespace amd {
 
-Atomic<ObjectMetadata::Key>
-ObjectMetadata::nextKey_ = 1;
+Atomic<ObjectMetadata::Key> ObjectMetadata::nextKey_ = 1;
 
 
-ObjectMetadata::Destructor
-ObjectMetadata::destructors_[OCL_MAX_KEYS] = { NULL };
+ObjectMetadata::Destructor ObjectMetadata::destructors_[OCL_MAX_KEYS] = {NULL};
 
 
-bool
-ObjectMetadata::check(Key key)
-{
-    return key > 0 && key <= OCL_MAX_KEYS;
+bool ObjectMetadata::check(Key key) { return key > 0 && key <= OCL_MAX_KEYS; }
+
+ObjectMetadata::Key ObjectMetadata::createKey(Destructor destructor) {
+  Key key = nextKey_++;
+
+  if (!check(key)) {
+    return 0;
+  }
+
+  destructors_[key - 1] = destructor;
+  return key;
 }
 
-ObjectMetadata::Key
-ObjectMetadata::createKey(Destructor destructor)
-{
-    Key key = nextKey_++;
+ObjectMetadata::~ObjectMetadata() {
+  if (!values_) {
+    return;
+  }
 
-    if (!check(key)) {
-        return 0;
+  for (size_t i = 0; i < OCL_MAX_KEYS; ++i) {
+    if (values_[i] && destructors_[i]) {
+      destructors_[i](values_[i]);
     }
+  }
 
-    destructors_[key-1] = destructor;
-    return key;
+  delete[] values_;
 }
 
-ObjectMetadata::~ObjectMetadata()
-{
-    if (!values_) {
-        return;
-    }
+void* ObjectMetadata::getValueForKey(Key key) const {
+  if (!values_ || !check(key)) {
+    return NULL;
+  }
 
-    for (size_t i = 0; i < OCL_MAX_KEYS; ++i) {
-        if (values_[i] && destructors_[i]) {
-            destructors_[i](values_[i]);
-        }
-    }
-
-    delete[] values_;
+  return values_[key - 1];
 }
 
-void*
-ObjectMetadata::getValueForKey(Key key) const
-{
-    if (!values_ || !check(key)) {
-        return NULL;
-    }
+bool ObjectMetadata::setValueForKey(Key key, Value value) {
+  if (!check(key)) {
+    return false;
+  }
 
-    return values_[key-1];
+  while (!values_) {
+    Value* values = new Value[OCL_MAX_KEYS];
+    memset(values, '\0', sizeof(Value) * OCL_MAX_KEYS);
+
+    if (!values_.compareAndSet(NULL, values)) {
+      delete[] values;
+    }
+  }
+
+  size_t index = key - 1;
+  Value prev = AtomicOperation::swap(value, &values_[index]);
+  if (prev && destructors_[index] != NULL) {
+    destructors_[index](prev);
+  }
+
+  return true;
 }
 
-bool
-ObjectMetadata::setValueForKey(Key key, Value value)
-{
-    if (!check(key)) {
-        return false;
-    }
-
-    while (!values_) {
-         Value* values = new Value[OCL_MAX_KEYS];
-         memset(values, '\0', sizeof(Value) * OCL_MAX_KEYS);
-
-         if (!values_.compareAndSet(NULL, values)) {
-             delete[] values;
-         }
-    }
-
-    size_t index = key-1;
-    Value prev = AtomicOperation::swap(value, &values_[index]);
-    if (prev && destructors_[index] != NULL) {
-        destructors_[index](prev);
-    }
-
-    return true;
-}
-
-} // namespace amd
+}  // namespace amd

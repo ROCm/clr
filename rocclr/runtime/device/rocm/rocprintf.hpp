@@ -71,9 +71,8 @@ class PrintfDbg : public amd::HeapObject {
   Device& dev() const { return gpuDevice_; }
 
   //! Allocates the debug buffer
-  bool allocate(
-      bool realloc = false  //!< If TRUE then reallocate the debug memory
-      );
+  bool allocate(bool realloc = false  //!< If TRUE then reallocate the debug memory
+                );
 
   //! Returns TRUE if a float value has to be printed
   bool checkFloat(const std::string& fmt  //!< Format string
@@ -85,8 +84,8 @@ class PrintfDbg : public amd::HeapObject {
 
   //! Finds the specifier in the format string
   int checkVectorSpecifier(const std::string& fmt,  //!< Format string
-                           size_t startPos,  //!< Start position for processing
-                           size_t& curPos    //!< End position for processing
+                           size_t startPos,         //!< Start position for processing
+                           size_t& curPos           //!< End position for processing
                            ) const;
 
   //! Outputs an argument
@@ -97,11 +96,10 @@ class PrintfDbg : public amd::HeapObject {
                         ) const;
 
   //! Displays the PrintfDbg
-  void outputDbgBuffer(
-      const PrintfInfo& info,        //!< printf info
-      const uint32_t* workitemData,  //!< The PrintfDbg dump buffer
-      size_t& i                      //!< index to the data in the buffer
-      ) const;
+  void outputDbgBuffer(const PrintfInfo& info,        //!< printf info
+                       const uint32_t* workitemData,  //!< The PrintfDbg dump buffer
+                       size_t& i                      //!< index to the data in the buffer
+                       ) const;
 
  private:
   //! Disable copy constructor
@@ -112,4 +110,3 @@ class PrintfDbg : public amd::HeapObject {
 };
 
 /*@}*/} // namespace roc
-

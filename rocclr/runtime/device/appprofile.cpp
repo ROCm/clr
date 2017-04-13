@@ -11,239 +11,219 @@
 #include <cstring>
 
 #ifdef BRAHMA
-extern int SearchProfileOfAnApplication(const wchar_t* fileName, ADLApplicationProfile ** lppProfile);
-#endif //BRAHMA
+extern int SearchProfileOfAnApplication(const wchar_t* fileName,
+                                        ADLApplicationProfile** lppProfile);
+#endif  // BRAHMA
 
-static void* __stdcall adlMallocCallback(int n)
-{
-    return malloc(n);
-}
+static void* __stdcall adlMallocCallback(int n) { return malloc(n); }
 
-#define GETPROCADDRESS(_adltype_, _adlfunc_) (_adltype_)amd::Os::getSymbol(adlHandle_, #_adlfunc_);
+#define GETPROCADDRESS(_adltype_, _adlfunc_) (_adltype_) amd::Os::getSymbol(adlHandle_, #_adlfunc_);
 
 namespace amd {
 
 #ifndef BRAHMA
 
 class ADL {
-public:
-    ADL();
-    ~ADL();
+ public:
+  ADL();
+  ~ADL();
 
-    bool init();
+  bool init();
 
-    void* adlHandle() const { return adlHandle_; };
-    ADL_CONTEXT_HANDLE adlContext() const { return adlContext_; }
+  void* adlHandle() const { return adlHandle_; };
+  ADL_CONTEXT_HANDLE adlContext() const { return adlContext_; }
 
-    typedef int (*Adl2MainControlCreate)(ADL_MAIN_MALLOC_CALLBACK callback,
-                                            int iEnumConnectedAdapters,
-                                            ADL_CONTEXT_HANDLE* context);
-    typedef int (*Adl2MainControlDestroy)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ConsoleModeFileDescriptorSet)(ADL_CONTEXT_HANDLE context, int fileDescriptor);
-    typedef int (*Adl2MainControlRefresh)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ApplicationProfilesSystemReload)(ADL_CONTEXT_HANDLE context);
-    typedef int (*Adl2ApplicationProfilesProfileOfApplicationx2Search)(ADL_CONTEXT_HANDLE context,
-                                                                              const wchar_t* fileName,
-                                                                              const wchar_t* path,
-                                                                              const wchar_t* version,
-                                                                              const wchar_t* appProfileArea,
-                                                                              ADLApplicationProfile** lppProfile);
+  typedef int (*Adl2MainControlCreate)(ADL_MAIN_MALLOC_CALLBACK callback,
+                                       int iEnumConnectedAdapters, ADL_CONTEXT_HANDLE* context);
+  typedef int (*Adl2MainControlDestroy)(ADL_CONTEXT_HANDLE context);
+  typedef int (*Adl2ConsoleModeFileDescriptorSet)(ADL_CONTEXT_HANDLE context, int fileDescriptor);
+  typedef int (*Adl2MainControlRefresh)(ADL_CONTEXT_HANDLE context);
+  typedef int (*Adl2ApplicationProfilesSystemReload)(ADL_CONTEXT_HANDLE context);
+  typedef int (*Adl2ApplicationProfilesProfileOfApplicationx2Search)(
+      ADL_CONTEXT_HANDLE context, const wchar_t* fileName, const wchar_t* path,
+      const wchar_t* version, const wchar_t* appProfileArea, ADLApplicationProfile** lppProfile);
 
-    Adl2MainControlCreate adl2MainControlCreate;
-    Adl2MainControlDestroy adl2MainControlDestroy;
-    Adl2ConsoleModeFileDescriptorSet adl2ConsoleModeFileDescriptorSet;
-    Adl2MainControlRefresh adl2MainControlRefresh;
-    Adl2ApplicationProfilesSystemReload adl2ApplicationProfilesSystemReload;
-    Adl2ApplicationProfilesProfileOfApplicationx2Search adl2ApplicationProfilesProfileOfApplicationx2Search;
+  Adl2MainControlCreate adl2MainControlCreate;
+  Adl2MainControlDestroy adl2MainControlDestroy;
+  Adl2ConsoleModeFileDescriptorSet adl2ConsoleModeFileDescriptorSet;
+  Adl2MainControlRefresh adl2MainControlRefresh;
+  Adl2ApplicationProfilesSystemReload adl2ApplicationProfilesSystemReload;
+  Adl2ApplicationProfilesProfileOfApplicationx2Search
+      adl2ApplicationProfilesProfileOfApplicationx2Search;
 
-private:
-    void* adlHandle_;
-    ADL_CONTEXT_HANDLE adlContext_;
+ private:
+  void* adlHandle_;
+  ADL_CONTEXT_HANDLE adlContext_;
 };
 
-ADL::ADL() : adlHandle_(NULL),
-               adlContext_(NULL)
-{
-    adl2MainControlCreate = NULL;
-    adl2MainControlDestroy = NULL;
-    adl2ConsoleModeFileDescriptorSet = NULL;
-    adl2MainControlRefresh = NULL;
-    adl2ApplicationProfilesSystemReload = NULL;
-    adl2ApplicationProfilesProfileOfApplicationx2Search = NULL;
+ADL::ADL() : adlHandle_(NULL), adlContext_(NULL) {
+  adl2MainControlCreate = NULL;
+  adl2MainControlDestroy = NULL;
+  adl2ConsoleModeFileDescriptorSet = NULL;
+  adl2MainControlRefresh = NULL;
+  adl2ApplicationProfilesSystemReload = NULL;
+  adl2ApplicationProfilesProfileOfApplicationx2Search = NULL;
 }
 
-ADL::~ADL()
-{
-    if (adl2MainControlDestroy != NULL) {
-        adl2MainControlDestroy(adlContext_);
-    }
-    adlContext_ = NULL;
+ADL::~ADL() {
+  if (adl2MainControlDestroy != NULL) {
+    adl2MainControlDestroy(adlContext_);
+  }
+  adlContext_ = NULL;
 }
 
-bool ADL::init()
-{
-    if (!adlHandle_) {
-        adlHandle_ = amd::Os::loadLibrary("atiadl" LP64_SWITCH(LINUX_SWITCH("xx", "xy"), "xx"));
-    }
+bool ADL::init() {
+  if (!adlHandle_) {
+    adlHandle_ = amd::Os::loadLibrary("atiadl" LP64_SWITCH(LINUX_SWITCH("xx", "xy"), "xx"));
+  }
 
-    if (!adlHandle_) {
+  if (!adlHandle_) {
+    return false;
+  }
+
+  adl2MainControlCreate = GETPROCADDRESS(Adl2MainControlCreate, ADL2_Main_Control_Create);
+  adl2MainControlDestroy = GETPROCADDRESS(Adl2MainControlDestroy, ADL2_Main_Control_Destroy);
+  adl2ConsoleModeFileDescriptorSet =
+      GETPROCADDRESS(Adl2ConsoleModeFileDescriptorSet, ADL2_ConsoleMode_FileDescriptor_Set);
+  adl2MainControlRefresh = GETPROCADDRESS(Adl2MainControlRefresh, ADL2_Main_Control_Refresh);
+  adl2ApplicationProfilesSystemReload =
+      GETPROCADDRESS(Adl2ApplicationProfilesSystemReload, ADL2_ApplicationProfiles_System_Reload);
+  adl2ApplicationProfilesProfileOfApplicationx2Search =
+      GETPROCADDRESS(Adl2ApplicationProfilesProfileOfApplicationx2Search,
+                     ADL2_ApplicationProfiles_ProfileOfAnApplicationX2_Search);
+
+  if (adl2MainControlCreate == NULL || adl2MainControlDestroy == NULL ||
+      adl2MainControlRefresh == NULL || adl2ApplicationProfilesSystemReload == NULL ||
+      adl2ApplicationProfilesProfileOfApplicationx2Search == NULL) {
+    return false;
+  }
+
+  int result = adl2MainControlCreate(adlMallocCallback, 1, &adlContext_);
+  if (result != ADL_OK) {
+    // ADL2 is expected to return ADL_ERR_NO_XDISPLAY in Linux Console mode environment
+    if (result == ADL_ERR_NO_XDISPLAY) {
+      if (adl2ConsoleModeFileDescriptorSet == NULL ||
+          adl2ConsoleModeFileDescriptorSet(adlContext_, ADL_UNSET) != ADL_OK) {
         return false;
+      }
+      adl2MainControlRefresh(adlContext_);
+    } else {
+      return false;
     }
+  }
 
-    adl2MainControlCreate = GETPROCADDRESS(Adl2MainControlCreate, ADL2_Main_Control_Create);
-    adl2MainControlDestroy = GETPROCADDRESS(Adl2MainControlDestroy, ADL2_Main_Control_Destroy);
-    adl2ConsoleModeFileDescriptorSet = GETPROCADDRESS(Adl2ConsoleModeFileDescriptorSet, ADL2_ConsoleMode_FileDescriptor_Set);
-    adl2MainControlRefresh = GETPROCADDRESS(Adl2MainControlRefresh, ADL2_Main_Control_Refresh);
-    adl2ApplicationProfilesSystemReload = GETPROCADDRESS(Adl2ApplicationProfilesSystemReload,
-                                                         ADL2_ApplicationProfiles_System_Reload);
-    adl2ApplicationProfilesProfileOfApplicationx2Search = GETPROCADDRESS(Adl2ApplicationProfilesProfileOfApplicationx2Search,
-                                                                         ADL2_ApplicationProfiles_ProfileOfAnApplicationX2_Search);
+  // Reload is disabled in ADL with the change list 1198904 and ticket
+  // SWDEV-59442 - The ADL_ApplicationProfiles_System_Reload Function is not Re-entrant
+  // Returned value is ADL_ERR_NOT_SUPPORTED on Windows.
+  adl2ApplicationProfilesSystemReload(adlContext_);
 
-    if (adl2MainControlCreate == NULL
-     || adl2MainControlDestroy == NULL
-     || adl2MainControlRefresh == NULL
-     || adl2ApplicationProfilesSystemReload == NULL
-     || adl2ApplicationProfilesProfileOfApplicationx2Search == NULL) {
-        return false;
-    }
-
-    int result = adl2MainControlCreate(adlMallocCallback, 1, &adlContext_);
-    if (result != ADL_OK) {
-        // ADL2 is expected to return ADL_ERR_NO_XDISPLAY in Linux Console mode environment
-        if (result == ADL_ERR_NO_XDISPLAY) {
-            if(adl2ConsoleModeFileDescriptorSet == NULL
-            || adl2ConsoleModeFileDescriptorSet(adlContext_, ADL_UNSET) != ADL_OK) {
-                return false;
-            }
-            adl2MainControlRefresh(adlContext_);
-        }
-        else {
-            return false;
-        }
-    }
-
-    // Reload is disabled in ADL with the change list 1198904 and ticket
-    // SWDEV-59442 - The ADL_ApplicationProfiles_System_Reload Function is not Re-entrant
-    // Returned value is ADL_ERR_NOT_SUPPORTED on Windows.
-    adl2ApplicationProfilesSystemReload(adlContext_);
-
-    return true;
+  return true;
 }
 
-#endif //BRAHMA
+#endif  // BRAHMA
 
-AppProfile::AppProfile(): gpuvmHighAddr_(false),
-                          profileOverridesAllSettings_(false)
-{
-    appFileName_ = amd::Os::getAppFileName();
-    propertyDataMap_.insert(DataMap::value_type("BuildOptsAppend",
-        PropertyData(DataType_String, &buildOptsAppend_)));
+AppProfile::AppProfile() : gpuvmHighAddr_(false), profileOverridesAllSettings_(false) {
+  appFileName_ = amd::Os::getAppFileName();
+  propertyDataMap_.insert(
+      DataMap::value_type("BuildOptsAppend", PropertyData(DataType_String, &buildOptsAppend_)));
 }
 
-AppProfile::~AppProfile()
-{
+AppProfile::~AppProfile() {}
 
+bool AppProfile::init() {
+  if (appFileName_.empty()) {
+    return false;
+  }
+
+  // Convert appName to wide char for X2_Search ADL interface
+  size_t strLength = appFileName_.length() + 1;
+  wchar_t* appName = new wchar_t[strLength];
+
+  size_t success = mbstowcs(appName, appFileName_.c_str(), strLength);
+  if (success > 0) {
+    // mbstowcs was able to convert to wide character successfully.
+    appName[strLength - 1] = L'\0';
+  }
+
+  wsAppFileName_ = appName;
+
+  delete appName;
+
+  ParseApplicationProfile();
+
+  return true;
 }
 
-bool AppProfile::init()
-{
-    if (appFileName_.empty()){
-        return false;
-    }
-
-    // Convert appName to wide char for X2_Search ADL interface
-    size_t strLength = appFileName_.length() + 1;
-    wchar_t *appName = new wchar_t[strLength];
-
-    size_t success = mbstowcs(appName, appFileName_.c_str(), strLength);
-    if (success > 0) {
-        // mbstowcs was able to convert to wide character successfully.
-        appName[strLength - 1] = L'\0';
-    }
-
-    wsAppFileName_ = appName;
-
-    delete appName;
-
-    ParseApplicationProfile();
-
-    return true;
-}
-
-bool AppProfile::ParseApplicationProfile()
-{
-    ADLApplicationProfile* pProfile = NULL;
+bool AppProfile::ParseApplicationProfile() {
+  ADLApplicationProfile* pProfile = NULL;
 
 #ifndef BRAHMA
-    amd::ADL* adl = new amd::ADL;
+  amd::ADL* adl = new amd::ADL;
 
-    if ((adl == NULL) || !adl->init()) {
-        delete adl;
-        return false;
-    }
-
-    // Apply blb configurations
-    int result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(
-        adl->adlContext(), wsAppFileName_.c_str(), NULL, NULL,
-        L"OCL", &pProfile);
-
+  if ((adl == NULL) || !adl->init()) {
     delete adl;
+    return false;
+  }
 
-#else //BRAHMA
+  // Apply blb configurations
+  int result = adl->adl2ApplicationProfilesProfileOfApplicationx2Search(
+      adl->adlContext(), wsAppFileName_.c_str(), NULL, NULL, L"OCL", &pProfile);
 
-    if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
-        return false;
+  delete adl;
+
+#else  // BRAHMA
+
+  if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
+    return false;
+  }
+
+#endif  // BRAHMA
+
+  if (pProfile == NULL) {
+    return false;
+  }
+
+  PropertyRecord* firstProperty = pProfile->record;
+  uint32_t valueOffset = 0;
+  const int BUFSIZE = 1024;
+  wchar_t wbuffer[BUFSIZE];
+  char buffer[2 * BUFSIZE];
+
+  for (int index = 0; index < pProfile->iCount; index++) {
+    PropertyRecord* profileProperty =
+        reinterpret_cast<PropertyRecord*>((reinterpret_cast<char*>(firstProperty)) + valueOffset);
+
+    // Get property name
+    char* propertyName = profileProperty->strName;
+    auto entry = propertyDataMap_.find(std::string(propertyName));
+    if (entry == propertyDataMap_.end()) {
+      // unexpected name
+      valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
+      continue;
     }
 
-#endif //BRAHMA
-
-    if (pProfile == NULL) {
-        return false;
+    // Get the property value
+    switch (entry->second.type_) {
+      case DataType_Boolean:
+        *(reinterpret_cast<bool*>(entry->second.data_)) = profileProperty->uData[0] ? true : false;
+        break;
+      case DataType_String: {
+        assert((size_t)(profileProperty->iDataSize) < sizeof(wbuffer) - 2 &&
+               "app profile string too long");
+        memset(wbuffer, 0, sizeof(wbuffer));
+        memcpy(wbuffer, profileProperty->uData, profileProperty->iDataSize);
+        size_t len = wcstombs(buffer, wbuffer, sizeof(buffer));
+        assert(len < sizeof(buffer) - 1 && "app profile string too long");
+        *(reinterpret_cast<std::string*>(entry->second.data_)) = buffer;
+        break;
+      }
+      default:
+        break;
     }
+    valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
+  }
 
-    PropertyRecord* firstProperty = pProfile->record;
-    uint32_t valueOffset = 0;
-    const int BUFSIZE = 1024;
-    wchar_t wbuffer[BUFSIZE];
-    char buffer[2 * BUFSIZE];
-
-    for (int index = 0; index < pProfile->iCount; index++) {
-        PropertyRecord* profileProperty = reinterpret_cast<PropertyRecord*>
-            ((reinterpret_cast<char*>(firstProperty)) + valueOffset);
-
-        // Get property name
-        char* propertyName = profileProperty->strName;
-        auto entry = propertyDataMap_.find(std::string(propertyName));
-        if (entry == propertyDataMap_.end()) {
-            // unexpected name
-            valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
-            continue;
-        }
-
-        // Get the property value
-        switch (entry->second.type_) {
-        case DataType_Boolean:
-            *(reinterpret_cast<bool*>(entry->second.data_)) =
-                profileProperty->uData[0] ? true : false;
-            break;
-        case DataType_String: {
-            assert((size_t)(profileProperty->iDataSize) < sizeof(wbuffer) - 2 &&
-                "app profile string too long");
-            memset(wbuffer, 0, sizeof(wbuffer));
-            memcpy(wbuffer, profileProperty->uData, profileProperty->iDataSize);
-            size_t len = wcstombs(buffer, wbuffer, sizeof(buffer));
-            assert(len < sizeof(buffer) - 1 && "app profile string too long");
-            *(reinterpret_cast<std::string*>(entry->second.data_)) = buffer;
-            break;
-        }
-        default:
-            break;
-        }
-        valueOffset += (sizeof(PropertyRecord) + profileProperty->iDataSize - 4);
-    }
-
-    free(pProfile);
-    return true;
+  free(pProfile);
+  return true;
 }
-
 }

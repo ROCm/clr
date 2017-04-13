@@ -14,22 +14,21 @@ namespace amd {
  *  @{
  */
 
-class Runtime : AllStatic
-{
-    static volatile bool initialized_;
+class Runtime : AllStatic {
+  static volatile bool initialized_;
 
-public:
-    //! Return true if the OpencCL runtime is already initialized
-    inline static bool initialized();
+ public:
+  //! Return true if the OpencCL runtime is already initialized
+  inline static bool initialized();
 
-    //! Initialize the OpenCL runtime.
-    static bool init();
+  //! Initialize the OpenCL runtime.
+  static bool init();
 
-    //! Tear down the runtime.
-    static void tearDown();
+  //! Tear down the runtime.
+  static void tearDown();
 
-    //! Return true if the Runtime is still single-threaded.
-    static bool singleThreaded() { return !initialized(); }
+  //! Return true if the Runtime is still single-threaded.
+  static bool singleThreaded() { return !initialized(); }
 };
 
 #if 0
@@ -65,12 +64,8 @@ public:
 
 /*@}*/
 
-inline bool
-Runtime::initialized()
-{
-    return initialized_;
-}
+inline bool Runtime::initialized() { return initialized_; }
 
-} // namespace amd
+}  // namespace amd
 
 #endif /*RUNTIME_HPP_*/

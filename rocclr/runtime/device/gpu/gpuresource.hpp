@@ -19,483 +19,453 @@ class VirtualGPU;
  *  @{
  */
 
-class GslResourceReference : public amd::ReferenceCountedObject
-{
-public:
-    //! Default constructor
-    GslResourceReference(
-        const Device& gpuDev,       //!< GPU device object
-        gslMemObject    gslResource,            //!< CAL resource
-        gslMemObject    gslResOriginal = NULL   //!< Original CAL resource
-        );
+class GslResourceReference : public amd::ReferenceCountedObject {
+ public:
+  //! Default constructor
+  GslResourceReference(const Device& gpuDev,               //!< GPU device object
+                       gslMemObject gslResource,           //!< CAL resource
+                       gslMemObject gslResOriginal = NULL  //!< Original CAL resource
+                       );
 
-    //! Get CAL resource
-    gslMemObject gslResource() const { return resource_; }
+  //! Get CAL resource
+  gslMemObject gslResource() const { return resource_; }
 
-    //! Original CAL resource
-    gslMemObject gslOriginal() const { return (resOriginal_ == 0) ? resource_ : resOriginal_; }
+  //! Original CAL resource
+  gslMemObject gslOriginal() const { return (resOriginal_ == 0) ? resource_ : resOriginal_; }
 
-    const Device&   device_;        //!< GPU device
-    gslMemObject    resource_;      //!< GSL resource object
-    gslMemObject    resOriginal_;   //!< Original resource object, NULL if no channel order
-    void*           cpuAddress_;    //!< CPU address of this memory
+  const Device& device_;      //!< GPU device
+  gslMemObject resource_;     //!< GSL resource object
+  gslMemObject resOriginal_;  //!< Original resource object, NULL if no channel order
+  void* cpuAddress_;          //!< CPU address of this memory
 
-protected:
-    //! Default destructor
-    ~GslResourceReference();
+ protected:
+  //! Default destructor
+  ~GslResourceReference();
 
-private:
-    //! Disable copy constructor
-    GslResourceReference(const GslResourceReference&);
+ private:
+  //! Disable copy constructor
+  GslResourceReference(const GslResourceReference&);
 
-    //! Disable operator=
-    GslResourceReference& operator=(const GslResourceReference&);
+  //! Disable operator=
+  GslResourceReference& operator=(const GslResourceReference&);
 };
 
 //! GPU resource
-class Resource : public amd::HeapObject
-{
-public:
-    enum InteropType {
-        InteropTypeless         = 0,
-        InteropVertexBuffer,
-        InteropIndexBuffer,
-        InteropRenderBuffer,
-        InteropTexture,
-        InteropTextureViewLevel,
-        InteropTextureViewCube,
-        InteropSurface
-    };
+class Resource : public amd::HeapObject {
+ public:
+  enum InteropType {
+    InteropTypeless = 0,
+    InteropVertexBuffer,
+    InteropIndexBuffer,
+    InteropRenderBuffer,
+    InteropTexture,
+    InteropTextureViewLevel,
+    InteropTextureViewCube,
+    InteropSurface
+  };
 
-    struct CreateParams : public amd::StackObject {
-        amd::Memory*    owner_;     //!< Resource's owner
-        VirtualGPU*     gpu_;       //!< Resource won't be shared between multiple queues
-        CreateParams(): owner_(NULL), gpu_(NULL) {}
-    };
+  struct CreateParams : public amd::StackObject {
+    amd::Memory* owner_;  //!< Resource's owner
+    VirtualGPU* gpu_;     //!< Resource won't be shared between multiple queues
+    CreateParams() : owner_(NULL), gpu_(NULL) {}
+  };
 
-    struct PinnedParams : public CreateParams {
-        const amd::HostMemoryReference* hostMemRef_;//!< System memory pointer for pinning
-        size_t          size_;      //!< System memory size
-    };
+  struct PinnedParams : public CreateParams {
+    const amd::HostMemoryReference* hostMemRef_;  //!< System memory pointer for pinning
+    size_t size_;                                 //!< System memory size
+  };
 
-    struct ViewParams : public CreateParams {
-        size_t          offset_;    //!< Alias resource offset
-        size_t          size_;      //!< Alias resource size
-        const Resource* resource_;  //!< Parent resource for the view creation
-        const void*     memory_;
-    };
+  struct ViewParams : public CreateParams {
+    size_t offset_;             //!< Alias resource offset
+    size_t size_;               //!< Alias resource size
+    const Resource* resource_;  //!< Parent resource for the view creation
+    const void* memory_;
+  };
 
-    struct ImageViewParams : public CreateParams {
-        size_t          level_;     //!< Image mip level for a new view
-        size_t          layer_;     //!< Image layer for a new view
-        const Resource* resource_;  //!< Parent resource for the view creation
-        const void*     memory_;
-    };
+  struct ImageViewParams : public CreateParams {
+    size_t level_;              //!< Image mip level for a new view
+    size_t layer_;              //!< Image layer for a new view
+    const Resource* resource_;  //!< Parent resource for the view creation
+    const void* memory_;
+  };
 
-    struct ImageBufferParams : public CreateParams {
-        const Resource* resource_;  //!< Parent resource for the image creation
-        const void*     memory_;
-    };
+  struct ImageBufferParams : public CreateParams {
+    const Resource* resource_;  //!< Parent resource for the image creation
+    const void* memory_;
+  };
 
-    struct OGLInteropParams : public CreateParams {
-        InteropType type_;      //!< OGL resource type
-        CALuint     handle_;    //!< OGL resource handle
-        uint        mipLevel_;  //!< Texture mip level
-        uint        layer_;     //!< Texture layer
-        void*       glPlatformContext_;
-        void*       glDeviceContext_;
-        uint        flags_;
-    };
+  struct OGLInteropParams : public CreateParams {
+    InteropType type_;  //!< OGL resource type
+    CALuint handle_;    //!< OGL resource handle
+    uint mipLevel_;     //!< Texture mip level
+    uint layer_;        //!< Texture layer
+    void* glPlatformContext_;
+    void* glDeviceContext_;
+    uint flags_;
+  };
 
 #ifdef _WIN32
-    struct D3DInteropParams : public CreateParams {
-        InteropType type_;      //!< D3D resource type
-        void*       iDirect3D_; //!< D3D resource interface object
-        HANDLE      handle_;    //!< D3D resource handle
-        uint        mipLevel_;  //!< Texture mip level
-        int         layer_;     //!< Texture layer
-        uint        misc;       //!< miscellaneous cases
+  struct D3DInteropParams : public CreateParams {
+    InteropType type_;  //!< D3D resource type
+    void* iDirect3D_;   //!< D3D resource interface object
+    HANDLE handle_;     //!< D3D resource handle
+    uint mipLevel_;     //!< Texture mip level
+    int layer_;         //!< Texture layer
+    uint misc;          //!< miscellaneous cases
+  };
+#endif  // _WIN32
+
+  //! Resource memory
+  enum MemoryType {
+    Empty = 0x0,       //!< resource is empty
+    Local,             //!< resource in local memory
+    Persistent,        //!< resource in persistent memory
+    Remote,            //!< resource in nonlocal memory
+    RemoteUSWC,        //!< resource in nonlocal memory
+    Pinned,            //!< resource in pinned system memory
+    View,              //!< resource is an alias
+    OGLInterop,        //!< resource is an OGL memory object
+    D3D10Interop,      //!< resource is a D3D10 memory object
+    D3D11Interop,      //!< resource is a D3D11 memory object
+    Heap,              //!< resource is a heap
+    ImageView,         //!< resource is a view to some image
+    ImageBuffer,       //!< resource is an image view of a buffer
+    BusAddressable,    //!< resource is a bus addressable memory
+    ExternalPhysical,  //!< resource is an external physical memory
+    D3D9Interop,       //!< resource is a D3D9 memory object
+    Scratch,           //!< resource is scratch memory
+    Shader,            //!< resource is a shader
+  };
+
+  //! Resource map flags
+  enum MapFlags {
+    Discard = 0x00000001,      //!< discard lock
+    NoOverwrite = 0x00000002,  //!< lock with no overwrite
+    ReadOnly = 0x00000004,     //!< lock for read only operation
+    WriteOnly = 0x00000008,    //!< lock for write only operation
+    NoWait = 0x00000010,       //!< lock with no wait
+  };
+
+  //! CAL resource descriptor
+  struct CalResourceDesc : public amd::HeapObject {
+    MemoryType type_;                   //!< Memory type
+    size_t width_;                      //!< CAL resource width
+    size_t height_;                     //!< CAL resource height
+    size_t depth_;                      //!< CAL resource depth
+    uint mipLevels_;                    //!< Number of mip levels
+    cmSurfFmt format_;                  //!< GSL resource format
+    CALuint flags_;                     //!< CAL resource flags, used in creation
+    size_t pitch_;                      //!< CAL resource pitch, valid if locked
+    CALuint slice_;                     //!< CAL resource slice, valid if locked
+    gslChannelOrder channelOrder_;      //!< GSL resource channel order
+    gslMemObjectAttribType dimension_;  //!< GSL resource dimension
+    cl_mem_object_type imageType_;      //!< CL image type
+    union {
+      struct {
+        uint dimSize_ : 2;         //!< Dimension size
+        uint cardMemory_ : 1;      //!< GSL resource is in video memory
+        uint imageArray_ : 1;      //!< GSL resource is an array of images
+        uint buffer_ : 1;          //!< GSL resource is a buffer
+        uint tiled_ : 1;           //!< GSL resource is tiled
+        uint scratch_ : 1;         //!< Scratch buffer
+        uint skipRsrcCache_ : 1;   //!< Skip caching of a cal resource
+        uint isAllocSVM_ : 1;      //!< SVM resource attribute
+        uint isAllocExecute_ : 1;  //!< SVM resource allocation attribute for shader\cmdbuf
+      };
+      uint state_;
     };
-#endif // _WIN32
+  };
 
-    //! Resource memory
-    enum MemoryType
-    {
-        Empty   = 0x0,      //!< resource is empty
-        Local,              //!< resource in local memory
-        Persistent,         //!< resource in persistent memory
-        Remote,             //!< resource in nonlocal memory
-        RemoteUSWC,         //!< resource in nonlocal memory
-        Pinned,             //!< resource in pinned system memory
-        View,               //!< resource is an alias
-        OGLInterop,         //!< resource is an OGL memory object
-        D3D10Interop,       //!< resource is a D3D10 memory object
-        D3D11Interop,       //!< resource is a D3D11 memory object
-        Heap,               //!< resource is a heap
-        ImageView,          //!< resource is a view to some image
-        ImageBuffer,        //!< resource is an image view of a buffer
-        BusAddressable,     //!< resource is a bus addressable memory
-        ExternalPhysical,   //!< resource is an external physical memory
-        D3D9Interop,        //!< resource is a D3D9 memory object
-        Scratch,            //!< resource is scratch memory
-        Shader,             //!< resource is a shader
-    };
+  //! Constructor of 1D Resource object
+  Resource(const Device& gpuDev,  //!< GPU device object
+           size_t width,          //!< resource width
+           cmSurfFmt format       //!< resource format
+           );
 
-    //! Resource map flags
-    enum MapFlags
-    {
-        Discard     = 0x00000001,   //!< discard lock
-        NoOverwrite = 0x00000002,   //!< lock with no overwrite
-        ReadOnly    = 0x00000004,   //!< lock for read only operation
-        WriteOnly   = 0x00000008,   //!< lock for write only operation
-        NoWait      = 0x00000010,   //!< lock with no wait
-    };
+  //! Constructor of Image Resource object
+  Resource(const Device& gpuDev,          //!< GPU device object
+           size_t width,                  //!< resource width
+           size_t height,                 //!< resource height
+           size_t depth,                  //!< resource depth
+           cmSurfFmt format,              //!< resource format
+           gslChannelOrder chOrder,       //!< resource channel order
+           cl_mem_object_type imageType,  //!< CL image type
+           uint mipLevels = 1             //!< Number of mip levels
+           );
 
-    //! CAL resource descriptor
-    struct CalResourceDesc : public amd::HeapObject
-    {
-        MemoryType  type_;          //!< Memory type
-        size_t      width_;         //!< CAL resource width
-        size_t      height_;        //!< CAL resource height
-        size_t      depth_;         //!< CAL resource depth
-        uint        mipLevels_;     //!< Number of mip levels 
-        cmSurfFmt   format_;        //!< GSL resource format
-        CALuint     flags_;         //!< CAL resource flags, used in creation
-        size_t      pitch_;         //!< CAL resource pitch, valid if locked
-        CALuint     slice_;         //!< CAL resource slice, valid if locked
-        gslChannelOrder channelOrder_;  //!< GSL resource channel order
-        gslMemObjectAttribType    dimension_;   //!< GSL resource dimension
-        cl_mem_object_type  imageType_; //!< CL image type
-        union {
-            struct {
-                uint    dimSize_        : 2;    //!< Dimension size
-                uint    cardMemory_     : 1;    //!< GSL resource is in video memory
-                uint    imageArray_     : 1;    //!< GSL resource is an array of images
-                uint    buffer_         : 1;    //!< GSL resource is a buffer
-                uint    tiled_          : 1;    //!< GSL resource is tiled
-                uint    scratch_        : 1;    //!< Scratch buffer
-                uint    skipRsrcCache_  : 1;    //!< Skip caching of a cal resource
-                uint    isAllocSVM_     : 1;    //!< SVM resource attribute
-                uint    isAllocExecute_ : 1;    //!< SVM resource allocation attribute for shader\cmdbuf
-            };
-            uint    state_;
-        };
-    };
+  //! Destructor of the resource
+  virtual ~Resource();
 
-    //! Constructor of 1D Resource object
-    Resource(
-        const Device& gpuDev,       //!< GPU device object
-        size_t        width,        //!< resource width
-        cmSurfFmt     format        //!< resource format
-        );
+  /*! \brief Creates a CAL object, associated with the resource
+   *
+   *  \return True if we succesfully created a CAL resource
+   */
+  virtual bool create(MemoryType memType,       //!< memory type
+                      CreateParams* params = 0  //!< special parameters for resource allocation
+                      );
 
-    //! Constructor of Image Resource object
-    Resource(
-        const Device& gpuDev,       //!< GPU device object
-        size_t        width,        //!< resource width
-        size_t        height,       //!< resource height
-        size_t        depth,        //!< resource depth
-        cmSurfFmt     format,       //!< resource format
-        gslChannelOrder chOrder,    //!< resource channel order
-        cl_mem_object_type  imageType,  //!< CL image type
-        uint          mipLevels = 1 //!< Number of mip levels
-        );
+  /*! \brief Copies a subregion of memory from one resource to another
+   *
+   *  This is a general copy from anything to anything (as long as it fits).
+   *  All positions and sizes are given in bytes. Note, however, that only
+   *  a subset of this general interface is currently implemented.
+   *
+   *  \return true if successful
+   */
+  bool partialMemCopyTo(VirtualGPU& gpu,                //!< Virtual GPU device object
+                        const amd::Coord3D& srcOrigin,  //!< Origin of the source region
+                        const amd::Coord3D& dstOrigin,  //!< Origin of the destination region
+                        const amd::Coord3D& size,       //!< Size of the region to copy
+                        Resource& dstResource,          //!< Destination resource
+                        bool enableRectCopy = false,    //!< Rectangular DMA support
+                        bool flushDMA = false,          //!< Flush DMA if requested
+                        uint bytesPerElement = 1        //!< Bytes Per Element
+                        ) const;
 
-    //! Destructor of the resource
-    virtual ~Resource();
+  /*! \brief Copies size/4 DWORD of memory to a surface
+   *
+   *  This is a raw copy to any surface using a CP packet.
+   *  Size needs to be atleast a DWORD or multiple
+   *
+   */
+  void writeRawData(VirtualGPU& gpu,   //!< Virtual GPU device object
+                    size_t size,       //!< Size in bytes of data to be copied(multiple of DWORDS)
+                    const void* data,  //!< Data to be copied
+                    bool waitForEvent  //!< Wait for event complete
+                    ) const;
 
-    /*! \brief Creates a CAL object, associated with the resource
-     *
-     *  \return True if we succesfully created a CAL resource
-     */
-    virtual bool create(
-        MemoryType  memType,        //!< memory type
-        CreateParams*   params = 0  //!< special parameters for resource allocation
-        );
+  //! Returns the offset in GPU memory for aliases
+  size_t offset() const { return offset_; }
 
-    /*! \brief Copies a subregion of memory from one resource to another
-     *
-     *  This is a general copy from anything to anything (as long as it fits).
-     *  All positions and sizes are given in bytes. Note, however, that only
-     *  a subset of this general interface is currently implemented.
-     *
-     *  \return true if successful
-     */
-    bool partialMemCopyTo(
-        VirtualGPU&  gpu,               //!< Virtual GPU device object
-        const amd::Coord3D& srcOrigin,  //!< Origin of the source region
-        const amd::Coord3D& dstOrigin,  //!< Origin of the destination region
-        const amd::Coord3D& size,       //!< Size of the region to copy
-        Resource& dstResource,          //!< Destination resource
-        bool enableRectCopy = false,    //!< Rectangular DMA support
-        bool flushDMA = false,          //!< Flush DMA if requested
-        uint bytesPerElement = 1        //!< Bytes Per Element
-        ) const;
+  //! Returns the offset in GPU heap
+  uint64_t hbOffset() const { return hbOffset_; }
 
-    /*! \brief Copies size/4 DWORD of memory to a surface
-     *
-     *  This is a raw copy to any surface using a CP packet.
-     *  Size needs to be atleast a DWORD or multiple
-     *
-     */
-    void writeRawData(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        size_t size,                    //!< Size in bytes of data to be copied(multiple of DWORDS)
-        const void* data,               //!< Data to be copied
-        bool waitForEvent               //!< Wait for event complete
-        ) const;
+  //! Returns the pinned memory offset
+  uint64_t pinOffset() const { return pinOffset_; }
 
-    //! Returns the offset in GPU memory for aliases
-    size_t offset() const { return offset_; }
+  //! Returns the size in GPU heap
+  uint64_t hbSize() const { return hbSize_; }
 
-    //! Returns the offset in GPU heap
-    uint64_t hbOffset() const { return hbOffset_; }
+  //! Returns the GPU device that owns this resource
+  const Device& dev() const { return gpuDevice_; }
 
-    //! Returns the pinned memory offset
-    uint64_t pinOffset() const { return pinOffset_; }
+  //! Returns the CAL descriptor for resource
+  const CalResourceDesc* cal() const { return &cal_; }
 
-    //! Returns the size in GPU heap
-    uint64_t hbSize() const { return hbSize_; }
+  //! Returns the CAL resource handle
+  gslMemObject gslResource() const { return gslRef_->gslResource(); }
 
-    //! Returns the GPU device that owns this resource
-    const Device& dev() const { return gpuDevice_; }
+  //! Returns global memory offset
+  uint64_t vmAddress() const { return gslResource()->getSurfaceAddress(); }
 
-    //! Returns the CAL descriptor for resource
-    const CalResourceDesc* cal() const { return &cal_; }
+  //! Returns global memory offset
+  bool mipMapped() const { return (cal()->mipLevels_ > 1) ? true : false; }
 
-    //! Returns the CAL resource handle
-    gslMemObject gslResource() const { return gslRef_->gslResource(); }
+  //! Checks if persistent memory can have a direct map
+  bool isPersistentDirectMap() const;
 
-    //! Returns global memory offset
-    uint64_t vmAddress() const { return gslResource()->getSurfaceAddress(); }
+  /*! \brief Locks the resource and returns a physical pointer
+   *
+   *  \note This operation stalls HW pipeline!
+   *
+   *  \return Pointer to the physical memory
+   */
+  void* map(VirtualGPU* gpu,  //!< Virtual GPU device object
+            uint flags = 0,   //!< flags for the map operation
+            // Optimization for multilayer map/unmap
+            uint startLayer = 0,  //!< Start layer for multilayer map
+            uint numLayers = 0    //!< End layer for multilayer map
+            );
 
-    //! Returns global memory offset
-    bool mipMapped() const { return (cal()->mipLevels_ > 1) ? true : false; }
+  //! Unlocks the resource if it was locked
+  void unmap(VirtualGPU* gpu  //!< Virtual GPU device object
+             );
 
-    //! Checks if persistent memory can have a direct map
-    bool isPersistentDirectMap() const;
+  //! Marks the resource as busy
+  void setBusy(VirtualGPU& gpu,   //!< Virtual GPU device object
+               GpuEvent calEvent  //!< CAL event
+               ) const;
 
-    /*! \brief Locks the resource and returns a physical pointer
-     *
-     *  \note This operation stalls HW pipeline!
-     *
-     *  \return Pointer to the physical memory
-     */
-    void* map(
-        VirtualGPU* gpu,        //!< Virtual GPU device object
-        uint flags = 0,         //!< flags for the map operation
-        // Optimization for multilayer map/unmap
-        uint startLayer = 0,    //!< Start layer for multilayer map
-        uint numLayers = 0      //!< End layer for multilayer map
-        );
+  //! Wait for the resource
+  void wait(VirtualGPU& gpu,               //!< Virtual GPU device object
+            bool waitOnBusyEngine = false  //!< Wait only if engine has changed
+            ) const;
 
-    //! Unlocks the resource if it was locked
-    void unmap(
-        VirtualGPU* gpu         //!< Virtual GPU device object
-        );
+  //! Performs host write to the resource GPU memory
+  bool hostWrite(VirtualGPU* gpu,             //!< Virtual GPU device object
+                 const void* hostPtr,         //!< Host pointer to the SRC data
+                 const amd::Coord3D& origin,  //!< Offsets for the update
+                 const amd::Coord3D& size,    //!< The number of bytes to write
+                 uint flags = 0,              //!< Map flags
+                 size_t rowPitch = 0,         //!< Raw data row pitch
+                 size_t slicePitch = 0        //!< Raw data slice pitch
+                 );
 
-    //! Marks the resource as busy
-    void setBusy(
-        VirtualGPU& gpu,        //!< Virtual GPU device object
-        GpuEvent  calEvent    //!< CAL event
-        ) const;
+  //! Performs host read from the resource GPU memory
+  bool hostRead(VirtualGPU* gpu,             //!< Virtual GPU device object
+                void* hostPtr,               //!< Host pointer to the DST data
+                const amd::Coord3D& origin,  //!< Offsets for the update
+                const amd::Coord3D& size,    //!< The number of bytes to write
+                size_t rowPitch = 0,         //!< Raw data row pitch
+                size_t slicePitch = 0        //!< Raw data slice pitch
+                );
 
-    //! Wait for the resource
-    void wait(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        bool    waitOnBusyEngine = false//!< Wait only if engine has changed
-        ) const;
+  //! Warms up the rename list for this resource
+  void warmUpRenames(VirtualGPU& gpu);
 
-    //! Performs host write to the resource GPU memory
-    bool hostWrite(
-        VirtualGPU* gpu,            //!< Virtual GPU device object
-        const void* hostPtr,        //!< Host pointer to the SRC data
-        const amd::Coord3D& origin, //!< Offsets for the update
-        const amd::Coord3D& size,   //!< The number of bytes to write
-        uint        flags = 0,      //!< Map flags
-        size_t      rowPitch = 0,   //!< Raw data row pitch
-        size_t      slicePitch = 0  //!< Raw data slice pitch
-        );
+  //! Gets the resource element size
+  size_t elementSize() const { return elementSize_; }
 
-    //! Performs host read from the resource GPU memory
-    bool hostRead(
-        VirtualGPU* gpu,            //!< Virtual GPU device object
-        void*       hostPtr,        //!< Host pointer to the DST data
-        const amd::Coord3D& origin, //!< Offsets for the update
-        const amd::Coord3D& size,   //!< The number of bytes to write
-        size_t      rowPitch = 0,   //!< Raw data row pitch
-        size_t      slicePitch = 0  //!< Raw data slice pitch
-        );
+  //! Get the mapped address of this resource
+  address data() const { return reinterpret_cast<address>(address_); }
 
-    //! Warms up the rename list for this resource
-    void warmUpRenames(VirtualGPU& gpu);
+  //! Frees all allocated CAL memories and resources,
+  //! associated with this objects. And also destroys all rename structures
+  //! Note: doesn't destroy the object itself
+  void free();
 
-    //! Gets the resource element size
-    size_t elementSize() const { return elementSize_; }
+  //! Return memory type
+  MemoryType memoryType() const { return cal_.type_; }
 
-    //! Get the mapped address of this resource
-    address data() const { return reinterpret_cast<address>(address_); }
+  //! Retunrs true if memory type matches specified
+  bool isMemoryType(MemoryType memType) const;
 
-    //! Frees all allocated CAL memories and resources,
-    //! associated with this objects. And also destroys all rename structures
-    //! Note: doesn't destroy the object itself
-    void free();
+  //! Returns TRUE if resource was allocated as cacheable
+  bool isCacheable() const { return (isMemoryType(Remote) || isMemoryType(Pinned)) ? true : false; }
 
-    //! Return memory type
-    MemoryType      memoryType() const { return cal_.type_; }
+  bool gslGLAcquire();
+  bool gslGLRelease();
 
-    //! Retunrs true if memory type matches specified
-    bool isMemoryType(MemoryType memType) const;
+  //! Returns HW state for the resource (used for images only)
+  const void* hwState() const { return hwState_; }
 
-    //! Returns TRUE if resource was allocated as cacheable
-    bool isCacheable() const
-        { return (isMemoryType(Remote) || isMemoryType(Pinned)) ? true : false; }
+  //! Returns CPU HW SRD for the resource (used for images only)
+  uint64_t hwSrd() const { return hwSrd_; }
 
-    bool gslGLAcquire() ;
-    bool gslGLRelease() ;
+ protected:
+  size_t elementSize_;  //!< Size of a single element in bytes
 
-    //! Returns HW state for the resource (used for images only)
-    const void*   hwState() const { return hwState_; }
+ private:
+  //! Disable copy constructor
+  Resource(const Resource&);
 
-    //! Returns CPU HW SRD for the resource (used for images only)
-    uint64_t    hwSrd() const { return hwSrd_; }
+  //! Disable operator=
+  Resource& operator=(const Resource&);
 
-protected:
-    size_t      elementSize_;   //!< Size of a single element in bytes
+  typedef std::vector<GslResourceReference*> RenameList;
 
-private:
-    //! Disable copy constructor
-    Resource(const Resource&);
+  //! Rename current resource
+  bool rename(VirtualGPU& gpu,    //!< Virtual GPU device object
+              bool force = false  //!< Force renaming
+              );
 
-    //! Disable operator=
-    Resource& operator=(const Resource&);
+  //! Sets the rename as active
+  void setActiveRename(VirtualGPU& gpu,              //!< Virtual GPU device object
+                       GslResourceReference* rename  //!< new active rename
+                       );
 
-    typedef std::vector<GslResourceReference*> RenameList;
+  //! Gets the active rename
+  bool getActiveRename(VirtualGPU& gpu,               //!< Virtual GPU device object
+                       GslResourceReference** rename  //!< Saved active rename
+                       );
 
-    //! Rename current resource
-    bool rename(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        bool        force = false       //!< Force renaming
-        );
+  /*! \brief Locks the resource with layers and returns a physical pointer
+   *
+   *  \return Pointer to the physical memory
+   */
+  void* mapLayers(VirtualGPU* gpu,   //!< Virtual GPU device object
+                  CALuint flags = 0  //!< flags for the map operation
+                  );
 
-    //! Sets the rename as active
-    void setActiveRename(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        GslResourceReference* rename    //!< new active rename
-        );
+  //! Unlocks the resource with layers if it was locked
+  void unmapLayers(VirtualGPU* gpu  //!< Virtual GPU device object
+                   );
 
-    //! Gets the active rename
-    bool getActiveRename(
-        VirtualGPU& gpu,                //!< Virtual GPU device object
-        GslResourceReference** rename   //!< Saved active rename
-        );
+  //! Calls GSL to map a resource
+  void* gslMap(size_t* pitch,           //!< Pitch value for the image
+               gslMapAccessType flags,  //!< Map flags
+               gslMemObject resource    //!< GSL memory object
+               ) const;
 
-    /*! \brief Locks the resource with layers and returns a physical pointer
-     *
-     *  \return Pointer to the physical memory
-     */
-    void* mapLayers(
-        VirtualGPU* gpu,            //!< Virtual GPU device object
-        CALuint     flags = 0       //!< flags for the map operation
-        );
+  //! Uses GSL to unmap a resource
+  void gslUnmap(gslMemObject resource  //!< GSL memory object
+                ) const;
 
-    //! Unlocks the resource with layers if it was locked
-    void unmapLayers(
-        VirtualGPU* gpu             //!< Virtual GPU device object
-        );
+  //! Fress all GSL resources associated with OCL resource
+  void gslFree() const;
 
-    //! Calls GSL to map a resource
-    void* gslMap(
-        size_t* pitch,          //!< Pitch value for the image
-        gslMapAccessType flags, //!< Map flags
-        gslMemObject resource   //!< GSL memory object
-        ) const;
+  const Device& gpuDevice_;       //!< GPU device
+  CalResourceDesc cal_;           //!< CAL descriptor for this resource
+  amd::Atomic<int> mapCount_;     //!< Total number of maps
+  void* address_;                 //!< Physical address of this resource
+  size_t offset_;                 //!< Resource offset
+  size_t curRename_;              //!< Current active rename in the list
+  RenameList renames_;            //!< Rename resource list
+  GslResourceReference* gslRef_;  //!< GSL resource reference
+  const Resource* viewOwner_;     //!< GPU resource, which owns this view
+  uint64_t hbOffset_;             //!< Offset in the heap (virtual or real)
+  uint64_t hbSize_;               //!< Memory size
+  uint64_t pinOffset_;            //!< Pinned memory offset
+  gslMemObject glInterop_;        //!< Original GL interop object
+  void* glInteropMbRes_;          //!< Mb Res handle
+  uint32_t glType_;               //!< GL interop type
+  void* glPlatformContext_;
+  void* glDeviceContext_;
 
-    //! Uses GSL to unmap a resource
-    void gslUnmap(
-        gslMemObject resource   //!< GSL memory object
-        ) const;
+  // Optimization for multilayer map/unmap
+  uint startLayer_;   //!< Start layer for map/unmapLayer
+  uint numLayers_;    //!< Number of layers for map/unmapLayer
+  CALuint mapFlags_;  //!< Map flags for map/umapLayer
 
-    //! Fress all GSL resources associated with OCL resource
-    void gslFree() const;
+  //! @note: This field is necessary for the thread safe release only
+  VirtualGPU* gpu_;  //!< Resource will be used only on this queue
 
-    const Device&   gpuDevice_;     //!< GPU device
-    CalResourceDesc cal_;           //!< CAL descriptor for this resource
-    amd::Atomic<int> mapCount_;     //!< Total number of maps
-    void*           address_;       //!< Physical address of this resource
-    size_t          offset_;        //!< Resource offset
-    size_t          curRename_;     //!< Current active rename in the list
-    RenameList      renames_;       //!< Rename resource list
-    GslResourceReference* gslRef_;  //!< GSL resource reference
-    const Resource* viewOwner_;     //!< GPU resource, which owns this view
-    uint64_t        hbOffset_;      //!< Offset in the heap (virtual or real)
-    uint64_t        hbSize_;        //!< Memory size
-    uint64_t        pinOffset_;     //!< Pinned memory offset
-    gslMemObject    glInterop_;     //!< Original GL interop object
-    void*           glInteropMbRes_;//!< Mb Res handle
-    uint32_t        glType_;        //!< GL interop type
-    void*           glPlatformContext_;
-    void*           glDeviceContext_;
-
-    // Optimization for multilayer map/unmap
-    uint            startLayer_;    //!< Start layer for map/unmapLayer
-    uint            numLayers_;     //!< Number of layers for map/unmapLayer
-    CALuint         mapFlags_;      //!< Map flags for map/umapLayer
-
-    //! @note: This field is necessary for the thread safe release only
-    VirtualGPU*     gpu_;           //!< Resource will be used only on this queue
-
-    uint32_t*       hwState_;       //!< HW state for image object
-    uint64_t        hwSrd_;         //!< GPU pointer to HW SRD
+  uint32_t* hwState_;  //!< HW state for image object
+  uint64_t hwSrd_;     //!< GPU pointer to HW SRD
 };
 
-class ResourceCache : public amd::HeapObject
-{
-public:
-    //! Default constructor
-    ResourceCache(size_t cacheSizeLimit)
-        : lockCacheOps_("CAL resource cache", true)
-        , cacheSize_(0)
-        , cacheSizeLimit_(cacheSizeLimit)
-        {}
+class ResourceCache : public amd::HeapObject {
+ public:
+  //! Default constructor
+  ResourceCache(size_t cacheSizeLimit)
+      : lockCacheOps_("CAL resource cache", true), cacheSize_(0), cacheSizeLimit_(cacheSizeLimit) {}
 
-    //! Default destructor
-    ~ResourceCache();
+  //! Default destructor
+  ~ResourceCache();
 
-    //! Adds a CAL resource to the cache
-    bool addCalResource(
-        Resource::CalResourceDesc*  desc,   //!< CAL resource descriptor - cache key
-        GslResourceReference*       ref     //!< CAL resource reference
-        );
+  //! Adds a CAL resource to the cache
+  bool addCalResource(Resource::CalResourceDesc* desc,  //!< CAL resource descriptor - cache key
+                      GslResourceReference* ref         //!< CAL resource reference
+                      );
 
-    //! Finds a CAL resource from the cache
-    GslResourceReference* findCalResource(
-        Resource::CalResourceDesc* desc     //!< CAL resource descriptor - cache key
-        );
+  //! Finds a CAL resource from the cache
+  GslResourceReference* findCalResource(
+      Resource::CalResourceDesc* desc  //!< CAL resource descriptor - cache key
+      );
 
-    //! Destroys cache
-    bool free(size_t minCacheEntries = 0);
+  //! Destroys cache
+  bool free(size_t minCacheEntries = 0);
 
-private:
-    //! Disable copy constructor
-    ResourceCache(const ResourceCache&);
+ private:
+  //! Disable copy constructor
+  ResourceCache(const ResourceCache&);
 
-    //! Disable operator=
-    ResourceCache& operator=(const ResourceCache&);
+  //! Disable operator=
+  ResourceCache& operator=(const ResourceCache&);
 
-    //! Gets resource size in bytes
-    size_t getResourceSize(Resource::CalResourceDesc* desc);
+  //! Gets resource size in bytes
+  size_t getResourceSize(Resource::CalResourceDesc* desc);
 
-    //! Removes one last entry from the cache
-    void removeLast();
+  //! Removes one last entry from the cache
+  void removeLast();
 
-    amd::Monitor    lockCacheOps_;  //!< Lock to serialise cache access
+  amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
-    size_t  cacheSize_;         //!< Current cache size in bytes
-    size_t  cacheSizeLimit_;    //!< Cache size limit in bytes
+  size_t cacheSize_;       //!< Current cache size in bytes
+  size_t cacheSizeLimit_;  //!< Cache size limit in bytes
 
-    //! CAL resource cache
-    std::list<std::pair<Resource::CalResourceDesc*, GslResourceReference*> >    resCache_;
+  //! CAL resource cache
+  std::list<std::pair<Resource::CalResourceDesc*, GslResourceReference*> > resCache_;
 };
 
 /*@}*/} // namespace gpu
