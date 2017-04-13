@@ -137,7 +137,7 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (
     bool sizePass = false;
     cl_device_svm_capabilities combinedSvmCapabilities = 0;
     const cl_uint hostAddressBits = LP64_SWITCH(32, 64);
-    cl_uint minContextAlignment = UINT_MAX;
+    cl_uint minContextAlignment = std::numeric_limits<uint>::max();
     std::vector<amd::Device*>::const_iterator it;
     for (it = devices.begin(); it != devices.end(); ++it) {
         cl_device_svm_capabilities svmCapabilities =
