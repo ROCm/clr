@@ -10,53 +10,46 @@
  *
  *  \return true if flags are valid, otherwise - false
  */
-static bool
-validateSvmFlags(cl_svm_mem_flags flags)
-{
-    if (!flags) {
-        // coarse-grained allocation
-        return true;
-    }
-    const cl_svm_mem_flags rwFlags = CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY |
-          CL_MEM_READ_ONLY;
-    const cl_svm_mem_flags setFlags = flags & (rwFlags |
-            CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER);
-    if (flags != setFlags) {
-       // invalid flags value
-        return false;
-    }
-
-    if (amd::countBitsSet(flags & rwFlags) > 1) {
-         // contradictory R/W flags
-        return false;
-    }
-
-    if ((flags & CL_MEM_SVM_ATOMICS)
-        && !(flags & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
-        return false;
-    }
-
+static bool validateSvmFlags(cl_svm_mem_flags flags) {
+  if (!flags) {
+    // coarse-grained allocation
     return true;
+  }
+  const cl_svm_mem_flags rwFlags = CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY;
+  const cl_svm_mem_flags setFlags =
+      flags & (rwFlags | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER);
+  if (flags != setFlags) {
+    // invalid flags value
+    return false;
+  }
+
+  if (amd::countBitsSet(flags & rwFlags) > 1) {
+    // contradictory R/W flags
+    return false;
+  }
+
+  if ((flags & CL_MEM_SVM_ATOMICS) && !(flags & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
+    return false;
+  }
+
+  return true;
 }
 
 /*! \brief Helper function to validate cl_map_flags
  *
  *  \return true if flags are valid, otherwise - false
  */
-static bool
-validateMapFlags(cl_map_flags flags)
-{
-    const cl_map_flags maxFlag = CL_MAP_WRITE_INVALIDATE_REGION;
-    if (flags >= (maxFlag << 1)) {
-        // at least one flag is out-of-range
-        return false;
-    } else if ((flags & CL_MAP_WRITE_INVALIDATE_REGION) &&
-            (flags & (CL_MAP_READ | CL_MAP_WRITE))) {
-        // CL_MAP_READ or CL_MAP_WRITE and CL_MAP_WRITE_INVALIDATE_REGION are
-        // mutually exclusive.
-        return false;
-    }
-    return true;
+static bool validateMapFlags(cl_map_flags flags) {
+  const cl_map_flags maxFlag = CL_MAP_WRITE_INVALIDATE_REGION;
+  if (flags >= (maxFlag << 1)) {
+    // at least one flag is out-of-range
+    return false;
+  } else if ((flags & CL_MAP_WRITE_INVALIDATE_REGION) && (flags & (CL_MAP_READ | CL_MAP_WRITE))) {
+    // CL_MAP_READ or CL_MAP_WRITE and CL_MAP_WRITE_INVALIDATE_REGION are
+    // mutually exclusive.
+    return false;
+  }
+  return true;
 }
 
 /*! \addtogroup API
@@ -107,87 +100,81 @@ validateMapFlags(cl_map_flags flags)
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (
-    cl_context       context,
-    cl_svm_mem_flags flags,
-    size_t           size,
-    unsigned int     alignment))
-{
-    if (!is_valid(context)) {
-        LogWarning("invalid parameter \"context\"");
-        return NULL;
+RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (cl_context context, cl_svm_mem_flags flags,
+                                                size_t size, unsigned int alignment)) {
+  if (!is_valid(context)) {
+    LogWarning("invalid parameter \"context\"");
+    return NULL;
+  }
+
+  if (size == 0) {
+    LogWarning("invalid parameter \"size = 0\"");
+    return NULL;
+  }
+
+  if (!validateSvmFlags(flags)) {
+    LogWarning("invalid parameter \"flags\"");
+    return NULL;
+  }
+
+  if (!amd::isPowerOfTwo(alignment)) {
+    LogWarning("invalid parameter \"alignment\"");
+    return NULL;
+  }
+
+  const std::vector<amd::Device*>& devices = as_amd(context)->svmDevices();
+  bool sizePass = false;
+  cl_device_svm_capabilities combinedSvmCapabilities = 0;
+  const cl_uint hostAddressBits = LP64_SWITCH(32, 64);
+  cl_uint minContextAlignment = std::numeric_limits<uint>::max();
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    cl_device_svm_capabilities svmCapabilities = (*it)->info().svmCapabilities_;
+    if (svmCapabilities == 0) {
+      continue;
+    }
+    combinedSvmCapabilities |= svmCapabilities;
+
+    if ((*it)->info().maxMemAllocSize_ >= size) {
+      sizePass = true;
     }
 
-    if (size == 0) {
-        LogWarning("invalid parameter \"size = 0\"");
-        return NULL;
+    if ((*it)->info().addressBits_ < hostAddressBits) {
+      LogWarning("address mode mismatch between host and device");
+      return NULL;
     }
 
-    if (!validateSvmFlags(flags)) {
-        LogWarning("invalid parameter \"flags\"");
-        return NULL;
+    // maximum alignment for a device is given in bits.
+    cl_uint baseAlignment = (*it)->info().memBaseAddrAlign_ >> 3;
+    if (alignment > baseAlignment) {
+      LogWarning("invalid parameter \"alignment\"");
+      return NULL;
     }
 
-    if (!amd::isPowerOfTwo(alignment)) {
-        LogWarning("invalid parameter \"alignment\"");
-        return NULL;
-    }
+    minContextAlignment = std::min(minContextAlignment, baseAlignment);
+  }
+  if ((flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) &&
+      !(combinedSvmCapabilities & CL_DEVICE_SVM_FINE_GRAIN_BUFFER)) {
+    LogWarning("No device in context supports SVM fine grained buffers");
+    return NULL;
+  }
+  if ((flags & CL_MEM_SVM_ATOMICS) && !(combinedSvmCapabilities & CL_DEVICE_SVM_ATOMICS)) {
+    LogWarning("No device in context supports SVM atomics");
+    return NULL;
+  }
+  if (!sizePass) {
+    LogWarning("invalid parameter \"size\"");
+    return NULL;
+  }
 
-    const std::vector<amd::Device*>& devices = as_amd(context)->svmDevices();
-    bool sizePass = false;
-    cl_device_svm_capabilities combinedSvmCapabilities = 0;
-    const cl_uint hostAddressBits = LP64_SWITCH(32, 64);
-    cl_uint minContextAlignment = std::numeric_limits<uint>::max();
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-        cl_device_svm_capabilities svmCapabilities =
-               (*it)->info().svmCapabilities_;
-        if (svmCapabilities == 0) {
-            continue;
-        }
-        combinedSvmCapabilities |= svmCapabilities;
+  // if alignment not specified, use largest data type alignment supported
+  if (alignment == 0) {
+    alignment = minContextAlignment;
+    LogPrintfInfo("Assumed alignment %d\n", alignment);
+  }
 
-        if ((*it)->info().maxMemAllocSize_ >= size) {
-            sizePass = true;
-        }
-
-        if ((*it)->info().addressBits_ < hostAddressBits) {
-            LogWarning("address mode mismatch between host and device");
-            return NULL;
-        }
-
-        // maximum alignment for a device is given in bits.
-        cl_uint baseAlignment = (*it)->info().memBaseAddrAlign_ >> 3;
-        if (alignment > baseAlignment) {
-            LogWarning("invalid parameter \"alignment\"");
-            return NULL;
-        }
-
-        minContextAlignment = std::min(minContextAlignment, baseAlignment);
-    }
-    if ((flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) &&
-            !(combinedSvmCapabilities & CL_DEVICE_SVM_FINE_GRAIN_BUFFER)) {
-        LogWarning("No device in context supports SVM fine grained buffers");
-        return NULL;
-    }
-    if ((flags & CL_MEM_SVM_ATOMICS) &&
-            !(combinedSvmCapabilities & CL_DEVICE_SVM_ATOMICS)) {
-        LogWarning("No device in context supports SVM atomics");
-        return NULL;
-    }
-    if (!sizePass) {
-        LogWarning("invalid parameter \"size\"");
-        return NULL;
-    }
-
-    // if alignment not specified, use largest data type alignment supported
-    if (alignment == 0) {
-        alignment = minContextAlignment;
-        LogPrintfInfo("Assumed alignment %d\n", alignment);
-    }
-
-    amd::Context& amdContext = *as_amd(context);
-    return amd::SvmBuffer::malloc(amdContext, flags, size, alignment);
+  amd::Context& amdContext = *as_amd(context);
+  return amd::SvmBuffer::malloc(amdContext, flags, size, alignment);
 }
 RUNTIME_EXIT
 
@@ -200,20 +187,18 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY_VOID(void,  clSVMFree, (
-    cl_context context, void* svm_pointer))
-{
-    if (!is_valid(context)) {
-        LogWarning("invalid parameter \"context\"");
-        return;
-    }
+RUNTIME_ENTRY_VOID(void, clSVMFree, (cl_context context, void* svm_pointer)) {
+  if (!is_valid(context)) {
+    LogWarning("invalid parameter \"context\"");
+    return;
+  }
 
-    if (svm_pointer == NULL) {
-        return;
-    }
+  if (svm_pointer == NULL) {
+    return;
+  }
 
-    amd::Context& amdContext = *as_amd(context);
-    amd::SvmBuffer::free(amdContext, svm_pointer);
+  amd::Context& amdContext = *as_amd(context);
+  amd::SvmBuffer::free(amdContext, svm_pointer);
 }
 RUNTIME_EXIT
 
@@ -284,77 +269,64 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueSVMFree, (
-    cl_command_queue command_queue,
-    cl_uint          num_svm_pointers,
-    void*            svm_pointers[],
-    void (CL_CALLBACK *pfn_free_func)(
-        cl_command_queue queue,
-        cl_uint          num_svm_pointers,
-        void*            svm_pointers[],
-        void*            user_data),
-    void*            user_data,
-    cl_uint          num_events_in_wait_list,
-    const cl_event*  event_wait_list,
-    cl_event*        event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
+RUNTIME_ENTRY(cl_int, clEnqueueSVMFree,
+              (cl_command_queue command_queue, cl_uint num_svm_pointers, void* svm_pointers[],
+               void(CL_CALLBACK* pfn_free_func)(cl_command_queue queue, cl_uint num_svm_pointers,
+                                                void* svm_pointers[], void* user_data),
+               void* user_data, cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
+               cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  if (num_svm_pointers == 0) {
+    LogWarning("invalid parameter \"num_svm_pointers = 0\"");
+    return CL_INVALID_VALUE;
+  }
+
+  if (svm_pointers == NULL) {
+    LogWarning("invalid parameter \"svm_pointers = NULL\"");
+    return CL_INVALID_VALUE;
+  }
+
+  //!@todo why are NULL pointers disallowed here but not in clSVMFree?
+  for (cl_uint i = 0; i < num_svm_pointers; i++) {
+    if (svm_pointers[i] == NULL) {
+      LogWarning("Null pointers are not allowed");
+      return CL_INVALID_VALUE;
     }
+  }
 
-    if (num_svm_pointers == 0) {
-        LogWarning("invalid parameter \"num_svm_pointers = 0\"");
-        return CL_INVALID_VALUE;
-    }
+  //!@todo what if the callback is NULL but \a user_data is not?
 
-    if (svm_pointers == NULL) {
-        LogWarning("invalid parameter \"svm_pointers = NULL\"");
-        return CL_INVALID_VALUE;
-    }
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    //!@todo why are NULL pointers disallowed here but not in clSVMFree?
-    for (cl_uint i = 0; i < num_svm_pointers; i++) {
-       if (svm_pointers[i] == NULL) {
-           LogWarning("Null pointers are not allowed");
-           return CL_INVALID_VALUE;
-       }
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    //!@todo what if the callback is NULL but \a user_data is not?
+  amd::Command* command = new amd::SvmFreeMemoryCommand(hostQueue, eventWaitList, num_svm_pointers,
+                                                        svm_pointers, pfn_free_func, user_data);
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  command->enqueue();
 
-    amd::Command *command = new amd::SvmFreeMemoryCommand(
-        hostQueue,
-        eventWaitList,
-        num_svm_pointers,
-        svm_pointers,
-        pfn_free_func,
-        user_data);
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -431,71 +403,60 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueSVMMemcpy, (
-    cl_command_queue command_queue,
-    cl_bool          blocking_copy,
-    void*            dst_ptr,
-    const void*      src_ptr,
-    size_t           size,
-    cl_uint          num_events_in_wait_list,
-    const cl_event*  event_wait_list,
-    cl_event*        event))
-{
+RUNTIME_ENTRY(cl_int, clEnqueueSVMMemcpy,
+              (cl_command_queue command_queue, cl_bool blocking_copy, void* dst_ptr,
+               const void* src_ptr, size_t size, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+  if (dst_ptr == NULL || src_ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (dst_ptr == NULL || src_ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (size == 0) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (size == 0) {
-        return CL_INVALID_VALUE;
-    }
+  char* dst = reinterpret_cast<char*>(dst_ptr);
+  const char* src = reinterpret_cast<const char*>(src_ptr);
+  if ((dst > src - size) && (dst < src + size)) {
+    return CL_MEM_COPY_OVERLAP;
+  }
 
-    char* dst = reinterpret_cast<char*>(dst_ptr);
-    const char* src = reinterpret_cast<const char*>(src_ptr);
-    if ((dst > src - size) && (dst < src + size)) {
-        return CL_MEM_COPY_OVERLAP;
-    }
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command* command =
+      new amd::SvmCopyMemoryCommand(hostQueue, eventWaitList, dst_ptr, src_ptr, size);
 
-    amd::Command *command = new amd::SvmCopyMemoryCommand(
-        hostQueue,
-        eventWaitList,
-        dst_ptr,
-        src_ptr,
-        size);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  command->enqueue();
 
-    command->enqueue();
+  if (blocking_copy) {
+    command->awaitCompletion();
+  }
 
-    if (blocking_copy) {
-        command->awaitCompletion();
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -571,75 +532,64 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueSVMMemFill, (
-    cl_command_queue command_queue,
-    void*            svm_ptr,
-    const void*      pattern,
-    size_t           pattern_size,
-    size_t           size,
-    cl_uint          num_events_in_wait_list,
-    const cl_event*  event_wait_list,
-    cl_event*        event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueSVMMemFill,
+              (cl_command_queue command_queue, void* svm_ptr, const void* pattern,
+               size_t pattern_size, size_t size, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (svm_ptr == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (svm_ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    char* dst = reinterpret_cast<char*>(svm_ptr);
-    if (!amd::isMultipleOf(dst, pattern_size)) {
-        return CL_INVALID_VALUE;
-    }
+  char* dst = reinterpret_cast<char*>(svm_ptr);
+  if (!amd::isMultipleOf(dst, pattern_size)) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (pattern == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (pattern == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!amd::isPowerOfTwo(pattern_size) || pattern_size == 0
-            || pattern_size > amd::FillMemoryCommand::MaxFillPatterSize) {
-        return CL_INVALID_VALUE;
-    }
+  if (!amd::isPowerOfTwo(pattern_size) || pattern_size == 0 ||
+      pattern_size > amd::FillMemoryCommand::MaxFillPatterSize) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (size == 0 || !amd::isMultipleOf(size, pattern_size)) {
-        return CL_INVALID_VALUE;
-    }
+  if (size == 0 || !amd::isMultipleOf(size, pattern_size)) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS){
-        return err;
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command *command = new amd::SvmFillMemoryCommand(
-        hostQueue,
-        eventWaitList,
-        svm_ptr,
-        pattern,
-        pattern_size,
-        size);
+  amd::Command* command =
+      new amd::SvmFillMemoryCommand(hostQueue, eventWaitList, svm_ptr, pattern, pattern_size, size);
 
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    command->enqueue();
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -714,104 +664,96 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueSVMMap, (
-    cl_command_queue command_queue,
-    cl_bool          blocking_map,
-    cl_map_flags     map_flags,
-    void*            svm_ptr,
-    size_t           size,
-    cl_uint          num_events_in_wait_list,
-    const cl_event*  event_wait_list,
-    cl_event*        event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueSVMMap,
+              (cl_command_queue command_queue, cl_bool blocking_map, cl_map_flags map_flags,
+               void* svm_ptr, size_t size, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (svm_ptr == NULL) {
+  if (svm_ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
+
+  if (size == 0) {
+    return CL_INVALID_VALUE;
+  }
+
+  if (!validateMapFlags(map_flags)) {
+    return CL_INVALID_VALUE;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+  size_t offset = 0;
+  amd::Memory* svmMem = NULL;
+  if ((queue->device()).isFineGrainedSystem()) {
+    // leave blank on purpose for FGS no op
+  } else {
+    svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    if (NULL != svmMem) {
+      // make sure the context is the same as the context of creation of svm space
+      if (hostQueue.context() != svmMem->getContext()) {
+        LogWarning("different contexts");
+        return CL_INVALID_CONTEXT;
+      }
+
+      offset = static_cast<address>(svm_ptr) - static_cast<address>(svmMem->getSvmPtr());
+      if (offset < 0 || offset + size > svmMem->getSize()) {
+        LogWarning("wrong svm address ");
         return CL_INVALID_VALUE;
-    }
+      }
+      amd::Buffer* srcBuffer = svmMem->asBuffer();
 
-    if (size == 0) {
-        return CL_INVALID_VALUE;
-    }
-
-    if (!validateMapFlags(map_flags)) {
-       return CL_INVALID_VALUE;
-    }
-
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
-    size_t offset = 0;
-    amd::Memory * svmMem = NULL;
-    if ((queue->device()).isFineGrainedSystem()) {
-        //leave blank on purpose for FGS no op
-    }
-    else {
-        svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
-        if (NULL != svmMem) {
-            //make sure the context is the same as the context of creation of svm space
-            if (hostQueue.context() != svmMem->getContext()) {
-                LogWarning("different contexts");
-                return CL_INVALID_CONTEXT;
-            }
-
-            offset = static_cast<address>(svm_ptr) - static_cast<address>(svmMem->getSvmPtr());
-            if (offset < 0 || offset + size > svmMem->getSize()) {
-                LogWarning("wrong svm address ");
-                return CL_INVALID_VALUE;
-            }
-            amd::Buffer* srcBuffer = svmMem->asBuffer();
-
-            amd::Coord3D    srcSize(size);
-            amd::Coord3D    srcOffset(offset);
-            if (NULL != srcBuffer) {
-                if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
-                    return CL_INVALID_VALUE;
-                }
-            }
-
-            // Make sure we have memory for the command execution
-            device::Memory* mem = svmMem->getDeviceMemory(queue->device());
-            if (NULL == mem) {
-                LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
-                    svmMem->getSize());
-                return CL_OUT_OF_RESOURCES;
-            }
-            // Attempt to allocate the map target now (whether blocking or non-blocking)
-            void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
-            if (NULL == mapPtr || mapPtr != svm_ptr) {
-                return CL_OUT_OF_RESOURCES;
-            }
+      amd::Coord3D srcSize(size);
+      amd::Coord3D srcOffset(offset);
+      if (NULL != srcBuffer) {
+        if (!srcBuffer->validateRegion(srcOffset, srcSize)) {
+          return CL_INVALID_VALUE;
         }
-    }
+      }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
+      // Make sure we have memory for the command execution
+      device::Memory* mem = svmMem->getDeviceMemory(queue->device());
+      if (NULL == mem) {
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", svmMem->getSize());
+        return CL_OUT_OF_RESOURCES;
+      }
+      // Attempt to allocate the map target now (whether blocking or non-blocking)
+      void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
+      if (NULL == mapPtr || mapPtr != svm_ptr) {
+        return CL_OUT_OF_RESOURCES;
+      }
     }
+  }
 
-    amd::Command* command = new amd::SvmMapMemoryCommand(
-        hostQueue, eventWaitList, svmMem, size, offset, map_flags, svm_ptr);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-    command->enqueue();
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    if (blocking_map) {
-        command->awaitCompletion();
-    }
+  amd::Command* command = new amd::SvmMapMemoryCommand(hostQueue, eventWaitList, svmMem, size,
+                                                       offset, map_flags, svm_ptr);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+  command->enqueue();
 
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  if (blocking_map) {
+    command->awaitCompletion();
+  }
+
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -866,61 +808,55 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clEnqueueSVMUnmap, (
-    cl_command_queue command_queue,
-    void*            svm_ptr,
-    cl_uint          num_events_in_wait_list,
-    const cl_event*  event_wait_list,
-    cl_event*        event))
-{
-    if (!is_valid(command_queue)) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
+RUNTIME_ENTRY(cl_int, clEnqueueSVMUnmap,
+              (cl_command_queue command_queue, void* svm_ptr, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-    if (svm_ptr == NULL) {
+  if (svm_ptr == NULL) {
+    return CL_INVALID_VALUE;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+  amd::Memory* svmMem = NULL;
+  if (!(queue->device()).isFineGrainedSystem()) {
+    // check if the ptr is in the svm space
+    svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    // Make sure we have memory for the command execution
+    if (NULL != svmMem) {
+      // Make sure we have memory for the command execution
+      device::Memory* mem = svmMem->getDeviceMemory(queue->device());
+      if (NULL == mem) {
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", svmMem->getSize());
         return CL_INVALID_VALUE;
+      }
     }
+  }
 
-    amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
-    if (NULL == queue) {
-        return CL_INVALID_COMMAND_QUEUE;
-    }
-    amd::HostQueue& hostQueue = *queue;
-    amd::Memory * svmMem = NULL;
-    if (!(queue->device()).isFineGrainedSystem()) {
-        //check if the ptr is in the svm space
-        svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
-        // Make sure we have memory for the command execution
-        if (NULL != svmMem) {
-            // Make sure we have memory for the command execution
-            device::Memory* mem = svmMem->getDeviceMemory(queue->device());
-            if (NULL == mem) {
-                LogPrintfError("Can't allocate memory size - 0x%08X bytes!",
-                    svmMem->getSize());
-                return CL_INVALID_VALUE;
-            }
-        }
-    }
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
 
-    amd::Command::EventWaitList eventWaitList;
-    cl_int err = amd::clSetEventWaitList(eventWaitList,
-        hostQueue.context(), num_events_in_wait_list, event_wait_list);
-    if (err != CL_SUCCESS) {
-        return err;
-    }
+  amd::Command* command = new amd::SvmUnmapMemoryCommand(hostQueue, eventWaitList, svmMem, svm_ptr);
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+  command->enqueue();
 
-    amd::Command* command = new amd::SvmUnmapMemoryCommand(
-        hostQueue, eventWaitList, svmMem, svm_ptr);
-    if (command == NULL) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
-    command->enqueue();
-
-    *not_null(event) = as_cl(&command->event());
-    if (event == NULL) {
-        command->release();
-    }
-    return CL_SUCCESS;
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -959,46 +895,43 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clSetKernelArgSVMPointer, (
-    cl_kernel kernel,
-    cl_uint arg_index,
-    const void * arg_value))
-{
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+RUNTIME_ENTRY(cl_int, clSetKernelArgSVMPointer,
+              (cl_kernel kernel, cl_uint arg_index, const void* arg_value)) {
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    const amd::KernelSignature& signature = as_amd(kernel)->signature();
-    if (arg_index >= signature.numParameters()) {
-        return CL_INVALID_ARG_INDEX;
-    }
+  const amd::KernelSignature& signature = as_amd(kernel)->signature();
+  if (arg_index >= signature.numParameters()) {
+    return CL_INVALID_ARG_INDEX;
+  }
 
-    const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
-    if (desc.type_ != T_POINTER || !(desc.addressQualifier_ &
-            (CL_KERNEL_ARG_ADDRESS_GLOBAL | CL_KERNEL_ARG_ADDRESS_CONSTANT))) {
-        return CL_INVALID_ARG_VALUE;
-    }
+  const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
+  if (desc.type_ != T_POINTER ||
+      !(desc.addressQualifier_ & (CL_KERNEL_ARG_ADDRESS_GLOBAL | CL_KERNEL_ARG_ADDRESS_CONSTANT))) {
+    return CL_INVALID_ARG_VALUE;
+  }
 
-    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
+  as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
 
-    //! @todo We need to check that the alignment of \a arg_value. For instance,
-    // if the argument is of type 'global float4*', then \a arg_value must be
-    // aligned to sizeof(float4*). Note that desc.size_ contains the size of the
-    // pointer type itself and the size of the pointed type.
+  //! @todo We need to check that the alignment of \a arg_value. For instance,
+  // if the argument is of type 'global float4*', then \a arg_value must be
+  // aligned to sizeof(float4*). Note that desc.size_ contains the size of the
+  // pointer type itself and the size of the pointed type.
 
 
-    // We do not perform additional pointer validations:
-    // -verifying pointers returned by SVMAlloc would imply keeping track
-    //  of every allocation range and then matching the pointer against that
-    //  range. Note that even if the pointer would look correct, nothing
-    //  prevents the user from using an offset within the kernel that would
-    //  result on an invalid access.
-    // -verifying system pointers (if supported) requires matching the pointer
-    //  against the address space of the current process.
+  // We do not perform additional pointer validations:
+  // -verifying pointers returned by SVMAlloc would imply keeping track
+  //  of every allocation range and then matching the pointer against that
+  //  range. Note that even if the pointer would look correct, nothing
+  //  prevents the user from using an offset within the kernel that would
+  //  result on an invalid access.
+  // -verifying system pointers (if supported) requires matching the pointer
+  //  against the address space of the current process.
 
-    as_amd(kernel)->parameters().set(
-        static_cast<size_t>(arg_index), sizeof(arg_value), arg_value, true);
-    return CL_SUCCESS;
+  as_amd(kernel)->parameters().set(static_cast<size_t>(arg_index), sizeof(arg_value), arg_value,
+                                   true);
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1031,85 +964,75 @@ RUNTIME_EXIT
  *
  *  \version 2.0r15
  */
-RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (
-    cl_kernel           kernel,
-    cl_kernel_exec_info param_name,
-    size_t              param_value_size,
-    const void*         param_value))
-{
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (cl_kernel kernel, cl_kernel_exec_info param_name,
+                                            size_t param_value_size, const void* param_value)) {
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    if (param_value == NULL) {
-        return CL_INVALID_VALUE;
-    }
+  if (param_value == NULL) {
+    return CL_INVALID_VALUE;
+  }
 
-    const amd::Kernel* amdKernel = as_amd(kernel);
+  const amd::Kernel* amdKernel = as_amd(kernel);
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM:
-        if (param_value_size != sizeof(cl_bool)) {
-            return CL_INVALID_VALUE;
-        }
-        else {
-            const bool flag = *(static_cast<const bool*>(param_value));
-            const amd::Context* amdContext = &amdKernel->program().context();
-            bool foundFineGrainedSystemDevice = false;
-            const std::vector<amd::Device*>& devices = amdContext->devices();
-            std::vector<amd::Device*>::const_iterator it;
-            for (it = devices.begin(); it != devices.end(); ++it) {
-              if ((*it)->info().svmCapabilities_ &
-                      CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
-                  foundFineGrainedSystemDevice = true;
-                  break;
-              }
-            }
-            if (flag && !foundFineGrainedSystemDevice) {
-                return CL_INVALID_OPERATION;
-            }
-            amdKernel->parameters().setSvmSystemPointersSupport(flag ? FGS_YES : FGS_NO);
-        }
-        break;
-    case CL_KERNEL_EXEC_INFO_SVM_PTRS:
-        if (param_value_size == 0 || !amd::isMultipleOf(param_value_size,
-                                                            sizeof(void*))) {
-            return CL_INVALID_VALUE;
-        }
-        else {
-            size_t count = param_value_size/sizeof(void*);
-            void* const* execInfoArray = reinterpret_cast<void* const*>(param_value);
-            for (size_t i = 0; i < count; i++) {
-                if (NULL == execInfoArray[i]) {
-                    return CL_INVALID_VALUE;
-                }
-            }
-            amdKernel->parameters().addSvmPtr(execInfoArray, count);
-        }
-        break;
-    case CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD:
-        if (param_value_size != sizeof(cl_bool)) {
-            return CL_INVALID_VALUE;
-        }
-        else {
-            const bool newVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true: false;
-            amdKernel->parameters().setExecNewVcop(newVcopFlag);
-        }
-        break;
-    case CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD:
-        if (param_value_size != sizeof(cl_bool)) {
-            return CL_INVALID_VALUE;
-        }
-        else {
-            const bool pfpaVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true: false;
-            amdKernel->parameters().setExecPfpaVcop(pfpaVcopFlag);
-        }
-        break;
-    default:
+      if (param_value_size != sizeof(cl_bool)) {
         return CL_INVALID_VALUE;
-    }
+      } else {
+        const bool flag = *(static_cast<const bool*>(param_value));
+        const amd::Context* amdContext = &amdKernel->program().context();
+        bool foundFineGrainedSystemDevice = false;
+        const std::vector<amd::Device*>& devices = amdContext->devices();
+        std::vector<amd::Device*>::const_iterator it;
+        for (it = devices.begin(); it != devices.end(); ++it) {
+          if ((*it)->info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
+            foundFineGrainedSystemDevice = true;
+            break;
+          }
+        }
+        if (flag && !foundFineGrainedSystemDevice) {
+          return CL_INVALID_OPERATION;
+        }
+        amdKernel->parameters().setSvmSystemPointersSupport(flag ? FGS_YES : FGS_NO);
+      }
+      break;
+    case CL_KERNEL_EXEC_INFO_SVM_PTRS:
+      if (param_value_size == 0 || !amd::isMultipleOf(param_value_size, sizeof(void*))) {
+        return CL_INVALID_VALUE;
+      } else {
+        size_t count = param_value_size / sizeof(void*);
+        void* const* execInfoArray = reinterpret_cast<void* const*>(param_value);
+        for (size_t i = 0; i < count; i++) {
+          if (NULL == execInfoArray[i]) {
+            return CL_INVALID_VALUE;
+          }
+        }
+        amdKernel->parameters().addSvmPtr(execInfoArray, count);
+      }
+      break;
+    case CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD:
+      if (param_value_size != sizeof(cl_bool)) {
+        return CL_INVALID_VALUE;
+      } else {
+        const bool newVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true : false;
+        amdKernel->parameters().setExecNewVcop(newVcopFlag);
+      }
+      break;
+    case CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD:
+      if (param_value_size != sizeof(cl_bool)) {
+        return CL_INVALID_VALUE;
+      } else {
+        const bool pfpaVcopFlag = (*(reinterpret_cast<const cl_bool*>(param_value))) ? true : false;
+        amdKernel->parameters().setExecPfpaVcop(pfpaVcopFlag);
+      }
+      break;
+    default:
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 

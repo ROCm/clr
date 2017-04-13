@@ -62,45 +62,41 @@
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clWaitForEvents, (
-    cl_uint num_events,
-    const cl_event *event_list))
-{
-    if (num_events == 0 || event_list == NULL) {
-        return CL_INVALID_VALUE;
+RUNTIME_ENTRY(cl_int, clWaitForEvents, (cl_uint num_events, const cl_event* event_list)) {
+  if (num_events == 0 || event_list == NULL) {
+    return CL_INVALID_VALUE;
+  }
+
+  const amd::Context* prevContext = NULL;
+  const amd::HostQueue* prevQueue = NULL;
+
+  for (cl_uint i = 0; i < num_events; ++i) {
+    cl_event event = event_list[i];
+
+    if (!is_valid(event)) {
+      return CL_INVALID_EVENT;
     }
 
-    const amd::Context* prevContext = NULL;
-    const amd::HostQueue* prevQueue = NULL;
-
-    for (cl_uint i = 0; i < num_events; ++i) {
-        cl_event event = event_list[i];
-
-        if (!is_valid(event)) {
-            return CL_INVALID_EVENT;
-        }
-
-        // Make sure all the events are associated with the same context
-        const amd::Context* context = &as_amd(event)->context();
-        if (prevContext != NULL && prevContext != context) {
-            return CL_INVALID_CONTEXT;
-        }
-        prevContext = context;
-
-        // Flush the command queues associated with event1...eventN
-        amd::HostQueue* queue = as_amd(event)->command().queue();
-        if (queue != NULL && prevQueue != queue) {
-            queue->flush();
-        }
-        prevQueue = queue;
+    // Make sure all the events are associated with the same context
+    const amd::Context* context = &as_amd(event)->context();
+    if (prevContext != NULL && prevContext != context) {
+      return CL_INVALID_CONTEXT;
     }
+    prevContext = context;
 
-    bool allSucceeded = true;
-    while (num_events-- > 0) {
-        allSucceeded &= as_amd(*event_list++)->awaitCompletion();
+    // Flush the command queues associated with event1...eventN
+    amd::HostQueue* queue = as_amd(event)->command().queue();
+    if (queue != NULL && prevQueue != queue) {
+      queue->flush();
     }
-    return allSucceeded ? CL_SUCCESS
-        : CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST;
+    prevQueue = queue;
+  }
+
+  bool allSucceeded = true;
+  while (num_events-- > 0) {
+    allSucceeded &= as_amd(*event_list++)->awaitCompletion();
+  }
+  return allSucceeded ? CL_SUCCESS : CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST;
 }
 RUNTIME_EXIT
 
@@ -134,52 +130,44 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetEventInfo, (
-    cl_event event,
-    cl_event_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
+RUNTIME_ENTRY(cl_int, clGetEventInfo,
+              (cl_event event, cl_event_info param_name, size_t param_value_size, void* param_value,
+               size_t* param_value_size_ret)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
 
-    switch(param_name) {
+  switch (param_name) {
     case CL_EVENT_CONTEXT: {
-        amd::Context& amdCtx = const_cast<amd::Context&>(as_amd(event)->context());
-        cl_context context = as_cl(&amdCtx);
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      amd::Context& amdCtx = const_cast<amd::Context&>(as_amd(event)->context());
+      cl_context context = as_cl(&amdCtx);
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_EVENT_COMMAND_QUEUE: {
-        amd::Command& command = as_amd(event)->command();
-        cl_command_queue queue = command.queue() == NULL
-            ? NULL : const_cast<cl_command_queue>(as_cl(command.queue()->asCommandQueue()));
-        return amd::clGetInfo(
-            queue, param_value_size, param_value, param_value_size_ret);
+      amd::Command& command = as_amd(event)->command();
+      cl_command_queue queue = command.queue() == NULL
+          ? NULL
+          : const_cast<cl_command_queue>(as_cl(command.queue()->asCommandQueue()));
+      return amd::clGetInfo(queue, param_value_size, param_value, param_value_size_ret);
     }
     case CL_EVENT_COMMAND_TYPE: {
-        cl_command_type type = as_amd(event)->command().type();
-        return amd::clGetInfo(
-            type, param_value_size, param_value, param_value_size_ret);
+      cl_command_type type = as_amd(event)->command().type();
+      return amd::clGetInfo(type, param_value_size, param_value, param_value_size_ret);
     }
     case CL_EVENT_COMMAND_EXECUTION_STATUS: {
-        as_amd(event)->notifyCmdQueue();
-        cl_int status = as_amd(event)->command().status();
-        return amd::clGetInfo(
-            status, param_value_size, param_value, param_value_size_ret);
+      as_amd(event)->notifyCmdQueue();
+      cl_int status = as_amd(event)->command().status();
+      return amd::clGetInfo(status, param_value_size, param_value, param_value_size_ret);
     }
     case CL_EVENT_REFERENCE_COUNT: {
-        cl_uint count = as_amd(event)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(event)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -192,13 +180,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainEvent, (cl_event event))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
-    as_amd(event)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainEvent, (cl_event event)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
+  as_amd(event)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -214,13 +201,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseEvent, (cl_event event))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
-    as_amd(event)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseEvent, (cl_event event)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
+  as_amd(event)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -240,24 +226,21 @@ RUNTIME_EXIT
  *
  * \version 1.1r15
  */
-RUNTIME_ENTRY_RET(cl_event, clCreateUserEvent, (
-    cl_context context,
-    cl_int *errcode_ret))
-{
-    if (!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        return (cl_event) 0;
-    }
+RUNTIME_ENTRY_RET(cl_event, clCreateUserEvent, (cl_context context, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_event)0;
+  }
 
-    amd::Event* event = new amd::UserEvent(*as_amd(context));
-    if (event == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_event) 0;
-    }
+  amd::Event* event = new amd::UserEvent(*as_amd(context));
+  if (event == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_event)0;
+  }
 
-    event->retain();
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(event);
+  event->retain();
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(event);
 }
 RUNTIME_EXIT
 
@@ -279,21 +262,18 @@ RUNTIME_EXIT
  *
  * \version 1.1r15
  */
-RUNTIME_ENTRY(cl_int, clSetUserEventStatus, (
-    cl_event event,
-    cl_int execution_status))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
-    if (execution_status > CL_COMPLETE) {
-        return CL_INVALID_VALUE;
-    }
+RUNTIME_ENTRY(cl_int, clSetUserEventStatus, (cl_event event, cl_int execution_status)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
+  if (execution_status > CL_COMPLETE) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!as_amd(event)->setStatus(execution_status)) {
-        return CL_INVALID_OPERATION;
-    }
-    return CL_SUCCESS;
+  if (!as_amd(event)->setStatus(execution_status)) {
+    return CL_INVALID_OPERATION;
+  }
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -362,35 +342,30 @@ RUNTIME_EXIT
  *
  * \version 1.1r15
  */
-RUNTIME_ENTRY(cl_int, clSetEventCallback, (
-    cl_event event,
-    cl_int command_exec_callback_type,
-    void (CL_CALLBACK * pfn_notify)(
-        cl_event event, cl_int command_exec_status, void *user_data),
-    void* user_data))
-{
-    if (!is_valid(event)) {
-        return CL_INVALID_EVENT;
-    }
+RUNTIME_ENTRY(cl_int, clSetEventCallback,
+              (cl_event event, cl_int command_exec_callback_type,
+               void(CL_CALLBACK* pfn_notify)(cl_event event, cl_int command_exec_status,
+                                             void* user_data),
+               void* user_data)) {
+  if (!is_valid(event)) {
+    return CL_INVALID_EVENT;
+  }
 
-    if (pfn_notify == NULL
-        || command_exec_callback_type < CL_COMPLETE
-        || command_exec_callback_type > CL_QUEUED) {
-        return CL_INVALID_VALUE;
-    }
+  if (pfn_notify == NULL || command_exec_callback_type < CL_COMPLETE ||
+      command_exec_callback_type > CL_QUEUED) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!as_amd(event)->setCallback(
-        command_exec_callback_type, pfn_notify, user_data)) {
-        return CL_OUT_OF_HOST_MEMORY;
-    }
+  if (!as_amd(event)->setCallback(command_exec_callback_type, pfn_notify, user_data)) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
 
-    as_amd(event)->notifyCmdQueue();
+  as_amd(event)->notifyCmdQueue();
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
 /*! @}
  *  @}
  */
-

@@ -27,24 +27,21 @@
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetCallBackFunctionsAMD, (
-    cl_device_id                           device,
-    cl_PreDispatchCallBackFunctionAMD      preDispatchFunction,
-    cl_PostDispatchCallBackFunctionAMD     postDispatchFunction))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgSetCallBackFunctionsAMD,
+              (cl_device_id device, cl_PreDispatchCallBackFunctionAMD preDispatchFunction,
+               cl_PostDispatchCallBackFunctionAMD postDispatchFunction)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setCallBackFunctions(preDispatchFunction,
-                                       postDispatchFunction);
+  debugManager->setCallBackFunctions(preDispatchFunction, postDispatchFunction);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -62,23 +59,20 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetCallBackArgumentsAMD, (
-    cl_device_id    device,
-    void *          preDispatchArgs,
-    void *          postDispatchArgs))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgSetCallBackArgumentsAMD,
+              (cl_device_id device, void* preDispatchArgs, void* postDispatchArgs)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setCallBackArguments(preDispatchArgs, postDispatchArgs);
+  debugManager->setCallBackArguments(preDispatchArgs, postDispatchArgs);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -94,22 +88,19 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgFlushCacheAMD, (
-    cl_device_id                device,
-    cl_dbg_gpu_cache_mask_amd   mask))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgFlushCacheAMD, (cl_device_id device, cl_dbg_gpu_cache_mask_amd mask)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->flushCache(mask.ui32All);
+  debugManager->flushCache(mask.ui32All);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -127,26 +118,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the policy is not specified (NULL)
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetExceptionPolicyAMD, (
-    cl_device_id                    device,
-    cl_dbg_exception_policy_amd *   policy))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgSetExceptionPolicyAMD,
+              (cl_device_id device, cl_dbg_exception_policy_amd* policy)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == policy) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == policy) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setExceptionPolicy(policy);
+  debugManager->setExceptionPolicy(policy);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -163,26 +152,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the policy storage is not specified
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgGetExceptionPolicyAMD, (
-    cl_device_id                    device,
-    cl_dbg_exception_policy_amd *   policy))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgGetExceptionPolicyAMD,
+              (cl_device_id device, cl_dbg_exception_policy_amd* policy)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == policy) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == policy) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->getExceptionPolicy(policy);
+  debugManager->getExceptionPolicy(policy);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -199,26 +186,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the mode is not specified, ie, has a NULL value
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetKernelExecutionModeAMD, (
-    cl_device_id                    device,
-    cl_dbg_kernel_exec_mode_amd *   mode))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgSetKernelExecutionModeAMD,
+              (cl_device_id device, cl_dbg_kernel_exec_mode_amd* mode)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == mode) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == mode) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setKernelExecutionMode(mode);
+  debugManager->setKernelExecutionMode(mode);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -235,26 +220,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the mode storage is not specified, ie, has a NULL value
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgGetKernelExecutionModeAMD, (
-    cl_device_id                    device,
-    cl_dbg_kernel_exec_mode_amd *   mode))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgGetKernelExecutionModeAMD,
+              (cl_device_id device, cl_dbg_kernel_exec_mode_amd* mode)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == mode) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == mode) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->getKernelExecutionMode(mode);
+  debugManager->getKernelExecutionMode(mode);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -275,31 +258,26 @@ RUNTIME_EXIT
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  *  - CL_OUT_OF_RESOURCES if fails to create the event
  */
-RUNTIME_ENTRY(cl_int, clHwDbgCreateEventAMD, (
-    cl_device_id            device,
-    bool                    autoReset,
-    cl_dbg_event_amd *      pDebugEvent,
-    cl_uint *               pEventId ))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgCreateEventAMD, (cl_device_id device, bool autoReset,
+                                              cl_dbg_event_amd* pDebugEvent, cl_uint* pEventId)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == pDebugEvent) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == pDebugEvent) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    // set it to zero for now - not used by OpenCL
-    *pEventId = 0;
-    *pDebugEvent = debugManager->createDebugEvent(autoReset);
+  // set it to zero for now - not used by OpenCL
+  *pEventId = 0;
+  *pDebugEvent = debugManager->createDebugEvent(autoReset);
 
-    return (NULL == pDebugEvent) ? CL_OUT_OF_RESOURCES : CL_SUCCESS;
-
+  return (NULL == pDebugEvent) ? CL_OUT_OF_RESOURCES : CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -320,26 +298,22 @@ RUNTIME_EXIT
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  *  - CL_EVENT_TIMEOUT_AMD if timeout occurs
  */
-RUNTIME_ENTRY(cl_int, clHwDbgWaitEventAMD, (
-    cl_device_id            device,
-    cl_dbg_event_amd        pDebugEvent,
-    cl_uint                 pEventId,
-    cl_uint                 timeOut))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgWaitEventAMD, (cl_device_id device, cl_dbg_event_amd pDebugEvent,
+                                            cl_uint pEventId, cl_uint timeOut)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (0 == pDebugEvent) {
-        return CL_INVALID_VALUE;
-    }
+  if (0 == pDebugEvent) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    return debugManager->waitDebugEvent(pDebugEvent, timeOut);
+  return debugManager->waitDebugEvent(pDebugEvent, timeOut);
 }
 RUNTIME_EXIT
 
@@ -357,27 +331,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the pDebugEvent value is NULL
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgDestroyEventAMD, (
-    cl_device_id            device,
-    cl_dbg_event_amd *      pDebugEvent,
-    cl_uint *               pEventId ))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgDestroyEventAMD,
+              (cl_device_id device, cl_dbg_event_amd* pDebugEvent, cl_uint* pEventId)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == pDebugEvent) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == pDebugEvent) {
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->destroyDebugEvent(pDebugEvent);
+  debugManager->destroyDebugEvent(pDebugEvent);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -398,29 +369,26 @@ RUNTIME_EXIT
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  *  - CL_OUT_OF_RESOURCES if a host queue cannot be created for the debugger
  */
-RUNTIME_ENTRY(cl_int, clHwDbgRegisterDebuggerAMD, (
-    cl_context          context,
-    cl_device_id        device,
-    volatile void * pMessageStorage))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgRegisterDebuggerAMD,
+              (cl_context context, cl_device_id device, volatile void* pMessageStorage)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (!is_valid(context)) {
-        return CL_INVALID_CONTEXT;
-    }
+  if (!is_valid(context)) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    if (NULL == pMessageStorage) {
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == pMessageStorage) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (NULL == as_amd(device)->hwDebugMgr()) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  if (NULL == as_amd(device)->hwDebugMgr()) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    return as_amd(device)->hwDebugManagerInit(as_amd(context),
-                                              reinterpret_cast<uintptr_t>(pMessageStorage));
+  return as_amd(device)->hwDebugManagerInit(as_amd(context),
+                                            reinterpret_cast<uintptr_t>(pMessageStorage));
 }
 RUNTIME_EXIT
 
@@ -434,22 +402,19 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgUnregisterDebuggerAMD, (
-    cl_device_id    device))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgUnregisterDebuggerAMD, (cl_device_id device)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->unregisterDebugger();
+  debugManager->unregisterDebugger();
 
-    return CL_SUCCESS;
-
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -465,27 +430,24 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the aclBinary is not provided
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetAclBinaryAMD, (
-    cl_device_id    device,
-    void *          aclBinary))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgSetAclBinaryAMD, (cl_device_id device, void* aclBinary)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == aclBinary) {
-        LogWarning("clHwDbgSetAclBinaryAMD: Invalid ACL binary argument.");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == aclBinary) {
+    LogWarning("clHwDbgSetAclBinaryAMD: Invalid ACL binary argument.");
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setAclBinary(aclBinary);
+  debugManager->setAclBinary(aclBinary);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -507,40 +469,34 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the waveMsg is not provided, invalid action or mode value
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgWaveControlAMD, (
-    cl_device_id                device,
-    cl_dbg_waves_action_amd     action,
-    cl_dbg_wave_mode_amd        mode,
-    cl_uint                     trapId,
-    cl_dbg_wave_addr_amd        waveAddress))
-{
+RUNTIME_ENTRY(cl_int, clHwDbgWaveControlAMD,
+              (cl_device_id device, cl_dbg_waves_action_amd action, cl_dbg_wave_mode_amd mode,
+               cl_uint trapId, cl_dbg_wave_addr_amd waveAddress)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+  //  validate the passing arguments
+  //
+  if (action < 0 || action >= CL_DBG_WAVES_MAX) {
+    LogWarning("clHwDbgWaveControlAMD: Invalid wave action argument");
+    return CL_INVALID_VALUE;
+  }
 
-    //  validate the passing arguments
-    //
-    if (action < 0 || action >= CL_DBG_WAVES_MAX) {
-        LogWarning("clHwDbgWaveControlAMD: Invalid wave action argument");
-        return CL_INVALID_VALUE;
-    }
+  if ((mode != CL_DBG_WAVEMODE_SINGLE) && (mode != CL_DBG_WAVEMODE_BROADCAST) &&
+      (mode != CL_DBG_WAVEMODE_BROADCAST_CU)) {
+    LogWarning("clHwDbgWaveControlAMD: Invalid wave mode argument");
+    return CL_INVALID_VALUE;
+  }
 
-    if ((mode != CL_DBG_WAVEMODE_SINGLE)
-        && (mode != CL_DBG_WAVEMODE_BROADCAST)
-        && (mode != CL_DBG_WAVEMODE_BROADCAST_CU)) {
-        LogWarning("clHwDbgWaveControlAMD: Invalid wave mode argument");
-        return CL_INVALID_VALUE;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  debugManager->wavefrontControl(action, mode, trapId, (void*)&waveAddress);
 
-    debugManager->wavefrontControl(action, mode, trapId, (void *) &waveAddress);
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -565,51 +521,46 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if the number of points <= 0, or other parameters is not specified
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgAddressWatchAMD, (
-    cl_device_id                    device,
-    cl_uint                         numWatchPoints,
-    cl_dbg_address_watch_mode_amd * watchMode,
-    void **                         watchAddress,
-    cl_ulong *                      watchMask,
-    cl_dbg_event_amd *              watchEvent))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgAddressWatchAMD,
+              (cl_device_id device, cl_uint numWatchPoints,
+               cl_dbg_address_watch_mode_amd* watchMode, void** watchAddress, cl_ulong* watchMask,
+               cl_dbg_event_amd* watchEvent)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    //  validate the passing arguments
-    if (numWatchPoints <= 0) {
-        LogWarning("clHwDbgAddressWatchAMD: Invalid number of watch points argument");
-        return CL_INVALID_VALUE;
-    }
+  //  validate the passing arguments
+  if (numWatchPoints <= 0) {
+    LogWarning("clHwDbgAddressWatchAMD: Invalid number of watch points argument");
+    return CL_INVALID_VALUE;
+  }
 
-    if (NULL == watchMode) {
-        LogWarning("clHwDbgAddressWatchAMD: Watch mode argument");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == watchMode) {
+    LogWarning("clHwDbgAddressWatchAMD: Watch mode argument");
+    return CL_INVALID_VALUE;
+  }
 
-    if (NULL == watchAddress) {
-        LogWarning("clHwDbgAddressWatchAMD: Watch address argument");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == watchAddress) {
+    LogWarning("clHwDbgAddressWatchAMD: Watch address argument");
+    return CL_INVALID_VALUE;
+  }
 
-    if (NULL == watchMask) {
-        LogWarning("clHwDbgAddressWatchAMD: Watch mask argument");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == watchMask) {
+    LogWarning("clHwDbgAddressWatchAMD: Watch mask argument");
+    return CL_INVALID_VALUE;
+  }
 
-    //TODO: WC - confirm how the watch event is used.
-    //
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  // TODO: WC - confirm how the watch event is used.
+  //
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->setAddressWatch(numWatchPoints, watchAddress, watchMask,
-                                  reinterpret_cast<cl_ulong *>(watchMode),
-                                  watchEvent);
+  debugManager->setAddressWatch(numWatchPoints, watchAddress, watchMask,
+                                reinterpret_cast<cl_ulong*>(watchMode), watchEvent);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -629,23 +580,20 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgGetAqlPacketInfoAMD, (
-    cl_device_id                device,
-    const void *                aqlCodeInfo,
-    cl_aql_packet_info_amd *    packetInfo))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgGetAqlPacketInfoAMD,
+              (cl_device_id device, const void* aqlCodeInfo, cl_aql_packet_info_amd* packetInfo)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->getPacketAmdInfo(aqlCodeInfo, packetInfo);
+  debugManager->getPacketAmdInfo(aqlCodeInfo, packetInfo);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -661,27 +609,25 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgGetDispatchDebugInfoAMD, (
-    cl_device_id                    device,
-    cl_dispatch_debug_info_amd *    debugInfo))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgGetDispatchDebugInfoAMD,
+              (cl_device_id device, cl_dispatch_debug_info_amd* debugInfo)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == debugInfo) {
-        LogWarning("clHwDbgGetDispatchDebugInfoAMD: Invalid debug information pointer.");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == debugInfo) {
+    LogWarning("clHwDbgGetDispatchDebugInfoAMD: Invalid debug information pointer.");
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->getDispatchDebugInfo((void *) debugInfo);
+  debugManager->getDispatchDebugInfo((void*)debugInfo);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -696,22 +642,19 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgMapKernelCodeAMD, (
-    cl_device_id                device,
-    void *                      aqlCodeInfo))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgMapKernelCodeAMD, (cl_device_id device, void* aqlCodeInfo)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->mapKernelCode(aqlCodeInfo);
+  debugManager->mapKernelCode(aqlCodeInfo);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -726,24 +669,21 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgUnmapKernelCodeAMD, (
-    cl_device_id                device,
-    cl_ulong *                  aqlCodeAddress))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgUnmapKernelCodeAMD, (cl_device_id device, cl_ulong* aqlCodeAddress)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == aqlCodeAddress) {
-        LogWarning("clHwDbgUnmapKernelCodeAMD: Invalid AQL code address argument.");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == aqlCodeAddress) {
+    LogWarning("clHwDbgUnmapKernelCodeAMD: Invalid AQL code address argument.");
+    return CL_INVALID_VALUE;
+  }
 
-    // Shader buffer is always pinned to host memory so there is no need to unmap the memory.
-    // Just set it to 0 to avoid unwanted access
-    *aqlCodeAddress = 0;
+  // Shader buffer is always pinned to host memory so there is no need to unmap the memory.
+  // Just set it to 0 to avoid unwanted access
+  *aqlCodeAddress = 0;
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -751,7 +691,8 @@ RUNTIME_EXIT
  *
  *  \param device  specifies the device to be used
  *
- *  \param scratchRingAddr  is the memory points to the returned host memory address for scratch ring
+ *  \param scratchRingAddr  is the memory points to the returned host memory address for scratch
+ * ring
  *
  *  \param scratchRingSize  returns the size of the scratch ring
  *
@@ -760,23 +701,20 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgMapScratchRingAMD, (
-    cl_device_id          device,
-    cl_ulong *            scratchRingAddr,
-    cl_uint *             scratchRingSize))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgMapScratchRingAMD,
+              (cl_device_id device, cl_ulong* scratchRingAddr, cl_uint* scratchRingSize)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    debugManager->mapScratchRing(scratchRingAddr, scratchRingSize);
+  debugManager->mapScratchRing(scratchRingAddr, scratchRingSize);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -791,24 +729,22 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgUnmapScratchRingAMD, (
-    cl_device_id          device,
-    cl_ulong *            scratchRingAddr))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgUnmapScratchRingAMD,
+              (cl_device_id device, cl_ulong* scratchRingAddr)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (NULL == scratchRingAddr) {
-        LogWarning("clHwDbgUnmapScratchRingAMD: Invalid scratch ring address argument.");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == scratchRingAddr) {
+    LogWarning("clHwDbgUnmapScratchRingAMD: Invalid scratch ring address argument.");
+    return CL_INVALID_VALUE;
+  }
 
-    // Scratch ring buffer is always pinned to host memory so there is no need to unmap the memory.
-    // Just set it to NULL to avoid unwanted access
-    *scratchRingAddr = 0;
+  // Scratch ring buffer is always pinned to host memory so there is no need to unmap the memory.
+  // Just set it to NULL to avoid unwanted access
+  *scratchRingAddr = 0;
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -828,35 +764,32 @@ RUNTIME_EXIT
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  *  - CL_INVALID_KERNEL_ARGS if it fails to get the memory object for the kernel argument
  */
-RUNTIME_ENTRY(cl_int, clHwDbgGetKernelParamMemAMD, (
-    cl_device_id    device,
-    cl_uint         paramIdx,
-    cl_mem *        paramMem))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgGetKernelParamMemAMD,
+              (cl_device_id device, cl_uint paramIdx, cl_mem* paramMem)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::Device* amdDevice = as_amd(device);
+  amd::Device* amdDevice = as_amd(device);
 
-    if (paramIdx < 0) {
-        LogWarning("clHwDbgGetKernelParamMemAMD: Invalid parameter index argument.");
-        return CL_INVALID_VALUE;
-    }
+  if (paramIdx < 0) {
+    LogWarning("clHwDbgGetKernelParamMemAMD: Invalid parameter index argument.");
+    return CL_INVALID_VALUE;
+  }
 
-    if (NULL == paramMem) {
-        LogWarning("clHwDbgGetKernelParamMemAMD: Invalid parameter member object argument.");
-        return CL_INVALID_VALUE;
-    }
+  if (NULL == paramMem) {
+    LogWarning("clHwDbgGetKernelParamMemAMD: Invalid parameter member object argument.");
+    return CL_INVALID_VALUE;
+  }
 
-    amd::HwDebugManager * debugManager = amdDevice->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = amdDevice->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    *paramMem = debugManager->getKernelParamMem(paramIdx);
+  *paramMem = debugManager->getKernelParamMem(paramIdx);
 
-    return (*paramMem == 0) ? CL_INVALID_KERNEL_ARGS : CL_SUCCESS;
+  return (*paramMem == 0) ? CL_INVALID_KERNEL_ARGS : CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -878,31 +811,25 @@ RUNTIME_EXIT
  *  - CL_INVALID_VALUE if memObj or srcPtr has NULL value, size <= 0 or offset < 0
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgSetGlobalMemoryAMD, (
-    cl_device_id                device,
-    cl_mem                      memObject,
-    cl_uint                     offset,
-    void *                      srcMem,
-    cl_uint                     size))
-{
+RUNTIME_ENTRY(cl_int, clHwDbgSetGlobalMemoryAMD,
+              (cl_device_id device, cl_mem memObject, cl_uint offset, void* srcMem, cl_uint size)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  if (0 > offset || 0 >= size) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (0 > offset || 0 >= size) {
-        return CL_INVALID_VALUE;
-    }
+  amd::Memory* globalMem = as_amd(memObject);
+  debugManager->setGlobalMemory(globalMem, offset, srcMem, size);
 
-    amd::Memory* globalMem = as_amd(memObject);
-    debugManager->setGlobalMemory(globalMem, offset, srcMem, size);
-
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -922,26 +849,22 @@ RUNTIME_EXIT
  *  - CL_INVALID_DEVICE if the device is not valid
  *  - CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD if there is no HW DEBUG manager
  */
-RUNTIME_ENTRY(cl_int, clHwDbgInstallTrapAMD, (
-    cl_device_id            device,
-    cl_dbg_trap_type_amd    trapType,
-    cl_mem                  trapHandler,
-    cl_mem                  trapBuffer))
-{
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clHwDbgInstallTrapAMD, (cl_device_id device, cl_dbg_trap_type_amd trapType,
+                                              cl_mem trapHandler, cl_mem trapBuffer)) {
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    amd::HwDebugManager * debugManager = as_amd(device)->hwDebugMgr();
-    if (NULL == debugManager) {
-        return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
-    }
+  amd::HwDebugManager* debugManager = as_amd(device)->hwDebugMgr();
+  if (NULL == debugManager) {
+    return CL_HWDBG_MANAGER_NOT_AVAILABLE_AMD;
+  }
 
-    amd::Memory* pTrapHandler = as_amd(trapHandler);
-    amd::Memory* pTrapBuffer = as_amd(trapBuffer);
-    debugManager->installTrap(trapType, pTrapHandler, pTrapBuffer);
+  amd::Memory* pTrapHandler = as_amd(trapHandler);
+  amd::Memory* pTrapBuffer = as_amd(trapBuffer);
+  debugManager->installTrap(trapType, pTrapHandler, pTrapBuffer);
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 
 RUNTIME_EXIT

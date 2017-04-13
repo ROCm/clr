@@ -52,138 +52,133 @@
  *
  *  \version 2.0r19
  */
-RUNTIME_ENTRY_RET(cl_sampler, clCreateSamplerWithProperties, (
-    cl_context context,
-    const cl_sampler_properties *sampler_properties,
-    cl_int *errcode_ret))
-{
-    if(!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return (cl_sampler) 0;
-    }
+RUNTIME_ENTRY_RET(cl_sampler, clCreateSamplerWithProperties,
+                  (cl_context context, const cl_sampler_properties* sampler_properties,
+                   cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return (cl_sampler)0;
+  }
 
-    cl_bool normalizedCoords = CL_TRUE;
-    cl_addressing_mode addressingMode = CL_ADDRESS_CLAMP;
-    cl_filter_mode filterMode = CL_FILTER_NEAREST;
+  cl_bool normalizedCoords = CL_TRUE;
+  cl_addressing_mode addressingMode = CL_ADDRESS_CLAMP;
+  cl_filter_mode filterMode = CL_FILTER_NEAREST;
 #ifndef CL_FILTER_NONE
 #define CL_FILTER_NONE 0x1142
 #endif
-    cl_filter_mode mipFilterMode = CL_FILTER_NONE;
-    float minLod = 0.f;
-    float maxLod = CL_MAXFLOAT;
+  cl_filter_mode mipFilterMode = CL_FILTER_NONE;
+  float minLod = 0.f;
+  float maxLod = CL_MAXFLOAT;
 
-    const struct SamplerProperty {
-        cl_sampler_properties name;
-        union {
-            cl_sampler_properties raw;
-            cl_bool               normalizedCoords;
-            cl_addressing_mode    addressingMode;
-            cl_filter_mode        filterMode;
-            cl_float              lod;
-        } value;
-    } *p = reinterpret_cast<const SamplerProperty*>(sampler_properties);
+  const struct SamplerProperty {
+    cl_sampler_properties name;
+    union {
+      cl_sampler_properties raw;
+      cl_bool normalizedCoords;
+      cl_addressing_mode addressingMode;
+      cl_filter_mode filterMode;
+      cl_float lod;
+    } value;
+  }* p = reinterpret_cast<const SamplerProperty*>(sampler_properties);
 
-    if (p != NULL) while(p->name != 0) {
-        switch(p->name) {
+  if (p != NULL)
+    while (p->name != 0) {
+      switch (p->name) {
         case CL_SAMPLER_NORMALIZED_COORDS:
-            normalizedCoords = p->value.normalizedCoords;
-            break;
+          normalizedCoords = p->value.normalizedCoords;
+          break;
         case CL_SAMPLER_ADDRESSING_MODE:
-            addressingMode = p->value.addressingMode;
-            break;
+          addressingMode = p->value.addressingMode;
+          break;
         case CL_SAMPLER_FILTER_MODE:
-            filterMode = p->value.filterMode;
-            break;
+          filterMode = p->value.filterMode;
+          break;
         case CL_SAMPLER_MIP_FILTER_MODE:
-            mipFilterMode = p->value.filterMode;
-            break;
+          mipFilterMode = p->value.filterMode;
+          break;
         case CL_SAMPLER_LOD_MIN:
-            minLod = p->value.lod;
-            break;
+          minLod = p->value.lod;
+          break;
         case CL_SAMPLER_LOD_MAX:
-            maxLod = p->value.lod;
-            break;
+          maxLod = p->value.lod;
+          break;
         default:
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid property name");
-            return (cl_sampler) 0;
-        }
-        ++p;
+          *not_null(errcode_ret) = CL_INVALID_VALUE;
+          LogWarning("invalid property name");
+          return (cl_sampler)0;
+      }
+      ++p;
     }
 
-    // Check sampler validity
-    // Check addressing mode
-    switch (addressingMode) {
-        case CL_ADDRESS_NONE:
-        case CL_ADDRESS_CLAMP_TO_EDGE:
-        case CL_ADDRESS_CLAMP:
-            break;
-        case CL_ADDRESS_REPEAT:
-            if (!normalizedCoords) {
-                // repeat mode cannot be used with unnormalized coordinates
-                *not_null(errcode_ret) = CL_INVALID_VALUE;
-                LogWarning("invalid combination for sampler");
-                return (cl_sampler) 0;
-            }
-            break;
-        case CL_ADDRESS_MIRRORED_REPEAT:
-            if (!normalizedCoords) {
-                // repeat mode cannot be used with unnormalized coordinates
-                *not_null(errcode_ret) = CL_INVALID_VALUE;
-                LogWarning("invalid combination for sampler");
-                return (cl_sampler) 0;
-            }
-            break;
-        default:
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid addressing mode");
-            return (cl_sampler) 0;
-    }
-    // Check filter mode
-    switch (filterMode) {
-        case CL_FILTER_NEAREST:
-        case CL_FILTER_LINEAR:
-            break;
-        default:
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid filter mode");
-            return (cl_sampler) 0;
-    }
-    switch (mipFilterMode) {
-        case CL_FILTER_NONE:
-        case CL_FILTER_NEAREST:
-        case CL_FILTER_LINEAR:
-            break;
-        default:
-            *not_null(errcode_ret) = CL_INVALID_VALUE;
-            LogWarning("invalid filter mode");
-            return (cl_sampler) 0;
-    }
-    // Create instance of Sampler
-    amd::Sampler* sampler = new amd::Sampler(
-        *as_amd(context),
-        normalizedCoords == CL_TRUE, // To get rid of VS warning C4800
-        addressingMode,
-        filterMode,
-        mipFilterMode,
-        minLod,
-        maxLod);
-    if (!sampler) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("not enough host memory");
-        return (cl_sampler) 0;
-    }
+  // Check sampler validity
+  // Check addressing mode
+  switch (addressingMode) {
+    case CL_ADDRESS_NONE:
+    case CL_ADDRESS_CLAMP_TO_EDGE:
+    case CL_ADDRESS_CLAMP:
+      break;
+    case CL_ADDRESS_REPEAT:
+      if (!normalizedCoords) {
+        // repeat mode cannot be used with unnormalized coordinates
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        LogWarning("invalid combination for sampler");
+        return (cl_sampler)0;
+      }
+      break;
+    case CL_ADDRESS_MIRRORED_REPEAT:
+      if (!normalizedCoords) {
+        // repeat mode cannot be used with unnormalized coordinates
+        *not_null(errcode_ret) = CL_INVALID_VALUE;
+        LogWarning("invalid combination for sampler");
+        return (cl_sampler)0;
+      }
+      break;
+    default:
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      LogWarning("invalid addressing mode");
+      return (cl_sampler)0;
+  }
+  // Check filter mode
+  switch (filterMode) {
+    case CL_FILTER_NEAREST:
+    case CL_FILTER_LINEAR:
+      break;
+    default:
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      LogWarning("invalid filter mode");
+      return (cl_sampler)0;
+  }
+  switch (mipFilterMode) {
+    case CL_FILTER_NONE:
+    case CL_FILTER_NEAREST:
+    case CL_FILTER_LINEAR:
+      break;
+    default:
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      LogWarning("invalid filter mode");
+      return (cl_sampler)0;
+  }
+  // Create instance of Sampler
+  amd::Sampler* sampler =
+      new amd::Sampler(*as_amd(context),
+                       normalizedCoords == CL_TRUE,  // To get rid of VS warning C4800
+                       addressingMode, filterMode, mipFilterMode, minLod, maxLod);
+  if (!sampler) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("not enough host memory");
+    return (cl_sampler)0;
+  }
 
-    if (!sampler->create()) {
-        delete sampler;
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        LogWarning("Runtime failed sampler creation!");
-        return as_cl<amd::Sampler>(0);
-    }
+  if (!sampler->create()) {
+    delete sampler;
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("Runtime failed sampler creation!");
+    return as_cl<amd::Sampler>(0);
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<amd::Sampler>(sampler);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<amd::Sampler>(sampler);
 }
 RUNTIME_EXIT
 
@@ -219,22 +214,17 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_sampler, clCreateSampler, (
-    cl_context context,
-    cl_bool normalized_coords,
-    cl_addressing_mode addressing_mode,
-    cl_filter_mode filter_mode,
-    cl_int *errcode_ret))
-{
-    const cl_sampler_properties sprops[] = {
-        CL_SAMPLER_NORMALIZED_COORDS,
-            static_cast<cl_sampler_properties>(normalized_coords),
-        CL_SAMPLER_ADDRESSING_MODE,
-            static_cast<cl_sampler_properties>(addressing_mode),
-        CL_SAMPLER_FILTER_MODE,
-            static_cast<cl_sampler_properties>(filter_mode),
-        0 };
-    return clCreateSamplerWithProperties(context, sprops, errcode_ret);
+RUNTIME_ENTRY_RET(cl_sampler, clCreateSampler, (cl_context context, cl_bool normalized_coords,
+                                                cl_addressing_mode addressing_mode,
+                                                cl_filter_mode filter_mode, cl_int* errcode_ret)) {
+  const cl_sampler_properties sprops[] = {CL_SAMPLER_NORMALIZED_COORDS,
+                                          static_cast<cl_sampler_properties>(normalized_coords),
+                                          CL_SAMPLER_ADDRESSING_MODE,
+                                          static_cast<cl_sampler_properties>(addressing_mode),
+                                          CL_SAMPLER_FILTER_MODE,
+                                          static_cast<cl_sampler_properties>(filter_mode),
+                                          0};
+  return clCreateSamplerWithProperties(context, sprops, errcode_ret);
 }
 RUNTIME_EXIT
 
@@ -247,13 +237,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainSampler, (cl_sampler sampler))
-{
-    if (!is_valid(sampler)) {
-        return CL_INVALID_SAMPLER;
-    }
-    as_amd(sampler)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainSampler, (cl_sampler sampler)) {
+  if (!is_valid(sampler)) {
+    return CL_INVALID_SAMPLER;
+  }
+  as_amd(sampler)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -268,13 +257,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseSampler, (cl_sampler sampler))
-{
-    if (!is_valid(sampler)) {
-        return CL_INVALID_SAMPLER;
-    }
-    as_amd(sampler)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseSampler, (cl_sampler sampler)) {
+  if (!is_valid(sampler)) {
+    return CL_INVALID_SAMPLER;
+  }
+  as_amd(sampler)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -302,64 +290,51 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetSamplerInfo, (
-    cl_sampler sampler,
-    cl_sampler_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(sampler)) {
-        return CL_INVALID_SAMPLER;
-    }
+RUNTIME_ENTRY(cl_int, clGetSamplerInfo,
+              (cl_sampler sampler, cl_sampler_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(sampler)) {
+    return CL_INVALID_SAMPLER;
+  }
 
-    switch (param_name)
-    {
+  switch (param_name) {
     case CL_SAMPLER_REFERENCE_COUNT: {
-        cl_uint count = as_amd(sampler)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(sampler)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_CONTEXT: {
-        cl_context context = as_cl(&as_amd(sampler)->context());
-        return amd::clGetInfo(
-            context, param_value_size, param_value, param_value_size_ret);
+      cl_context context = as_cl(&as_amd(sampler)->context());
+      return amd::clGetInfo(context, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_ADDRESSING_MODE: {
-        cl_addressing_mode addressing = as_amd(sampler)->addressingMode();
-        return amd::clGetInfo(
-            addressing, param_value_size, param_value, param_value_size_ret);
+      cl_addressing_mode addressing = as_amd(sampler)->addressingMode();
+      return amd::clGetInfo(addressing, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_FILTER_MODE: {
-        cl_filter_mode filter = as_amd(sampler)->filterMode();
-        return amd::clGetInfo(
-            filter, param_value_size, param_value, param_value_size_ret);
+      cl_filter_mode filter = as_amd(sampler)->filterMode();
+      return amd::clGetInfo(filter, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_NORMALIZED_COORDS: {
-        cl_bool normalized = as_amd(sampler)->normalizedCoords();
-        return amd::clGetInfo(
-            normalized, param_value_size, param_value, param_value_size_ret);
+      cl_bool normalized = as_amd(sampler)->normalizedCoords();
+      return amd::clGetInfo(normalized, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_MIP_FILTER_MODE: {
-        cl_filter_mode mipFilter = as_amd(sampler)->mipFilter();
-        return amd::clGetInfo(
-            mipFilter, param_value_size, param_value, param_value_size_ret);
+      cl_filter_mode mipFilter = as_amd(sampler)->mipFilter();
+      return amd::clGetInfo(mipFilter, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_LOD_MIN: {
-        cl_float minLod = as_amd(sampler)->minLod();
-        return amd::clGetInfo(
-            minLod, param_value_size, param_value, param_value_size_ret);
+      cl_float minLod = as_amd(sampler)->minLod();
+      return amd::clGetInfo(minLod, param_value_size, param_value, param_value_size_ret);
     }
     case CL_SAMPLER_LOD_MAX: {
-        cl_float maxLod = as_amd(sampler)->maxLod();
-        return amd::clGetInfo(
-            maxLod, param_value_size, param_value, param_value_size_ret);
+      cl_float maxLod = as_amd(sampler)->maxLod();
+      return amd::clGetInfo(maxLod, param_value_size, param_value, param_value_size_ret);
     }
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 

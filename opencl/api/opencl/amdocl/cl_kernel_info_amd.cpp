@@ -42,92 +42,73 @@
  *    \a param_value is not NULL
  *  - CL_INVALID_KERNEL if \a kernel is a not a valid program object
  */
-RUNTIME_ENTRY(cl_int, clGetKernelInfoAMD, (
-    cl_kernel           kernel,
-    cl_device_id        device,
-    cl_kernel_info_amd  param_name,
-    size_t              param_value_size,
-    void*               param_value,
-    size_t*             param_value_size_ret))
-{
-    // Check if we have a valid device
-    if (!is_valid(device)) {
-        return CL_INVALID_DEVICE;
-    }
+RUNTIME_ENTRY(cl_int, clGetKernelInfoAMD,
+              (cl_kernel kernel, cl_device_id device, cl_kernel_info_amd param_name,
+               size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
+  // Check if we have a valid device
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
 
-    // Check if we have a valid performance counter
-    if (!is_valid(kernel)) {
-        return CL_INVALID_KERNEL;
-    }
+  // Check if we have a valid performance counter
+  if (!is_valid(kernel)) {
+    return CL_INVALID_KERNEL;
+  }
 
-    // Find the kernel, associated with the specified device
-    const device::Kernel*   devKernel =
-        as_amd(kernel)->getDeviceKernel(*as_amd(device));
+  // Find the kernel, associated with the specified device
+  const device::Kernel* devKernel = as_amd(kernel)->getDeviceKernel(*as_amd(device));
 
-    // Make sure we found a valid kernel
-    if (devKernel == NULL) {
-        return CL_INVALID_KERNEL;
-    }
+  // Make sure we found a valid kernel
+  if (devKernel == NULL) {
+    return CL_INVALID_KERNEL;
+  }
 
-    // Get the corresponded parameters
-    switch (param_name) {
+  // Get the corresponded parameters
+  switch (param_name) {
     case CL_KERNELINFO_SCRATCH_REGS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->scratchRegs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->scratchRegs_, param_value_size, param_value,
+                            param_value_size_ret);
     case CL_KERNELINFO_WAVEFRONT_PER_SIMD:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->wavefrontPerSIMD_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->wavefrontPerSIMD_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_WAVEFRONT_SIZE:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->wavefrontSize_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->wavefrontSize_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_AVAILABLE_GPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->availableGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->availableGPRs_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_USED_GPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->usedGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->usedGPRs_, param_value_size, param_value,
+                            param_value_size_ret);
     case CL_KERNELINFO_AVAILABLE_SGPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->availableSGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->availableSGPRs_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_USED_SGPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->usedSGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->usedSGPRs_, param_value_size, param_value,
+                            param_value_size_ret);
     case CL_KERNELINFO_AVAILABLE_VGPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->availableVGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->availableVGPRs_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_USED_VGPRS:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->usedVGPRs_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->usedVGPRs_, param_value_size, param_value,
+                            param_value_size_ret);
     case CL_KERNELINFO_AVAILABLE_LDS_SIZE:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->availableLDSSize_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->availableLDSSize_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_USED_LDS_SIZE:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->usedLDSSize_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->usedLDSSize_, param_value_size, param_value,
+                            param_value_size_ret);
     case CL_KERNELINFO_AVAILABLE_STACK_SIZE:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->availableStackSize_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->availableStackSize_, param_value_size,
+                            param_value, param_value_size_ret);
     case CL_KERNELINFO_USED_STACK_SIZE:
-        return amd::clGetInfo(
-            devKernel->workGroupInfo()->usedStackSize_,
-                param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(devKernel->workGroupInfo()->usedStackSize_, param_value_size,
+                            param_value, param_value_size_ret);
     default:
-        return CL_INVALID_VALUE;
-    }
+      return CL_INVALID_VALUE;
+  }
 
-    return CL_SUCCESS;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 

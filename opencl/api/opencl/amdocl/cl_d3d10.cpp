@@ -34,130 +34,121 @@
  *  @{
  */
 
-RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromD3D10KHR, (
-    cl_platform_id              platform,
-    cl_d3d10_device_source_khr  d3d_device_source,
-    void *                      d3d_object,
-    cl_d3d10_device_set_khr     d3d_device_set,
-    cl_uint                     num_entries,
-    cl_device_id *              devices,
-    cl_uint *                   num_devices))
-{
-    cl_int errcode;
-    ID3D10Device* d3d10_device = NULL;
-    cl_device_id* gpu_devices;
-    cl_uint num_gpu_devices = 0;
-    bool create_d3d10Device = false;
-    static const bool VALIDATE_ONLY = true;
-    HMODULE d3d10Module = NULL;
+RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromD3D10KHR,
+              (cl_platform_id platform, cl_d3d10_device_source_khr d3d_device_source,
+               void* d3d_object, cl_d3d10_device_set_khr d3d_device_set, cl_uint num_entries,
+               cl_device_id* devices, cl_uint* num_devices)) {
+  cl_int errcode;
+  ID3D10Device* d3d10_device = NULL;
+  cl_device_id* gpu_devices;
+  cl_uint num_gpu_devices = 0;
+  bool create_d3d10Device = false;
+  static const bool VALIDATE_ONLY = true;
+  HMODULE d3d10Module = NULL;
 
-    if (platform != NULL && platform != AMD_PLATFORM) {
-        LogWarning("\"platrform\" is not a valid AMD platform");
-        return CL_INVALID_PLATFORM;
-    }
-    if(((num_entries > 0 || num_devices == NULL) && devices == NULL)
-            || (num_entries == 0 && devices != NULL)) {
-        return CL_INVALID_VALUE;
-    }
-    // Get GPU devices
-    errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &num_gpu_devices);
-    if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
-        return CL_INVALID_VALUE;
-    }
+  if (platform != NULL && platform != AMD_PLATFORM) {
+    LogWarning("\"platrform\" is not a valid AMD platform");
+    return CL_INVALID_PLATFORM;
+  }
+  if (((num_entries > 0 || num_devices == NULL) && devices == NULL) ||
+      (num_entries == 0 && devices != NULL)) {
+    return CL_INVALID_VALUE;
+  }
+  // Get GPU devices
+  errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &num_gpu_devices);
+  if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
+    return CL_INVALID_VALUE;
+  }
 
-    if (!num_gpu_devices) {
-        *not_null(num_devices) = 0;
-        return CL_DEVICE_NOT_FOUND;
-    }
+  if (!num_gpu_devices) {
+    *not_null(num_devices) = 0;
+    return CL_DEVICE_NOT_FOUND;
+  }
 
-    switch(d3d_device_source)
-    {
+  switch (d3d_device_source) {
     case CL_D3D10_DEVICE_KHR:
-        d3d10_device = static_cast<ID3D10Device*>(d3d_object);
-        break;
-    case CL_D3D10_DXGI_ADAPTER_KHR:
-        {
-            typedef HRESULT (WINAPI* LPD3D10CREATEDEVICE)(IDXGIAdapter*, D3D10_DRIVER_TYPE, 
-                                                          HMODULE, UINT, UINT32, ID3D10Device**);
-            static LPD3D10CREATEDEVICE dynamicD3D10CreateDevice = NULL;
+      d3d10_device = static_cast<ID3D10Device*>(d3d_object);
+      break;
+    case CL_D3D10_DXGI_ADAPTER_KHR: {
+      typedef HRESULT(WINAPI * LPD3D10CREATEDEVICE)(IDXGIAdapter*, D3D10_DRIVER_TYPE, HMODULE, UINT,
+                                                    UINT32, ID3D10Device**);
+      static LPD3D10CREATEDEVICE dynamicD3D10CreateDevice = NULL;
 
-            d3d10Module = LoadLibrary("D3D10.dll");
-            if (d3d10Module == NULL) {
-                return CL_INVALID_PLATFORM;
-            }
+      d3d10Module = LoadLibrary("D3D10.dll");
+      if (d3d10Module == NULL) {
+        return CL_INVALID_PLATFORM;
+      }
 
-            dynamicD3D10CreateDevice = (LPD3D10CREATEDEVICE)GetProcAddress(d3d10Module, "D3D10CreateDevice");
+      dynamicD3D10CreateDevice =
+          (LPD3D10CREATEDEVICE)GetProcAddress(d3d10Module, "D3D10CreateDevice");
 
-            IDXGIAdapter* dxgi_adapter = static_cast<IDXGIAdapter*>(d3d_object);
-            HRESULT hr = dynamicD3D10CreateDevice(dxgi_adapter, D3D10_DRIVER_TYPE_HARDWARE,
-                                                   NULL, 0, D3D10_SDK_VERSION, &d3d10_device);
-            if (SUCCEEDED(hr) && (NULL != d3d10_device)) {
-                create_d3d10Device = true;
-            } else {
-                FreeLibrary(d3d10Module);
-                return CL_INVALID_VALUE;
-            }
-        }
-        break;
-    default:
-        LogWarning("\"d3d_device_source\" is invalid");
-        return CL_INVALID_VALUE;
-    }
-
-    switch(d3d_device_set) {
-    case CL_PREFERRED_DEVICES_FOR_D3D10_KHR:
-    case CL_ALL_DEVICES_FOR_D3D10_KHR:
-        {
-            gpu_devices = (cl_device_id *) alloca(num_gpu_devices * sizeof(cl_device_id));
-
-            errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, num_gpu_devices, gpu_devices, NULL);
-            if (errcode != CL_SUCCESS) {
-                break;
-            }
-
-            void * external_device[amd::Context::DeviceFlagIdx::LastDeviceFlagIdx] = {};
-            external_device[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx] = d3d10_device;
-
-            std::vector<amd::Device*> compatible_devices;
-            for (cl_uint i = 0; i < num_gpu_devices; ++i) {
-                cl_device_id device = gpu_devices[i];
-                if (is_valid(device) &&
-                    as_amd(device)->bindExternalDevice(amd::Context::Flags::D3D10DeviceKhr,
-                    external_device, NULL, VALIDATE_ONLY)) {
-                        compatible_devices.push_back(as_amd(device));
-                }
-            }
-            if (compatible_devices.size() == 0) {
-                *not_null(num_devices) = 0;
-                errcode = CL_DEVICE_NOT_FOUND;
-                break;
-            }
-
-            std::vector<amd::Device*>::iterator it = compatible_devices.begin();
-            cl_uint compatible_count = std::min(num_entries, (cl_uint)compatible_devices.size());
-
-            while (compatible_count--) {
-                *devices++ = as_cl(*it++);
-                --num_entries;
-            }
-            while (num_entries--) {
-                *devices++ = (cl_device_id) 0;
-            }
-
-            *not_null(num_devices) = (cl_uint)compatible_devices.size();
-        }
-        break;
-
-    default:
-        LogWarning("\"d3d_device_set\" is invalid");
-        errcode = CL_INVALID_VALUE;
-    }
-
-    if (create_d3d10Device) {
-        d3d10_device->Release();
+      IDXGIAdapter* dxgi_adapter = static_cast<IDXGIAdapter*>(d3d_object);
+      HRESULT hr = dynamicD3D10CreateDevice(dxgi_adapter, D3D10_DRIVER_TYPE_HARDWARE, NULL, 0,
+                                            D3D10_SDK_VERSION, &d3d10_device);
+      if (SUCCEEDED(hr) && (NULL != d3d10_device)) {
+        create_d3d10Device = true;
+      } else {
         FreeLibrary(d3d10Module);
-    }
-    return errcode;
+        return CL_INVALID_VALUE;
+      }
+    } break;
+    default:
+      LogWarning("\"d3d_device_source\" is invalid");
+      return CL_INVALID_VALUE;
+  }
+
+  switch (d3d_device_set) {
+    case CL_PREFERRED_DEVICES_FOR_D3D10_KHR:
+    case CL_ALL_DEVICES_FOR_D3D10_KHR: {
+      gpu_devices = (cl_device_id*)alloca(num_gpu_devices * sizeof(cl_device_id));
+
+      errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, num_gpu_devices, gpu_devices, NULL);
+      if (errcode != CL_SUCCESS) {
+        break;
+      }
+
+      void* external_device[amd::Context::DeviceFlagIdx::LastDeviceFlagIdx] = {};
+      external_device[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx] = d3d10_device;
+
+      std::vector<amd::Device*> compatible_devices;
+      for (cl_uint i = 0; i < num_gpu_devices; ++i) {
+        cl_device_id device = gpu_devices[i];
+        if (is_valid(device) &&
+            as_amd(device)->bindExternalDevice(amd::Context::Flags::D3D10DeviceKhr, external_device,
+                                               NULL, VALIDATE_ONLY)) {
+          compatible_devices.push_back(as_amd(device));
+        }
+      }
+      if (compatible_devices.size() == 0) {
+        *not_null(num_devices) = 0;
+        errcode = CL_DEVICE_NOT_FOUND;
+        break;
+      }
+
+      std::vector<amd::Device*>::iterator it = compatible_devices.begin();
+      cl_uint compatible_count = std::min(num_entries, (cl_uint)compatible_devices.size());
+
+      while (compatible_count--) {
+        *devices++ = as_cl(*it++);
+        --num_entries;
+      }
+      while (num_entries--) {
+        *devices++ = (cl_device_id)0;
+      }
+
+      *not_null(num_devices) = (cl_uint)compatible_devices.size();
+    } break;
+
+    default:
+      LogWarning("\"d3d_device_set\" is invalid");
+      errcode = CL_INVALID_VALUE;
+  }
+
+  if (create_d3d10Device) {
+    d3d10_device->Release();
+    FreeLibrary(d3d10Module);
+  }
+  return errcode;
 }
 RUNTIME_EXIT
 
@@ -190,37 +181,31 @@ RUNTIME_EXIT
  *  \version 1.0r33?
  */
 
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10BufferKHR, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    ID3D10Buffer*   pD3DResource,
-    cl_int*         errcode_ret))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10BufferKHR,
+                  (cl_context context, cl_mem_flags flags, ID3D10Buffer* pD3DResource,
+                   cl_int* errcode_ret)) {
+  cl_mem clMemObj = NULL;
 
-    if(!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
-    if(!flags) flags = CL_MEM_READ_WRITE;
-    if(!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
-    if(!pD3DResource) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("parameter \"pD3DResource\" is a NULL pointer");
-        return clMemObj;
-    }
-    return(amd::clCreateBufferFromD3D10ResourceAMD(
-        *as_amd(context),
-        flags,
-        pD3DResource,
-        errcode_ret));
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
+  if (!flags) flags = CL_MEM_READ_WRITE;
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
+  if (!pD3DResource) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("parameter \"pD3DResource\" is a NULL pointer");
+    return clMemObj;
+  }
+  return (
+      amd::clCreateBufferFromD3D10ResourceAMD(*as_amd(context), flags, pD3DResource, errcode_ret));
 }
 RUNTIME_EXIT
 
@@ -270,67 +255,62 @@ RUNTIME_EXIT
  *
  *  \version 1.0r48?
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateImageFromD3D10Resource, (
-    cl_context      context,
-    cl_mem_flags    flags,
-    ID3D10Resource* pD3DResource,
-    UINT            subresource,
-    int*            errcode_ret,
-    UINT            dimension))
-{
-    cl_mem clMemObj = NULL;
+RUNTIME_ENTRY_RET(cl_mem, clCreateImageFromD3D10Resource,
+                  (cl_context context, cl_mem_flags flags, ID3D10Resource* pD3DResource,
+                   UINT subresource, int* errcode_ret, UINT dimension)) {
+  cl_mem clMemObj = NULL;
 
-    if(!is_valid(context)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("invalid parameter \"context\"");
-        return clMemObj;
-    }
-    if(!flags) flags = CL_MEM_READ_WRITE;
-    if(!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY)
-        || ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY)
-        || ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("invalid parameter \"flags\"");
-        return clMemObj;
-    }
-    if(!pD3DResource) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        LogWarning("parameter \"pD3DResource\" is a NULL pointer");
-        return clMemObj;
-    }
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return clMemObj;
+  }
+  if (!flags) flags = CL_MEM_READ_WRITE;
+  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
+        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
+        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("invalid parameter \"flags\"");
+    return clMemObj;
+  }
+  if (!pD3DResource) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    LogWarning("parameter \"pD3DResource\" is a NULL pointer");
+    return clMemObj;
+  }
 
-    // Verify context init'ed for interop
-    ID3D10Device* pDev;
-    pD3DResource->GetDevice(&pDev);
-    if(pDev == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_D3D10_DEVICE_KHR;
-        LogWarning("Cannot retrieve D3D10 device from D3D10 resource");
-        return (cl_mem) 0;
-    }
-    pDev->Release();
-    if (!((*as_amd(context)).info().flags_ & amd::Context::D3D10DeviceKhr)) {
-        *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-        LogWarning("\"amdContext\" is not created from D3D10 device");
-        return (cl_mem) 0;
-    }
+  // Verify context init'ed for interop
+  ID3D10Device* pDev;
+  pD3DResource->GetDevice(&pDev);
+  if (pDev == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_D3D10_DEVICE_KHR;
+    LogWarning("Cannot retrieve D3D10 device from D3D10 resource");
+    return (cl_mem)0;
+  }
+  pDev->Release();
+  if (!((*as_amd(context)).info().flags_ & amd::Context::D3D10DeviceKhr)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("\"amdContext\" is not created from D3D10 device");
+    return (cl_mem)0;
+  }
 
-    // Check for image support
-    const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    bool supportPass = false;
-    bool sizePass = false;
-    std::vector<amd::Device*>::const_iterator it;
-    for(it = devices.begin(); it != devices.end(); ++it) {
-        if((*it)->info().imageSupport_) {
-            supportPass = true;
-        }
+  // Check for image support
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  bool sizePass = false;
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if ((*it)->info().imageSupport_) {
+      supportPass = true;
     }
-    if(!supportPass) {
-        *not_null(errcode_ret) = CL_INVALID_OPERATION;
-        LogWarning("there are no devices in context to support images");
-        return (cl_mem) 0;
-    }
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_OPERATION;
+    LogWarning("there are no devices in context to support images");
+    return (cl_mem)0;
+  }
 
-    switch(dimension) {
+  switch (dimension) {
 #if 0
     case 1:
         return(amd::clCreateImage1DFromD3D10ResourceAMD(
@@ -339,27 +319,19 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImageFromD3D10Resource, (
             pD3DResource,
             subresource,
             errcode_ret));
-#endif //0
+#endif  // 0
     case 2:
-        return(amd::clCreateImage2DFromD3D10ResourceAMD(
-            *as_amd(context),
-            flags,
-            pD3DResource,
-            subresource,
-            errcode_ret));
+      return (amd::clCreateImage2DFromD3D10ResourceAMD(*as_amd(context), flags, pD3DResource,
+                                                       subresource, errcode_ret));
     case 3:
-        return(amd::clCreateImage3DFromD3D10ResourceAMD(
-            *as_amd(context),
-            flags,
-            pD3DResource,
-            subresource,
-            errcode_ret));
+      return (amd::clCreateImage3DFromD3D10ResourceAMD(*as_amd(context), flags, pD3DResource,
+                                                       subresource, errcode_ret));
     default:
-        break;
-    }
+      break;
+  }
 
-    *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
-    return (cl_mem) 0;
+  *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
+  return (cl_mem)0;
 }
 RUNTIME_EXIT
 
@@ -367,15 +339,10 @@ RUNTIME_EXIT
  *  \addtogroup clCreateFromD3D10Texture2DKHR
  *  @{
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10Texture2DKHR, (
-    cl_context          context,
-    cl_mem_flags        flags,
-    ID3D10Texture2D*    resource,
-    UINT                subresource,
-    cl_int*             errcode_ret))
-{
-    return clCreateImageFromD3D10Resource(context, flags, resource,
-        subresource, errcode_ret, 2);
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10Texture2DKHR,
+                  (cl_context context, cl_mem_flags flags, ID3D10Texture2D* resource,
+                   UINT subresource, cl_int* errcode_ret)) {
+  return clCreateImageFromD3D10Resource(context, flags, resource, subresource, errcode_ret, 2);
 }
 RUNTIME_EXIT
 
@@ -383,15 +350,10 @@ RUNTIME_EXIT
  *  \addtogroup clCreateFromD3D10Texture3DKHR
  *  @{
  */
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10Texture3DKHR, (
-    cl_context          context,
-    cl_mem_flags        flags,
-    ID3D10Texture3D*    resource,
-    UINT                subresource,
-    cl_int*             errcode_ret))
-{
-    return clCreateImageFromD3D10Resource(context, flags, resource,
-        subresource, errcode_ret, 3);
+RUNTIME_ENTRY_RET(cl_mem, clCreateFromD3D10Texture3DKHR,
+                  (cl_context context, cl_mem_flags flags, ID3D10Texture3D* resource,
+                   UINT subresource, cl_int* errcode_ret)) {
+  return clCreateImageFromD3D10Resource(context, flags, resource, subresource, errcode_ret, 3);
 }
 RUNTIME_EXIT
 
@@ -399,17 +361,12 @@ RUNTIME_EXIT
  *  \addtogroup clEnqueueAcquireD3D10ObjectsKHR
  *  @{
  */
-RUNTIME_ENTRY(cl_int, clEnqueueAcquireD3D10ObjectsKHR, (
-    cl_command_queue    command_queue,
-    cl_uint             num_objects,
-    const cl_mem*       mem_objects,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    return amd::clEnqueueAcquireExtObjectsAMD(command_queue, num_objects,
-        mem_objects, num_events_in_wait_list, event_wait_list, event,
-        CL_COMMAND_ACQUIRE_D3D10_OBJECTS_KHR);
+RUNTIME_ENTRY(cl_int, clEnqueueAcquireD3D10ObjectsKHR,
+              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  return amd::clEnqueueAcquireExtObjectsAMD(command_queue, num_objects, mem_objects,
+                                            num_events_in_wait_list, event_wait_list, event,
+                                            CL_COMMAND_ACQUIRE_D3D10_OBJECTS_KHR);
 }
 RUNTIME_EXIT
 
@@ -417,17 +374,12 @@ RUNTIME_EXIT
  *  \addtogroup clEnqueueReleaseD3D10ObjectsKHR
  *  @{
  */
-RUNTIME_ENTRY(cl_int, clEnqueueReleaseD3D10ObjectsKHR, (
-    cl_command_queue    command_queue,
-    cl_uint             num_objects,
-    const cl_mem*       mem_objects,
-    cl_uint             num_events_in_wait_list,
-    const cl_event*     event_wait_list,
-    cl_event*           event))
-{
-    return amd::clEnqueueReleaseExtObjectsAMD(command_queue, num_objects,
-        mem_objects, num_events_in_wait_list, event_wait_list, event,
-        CL_COMMAND_RELEASE_D3D10_OBJECTS_KHR);
+RUNTIME_ENTRY(cl_int, clEnqueueReleaseD3D10ObjectsKHR,
+              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
+               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
+  return amd::clEnqueueReleaseExtObjectsAMD(command_queue, num_objects, mem_objects,
+                                            num_events_in_wait_list, event_wait_list, event,
+                                            CL_COMMAND_RELEASE_D3D10_OBJECTS_KHR);
 }
 RUNTIME_EXIT
 
@@ -437,13 +389,11 @@ RUNTIME_EXIT
 //          namespace amd
 //
 //
-namespace amd
-{
+namespace amd {
 /*! @}
  *  \addtogroup CL-D3D10 interop helper functions
  *  @{
  */
-
 
 
 //*******************************************************************
@@ -454,42 +404,36 @@ namespace amd
 //
 //      clCreateBufferFromD3D10ResourceAMD
 //
-cl_mem clCreateBufferFromD3D10ResourceAMD(
-    Context& amdContext,
-    cl_mem_flags flags,
-    ID3D10Resource* pD3DResource,
-    int* errcode_ret)
-{
-    // Verify pD3DResource is a buffer
-    D3D10_RESOURCE_DIMENSION rType;
-    pD3DResource->GetType(&rType);
-    if(rType != D3D10_RESOURCE_DIMENSION_BUFFER) {
-        *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
-        return (cl_mem) 0;
-    }
+cl_mem clCreateBufferFromD3D10ResourceAMD(Context& amdContext, cl_mem_flags flags,
+                                          ID3D10Resource* pD3DResource, int* errcode_ret) {
+  // Verify pD3DResource is a buffer
+  D3D10_RESOURCE_DIMENSION rType;
+  pD3DResource->GetType(&rType);
+  if (rType != D3D10_RESOURCE_DIMENSION_BUFFER) {
+    *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
+    return (cl_mem)0;
+  }
 
-    D3D10Object obj;
-    int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, 0, obj);
-    if(CL_SUCCESS != errcode)
-    {
-        *not_null(errcode_ret) = errcode;
-        return (cl_mem) 0;
-    }
+  D3D10Object obj;
+  int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, 0, obj);
+  if (CL_SUCCESS != errcode) {
+    *not_null(errcode_ret) = errcode;
+    return (cl_mem)0;
+  }
 
-    BufferD3D10 *pBufferD3D10 = new (amdContext)
-        BufferD3D10(amdContext, flags, obj);
-    if(!pBufferD3D10) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem) 0;
-    }
-    if (!pBufferD3D10->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pBufferD3D10->release();
-        return (cl_mem) 0;
-    }
+  BufferD3D10* pBufferD3D10 = new (amdContext) BufferD3D10(amdContext, flags, obj);
+  if (!pBufferD3D10) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
+  if (!pBufferD3D10->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pBufferD3D10->release();
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<Memory>(pBufferD3D10);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<Memory>(pBufferD3D10);
 }
 #if 0
 // There is no support for 1D images in the base imagee code
@@ -539,142 +483,125 @@ cl_mem clCreateImage1DFromD3D10ResourceAMD(
 //
 //      clCreateImage2DFromD3D10ResourceAMD
 //
-cl_mem clCreateImage2DFromD3D10ResourceAMD(
-    Context& amdContext,
-    cl_mem_flags flags,
-    ID3D10Resource* pD3DResource,
-    UINT subresource,
-    int* errcode_ret)
-{
-    // Verify the resource is a 2D texture
-    D3D10_RESOURCE_DIMENSION rType;
-    pD3DResource->GetType(&rType);
-    if(rType != D3D10_RESOURCE_DIMENSION_TEXTURE2D) {
-        *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
-        return (cl_mem) 0;
-    }
+cl_mem clCreateImage2DFromD3D10ResourceAMD(Context& amdContext, cl_mem_flags flags,
+                                           ID3D10Resource* pD3DResource, UINT subresource,
+                                           int* errcode_ret) {
+  // Verify the resource is a 2D texture
+  D3D10_RESOURCE_DIMENSION rType;
+  pD3DResource->GetType(&rType);
+  if (rType != D3D10_RESOURCE_DIMENSION_TEXTURE2D) {
+    *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
+    return (cl_mem)0;
+  }
 
-    D3D10Object obj;
-    int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, subresource, obj);
-    if(CL_SUCCESS != errcode)
-    {
-        *not_null(errcode_ret) = errcode;
-        return (cl_mem) 0;
-    }
+  D3D10Object obj;
+  int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, subresource, obj);
+  if (CL_SUCCESS != errcode) {
+    *not_null(errcode_ret) = errcode;
+    return (cl_mem)0;
+  }
 
-    Image2DD3D10 *pImage2DD3D10 = new (amdContext)
-        Image2DD3D10(amdContext, flags, obj);
-    if(!pImage2DD3D10) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem) 0;
-    }
-    if (!pImage2DD3D10->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pImage2DD3D10->release();
-        return (cl_mem) 0;
-    }
+  Image2DD3D10* pImage2DD3D10 = new (amdContext) Image2DD3D10(amdContext, flags, obj);
+  if (!pImage2DD3D10) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
+  if (!pImage2DD3D10->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pImage2DD3D10->release();
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<Memory>(pImage2DD3D10);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<Memory>(pImage2DD3D10);
 }
 
 //
 //      clCreateImage2DFromD3D10ResourceAMD
 //
-cl_mem clCreateImage3DFromD3D10ResourceAMD(
-    Context& amdContext,
-    cl_mem_flags flags,
-    ID3D10Resource* pD3DResource,
-    UINT subresource,
-    int* errcode_ret)
-{
-    // Verify the resource is a 2D texture
-    D3D10_RESOURCE_DIMENSION rType;
-    pD3DResource->GetType(&rType);
-    if(rType != D3D10_RESOURCE_DIMENSION_TEXTURE3D) {
-        *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
-        return (cl_mem) 0;
-    }
+cl_mem clCreateImage3DFromD3D10ResourceAMD(Context& amdContext, cl_mem_flags flags,
+                                           ID3D10Resource* pD3DResource, UINT subresource,
+                                           int* errcode_ret) {
+  // Verify the resource is a 2D texture
+  D3D10_RESOURCE_DIMENSION rType;
+  pD3DResource->GetType(&rType);
+  if (rType != D3D10_RESOURCE_DIMENSION_TEXTURE3D) {
+    *not_null(errcode_ret) = CL_INVALID_D3D10_RESOURCE_KHR;
+    return (cl_mem)0;
+  }
 
-    D3D10Object obj;
-    int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, subresource, obj);
-    if(CL_SUCCESS != errcode)
-    {
-        *not_null(errcode_ret) = errcode;
-        return (cl_mem) 0;
-    }
+  D3D10Object obj;
+  int errcode = D3D10Object::initD3D10Object(amdContext, pD3DResource, subresource, obj);
+  if (CL_SUCCESS != errcode) {
+    *not_null(errcode_ret) = errcode;
+    return (cl_mem)0;
+  }
 
-    Image3DD3D10 *pImage3DD3D10 = new (amdContext)
-        Image3DD3D10(amdContext, flags, obj);
-    if(!pImage3DD3D10) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_mem) 0;
-    }
-    if (!pImage3DD3D10->create()) {
-        *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-        pImage3DD3D10->release();
-        return (cl_mem) 0;
-    }
+  Image3DD3D10* pImage3DD3D10 = new (amdContext) Image3DD3D10(amdContext, flags, obj);
+  if (!pImage3DD3D10) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_mem)0;
+  }
+  if (!pImage3DD3D10->create()) {
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    pImage3DD3D10->release();
+    return (cl_mem)0;
+  }
 
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl<Memory>(pImage3DD3D10);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl<Memory>(pImage3DD3D10);
 }
 
 //
 // Helper function SyncD3D10Objects
 //
-void SyncD3D10Objects(std::vector<amd::Memory*>& memObjects)
-{
-    Memory*& mem = memObjects.front();
-    if(!mem) {
-        LogWarning("\nNULL memory object\n");
-        return;
-    }
-    InteropObject* interop = mem->getInteropObj();
-    if(!interop) {
-        LogWarning("\nNULL interop object\n");
-        return;
-    }
-    D3D10Object* d3d10Obj = interop->asD3D10Object();
-    if(!d3d10Obj) {
-        LogWarning("\nNULL D3D10 object\n");
-        return;
-    }
-    ID3D10Query* query = d3d10Obj->getQuery();
-    if(!query) {
-        LogWarning("\nNULL ID3D10Query\n");
-        return;
-    }
-    query->End();
-    BOOL data = FALSE;
-    while(S_OK != query->GetData(&data, sizeof(BOOL), 0))
-    {
-    }
+void SyncD3D10Objects(std::vector<amd::Memory*>& memObjects) {
+  Memory*& mem = memObjects.front();
+  if (!mem) {
+    LogWarning("\nNULL memory object\n");
+    return;
+  }
+  InteropObject* interop = mem->getInteropObj();
+  if (!interop) {
+    LogWarning("\nNULL interop object\n");
+    return;
+  }
+  D3D10Object* d3d10Obj = interop->asD3D10Object();
+  if (!d3d10Obj) {
+    LogWarning("\nNULL D3D10 object\n");
+    return;
+  }
+  ID3D10Query* query = d3d10Obj->getQuery();
+  if (!query) {
+    LogWarning("\nNULL ID3D10Query\n");
+    return;
+  }
+  query->End();
+  BOOL data = FALSE;
+  while (S_OK != query->GetData(&data, sizeof(BOOL), 0)) {
+  }
 }
 
 //
 // Class D3D10Object implementation
 //
-size_t
-D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
-{
-    size_t bytesPerPixel;
+size_t D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt) {
+  size_t bytesPerPixel;
 
-    switch(dxgiFmt)
-    {
+  switch (dxgiFmt) {
     case DXGI_FORMAT_R32G32B32A32_TYPELESS:
     case DXGI_FORMAT_R32G32B32A32_FLOAT:
     case DXGI_FORMAT_R32G32B32A32_UINT:
     case DXGI_FORMAT_R32G32B32A32_SINT:
-        bytesPerPixel = 16;
-        break;
+      bytesPerPixel = 16;
+      break;
 
     case DXGI_FORMAT_R32G32B32_TYPELESS:
     case DXGI_FORMAT_R32G32B32_FLOAT:
     case DXGI_FORMAT_R32G32B32_UINT:
     case DXGI_FORMAT_R32G32B32_SINT:
-        bytesPerPixel = 12;
-        break;
+      bytesPerPixel = 12;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_TYPELESS:
     case DXGI_FORMAT_R16G16B16A16_FLOAT:
@@ -690,8 +617,8 @@ D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
     case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
     case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
     case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-        bytesPerPixel = 8;
-        break;
+      bytesPerPixel = 8;
+      break;
 
     case DXGI_FORMAT_R10G10B10A2_TYPELESS:
     case DXGI_FORMAT_R10G10B10A2_UNORM:
@@ -725,8 +652,8 @@ D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
 
     case DXGI_FORMAT_B8G8R8A8_UNORM:
     case DXGI_FORMAT_B8G8R8X8_UNORM:
-        bytesPerPixel = 4;
-        break;
+      bytesPerPixel = 4;
+      break;
 
     case DXGI_FORMAT_R8G8_TYPELESS:
     case DXGI_FORMAT_R8G8_UNORM:
@@ -743,8 +670,8 @@ D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
 
     case DXGI_FORMAT_B5G6R5_UNORM:
     case DXGI_FORMAT_B5G5R5A1_UNORM:
-        bytesPerPixel = 2;
-        break;
+      bytesPerPixel = 2;
+      break;
 
     case DXGI_FORMAT_R8_TYPELESS:
     case DXGI_FORMAT_R8_UNORM:
@@ -753,8 +680,8 @@ D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
     case DXGI_FORMAT_R8_SINT:
     case DXGI_FORMAT_A8_UNORM:
     case DXGI_FORMAT_R1_UNORM:
-        bytesPerPixel = 1;
-        break;
+      bytesPerPixel = 1;
+      break;
 
 
     case DXGI_FORMAT_BC1_TYPELESS:
@@ -772,353 +699,350 @@ D3D10Object::getElementBytes(DXGI_FORMAT dxgiFmt)
     case DXGI_FORMAT_BC5_TYPELESS:
     case DXGI_FORMAT_BC5_UNORM:
     case DXGI_FORMAT_BC5_SNORM:
-        // Less than 1 byte per pixel - needs special consideration
-        bytesPerPixel = 0;
-        break;
+      // Less than 1 byte per pixel - needs special consideration
+      bytesPerPixel = 0;
+      break;
 
     default:
-        bytesPerPixel = 0;
-        _ASSERT(FALSE);
-        break;
-    }
-    return bytesPerPixel;
+      bytesPerPixel = 0;
+      _ASSERT(FALSE);
+      break;
+  }
+  return bytesPerPixel;
 }
 
-cl_image_format
-D3D10Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt)
-{
-    cl_image_format fmt;
+cl_image_format D3D10Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt) {
+  cl_image_format fmt;
 
-    //! @todo [odintsov]: add real fmt conversion from DXGI to CL
-    fmt.image_channel_order = 0;//CL_RGBA;
-    fmt.image_channel_data_type = 0;//CL_UNSIGNED_INT8;
+  //! @todo [odintsov]: add real fmt conversion from DXGI to CL
+  fmt.image_channel_order = 0;      // CL_RGBA;
+  fmt.image_channel_data_type = 0;  // CL_UNSIGNED_INT8;
 
-    switch(dxgiFmt)
-    {
+  switch (dxgiFmt) {
     case DXGI_FORMAT_R32G32B32A32_TYPELESS:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R32G32B32A32_FLOAT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_FLOAT;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_FLOAT;
+      break;
 
     case DXGI_FORMAT_R32G32B32A32_UINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32G32B32A32_SINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_SIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_SIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32G32B32_TYPELESS:
-        fmt.image_channel_order = CL_RGB;
-        break;
+      fmt.image_channel_order = CL_RGB;
+      break;
 
     case DXGI_FORMAT_R32G32B32_FLOAT:
-        fmt.image_channel_order = CL_RGB;
-        fmt.image_channel_data_type = CL_FLOAT;
-        break;
+      fmt.image_channel_order = CL_RGB;
+      fmt.image_channel_data_type = CL_FLOAT;
+      break;
 
     case DXGI_FORMAT_R32G32B32_UINT:
-        fmt.image_channel_order = CL_RGB;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RGB;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32G32B32_SINT:
-        fmt.image_channel_order = CL_RGB;
-        fmt.image_channel_data_type = CL_SIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RGB;
+      fmt.image_channel_data_type = CL_SIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_TYPELESS:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_FLOAT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_HALF_FLOAT;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_HALF_FLOAT;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_UNORM:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_UINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_SNORM:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_SNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_SNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16B16A16_SINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_SIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_SIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_R32G32_TYPELESS:
-        fmt.image_channel_order = CL_RG;
-        break;
+      fmt.image_channel_order = CL_RG;
+      break;
 
     case DXGI_FORMAT_R32G32_FLOAT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_FLOAT;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_FLOAT;
+      break;
 
     case DXGI_FORMAT_R32G32_UINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32G32_SINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_SIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_SIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32G8X24_TYPELESS:
-        break;
+      break;
 
     case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
-        break;
+      break;
 
     case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
-        break;
+      break;
 
     case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
-        break;
+      break;
 
     case DXGI_FORMAT_R10G10B10A2_TYPELESS:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R10G10B10A2_UNORM:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R10G10B10A2_UINT:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R11G11B10_FLOAT:
-        fmt.image_channel_order = CL_RGB;
-        break;
+      fmt.image_channel_order = CL_RGB;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_TYPELESS:
-        fmt.image_channel_order = CL_RGBA;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_UNORM:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_UINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_SNORM:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_SNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_SNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8B8A8_SINT:
-        fmt.image_channel_order = CL_RGBA;
-        fmt.image_channel_data_type = CL_SIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_SIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_R16G16_TYPELESS:
-        fmt.image_channel_order = CL_RG;
-        break;
+      fmt.image_channel_order = CL_RG;
+      break;
 
     case DXGI_FORMAT_R16G16_FLOAT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_HALF_FLOAT;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_HALF_FLOAT;
+      break;
 
     case DXGI_FORMAT_R16G16_UNORM:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_UNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_UNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16_UINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16_SNORM:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_SNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_SNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16G16_SINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_SIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_SIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_R32_TYPELESS:
-        fmt.image_channel_order = CL_R;
-        break;
+      fmt.image_channel_order = CL_R;
+      break;
 
     case DXGI_FORMAT_D32_FLOAT:
-        break;
+      break;
 
     case DXGI_FORMAT_R32_FLOAT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_FLOAT;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_FLOAT;
+      break;
 
     case DXGI_FORMAT_R32_UINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R32_SINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_SIGNED_INT32;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_SIGNED_INT32;
+      break;
 
     case DXGI_FORMAT_R24G8_TYPELESS:
-        fmt.image_channel_order = CL_RG;
-        break;
+      fmt.image_channel_order = CL_RG;
+      break;
 
     case DXGI_FORMAT_D24_UNORM_S8_UINT:
-        break;
+      break;
 
     case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
-        break;
+      break;
 
     case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
-        break;
+      break;
 
     case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
-        break;
+      break;
 
     case DXGI_FORMAT_R8G8_B8G8_UNORM:
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_G8R8_G8B8_UNORM:
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_B8G8R8A8_UNORM:
-        fmt.image_channel_order = CL_BGRA;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_BGRA;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_B8G8R8X8_UNORM:
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8_TYPELESS:
-        fmt.image_channel_order = CL_RG;
-        break;
+      fmt.image_channel_order = CL_RG;
+      break;
 
     case DXGI_FORMAT_R8G8_UNORM:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8_UINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8_SNORM:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_SNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_SNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8G8_SINT:
-        fmt.image_channel_order = CL_RG;
-        fmt.image_channel_data_type = CL_SIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_RG;
+      fmt.image_channel_data_type = CL_SIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_R16_TYPELESS:
-        fmt.image_channel_order = CL_R;
-        break;
+      fmt.image_channel_order = CL_R;
+      break;
 
     case DXGI_FORMAT_R16_FLOAT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_HALF_FLOAT;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_HALF_FLOAT;
+      break;
 
     case DXGI_FORMAT_D16_UNORM:
-        fmt.image_channel_data_type = CL_UNORM_INT16;
-        break;
+      fmt.image_channel_data_type = CL_UNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16_UNORM:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_UNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_UNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16_UINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_R16_SNORM:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_SNORM_INT16;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_SNORM_INT16;
+      break;
 
     case DXGI_FORMAT_R16_SINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_SIGNED_INT16;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_SIGNED_INT16;
+      break;
 
     case DXGI_FORMAT_B5G6R5_UNORM:
-        fmt.image_channel_data_type = CL_UNORM_SHORT_565;
-        break;
+      fmt.image_channel_data_type = CL_UNORM_SHORT_565;
+      break;
 
     case DXGI_FORMAT_B5G5R5A1_UNORM:
-        fmt.image_channel_order = CL_BGRA;
-        break;
+      fmt.image_channel_order = CL_BGRA;
+      break;
 
     case DXGI_FORMAT_R8_TYPELESS:
-        fmt.image_channel_order = CL_R;
-        break;
+      fmt.image_channel_order = CL_R;
+      break;
 
     case DXGI_FORMAT_R8_UNORM:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8_UINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_UNSIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_R8_SNORM:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_SNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_SNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R8_SINT:
-        fmt.image_channel_order = CL_R;
-        fmt.image_channel_data_type = CL_SIGNED_INT8;
-        break;
+      fmt.image_channel_order = CL_R;
+      fmt.image_channel_data_type = CL_SIGNED_INT8;
+      break;
 
     case DXGI_FORMAT_A8_UNORM:
-        fmt.image_channel_order = CL_A;
-        fmt.image_channel_data_type = CL_UNORM_INT8;
-        break;
+      fmt.image_channel_order = CL_A;
+      fmt.image_channel_data_type = CL_UNORM_INT8;
+      break;
 
     case DXGI_FORMAT_R1_UNORM:
-        fmt.image_channel_order = CL_R;
-        break;
+      fmt.image_channel_order = CL_R;
+      break;
 
     case DXGI_FORMAT_BC1_TYPELESS:
     case DXGI_FORMAT_BC1_UNORM:
@@ -1135,364 +1059,339 @@ D3D10Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt)
     case DXGI_FORMAT_BC5_TYPELESS:
     case DXGI_FORMAT_BC5_UNORM:
     case DXGI_FORMAT_BC5_SNORM:
-        break;
+      break;
 
     default:
-        _ASSERT(FALSE);
-        break;
-    }
+      _ASSERT(FALSE);
+      break;
+  }
 
-    return fmt;
+  return fmt;
 }
 
-size_t
-D3D10Object::getResourceByteSize()
-{
-    size_t bytes = 1;
+size_t D3D10Object::getResourceByteSize() {
+  size_t bytes = 1;
 
-    //! @todo [odintsov]: take into consideration the mip level?!
+  //! @todo [odintsov]: take into consideration the mip level?!
 
-    switch(objDesc_.objDim_)
-    {
+  switch (objDesc_.objDim_) {
     case D3D10_RESOURCE_DIMENSION_BUFFER:
-        bytes = objDesc_.objSize_.ByteWidth;
-        break;
+      bytes = objDesc_.objSize_.ByteWidth;
+      break;
 
     case D3D10_RESOURCE_DIMENSION_TEXTURE3D:
-        bytes = objDesc_.objSize_.Depth;
+      bytes = objDesc_.objSize_.Depth;
 
     case D3D10_RESOURCE_DIMENSION_TEXTURE2D:
-        bytes *= objDesc_.objSize_.Height;
+      bytes *= objDesc_.objSize_.Height;
 
     case D3D10_RESOURCE_DIMENSION_TEXTURE1D:
-        bytes *= objDesc_.objSize_.Width * getElementBytes();
-        break;
+      bytes *= objDesc_.objSize_.Width * getElementBytes();
+      break;
 
     default:
-        LogError("getResourceByteSize: unknown type of D3D10 resource");
-        bytes = 0;
-        break;
-    }
-    return bytes;
+      LogError("getResourceByteSize: unknown type of D3D10 resource");
+      bytes = 0;
+      break;
+  }
+  return bytes;
 }
 
-int
-D3D10Object::initD3D10Object(const Context& amdContext, ID3D10Resource* pRes, UINT subres, D3D10Object& obj)
-{
-    ID3D10Device *pDev;
-    HRESULT hr;
-    ScopedLock sl(resLock_);
+int D3D10Object::initD3D10Object(const Context& amdContext, ID3D10Resource* pRes, UINT subres,
+                                 D3D10Object& obj) {
+  ID3D10Device* pDev;
+  HRESULT hr;
+  ScopedLock sl(resLock_);
 
-    // Check if this ressource has already been used for interop
-    std::vector<std::pair<void*, UINT>>::iterator it;
-    for(it = resources_.begin(); it != resources_.end(); ++it) {
-        if((*it).first == (void*) pRes && (*it).second == subres) {
-            return CL_INVALID_D3D10_RESOURCE_KHR;
-        }
+  // Check if this ressource has already been used for interop
+  std::vector<std::pair<void*, UINT>>::iterator it;
+  for (it = resources_.begin(); it != resources_.end(); ++it) {
+    if ((*it).first == (void*)pRes && (*it).second == subres) {
+      return CL_INVALID_D3D10_RESOURCE_KHR;
     }
+  }
 
-    (obj.pD3D10Res_ = pRes)->GetDevice(&pDev);
-        
-    if(!pDev) {
-        return CL_INVALID_D3D10_DEVICE_KHR;
-    }
+  (obj.pD3D10Res_ = pRes)->GetDevice(&pDev);
 
-    D3D10_QUERY_DESC desc = {D3D10_QUERY_EVENT, 0}; \
-    pDev->CreateQuery(&desc, &obj.pQuery_); \
+  if (!pDev) {
+    return CL_INVALID_D3D10_DEVICE_KHR;
+  }
 
-#define SET_SHARED_FLAGS() \
-    { \
-        obj.pD3D10ResOrig_ = obj.pD3D10Res_; \
-        memcpy(&obj.objDescOrig_, &obj.objDesc_, sizeof(D3D10ObjDesc_t)); \
-        /* @todo - Check device type and select right usage for resource */ \
-        /* For now get only DPU path, CPU path for buffers */ \
-        /* will not worl on DEFAUL resources */ \
-        /*desc.Usage = D3D10_USAGE_STAGING;*/ \
-        desc.Usage = D3D10_USAGE_DEFAULT; \
-        desc.MiscFlags = D3D10_RESOURCE_MISC_SHARED; \
-        desc.CPUAccessFlags = 0; \
-    }
+  D3D10_QUERY_DESC desc = {D3D10_QUERY_EVENT, 0};
+  pDev->CreateQuery(&desc, &obj.pQuery_);
 
-#define STORE_SHARED_FLAGS(restype) \
-    { \
-        if(S_OK == hr && obj.pD3D10Res_) { \
-            obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage; \
-            obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags; \
-            obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags; \
-            obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags; \
-        } \
-        else { \
-            LogError("\nCannot create shared " #restype "\n"); \
-            return CL_INVALID_D3D10_RESOURCE_KHR; \
-        } \
-    }
+#define SET_SHARED_FLAGS()                                                                         \
+  {                                                                                                \
+    obj.pD3D10ResOrig_ = obj.pD3D10Res_;                                                           \
+    memcpy(&obj.objDescOrig_, &obj.objDesc_, sizeof(D3D10ObjDesc_t));                              \
+    /* @todo - Check device type and select right usage for resource */                            \
+    /* For now get only DPU path, CPU path for buffers */                                          \
+    /* will not worl on DEFAUL resources */                                                        \
+    /*desc.Usage = D3D10_USAGE_STAGING;*/                                                          \
+    desc.Usage = D3D10_USAGE_DEFAULT;                                                              \
+    desc.MiscFlags = D3D10_RESOURCE_MISC_SHARED;                                                   \
+    desc.CPUAccessFlags = 0;                                                                       \
+  }
 
-#define SET_BINDING() \
-    { \
-        switch(desc.Format) { \
-        case DXGI_FORMAT_D32_FLOAT_S8X24_UINT: \
-        case DXGI_FORMAT_D32_FLOAT: \
-        case DXGI_FORMAT_D24_UNORM_S8_UINT: \
-        case DXGI_FORMAT_D16_UNORM: \
-            desc.BindFlags = D3D10_BIND_DEPTH_STENCIL; \
-            break; \
-        default: \
-            desc.BindFlags = D3D10_BIND_SHADER_RESOURCE | D3D10_BIND_RENDER_TARGET; \
-            break; \
-        } \
-    }
+#define STORE_SHARED_FLAGS(restype)                                                                \
+  {                                                                                                \
+    if (S_OK == hr && obj.pD3D10Res_) {                                                            \
+      obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage;                                             \
+      obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags;                                          \
+      obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags;                                          \
+      obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags;                                \
+    } else {                                                                                       \
+      LogError("\nCannot create shared " #restype "\n");                                           \
+      return CL_INVALID_D3D10_RESOURCE_KHR;                                                        \
+    }                                                                                              \
+  }
 
-    pRes->GetType(&obj.objDesc_.objDim_);
+#define SET_BINDING()                                                                              \
+  {                                                                                                \
+    switch (desc.Format) {                                                                         \
+      case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:                                                       \
+      case DXGI_FORMAT_D32_FLOAT:                                                                  \
+      case DXGI_FORMAT_D24_UNORM_S8_UINT:                                                          \
+      case DXGI_FORMAT_D16_UNORM:                                                                  \
+        desc.BindFlags = D3D10_BIND_DEPTH_STENCIL;                                                 \
+        break;                                                                                     \
+      default:                                                                                     \
+        desc.BindFlags = D3D10_BIND_SHADER_RESOURCE | D3D10_BIND_RENDER_TARGET;                    \
+        break;                                                                                     \
+    }                                                                                              \
+  }
 
-    // Init defaults
-    obj.objDesc_.objSize_.Height        = 1;
-    obj.objDesc_.objSize_.Depth         = 1;
-    obj.objDesc_.mipLevels_             = 1;
-    obj.objDesc_.arraySize_             = 1;
-    obj.objDesc_.dxgiFormat_            = DXGI_FORMAT_UNKNOWN;
-    obj.objDesc_.dxgiSampleDesc_        = dxgiSampleDescDefault;
+  pRes->GetType(&obj.objDesc_.objDim_);
 
-    switch(obj.objDesc_.objDim_) {
-    case D3D10_RESOURCE_DIMENSION_BUFFER:       // = 1,
-        {
-            D3D10_BUFFER_DESC desc;
-            (reinterpret_cast<ID3D10Buffer*>(pRes))->GetDesc(&desc);
-            obj.objDesc_.objSize_.ByteWidth         = desc.ByteWidth;
-            obj.objDesc_.objFlags_.d3d10Usage_      = desc.Usage;
-            obj.objDesc_.objFlags_.bindFlags_       = desc.BindFlags;
-            obj.objDesc_.objFlags_.cpuAccessFlags_  = desc.CPUAccessFlags;
-            obj.objDesc_.objFlags_.miscFlags_       = desc.MiscFlags;
-            // Handle D3D10Buffer without shared handle - create
-            //  a duplicate with shared handle to provide for CAL
-            if(!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
-                SET_SHARED_FLAGS();
-                desc.BindFlags = D3D10_BIND_SHADER_RESOURCE | D3D10_BIND_RENDER_TARGET;
-                hr = pDev->CreateBuffer(&desc, NULL,
-                    (ID3D10Buffer**) &obj.pD3D10Res_);
-                STORE_SHARED_FLAGS(ID3D10Buffer);
-            }
-        }
-        break;
+  // Init defaults
+  obj.objDesc_.objSize_.Height = 1;
+  obj.objDesc_.objSize_.Depth = 1;
+  obj.objDesc_.mipLevels_ = 1;
+  obj.objDesc_.arraySize_ = 1;
+  obj.objDesc_.dxgiFormat_ = DXGI_FORMAT_UNKNOWN;
+  obj.objDesc_.dxgiSampleDesc_ = dxgiSampleDescDefault;
 
-    case D3D10_RESOURCE_DIMENSION_TEXTURE1D:    // = 2,
-        {
-            D3D10_TEXTURE1D_DESC desc;
-            (reinterpret_cast<ID3D10Texture1D*>(pRes))->GetDesc(&desc);
-
-            if(subres) {
-                // Calculate correct size of the subresource
-                UINT miplevel = subres;
-                if(desc.ArraySize > 1) {
-                    miplevel = subres % desc.ArraySize;
-                }
-                if(miplevel >= desc.MipLevels) {
-                    LogWarning("\nMiplevel >= number of miplevels\n");
-                }
-                if(subres >= desc.MipLevels*desc.ArraySize) {
-                    return CL_INVALID_VALUE;
-                }
-                desc.Width >>= miplevel;
-                if(!desc.Width) {
-                    desc.Width = 1;
-                }
-            }
-            obj.objDesc_.objSize_.Width             = desc.Width;
-            obj.objDesc_.mipLevels_                 = desc.MipLevels;
-            obj.objDesc_.arraySize_                 = desc.ArraySize;
-            obj.objDesc_.dxgiFormat_                = desc.Format;
-            obj.objDesc_.objFlags_.d3d10Usage_      = desc.Usage;
-            obj.objDesc_.objFlags_.bindFlags_       = desc.BindFlags;
-            obj.objDesc_.objFlags_.cpuAccessFlags_  = desc.CPUAccessFlags;
-            obj.objDesc_.objFlags_.miscFlags_       = desc.MiscFlags;
-            // Handle D3D10Texture1D without shared handle - create
-            //  a duplicate with shared handle and provide it for CAL
-            // Workaround for subresource > 0 in shared resource
-            if(subres)
-                obj.objDesc_.objFlags_.miscFlags_ &=
-                    ~(D3D10_RESOURCE_MISC_SHARED);
-            if(!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
-                SET_SHARED_FLAGS();
-                SET_BINDING();
-                obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
-                obj.objDesc_.arraySize_ = desc.ArraySize = 1;
-                hr = pDev->CreateTexture1D(&desc, NULL,
-                    (ID3D10Texture1D**) &obj.pD3D10Res_);
-                STORE_SHARED_FLAGS(ID3D10Texture1D);
-            }
-        }
-        break;
-
-    case D3D10_RESOURCE_DIMENSION_TEXTURE2D:    // = 3,
-        {
-            D3D10_TEXTURE2D_DESC desc;
-            (reinterpret_cast<ID3D10Texture2D*>(pRes))->GetDesc(&desc);
-            
-            if(subres) {
-                // Calculate correct size of the subresource
-                UINT miplevel = subres;
-                if(desc.ArraySize > 1) {
-                    miplevel = subres % desc.MipLevels;
-                }
-                if(miplevel >= desc.MipLevels) {
-                    LogWarning("\nMiplevel >= number of miplevels\n");
-                }
-                if(subres >= desc.MipLevels*desc.ArraySize) {
-                    return CL_INVALID_VALUE;
-                }
-                desc.Width >>= miplevel;
-                if(!desc.Width) {
-                    desc.Width = 1;
-                }
-                desc.Height >>= miplevel;
-                if(!desc.Height) {
-                    desc.Height = 1;
-                }
-            }
-            obj.objDesc_.objSize_.Width             = desc.Width;
-            obj.objDesc_.objSize_.Height            = desc.Height;
-            obj.objDesc_.mipLevels_                 = desc.MipLevels;
-            obj.objDesc_.arraySize_                 = desc.ArraySize;
-            obj.objDesc_.dxgiFormat_                = desc.Format;
-            obj.objDesc_.dxgiSampleDesc_            = desc.SampleDesc;
-            obj.objDesc_.objFlags_.d3d10Usage_      = desc.Usage;
-            obj.objDesc_.objFlags_.bindFlags_       = desc.BindFlags;
-            obj.objDesc_.objFlags_.cpuAccessFlags_  = desc.CPUAccessFlags;
-            obj.objDesc_.objFlags_.miscFlags_       = desc.MiscFlags;
-            // Handle D3D10Texture2D without shared handle - create
-            //  a duplicate with shared handle and provide it for CAL
-            // Workaround for subresource > 0 in shared resource
-            if(subres)
-                obj.objDesc_.objFlags_.miscFlags_ &=
-                    ~(D3D10_RESOURCE_MISC_SHARED);
-            if(!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
-                SET_SHARED_FLAGS();
-                SET_BINDING();
-                obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
-                obj.objDesc_.arraySize_ = desc.ArraySize = 1;
-                hr = pDev->CreateTexture2D(&desc, NULL,
-                    (ID3D10Texture2D**) &obj.pD3D10Res_);
-                STORE_SHARED_FLAGS(ID3D10Texture2D);
-            }
-        }
-        break;
-
-    case D3D10_RESOURCE_DIMENSION_TEXTURE3D:    // = 4
-        {
-            D3D10_TEXTURE3D_DESC desc;
-            (reinterpret_cast<ID3D10Texture3D*>(pRes))->GetDesc(&desc);
-
-            if(subres) {
-                // Calculate correct size of the subresource
-                UINT miplevel = subres;
-                if(miplevel >= desc.MipLevels) {
-                    LogWarning("\nMiplevel >= number of miplevels\n");
-                }
-                if(subres >= desc.MipLevels) {
-                    return CL_INVALID_VALUE;
-                }
-                desc.Width >>= miplevel;
-                if(!desc.Width) {
-                    desc.Width = 1;
-                }
-                desc.Height >>= miplevel;
-                if(!desc.Height) {
-                    desc.Height = 1;
-                }
-                desc.Depth >>= miplevel;
-                if(!desc.Depth) {
-                    desc.Depth = 1;
-                }
-            }
-            obj.objDesc_.objSize_.Width             = desc.Width;
-            obj.objDesc_.objSize_.Height            = desc.Height;
-            obj.objDesc_.objSize_.Depth             = desc.Depth;
-            obj.objDesc_.mipLevels_                 = desc.MipLevels;
-            obj.objDesc_.dxgiFormat_                = desc.Format;
-            obj.objDesc_.objFlags_.d3d10Usage_      = desc.Usage;
-            obj.objDesc_.objFlags_.bindFlags_       = desc.BindFlags;
-            obj.objDesc_.objFlags_.cpuAccessFlags_  = desc.CPUAccessFlags;
-            obj.objDesc_.objFlags_.miscFlags_       = desc.MiscFlags;
-            // Handle D3D10Texture3D without shared handle - create
-            //  a duplicate with shared handle and provide it for CAL
-            // Workaround for subresource > 0 in shared resource
-            if(obj.objDesc_.mipLevels_ > 1)
-                obj.objDesc_.objFlags_.miscFlags_ &=
-                    ~(D3D10_RESOURCE_MISC_SHARED);
-            if(!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
-                SET_SHARED_FLAGS();
-                SET_BINDING();
-                obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
-                hr = pDev->CreateTexture3D(&desc, NULL,
-                    (ID3D10Texture3D**) &obj.pD3D10Res_);
-                STORE_SHARED_FLAGS(ID3D10Texture3D);
-            }
-        }
-        break;
-
-    default:
-        LogError("unknown type of D3D10 resource");
-        return CL_INVALID_D3D10_RESOURCE_KHR;
-    }
-    obj.subRes_ = subres;
-    pDev->Release();
-    // Check for CL format compatibilty
-    if(obj.objDesc_.objDim_ != D3D10_RESOURCE_DIMENSION_BUFFER) {
-        cl_image_format clFmt = obj.getCLFormatFromDXGI(obj.objDesc_.dxgiFormat_);
-        amd::Image::Format imageFormat(clFmt);
-        if(!imageFormat.isSupported(amdContext)) {
-            return CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
-        }
-    }
-    resources_.push_back(std::make_pair(pRes, subres));
-    return CL_SUCCESS;
-}
-
-bool
-D3D10Object::copyOrigToShared()
-{
-    // Don't copy if there is no orig
-    if (NULL == getD3D10ResOrig()) return true;
-
-    ID3D10Device *d3dDev;
-    pD3D10Res_->GetDevice(&d3dDev);
-    if(!d3dDev) {
-        LogError("\nCannot get D3D10 device from D3D10 resource\n");
-        return false;
-    }
-    // Any usage source can be read by GPU
-    d3dDev->CopySubresourceRegion(pD3D10Res_, 0, 0, 0, 0,
-        pD3D10ResOrig_, subRes_, NULL);
-
-    // Flush D3D queues and make sure D3D stuff is finished
-    d3dDev->Flush();
-    pQuery_->End();
-    BOOL data;
-    while(S_OK != pQuery_->GetData(&data, sizeof(BOOL), 0) && data != TRUE)
+  switch (obj.objDesc_.objDim_) {
+    case D3D10_RESOURCE_DIMENSION_BUFFER:  // = 1,
     {
-    }
+      D3D10_BUFFER_DESC desc;
+      (reinterpret_cast<ID3D10Buffer*>(pRes))->GetDesc(&desc);
+      obj.objDesc_.objSize_.ByteWidth = desc.ByteWidth;
+      obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage;
+      obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags;
+      obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags;
+      obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags;
+      // Handle D3D10Buffer without shared handle - create
+      //  a duplicate with shared handle to provide for CAL
+      if (!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
+        SET_SHARED_FLAGS();
+        desc.BindFlags = D3D10_BIND_SHADER_RESOURCE | D3D10_BIND_RENDER_TARGET;
+        hr = pDev->CreateBuffer(&desc, NULL, (ID3D10Buffer**)&obj.pD3D10Res_);
+        STORE_SHARED_FLAGS(ID3D10Buffer);
+      }
+    } break;
 
-    d3dDev->Release();
-    return true;
+    case D3D10_RESOURCE_DIMENSION_TEXTURE1D:  // = 2,
+    {
+      D3D10_TEXTURE1D_DESC desc;
+      (reinterpret_cast<ID3D10Texture1D*>(pRes))->GetDesc(&desc);
+
+      if (subres) {
+        // Calculate correct size of the subresource
+        UINT miplevel = subres;
+        if (desc.ArraySize > 1) {
+          miplevel = subres % desc.ArraySize;
+        }
+        if (miplevel >= desc.MipLevels) {
+          LogWarning("\nMiplevel >= number of miplevels\n");
+        }
+        if (subres >= desc.MipLevels * desc.ArraySize) {
+          return CL_INVALID_VALUE;
+        }
+        desc.Width >>= miplevel;
+        if (!desc.Width) {
+          desc.Width = 1;
+        }
+      }
+      obj.objDesc_.objSize_.Width = desc.Width;
+      obj.objDesc_.mipLevels_ = desc.MipLevels;
+      obj.objDesc_.arraySize_ = desc.ArraySize;
+      obj.objDesc_.dxgiFormat_ = desc.Format;
+      obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage;
+      obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags;
+      obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags;
+      obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags;
+      // Handle D3D10Texture1D without shared handle - create
+      //  a duplicate with shared handle and provide it for CAL
+      // Workaround for subresource > 0 in shared resource
+      if (subres) obj.objDesc_.objFlags_.miscFlags_ &= ~(D3D10_RESOURCE_MISC_SHARED);
+      if (!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
+        SET_SHARED_FLAGS();
+        SET_BINDING();
+        obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
+        obj.objDesc_.arraySize_ = desc.ArraySize = 1;
+        hr = pDev->CreateTexture1D(&desc, NULL, (ID3D10Texture1D**)&obj.pD3D10Res_);
+        STORE_SHARED_FLAGS(ID3D10Texture1D);
+      }
+    } break;
+
+    case D3D10_RESOURCE_DIMENSION_TEXTURE2D:  // = 3,
+    {
+      D3D10_TEXTURE2D_DESC desc;
+      (reinterpret_cast<ID3D10Texture2D*>(pRes))->GetDesc(&desc);
+
+      if (subres) {
+        // Calculate correct size of the subresource
+        UINT miplevel = subres;
+        if (desc.ArraySize > 1) {
+          miplevel = subres % desc.MipLevels;
+        }
+        if (miplevel >= desc.MipLevels) {
+          LogWarning("\nMiplevel >= number of miplevels\n");
+        }
+        if (subres >= desc.MipLevels * desc.ArraySize) {
+          return CL_INVALID_VALUE;
+        }
+        desc.Width >>= miplevel;
+        if (!desc.Width) {
+          desc.Width = 1;
+        }
+        desc.Height >>= miplevel;
+        if (!desc.Height) {
+          desc.Height = 1;
+        }
+      }
+      obj.objDesc_.objSize_.Width = desc.Width;
+      obj.objDesc_.objSize_.Height = desc.Height;
+      obj.objDesc_.mipLevels_ = desc.MipLevels;
+      obj.objDesc_.arraySize_ = desc.ArraySize;
+      obj.objDesc_.dxgiFormat_ = desc.Format;
+      obj.objDesc_.dxgiSampleDesc_ = desc.SampleDesc;
+      obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage;
+      obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags;
+      obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags;
+      obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags;
+      // Handle D3D10Texture2D without shared handle - create
+      //  a duplicate with shared handle and provide it for CAL
+      // Workaround for subresource > 0 in shared resource
+      if (subres) obj.objDesc_.objFlags_.miscFlags_ &= ~(D3D10_RESOURCE_MISC_SHARED);
+      if (!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
+        SET_SHARED_FLAGS();
+        SET_BINDING();
+        obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
+        obj.objDesc_.arraySize_ = desc.ArraySize = 1;
+        hr = pDev->CreateTexture2D(&desc, NULL, (ID3D10Texture2D**)&obj.pD3D10Res_);
+        STORE_SHARED_FLAGS(ID3D10Texture2D);
+      }
+    } break;
+
+    case D3D10_RESOURCE_DIMENSION_TEXTURE3D:  // = 4
+    {
+      D3D10_TEXTURE3D_DESC desc;
+      (reinterpret_cast<ID3D10Texture3D*>(pRes))->GetDesc(&desc);
+
+      if (subres) {
+        // Calculate correct size of the subresource
+        UINT miplevel = subres;
+        if (miplevel >= desc.MipLevels) {
+          LogWarning("\nMiplevel >= number of miplevels\n");
+        }
+        if (subres >= desc.MipLevels) {
+          return CL_INVALID_VALUE;
+        }
+        desc.Width >>= miplevel;
+        if (!desc.Width) {
+          desc.Width = 1;
+        }
+        desc.Height >>= miplevel;
+        if (!desc.Height) {
+          desc.Height = 1;
+        }
+        desc.Depth >>= miplevel;
+        if (!desc.Depth) {
+          desc.Depth = 1;
+        }
+      }
+      obj.objDesc_.objSize_.Width = desc.Width;
+      obj.objDesc_.objSize_.Height = desc.Height;
+      obj.objDesc_.objSize_.Depth = desc.Depth;
+      obj.objDesc_.mipLevels_ = desc.MipLevels;
+      obj.objDesc_.dxgiFormat_ = desc.Format;
+      obj.objDesc_.objFlags_.d3d10Usage_ = desc.Usage;
+      obj.objDesc_.objFlags_.bindFlags_ = desc.BindFlags;
+      obj.objDesc_.objFlags_.cpuAccessFlags_ = desc.CPUAccessFlags;
+      obj.objDesc_.objFlags_.miscFlags_ = desc.MiscFlags;
+      // Handle D3D10Texture3D without shared handle - create
+      //  a duplicate with shared handle and provide it for CAL
+      // Workaround for subresource > 0 in shared resource
+      if (obj.objDesc_.mipLevels_ > 1)
+        obj.objDesc_.objFlags_.miscFlags_ &= ~(D3D10_RESOURCE_MISC_SHARED);
+      if (!(obj.objDesc_.objFlags_.miscFlags_ & D3D10_RESOURCE_MISC_SHARED)) {
+        SET_SHARED_FLAGS();
+        SET_BINDING();
+        obj.objDesc_.mipLevels_ = desc.MipLevels = 1;
+        hr = pDev->CreateTexture3D(&desc, NULL, (ID3D10Texture3D**)&obj.pD3D10Res_);
+        STORE_SHARED_FLAGS(ID3D10Texture3D);
+      }
+    } break;
+
+    default:
+      LogError("unknown type of D3D10 resource");
+      return CL_INVALID_D3D10_RESOURCE_KHR;
+  }
+  obj.subRes_ = subres;
+  pDev->Release();
+  // Check for CL format compatibilty
+  if (obj.objDesc_.objDim_ != D3D10_RESOURCE_DIMENSION_BUFFER) {
+    cl_image_format clFmt = obj.getCLFormatFromDXGI(obj.objDesc_.dxgiFormat_);
+    amd::Image::Format imageFormat(clFmt);
+    if (!imageFormat.isSupported(amdContext)) {
+      return CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+    }
+  }
+  resources_.push_back(std::make_pair(pRes, subres));
+  return CL_SUCCESS;
 }
 
-bool
-D3D10Object::copySharedToOrig()
-{
-    // Don't copy if there is no orig
-    if (NULL == getD3D10ResOrig()) return true;
+bool D3D10Object::copyOrigToShared() {
+  // Don't copy if there is no orig
+  if (NULL == getD3D10ResOrig()) return true;
 
-    ID3D10Device *d3dDev;
-    pD3D10Res_->GetDevice(&d3dDev);
-    if(!d3dDev) {
-        LogError("\nCannot get D3D10 device from D3D10 resource\n");
-        return false;
-    }
+  ID3D10Device* d3dDev;
+  pD3D10Res_->GetDevice(&d3dDev);
+  if (!d3dDev) {
+    LogError("\nCannot get D3D10 device from D3D10 resource\n");
+    return false;
+  }
+  // Any usage source can be read by GPU
+  d3dDev->CopySubresourceRegion(pD3D10Res_, 0, 0, 0, 0, pD3D10ResOrig_, subRes_, NULL);
 
-    d3dDev->CopySubresourceRegion(pD3D10ResOrig_, subRes_, 0, 0, 0,
-        pD3D10Res_, 0, NULL);
+  // Flush D3D queues and make sure D3D stuff is finished
+  d3dDev->Flush();
+  pQuery_->End();
+  BOOL data;
+  while (S_OK != pQuery_->GetData(&data, sizeof(BOOL), 0) && data != TRUE) {
+  }
 
-    d3dDev->Release();
-    return true;
+  d3dDev->Release();
+  return true;
+}
+
+bool D3D10Object::copySharedToOrig() {
+  // Don't copy if there is no orig
+  if (NULL == getD3D10ResOrig()) return true;
+
+  ID3D10Device* d3dDev;
+  pD3D10Res_->GetDevice(&d3dDev);
+  if (!d3dDev) {
+    LogError("\nCannot get D3D10 device from D3D10 resource\n");
+    return false;
+  }
+
+  d3dDev->CopySubresourceRegion(pD3D10ResOrig_, subRes_, 0, 0, 0, pD3D10Res_, 0, NULL);
+
+  d3dDev->Release();
+  return true;
 }
 
 std::vector<std::pair<void*, UINT>> D3D10Object::resources_;
@@ -1501,407 +1400,345 @@ Monitor D3D10Object::resLock_;
 //
 // Class BufferD3D10 implementation
 //
-void
-BufferD3D10::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(BufferD3D10));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void BufferD3D10::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(BufferD3D10));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool
-BufferD3D10::mapExtObjectInCQThread()
-{
-    void* pCpuMem = NULL;
-    HRESULT hr;
-    D3D10_MAP   gpuMap;
-    UINT        cpuAccess;
+bool BufferD3D10::mapExtObjectInCQThread() {
+  void* pCpuMem = NULL;
+  HRESULT hr;
+  D3D10_MAP gpuMap;
+  UINT cpuAccess;
 
 
-    if (getMemFlags() & CL_MEM_READ_WRITE) {
-        gpuMap = D3D10_MAP_READ_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  if (getMemFlags() & CL_MEM_READ_WRITE) {
+    gpuMap = D3D10_MAP_READ_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_READ_ONLY) {
+    gpuMap = D3D10_MAP_READ;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
+    gpuMap = D3D10_MAP_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // Should not get here, the flags had been checked before
+    LogError("\nInvalid memrory flags");
+    return false;
+  }
+
+  if (getUsage() == D3D10_USAGE_STAGING) {
+    // Can map directly
+    hr = reinterpret_cast<ID3D10Buffer*>(getD3D10Resource())->Map(gpuMap, 0, &pCpuMem);
+    if (hr != S_OK || !pCpuMem) {
+      LogError("Cannot map ID3D10Buffer object to CPU memory");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_READ_ONLY) {
-        gpuMap = D3D10_MAP_READ;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // The buffer need to be mapped indirectly
+    // Create auxiliary buffer
+    ID3D10Device* pD3D10Dev;
+    getD3D10Resource()->GetDevice(&pD3D10Dev);
+    if (!pD3D10Dev) {
+      LogError("\nCannot get D3D10 device");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-        gpuMap = D3D10_MAP_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+    pD3D10Dev->Release();
+    D3D10_BUFFER_DESC bufDesc = {getResourceByteSize(), D3D10_USAGE_STAGING, 0, cpuAccess, 0};
+    ID3D10Buffer* pAuxBuf;
+    hr = pD3D10Dev->CreateBuffer(&bufDesc, NULL, &pAuxBuf);
+    if (hr != S_OK || !pAuxBuf) {
+      LogError("\nCannot create auxiliary buffer");
+      return false;
     }
-    else {
-        // Should not get here, the flags had been checked before
-        LogError("\nInvalid memrory flags");
+    setD3D10AuxRes(pAuxBuf);
+    // Copy contents of original buffer to auxiliary
+    pD3D10Dev->CopyResource(pAuxBuf, getD3D10Resource());
+    // Now map the aux buffer
+    hr = pAuxBuf->Map(gpuMap, 0, &pCpuMem);
+    if (hr != S_OK || !pCpuMem) {
+      LogError("Cannot map D3D10 auxiliary buffer to CPU memory");
+      return false;
+    }
+  }
+
+  setHostMem(pCpuMem);
+  return true;
+}
+
+bool BufferD3D10::unmapExtObjectInCQThread() {
+  if (getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
+    if (getD3D10AuxRes()) {
+      // Need to copy data from aux to original
+      reinterpret_cast<ID3D10Buffer*>(getD3D10AuxRes())->Unmap();
+      ID3D10Device* pD3D10Dev;
+      getD3D10AuxRes()->GetDevice(&pD3D10Dev);
+      if (!pD3D10Dev) {
+        LogError("\nCannot get D3D10 device");
         return false;
+      }
+      pD3D10Dev->Release();
+      pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Buffer*>(getD3D10Resource())->Unmap();
     }
-
-    if(getUsage() == D3D10_USAGE_STAGING) {
-        // Can map directly
-        hr = reinterpret_cast<ID3D10Buffer*>(
-            getD3D10Resource())->Map(gpuMap, 0, &pCpuMem);
-        if(hr != S_OK || !pCpuMem) {
-            LogError("Cannot map ID3D10Buffer object to CPU memory");
-            return false;
-        }
+  } else {
+    // Just unmap everything, no need to copy contents
+    if (getD3D10AuxRes()) {
+      reinterpret_cast<ID3D10Buffer*>(getD3D10AuxRes())->Unmap();
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Buffer*>(getD3D10Resource())->Unmap();
     }
-    else {
-        // The buffer need to be mapped indirectly
-        // Create auxiliary buffer
-        ID3D10Device* pD3D10Dev;
-        getD3D10Resource()->GetDevice(&pD3D10Dev);
-        if(!pD3D10Dev) {
-            LogError("\nCannot get D3D10 device");
-            return false;
-        }
-        pD3D10Dev->Release();
-        D3D10_BUFFER_DESC bufDesc = {
-            getResourceByteSize(),
-            D3D10_USAGE_STAGING,
-            0,
-            cpuAccess,
-            0};
-        ID3D10Buffer* pAuxBuf;
-        hr = pD3D10Dev->CreateBuffer(&bufDesc, NULL, &pAuxBuf);
-        if(hr != S_OK || !pAuxBuf) {
-            LogError("\nCannot create auxiliary buffer");
-            return false;
-        }
-        setD3D10AuxRes(pAuxBuf);
-        // Copy contents of original buffer to auxiliary
-        pD3D10Dev->CopyResource(pAuxBuf, getD3D10Resource());
-        // Now map the aux buffer
-        hr = pAuxBuf->Map(gpuMap, 0, &pCpuMem);
-        if(hr != S_OK || !pCpuMem) {
-            LogError("Cannot map D3D10 auxiliary buffer to CPU memory");
-            return false;
-        }
-    }
-
-    setHostMem(pCpuMem);
-    return true;
-}
-
-bool
-BufferD3D10::unmapExtObjectInCQThread()
-{
-    if(getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
-        if(getD3D10AuxRes()) {
-            // Need to copy data from aux to original
-            reinterpret_cast<ID3D10Buffer*>(getD3D10AuxRes())->Unmap();
-            ID3D10Device* pD3D10Dev;
-            getD3D10AuxRes()->GetDevice(&pD3D10Dev);
-            if(!pD3D10Dev) {
-                LogError("\nCannot get D3D10 device");
-                return false;
-            }
-            pD3D10Dev->Release();
-            pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Buffer*>(getD3D10Resource())->Unmap();
-        }
-    }
-    else {
-        // Just unmap everything, no need to copy contents
-        if(getD3D10AuxRes()) {
-            reinterpret_cast<ID3D10Buffer*>(getD3D10AuxRes())->Unmap();
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Buffer*>(getD3D10Resource())->Unmap();
-        }
-    }
-    setHostMem(NULL);
-    return true;
+  }
+  setHostMem(NULL);
+  return true;
 }
 
 //
 // Class Image1DD3D10 implementation
 //
 
-void
-Image1DD3D10::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(Image1DD3D10));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void Image1DD3D10::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Image1DD3D10));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool
-Image1DD3D10::mapExtObjectInCQThread()
-{
-    LogError("\nImage1DD3D10::mapExtObjectInCQThread() is not implemented yet\n");
-    return false;
+bool Image1DD3D10::mapExtObjectInCQThread() {
+  LogError("\nImage1DD3D10::mapExtObjectInCQThread() is not implemented yet\n");
+  return false;
 }
 
-bool
-Image1DD3D10::unmapExtObjectInCQThread()
-{
-    LogError("\nImage1DD3D10::unmapExtObjectInCQThread() is not implemented yet\n");
-    return false;
+bool Image1DD3D10::unmapExtObjectInCQThread() {
+  LogError("\nImage1DD3D10::unmapExtObjectInCQThread() is not implemented yet\n");
+  return false;
 }
 
 //
 // Class Image2DD3D10 implementation
 //
 
-void
-Image2DD3D10::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(Image2DD3D10));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void Image2DD3D10::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Image2DD3D10));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool
-Image2DD3D10::mapExtObjectInCQThread()
-{
-    D3D10_MAPPED_TEXTURE2D texture2D;
-    HRESULT hr;
-    D3D10_MAP   gpuMap;
-    UINT        cpuAccess;
+bool Image2DD3D10::mapExtObjectInCQThread() {
+  D3D10_MAPPED_TEXTURE2D texture2D;
+  HRESULT hr;
+  D3D10_MAP gpuMap;
+  UINT cpuAccess;
 
 
-    if (getMemFlags() & CL_MEM_READ_WRITE) {
-        gpuMap = D3D10_MAP_READ_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  if (getMemFlags() & CL_MEM_READ_WRITE) {
+    gpuMap = D3D10_MAP_READ_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_READ_ONLY) {
+    gpuMap = D3D10_MAP_READ;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
+    gpuMap = D3D10_MAP_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // Should not get here, the flags had been checked before
+    LogError("\nInvalid memrory flags");
+    return false;
+  }
+
+  if (getUsage() == D3D10_USAGE_STAGING) {
+    // Can map directly
+    hr = reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())
+             ->Map(getSubresource(), gpuMap, 0, &texture2D);
+    if (hr != S_OK || !texture2D.pData) {
+      LogError("Cannot map ID3D10Texture2D object to CPU memory");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_READ_ONLY) {
-        gpuMap = D3D10_MAP_READ;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // The texture needs to be mapped indirectly.
+    // Create auxiliary texture.
+    ID3D10Device* pD3D10Dev;
+    getD3D10Resource()->GetDevice(&pD3D10Dev);
+    if (!pD3D10Dev) {
+      LogError("\nCannot get D3D10 device");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-        gpuMap = D3D10_MAP_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+    pD3D10Dev->Release();
+    D3D10_TEXTURE2D_DESC texDesc;
+    reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())->GetDesc(&texDesc);
+    texDesc.Usage = D3D10_USAGE_STAGING;
+    texDesc.MipLevels = 1;
+    texDesc.BindFlags = 0;
+    texDesc.CPUAccessFlags = cpuAccess;
+    texDesc.MiscFlags = 0;
+    ID3D10Texture2D* pAuxTex;
+    hr = pD3D10Dev->CreateTexture2D(&texDesc, NULL, &pAuxTex);
+    if (hr != S_OK) {
+      LogError("\nCannot create auxiliary 2D texture");
+      return false;
     }
-    else {
-        // Should not get here, the flags had been checked before
-        LogError("\nInvalid memrory flags");
+    setD3D10AuxRes(pAuxTex);
+    // Copy contents of original texture to auxiliary
+    pD3D10Dev->CopyResource(pAuxTex, getD3D10Resource());
+    // Now map the aux texture
+    hr = pAuxTex->Map(0, gpuMap, 0, &texture2D);
+    if (hr != S_OK || !texture2D.pData) {
+      LogError("Cannot map D3D10 auxiliary 2D texture to CPU memory");
+      return false;
+    }
+  }
+
+  setHostMem(texture2D.pData);
+  return true;
+}
+
+bool Image2DD3D10::unmapExtObjectInCQThread() {
+  if (getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
+    if (getD3D10AuxRes()) {
+      // Need to copy data from aux to original
+      reinterpret_cast<ID3D10Texture2D*>(getD3D10AuxRes())->Unmap(0);
+      ID3D10Device* pD3D10Dev;
+      getD3D10AuxRes()->GetDevice(&pD3D10Dev);
+      if (!pD3D10Dev) {
+        LogError("\nCannot get D3D10 device");
         return false;
+      }
+      pD3D10Dev->Release();
+      pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())->Unmap(getSubresource());
     }
-
-    if(getUsage() == D3D10_USAGE_STAGING) {
-        // Can map directly
-        hr = reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())
-	    ->Map(getSubresource(), gpuMap, 0, &texture2D);
-        if(hr != S_OK || !texture2D.pData) {
-            LogError("Cannot map ID3D10Texture2D object to CPU memory");
-            return false;
-        }
+  } else {
+    // Just unmap everything, no need to copy contents
+    if (getD3D10AuxRes()) {
+      reinterpret_cast<ID3D10Texture2D*>(getD3D10AuxRes())->Unmap(0);
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())->Unmap(getSubresource());
     }
-    else {
-        // The texture needs to be mapped indirectly.
-        // Create auxiliary texture.
-        ID3D10Device* pD3D10Dev;
-        getD3D10Resource()->GetDevice(&pD3D10Dev);
-        if(!pD3D10Dev) {
-            LogError("\nCannot get D3D10 device");
-            return false;
-        }
-        pD3D10Dev->Release();
-	D3D10_TEXTURE2D_DESC texDesc;
-	reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())
-	    ->GetDesc(&texDesc);
-	texDesc.Usage = D3D10_USAGE_STAGING;
-	texDesc.MipLevels = 1;
-	texDesc.BindFlags = 0;
-	texDesc.CPUAccessFlags = cpuAccess;
-        texDesc.MiscFlags = 0;
-        ID3D10Texture2D* pAuxTex;
-        hr = pD3D10Dev->CreateTexture2D(&texDesc, NULL, &pAuxTex);
-        if(hr != S_OK) {
-            LogError("\nCannot create auxiliary 2D texture");
-            return false;
-        }
-        setD3D10AuxRes(pAuxTex);
-        // Copy contents of original texture to auxiliary
-        pD3D10Dev->CopyResource(pAuxTex, getD3D10Resource());
-        // Now map the aux texture
-        hr = pAuxTex->Map(0, gpuMap, 0, &texture2D);
-        if(hr != S_OK || !texture2D.pData) {
-            LogError("Cannot map D3D10 auxiliary 2D texture to CPU memory");
-            return false;
-        }
-    }
-
-    setHostMem(texture2D.pData);
-    return true;
-}
-
-bool
-Image2DD3D10::unmapExtObjectInCQThread()
-{
-    if(getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
-        if(getD3D10AuxRes()) {
-            // Need to copy data from aux to original
-            reinterpret_cast<ID3D10Texture2D*>(getD3D10AuxRes())->Unmap(0);
-            ID3D10Device* pD3D10Dev;
-            getD3D10AuxRes()->GetDevice(&pD3D10Dev);
-            if(!pD3D10Dev) {
-                LogError("\nCannot get D3D10 device");
-                return false;
-            }
-            pD3D10Dev->Release();
-            pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())
-		->Unmap(getSubresource());
-        }
-    }
-    else {
-        // Just unmap everything, no need to copy contents
-        if(getD3D10AuxRes()) {
-            reinterpret_cast<ID3D10Texture2D*>(getD3D10AuxRes())->Unmap(0);
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Texture2D*>(getD3D10Resource())
-		->Unmap(getSubresource());
-        }
-    }
-    setHostMem(NULL);
-    return true;
+  }
+  setHostMem(NULL);
+  return true;
 }
 
 //
 // Class Image3DD3D10 implementation
 //
-void
-Image3DD3D10::initDeviceMemory()
-{
-    deviceMemories_ = reinterpret_cast<DeviceMemory*>(
-        reinterpret_cast<char*>(this) + sizeof(Image3DD3D10));
-    memset(deviceMemories_, 0,
-        context_().devices().size() * sizeof(DeviceMemory));
+void Image3DD3D10::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Image3DD3D10));
+  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
 
-bool
-Image3DD3D10::mapExtObjectInCQThread()
-{
-    D3D10_MAPPED_TEXTURE3D texture3D;
-    HRESULT hr;
-    D3D10_MAP   gpuMap;
-    UINT        cpuAccess;
+bool Image3DD3D10::mapExtObjectInCQThread() {
+  D3D10_MAPPED_TEXTURE3D texture3D;
+  HRESULT hr;
+  D3D10_MAP gpuMap;
+  UINT cpuAccess;
 
 
-    if (getMemFlags() & CL_MEM_READ_WRITE) {
-        gpuMap = D3D10_MAP_READ_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  if (getMemFlags() & CL_MEM_READ_WRITE) {
+    gpuMap = D3D10_MAP_READ_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_READ_ONLY) {
+    gpuMap = D3D10_MAP_READ;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
+    gpuMap = D3D10_MAP_WRITE;
+    cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // Should not get here, the flags had been checked before
+    LogError("\nInvalid memrory flags");
+    return false;
+  }
+
+  if (getUsage() == D3D10_USAGE_STAGING) {
+    // Can map directly
+    hr = reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())
+             ->Map(getSubresource(), gpuMap, 0, &texture3D);
+    if (hr != S_OK || !texture3D.pData) {
+      LogError("Cannot map ID3D10Texture3D object to CPU memory");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_READ_ONLY) {
-        gpuMap = D3D10_MAP_READ;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+  } else {
+    // The texture needs to be mapped indirectly.
+    // Create auxiliary texture.
+    ID3D10Device* pD3D10Dev;
+    getD3D10Resource()->GetDevice(&pD3D10Dev);
+    if (!pD3D10Dev) {
+      LogError("\nCannot get D3D10 device");
+      return false;
     }
-    else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-        gpuMap = D3D10_MAP_WRITE;
-        cpuAccess = D3D10_CPU_ACCESS_READ | D3D10_CPU_ACCESS_WRITE;
+    pD3D10Dev->Release();
+    D3D10_TEXTURE3D_DESC texDesc;
+    reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())->GetDesc(&texDesc);
+    texDesc.Usage = D3D10_USAGE_STAGING;
+    texDesc.MipLevels = 1;
+    texDesc.BindFlags = 0;
+    texDesc.CPUAccessFlags = cpuAccess;
+    texDesc.MiscFlags = 0;
+    ID3D10Texture3D* pAuxTex;
+    hr = pD3D10Dev->CreateTexture3D(&texDesc, NULL, &pAuxTex);
+    if (hr != S_OK) {
+      LogError("\nCannot create auxiliary 3D texture");
+      return false;
     }
-    else {
-        // Should not get here, the flags had been checked before
-        LogError("\nInvalid memrory flags");
+    setD3D10AuxRes(pAuxTex);
+    // Copy contents of original texture to auxiliary
+    pD3D10Dev->CopyResource(pAuxTex, getD3D10Resource());
+    // Now map the aux texture
+    hr = pAuxTex->Map(0, gpuMap, 0, &texture3D);
+    if (hr != S_OK || !texture3D.pData) {
+      LogError("Cannot map D3D10 auxiliary 3D texture to CPU memory");
+      return false;
+    }
+  }
+
+  setHostMem(texture3D.pData);
+  return true;
+}
+
+bool Image3DD3D10::unmapExtObjectInCQThread() {
+  if (getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
+    if (getD3D10AuxRes()) {
+      // Need to copy data from aux to original
+      reinterpret_cast<ID3D10Texture3D*>(getD3D10AuxRes())->Unmap(0);
+      ID3D10Device* pD3D10Dev;
+      getD3D10AuxRes()->GetDevice(&pD3D10Dev);
+      if (!pD3D10Dev) {
+        LogError("\nCannot get D3D10 device");
         return false;
+      }
+      pD3D10Dev->Release();
+      pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())->Unmap(getSubresource());
     }
-
-    if(getUsage() == D3D10_USAGE_STAGING) {
-        // Can map directly
-        hr = reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())
-	    ->Map(getSubresource(), gpuMap, 0, &texture3D);
-        if(hr != S_OK || !texture3D.pData) {
-            LogError("Cannot map ID3D10Texture3D object to CPU memory");
-            return false;
-        }
+  } else {
+    // Just unmap everything, no need to copy contents
+    if (getD3D10AuxRes()) {
+      reinterpret_cast<ID3D10Texture3D*>(getD3D10AuxRes())->Unmap(0);
+      getD3D10AuxRes()->Release();
+      setD3D10AuxRes(NULL);
+    } else {
+      reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())->Unmap(getSubresource());
     }
-    else {
-        // The texture needs to be mapped indirectly.
-        // Create auxiliary texture.
-        ID3D10Device* pD3D10Dev;
-        getD3D10Resource()->GetDevice(&pD3D10Dev);
-        if(!pD3D10Dev) {
-            LogError("\nCannot get D3D10 device");
-            return false;
-        }
-        pD3D10Dev->Release();
-	D3D10_TEXTURE3D_DESC texDesc;
-	reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())
-	    ->GetDesc(&texDesc);
-	texDesc.Usage = D3D10_USAGE_STAGING;
-	texDesc.MipLevels = 1;
-	texDesc.BindFlags = 0;
-	texDesc.CPUAccessFlags = cpuAccess;
-        texDesc.MiscFlags = 0;
-        ID3D10Texture3D* pAuxTex;
-        hr = pD3D10Dev->CreateTexture3D(&texDesc, NULL, &pAuxTex);
-        if(hr != S_OK) {
-            LogError("\nCannot create auxiliary 3D texture");
-            return false;
-        }
-        setD3D10AuxRes(pAuxTex);
-        // Copy contents of original texture to auxiliary
-        pD3D10Dev->CopyResource(pAuxTex, getD3D10Resource());
-        // Now map the aux texture
-        hr = pAuxTex->Map(0, gpuMap, 0, &texture3D);
-        if(hr != S_OK || !texture3D.pData) {
-            LogError("Cannot map D3D10 auxiliary 3D texture to CPU memory");
-            return false;
-        }
-    }
-
-    setHostMem(texture3D.pData);
-    return true;
+  }
+  setHostMem(NULL);
+  return true;
 }
 
-bool
-Image3DD3D10::unmapExtObjectInCQThread()
-{
-    if(getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY)) {
-        if(getD3D10AuxRes()) {
-            // Need to copy data from aux to original
-            reinterpret_cast<ID3D10Texture3D*>(getD3D10AuxRes())->Unmap(0);
-            ID3D10Device* pD3D10Dev;
-            getD3D10AuxRes()->GetDevice(&pD3D10Dev);
-            if(!pD3D10Dev) {
-                LogError("\nCannot get D3D10 device");
-                return false;
-            }
-            pD3D10Dev->Release();
-            pD3D10Dev->CopyResource(getD3D10Resource(), getD3D10AuxRes());
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())
-		->Unmap(getSubresource());
-        }
-    }
-    else {
-        // Just unmap everything, no need to copy contents
-        if(getD3D10AuxRes()) {
-            reinterpret_cast<ID3D10Texture3D*>(getD3D10AuxRes())->Unmap(0);
-            getD3D10AuxRes()->Release();
-            setD3D10AuxRes(NULL);
-        }
-        else {
-            reinterpret_cast<ID3D10Texture3D*>(getD3D10Resource())
-		->Unmap(getSubresource());
-        }
-    }
-    setHostMem(NULL);
-    return true;
-}
+}  // namespace amd
 
-}   //namespace amd
-
-#endif //_WIN32
-
+#endif  //_WIN32

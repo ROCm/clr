@@ -102,23 +102,22 @@ extern "C" {
 typedef cl_uint cl_kernel_info_amd;
 
 /* cl_kernel_info */
-enum KernelInfoAMD
-{
-    CL_KERNELINFO_NONE = 0x0,
-    CL_KERNELINFO_SCRATCH_REGS,
-    CL_KERNELINFO_WAVEFRONT_PER_SIMD,
-    CL_KERNELINFO_WAVEFRONT_SIZE,
-    CL_KERNELINFO_AVAILABLE_GPRS,
-    CL_KERNELINFO_USED_GPRS,
-    CL_KERNELINFO_AVAILABLE_LDS_SIZE,
-    CL_KERNELINFO_USED_LDS_SIZE,
-    CL_KERNELINFO_AVAILABLE_STACK_SIZE,
-    CL_KERNELINFO_USED_STACK_SIZE,
-    CL_KERNELINFO_AVAILABLE_SGPRS,
-    CL_KERNELINFO_USED_SGPRS,
-    CL_KERNELINFO_AVAILABLE_VGPRS,
-    CL_KERNELINFO_USED_VGPRS,
-    CL_KERNELINFO_LAST
+enum KernelInfoAMD {
+  CL_KERNELINFO_NONE = 0x0,
+  CL_KERNELINFO_SCRATCH_REGS,
+  CL_KERNELINFO_WAVEFRONT_PER_SIMD,
+  CL_KERNELINFO_WAVEFRONT_SIZE,
+  CL_KERNELINFO_AVAILABLE_GPRS,
+  CL_KERNELINFO_USED_GPRS,
+  CL_KERNELINFO_AVAILABLE_LDS_SIZE,
+  CL_KERNELINFO_USED_LDS_SIZE,
+  CL_KERNELINFO_AVAILABLE_STACK_SIZE,
+  CL_KERNELINFO_USED_STACK_SIZE,
+  CL_KERNELINFO_AVAILABLE_SGPRS,
+  CL_KERNELINFO_USED_SGPRS,
+  CL_KERNELINFO_AVAILABLE_VGPRS,
+  CL_KERNELINFO_USED_VGPRS,
+  CL_KERNELINFO_LAST
 };
 
 /*! \brief Retrieves the kernel information.
@@ -148,18 +147,13 @@ enum KernelInfoAMD
  *    \a param_value is not NULL
  *  - CL_INVALID_KERNEL if \a kernel is a not a valid program object
  */
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetKernelInfoAMD(
-    cl_kernel           /* kernel */,
-    cl_device_id        /* device */,
-    cl_kernel_info_amd  /* param_name */,
-    size_t              /* param_value_size */,
-    void*               /* param_value */,
-    size_t*             /* param_value_size_ret */
-   ) CL_API_SUFFIX__VERSION_1_0;
+extern CL_API_ENTRY cl_int CL_API_CALL clGetKernelInfoAMD(
+    cl_kernel /* kernel */, cl_device_id /* device */, cl_kernel_info_amd /* param_name */,
+    size_t /* param_value_size */, void* /* param_value */, size_t* /* param_value_size_ret */
+    ) CL_API_SUFFIX__VERSION_1_0;
 
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif /*__cplusplus*/
 
-#endif  /*__CL_KERNEL_INFO_AMD_H*/
+#endif /*__CL_KERNEL_INFO_AMD_H*/

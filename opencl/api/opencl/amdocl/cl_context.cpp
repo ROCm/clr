@@ -15,7 +15,7 @@
 #include "cl_d3d9_amd.hpp"
 #include "cl_d3d10_amd.hpp"
 #include "cl_d3d11_amd.hpp"
-#endif // _WIN32
+#endif  // _WIN32
 #include "cl_kernel_info_amd.h"
 #include "cl_profile_amd.h"
 #include "cl_platform_amd.h"
@@ -81,63 +81,56 @@
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_context, clCreateContext, (
-    const cl_context_properties *properties,
-    cl_uint num_devices,
-    const cl_device_id *devices,
-    void (CL_CALLBACK * pfn_notify)(
-        const char *,
-        const void *,
-        size_t,
-        void *),
-    void *user_data,
-    cl_int *errcode_ret))
-{
-    cl_int  errcode;
-    amd::Context::Info info;
+RUNTIME_ENTRY_RET(cl_context, clCreateContext,
+                  (const cl_context_properties* properties, cl_uint num_devices,
+                   const cl_device_id* devices,
+                   void(CL_CALLBACK* pfn_notify)(const char*, const void*, size_t, void*),
+                   void* user_data, cl_int* errcode_ret)) {
+  cl_int errcode;
+  amd::Context::Info info;
 
-    errcode = amd::Context::checkProperties(properties, &info);
-    if (CL_SUCCESS != errcode) {
-        *not_null(errcode_ret) = errcode;
-        return (cl_context) 0;
+  errcode = amd::Context::checkProperties(properties, &info);
+  if (CL_SUCCESS != errcode) {
+    *not_null(errcode_ret) = errcode;
+    return (cl_context)0;
+  }
+
+  if (num_devices == 0 || devices == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_context)0;
+  }
+
+  std::vector<amd::Device*> devices_;
+  for (cl_uint i = 0; i < num_devices; ++i) {
+    // FIXME_lmoriche: Set errcode_ret to CL_DEVICE_NOT_AVAILABLE if a
+    // device in devices is no longer available.
+    cl_device_id device = devices[i];
+
+    if (!is_valid(device)) {
+      *not_null(errcode_ret) = CL_INVALID_DEVICE;
+      return (cl_context)0;
     }
+    devices_.push_back(as_amd(device));
+  }
 
-    if (num_devices == 0 || devices == NULL) {
-        *not_null(errcode_ret) = CL_INVALID_VALUE;
-        return (cl_context) 0;
-    }
+  amd::Context* context = new amd::Context(devices_, info);
+  if (context == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_context)0;
+  }
 
-    std::vector<amd::Device*> devices_;
-    for (cl_uint i = 0; i < num_devices; ++i) {
-        // FIXME_lmoriche: Set errcode_ret to CL_DEVICE_NOT_AVAILABLE if a
-        // device in devices is no longer available.
-        cl_device_id device = devices[i];
+  if (CL_SUCCESS != (errcode = context->create(properties))) {
+    context->release();
+    *not_null(errcode_ret) = errcode;
+    return (cl_context)0;
+  }
 
-        if (!is_valid(device)) {
-            *not_null(errcode_ret) = CL_INVALID_DEVICE;
-            return (cl_context) 0;
-        }
-        devices_.push_back(as_amd(device));
-    }
+  if (amd::Agent::shouldPostContextEvents()) {
+    amd::Agent::postContextCreate(as_cl(context));
+  }
 
-    amd::Context* context = new amd::Context(devices_, info);
-    if (context == NULL) {
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-        return (cl_context) 0;
-    }
-
-    if (CL_SUCCESS != (errcode = context->create(properties))) {
-        context->release();
-        *not_null(errcode_ret) = errcode;
-        return (cl_context) 0;
-    }
-
-    if (amd::Agent::shouldPostContextEvents()) {
-        amd::Agent::postContextCreate(as_cl(context));
-    }
-
-    *not_null(errcode_ret) = CL_SUCCESS;
-    return as_cl(context);
+  *not_null(errcode_ret) = CL_SUCCESS;
+  return as_cl(context);
 }
 RUNTIME_EXIT
 
@@ -168,49 +161,38 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_context, clCreateContextFromType, (
-    const cl_context_properties *properties,
-    cl_device_type device_type,
-    void (CL_CALLBACK * pfn_notify)(
-        const char *,
-        const void *,
-        size_t,
-        void *),
-    void *user_data,
-    cl_int *errcode_ret))
-{
-    amd::Context::Info info;
-    cl_int errcode = amd::Context::checkProperties(properties, &info);
-    if (errcode != CL_SUCCESS) {
-        *not_null(errcode_ret) = errcode;
-        return (cl_context) 0;
-    }
+RUNTIME_ENTRY_RET(cl_context, clCreateContextFromType,
+                  (const cl_context_properties* properties, cl_device_type device_type,
+                   void(CL_CALLBACK* pfn_notify)(const char*, const void*, size_t, void*),
+                   void* user_data, cl_int* errcode_ret)) {
+  amd::Context::Info info;
+  cl_int errcode = amd::Context::checkProperties(properties, &info);
+  if (errcode != CL_SUCCESS) {
+    *not_null(errcode_ret) = errcode;
+    return (cl_context)0;
+  }
 
-    // Get the devices of the given type.
-    cl_uint num_devices;
-    bool offlineDevices =
-        (info.flags_ & amd::Context::OfflineDevices) ? true : false;
-    if (!amd::Device::getDeviceIDs(device_type, 0, NULL,
-        &num_devices, offlineDevices)) {
-        *not_null(errcode_ret) = CL_DEVICE_NOT_FOUND;
-        return (cl_context) 0;
-    }
+  // Get the devices of the given type.
+  cl_uint num_devices;
+  bool offlineDevices = (info.flags_ & amd::Context::OfflineDevices) ? true : false;
+  if (!amd::Device::getDeviceIDs(device_type, 0, NULL, &num_devices, offlineDevices)) {
+    *not_null(errcode_ret) = CL_DEVICE_NOT_FOUND;
+    return (cl_context)0;
+  }
 
-    assert(num_devices > 0 && "Should have returned an error!");
-    cl_device_id* devices = (cl_device_id *)
-        alloca(num_devices * sizeof(cl_device_id));
+  assert(num_devices > 0 && "Should have returned an error!");
+  cl_device_id* devices = (cl_device_id*)alloca(num_devices * sizeof(cl_device_id));
 
-    if (!amd::Device::getDeviceIDs(device_type, num_devices,
-        devices, NULL, offlineDevices)) {
-        *not_null(errcode_ret) = CL_DEVICE_NOT_FOUND;
-        return (cl_context) 0;
-    }
+  if (!amd::Device::getDeviceIDs(device_type, num_devices, devices, NULL, offlineDevices)) {
+    *not_null(errcode_ret) = CL_DEVICE_NOT_FOUND;
+    return (cl_context)0;
+  }
 
-    // Create a new context with the devices
-    cl_context context = clCreateContext(
-        properties, num_devices, devices, pfn_notify, user_data, errcode_ret);
+  // Create a new context with the devices
+  cl_context context =
+      clCreateContext(properties, num_devices, devices, pfn_notify, user_data, errcode_ret);
 
-    return context;
+  return context;
 }
 RUNTIME_EXIT
 
@@ -230,13 +212,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clRetainContext, (cl_context context))
-{
-    if (!is_valid(context)) {
-        return CL_INVALID_CONTEXT;
-    }
-    as_amd(context)->retain();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clRetainContext, (cl_context context)) {
+  if (!is_valid(context)) {
+    return CL_INVALID_CONTEXT;
+  }
+  as_amd(context)->retain();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -252,13 +233,12 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clReleaseContext, (cl_context context))
-{
-    if (!is_valid(context)) {
-        return CL_INVALID_CONTEXT;
-    }
-    as_amd(context)->release();
-    return CL_SUCCESS;
+RUNTIME_ENTRY(cl_int, clReleaseContext, (cl_context context)) {
+  if (!is_valid(context)) {
+    return CL_INVALID_CONTEXT;
+  }
+  as_amd(context)->release();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -288,165 +268,159 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY(cl_int, clGetContextInfo, (
-    cl_context context,
-    cl_context_info param_name,
-    size_t param_value_size,
-    void *param_value,
-    size_t *param_value_size_ret))
-{
-    if (!is_valid(context)) {
-        return CL_INVALID_CONTEXT;
-    }
+RUNTIME_ENTRY(cl_int, clGetContextInfo,
+              (cl_context context, cl_context_info param_name, size_t param_value_size,
+               void* param_value, size_t* param_value_size_ret)) {
+  if (!is_valid(context)) {
+    return CL_INVALID_CONTEXT;
+  }
 
-    switch (param_name) {
+  switch (param_name) {
     case CL_CONTEXT_REFERENCE_COUNT: {
-        cl_uint count = as_amd(context)->referenceCount();
-        return amd::clGetInfo(
-            count, param_value_size, param_value, param_value_size_ret);
+      cl_uint count = as_amd(context)->referenceCount();
+      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
     }
     case CL_CONTEXT_NUM_DEVICES: {
-        cl_uint numDevices = (cl_uint)as_amd(context)->devices().size();
-        return amd::clGetInfo(
-            numDevices, param_value_size, param_value, param_value_size_ret);
+      cl_uint numDevices = (cl_uint)as_amd(context)->devices().size();
+      return amd::clGetInfo(numDevices, param_value_size, param_value, param_value_size_ret);
     }
     case CL_CONTEXT_DEVICES: {
-        const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-        size_t numDevices = devices.size();
-        size_t valueSize = numDevices * sizeof(cl_device_id*);
+      const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+      size_t numDevices = devices.size();
+      size_t valueSize = numDevices * sizeof(cl_device_id*);
 
-        if (param_value != NULL && param_value_size < valueSize) {
-            return CL_INVALID_VALUE;
+      if (param_value != NULL && param_value_size < valueSize) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = valueSize;
+      if (param_value != NULL) {
+        cl_device_id* device_list = (cl_device_id*)param_value;
+        std::vector<amd::Device*>::const_iterator it;
+        for (it = devices.begin(); it != devices.end(); ++it) {
+          *device_list++ = const_cast<cl_device_id>(as_cl(*it));
         }
-        *not_null(param_value_size_ret) = valueSize;
-        if (param_value != NULL) {
-            cl_device_id* device_list = (cl_device_id*) param_value;
-            std::vector<amd::Device*>::const_iterator it;
-            for (it = devices.begin(); it != devices.end(); ++it) {
-                *device_list++ = const_cast<cl_device_id>(as_cl(*it));
-            }
-        }
-        return CL_SUCCESS;
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_PROPERTIES: {
-        const amd::Context* amdContext = as_amd(context);
-        size_t  valueSize = amdContext->info().propertiesSize_;
+      const amd::Context* amdContext = as_amd(context);
+      size_t valueSize = amdContext->info().propertiesSize_;
 
-        if (param_value != NULL && param_value_size < valueSize) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = valueSize;
-        if ((param_value != NULL) && (valueSize != 0)) {
-            ::memcpy(param_value, amdContext->properties(), valueSize);
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < valueSize) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = valueSize;
+      if ((param_value != NULL) && (valueSize != 0)) {
+        ::memcpy(param_value, amdContext->properties(), valueSize);
+      }
+      return CL_SUCCESS;
     }
 #ifdef _WIN32
     case CL_CONTEXT_D3D10_DEVICE_KHR: {
-        // Not defined in the ext.spec, but tested in the conf.test
-        // Guessing functionality from the test...
-        if (param_value != NULL && param_value_size < sizeof(void*)) {
-            return CL_INVALID_VALUE;
-        }
-        const amd::Context* amdContext = as_amd(context);
-        if (!(amdContext->info().flags_ & amd::Context::D3D10DeviceKhr)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(intptr_t);
-        if (param_value != NULL) {
-            *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D10DeviceKhrIdx]);
-        }
-        return CL_SUCCESS;
+      // Not defined in the ext.spec, but tested in the conf.test
+      // Guessing functionality from the test...
+      if (param_value != NULL && param_value_size < sizeof(void*)) {
+        return CL_INVALID_VALUE;
+      }
+      const amd::Context* amdContext = as_amd(context);
+      if (!(amdContext->info().flags_ & amd::Context::D3D10DeviceKhr)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(intptr_t);
+      if (param_value != NULL) {
+        *(intptr_t*)param_value =
+            reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D10DeviceKhrIdx]);
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_D3D10_PREFER_SHARED_RESOURCES_KHR: {
-        if (param_value != NULL && param_value_size < sizeof(cl_bool)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(cl_bool);
-        if (param_value != NULL) {
-            *(cl_bool*) param_value = CL_TRUE;
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < sizeof(cl_bool)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(cl_bool);
+      if (param_value != NULL) {
+        *(cl_bool*)param_value = CL_TRUE;
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_D3D11_DEVICE_KHR: {
-        // Not defined in the ext.spec, but tested in the conf.test
-        // Guessing functionality from the test...
-        if (param_value != NULL && param_value_size < sizeof(void*)) {
-            return CL_INVALID_VALUE;
-        }
-        const amd::Context* amdContext = as_amd(context);
-        if (!(amdContext->info().flags_ & amd::Context::D3D11DeviceKhr)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(intptr_t);
-        if (param_value != NULL) {
-            *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D11DeviceKhrIdx]);
-        }
-        return CL_SUCCESS;
+      // Not defined in the ext.spec, but tested in the conf.test
+      // Guessing functionality from the test...
+      if (param_value != NULL && param_value_size < sizeof(void*)) {
+        return CL_INVALID_VALUE;
+      }
+      const amd::Context* amdContext = as_amd(context);
+      if (!(amdContext->info().flags_ & amd::Context::D3D11DeviceKhr)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(intptr_t);
+      if (param_value != NULL) {
+        *(intptr_t*)param_value =
+            reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D11DeviceKhrIdx]);
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_D3D11_PREFER_SHARED_RESOURCES_KHR: {
-        if (param_value != NULL && param_value_size < sizeof(cl_bool)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(cl_bool);
-        if (param_value != NULL) {
-            *(cl_bool*) param_value = CL_TRUE;
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < sizeof(cl_bool)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(cl_bool);
+      if (param_value != NULL) {
+        *(cl_bool*)param_value = CL_TRUE;
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_ADAPTER_D3D9_KHR: {
-        if (param_value != NULL && param_value_size < sizeof(void*)) {
-            return CL_INVALID_VALUE;
-        }
-        const amd::Context* amdContext = as_amd(context);
-        if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceKhr)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(intptr_t);
-        if (param_value != NULL) {
-            *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceKhrIdx]);
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < sizeof(void*)) {
+        return CL_INVALID_VALUE;
+      }
+      const amd::Context* amdContext = as_amd(context);
+      if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceKhr)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(intptr_t);
+      if (param_value != NULL) {
+        *(intptr_t*)param_value =
+            reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceKhrIdx]);
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_ADAPTER_D3D9EX_KHR: {
-        if (param_value != NULL && param_value_size < sizeof(void*)) {
-            return CL_INVALID_VALUE;
-        }
-        const amd::Context* amdContext = as_amd(context);
-        if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceEXKhr)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(intptr_t);
-        if (param_value != NULL) {
-            *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceEXKhrIdx]);
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < sizeof(void*)) {
+        return CL_INVALID_VALUE;
+      }
+      const amd::Context* amdContext = as_amd(context);
+      if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceEXKhr)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(intptr_t);
+      if (param_value != NULL) {
+        *(intptr_t*)param_value =
+            reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceEXKhrIdx]);
+      }
+      return CL_SUCCESS;
     }
     case CL_CONTEXT_ADAPTER_DXVA_KHR: {
-        if (param_value != NULL && param_value_size < sizeof(void*)) {
-            return CL_INVALID_VALUE;
-        }
-        const amd::Context* amdContext = as_amd(context);
-        if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceVAKhr)) {
-            return CL_INVALID_VALUE;
-        }
-        *not_null(param_value_size_ret) = sizeof(intptr_t);
-        if (param_value != NULL) {
-            *(intptr_t*) param_value =
-                reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceVAKhrIdx]);
-        }
-        return CL_SUCCESS;
+      if (param_value != NULL && param_value_size < sizeof(void*)) {
+        return CL_INVALID_VALUE;
+      }
+      const amd::Context* amdContext = as_amd(context);
+      if (!(amdContext->info().flags_ & amd::Context::D3D9DeviceVAKhr)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = sizeof(intptr_t);
+      if (param_value != NULL) {
+        *(intptr_t*)param_value =
+            reinterpret_cast<intptr_t>(amdContext->info().hDev_[amd::Context::D3D9DeviceVAKhrIdx]);
+      }
+      return CL_SUCCESS;
     }
-#endif //_WIN32
+#endif  //_WIN32
     default:
-        break;
-    }
+      break;
+  }
 
-    return CL_INVALID_VALUE;
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
@@ -465,158 +439,151 @@ RUNTIME_EXIT
  *
  *  \version 1.2r07
  */
-CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddressForPlatform(
-    cl_platform_id platform,
-    const char *funcname)
-{
-    if (platform != NULL && platform != AMD_PLATFORM) {
-        return NULL;
-    }
+CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
+                                                                        const char* funcname) {
+  if (platform != NULL && platform != AMD_PLATFORM) {
+    return NULL;
+  }
 
-    return clGetExtensionFunctionAddress(funcname);
+  return clGetExtensionFunctionAddress(funcname);
 }
 
-CL_API_ENTRY void* CL_API_CALL
-clGetExtensionFunctionAddress(const char* func_name)
-{
-#define CL_EXTENSION_ENTRYPOINT_CHECK(name)  \
-    if (!strcmp(func_name, #name)) return reinterpret_cast<void*>(name);
-#define CL_EXTENSION_ENTRYPOINT_CHECK2(name1,name2)  \
-    if (!strcmp(func_name, #name1)) return reinterpret_cast<void*>(name2);
+CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_name) {
+#define CL_EXTENSION_ENTRYPOINT_CHECK(name)                                                        \
+  if (!strcmp(func_name, #name)) return reinterpret_cast<void*>(name);
+#define CL_EXTENSION_ENTRYPOINT_CHECK2(name1, name2)                                               \
+  if (!strcmp(func_name, #name1)) return reinterpret_cast<void*>(name2);
 
-    switch (func_name[2]) {
+  switch (func_name[2]) {
     case 'C':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateEventFromGLsyncKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreatePerfCounterAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateThreadTraceAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLBuffer);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture2D);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture3D);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLRenderbuffer);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateEventFromGLsyncKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreatePerfCounterAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateThreadTraceAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLBuffer);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture2D);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture3D);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLRenderbuffer);
 #ifdef _WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10BufferKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture2DKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture3DKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromDX9MediaSurfaceKHR);
-#endif //_WIN32
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10BufferKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture2DKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture3DKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromDX9MediaSurfaceKHR);
+#endif  //_WIN32
 #ifdef cl_ext_device_fission
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSubDevicesEXT);
-#endif // cl_ext_device_fission
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSubDevicesEXT);
+#endif  // cl_ext_device_fission
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
 #if cl_khr_il_program
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
-#endif // cl_khr_il_program
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
+#endif  // cl_khr_il_program
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
-#endif // cl_amd_liquid_flash
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
+#endif  // cl_amd_liquid_flash
+      break;
     case 'D':
-        break;
+      break;
     case 'E':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueBeginPerfCounterAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueEndPerfCounterAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireGLObjects);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseGLObjects);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueBindThreadTraceBufferAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueThreadTraceCommandAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueBeginPerfCounterAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueEndPerfCounterAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireGLObjects);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseGLObjects);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueBindThreadTraceBufferAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueThreadTraceCommandAMD);
 #ifdef _WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireD3D10ObjectsKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseD3D10ObjectsKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireDX9MediaSurfacesKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseDX9MediaSurfacesKHR);
-#endif //_WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireD3D10ObjectsKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseD3D10ObjectsKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueAcquireDX9MediaSurfacesKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReleaseDX9MediaSurfacesKHR);
+#endif  //_WIN32
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadSsgFileAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSsgFileAMD);
-#endif // cl_amd_liquid_flash
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadSsgFileAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSsgFileAMD);
+#endif  // cl_amd_liquid_flash
+      break;
     case 'G':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetPerfCounterInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLObjectInfo);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLTextureInfo);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLContextInfoKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetThreadTraceInfoAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelInfoAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetPerfCounterInfoAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLObjectInfo);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLTextureInfo);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetGLContextInfoKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetThreadTraceInfoAMD);
 #ifdef _WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromD3D10KHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromDX9MediaAdapterKHR);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
-#endif //_WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromD3D10KHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromDX9MediaAdapterKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
+#endif  //_WIN32
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
-#endif // cl_amd_liquid_flash
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
+#endif  // cl_amd_liquid_flash
+      break;
     case 'H':
 #ifdef _WIN32
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackFunctionsAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackArgumentsAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgFlushCacheAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetExceptionPolicyAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetExceptionPolicyAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetKernelExecutionModeAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelExecutionModeAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgCreateEventAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaitEventAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgDestroyEventAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgRegisterDebuggerAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnregisterDebuggerAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetAclBinaryAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaveControlAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgAddressWatchAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetAqlPacketInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetDispatchDebugInfoAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapKernelCodeAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapKernelCodeAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapScratchRingAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapScratchRingAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelParamMemAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetGlobalMemoryAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgInstallTrapAMD);
-#endif //_WIN32
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackFunctionsAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackArgumentsAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgFlushCacheAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetExceptionPolicyAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetExceptionPolicyAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetKernelExecutionModeAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelExecutionModeAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgCreateEventAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaitEventAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgDestroyEventAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgRegisterDebuggerAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnregisterDebuggerAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetAclBinaryAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaveControlAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgAddressWatchAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetAqlPacketInfoAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetDispatchDebugInfoAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapKernelCodeAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapKernelCodeAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapScratchRingAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapScratchRingAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelParamMemAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetGlobalMemoryAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgInstallTrapAMD);
+#endif  //_WIN32
+      break;
     case 'I':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clIcdGetPlatformIDsKHR);
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clIcdGetPlatformIDsKHR);
+      break;
     case 'O':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clObjectGetValueForKeyAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clObjectSetValueForKeyAMD);
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clObjectGetValueForKeyAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clObjectSetValueForKeyAMD);
+      break;
     case 'R':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clReleasePerfCounterAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainPerfCounterAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseThreadTraceAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainThreadTraceAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clReleasePerfCounterAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainPerfCounterAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseThreadTraceAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainThreadTraceAMD);
 #ifdef cl_ext_device_fission
-        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
-#endif // cl_ext_device_fission
+      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
+#endif  // cl_ext_device_fission
 #if cl_amd_liquid_flash
-        CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
-        CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);
-#endif // cl_amd_liquid_flash
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);
+#endif  // cl_amd_liquid_flash
+      break;
     case 'S':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
-        break;
+      CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
+      break;
     case 'U':
-        CL_EXTENSION_ENTRYPOINT_CHECK(clUnloadPlatformAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clUnloadPlatformAMD);
     default:
-        break;
-    }
+      break;
+  }
 
-    return NULL;
+  return NULL;
 }
 
-RUNTIME_ENTRY(cl_int, clTerminateContextKHR, (cl_context context))
-{
-    return CL_INVALID_CONTEXT;
-}
+RUNTIME_ENTRY(cl_int, clTerminateContextKHR, (cl_context context)) { return CL_INVALID_CONTEXT; }
 RUNTIME_EXIT
 
 

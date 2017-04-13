@@ -102,12 +102,12 @@ jurisdiction and venue of these courts.
 extern "C" {
 #endif /* __cplusplus */
 
-    /* cl_device_info */
-#define CL_DEVICE_MAX_SEMAPHORES_AMD                0xF050
-#define CL_DEVICE_MAX_SEMAPHORE_SIZE_AMD            0xF051
+/* cl_device_info */
+#define CL_DEVICE_MAX_SEMAPHORES_AMD 0xF050
+#define CL_DEVICE_MAX_SEMAPHORE_SIZE_AMD 0xF051
 
-    /* cl_kernel_work_group_info */
-#define CL_KERNEL_MAX_SEMAPHORE_SIZE_AMD            0xF052
+/* cl_kernel_work_group_info */
+#define CL_KERNEL_MAX_SEMAPHORE_SIZE_AMD 0xF052
 
 #ifdef __cplusplus
 }
