@@ -68,10 +68,13 @@ Settings::Settings()
     const static size_t MaxPinnedXferSize = 32;
     pinnedXferSize_     = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
     pinnedMinXferSize_  = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
+
+    // Don't support Denormals for single precision by default
+    singleFpDenorm_ = false;
 }
 
 bool
-Settings::create(bool fullProfile)
+Settings::create(bool fullProfile, int gfxipVersion)
 {
     customHostAllocator_ = false;
 
@@ -111,6 +114,14 @@ Settings::create(bool fullProfile)
     enableExtension(ClKhrDepthImages);
     supportDepthsRGB_ = true;
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    switch (gfxipVersion) {
+    case 900:
+        singleFpDenorm_ = true;
+        break;
+    }
+#endif // WITH_LIGHTNING_COMPILER
+
     // Override current device settings
     override();
 
@@ -139,6 +150,19 @@ Settings::override()
 
     if (!flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)) {
         pinnedMinXferSize_  = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
+    }
+
+    if (!flagIsDefault(AMD_GPU_FORCE_SINGLE_FP_DENORM)) {
+        switch (AMD_GPU_FORCE_SINGLE_FP_DENORM) {
+        case 0:
+            singleFpDenorm_ = false;
+            break;
+        case 1:
+            singleFpDenorm_ = true;
+            break;
+        default:
+            break;
+        }
     }
 }
 

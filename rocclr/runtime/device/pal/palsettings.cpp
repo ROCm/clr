@@ -414,6 +414,14 @@ Settings::create(
     resourceCacheSize_ = std::min(resourceCacheSize_, 512 * Mi);
 #endif
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    switch (palProp.gfxLevel) {
+    case Pal::GfxIpLevel::GfxIp9:
+        singleFpDenorm_ = true;
+        break;
+    }
+#endif // WITH_LIGHTNING_COMPILER
+
     // Override current device settings
     override();
 

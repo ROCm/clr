@@ -99,7 +99,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
 
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-    if ((hsaSettings == nullptr) || !hsaSettings->create(false)) {
+    if ((hsaSettings == nullptr) || !hsaSettings->create(false, deviceInfo_.gfxipVersion_)) {
             LogError("Error creating settings for nullptr HSA device");
             return false;
     }
@@ -618,7 +618,7 @@ Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev)
     settings_ = new Settings();
     roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
     if ((hsaSettings == nullptr) ||
-        !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL))) {
+        !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipVersion_)) {
         return false;
     }
 
@@ -978,6 +978,11 @@ Device::populateOCLDeviceConstants()
         info_.doubleFPConfig_ = info_.singleFPConfig_ | CL_FP_DENORM;
         info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
     }
+
+    if (hsa_settings->singleFpDenorm_) {
+        info_.singleFPConfig_ |= CL_FP_DENORM;
+    }
+
     info_.preferredPlatformAtomicAlignment_ = 0;
     info_.preferredGlobalAtomicAlignment_ = 0;
     info_.preferredLocalAtomicAlignment_ = 0;
