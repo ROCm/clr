@@ -8,19 +8,16 @@
 
 namespace pal {
 
-class AppProfile : public amd::AppProfile
-{
-public:
-    AppProfile();
+class AppProfile : public amd::AppProfile {
+ public:
+  AppProfile();
 
-    //! return the value of enableHighPerformanceState_
-    bool enableHighPerformanceState() const { return enableHighPerformanceState_; }
-    bool reportAsOCL12Device() const { return reportAsOCL12Device_; }
+  //! return the value of enableHighPerformanceState_
+  bool enableHighPerformanceState() const { return enableHighPerformanceState_; }
+  bool reportAsOCL12Device() const { return reportAsOCL12Device_; }
 
-private:
-
-    bool enableHighPerformanceState_;
-    bool reportAsOCL12Device_;
+ private:
+  bool enableHighPerformanceState_;
+  bool reportAsOCL12Device_;
 };
-
 }

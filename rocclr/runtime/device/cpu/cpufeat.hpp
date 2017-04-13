@@ -24,4 +24,4 @@
 #define CPUFEAT_DX_SSE (1 < 25)
 #define CPUFEAT_DX_SSE2 (1 << 26)
 
-#endif // CPUFEAT_HPP
+#endif  // CPUFEAT_HPP

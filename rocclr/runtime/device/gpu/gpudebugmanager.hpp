@@ -36,96 +36,85 @@ class Memory;
  *
  */
 class GpuDebugManager : public amd::HwDebugManager {
-public:
+ public:
+  //!  Constructor of the debug manager class
+  GpuDebugManager(amd::Device* device);
 
-    //!  Constructor of the debug manager class
-    GpuDebugManager(amd::Device* device);
+  //!  Destructor of the debug manager class
+  ~GpuDebugManager();
 
-    //!  Destructor of the debug manager class
-    ~GpuDebugManager();
+  //!  Get the single instance of the GpuDebugManager class
+  static GpuDebugManager* getDefaultInstance();
 
-    //!  Get the single instance of the GpuDebugManager class
-    static GpuDebugManager* getDefaultInstance();
+  //!  Destroy the GpuDebugManager class object
+  static void destroyInstances();
 
-    //!  Destroy the GpuDebugManager class object
-    static void destroyInstances();
+  //!  Flush cache
+  void flushCache(uint32_t mask);
 
-    //!  Flush cache
-    void flushCache(uint32_t mask);
+  //!  Create the debug event
+  DebugEvent createDebugEvent(const bool autoReset);
 
-    //!  Create the debug event
-    DebugEvent createDebugEvent(const bool autoReset);
+  //!  Wait for the debug event
+  cl_int waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const;
 
-    //!  Wait for the debug event
-    cl_int waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const;
+  //!  Destroy the debug event
+  void destroyDebugEvent(DebugEvent* pEvent);
 
-    //!  Destroy the debug event
-    void destroyDebugEvent(DebugEvent* pEvent);
+  //!  Register the debugger
+  cl_int registerDebugger(amd::Context* context, uintptr_t messageStorage);
 
-    //!  Register the debugger
-    cl_int registerDebugger(amd::Context*context, uintptr_t messageStorage);
+  //!  Unregister the debugger
+  void unregisterDebugger();
 
-    //!  Unregister the debugger
-    void unregisterDebugger();
+  //!  Send the wavefront control cmmand
+  void wavefrontControl(uint32_t waveAction, uint32_t waveMode, uint32_t trapId,
+                        void* waveAddr) const;
 
-    //!  Send the wavefront control cmmand
-    void wavefrontControl(uint32_t waveAction,
-                            uint32_t waveMode,
-                            uint32_t trapId,
-                            void*  waveAddr) const;
+  //!  Set address watching point
+  void setAddressWatch(uint32_t numWatchPoints, void** watchAddress, uint64_t* watchMask,
+                       uint64_t* watchMode, DebugEvent* pEvent);
 
-    //!  Set address watching point
-    void setAddressWatch(uint32_t numWatchPoints,
-                           void** watchAddress,
-                           uint64_t* watchMask,
-                           uint64_t* watchMode,
-                           DebugEvent* pEvent);
+  //!  Map the kernel code for host access
+  void mapKernelCode(void* aqlCodeInfo) const;
 
-    //!  Map the kernel code for host access
-    void mapKernelCode(void* aqlCodeInfo) const;
+  //!  Get the packet information for dispatch
+  void getPacketAmdInfo(const void* aqlCodeInfo, void* packetInfo) const;
 
-    //!  Get the packet information for dispatch
-    void getPacketAmdInfo(const void* aqlCodeInfo, void* packetInfo) const;
+  //!  Set global memory values
+  void setGlobalMemory(amd::Memory* memObj, uint32_t offset, void* srcPtr, uint32_t size);
 
-    //!  Set global memory values
-    void setGlobalMemory(amd::Memory* memObj, uint32_t offset, void* srcPtr, uint32_t size);
+  //!  Execute the post-dispatch callback function
+  void executePostDispatchCallBack();
 
-    //!  Execute the post-dispatch callback function
-    void executePostDispatchCallBack();
+  //!  Execute the pre-dispatch callback function
+  void executePreDispatchCallBack(void* aqlPacket, void* toolInfo);
 
-    //!  Execute the pre-dispatch callback function
-    void executePreDispatchCallBack(void*   aqlPacket,
-                                    void*   toolInfo);
+ private:
+  //!  Setup trap handler info for kernel execution
+  void setupTrapInformation(DebugToolInfo* toolInfo);
 
-private:
+  //!  Create runtime trap handler
+  cl_int createRuntimeTrapHandler();
 
-    //!  Setup trap handler info for kernel execution
-    void setupTrapInformation(DebugToolInfo* toolInfo);
+ protected:
+  const VirtualGPU* vGpu() const { return vGpu_; }
 
-    //!  Create runtime trap handler
-    cl_int createRuntimeTrapHandler();
+ private:
+  const gpu::Device* device() const { return reinterpret_cast<const gpu::Device*>(device_); }
 
-protected:
+  VirtualGPU* vGpu_;  //!< the virtual GPU
 
-    const VirtualGPU*    vGpu() const { return vGpu_; }
+  uintptr_t debugMessages_;  //!< Pointer to a SHARED_DEBUG_MESSAGES pass to the KMD
 
-private:
+  HwDbgAddressWatch* addressWatch_;  //!< Address watch data
+  size_t addressWatchSize_;          //!< Size of address watch data
 
-    const gpu::Device*   device() const {
-                                return reinterpret_cast<const gpu::Device *>(device_); }
-
-    VirtualGPU*         vGpu_;             //!< the virtual GPU
-
-    uintptr_t           debugMessages_;     //!< Pointer to a SHARED_DEBUG_MESSAGES pass to the KMD
-
-    HwDbgAddressWatch*  addressWatch_;      //!< Address watch data
-    size_t              addressWatchSize_;  //!< Size of address watch data
-
-    //!  Arguments used by the callback function
-    void*                                 oclEventHandle_;     //!< event handler
-    const hsa_kernel_dispatch_packet_t*   aqlPacket_;          //!< AQL packet
+  //!  Arguments used by the callback function
+  void* oclEventHandle_;                           //!< event handler
+  const hsa_kernel_dispatch_packet_t* aqlPacket_;  //!< AQL packet
 };
 
 }  // namespace gpu
 
-#endif // HWDBG_DEBUGMANAGER_H__
+#endif  // HWDBG_DEBUGMANAGER_H__

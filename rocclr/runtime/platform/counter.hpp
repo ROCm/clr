@@ -20,14 +20,13 @@ namespace amd {
  *
  *  \brief The container class for the performance counters
  */
-class Counter :  public RuntimeObject
-{
-public:
-    //! RTTI internal implementation
-    virtual ObjectType objectType() const {return ObjectTypeCounter;}
+class Counter : public RuntimeObject {
+ public:
+  //! RTTI internal implementation
+  virtual ObjectType objectType() const { return ObjectTypeCounter; }
 };
 
 /*@}*/
 /*@}*/ } // namespace amd
 
-#endif // COUNTERS_HPP_
+#endif  // COUNTERS_HPP_

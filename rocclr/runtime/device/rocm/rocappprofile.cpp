@@ -12,34 +12,31 @@
 
 #include <algorithm>
 
-amd::AppProfile* rocCreateAppProfile()
-{
-    amd::AppProfile* appProfile = new roc::AppProfile;
+amd::AppProfile* rocCreateAppProfile() {
+  amd::AppProfile* appProfile = new roc::AppProfile;
 
-    if ((appProfile == nullptr) || !appProfile->init()) {
-        return nullptr;
-    }
+  if ((appProfile == nullptr) || !appProfile->init()) {
+    return nullptr;
+  }
 
-    return appProfile;
+  return appProfile;
 }
 
 namespace roc {
 
-bool AppProfile::ParseApplicationProfile()
-{
-    std::string appName("Explorer");
+bool AppProfile::ParseApplicationProfile() {
+  std::string appName("Explorer");
 
-    std::transform(appName.begin(), appName.end(), appName.begin(), ::tolower);
-    std::transform(appFileName_.begin(), appFileName_.end(), appFileName_.begin(), ::tolower);
+  std::transform(appName.begin(), appName.end(), appName.begin(), ::tolower);
+  std::transform(appFileName_.begin(), appFileName_.end(), appFileName_.begin(), ::tolower);
 
-    if (appFileName_.compare(appName) == 0 ) {
-        gpuvmHighAddr_ = false;
-        profileOverridesAllSettings_ = true;
-    }
+  if (appFileName_.compare(appName) == 0) {
+    gpuvmHighAddr_ = false;
+    profileOverridesAllSettings_ = true;
+  }
 
-    return true;
+  return true;
 }
-
 }
 
 #endif

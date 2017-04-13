@@ -28,231 +28,215 @@ namespace amd {
 class HostQueue;
 class DeviceQueue;
 
-class CommandQueue : public RuntimeObject
-{
-public:
-    static const uint RealTimeDisabled = 0xffffffff;
-    enum class Priority : uint {
-        Normal = 0,
-        Medium
-    };
+class CommandQueue : public RuntimeObject {
+ public:
+  static const uint RealTimeDisabled = 0xffffffff;
+  enum class Priority : uint { Normal = 0, Medium };
 
-    struct Properties
-    {
-        typedef cl_command_queue_properties value_type;
-        const value_type mask_;
-        value_type value_;
+  struct Properties {
+    typedef cl_command_queue_properties value_type;
+    const value_type mask_;
+    value_type value_;
 
-        Properties(value_type mask, value_type value) :
-            mask_(mask), value_(value & mask)
-        { }
+    Properties(value_type mask, value_type value) : mask_(mask), value_(value & mask) {}
 
-        bool set(value_type bits) {
-            if ((mask_ & bits) != bits) {
-                return false;
-            }
-            value_ |= bits;
-            return true;
-        }
+    bool set(value_type bits) {
+      if ((mask_ & bits) != bits) {
+        return false;
+      }
+      value_ |= bits;
+      return true;
+    }
 
-        bool clear(value_type bits) {
-            if ((mask_ & bits) != bits) {
-                return false;
-            }
-            value_ &= ~bits;
-            return true;
-        }
+    bool clear(value_type bits) {
+      if ((mask_ & bits) != bits) {
+        return false;
+      }
+      value_ &= ~bits;
+      return true;
+    }
 
-        bool test(value_type bits) const {
-            return (value_ & bits) != 0;
-        }
-    };
+    bool test(value_type bits) const { return (value_ & bits) != 0; }
+  };
 
-    //! Return the context this command queue is part of.
-    Context& context() const { return context_(); }
+  //! Return the context this command queue is part of.
+  Context& context() const { return context_(); }
 
-    //! Return the device for this command queue.
-    Device& device() const { return device_; }
+  //! Return the device for this command queue.
+  Device& device() const { return device_; }
 
-    //! Return the command queue properties.
-    Properties properties() const { return properties_; }
-    Properties& properties() { return properties_; }
+  //! Return the command queue properties.
+  Properties properties() const { return properties_; }
+  Properties& properties() { return properties_; }
 
-    //! Returns the base class object
-    CommandQueue* asCommandQueue() { return this; }
+  //! Returns the base class object
+  CommandQueue* asCommandQueue() { return this; }
 
-    virtual ~CommandQueue() {}
+  virtual ~CommandQueue() {}
 
-    //! Returns TRUE if the object was successfully created
-    virtual bool create() = 0;
+  //! Returns TRUE if the object was successfully created
+  virtual bool create() = 0;
 
-    //! RTTI internal implementation
-    virtual ObjectType objectType() const { return ObjectTypeQueue; }
+  //! RTTI internal implementation
+  virtual ObjectType objectType() const { return ObjectTypeQueue; }
 
-    //! Rturns HostQueue object
-    virtual HostQueue* asHostQueue() { return NULL; }
+  //! Rturns HostQueue object
+  virtual HostQueue* asHostQueue() { return NULL; }
 
-    //! Returns DeviceQueue object
-    virtual DeviceQueue* asDeviceQueue() { return NULL; }
+  //! Returns DeviceQueue object
+  virtual DeviceQueue* asDeviceQueue() { return NULL; }
 
-    //! Returns the number or requested real time CUs
-    uint    rtCUs() const { return rtCUs_; }
+  //! Returns the number or requested real time CUs
+  uint rtCUs() const { return rtCUs_; }
 
-    //! Returns the queue priority
-    Priority    priority() const { return priority_; }
+  //! Returns the queue priority
+  Priority priority() const { return priority_; }
 
-protected:
-    //! CommandQueue constructor is protected
-    //! to keep the CommandQueue class as a virtual interface
-    CommandQueue(
-        Context&    context,    //!< Context object
-        Device&     device,     //!< Device object
-        cl_command_queue_properties properties, //!< Queue properties
-        cl_command_queue_properties propMask,   //!< Queue properties mask
-        uint        rtCUs = RealTimeDisabled,   //!< Avaialble real time compute units
-        Priority    priority = Priority::Normal //!< Queue priority
-        )
-        : properties_(propMask, properties)
-        , rtCUs_(rtCUs)
-        , priority_(priority)
-        , queueLock_("CommandQueue::queueLock")
-        , device_(device)
-        , context_(context) {}
+ protected:
+  //! CommandQueue constructor is protected
+  //! to keep the CommandQueue class as a virtual interface
+  CommandQueue(Context& context,                        //!< Context object
+               Device& device,                          //!< Device object
+               cl_command_queue_properties properties,  //!< Queue properties
+               cl_command_queue_properties propMask,    //!< Queue properties mask
+               uint rtCUs = RealTimeDisabled,           //!< Avaialble real time compute units
+               Priority priority = Priority::Normal     //!< Queue priority
+               )
+      : properties_(propMask, properties),
+        rtCUs_(rtCUs),
+        priority_(priority),
+        queueLock_("CommandQueue::queueLock"),
+        device_(device),
+        context_(context) {}
 
-    Properties  properties_;    //!< Queue properties
-    uint        rtCUs_;         //!< The number of used RT compute units
-    Priority    priority_;      //!< Queue priority
-    Monitor     queueLock_;     //!< Lock protecting the queue
-    Device&     device_;        //!< The device
-    SharedReference<Context> context_;  //!< The context of this command queue
+  Properties properties_;             //!< Queue properties
+  uint rtCUs_;                        //!< The number of used RT compute units
+  Priority priority_;                 //!< Queue priority
+  Monitor queueLock_;                 //!< Lock protecting the queue
+  Device& device_;                    //!< The device
+  SharedReference<Context> context_;  //!< The context of this command queue
 
-private:
-    //! Disable copy constructor
-    CommandQueue(const CommandQueue&);
+ private:
+  //! Disable copy constructor
+  CommandQueue(const CommandQueue&);
 
-    //! Disable assignment
-    CommandQueue& operator=(const CommandQueue&);
+  //! Disable assignment
+  CommandQueue& operator=(const CommandQueue&);
 };
 
 
-class HostQueue : public CommandQueue
-{
-    class Thread : public amd::Thread
-    {
-    public:
-        //! True if this command queue thread is accepting commands.
-        volatile bool acceptingCommands_;
+class HostQueue : public CommandQueue {
+  class Thread : public amd::Thread {
+   public:
+    //! True if this command queue thread is accepting commands.
+    volatile bool acceptingCommands_;
 
-        //! Create a new thread
-        Thread() : amd::Thread("Command Queue Thread", CQ_THREAD_STACK_SIZE),
-            acceptingCommands_(false), virtualDevice_(NULL)
-        { }
+    //! Create a new thread
+    Thread()
+        : amd::Thread("Command Queue Thread", CQ_THREAD_STACK_SIZE),
+          acceptingCommands_(false),
+          virtualDevice_(NULL) {}
 
-        //! The command queue thread entry point.
-        void run(void *data) {
-            HostQueue* queue = static_cast<HostQueue*>(data);
-            virtualDevice_ = queue->device().createVirtualDevice(queue);
-            if (virtualDevice_ != NULL) {
-                queue->loop(virtualDevice_);
-                if (virtualDevice_->terminate()) {
-                    delete virtualDevice_;
-                }
-            }
-            else {
-                acceptingCommands_ = false;
-                queue->flush();
-            }
+    //! The command queue thread entry point.
+    void run(void* data) {
+      HostQueue* queue = static_cast<HostQueue*>(data);
+      virtualDevice_ = queue->device().createVirtualDevice(queue);
+      if (virtualDevice_ != NULL) {
+        queue->loop(virtualDevice_);
+        if (virtualDevice_->terminate()) {
+          delete virtualDevice_;
         }
+      } else {
+        acceptingCommands_ = false;
+        queue->flush();
+      }
+    }
 
-        //! Get virtual device for the current thread
-        device::VirtualDevice* vdev() const { return virtualDevice_; }
+    //! Get virtual device for the current thread
+    device::VirtualDevice* vdev() const { return virtualDevice_; }
 
-    private:
-        device::VirtualDevice* virtualDevice_;  //!< Virtual device for this thread
+   private:
+    device::VirtualDevice* virtualDevice_;  //!< Virtual device for this thread
 
-    } thread_; //!< The command queue thread instance.
+  } thread_;  //!< The command queue thread instance.
 
-private:
-    ConcurrentLinkedQueue<Command*> queue_; //!< The queue.
+ private:
+  ConcurrentLinkedQueue<Command*> queue_;  //!< The queue.
 
-    //! Await commands and execute them as they become ready.
-    void loop(device::VirtualDevice* virtualDevice);
+  //! Await commands and execute them as they become ready.
+  void loop(device::VirtualDevice* virtualDevice);
 
-protected:
-    virtual bool terminate();
+ protected:
+  virtual bool terminate();
 
-public:
-    /*! \brief Construct a new host queue.
-     *
-     * \note A new virtual device instance will be created from the
-     * given device.
-     */
-    HostQueue(
-        Context& context,
-        Device& device,
-        cl_command_queue_properties properties,
-        uint    queueRTCUs = 0,
-        Priority priority = Priority::Normal
-    );
+ public:
+  /*! \brief Construct a new host queue.
+   *
+   * \note A new virtual device instance will be created from the
+   * given device.
+   */
+  HostQueue(Context& context, Device& device, cl_command_queue_properties properties,
+            uint queueRTCUs = 0, Priority priority = Priority::Normal);
 
-    //! Returns TRUE if this command queue can accept commands.
-    virtual bool create() { return thread_.acceptingCommands_; }
+  //! Returns TRUE if this command queue can accept commands.
+  virtual bool create() { return thread_.acceptingCommands_; }
 
-    //! Append the given command to the queue.
-    void append(Command& command);
+  //! Append the given command to the queue.
+  void append(Command& command);
 
-    //! Return the thread object running the command loop.
-    const Thread& thread() const { return thread_; }
+  //! Return the thread object running the command loop.
+  const Thread& thread() const { return thread_; }
 
-    //! Signal to start processing the commands in the queue.
-    void flush  () { ScopedLock sl(queueLock_); queueLock_.notify(); }
+  //! Signal to start processing the commands in the queue.
+  void flush() {
+    ScopedLock sl(queueLock_);
+    queueLock_.notify();
+  }
 
-    //! Finish all queued commands
-    void finish();
+  //! Finish all queued commands
+  void finish();
 
-    //! Get virtual device for the current command queue
-    device::VirtualDevice* vdev() const { return thread_.vdev(); }
+  //! Get virtual device for the current command queue
+  device::VirtualDevice* vdev() const { return thread_.vdev(); }
 
-    //! Return the current queue as the HostQueue
-    virtual HostQueue* asHostQueue() { return this; }
+  //! Return the current queue as the HostQueue
+  virtual HostQueue* asHostQueue() { return this; }
 };
 
 
-class DeviceQueue : public CommandQueue
-{
-public:
-    DeviceQueue(
-        Context&    context,    //!< Context object
-        Device&     device,     //!< Device object
-        cl_command_queue_properties properties, //!< Queue properties
-        uint        size        //!< Device queue size
-        )
-        : CommandQueue(context, device, properties, device.info().queueOnDeviceProperties_
-            | CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT)
-        , size_(size)
-        , virtualDevice_(NULL) {}
+class DeviceQueue : public CommandQueue {
+ public:
+  DeviceQueue(Context& context,                        //!< Context object
+              Device& device,                          //!< Device object
+              cl_command_queue_properties properties,  //!< Queue properties
+              uint size                                //!< Device queue size
+              )
+      : CommandQueue(context, device, properties, device.info().queueOnDeviceProperties_ |
+                         CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT),
+        size_(size),
+        virtualDevice_(NULL) {}
 
-    virtual ~DeviceQueue();
+  virtual ~DeviceQueue();
 
-    //! Returns TRUE if device queue was successfully created
-    virtual bool create();
+  //! Returns TRUE if device queue was successfully created
+  virtual bool create();
 
-    //! Return the current queue as the DeviceQueue
-    virtual DeviceQueue* asDeviceQueue() { return this; }
+  //! Return the current queue as the DeviceQueue
+  virtual DeviceQueue* asDeviceQueue() { return this; }
 
-    //! Returns the size of device queue
-    uint    size() const { return size_; }
+  //! Returns the size of device queue
+  uint size() const { return size_; }
 
-    //! Returns virtual device for this device queue
-    device::VirtualDevice* vDev() const { return virtualDevice_; }
+  //! Returns virtual device for this device queue
+  device::VirtualDevice* vDev() const { return virtualDevice_; }
 
-    //! Returns the queue lock
-    Monitor& lock() { return queueLock_; }
+  //! Returns the queue lock
+  Monitor& lock() { return queueLock_; }
 
-private:
-    uint        size_;          //!< Device queue size
-    device::VirtualDevice* virtualDevice_;  //!< Virtual device for this queue
+ private:
+  uint size_;                             //!< Device queue size
+  device::VirtualDevice* virtualDevice_;  //!< Virtual device for this queue
 };
-} //namespace amd
+}  // namespace amd
 
-#endif //COMMAND_QUEUE_HPP_
+#endif  // COMMAND_QUEUE_HPP_

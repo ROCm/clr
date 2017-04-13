@@ -10,11 +10,10 @@
 
 namespace cpu {
 
-struct Builtins : public amd::AllStatic
-{
-    static const clk_builtins_t dispatchTable_;
+struct Builtins : public amd::AllStatic {
+  static const clk_builtins_t dispatchTable_;
 };
 
-} // namespace cpu
+}  // namespace cpu
 
 #endif /*BUILTINS_HPP_*/

@@ -7,17 +7,14 @@
 
 namespace roc {
 
-class AppProfile : public amd::AppProfile
-{
-public:
-    AppProfile(): amd::AppProfile() {}
+class AppProfile : public amd::AppProfile {
+ public:
+  AppProfile() : amd::AppProfile() {}
 
-protected:
-    //! parse application profile based on application file name
-    virtual bool ParseApplicationProfile();
+ protected:
+  //! parse application profile based on application file name
+  virtual bool ParseApplicationProfile();
 };
-
 }
 
 #endif
-

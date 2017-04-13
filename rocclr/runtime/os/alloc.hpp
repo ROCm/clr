@@ -9,22 +9,20 @@
 
 namespace amd {
 
-class AlignedMemory : public AllStatic
-{
-public:
-    static void* allocate(size_t size, size_t alignment);
+class AlignedMemory : public AllStatic {
+ public:
+  static void* allocate(size_t size, size_t alignment);
 
-    static void deallocate(void* ptr);
+  static void deallocate(void* ptr);
 };
 
-class GuardedMemory : public AllStatic
-{
-public:
-    static void* allocate(size_t size, size_t alignment, size_t guardSize);
+class GuardedMemory : public AllStatic {
+ public:
+  static void* allocate(size_t size, size_t alignment, size_t guardSize);
 
-    static void deallocate(void* ptr);
+  static void deallocate(void* ptr);
 };
 
-} // namespace amd
+}  // namespace amd
 
 #endif /*ALLOC_HPP_*/

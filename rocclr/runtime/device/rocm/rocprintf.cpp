@@ -18,18 +18,14 @@
 namespace roc {
 
 PrintfDbg::PrintfDbg(Device& device, FILE* file)
-    : dbgBuffer_(nullptr),
-      dbgBuffer_size_(0),
-      dbgFile_(file),
-      gpuDevice_(device) {}
+    : dbgBuffer_(nullptr), dbgBuffer_size_(0), dbgFile_(file), gpuDevice_(device) {}
 
 PrintfDbg::~PrintfDbg() { dev().hostFree(dbgBuffer_, dbgBuffer_size_); }
 
 bool PrintfDbg::allocate(bool realloc) {
   if (nullptr == dbgBuffer_) {
     dbgBuffer_size_ = dev().info().printfBufferSize_;
-    dbgBuffer_ = reinterpret_cast<address>(
-        dev().hostAlloc(dbgBuffer_size_, sizeof(void*)));
+    dbgBuffer_ = reinterpret_cast<address>(dev().hostAlloc(dbgBuffer_size_, sizeof(void*)));
   } else if (realloc) {
     LogWarning("Debug buffer reallocation!");
     // Double the buffer size if it's not big enough
@@ -62,8 +58,7 @@ bool PrintfDbg::checkString(const std::string& fmt) const {
   return false;
 }
 
-int PrintfDbg::checkVectorSpecifier(const std::string& fmt, size_t startPos,
-                                    size_t& curPos) const {
+int PrintfDbg::checkVectorSpecifier(const std::string& fmt, size_t startPos, size_t& curPos) const {
   int vectorSize = 0;
   size_t pos = curPos;
   size_t size = curPos - startPos;
@@ -115,8 +110,8 @@ int PrintfDbg::checkVectorSpecifier(const std::string& fmt, size_t startPos,
 static const size_t ConstStr = 0xffffffff;
 static const char Separator[] = ",\0";
 
-size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
-                                 size_t size, const uint32_t* argument) const {
+size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t size,
+                                 const uint32_t* argument) const {
   // Serialize the output to the screen
   // amd::ScopedLock k(dev().lockAsyncOps());
 
@@ -131,8 +126,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
       // copiedBytes = strlen("(null)")
       copiedBytes = 6;
     } else {
-      const unsigned char* argumentStr =
-          reinterpret_cast<const unsigned char*>(argument);
+      const unsigned char* argumentStr = reinterpret_cast<const unsigned char*>(argument);
       amd::Os::printf(fmt.data(), argumentStr);
       // copiedBytes = strlen(argumentStr)
       while (argumentStr[copiedBytes++] != 0)
@@ -157,8 +151,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
           ;
       } break;
       case 1:
-        amd::Os::printf(fmt.data(),
-                        *(reinterpret_cast<const unsigned char*>(argument)));
+        amd::Os::printf(fmt.data(), *(reinterpret_cast<const unsigned char*>(argument)));
         break;
       case 2:
       case 4:
@@ -199,9 +192,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
             // fmt should be updated not to contain "hh" modifier
             std::string hhFmt = fmt;
             hhFmt.erase(hhFmt.find_first_of("h"), 2);
-            amd::Os::printf(
-                hhFmt.data(),
-                *(reinterpret_cast<const unsigned char*>(argument)));
+            amd::Os::printf(hhFmt.data(), *(reinterpret_cast<const unsigned char*>(argument)));
           } else if (hlModifier) {
             amd::Os::printf(hlFmt.data(), *argument);
           } else {
@@ -212,18 +203,15 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
       case 8:
         if (printFloat) {
           if (hlModifier) {
-            amd::Os::printf(hlFmt.data(),
-                            *(reinterpret_cast<const double*>(argument)));
+            amd::Os::printf(hlFmt.data(), *(reinterpret_cast<const double*>(argument)));
           } else {
-            amd::Os::printf(fmt.data(),
-                            *(reinterpret_cast<const double*>(argument)));
+            amd::Os::printf(fmt.data(), *(reinterpret_cast<const double*>(argument)));
           }
         } else {
           std::string out = fmt;
           // Use 'll' for 64 bit printf
           out.insert((out.size() - 1), 1, 'l');
-          amd::Os::printf(out.data(),
-                          *(reinterpret_cast<const uint64_t*>(argument)));
+          amd::Os::printf(out.data(), *(reinterpret_cast<const uint64_t*>(argument)));
         }
         break;
       case ConstStr: {
@@ -240,8 +228,8 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat,
   return copiedBytes;
 }
 
-void PrintfDbg::outputDbgBuffer(const PrintfInfo& info,
-                                const uint32_t* workitemData, size_t& i) const {
+void PrintfDbg::outputDbgBuffer(const PrintfInfo& info, const uint32_t* workitemData,
+                                size_t& i) const {
   static const char* specifiers = "cdieEfgGaosuxXp";
   static const char* modifiers = "hl";
   static const char* special = "%n";
@@ -278,15 +266,13 @@ void PrintfDbg::outputDbgBuffer(const PrintfInfo& info,
           fmt = str.substr(pos, posEnd - pos);
           fmt.erase(posStart - pos - 1, 1);
           pos = posStart = posEnd;
-          outputArgument(sepStr, false, ConstStr,
-                         reinterpret_cast<const uint32_t*>(fmt.data()));
+          outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(fmt.data()));
           continue;
         }
         break;
       } else if (pos < str.length()) {
-        outputArgument(
-            sepStr, false, ConstStr,
-            reinterpret_cast<const uint32_t*>((str.substr(pos)).data()));
+        outputArgument(sepStr, false, ConstStr,
+                       reinterpret_cast<const uint32_t*>((str.substr(pos)).data()));
       }
     } while (posStart != std::string::npos);
 
@@ -338,8 +324,7 @@ void PrintfDbg::outputDbgBuffer(const PrintfInfo& info,
       } else {
         // 3-component vector's size is defined as 4 * size of each scalar
         // component
-        size_t elemSize =
-            info.arguments_[j] / (vectorSize == 3 ? 4 : vectorSize);
+        size_t elemSize = info.arguments_[j] / (vectorSize == 3 ? 4 : vectorSize);
         size_t k = i * sizeof(uint32_t);
         std::string elementStr = fmt.substr(idPos, fmt.size());
 
@@ -352,16 +337,13 @@ void PrintfDbg::outputDbgBuffer(const PrintfInfo& info,
         for (int e = 1; e < vectorSize; ++e) {
           const char* t = reinterpret_cast<const char*>(s);
           // Output the vector separator
-          outputArgument(sepStr, false, ConstStr,
-                         reinterpret_cast<const uint32_t*>(Separator));
+          outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(Separator));
 
           // Output the next element
-          outputArgument(
-              elementStr, printFloat, elemSize,
-              reinterpret_cast<const uint32_t*>(&t[k + e * elemSize]));
+          outputArgument(elementStr, printFloat, elemSize,
+                         reinterpret_cast<const uint32_t*>(&t[k + e * elemSize]));
         }
-        i += (amd::alignUp(info.arguments_[j], sizeof(uint32_t))) /
-             sizeof(uint32_t);
+        i += (amd::alignUp(info.arguments_[j], sizeof(uint32_t))) / sizeof(uint32_t);
       }
     } else {
       amd::Os::printf(
@@ -374,8 +356,7 @@ void PrintfDbg::outputDbgBuffer(const PrintfInfo& info,
 
   if (pos != std::string::npos) {
     fmt = str.substr(pos, str.size() - pos);
-    outputArgument(sepStr, false, ConstStr,
-                   reinterpret_cast<const uint32_t*>(fmt.data()));
+    outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(fmt.data()));
   }
 }
 
@@ -399,8 +380,7 @@ bool PrintfDbg::init(bool printfEnabled) {
 
     // Copy offset and number of bytes available for printf data
     // into the corresponding location in the debug buffer
-    hsa_status_t err =
-        hsa_memory_copy(dbgBuffer_, sysMem, 2 * sizeof(uint32_t));
+    hsa_status_t err = hsa_memory_copy(dbgBuffer_, sysMem, 2 * sizeof(uint32_t));
     if (err != HSA_STATUS_SUCCESS) {
       LogError("\n Can't copy offset and bytes available data to dgbBuffer_!");
       return false;
@@ -430,8 +410,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
     }
 
     // Get a pointer to the buffer data
-    dbgBufferPtr =
-        reinterpret_cast<uint32_t*>(dbgBuffer_ + 2 * sizeof(uint32_t));
+    dbgBufferPtr = reinterpret_cast<uint32_t*>(dbgBuffer_ + 2 * sizeof(uint32_t));
     if (nullptr == dbgBufferPtr) {
       return false;
     }
@@ -442,8 +421,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
 
     // parse the debug buffer
     while (sbt < offsetSize) {
-      assert(((*dbgBufferPtr) < printfInfo.size()) &&
-             "Cound't find the reported PrintfID!");
+      assert(((*dbgBufferPtr) < printfInfo.size()) && "Cound't find the reported PrintfID!");
       const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
       sb += sizeof(uint32_t);
       for (ita = info.arguments_.begin(); ita != info.arguments_.end(); ++ita) {
