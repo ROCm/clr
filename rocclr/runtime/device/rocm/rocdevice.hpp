@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 /*! \addtogroup HSA
  *  @{

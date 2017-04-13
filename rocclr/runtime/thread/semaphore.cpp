@@ -15,8 +15,8 @@
 namespace amd {
 
 Semaphore::Semaphore()
+  : state_(0)
 {
-    std::atomic_init(&state_, 0);
 #ifdef _WIN32
     handle_ = static_cast<void*>(CreateSemaphore(NULL, 0, LONG_MAX, NULL));
     assert(handle_ != NULL && "CreateSemaphore failed");

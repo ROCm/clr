@@ -7,6 +7,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 
 #include "os/os.hpp"
 #include "rocdevice.hpp"
@@ -52,7 +53,7 @@ HSAILProgram::compileImpl_LC(
     amd::option::Options* options)
 {
     using namespace amd::opencl_driver;
-    std::auto_ptr<Compiler> C(newCompilerInstance());
+    std::unique_ptr<Compiler> C(newCompilerInstance());
     std::vector<Data*> inputs;
 
     Data* input = C->NewBufferReference(DT_CL,
@@ -390,24 +391,31 @@ checkLLVM_BIN()
         }
     }
 #if defined(DEBUG)
-    std::string clangExe(llvmBin_ + "/clang");
-    struct stat buf;
-    if (stat(clangExe.c_str(), &buf)) {
-        std::string msg("Could not find the Clang binary in " + llvmBin_);
-        LogWarning(msg.c_str());
+    static const std::string tools[] = { "clang", "llvm-link", "ld.lld" };
+
+    for (const std::string tool : tools) {
+        std::string exePath(llvmBin_ + "/" + tool);
+        struct stat buf;
+        if (stat(exePath.c_str(), &buf)) {
+            std::string msg(exePath + " not found");
+            LogWarning(msg.c_str());
+        }
+        else if ((buf.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0) {
+            std::string msg("Cannot execute " + exePath);
+            LogWarning(msg.c_str());
+        }
     }
 #endif // defined(DEBUG)
 }
 #endif // defined(ATI_OS_LINUX)
 
-std::auto_ptr<amd::opencl_driver::Compiler>
+amd::opencl_driver::Compiler*
 HSAILProgram::newCompilerInstance()
 {
 #if defined(ATI_OS_LINUX)
     pthread_once(&once, checkLLVM_BIN);
 #endif // defined(ATI_OS_LINUX)
-    return std::auto_ptr<amd::opencl_driver::Compiler>(
-        amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
+    return amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_);
 }
 #endif // defined(WITH_LIGHTNING_COMPILER)
 

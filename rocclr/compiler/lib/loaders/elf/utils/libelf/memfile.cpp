@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <algorithm>
 #include <vector>
+#include <cstring>
 
 #if defined(__GNUC__)
 #include <unistd.h>

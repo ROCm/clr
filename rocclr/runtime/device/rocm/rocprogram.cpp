@@ -29,6 +29,7 @@
 #include <sstream>
 #include <iostream>
 #include <istream>
+#include <iterator>
 
 namespace roc {
 
@@ -479,7 +480,7 @@ HSAILProgram::linkImpl_LC(
     bool createLibrary)
 {
     using namespace amd::opencl_driver;
-    std::auto_ptr<Compiler> C(newCompilerInstance());
+    std::unique_ptr<Compiler> C(newCompilerInstance());
 
     std::vector<Data*> inputs;
     for (auto program : (const std::vector<HSAILProgram*>&)inputPrograms) {
@@ -681,7 +682,7 @@ bool
 HSAILProgram::linkImpl_LC(amd::option::Options *options)
 {
     using namespace amd::opencl_driver;
-    std::auto_ptr<Compiler> C(newCompilerInstance());
+    std::unique_ptr<Compiler> C(newCompilerInstance());
 
     // call LinkLLVMBitcode
     std::vector<Data*> inputs;
