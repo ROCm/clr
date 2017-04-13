@@ -8,6 +8,7 @@
 #include "appprofile.hpp"
 #include "adl.h"
 #include <cstdlib>
+#include <cstring>
 
 #ifdef BRAHMA
 extern int SearchProfileOfAnApplication(const wchar_t* fileName, ADLApplicationProfile ** lppProfile);

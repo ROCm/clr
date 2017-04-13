@@ -175,7 +175,7 @@ private:
 #if defined(WITH_LIGHTNING_COMPILER)
     CodeObjectMD* metadata_; //!< Runtime metadata
     //! Return a new transient compiler instance.
-    static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
+    static amd::opencl_driver::Compiler* newCompilerInstance();
 #endif // defined(WITH_LIGHTNING_COMPILER)
 };
 

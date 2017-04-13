@@ -87,12 +87,12 @@ Memory::Memory(
         , isParent_(false)
         , vDev_(NULL)
         , forceSysMemAlloc_(false)
+        , mapCount_(0)
         , svmHostAddress_(svmPtr)
         , svmPtrCommited_(false)
         , canBeCached_(true)
         , lockMemoryOps_("Memory Ops Lock", true)
 {
-    std::atomic_init(&mapCount_, 0u);
 }
 
 Memory::Memory(
@@ -117,6 +117,7 @@ Memory::Memory(
         , isParent_(false)
         , vDev_(NULL)
         , forceSysMemAlloc_(false)
+        , mapCount_(0)
         , svmHostAddress_(parent.getSvmPtr())
         , svmPtrCommited_(parent.isSvmPtrCommited())
         , canBeCached_(true)
@@ -144,8 +145,6 @@ Memory::Memory(
             (CL_MEM_HOST_READ_ONLY | CL_MEM_HOST_WRITE_ONLY |
              CL_MEM_HOST_NO_ACCESS);
     }
-
-    std::atomic_init(&mapCount_, 0u);
 }
 
 void
@@ -1284,11 +1283,11 @@ static int
 round_to_even(float v)
 {
     // clamp overflow
-    if (v >= -(float)INT_MIN) {
-        return INT_MAX;
+    if (v >= -(float)std::numeric_limits<int>::min()) {
+        return std::numeric_limits<int>::max();
     }
-    if (v <= (float)INT_MIN) {
-        return INT_MIN;
+    if (v <= (float)std::numeric_limits<int>::min()) {
+        return std::numeric_limits<int>::min();
     }
     static const unsigned int magic[2] = { 0x4b000000u, 0xcb000000u };
 
