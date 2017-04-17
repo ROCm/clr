@@ -972,6 +972,15 @@ bool Image::createView(const Memory& parent) {
     return false;
   }
 
+  // Explicitly set the host memory location,
+  // because the parent location could change after reallocation
+  if (nullptr != parent.owner()->getHostMem()) {
+    owner()->setHostMem(reinterpret_cast<char*>(parent.owner()->getHostMem()) + owner()->getOrigin());
+  }
+  else {
+    owner()->setHostMem(nullptr);
+  }
+
   return true;
 }
 
