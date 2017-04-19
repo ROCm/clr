@@ -207,6 +207,8 @@ release(bool, OCL_CODE_CACHE_ENABLE, false,                                   \
         "1 = Enable compiler code cache")                                     \
 release(bool, OCL_CODE_CACHE_RESET, false,                                    \
         "1 =  Reset the compiler code cache storage")                         \
+release(bool, GPU_VEGA10_ONLY, VEGA10_ONLY,                                   \
+        "1 = Report vega10 only on OCL/ROCR")                                 \
 
 namespace amd {
 
