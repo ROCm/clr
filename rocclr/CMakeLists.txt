@@ -29,5 +29,6 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
 add_subdirectory(compiler/driver)
 
 set(CMAKE_C_COMPILER "${PROJECT_BINARY_DIR}/compiler/llvm/bin/clang")
+set(BUILD_HC_LIB CACHE BOOL OFF)
 add_subdirectory(library/amdgcn)
 add_dependencies(ocml_lib_bc clang llvm-link llvm-objdump lld)
