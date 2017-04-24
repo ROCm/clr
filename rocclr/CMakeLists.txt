@@ -25,6 +25,7 @@ include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/tools/clang/include)
 
 # TODO: move AMDGPU.h header to include folder
 include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
+include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
 add_subdirectory(compiler/driver)
 
