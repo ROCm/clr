@@ -1514,8 +1514,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           void* globalAddress = devMem->getDeviceMemory();
           argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
 
-          //! @todo Compiler has to return read/write attributes
-          if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
+          const bool readOnly =
+#if defined(WITH_LIGHTNING_COMPILER)
+              signature.at(arg->index_).typeQualifier_ == CL_KERNEL_ARG_TYPE_CONST ||
+#endif // defined(WITH_LIGHTNING_COMPILER)
+              (mem->getMemFlags() & CL_MEM_READ_ONLY) != 0;
+
+          if (!readOnly) {
             mem->signalWrite(&dev());
           }
           break;
@@ -1551,8 +1556,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                             HSA_IMAGE_OBJECT_ALIGNMENT);
           }
 
-          //! @todo Compiler has to return read/write attributes
-          if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
+          const bool readOnly =
+#if defined(WITH_LIGHTNING_COMPILER)
+              signature.at(arg->index_).accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY ||
+#endif // defined(WITH_LIGHTNING_COMPILER)
+              mem->getMemFlags() & CL_MEM_READ_ONLY;
+
+          if (!readOnly) {
             mem->signalWrite(&dev());
           }
           break;
