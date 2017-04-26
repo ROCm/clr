@@ -6,9 +6,20 @@
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 #include "appprofile.hpp"
+#if !defined(WITH_LIGHTNING_COMPILER)
 #include "adl.h"
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 #include <cstdlib>
 #include <cstring>
+
+#if defined(WITH_LIGHTNING_COMPILER)
+typedef void* ADLApplicationProfile;
+int SearchProfileOfAnApplication(const wchar_t* fileName, ADLApplicationProfile** lppProfile)
+{
+  return 0;
+}
+#define __stdcall
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 #ifdef BRAHMA
 extern int SearchProfileOfAnApplication(const wchar_t* fileName,
@@ -21,7 +32,7 @@ static void* __stdcall adlMallocCallback(int n) { return malloc(n); }
 
 namespace amd {
 
-#ifndef BRAHMA
+#if !defined(BRAHMA) && !defined(WITH_LIGHTNING_COMPILER)
 
 class ADL {
  public:
@@ -157,7 +168,7 @@ bool AppProfile::init() {
 bool AppProfile::ParseApplicationProfile() {
   ADLApplicationProfile* pProfile = NULL;
 
-#ifndef BRAHMA
+#if !defined(BRAHMA) && !defined(WITH_LIGHTNING_COMPILER)
   amd::ADL* adl = new amd::ADL;
 
   if ((adl == NULL) || !adl->init()) {
@@ -183,6 +194,7 @@ bool AppProfile::ParseApplicationProfile() {
     return false;
   }
 
+#if !defined(WITH_LIGHTNING_COMPILER)
   PropertyRecord* firstProperty = pProfile->record;
   uint32_t valueOffset = 0;
   const int BUFSIZE = 1024;
@@ -224,6 +236,7 @@ bool AppProfile::ParseApplicationProfile() {
   }
 
   free(pProfile);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 }
