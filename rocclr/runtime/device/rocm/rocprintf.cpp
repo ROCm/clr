@@ -13,7 +13,7 @@
 #include "device/rocm/rocprintf.hpp"
 #include <cstdio>
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 
 namespace roc {
 
@@ -165,13 +165,13 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
           }
           float fArg = *(reinterpret_cast<const float*>(argument));
           float fSign = copysign(1.0, fArg);
-          if (isinf(fArg) && !isnan(fArg)) {
+          if (std::isinf(fArg) && !std::isnan(fArg)) {
             if (fSign < 0) {
               amd::Os::printf(fmtF.data(), "-infinity");
             } else {
               amd::Os::printf(fmtF.data(), "infinity");
             }
-          } else if (isnan(fArg)) {
+          } else if (std::isnan(fArg)) {
             if (fSign < 0) {
               amd::Os::printf(fmtF.data(), "-nan");
             } else {

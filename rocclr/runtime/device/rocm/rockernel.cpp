@@ -3,7 +3,6 @@
 //
 
 #include "rockernel.hpp"
-#include "SCHSAInterface.h"
 #include "amd_hsa_kernel_code.h"
 
 #include <algorithm>

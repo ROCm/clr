@@ -19,7 +19,7 @@
 #include "thread/monitor.hpp"
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
-#include "api/opencl/amdocl/cl_gl_amd.hpp"
+#include "amdocl/cl_gl_amd.hpp"
 
 namespace roc {
 
