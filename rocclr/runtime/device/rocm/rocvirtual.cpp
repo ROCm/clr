@@ -14,7 +14,6 @@
 #include "platform/sampler.hpp"
 #include "utils/debug.hpp"
 #include "os/os.hpp"
-#include "SCHSAInterface.h"
 #include "amd_hsa_kernel_code.h"
 
 #include <fstream>

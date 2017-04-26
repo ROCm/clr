@@ -7,13 +7,13 @@
 
 #include "rocprogram.hpp"
 
-#include "compiler/lib/utils/options.hpp"
+#include "utils/options.hpp"
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "AMDGPUPTNote.h"
-#include "libelf/gelf.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
+#include <gelf.h>
 #else  // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
 #include "amd_hsa_code.hpp"

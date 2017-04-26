@@ -8,7 +8,9 @@
 
 #include "top.hpp"
 #include "elf_utils.hpp"
+#if !defined(WITH_LIGHTNING_COMPILER)
 #include "caltarget.h" // using CALtargetEnum
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
 #include "libelf.h"
 #include "gelf.h"
@@ -22,6 +24,9 @@
 // properly upstreamed to gcc/libelf.
 #ifndef EM_HSAIL
 #define EM_HSAIL 0xAF5A
+#endif
+#ifndef EM_HSAIL_64
+#define EM_HSAIL_64 0xAF5B
 #endif
 #ifndef EM_AMDIL
 #define EM_AMDIL 0x4154
@@ -66,9 +71,11 @@ public:
     typedef enum {
         // NOTE!!! Never remove an entry or change the order.
 
+#if !defined(WITH_LIGHTNING_COMPILER)
         //  All CAL targets are within [CAL_FIRST, CAL_LAST].
         CAL_FIRST      = CAL_TARGET_600  + CAL_BASE,
         CAL_LAST       = CAL_TARGET_LAST + CAL_BASE,
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
         // All CPU targets are within [CPU_FIRST, CPU_LAST]
         CPU_FIRST      = CPU_FEATURES_FIRST + CPU_BASE,

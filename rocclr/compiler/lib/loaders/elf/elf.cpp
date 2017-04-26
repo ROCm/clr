@@ -175,9 +175,11 @@ isCALTarget(const char* p, signed char ec)
     machine = ((Elf64_Ehdr*)p)->e_machine;
   }
 
+#if !defined(WITH_LIGHTNING_COMPILER)
   if ( (machine >= OclElf::CAL_FIRST) && (machine <= OclElf::CAL_LAST) ) {
     return true;
   }    
+#endif // !defined(WITH_LIGHTNING_COMPILER)
 
   return false;
 }    
@@ -622,10 +624,13 @@ OclElf::getTarget(uint16_t& machine, oclElfPlatform& platform)
     platform = CPU_PLATFORM;
     machine = mach - CPU_BASE;
   }
+#if !defined(WITH_LIGHTNING_COMPILER)
   else if ( (mach >= CAL_FIRST) && (mach <= CAL_LAST)) {
     platform = CAL_PLATFORM;
     machine = mach - CAL_BASE;
-  } else if (mach == EM_386
+  }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+  else if (mach == EM_386
       || mach == EM_HSAIL
       || mach == EM_HSAIL_64
       || mach == EM_AMDIL

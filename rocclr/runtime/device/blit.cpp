@@ -7,6 +7,8 @@
 #include "device/blit.hpp"
 #include "utils/debug.hpp"
 
+#include <cmath>
+
 namespace device {
 
 HostBlitManager::HostBlitManager(VirtualDevice& vDev, Setup setup)
@@ -643,7 +645,7 @@ cl_uint HostBlitManager::sRGBmap(float fc) const {
   double c = (double)fc;
 
 #ifdef ATI_OS_LINUX
-  if (isnan(c)) c = 0.0;
+  if (std::isnan(c)) c = 0.0;
 #else
   if (_isnan(c)) c = 0.0;
 #endif

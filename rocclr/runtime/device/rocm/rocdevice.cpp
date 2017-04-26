@@ -25,11 +25,6 @@
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
-#include "kv_id.h"
-#include "vi_id.h"
-#include "cz_id.h"
-#include "ci_id.h"
-#include "ai_id.h"
 #include <cstring>
 #include <fstream>
 #include <sstream>
