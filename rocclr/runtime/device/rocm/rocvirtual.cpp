@@ -19,6 +19,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <limits>
 
 /**
 * HSA image object size in bytes (see HSAIL spec)
@@ -487,8 +488,9 @@ bool VirtualGPU::create(bool profilingEna) {
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
   queue_size = (queue_max_packets < queue_size) ? queue_max_packets : queue_size;
-  while (hsa_queue_create(gpu_device_, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr, UINT_MAX,
-                          UINT_MAX, &gpu_queue_) != HSA_STATUS_SUCCESS) {
+  while (hsa_queue_create(gpu_device_, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
+                          std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
+                          &gpu_queue_) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
     if (queue_size < 64) {
       return false;

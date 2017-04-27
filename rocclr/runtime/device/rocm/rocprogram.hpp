@@ -15,7 +15,6 @@
 #include <fstream>
 #include <iostream>
 #include "rocdevice.hpp"
-#include "HSAILItems.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "AMDGPUCodeObjectMetadata.h"
@@ -26,7 +25,6 @@ typedef llvm::AMDGPU::CodeObject::Kernel::Metadata KernelMD;
 typedef llvm::AMDGPU::CodeObject::Kernel::Arg::Metadata KernelArgMD;
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
-using namespace HSAIL_ASM;
 //! \namespace roc HSA Device Implementation
 namespace roc {
 

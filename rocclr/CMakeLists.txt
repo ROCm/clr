@@ -30,10 +30,6 @@ include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/tools/clang/include)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
 include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
-set(AMD_EXTENSIONS CACHE BOOL OFF)
-set(BUILD_HSAILASM CACHE BOOL OFF)
-add_subdirectory(compiler/sc/HSAIL/hsail-tools)
-
 add_subdirectory(compiler/driver)
 
 set(CMAKE_C_COMPILER "${PROJECT_BINARY_DIR}/compiler/llvm/bin/clang")
