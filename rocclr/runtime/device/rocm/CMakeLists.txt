@@ -48,8 +48,6 @@ add_library(oclrocm OBJECT
 )
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-add_dependencies(oclrocm libhsail-includes)
-
 foreach(header ${headers})
   string(REGEX REPLACE "([^._-]*)(.*).amdgcn.inc" "${CMAKE_BINARY_DIR}/library/amdgcn/\\1/\\1\\2.lib.bc" bclib ${header}) 
   string(REGEX REPLACE ".inc$" "" target ${header})
