@@ -516,8 +516,22 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                                      completion_signal_);
 
   if (status == HSA_STATUS_SUCCESS) {
-    hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                                     uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
+    hsa_signal_value_t val;
+
+    // Use ACTIVE wait for small transfers.
+    // Might want to be dependent on also having an idle GPU
+    // or, if queue is busy, may want to enqueue a blank barrier
+    // before this and wait BLOCKED on its completion signal, followed
+    // by ACTIVE on this.
+
+    constexpr size_t small_transfer_size = 4 * Mi;
+    if (size[0] < small_transfer_size) {
+      val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+                                    std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_ACTIVE);
+    } else {
+      val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+                                    std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_BLOCKED);
+    }
     if (val != (kInitVal - 1)) {
       LogError("Async copy failed");
       status = HSA_STATUS_ERROR;
