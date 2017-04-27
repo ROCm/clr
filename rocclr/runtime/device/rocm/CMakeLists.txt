@@ -26,9 +26,6 @@ set(headers
 
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
-include_directories(${CMAKE_SOURCE_DIR}/compiler/sc/HSAIL/include)
-include_directories(${CMAKE_SOURCE_DIR}/compiler/sc/HSAIL/hsail-tools/libHSAIL)
-include_directories(${CMAKE_BINARY_DIR}/compiler/sc/HSAIL/hsail-tools/libHSAIL/generated)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 
