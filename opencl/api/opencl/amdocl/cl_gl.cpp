@@ -1857,7 +1857,7 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
 
       // Get GL texture format and check if it's compatible with CL format
       clearGLErrors(amdContext);
-      amdContext.glenv()->glGetIntegerv_(GL_TEXTURE_BUFFER_FORMAT,
+      amdContext.glenv()->glGetIntegerv_(GL_TEXTURE_BUFFER_FORMAT_EXT,
                                          reinterpret_cast<GLint*>(&glInternalFormat));
       if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
         *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
