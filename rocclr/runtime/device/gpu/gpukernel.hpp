@@ -128,7 +128,7 @@ struct KernelArg : public amd::HeapObject {
  public:
   //! \enum Kernel argument type
   enum ArgumentType {
-    None = 0,
+    NoType = 0,
     PointerGlobal,
     Value,
     Image,

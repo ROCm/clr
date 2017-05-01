@@ -29,7 +29,7 @@ const MetaDataConst ArgState[ArgStateTotal] = {
     // Name                 Type                    Properties
     // Kernel description (special properties)
     {"memory:compilerwrite", KernelArg::PrivateFixed, {0, 0, 0, 0, 0, 0, 0}},
-    {"uniqueid:", KernelArg::None, {0, 0, 0, 0, 0, 0, 0}},
+    {"uniqueid:", KernelArg::NoType, {0, 0, 0, 0, 0, 0, 0}},
     {"memory:private:", KernelArg::PrivateSize, {0, 0, 0, 0, 0, 0, 0}},
     {"memory:local:", KernelArg::LocalSize, {0, 0, 0, 0, 0, 0, 0}},
     {"memory:hwprivate:", KernelArg::HwPrivateSize, {0, 0, 0, 0, 0, 0, 0}},
@@ -37,8 +37,8 @@ const MetaDataConst ArgState[ArgStateTotal] = {
     {"memory:hwlocal:", KernelArg::HwLocalSize, {0, 0, 0, 0, 0, 0, 0}},
     {"memory:64bitABI", KernelArg::ABI64Bit, {0, 0, 0, 0, 0, 0, 0}},
     {"limitgroupsize", KernelArg::Wavefront, {0, 0, 0, 0, 0, 0, 0}},
-    {"function:", KernelArg::None, {1, 1, 0, 0, 0, 0, 0}},
-    {"intrinsic:", KernelArg::None, {1, 0, 0, 0, 0, 0, 0}},
+    {"function:", KernelArg::NoType, {1, 1, 0, 0, 0, 0, 0}},
+    {"intrinsic:", KernelArg::NoType, {1, 0, 0, 0, 0, 0, 0}},
     {"error:", KernelArg::ErrorMessage, {0, 0, 0, 0, 0, 0, 0}},
     {"warning:", KernelArg::WarningMessage, {0, 0, 0, 0, 0, 0, 0}},
     {"printf_fmt:", KernelArg::PrintfFormatStr, {0, 0, 0, 0, 0, 0, 0}},
@@ -312,13 +312,13 @@ CalImageReference::~CalImageReference() {
 }
 
 KernelArg::KernelArg()
-    : type_(KernelArg::None),
+    : type_(KernelArg::NoType),
       size_(0),
       cbIdx_(0),
       cbPos_(0),
       index_(0),
       alignment_(1),
-      dataType_(KernelArg::None) {
+      dataType_(KernelArg::NoType) {
   name_ = "";
   buf_ = "";
   memory_.value_ = 0;
@@ -349,7 +349,7 @@ KernelArg& KernelArg::operator=(const KernelArg& data) {
 
 bool KernelArg::isCbNeeded() const {
   //! \note not a safe way
-  bool result = ((type_ > None) && (type_ < Sampler)) ? true : false;
+  bool result = ((type_ > NoType) && (type_ < Sampler)) ? true : false;
   if ((type_ == Sampler) && (location_ == 0)) {
     // Sampler is defined outside the kernel
     result = true;
@@ -359,7 +359,7 @@ bool KernelArg::isCbNeeded() const {
 
 size_t KernelArg::size(bool gpuLayer) const {
   switch (type_) {
-    case None:
+    case NoType:
       return 0;
     case PointerConst:
     case PointerHwConst:
@@ -507,7 +507,7 @@ clk_value_type_t KernelArg::type() const {
       return T_SAMPLER;
     case PointerPrivate:
     case PointerHwPrivate:
-    case None:
+    case NoType:
     default:
       return T_VOID;
   }
@@ -2188,7 +2188,7 @@ bool NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount) 
       break;
     }
 
-    arg.type_ = KernelArg::None;
+    arg.type_ = KernelArg::NoType;
 
     // Loop through all available metadata types
     for (uint i = 0; i < ArgStateTotal; ++i) {
@@ -2196,7 +2196,7 @@ bool NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount) 
       // Find the name tag
       if (expect(metaData, &pos, ArgState[i].typeName_)) {
         switch (ArgState[i].type_) {
-          case KernelArg::None:
+          case KernelArg::NoType:
             // Process next ...
             continue;
           case KernelArg::Reflection: {
