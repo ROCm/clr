@@ -27,7 +27,7 @@ ClBinary::FeatureCheckResult ClBinary::checkFeatures() {
   amd::OclElf::oclElfPlatform platform;
   if (!elfIn()->getTarget(elf_target, platform)) {
     LogError("Loading OCL CPU binary: incorrect format");
-    return ERROR;
+    return fcERROR;
   }
   uint64_t chip_options = 0x0;
   if (platform == amd::OclElf::COMPLIB_PLATFORM) {
@@ -35,7 +35,7 @@ ClBinary::FeatureCheckResult ClBinary::checkFeatures() {
     uint32_t flag;
     if (!elfIn()->getFlags(flag)) {
       LogError("Loading OCL CPU binary: incorrect format");
-      return ERROR;
+      return fcERROR;
     }
     aclTargetInfo tgtInfo = aclGetTargetInfoFromChipID(LP64_SWITCH("x86", "x86-64"), flag, NULL);
     chip_options = aclGetChipOptions(tgtInfo);
@@ -43,13 +43,13 @@ ClBinary::FeatureCheckResult ClBinary::checkFeatures() {
         ((elf_target == EM_386) && (strcmp(LP64_SWITCH("x86", "x86-64"), "x86") != 0)) ||
         ((elf_target == EM_X86_64) && (strcmp(LP64_SWITCH("x86", "x86-64"), "x86-64") != 0))) {
       LogError("Loading OCL CPU binary: different target");
-      return ERROR;
+      return fcERROR;
     }
   } else {
     // BIF 2.0
     if ((platform != amd::OclElf::CPU_PLATFORM) || ((target & elf_target) != elf_target)) {
       LogError("Loading OCL CPU binary: different target");
-      return ERROR;
+      return fcERROR;
     }
   }
   char* section;
@@ -64,11 +64,11 @@ ClBinary::FeatureCheckResult ClBinary::checkFeatures() {
     if (elfIn_->getSection(amd::OclElf::LLVMIR, &section, &sz)) {
       if ((section != NULL) && (sz > 0)) {
         // hasDLL being false to force recompiling
-        RECOMPILE;
+        fcRECOMPILE;
       }
     }
   }
-  return OK;
+  return fcOK;
 }
 
 bool ClBinary::loadX86(Program& program, std::string& dllName, bool& hasDLL) {
@@ -79,11 +79,11 @@ bool ClBinary::loadX86(Program& program, std::string& dllName, bool& hasDLL) {
   dllName = tempName + "." WINDOWS_SWITCH("dll", MACOS_SWITCH("dyld", "so"));
 
   switch (checkFeatures()) {
-    case ERROR:
+    case fcERROR:
       return false;
-    case RECOMPILE:
+    case fcRECOMPILE:
       return true;
-    case OK:
+    case fcOK:
       // Fallthrough
       break;
   }
@@ -143,11 +143,11 @@ bool ClBinary::loadX86JIT(Program& program, bool& hasJITBinary) {
   hasJITBinary = false;
 
   switch (checkFeatures()) {
-    case ERROR:
+    case fcERROR:
       return false;
-    case RECOMPILE:
+    case fcRECOMPILE:
       return true;
-    case OK:
+    case fcOK:
       // Fallthrough
       break;
   }

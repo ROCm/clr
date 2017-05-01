@@ -1,6 +1,13 @@
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
 
+#if defined(ATI_OS_WIN)
+#define WIN32_LEAN_AND_MEAN 1
+#include <Windows.h>
+#endif
+#include <GL/gl.h>
+#include "GL/glATIInternal.h"
+
 #include "platform/program.hpp"
 #include "platform/kernel.hpp"
 #include "os/os.hpp"
@@ -13,8 +20,6 @@
 #include "device/gpu/gputimestamp.hpp"
 #include "thread/atomic.hpp"
 #include "hsa_ext_image.h"
-#include <GL/gl.h>
-#include "GL/glATIInternal.h"
 
 #include <string>
 #include <fstream>

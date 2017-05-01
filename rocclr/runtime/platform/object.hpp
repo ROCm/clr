@@ -9,8 +9,10 @@
 #include "os/alloc.hpp"
 #include "thread/monitor.hpp"
 #include "utils/util.hpp"
+#include <icd/icd_dispatch.h>
 
-#define CL_TYPES_DO(F)                                                                             \
+
+#define KHR_CL_TYPES_DO(F)                                                                         \
   /* OpenCL type          Runtime type */                                                          \
   F(cl_context, Context)                                                                           \
   F(cl_event, Event)                                                                               \
@@ -19,11 +21,18 @@
   F(cl_program, Program)                                                                           \
   F(cl_device_id, Device)                                                                          \
   F(cl_mem, Memory)                                                                                \
-  F(cl_sampler, Sampler)                                                                           \
+  F(cl_sampler, Sampler)
+
+#define AMD_CL_TYPES_DO(F)                                                                         \
   F(cl_counter_amd, Counter)                                                                       \
   F(cl_perfcounter_amd, PerfCounter)                                                               \
   F(cl_threadtrace_amd, ThreadTrace)                                                               \
   F(cl_file_amd, LiquidFlashFile)
+
+
+#define CL_TYPES_DO(F)                                                                             \
+  KHR_CL_TYPES_DO(F)                                                                               \
+  AMD_CL_TYPES_DO(F)
 
 // Forward declare ::cl_* types and amd::Class types
 //
@@ -31,15 +40,22 @@
 #define DECLARE_CL_TYPES(CL, AMD)                                                                  \
   namespace amd {                                                                                  \
   class AMD;                                                                                       \
-  }                                                                                                \
-  typedef struct _##CL {                                                                           \
-  } * CL;
+  }
 
 CL_TYPES_DO(DECLARE_CL_TYPES);
 
 #undef DECLARE_CL_TYPES
 
 struct KHRicdVendorDispatchRec;
+
+#define DECLARE_CL_TYPES(CL, AMD)                                                                  \
+  typedef struct _##CL {                                                                           \
+    struct KHRicdVendorDispatchRec* dispatch;                                                      \
+  } * CL;
+
+AMD_CL_TYPES_DO(DECLARE_CL_TYPES);
+
+#undef DECLARE_CL_TYPES
 
 namespace amd {
 

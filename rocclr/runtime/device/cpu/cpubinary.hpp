@@ -56,7 +56,7 @@ class ClBinary : public device::ClBinary {
   bool storeX86Asm(const char* buffer, size_t size);
 
  private:
-  enum FeatureCheckResult { ERROR, RECOMPILE, OK };
+  enum FeatureCheckResult { fcERROR, fcRECOMPILE, fcOK };
 
   FeatureCheckResult checkFeatures();
 

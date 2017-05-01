@@ -951,7 +951,7 @@ bool NullProgram::initGlobalData(const std::string& source, size_t start) {
                     failed = true;
                   }
                 } break;
-                case KernelArg::None:
+                case KernelArg::NoType:
                 default:
                   break;
               }
