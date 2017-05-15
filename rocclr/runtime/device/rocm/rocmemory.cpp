@@ -585,9 +585,8 @@ bool Buffer::create() {
 
   if (nullptr != owner()->parent()) {
     amd::Memory& parent = *owner()->parent();
-  // Sub-Buffer creation.
-  roc:
-    Memory* parentBuffer = static_cast<roc::Memory*>(parent.getDeviceMemory(dev_));
+    // Sub-Buffer creation.
+    roc::Memory* parentBuffer = static_cast<roc::Memory*>(parent.getDeviceMemory(dev_));
 
     if (parentBuffer == nullptr) {
       LogError("[OCL] Fail to allocate parent buffer");

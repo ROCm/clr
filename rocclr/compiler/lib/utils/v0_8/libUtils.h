@@ -231,11 +231,11 @@ aclutUpdateMetadataWithHiddenKernargsNum(aclCompiler* cl, aclBinary* bin, uint32
   char* kernelNames = new char[kernelNamesSize];
   error_code = aclQueryInfo(cl, bin, RT_KERNEL_NAMES, NULL, kernelNames, &kernelNamesSize);
   if (error_code != ACL_SUCCESS) {
-    delete kernelNames;
+    delete[] kernelNames;
     return error_code;
   }
   std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
-  delete kernelNames;
+  delete[] kernelNames;
   size_t roSize = 0;
   for (auto it = vKernels.begin(); it != vKernels.end(); ++it) {
     std::string symbol = aclutOpenclMangledKernelMetadataName(*it);
@@ -359,6 +359,7 @@ inline char* readFile(std::string source_filename, size_t& size)
   if (length != fread(&ptr[offset], 1, length, fp))
   {
     ::free(ptr);
+    ::fclose(fp);
     return NULL;
   }
   ptr[offset + length] = '\0';
@@ -377,6 +378,7 @@ inline bool writeFile(std::string source_filename, const char *source, size_t si
     return EXIT_FAILURE;
   }
   if (!::fwrite(source, size, 1, fp)) {
+    ::fclose(fp);
     return EXIT_FAILURE;
   }
   ::fclose(fp);
