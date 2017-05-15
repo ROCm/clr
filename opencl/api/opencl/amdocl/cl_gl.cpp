@@ -1468,7 +1468,7 @@ bool ImageGL::mapExtObjectInCQThread() {
 
   if (checkForGLError(context_()) != GL_NO_ERROR) {
     LogError("cannot map GL texture");
-    free(pCpuMem);
+    delete[] pCpuMem;
     return false;
   }
 
