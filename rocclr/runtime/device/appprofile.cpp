@@ -158,7 +158,7 @@ bool AppProfile::init() {
 
   wsAppFileName_ = appName;
 
-  delete appName;
+  delete[] appName;
 
   ParseApplicationProfile();
 

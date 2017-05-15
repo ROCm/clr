@@ -940,7 +940,7 @@ std::string Os::getAppFileName() {
     strFileName = strrchr(buff, '\\') ? strrchr(buff, '\\') + 1 : buff;
   }
 
-  delete buff;
+  delete[] buff;
   return strFileName;
 }
 
