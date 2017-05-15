@@ -1019,11 +1019,13 @@ bool Device::init() {
   platformObj = new char[size];
   Pal::PlatformCreateInfo info = {};
   info.flags.disableGpuTimeout = true;
+#if !defined(PAL_BUILD_DTIF)
 #ifdef ATI_BITS_32
   info.flags.force32BitVaSpace = true;
   info.flags.enableSvmMode = false;
 #else
   info.flags.enableSvmMode = true;
+#endif
 #endif
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
