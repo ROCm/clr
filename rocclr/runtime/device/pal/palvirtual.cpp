@@ -212,6 +212,12 @@ bool VirtualGPU::Queue::flush() {
       Pal::GpuMemoryRef memRef = {};
       memRef.pGpuMemory = it->first;
       palMemRefs_.push_back(memRef);
+
+      if (it->first->Desc().flags.isExternPhys
+          && (sdiReferences_.find(it->first) == sdiReferences_.end())) {
+        sdiReferences_.insert(it->first);
+        palSdiRefs_.push_back(it->first);
+      }
     }
   }
 
@@ -236,6 +242,8 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.pFence = iCmdFences_[cmdBufIdSlot_];
   submitInfo.doppRefCount = palDoppRefs_.size();
   submitInfo.pDoppRefs = palDoppRefs_.data();
+  submitInfo.externPhysMemCount = palSdiRefs_.size();
+  submitInfo.ppExternPhysMem = palSdiRefs_.data();
 
   // Submit command buffer to OS
   if (Pal::Result::Success != iQueue_->Submit(submitInfo)) {
@@ -289,6 +297,8 @@ bool VirtualGPU::Queue::flush() {
   palDoppRefs_.resize(0);
 
   palMems_.resize(0);
+  palSdiRefs_.resize(0);
+
   // Remove old memory references
   for (auto it = memReferences_.begin(); it != memReferences_.end();) {
     if (it->second == cmdBufIdSlot_) {
@@ -2531,18 +2541,14 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
   eventBegin(MainEngine);
 
   uint32_t value = vcmd.markerValue();
-  uint32_t size = vcmd.memory().getSize();
 
   addVmMemory(pGpuMemory);
 
-  uint32_t offset =
-      pGpuMemory->iMem()->Desc().markerBusAddr - pGpuMemory->iMem()->Desc().surfaceBusAddr;
-
   if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
-    iCmd()->CmdWaitMemoryValue(*(pGpuMemory->iMem()), offset, value, 0xFFFFFFFF,
-                               Pal::CompareFunc::GreaterEqual);
+    iCmd()->CmdWaitBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value, 0xFFFFFFFF,
+                                              Pal::CompareFunc::GreaterEqual);
   } else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
-    iCmd()->CmdUpdateMemory(*(pGpuMemory->iMem()), size, 4, &value);
+    iCmd()->CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
   }
 
   eventEnd(MainEngine, gpuEvent);
@@ -2559,19 +2565,26 @@ void VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand& vcmd
 
   std::vector<amd::Memory*> memObjects = vcmd.memObjects();
   uint32_t numObjects = memObjects.size();
+  Pal::GpuMemoryRef* pGpuMemRef = new Pal::GpuMemoryRef[numObjects];
+  Pal::IGpuMemory** pGpuMems = new Pal::IGpuMemory*[numObjects];
 
   for (uint i = 0; i < numObjects; i++) {
-    // dummy render into the SDI surfaces so that KMD will be able to provide the bus addresses
-    uint dummy = 0;
-    static_cast<const KernelBlitManager&>(dev().xferMgr())
-        .writeRawData(*(dev().getGpuMemory(memObjects[i])), sizeof(dummy), &dummy);
-
     pal::Memory* pGpuMemory = dev().getGpuMemory(memObjects[i]);
-
     pGpuMemory->syncCacheFromHost(*this);
 
-    vcmd.busAddress()[i].surface_bus_address = pGpuMemory->iMem()->Desc().surfaceBusAddr;
-    vcmd.busAddress()[i].marker_bus_address = pGpuMemory->iMem()->Desc().markerBusAddr;
+    pGpuMemRef[i].pGpuMemory = pGpuMemory->iMem();
+    pGpuMems[i] = pGpuMemory->iMem();
+  }
+
+  dev().iDev()->AddGpuMemoryReferences(numObjects, pGpuMemRef, NULL, Pal::GpuMemoryRefCantTrim);
+  dev().iDev()->InitBusAddressableGpuMemory(queues_[MainEngine]->iQueue_, numObjects, pGpuMems);
+  if (numObjects != 0) {
+      dev().iDev()->RemoveGpuMemoryReferences(numObjects, &pGpuMems[0], queues_[MainEngine]->iQueue_);
+  }
+
+  for (uint i = 0; i < numObjects; i++) {
+    vcmd.busAddress()[i].surface_bus_address = pGpuMems[i]->Desc().surfaceBusAddr;
+    vcmd.busAddress()[i].marker_bus_address = pGpuMems[i]->Desc().markerBusAddr;
   }
   profilingEnd(vcmd);
 }

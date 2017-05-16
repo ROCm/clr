@@ -150,6 +150,8 @@ class VirtualGPU : public device::VirtualDevice {
     std::vector<Pal::GpuMemoryRef> palMemRefs_;
     std::vector<Pal::IGpuMemory*> palMems_;
     std::vector<Pal::DoppRef> palDoppRefs_;
+    std::set<Pal::IGpuMemory*>      sdiReferences_;
+    std::vector<const Pal::IGpuMemory*>   palSdiRefs_;
   };
 
   struct CommandBatch : public amd::HeapObject {
