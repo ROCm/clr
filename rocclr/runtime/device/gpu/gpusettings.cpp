@@ -313,6 +313,7 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
       maxWorkloadTime_ = modifyMaxWorkload.time;
     }
   }
+  enableExtension(ClAMDLiquidFlash);
 #endif  // defined(_WIN32)
 
   // Enable atomics support
@@ -332,7 +333,6 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
   // Enable some platform extensions
   enableExtension(ClAmdDeviceAttributeQuery);
   enableExtension(ClKhrSpir);
-  enableExtension(ClAMDLiquidFlash);
 
   hwLDSSize_ = 32 * Ki;
 

@@ -20,6 +20,7 @@
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "amdocl/cl_gl_amd.hpp"
+#include "pro/prodriver.hpp"
 
 namespace roc {
 
@@ -548,7 +549,12 @@ void Buffer::destroy() {
   }
 
   const cl_mem_flags memFlags = owner()->getMemFlags();
-
+#ifdef WITH_AMDGPU_PRO
+  if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {
+    dev().iPro().FreeDmaBuffer(deviceMemory_);
+    return;
+  }
+#endif
   if ((deviceMemory_ != nullptr) && (deviceMemory_ != owner()->getHostMem())) {
     // if they are identical, the host pointer will be
     // deallocated later on => avoid double deallocation
@@ -611,6 +617,20 @@ bool Buffer::create() {
 
   // Allocate backing storage in device local memory unless UHP or AHP are set
   const cl_mem_flags memFlags = owner()->getMemFlags();
+
+#ifdef WITH_AMDGPU_PRO
+  if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {
+    void* host_ptr = nullptr;
+    deviceMemory_ = dev().iPro().AllocDmaBuffer(dev().getGpuAgents()[0], size(), &host_ptr);
+    if (deviceMemory_ == nullptr) {
+      return false;
+    }
+    flags_ |= HostMemoryDirectAccess;
+    owner()->setHostMem(host_ptr);
+    return true;
+  }
+#endif
+
   if (!(memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR))) {
     deviceMemory_ = dev().deviceLocalAlloc(size());
 

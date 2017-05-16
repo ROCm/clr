@@ -95,6 +95,7 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   enableExtension(ClKhr3DImageWrites);
   enableExtension(ClAmdMediaOps);
   enableExtension(ClAmdMediaOps2);
+  enableExtension(ClAMDLiquidFlash);
   if (MesaInterop::Supported()) {
     enableExtension(ClKhrGlSharing);
   }

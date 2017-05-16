@@ -58,6 +58,7 @@ class Memory;
 class Resource;
 class VirtualDevice;
 class PrintfDbg;
+class IProDevice;
 
 // A NULL Device type used only for offline compilation
 // Only functions that are used for compilation will be in this device
@@ -276,8 +277,6 @@ class Device : public NullDevice {
   //! Destructor for the physical HSA device
   virtual ~Device();
 
-  bool mapHSADeviceToOpenCLDevice(hsa_agent_t hsadevice);
-
   // Temporary, delete it later when HSA Runtime and KFD is fully fucntional.
   void fake_device();
 
@@ -388,6 +387,10 @@ class Device : public NullDevice {
 
   amd::Context& context() const { return *context_; }
 
+  // Returns AMD GPU Pro interfaces
+  const IProDevice& iPro() const { return *pro_device_; }
+  bool ProEna() const  { return pro_ena_; }
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -415,6 +418,8 @@ class Device : public NullDevice {
 
   XferBuffers* xferRead_;   //!< Transfer buffers read
   XferBuffers* xferWrite_;  //!< Transfer buffers write
+  const IProDevice* pro_device_;  //!< AMDGPUPro device
+  bool  pro_ena_;           //!< Extra functionality with AMDGPUPro device, beyond ROCr
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index

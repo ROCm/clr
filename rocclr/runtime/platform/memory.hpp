@@ -595,7 +595,7 @@ class SvmBuffer : AllStatic {
 //! Liquid flash extension
 class LiquidFlashFile : public RuntimeObject {
  private:
-  const wchar_t* name_;
+  std::wstring name_;
   cl_file_flags_amd flags_;
   void* handle_;
   uint32_t blockSize_;

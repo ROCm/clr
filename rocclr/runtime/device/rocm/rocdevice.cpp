@@ -25,6 +25,7 @@
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
+#include "pro/prodriver.hpp"
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -111,16 +112,18 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
 }
 
 Device::Device(hsa_agent_t bkendDevice)
-    : mapCacheOps_(nullptr),
-      mapCache_(nullptr),
-      _bkendDevice(bkendDevice),
-      gpuvm_segment_max_alloc_(0),
-      alloc_granularity_(0),
-      context_(nullptr),
-      xferQueue_(nullptr),
-      xferRead_(nullptr),
-      xferWrite_(nullptr),
-      numOfVgpus_(0) {
+    : mapCacheOps_(nullptr)
+    , mapCache_(nullptr)
+    , _bkendDevice(bkendDevice)
+    , gpuvm_segment_max_alloc_(0)
+    , alloc_granularity_(0)
+    , context_(nullptr)
+    , xferQueue_(nullptr)
+    , xferRead_(nullptr)
+    , xferWrite_(nullptr)
+    , pro_device_(nullptr)
+    , pro_ena_(false)
+    , numOfVgpus_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
@@ -128,6 +131,10 @@ Device::Device(hsa_agent_t bkendDevice)
 }
 
 Device::~Device() {
+#ifdef WITH_AMDGPU_PRO
+  delete pro_device_;
+#endif
+
   // Release cached map targets
   for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
     if ((*mapCache_)[i] != nullptr) {
@@ -474,14 +481,20 @@ bool Device::init() {
 
     roc_device->deviceInfo_.gfxipVersion_ = major * 100 + minor * 10 + stepping;
 
-    if (!roc_device->mapHSADeviceToOpenCLDevice(agent)) {
-      LogError("Failed mapping of HsaDevice to Device.");
-      continue;
-    }
-
     if (!roc_device->create()) {
       LogError("Error creating new instance of Device.");
       continue;
+    }
+
+    // Setup System Memory to be Non-Coherent per user
+    // request via environment variable. By default the
+    // System Memory is setup to be Coherent
+    if (roc_device->settings().enableNCMode_) {
+      hsa_status_t err = hsa_amd_coherency_set_type(agent, HSA_AMD_COHERENCY_TYPE_NONCOHERENT);
+      if (err != HSA_STATUS_SUCCESS) {
+        LogError("Unable to set NC memory policy!");
+        continue;
+      }
     }
 
     if (selectedDevices[ordinal++] &&
@@ -500,9 +513,70 @@ void Device::tearDown() {
 }
 
 bool Device::create() {
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
+    return false;
+  }
+
+  // Create HSA settings
+  settings_ = new Settings();
+  roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
+  if ((hsaSettings == nullptr) ||
+      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipVersion_)) {
+    return false;
+  }
+
   if (!amd::Device::create()) {
     return false;
   }
+
+  uint32_t hsa_bdf_id = 0;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_BDFID, &hsa_bdf_id)) {
+    return false;
+  }
+
+  info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
+  info_.deviceTopology_.pcie.bus = (hsa_bdf_id & (0xFF << 8)) >> 8;
+  info_.deviceTopology_.pcie.device = (hsa_bdf_id & (0x1F << 3)) >> 3;
+  info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
+
+#ifdef WITH_AMDGPU_PRO
+  // Create amdgpu-pro device interface for SSG support
+  pro_device_ = IProDevice::Init(
+      info_.deviceTopology_.pcie.bus,
+      info_.deviceTopology_.pcie.device,
+      info_.deviceTopology_.pcie.function);
+  if (pro_device_ != nullptr) {
+    pro_ena_ = true;
+    settings_->enableExtension(ClAMDLiquidFlash);
+  }
+#endif
+
+  if (populateOCLDeviceConstants() == false) {
+    return false;
+  }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+  //  create compilation object with cache support
+  int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
+  int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
+  int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
+
+  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+  // with dash as delimiter to be compatible with Windows directory name
+  std::ostringstream cacheTarget;
+  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+
+  amd::CacheCompilation* compObj = new amd::CacheCompilation(
+      cacheTarget.str(), "_rocm", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
+  if (!compObj) {
+    LogError("Unable to create cache compilation object!");
+    return false;
+  }
+
+  cacheCompilation_.reset(compObj);
+#endif
 
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;
@@ -566,59 +640,6 @@ device::Program* NullDevice::createProgram(amd::option::Options* options) {
 
 device::Program* Device::createProgram(amd::option::Options* options) {
   return new roc::HSAILProgram(*this);
-}
-
-bool Device::mapHSADeviceToOpenCLDevice(hsa_agent_t dev) {
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
-    return false;
-  }
-
-  // Create HSA settings
-  settings_ = new Settings();
-  roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-  if ((hsaSettings == nullptr) ||
-      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipVersion_)) {
-    return false;
-  }
-
-  if (populateOCLDeviceConstants() == false) {
-    return false;
-  }
-
-  // Setup System Memory to be Non-Coherent per user
-  // request via environment variable. By default the
-  // System Memory is setup to be Coherent
-  if (hsaSettings->enableNCMode_) {
-    hsa_status_t err = hsa_amd_coherency_set_type(dev, HSA_AMD_COHERENCY_TYPE_NONCOHERENT);
-    if (err != HSA_STATUS_SUCCESS) {
-      LogError("Unable to set NC memory policy!");
-      return false;
-    }
-  }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-  //  create compilation object with cache support
-  int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
-  int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
-  int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
-
-  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-  // with dash as delimiter to be compatible with Windows directory name
-  std::ostringstream cacheTarget;
-  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-
-  amd::CacheCompilation* compObj = new amd::CacheCompilation(
-      cacheTarget.str(), "_rocm", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-  if (!compObj) {
-    LogError("Unable to create cache compilation object!");
-    return false;
-  }
-
-  cacheCompilation_.reset(compObj);
-#endif
-
-  return true;
 }
 
 hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {
@@ -734,16 +755,6 @@ bool Device::populateOCLDeviceConstants() {
 
   info_.type_ = CL_DEVICE_TYPE_GPU;
 
-  uint32_t hsa_bdf_id = 0;
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_BDFID, &hsa_bdf_id)) {
-    return false;
-  }
-
-  info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-  info_.deviceTopology_.pcie.bus = (hsa_bdf_id & (0xFF << 8)) >> 8;
-  info_.deviceTopology_.pcie.device = (hsa_bdf_id & (0x1F << 3)) >> 3;
-  info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
   info_.extensions_ = getExtensionString();
   info_.nativeVectorWidthDouble_ = info_.preferredVectorWidthDouble_ =
       (settings().doublePrecision_) ? 1 : 0;
