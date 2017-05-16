@@ -38,6 +38,11 @@ Program::~Program() {
 }
 
 const Symbol* Program::findSymbol(const char* kernelName) const {
+  // avoid seg. fault if the program has not built yet
+  if (symbolTable_ == NULL) {
+    return NULL;
+  }
+
   symbols_t::const_iterator it = symbolTable_->find(kernelName);
   return (it == symbolTable_->end()) ? NULL : &it->second;
 }
