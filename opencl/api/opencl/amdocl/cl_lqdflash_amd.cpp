@@ -5,22 +5,19 @@
 #include "cl_common.hpp"
 #include <CL/cl_ext.h>
 
+#include <locale>
+#include <codecvt>
 #include "platform/object.hpp"
 
 #include "cl_lqdflash_amd.h"
 
-#if defined __linux__
-typedef wchar_t char_t;
-#endif  // __linux__
-
-#if !defined(BUILD_HSA_TARGET) && defined(_WIN32)
+#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE)) || defined(_WIN32)
 #define WITH_LIQUID_FLASH 1
 #endif  // _WIN32
 
 #if defined(WITH_LIQUID_FLASH)
 #include "lf.h"
 #endif  // WITH_LIQUID_FLASH
-
 
 namespace amd {
 
@@ -29,7 +26,7 @@ LiquidFlashFile::~LiquidFlashFile() { close(); }
 bool LiquidFlashFile::open() {
 #if defined WITH_LIQUID_FLASH
   lf_status err;
-  lf_file_flags flags;
+  lf_file_flags flags = 0;
 
   switch (flags_) {
     case CL_FILE_READ_ONLY_AMD:
@@ -42,8 +39,16 @@ bool LiquidFlashFile::open() {
       flags = LF_READ | LF_WRITE;
       break;
   }
+#ifdef ATI_OS_LINUX
+  assert(sizeof(wchar_t) != sizeof(lf_char));
+  std::string name_char;
+  std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
+  name_char = cv.to_bytes(name_);
+  handle_ = lfOpenFile(name_char.c_str(), flags, &err);
+#else
+  handle_ = lfOpenFile(name_.c_str(), flags, &err);
+#endif
 
-  handle_ = lfOpenFile(name_, flags, &err);
   if (err != lf_success) {
     return false;
   }
