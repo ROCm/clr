@@ -190,6 +190,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
   virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
   virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
+  virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
   void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) {}
   void submitThreadTrace(amd::ThreadTraceCommand& vcmd) {}

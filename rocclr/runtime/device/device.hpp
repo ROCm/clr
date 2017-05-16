@@ -157,7 +157,7 @@ static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_khr_mipmap_image ",
                                             "cl_khr_mipmap_image_writes ",
                                             "",
-                                            (IS_LINUX) ? "" : "cl_amd_liquid_flash ",
+                                            "cl_amd_liquid_flash ",
                                             NULL};
 
 namespace device {
