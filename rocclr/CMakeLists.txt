@@ -8,7 +8,7 @@ endif()
 project(OpenCL-ROCm)
 
 set(LLVM_INCLUDE_TESTS CACHE BOOL OFF)
-set(LLVM_TARGETS_TO_BUILD "AMDGPU" "X86" CACHE STRING "")
+set(LLVM_TARGETS_TO_BUILD "AMDGPU" CACHE STRING "")
 set(LLVM_ENABLE_PROJECTS CACHE STRING "clang")
 set(LLVM_BUILD_GLOBAL_ISEL CACHE BOOL OFF)
 set(CLANG_ENABLE_ARCMT CACHE BOOL OFF)
@@ -32,7 +32,6 @@ include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
 add_subdirectory(compiler/driver)
 
-set(CMAKE_C_COMPILER "${PROJECT_BINARY_DIR}/compiler/llvm/bin/clang")
 set(BUILD_HC_LIB CACHE BOOL OFF)
 set(ROCM_DEVICELIB_INCLUDE_TESTS CACHE BOOL OFF)
 add_subdirectory(library/amdgcn)
@@ -40,8 +39,6 @@ add_subdirectory(library/amdgcn)
 add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
 
 add_subdirectory(tools/bc2h)
-add_dependencies(bc2h clang) # FIXME: remove
-add_dependencies(oclelf clang) # FIXME: remove
 
 add_subdirectory(runtime)
 add_subdirectory(api/opencl/amdocl)

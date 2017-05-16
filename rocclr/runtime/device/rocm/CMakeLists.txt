@@ -56,7 +56,7 @@ foreach(header ${headers})
 
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}.inc
     COMMAND bc2h ${bclib} ${CMAKE_CURRENT_BINARY_DIR}/${target}.inc ${symbol}
-    DEPENDS ${bclib} ${lib_bc}_lib_bc
+    DEPENDS ${bclib} ${lib_bc}_lib
     COMMENT "Generating ${target}.inc"
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_CURRENT_BINARY_DIR}/${target}.inc)
@@ -65,7 +65,6 @@ foreach(header ${headers})
   set_source_files_properties(${CMAKE_CURRENT_BINARY_DIR}/${target}.inc PROPERTIES HEADER_FILE_ONLY TRUE)
 
   string(REGEX REPLACE ".amdgcn.inc$" "" lib_bc ${header})
-  #add_dependencies(${target}.inc ${lib_bc}_lib_bc)
 endforeach()
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc "// Automatically generated file; DO NOT EDIT.\n")
