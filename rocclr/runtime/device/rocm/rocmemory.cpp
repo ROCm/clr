@@ -20,7 +20,9 @@
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "amdocl/cl_gl_amd.hpp"
+#ifdef WITH_AMDGPU_PRO
 #include "pro/prodriver.hpp"
+#endif
 
 namespace roc {
 
