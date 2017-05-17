@@ -25,7 +25,9 @@
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
+#ifdef WITH_AMDGPU_PRO
 #include "pro/prodriver.hpp"
+#endif
 #include <cstring>
 #include <fstream>
 #include <sstream>
