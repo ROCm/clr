@@ -7,6 +7,13 @@ endif()
 
 project(OpenCL-ROCm)
 
+# Add path for custom modules
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules"
+  )
+
 set(LLVM_INCLUDE_TESTS CACHE BOOL OFF)
 set(LLVM_TARGETS_TO_BUILD "AMDGPU" CACHE STRING "")
 set(LLVM_ENABLE_PROJECTS CACHE STRING "clang")
@@ -40,5 +47,6 @@ add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
 
 add_subdirectory(tools/bc2h)
 
+find_package(ROCR REQUIRED)
 add_subdirectory(runtime)
 add_subdirectory(api/opencl/amdocl)
