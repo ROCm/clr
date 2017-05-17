@@ -380,10 +380,6 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
       }
     }
 
-    //!@todo A wait isn't really necessary. However processMemObjects()
-    // may lose the track of dependencies with a compute transfer(if sdma failed).
-    wait(gpu);
-
     // Should never fail
     assert(result && "Memory synchronization failed!");
   }
