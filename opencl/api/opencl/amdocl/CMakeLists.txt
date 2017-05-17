@@ -1,5 +1,3 @@
-find_library(HSA_LIB hsa-runtime64 HINTS /opt/rocm/lib)
-
 set(CMAKE_CXX_FLAGS "-std=c++11")
 set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic -Wl,--unresolved-symbols=report-all -Wl,--version-script=${CMAKE_SOURCE_DIR}/api/opencl/amdocl/amdocl.map")
 
@@ -46,4 +44,4 @@ add_library(amdocl64 SHARED
   $<TARGET_OBJECTS:oclrocm>
 )
 
-target_link_libraries(amdocl64 opencl_driver oclelf pthread dl ${HSA_LIB})
+target_link_libraries(amdocl64 opencl_driver oclelf pthread dl ${ROCR_LIBRARIES})
