@@ -100,15 +100,23 @@ jurisdiction and venue of these courts.
 #include <errno.h>
 #endif
 
-#define __CL_ENABLE_EXCEPTIONS
-#define __MAX_DEFAULT_VECTOR_SIZE 50
-
 #ifdef _MSC_VER
 #pragma warning(disable: 4290)
 #endif
+
+#if defined(HAVE_CL2_HPP)
+#define CL_HPP_ENABLE_EXCEPTIONS
+#define CL_HPP_MINIMUM_OPENCL_VERSION 120
+#define CL_HPP_TARGET_OPENCL_VERSION 200
+#define CL_HPP_ENABLE_PROGRAM_CONSTRUCTION_FROM_ARRAY_COMPATIBILITY
+#include "CL/cl2.hpp"
+#else // !HAVE_CL2_HPP
+#define __CL_ENABLE_EXCEPTIONS
+#define __MAX_DEFAULT_VECTOR_SIZE 50
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #include "cl.hpp"
+#endif // !HAVE_CL2_HPP
 
 bool verbose = false;
 
