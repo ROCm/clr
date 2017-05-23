@@ -26,6 +26,12 @@
 #include <libgen.h>
 #endif  // defined(ATI_OS_LINUX)
 
+#define QUOTE(s) #s
+#define STRING(s) QUOTE(s)
+#ifndef AMDGCN_TRIPLE
+#define AMDGCN_TRIPLE amdgcn-amd-amdhsa-opencl
+#endif
+
 #if defined(WITH_LIGHTNING_COMPILER)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 #endif  // defined(WITH_LIGHTNING_COMPILER)
@@ -158,7 +164,7 @@ bool HSAILProgram::compileImpl_LC(const std::string& sourceCode,
     std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
     if (f.is_open()) {
       f << "/* Compiler options:\n"
-           "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl "
+           "-c -emit-llvm -target " STRING(AMDGCN_TRIPLE) " -x cl "
         << driverOptions << " -include opencl-c.h "
         << "\n*/\n\n"
         << sourceCode;
