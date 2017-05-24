@@ -39,6 +39,7 @@ include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
 add_subdirectory(compiler/driver)
 
+set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-opencl")
 set(BUILD_HC_LIB CACHE BOOL OFF)
 set(ROCM_DEVICELIB_INCLUDE_TESTS CACHE BOOL OFF)
 add_subdirectory(library/amdgcn)
