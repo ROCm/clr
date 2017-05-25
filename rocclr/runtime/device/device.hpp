@@ -160,6 +160,8 @@ static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_amd_liquid_flash ",
                                             NULL};
 
+static constexpr int AmdVendor = 0x1002;
+
 namespace device {
 class ClBinary;
 class BlitManager;
