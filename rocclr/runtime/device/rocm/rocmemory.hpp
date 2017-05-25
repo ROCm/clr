@@ -95,8 +95,7 @@ class Memory : public device::Memory {
   virtual void destroy() = 0;
 
   // Place interop object into HSA's flat address space
-  bool createInteropBuffer(GLenum targetType, int miplevel, size_t* metadata_size,
-                           const hsa_amd_image_descriptor_t** metadata);
+  bool createInteropBuffer(GLenum targetType, int miplevel);
 
   void destroyInteropBuffer();
 
@@ -108,6 +107,8 @@ class Memory : public device::Memory {
 
   // Track if this memory is interop, lock, gart, or normal.
   MEMORY_KIND kind_;
+
+  hsa_amd_image_descriptor_t* amdImageDesc_;
 
  private:
   // Disable copy constructor
@@ -185,7 +186,6 @@ class Image : public roc::Memory {
   hsa_access_permission_t permission_;
   hsa_ext_image_data_info_t deviceImageInfo_;
   hsa_ext_image_t hsaImageObject_;
-  hsa_amd_image_descriptor_t* amdImageDesc_;
 
   void* originalDeviceMemory_;
 };

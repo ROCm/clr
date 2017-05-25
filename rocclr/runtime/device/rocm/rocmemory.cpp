@@ -32,6 +32,7 @@ Memory::Memory(const roc::Device& dev, amd::Memory& owner)
       dev_(dev),
       deviceMemory_(nullptr),
       kind_(MEMORY_KIND_NORMAL),
+      amdImageDesc_(nullptr),
       pinnedMemory_(nullptr) {}
 
 Memory::Memory(const roc::Device& dev, size_t size)
@@ -39,6 +40,7 @@ Memory::Memory(const roc::Device& dev, size_t size)
       dev_(dev),
       deviceMemory_(nullptr),
       kind_(MEMORY_KIND_NORMAL),
+      amdImageDesc_(nullptr),
       pinnedMemory_(nullptr) {}
 
 Memory::~Memory() {
@@ -169,8 +171,7 @@ void Memory::cpuUnmap(device::VirtualDevice& vDev) {
 }
 
 // Setup an interop buffer (dmabuf handle) as an OpenCL buffer
-bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metadata_size,
-                                 const hsa_amd_image_descriptor_t** metadata) {
+bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 #if defined(_WIN32)
   return false;
 #else
@@ -189,21 +190,40 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel, size_t* metada
   else
     in.access = MESA_GLINTEROP_ACCESS_READ_WRITE;
 
+  hsa_agent_t agent = dev().getBackendDevice();
+  uint32_t id;
+  hsa_agent_get_info(agent, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_CHIP_ID), &id);
+
+  static constexpr int MaxMetadataSizeDwords = 64;
+  static constexpr int MaxMetadataSizeBytes = MaxMetadataSizeDwords * sizeof(int);
+  amdImageDesc_ = reinterpret_cast<hsa_amd_image_descriptor_t*>(new int[MaxMetadataSizeDwords + 2]);
+  if (amdImageDesc_ == nullptr) {
+    return false;
+  }
+  amdImageDesc_->version = 1;
+  amdImageDesc_->deviceID = AmdVendor << 16 | id;
+
   in.target = targetType;
   in.obj = owner()->getInteropObj()->asGLObject()->getGLName();
   in.miplevel = miplevel;
-  in.out_driver_data_size = 0;
-  in.out_driver_data = nullptr;
+  in.out_driver_data_size = MaxMetadataSizeBytes;
+  in.out_driver_data = &amdImageDesc_->data[0];
 
   if (!dev().mesa().Export(in, out)) return false;
 
   size_t size;
-  hsa_agent_t agent = dev().getBackendDevice();
+  size_t metadata_size = 0;
+  void* metadata;
   hsa_status_t status = hsa_amd_interop_map_buffer(
-      1, &agent, out.dmabuf_fd, 0, &size, &deviceMemory_, metadata_size, (const void**)metadata);
+      1, &agent, out.dmabuf_fd, 0, &size, &deviceMemory_, &metadata_size, (const void**)&metadata);
   close(out.dmabuf_fd);
 
   if (status != HSA_STATUS_SUCCESS) return false;
+
+  // if map_buffer wrote anything in metadata, copy it to amdImageDesc_
+  if (metadata_size != 0) {
+    memcpy(amdImageDesc_, metadata, metadata_size);
+  }
 
   kind_ = MEMORY_KIND_INTEROP;
   assert(deviceMemory_ != nullptr && "Interop map failed to produce a pointer!");
@@ -585,7 +605,7 @@ bool Buffer::create() {
   }
 
   // Interop buffer
-  if (owner()->isInterop()) return createInteropBuffer(GL_ARRAY_BUFFER, 0, nullptr, nullptr);
+  if (owner()->isInterop()) return createInteropBuffer(GL_ARRAY_BUFFER, 0);
 
   if (nullptr != owner()->parent()) {
     amd::Memory& parent = *owner()->parent();
@@ -841,27 +861,15 @@ bool Image::createInteropImage() {
   assert(obj->getCLGLObjectType() != CL_GL_OBJECT_BUFFER &&
          "Non-image OpenGL object used with interop image API.");
 
-  const hsa_amd_image_descriptor_t* meta;
-  size_t size = 0;
-
   GLenum glTarget = obj->getGLTarget();
   if (glTarget == GL_TEXTURE_CUBE_MAP) {
     glTarget = obj->getCubemapFace();
   }
-  if (!createInteropBuffer(glTarget, obj->getGLMipLevel(), &size, &meta)) {
+
+  if (!createInteropBuffer(glTarget, obj->getGLMipLevel())) {
     assert(false && "Failed to map image buffer.");
     return false;
   }
-  MAKE_SCOPE_GUARD(BufferGuard, [&]() { destroyInteropBuffer(); });
-
-  amdImageDesc_ = (hsa_amd_image_descriptor_t*)malloc(size);
-  if (amdImageDesc_ == nullptr) return false;
-  MAKE_SCOPE_GUARD(DescGuard, [&]() {
-    free(amdImageDesc_);
-    amdImageDesc_ = nullptr;
-  });
-
-  memcpy(amdImageDesc_, meta, size);
 
   image_metadata desc;
   if (!desc.create(amdImageDesc_)) return false;
@@ -877,8 +885,6 @@ bool Image::createInteropImage() {
                            originalDeviceMemory_, permission_, &hsaImageObject_);
   if (err != HSA_STATUS_SUCCESS) return false;
 
-  BufferGuard.Dismiss();
-  DescGuard.Dismiss();
   return true;
 }
 
@@ -1073,9 +1079,10 @@ void Image::destroy() {
     return;
   }
 
+  delete [] amdImageDesc_;
+  amdImageDesc_ = nullptr;
+
   if (kind_ == MEMORY_KIND_INTEROP) {
-    free(amdImageDesc_);
-    amdImageDesc_ = nullptr;
     destroyInteropBuffer();
     return;
   }
