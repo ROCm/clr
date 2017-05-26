@@ -95,7 +95,7 @@ class VirtualGPU : public device::VirtualDevice {
     bool waifForFence(uint cbId, bool ibReuse = false) const {
       Pal::Result result = Pal::Result::Success;
       uint64_t start = amd::Os::timeNanos();
-      while (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus())) {
+      while (ibReuse || (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus()))) {
         if (result == Pal::Result::ErrorFenceNeverSubmitted) {
           result = Pal::Result::Success;
           break;
