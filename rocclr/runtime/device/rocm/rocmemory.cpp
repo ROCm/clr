@@ -639,7 +639,7 @@ bool Buffer::create() {
 #ifdef WITH_AMDGPU_PRO
   if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {
     void* host_ptr = nullptr;
-    deviceMemory_ = dev().iPro().AllocDmaBuffer(dev().getGpuAgents()[0], size(), &host_ptr);
+    deviceMemory_ = dev().iPro().AllocDmaBuffer(dev().getBackendDevice(), size(), &host_ptr);
     if (deviceMemory_ == nullptr) {
       return false;
     }
