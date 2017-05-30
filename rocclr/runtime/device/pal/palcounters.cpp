@@ -358,33 +358,29 @@ static const std::array<std::pair<int, int>, 97> viBlockIdOrcaToPal = {{
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
 // of them
 // as compute may not use all of them.
-static const std::array<std::pair<int, int>, 104> gfx9BlockIdPal = {{
+static const std::array<std::pair<int, int>, 97> gfx9BlockIdPal = {{
     {0x0E, 0},     // CB0
     {0x0E, 1},     // CB1
     {0x0E, 2},     // CB2
     {0x0E, 3},     // CB3
-    {0x00, 0},     // CPF0
-    {0x00, 1},     // CPF1
+    {0x00, 0},     // CPF
     {0x0D, 0},     // DB0
     {0x0D, 1},     // DB1
     {0x0D, 2},     // DB2
     {0x0D, 3},     // DB3
-    {0x11, 0},     // GRBM0
-    {0x11, 1},     // GRBM1
-    {0x12, 0},     // GRBMSE0
+    {0x11, 0},     // GRBM
+    {0x12, 0},     // GRBMSE
     {0x03, 0},     // PA_SU
     {0x03, 0},     // PA_SC
     {0x05, 0},     // SPI
-    {0x06, 0},     // SQ0
-    {0x06, 1},     // SQ1
+    {0x06, 0},     // SQ
     {0x06, 0},     // SQ_ES
     {0x06, 0},     // SQ_GS
     {0x06, 0},     // SQ_VS
     {0x06, 0},     // SQ_PS
     {0x06, 0},     // SQ_LS
     {0x06, 0},     // SQ_HS
-    {0x06, 0},     // SQ_CS0
-    {0x06, 1},     // SQ_CS1
+    {0x06, 0},     // SQ_CS
     {0x07, 0},     // SX
     {0x08, 0},     // TA0
     {0x08, 1},     // TA1
@@ -452,17 +448,14 @@ static const std::array<std::pair<int, int>, 104> gfx9BlockIdPal = {{
     {0x0A, 0x0d},  // TCP13
     {0x0A, 0x0e},  // TCP14
     {0x0A, 0x0f},  // TCP15
-    {0x0F, 0},     // GDS0
-    {0x0F, 1},     // GDS1
+    {0x0F, 0},     // GDS
     {0x02, 0},     // VGT
     {0x01, 0},     // IA
     {0x15, 0},     // MC
     {0x10, 0},     // SRBM
     {0x18, 0},     // WD
-    {0x16, 0},     // CPG0
-    {0x16, 1},     // CPG1
-    {0x17, 0},     // CPC0
-    {0x17, 1},     // CPC1
+    {0x16, 0},     // CPG
+    {0x17, 0},     // CPC
 }};
 
 void PerfCounter::convertInfo() {
