@@ -759,12 +759,13 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
+  const uint firstQueue = (dev().numComputeEngines() > 2) ? 1 : 0;
+  uint idx = index() % (dev().numComputeEngines() - firstQueue);
+
   if (dev().numComputeEngines()) {
     //! @todo There is a hang with a mix of user and non user queues.
     //! Currently there is no simple way to detect which queue is what.
     //! Disable first for now.
-    const uint firstQueue = (dev().numComputeEngines() > 2) ? 1 : 0;
-    uint idx = index() % (dev().numComputeEngines() - firstQueue);
 
     // hwRing_ should be set 0 if forced to have single scratch buffer
     hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
@@ -776,7 +777,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     }
 
     // Check if device has SDMA engines
-    if (dev().numDMAEngines() != 0) {
+    if (dev().numDMAEngines() != 0 && !PAL_DISABLE_SDMA) {
       uint sdma;
       // If only 1 DMA engine is available then use that one
       if ((dev().numDMAEngines() < 2) || ((idx & 0x1) && !dev().settings().svmFineGrainSystem_)) {
@@ -792,7 +793,11 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
         return false;
       }
     } else {
-      Unimplemented();
+        queues_[SdmaEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute,
+            idx, cmdAllocator_, rtCUs, amd::CommandQueue::Priority::Normal);
+        if (nullptr == queues_[SdmaEngine]) {
+            return false;
+        }
     }
   } else {
     Unimplemented();
