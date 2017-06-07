@@ -17,7 +17,7 @@
 #include "hsa.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
 
 typedef llvm::AMDGPU::CodeObject::Kernel::Metadata KernelMD;
 typedef llvm::AMDGPU::CodeObject::Kernel::Arg::Metadata KernelArgMD;

@@ -20,7 +20,7 @@
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
