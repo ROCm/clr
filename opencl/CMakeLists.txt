@@ -52,11 +52,11 @@ add_subdirectory(tools/bc2h)
 find_package(ROCR REQUIRED)
 add_subdirectory(runtime)
 
-#set(OPENCL_INCLUDE_DIRS
-#  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers
-#  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.0)
+set(OPENCL_INCLUDE_DIRS
+  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers
+  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.0)
 
 add_subdirectory(api/opencl/amdocl)
-#add_subdirectory(api/opencl/khronos/icd)
+add_subdirectory(api/opencl/khronos/icd)
 
-#add_subdirectory(tools/clinfo)
+add_subdirectory(tools/clinfo)

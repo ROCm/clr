@@ -6,6 +6,6 @@ include_directories(${OPENCL_INCLUDE_DIRS})
 
 add_definitions(-DHAVE_CL2_HPP)
 
-add_executable(clinfo clinfo.cpp) 
+add_executable(clinfo clinfo.cpp)
 
 target_link_libraries(clinfo OpenCL)
