@@ -368,12 +368,6 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
 }
 
 bool Device::init() {
-#if defined(__linux__)
-  if (amd::Os::getEnvironment("HSA_ENABLE_SDMA").empty()) {
-    ::setenv("HSA_ENABLE_SDMA", "0", false);
-  }
-#endif  // defined (__linux__)
-
   LogInfo("Initializing HSA stack.");
 
   // Initialize the compiler
