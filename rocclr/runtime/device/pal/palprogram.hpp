@@ -8,7 +8,7 @@
 #include "amd_hsa_loader.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
 
 typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
 #endif  // defined(WITH_LIGHTNING_COMPILER)

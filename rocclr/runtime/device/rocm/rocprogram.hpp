@@ -17,7 +17,7 @@
 #include "rocdevice.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
 #include "driver/AmdCompiler.h"
 
 typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
