@@ -74,6 +74,10 @@ Context::~Context() {
   }
 
   std::for_each(devices_.begin(), devices_.end(), std::mem_fun(&Device::release));
+
+#if defined WITH_LIQUID_FLASH
+  lfTerminate();
+#endif // WITH_LIQUID_FLASH
 }
 
 int Context::checkProperties(const cl_context_properties* properties, Context::Info* info) {
@@ -253,7 +257,9 @@ int Context::create(const intptr_t* properties) {
       }
     }
   }
-
+#if defined WITH_LIQUID_FLASH
+  lfInit();
+#endif // WITH_LIQUID_FLASH
   return result;
 }
 
