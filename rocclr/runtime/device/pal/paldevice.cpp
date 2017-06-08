@@ -656,7 +656,7 @@ bool Device::create(Pal::IDevice* device) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
   } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
     if (properties().gpuType == Pal::GpuType::Integrated ||
-        properties_.gpuMemoryProperties.flags.migrationSupport) {
+        properties_.gpuMemoryProperties.flags.pageMigrationEnabled) {
       hwInfo_ = &Gfx901DeviceInfo;
     } else {
       hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel_)];
