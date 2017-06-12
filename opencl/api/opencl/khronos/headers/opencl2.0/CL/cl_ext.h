@@ -513,6 +513,26 @@ typedef CL_API_ENTRY cl_int
                                             const cl_event * /*event_wait_list*/,
                                             cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
+/*************************
+* cl_amd_copy_buffer_p2p *
+**************************/
+#define CL_DEVICE_NUM_P2P_DEVICES_AMD 0x4088
+#define CL_DEVICE_P2P_DEVICES_AMD 0x4089
+
+#define cl_amd_copy_buffer_p2p 1
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueCopyBufferP2PAMD_fn)(cl_command_queue /*command_queue*/,
+                                             cl_mem /*src_buffer*/,
+                                             cl_mem /*dst_buffer*/,
+                                             size_t /*src_offset*/,
+                                             size_t /*dst_offset*/,
+                                             size_t /*cb*/,
+                                             cl_uint /*num_events_in_wait_list*/,
+                                             const cl_event* /*event_wait_list*/,
+                                             cl_event* /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+
 #endif /* CL_VERSION_1_2 */
 
 

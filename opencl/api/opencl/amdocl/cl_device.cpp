@@ -557,6 +557,24 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
 #define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD 0x404E
         CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD, numRTQueues_);
         CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD, numRTCUs_);
+      case CL_DEVICE_NUM_P2P_DEVICES_AMD: {
+        cl_uint num_p2p_devices = as_amd(device)->p2pDevices_.size();
+        return amd::clGetInfo(num_p2p_devices, param_value_size, param_value, param_value_size_ret);
+      }
+      case CL_DEVICE_P2P_DEVICES_AMD: {
+        uint valueSize = as_amd(device)->p2pDevices_.size() * sizeof(cl_device_id);
+        if (param_value != NULL) {
+          if (param_value_size < valueSize) {
+            return CL_INVALID_VALUE;
+          }
+        }
+        memcpy(param_value, as_amd(device)->p2pDevices_.data(), valueSize);
+        *not_null(param_value_size_ret) = valueSize;
+        if (param_value != NULL && param_value_size > valueSize) {
+          ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
+        }
+        return CL_SUCCESS;
+      }
       default:
         break;
     }
