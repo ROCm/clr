@@ -40,6 +40,7 @@ class ReadMemoryCommand;
 class WriteMemoryCommand;
 class FillMemoryCommand;
 class CopyMemoryCommand;
+class CopyMemoryP2PCommand;
 class MapMemoryCommand;
 class UnmapMemoryCommand;
 class MigrateMemObjectsCommand;
@@ -117,6 +118,7 @@ enum OclExtensions {
   ClKhrMipMapImageWrites,
   ClKhrIlProgram,
   ClAMDLiquidFlash,
+  ClAmdCopyBufferP2P,
   ClExtTotal
 };
 
@@ -158,6 +160,7 @@ static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_khr_mipmap_image_writes ",
                                             "",
                                             "cl_amd_liquid_flash ",
+                                            "cl_amd_copy_buffer_p2p ",
                                             NULL};
 
 static constexpr int AmdVendor = 0x1002;
@@ -770,11 +773,14 @@ class Memory : public amd::HeapObject {
     }
   }
 
-  //! Returns state of memory direct access flag
+  //! Returns the state of memory direct access flag
   bool isHostMemDirectAccess() const { return (flags_ & HostMemoryDirectAccess) ? true : false; }
 
-  //! Returns state of host memory registration flag
+  //! Returns the state of host memory registration flag
   bool isHostMemoryRegistered() const { return (flags_ & HostMemoryRegistered) ? true : false; }
+
+  //! Returns the state of CPU uncached access
+  bool isCpuUncached() const { return (flags_ & MemoryCpuUncached) ? true : false; }
 
  protected:
   enum Flags {
@@ -783,6 +789,7 @@ class Memory : public amd::HeapObject {
     PinnedMemoryAlloced = 0x00000004,     //!< An extra pinned resource was allocated
     SubMemoryObject = 0x00000008,         //!< Memory is sub-memory
     HostMemoryRegistered = 0x00000010,    //!< Host memory was registered
+    MemoryCpuUncached = 0x00000020        //!< Memory is uncached on CPU access(slow read)
   };
   uint flags_;  //!< Memory object flags
 
@@ -1384,6 +1391,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitReadMemory(amd::ReadMemoryCommand& cmd) = 0;
   virtual void submitWriteMemory(amd::WriteMemoryCommand& cmd) = 0;
   virtual void submitCopyMemory(amd::CopyMemoryCommand& cmd) = 0;
+  virtual void submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) = 0;
   virtual void submitMapMemory(amd::MapMemoryCommand& cmd) = 0;
   virtual void submitUnmapMemory(amd::UnmapMemoryCommand& cmd) = 0;
   virtual void submitKernel(amd::NDRangeKernelCommand& command) = 0;
@@ -1691,6 +1699,11 @@ class Device : public RuntimeObject {
 
   //! Finds GPU memory from virtual address
   device::Memory* findMemoryFromVA(const void* ptr, size_t* offset) const;
+
+  static std::vector<Device*>& devices() { return *devices_; }
+
+  // P2P devices that are accessible from the current device
+  std::vector<cl_device_id> p2pDevices_;
 
  protected:
   //! Enable the specified extension

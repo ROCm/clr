@@ -1024,6 +1024,88 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
+void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
+  // Wait on a kernel if one is outstanding
+  releaseGpuMemoryFence();
+
+  profilingBegin(cmd);
+
+  Memory* srcDevMem = static_cast<roc::Memory*>(
+    cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
+  Memory* dstDevMem = static_cast<roc::Memory*>(
+    cmd.destination().getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+
+  bool p2pAllowed = false;
+  // Loop through all available P2P devices for the destination buffer
+  for (auto agent: dstDevMem->dev().p2pAgents()) {
+    // Find the device, which is matching the current
+    if (agent.handle == dev().getBackendDevice().handle) {
+      p2pAllowed = true;
+      break;
+    }
+  }
+  // Synchronize source and destination memory
+  device::Memory::SyncFlags syncFlags;
+  syncFlags.skipEntire_ = cmd.isEntireMemory();
+  amd::Coord3D size = cmd.size();
+
+  bool result = false;
+  switch (cmd.type()) {
+    case CL_COMMAND_COPY_BUFFER: {
+      amd::Coord3D srcOrigin(cmd.srcOrigin()[0]);
+      amd::Coord3D dstOrigin(cmd.dstOrigin()[0]);
+
+      if (p2pAllowed) {
+          result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin,
+                                        size, cmd.isEntireMemory());
+      }
+      else {
+          size_t copy_size = Device::kP2PStagingSize;
+          size_t left_size = size[0];
+          result = true;
+          do {
+            if (left_size <= copy_size) {
+              copy_size = left_size;
+            }
+            left_size -= copy_size;
+            amd::Coord3D stageOffset(0);
+            amd::Coord3D cpSize(copy_size);
+
+            // Perform 2 step transfer with staging buffer
+            // todo: optimization can be done with double buffering if events tracking
+            // will be propagated outside of the device transfers object
+            result &= dev().xferMgr().copyBuffer(*srcDevMem, *(dev().P2PStages()[0]), srcOrigin,
+                                                 stageOffset, cpSize, cmd.isEntireMemory());
+            srcOrigin.c[0] += copy_size;
+            result &= dstDevMem->dev().xferMgr().copyBuffer(*dstDevMem->dev().P2PStages()[0],
+                                                            *dstDevMem, stageOffset, dstOrigin,
+                                                            copy_size, cmd.isEntireMemory());
+            dstOrigin.c[0] += copy_size;
+          } while (left_size > 0);
+      }
+      break;
+    }
+    case CL_COMMAND_COPY_BUFFER_RECT:
+    case CL_COMMAND_COPY_IMAGE:
+    case CL_COMMAND_COPY_IMAGE_TO_BUFFER:
+    case CL_COMMAND_COPY_BUFFER_TO_IMAGE:
+      LogError("Unsupported P2P type!");
+      break;
+    default:
+      ShouldNotReachHere();
+      break;
+  }
+
+  if (!result) {
+    LogError("submitCopyMemoryP2P failed!");
+    cmd.setStatus(CL_OUT_OF_RESOURCES);
+  }
+
+  cmd.destination().signalWrite(&dstDevMem->dev());
+
+  profilingEnd(cmd);
+}
+
 void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
   // No fence is needed since this is a no-op: the
   // command will be completed only after all the

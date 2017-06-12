@@ -558,4 +558,30 @@ bool TransferBufferFileCommand::validateMemory() {
   return true;
 }
 
+bool CopyMemoryP2PCommand::validateMemory() {
+  if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
+    const std::vector<Device*>& devices = memory1_->getContext().devices();
+    if (devices.size() != 1) {
+      LogError("Can't allocate memory object for P2P extension");
+      return false;
+    }
+    device::Memory* mem = memory1_->getDeviceMemory(*devices[0]);
+    if (nullptr == mem) {
+      LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memory1_->getSize());
+      return false;
+    }
+    const std::vector<Device*>& devices2 = memory2_->getContext().devices();
+    if (devices2.size() != 1) {
+      LogError("Can't allocate memory object for P2P extension");
+      return false;
+    }
+    mem = memory2_->getDeviceMemory(*devices2[0]);
+    if (nullptr == mem) {
+      LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memory2_->getSize());
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace amd

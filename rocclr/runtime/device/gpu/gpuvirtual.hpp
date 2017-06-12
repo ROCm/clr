@@ -192,6 +192,7 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   void submitReadMemory(amd::ReadMemoryCommand& vcmd);
   void submitWriteMemory(amd::WriteMemoryCommand& vcmd);
   void submitCopyMemory(amd::CopyMemoryCommand& vcmd);
+  void submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& vcmd) {}
   void submitMapMemory(amd::MapMemoryCommand& vcmd);
   void submitUnmapMemory(amd::UnmapMemoryCommand& vcmd);
   void submitKernel(amd::NDRangeKernelCommand& vcmd);

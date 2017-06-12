@@ -1292,6 +1292,28 @@ class TransferBufferFileCommand : public OneMemoryArgCommand {
   bool validateMemory();
 };
 
+/*! \brief      A P2P copy memory command
+ *
+ *  \details    Used for buffers only. Backends are expected
+ *              to handle any required translation. Buffers are treated
+ *              as 1D structures so origin_[0] and size_[0] are
+ *              equivalent to offset_ and count_ respectively.
+ */
+
+class CopyMemoryP2PCommand : public CopyMemoryCommand {
+ public:
+  CopyMemoryP2PCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
+                    Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
+                    Coord3D size)
+      : CopyMemoryCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory, srcOrigin, dstOrigin, size)
+  {
+  }
+
+  virtual void submit(device::VirtualDevice& device) { device.submitCopyMemoryP2P(*this); }
+
+  bool validateMemory();
+};
+
 /*! @}
  *  @}
  */

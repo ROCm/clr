@@ -49,7 +49,8 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 bool entire) const {
   // Use host copy if memory has direct access
-  if (setup_.disableReadBuffer_ || gpuMem(srcMemory).isHostMemDirectAccess()) {
+  if (setup_.disableReadBuffer_ ||
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire);
   } else {
     size_t srcSize = size[0];
@@ -132,7 +133,8 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
                                     const amd::BufferRect& bufRect, const amd::BufferRect& hostRect,
                                     const amd::Coord3D& size, bool entire) const {
   // Use host copy if memory has direct access
-  if (setup_.disableReadBufferRect_ || gpuMem(srcMemory).isHostMemDirectAccess()) {
+  if (setup_.disableReadBufferRect_ ||
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire);
   } else {
     Memory& xferBuf = dev().xferRead().acquire();
@@ -195,7 +197,7 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire) const {
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || gpuMem(dstMemory).isHostMemDirectAccess()) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess()) {
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
     size_t dstSize = size[0];
@@ -330,8 +332,8 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
                                 const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                 const amd::Coord3D& size, bool entire) const {
   if (setup_.disableCopyBuffer_ ||
-      (gpuMem(srcMemory).isHostMemDirectAccess() && (dev().agent_profile() != HSA_PROFILE_FULL) &&
-       gpuMem(dstMemory).isHostMemDirectAccess())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+      (dev().agent_profile() != HSA_PROFILE_FULL) && dstMemory.isHostMemDirectAccess())) {
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size);
   } else {
     return hsaCopy(gpuMem(srcMemory), gpuMem(dstMemory), srcOrigin, dstOrigin, size);
@@ -344,7 +346,8 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
                                     const amd::BufferRect& srcRect, const amd::BufferRect& dstRect,
                                     const amd::Coord3D& size, bool entire) const {
   if (setup_.disableCopyBufferRect_ ||
-      (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(dstMemory).isHostMemDirectAccess())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+       dstMemory.isHostMemDirectAccess())) {
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire);
   } else {
     return false;
@@ -502,11 +505,20 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     return (status == HSA_STATUS_SUCCESS);
   }
 
-  // Detect the agents for memory allocations
-  const hsa_agent_t srcAgent =
+  hsa_agent_t srcAgent;
+  hsa_agent_t dstAgent;
+
+  if (&srcMemory.dev() == &dstMemory.dev()) {
+    // Detect the agents for memory allocations
+    srcAgent =
       (srcMemory.isHostMemDirectAccess()) ? dev().getCpuAgent() : dev().getBackendDevice();
-  const hsa_agent_t dstAgent =
+    dstAgent =
       (dstMemory.isHostMemDirectAccess()) ? dev().getCpuAgent() : dev().getBackendDevice();
+  }
+  else {
+    srcAgent = srcMemory.dev().getBackendDevice();
+    dstAgent = dstMemory.dev().getBackendDevice();
+  }
 
   const hsa_signal_value_t kInitVal = 1;
   hsa_signal_store_relaxed(completion_signal_, kInitVal);
@@ -797,7 +809,7 @@ bool KernelBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Mem
     return result;
   }
   // Check if buffer is in system memory with direct access
-  else if (gpuMem(srcMemory).isHostMemDirectAccess() &&
+  else if (srcMemory.isHostMemDirectAccess() &&
            (((rowPitch == 0) && (slicePitch == 0)) ||
             ((rowPitch == imgRowPitch) && ((slicePitch == 0) || (slicePitch == imgSlicePitch))))) {
     // First attempt to do this all with DMA,
@@ -1000,7 +1012,7 @@ bool KernelBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Mem
     return result;
   }
   // Check if buffer is in system memory with direct access
-  else if (gpuMem(dstMemory).isHostMemDirectAccess() &&
+  else if (dstMemory.isHostMemDirectAccess() &&
            (((rowPitch == 0) && (slicePitch == 0)) ||
             ((rowPitch == imgRowPitch) && ((slicePitch == 0) || (slicePitch == imgSlicePitch))))) {
     // First attempt to do this all with DMA,
@@ -1323,9 +1335,8 @@ bool KernelBlitManager::readImage(device::Memory& srcMemory, void* dstHost,
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableReadImage_ || (gpuMem(srcMemory).isHostMemDirectAccess())) {
-    result =
-        HostBlitManager::readImage(srcMemory, dstHost, origin, size, rowPitch, slicePitch, entire);
+  if (setup_.disableReadImage_ || (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
+    result = HostBlitManager::readImage(srcMemory, dstHost, origin, size, rowPitch, slicePitch, entire);
     synchronize();
     return result;
   } else {
@@ -1369,9 +1380,8 @@ bool KernelBlitManager::writeImage(const void* srcHost, device::Memory& dstMemor
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteImage_ || gpuMem(dstMemory).isHostMemDirectAccess()) {
-    result =
-        HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch, entire);
+  if (setup_.disableWriteImage_ || dstMemory.isHostMemDirectAccess()) {
+    result = HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch, entire);
     synchronize();
     return result;
   } else {
@@ -1417,10 +1427,9 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   bool rejected = false;
 
   // Fall into the ROC path for rejected transfers
-  if (setup_.disableCopyBufferRect_ || gpuMem(srcMemory).isHostMemDirectAccess() ||
-      gpuMem(dstMemory).isHostMemDirectAccess()) {
-    result =
-        HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire);
+  if (setup_.disableCopyBufferRect_ ||
+      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess()) {
+    result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire);
 
     if (result) {
       synchronize();
@@ -1529,7 +1538,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   // Use host copy if memory has direct access
-  if (setup_.disableReadBuffer_ || (gpuMem(srcMemory).isHostMemDirectAccess())) {
+  if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     result = HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire);
     synchronize();
     return result;
@@ -1576,7 +1585,8 @@ bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableReadBufferRect_ || gpuMem(srcMemory).isHostMemDirectAccess()) {
+  if (setup_.disableReadBufferRect_ ||
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     result = HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire);
     synchronize();
     return result;
@@ -1621,7 +1631,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || gpuMem(dstMemory).isHostMemDirectAccess()) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess()) {
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
     synchronize();
     return result;
@@ -1669,7 +1679,7 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBufferRect_ || gpuMem(dstMemory).isHostMemDirectAccess()) {
+  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess()) {
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
     synchronize();
     return result;
@@ -1717,7 +1727,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   bool result = false;
 
   // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || gpuMem(memory).isHostMemDirectAccess()) {
+  if (setup_.disableFillBuffer_ || memory.isHostMemDirectAccess()) {
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, origin, size, entire);
     synchronize();
     return result;
@@ -1775,9 +1785,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
                                    const amd::Coord3D& sizeIn, bool entire) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-
+  bool p2p = (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev());
   if (setup_.disableHwlCopyBuffer_ ||
-      (!gpuMem(srcMemory).isHostMemDirectAccess() && !gpuMem(dstMemory).isHostMemDirectAccess())) {
+      (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() && !p2p)) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
@@ -1867,7 +1877,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   bool result = false;
 
   // Use host fill if memory has direct access
-  if (setup_.disableFillImage_ || gpuMem(memory).isHostMemDirectAccess()) {
+  if (setup_.disableFillImage_ || memory.isHostMemDirectAccess()) {
     result = HostBlitManager::fillImage(memory, pattern, origin, size, entire);
     synchronize();
     return result;
