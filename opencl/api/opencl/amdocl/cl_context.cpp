@@ -23,6 +23,7 @@
 #include "cl_thread_trace_amd.h"
 #include "cl_debugger_amd.h"
 #include "cl_lqdflash_amd.h"
+#include "cl_p2p_amd.h"
 
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -503,6 +504,9 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadSsgFileAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSsgFileAMD);
+#endif  // cl_amd_liquid_flash
+#if cl_amd_copy_buffer_p2p
+      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueCopyBufferP2PAMD);
 #endif  // cl_amd_liquid_flash
       break;
     case 'G':
