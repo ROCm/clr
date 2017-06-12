@@ -209,6 +209,7 @@ class NullDevice : public amd::Device {
 //! A HSA device ordinal (physical HSA device)
 class Device : public NullDevice {
  public:
+  static constexpr size_t kP2PStagingSize = 1* Mi;
   //! Transfer buffers
   class XferBuffers : public amd::HeapObject {
    public:
@@ -391,16 +392,29 @@ class Device : public NullDevice {
   const IProDevice& iPro() const { return *pro_device_; }
   bool ProEna() const  { return pro_ena_; }
 
+  // P2P agents avaialble for this device
+  const std::vector<hsa_agent_t>& p2pAgents() const { return p2p_agents_; }
+
+  // Lock protect P2P staging operations
+  amd::Monitor* P2PStageOps() const { return p2p_stage_ops_; }
+
+  // Lock protect P2P staging operations
+  const std::vector<Memory*>& P2PStages() const { return p2p_stages_; }
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
   amd::Monitor* mapCacheOps_;            //!< Lock to serialise cache for the map resources
   std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure
 
+  static amd::Monitor* p2p_stage_ops_;   //!< Lock to serialise cache for the P2P resources
+  static std::vector<Memory*> p2p_stages_; //!< Staging resources
+
   bool populateOCLDeviceConstants();
   static bool isHsaInitialized_;
   static hsa_agent_t cpu_agent_;
   static std::vector<hsa_agent_t> gpu_agents_;
+  std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   MesaInterop mesa_;
   hsa_agent_t _bkendDevice;
   hsa_profile_t agent_profile_;

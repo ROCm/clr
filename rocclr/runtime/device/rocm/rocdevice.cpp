@@ -48,6 +48,8 @@ amd::Device::Compiler* NullDevice::compilerHandle_;
 bool roc::Device::isHsaInitialized_ = false;
 hsa_agent_t roc::Device::cpu_agent_ = {0};
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
+amd::Monitor* roc::Device::p2p_stage_ops_ = nullptr;
+std::vector<Memory*> roc::Device::p2p_stages_;
 const bool roc::Device::offlineDevice_ = false;
 const bool roc::NullDevice::offlineDevice_ = true;
 
@@ -145,6 +147,14 @@ Device::~Device() {
   }
   delete mapCache_;
   delete mapCacheOps_;
+
+  delete p2p_stage_ops_;
+  p2p_stage_ops_ = nullptr;
+
+  for (auto buf: p2p_stages_) {
+    delete buf;
+  }
+  p2p_stages_.clear();
 
   // Destroy temporary buffers for read/write
   delete xferRead_;
@@ -500,6 +510,20 @@ bool Device::init() {
     }
   }
 
+  // Loop through all available devices
+  for (auto device1: Device::devices()) {
+	// Find all agents that can have access to the current device
+    for (auto agent: static_cast<Device*>(device1)->p2pAgents()) {
+      // Find cl_device_id associated with the current agent
+      for (auto device2: Device::devices()) {
+        if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
+          // Device2 can have access to device1
+          device2->p2pDevices_.push_back(as_cl(device1));
+        }
+      }
+    }
+  }
+
   return true;
 }
 
@@ -604,6 +628,22 @@ bool Device::create() {
   }
   // Use just 1 entry by default for the map cache
   mapCache_->push_back(nullptr);
+
+  if (p2p_stage_ops_ == nullptr) {
+    p2p_stage_ops_ = new amd::Monitor("P2P Staging Lock", true);
+    if (nullptr == p2p_stage_ops_) {
+      return false;
+    }
+    for (uint i = 0; i < 2; i++) {
+      Memory* buf = new Buffer(*this, kP2PStagingSize);
+      if ((buf != nullptr) && buf->create()) {
+        p2p_stages_.push_back(buf);
+      } else {
+        delete buf;
+        return false;
+      }
+    }
+  }
 
   if (settings().stagedXferSize_ != 0) {
     // Initialize staged write buffers
@@ -775,6 +815,24 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   assert(group_segment_.handle != 0);
+
+  for (auto agent: gpu_agents_) {
+    if (agent.handle != _bkendDevice.handle) {
+      hsa_status_t err;
+      // Can current GPU have access to another GPU memory pool
+      hsa_amd_memory_pool_access_t access;
+      err = hsa_amd_agent_memory_pool_get_info(agent, gpuvm_segment_, HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS, &access);
+      if (err != HSA_STATUS_SUCCESS) {
+        continue;
+      }
+
+      // Find accessible p2p agents - i.e != HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED
+      if (HSA_AMD_MEMORY_POOL_ACCESS_ALLOWED_BY_DEFAULT == access ||
+          HSA_AMD_MEMORY_POOL_ACCESS_DISALLOWED_BY_DEFAULT == access) {
+        p2p_agents_.push_back(agent);
+      }
+    }
+  }
 
   size_t group_segment_size = 0;
   if (HSA_STATUS_SUCCESS != hsa_amd_memory_pool_get_info(group_segment_,
@@ -1305,6 +1363,15 @@ void* Device::deviceLocalAlloc(size_t size) const {
     LogError("Fail assigning local memory to agent");
     memFree(ptr, size);
     return nullptr;
+  }
+
+  if (p2pAgents().size() > 0) {
+    stat = hsa_amd_agents_allow_access(p2pAgents().size(), p2pAgents().data(), nullptr, ptr);
+    if (stat != HSA_STATUS_SUCCESS) {
+      LogError("Allow p2p acces for memory allocation");
+      memFree(ptr, size);
+      return nullptr;
+    }
   }
 
   return ptr;

@@ -158,6 +158,7 @@ class VirtualGPU : public device::VirtualDevice {
   void submitReadMemory(amd::ReadMemoryCommand& cmd);
   void submitWriteMemory(amd::WriteMemoryCommand& cmd);
   void submitCopyMemory(amd::CopyMemoryCommand& cmd);
+  void submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd);
   void submitMapMemory(amd::MapMemoryCommand& cmd);
   void submitUnmapMemory(amd::UnmapMemoryCommand& cmd);
   void submitKernel(amd::NDRangeKernelCommand& cmd);
@@ -181,7 +182,7 @@ class VirtualGPU : public device::VirtualDevice {
   // Added these stub (no-ops) implementation of pure virtual methods,
   // when integrating HSA and OpenCL branches.
   // TODO: After inegration, whoever is working on VirtualGPU should write
-  // actual implemention.
+  // actual implementation.
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 

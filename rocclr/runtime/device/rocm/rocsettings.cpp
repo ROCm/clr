@@ -107,8 +107,8 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   enableExtension(ClAmdFp64);
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClKhrSubGroups);
-
   enableExtension(ClKhrDepthImages);
+  enableExtension(ClAmdCopyBufferP2P);
   supportDepthsRGB_ = true;
 
 #if defined(WITH_LIGHTNING_COMPILER)

@@ -621,6 +621,7 @@ bool Buffer::create() {
     deviceMemory_ = parentBuffer->getDeviceMemory() + offset;
 
     flags_ |= parentBuffer->isHostMemDirectAccess() ? HostMemoryDirectAccess : 0;
+    flags_ |= parentBuffer->isCpuUncached() ? MemoryCpuUncached : 0;
 
     // Explicitly set the host memory location,
     // because the parent location could change after reallocation
@@ -643,7 +644,7 @@ bool Buffer::create() {
     if (deviceMemory_ == nullptr) {
       return false;
     }
-    flags_ |= HostMemoryDirectAccess;
+    flags_ |= HostMemoryDirectAccess | MemoryCpuUncached;
     owner()->setHostMem(host_ptr);
     return true;
   }

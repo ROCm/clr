@@ -35,6 +35,7 @@ class VirtualCPU : public device::VirtualDevice {
   virtual void submitReadMemory(amd::ReadMemoryCommand& command);
   virtual void submitWriteMemory(amd::WriteMemoryCommand& command);
   virtual void submitCopyMemory(amd::CopyMemoryCommand& command);
+  virtual void submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& command) {}
   virtual void submitMapMemory(amd::MapMemoryCommand& command);
   virtual void submitUnmapMemory(amd::UnmapMemoryCommand& command);
   virtual void submitKernel(amd::NDRangeKernelCommand& command);
