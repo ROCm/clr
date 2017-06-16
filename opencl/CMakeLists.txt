@@ -47,8 +47,6 @@ add_subdirectory(library/amdgcn)
 
 add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
 
-add_subdirectory(tools/bc2h)
-
 find_package(ROCR REQUIRED)
 add_subdirectory(runtime)
 
