@@ -1,8 +1,11 @@
+include(bc2h)
+
 set(INC_SUFFIX "amdgcn.inc")
 
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${ROCM_OCL_INCLUDES})
 
 add_library(oclrocm OBJECT
   rocprintf.cpp
@@ -30,7 +33,7 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   set(symbol "${lib_file_name}_amdgcn")
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${header}
     COMMAND bc2h ${bclib} ${CMAKE_CURRENT_BINARY_DIR}/${header} ${symbol}
-    DEPENDS ${AMDGCN_LIB_TARGET}
+    DEPENDS bc2h ${AMDGCN_LIB_TARGET}
     COMMENT "Generating ${header}"
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_CURRENT_BINARY_DIR}/${target}.inc)
