@@ -22,6 +22,7 @@ extern "C"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dlfcn.h>
 
 constexpr int32_t InvalidFd = -1; // value representing a invalid file descriptor for Linux
 

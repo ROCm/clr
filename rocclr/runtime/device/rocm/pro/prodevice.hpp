@@ -6,6 +6,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
+#include "profuncs.hpp"
 #include "prodriver.hpp"
 #include "thread/monitor.hpp"
 #include <map>
@@ -19,6 +20,8 @@ namespace roc {
 
 class ProDevice : public IProDevice {
 public:
+  static bool DrmInit();
+
   ProDevice()
     : file_desc_(0)
     , major_ver_(0)
@@ -34,6 +37,11 @@ public:
   virtual void FreeDmaBuffer(void* ptr) const override;
 
 private:
+  static void*          lib_drm_handle_;
+  static bool           initialized_;
+  static drm::Funcs     funcs_;
+  const drm::Funcs& Funcs() const { return funcs_; }
+
   int32_t               file_desc_;   //!< File descriptor for the device
   uint32_t              major_ver_;   //!< Major driver version
   uint32_t              minor_ver_;   //!< Minor driver version
