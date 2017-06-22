@@ -18,8 +18,7 @@
 #include "CL/cl_dx9_media_sharing.h"
 #endif  //_WIN32
 
-#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
-      defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
+#if defined(_WIN32)
 #include "lf.h"
 #endif
 
@@ -80,8 +79,7 @@ Context::~Context() {
 
   std::for_each(devices_.begin(), devices_.end(), std::mem_fun(&Device::release));
 
-#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
-      defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
+#if defined(_WIN32)
   lfTerminate();
 #endif
 }
@@ -263,8 +261,7 @@ int Context::create(const intptr_t* properties) {
       }
     }
   }
-#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
-      defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
+#if defined(_WIN32)
   lfInit();
 #endif
   return result;
