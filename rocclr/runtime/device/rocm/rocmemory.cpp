@@ -177,8 +177,8 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 #else
   assert(owner()->isInterop() && "Object is not an interop object.");
 
-  mesa_glinterop_export_in in;
-  mesa_glinterop_export_out out;
+  mesa_glinterop_export_in in = {0};
+  mesa_glinterop_export_out out = {0};
 
   in.size = sizeof(mesa_glinterop_export_in);
   out.size = sizeof(mesa_glinterop_export_out);
@@ -217,6 +217,8 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
   hsa_status_t status = hsa_amd_interop_map_buffer(
       1, &agent, out.dmabuf_fd, 0, &size, &deviceMemory_, &metadata_size, (const void**)&metadata);
   close(out.dmabuf_fd);
+
+  deviceMemory_ = static_cast<char*>(deviceMemory_) + out.buf_offset;
 
   if (status != HSA_STATUS_SUCCESS) return false;
 
