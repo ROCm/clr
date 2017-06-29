@@ -672,8 +672,8 @@ bool Kernel::init_LC() {
   memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
   workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
-  workGroupInfo_.availableSGPRs_ = 0;
-  workGroupInfo_.availableVGPRs_ = 0;
+  workGroupInfo_.availableSGPRs_ = 104;
+  workGroupInfo_.availableVGPRs_ = 256;
 
   if (!kernelMD->mAttrs.mReqdWorkGroupSize.empty()) {
     const auto& requiredWorkgroupSize = kernelMD->mAttrs.mReqdWorkGroupSize;
@@ -760,8 +760,8 @@ bool Kernel::init() {
   memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
   workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
-  workGroupInfo_.availableSGPRs_ = 0;
-  workGroupInfo_.availableVGPRs_ = 0;
+  workGroupInfo_.availableSGPRs_ = 104;
+  workGroupInfo_.availableVGPRs_ = 256;
   size_t sizeOfWorkGroupSize;
   errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
