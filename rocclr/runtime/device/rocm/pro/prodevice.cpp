@@ -56,33 +56,43 @@ bool ProDevice::DrmInit()
       funcs_.DrmGetDevices = reinterpret_cast<drm::DrmGetDevices>(dlsym(
                              lib_drm_handle_,
                              "drmGetDevices"));
+      if (funcs_.DrmGetDevices == nullptr) return false;
       funcs_.AmdgpuDeviceInitialize = reinterpret_cast<drm::AmdgpuDeviceInitialize>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_device_initialize"));
+      if (funcs_.AmdgpuDeviceInitialize == nullptr) return false;
       funcs_.AmdgpuDeviceDeinitialize = reinterpret_cast<drm::AmdgpuDeviceDeinitialize>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_device_deinitialize"));
+      if (funcs_.AmdgpuDeviceDeinitialize == nullptr) return false;
       funcs_.AmdgpuQueryGpuInfo = reinterpret_cast<drm::AmdgpuQueryGpuInfo>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_query_gpu_info"));
+      if (funcs_.AmdgpuQueryGpuInfo == nullptr) return false;
       funcs_.AmdgpuQueryInfo = reinterpret_cast<drm::AmdgpuQueryInfo>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_query_info"));
+      if (funcs_.AmdgpuQueryInfo == nullptr) return false;
       funcs_.AmdgpuBoAlloc = reinterpret_cast<drm::AmdgpuBoAlloc>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_bo_alloc"));
+      if (funcs_.AmdgpuBoAlloc == nullptr) return false;
       funcs_.AmdgpuBoExport = reinterpret_cast<drm::AmdgpuBoExport>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_bo_export"));
+      if (funcs_.AmdgpuBoExport == nullptr) return false;
       funcs_.AmdgpuBoFree = reinterpret_cast<drm::AmdgpuBoFree>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_bo_free"));
+      if (funcs_.AmdgpuBoFree == nullptr) return false;
       funcs_.AmdgpuBoCpuMap = reinterpret_cast<drm::AmdgpuBoCpuMap>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_bo_cpu_map"));
+      if (funcs_.AmdgpuBoCpuMap == nullptr) return false;
       funcs_.AmdgpuBoCpuUnmap = reinterpret_cast<drm::AmdgpuBoCpuUnmap>(dlsym(
                              lib_drm_handle_,
                              "amdgpu_bo_cpu_unmap"));
+      if (funcs_.AmdgpuBoCpuUnmap == nullptr) return false;
     }
   }
 
