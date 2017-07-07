@@ -1026,10 +1026,7 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
   }
 
   if (!buildLog_.empty()) {
-    // LogError() has the size limit for the message
-    if (buildLog_.size() < 768) {
-      LogError(buildLog_.c_str());
-    }
+    LogError(buildLog_.c_str());
   }
 
   return buildError();
