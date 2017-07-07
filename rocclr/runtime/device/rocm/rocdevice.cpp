@@ -512,15 +512,17 @@ bool Device::init() {
     }
   }
 
-  // Loop through all available devices
-  for (auto device1: Device::devices()) {
-	// Find all agents that can have access to the current device
-    for (auto agent: static_cast<Device*>(device1)->p2pAgents()) {
-      // Find cl_device_id associated with the current agent
-      for (auto device2: Device::devices()) {
-        if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
-          // Device2 can have access to device1
-          device2->p2pDevices_.push_back(as_cl(device1));
+  if (0 != Device::numDevices(CL_DEVICE_TYPE_GPU, false)) {
+    // Loop through all available devices
+    for (auto device1: Device::devices()) {
+      // Find all agents that can have access to the current device
+      for (auto agent: static_cast<Device*>(device1)->p2pAgents()) {
+        // Find cl_device_id associated with the current agent
+        for (auto device2: Device::devices()) {
+          if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
+            // Device2 can have access to device1
+            device2->p2pDevices_.push_back(as_cl(device1));
+          }
         }
       }
     }
