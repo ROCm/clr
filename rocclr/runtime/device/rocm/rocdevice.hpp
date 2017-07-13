@@ -25,7 +25,6 @@
 
 #include "hsa.h"
 #include "hsa_ext_image.h"
-#include "hsa_ext_finalize.h"
 #include "hsa_ext_amd.h"
 #include "hsa_ven_amd_loader.h"
 

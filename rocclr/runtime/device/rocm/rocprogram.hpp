@@ -155,7 +155,6 @@ class HSAILProgram : public device::Program {
   bool hasGlobalStores_;      //!< program has writable program scope variables
 
   /* HSA executable */
-  hsa_ext_program_t hsaProgramHandle_;  //!< Handle to HSA runtime program
   hsa_executable_t hsaExecutable_;      //!< Handle to HSA executable
 
 #if defined(WITH_LIGHTNING_COMPILER)

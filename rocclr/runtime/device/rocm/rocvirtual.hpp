@@ -8,7 +8,6 @@
 #include "utils/util.hpp"
 #include "hsa.h"
 #include "hsa_ext_image.h"
-#include "hsa_ext_finalize.h"
 #include "hsa_ext_amd.h"
 #include "rocprintf.hpp"
 
