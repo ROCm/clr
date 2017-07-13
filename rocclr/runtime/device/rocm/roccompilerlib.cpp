@@ -12,6 +12,7 @@ struct CompLibApi g_complibApi;
 // g_complibModule is defined in LoadCompLib(). This macro must be used only in LoadCompLib()
 // function.
 //
+#if defined(BUILD_HSA_TARGET)
 #define LOADSYMBOL(api)                                                                            \
   g_complibApi._##api = (pfn_##api)amd::Os::getSymbol(g_complibModule, #api);                      \
   if (g_complibApi._##api == nullptr) {                                                            \
@@ -19,8 +20,12 @@ struct CompLibApi g_complibApi;
     amd::Os::unloadLibrary(g_complibModule);                                                       \
     return false;                                                                                  \
   }
+#else // !defined(BUILD_HSA_TARGET)
+#define LOADSYMBOL(api) g_complibApi._##api = (pfn_##api)&(api); 
+#endif // !defined(BUILD_HSA_TARGET)
 
 bool LoadCompLib(bool offline) {
+#if defined(BUILD_HSA_TARGET)
   g_complibModule = amd::Os::loadLibrary("amdhsacl" LP64_SWITCH(LINUX_SWITCH("32", ""), "64"));
   if (g_complibModule == nullptr) {
     if (!offline) {
@@ -28,6 +33,7 @@ bool LoadCompLib(bool offline) {
     }
     return false;
   }
+#endif // defined(BUILD_HSA_TARGET)
 
   LOADSYMBOL(aclCompilerInit)
   LOADSYMBOL(aclGetTargetInfo)
