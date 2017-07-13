@@ -75,10 +75,6 @@ HSAILProgram::~HSAILProgram() {
   if (hsaExecutable_.handle != 0) {
     hsa_executable_destroy(hsaExecutable_);
   }
-  // Destroy the program handle.
-  if (hsaProgramHandle_.handle != 0) {
-    hsa_ext_program_destroy(hsaProgramHandle_);
-  }
   releaseClBinary();
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -97,7 +93,6 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device) : Program(device), binaryElf
   binOpts_.alloc = &::malloc;
   binOpts_.dealloc = &::free;
 
-  hsaProgramHandle_.handle = 0;
   hsaExecutable_.handle = 0;
 
   hasGlobalStores_ = false;
