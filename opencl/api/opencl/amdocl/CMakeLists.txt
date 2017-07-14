@@ -42,6 +42,7 @@ add_library(amdocl64 SHARED
   cl_d3d11.cpp
   cl_context.cpp
   cl_profile_amd.cpp
+  cl_p2p_amd.cpp
   $<TARGET_OBJECTS:oclruntime>
   $<TARGET_OBJECTS:oclrocm>
 )
