@@ -108,7 +108,7 @@ release(bool, GPU_IMAGE_DMA, true,                                            \
         "Enable DRM DMA for image transfers")                                 \
 release(uint, CPU_MAX_ALLOC_PERCENT, 25,                                      \
         "Maximum size of a single allocation in MiB")                         \
-release(uint, GPU_SINGLE_ALLOC_PERCENT, 75,                                   \
+release(uint, GPU_SINGLE_ALLOC_PERCENT, 85,                                   \
         "Maximum size of a single allocation as percentage of total")         \
 release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
         "GPU number of compute rings. 0 - disabled, 1 , 2,.. - the number of compute rings") \
