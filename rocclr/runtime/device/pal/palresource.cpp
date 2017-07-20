@@ -922,7 +922,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 
   if (memoryType() == Pinned) {
     PinnedParams* pinned = reinterpret_cast<PinnedParams*>(params);
-    uint allocSize = static_cast<uint>(pinned->size_);
+    size_t allocSize = pinned->size_;
     void* pinAddress;
     hostMemRef = pinned->hostMemRef_;
     pinAddress = address_ = hostMemRef->hostMem();
@@ -989,7 +989,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   }
   if (desc_.SVMRes_) {
     // @todo 64K alignment is too big
-    uint allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
+    size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
     if ((memoryType() == RemoteUSWC) || (memoryType() == Remote)) {
       Pal::SvmGpuMemoryCreateInfo createInfo = {};
       createInfo.isUsedForKernel = desc_.isAllocExecute_;
