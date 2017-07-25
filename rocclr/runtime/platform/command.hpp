@@ -897,7 +897,7 @@ class PerfCounterCommand : public Command {
   //! Construct a new PerfCounterCommand
   PerfCounterCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                      const PerfCounterList& counterList, State state)
-      : Command(queue, 0, eventWaitList), counterList_(counterList), state_(state) {
+      : Command(queue, 1, eventWaitList), counterList_(counterList), state_(state) {
     for (uint i = 0; i < counterList_.size(); ++i) {
       counterList_[i]->retain();
     }
