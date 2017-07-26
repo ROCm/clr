@@ -1664,8 +1664,18 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           hsa_status_t status =
               hsa_ext_sampler_create(dev().getBackendDevice(), &samplerDescriptor, &hsa_sampler);
           if (status != HSA_STATUS_SUCCESS) {
-            LogError("Error creating device sampler object!");
-            return false;
+            // Wait on a kernel if one is outstanding
+            releaseGpuMemoryFence();
+            // Release the sampler handles allocated for the various
+            // on one or more kernel submissions
+            std::for_each(samplerList_.begin(), samplerList_.end(),
+                std::bind2nd<DestroySampler>(DestroySampler(), gpu_device_));
+            samplerList_.clear();
+            status = hsa_ext_sampler_create(dev().getBackendDevice(), &samplerDescriptor, &hsa_sampler);
+            if (status != HSA_STATUS_SUCCESS) {
+              LogError("Error creating device sampler object!");
+              return false;
+            }
           }
 
           if (dev().settings().enableImageHandle_) {
