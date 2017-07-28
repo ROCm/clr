@@ -1909,9 +1909,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
 
   bool needFlush = false;
-  dmaFlushMgmt_.findSplitSize(dev(), sizes.global().product(), hsaKernel.aqlCodeSize());
-  if (dmaFlushMgmt().dispatchSplitSize() != 0) {
-    needFlush = true;
+
+  // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd are in the same cmdBuffer
+  if (!state_.perfCounterEnabled_) {
+    dmaFlushMgmt_.findSplitSize(dev(), sizes.global().product(), hsaKernel.aqlCodeSize());
+    if (dmaFlushMgmt().dispatchSplitSize() != 0) {
+      needFlush = true;
+    }
   }
 
   size_t newOffset[3] = {0, 0, 0};
@@ -2347,6 +2351,7 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
       if (vcmd.getState() == amd::PerfCounterCommand::Begin) {
         Pal::SetClockModeInput input;
         Pal::SetClockModeOutput output = {};
+        state_.perfCounterEnabled_ = true;
         input.clockMode = Pal::DeviceClockMode::Profiling;
         dev().iDev()->SetClockMode(input, &output);
         GpuEvent event;
@@ -2360,6 +2365,7 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
         iCmd()->CmdEndPerfExperiment(palPerf);
         eventEnd(MainEngine, event);
         setGpuEvent(event);
+        state_.perfCounterEnabled_ = false;
       } else {
         LogError("Unsupported performance counter state");
         vcmd.setStatus(CL_INVALID_OPERATION);
