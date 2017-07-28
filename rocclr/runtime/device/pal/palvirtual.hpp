@@ -180,9 +180,10 @@ class VirtualGPU : public device::VirtualDevice {
   //! The virtual GPU states
   union State {
     struct {
-      uint profiling_ : 1;       //!< Profiling is enabled
-      uint forceWait_ : 1;       //!< Forces wait in flush()
-      uint profileEnabled_ : 1;  //!< Profiling is enabled for WaveLimiter
+      uint profiling_          : 1;     //!< Profiling is enabled
+      uint forceWait_          : 1;     //!< Forces wait in flush()
+      uint profileEnabled_     : 1;     //!< Profiling is enabled for WaveLimiter
+      uint perfCounterEnabled_ : 1;     //!< PerfCounter is enabled
     };
     uint value_;
     State() : value_(0) {}
