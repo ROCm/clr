@@ -109,6 +109,7 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   enableExtension(ClKhrSubGroups);
   enableExtension(ClKhrDepthImages);
   enableExtension(ClAmdCopyBufferP2P);
+  enableExtension(ClKhrFp16);
   supportDepthsRGB_ = true;
 
 #if defined(WITH_LIGHTNING_COMPILER)
