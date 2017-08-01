@@ -1382,8 +1382,9 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
   Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
                                                           correctly_rounded_sqrt.second);
 
-  auto daz_opt =
-      get_oclc_daz_opt(dev().hwInfo()->gfxipVersion_ < 900 || options->oVariables->DenormsAreZero);
+  auto daz_opt = get_oclc_daz_opt(!AMD_GPU_FORCE_SINGLE_FP_DENORM &&
+                                  (dev().hwInfo()->gfxipVersion_ < 900 ||
+                                   options->oVariables->DenormsAreZero));
   Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
 
   auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
@@ -1393,12 +1394,6 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
   auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
                                           options->oVariables->FastRelaxedMath);
   Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
-
-  if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
-    buildLog_ += "Error: Failed to open the control functions.\n";
-    return false;
-  }
-
 
   if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
     buildLog_ += "Error: Failed to open the control functions.\n";
