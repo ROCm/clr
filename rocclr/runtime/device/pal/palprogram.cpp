@@ -1384,7 +1384,7 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
 
   auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
                                   AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-                                  (dev().deviceInfo().gfxipVersion_ < 900 &&
+                                  (dev().hwInfo()->gfxipVersion_ < 900 &&
                                    AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
   Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
 
