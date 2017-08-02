@@ -358,104 +358,110 @@ static const std::array<std::pair<int, int>, 97> viBlockIdOrcaToPal = {{
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
 // of them
 // as compute may not use all of them.
-static const std::array<std::pair<int, int>, 97> gfx9BlockIdPal = {{
-    {0x0E, 0},     // CB0
-    {0x0E, 1},     // CB1
-    {0x0E, 2},     // CB2
-    {0x0E, 3},     // CB3
-    {0x00, 0},     // CPF
-    {0x0D, 0},     // DB0
-    {0x0D, 1},     // DB1
-    {0x0D, 2},     // DB2
-    {0x0D, 3},     // DB3
-    {0x11, 0},     // GRBM
-    {0x12, 0},     // GRBMSE
-    {0x03, 0},     // PA_SU
-    {0x03, 0},     // PA_SC
-    {0x05, 0},     // SPI
-    {0x06, 0},     // SQ
-    {0x06, 0},     // SQ_ES
-    {0x06, 0},     // SQ_GS
-    {0x06, 0},     // SQ_VS
-    {0x06, 0},     // SQ_PS
-    {0x06, 0},     // SQ_LS
-    {0x06, 0},     // SQ_HS
-    {0x06, 0},     // SQ_CS
-    {0x07, 0},     // SX
-    {0x08, 0},     // TA0
-    {0x08, 1},     // TA1
-    {0x08, 2},     // TA2
-    {0x08, 3},     // TA3
-    {0x08, 4},     // TA4
-    {0x08, 5},     // TA5
-    {0x08, 6},     // TA6
-    {0x08, 7},     // TA7
-    {0x08, 8},     // TA8
-    {0x08, 9},     // TA9
-    {0x08, 0x0a},  // TA10
-    {0x08, 0x0b},  // TA11
-    {0x08, 0x0c},  // TA12
-    {0x08, 0x0d},  // TA13
-    {0x08, 0x0e},  // TA14
-    {0x08, 0x0f},  // TA15
-    {0x0C, 0},     // TCA0
-    {0x0C, 1},     // TCA1
-    {0x0B, 0},     // TCC0
-    {0x0B, 1},     // TCC1
-    {0x0B, 2},     // TCC2
-    {0x0B, 3},     // TCC3
-    {0x0B, 4},     // TCC4
-    {0x0B, 5},     // TCC5
-    {0x0B, 6},     // TCC6
-    {0x0B, 7},     // TCC7
-    {0x0B, 8},     // TCC8
-    {0x0B, 9},     // TCC9
-    {0x0B, 0x0a},  // TCC10
-    {0x0B, 0x0b},  // TCC11
-    {0x0B, 0x0c},  // TCC12
-    {0x0B, 0x0d},  // TCC13
-    {0x0B, 0x0e},  // TCC14
-    {0x0B, 0x0f},  // TCC15
-    {0x09, 0},     // TD0
-    {0x09, 1},     // TD1
-    {0x09, 2},     // TD2
-    {0x09, 3},     // TD3
-    {0x09, 4},     // TD4
-    {0x09, 5},     // TD5
-    {0x09, 6},     // TD6
-    {0x09, 7},     // TD7
-    {0x09, 8},     // TD8
-    {0x09, 9},     // TD9
-    {0x09, 0x0a},  // TD10
-    {0x09, 0x0b},  // TD11
-    {0x09, 0x0c},  // TD12
-    {0x09, 0x0d},  // TD13
-    {0x09, 0x0e},  // TD14
-    {0x09, 0x0f},  // TD15
-    {0x0A, 0},     // TCP0
-    {0x0A, 1},     // TCP1
-    {0x0A, 2},     // TCP2
-    {0x0A, 3},     // TCP3
-    {0x0A, 4},     // TCP4
-    {0x0A, 5},     // TCP5
-    {0x0A, 6},     // TCP6
-    {0x0A, 7},     // TCP7
-    {0x0A, 8},     // TCP8
-    {0x0A, 9},     // TCP9
-    {0x0A, 0x0a},  // TCP10
-    {0x0A, 0x0b},  // TCP11
-    {0x0A, 0x0c},  // TCP12
-    {0x0A, 0x0d},  // TCP13
-    {0x0A, 0x0e},  // TCP14
-    {0x0A, 0x0f},  // TCP15
-    {0x0F, 0},     // GDS
-    {0x02, 0},     // VGT
-    {0x01, 0},     // IA
-    {0x15, 0},     // MC
-    {0x10, 0},     // SRBM
-    {0x18, 0},     // WD
-    {0x16, 0},     // CPG
-    {0x17, 0},     // CPC
+static const std::array<std::pair<int, int>, 103> gfx9BlockIdPal = {{
+    {0x0E, 0},     // CB0       - 0
+    {0x0E, 1},     // CB1       - 1
+    {0x0E, 2},     // CB2       - 2
+    {0x0E, 3},     // CB3       - 3
+    {0x00, 0},     // CPF       - 4
+    {0x0D, 0},     // DB0       - 5
+    {0x0D, 1},     // DB1       - 6
+    {0x0D, 2},     // DB2       - 7
+    {0x0D, 3},     // DB3       - 8
+    {0x11, 0},     // GRBM      - 9
+    {0x12, 0},     // GRBMSE    - 10
+    {0x03, 0},     // PA_SU     - 11
+    {0x03, 0},     // PA_SC     - 12
+    {0x05, 0},     // SPI       - 13
+    {0x06, 0},     // SQ        - 14
+    {0x06, 0},     // SQ_ES     - 15
+    {0x06, 0},     // SQ_GS     - 16
+    {0x06, 0},     // SQ_VS     - 17
+    {0x06, 0},     // SQ_PS     - 18
+    {0x06, 0},     // SQ_LS     - 19
+    {0x06, 0},     // SQ_HS     - 20
+    {0x06, 0},     // SQ_CS     - 21
+    {0x07, 0},     // SX        - 22
+    {0x08, 0},     // TA0       - 23
+    {0x08, 1},     // TA1       - 24
+    {0x08, 2},     // TA2       - 25
+    {0x08, 3},     // TA3       - 26
+    {0x08, 4},     // TA4       - 27
+    {0x08, 5},     // TA5       - 28
+    {0x08, 6},     // TA6       - 29
+    {0x08, 7},     // TA7       - 30
+    {0x08, 8},     // TA8       - 31
+    {0x08, 9},     // TA9       - 32
+    {0x08, 0x0a},  // TA10      - 33
+    {0x08, 0x0b},  // TA11      - 34
+    {0x08, 0x0c},  // TA12      - 35
+    {0x08, 0x0d},  // TA13      - 36
+    {0x08, 0x0e},  // TA14      - 37
+    {0x08, 0x0f},  // TA15      - 38
+    {0x0C, 0},     // TCA0      - 39
+    {0x0C, 1},     // TCA1      - 40
+    {0x0B, 0},     // TCC0      - 41
+    {0x0B, 1},     // TCC1      - 42
+    {0x0B, 2},     // TCC2      - 43
+    {0x0B, 3},     // TCC3      - 44
+    {0x0B, 4},     // TCC4      - 45
+    {0x0B, 5},     // TCC5      - 46
+    {0x0B, 6},     // TCC6      - 47
+    {0x0B, 7},     // TCC7      - 48
+    {0x0B, 8},     // TCC8      - 49
+    {0x0B, 9},     // TCC9      - 50
+    {0x0B, 0x0a},  // TCC10     - 51
+    {0x0B, 0x0b},  // TCC11     - 52
+    {0x0B, 0x0c},  // TCC12     - 53
+    {0x0B, 0x0d},  // TCC13     - 54
+    {0x0B, 0x0e},  // TCC14     - 55
+    {0x0B, 0x0f},  // TCC15     - 56
+    {0x09, 0},     // TD0       - 57
+    {0x09, 1},     // TD1       - 58
+    {0x09, 2},     // TD2       - 59
+    {0x09, 3},     // TD3       - 60
+    {0x09, 4},     // TD4       - 61
+    {0x09, 5},     // TD5       - 62
+    {0x09, 6},     // TD6       - 63
+    {0x09, 7},     // TD7       - 64
+    {0x09, 8},     // TD8       - 65
+    {0x09, 9},     // TD9       - 66
+    {0x09, 0x0a},  // TD10      - 67
+    {0x09, 0x0b},  // TD11      - 68
+    {0x09, 0x0c},  // TD12      - 69
+    {0x09, 0x0d},  // TD13      - 70
+    {0x09, 0x0e},  // TD14      - 71
+    {0x09, 0x0f},  // TD15      - 72
+    {0x0A, 0},     // TCP0      - 73
+    {0x0A, 1},     // TCP1      - 74
+    {0x0A, 2},     // TCP2      - 75
+    {0x0A, 3},     // TCP3      - 76
+    {0x0A, 4},     // TCP4      - 77
+    {0x0A, 5},     // TCP5      - 78
+    {0x0A, 6},     // TCP6      - 79
+    {0x0A, 7},     // TCP7      - 80
+    {0x0A, 8},     // TCP8      - 81
+    {0x0A, 9},     // TCP9      - 82
+    {0x0A, 0x0a},  // TCP10     - 83
+    {0x0A, 0x0b},  // TCP11     - 84
+    {0x0A, 0x0c},  // TCP12     - 85
+    {0x0A, 0x0d},  // TCP13     - 86
+    {0x0A, 0x0e},  // TCP14     - 87
+    {0x0A, 0x0f},  // TCP15     - 88
+    {0x0F, 0},     // GDS       - 89
+    {0x02, 0},     // VGT       - 90
+    {0x01, 0},     // IA        - 91
+    {0x15, 0},     // MC        - 92
+    {0x10, 0},     // SRBM      - 93
+    {0x18, 0},     // WD        - 94
+    {0x16, 0},     // CPG       - 95
+    {0x17, 0},     // CPC       - 96
+    {0x1A, 0},     // ATC       - 97
+    {0x1B, 0},     // ATCL2     - 98
+    {0x1C, 0},     // MCVML2    - 99
+    {0x1D, 0},     // EA        - 100
+    {0x1E, 0},     // RPB       - 101
+    {0x1F, 0},     // RMI       - 102
 }};
 
 void PerfCounter::convertInfo() {
