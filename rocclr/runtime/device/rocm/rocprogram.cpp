@@ -678,9 +678,10 @@ bool HSAILProgram::linkImpl_LC(amd::option::Options* options) {
   Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
                                                           correctly_rounded_sqrt.second);
 
-  auto daz_opt = get_oclc_daz_opt(!AMD_GPU_FORCE_SINGLE_FP_DENORM &&
-                                  (dev().deviceInfo().gfxipVersion_ < 900 ||
-                                  options->oVariables->DenormsAreZero));
+  auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
+                                  AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
+                                  (dev().deviceInfo().gfxipVersion_ < 900 &&
+                                   AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
   Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
 
   auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
