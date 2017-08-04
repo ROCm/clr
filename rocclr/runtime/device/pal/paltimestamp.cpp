@@ -19,7 +19,7 @@ TimeStamp::~TimeStamp() {}
 
 void TimeStamp::begin(bool sdma) {
   if (!flags_.beginIssued_) {
-    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
+    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
                                     memOffset_ + CommandStartTime * sizeof(uint64_t));
     flags_.beginIssued_ = true;
   }
