@@ -15,6 +15,8 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/lib)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/include)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/backends/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders)
+include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
+include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/tools)
  
 add_library(amdocl64 SHARED
