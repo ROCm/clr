@@ -5,8 +5,6 @@
 #include "cl_common.hpp"
 #include <CL/cl_ext.h>
 
-#include <locale>
-#include <codecvt>
 #include "platform/object.hpp"
 
 #include "cl_lqdflash_amd.h"
@@ -18,6 +16,8 @@
 
 #if defined(WITH_LIQUID_FLASH)
 #include "lf.h"
+#include <locale>
+#include <codecvt>
 #endif  // WITH_LIQUID_FLASH
 
 namespace amd {
