@@ -669,7 +669,6 @@ bool Kernel::init_LC() {
   initArguments_LC(*kernelMD);
 
   // Set the workgroup information for the kernel
-  memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
   workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
   workGroupInfo_.availableSGPRs_ = 104;
