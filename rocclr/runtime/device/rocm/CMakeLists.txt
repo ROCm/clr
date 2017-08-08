@@ -28,7 +28,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc "// Automatically ge
 foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   get_target_property(lib_file_name ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_NAME)
   get_target_property(lib_file_path ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_DIRECTORY)
-  set(bclib "${lib_file_path}/${lib_file_name}.lib.bc")
+  set(bclib "${lib_file_path}/${lib_file_name}.amdgcn.bc")
   set(header "${lib_file_name}.${INC_SUFFIX}")
   set(symbol "${lib_file_name}_amdgcn")
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${header}
