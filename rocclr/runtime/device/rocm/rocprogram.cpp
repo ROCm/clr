@@ -75,6 +75,9 @@ HSAILProgram::~HSAILProgram() {
   if (hsaExecutable_.handle != 0) {
     hsa_executable_destroy(hsaExecutable_);
   }
+  if (hsaCodeObjectReader_.handle != 0) {
+    hsa_code_object_reader_destroy(hsaCodeObjectReader_);
+  }
   releaseClBinary();
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -94,6 +97,7 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device) : Program(device), binaryElf
   binOpts_.dealloc = &::free;
 
   hsaExecutable_.handle = 0;
+  hsaCodeObjectReader_.handle = 0;
 
   hasGlobalStores_ = false;
 
@@ -795,48 +799,6 @@ bool HSAILProgram::linkImpl_LC(amd::option::Options* options) {
 }
 
 bool HSAILProgram::setKernels_LC(amd::option::Options* options, void* binary, size_t binSize) {
-  hsa_agent_t agent = dev().getBackendDevice();
-  hsa_status_t status;
-
-  status = hsa_executable_create_alt(HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
-                                     nullptr, &hsaExecutable_);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created: ";
-    buildLog_ += hsa_strerror(status);
-    buildLog_ += "\n";
-    return false;
-  }
-
-  // Load the code object.
-  hsa_code_object_reader_t codeObjectReader;
-  status = hsa_code_object_reader_create_from_memory(binary, binSize, &codeObjectReader);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
-    buildLog_ += hsa_strerror(status);
-    buildLog_ += "\n";
-    return false;
-  }
-
-  status = hsa_executable_load_agent_code_object(hsaExecutable_, agent, codeObjectReader, nullptr,
-                                                 nullptr);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: AMD HSA Code Object loading failed: ";
-    buildLog_ += hsa_strerror(status);
-    buildLog_ += "\n";
-    return false;
-  }
-
-  hsa_code_object_reader_destroy(codeObjectReader);
-
-  // Freeze the executable.
-  status = hsa_executable_freeze(hsaExecutable_, nullptr);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Freezing the executable failed: ";
-    buildLog_ += hsa_strerror(status);
-    buildLog_ += "\n";
-    return false;
-  }
-
   size_t progvarsTotalSize = 0;
   size_t dynamicSize = 0;
   size_t progvarsWriteSize = 0;
@@ -921,6 +883,50 @@ bool HSAILProgram::setKernels_LC(amd::option::Options* options, void* binary, si
   setGlobalVariableTotalSize(progvarsTotalSize);
 
   saveBinaryAndSetType(TYPE_EXECUTABLE, binary, binSize);
+
+  //Load the stored copy of the ELF binary.
+  binary_t stored_binary = this->binary();
+  binary = const_cast<void*>(stored_binary.first);
+  binSize = stored_binary.second;
+
+  hsa_agent_t agent = dev().getBackendDevice();
+  hsa_status_t status;
+
+  status = hsa_executable_create_alt(HSA_PROFILE_FULL, HSA_DEFAULT_FLOAT_ROUNDING_MODE_DEFAULT,
+                                     nullptr, &hsaExecutable_);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created: ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  // Load the code object.
+  status = hsa_code_object_reader_create_from_memory(binary, binSize, &hsaCodeObjectReader_);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  status = hsa_executable_load_agent_code_object(hsaExecutable_, agent, hsaCodeObjectReader_, nullptr,
+                                                 nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object loading failed: ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  // Freeze the executable.
+  status = hsa_executable_freeze(hsaExecutable_, nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Freezing the executable failed: ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
 
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
