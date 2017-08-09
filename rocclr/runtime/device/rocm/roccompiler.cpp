@@ -367,10 +367,14 @@ static void checkLLVM_BIN() {
   if (llvmBin_.empty()) {
     Dl_info info;
     if (dladdr((const void*)&amd::Device::init, &info)) {
-      llvmBin_ = dirname(strdup(info.dli_fname));
-      size_t pos = llvmBin_.rfind("lib");
-      if (pos != std::string::npos) {
-        llvmBin_.replace(pos, 3, "bin");
+      char* str = strdup(info.dli_fname);
+      if (str) {
+        llvmBin_ = dirname(str);
+        free(str);
+        size_t pos = llvmBin_.rfind("lib");
+        if (pos != std::string::npos) {
+          llvmBin_.replace(pos, 3, "bin");
+        }
       }
     }
   }
