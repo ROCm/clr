@@ -4,18 +4,18 @@
 #ifndef _CL_UTILS_TARGET_MAPPINGS_AMDIL_0_8_H_
 #define _CL_UTILS_TARGET_MAPPINGS_AMDIL_0_8_H_
 
-#include "inc/asic_reg/evergreen_id.h"
-#include "inc/asic_reg/r700id.h"
-#include "inc/asic_reg/tn_id.h"
-#include "inc/asic_reg/sumo_id.h"
-#include "inc/asic_reg/northernisland_id.h"
-#include "inc/asic_reg/si_id.h"
-#include "inc/asic_reg/kv_id.h"
-#include "inc/asic_reg/ci_id.h"
-#include "inc/asic_reg/vi_id.h"
-#include "inc/asic_reg/cz_id.h"
-#include "inc/asic_reg/ai_id.h"
-#include "inc/asic_reg/atiid.h"
+#include "asic_reg/evergreen_id.h"
+#include "asic_reg/r700id.h"
+#include "asic_reg/tn_id.h"
+#include "asic_reg/sumo_id.h"
+#include "asic_reg/northernisland_id.h"
+#include "asic_reg/si_id.h"
+#include "asic_reg/kv_id.h"
+#include "asic_reg/ci_id.h"
+#include "asic_reg/vi_id.h"
+#include "asic_reg/cz_id.h"
+#include "asic_reg/ai_id.h"
+#include "asic_reg/atiid.h"
 
 static const TargetMapping AMDILTargetMapping_0_8[] = {
   UnknownTarget,
