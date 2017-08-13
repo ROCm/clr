@@ -100,7 +100,7 @@ bool HSAILProgram::compileImpl_LC(const std::string& sourceCode,
   driverOptions.append(options->llvmOptions);
 
   // Set whole program mode
-  driverOptions.append(" -mllvm -amdgpu-early-inline-all");
+  driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
 
   driverOptions.append(preprocessorOptions(options));
 
