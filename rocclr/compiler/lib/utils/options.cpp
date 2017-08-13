@@ -896,6 +896,13 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         }
         break;
 
+#if defined(WITH_LIGHTNING_COMPILER)
+    case OID_OptUseNative:
+        Opts.llvmOptions.append(" -mllvm -amdgpu-use-native=");
+        Opts.llvmOptions.append(sval);
+        break;
+#endif
+
     case OID_WFComma:
     case OID_WBComma:
     case OID_WHComma:
