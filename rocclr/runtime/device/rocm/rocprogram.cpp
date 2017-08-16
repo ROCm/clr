@@ -16,7 +16,6 @@
 #include <gelf.h>
 #else  // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
-#include "amd_hsa_code.hpp"
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 #include "utils/bif_section_labels.hpp"
 

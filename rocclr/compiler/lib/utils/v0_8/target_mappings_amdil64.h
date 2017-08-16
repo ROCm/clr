@@ -4,12 +4,12 @@
 #ifndef _CL_UTILS_TARGET_MAPPINGS_AMDIL64_0_8_H_
 #define _CL_UTILS_TARGET_MAPPINGS_AMDIL64_0_8_H_
 
-#include "asic_reg/si_id.h"
-#include "asic_reg/kv_id.h"
-#include "asic_reg/ci_id.h"
-#include "asic_reg/vi_id.h"
-#include "asic_reg/cz_id.h"
-#include "asic_reg/atiid.h"
+#include "si_id.h"
+#include "kv_id.h"
+#include "ci_id.h"
+#include "vi_id.h"
+#include "cz_id.h"
+#include "atiid.h"
 
 static const TargetMapping AMDIL64TargetMapping_0_8[] = {
   UnknownTarget,
