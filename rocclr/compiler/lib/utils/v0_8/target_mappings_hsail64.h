@@ -29,7 +29,9 @@ static const TargetMapping HSAIL64TargetMapping_0_8[] = {
   { "VI", "Fiji",      "GFX8", amd::GPU_Library_HSAIL, VI_FIJI_P_A0,    F_VI_BASE, true, true,  FAMILY_VI },
   { "CZ", "Stoney",    "GFX8", amd::GPU_Library_HSAIL, STONEY_A0,       F_VI_BASE, true, true,  FAMILY_CZ },
   { "VI", "Baffin",    "GFX8", amd::GPU_Library_HSAIL, VI_BAFFIN_M_A0,  F_VI_BASE, true, true,  FAMILY_VI },
+  { "VI", "Baffin",    "GFX8", amd::GPU_Library_HSAIL, VI_BAFFIN_M_A1,  F_VI_BASE, true, true,  FAMILY_VI },
   { "VI", "Ellesmere", "GFX8", amd::GPU_Library_HSAIL, VI_ELLESMERE_P_A0, F_VI_BASE, true, true,  FAMILY_VI },
+  { "VI", "Ellesmere", "GFX8", amd::GPU_Library_HSAIL, VI_ELLESMERE_P_A1, F_VI_BASE, true, true,  FAMILY_VI },
 #ifndef BRAHMA
   { "AI", "gfx900",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, true,  FAMILY_AI },
   { "VI", "gfx804",    "GFX8", amd::GPU_Library_HSAIL, VI_LEXA_V_A0,    F_VI_BASE, true, true,  FAMILY_VI },
