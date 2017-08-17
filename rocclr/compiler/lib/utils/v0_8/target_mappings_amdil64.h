@@ -44,9 +44,9 @@ static const TargetMapping AMDIL64TargetMapping_0_8[] = {
   { "CI", "Bonaire",   "bonaire",   amd::GPU64_Library_CI, CI_BONAIRE_M_A0,    F_SI_64BIT_PTR, true,  true,  FAMILY_CI },
   { "VI", "Fiji",      "fiji",      amd::GPU64_Library_CI, VI_FIJI_P_A0,       F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
   { "CZ", "Stoney",    "stoney",    amd::GPU64_Library_CI, STONEY_A0,          F_SI_64BIT_PTR, true,  true,  FAMILY_CZ },
-  { "VI", "Baffin",    "baffin",    amd::GPU64_Library_CI, VI_BAFFIN_M_A0,     F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
+  { "VI", "Baffin",    "baffin",    amd::GPU64_Library_CI, VI_BAFFIN_M_A0,     F_SI_64BIT_PTR, true,  false, FAMILY_VI },
   { "VI", "Baffin",    "baffin",    amd::GPU64_Library_CI, VI_BAFFIN_M_A1,     F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
-  { "VI", "Ellesmere", "ellesmere", amd::GPU64_Library_CI, VI_ELLESMERE_P_A0,  F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
+  { "VI", "Ellesmere", "ellesmere", amd::GPU64_Library_CI, VI_ELLESMERE_P_A0,  F_SI_64BIT_PTR, true,  false, FAMILY_VI },
   { "VI", "Ellesmere", "ellesmere", amd::GPU64_Library_CI, VI_ELLESMERE_P_A1,  F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
 #ifndef BRAHMA
   { "VI", "gfx804",    "gfx804",    amd::GPU64_Library_CI, VI_LEXA_V_A0,       F_SI_64BIT_PTR, true,  true,  FAMILY_VI },
