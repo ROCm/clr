@@ -566,7 +566,9 @@ int getIsaType(const aclTargetInfo *target)
         case VI_ICELAND_M_A0: return 800;
         case VI_FIJI_P_A0:
         case VI_BAFFIN_M_A0:
+        case VI_BAFFIN_M_A1:
         case VI_ELLESMERE_P_A0:
+        case VI_ELLESMERE_P_A1:
         case VI_LEXA_V_A0:
         case VI_POLARIS22_P_A0:
 #if defined(BUILD_HSA_TARGET)
