@@ -30,6 +30,7 @@ typedef struct _target_mappings_rec {
   bool supported; // a false value means this device is not supported.
   bool default_chip; // Chip to select if multiple chips with the same name exist.
   unsigned family_enum; // Only used for GPU devices currently, for CPU we should put features.
+  bool xnack_supported; // XNACK support as per http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names 
 } TargetMapping;
 
 const TargetMapping UnknownTarget = { "UnknownFamily", "UnknownChip", "UnknownCodeGen",
@@ -210,6 +211,8 @@ static const char* calTargetMapping[] = {
       "Stoney",
       IF(IS_BRAHMA,"","gfx804"),
       IF(IS_BRAHMA,"","gfx901"),
+      IF(IS_BRAHMA,"","gfx902"),
+      IF(IS_BRAHMA,"","gfx903"),
     };
 
 #include "utils/v0_8/target_mappings_amdil.h"

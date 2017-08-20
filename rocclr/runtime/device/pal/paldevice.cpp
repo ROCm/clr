@@ -651,16 +651,19 @@ bool Device::create(Pal::IDevice* device) {
   ipLevel_ = properties().gfxLevel;
   asicRevision_ = properties().revision;
 
+   // XNACK flag should be set for  PageMigration | IOMMUv2 Support
+  uint isXNACKSupported = static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled
+      || properties_.gpuMemoryProperties.flags.iommuv2Support);
+  uint subtarget = isXNACKSupported;
+
   // Update HW info for the device
   if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Baffin)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
   } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
-    if (properties().gpuType == Pal::GpuType::Integrated ||
-        properties_.gpuMemoryProperties.flags.pageMigrationEnabled) {
-      hwInfo_ = &Gfx901DeviceInfo;
-    } else {
-      hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel_)];
-    }
+      // For compiler sub targets
+      subtarget = (static_cast<uint>(asicRevision_) % static_cast<uint>(Pal::AsicRevision::Vega10)) << 1 |
+          subtarget;
+      hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
   } else {
     return false;
   }

@@ -24,6 +24,8 @@ static const std::string sgfx804 = "AMD:AMDGPU:8:0:4";
 static const std::string sgfx810 = "AMD:AMDGPU:8:1:0";
 static const std::string sgfx900 = "AMD:AMDGPU:9:0:0";
 static const std::string sgfx901 = "AMD:AMDGPU:9:0:1";
+static const std::string sgfx902 = "AMD:AMDGPU:9:0:2";
+static const std::string sgfx903 = "AMD:AMDGPU:9:0:3";
 
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -526,6 +528,8 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 810: return sgfx810;
   case 900: return sgfx900;
   case 901: return sgfx901;
+  case 902: return sgfx902;
+  case 903: return sgfx903;
   }
 }
 
@@ -587,12 +591,12 @@ int getIsaType(const aclTargetInfo *target)
     case FAMILY_AI:
       switch (Mapping.chip_enum) {
         default: return 900;
-        case AI_GREENLAND_P_A0: return 900;
+        case AI_GREENLAND_P_A0: return Mapping.xnack_supported ? 901 : 900;
       }
     case FAMILY_RV:
       switch (Mapping.chip_enum) {
-        default: return 901;
-        case RAVEN_A0:          return 901;
+        default: return 902;
+        case RAVEN_A0:          return Mapping.xnack_supported ? 903 : 902;
       }
     }
 }
