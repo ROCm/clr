@@ -891,6 +891,14 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
     isa.handle = gfx901;
     return isa;
   }
+  if (!strcmp(Gfx902, name)) {
+      isa.handle = gfx902;
+      return isa;
+  }
+  if (!strcmp(Gfx903, name)) {
+      isa.handle = gfx903;
+      return isa;
+  }
   return isa;
 }
 
@@ -917,6 +925,10 @@ bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) 
     case gfx900:
     case gfx901:
       return isa.handle == gfx900 || isa.handle == gfx901;
+    case gfx902:
+    case gfx903:
+      return isa.handle == gfx902 || isa.handle == gfx903;
+
   }
 }
 
