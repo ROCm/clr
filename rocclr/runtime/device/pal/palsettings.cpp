@@ -171,6 +171,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           assert(0 && "Unknown GfxIP type!");
           return false;
       }
+    case Pal::AsicRevision::Navi10:
+    case Pal::AsicRevision::Vega20:
     case Pal::AsicRevision::Vega10:
     case Pal::AsicRevision::Raven:
       aiPlus_ = true;

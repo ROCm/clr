@@ -10,6 +10,7 @@
 #include "cz_id.h"
 #include "ai_id.h"
 #include "rv_id.h"
+#include "nv_id.h"
 #include "atiid.h"
 
 static const TargetMapping HSAILTargetMapping_0_8[] = {
@@ -34,12 +35,24 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   { "VI", "Ellesmere", "GFX8", amd::GPU_Library_HSAIL, VI_ELLESMERE_P_A0, F_VI_BASE, true, false, FAMILY_VI, false },
   { "VI", "Ellesmere", "GFX8", amd::GPU_Library_HSAIL, VI_ELLESMERE_P_A1, F_VI_BASE, true, true,  FAMILY_VI, false },
 #ifndef BRAHMA
-  { "AI", "gfx900",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, true,  FAMILY_AI },
+  { "AI", "gfx900",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, false,  FAMILY_AI },
+  { "AI", "gfx900",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A1, F_AI_BASE, true, true,  FAMILY_AI },
   { "VI", "gfx804",    "GFX8", amd::GPU_Library_HSAIL, VI_LEXA_V_A0,    F_VI_BASE, true, true,  FAMILY_VI },
-  { "AI", "gfx901",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, true,  FAMILY_AI ,true },
+  { "AI", "gfx901",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, false,  FAMILY_AI ,true },
+  { "AI", "gfx901",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A1, F_AI_BASE, true, true,  FAMILY_AI ,true },
   { "RV", "gfx902",    "GFX9",  amd::GPU_Library_HSAIL, RAVEN_A0,           F_AI_BASE, true, true,  FAMILY_RV, false },
   { "RV", "gfx903",    "GFX9",  amd::GPU_Library_HSAIL, RAVEN_A0,           F_AI_BASE, true, true,  FAMILY_RV, true },
+  { "AI", "gfx906",    "GFX9",  amd::GPU_Library_HSAIL, AI_VEGA20_P_A0,     F_AI_BASE, true, true,  FAMILY_AI, false },
+  { "AI", "gfx907",    "GFX9",  amd::GPU_Library_HSAIL, AI_VEGA20_P_A0,     F_AI_BASE, true, true,  FAMILY_AI, true },
+  { "NV", "gfx1000",   "GFX10", amd::GPU_Library_HSAIL, NV_NAVI10_P_A0,     F_AI_BASE, true, true,  FAMILY_NV, false },
+  { "NV", "gfx1001",   "GFX10", amd::GPU_Library_HSAIL, NV_NAVI10_P_A0,     F_AI_BASE, true, true,  FAMILY_NV, true },
 #else
+  UnknownTarget,
+  UnknownTarget,
+  UnknownTarget,
+  UnknownTarget,
+  UnknownTarget,
+  UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
