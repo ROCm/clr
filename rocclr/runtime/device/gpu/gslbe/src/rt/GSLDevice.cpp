@@ -513,6 +513,19 @@ CALGSLDevice::SetupContext(int32 &asic_id)
       m_target = CAL_TARGET_POLARIS22;
       m_elfmachine = ED_ATI_CAL_MACHINE_POLARIS22_ISA;
       break;
+  case GSL_ATIASIC_ID_VEGA12:
+      m_target = CAL_TARGET_VEGA12;
+      m_elfmachine = ED_ATI_CAL_MACHINE_VEGA12_ISA;
+      break;
+  case GSL_ATIASIC_ID_VEGA20:
+      m_target = CAL_TARGET_VEGA20;
+      m_elfmachine = ED_ATI_CAL_MACHINE_VEGA20_ISA;
+      break;
+  case GSL_ATIASIC_ID_NAVI10:
+      m_target = CAL_TARGET_NAVI10;
+      m_elfmachine = ED_ATI_CAL_MACHINE_NAVI10_ISA;
+      break;
+
   default:
         // 6XX is not supported
         m_adp->deleteContext(temp_cs);

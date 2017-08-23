@@ -157,6 +157,13 @@ static const AMDDeviceInfo DeviceInfo[] = {
                             IF(IS_BRAHMA, "", "gfx901"), 4, 16, 1, 256, 64 * Ki, 32, 900},
     /* CAL_TARGET_POLARIS22 */ {ED_ATI_CAL_MACHINE_POLARIS22_ISA, IF(IS_BRAHMA, "", "gfx804"),
                                 IF(IS_BRAHMA, "", "gfx804"), 4, 16, 1, 256, 64 * Ki, 32, 800},
+    /* CAL_TARGET_VEGA12 */{ ED_ATI_CAL_MACHINE_VEGA12_ISA, IF(IS_BRAHMA, "", "gfx904"),
+                                IF(IS_BRAHMA, "", "gfx904"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
+    /* CAL_TARGET_VEGA20 */{ ED_ATI_CAL_MACHINE_VEGA20_ISA, IF(IS_BRAHMA, "", "gfx906"),
+                                IF(IS_BRAHMA, "", "gfx906"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
+   /*  CAL_TARGET_NAVI10 */{ ED_ATI_CAL_MACHINE_NAVI10_ISA, IF(IS_BRAHMA, "", "gfx1000"),
+                                IF(IS_BRAHMA, "", "gfx1000"), 4, 16, 1, 256, 64 * Ki, 32, 1000 },
+
 };
 
 enum gfx_handle {
@@ -168,7 +175,15 @@ enum gfx_handle {
   gfx804 = 804,
   gfx810 = 810,
   gfx900 = 900,
-  gfx901 = 901
+  gfx901 = 901,
+  gfx902 = 902,
+  gfx903 = 903,
+  gfx904 = 904,
+  gfx905 = 905,
+  gfx906 = 906,
+  gfx907 = 907,
+  gfx1000 = 1000,
+  gfx1001 = 1001
 };
 
 static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
@@ -179,6 +194,14 @@ static const char* Gfx804 = "AMD:AMDGPU:8:0:4";
 static const char* Gfx810 = "AMD:AMDGPU:8:1:0";
 static const char* Gfx900 = "AMD:AMDGPU:9:0:0";
 static const char* Gfx901 = "AMD:AMDGPU:9:0:1";
+static const char* Gfx902 = "AMD:AMDGPU:9:0:2";
+static const char* Gfx903 = "AMD:AMDGPU:9:0:3";
+static const char* Gfx904 = "AMD:AMDGPU:9:0:4";
+static const char* Gfx905 = "AMD:AMDGPU:9:0:5";
+static const char* Gfx906 = "AMD:AMDGPU:9:0:6";
+static const char* Gfx907 = "AMD:AMDGPU:9:0:7";
+static const char* Gfx1000 = "AMD:AMDGPU:10:0:0";
+static const char* Gfx1001 = "AMD:AMDGPU:10:0:1";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20 };

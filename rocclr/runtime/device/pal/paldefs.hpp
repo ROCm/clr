@@ -153,6 +153,7 @@ static const AMDDeviceInfo GfxIpDeviceInfo[] = {
     /* GFX800 */    {"gfx800",  "gfx800",   4, 16, 1, 256, 64 * Ki, 32, 800},
     /* GFX801 */    {"gfx801",  "gfx801",   4, 16, 1, 256, 64 * Ki, 32, 801},
     /* GFX900 */    {"gfx900",  "gfx900",   4, 16, 1, 256, 64 * Ki, 32, 900},
+    /* GFX1000 */   {"gfx1000", "gfx1000",  4, 16, 1, 256, 64 * Ki, 32, 1000 },
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
@@ -160,16 +161,16 @@ static const AMDDeviceInfo GfxIpDeviceInfo[] = {
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900},
     /* Vega10 XNACK */{"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 901},
-    /* Vega12       */{0},
-    /* Vega12 XNACK */{0},
-    /* Vega20       */{0},
-    /* Vega20 XNACK */{0},
+    /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904},
+    /* Vega12 XNACK */{"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 905},
+    /* Vega20       */{"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 906},
+    /* Vega20 XNACK */{"gfx907", "gfx907", 4, 16, 1, 256, 64 * Ki, 32, 907},
     /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
     /* Raven XNACK  */{"gfx903", "gfx903", 4, 16, 1, 256, 64 * Ki, 32, 903},
     /* Raven2       */{0},
     /* Raven2 XNACK */{0},
-    /* Navi10       */{0},
-    /* Navi10 XNACK */{0},
+    /* Navi10       */{"gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000},
+    /* Navi10 XNACK */{"gfx1001", "gfx1001", 4, 16, 1, 256, 64 * Ki, 32, 1001},
 };
 
 enum gfx_handle {
@@ -183,7 +184,13 @@ enum gfx_handle {
   gfx900    = 900,
   gfx901    = 901,
   gfx902    = 902,
-  gfx903    = 903
+  gfx903    = 903,
+  gfx904    = 904,
+  gfx905    = 905,
+  gfx906    = 906,
+  gfx907    = 907,
+  gfx1000   = 1000,
+  gfx1001   = 1001
 };
 
 static const char* Gfx700   = "AMD:AMDGPU:7:0:0";
@@ -196,6 +203,12 @@ static const char* Gfx900   = "AMD:AMDGPU:9:0:0";
 static const char* Gfx901   = "AMD:AMDGPU:9:0:1";
 static const char* Gfx902   = "AMD:AMDGPU:9:0:2";
 static const char* Gfx903   = "AMD:AMDGPU:9:0:3";
+static const char* Gfx904   = "AMD:AMDGPU:9:0:4";
+static const char* Gfx905   = "AMD:AMDGPU:9:0:5";
+static const char* Gfx906   = "AMD:AMDGPU:9:0:6";
+static const char* Gfx907   = "AMD:AMDGPU:9:0:7";
+static const char* Gfx1000  = "AMD:AMDGPU:10:0:0";
+static const char* Gfx1001  = "AMD:AMDGPU:10:0:1";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20 };

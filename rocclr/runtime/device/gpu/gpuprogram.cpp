@@ -2227,6 +2227,39 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
     isa.handle = gfx901;
     return isa;
   }
+  if (!strcmp(Gfx902, name)) {
+      isa.handle = gfx902;
+      return isa;
+  }
+  if (!strcmp(Gfx903, name)) {
+      isa.handle = gfx903;
+      return isa;
+  }
+  if (!strcmp(Gfx904, name)) {
+      isa.handle = gfx904;
+      return isa;
+  }
+  if (!strcmp(Gfx905, name)) {
+      isa.handle = gfx905;
+      return isa;
+  }
+  if (!strcmp(Gfx906, name)) {
+      isa.handle = gfx906;
+      return isa;
+  }
+  if (!strcmp(Gfx907, name)) {
+      isa.handle = gfx907;
+      return isa;
+  }
+  if (!strcmp(Gfx1000, name)) {
+      isa.handle = gfx1000;
+      return isa;
+  }
+  if (!strcmp(Gfx1001, name)) {
+      isa.handle = gfx1001;
+      return isa;
+  }
+
   return isa;
 }
 
@@ -2262,13 +2295,35 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
           return false;
       }
     case gfx900:
+    case gfx901:
+    case gfx902:
+    case gfx903:
+    case gfx904:
+    case gfx905:
+    case gfx906:
+    case gfx907:
       switch (program_->dev().hwInfo()->machine_) {
         case ED_ATI_CAL_MACHINE_GREENLAND_ISA:
           return isa.handle == gfx900 || isa.handle == gfx901;
+        case ED_ATI_CAL_MACHINE_RAVEN_ISA:
+            return isa.handle == gfx902 || isa.handle == gfx903;
+        case ED_ATI_CAL_MACHINE_VEGA12_ISA:
+            return isa.handle == gfx904 || isa.handle == gfx905;
+        case ED_ATI_CAL_MACHINE_VEGA20_ISA:
+            return isa.handle == gfx906 || isa.handle == gfx907;
         default:
           assert(0);
           return false;
       }
+    case gfx1000:
+    case gfx1001:
+      switch (program_->dev().hwInfo()->machine_) {
+        case ED_ATI_CAL_MACHINE_NAVI10_ISA:
+            return isa.handle == gfx1000 || isa.handle == gfx1001;
+        default:
+            assert(0);
+            return false;
+        }
   }
 }
 

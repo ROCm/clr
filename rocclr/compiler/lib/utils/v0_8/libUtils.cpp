@@ -26,6 +26,12 @@ static const std::string sgfx900 = "AMD:AMDGPU:9:0:0";
 static const std::string sgfx901 = "AMD:AMDGPU:9:0:1";
 static const std::string sgfx902 = "AMD:AMDGPU:9:0:2";
 static const std::string sgfx903 = "AMD:AMDGPU:9:0:3";
+static const std::string sgfx904 = "AMD:AMDGPU:9:0:4";
+static const std::string sgfx905 = "AMD:AMDGPU:9:0:5";
+static const std::string sgfx906 = "AMD:AMDGPU:9:0:6";
+static const std::string sgfx907 = "AMD:AMDGPU:9:0:7";
+static const std::string sgfx1000 = "AMD:AMDGPU:10:0:0";
+static const std::string sgfx1001 = "AMD:AMDGPU:10:0:1";
 
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
@@ -530,6 +536,12 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 901: return sgfx901;
   case 902: return sgfx902;
   case 903: return sgfx903;
+  case 904: return sgfx904;
+  case 905: return sgfx905;
+  case 906: return sgfx906;
+  case 907: return sgfx907;
+  case 1000: return sgfx1000;
+  case 1001: return sgfx1001;
   }
 }
 
@@ -591,12 +603,19 @@ int getIsaType(const aclTargetInfo *target)
     case FAMILY_AI:
       switch (Mapping.chip_enum) {
         default: return 900;
-        case AI_GREENLAND_P_A0: return Mapping.xnack_supported ? 901 : 900;
+        case AI_GREENLAND_P_A0:
+        case AI_GREENLAND_P_A1: return Mapping.xnack_supported ? 901 : 900;
+        case AI_VEGA20_P_A0:    return Mapping.xnack_supported ? 907 : 906;
       }
     case FAMILY_RV:
       switch (Mapping.chip_enum) {
         default: return 902;
         case RAVEN_A0:          return Mapping.xnack_supported ? 903 : 902;
+      }
+    case FAMILY_NV:
+      switch (Mapping.chip_enum) {
+        default: return 1000;
+        case NV_NAVI10_P_A0:    return Mapping.xnack_supported ? 1001 : 1000;
       }
     }
 }

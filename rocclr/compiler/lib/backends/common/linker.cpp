@@ -585,7 +585,13 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Mo
                 || chip == "gfx900"
                 || chip == "gfx901"
                 || chip == "gfx902"
-                || chip == "gfx903");
+                || chip == "gfx903"
+                || chip == "gfx904"
+                || chip == "gfx905"
+                || chip == "gfx906"
+                || chip == "gfx907"
+                || chip == "gfx1000"
+                || chip == "gfx1001");
   setISAVersion(getIsaType(aclutGetTargetInfo(Elf())));
   LLVMBinary()->getContext().setAMDLLVMContextHook(&hookup_);
 
