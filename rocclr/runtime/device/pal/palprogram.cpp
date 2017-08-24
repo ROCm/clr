@@ -86,6 +86,7 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
   if (cpuAccess_ != nullptr) {
     amd::Os::fastMemcpy(cpuAddress(offset), src, size);
   } else {
+    amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
     Memory& xferBuf = gpuAccess_->dev().xferWrite().acquire();
     size_t tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
@@ -98,7 +99,6 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
       srcOffs += tmpSize;
       tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
     }
-    gpu.releaseMemObjects();
     gpu.waitAllEngines();
   }
 }
@@ -108,8 +108,8 @@ bool Segment::freeze(bool destroySysmem) {
   bool result = true;
   if (cpuAccess_ != nullptr) {
     assert(gpuAccess_->size() == cpuAccess_->size() && "Backing store size mismatch!");
+    amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     result = cpuAccess_->partialMemCopyTo(gpu, 0, 0, gpuAccess_->size(), *gpuAccess_, false, true);
-    gpu.releaseMemObjects();
     gpu.waitAllEngines();
   }
   assert(!destroySysmem || (cpuAccess_ == nullptr));
@@ -813,8 +813,8 @@ bool HSAILProgram::allocKernelTable() {
   return true;
 }
 
-void HSAILProgram::fillResListWithKernels(std::vector<const Memory*>& memList) const {
-  memList.push_back(&codeSegGpu());
+void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const {
+  gpu.addVmMemory(&codeSegGpu());
 }
 
 const aclTargetInfo& HSAILProgram::info(const char* str) {

@@ -352,6 +352,8 @@ class KernelBlitManager : public DmaBlitManager {
                     const void* data         //!< Raw data pointer
                     ) const;
 
+  virtual amd::Monitor* lockXfer() const { return lockXferOps_; }
+
  private:
   static const size_t MaxXferBuffers = 2;
   static const uint TransferSplitSize = 3;

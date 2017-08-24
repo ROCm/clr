@@ -45,11 +45,14 @@ enum EngineType { MainEngine = 0, SdmaEngine, AllEngines };
 struct GpuEvent {
   static const unsigned int InvalidID = ((1 << 30) - 1);
 
-  EngineType engineId_;  ///< type of the id
-  unsigned int id;       ///< actual event id
-
+  struct {
+    uint32_t id : 31;         ///< actual event id
+    uint32_t engineId_ : 1;   ///< type of the id
+  };
   //! GPU event default constructor
   GpuEvent() : engineId_(MainEngine), id(InvalidID) {}
+  //! GPU event constructor
+  GpuEvent(uint evt) : engineId_(MainEngine), id(evt) {}
 
   //! Returns true if the current event is valid
   bool isValid() const { return (id != InvalidID) ? true : false; }

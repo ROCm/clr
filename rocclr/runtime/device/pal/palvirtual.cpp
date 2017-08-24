@@ -34,7 +34,8 @@ namespace pal {
 
 VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueType queueType,
                                              uint engineIdx, Pal::ICmdAllocator* cmdAllocator,
-                                             uint rtCU, amd::CommandQueue::Priority priority) {
+                                             uint rtCU, amd::CommandQueue::Priority priority,
+                                             uint64_t residency_limit) {
   Pal::Result result;
   Pal::CmdBufferCreateInfo cmdCreateInfo = {};
   Pal::QueueCreateInfo qCreateInfo = {};
@@ -80,7 +81,7 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
   }
 
   size_t allocSize = qSize + MaxCmdBuffers * (cmdSize + fSize);
-  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(palDev);
+  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(palDev, residency_limit);
   if (queue != nullptr) {
     address addrQ = reinterpret_cast<address>(&queue[1]);
     // Create PAL queue object
@@ -119,10 +120,10 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
 }
 
 VirtualGPU::Queue::~Queue() {
-  std::vector<Pal::IGpuMemory*> memRef;
   // Remove all memory references
+  std::vector<Pal::IGpuMemory*> memRef;
   for (auto it : memReferences_) {
-    memRef.push_back(it.first);
+    memRef.push_back(it.first->iMem());
   }
   if (memRef.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(memRef.size(), &memRef[0], NULL);
@@ -143,18 +144,35 @@ VirtualGPU::Queue::~Queue() {
   }
 }
 
-void VirtualGPU::Queue::addCmdMemRef(Pal::IGpuMemory* iMem) {
-  auto it = memReferences_.find(iMem);
+void VirtualGPU::Queue::addCmdMemRef(GpuMemoryReference* mem) {
+  Pal::IGpuMemory* iMem = mem->iMem();
+  auto it = memReferences_.find(mem);
   if (it != memReferences_.end()) {
-    it->second = (it->second & FirstMemoryReference) | cmdBufIdSlot_;
+    it->second = cmdBufIdSlot_;
   } else {
-    memReferences_[iMem] = FirstMemoryReference | cmdBufIdSlot_;
+    // Update runtime tracking with TS
+    memReferences_[mem] = cmdBufIdSlot_;
+    // Update PAL list with the new entry
+    Pal::GpuMemoryRef memRef = {};
+    memRef.pGpuMemory = iMem;
+    palMemRefs_.push_back(memRef);
+    // Check SDI memory object
+    if (iMem->Desc().flags.isExternPhys &&
+        (sdiReferences_.find(iMem) == sdiReferences_.end())) {
+      sdiReferences_.insert(iMem);
+      palSdiRefs_.push_back(iMem);
+    }
+    residency_size_ += iMem->Desc().size;
+    mem->resident_++;
   }
 }
 
-void VirtualGPU::Queue::removeCmdMemRef(Pal::IGpuMemory* iMem) {
-  if (0 != memReferences_.erase(iMem)) {
+void VirtualGPU::Queue::removeCmdMemRef(GpuMemoryReference* mem) {
+  Pal::IGpuMemory* iMem = mem->iMem();
+  if (0 != memReferences_.erase(mem)) {
     iDev_->RemoveGpuMemoryReferences(1, &iMem, iQueue_);
+    residency_size_ -= iMem->Desc().size;
+    mem->resident_--;
   }
 }
 
@@ -198,26 +216,16 @@ uint VirtualGPU::Queue::submit(bool forceFlush) {
 }
 
 bool VirtualGPU::Queue::flush() {
-  palMemRefs_.resize(0);
   // Stop commands building
   if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
     LogError("PAL failed to finalize a command buffer!");
     return false;
   }
 
-  // Add memory references
-  for (auto it = memReferences_.begin(); it != memReferences_.end(); ++it) {
-    if (it->second & FirstMemoryReference) {
-      it->second &= ~FirstMemoryReference;
-      Pal::GpuMemoryRef memRef = {};
-      memRef.pGpuMemory = it->first;
-      palMemRefs_.push_back(memRef);
-
-      if (it->first->Desc().flags.isExternPhys
-          && (sdiReferences_.find(it->first) == sdiReferences_.end())) {
-        sdiReferences_.insert(it->first);
-        palSdiRefs_.push_back(it->first);
-      }
+  // Validate resources
+  for (auto it : memReferences_) {
+    if (it.second == cmdBufIdSlot_) {
+      assert(it.first->resident_ > 0 && "Unresident resource!");
     }
   }
 
@@ -228,6 +236,7 @@ bool VirtualGPU::Queue::flush() {
       LogError("PAL failed to make resident resources!");
       return false;
     }
+    palMemRefs_.resize(0);
   }
 
   // Reset the fence. PAL will reset OS event
@@ -295,21 +304,24 @@ bool VirtualGPU::Queue::flush() {
 
   // Clear dopp references
   palDoppRefs_.resize(0);
-
-  palMems_.resize(0);
   palSdiRefs_.resize(0);
 
   // Remove old memory references
-  for (auto it = memReferences_.begin(); it != memReferences_.end();) {
-    if (it->second == cmdBufIdSlot_) {
-      palMems_.push_back(it->first);
-      it = memReferences_.erase(it);
-    } else {
-      ++it;
+  if ((memReferences_.size() > 1024) || (residency_size_ > residency_limit_)) {
+    for (auto it = memReferences_.begin(); it != memReferences_.end();) {
+      if (it->second == cmdBufIdSlot_) {
+        palMems_.push_back(it->first->iMem());
+        residency_size_ -= it->first->iMem()->Desc().size;
+        it->first->resident_--;
+        it = memReferences_.erase(it);
+      } else {
+        ++it;
+      }
     }
   }
   if (palMems_.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
+    palMems_.resize(0);
   }
 
   return true;
@@ -370,8 +382,8 @@ void VirtualGPU::Queue::DumpMemoryReferences() const {
       dump << " " << idx << "\t[";
       dump.setf(std::ios::hex, std::ios::basefield);
       dump.setf(std::ios::showbase);
-      dump << (it.first)->Desc().gpuVirtAddr << ", "
-           << (it.first)->Desc().gpuVirtAddr + (it.first)->Desc().size;
+      dump << (it.first)->iMem()->Desc().gpuVirtAddr << ", "
+           << (it.first)->iMem()->Desc().gpuVirtAddr + (it.first)->iMem()->Desc().size;
       dump.setf(std::ios::dec);
       dump << "] CbId:" << it.second << "\n";
       idx++;
@@ -556,7 +568,7 @@ void VirtualGPU::addPinnedMem(amd::Memory* mem) {
     }
 
     // Start operation, since we should release mem object
-    flushDMA(getGpuEvent(dev().getGpuMemory(mem)->iMem())->engineId_);
+    flushDMA(dev().getGpuMemory(mem)->getGpuEvent(*this)->engineId_);
 
     // Delay destruction
     pinnedMems_.push_back(mem);
@@ -721,6 +733,7 @@ VirtualGPU::VirtualGPU(Device& device)
   index_ = gpuDevice_.numOfVgpus_++;
   gpuDevice_.vgpus_.resize(gpuDevice_.numOfVgpus());
   gpuDevice_.vgpus_[index()] = this;
+
   queues_[MainEngine] = nullptr;
   queues_[SdmaEngine] = nullptr;
 }
@@ -734,6 +747,8 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
+  dev().resizeResoureList(index());
+
   // Virtual GPU will have profiling enabled
   state_.profiling_ = profiling;
 
@@ -742,8 +757,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   // \todo forces PAL to reuse CBs, but requires postamble
   createInfo.flags.autoMemoryReuse = false;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
-  createInfo.allocInfo[Pal::CommandDataAlloc].allocSize = 128 * Ki;
-  createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize = 128 * Ki;
+  createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
+  createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
+    VirtualGPU::Queue::MaxCommands * (256 + ((profiling) ? 64 : 0));
 
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 64 * Ki;
@@ -761,6 +777,8 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
 
   const uint firstQueue = (dev().numComputeEngines() > 2) ? 1 : 0;
   uint idx = index() % (dev().numComputeEngines() - firstQueue);
+  uint64_t residency_limit = dev().properties().gpuMemoryProperties.flags.supportPerSubmitMemRefs ? 0 :
+    (dev().properties().gpuMemoryProperties.maxLocalMemSize >> 2);
 
   if (dev().numComputeEngines()) {
     //! @todo There is a hang with a mix of user and non user queues.
@@ -771,7 +789,8 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
     queues_[MainEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue,
-                                        cmdAllocator_, rtCUs, priority);
+                                        cmdAllocator_, rtCUs, priority,
+                                        residency_limit);
     if (nullptr == queues_[MainEngine]) {
       return false;
     }
@@ -788,13 +807,15 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
 
       queues_[SdmaEngine] =
           Queue::Create(dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_,
-                        amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal);
+                        amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal,
+                        residency_limit);
       if (nullptr == queues_[SdmaEngine]) {
         return false;
       }
     } else {
         queues_[SdmaEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute,
-            idx, cmdAllocator_, rtCUs, amd::CommandQueue::Priority::Normal);
+            idx, cmdAllocator_, rtCUs, amd::CommandQueue::Priority::Normal,
+            residency_limit);
         if (nullptr == queues_[SdmaEngine]) {
             return false;
         }
@@ -905,10 +926,6 @@ VirtualGPU::~VirtualGPU() {
   amd::ScopedLock k(dev().lockAsyncOps());
   amd::ScopedLock lock(dev().vgpusAccess());
 
-  // Destroy all memories
-  static const bool SkipScratch = false;
-  releaseMemObjects(SkipScratch);
-
   while (!freeCbQueue_.empty()) {
     auto cb = freeCbQueue_.front();
     delete cb;
@@ -921,9 +938,6 @@ VirtualGPU::~VirtualGPU() {
   // Destroy printfHSA object
   delete printfDbgHSA_;
 
-  // Destroy BlitManager object
-  delete blitMgr_;
-
   // Destroy TimeStamp cache
   delete tsCache_;
 
@@ -932,46 +946,73 @@ VirtualGPU::~VirtualGPU() {
     delete constBufs_[i];
   }
 
-  // Destroy queues
-  if (nullptr != queues_[MainEngine]) {
-    // Make sure the queues are idle
-    // It's unclear why PAL could still have a busy queue
-    queues_[MainEngine]->iQueue_->WaitIdle();
-    delete queues_[MainEngine];
+  //! @todo Temporarily keep the buffer mapped for debug purpose
+  if (nullptr != schedParams_) {
+    schedParams_->unmap(this);
   }
 
-  if (nullptr != queues_[SdmaEngine]) {
-    queues_[SdmaEngine]->iQueue_->WaitIdle();
-    delete queues_[SdmaEngine];
-  }
-
-  if (nullptr != cmdAllocator_) {
-    cmdAllocator_->Destroy();
-    delete[] reinterpret_cast<char*>(cmdAllocator_);
-  }
-
-  gpuDevice_.numOfVgpus_--;
-  gpuDevice_.vgpus_.erase(gpuDevice_.vgpus_.begin() + index());
-  for (uint idx = index(); idx < dev().vgpus().size(); ++idx) {
-    dev().vgpus()[idx]->index_--;
-  }
+  delete vqHeader_;
+  delete virtualQueue_;
+  delete schedParams_;
+  delete hsaQueueMem_;
 
   // Release scratch buffer memory to reduce memory pressure
   //!@note OCLtst uses single device with multiple tests
   //! Release memory only if it's the last command queue.
   //! The first queue is reserved for the transfers on device
-  if (gpuDevice_.numOfVgpus_ <= 1) {
+  if (static_cast<int>(gpuDevice_.numOfVgpus_ - 1) <= 1) {
     gpuDevice_.destroyScratchBuffers();
   }
 
-  //! @todo Temporarily keep the buffer mapped for debug purpose
-  if (nullptr != schedParams_) {
-    schedParams_->unmap(this);
+  // Destroy BlitManager object
+  delete blitMgr_;
+
+  {
+    // Destroy queues
+    if (nullptr != queues_[MainEngine]) {
+      // Make sure the queues are idle
+      // It's unclear why PAL could still have a busy queue
+      queues_[MainEngine]->iQueue_->WaitIdle();
+      delete queues_[MainEngine];
+    }
+
+    if (nullptr != queues_[SdmaEngine]) {
+      queues_[SdmaEngine]->iQueue_->WaitIdle();
+      delete queues_[SdmaEngine];
+    }
+
+    if (nullptr != cmdAllocator_) {
+      cmdAllocator_->Destroy();
+      delete[] reinterpret_cast<char*>(cmdAllocator_);
+    }
   }
-  delete vqHeader_;
-  delete virtualQueue_;
-  delete schedParams_;
-  delete hsaQueueMem_;
+
+  {
+    // Find all available virtual GPUs and lock them
+    // from the execution of commands, since the queue index and resource list
+    // Will be adjusted
+    for (auto it : dev().vgpus()) {
+      if (it != this) {
+        it->execution().lock();
+      }
+    }
+
+    // Not safe to add a resource if create/destroy queue is in process, since
+    // the size of the TS array can change
+    amd::ScopedLock r(dev().lockResources());
+    gpuDevice_.numOfVgpus_--;
+    gpuDevice_.vgpus_.erase(gpuDevice_.vgpus_.begin() + index());
+    for (uint idx = index(); idx < dev().vgpus().size(); ++idx) {
+      dev().vgpus()[idx]->index_--;
+    }
+    dev().eraseResoureList(index());
+
+    // Find all available virtual GPUs and unlock them
+    // for the execution of commands
+    for (auto it : dev().vgpus()) {
+      it->execution().unlock();
+    }
+  }
 }
 
 void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
@@ -1859,11 +1900,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   VirtualGPU* gpuDefQueue = nullptr;
   amd::HwDebugManager* dbgManager = dev().hwDebugMgr();
 
-  AddKernel(kernel);
-
   // Get the HSA kernel object
   const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
-  std::vector<const Memory*> dispMemList;  //!< Memory list of all mem objects used in the disaptch
 
   bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true : false;
   if (!printfDbgHSA().init(*this, printfEnabled)) {
@@ -1872,10 +1910,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
 
   // Check memory dependency and SVM objects
-  if (!processMemObjectsHSA(kernel, parameters, nativeMem, &dispMemList)) {
+  if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
     LogError("Wrong memory objects!");
     return false;
   }
+
+  AddKernel(kernel);
 
   if (hsaKernel.dynamicParallelism()) {
     if (nullptr == defQueue) {
@@ -1895,11 +1935,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
     vmDefQueue = gpuDefQueue->virtualQueue_->vmAddress();
 
-    // Add memory handles before the actual dispatch
-    dispMemList.push_back(gpuDefQueue->virtualQueue_);
-    dispMemList.push_back(gpuDefQueue->schedParams_);
-    dispMemList.push_back(hsaKernel.prog().kernelTable());
     gpuDefQueue->writeVQueueHeader(*this, hsaKernel.prog().kernelTable()->vmAddress());
+    // Add memory handles before the actual dispatch
+    addVmMemory(gpuDefQueue->virtualQueue_);
+    addVmMemory(gpuDefQueue->schedParams_);
+    addVmMemory(hsaKernel.prog().kernelTable());
   }
 
   //  setup the storage for the memory pointers of the kernel parameters
@@ -1940,8 +1980,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       }
     }
   }
-
   for (int j = 0; j < iteration; j++) {
+    GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
+    uint32_t id = gpuEvent.id;
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
       newOffset[dim] = sizes.offset()[dim] + globalStep * j;
@@ -1957,7 +1998,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-        *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap, dispMemList);
+        *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap);
     if (nullptr == aqlPkt) {
       LogError("Couldn't load kernel arguments");
       return false;
@@ -1967,16 +2008,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // Check if the device allocated more registers than the old setup
     if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
       scratch = dev().scratch(hwRing());
-      dispMemList.push_back(scratch->memObj_);
-    }
-
-    // Add GSL handle to the memory list for VidMM
-    for (uint i = 0; i < dispMemList.size(); ++i) {
-      addVmMemory(dispMemList[i]);
-      if (dispMemList[i]->desc().isDoppTexture_) {
-        addDoppRef(dispMemList[i], kernel.parameters().getExecNewVcop(),
-                   kernel.parameters().getExecPfpaVcop());
-      }
+      addVmMemory(scratch->memObj_);
     }
 
     // HW Debug for the kernel?
@@ -1988,7 +2020,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       pKernelInfo = &kernelInfo;
     }
 
-    GpuEvent gpuEvent;
     // Set up the dispatch information
     Pal::DispatchAqlParams dispatchParam = {};
     dispatchParam.pAqlPacket = aqlPkt;
@@ -2005,7 +2036,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);
     eventEnd(MainEngine, gpuEvent);
-
+    if (id != gpuEvent.id) {
+      LogError("something is wrong. ID mismatch!\n");
+    }
     if (dbgManager && (nullptr != dbgManager->postDispatchCallBackFunc())) {
       dbgManager->executePostDispatchCallBack();
     }
@@ -2166,7 +2199,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         param->scratch = scratchBuf->vmAddress();
         param->numMaxWaves = 32 * dev().info().maxComputeUnits_;
         param->scratchOffset = dev().scratch(gpuDefQueue->hwRing())->offset_;
-        dispMemList.push_back(scratchBuf);
+        addVmMemory(scratchBuf);
       } else {
         param->numMaxWaves = 0;
         param->scratchSize = 0;
@@ -2176,12 +2209,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 
       // Add all kernels in the program to the mem list.
       //! \note Runtime doesn't know which one will be called
-      hsaKernel.prog().fillResListWithKernels(dispMemList);
-
-      // Add GPU memory handle to the memory list for VidMM
-      for (uint i = 0; i < dispMemList.size(); ++i) {
-        gpuDefQueue->addVmMemory(dispMemList[i]);
-      }
+      hsaKernel.prog().fillResListWithKernels(*this);
 
       Pal::gpusize signalAddr = gpuDefQueue->schedParams_->vmAddress() +
           gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
@@ -2193,11 +2221,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       // Thus TS command for profiling has to follow in the next CB.
       constexpr bool ForceSubmitFirst = true;
       gpuDefQueue->eventEnd(MainEngine, gpuEvent, ForceSubmitFirst);
-
-      // Set GPU event for the used resources
-      for (uint i = 0; i < dispMemList.size(); ++i) {
-        dispMemList[i]->setBusy(*gpuDefQueue, gpuEvent);
-      }
 
       if (dev().settings().useDeviceQueue_) {
         // Add the termination handshake to the host queue
@@ -2214,12 +2237,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         gpuDefQueue->schedParams_->wait(*gpuDefQueue);
       }
     }
-
-    // Set GPU event for the used resources
-    for (uint i = 0; i < dispMemList.size(); ++i) {
-      dispMemList[i]->setBusy(*this, gpuEvent);
+    if (id != gpuEvent.id) {
+      LogError("Something is wrong. ID mismatch!\n");
     }
-
     // Update the global GPU event
     setGpuEvent(gpuEvent, needFlush);
 
@@ -2269,27 +2289,10 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   }
 }
 
-GpuEvent* VirtualGPU::getGpuEvent(Pal::IGpuMemory* iMem) { return &gpuEvents_[iMem]; }
-
-void VirtualGPU::assignGpuEvent(Pal::IGpuMemory* iMem, GpuEvent gpuEvent) {
-  auto it = gpuEvents_.find(iMem);
-
-  if (it != gpuEvents_.end()) {
-    it->second = gpuEvent;
-  } else {
-    gpuEvents_[iMem] = gpuEvent;
-  }
-}
-
-void VirtualGPU::releaseMemory(Pal::IGpuMemory* iMem, bool wait) {
-  auto it = gpuEvents_.find(iMem);
-  //! @note if there is no wait, then it's a view release
-  if (wait && (it != gpuEvents_.end())) {
-    waitForEvent(&it->second);
-    queues_[MainEngine]->removeCmdMemRef(iMem);
-    queues_[SdmaEngine]->removeCmdMemRef(iMem);
-    gpuEvents_.erase(it);
-  }
+void VirtualGPU::releaseMemory(GpuMemoryReference* mem, GpuEvent* event) {
+  waitForEvent(event);
+  queues_[MainEngine]->removeCmdMemRef(mem);
+  queues_[SdmaEngine]->removeCmdMemRef(mem);
 }
 
 void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
@@ -2554,16 +2557,14 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
   uint32_t value = vcmd.markerValue();
 
   addVmMemory(pGpuMemory);
-
   if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
     iCmd()->CmdWaitBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value, 0xFFFFFFFF,
                                               Pal::CompareFunc::GreaterEqual);
   } else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
     iCmd()->CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
   }
-
   eventEnd(MainEngine, gpuEvent);
-  pGpuMemory->setBusy(*this, gpuEvent);
+
   // Update the global GPU event
   setGpuEvent(gpuEvent);
 
@@ -2717,17 +2718,6 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
 
 void VirtualGPU::enableSyncedBlit() const { return blitMgr_->enableSynchronization(); }
 
-void VirtualGPU::releaseMemObjects(bool scratch) {
-  for (GpuEvents::const_iterator it = gpuEvents_.begin(); it != gpuEvents_.end(); ++it) {
-    GpuEvent event = it->second;
-    waitForEvent(&event);
-    queues_[MainEngine]->removeCmdMemRef(const_cast<Pal::IGpuMemory*>(it->first));
-    queues_[SdmaEngine]->removeCmdMemRef(const_cast<Pal::IGpuMemory*>(it->first));
-  }
-
-  gpuEvents_.clear();
-}
-
 void VirtualGPU::setGpuEvent(GpuEvent gpuEvent, bool flush) {
   cal_.events_[engineID_] = gpuEvent;
 
@@ -2784,7 +2774,6 @@ bool VirtualGPU::waitAllEngines(CommandBatch* cb) {
 void VirtualGPU::waitEventLock(CommandBatch* cb) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
   bool earlyDone = waitAllEngines(cb);
 
   // Free resource cache if we have too many entries
@@ -2954,8 +2943,11 @@ bool VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* wai
 }
 
 void VirtualGPU::addVmMemory(const Memory* memory) {
-  queues_[MainEngine]->addCmdMemRef(memory->iMem());
-}
+  GpuEvent event(queues_[MainEngine]->cmdBufId());
+  queues_[MainEngine]->addCmdMemRef(memory->memRef());
+  memory->setBusy(*this, event);
+} 
+
 void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
   queues_[MainEngine]->last_kernel_ = &kernel;
 }
@@ -2976,13 +2968,13 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 }
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
-                                      bool nativeMem, std::vector<const Memory*>* memList) {
+                                      bool nativeMem) {
   static const bool NoAlias = true;
   const HSAILKernel& hsaKernel =
       static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev(), NoAlias)));
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
-
+  std::vector<const Memory*> memList;
   // Mark the tracker with a new kernel,
   // so we can avoid checks of the aliased objects
   memoryDependency().newKernel();
@@ -3040,13 +3032,16 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           memory->signalWrite(&dev());
         }
 
-        memList->push_back(gpuMemory);
+        memList.push_back(gpuMemory);
       } else {
         return false;
       }
     }
   }
 
+  for (auto it : memList) {
+    addVmMemory(it);
+  }
   // Check all parameters for the current kernel
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
@@ -3264,7 +3259,6 @@ void VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
   rtTmaPtr[1] = tmaAddress;
 
   rtTrapBufferMem->unmap(nullptr);
-
   // Add GPU mem handles to the memory list for VidMM
   addVmMemory(trapHandlerMem);
   addVmMemory(trapBufferMem);
@@ -3312,7 +3306,7 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       staging->cpuUnmap(*this);
 
       bool result = blitMgr().copyBuffer(*staging, *mem, 0, dstOffset, dstSize, false);
-      flushDMA(getGpuEvent(staging->iMem())->engineId_);
+      flushDMA(staging->getGpuEvent(*this)->engineId_);
       fileOffset += dstSize;
       dstOffset += dstSize;
       copySize -= dstSize;

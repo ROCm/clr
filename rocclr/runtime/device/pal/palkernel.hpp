@@ -187,8 +187,7 @@ class HSAILKernel : public device::Kernel {
       const_address parameters,            //!< Application arguments for the kernel
       bool nativeMem,                      //!< Native memory objects are passed
       uint64_t vmDefQueue,                 //!< GPU VM default queue pointer
-      uint64_t* vmParentWrap,              //!< GPU VM parent aql wrap object
-      std::vector<const Memory*>& memList  //!< Memory list for GSL/VidMM handles
+      uint64_t* vmParentWrap               //!< GPU VM parent aql wrap object
       ) const;
 
 

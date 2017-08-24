@@ -177,6 +177,9 @@ class BlitManager : public amd::HeapObject {
 
   //! Enables synchronization on blit operations
   void enableSynchronization() { syncOperation_ = true; }
+  
+  //! Returns Xfer queue lock
+  virtual amd::Monitor* lockXfer() const { return nullptr; }
 
  protected:
   const Setup setup_;   //!< HW accelerated blit requested

@@ -146,6 +146,7 @@ class Program;
 class Kernel;
 class Memory;
 class Resource;
+class GpuMemoryReference;
 class VirtualDevice;
 class PrintfDbg;
 class ThreadTrace;
@@ -276,7 +277,7 @@ class Device : public NullDevice {
     void freeSrdSlot(uint64_t addr);
 
     // Fills the memory list for VidMM KMD
-    void fillResourceList(std::vector<const Memory*>& memList);
+    void fillResourceList(VirtualGPU& gpu);
 
    private:
     //! Disable copy constructor
@@ -368,6 +369,9 @@ class Device : public NullDevice {
 
   //! Returns the monitor object for PAL
   amd::Monitor& lockPAL() const { return *lockPAL_; }
+
+  //! Returns the monitor object for PAL
+  amd::Monitor& lockResources() const { return *lockResourceOps_; }
 
   //! Returns the number of virtual GPUs allocated on this device
   uint numOfVgpus() const { return numOfVgpus_; }
@@ -487,6 +491,41 @@ class Device : public NullDevice {
   bool resGLRelease(void* GLplatformContext, void* mbResHandle, uint type) const;
   bool resGLFree(void* GLplatformContext, void* mbResHandle, uint type) const;
 
+  //! Adds a resource to the global list
+  void addResource(GpuMemoryReference* mem) const { 
+    amd::ScopedLock lock(lockResources());
+    auto findIt = std::find(resourceList_->begin(), resourceList_->end(), mem);
+    mem->events_.resize(numOfVgpus());
+    if (resourceList_->end() == findIt) {
+      resourceList_->push_back(mem);
+    }
+  }
+
+  //! Removes a resource from the global list
+  void removeResource(GpuMemoryReference* mem) const {
+    amd::ScopedLock lock(lockResources());
+    resourceList_->remove(mem);
+  }
+
+  //! Resizes global resource list to accumulate a new queue
+  void resizeResoureList(uint index) const {
+    // Not safe to resize the list when runtime creates/destroys a queue at the same time
+    // or other queues process a command, since the size of the TS array can change
+    Device::ScopedLockVgpus v(*this);
+    amd::ScopedLock r(lockResources());
+    for (auto it : *resourceList_) {
+      it->resizeGpuEvents(index);
+    }
+  }
+
+  //! Erases an old queue from the list
+  void eraseResoureList(uint index) const {
+    amd::ScopedLock lock(lockResources());
+    for (auto it : *resourceList_) {
+      it->eraseGpuEvents(index);
+    }
+  }
+
  private:
   //! Disable copy constructor
   Device(const Device&);
@@ -548,6 +587,8 @@ class Device : public NullDevice {
   Pal::DeviceProperties properties_;     //!< PAL device properties
   Pal::IDevice* device_;                 //!< PAL device object
   std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
+  amd::Monitor* lockResourceOps_;        //!< Lock to serialise resource access
+  std::list<GpuMemoryReference*>* resourceList_;     //!< Active resource list
 };
 
 /*@}*/} // namespace pal

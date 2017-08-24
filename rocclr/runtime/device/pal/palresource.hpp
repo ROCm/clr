@@ -34,13 +34,24 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
                                     Pal::ImageCreateInfo* imgCreateInfo, Pal::IImage** image);
 
   //! Default constructor
-  GpuMemoryReference();
+  GpuMemoryReference(const Device& dev);
+
+  //! Resizes the events array to account the new queue
+  void resizeGpuEvents(uint index) { events_.resize(index + 1); }
+
+  //! Erase an entry in the array for provided queue index
+  void eraseGpuEvents(uint index) { events_.erase(events_.begin() + index); }
 
   //! Get PAL memory object
   Pal::IGpuMemory* iMem() const { return gpuMem_; }
 
-  Pal::IGpuMemory* gpuMem_;  //!< PAL GPU memory object
-  void* cpuAddress_;         //!< CPU address of this memory
+  Pal::IGpuMemory* gpuMem_;   //!< PAL GPU memory object
+  void* cpuAddress_;          //!< CPU address of this memory
+  const Device& device_;      //!< GPU device
+  //! @note: This field is necessary for the thread safe release only
+  VirtualGPU* gpu_;           //!< Resource will be used only on this queue
+  std::vector<GpuEvent> events_;  //!< GPU events associated with the resource
+  std::atomic<int>  resident_;   //!< Atomic counter for residency
 
  protected:
   //! Default destructor
@@ -105,8 +116,6 @@ class Resource : public amd::HeapObject {
     uint mipLevel_;     //!< Texture mip level
     uint layer_;        //!< Texture layer
     void* glPlatformContext_;
-    void* glDeviceContext_;
-    uint flags_;
   };
 
 #ifdef _WIN32
@@ -251,6 +260,9 @@ class Resource : public amd::HeapObject {
   //! Returns the PAL memory object
   Pal::IGpuMemory* iMem() const { return memRef_->iMem(); }
 
+  //! Returns a pointer to the memory reference
+  GpuMemoryReference* memRef() const {return memRef_; }
+
   //! Returns global memory offset
   uint64_t vmAddress() const { return iMem()->Desc().gpuVirtAddr + offset_; }
 
@@ -341,9 +353,16 @@ class Resource : public amd::HeapObject {
   //! Returns CPU HW SRD for the resource (used for images only)
   uint64_t hwSrd() const { return hwSrd_; }
 
+  //! Returns the number of components in the image format
   uint numComponents() const {
     return Pal::Formats::NumComponents(image_->GetImageCreateInfo().swizzledFormat.format);
   }
+
+  //! Adds GPU event, associated with this resource
+  void addGpuEvent(const VirtualGPU& gpu, GpuEvent event) const;
+
+  //! Returns GPU event associated with this resource and specified queue
+  GpuEvent* getGpuEvent(const VirtualGPU& gpu) const;
 
  protected:
   uint elementSize_;  //!< Size of a single element in bytes
@@ -406,7 +425,7 @@ class Resource : public amd::HeapObject {
   amd::Atomic<int> mapCount_;   //!< Total number of maps
   void* address_;               //!< Physical address of this resource
   size_t offset_;               //!< Resource offset
-  size_t curRename_;            //!< Current active rename in the list
+  uint32_t curRename_;          //!< Current active rename in the list
   RenameList renames_;          //!< Rename resource list
   GpuMemoryReference* memRef_;  //!< PAL resource reference
   const Resource* viewOwner_;   //!< GPU resource, which owns this view
@@ -414,15 +433,12 @@ class Resource : public amd::HeapObject {
   void* glInteropMbRes_;        //!< Mb Res handle
   uint32_t glType_;             //!< GL interop type
   void* glPlatformContext_;
-  void* glDeviceContext_;
 
   // Optimization for multilayer map/unmap
   uint startLayer_;  //!< Start layer for map/unmapLayer
   uint numLayers_;   //!< Number of layers for map/unmapLayer
   uint mapFlags_;    //!< Map flags for map/umapLayer
 
-  //! @note: This field is necessary for the thread safe release only
-  VirtualGPU* gpu_;     //!< Resource will be used only on this queue
   Pal::IImage* image_;  //!< PAL image object
 
   uint32_t* hwState_;  //!< HW state for image object

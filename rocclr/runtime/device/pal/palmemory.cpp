@@ -169,6 +169,13 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     }
   }
 
+  if (result) {
+    dev().addResource(memRef());
+    if (params != nullptr) {
+      memRef()->gpu_ = params->gpu_;
+    }
+  }
+
   return result;
 }
 
@@ -363,10 +370,6 @@ bool Memory::createInterop(InteropType type) {
     }
 
     oglRes.glPlatformContext_ = owner()->getContext().info().hCtx_;
-    oglRes.glDeviceContext_ =
-        owner()->getContext().info().hDev_[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
-    // We dont pass any flags here for the GL Resource.
-    oglRes.flags_ = 0;
   } else {
     return false;
   }

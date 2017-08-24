@@ -36,7 +36,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     return nullptr;
   }
 
-  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference();
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
     if (result != Pal::Result::Success) {
@@ -57,7 +57,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     return nullptr;
   }
 
-  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference();
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   Pal::VaRange vaRange = Pal::VaRange::Default;
   if (memRef != nullptr) {
     result = dev.iDev()->CreatePinnedGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
@@ -67,8 +67,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size,
-                                            false);
+  const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
   return memRef;
 }
 
@@ -80,7 +79,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     return nullptr;
   }
 
-  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference();
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->CreateSvmGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
     if (result != Pal::Result::Success) {
@@ -103,7 +102,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
-  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference();
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->OpenExternalSharedGpuMemory(openInfo, &memRef[1], &createInfo,
                                                      &memRef->gpuMem_);
@@ -112,7 +111,6 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-
   return memRef;
 }
 
@@ -129,7 +127,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
-  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference();
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   char* imgMem = new char[imageSize];
   if (memRef != nullptr) {
     result = dev.iDev()->OpenExternalSharedImage(openInfo, imgMem, &memRef[1], &createInfo, image,
@@ -139,20 +137,46 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-
   return memRef;
 }
 
-GpuMemoryReference::GpuMemoryReference() : gpuMem_(nullptr), cpuAddress_(nullptr) {}
+GpuMemoryReference::GpuMemoryReference(const Device& dev)
+  : gpuMem_(nullptr), cpuAddress_(nullptr), events_(dev.numOfVgpus()), device_(dev), gpu_(nullptr), resident_(0) {}
 
 GpuMemoryReference::~GpuMemoryReference() {
-  if (cpuAddress_ != nullptr) {
-    iMem()->Unmap();
+  if (gpu_ == nullptr) {
+    {
+      Device::ScopedLockVgpus lock(device_);
+      // Release all memory objects on all virtual GPUs
+      for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
+        device_.vgpus()[idx]->releaseMemory(this, &events_[idx]);
+      }
+    }
+  } else {
+    gpu_->releaseMemory(this, &events_[gpu_->index()]);
   }
-  if (0 != iMem()) {
-    iMem()->Destroy();
-    gpuMem_ = nullptr;
+  if (device_.vgpus().size() != 0) {
+    assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
+    // Lock the transfer queue, since it's not handled by ScopedLockVgpus
+    amd::ScopedLock k(device_.xferMgr().lockXfer());
+    device_.vgpus()[0]->releaseMemory(this, &events_[0]);
   }
+
+  if (resident_ != 0) {
+    LogError("Residency counter isn't 0 on memory destroy!");
+  }
+
+  {
+    amd::ScopedLock lk(device_.lockPAL());
+    if (cpuAddress_ != nullptr) {
+      iMem()->Unmap();
+    }
+    if (0 != iMem()) {
+      iMem()->Destroy();
+      gpuMem_ = nullptr;
+    }
+  }
+  device_.removeResource(this);
 }
 
 Resource::Resource(const Device& gpuDev, size_t size)
@@ -165,7 +189,6 @@ Resource::Resource(const Device& gpuDev, size_t size)
       memRef_(nullptr),
       viewOwner_(nullptr),
       pinOffset_(0),
-      gpu_(nullptr),
       image_(nullptr),
       hwSrd_(0) {
   // Fill resource descriptor fields
@@ -203,7 +226,6 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
       memRef_(nullptr),
       viewOwner_(nullptr),
       pinOffset_(0),
-      gpu_(nullptr),
       image_(nullptr),
       hwSrd_(0) {
   // Fill resource descriptor fields
@@ -428,10 +450,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     desc_.type_ = RemoteUSWC;
   }
 
-  if (params != nullptr) {
-    gpu_ = params->gpu_;
-  }
-
   Pal::Result result;
 
 #ifdef _WIN32
@@ -465,7 +483,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
           break;
       }
       glPlatformContext_ = oglRes->glPlatformContext_;
-      glDeviceContext_ = oglRes->glDeviceContext_;
       layer = oglRes->layer_;
       type = oglRes->type_;
       mipLevel = oglRes->mipLevel_;
@@ -1055,7 +1072,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       return false;
     }
   }
-
   return true;
 }
 
@@ -1069,71 +1085,44 @@ void Resource::free() {
     LogWarning("Resource wasn't unlocked, but destroyed!");
   }
   const bool wait =
-      (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
+    (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
 
-  // Check if resource could be used in any queue(thread)
-  if (gpu_ == nullptr) {
-    Device::ScopedLockVgpus lock(dev());
-
-    if (renames_.size() == 0) {
-      // Destroy GSL resource
-      if (iMem() != 0) {
-        // Release all virtual memory objects on all virtual GPUs
-        for (uint idx = 0; idx < dev().vgpus().size(); ++idx) {
-          // Ignore the transfer queue,
-          // since it releases resources after every operation
-          if (dev().vgpus()[idx] != dev().xferQueue()) {
-            dev().vgpus()[idx]->releaseMemory(iMem(), wait);
-          }
-        }
-
-        //! @note: This is a workaround for bad applications that
-        //! don't unmap memory
-        if (mapCount_ != 0) {
-          unmap(nullptr);
-        }
-
-        // Add resource to the cache
-        if (!dev().resourceCache().addGpuMemory(&desc_, memRef_)) {
-          palFree();
-        }
+  if (wait) {
+    if (memRef_->gpu_ == nullptr) {
+      Device::ScopedLockVgpus lock(dev());
+      // Release all memory objects on all virtual GPUs
+      for (uint idx = 1; idx < dev().vgpus().size(); ++idx) {
+        dev().vgpus()[idx]->waitForEvent(&memRef_->events_[idx]);
       }
-    } else {
-      renames_[curRename_]->cpuAddress_ = 0;
-      for (size_t i = 0; i < renames_.size(); ++i) {
-        memRef_ = renames_[i];
-        // Destroy GSL resource
-        if (iMem() != 0) {
-          // Release all virtual memory objects on all virtual GPUs
-          for (uint idx = 0; idx < dev().vgpus().size(); ++idx) {
-            // Ignore the transfer queue,
-            // since it releases resources after every operation
-            if (dev().vgpus()[idx] != dev().xferQueue()) {
-              dev().vgpus()[idx]->releaseMemory(iMem());
-            }
-          }
-          palFree();
-        }
+    }
+    else {
+      memRef_->gpu_->waitForEvent(&memRef_->events_[memRef_->gpu_->index()]);
+    }
+  }
+
+  if (renames_.size() == 0) {
+    // Destroy GSL resource
+    if (iMem() != 0) {
+      //! @note: This is a workaround for bad applications that
+      //! don't unmap memory
+      if (mapCount_ != 0) {
+        unmap(nullptr);
+      }
+
+      // Add resource to the cache if it's not assigned to a specific queue
+      if ((memRef_->gpu_ != nullptr) || !dev().resourceCache().addGpuMemory(&desc_, memRef_)) {
+        palFree();
       }
     }
   } else {
-    if (renames_.size() == 0) {
-      // Destroy GSL resource
+    renames_[curRename_]->cpuAddress_ = 0;
+    for (size_t i = 0; i < renames_.size(); ++i) {
+      memRef_ = renames_[i];
+      // Destroy PAL resource
       if (iMem() != 0) {
-        // Release virtual memory object on the specified virtual GPU
-        gpu_->releaseMemory(iMem(), wait);
         palFree();
       }
-    } else
-      for (size_t i = 0; i < renames_.size(); ++i) {
-        memRef_ = renames_[i];
-        // Destroy GSL resource
-        if (iMem() != 0) {
-          // Release virtual memory object on the specified virtual GPUs
-          gpu_->releaseMemory(iMem());
-          palFree();
-        }
-      }
+    }
   }
 
   // Free SRD for images
@@ -1150,7 +1139,7 @@ void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const v
   // size needs to be DWORD aligned
   assert((size & 3) == 0);
   gpu.eventBegin(MainEngine);
-  gpu.queue(MainEngine).addCmdMemRef(iMem());
+  gpu.queue(MainEngine).addCmdMemRef(memRef());
   gpu.iCmd()->CmdUpdateMemory(*iMem(), offset, size, reinterpret_cast<const uint32_t*>(data));
   gpu.eventEnd(MainEngine, event);
 
@@ -1244,8 +1233,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   Pal::ImageLayout imgLayout = {};
   gpu.eventBegin(gpu.engineID_);
-  gpu.queue(gpu.engineID_).addCmdMemRef(iMem());
-  gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.iMem());
+  gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
+  gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
     Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, dstResource.desc().baseLevel_, 0};
     Pal::MemoryImageCopyRegion copyRegion = {};
@@ -1340,7 +1329,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 }
 
 void Resource::setBusy(VirtualGPU& gpu, GpuEvent gpuEvent) const {
-  gpu.assignGpuEvent(iMem(), gpuEvent);
+  addGpuEvent(gpu, gpuEvent);
 
   // If current resource is a view, then update the parent event as well
   if (viewOwner_ != nullptr) {
@@ -1349,7 +1338,7 @@ void Resource::setBusy(VirtualGPU& gpu, GpuEvent gpuEvent) const {
 }
 
 void Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const {
-  GpuEvent* gpuEvent = gpu.getGpuEvent(iMem());
+  GpuEvent* gpuEvent = getGpuEvent(gpu);
 
   // Check if we have to wait unconditionally
   if (!waitOnBusyEngine ||
@@ -1560,10 +1549,22 @@ bool Resource::glRelease() {
   }
   return retVal;
 }
-void Resource::palFree() const {
-  amd::ScopedLock lk(dev().lockPAL());
 
+void Resource::addGpuEvent(const VirtualGPU& gpu, GpuEvent event) const {
+  uint idx = gpu.index();
+  assert(idx < memRef_->events_.size());
+  memRef_->events_[idx] = event;
+}
+
+GpuEvent* Resource::getGpuEvent(const VirtualGPU& gpu) const {
+  uint idx = gpu.index();
+  assert((idx < memRef_->events_.size()) && "Undeclared queue access!");
+  return &memRef_->events_[idx];
+}
+
+void Resource::palFree() const {
   if (desc().type_ == OGLInterop) {
+    amd::ScopedLock lk(dev().lockPAL());
     dev().resGLFree(glPlatformContext_, glInteropMbRes_, glType_);
   }
   memRef_->release();
@@ -1857,7 +1858,7 @@ bool Resource::getActiveRename(VirtualGPU& gpu, GpuMemoryReference** rename) {
 }
 
 bool Resource::rename(VirtualGPU& gpu, bool force) {
-  GpuEvent* gpuEvent = gpu.getGpuEvent(iMem());
+  GpuEvent* gpuEvent = getGpuEvent(gpu);
   if (!gpuEvent->isValid() && !force) {
     return true;
   }

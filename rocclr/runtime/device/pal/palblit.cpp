@@ -19,7 +19,6 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
-    gpu().releaseMemObjects();
     gpu().waitAllEngines();
   }
 }
@@ -2311,6 +2310,7 @@ bool KernelBlitManager::runScheduler(device::Memory& vqueue, device::Memory& par
 }
 
 void KernelBlitManager::writeRawData(device::Memory& memory, size_t size, const void* data) const {
+  amd::ScopedLock k(lockXferOps_);
   static_cast<pal::Memory&>(memory).writeRawData(gpu(), 0, size, data, false);
 
   synchronize();
