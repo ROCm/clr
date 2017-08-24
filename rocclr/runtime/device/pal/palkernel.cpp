@@ -883,8 +883,7 @@ const uint16_t kDispatchPacketHeader = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_P
 
 hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     VirtualGPU& gpu, const amd::Kernel& kernel, const amd::NDRangeContainer& sizes,
-    const_address parameters, bool nativeMem, uint64_t vmDefQueue, uint64_t* vmParentWrap,
-    std::vector<const Memory*>& memList) const {
+    const_address parameters, bool nativeMem, uint64_t vmDefQueue, uint64_t* vmParentWrap) const {
   static const bool WaitOnBusyEngine = true;
   uint64_t ldsAddress = ldsSize();
   address aqlArgBuf = gpu.cb(0)->sysMemCopy();
@@ -899,7 +898,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     ConstBuffer* cb = gpu.constBufs_[1];
     cb->uploadDataToHw(sizeof(AmdAqlWrap));
     *vmParentWrap = cb->vmAddress() + cb->wrtOffset();
-    memList.push_back(cb);
+    gpu.addVmMemory(cb);
   }
 
   const amd::KernelSignature& signature = kernel.signature();
@@ -940,7 +939,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
             (gpu.printfDbgHSA().dbgBuffer() != nullptr)) {
           // and set the fourth argument as the printf_buffer pointer
           bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
-          memList.push_back(gpu.printfDbgHSA().dbgBuffer());
+          gpu.addVmMemory(gpu.printfDbgHSA().dbgBuffer());
         }
         assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
         WriteAqlArg(&aqlArgBuf, &bufferPtr, arg->size_, arg->alignment_);
@@ -985,7 +984,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
             if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
               mem->signalWrite(&dev());
             }
-            memList.push_back(gpuMem);
+            gpu.addVmMemory(gpuMem);
           }
           // If finegrainsystem is present then the pointer can be malloced by the app and
           // passed to kernel directly. If so copy the pointer location to aqlArgBuf
@@ -1022,7 +1021,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         if ((nullptr != mem) && ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0)) {
           mem->signalWrite(&dev());
         }
-        memList.push_back(gpuMem);
+        gpu.addVmMemory(gpuMem);
 
         // save the memory object pointer to allow global memory access
         if (nullptr != dev().hwDebugMgr()) {
@@ -1038,7 +1037,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         // Then use a pointer in aqlArgBuffer to CB1
         size_t gpuPtr = static_cast<size_t>(cb->vmAddress() + cb->wrtOffset());
         WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t));
-        memList.push_back(cb);
+        gpu.addVmMemory(cb);
         break;
       }
       case HSAIL_ARGTYPE_VALUE:
@@ -1073,7 +1072,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           // Then use a pointer in aqlArgBuffer to CB1
           uint64_t srd = cb->vmAddress() + cb->wrtOffset();
           WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-          memList.push_back(cb);
+          gpu.addVmMemory(cb);
         } else {
           uint64_t srd = image->hwSrd();
           WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
@@ -1085,7 +1084,11 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           mem->signalWrite(&dev());
         }
 
-        memList.push_back(image);
+        gpu.addVmMemory(image);
+        if (image->desc().isDoppTexture_) {
+          gpu.addDoppRef(image, kernel.parameters().getExecNewVcop(),
+            kernel.parameters().getExecPfpaVcop());
+        }
         break;
       }
       case HSAIL_ARGTYPE_SAMPLER: {
@@ -1167,18 +1170,18 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->reserved2 = 0;
   hsaDisp->completion_signal.handle = 0;
 
-  memList.push_back(cb);
-  memList.push_back(&prog().codeSegGpu());
+  gpu.addVmMemory(cb);
+  gpu.addVmMemory(&prog().codeSegGpu());
   for (pal::Memory* mem : prog().globalStores()) {
-    memList.push_back(mem);
+    gpu.addVmMemory(mem);
   }
   if (AMD_HSA_BITS_GET(cpuAqlCode_->kernel_code_properties,
                        AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
-    memList.push_back(gpu.hsaQueueMem());
+    gpu.addVmMemory(gpu.hsaQueueMem());
   }
 
   if (srdResource || prog().isStaticSampler()) {
-    dev().srds().fillResourceList(memList);
+    dev().srds().fillResourceList(gpu);
   }
 
   return hsaDisp;

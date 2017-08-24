@@ -56,10 +56,11 @@ class VirtualGPU : public device::VirtualDevice {
                          uint engineIdx,                       //!< Select particular engine index
                          Pal::ICmdAllocator* cmdAlloc,         //!< PAL CMD buffer allocator
                          uint rtCU,                            //!< The number of reserved CUs
-                         amd::CommandQueue::Priority priority  //!< Queue priority
+                         amd::CommandQueue::Priority priority, //!< Queue priority
+                         uint64_t residency_limit              //!< Enables residency limit
                          );
 
-    Queue(Pal::IDevice* palDev)
+    Queue(Pal::IDevice* palDev, uint64_t residency_limit)
         : iQueue_(nullptr),
           last_kernel_(nullptr),
           iDev_(palDev),
@@ -67,7 +68,10 @@ class VirtualGPU : public device::VirtualDevice {
           cmdBufIdCurrent_(StartCmdBufIdx),
           cmbBufIdRetired_(0),
           cmdCnt_(0),
-          vlAlloc_(64 * Ki) {
+          vlAlloc_(64 * Ki),
+          residency_size_(0),
+          residency_limit_(residency_limit)
+    {
       for (uint i = 0; i < MaxCmdBuffers; ++i) {
         iCmdBuffs_[i] = nullptr;
         iCmdFences_[i] = nullptr;
@@ -77,8 +81,8 @@ class VirtualGPU : public device::VirtualDevice {
 
     ~Queue();
 
-    void addCmdMemRef(Pal::IGpuMemory* iMem);
-    void removeCmdMemRef(Pal::IGpuMemory* iMem);
+    void addCmdMemRef(GpuMemoryReference* mem);
+    void removeCmdMemRef(GpuMemoryReference* mem);
 
     void addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, bool pfpaDoppCmd);
 
@@ -133,6 +137,8 @@ class VirtualGPU : public device::VirtualDevice {
 
     Pal::ICmdBuffer* iCmd() const { return iCmdBuffs_[cmdBufIdSlot_]; }
 
+    uint cmdBufId() const { return cmdBufIdCurrent_; }
+
     Pal::IQueue* iQueue_;                        //!< PAL queue object
     Pal::ICmdBuffer* iCmdBuffs_[MaxCmdBuffers];  //!< PAL command buffers
     Pal::IFence* iCmdFences_[MaxCmdBuffers];     //!< PAL fences, associated with CMD
@@ -145,13 +151,15 @@ class VirtualGPU : public device::VirtualDevice {
     uint cmdBufIdCurrent_;  //!< Current global command buffer ID
     uint cmbBufIdRetired_;  //!< The last retired command buffer ID
     uint cmdCnt_;           //!< Counter of commands
-    std::map<Pal::IGpuMemory*, uint> memReferences_;
+    std::map<GpuMemoryReference*, uint> memReferences_;
     Util::VirtualLinearAllocator vlAlloc_;
     std::vector<Pal::GpuMemoryRef> palMemRefs_;
     std::vector<Pal::IGpuMemory*> palMems_;
     std::vector<Pal::DoppRef> palDoppRefs_;
     std::set<Pal::IGpuMemory*>      sdiReferences_;
     std::vector<const Pal::IGpuMemory*>   palSdiRefs_;
+    uint64_t  residency_size_;  //!< Resource residency size
+    uint64_t  residency_limit_; //!< Enables residency limit
   };
 
   struct CommandBatch : public amd::HeapObject {
@@ -303,7 +311,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
-  void releaseMemory(Pal::IGpuMemory* iMem, bool wait = true);
+  void releaseMemory(GpuMemoryReference* mem, GpuEvent* event);
 
   void flush(amd::Command* list = nullptr, bool wait = false);
   bool terminate() { return true; }
@@ -313,14 +321,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns CAL descriptor of the virtual device
   const CalVirtualDesc* cal() const { return &cal_; }
-
-  //! Returns a GPU event, associated with GPU memory
-  GpuEvent* getGpuEvent(Pal::IGpuMemory* iMem  //!< PAL mem object
-                        );
-
-  //! Assigns a GPU event, associated with GPU memory
-  void assignGpuEvent(Pal::IGpuMemory* iMem,  //!< PAL mem object
-                      GpuEvent gpuEvent);
 
   //! Set the last known GPU event
   void setGpuEvent(GpuEvent gpuEvent,  //!< GPU event for tracking
@@ -362,12 +362,12 @@ class VirtualGPU : public device::VirtualDevice {
                                );
 
   //! Adds a memory handle into the GSL memory array for Virtual Heap
-  void addVmMemory(const Memory* memory  //!< GPU memory object
-                   );
+  inline void addVmMemory(const Memory* memory  //!< GPU memory object
+                          );
 
   //! Adds the last submitted kernel to the queue for tracking a possible hang
-  void AddKernel(const amd::Kernel& kernel  //!< AMD kernel object
-                 ) const;
+  inline void AddKernel(const amd::Kernel& kernel  //!< AMD kernel object
+                        ) const;
 
   //! Adds a dopp desktop texture reference
   void addDoppRef(const Memory* memory,  //!< GPU memory object
@@ -413,9 +413,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns DMA flush management structure
   const DmaFlushMgmt& dmaFlushMgmt() const { return dmaFlushMgmt_; }
-
-  //! Releases GSL memory objects allocated on this queue
-  void releaseMemObjects(bool scratch = true);
 
   //! Returns the HW ring used on this virtual device
   uint hwRing() const { return hwRing_; }
@@ -525,8 +522,6 @@ class VirtualGPU : public device::VirtualDevice {
     MemoryRange() : start_(0), end_(0) {}
   };
 
-  typedef std::map<const Pal::IGpuMemory*, GpuEvent> GpuEvents;
-
   //! Finds total amount of necessary iterations
   inline void findIterations(const amd::NDRangeContainer& sizes,  //!< Original workload sizes
                              const amd::NDRange& local,           //!< Local workgroup size
@@ -552,8 +547,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Detects memory dependency for HSAIL kernels and flushes caches
   bool processMemObjectsHSA(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                             const_address params,       //!< Pointer to the param's store
-                            bool nativeMem,             //!< Native memory objects
-                            std::vector<const Memory*>* memList  //!< Memory list for KMD tracking
+                            bool nativeMem              //!< Native memory objects
                             );
 
   //! Common function for fill memory used by both svm Fill and non-svm fill
@@ -585,8 +579,6 @@ class VirtualGPU : public device::VirtualDevice {
   void assignDebugTrapHandler(const DebugToolInfo& dbgSetting,  //!< debug settings
                               HwDbgKernelInfo& kernelInfo       //!< kernel info for the dispatch
                               );
-
-  GpuEvents gpuEvents_;  //!< GPU events
 
   Device& gpuDevice_;       //!< physical GPU device
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects

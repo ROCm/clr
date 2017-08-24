@@ -581,7 +581,10 @@ Device::Device()
       heapInitComplete_(false),
       xferQueue_(nullptr),
       globalScratchBuf_(nullptr),
-      srdManager_(nullptr) {}
+      srdManager_(nullptr),
+      lockResourceOps_(nullptr),
+      resourceList_(nullptr)
+      {}
 
 Device::~Device() {
   // remove the HW debug manager
@@ -625,6 +628,8 @@ Device::~Device() {
   delete vgpusAccess_;
   delete scratchAlloc_;
   delete mapCacheOps_;
+  delete lockResourceOps_;
+  delete resourceList_;
 
   if (context_ != nullptr) {
     context_->release();
@@ -639,7 +644,10 @@ bool Device::create(Pal::IDevice* device) {
   if (!amd::Device::create()) {
     return false;
   }
-
+  resourceList_ = new std::list<GpuMemoryReference*>();
+  if (nullptr == resourceList_) {
+    return false;
+  }
   appProfile_.init();
   device_ = device;
   Pal::Result result;
@@ -746,6 +754,11 @@ bool Device::create(Pal::IDevice* device) {
   }
   lockPAL_ = new amd::Monitor("PAL Ops Lock", true);
   if (nullptr == lockPAL_) {
+    return false;
+  }
+
+  lockResourceOps_ = new amd::Monitor("Resource List Ops Lock", true);
+  if (nullptr == lockResourceOps_) {
     return false;
   }
 
@@ -2075,9 +2088,9 @@ bool Device::createBlitProgram() {
   return result;
 }
 
-void Device::SrdManager::fillResourceList(std::vector<const Memory*>& memList) {
+void Device::SrdManager::fillResourceList(VirtualGPU& gpu) {
   for (uint i = 0; i < pool_.size(); ++i) {
-    memList.push_back(pool_[i].buf_);
+    gpu.addVmMemory(pool_[i].buf_);
   }
 }
 

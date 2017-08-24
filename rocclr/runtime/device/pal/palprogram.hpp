@@ -150,7 +150,7 @@ class HSAILProgram : public device::Program {
   const Memory* kernelTable() const { return kernels_; }
 
   //! Adds all kernels to the mem handle lists
-  void fillResListWithKernels(std::vector<const Memory*>& memList) const;
+  void fillResListWithKernels(VirtualGPU& gpu) const;
 
   //! Returns the maximum number of scratch regs used in the program
   uint maxScratchRegs() const { return maxScratchRegs_; }
