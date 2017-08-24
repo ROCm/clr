@@ -96,15 +96,22 @@ class VirtualGPU : public device::VirtualDevice {
     }
 
     // ibReuse forces event wait without polling, to make sure event occured
-    bool waifForFence(uint cbId, bool ibReuse = false) const {
+    template <bool ibReuse>
+    bool waifForFence(uint cbId) const {
       Pal::Result result = Pal::Result::Success;
-      uint64_t start = amd::Os::timeNanos();
-      while ((Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus())) || ibReuse) {
+      uint64_t start;
+      uint64_t end;
+      if (!ibReuse) {
+        start = amd::Os::timeNanos();
+      }
+      while (ibReuse || (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus()))) {
         if (result == Pal::Result::ErrorFenceNeverSubmitted) {
           result = Pal::Result::Success;
           break;
         }
-        uint64_t end = amd::Os::timeNanos();
+        if (!ibReuse) {
+          end = amd::Os::timeNanos();
+        }
         if (!ibReuse && ((end - start) < PollIntervalInNsec)) {
           amd::Os::yield();
           continue;

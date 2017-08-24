@@ -46,6 +46,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(createInfo.heaps[0], createInfo.size, false);
+  dev.addResource(memRef);
   return memRef;
 }
 
@@ -68,6 +69,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
+  dev.addResource(memRef);
   return memRef;
 }
 
@@ -90,6 +92,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size,
                                             false);
+  dev.addResource(memRef);
   return memRef;
 }
 
@@ -111,6 +114,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
+  dev.addResource(memRef);
   return memRef;
 }
 
@@ -137,11 +141,12 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
+  dev.addResource(memRef);
   return memRef;
 }
 
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
-  : gpuMem_(nullptr), cpuAddress_(nullptr), events_(dev.numOfVgpus()), device_(dev), gpu_(nullptr), resident_(0) {}
+  : gpuMem_(nullptr), cpuAddress_(nullptr), events_(dev.numOfVgpus()), device_(dev), gpu_(nullptr) {}
 
 GpuMemoryReference::~GpuMemoryReference() {
   if (gpu_ == nullptr) {
@@ -160,10 +165,6 @@ GpuMemoryReference::~GpuMemoryReference() {
     // Lock the transfer queue, since it's not handled by ScopedLockVgpus
     amd::ScopedLock k(device_.xferMgr().lockXfer());
     device_.vgpus()[0]->releaseMemory(this, &events_[0]);
-  }
-
-  if (resident_ != 0) {
-    LogError("Residency counter isn't 0 on memory destroy!");
   }
 
   {
