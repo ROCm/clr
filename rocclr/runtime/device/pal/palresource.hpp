@@ -51,7 +51,6 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   //! @note: This field is necessary for the thread safe release only
   VirtualGPU* gpu_;           //!< Resource will be used only on this queue
   std::vector<GpuEvent> events_;  //!< GPU events associated with the resource
-  std::atomic<int>  resident_;   //!< Atomic counter for residency
 
  protected:
   //! Default destructor

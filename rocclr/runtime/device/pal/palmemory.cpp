@@ -170,7 +170,6 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
   }
 
   if (result) {
-    dev().addResource(memRef());
     if (params != nullptr) {
       memRef()->gpu_ = params->gpu_;
     }

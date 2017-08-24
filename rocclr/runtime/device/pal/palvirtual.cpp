@@ -163,7 +163,6 @@ void VirtualGPU::Queue::addCmdMemRef(GpuMemoryReference* mem) {
       palSdiRefs_.push_back(iMem);
     }
     residency_size_ += iMem->Desc().size;
-    mem->resident_++;
   }
 }
 
@@ -172,7 +171,6 @@ void VirtualGPU::Queue::removeCmdMemRef(GpuMemoryReference* mem) {
   if (0 != memReferences_.erase(mem)) {
     iDev_->RemoveGpuMemoryReferences(1, &iMem, iQueue_);
     residency_size_ -= iMem->Desc().size;
-    mem->resident_--;
   }
 }
 
@@ -222,13 +220,6 @@ bool VirtualGPU::Queue::flush() {
     return false;
   }
 
-  // Validate resources
-  for (auto it : memReferences_) {
-    if (it.second == cmdBufIdSlot_) {
-      assert(it.first->resident_ > 0 && "Unresident resource!");
-    }
-  }
-
   if (palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
@@ -259,8 +250,10 @@ bool VirtualGPU::Queue::flush() {
     LogError("PAL failed to submit CMD!");
     return false;
   }
+  // Make sure the slot isn't busy
+  constexpr bool IbReuse = true;
   if (GPU_FLUSH_ON_EXECUTION) {
-    waifForFence(cmdBufIdSlot_);
+    waifForFence<!IbReuse>(cmdBufIdSlot_);
   }
 
   // Reset the counter of commands
@@ -271,7 +264,7 @@ bool VirtualGPU::Queue::flush() {
 
   if (cmdBufIdCurrent_ == GpuEvent::InvalidID) {
     // Wait for the last one
-    waifForFence(cmdBufIdSlot_);
+    waifForFence<!IbReuse>(cmdBufIdSlot_);
     cmdBufIdCurrent_ = 1;
     cmbBufIdRetired_ = 0;
   }
@@ -279,9 +272,7 @@ bool VirtualGPU::Queue::flush() {
   // Wrap current slot
   cmdBufIdSlot_ = cmdBufIdCurrent_ % MaxCmdBuffers;
 
-  // Make sure the slot isn't busy
-  constexpr bool IbReuse = true;
-  waifForFence(cmdBufIdSlot_, IbReuse);
+  waifForFence<IbReuse>(cmdBufIdSlot_);
 
   // Progress retired TS
   if ((cmdBufIdCurrent_ > MaxCmdBuffers) &&
@@ -312,7 +303,6 @@ bool VirtualGPU::Queue::flush() {
       if (it->second == cmdBufIdSlot_) {
         palMems_.push_back(it->first->iMem());
         residency_size_ -= it->first->iMem()->Desc().size;
-        it->first->resident_--;
         it = memReferences_.erase(it);
       } else {
         ++it;
@@ -333,7 +323,8 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
   }
 
   uint slotId = id % MaxCmdBuffers;
-  bool result = waifForFence(slotId);
+  constexpr bool IbReuse = true;
+  bool result = waifForFence<!IbReuse>(slotId);
   cmbBufIdRetired_ = id;
   return result;
 }
