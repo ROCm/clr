@@ -63,18 +63,20 @@ OptLevel::setup(aclBinary *elf, bool isGPU, uint32_t OptLevel)
 
         llvm::CodeGenOpt::Level OLvl = CodeGenOpt::None;
         switch (Options()->oVariables->OptLevel) {
-        case 0: // -O0
+        case amd::option::OPT_O0: // -O0
           OLvl = CodeGenOpt::None;
           break;
-        case 1: // -O1
+        case amd::option::OPT_O1: // -O1
           OLvl = CodeGenOpt::Less;
           break;
-        case 2: // -O2
-        case 5: // -O5(-Os)
+        case amd::option::OPT_O2: // -O2
+        case amd::option::OPT_O5: // -O5
+        case amd::option::OPT_OS: // -Os
           OLvl = CodeGenOpt::Default;
           break;
-        case 3: // -O3
-        case 4: // -O4
+        case amd::option::OPT_OG: // -Og
+        case amd::option::OPT_O3: // -O3
+        case amd::option::OPT_O4: // -O4
           OLvl = CodeGenOpt::Aggressive;
           break;
         default:
@@ -270,4 +272,13 @@ OsOptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
   setup(elf, isGPU, 5);
   run(elf);
   return 0;
+}
+
+int
+OgOptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
+{
+    module_ = input;
+    setup(elf, isGPU, 3);
+    run(elf);
+    return 0;
 }

@@ -572,7 +572,7 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Mo
   setWholeProgram(true);
   setOptSimplifyLibCall(Options()->oVariables->OptSimplifyLibCall);
   setUnsafeMathOpt(Options()->oVariables->UnsafeMathOpt);
-  setIsPreLinkOpt(Options()->oVariables->OptLevel);
+  setIsPreLinkOpt(Options()->oVariables->OptLevel != amd::option::OPT_O0);
   setFP32RoundDivideSqrt(Options()->oVariables->FP32RoundDivideSqrt);
   setUseNative(Options()->oVariables->OptUseNative);
   setDenormsAreZero(Options()->oVariables->DenormsAreZero);
