@@ -392,7 +392,7 @@ llvmCodeGen(
     aclBinary* binary)
 {
   const FamilyMapping &familyMap = familySet[binary->target.arch_id];
-  const bool optimize = (OptionsObj ? (OptionsObj->oVariables->OptLevel > 0) : true);
+  const bool optimize = (OptionsObj ? (OptionsObj->oVariables->OptLevel > amd::option::OPT_O0) : true);
   const TargetMapping* targetMap = familyMap.target;
   unsigned famID = binary->target.chip_id;
   if (!targetMap || !targetMap[famID].supported) {
@@ -475,20 +475,22 @@ llvmCodeGen(
 
   CodeGenOpt::Level OLvl = CodeGenOpt::None;
   switch (OptionsObj->oVariables->OptLevel) {
-    case 0: // -O0
+  case amd::option::OPT_O0: // -O0
       OLvl = CodeGenOpt::None;
       break;
-    case 1: // -O1
+    case amd::option::OPT_O1: // -O1
       OLvl = CodeGenOpt::Less;
       break;
     default:
       assert(!"Error with optimization level");
-    case 2: // -O2
-    case 5: // -O5(-Os)
+    case amd::option::OPT_O2: // -O2
+    case amd::option::OPT_O5: // -O5
+    case amd::option::OPT_OS: // -Os
       OLvl = CodeGenOpt::Default;
       break;
-    case 3: // -O3
-    case 4: // -O4
+    case amd::option::OPT_OG: // -Og
+    case amd::option::OPT_O3: // -O3
+    case amd::option::OPT_O4: // -O4
       OLvl = CodeGenOpt::Aggressive;
       break;
   };

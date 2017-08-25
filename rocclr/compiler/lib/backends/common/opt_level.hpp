@@ -200,5 +200,19 @@ namespace amdcl
   }; // class OsOptLevel
   /*@}*/
 
+  class OgOptLevel : public OptLevel {
+      OgOptLevel(OgOptLevel&); // DO NOT IMPLEMENT.
+      OgOptLevel(); // DO NOT IMPLEMENT.
+
+  public:
+      OgOptLevel(amd::option::Options *opts)
+          : OptLevel(opts) {}
+
+      virtual ~OgOptLevel() {}
+
+      virtual int optimize(aclBinary *elf, llvm::Module *input, bool isGPU);
+  }; // class OgOptLevel
+     /*@}*/
+
 }; // amdcl namespace
 #endif // _BE_OPT_LEVEL_HPP_

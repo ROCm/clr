@@ -48,6 +48,7 @@
  *              OT_INT32   : int32
  *              OT_UINT32  : uint32
  *              OT_CSTRING : char*
+ *              OT_uCHAR   : unsigned char
  *
  *     attr: option attributes, divided in several groups:
  *              OptionValue : value attribute. Use exactly one.
@@ -118,17 +119,17 @@
  *     NOPTION, no varialbe in option object for this. But we still need PP_D (as option ID)
  *     All unused parameters are set to 0.
  *
- *   -O[0|1|2|3|4|5]
- *     OPTION(OT_UINT32, \
+ *   -O[0|1|2|3|4|5|s|g]
+ *     OPTION(OT_UCHAR, \
  *            OA_RUNTIME|OVIS_INTERNAL|OVA_OPTIONAL|OA_SEPARATOR_NONE, \
  *            "O", NULL, \
  *            OptLevel, \
- *            3, 0, 3, NULL, \
- *            "Set optimization level to <number>(0-4, 5(-Os equivalent)")
+ *            '3', 0, 's', NULL, \
+ *            "Set optimization level to <number>(0-4, 5(-Os equivalent), g")
  *
  *     where sn = "O", var = "OptLevel", ideft is 3 (Which means -O will mean -O3). And code
  *     can use the following for checking the option level:
- *        if (localOptions.oVariables->OptLevel == 0) {
+ *        if (localOptions.oVariables->OptLevel == amd::option::OPT_O0) {
  *          ...
  *        }
  *
@@ -549,13 +550,13 @@ OPTION(OT_CSTRING, \
         0, 0, 0, NULL, \
         "Pass comma-separated <options> to the finalizer (sc)")
 
-// -O[0|1|2|3|4|5]
-OPTION(OT_UINT32, \
+// -O[0|1|2|3|4|5|s|g]
+OPTION(OT_UCHAR, \
        OA_RUNTIME|OVA_OPTIONAL|OA_SEPARATOR_NONE, \
        "O", NULL, \
        OptLevel, \
-       3, 0, 5, NULL, \
-       "Set optimization level to <number>(0|1|2|3|4|5(-Os equivalent))")
+       '3', 0, 's', NULL, \
+       "Set optimization level to <number>(0|1|2|3|4|5(-Os equivalent)|g)")
 
 // -srt/--sr-threshold=<positive integer> : Scalar Replacement threshold
 OPTION(OT_UINT32, \

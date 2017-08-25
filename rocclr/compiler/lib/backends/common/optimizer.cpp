@@ -25,25 +25,29 @@ using namespace amdcl;
 using namespace llvm;
 
 static OptLevel* getOptLevel(amd::option::Options* Options, bool isGPU) {
-  switch(Options->oVariables->OptLevel) {
+    switch(Options->oVariables->OptLevel) {
     case amd::option::OPT_O0:
-      return (isGPU) ? new GPUO0OptLevel(Options) : new O0OptLevel(Options);
+        return (isGPU) ? new GPUO0OptLevel(Options) : new O0OptLevel(Options);
     case amd::option::OPT_O1:
-      return new O1OptLevel(Options);
+        return new O1OptLevel(Options);
     default:
-      assert(!"Found an invalid optimization level!");
+        assert(!"Found an invalid optimization level!");
     case amd::option::OPT_O2:
-      return new O2OptLevel(Options);
+        return new O2OptLevel(Options);
+    case amd::option::OPT_OG:
+        return new OgOptLevel(Options);
     case amd::option::OPT_O3:
-      return new O3OptLevel(Options);
+        return new O3OptLevel(Options);
     case amd::option::OPT_O4:
-      return new O4OptLevel(Options);
+        return new O4OptLevel(Options);
+    case amd::option::OPT_O5:
     case amd::option::OPT_OS:
-      return new OsOptLevel(Options);
-  }
-  assert(!"Unreachable!");
-  return NULL;
+        return new OsOptLevel(Options);
+    }
+    assert(!"Unreachable!");
+    return NULL;
 }
+
 int
 CPUOptimizer::preOptimizer(llvm::Module* M)
 {
