@@ -758,14 +758,6 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         }
         break;
 
-    case OID_OptLevel:
-        if (ival == 'g') {
-#if defined(WITH_LIGHTNING_COMPILER)
-            Opts.clangOptions.push_back("-Og");
-#endif
-        }
-        break;
-
     case OID_FiniteMathOnly:
         Opts.setFlag(OID_FiniteMathOnly, 1);
         tod = &OptDescTable[OID_FiniteMathOnly];
