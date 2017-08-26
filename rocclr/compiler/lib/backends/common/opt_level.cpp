@@ -71,10 +71,10 @@ OptLevel::setup(aclBinary *elf, bool isGPU, uint32_t OptLevel)
           break;
         case amd::option::OPT_O2: // -O2
         case amd::option::OPT_O5: // -O5
+        case amd::option::OPT_OG: // -Og
         case amd::option::OPT_OS: // -Os
           OLvl = CodeGenOpt::Default;
           break;
-        case amd::option::OPT_OG: // -Og
         case amd::option::OPT_O3: // -O3
         case amd::option::OPT_O4: // -O4
           OLvl = CodeGenOpt::Aggressive;
@@ -278,7 +278,7 @@ int
 OgOptLevel::optimize(aclBinary *elf, Module *input, bool isGPU)
 {
     module_ = input;
-    setup(elf, isGPU, 3);
+    setup(elf, isGPU, 2);
     run(elf);
     return 0;
 }

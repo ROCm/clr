@@ -181,16 +181,16 @@ enum DumpFlags {
     DUMP_ALL           = 0x00007FFF    // Everything
 };
 
-enum OptLevelFlags {
-  OPT_O0       = 48, // No optimization setting.
-  OPT_O1       = 49,
-  OPT_O2       = 50,
-  OPT_O3       = 51,
-  OPT_O4       = 52,
-  OPT_O5       = 53,
-  OPT_OG       = 103, // g ASCII
-  OPT_OS       = 115, // s ASCII
-  OPT_Error    = 116, // Invalid optimization set
+enum OptLevelFlags : unsigned char {
+  OPT_O0       = '0', // No optimization setting.
+  OPT_O1       = '1',
+  OPT_O2       = '2',
+  OPT_O3       = '3',
+  OPT_O4       = '4',
+  OPT_O5       = '5',
+  OPT_OG       = 'g', // g ASCII
+  OPT_OS       = 's', // s ASCII
+  OPT_Error    = 0, // Invalid optimization set
   /** Canary Value that guards against enum changes
    * @warning This value cannot be changed without updating the appropriate
    * tests and should NEVER be decreased.

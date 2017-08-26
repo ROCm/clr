@@ -485,10 +485,10 @@ llvmCodeGen(
       assert(!"Error with optimization level");
     case amd::option::OPT_O2: // -O2
     case amd::option::OPT_O5: // -O5
+    case amd::option::OPT_OG: // -Og
     case amd::option::OPT_OS: // -Os
       OLvl = CodeGenOpt::Default;
       break;
-    case amd::option::OPT_OG: // -Og
     case amd::option::OPT_O3: // -O3
     case amd::option::OPT_O4: // -O4
       OLvl = CodeGenOpt::Aggressive;
