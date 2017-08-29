@@ -157,7 +157,7 @@ setAliasOptionVariable (int OptDescTableIx, Options& Opts,
         od = &OptDescTable[OID_OptLevel];
         assert ((IValue > 0) &&
                 "Internal Error: -cl-opt-disable is present, but with wrong value");
-        if (!setOptionVariable (od, oVars, (int64_t)0, NULL)) {
+        if (!setOptionVariable (od, oVars, (int64_t)amd::option::OPT_O0, NULL)) {
             return false;
         }
         return true;
