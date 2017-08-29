@@ -605,6 +605,7 @@ int getIsaType(const aclTargetInfo *target)
         default: return 900;
         case AI_GREENLAND_P_A0:
         case AI_GREENLAND_P_A1: return Mapping.xnack_supported ? 901 : 900;
+        case AI_VEGA12_P_A0:    return Mapping.xnack_supported ? 905 : 904;
         case AI_VEGA20_P_A0:    return Mapping.xnack_supported ? 907 : 906;
       }
     case FAMILY_RV:
