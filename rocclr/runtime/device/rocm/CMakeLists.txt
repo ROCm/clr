@@ -38,8 +38,8 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   )
   set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_CURRENT_BINARY_DIR}/${target}.inc)
 
-  add_custom_target(${header} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${header})
-  add_dependencies(oclrocm ${header})
+  add_custom_target(${header}_target ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${header})
+  add_dependencies(oclrocm  ${header}_target)
 
   file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc "#include \"${header}\"\n")
 endforeach()
@@ -78,8 +78,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc
   COMMENT "Generating opencl1.2-c.amdgcn.inc"
 )
 set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch)
-add_custom_target(opencl1.2-c.amdgcn.inc ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc)
-add_dependencies(oclrocm opencl1.2-c.amdgcn.inc)
+add_custom_target(opencl1.2-c.amdgcn.inc_target ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc)
+add_dependencies(oclrocm opencl1.2-c.amdgcn.inc_target)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch
   COMMAND clang -cc1 -x cl-header -triple amdgcn-amd-amdhsa-opencl -Werror -O3 -Dcl_khr_fp64 -Dcl_khr_fp16 -DNDEBUG -cl-std=CL2.0 -emit-pch -o ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch < ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h 
@@ -92,5 +92,5 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc
   COMMENT "Generating opencl2.0-c.amdgcn.inc"
 )
 set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch)
-add_custom_target(opencl2.0-c.amdgcn.inc ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc)
-add_dependencies(oclrocm opencl2.0-c.amdgcn.inc)
+add_custom_target(opencl2.0-c.amdgcn.inc_target ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc)
+add_dependencies(oclrocm opencl2.0-c.amdgcn.inc_target)

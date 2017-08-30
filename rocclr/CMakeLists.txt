@@ -14,14 +14,12 @@ set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules"
   )
 
-set(LLVM_INCLUDE_TESTS CACHE BOOL OFF)
-set(LLVM_BUILD_TOOLS CACHE BOOL OFF)
+set(LLVM_INCLUDE_TESTS OFF CACHE BOOL "")
+set(LLVM_BUILD_TOOLS OFF CACHE BOOL "")
+set(LLVM_INSTALL_TOOLCHAIN_ONLY ON CACHE BOOL "")
 set(LLVM_TARGETS_TO_BUILD "AMDGPU" CACHE STRING "")
-set(LLVM_ENABLE_PROJECTS CACHE STRING "clang")
-set(LLVM_BUILD_GLOBAL_ISEL CACHE BOOL OFF)
-set(LLVM_ENABLE_ZLIB OFF CACHE BOOL "")
-set(CLANG_ENABLE_ARCMT CACHE BOOL OFF)
-set(CLANG_ENABLE_STATIC_ANALYZER CACHE BOOL OFF)
+set(CLANG_ENABLE_ARCMT OFF CACHE BOOL "")
+set(CLANG_ENABLE_STATIC_ANALYZER OFF CACHE BOOL "")
 
 add_subdirectory(compiler/llvm)
 
@@ -41,8 +39,8 @@ include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
 add_subdirectory(compiler/driver)
 
-set(BUILD_HC_LIB CACHE BOOL OFF)
-set(ROCM_DEVICELIB_INCLUDE_TESTS CACHE BOOL OFF)
+set(BUILD_HC_LIB OFF CACHE BOOL "")
+set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
 set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
 set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-opencl")
 add_subdirectory(library/amdgcn)
@@ -60,3 +58,13 @@ add_subdirectory(api/opencl/amdocl)
 add_subdirectory(api/opencl/khronos/icd)
 
 add_subdirectory(tools/clinfo)
+
+
+install(PROGRAMS $<TARGET_FILE:OpenCL>
+        DESTINATION lib)
+
+install(DIRECTORY
+        "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.0"
+        DESTINATION include
+        USE_SOURCE_PERMISSIONS
+        PATTERN cl_egl.h EXCLUDE)
