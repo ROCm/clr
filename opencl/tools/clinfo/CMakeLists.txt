@@ -9,3 +9,5 @@ add_definitions(-DHAVE_CL2_HPP)
 add_executable(clinfo clinfo.cpp)
 
 target_link_libraries(clinfo OpenCL)
+
+install(TARGETS clinfo DESTINATION bin)
