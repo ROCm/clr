@@ -278,7 +278,7 @@ void Device::registerDevice() {
   }
 
   if (info_.available_) {
-    if (!defaultIsAssigned) {
+    if (!defaultIsAssigned && online_) {
       defaultIsAssigned = true;
       info_.type_ |= CL_DEVICE_TYPE_DEFAULT;
     }
