@@ -164,6 +164,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   switch (palProp.revision) {
     case Pal::AsicRevision::Unknown:
       switch (palProp.gfxLevel) {
+        case Pal::GfxIpLevel::GfxIp10:
         case Pal::GfxIpLevel::GfxIp9:
           aiPlus_ = true;
           break;
@@ -410,6 +411,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
 #if defined(WITH_LIGHTNING_COMPILER)
   switch (palProp.gfxLevel) {
+    case Pal::GfxIpLevel::GfxIp10:
     case Pal::GfxIpLevel::GfxIp9:
       singleFpDenorm_ = true;
       break;
