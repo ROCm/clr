@@ -158,6 +158,7 @@ GpuMemoryReference::~GpuMemoryReference() {
       }
     }
   } else {
+    amd::ScopedLock l(gpu_->execution());
     gpu_->releaseMemory(this, &events_[gpu_->index()]);
   }
   if (device_.vgpus().size() != 0) {
@@ -1097,6 +1098,7 @@ void Resource::free() {
       }
     }
     else {
+      amd::ScopedLock l(memRef_->gpu_->execution());
       memRef_->gpu_->waitForEvent(&memRef_->events_[memRef_->gpu_->index()]);
     }
   }
@@ -1975,6 +1977,7 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
 
       // Add the current resource to the cache
       resCache_.push_front(std::make_pair(descCached, ref));
+      ref->gpu_ = nullptr;
       cacheSize_ += size;
       result = true;
     }

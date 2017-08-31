@@ -104,7 +104,7 @@ class VirtualGPU : public device::VirtualDevice {
       if (!ibReuse) {
         start = amd::Os::timeNanos();
       }
-      while (ibReuse || (Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus()))) {
+      while ((Pal::Result::Success != (result = iCmdFences_[cbId]->GetStatus())) || ibReuse) {
         if (result == Pal::Result::ErrorFenceNeverSubmitted) {
           result = Pal::Result::Success;
           break;
