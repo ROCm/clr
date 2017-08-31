@@ -2281,7 +2281,6 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
 }
 
 void VirtualGPU::releaseMemory(GpuMemoryReference* mem, GpuEvent* event) {
-  waitForEvent(event);
   queues_[MainEngine]->removeCmdMemRef(mem);
   queues_[SdmaEngine]->removeCmdMemRef(mem);
 }
