@@ -99,7 +99,7 @@ bool NullDevice::init() {
 
   // Loop through all supported devices and create each of them
   for (uint id = static_cast<uint>(Pal::GfxIpLevel::GfxIp7);
-       id <= static_cast<uint>(Pal::GfxIpLevel::GfxIp9); ++id) {
+       id <= static_cast<uint>(Pal::GfxIpLevel::GfxIp10); ++id) {
     bool foundActive = false;
     Pal::GfxIpLevel ipLevel = static_cast<Pal::GfxIpLevel>(id);
 
