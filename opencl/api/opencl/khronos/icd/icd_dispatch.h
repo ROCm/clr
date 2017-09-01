@@ -1,31 +1,28 @@
 /*
- * Copyright (c) 2012 The Khronos Group Inc.
+ * Copyright (c) 2016 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software source and associated documentation files (the "Materials"),
- * to use, copy, modify and compile the Materials to create a binary under the
- * following terms and conditions: 
+ * to deal in the Materials without restriction, including without limitation
+ * the rights to use, copy, modify, compile, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Materials, and to permit persons to
+ * whom the Materials are furnished to do so, subject the following terms and
+ * conditions:
  *
- * 1. The Materials shall NOT be distributed to any third party;
- *
- * 2. The binary may be distributed without restriction, including without
- * limitation the rights to use, copy, merge, publish, distribute, sublicense,
- * and/or sell copies, and to permit persons to whom the binary is furnished to
- * do so;
- *
- * 3. All modifications to the Materials used to create a binary that is
+ * All modifications to the Materials used to create a binary that is
  * distributed to third parties shall be provided to Khronos with an
  * unrestricted license to use for the purposes of implementing bug fixes and
  * enhancements to the Materials;
  *
- * 4. If the binary is used as part of an OpenCL(TM) implementation, whether
- * binary is distributed together with or separately to that implementation,
- * then recipient must become an OpenCL Adopter and follow the published OpenCL
+ * If the binary is used as part of an OpenCL(TM) implementation, whether binary
+ * is distributed together with or separately to that implementation, then
+ * recipient must become an OpenCL Adopter and follow the published OpenCL
  * conformance process for that implementation, details at:
  * http://www.khronos.org/conformance/;
  *
- * 5. The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Materials.
+ * The above copyright notice, the OpenCL trademark license, and this permission
+ * notice shall be included in all copies or substantial portions of the
+ * Materials.
  *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,8 +31,8 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE MATERIALS OR THE USE OR OTHER DEALINGS IN
  * THE MATERIALS.
- * 
- * OpenCL is a trademark of Apple Inc. used under license by Khronos.  
+ *
+ * OpenCL is a trademark of Apple Inc. used under license by Khronos.
  */
 
 #ifndef _ICD_DISPATCH_H_
@@ -51,6 +48,10 @@
 
 #ifndef CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
+#endif
+
+#ifndef CL_USE_DEPRECATED_OPENCL_2_0_APIS
+#define CL_USE_DEPRECATED_OPENCL_2_0_APIS
 #endif
 
 // cl.h
@@ -276,14 +277,6 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithSource)(
     const size_t *    lengths,
     cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_1_0;
 
-//ToDo: Change CL_API_SUFFIX__VERSION_2_0 to CL_API_SUFFIX__VERSION_2_1
-//      after switching to OpenCL 2.1.
-typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithIL)(
-    cl_context        context,
-    const void *      il,
-    size_t            length,
-    cl_int *          errcode_ret) CL_API_SUFFIX__VERSION_2_0;
-
 typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithBinary)(
     cl_context                     context,
     cl_uint                        num_devices,
@@ -333,6 +326,17 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clLinkProgram)(
     void (CL_CALLBACK *  pfn_notify)(cl_program program, void * user_data),
     void *               user_data,
     cl_int *             errcode_ret) CL_API_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clSetProgramSpecializationConstant)(
+    cl_program           program,
+    cl_uint              spec_id,
+    size_t               spec_size,
+    const void*          spec_value) CL_API_SUFFIX__VERSION_2_2;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clSetProgramReleaseCallback)(
+    cl_program           program,
+    void (CL_CALLBACK *  pfn_notify)(cl_program program, void * user_data),
+    void *               user_data) CL_API_SUFFIX__VERSION_2_2;
 
 typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clUnloadPlatformCompiler)(
     cl_platform_id     platform) CL_API_SUFFIX__VERSION_1_2;
@@ -754,7 +758,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clSetCommandQueueProperty)(
     cl_command_queue              command_queue,
     cl_command_queue_properties   properties, 
     cl_bool                       enable,
-    cl_command_queue_properties * old_properties) /*CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED*/;
+    cl_command_queue_properties * old_properties) CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED;
 
 typedef CL_API_ENTRY cl_mem (CL_API_CALL *KHRpfn_clCreateImage2D)(
     cl_context              context,
@@ -1050,7 +1054,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clEnqueueReleaseDX9MediaSurface
     cl_command_queue command_queue,
     cl_uint          num_objects,
     const cl_mem *   mem_objects,
-    cl_uint num_events_in_wait_list,
+    cl_uint          num_events_in_wait_list,
     const cl_event * event_wait_list,
     cl_event *       event) CL_API_SUFFIX__VERSION_1_2;
 
@@ -1244,9 +1248,49 @@ typedef CL_API_ENTRY cl_event (CL_API_CALL *KHRpfn_clCreateEventFromEGLSyncKHR)(
     CLeglDisplayKHR display,
     cl_int *errcode_ret);
 
-typedef CL_API_ENTRY cl_int (CL_API_CALL * KHRpfn_clTerminateContextKHR)(
-    cl_context context) CL_API_SUFFIX__VERSION_2_0;
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clSetDefaultDeviceCommandQueue)(
+    cl_context context,
+    cl_device_id device,
+    cl_command_queue command_queue) CL_API_SUFFIX__VERSION_2_1;
 
+typedef CL_API_ENTRY cl_program (CL_API_CALL *KHRpfn_clCreateProgramWithIL)(
+    cl_context context,
+    const void * il,
+    size_t length,
+    cl_int * errcode_ret) CL_API_SUFFIX__VERSION_2_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clGetKernelSubGroupInfo )(
+    cl_kernel kernel,
+    cl_device_id device,
+    cl_kernel_sub_group_info param_name,
+    size_t input_value_size,
+    const void * input_value,
+    size_t param_value_size,
+    void * param_value,
+    size_t * param_value_size_ret) CL_API_SUFFIX__VERSION_2_1;
+
+typedef CL_API_ENTRY cl_kernel (CL_API_CALL *KHRpfn_clCloneKernel)(
+    cl_kernel source_kernel, 
+    cl_int * errcode_ret) CL_API_SUFFIX__VERSION_2_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clEnqueueSVMMigrateMem)(
+    cl_command_queue command_queue,
+    cl_uint num_svm_pointers,
+    const void ** svm_pointers,
+    const size_t * sizes,
+    cl_mem_migration_flags flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event * event_wait_list,
+    cl_event * event) CL_API_SUFFIX__VERSION_2_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clGetDeviceAndHostTimer)(
+    cl_device_id device,
+    cl_ulong * device_timestamp,
+    cl_ulong * host_timestamp) CL_API_SUFFIX__VERSION_2_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL *KHRpfn_clGetHostTimer)(
+    cl_device_id device,
+    cl_ulong * host_timestamp) CL_API_SUFFIX__VERSION_2_1;
 
 /*
  *
@@ -1422,10 +1466,69 @@ struct KHRicdVendorDispatchRec
     /* cl_khr_sub_groups */
     KHRpfn_clGetKernelSubGroupInfoKHR               clGetKernelSubGroupInfoKHR;
 
-    KHRpfn_clTerminateContextKHR                    clTerminateContextKHR;
-
     /* OpenCL 2.1 */
+    KHRpfn_clCloneKernel                            clCloneKernel;
     KHRpfn_clCreateProgramWithIL                    clCreateProgramWithIL;
+    KHRpfn_clEnqueueSVMMigrateMem                   clEnqueueSVMMigrateMem;
+    KHRpfn_clGetDeviceAndHostTimer                  clGetDeviceAndHostTimer;
+    KHRpfn_clGetHostTimer                           clGetHostTimer;
+    KHRpfn_clGetKernelSubGroupInfo                  clGetKernelSubGroupInfo;
+    KHRpfn_clSetDefaultDeviceCommandQueue           clSetDefaultDeviceCommandQueue;
+
+    /* OpenCL 2.2 */
+    KHRpfn_clSetProgramReleaseCallback              clSetProgramReleaseCallback;
+    KHRpfn_clSetProgramSpecializationConstant       clSetProgramSpecializationConstant;
+};
+
+/*
+ *
+ * vendor dispatch table structure
+ *
+ */
+
+struct _cl_platform_id
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_device_id
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_context
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_command_queue
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_mem
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_program
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_kernel
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_event
+{
+    KHRicdVendorDispatch *dispatch;
+};
+
+struct _cl_sampler
+{
+    KHRicdVendorDispatch *dispatch;
 };
 
 #endif // _ICD_DISPATCH_H_
