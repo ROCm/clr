@@ -1,31 +1,28 @@
 /*
- * Copyright (c) 2012 The Khronos Group Inc.
+ * Copyright (c) 2016 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software source and associated documentation files (the "Materials"),
- * to use, copy, modify and compile the Materials to create a binary under the
- * following terms and conditions: 
+ * to deal in the Materials without restriction, including without limitation
+ * the rights to use, copy, modify, compile, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Materials, and to permit persons to
+ * whom the Materials are furnished to do so, subject the following terms and
+ * conditions:
  *
- * 1. The Materials shall NOT be distributed to any third party;
- *
- * 2. The binary may be distributed without restriction, including without
- * limitation the rights to use, copy, merge, publish, distribute, sublicense,
- * and/or sell copies, and to permit persons to whom the binary is furnished to
- * do so;
- *
- * 3. All modifications to the Materials used to create a binary that is
+ * All modifications to the Materials used to create a binary that is
  * distributed to third parties shall be provided to Khronos with an
  * unrestricted license to use for the purposes of implementing bug fixes and
  * enhancements to the Materials;
  *
- * 4. If the binary is used as part of an OpenCL(TM) implementation, whether
- * binary is distributed together with or separately to that implementation,
- * then recipient must become an OpenCL Adopter and follow the published OpenCL
+ * If the binary is used as part of an OpenCL(TM) implementation, whether binary
+ * is distributed together with or separately to that implementation, then
+ * recipient must become an OpenCL Adopter and follow the published OpenCL
  * conformance process for that implementation, details at:
  * http://www.khronos.org/conformance/;
  *
- * 5. The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Materials.
+ * The above copyright notice, the OpenCL trademark license, and this permission
+ * notice shall be included in all copies or substantial portions of the
+ * Materials.
  *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,8 +31,8 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE MATERIALS OR THE USE OR OTHER DEALINGS IN
  * THE MATERIALS.
- * 
- * OpenCL is a trademark of Apple Inc. used under license by Khronos.  
+ *
+ * OpenCL is a trademark of Apple Inc. used under license by Khronos.
  */
 
 #include "icd_dispatch.h"
@@ -150,8 +147,8 @@ clGetDeviceInfo(
 CL_API_ENTRY cl_int CL_API_CALL
 clCreateSubDevices(cl_device_id                         in_device,
                    const cl_device_partition_property * properties,
-    cl_uint num_entries,
-    cl_device_id * out_devices,
+                   cl_uint                              num_entries,
+                   cl_device_id *                       out_devices,
                    cl_uint *                            num_devices) CL_API_SUFFIX__VERSION_1_2
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(in_device, CL_INVALID_DEVICE);
@@ -169,7 +166,7 @@ clRetainDevice(cl_device_id device) CL_API_SUFFIX__VERSION_1_2
     KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(device, CL_INVALID_DEVICE);
     return device->dispatch->clRetainDevice(device);
 }
-
+    
 CL_API_ENTRY cl_int CL_API_CALL
 clReleaseDevice(cl_device_id device) CL_API_SUFFIX__VERSION_1_2
 {
@@ -325,10 +322,10 @@ clCreateBuffer(cl_context   context,
 
 CL_API_ENTRY cl_mem CL_API_CALL
 clCreateImage(cl_context              context,
-                cl_mem_flags            flags,
-                const cl_image_format * image_format,
+                            cl_mem_flags            flags,
+                            const cl_image_format * image_format,
                             const cl_image_desc *   image_desc,
-                void *                  host_ptr,
+                            void *                  host_ptr,
                             cl_int *                errcode_ret) CL_API_SUFFIX__VERSION_1_2
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
@@ -340,7 +337,7 @@ clCreateImage(cl_context              context,
         host_ptr,
         errcode_ret);
 }
-                        
+
 CL_API_ENTRY cl_int CL_API_CALL
 clRetainMemObject(cl_mem memobj) CL_API_SUFFIX__VERSION_1_0
 {
@@ -584,6 +581,32 @@ clLinkProgram(cl_context           context,
         pfn_notify,
         user_data,
         errcode_ret); 
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clSetProgramSpecializationConstant(cl_program  program,
+                                   cl_uint     spec_id,
+                                   size_t      spec_size,
+                                   const void* spec_value) CL_API_SUFFIX__VERSION_2_2
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(program, CL_INVALID_PROGRAM);
+    return program->dispatch->clSetProgramSpecializationConstant(
+        program,
+        spec_id,
+        spec_size,
+        spec_value); 
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clSetProgramReleaseCallback(cl_program  program,
+                            void (CL_CALLBACK * pfn_notify)(cl_program program, void * user_data),
+                            void *              user_data) CL_API_SUFFIX__VERSION_2_2
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(program, CL_INVALID_PROGRAM);
+    return program->dispatch->clSetProgramReleaseCallback(
+        program,
+        pfn_notify,
+        user_data); 
 }
 
 CL_API_ENTRY cl_int CL_API_CALL
@@ -979,7 +1002,7 @@ clEnqueueCopyBuffer(cl_command_queue    command_queue,
         event_wait_list,
         event);
 }
-                            
+
 CL_API_ENTRY cl_int CL_API_CALL
 clEnqueueCopyBufferRect(
     cl_command_queue command_queue, 
@@ -1417,8 +1440,6 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id platform,
     /* cl_khr_sub_groups */
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clGetKernelSubGroupInfoKHR);
 
-    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clTerminateContextKHR);
-
     // fall back to vendor extension detection
 
     // FIXME Now that we have a platform id here, we need to validate that it isn't NULL, so shouldn't we have an errcode_ret
@@ -1433,7 +1454,7 @@ CL_API_ENTRY cl_int CL_API_CALL
 clSetCommandQueueProperty(cl_command_queue              command_queue,
                           cl_command_queue_properties   properties, 
                           cl_bool                       enable,
-                          cl_command_queue_properties * old_properties) /*CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED*/
+                          cl_command_queue_properties * old_properties) CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
     return command_queue->dispatch->clSetCommandQueueProperty(
@@ -1624,11 +1645,6 @@ clGetExtensionFunctionAddress(const char *function_name) CL_EXT_SUFFIX__VERSION_
 
     /* cl_khr_sub_groups */
     CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clGetKernelSubGroupInfoKHR);
-
-    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clTerminateContextKHR);
-
-    /* cl_khr_il_program */
-    CL_COMMON_EXTENSION_ENTRYPOINT_ADD(clCreateProgramWithILKHR);
 
     // fall back to vendor extension detection
     for (vendor = khrIcdVendors; vendor; vendor = vendor->next)
@@ -2141,7 +2157,7 @@ clEnqueueReleaseDX9MediaSurfacesKHR(
         mem_objects,
         num_events_in_wait_list,
         event_wait_list,
-        event);       
+        event);
 }
 
 #endif
@@ -2545,34 +2561,114 @@ clGetKernelSubGroupInfoKHR(
 }
 
 CL_API_ENTRY cl_int CL_API_CALL
-clTerminateContextKHR(
-    cl_context context) CL_API_SUFFIX__VERSION_2_0
+clSetDefaultDeviceCommandQueue(
+    cl_context context,
+    cl_device_id device,
+    cl_command_queue command_queue) CL_API_SUFFIX__VERSION_2_1
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clTerminateContextKHR(context);
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(device, CL_INVALID_DEVICE);
+    return context->dispatch->clSetDefaultDeviceCommandQueue(
+            context,
+            device,
+            command_queue);
 }
 
 CL_API_ENTRY cl_program CL_API_CALL
-clCreateProgramWithILKHR(cl_context    context,
-                         const void *  il,
-                         size_t        length,
-                         cl_int *      errcode_ret) CL_EXT_SUFFIX__VERSION_1_2
+clCreateProgramWithIL(
+    cl_context context,
+    const void * il,
+    size_t length,
+    cl_int * errcode_ret) CL_API_SUFFIX__VERSION_2_1
 {
     KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreateProgramWithIL(context, il, length,
-      errcode_ret);
+    return context->dispatch->clCreateProgramWithIL(
+            context,
+            il,
+            length,
+            errcode_ret);
 }
 
-//ToDo: change CL_API_SUFFIX__VERSION_2_0 to CL_API_SUFFIX__VERSION_2_1
-//      after switching to OpenCL 2.1
-CL_API_ENTRY cl_program CL_API_CALL
-clCreateProgramWithIL(cl_context    context,
-                         const void *  il,
-                         size_t        length,
-                         cl_int *      errcode_ret) CL_API_SUFFIX__VERSION_2_0
+CL_API_ENTRY cl_int CL_API_CALL
+clGetKernelSubGroupInfo(
+    cl_kernel kernel,
+    cl_device_id device,
+    cl_kernel_sub_group_info param_name,
+    size_t input_value_size,
+    const void * input_value,
+    size_t param_value_size,
+    void * param_value,
+    size_t * param_value_size_ret) CL_API_SUFFIX__VERSION_2_1
 {
-    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(context, CL_INVALID_CONTEXT);
-    return context->dispatch->clCreateProgramWithIL(context, il, length,
-      errcode_ret);
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(kernel, CL_INVALID_KERNEL);
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(device, CL_INVALID_DEVICE);
+    return kernel->dispatch->clGetKernelSubGroupInfo(
+            kernel,
+            device,
+            param_name,
+            input_value_size,
+            input_value,
+            param_value_size,
+            param_value,
+            param_value_size_ret);
 }
+
+CL_API_ENTRY cl_kernel CL_API_CALL
+clCloneKernel(
+    cl_kernel source_kernel,
+    cl_int * errcode_ret) CL_API_SUFFIX__VERSION_2_1
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_HANDLE(source_kernel, CL_INVALID_KERNEL);
+    return source_kernel->dispatch->clCloneKernel(
+            source_kernel,
+            errcode_ret);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMigrateMem(
+    cl_command_queue command_queue,
+    cl_uint num_svm_pointers,
+    const void ** svm_pointers,
+    const size_t * sizes,
+    cl_mem_migration_flags flags,
+    cl_uint num_events_in_wait_list,
+    const cl_event * event_wait_list,
+    cl_event * event) CL_API_SUFFIX__VERSION_2_1
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(command_queue, CL_INVALID_COMMAND_QUEUE);
+    return command_queue->dispatch->clEnqueueSVMMigrateMem(
+            command_queue,
+            num_svm_pointers,
+            svm_pointers,
+            sizes,
+            flags,
+            num_events_in_wait_list,
+            event_wait_list,
+            event);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clGetDeviceAndHostTimer(
+    cl_device_id device,
+    cl_ulong * device_timestamp,
+    cl_ulong * host_timestamp) CL_API_SUFFIX__VERSION_2_1
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(device, CL_INVALID_DEVICE);
+    return device->dispatch->clGetDeviceAndHostTimer(
+            device,
+            device_timestamp,
+            host_timestamp);
+}
+
+CL_API_ENTRY cl_int CL_API_CALL
+clGetHostTimer(
+    cl_device_id device,
+    cl_ulong * host_timestamp) CL_API_SUFFIX__VERSION_2_1
+{
+    KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(device, CL_INVALID_DEVICE);
+    return device->dispatch->clGetHostTimer(
+            device,
+            host_timestamp);
+}
+
 

@@ -1,31 +1,28 @@
 /*
- * Copyright (c) 2012 The Khronos Group Inc.
+ * Copyright (c) 2016 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software source and associated documentation files (the "Materials"),
- * to use, copy, modify and compile the Materials to create a binary under the
- * following terms and conditions: 
+ * to deal in the Materials without restriction, including without limitation
+ * the rights to use, copy, modify, compile, merge, publish, distribute,
+ * sublicense, and/or sell copies of the Materials, and to permit persons to
+ * whom the Materials are furnished to do so, subject the following terms and
+ * conditions:
  *
- * 1. The Materials shall NOT be distributed to any third party;
- *
- * 2. The binary may be distributed without restriction, including without
- * limitation the rights to use, copy, merge, publish, distribute, sublicense,
- * and/or sell copies, and to permit persons to whom the binary is furnished to
- * do so;
- *
- * 3. All modifications to the Materials used to create a binary that is
+ * All modifications to the Materials used to create a binary that is
  * distributed to third parties shall be provided to Khronos with an
  * unrestricted license to use for the purposes of implementing bug fixes and
  * enhancements to the Materials;
  *
- * 4. If the binary is used as part of an OpenCL(TM) implementation, whether
- * binary is distributed together with or separately to that implementation,
- * then recipient must become an OpenCL Adopter and follow the published OpenCL
+ * If the binary is used as part of an OpenCL(TM) implementation, whether binary
+ * is distributed together with or separately to that implementation, then
+ * recipient must become an OpenCL Adopter and follow the published OpenCL
  * conformance process for that implementation, details at:
  * http://www.khronos.org/conformance/;
  *
- * 5. The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Materials.
+ * The above copyright notice, the OpenCL trademark license, and this permission
+ * notice shall be included in all copies or substantial portions of the
+ * Materials.
  *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,8 +31,8 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE MATERIALS OR THE USE OR OTHER DEALINGS IN
  * THE MATERIALS.
- * 
- * OpenCL is a trademark of Apple Inc. used under license by Khronos.  
+ *
+ * OpenCL is a trademark of Apple Inc. used under license by Khronos.
  */
 
 #ifndef _ICD_H_
@@ -55,69 +52,6 @@
 
 #include <CL/cl.h>
 #include <CL/cl_ext.h>
-
-#include "icd_dispatch.h"
-
-/*
- *
- * vendor dispatch table structure
- *
- */
-
-struct _cl_object
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_platform_id
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_device_id
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_context
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_command_queue
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_mem
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_program
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_kernel
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_event
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_sampler
-{
-    KHRicdVendorDispatch *dispatch;
-};
-
-struct _cl_counter
-{
-    KHRicdVendorDispatch *dispatch;
-};
 
 /*
  * type definitions
@@ -224,16 +158,6 @@ void khrIcdContextPropertiesGetPlatform(
     #define KHR_ICD_TRACE(...)
     #define KHR_ICD_ASSERT(x)
 #endif
-
-// if handle is NULL then return
-#define KHR_ICD_VALIDATE_HANDLE(handle) \
-    do \
-    { \
-        if (!handle) \
-        { \
-            return; \
-        } \
-    } while (0)
 
 // if handle is NULL then return invalid_handle_error_code
 #define KHR_ICD_VALIDATE_HANDLE_RETURN_ERROR(handle,invalid_handle_error_code) \
