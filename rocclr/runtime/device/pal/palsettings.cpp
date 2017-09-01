@@ -174,6 +174,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       }
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Vega20:
+    case Pal::AsicRevision::Vega12:
     case Pal::AsicRevision::Vega10:
     case Pal::AsicRevision::Raven:
       aiPlus_ = true;
