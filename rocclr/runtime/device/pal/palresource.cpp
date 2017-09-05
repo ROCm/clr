@@ -168,15 +168,12 @@ GpuMemoryReference::~GpuMemoryReference() {
     device_.vgpus()[0]->releaseMemory(this, &events_[0]);
   }
 
-  {
-    amd::ScopedLock lk(device_.lockPAL());
-    if (cpuAddress_ != nullptr) {
-      iMem()->Unmap();
-    }
-    if (0 != iMem()) {
-      iMem()->Destroy();
-      gpuMem_ = nullptr;
-    }
+  if (cpuAddress_ != nullptr) {
+    iMem()->Unmap();
+  }
+  if (0 != iMem()) {
+    iMem()->Destroy();
+    gpuMem_ = nullptr;
   }
   device_.removeResource(this);
 }
@@ -414,8 +411,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 
   // This is a thread safe operation
   const_cast<Device&>(dev()).initializeHeapResources();
-
-  amd::ScopedLock lk(dev().lockPAL());
 
   if (memType == Shader) {
     if (dev().settings().svmFineGrainSystem_) {
