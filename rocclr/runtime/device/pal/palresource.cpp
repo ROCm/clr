@@ -1101,6 +1101,9 @@ void Resource::free() {
       amd::ScopedLock l(memRef_->gpu_->execution());
       memRef_->gpu_->waitForEvent(&memRef_->events_[memRef_->gpu_->index()]);
     }
+  } else {
+    // After a view destruction the original object is no longer can be associated with a vgpu
+    memRef_->gpu_ = nullptr;
   }
 
   if (renames_.size() == 0) {
