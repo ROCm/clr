@@ -147,33 +147,21 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 804},
 };
 
-// The GfxIpDeviceInfo table must match with GfxIpLevel enum
-// (located in //depot/stg/pal/inc/core/palDevice.h).
-static const AMDDeviceInfo GfxIpDeviceInfo[] = {
-    /* Unknown  */  {"unknown", "unknown",  4, 16, 1, 256, 64 * Ki, 32, 000},
-    /* GFX600 */    {"gfx600",  "gfx600",   4, 16, 1, 256, 64 * Ki, 32, 600},
-    /* GFX700 */    {"gfx700",  "gfx700",   4, 16, 1, 256, 64 * Ki, 32, 700},
-    /* GFX800 */    {"gfx800",  "gfx800",   4, 16, 1, 256, 64 * Ki, 32, 800},
-    /* GFX810 */    {"gfx810",  "gfx810",   4, 16, 1, 256, 64 * Ki, 32, 810},
-    /* GFX900 */    {"gfx900",  "gfx900",   4, 16, 1, 256, 64 * Ki, 32, 900},
-    /* GFX1000 */   {"gfx1000", "gfx1000",  4, 16, 1, 256, 64 * Ki, 32, 1000 },
-};
-
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
 // http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900},
     /* Vega10 XNACK */{"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 901},
-    /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904},
-    /* Vega12 XNACK */{"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 905},
-    /* Vega20       */{"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 906},
-    /* Vega20 XNACK */{"gfx907", "gfx907", 4, 16, 1, 256, 64 * Ki, 32, 907},
+    /* Vega12       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 904},
+    /* Vega12 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 905},
+    /* Vega20       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 906},
+    /* Vega20 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 907},
     /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
     /* Raven XNACK  */{"gfx903", "gfx903", 4, 16, 1, 256, 64 * Ki, 32, 903},
-    /* Raven2       */{0},
-    /* Raven2 XNACK */{0},
-    /* Navi10       */{"gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000},
-    /* Navi10 XNACK */{"gfx1001", "gfx1001", 4, 16, 1, 256, 64 * Ki, 32, 1001},
+    /* Raven2       */{""      , ""      , 0, 0 , 0, 0  , 0      , 0 , 0},
+    /* Raven2 XNACK */{""      , ""      , 0, 0 , 0, 0  , 0      , 0 , 0},
+    /* Navi10       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000},
+    /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1001},
 };
 
 enum gfx_handle {

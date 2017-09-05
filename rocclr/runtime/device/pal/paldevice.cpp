@@ -62,6 +62,7 @@ NullDevice::NullDevice()
 
 bool NullDevice::init() {
   std::vector<Device*> devices;
+  std::string driverVersion;
 
   devices = getDevices(CL_DEVICE_TYPE_GPU, false);
 
@@ -74,11 +75,14 @@ bool NullDevice::init() {
       continue;
     }
 
-    // Loop through all active devices and see if we match one
+    // Loop through all active PAL devices and see if we match one
     for (uint i = 0; i < devices.size(); ++i) {
-      if (static_cast<NullDevice*>(devices[i])->asicRevision() == revision) {
-        foundActive = true;
-        break;
+      driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
+      if (driverVersion.find("PAL") != std::string::npos) {
+        if (static_cast<NullDevice*>(devices[i])->asicRevision() == revision) {
+            foundActive = true;
+            break;
+        }
       }
     }
 
@@ -98,42 +102,89 @@ bool NullDevice::init() {
   }
 
   // Loop through all supported devices and create each of them
-  for (uint id = static_cast<uint>(Pal::GfxIpLevel::GfxIp7);
-       id <= static_cast<uint>(Pal::GfxIpLevel::GfxIp10); ++id) {
-    bool foundActive = false;
-    Pal::GfxIpLevel ipLevel = static_cast<Pal::GfxIpLevel>(id);
+  for (uint id = 0;
+        id < sizeof(Gfx9PlusSubDeviceInfo)/sizeof(AMDDeviceInfo); ++id) {
+      bool foundActive = false;
+      uint gfxipVersion = pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
-    if (pal::GfxIpDeviceInfo[id].targetName_[0] == '\0') {
-      continue;
-    }
-
-    // Loop through all active devices and see if we match one
-    for (uint i = 0; i < devices.size(); ++i) {
-      if (static_cast<NullDevice*>(devices[i])->ipLevel() == ipLevel) {
-        foundActive = true;
-        break;
+      if (pal::Gfx9PlusSubDeviceInfo[id].targetName_[0] == '\0') {
+          continue;
       }
-    }
 
-    // Don't report an offline device if it's active
-    if (foundActive) {
-      continue;
-    }
-
-    NullDevice* dev = new NullDevice();
-    if (nullptr != dev) {
-      if (!dev->create(Pal::AsicRevision::Unknown, ipLevel)) {
-        delete dev;
-      } else {
-        dev->registerDevice();
+      // Loop through all active PAL devices and see if we match one
+      for (uint i = 0; i < devices.size(); ++i) {
+        driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
+        if (driverVersion.find("PAL") != std::string::npos) {
+          if (static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersion_ ==
+                                                              gfxipVersion) {
+              foundActive = true;
+              break;
+          }
+        }
       }
-    }
+
+      // Don't report an offline device if it's active
+      if (foundActive) {
+          continue;
+      }
+
+      Pal::GfxIpLevel ipLevel = Pal::GfxIpLevel::_None;
+      uint ipLevelMajor = round(pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_ / 100);
+      switch (ipLevelMajor) {
+      case 9:
+          ipLevel = Pal::GfxIpLevel::GfxIp9;
+          break;
+      case 10:
+          ipLevel = Pal::GfxIpLevel::GfxIp10;
+          break;
+      }
+
+      Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
+      uint xNACKSupported = 0;
+      switch (pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_) {
+      case 901:
+          xNACKSupported = 1;
+      case 900:
+          revision = Pal::AsicRevision::Vega10;
+          break;
+      case 903:
+          xNACKSupported = 1;
+      case 902:
+          revision = Pal::AsicRevision::Raven;
+          break;
+      case 905:
+          xNACKSupported = 1;
+      case 904:
+          revision = Pal::AsicRevision::Vega12;
+          break;
+      case 907:
+          xNACKSupported = 1;
+      case 906:
+          revision = Pal::AsicRevision::Vega20;
+          break;
+      case 1001:
+          xNACKSupported = 1;
+      case 1000:
+          revision = Pal::AsicRevision::Navi10;
+          break;
+      }
+
+      NullDevice* dev = new NullDevice();
+      if (nullptr != dev) {
+          if (!dev->create(revision, ipLevel, xNACKSupported)) {
+              delete dev;
+          }
+          else {
+              dev->registerDevice();
+          }
+      }
   }
 
   return true;
 }
 
-bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel) {
+bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
+                        uint xNACKSupported) {
   online_ = false;
   Pal::DeviceProperties properties = {};
 
@@ -142,12 +193,17 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel)
   ipLevel_ = ipLevel;
   properties.revision = asicRevision;
   properties.gfxLevel = ipLevel;
+  uint subtarget = 0;
 
   // Update HW info for the device
   if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
   } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
-    hwInfo_ = &GfxIpDeviceInfo[static_cast<uint>(ipLevel)];
+      subtarget = (static_cast<uint>(asicRevision_) %
+                   static_cast<uint>(Pal::AsicRevision::Vega10))
+                   << 1 | xNACKSupported;
+      hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
+
   } else {
     return false;
   }
