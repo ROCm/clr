@@ -1,5 +1,5 @@
 /**********************************************************************************
- * Copyright (c) 2008-2013 The Khronos Group Inc.
+ * Copyright (c) 2008-2015 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -12,6 +12,11 @@
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Materials.
  *
+ * MODIFICATIONS TO THIS FILE MAY MEAN IT NO LONGER ACCURATELY REFLECTS
+ * KHRONOS STANDARDS. THE UNMODIFIED, NORMATIVE VERSIONS OF KHRONOS
+ * SPECIFICATIONS AND HEADER INFORMATION ARE LOCATED AT
+ *    https://www.khronos.org/registry/
+ *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +26,7 @@
  * MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
  **********************************************************************************/
 
-/* $Revision: 14829 $ on $Date: 2011-05-26 08:22:50 -0700 (Thu, 26 May 2011) $ */
+/* $Revision: 11803 $ on $Date: 2010-06-25 10:02:12 -0700 (Fri, 25 Jun 2010) $ */
 
 #ifndef __CL_PLATFORM_H
 #define __CL_PLATFORM_H
@@ -35,7 +40,7 @@
 extern "C" {
 #endif
 
-#if defined(_WIN32) || defined(__CYGWIN__)
+#if defined(_WIN32)
     #define CL_API_ENTRY
     #define CL_API_CALL     __stdcall
     #define CL_CALLBACK     __stdcall
@@ -85,10 +90,6 @@ extern "C" {
     #define CL_EXT_SUFFIX__VERSION_1_2
     #define CL_API_SUFFIX__VERSION_2_0
     #define CL_EXT_SUFFIX__VERSION_2_0
-    #define CL_API_SUFFIX__VERSION_2_1
-    #define CL_EXT_SUFFIX__VERSION_2_1
-    #define CL_API_SUFFIX__VERSION_2_2
-    #define CL_EXT_SUFFIX__VERSION_2_2
     
     #ifdef __GNUC__
         #ifdef CL_USE_DEPRECATED_OPENCL_1_0_APIS
@@ -114,7 +115,7 @@ extern "C" {
             #define CL_EXT_SUFFIX__VERSION_1_2_DEPRECATED __attribute__((deprecated))
             #define CL_EXT_PREFIX__VERSION_1_2_DEPRECATED
          #endif
-    #elif _WIN32
+    #elif defined(_WIN32)
         #ifdef CL_USE_DEPRECATED_OPENCL_1_0_APIS
             #define CL_EXT_SUFFIX__VERSION_1_0_DEPRECATED
             #define CL_EXT_PREFIX__VERSION_1_0_DEPRECATED    
@@ -192,7 +193,18 @@ typedef double                  cl_double;
 #define CL_FLT_RADIX        2
 #define CL_FLT_MAX          340282346638528859811704183484516925440.0f
 #define CL_FLT_MIN          1.175494350822287507969e-38f
-#define CL_FLT_EPSILON      0.00000011920928955078125f
+#define CL_FLT_EPSILON      1.1920928955078125e-7f
+
+#define CL_HALF_DIG          3
+#define CL_HALF_MANT_DIG     11
+#define CL_HALF_MAX_10_EXP   +4
+#define CL_HALF_MAX_EXP      +16
+#define CL_HALF_MIN_10_EXP   -4
+#define CL_HALF_MIN_EXP      -13
+#define CL_HALF_RADIX        2
+#define CL_HALF_MAX          65504.0f
+#define CL_HALF_MIN          6.103515625e-05f
+#define CL_HALF_EPSILON      9.765625e-04f
 
 #define CL_DBL_DIG          15
 #define CL_DBL_MANT_DIG     53
@@ -201,37 +213,37 @@ typedef double                  cl_double;
 #define CL_DBL_MIN_10_EXP   -307
 #define CL_DBL_MIN_EXP      -1021
 #define CL_DBL_RADIX        2
-#define CL_DBL_MAX          179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0
+#define CL_DBL_MAX          1.7976931348623158e+308
 #define CL_DBL_MIN          2.225073858507201383090e-308
 #define CL_DBL_EPSILON      2.220446049250313080847e-16
 
-#define  CL_M_E             2.718281828459045090796
-#define  CL_M_LOG2E         1.442695040888963387005
-#define  CL_M_LOG10E        0.434294481903251816668
-#define  CL_M_LN2           0.693147180559945286227
-#define  CL_M_LN10          2.302585092994045901094
-#define  CL_M_PI            3.141592653589793115998
-#define  CL_M_PI_2          1.570796326794896557999
-#define  CL_M_PI_4          0.785398163397448278999
-#define  CL_M_1_PI          0.318309886183790691216
-#define  CL_M_2_PI          0.636619772367581382433
-#define  CL_M_2_SQRTPI      1.128379167095512558561
-#define  CL_M_SQRT2         1.414213562373095145475
-#define  CL_M_SQRT1_2       0.707106781186547572737
+#define CL_M_E              2.7182818284590452354
+#define CL_M_LOG2E          1.4426950408889634074
+#define CL_M_LOG10E         0.43429448190325182765
+#define CL_M_LN2            0.69314718055994530942
+#define CL_M_LN10           2.30258509299404568402
+#define CL_M_PI             3.14159265358979323846
+#define CL_M_PI_2           1.57079632679489661923
+#define CL_M_PI_4           0.78539816339744830962
+#define CL_M_1_PI           0.31830988618379067154
+#define CL_M_2_PI           0.63661977236758134308
+#define CL_M_2_SQRTPI       1.12837916709551257390
+#define CL_M_SQRT2          1.41421356237309504880
+#define CL_M_SQRT1_2        0.70710678118654752440
 
-#define  CL_M_E_F           2.71828174591064f
-#define  CL_M_LOG2E_F       1.44269502162933f
-#define  CL_M_LOG10E_F      0.43429449200630f
-#define  CL_M_LN2_F         0.69314718246460f
-#define  CL_M_LN10_F        2.30258512496948f
-#define  CL_M_PI_F          3.14159274101257f
-#define  CL_M_PI_2_F        1.57079637050629f
-#define  CL_M_PI_4_F        0.78539818525314f
-#define  CL_M_1_PI_F        0.31830987334251f
-#define  CL_M_2_PI_F        0.63661974668503f
-#define  CL_M_2_SQRTPI_F    1.12837922573090f
-#define  CL_M_SQRT2_F       1.41421353816986f
-#define  CL_M_SQRT1_2_F     0.70710676908493f
+#define CL_M_E_F            2.718281828f
+#define CL_M_LOG2E_F        1.442695041f
+#define CL_M_LOG10E_F       0.434294482f
+#define CL_M_LN2_F          0.693147181f
+#define CL_M_LN10_F         2.302585093f
+#define CL_M_PI_F           3.141592654f
+#define CL_M_PI_2_F         1.570796327f
+#define CL_M_PI_4_F         0.785398163f
+#define CL_M_1_PI_F         0.318309886f
+#define CL_M_2_PI_F         0.636619772f
+#define CL_M_2_SQRTPI_F     1.128379167f
+#define CL_M_SQRT2_F        1.414213562f
+#define CL_M_SQRT1_2_F      0.707106781f
 
 #define CL_NAN              (CL_INFINITY - CL_INFINITY)
 #define CL_HUGE_VALF        ((cl_float) 1e50)
@@ -281,9 +293,20 @@ typedef double          cl_double   __attribute__((aligned(8)));
 #define CL_FLT_MIN_10_EXP   -37
 #define CL_FLT_MIN_EXP      -125
 #define CL_FLT_RADIX        2
-#define CL_FLT_MAX          0x1.fffffep127f
-#define CL_FLT_MIN          0x1.0p-126f
-#define CL_FLT_EPSILON      0x1.0p-23f
+#define CL_FLT_MAX          340282346638528859811704183484516925440.0f
+#define CL_FLT_MIN          1.175494350822287507969e-38f
+#define CL_FLT_EPSILON      1.1920928955078125e-7f
+
+#define CL_HALF_DIG          3
+#define CL_HALF_MANT_DIG     11
+#define CL_HALF_MAX_10_EXP   +4
+#define CL_HALF_MAX_EXP      +16
+#define CL_HALF_MIN_10_EXP   -4
+#define CL_HALF_MIN_EXP      -13
+#define CL_HALF_RADIX        2
+#define CL_HALF_MAX          65504.0f
+#define CL_HALF_MIN          6.103515625e-05f
+#define CL_HALF_EPSILON      9.765625e-04f
 
 #define CL_DBL_DIG          15
 #define CL_DBL_MANT_DIG     53
@@ -292,37 +315,37 @@ typedef double          cl_double   __attribute__((aligned(8)));
 #define CL_DBL_MIN_10_EXP   -307
 #define CL_DBL_MIN_EXP      -1021
 #define CL_DBL_RADIX        2
-#define CL_DBL_MAX          0x1.fffffffffffffp1023
-#define CL_DBL_MIN          0x1.0p-1022
-#define CL_DBL_EPSILON      0x1.0p-52
+#define CL_DBL_MAX          179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.0
+#define CL_DBL_MIN          2.225073858507201383090e-308
+#define CL_DBL_EPSILON      2.220446049250313080847e-16
 
-#define  CL_M_E             2.718281828459045090796
-#define  CL_M_LOG2E         1.442695040888963387005
-#define  CL_M_LOG10E        0.434294481903251816668
-#define  CL_M_LN2           0.693147180559945286227
-#define  CL_M_LN10          2.302585092994045901094
-#define  CL_M_PI            3.141592653589793115998
-#define  CL_M_PI_2          1.570796326794896557999
-#define  CL_M_PI_4          0.785398163397448278999
-#define  CL_M_1_PI          0.318309886183790691216
-#define  CL_M_2_PI          0.636619772367581382433
-#define  CL_M_2_SQRTPI      1.128379167095512558561
-#define  CL_M_SQRT2         1.414213562373095145475
-#define  CL_M_SQRT1_2       0.707106781186547572737
+#define CL_M_E              2.7182818284590452354
+#define CL_M_LOG2E          1.4426950408889634074
+#define CL_M_LOG10E         0.43429448190325182765
+#define CL_M_LN2            0.69314718055994530942
+#define CL_M_LN10           2.30258509299404568402
+#define CL_M_PI             3.14159265358979323846
+#define CL_M_PI_2           1.57079632679489661923
+#define CL_M_PI_4           0.78539816339744830962
+#define CL_M_1_PI           0.31830988618379067154
+#define CL_M_2_PI           0.63661977236758134308
+#define CL_M_2_SQRTPI       1.12837916709551257390
+#define CL_M_SQRT2          1.41421356237309504880
+#define CL_M_SQRT1_2        0.70710678118654752440
 
-#define  CL_M_E_F           2.71828174591064f
-#define  CL_M_LOG2E_F       1.44269502162933f
-#define  CL_M_LOG10E_F      0.43429449200630f
-#define  CL_M_LN2_F         0.69314718246460f
-#define  CL_M_LN10_F        2.30258512496948f
-#define  CL_M_PI_F          3.14159274101257f
-#define  CL_M_PI_2_F        1.57079637050629f
-#define  CL_M_PI_4_F        0.78539818525314f
-#define  CL_M_1_PI_F        0.31830987334251f
-#define  CL_M_2_PI_F        0.63661974668503f
-#define  CL_M_2_SQRTPI_F    1.12837922573090f
-#define  CL_M_SQRT2_F       1.41421353816986f
-#define  CL_M_SQRT1_2_F     0.70710676908493f
+#define CL_M_E_F            2.718281828f
+#define CL_M_LOG2E_F        1.442695041f
+#define CL_M_LOG10E_F       0.434294482f
+#define CL_M_LN2_F          0.693147181f
+#define CL_M_LN10_F         2.302585093f
+#define CL_M_PI_F           3.141592654f
+#define CL_M_PI_2_F         1.570796327f
+#define CL_M_PI_4_F         0.785398163f
+#define CL_M_1_PI_F         0.318309886f
+#define CL_M_2_PI_F         0.636619772f
+#define CL_M_2_SQRTPI_F     1.128379167f
+#define CL_M_SQRT2_F        1.414213562f
+#define CL_M_SQRT1_2_F      0.707106781f
 
 #if defined( __GNUC__ )
    #define CL_HUGE_VALF     __builtin_huge_valf()
@@ -387,7 +410,7 @@ typedef unsigned int cl_GLenum;
     #else
         #include <xmmintrin.h>
     #endif
-    #if defined( __GNUC__ ) && !defined( __ICC )
+    #if defined( __GNUC__ )
         typedef float __cl_float4   __attribute__((vector_size(16)));
     #else
         typedef __m128 __cl_float4;
@@ -401,7 +424,7 @@ typedef unsigned int cl_GLenum;
     #else
         #include <emmintrin.h>
     #endif
-    #if defined( __GNUC__ ) && !defined( __ICC )
+    #if defined( __GNUC__ )
         typedef cl_uchar    __cl_uchar16    __attribute__((vector_size(16)));
         typedef cl_char     __cl_char16     __attribute__((vector_size(16)));
         typedef cl_ushort   __cl_ushort8    __attribute__((vector_size(16)));
@@ -435,7 +458,7 @@ typedef unsigned int cl_GLenum;
 
 #if defined( __MMX__ )
     #include <mmintrin.h>
-    #if defined( __GNUC__ ) && !defined( __ICC )
+    #if defined( __GNUC__ )
         typedef cl_uchar    __cl_uchar8     __attribute__((vector_size(8)));
         typedef cl_char     __cl_char8      __attribute__((vector_size(8)));
         typedef cl_ushort   __cl_ushort4    __attribute__((vector_size(8)));
@@ -473,7 +496,7 @@ typedef unsigned int cl_GLenum;
     #else
         #include <immintrin.h> 
     #endif
-    #if defined( __GNUC__ ) && !defined( __ICC )
+    #if defined( __GNUC__ )
         typedef cl_float    __cl_float8     __attribute__((vector_size(32)));
         typedef cl_double   __cl_double4    __attribute__((vector_size(32)));
     #else
@@ -485,25 +508,30 @@ typedef unsigned int cl_GLenum;
 #endif
 
 /* Define capabilities for anonymous struct members. */
-#if (defined( __GNUC__ )  ||  defined( __IBMC__ )) && ! defined( __STRICT_ANSI__ )
-#define  __CL_HAS_ANON_STRUCT__ 1
-#define  __CL_ANON_STRUCT__ __extension__
-#elif defined( _WIN32) && (_MSC_VER >= 1500)
-   /* Microsoft Developer Studio 2008 supports anonymous structs, but
-    * complains by default. */
+#if !defined(__cplusplus) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define  __CL_HAS_ANON_STRUCT__ 1
 #define  __CL_ANON_STRUCT__
+#elif defined( __GNUC__) && ! defined( __STRICT_ANSI__ )
+#define  __CL_HAS_ANON_STRUCT__ 1
+#define  __CL_ANON_STRUCT__ __extension__
+#elif defined( _WIN32) && defined(_MSC_VER)
+    #if _MSC_VER >= 1500
+   /* Microsoft Developer Studio 2008 supports anonymous structs, but
+    * complains by default. */
+    #define  __CL_HAS_ANON_STRUCT__ 1
+    #define  __CL_ANON_STRUCT__
    /* Disable warning C4201: nonstandard extension used : nameless
     * struct/union */
-#pragma warning( push )
-#pragma warning( disable : 4201 )
+    #pragma warning( push )
+    #pragma warning( disable : 4201 )
+    #endif
 #else
 #define  __CL_HAS_ANON_STRUCT__ 0
 #define  __CL_ANON_STRUCT__
 #endif
 
 /* Define alignment keys */
-#if (defined( __GNUC__ ) || defined( __IBMC__ ))
+#if defined( __GNUC__ )
     #define CL_ALIGNED(_x)          __attribute__ ((aligned(_x)))
 #elif defined( _WIN32) && (_MSC_VER)
     /* Alignment keys neutered on windows because MSVC can't swallow function arguments with alignment requirements     */
@@ -824,6 +852,81 @@ typedef union
     __cl_ushort16    v16;
 #endif
 }cl_ushort16;
+
+
+/* ---- cl_halfn ---- */
+typedef union
+{
+    cl_half  CL_ALIGNED(4) s[2];
+#if __CL_HAS_ANON_STRUCT__
+    __CL_ANON_STRUCT__ struct{ cl_half  x, y; };
+    __CL_ANON_STRUCT__ struct{ cl_half  s0, s1; };
+    __CL_ANON_STRUCT__ struct{ cl_half  lo, hi; };
+#endif
+#if defined( __CL_HALF2__) 
+    __cl_half2     v2;
+#endif
+}cl_half2;
+
+typedef union
+{
+    cl_half  CL_ALIGNED(8) s[4];
+#if __CL_HAS_ANON_STRUCT__
+    __CL_ANON_STRUCT__ struct{ cl_half  x, y, z, w; };
+    __CL_ANON_STRUCT__ struct{ cl_half  s0, s1, s2, s3; };
+    __CL_ANON_STRUCT__ struct{ cl_half2 lo, hi; };
+#endif
+#if defined( __CL_HALF2__) 
+    __cl_half2     v2[2];
+#endif
+#if defined( __CL_HALF4__) 
+    __cl_half4     v4;
+#endif
+}cl_half4;
+
+/* cl_half3 is identical in size, alignment and behavior to cl_half4. See section 6.1.5. */
+typedef  cl_half4  cl_half3;
+
+typedef union
+{
+    cl_half   CL_ALIGNED(16) s[8];
+#if __CL_HAS_ANON_STRUCT__
+    __CL_ANON_STRUCT__ struct{ cl_half  x, y, z, w; };
+    __CL_ANON_STRUCT__ struct{ cl_half  s0, s1, s2, s3, s4, s5, s6, s7; };
+    __CL_ANON_STRUCT__ struct{ cl_half4 lo, hi; };
+#endif
+#if defined( __CL_HALF2__) 
+    __cl_half2     v2[4];
+#endif
+#if defined( __CL_HALF4__) 
+    __cl_half4     v4[2];
+#endif
+#if defined( __CL_HALF8__ )
+    __cl_half8     v8;
+#endif
+}cl_half8;
+
+typedef union
+{
+    cl_half  CL_ALIGNED(32) s[16];
+#if __CL_HAS_ANON_STRUCT__
+    __CL_ANON_STRUCT__ struct{ cl_half  x, y, z, w, __spacer4, __spacer5, __spacer6, __spacer7, __spacer8, __spacer9, sa, sb, sc, sd, se, sf; };
+    __CL_ANON_STRUCT__ struct{ cl_half  s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, sA, sB, sC, sD, sE, sF; };
+    __CL_ANON_STRUCT__ struct{ cl_half8 lo, hi; };
+#endif
+#if defined( __CL_HALF2__) 
+    __cl_half2     v2[8];
+#endif
+#if defined( __CL_HALF4__) 
+    __cl_half4     v4[4];
+#endif
+#if defined( __CL_HALF8__ )
+    __cl_half8     v8[2];
+#endif
+#if defined( __CL_HALF16__ )
+    __cl_half16    v16;
+#endif
+}cl_half16;
 
 /* ---- cl_intn ---- */
 typedef union
@@ -1304,8 +1407,10 @@ typedef union
 
 #undef __CL_HAS_ANON_STRUCT__
 #undef __CL_ANON_STRUCT__
-#if defined( _WIN32) && (_MSC_VER >= 1500)
-#pragma warning( pop )
+#if defined( _WIN32) && defined(_MSC_VER)
+    #if _MSC_VER >=1500
+    #pragma warning( pop )
+    #endif
 #endif
 
 #endif  /* __CL_PLATFORM_H  */
