@@ -196,6 +196,8 @@ typedef struct _cl_buffer_region {
 #define CL_INVALID_DEVICE_PARTITION_COUNT           -68
 #define CL_INVALID_PIPE_SIZE                        -69
 #define CL_INVALID_DEVICE_QUEUE                     -70
+#define CL_INVALID_SPEC_ID                          -71
+#define CL_MAX_SIZE_RESTRICTION_EXCEEDED            -72
 
 /* OpenCL Version */
 #define CL_VERSION_1_0                              1
@@ -203,6 +205,7 @@ typedef struct _cl_buffer_region {
 #define CL_VERSION_1_2                              1
 #define CL_VERSION_2_0                              1
 #define CL_VERSION_2_1                              1
+#define CL_VERSION_2_2                              1
 
 /* cl_bool */
 #define CL_FALSE                                    0
@@ -526,6 +529,8 @@ typedef struct _cl_buffer_region {
 #define CL_PROGRAM_NUM_KERNELS                      0x1167
 #define CL_PROGRAM_KERNEL_NAMES                     0x1168
 #define CL_PROGRAM_IL                               0x1169
+#define CL_PROGRAM_SCOPE_GLOBAL_CTORS_PRESENT       0x116A
+#define CL_PROGRAM_SCOPE_GLOBAL_DTORS_PRESENT       0x116B
 
 /* cl_program_build_info */
 #define CL_PROGRAM_BUILD_STATUS                     0x1181
@@ -929,6 +934,17 @@ clLinkProgram(cl_context           /* context */,
               void (CL_CALLBACK *  /* pfn_notify */)(cl_program /* program */, void * /* user_data */),
               void *               /* user_data */,
               cl_int *             /* errcode_ret */ ) CL_API_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetProgramReleaseCallback(cl_program          /* program */,
+                            void (CL_CALLBACK * /* pfn_notify */)(cl_program /* program */, void * /* user_data */),
+                            void *              /* user_data */) CL_API_SUFFIX__VERSION_2_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetProgramSpecializationConstant(cl_program  /* program */,
+                                   cl_uint     /* spec_id */,
+                                   size_t      /* spec_size */,
+                                   const void* /* spec_value */) CL_API_SUFFIX__VERSION_2_2;
 
 
 extern CL_API_ENTRY cl_int CL_API_CALL

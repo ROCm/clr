@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008-2013 The Khronos Group Inc.
+ * Copyright (c) 2008-2015 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -12,6 +12,11 @@
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Materials.
  *
+ * MODIFICATIONS TO THIS FILE MAY MEAN IT NO LONGER ACCURATELY REFLECTS
+ * KHRONOS STANDARDS. THE UNMODIFIED, NORMATIVE VERSIONS OF KHRONOS
+ * SPECIFICATIONS AND HEADER INFORMATION ARE LOCATED AT
+ *    https://www.khronos.org/registry/
+ *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -21,7 +26,7 @@
  * MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
  ******************************************************************************/
 
-/* $Revision: 14835 $ on $Date: 2011-05-26 11:32:00 -0700 (Thu, 26 May 2011) $ */
+/* $Revision: 11928 $ on $Date: 2010-07-13 09:04:56 -0700 (Tue, 13 Jul 2010) $ */
 
 /* cl_ext.h contains OpenCL extensions which don't have external */
 /* (OpenGL, D3D) dependencies.                                   */
@@ -149,40 +154,7 @@ extern CL_API_ENTRY cl_int CL_API_CALL clTerminateContextKHR(cl_context /* conte
 
 typedef CL_API_ENTRY cl_int (CL_API_CALL *clTerminateContextKHR_fn)(cl_context /* context */) CL_EXT_SUFFIX__VERSION_1_2;
     
-// <amd_internal>
-/******************************
- * cl_khr_subgroups extension *
- ******************************/
-
-#define cl_khr_subgroups 1
-
-typedef cl_uint cl_kernel_sub_group_info;
-
-#define CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE    0x2011
-#define CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE       0x2012
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetKernelSubGroupInfoKHR(cl_kernel                /* kernel */,
-                           cl_device_id             /* device */,
-                           cl_kernel_sub_group_info /* param_name */,
-                           size_t                   /* input_value_size */,
-                           const void *             /* input_value */,
-                           size_t                   /* param_value_size */,
-                           void *                   /* param_value */,
-                           size_t *                 /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_2;
-
-typedef CL_API_ENTRY cl_int (CL_API_CALL *clGetKernelSubGroupInfoKHR_fn)(
-    cl_kernel                /* kernel */,
-    cl_device_id             /* device */,
-    cl_kernel_sub_group_info /* param_name */,
-    size_t                   /* input_value_size */,
-    const void *             /* input_value */,
-    size_t                   /* param_value_size */,
-    void *                   /* param_value */,
-    size_t *                 /* param_value_size_ret */) CL_API_SUFFIX__VERSION_1_2;
-
-// </amd_internal>
-
+    
 /*
  * Extension: cl_khr_spir
  *
@@ -190,10 +162,9 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clGetKernelSubGroupInfoKHR_fn)(
  * Standard Portable Intermediate Representation (SPIR) instance
  */
 
-// KHR SPIR extension (Section 9.15.2 in the extension SPEC)
-// TODO: The values have been approved by khronos and waiting to be updated in official header file.
 #define CL_DEVICE_SPIR_VERSIONS                     0x40E0
 #define CL_PROGRAM_BINARY_TYPE_INTERMEDIATE         0x40E1
+
 
 /******************************************
 * cl_nv_device_attribute_query extension *
@@ -245,6 +216,138 @@ typedef union
 
 #define CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD            1
 
+/**************************
+* cl_amd_offline_devices *
+**************************/
+#define CL_CONTEXT_OFFLINE_DEVICES_AMD              0x403F
+
+/********************************
+* cl_amd_bus_addressable_memory *
+********************************/
+
+/* cl_mem flag - bitfield */
+#define CL_MEM_BUS_ADDRESSABLE_AMD               (1<<30)
+#define CL_MEM_EXTERNAL_PHYSICAL_AMD             (1<<31)
+
+#define CL_COMMAND_WAIT_SIGNAL_AMD                0x4080
+#define CL_COMMAND_WRITE_SIGNAL_AMD               0x4081
+#define CL_COMMAND_MAKE_BUFFERS_RESIDENT_AMD      0x4082
+
+typedef struct _cl_bus_address_amd
+{
+    cl_ulong surface_bus_address;
+    cl_ulong marker_bus_address;
+} cl_bus_address_amd;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueWaitSignalAMD_fn)( cl_command_queue /*command_queue*/,
+                                           cl_mem /*mem_object*/,
+                                           cl_uint /*value*/,
+                                           cl_uint /*num_events*/,
+                                           const cl_event * /*event_wait_list*/,
+                                           cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueWriteSignalAMD_fn)( cl_command_queue /*command_queue*/,
+                                            cl_mem /*mem_object*/,
+                                            cl_uint /*value*/,
+                                            cl_ulong /*offset*/,
+                                            cl_uint /*num_events*/,
+                                            const cl_event * /*event_list*/,
+                                            cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueMakeBuffersResidentAMD_fn)( cl_command_queue /*command_queue*/,
+                                                    cl_uint /*num_mem_objs*/,
+                                                    cl_mem * /*mem_objects*/,
+                                                    cl_bool /*blocking_make_resident*/,
+                                                    cl_bus_address_amd * /*bus_addresses*/,
+                                                    cl_uint /*num_events*/,
+                                                    const cl_event * /*event_list*/,
+                                                    cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+/**********************
+* cl_amd_liquid_flash *
+***********************/
+#define cl_amd_liquid_flash 1
+
+#define CL_COMMAND_READ_SSG_FILE_AMD 0x4083
+#define CL_COMMAND_WRITE_SSG_FILE_AMD  0x4087
+
+#define CL_INVALID_FILE_OBJECT_AMD 0x4084
+
+typedef struct _cl_file_amd * cl_file_amd;
+
+typedef cl_uint cl_file_flags_amd;
+#define CL_FILE_READ_ONLY_AMD   (1 << 0)
+#define CL_FILE_WRITE_ONLY_AMD  (1 << 1)
+#define CL_FILE_READ_WRITE_AMD  (1 << 2)
+
+typedef cl_uint cl_file_info_amd;
+#define CL_FILE_BLOCK_SIZE_AMD 0x4085
+#define CL_FILE_SIZE_AMD       0x4086
+
+typedef CL_API_ENTRY cl_file_amd
+(CL_API_CALL * clCreateSsgFileObjectAMD_fn)(cl_context /*context*/,
+                                            cl_file_flags_amd /*flags*/,
+                                            const wchar_t * /*file_name*/,
+                                            cl_int * /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clGetSsgFileObjectInfoAMD_fn)(cl_file_amd /* file */,
+                                            cl_file_info_amd /* param_name */,
+                                            size_t /* param_value_size */,
+                                            void * /* param_value */,
+                                            size_t * /* param_value_size_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clRetainSsgFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clReleaseSsgFileObjectAMD_fn)( cl_file_amd /*file*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueReadSsgFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                           cl_mem /*buffer*/,
+                                           cl_bool /*blocking_write*/,
+                                           size_t /*buffer_offset*/,
+                                           size_t /*cb*/,
+                                           cl_file_amd /*file*/,
+                                           size_t /*file_offset*/,
+                                           cl_uint /*num_events_in_wait_list*/,
+                                           const cl_event * /*event_wait_list*/,
+                                           cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueWriteSsgFileAMD_fn)(cl_command_queue /*command_queue*/,
+                                            cl_mem /*buffer*/,
+                                            cl_bool /*blocking_read*/,
+                                            size_t /*buffer_offset*/,
+                                            size_t /*cb*/,
+                                            cl_file_amd /*file*/,
+                                            size_t /*file_offset*/,
+                                            cl_uint /*num_events_in_wait_list*/,
+                                            const cl_event * /*event_wait_list*/,
+                                            cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+
+/*************************
+* cl_amd_copy_buffer_p2p *
+**************************/
+#define CL_DEVICE_NUM_P2P_DEVICES_AMD 0x4088
+#define CL_DEVICE_P2P_DEVICES_AMD 0x4089
+
+#define cl_amd_copy_buffer_p2p 1
+
+typedef CL_API_ENTRY cl_int
+(CL_API_CALL * clEnqueueCopyBufferP2PAMD_fn)(cl_command_queue /*command_queue*/,
+                                             cl_mem /*src_buffer*/,
+                                             cl_mem /*dst_buffer*/,
+                                             size_t /*src_offset*/,
+                                             size_t /*dst_offset*/,
+                                             size_t /*cb*/,
+                                             cl_uint /*num_events_in_wait_list*/,
+                                             const cl_event* /*event_wait_list*/,
+                                             cl_event* /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
 // <amd_internal>
 /***************************
@@ -264,36 +367,54 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
 #define CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD            0x4120
 #define CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD           0x4121
 
-/***************************************
-* cl-gl depth buffer interop extension *
-****************************************/
+/*************************
+* cl_amd_object_metadata *
+**************************/
+#define cl_amd_object_metadata 1
 
-#define CL_DEPTH                                    0x10BD
-#define CL_DEPTH_STENCIL                            0x10BE
-#define CL_UNORM_INT24                              0x10DF
-#define CL_GL_NUM_SAMPLES                           0x2012
+typedef size_t cl_key_amd;
+
+#define CL_INVALID_OBJECT_AMD    0x403A
+#define CL_INVALID_KEY_AMD       0x403B
+#define CL_PLATFORM_MAX_KEYS_AMD 0x403C
+
+typedef CL_API_ENTRY cl_key_amd (CL_API_CALL * clCreateKeyAMD_fn)(
+    cl_platform_id      /* platform */,
+    void (CL_CALLBACK * /* destructor */)( void* /* old_value */),
+    cl_int *            /* errcode_ret */) CL_API_SUFFIX__VERSION_1_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectGetValueForKeyAMD_fn)(
+    void *               /* object */,
+    cl_key_amd           /* key */,
+    void **              /* ret_val */) CL_API_SUFFIX__VERSION_1_1;
+
+typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectSetValueForKeyAMD_fn)(
+    void *               /* object */,
+    cl_key_amd           /* key */,
+    void *               /* value */) CL_API_SUFFIX__VERSION_1_1;
 // </amd_internal>
 
-/**************************
-* cl_amd_offline_devices *
-**************************/
-#define CL_CONTEXT_OFFLINE_DEVICES_AMD              0x403F
+/*********************************
+* cl_arm_printf extension
+*********************************/
+#define CL_PRINTF_CALLBACK_ARM                      0x40B0
+#define CL_PRINTF_BUFFERSIZE_ARM                    0x40B1
 
 #ifdef CL_VERSION_1_1
    /***********************************
     * cl_ext_device_fission extension *
     ***********************************/
     #define cl_ext_device_fission   1
-
+    
     extern CL_API_ENTRY cl_int CL_API_CALL
     clReleaseDeviceEXT( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1; 
-
+    
     typedef CL_API_ENTRY cl_int 
     (CL_API_CALL *clReleaseDeviceEXT_fn)( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1;
 
     extern CL_API_ENTRY cl_int CL_API_CALL
     clRetainDeviceEXT( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1; 
-
+    
     typedef CL_API_ENTRY cl_int 
     (CL_API_CALL *clRetainDeviceEXT_fn)( cl_device_id /*device*/ ) CL_EXT_SUFFIX__VERSION_1_1;
 
@@ -317,14 +438,14 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     #define CL_DEVICE_PARTITION_BY_COUNTS_EXT           0x4051
     #define CL_DEVICE_PARTITION_BY_NAMES_EXT            0x4052
     #define CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT  0x4053
-
+    
     /* clDeviceGetInfo selectors */
     #define CL_DEVICE_PARENT_DEVICE_EXT                 0x4054
     #define CL_DEVICE_PARTITION_TYPES_EXT               0x4055
     #define CL_DEVICE_AFFINITY_DOMAINS_EXT              0x4056
     #define CL_DEVICE_REFERENCE_COUNT_EXT               0x4057
     #define CL_DEVICE_PARTITION_STYLE_EXT               0x4058
-
+    
     /* clGetImageInfo enum */
     #define CL_IMAGE_BYTE_PITCH_AMD                     0x4059
 
@@ -332,7 +453,7 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     #define CL_DEVICE_PARTITION_FAILED_EXT              -1057
     #define CL_INVALID_PARTITION_COUNT_EXT              -1058
     #define CL_INVALID_PARTITION_NAME_EXT               -1059
-
+    
     /* CL_AFFINITY_DOMAINs */
     #define CL_AFFINITY_DOMAIN_L1_CACHE_EXT             0x1
     #define CL_AFFINITY_DOMAIN_L2_CACHE_EXT             0x2
@@ -340,6 +461,7 @@ typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
     #define CL_AFFINITY_DOMAIN_L4_CACHE_EXT             0x4
     #define CL_AFFINITY_DOMAIN_NUMA_EXT                 0x10
     #define CL_AFFINITY_DOMAIN_NEXT_FISSIONABLE_EXT     0x100
+    
     /* cl_device_partition_property_ext list terminators */
     #define CL_PROPERTIES_LIST_END_EXT                  ((cl_device_partition_property_ext) 0)
     #define CL_PARTITION_BY_COUNTS_LIST_END_EXT         ((cl_device_partition_property_ext) 0)
@@ -374,11 +496,11 @@ clGetDeviceImageInfoQCOM(cl_device_id             device,
 
 typedef struct _cl_mem_ext_host_ptr
 {
-    // Type of external memory allocation.
-    // Legal values will be defined in layered extensions.
+    /* Type of external memory allocation. */
+    /* Legal values will be defined in layered extensions. */
     cl_uint  allocation_type;
             
-    // Host cache policy for this external memory allocation.
+	/* Host cache policy for this external memory allocation. */
     cl_uint  host_cache_policy;
 
 } cl_mem_ext_host_ptr;
@@ -391,111 +513,223 @@ typedef struct _cl_mem_ext_host_ptr
 
 typedef struct _cl_mem_ion_host_ptr
 {
-    // Type of external memory allocation.
-    // Must be CL_MEM_ION_HOST_PTR_QCOM for ION allocations.
+    /* Type of external memory allocation. */
+    /* Must be CL_MEM_ION_HOST_PTR_QCOM for ION allocations. */
     cl_mem_ext_host_ptr  ext_host_ptr;
 
-    // ION file descriptor
+    /* ION file descriptor */
     int                  ion_filedesc;
             
-    // Host pointer to the ION allocated memory
+    /* Host pointer to the ION allocated memory */
     void*                ion_hostptr;
 
 } cl_mem_ion_host_ptr;
 
-    // <amd_internal>
-    /*************************
-    * cl_amd_object_metadata *
-    **************************/
-    #define cl_amd_object_metadata 1
-
-    typedef size_t cl_key_amd;
-
-    #define CL_INVALID_OBJECT_AMD    0x403A
-    #define CL_INVALID_KEY_AMD       0x403B
-    #define CL_PLATFORM_MAX_KEYS_AMD 0x403C
-
-    typedef CL_API_ENTRY cl_key_amd (CL_API_CALL * clCreateKeyAMD_fn)(
-        cl_platform_id      /* platform */,
-        void (CL_CALLBACK * /* destructor */)( void* /* old_value */),
-        cl_int *            /* errcode_ret */) CL_API_SUFFIX__VERSION_1_1;
-
-    typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectGetValueForKeyAMD_fn)(
-        void *               /* object */,
-        cl_key_amd           /* key */,
-        void **              /* ret_val */) CL_API_SUFFIX__VERSION_1_1;
-
-    typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectSetValueForKeyAMD_fn)(
-        void *               /* object */,
-        cl_key_amd           /* key */,
-        void *               /* value */) CL_API_SUFFIX__VERSION_1_1;
-// </amd_internal>
 #endif /* CL_VERSION_1_1 */
 
-#ifdef CL_VERSION_1_2
-    /********************************
-    * cl_amd_bus_addressable_memory *
-    ********************************/
+#if defined(CL_VERSION_1_2)
 
-    /* cl_mem flag - bitfield */
-    #define CL_MEM_BUS_ADDRESSABLE_AMD               (1<<30)
-    #define CL_MEM_EXTERNAL_PHYSICAL_AMD             (1<<31)
+/******************************************
+ * cl_img_yuv_image extension *
+ ******************************************/
 
-    #define CL_COMMAND_WAIT_SIGNAL_AMD                0x4080
-    #define CL_COMMAND_WRITE_SIGNAL_AMD               0x4081
-    #define CL_COMMAND_MAKE_BUFFERS_RESIDENT_AMD      0x4082
+/* Image formats used in clCreateImage */
+#define CL_NV21_IMG                                 0x40D0
+#define CL_YV12_IMG                                 0x40D1
 
-    typedef struct _cl_bus_address_amd
-    {
-        cl_ulong surface_bus_address;
-        cl_ulong marker_bus_address;
-    } cl_bus_address_amd;
+/******************************************
+ * cl_img_cached_allocations extension *
+ ******************************************/
 
-    typedef CL_API_ENTRY cl_int
-    (CL_API_CALL * clEnqueueWaitSignalAMD_fn)( cl_command_queue /*command_queue*/,
-                                               cl_mem /*mem_object*/,
-                                               cl_uint /*value*/,
-                                               cl_uint /*num_events*/,
-                                               const cl_event * /*event_wait_list*/,
-                                               cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+/* Flag values used by clCreteBuffer */
+#define CL_MEM_USE_UNCACHED_CPU_MEMORY_IMG         	(1 << 26)
+#define CL_MEM_USE_CACHED_CPU_MEMORY_IMG           	(1 << 27)
 
-    typedef CL_API_ENTRY cl_int
-    (CL_API_CALL * clEnqueueWriteSignalAMD_fn)( cl_command_queue /*command_queue*/,
-                                                cl_mem /*mem_object*/,
-                                                cl_uint /*value*/,
-                                                cl_ulong /*offset*/,
-                                                cl_uint /*num_events*/,
-                                                const cl_event * /*event_list*/,
-                                                cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+/******************************************
+ * cl_img_use_gralloc_ptr extension *
+ ******************************************/
 
-    typedef CL_API_ENTRY cl_int
-    (CL_API_CALL * clEnqueueMakeBuffersResidentAMD_fn)( cl_command_queue /*command_queue*/,
-                                                 cl_uint /*num_mem_objs*/,
-                                                 cl_mem * /*mem_objects*/,
-                                                 cl_bool /*blocking_make_resident*/,
-                                                 cl_bus_address_amd * /*bus_addresses*/,
-                                                 cl_uint /*num_events*/,
-                                                 const cl_event * /*event_list*/,
-                                                 cl_event * /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
+/* Flag values used by clCreteBuffer */
+#define CL_MEM_USE_GRALLOC_PTR_IMG                 	(1 << 28)
+
+/* To be used by clGetEventInfo: */
+#define CL_COMMAND_ACQUIRE_GRALLOC_OBJECTS_IMG      0x40D2
+#define CL_COMMAND_RELEASE_GRALLOC_OBJECTS_IMG      0x40D3
+
+/* Error code from clEnqueueReleaseGrallocObjectsIMG */
+#define CL_GRALLOC_RESOURCE_NOT_ACQUIRED_IMG        0x40D4
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueAcquireGrallocObjectsIMG(cl_command_queue      /* command_queue */,
+                                  cl_uint               /* num_objects */,
+                                  const cl_mem *        /* mem_objects */,
+                                  cl_uint               /* num_events_in_wait_list */,
+                                  const cl_event *      /* event_wait_list */,
+                                  cl_event *            /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueReleaseGrallocObjectsIMG(cl_command_queue      /* command_queue */,
+                                  cl_uint               /* num_objects */,
+                                  const cl_mem *        /* mem_objects */,
+                                  cl_uint               /* num_events_in_wait_list */,
+                                  const cl_event *      /* event_wait_list */,
+                                  cl_event *            /* event */) CL_EXT_SUFFIX__VERSION_1_2;
 
 #endif /* CL_VERSION_1_2 */
+
+/**********************************
+ * cl_arm_import_memory extension *
+ **********************************/
+
+#ifdef CL_VERSION_1_0
+
+typedef intptr_t cl_import_properties_arm;
+
+/* Default and valid proporties name for cl_arm_import_memory */
+#define CL_IMPORT_TYPE_ARM                        0x40B2
+
+/* Host process memory type default value for CL_IMPORT_TYPE_ARM property */
+#define CL_IMPORT_TYPE_HOST_ARM                   0x40B3
+
+/* DMA BUF memory type value for CL_IMPORT_TYPE_ARM property */
+#define CL_IMPORT_TYPE_DMA_BUF_ARM                0x40B4
+
+/* Secure DMA BUF memory type value for CL_IMPORT_TYPE_ARM property */
+#define CL_IMPORT_TYPE_SECURE_ARM                 0x40B5
+
+/* This extension adds a new function that allows for direct memory import into
+ * OpenCL via the clImportMemoryARM function.
+ *
+ * Memory imported through this interface will be mapped into the device's page
+ * tables directly, providing zero copy access. It will never fall back to copy
+ * operations and aliased buffers.
+ *
+ * Types of memory supported for import are specified as additional extension
+ * strings.
+ *
+ * This extension produces cl_mem allocations which are compatible with all other
+ * users of cl_mem in the standard API.
+ *
+ * This extension maps pages with the same properties as the normal buffer creation
+ * function clCreateBuffer.
+ */
+extern CL_API_ENTRY cl_mem CL_API_CALL
+clImportMemoryARM( cl_context context,
+                   cl_mem_flags flags,
+                   const cl_import_properties_arm *properties,
+                   void *memory,
+                   size_t size,
+                   cl_int *errcode_ret) CL_EXT_SUFFIX__VERSION_1_0;
+
+
+#endif /* CL_VERSION_1_0 */
+
+/******************************************
+ * cl_arm_shared_virtual_memory extension *
+ ******************************************/
+
 #ifdef CL_VERSION_1_2
-/*********************************
-* cl_khr_il_program extension
-*********************************/
-#define cl_khr_il_program 1
 
-extern CL_API_ENTRY cl_program CL_API_CALL
-clCreateProgramWithILKHR(cl_context        /* context */,
-                         const void *      /* strings */,
-                         size_t            /* lengths */,
-                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+/* Used by clGetDeviceInfo */
+#define CL_DEVICE_SVM_CAPABILITIES_ARM                  0x40B6
 
-typedef CL_API_ENTRY cl_program
-    ( CL_API_CALL * clCreateProgramWithILKHR_fn)(cl_context        /* context */,
-                         const void *      /* strings */,
-                         size_t            /* lengths */,
-                         cl_int *          /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+/* Used by clGetMemObjectInfo */
+#define CL_MEM_USES_SVM_POINTER_ARM                     0x40B7
+
+/* Used by clSetKernelExecInfoARM: */
+#define CL_KERNEL_EXEC_INFO_SVM_PTRS_ARM                0x40B8
+#define CL_KERNEL_EXEC_INFO_SVM_FINE_GRAIN_SYSTEM_ARM   0x40B9
+
+/* To be used by clGetEventInfo: */
+#define CL_COMMAND_SVM_FREE_ARM                         0x40BA
+#define CL_COMMAND_SVM_MEMCPY_ARM                       0x40BB
+#define CL_COMMAND_SVM_MEMFILL_ARM                      0x40BC
+#define CL_COMMAND_SVM_MAP_ARM                          0x40BD
+#define CL_COMMAND_SVM_UNMAP_ARM                        0x40BE
+
+/* Flag values returned by clGetDeviceInfo with CL_DEVICE_SVM_CAPABILITIES_ARM as the param_name. */
+#define CL_DEVICE_SVM_COARSE_GRAIN_BUFFER_ARM           (1 << 0)
+#define CL_DEVICE_SVM_FINE_GRAIN_BUFFER_ARM             (1 << 1)
+#define CL_DEVICE_SVM_FINE_GRAIN_SYSTEM_ARM             (1 << 2)
+#define CL_DEVICE_SVM_ATOMICS_ARM                       (1 << 3)
+
+/* Flag values used by clSVMAllocARM: */
+#define CL_MEM_SVM_FINE_GRAIN_BUFFER_ARM                (1 << 10)
+#define CL_MEM_SVM_ATOMICS_ARM                          (1 << 11)
+
+typedef cl_bitfield cl_svm_mem_flags_arm;
+typedef cl_uint     cl_kernel_exec_info_arm;
+typedef cl_bitfield cl_device_svm_capabilities_arm;
+
+extern CL_API_ENTRY void * CL_API_CALL
+clSVMAllocARM(cl_context       /* context */,
+              cl_svm_mem_flags_arm /* flags */,
+              size_t           /* size */,
+              cl_uint          /* alignment */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY void CL_API_CALL
+clSVMFreeARM(cl_context        /* context */,
+             void *            /* svm_pointer */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMFreeARM(cl_command_queue  /* command_queue */,
+                    cl_uint           /* num_svm_pointers */,
+                    void *[]          /* svm_pointers[] */,
+                    void (CL_CALLBACK * /*pfn_free_func*/)(cl_command_queue /* queue */,
+                                                           cl_uint          /* num_svm_pointers */,
+                                                           void *[]         /* svm_pointers[] */,
+                                                           void *           /* user_data */),
+                    void *            /* user_data */,
+                    cl_uint           /* num_events_in_wait_list */,
+                    const cl_event *  /* event_wait_list */,
+                    cl_event *        /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMemcpyARM(cl_command_queue  /* command_queue */,
+                      cl_bool           /* blocking_copy */,
+                      void *            /* dst_ptr */,
+                      const void *      /* src_ptr */,
+                      size_t            /* size */,
+                      cl_uint           /* num_events_in_wait_list */,
+                      const cl_event *  /* event_wait_list */,
+                      cl_event *        /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMemFillARM(cl_command_queue  /* command_queue */,
+                       void *            /* svm_ptr */,
+                       const void *      /* pattern */,
+                       size_t            /* pattern_size */,
+                       size_t            /* size */,
+                       cl_uint           /* num_events_in_wait_list */,
+                       const cl_event *  /* event_wait_list */,
+                       cl_event *        /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMMapARM(cl_command_queue  /* command_queue */,
+                   cl_bool           /* blocking_map */,
+                   cl_map_flags      /* flags */,
+                   void *            /* svm_ptr */,
+                   size_t            /* size */,
+                   cl_uint           /* num_events_in_wait_list */,
+                   const cl_event *  /* event_wait_list */,
+                   cl_event *        /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clEnqueueSVMUnmapARM(cl_command_queue  /* command_queue */,
+                     void *            /* svm_ptr */,
+                     cl_uint           /* num_events_in_wait_list */,
+                     const cl_event *  /* event_wait_list */,
+                     cl_event *        /* event */) CL_EXT_SUFFIX__VERSION_1_2;
+
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetKernelArgSVMPointerARM(cl_kernel    /* kernel */,
+                            cl_uint      /* arg_index */,
+                            const void * /* arg_value */) CL_EXT_SUFFIX__VERSION_1_2;
+extern CL_API_ENTRY cl_int CL_API_CALL
+clSetKernelExecInfoARM(cl_kernel            /* kernel */,
+                       cl_kernel_exec_info_arm  /* param_name */,
+                       size_t               /* param_value_size */,
+                       const void *         /* param_value */) CL_EXT_SUFFIX__VERSION_1_2;
 
 #endif /* CL_VERSION_1_2 */
 

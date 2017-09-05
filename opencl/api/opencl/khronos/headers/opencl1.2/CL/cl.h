@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (c) 2008 - 2012 The Khronos Group Inc.
+ * Copyright (c) 2008-2015 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and/or associated documentation files (the
@@ -11,6 +11,11 @@
  *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Materials.
+ *
+ * MODIFICATIONS TO THIS FILE MAY MEAN IT NO LONGER ACCURATELY REFLECTS
+ * KHRONOS STANDARDS. THE UNMODIFIED, NORMATIVE VERSIONS OF KHRONOS
+ * SPECIFICATIONS AND HEADER INFORMATION ARE LOCATED AT
+ *    https://www.khronos.org/registry/
  *
  * THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -255,7 +260,7 @@ typedef struct _cl_buffer_region {
 #define CL_DEVICE_EXTENSIONS                        0x1030
 #define CL_DEVICE_PLATFORM                          0x1031
 #define CL_DEVICE_DOUBLE_FP_CONFIG                  0x1032
-/* 0x1033 reserved for CL_DEVICE_HALF_FP_CONFIG */
+#define CL_DEVICE_HALF_FP_CONFIG                    0x1033
 #define CL_DEVICE_PREFERRED_VECTOR_WIDTH_HALF       0x1034
 #define CL_DEVICE_HOST_UNIFIED_MEMORY               0x1035
 #define CL_DEVICE_NATIVE_VECTOR_WIDTH_CHAR          0x1036
@@ -280,7 +285,6 @@ typedef struct _cl_buffer_region {
 #define CL_DEVICE_PRINTF_BUFFER_SIZE                0x1049
 #define CL_DEVICE_IMAGE_PITCH_ALIGNMENT             0x104A
 #define CL_DEVICE_IMAGE_BASE_ADDRESS_ALIGNMENT      0x104B
-/* 0x104C reserved for CL_DEVICE_SVM_CAPABILITIES */
 
 /* cl_device_fp_config - bitfield */
 #define CL_FP_DENORM                                (1 << 0)
@@ -346,7 +350,7 @@ typedef struct _cl_buffer_region {
 #define CL_MEM_USE_HOST_PTR                         (1 << 3)
 #define CL_MEM_ALLOC_HOST_PTR                       (1 << 4)
 #define CL_MEM_COPY_HOST_PTR                        (1 << 5)
-// reserved                                         (1 << 6)    
+/* reserved                                         (1 << 6)    */
 #define CL_MEM_HOST_WRITE_ONLY                      (1 << 7)
 #define CL_MEM_HOST_READ_ONLY                       (1 << 8)
 #define CL_MEM_HOST_NO_ACCESS                       (1 << 9)
@@ -502,7 +506,7 @@ typedef struct _cl_buffer_region {
 #define CL_KERNEL_ARG_ACCESS_READ_WRITE             0x11A2
 #define CL_KERNEL_ARG_ACCESS_NONE                   0x11A3
     
-/* cl_kernel_arg_type_qualifer */
+/* cl_kernel_arg_type_qualifier */
 #define CL_KERNEL_ARG_TYPE_NONE                     0
 #define CL_KERNEL_ARG_TYPE_CONST                    (1 << 0)
 #define CL_KERNEL_ARG_TYPE_RESTRICT                 (1 << 1)
@@ -549,7 +553,6 @@ typedef struct _cl_buffer_region {
 #define CL_COMMAND_MIGRATE_MEM_OBJECTS              0x1206
 #define CL_COMMAND_FILL_BUFFER                      0x1207
 #define CL_COMMAND_FILL_IMAGE                       0x1208
-/* 0x1209-0x120F reserved for SVM commands */
 
 /* command execution status */
 #define CL_COMPLETE                                 0x0
@@ -1167,7 +1170,7 @@ clGetExtensionFunctionAddressForPlatform(cl_platform_id /* platform */,
                                          const char *   /* func_name */) CL_API_SUFFIX__VERSION_1_2;
     
 
-// Deprecated OpenCL 1.1 APIs
+/* Deprecated OpenCL 1.1 APIs */
 extern CL_API_ENTRY CL_EXT_PREFIX__VERSION_1_1_DEPRECATED cl_mem CL_API_CALL
 clCreateImage2D(cl_context              /* context */,
                 cl_mem_flags            /* flags */,

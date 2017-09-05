@@ -470,15 +470,15 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture3DKHR);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromDX9MediaSurfaceKHR);
 #endif  //_WIN32
-#ifdef cl_ext_device_fission
+#if defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSubDevicesEXT);
-#endif  // cl_ext_device_fission
+#endif // defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
-#if cl_khr_il_program
-      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR);
-#endif  // cl_khr_il_program
+#if defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR)
+#endif // defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
 #endif  // cl_amd_liquid_flash
@@ -521,7 +521,9 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetDeviceIDsFromDX9MediaAdapterKHR);
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
 #endif  //_WIN32
+#if defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
+#endif // defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
 #endif  // cl_amd_liquid_flash
@@ -566,10 +568,10 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainPerfCounterAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseThreadTraceAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainThreadTraceAMD);
-#ifdef cl_ext_device_fission
+#if defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
-#endif  // cl_ext_device_fission
+#endif // defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);

@@ -153,6 +153,11 @@ typedef cl_program(CL_API_CALL* clCreateProgramWithSource_fn)(
     cl_context /* context */, cl_uint /* count */, const char** /* strings */,
     const size_t* /* lengths */, cl_int* /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
 
+extern CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithILKHR(cl_context /* context */,
+    const void * /* strings */, size_t /* lengths */,
+    cl_int * /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
+
 typedef cl_program(CL_API_CALL* clCreateProgramWithILKHR_fn)(
     cl_context /* context */, const void* /* il */, size_t /* length */,
     cl_int* /* errcode_ret */) CL_API_SUFFIX__VERSION_1_2;
@@ -550,6 +555,35 @@ typedef cl_int(CL_API_CALL* clGetKernelSubGroupInfoKHR_fn)(
     void* /* param_value */, size_t* /* param_value_size_ret */) CL_API_SUFFIX__VERSION_2_0;
 
 
+typedef cl_int(CL_API_CALL* clSetDefaultDeviceCommandQueue_fn)(
+    cl_context /* context */, cl_device_id /* device */,
+    cl_command_queue /* command_queue */) CL_API_SUFFIX__VERSION_2_1;
+
+typedef cl_kernel(CL_API_CALL* clCloneKernel_fn)(
+    cl_kernel /* source_kernel */, cl_int * /* errcode_ret */) CL_API_SUFFIX__VERSION_2_1;
+
+typedef cl_int (CL_API_CALL* clEnqueueSVMMigrateMem_fn)(
+    cl_command_queue /* command_queue */, cl_uint /* num_svm_pointers */,
+    const void ** /* svm_pointers */, const size_t * /* sizes */,
+    cl_mem_migration_flags /* flags */, cl_uint /* num_events_in_wait_list */,
+    const cl_event * /* event_wait_list */, cl_event * /* event */) CL_API_SUFFIX__VERSION_2_1;
+
+typedef cl_int (CL_API_CALL* clGetDeviceAndHostTimer_fn)(
+    cl_device_id /* device */, cl_ulong * /* device_timestamp */,
+    cl_ulong * /* host_timestamp */) CL_API_SUFFIX__VERSION_2_1;
+
+typedef cl_int (CL_API_CALL* clGetHostTimer_fn)(
+    cl_device_id /* device */, cl_ulong * /* host_timestamp */) CL_API_SUFFIX__VERSION_2_1;
+
+typedef cl_int (CL_API_CALL* clSetProgramSpecializationConstant_fn)(
+    cl_program /* program */, cl_uint /* spec_id */, size_t /* spec_size */,
+    const void* /* spec_value */) CL_API_SUFFIX__VERSION_2_2;
+
+typedef cl_int (CL_API_CALL* clSetProgramReleaseCallback_fn)(
+    cl_program /* program */,
+    void (CL_CALLBACK *  /* pfn_notify */)(cl_program program, void * user_data),
+    void * /* user_data */) CL_API_SUFFIX__VERSION_2_2;
+
 typedef struct _cl_icd_dispatch_table {
   /* OpenCL 1.0 */
   clGetPlatformIDs_fn GetPlatformIDs;
@@ -680,11 +714,22 @@ typedef struct _cl_icd_dispatch_table {
   clSetKernelArgSVMPointer_fn SetKernelArgSVMPointer;
   clSetKernelExecInfo_fn SetKernelExecInfo;
 
-  clGetKernelSubGroupInfoKHR_fn GetKernelSubGroupInfoKHR;
-  clTerminateContextKHR_fn TerminateContextKHR;
+  /* cl_khr_sub_groups */
+  clGetKernelSubGroupInfoKHR_fn clGetKernelSubGroupInfoKHR;
 
-  /* cl_khr_il_program */
-  clCreateProgramWithILKHR_fn CreateProgramWithILKHR;
+  /* OpenCL 2.1 */
+  clCloneKernel_fn clCloneKernel;
+  clCreateProgramWithILKHR_fn clCreateProgramWithIL;
+  clEnqueueSVMMigrateMem_fn clEnqueueSVMMigrateMem;
+  clGetDeviceAndHostTimer_fn  clGetDeviceAndHostTimer;
+  clGetHostTimer_fn clGetHostTimer;
+  clGetKernelSubGroupInfoKHR_fn clGetKernelSubGroupInfo;
+  clSetDefaultDeviceCommandQueue_fn clSetDefaultDeviceCommandQueue;
+
+  /* OpenCL 2.2 */
+  clSetProgramReleaseCallback_fn clSetProgramReleaseCallback;
+  clSetProgramSpecializationConstant_fn clSetProgramSpecializationConstant;
+
 } cl_icd_dispatch_table;
 
 #ifdef __cplusplus
