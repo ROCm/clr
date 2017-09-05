@@ -1478,12 +1478,14 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
 }
 
 void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
+  bool unmapMip = false;
+  amd::Image* amdImage;
+{
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
   pal::Memory* memory = dev().getGpuMemory(&vcmd.memory());
   amd::Memory* owner = memory->owner();
-  bool unmapMip = false;
   const device::Memory::WriteMapInfo* writeMapInfo = memory->writeMapInfo(vcmd.mapPtr());
   if (nullptr == writeMapInfo) {
     LogError("Unmap without map call");
@@ -1492,7 +1494,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
   profilingBegin(vcmd, true);
 
   // Check if image is a mipmap and assign a saved view
-  amd::Image* amdImage = owner->asImage();
+  amdImage = owner->asImage();
   if ((amdImage != nullptr) && (amdImage->getMipLevels() > 1) &&
       (writeMapInfo->baseMip_ != nullptr)) {
     // Assign mip level view
@@ -1571,11 +1573,14 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
   // Clear unmap flags
   memory->clearUnmapInfo(vcmd.mapPtr());
 
+  profilingEnd(vcmd);
+}
   // Release a view for a mipmap map
   if (unmapMip) {
+    // Memory release should be outside of the execution lock,
+    // because mapMemory_ isn't marked for a specifc GPU
     amdImage->release();
   }
-  profilingEnd(vcmd);
 }
 
 bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const void* pattern,
