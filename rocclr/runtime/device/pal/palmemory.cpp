@@ -170,7 +170,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
   }
 
   if (result) {
-    if (params != nullptr) {
+    if ((params != nullptr) && (memoryType() == Pinned)) { 
       memRef()->gpu_ = params->gpu_;
     }
   }
