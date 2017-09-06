@@ -657,6 +657,11 @@ Device::~Device() {
   delete globalScratchBuf_;
   globalScratchBuf_ = nullptr;
 
+  // Release all queues if the app didn't release them
+  while (vgpus().size() > 1) {
+    delete vgpus()[1];
+  }
+
   // Destroy transfer queue
   delete xferQueue_;
 
