@@ -916,6 +916,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxWorkItemSizes_[0] = std::min(max_workgroup_size[0], max_work_item_size);
   info_.maxWorkItemSizes_[1] = std::min(max_workgroup_size[1], max_work_item_size);
   info_.maxWorkItemSizes_[2] = std::min(max_workgroup_size[2], max_work_item_size);
+  info_.preferredWorkGroupSize_ = settings().preferredWorkGroupSize_;
 
   info_.nativeVectorWidthChar_ = info_.preferredVectorWidthChar_ = 4;
   info_.nativeVectorWidthShort_ = info_.preferredVectorWidthShort_ = 2;

@@ -57,8 +57,8 @@ Settings::Settings() {
   doublePrecision_ = ::CL_KHR_FP64;
 
   // Fill workgroup info size
-  // @todo: revisit the 256 limitation on workgroup size
-  maxWorkGroupSize_ = 256;
+  maxWorkGroupSize_ = 1024;
+  preferredWorkGroupSize_ = 256;
 
   hostMemDirectAccess_ = HostMemDisable;
 
@@ -429,6 +429,10 @@ void Settings::override() {
   // Limit reported workgroup size
   if (GPU_MAX_WORKGROUP_SIZE != 0) {
     maxWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
+  }
+
+  if (GPU_PREFERRED_WORKGROUP_SIZE != 0) {
+    preferredWorkGroupSize_ = GPU_PREFERRED_WORKGROUP_SIZE;
   }
 
   // Override blit engine type

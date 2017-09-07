@@ -74,6 +74,7 @@ class Settings : public device::Settings {
   uint maxRenameSize_;         //!< Maximum size for all renames
   uint hwLDSSize_;             //!< HW local data store size
   uint maxWorkGroupSize_;      //!< Requested workgroup size for this device
+  uint preferredWorkGroupSize_;//!< Requested preferred workgroup size for this device
   uint workloadSplitSize_;     //!< Workload split size
   uint minWorkloadTime_;       //!< Minimal workload time in 0.1 ms
   uint maxWorkloadTime_;       //!< Maximum workload time in 0.1 ms
