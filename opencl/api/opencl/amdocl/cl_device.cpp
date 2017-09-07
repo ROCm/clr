@@ -248,7 +248,9 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_VENDOR_ID, vendorId_);
       CASE(CL_DEVICE_MAX_COMPUTE_UNITS, maxComputeUnits_);
       CASE(CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, maxWorkItemDimensions_);
-      CASE(CL_DEVICE_MAX_WORK_GROUP_SIZE, maxWorkGroupSize_);
+      CASE(CL_DEVICE_MAX_WORK_GROUP_SIZE, preferredWorkGroupSize_);
+      CASE(CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_AMD, preferredWorkGroupSize_);
+      CASE(CL_DEVICE_MAX_WORK_GROUP_SIZE_AMD, maxWorkGroupSize_);
       CASE(CL_DEVICE_MAX_WORK_ITEM_SIZES, maxWorkItemSizes_);
       CASE(CL_DEVICE_PREFERRED_VECTOR_WIDTH_CHAR, preferredVectorWidthChar_);
       CASE(CL_DEVICE_PREFERRED_VECTOR_WIDTH_SHORT, preferredVectorWidthShort_);
