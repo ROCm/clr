@@ -768,23 +768,6 @@ bool Device::create(Pal::IDevice* device) {
 
   // Commit the new settings for the device
   result = iDev()->CommitSettingsAndInit();
-  if (result == Pal::Result::Success) {
-    Pal::DeviceFinalizeInfo finalizeInfo = {};
-
-    // Request all compute engines
-    finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
-        ((1 << numComputeEngines_) - 1);
-    // Request real time compute engines
-    finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines =
-        ((1 << numExclusiveComputeEngines_) - 1);
-    // Request all SDMA engines
-    finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines = (1 << numDmaEngines_) - 1;
-
-    result = iDev()->Finalize(finalizeInfo);
-    if (result != Pal::Result::Success) {
-      return false;
-    }
-  }
 
   Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
   iDev()->GetGpuMemoryHeapProperties(heaps);
@@ -917,6 +900,21 @@ bool Device::create(Pal::IDevice* device) {
 bool Device::initializeHeapResources() {
   amd::ScopedLock k(lockForInitHeap_);
   if (!heapInitComplete_) {
+    Pal::DeviceFinalizeInfo finalizeInfo = {};
+
+    // Request all compute engines
+    finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
+        ((1 << numComputeEngines_) - 1);
+    // Request real time compute engines
+    finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines =
+        ((1 << numExclusiveComputeEngines_) - 1);
+    // Request all SDMA engines
+    finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines = (1 << numDmaEngines_) - 1;
+
+    if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
+        return false;
+    }
+
     heapInitComplete_ = true;
 
     scratch_.resize(
