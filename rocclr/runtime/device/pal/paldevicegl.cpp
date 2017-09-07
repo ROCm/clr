@@ -178,7 +178,7 @@ bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const 
 }
 
 bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle,
-                            void** mbResHandle, size_t* offset
+                            void** mbResHandle, size_t* offset, uint& glFormat
 #ifdef ATI_OS_WIN
                             ,
                             Pal::DoppDesktopInfo& doppDesktopInfo
@@ -224,6 +224,8 @@ bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle
     doppDesktopInfo.vidPnSourceId = 0;
   }
 #endif
+
+  glFormat = static_cast<uint>(hData.format);
 
   return status;
 }
