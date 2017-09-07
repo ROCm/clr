@@ -78,7 +78,6 @@ class Settings : public device::Settings {
   uint maxRenameSize_;                //!< Maximum size for all renames
   uint hwLDSSize_;                    //!< HW local data store size
   uint maxWorkGroupSize_;             //!< Requested workgroup size for this device
-  uint preferredWorkGroupSize_;       //!< Requested preferred workgroup size for this device
   uint hostMemDirectAccess_;          //!< Enables direct access to the host memory
   amd::LibrarySelector libSelector_;  //!< Select linking libraries for compiler
   uint workloadSplitSize_;            //!< Workload split size
