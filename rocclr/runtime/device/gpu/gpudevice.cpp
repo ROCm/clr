@@ -487,7 +487,6 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   info_.maxWorkItemSizes_[0] = info_.maxWorkGroupSize_;
   info_.maxWorkItemSizes_[1] = info_.maxWorkGroupSize_;
   info_.maxWorkItemSizes_[2] = info_.maxWorkGroupSize_;
-  info_.preferredWorkGroupSize_ = settings().preferredWorkGroupSize_;
 
   if (settings().hwLDSSize_ != 0) {
     info_.localMemType_ = CL_LOCAL;

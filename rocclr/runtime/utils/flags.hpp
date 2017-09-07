@@ -24,8 +24,6 @@ debug(bool, CPU_USE_ALIGNMENT_MAP, false,                                     \
         "Use flag to enable alignment mapping for parameters for CPU")        \
 release(int, GPU_MAX_WORKGROUP_SIZE, 0,                                       \
         "Maximum number of workitems in a workgroup for GPU, 0 -use default") \
-release(int, GPU_PREFERRED_WORKGROUP_SIZE, 0,                                 \
-        "Preferred number of workitems in a workgroup for GPU, 0 -use default") \
 release(int, GPU_MAX_WORKGROUP_SIZE_2D_X, 0,                                  \
         "Maximum number of workitems in a 2D workgroup for GPU, x component, 0 -use default") \
 release(int, GPU_MAX_WORKGROUP_SIZE_2D_Y, 0,                                  \
