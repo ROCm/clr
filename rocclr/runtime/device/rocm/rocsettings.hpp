@@ -37,6 +37,9 @@ class Settings : public device::Settings {
   //! Default max workgroup size for 1D
   int maxWorkGroupSize_;
 
+  //! Preferred workgroup size
+  uint preferredWorkGroupSize_;
+
   //! Default max workgroup sizes for 2D
   int maxWorkGroupSize2DX_;
   int maxWorkGroupSize2DY_;

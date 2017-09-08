@@ -22,7 +22,9 @@ Settings::Settings() {
   enableLocalMemory_ = HSA_LOCAL_MEMORY_ENABLE;
   enableImageHandle_ = true;
 
-  maxWorkGroupSize_ = 256;
+  maxWorkGroupSize_ = 1024;
+  preferredWorkGroupSize_ = 256;
+
   maxWorkGroupSize2DX_ = 16;
   maxWorkGroupSize2DY_ = 16;
   maxWorkGroupSize3DX_ = 4;
@@ -130,6 +132,10 @@ void Settings::override() {
   // Limit reported workgroup size
   if (GPU_MAX_WORKGROUP_SIZE != 0) {
     maxWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
+  }
+
+  if (GPU_PREFERRED_WORKGROUP_SIZE != 0) {
+    preferredWorkGroupSize_ = GPU_PREFERRED_WORKGROUP_SIZE;
   }
 
   if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
