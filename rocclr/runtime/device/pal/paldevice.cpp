@@ -1228,6 +1228,12 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
       ? Resource::Remote
       : Resource::Local;
 
+  // Check if runtime can force a tiny buffer into USWC memory
+  if ((size <= (GPU_MAX_REMOTE_MEM_SIZE * Ki)) && (type == Resource::Local) &&
+      (owner.getMemFlags() & CL_MEM_READ_ONLY)) {
+    type = Resource::RemoteUSWC;
+  }
+
   if (owner.getMemFlags() & CL_MEM_BUS_ADDRESSABLE_AMD) {
     type = Resource::BusAddressable;
   } else if (owner.getMemFlags() & CL_MEM_EXTERNAL_PHYSICAL_AMD) {

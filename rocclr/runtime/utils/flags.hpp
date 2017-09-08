@@ -187,6 +187,8 @@ release(bool, OCL_STUB_PROGRAMS, false,                                       \
         "1 = Enables OCL programs stubing")                                   \
 release(bool, GPU_ANALYZE_HANG, false,                                        \
         "1 = Enables GPU hang analysis")                                      \
+release(uint, GPU_MAX_REMOTE_MEM_SIZE, 2,                                     \
+        "Maximum size (in Ki) that allows device memory substitution with system") \
 release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
         "Assume the number of CU per SH for wave limiter")                    \
 release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
