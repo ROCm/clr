@@ -90,6 +90,7 @@ bool Device::init() {
   info.maxWorkItemSizes_[0] = info.maxWorkGroupSize_;
   info.maxWorkItemSizes_[1] = info.maxWorkGroupSize_;
   info.maxWorkItemSizes_[2] = info.maxWorkGroupSize_;
+  info.preferredWorkGroupSize_ = CPU_MAX_WORKGROUP_SIZE;
 
   info.addressBits_ = LP64_SWITCH(32, 64);
 
