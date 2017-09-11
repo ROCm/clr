@@ -99,8 +99,14 @@ KHRicdVendorDispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
      clCreateCommandQueueWithProperties, clCreatePipe, clGetPipeInfo, clSVMAlloc, clSVMFree,
      clEnqueueSVMFree, clEnqueueSVMMemcpy, clEnqueueSVMMemFill, clEnqueueSVMMap, clEnqueueSVMUnmap,
      clCreateSamplerWithProperties, clSetKernelArgSVMPointer, clSetKernelExecInfo,
-
-     clGetKernelSubGroupInfoKHR}};
+     clGetKernelSubGroupInfo,
+     clCloneKernel,
+     clCreateProgramWithIL,
+     clEnqueueSVMMigrateMem,
+     clGetDeviceAndHostTimer,
+     clGetHostTimer,
+     clGetKernelSubGroupInfo,
+     clSetDefaultDeviceCommandQueue}};
 
 #if defined(ATI_OS_WIN)
 #include <Shlwapi.h>

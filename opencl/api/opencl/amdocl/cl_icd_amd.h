@@ -154,7 +154,7 @@ typedef cl_program(CL_API_CALL* clCreateProgramWithSource_fn)(
     const size_t* /* lengths */, cl_int* /* errcode_ret */) CL_API_SUFFIX__VERSION_1_0;
 
 extern CL_API_ENTRY cl_program CL_API_CALL
-clCreateProgramWithILKHR(cl_context /* context */,
+clCreateProgramWithIL(cl_context /* context */,
     const void * /* strings */, size_t /* lengths */,
     cl_int * /* errcode_ret */) CL_EXT_SUFFIX__VERSION_2_0;
 

@@ -118,6 +118,16 @@ clEnqueueSVMMap
 clEnqueueSVMUnmap
 #endif
 
+#if (OPENCL_MAJOR > 2) || (OPENCL_MAJOR == 2 && OPENCL_MINOR >= 1)
+clCloneKernel
+clCreateProgramWithIL
+clEnqueueSVMMigrateMem
+clGetDeviceAndHostTimer
+clGetHostTimer
+clGetKernelSubGroupInfo
+clSetDefaultDeviceCommandQueue
+#endif
+
 #if !defined(WITH_LIGHTNING_COMPILER)
 aclCompilerInit
 aclCompilerFini

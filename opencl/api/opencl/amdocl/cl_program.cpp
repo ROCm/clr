@@ -184,7 +184,7 @@ RUNTIME_EXIT
  *
  *  \version 1.0r33
  */
-RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithILKHR,
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithIL,
                   (cl_context context, const void* il, size_t length, cl_int* errcode_ret)) {
   if (!is_valid(context)) {
     *not_null(errcode_ret) = CL_INVALID_CONTEXT;
@@ -1291,6 +1291,78 @@ RUNTIME_ENTRY(cl_int, clReleaseKernel, (cl_kernel kernel)) {
 }
 RUNTIME_EXIT
 
+/*! \brief Makes a shallow copy of the kernel object, its arguments and any
+ *  information passed to the kernel object using \a clSetKernelExecInfo. If
+ *  the kernel object was ready to be enqueued before copying it, the clone of
+ *  the kernel object is ready to enqueue.
+ *
+ *  \param source_kernel is a valid cl_kernel object that will be copied.
+ *  source_kernel will not be modified in any way by this function.
+ *
+ *  \param errcode_ret will be assigned an appropriate error code. If
+ *  errcode_ret is NULL, no error code is returned.
+ *
+ *  \return a valid non-zero kernel object and errcode_ret is set to
+ *  CL_SUCCESS if the kernel is successfully copied. Otherwise it returns a
+ *  NULL value with one of the following error values returned in errcode_ret:
+ *  - CL_INVALID_KERNEL if kernel is not a valid kernel object.
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources
+ *    required by the OpenCL implementation on the host.
+ *
+ *  \version 2.1r01
+ */
+RUNTIME_ENTRY_RET(cl_kernel, clCloneKernel,
+                  (cl_kernel source_kernel, cl_int* errcode_ret)) {
+  if (!is_valid(source_kernel)) {
+    *not_null(errcode_ret) = CL_INVALID_KERNEL;
+    return (cl_kernel)0;
+  }
+
+  amd::Kernel* srcKernel = as_amd(source_kernel);
+  amd::Program* program = &(srcKernel->program());
+  const char* kernelName = srcKernel->name().c_str();
+  const amd::Symbol* symbol = program->findSymbol(kernelName);
+  if (symbol == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_KERNEL_NAME;
+    return (cl_kernel)0;
+  }
+
+  amd::Kernel* kernel = new amd::Kernel(*program, *symbol, kernelName);
+  if (kernel == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_kernel)0;
+  }
+
+  //TODO:  implemente the clone kernel logic
+  LogWarning("Device support for clCloneKernel() has not been implemented");
+
+#if 0
+  // clone kernel logic - unverified
+
+  // clone the parameter values_, defined_, svmBound_ arrays
+  amd::KernelParameters* srcParameters = &(srcKernel->parameters());
+  amd::KernelParameters* parameters = &(kernel->parameters());
+  const amd::KernelSignature& signature = kernel->signature();
+  size_t size = signature.paramsSize() + signature.numParameters() * sizeof(bool) * 2;
+  ::memcpy(parameters->values(), srcParameters->values(), size);
+
+  // clone the exec info
+  parameters->setExecInfoOffset(srcParameters->getExecInfoOffset());
+
+  parameters->addSvmPtr(srcParameters->getExecSvmPtr(), srcParameters->getNumberOfSvmPtr());
+  parameters->setSvmSystemPointersSupport(srcParameters->getSvmSystemPointersSupport());
+  parameters->setValidated(srcParameters->getValidated());
+  parameters->setExecNewVcop(srcParameters->getExecNewVcop());
+  parameters->setExecPfpaVcop(srcParameters->getExecPfpaVcop());
+#endif
+
+  *not_null(errcode_ret) = CL_INVALID_VALUE;
+  return as_cl(kernel);
+}
+RUNTIME_EXIT
+
 /*! @}
  *  \addtogroup CL_SettingArgs
  *  @{
@@ -1662,7 +1734,7 @@ RUNTIME_EXIT
  *
  * \param param_name specifies the information to query. The list of supported
  * param_name types and the information returned in param_value by
- * clGetKernelSubGroupInfoKHR is described in the table below.
+ * clGetKernelSubGroupInfo is described in the table below.
  *
  * \param input_value_size is used to specify the size in bytes of memory
  * pointed to by input_value. This size must be == size of input type as
@@ -1702,7 +1774,7 @@ RUNTIME_EXIT
  *
  *  \version 2.0r12
  */
-RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR,
+RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
               (cl_kernel kernel, cl_device_id device, cl_kernel_sub_group_info param_name,
                size_t input_value_size, const void* input_value, size_t param_value_size,
                void* param_value, size_t* param_value_size_ret)) {
@@ -1756,6 +1828,12 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfoKHR,
                                 : numSubGroups,
                             param_value_size, param_value, param_value_size_ret);
     }
+    case CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT:
+    case CL_KERNEL_MAX_NUM_SUB_GROUPS:
+    case CL_KERNEL_COMPILE_NUM_SUB_GROUPS:
+      //TODO:  implemente the kernel subgroup info query
+      LogWarning("Device support for clGetKernelSubGroupInfo() query has not been implemented.");
+      return CL_INVALID_VALUE;
     default:
       return CL_INVALID_VALUE;
   }

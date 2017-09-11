@@ -161,7 +161,13 @@ global:
 #if (OPENCL_MAJOR > 2) || (OPENCL_MAJOR == 2 && OPENCL_MINOR >= 1)
 OPENCL_2.1 {
 global:
+    clCloneKernel;
     clCreateProgramWithIL;
+    clEnqueueSVMMigrateMem;
+    clGetDeviceAndHostTimer;
+    clGetHostTimer;
+    clGetKernelSubGroupInfo;
+    clSetDefaultDeviceCommandQueue;
 } OPENCL_2.1;
 #endif
 

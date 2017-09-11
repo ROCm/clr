@@ -477,7 +477,7 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
 #if defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
-      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithILKHR)
+      CL_EXTENSION_ENTRYPOINT_CHECK2(clCreateProgramWithILKHR,clCreateProgramWithIL);
 #endif // defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
@@ -522,7 +522,7 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetPlaneFromImageAMD);
 #endif  //_WIN32
 #if defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
-      CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelSubGroupInfoKHR);
+      CL_EXTENSION_ENTRYPOINT_CHECK2(clGetKernelSubGroupInfoKHR,clGetKernelSubGroupInfo);
 #endif // defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);

@@ -924,6 +924,100 @@ RUNTIME_ENTRY(cl_int, clGetEventProfilingInfo,
 }
 RUNTIME_EXIT
 
+/*! \brief Returns a reasonably synchronized pair of timestamps from the device
+ *  timer and the host timer as seen by device.
+ *
+ *  \param device a device returned by clGetDeviceIDs.
+ *
+ *  \param device_timestamp will be updated with the value of the current timer
+ *  in nanoseconds. The resolution of the timer is the same as the device
+ *  profiling timer returned by clGetDeviceInfo and the
+ *  CL_DEVICE_PROFILING_TIMER_RESOLUTION query.
+ *
+ *  \param host_timestamp will be updated with the value of the current timer
+ *  in nanoseconds at the closest possible point in time to that at which
+ *  device_timer was returned. The resolution of the timer may be queried
+ *  via clGetPlatformInfo and the flag CL_PLATFORM_HOST_TIMER_RESOLUTION.
+ *
+ *  Returns a reasonably synchronized pair of timestamps from the device
+ *  timer and the host timer as seen by device. Implementations may need
+ *  to execute this query with a high latency in order to provide reasonable
+ *  synchronization of the timestamps. The host timestamp and device timestamp
+ *  returned by this function and clGetHostTimer each have an implementation
+ *  defined timebase. The timestamps will always be in their respective timebases
+ *  regardless of which query function is used. The timestamp returned from
+ *  clGetEventProfilingInfo for an event on a device and a device timestamp
+ *  queried from the same device will always be in the same timebase.
+ *
+ *  \return One of the following values:
+ *  - CL_SUCCESS if a time value in host_timestamp is provided
+ *  - CL_INVALID_DEVICE if device is not a valid OpenCL device.
+ *  - CL_INVALID_VALUE if host_timestamp is NULL.
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the host.
+ *
+ */
+RUNTIME_ENTRY(cl_int, clGetDeviceAndHostTimer,
+              (cl_device_id device, cl_ulong * device_timestamp,
+               cl_ulong * host_timestamp)) {
+
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
+
+  // TODO: Implement get device and host timer logic
+  LogWarning("Device support for clGetDeviceAndHostTimer() has not been implemented.");
+
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
+/*! \brief Return the current value of the host clock as seen by device.
+ *
+ *  \param device a device returned by clGetDeviceIDs.
+ *
+ *  \param host_timestamp will be updated with the value of the current timer
+ *  in nanoseconds. The resolution of the timer may be queried via
+ *  clGetPlatformInfo and the flag CL_PLATFORM_HOST_TIMER_RESOLUTION.
+ *
+ *  Return the current value of the host clock as seen by device. This value
+ *  is in the same timebase as the host_timestamp returned from
+ *  clGetDeviceAndHostTimer. The implementation will return with as low a
+ *  latency as possible to allow a correlation with a subsequent application
+ *  sampled time. The host timestamp and device timestamp returned by this
+ *  function and clGetDeviceAndHostTimer each have an implementation defined
+ *  timebase. The timestamps will always be in their respective timebases
+ *  regardless of which query function is used. The timestamp returned from
+ *  clGetEventProfilingInfo for an event on a device and a device timestamp
+ *  queried from the same device will always be in the same timebase.
+ *
+ *  \return One of the following values:
+ *
+ *  - CL_SUCCESS if a time value in host_timestamp is provided
+ *  - CL_INVALID_DEVICE if device is not a valid OpenCL device.
+ *  - CL_INVALID_VALUE if host_timestamp is NULL.
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the host.
+ *
+ */
+RUNTIME_ENTRY(cl_int, clGetHostTimer,
+              (cl_device_id device, cl_ulong * host_timestamp)) {
+
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
+
+  // TODO: Implement get host timer logic
+  LogWarning("Device support for clGetHostTimer() has not been implemented.");
+
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
 /*! @}
  *  \addtogroup CL_FlushFinish Flush and Finish
  *  @{
