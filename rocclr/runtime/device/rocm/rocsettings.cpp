@@ -131,11 +131,7 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
 void Settings::override() {
   // Limit reported workgroup size
   if (GPU_MAX_WORKGROUP_SIZE != 0) {
-    maxWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
-  }
-
-  if (GPU_PREFERRED_WORKGROUP_SIZE != 0) {
-    preferredWorkGroupSize_ = GPU_PREFERRED_WORKGROUP_SIZE;
+    preferredWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
   }
 
   if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
