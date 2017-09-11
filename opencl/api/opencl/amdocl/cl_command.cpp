@@ -173,6 +173,67 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueue,
 }
 RUNTIME_EXIT
 
+/*! \brief Replaces the default command queue on the device
+ *
+ *  \param context must be a valid OpenCL context.
+ *
+ *  \param device must be a device associated with context.
+ *
+ *  \param command_queue specifies the default command-queue.
+ *
+ *  \reture One of the following values:
+ *    - CL_SUCCESS if the function executed successfully.
+ *    - CL_INVALID_CONTEXT if \a context is not a valid context.
+ *    - CL_INVALID_DEVICE if \a device is not a valid device or is not
+ *      associated with context.
+ *    - CL_INVALID_COMMAND_QUEUE if \a command_queue is not a valid command-
+ *      queue for device.
+ */
+RUNTIME_ENTRY(cl_int, clSetDefaultDeviceCommandQueue,
+              (cl_context context, cl_device_id device, cl_command_queue command_queue)) {
+  if (!is_valid(context)) {
+    return CL_INVALID_CONTEXT;
+  }
+
+  amd::Context& amdContext = *as_amd(context);
+  amd::Device& amdDevice = *as_amd(device);
+  amd::DeviceQueue* deviceQueue = as_amd(command_queue)->asDeviceQueue();
+
+  if (!is_valid(device) || !amdContext.containsDevice(&amdDevice)) {
+    return CL_INVALID_DEVICE;
+  }
+
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_VALUE;
+  }
+
+
+  //TODO:  implemente the set default device command queue logic
+  LogWarning("Device support for clSetDefaultDeviceCommandQueue() has not been implemented");
+
+#if 0
+  // implementation of the set default device command queue logic - unverified
+
+  //TODO: Need to update the clGetCommandQueueInfo to support CL_QUEUE_DEVICE_DEFAULT
+  //
+  {
+    amd::ScopedLock lock(amdContext.lock());
+
+    amd::DeviceQueue* queue = amdContext.defDeviceQueue(amdDevice);
+    if (NULL != queue) {
+      amdContext.removeDeviceQueue(amdDevice, queue);
+      queue->release();
+    }
+
+    amdContext.addDeviceQueue(amdDevice, deviceQueue, true);
+    deviceQueue->retain();
+  }
+#endif
+
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
 /*! \brief Increment the \a command_queue reference count.
  *
  *  \return One of the following values:

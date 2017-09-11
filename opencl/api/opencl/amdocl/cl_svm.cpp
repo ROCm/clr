@@ -1036,6 +1036,172 @@ RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (cl_kernel kernel, cl_kernel_exec_inf
 }
 RUNTIME_EXIT
 
+/*! \brief Enqueues a command to indicate which device a set of ranges of SVM
+ *  allocations should be associated with. Once the event returned by
+ *  \a clEnqueueSVMMigrateMem has become CL_COMPLETE, the ranges specified by
+ *  svm pointers and sizes have been successfully migrated to the device
+ *  associated with command queue.
+ *  The user is responsible for managing the event dependencies associated with
+ *  this command in order to avoid overlapping access to SVM allocations.
+ *  Improperly specified event dependencies passed to clEnqueueSVMMigrateMem
+ *  could result in undefined results
+ *
+ *  \param command_queue is a valid host command queue. The specified set of
+ *  allocation ranges will be migrated to the OpenCL device associated with
+ *  command_queue.
+ *
+ *  \param num_svm_pointers is the number of pointers in the specified
+ *  svm_pointers array, and the number of sizes in the sizes array, if sizes
+ *  is not NULL.
+ *
+ *  \param svm_pointers is a pointer to an array of pointers. Each pointer in
+ *  this array must be within an allocation produced by a call to clSVMAlloc.
+ *
+ *  \param sizes is an array of sizes. The pair svm_pointers[i] and sizes[i]
+ *  together define the starting address and number of bytes in a range to be
+ *  migrated. sizes may be NULL indicating that every allocation containing
+ *  any svm_pointer[i] is to be migrated. Also, if sizes[i] is zero, then the
+ *  entire allocation containing svm_pointer[i] is migrated.
+ *
+ *  \param flags is a bit-field that is used to specify migration options.
+ *  Table 5.12 describes the possible values for flags.
+ *
+ *  \param num_events_in_wait_list specifies the number of event objects in
+ *  \a event_wait_list.
+ *
+ *  \param event_wait_list specifies events that need to complete before this
+ *  particular command can be executed. If event_wait_list is NULL, then this
+ *  particular command does not wait on any event to complete. If
+ *  event_wait_list is NULL, num_events_in_wait_list must be 0. If
+ *  event_wait_list is not NULL, the list of events pointed to by
+ *  event_wait_list must be valid and num_events_in_wait_list must be greater
+ *  than 0. The events specified in event_wait_list act as synchronization
+ *  points. The context associated with events in event_wait_list and
+ *  command_queue must be the same. The memory associated with
+ *  event_wait_list can be reused or freed after the function returns.
+ *
+ *  \param event an returned event object that identifies this particular write
+ *  command and can be used to query or queue a wait for this particular
+ *  command to complete. event can be NULL in which case it will not be
+ *  possible for the application to query the status of this command or queue
+ *  another command that waits for this command to complete. If the
+ *  event_wait_list and the event arguments are not NULL, the event argument
+ *  should not refer to an element of the event_wait_list array.
+ *
+ *  \return One of the following values:
+ *  - CL_SUCCESS if the function is executed successfully
+ *  - CL_INVALID_COMMAND_QUEUE if \a command_queue is not a valid command-queue
+ *  - CL_INVALID_VALUE if num_svm_pointers is zero or svm_pointers is NULL
+ *  - CL_INVALID_VALUE if sizes[i] is non-zero range [svm_pointers[i],
+ *    svm_pointers[i]+sizes[i]) is not contained within an existing clSVMAlloc
+ *    allocation
+ *  - CL_INVALID_EVENT_WAIT_LIST if event_wait_list is NULL and
+ *    num_events_in_wait_list > 0, or event_wait_list is not NULL and
+ *    num_events_in_wait_list is 0, or if event objects in event_wait_list are
+ *    not valid events
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required
+ *    by the OpenCL implementation on the host.
+ *
+ *  \version 2.1r00
+ */
+RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
+              (cl_command_queue command_queue, cl_uint num_svm_pointers, const void **svm_pointers,
+               const size_t *size, cl_mem_migration_flags flags, cl_uint num_events_in_wait_list,
+               const cl_event* event_wait_list, cl_event* event)) {
+
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+
+  amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
+  if (NULL == queue) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
+  amd::HostQueue& hostQueue = *queue;
+
+  if (num_svm_pointers == 0) {
+    LogWarning("invalid parameter \"num_svm_pointers = 0\"");
+    return CL_INVALID_VALUE;
+  }
+
+  if (svm_pointers == NULL) {
+    LogWarning("invalid parameter \"svm_pointers = NULL\"");
+    return CL_INVALID_VALUE;
+  }
+
+  for (cl_uint i = 0; i < num_svm_pointers; i++) {
+    if (svm_pointers[i] == NULL) {
+      LogWarning("Null pointers are not allowed");
+      return CL_INVALID_VALUE;
+    }
+  }
+
+  if (flags & ~(CL_MIGRATE_MEM_OBJECT_HOST | CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)) {
+    LogWarning("Invalid flag is specified");
+    return CL_INVALID_VALUE;
+  }
+
+  //TODO:  implemente the svm migration memory logic
+  LogWarning("Device support for clEnqueueSVMMigrateMem() has not been implemented");
+
+#if 0
+  // implementation of the svm migration memory logic - unverified
+
+  for (int i = 0; i < num_svm_pointers; i++) {
+    const void*  svm_ptr = svm_pointers[i];
+
+    amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    if (NULL != svmMem) {
+      // make sure the context is the same as the context of creation of svm space
+      if (hostQueue.context() != svmMem->getContext()) {
+        LogWarning("different contexts");
+        return CL_INVALID_CONTEXT;
+      }
+
+      // Make sure the specified size[i] is within a valid range
+      size_t svm_size = (size == NULL) ? 0 : size[i];
+      size_t offset = reinterpret_cast<uintptr_t>(svm_ptr) - reinterpret_cast<uintptr_t>(svmMem->getSvmPtr());
+      if (offset < 0 || (offset + svm_size) > svmMem->getSize()) {
+        LogWarning("wrong svm address ");
+        return CL_INVALID_VALUE;
+      }
+
+      // Make sure we have memory for the command execution
+      device::Memory* mem = svmMem->getDeviceMemory(queue->device());
+      if (NULL == mem) {
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", svmMem->getSize());
+        return CL_OUT_OF_RESOURCES;
+      }
+    }
+  }
+
+  amd::Command::EventWaitList eventWaitList;
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+                                       event_wait_list);
+  if (err != CL_SUCCESS) {
+    return err;
+  }
+
+  amd::Command* command = new amd::SvmMigrateMemCommand(hostQueue, eventWaitList, num_svm_pointers,
+                                                        svm_pointers, size, flags);
+
+  if (command == NULL) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+
+  command->enqueue();
+
+  *not_null(event) = as_cl(&command->event());
+  if (event == NULL) {
+    command->release();
+  }
+#endif
+
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
 /*! @}
  *  @}
  */

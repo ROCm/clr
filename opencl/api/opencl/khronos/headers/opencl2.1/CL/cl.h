@@ -637,6 +637,7 @@ typedef struct _cl_buffer_region {
 #define CL_COMMAND_SVM_MEMFILL                      0x120B
 #define CL_COMMAND_SVM_MAP                          0x120C
 #define CL_COMMAND_SVM_UNMAP                        0x120D
+#define CL_COMMAND_SVM_MIGRATE_MEM                  0x120E
 
 /* command execution status */
 #define CL_COMPLETE                                 0x0
