@@ -843,15 +843,12 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
     attribs.cpu_address = (void*)hData->handle;
     attribs.alias_subtile = hData->tilingMode;
     attribs.mcaddress = hData->cardAddr;
-    if (hData->isDoppDesktopTexture == GL_TRUE)
-    {
-        attribs.isDOPPDesktopTexture = ATIGL_TRUE;
-        attribs.displayable = GSL_MOA_DISPLAYABLE_LAYOUT;
-    }
-    if ((hData->isDoppPresentTexture == GL_TRUE) || 
+    if (hData->isDoppDesktopTexture == GL_TRUE || (hData->isDoppPresentTexture == GL_TRUE) ||
         (hData->isDisplayable == GL_TRUE))
     {
-        attribs.displayable = GSL_MOA_DISPLAYABLE_LAYOUT;
+        attribs.isDOPPDesktopTexture = hData->isDoppDesktopTexture;
+        attribs.displayable = hData->isTilingRotated
+                                  ? GSL_MOA_DISPLAYABLE_PORTRAIT_ROTATED : GSL_MOA_DISPLAYABLE_LAYOUT;
     }
     attribs.doppVidpnSourceId = hData->vidpnSourceId;
 
