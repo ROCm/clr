@@ -846,7 +846,7 @@ CALGSLDevice::resGLAssociate(GLResAssociate & resData) const
     if (hData->isDoppDesktopTexture == GL_TRUE || (hData->isDoppPresentTexture == GL_TRUE) ||
         (hData->isDisplayable == GL_TRUE))
     {
-        attribs.isDOPPDesktopTexture = hData->isDoppDesktopTexture;
+        attribs.isDOPPDesktopTexture = (hData->isDoppDesktopTexture == GL_TRUE);
         attribs.displayable = hData->isTilingRotated
                                   ? GSL_MOA_DISPLAYABLE_PORTRAIT_ROTATED : GSL_MOA_DISPLAYABLE_LAYOUT;
     }
