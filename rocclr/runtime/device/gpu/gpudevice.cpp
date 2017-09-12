@@ -73,6 +73,7 @@ bool NullDevice::init() {
   // Loop through all supported devices and create each of them
   for (uint id = CAL_TARGET_TAHITI; id <= CAL_TARGET_LAST; ++id) {
     bool foundActive = false;
+    bool foundDuplicate = false;
 
     if (gpu::DeviceInfo[id].targetName_[0] == '\0') {
       continue;
@@ -89,6 +90,24 @@ bool NullDevice::init() {
     // Don't report an offline device if it's active
     if (foundActive) {
       continue;
+    }
+
+    // Loop through all previous devices in the DeviceInfo list and compare them with the
+    // current entry to see if the current entry was listed previously in the DeviceInfo,
+    // if so, then it means the current entry already has been added in the offline device list
+    for (uint j = 0; j < id; ++j) {
+      if (gpu::DeviceInfo[j].targetName_[0] == '\0') {
+        continue;
+      }
+      if (strcmp(gpu::DeviceInfo[j].targetName_, gpu::DeviceInfo[id].targetName_) == 0) {
+        foundDuplicate = true;
+        break;
+      }
+    }
+
+    // Don't report an offline device twice
+    if (foundDuplicate) {
+        continue;
     }
 
     NullDevice* dev = new NullDevice();
