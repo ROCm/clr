@@ -720,7 +720,7 @@ bool Kernel::init_LC() {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
         workGroupInfo_.compileSize_[2];
   } else {
-    workGroupInfo_.size_ = program_->dev().info().maxWorkGroupSize_;
+    workGroupInfo_.size_ = program_->dev().info().preferredWorkGroupSize_;
   }
 
   initPrintf_LC(programMD->mPrintf);
@@ -807,7 +807,7 @@ bool Kernel::init() {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
         workGroupInfo_.compileSize_[2];
   } else {
-    workGroupInfo_.size_ = program_->dev().info().maxWorkGroupSize_;
+    workGroupInfo_.size_ = program_->dev().info().preferredWorkGroupSize_;
   }
 
   // Pull out printf metadata from the ELF

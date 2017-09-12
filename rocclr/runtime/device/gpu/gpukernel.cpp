@@ -1053,7 +1053,7 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
             (workDim > 1) && ((dev().settings().partialDispatch_) ||
                               (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)))) {
           // Use 8x8 workgroup size if kernel has image writes
-          if ((flags() & ImageWrite) || (thrPerGrp != nullDev().info().maxWorkGroupSize_)) {
+          if ((flags() & ImageWrite) || (thrPerGrp != nullDev().info().preferredWorkGroupSize_)) {
             lclWorkSize[0] = 8;
             lclWorkSize[1] = 8;
           } else {
@@ -2174,7 +2174,7 @@ const MetadataVersion MetadataTypeQualifiers = MetadataVersion(3, 1, 103);
 
 bool NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount) {
   // Initialize workgroup info
-  workGroupInfo_.size_ = nullDev().info().maxWorkGroupSize_;
+  workGroupInfo_.size_ = nullDev().info().preferredWorkGroupSize_;
   MetadataVersion mdVersion;
 
   // Find first tag
@@ -3208,7 +3208,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
         workGroupInfo_.compileSize_[2];
   } else {
-    workGroupInfo_.size_ = dev().info().maxWorkGroupSize_;
+    workGroupInfo_.size_ = dev().info().preferredWorkGroupSize_;
   }
 
   // Pull out printf metadata from the ELF
@@ -3345,7 +3345,7 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
             (workDim > 1) && ((dev().settings().partialDispatch_) ||
                               (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)))) {
           // Use 8x8 workgroup size if kernel has image writes
-          if (flags_.imageWriteEna_ || (thrPerGrp != dev().info().maxWorkGroupSize_)) {
+          if (flags_.imageWriteEna_ || (thrPerGrp != dev().info().preferredWorkGroupSize_)) {
             lclWorkSize[0] = 8;
             lclWorkSize[1] = 8;
           } else {
