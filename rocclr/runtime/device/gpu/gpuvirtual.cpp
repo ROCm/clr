@@ -142,7 +142,7 @@ void VirtualGPU::DmaFlushMgmt::findSplitSize(const Device& dev, uint64_t threads
   uint64_t workload = threads * instructions;
   if (maxDispatchWorkload_ < workload) {
     dispatchSplitSize_ = static_cast<uint>(maxDispatchWorkload_ / instructions);
-    uint fullLoad = dev.info().maxComputeUnits_ * dev.info().maxWorkGroupSize_;
+    uint fullLoad = dev.info().maxComputeUnits_ * dev.info().preferredWorkGroupSize_;
     if ((dispatchSplitSize_ % fullLoad) != 0) {
       dispatchSplitSize_ = (dispatchSplitSize_ / fullLoad + 1) * fullLoad;
     }

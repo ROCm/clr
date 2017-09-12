@@ -1413,7 +1413,7 @@ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
     dispatchPacket.workgroup_size_z = 1;
 
     if (sizes.dimensions() == 1) {
-      dispatchPacket.workgroup_size_x = dev.settings().maxWorkGroupSize_;
+      dispatchPacket.workgroup_size_x = dev.settings().preferredWorkGroupSize_;
     } else if (sizes.dimensions() == 2) {
       dispatchPacket.workgroup_size_x = dev.settings().maxWorkGroupSize2DX_;
       dispatchPacket.workgroup_size_y = dev.settings().maxWorkGroupSize2DY_;
