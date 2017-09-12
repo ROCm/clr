@@ -483,20 +483,14 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       layer = oglRes->layer_;
       type = oglRes->type_;
       mipLevel = oglRes->mipLevel_;
-      uint glFormat = 0;
 
       if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
-                                &openInfo.hExternalResource, &glInteropMbRes_, &offset_, glFormat,
+                                &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_,
                                 openInfo.doppDesktopInfo)) {
         return false;
       }
       desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
-       // This is a temporary workaround for SWDEV-130722
-       // 0x22 = CM_SURF_FMT_BGRA8 defined in cm_enum.h in gsl
-      if (glFormat == 0x22) {
-          desc_.format_.image_channel_order = CL_BGRA;
-          format = dev().getPalFormat(desc().format_, &channels);
-      }
+      format = dev().getPalFormat(desc().format_, &channels);
     } else {
       D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
       openInfo.hExternalResource = d3dRes->handle_;

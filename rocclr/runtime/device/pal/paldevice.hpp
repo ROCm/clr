@@ -482,7 +482,7 @@ class Device : public NullDevice {
   bool initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceContext) const;
   bool glCanInterop(void* GLplatformContext, void* GLdeviceContext) const;
   bool resGLAssociate(void* GLContext, uint name, uint type, void** handle, void** mbResHandle,
-                      size_t* offset, uint& glFormat
+                      size_t* offset, cl_image_format& newClFormat
 #ifdef ATI_OS_WIN
                       ,
                       Pal::DoppDesktopInfo& doppDesktopInfo
