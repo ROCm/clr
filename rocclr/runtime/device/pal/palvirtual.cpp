@@ -652,6 +652,13 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
     }
   }
 
+  uint64_t pattern = 0;
+  amd::Coord3D origin(0, 0, 0);
+  amd::Coord3D region((virtualQueue_->size() / sizeof(pattern)), 0, 0);
+  if (!dev().xferMgr().fillBuffer(*virtualQueue_, &pattern, sizeof(pattern), origin, region)) {
+    return false;
+  }
+
   uint64_t vaBase = virtualQueue_->vmAddress();
   AmdVQueueHeader header = {};
   // Initialize the virtual queue header
