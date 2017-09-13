@@ -213,7 +213,8 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   // Report 512MB for all offline devices
   Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
-  heaps[Pal::GpuHeapLocal].heapSize = 512 * Mi;
+  heaps[Pal::GpuHeapLocal].heapSize = 
+  heaps[Pal::GpuHeapLocal].physicalHeapSize = 512 * Mi;
 
   Pal::WorkStationCaps wscaps = {};
 
@@ -301,7 +302,12 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.globalMemCacheType_ = CL_NONE;
   }
 
-  uint64_t localRAM = heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize;
+  uint64_t localRAM;
+  if (GPU_ADD_HBCC_SIZE) {
+    localRAM = heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize;
+  } else {
+    localRAM = heaps[Pal::GpuHeapLocal].physicalHeapSize + heaps[Pal::GpuHeapInvisible].physicalHeapSize;
+  }
 
   info_.globalMemSize_ = (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
                           static_cast<cl_ulong>(localRAM) / 100u);
@@ -316,8 +322,13 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   }
 
   // Find the largest heap form FB memory
-  info_.maxMemAllocSize_ = std::max(cl_ulong(heaps[Pal::GpuHeapLocal].heapSize),
-                                    cl_ulong(heaps[Pal::GpuHeapInvisible].heapSize));
+  if (GPU_ADD_HBCC_SIZE) {
+    info_.maxMemAllocSize_ = std::max(cl_ulong(heaps[Pal::GpuHeapLocal].heapSize),
+      cl_ulong(heaps[Pal::GpuHeapInvisible].heapSize));
+  } else {
+    info_.maxMemAllocSize_ = std::max(cl_ulong(heaps[Pal::GpuHeapLocal].physicalHeapSize),
+      cl_ulong(heaps[Pal::GpuHeapInvisible].physicalHeapSize));
+  }
 
 #if defined(ATI_OS_WIN)
   if (settings().apuSystem_) {

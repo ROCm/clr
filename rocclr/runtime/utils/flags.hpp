@@ -187,6 +187,8 @@ release(bool, GPU_ANALYZE_HANG, false,                                        \
         "1 = Enables GPU hang analysis")                                      \
 release(uint, GPU_MAX_REMOTE_MEM_SIZE, 2,                                     \
         "Maximum size (in Ki) that allows device memory substitution with system") \
+release(bool, GPU_ADD_HBCC_SIZE, false,                                       \
+        "Add HBCC size to the reported device memory")                        \
 release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
         "Assume the number of CU per SH for wave limiter")                    \
 release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
