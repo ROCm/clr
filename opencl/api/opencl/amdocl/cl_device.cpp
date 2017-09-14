@@ -290,6 +290,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, globalMemCacheSize_);
       CASE(CL_DEVICE_GLOBAL_MEM_SIZE, globalMemSize_);
       CASE(CL_DEVICE_MAX_CONSTANT_BUFFER_SIZE, maxConstantBufferSize_);
+      CASE(CL_DEVICE_PREFERRED_CONSTANT_BUFFER_SIZE_AMD, preferredConstantBufferSize_);
       CASE(CL_DEVICE_MAX_CONSTANT_ARGS, maxConstantArgs_);
       CASE(CL_DEVICE_LOCAL_MEM_TYPE, localMemType_);
       CASE(CL_DEVICE_LOCAL_MEM_SIZE, localMemSize_);
