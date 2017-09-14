@@ -382,6 +382,9 @@ struct Info : public amd::EmbeddedObject {
   //! Max size in bytes of a constant buffer allocation.
   cl_ulong maxConstantBufferSize_;
 
+  //! Preferred size in bytes of a constant buffer allocation.
+  cl_ulong preferredConstantBufferSize_;
+
   //! Max number of arguments declared
   cl_uint maxConstantArgs_;
 
