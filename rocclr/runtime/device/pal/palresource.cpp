@@ -744,6 +744,12 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
           }
         }
       }
+      // Check if memory is locked already and restore CPU pointer
+      if (memRef_->cpuAddress_ != nullptr) {
+        address_ = memRef_->cpuAddress_;
+        memRef_->cpuAddress_ = nullptr;
+        mapCount_++;
+      }
       Pal::BufferViewInfo viewInfo = {};
       viewInfo.gpuAddr = memRef_->iMem()->Desc().gpuVirtAddr + offset();
       viewInfo.range = memRef_->iMem()->Desc().size;
@@ -889,6 +895,12 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       if (req.size > viewOwner_->iMem()->Desc().size) {
         LogWarning("Image is bigger than the original mem object!");
       }
+    }
+    // Check if memory is locked already and restore CPU pointer
+    if (memRef_->cpuAddress_ != nullptr) {
+      address_ = memRef_->cpuAddress_;
+      memRef_->cpuAddress_ = nullptr;
+      mapCount_++;
     }
 
     result = image_->BindGpuMemory(memRef_->gpuMem_, offset_);
@@ -1070,6 +1082,12 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       return false;
     }
   }
+  // Check if memory is locked already and restore CPU pointer
+  if (memRef_->cpuAddress_ != nullptr) {
+    address_ = memRef_->cpuAddress_;
+    memRef_->cpuAddress_ = nullptr;
+    mapCount_++;
+  }
   return true;
 }
 
@@ -1079,7 +1097,7 @@ void Resource::free() {
   }
 
   // Sanity check for the map calls
-  if (mapCount_ != 0) {
+  if ((mapCount_ != 0) && (memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
     LogWarning("Resource wasn't unlocked, but destroyed!");
   }
   const bool wait =
@@ -1105,10 +1123,16 @@ void Resource::free() {
   if (renames_.size() == 0) {
     // Destroy GSL resource
     if (iMem() != 0) {
-      //! @note: This is a workaround for bad applications that
-      //! don't unmap memory
       if (mapCount_ != 0) {
-        unmap(nullptr);
+        if ((memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
+          //! @note: This is a workaround for bad applications that
+          //! don't unmap memory
+          unmap(nullptr);
+        } else {
+          // Delay CPU address unmap until memRef_ destruction
+          assert(memRef_->cpuAddress_ == nullptr && "Memref shouldn't have a valid CPU address");
+          memRef_->cpuAddress_ = address_;
+        }
       }
 
       // Add resource to the cache if it's not assigned to a specific queue
