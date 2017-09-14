@@ -209,6 +209,7 @@ typedef CL_API_ENTRY cl_int (CL_API_CALL *clTerminateContextKHR_fn)(cl_context /
 #define CL_DEVICE_AVAILABLE_ASYNC_QUEUES_AMD        0x404C
 #define CL_DEVICE_PREFERRED_WORK_GROUP_SIZE_AMD     0x4030
 #define CL_DEVICE_MAX_WORK_GROUP_SIZE_AMD           0x4031
+#define CL_DEVICE_PREFERRED_CONSTANT_BUFFER_SIZE_AMD    0x4033
 
 typedef union
 {
