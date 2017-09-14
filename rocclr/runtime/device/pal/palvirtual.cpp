@@ -298,7 +298,7 @@ bool VirtualGPU::Queue::flush() {
   palSdiRefs_.resize(0);
 
   // Remove old memory references
-  if ((memReferences_.size() > 1024) || (residency_size_ > residency_limit_)) {
+  if ((memReferences_.size() > 2048) || (residency_size_ > residency_limit_)) {
     for (auto it = memReferences_.begin(); it != memReferences_.end();) {
       if (it->second == cmdBufIdSlot_) {
         palMems_.push_back(it->first->iMem());

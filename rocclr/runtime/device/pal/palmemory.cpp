@@ -416,7 +416,8 @@ Memory::~Memory() {
   if ((owner() != nullptr) && isHostMemDirectAccess() && !(flags_ & SubMemoryObject) &&
       (memoryType() != Resource::ExternalPhysical)) {
     // Unmap memory if direct access was requested
-    unmap(nullptr);
+    // Note: runtime will perform unmap on the actual resource destruction
+    //unmap(nullptr);
   }
 }
 
