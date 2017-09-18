@@ -1093,26 +1093,35 @@ bool Device::populateOCLDeviceConstants() {
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
   }
 
-  //if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
-    //info_.simdPerCU_ = deviceInfo_.simdPerCU_;
-    //info_.simdWidth_ = deviceInfo_.simdWidth_;
-    //info_.simdInstructionWidth_ = deviceInfo_.simdInstructionWidth_;
+  if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
+    info_.simdPerCU_ = deviceInfo_.simdPerCU_;
+    info_.simdWidth_ = deviceInfo_.simdWidth_;
+    info_.simdInstructionWidth_ = deviceInfo_.simdInstructionWidth_;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WAVEFRONT_SIZE, &info_.wavefrontWidth_)) {
       return false;
     }
-    //info_.globalMemChannels_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
-    //info_.globalMemChannelBanks_ = 4;
-    //info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
-    //info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
-    //info_.localMemBanks_ = deviceInfo_.localMemBanks_;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.globalMemChannels_)) {
+      return false;
+    }
+    info_.globalMemChannelBanks_ = 4;
+    info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
+    info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
+    info_.localMemBanks_ = deviceInfo_.localMemBanks_;
     info_.gfxipVersion_ = deviceInfo_.gfxipVersion_;
-    //info_.numAsyncQueues_ = numComputeRings;
-    //info_.numRTQueues_ = numExclusiveComputeRings;
-    //info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
-    //info_.threadTraceEnable_ = settings().threadTraceEnable_;
-  //}
-
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUES_MAX, &info_.numAsyncQueues_)) {
+      return false;
+    }
+    info_.numRTQueues_ = info_.numAsyncQueues_;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, &info_.numRTCUs_)) {
+      return false;
+    }
+    //TODO: set to true once thread trace support is available
+    info_.threadTraceEnable_ = false;
+  }
 
   return true;
 }
