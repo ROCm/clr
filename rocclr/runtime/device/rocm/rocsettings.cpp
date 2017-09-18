@@ -101,8 +101,6 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   if (MesaInterop::Supported()) {
     enableExtension(ClKhrGlSharing);
   }
-  // Enable platform extension
-  enableExtension(ClAmdDeviceAttributeQuery);
 
   // Enable KHR double precision extension
   enableExtension(ClKhrFp64);
