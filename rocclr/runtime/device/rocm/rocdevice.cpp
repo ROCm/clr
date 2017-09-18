@@ -933,7 +933,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.minDataTypeAlignSize_ = sizeof(cl_long16);
 
   info_.maxConstantArgs_ = 8;
-  info_.preferredConstantBufferSize_ = 64 * Ki;
+  info_.preferredConstantBufferSize_ = 16 * Ki;
   info_.maxConstantBufferSize_ = info_.maxMemAllocSize_;
   info_.localMemType_ = CL_LOCAL;
   info_.errorCorrectionSupport_ = false;
