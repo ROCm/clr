@@ -434,7 +434,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   //! should be able to create a view with 256 bytes alignement
   info_.memBaseAddrAlign_ = 8 * MemBaseAlignment;
 
-  info_.preferredConstantBufferSize_ = 64 * Ki;
+  info_.preferredConstantBufferSize_ = 16 * Ki;
   info_.maxConstantBufferSize_ = (settings().ciPlus_) ? info_.maxMemAllocSize_ : 64 * Ki;
   info_.maxConstantArgs_ = MaxConstArguments;
 

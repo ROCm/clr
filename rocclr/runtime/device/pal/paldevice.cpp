@@ -377,7 +377,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   //! should be able to create a view with 256 bytes alignement
   info_.memBaseAddrAlign_ = 8 * MemBaseAlignment;
 
-  info_.preferredConstantBufferSize_ = 64 * Ki;
+  info_.preferredConstantBufferSize_ = 16 * Ki;
   info_.maxConstantBufferSize_ = info_.maxMemAllocSize_;
   info_.maxConstantArgs_ = MaxConstArguments;
 
