@@ -356,9 +356,8 @@ static const std::array<std::pair<int, int>, 97> viBlockIdOrcaToPal = {{
 }};
 
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
-// of them
-// as compute may not use all of them.
-static const std::array<std::pair<int, int>, 103> gfx9BlockIdPal = {{
+// of them as compute may not use all of them.
+static const std::array<std::pair<int, int>, 110> gfx9BlockIdPal = {{
     {0x0E, 0},     // CB0       - 0
     {0x0E, 1},     // CB1       - 1
     {0x0E, 2},     // CB2       - 2
@@ -458,10 +457,17 @@ static const std::array<std::pair<int, int>, 103> gfx9BlockIdPal = {{
     {0x17, 0},     // CPC       - 96
     {0x1A, 0},     // ATC       - 97
     {0x1B, 0},     // ATCL2     - 98
-    {0x1C, 0},     // MCVML2    - 99
-    {0x1D, 0},     // EA        - 100
-    {0x1E, 0},     // RPB       - 101
-    {0x1F, 0},     // RMI       - 102
+    {0x1C, 0},     // MCVML2_0  - 99
+    {0x1C, 1},     // MCVML2_1  - 100
+    {0x1C, 2},     // MCVML2_2  - 101
+    {0x1C, 3},     // MCVML2_3  - 102
+    {0x1C, 4},     // MCVML2_4  - 103
+    {0x1C, 5},     // MCVML2_5  - 104
+    {0x1C, 6},     // MCVML2_6  - 105
+    {0x1C, 7},     // MCVML2_7  - 106
+    {0x1D, 0},     // EA        - 107
+    {0x1E, 0},     // RPB       - 108
+    {0x1F, 0},     // RMI       - 109
 }};
 
 void PerfCounter::convertInfo() {
