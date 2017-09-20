@@ -71,20 +71,17 @@ bool HSAILProgram::compileImpl_LC(const std::string& sourceCode,
   }
 
   // Set the options for the compiler
+  // Some options are set in Clang AMDGPUToolChain (like -m64)
   std::ostringstream ostrstr;
   std::copy(options->clangOptions.begin(), options->clangOptions.end(),
             std::ostream_iterator<std::string>(ostrstr, " "));
 
-  ostrstr << " -m" << sizeof(void*) * 8;
   std::string driverOptions(ostrstr.str());
 
   const char* xLang = options->oVariables->XLang;
   if (xLang != nullptr && strcmp(xLang, "cl")) {
     buildLog_ += "Unsupported OpenCL language.\n";
   }
-
-  // FIXME_Nikolay: the program manager should be setting the language
-  // driverOptions.append(" -x cl");
 
   driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
 
