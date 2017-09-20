@@ -757,7 +757,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
-    VirtualGPU::Queue::MaxCommands * (256 + ((profiling) ? 64 : 0));
+    VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 64 : 0));
 
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 64 * Ki;
