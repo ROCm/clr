@@ -41,7 +41,8 @@ class VirtualGPU : public device::VirtualDevice {
  public:
   class Queue : public amd::HeapObject {
    public:
-    static const uint MaxCmdBuffers = 16;
+    // Note: More command buffers may cause a HW hang with HWSC on VI family in OCLPerfKernelArguments
+    static const uint MaxCmdBuffers = 8;
     static const uint MaxCommands = 256;
     static const uint StartCmdBufIdx = 1;
     static const uint FirstMemoryReference = 0x80000000;
