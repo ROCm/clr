@@ -241,6 +241,9 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
     buildLog_ += "Unsupported OpenCL language.\n";
   }
 
+  // FIXME_Nikolay: the program manager should be setting the language
+  // driverOptions.append(" -x cl");
+
   driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
 
   // Set the -O#
