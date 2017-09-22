@@ -229,6 +229,8 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   // Runtime doesn't know what local size could be on the real board
   info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
 
+  info_.wavefrontWidth_ = (ipLevel >= Pal::GfxIpLevel::GfxIp10) ? 32 : 64;
+
   return true;
 }
 
@@ -1796,7 +1798,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
     uint sb = vgpu->hwRing();
     static const uint WaveSizeLimit = ((1 << 21) - 256);
     const uint threadSizeLimit =
-        WaveSizeLimit / properties().gfxipProperties.shaderCore.wavefrontSize;
+        WaveSizeLimit / info().wavefrontWidth_;
     if (regNum > threadSizeLimit) {
       LogError("Requested private memory is bigger than HW supports!");
       regNum = threadSizeLimit;
@@ -1819,7 +1821,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
           uint32_t numTotalCUs = info().maxComputeUnits_;
           uint32_t numMaxWaves = settings().numScratchWavesPerCu_ * numTotalCUs;
           scratchBuf->size_ =
-              static_cast<uint64_t>(properties().gfxipProperties.shaderCore.wavefrontSize) *
+              static_cast<uint64_t>(info().wavefrontWidth_) *
               scratchBuf->regNum_ * numMaxWaves * sizeof(uint32_t);
           scratchBuf->size_ = std::min(scratchBuf->size_, info().maxMemAllocSize_);
           scratchBuf->size_ = std::min(scratchBuf->size_, uint64_t(3 * Gi));

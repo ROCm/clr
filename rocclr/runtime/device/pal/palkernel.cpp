@@ -406,7 +406,7 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
     workGroupInfo_.availableVGPRs_ =
         dev().properties().gfxipProperties.shaderCore.numAvailableVgprs;
     workGroupInfo_.preferredSizeMultiple_ = workGroupInfo_.wavefrontPerSIMD_ =
-        dev().properties().gfxipProperties.shaderCore.wavefrontSize;
+        dev().info().wavefrontWidth_;
   } else {
     workGroupInfo_.availableLDSSize_ = 64 * Ki;
     workGroupInfo_.availableSGPRs_ = 104;
@@ -652,8 +652,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   }
 
   // Copy wavefront size
-  workGroupInfo_.wavefrontSize_ =
-      prog().isNull() ? 64 : dev().properties().gfxipProperties.shaderCore.wavefrontSize;
+  workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
   // Find total workgroup size
   if (workGroupInfo_.compileSize_[0] != 0) {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
@@ -1533,8 +1532,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
   }
 
   // Copy wavefront size
-  workGroupInfo_.wavefrontSize_ =
-      prog().isNull() ? 64 : dev().properties().gfxipProperties.shaderCore.wavefrontSize;
+  workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
   // Find total workgroup size
   if (workGroupInfo_.compileSize_[0] != 0) {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
