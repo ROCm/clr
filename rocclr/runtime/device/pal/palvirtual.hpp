@@ -625,4 +625,14 @@ class VirtualGPU : public device::VirtualDevice {
   MemoryRange sdmaRange_;             //!< SDMA memory range for write access
 };
 
+inline void VirtualGPU::addVmMemory(const Memory* memory) {
+  GpuEvent event(queues_[MainEngine]->cmdBufId());
+  queues_[MainEngine]->addCmdMemRef(memory->memRef());
+  memory->setBusy(*this, event);
+}
+
+inline void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
+  queues_[MainEngine]->last_kernel_ = &kernel;
+}
+
 /*@}*/} // namespace pal

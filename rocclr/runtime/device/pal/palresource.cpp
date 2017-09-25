@@ -146,7 +146,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
 }
 
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
-  : gpuMem_(nullptr), cpuAddress_(nullptr), events_(dev.numOfVgpus()), device_(dev), gpu_(nullptr) {}
+  : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr), events_(dev.numOfVgpus()) {}
 
 GpuMemoryReference::~GpuMemoryReference() {
   if (gpu_ == nullptr) {
@@ -1217,7 +1217,9 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   calSize[1] = size[1];
   calSize[2] = size[2];
 
-  uint64_t gpuMemoryOffset, gpuMemoryRowPitch, imageOffsetx;
+  uint64_t gpuMemoryOffset = 0;
+  uint64_t gpuMemoryRowPitch = 0;
+  uint64_t imageOffsetx = 0;
   bool img1Darray = false;
   bool img2Darray = false;
 

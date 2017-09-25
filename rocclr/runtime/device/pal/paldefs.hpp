@@ -50,9 +50,9 @@ struct GpuEvent {
     uint32_t engineId_ : 1;   ///< type of the id
   };
   //! GPU event default constructor
-  GpuEvent() : engineId_(MainEngine), id(InvalidID) {}
+  GpuEvent() : id(InvalidID), engineId_(MainEngine) {}
   //! GPU event constructor
-  GpuEvent(uint evt) : engineId_(MainEngine), id(evt) {}
+  GpuEvent(uint evt) : id(evt), engineId_(MainEngine) {}
 
   //! Returns true if the current event is valid
   bool isValid() const { return (id != InvalidID) ? true : false; }
