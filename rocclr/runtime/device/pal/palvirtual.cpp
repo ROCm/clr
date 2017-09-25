@@ -175,7 +175,7 @@ void VirtualGPU::Queue::removeCmdMemRef(GpuMemoryReference* mem) {
 }
 
 void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, bool pfpaDoppCmd) {
-  for (int i = 0; i < palDoppRefs_.size(); i++) {
+  for (size_t i = 0; i < palDoppRefs_.size(); i++) {
     if (palDoppRefs_[i].pGpuMemory == iMem) {
       // If both LAST_DOPP_SUBMISSION and PFPA_DOPP_SUBMISSION VCOPs are requested,
       // the LAST_DOPP_SUBMISSION is send as requsted by KMD
@@ -2942,16 +2942,6 @@ bool VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* wai
   }
 
   return found;
-}
-
-void VirtualGPU::addVmMemory(const Memory* memory) {
-  GpuEvent event(queues_[MainEngine]->cmdBufId());
-  queues_[MainEngine]->addCmdMemRef(memory->memRef());
-  memory->setBusy(*this, event);
-} 
-
-void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
-  queues_[MainEngine]->last_kernel_ = &kernel;
 }
 
 void VirtualGPU::addDoppRef(const Memory* memory, bool lastDoppCmd, bool pfpaDoppCmd) {

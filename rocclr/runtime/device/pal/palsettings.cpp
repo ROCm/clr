@@ -416,6 +416,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::GfxIpLevel::GfxIp9:
       singleFpDenorm_ = true;
       break;
+    default:
+      break;
   }
 #endif  // WITH_LIGHTNING_COMPILER
 
