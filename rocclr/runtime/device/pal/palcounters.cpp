@@ -356,8 +356,9 @@ static const std::array<std::pair<int, int>, 97> viBlockIdOrcaToPal = {{
 }};
 
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
-// of them as compute may not use all of them.
-static const std::array<std::pair<int, int>, 110> gfx9BlockIdPal = {{
+// of them
+// as compute may not use all of them.
+static const std::array<std::pair<int, int>, 125> gfx9BlockIdPal = {{
     {0x0E, 0},     // CB0       - 0
     {0x0E, 1},     // CB1       - 1
     {0x0E, 2},     // CB2       - 2
@@ -457,17 +458,32 @@ static const std::array<std::pair<int, int>, 110> gfx9BlockIdPal = {{
     {0x17, 0},     // CPC       - 96
     {0x1A, 0},     // ATC       - 97
     {0x1B, 0},     // ATCL2     - 98
-    {0x1C, 0},     // MCVML2_0  - 99
-    {0x1C, 1},     // MCVML2_1  - 100
-    {0x1C, 2},     // MCVML2_2  - 101
-    {0x1C, 3},     // MCVML2_3  - 102
-    {0x1C, 4},     // MCVML2_4  - 103
-    {0x1C, 5},     // MCVML2_5  - 104
-    {0x1C, 6},     // MCVML2_6  - 105
-    {0x1C, 7},     // MCVML2_7  - 106
-    {0x1D, 0},     // EA        - 107
-    {0x1E, 0},     // RPB       - 108
-    {0x1F, 0},     // RMI       - 109
+    {0x1C, 0},     // MCVML2    - 99
+    {0x1D, 0},     // EA        - 100
+    {0x1D, 1},     // EA        - 101
+    {0x1D, 2},     // EA        - 102
+    {0x1D, 3},     // EA        - 103
+    {0x1D, 4},     // EA        - 104
+    {0x1D, 5},     // EA        - 105
+    {0x1D, 6},     // EA        - 106
+    {0x1D, 7},     // EA        - 107
+    {0x1D, 8},     // EA        - 108
+    {0x1D, 9},     // EA        - 109
+    {0x1D, 0x0a},  // EA        - 110
+    {0x1D, 0x0b},  // EA        - 111
+    {0x1D, 0x0c},  // EA        - 112
+    {0x1D, 0x0d},  // EA        - 113
+    {0x1D, 0x0e},  // EA        - 114
+    {0x1D, 0x0f},  // EA        - 115
+    {0x1E, 0},     // RPB       - 116
+    {0x1F, 0},     // RMI       - 117
+    {0x1F, 1},     // RMI       - 118
+    {0x1F, 2},     // RMI       - 119
+    {0x1F, 3},     // RMI       - 120
+    {0x1F, 4},     // RMI       - 121
+    {0x1F, 5},     // RMI       - 122
+    {0x1F, 6},     // RMI       - 123
+    {0x1F, 7},     // RMI       - 124
 }};
 
 void PerfCounter::convertInfo() {
