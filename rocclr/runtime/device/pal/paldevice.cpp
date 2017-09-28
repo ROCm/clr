@@ -1342,7 +1342,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
         void* address = gpuMemory->map(nullptr);
         if (address != nullptr) {
           // Copy saved memory
-          if (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) {
+          // Note: UHP is an optional check if pinning failed and sysmem alloc was forced
+          if (owner.getMemFlags() & (CL_MEM_COPY_HOST_PTR | CL_MEM_USE_HOST_PTR)) {
             memcpy(address, owner.getHostMem(), owner.getSize());
           }
           // It should be safe to change the host memory pointer,
