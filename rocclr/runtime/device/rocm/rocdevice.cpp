@@ -1380,13 +1380,6 @@ void* Device::deviceLocalAlloc(size_t size) const {
     return nullptr;
   }
 
-  stat = hsa_memory_assign_agent(ptr, _bkendDevice, HSA_ACCESS_PERMISSION_RW);
-  if (stat != HSA_STATUS_SUCCESS) {
-    LogError("Fail assigning local memory to agent");
-    memFree(ptr, size);
-    return nullptr;
-  }
-
   if (p2pAgents().size() > 0) {
     stat = hsa_amd_agents_allow_access(p2pAgents().size(), p2pAgents().data(), nullptr, ptr);
     if (stat != HSA_STATUS_SUCCESS) {
