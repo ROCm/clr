@@ -64,8 +64,6 @@ release(bool, GPU_FLUSH_ON_EXECUTION, false,                                  \
         "Submit commands to HW on every operation. 0 - Disable, 1 - Enable")  \
 release(bool, GPU_USE_SYNC_OBJECTS, true,                                     \
         "If enabled, use sync objects instead of polling")                    \
-release(bool, ENABLE_CAL_SHUTDOWN, false,                                     \
-        "Enable explicit CAL shutdown (for PM4 capture)")                     \
 release(bool, CL_KHR_FP64, true,                                              \
         "Enable/Disable support for double precision")                        \
 release(cstring, AMD_OCL_BUILD_OPTIONS, 0,                                    \
