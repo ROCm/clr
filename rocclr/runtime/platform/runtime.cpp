@@ -80,7 +80,7 @@ void Runtime::tearDown() {
 class RuntimeTearDown : public amd::HeapObject {
 public:
   RuntimeTearDown() {}
-  ~RuntimeTearDown() { Runtime::tearDown(); }
+  ~RuntimeTearDown() { /*Runtime::tearDown();*/ }
 } runtime_tear_down;
 
 uint ReferenceCountedObject::retain() { return ++make_atomic(referenceCount_); }
