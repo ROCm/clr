@@ -15,31 +15,25 @@ ELFTOOLCHAIN_DIR = $(COMPLIB_DEPTH)/loaders/elf/utils
 
 ifdef GONE_TO_BUILD_DIR
 ifeq ($(BUILD_HSA_TARGET),yes)
-override BUILD_CPU_DEVICE = no
-override BUILD_GPU_DEVICE = no
+override BUILD_LLVM_ARM_TARGET = no
+override BUILD_LLVM_X86_TARGET = no
+override BUILD_LLVM_AMDIL_TARGET = no
 endif
 ifneq ($(BUILD_LEGACY_COMPLIB),yes)
-override BUILD_GPU_DEVICE = no
+override BUILD_LLVM_AMDIL_TARGET = no
 endif
 endif
 
-ifneq ($(BUILD_HSA_DEVICE),no)
+ifeq ($(BUILD_LLVM_HSAIL_TARGET),yes)
 GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_HSAIL
-ifneq ($(BUILD_GPU_DEVICE),no)
-GCPPFLAGS += $(DEFSWITCH) DYNAMIC_HSAIL
-endif
 endif
 
-ifneq ($(BUILD_CPU_DEVICE),no)
-ifdef ATI_ARCH_ARM
+ifeq ($(BUILD_LLVM_ARM_TARGET),yes)
 GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_ARM
 endif
 
-ifdef ATI_ARCH_X86
-ifneq ($(BUILD_CPU_DEVICE),no)
+ifeq ($(BUILD_LLVM_X86_TARGET),yes)
 GCPPFLAGS += $(DEFSWITCH) WITH_TARGET_X86
-endif
-endif
 endif
 
 GCPPFLAGS += $(ASIC_REG_INCS)
