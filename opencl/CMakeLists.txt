@@ -29,9 +29,10 @@ list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
 
 add_definitions(${LLVM_DEFINITIONS})
-# TODO: add find_package(Clang) and use LLVM/Clang variables got from their config
+# TODO: add find_package for Clang and lld, and also use LLVM/Clang variables got from their config
 include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/include)
 include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/tools/clang/include)
+include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/tools/lld/include)
 
 # TODO: move AMDGPU.h header to include folder
 include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
