@@ -586,6 +586,7 @@ void Buffer::destroy() {
       }
     } else {
       dev().memFree(deviceMemory_, size());
+      const_cast<Device&>(dev()).updateFreeMemory(size(), true);
     }
   }
 
@@ -668,6 +669,9 @@ bool Buffer::create() {
 
       deviceMemory_ = dev().hostAlloc(size(), 1, false);
       owner()->setHostMem(deviceMemory_);
+    }
+    else {
+      const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
 
     assert(amd::isMultipleOf(deviceMemory_, static_cast<size_t>(dev().info().memBaseAddrAlign_)));
@@ -932,6 +936,9 @@ bool Image::create() {
   if (originalDeviceMemory_ == nullptr) {
     originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, false);
   }
+  else {
+    const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
+  }
 
   deviceMemory_ = reinterpret_cast<void*>(
       amd::alignUp(reinterpret_cast<uintptr_t>(originalDeviceMemory_), deviceImageInfo_.alignment));
@@ -1092,6 +1099,7 @@ void Image::destroy() {
 
   if (originalDeviceMemory_ != nullptr) {
     dev().memFree(originalDeviceMemory_, deviceImageInfo_.size);
+    const_cast<Device&>(dev()).updateFreeMemory(size(), true);
   }
 }
 }

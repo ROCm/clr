@@ -129,6 +129,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , xferWrite_(nullptr)
     , pro_device_(nullptr)
     , pro_ena_(false)
+    , freeMem_(0)
     , numOfVgpus_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
@@ -887,6 +888,8 @@ bool Device::populateOCLDeviceConstants() {
     }
   }
 
+  freeMem_ = info_.globalMemSize_;
+
   // Make sure the max allocation size is not larger than the available
   // memory size.
   info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
@@ -1093,26 +1096,35 @@ bool Device::populateOCLDeviceConstants() {
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
   }
 
-  //if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
-    //info_.simdPerCU_ = deviceInfo_.simdPerCU_;
-    //info_.simdWidth_ = deviceInfo_.simdWidth_;
-    //info_.simdInstructionWidth_ = deviceInfo_.simdInstructionWidth_;
+  if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
+    info_.simdPerCU_ = deviceInfo_.simdPerCU_;
+    info_.simdWidth_ = deviceInfo_.simdWidth_;
+    info_.simdInstructionWidth_ = deviceInfo_.simdInstructionWidth_;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WAVEFRONT_SIZE, &info_.wavefrontWidth_)) {
       return false;
     }
-    //info_.globalMemChannels_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
-    //info_.globalMemChannelBanks_ = 4;
-    //info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
-    //info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
-    //info_.localMemBanks_ = deviceInfo_.localMemBanks_;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.globalMemChannels_)) {
+      return false;
+    }
+    info_.globalMemChannelBanks_ = 4;
+    info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
+    info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
+    info_.localMemBanks_ = deviceInfo_.localMemBanks_;
     info_.gfxipVersion_ = deviceInfo_.gfxipVersion_;
-    //info_.numAsyncQueues_ = numComputeRings;
-    //info_.numRTQueues_ = numExclusiveComputeRings;
-    //info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
-    //info_.threadTraceEnable_ = settings().threadTraceEnable_;
-  //}
-
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUES_MAX, &info_.numAsyncQueues_)) {
+      return false;
+    }
+    info_.numRTQueues_ = info_.numAsyncQueues_;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, &info_.numRTCUs_)) {
+      return false;
+    }
+    //TODO: set to true once thread trace support is available
+    info_.threadTraceEnable_ = false;
+  }
 
   return true;
 }
@@ -1136,7 +1148,18 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   return virtualDevice;
 }
 
-bool Device::globalFreeMemory(size_t* freeMemory) const { return false; }
+bool Device::globalFreeMemory(size_t* freeMemory) const {
+  const uint TotalFreeMemory = 0;
+  const uint LargestFreeBlock = 1;
+
+  freeMemory[TotalFreeMemory] = freeMem_ / Ki;
+
+  // since there is no memory heap on ROCm, the biggest free block is
+  // equal to total free local memory
+  freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
+
+  return true;
+}
 
 bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxContext,
                                 bool validateOnly) {
@@ -1396,6 +1419,15 @@ void Device::memFree(void* ptr, size_t size) const {
   hsa_status_t stat = hsa_amd_memory_pool_free(ptr);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail freeing local memory");
+  }
+}
+
+void Device::updateFreeMemory(size_t size, bool free) {
+  if (free) {
+    freeMem_ += size;
+  }
+  else {
+    freeMem_ -= size;
   }
 }
 

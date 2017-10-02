@@ -400,6 +400,9 @@ class Device : public NullDevice {
   // Lock protect P2P staging operations
   const std::vector<Memory*>& P2PStages() const { return p2p_stages_; }
 
+  // Update the global free memory size
+  void updateFreeMemory(size_t size, bool free);
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -433,6 +436,7 @@ class Device : public NullDevice {
   XferBuffers* xferWrite_;  //!< Transfer buffers write
   const IProDevice* pro_device_;  //!< AMDGPUPro device
   bool  pro_ena_;           //!< Extra functionality with AMDGPUPro device, beyond ROCr
+  std::atomic<size_t> freeMem_;   //!< Total of free memory available
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
