@@ -14,11 +14,6 @@ GCPPFLAGS += $(SC_LIB_DEFS)
 ELFTOOLCHAIN_DIR = $(COMPLIB_DEPTH)/loaders/elf/utils
 
 ifdef GONE_TO_BUILD_DIR
-ifeq ($(BUILD_HSA_TARGET),yes)
-override BUILD_LLVM_ARM_TARGET = no
-override BUILD_LLVM_X86_TARGET = no
-override BUILD_LLVM_AMDIL_TARGET = no
-endif
 ifneq ($(BUILD_LEGACY_COMPLIB),yes)
 override BUILD_LLVM_AMDIL_TARGET = no
 endif
