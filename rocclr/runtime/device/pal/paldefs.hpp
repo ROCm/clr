@@ -152,8 +152,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900},
     /* Vega10 XNACK */{"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 901},
-    /* Vega12       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 904},
-    /* Vega12 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 905},
+    /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904},
+    /* Vega12 XNACK */{"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 905},
     /* Vega20       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 906},
     /* Vega20 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 907},
     /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
