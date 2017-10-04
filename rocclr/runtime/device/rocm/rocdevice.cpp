@@ -1126,6 +1126,10 @@ bool Device::populateOCLDeviceConstants() {
     info_.threadTraceEnable_ = false;
   }
 
+  info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
+  info_.maxPipeActiveReservations_ = 16;
+  info_.maxPipeArgs_ = 16;
+
   return true;
 }
 
@@ -1314,6 +1318,14 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
     LogError("Failed creating memory");
     delete memory;
     return nullptr;
+  }
+
+  // Initialize if the memory is a pipe object
+  if (owner.getType() == CL_MEM_OBJECT_PIPE) {
+    // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
+    // Init with 3 DWORDS for 32bit addressing and 6 DWORDS for 64bit
+    size_t pipeInit[3] = { 0, 0, owner.asPipe()->getMaxNumPackets() };
+    xferMgr().writeBuffer((void *)pipeInit, *memory, amd::Coord3D(0), amd::Coord3D(sizeof(pipeInit)));
   }
 
   // Transfer data only if OCL context has one device.
