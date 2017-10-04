@@ -58,4 +58,6 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET VEGA10 */ {HSA_VEGA10_ID, "", "gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET VEGA10_HBCC */ {HSA_VEGA10_HBCC_ID, "", "gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 0, 0}};
 }
+
+const uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
 #endif

@@ -1113,10 +1113,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
     info_.localMemBanks_ = deviceInfo_.localMemBanks_;
     info_.gfxipVersion_ = deviceInfo_.gfxipVersion_;
-    if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUES_MAX, &info_.numAsyncQueues_)) {
-      return false;
-    }
+    info_.numAsyncQueues_ = kMaxAsyncQueues;
     info_.numRTQueues_ = info_.numAsyncQueues_;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, &info_.numRTCUs_)) {
