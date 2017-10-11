@@ -7,6 +7,7 @@
 #include "device/rocm/rockernel.hpp"
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocblit.hpp"
+#include "device/rocm/roccounters.hpp"
 #include "platform/kernel.hpp"
 #include "platform/context.hpp"
 #include "platform/command.hpp"
@@ -311,7 +312,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 }
 
 template <typename AqlPacket>
-bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking) {
+bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size_t size) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
 
@@ -345,10 +346,14 @@ bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking) {
     blocking = true;
   }
 
-  // Insert packet
-  ((AqlPacket*)(gpu_queue_->base_address))[index & queueMask] = *packet;
-  hsa_queue_store_write_index_release(gpu_queue_, index + 1);
-  hsa_signal_store_relaxed(gpu_queue_->doorbell_signal, index);
+  // Insert packet(s)
+  // NOTE: need multiple packets to dispatch the performance counter
+  //       packet blob of the legacy devices (gfx8)
+  for (uint i = 0; i < size; i++, index++, packet++) {
+    ((AqlPacket*)(gpu_queue_->base_address))[index & queueMask] = *packet;
+  }
+  hsa_queue_store_write_index_release(gpu_queue_, index);
+  hsa_signal_store_relaxed(gpu_queue_->doorbell_signal, index-1);
 
   // Wait on signal ?
   if (blocking) {
@@ -371,6 +376,33 @@ bool VirtualGPU::dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, bool bl
 
 bool VirtualGPU::dispatchAqlPacket(hsa_barrier_and_packet_t* packet, bool blocking) {
   return dispatchGenericAqlPacket(packet, blocking);
+}
+
+bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
+                                          const uint32_t gfxVersion, bool blocking,
+                                          const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi) {
+
+
+  // PM4 IB packet submission is different between GFX8 and GFX9:
+  //  In GFX8 the PM4 IB packet blob is writing directly to AQL queue
+  //  In GFX9 the PM4 IB is submitting by AQL Vendor Specific packet and
+  switch (gfxVersion) {
+    case PerfCounter::ROC_GFX8:
+      { // Create legacy devices PM4 data
+        hsa_ext_amd_aql_pm4_packet_t pm4Packet[SLOT_PM4_SIZE_AQLP];
+        extApi->hsa_ven_amd_aqlprofile_legacy_get_pm4(packet, static_cast<void*>(&pm4Packet[0]));
+        return dispatchGenericAqlPacket(&pm4Packet[0], blocking, SLOT_PM4_SIZE_AQLP);
+      }
+      break;
+    case PerfCounter::ROC_GFX9:
+      {
+        packet->header = HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE;
+        return dispatchGenericAqlPacket(packet, blocking);
+      }
+      break;
+  }
+
+  return false;
 }
 
 void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
@@ -1901,4 +1933,74 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
     }
   }
 }
+
+void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
+
+  const amd::PerfCounterCommand::PerfCounterList counters = vcmd.getCounters();
+
+  if (vcmd.getState() == amd::PerfCounterCommand::Begin) {
+    // Create a profile for the profiling AQL packet
+    PerfCounterProfile* profileRef =  new PerfCounterProfile(roc_device_);
+    if (profileRef == nullptr || !profileRef->Create()) {
+      LogError("Failed to create performance counter profile");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+      return;
+    }
+
+    // Make sure all performance counter objects to use the same profile
+    PerfCounter* counter = nullptr;
+    for (uint i = 0; i < vcmd.getNumCounters(); ++i) {
+
+      amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[i]);
+      counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
+
+      if (nullptr == counter) {
+        amd::PerfCounter::Properties prop = amdCounter->properties();
+        PerfCounter* rocCounter = new PerfCounter(
+            roc_device_, prop[CL_PERFCOUNTER_GPU_BLOCK_INDEX],
+            prop[CL_PERFCOUNTER_GPU_COUNTER_INDEX], prop[CL_PERFCOUNTER_GPU_EVENT_INDEX]);
+
+        if (nullptr == rocCounter || rocCounter->gfxVersion() == PerfCounter::ROC_UNSUPPORTED) {
+          LogError("Failed to create the performance counter");
+          vcmd.setStatus(CL_INVALID_OPERATION);
+          delete rocCounter;
+          return;
+        }
+
+        amdCounter->setDeviceCounter(rocCounter);
+        counter = rocCounter;
+      }
+
+      counter->setProfile(profileRef);
+    }
+
+    if (!profileRef->initialize()) {
+      LogError("Failed to initialize performance counter");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+    }
+
+    // create the AQL packet for start profiling
+    profileRef->createStartPacket();
+    dispatchCounterAqlPacket(profileRef->prePacket(), counter->gfxVersion(), false,
+                             profileRef->api());
+
+    profileRef->release();
+  } else if (vcmd.getState() == amd::PerfCounterCommand::End) {
+    // Since all performance counters should use the same profile, use the 1st
+    // one to get the profile object
+    amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[0]);
+    PerfCounter* counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
+    PerfCounterProfile* profileRef =  counter->profileRef();
+
+    // create the AQL packet for stop profiling
+    profileRef->createStopPacket();
+    dispatchCounterAqlPacket(profileRef->postPacket(), counter->gfxVersion(), true,
+                             profileRef->api());
+  } else {
+    LogError("Unsupported performance counter state");
+    vcmd.setStatus(CL_INVALID_OPERATION);
+  }
+
+}
+
 }  // End of roc namespace

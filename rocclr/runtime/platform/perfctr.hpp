@@ -42,6 +42,8 @@ class PerfCounter : public RuntimeObject {
   //! Get the device performance counter
   const device::PerfCounter* getDeviceCounter() const { return deviceCounter_; }
 
+  device::PerfCounter* getDeviceCounter() { return deviceCounter_; }
+
   //! Set the device performance counter
   void setDeviceCounter(device::PerfCounter* counter) { deviceCounter_ = counter; }
 
