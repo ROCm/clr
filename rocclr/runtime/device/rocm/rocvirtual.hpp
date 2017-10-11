@@ -10,6 +10,7 @@
 #include "hsa_ext_image.h"
 #include "hsa_ext_amd.h"
 #include "rocprintf.hpp"
+#include "hsa_ven_amd_aqlprofile.h"
 
 namespace roc {
 class Device;
@@ -171,7 +172,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void submitAcquireExtObjects(amd::AcquireExtObjectsCommand& cmd);
   void submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& cmd);
-  void submitPerfCounter(amd::PerfCounterCommand& cmd){};
+  void submitPerfCounter(amd::PerfCounterCommand& cmd);
 
   void flush(amd::Command* list = nullptr, bool wait = false);
   void submitFillMemory(amd::FillMemoryCommand& cmd);
@@ -241,8 +242,9 @@ class VirtualGPU : public device::VirtualDevice {
  private:
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, bool blocking = true);
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, bool blocking = true);
-  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, bool blocking);
+  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size_t size = 1);
   void dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet);
+  bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion, bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet, amd::NDRangeContainer& sizes);
 
   bool initPool(size_t kernarg_pool_size, uint signal_pool_count);
@@ -287,5 +289,12 @@ class VirtualGPU : public device::VirtualDevice {
   std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
   const uint index_;                          //!< Virtual gpu unique index
   friend class Timestamp;
+
+  //  PM4 packet for gfx8 performance counter
+  enum {
+    SLOT_PM4_SIZE_DW = HSA_VEN_AMD_AQLPROFILE_LEGACY_PM4_PACKET_SIZE/ sizeof(uint32_t),
+    SLOT_PM4_SIZE_AQLP = HSA_VEN_AMD_AQLPROFILE_LEGACY_PM4_PACKET_SIZE/ 64
+  };
+
 };
 }
