@@ -17,12 +17,18 @@
 #include "rocdevice.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUMetadata.h"
 #include "driver/AmdCompiler.h"
 
-typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
-typedef llvm::AMDGPU::CodeObject::Kernel::Metadata KernelMD;
-typedef llvm::AMDGPU::CodeObject::Kernel::Arg::Metadata KernelArgMD;
+//typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
+typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
+
+//typedef llvm::AMDGPU::CodeObject::Kernel::Metadata KernelMD;
+typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
+
+//typedef llvm::AMDGPU::CodeObject::Kernel::Arg::Metadata KernelArgMD;
+typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
+
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 //! \namespace roc HSA Device Implementation
