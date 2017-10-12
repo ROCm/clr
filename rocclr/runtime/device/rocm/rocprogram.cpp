@@ -841,7 +841,7 @@ bool HSAILProgram::setKernels_LC(amd::option::Options* options, void* binary, si
                    !memcmp(name, AMDGPU::ElfNote::NoteName, note->n_namesz)) {
           std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
           metadata_ = new CodeObjectMD();
-          if (CodeObjectMD::fromYamlString(metadataStr, *metadata_)) {
+          if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
             buildLog_ += "Error: failed to process metadata\n";
             return false;
           }

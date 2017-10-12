@@ -13,10 +13,10 @@ namespace roc {
 
 #if defined(WITH_LIGHTNING_COMPILER)
 
-using llvm::AMDGPU::CodeObject::AccessQualifier;
-using llvm::AMDGPU::CodeObject::AddressSpaceQualifier;
-using llvm::AMDGPU::CodeObject::ValueKind;
-using llvm::AMDGPU::CodeObject::ValueType;
+using llvm::AMDGPU::HSAMD::AccessQualifier;
+using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
+using llvm::AMDGPU::HSAMD::ValueKind;
+using llvm::AMDGPU::HSAMD::ValueType;
 
 static inline ROC_ARG_TYPE GetKernelArgType(const KernelArgMD& lcArg) {
   switch (lcArg.mValueKind) {
