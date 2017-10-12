@@ -10,10 +10,9 @@
 #include "utils/options.hpp"
 #include "rockernel.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "AMDGPUPTNote.h"
+#include <gelf.h>
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
-#include <gelf.h>
 #else  // !defined(WITH_LIGHTNING_COMPILER)
 #include "roccompilerlib.hpp"
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
@@ -836,9 +835,9 @@ bool HSAILProgram::setKernels_LC(amd::option::Options* options, void* binary, si
               "Error: object code with old metadata is not "
               "supported\n";
           return false;
-        } else if (note->n_type == AMDGPU::ElfNote::NT_AMDGPU_HSA_CODE_OBJECT_METADATA &&
-                   note->n_namesz == sizeof AMDGPU::ElfNote::NoteName &&
-                   !memcmp(name, AMDGPU::ElfNote::NoteName, note->n_namesz)) {
+        } else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA */ &&
+                   note->n_namesz == sizeof "AMD" &&
+                   !memcmp(name, "AMD", note->n_namesz)) {
           std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
           metadata_ = new CodeObjectMD();
           if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
