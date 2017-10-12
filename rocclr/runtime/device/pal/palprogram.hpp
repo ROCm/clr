@@ -8,9 +8,9 @@
 #include "amd_hsa_loader.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUMetadata.h"
 
-typedef llvm::AMDGPU::CodeObject::Metadata CodeObjectMD;
+typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
