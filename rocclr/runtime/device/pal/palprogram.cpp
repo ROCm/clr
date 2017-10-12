@@ -20,7 +20,7 @@
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
 #if defined(WITH_LIGHTNING_COMPILER)
-#include "llvm/Support/AMDGPUCodeObjectMetadata.h"
+#include "llvm/Support/AMDGPUMetadata.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
@@ -1616,7 +1616,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
                    && note->n_namesz == sizeof "AMD" && !memcmp(name, "AMD", note->n_namesz)) {
           std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
           metadata_ = new CodeObjectMD();
-          if (CodeObjectMD::fromYamlString(metadataStr, *metadata_)) {
+          if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
             buildLog_ += "Error: failed to process metadata\n";
             return false;
           }

@@ -1188,10 +1188,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
 
 #if defined(WITH_LIGHTNING_COMPILER)
 
-using llvm::AMDGPU::CodeObject::AccessQualifier;
-using llvm::AMDGPU::CodeObject::AddressSpaceQualifier;
-using llvm::AMDGPU::CodeObject::ValueKind;
-using llvm::AMDGPU::CodeObject::ValueType;
+using llvm::AMDGPU::HSAMD::AccessQualifier;
+using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
+using llvm::AMDGPU::HSAMD::ValueKind;
+using llvm::AMDGPU::HSAMD::ValueType;
 
 const LightningProgram& LightningKernel::prog() const {
   return reinterpret_cast<const LightningProgram&>(prog_);
