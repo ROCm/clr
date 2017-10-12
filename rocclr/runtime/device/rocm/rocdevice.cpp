@@ -1108,6 +1108,7 @@ bool Device::populateOCLDeviceConstants() {
         hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.globalMemChannels_)) {
       return false;
     }
+    info_.globalMemChannels_ /= 32;
     info_.globalMemChannelBanks_ = 4;
     info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
