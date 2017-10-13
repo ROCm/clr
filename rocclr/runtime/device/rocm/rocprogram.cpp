@@ -197,6 +197,7 @@ aclType HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& compl
   // Checking llvmir in .llvmir section
   bool containsHsailText = false;
   bool containsBrig = false;
+  bool containsLoaderMap = false;
   bool containsLlvmirText = (type() == TYPE_COMPILED);
   bool containsShaderIsa = (type() == TYPE_EXECUTABLE);
   bool containsOpts = !(compileOptions_.empty() && linkOptions_.empty());
@@ -226,22 +227,23 @@ aclType HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& compl
   if (errorCode != ACL_SUCCESS) {
     containsBrig = false;
   }
+  // Checking Loader Map symbol from CG section
+  containsLoaderMap = true;
+  errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LOADER_MAP,
+                                         NULL, &containsLoaderMap, &boolSize);
+  if (errorCode != ACL_SUCCESS) {
+    containsLoaderMap = false;
+  }
   if (containsBrig) {
     completeStages.push_back(from);
     from = ACL_TYPE_HSAIL_BINARY;
-    // Here we should check that CG stage was done.
-    // Right now there are 2 criterions to check it (besides BRIG itself):
-    // 1. matadata symbols symOpenclKernel for every kernel.
-    // 2. HSAIL text in aclCODEGEN section.
-    // Unfortunately there is no appropriate way in Compiler Lib to check 1.
-    // because kernel names are unknown here, therefore only 2.
-    if (containsHsailText) {
-      completeStages.push_back(from);
-      from = ACL_TYPE_CG;
-    }
   } else if (containsHsailText) {
     completeStages.push_back(from);
     from = ACL_TYPE_HSAIL_TEXT;
+  }
+  if (containsLoaderMap) {
+    completeStages.push_back(from);
+    from = ACL_TYPE_CG;
   }
   errorCode = g_complibApi._aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, nullptr,
                                          &containsShaderIsa, &boolSize);
@@ -271,25 +273,21 @@ aclType HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& compl
       needOptionsCheck = false;
       break;
     case ACL_TYPE_HSAIL_BINARY:
-    case ACL_TYPE_CG:
       // do not check options, if LLVMIR is absent or might be absent or options are absent
-      if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
+      if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
         needOptionsCheck = false;
       }
       break;
+    case ACL_TYPE_CG:
     case ACL_TYPE_ISA:
       // do not check options, if LLVMIR is absent or might be absent or options are absent
-      if (curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
+      if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
         needOptionsCheck = false;
       }
 #if !defined(WITH_LIGHTNING_COMPILER)
-      if (containsBrig && containsHsailText && curOptions.oVariables->BinHSAIL) {
+      // do not check options, if BRIG is absent or might be absent or LoaderMap is absent
+      if (!curOptions.oVariables->BinCG || !containsBrig || !containsLoaderMap) {
         needOptionsCheck = false;
-        // recompile from prev. stage, if BRIG || HSAIL are absent
-      } else {
-        from = completeStages.back();
-        completeStages.pop_back();
-        needOptionsCheck = true;
       }
 #endif
       break;
