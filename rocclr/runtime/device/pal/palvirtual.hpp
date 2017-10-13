@@ -205,13 +205,6 @@ class VirtualGPU : public device::VirtualDevice {
     State() : value_(0) {}
   };
 
-  //! CAL descriptor for the GPU virtual device
-  struct CalVirtualDesc : public amd::EmbeddedObject {
-    GpuEvent events_[AllEngines];  //!< Last known GPU events
-    uint iterations_;              //!< Number of iterations for the execution
-    TimeStamp* lastTS_;            //!< Last timestamp executed on Virtual GPU
-  };
-
   typedef std::vector<ConstBuffer*> constbufs_t;
 
   class MemoryDependency : public amd::EmbeddedObject {
@@ -327,9 +320,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
 
-  //! Returns CAL descriptor of the virtual device
-  const CalVirtualDesc* cal() const { return &cal_; }
-
   //! Set the last known GPU event
   void setGpuEvent(GpuEvent gpuEvent,  //!< GPU event for tracking
                    bool flush = false  //!< TRUE if flush is required
@@ -401,9 +391,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns the virtual gpu unique index
   uint index() const { return index_; }
 
-  //! Get the PrintfDbg object
-  PrintfDbg& printfDbg() const { return *printfDbg_; }
-
   //! Get the PrintfDbgHSA object
   PrintfDbgHSA& printfDbgHSA() const { return *printfDbgHSA_; }
 
@@ -425,9 +412,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns the HW ring used on this virtual device
   uint hwRing() const { return hwRing_; }
 
-  //! Returns current timestamp object for profiling
-  TimeStamp* currTs() const { return cal_.lastTS_; }
-
   //! Returns virtual queue object for device enqueuing
   Memory* vQueue() const { return virtualQueue_; }
 
@@ -439,10 +423,6 @@ class VirtualGPU : public device::VirtualDevice {
                           );
 
   EngineType engineID_;  //!< Engine ID for this VirtualGPU
-  State state_;          //!< virtual GPU current state
-  CalVirtualDesc cal_;   //!< CAL virtual device descriptor
-
-  void flushCuCaches(HwDbgGpuCacheMask cache_mask);  //!< flush/invalidate SQ cache
 
   //! Returns PAL command buffer interface
   Pal::ICmdBuffer* iCmd() const {
@@ -530,14 +510,6 @@ class VirtualGPU : public device::VirtualDevice {
     MemoryRange() : start_(0), end_(0) {}
   };
 
-  //! Finds total amount of necessary iterations
-  inline void findIterations(const amd::NDRangeContainer& sizes,  //!< Original workload sizes
-                             const amd::NDRange& local,           //!< Local workgroup size
-                             amd::NDRange& groups,                //!< Calculated workgroup sizes
-                             amd::NDRange& remainder,             //!< Calculated remainder sizes
-                             size_t& extra  //!< Amount of extra executions for remainder
-                             );
-
   //! Allocates constant buffers
   bool allocConstantBuffers();
 
@@ -592,7 +564,6 @@ class VirtualGPU : public device::VirtualDevice {
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects
   uint index_;              //!< The virtual device unique index
 
-  PrintfDbg* printfDbg_;        //!< GPU printf implemenation
   PrintfDbgHSA* printfDbgHSA_;  //!< HSAIL printf implemenation
 
   TimeStampCache* tsCache_;            //!< TimeStamp cache
@@ -609,8 +580,12 @@ class VirtualGPU : public device::VirtualDevice {
 
   uint hwRing_;  //!< HW ring used on this virtual device
 
-  uint64_t readjustTimeGPU_;  //!< Readjust time between GPU and CPU timestamps
-  TimeStamp* currTs_;         //!< current timestamp for command
+  State state_;          //!< virtual GPU current state
+  GpuEvent events_[AllEngines];  //!< Last known GPU events
+
+  uint64_t readjustTimeGPU_;   //!< Readjust time between GPU and CPU timestamps
+  TimeStamp* lastTS_;          //!< Last timestamp executed on Virtual GPU
+  TimeStamp* profileTs_;       //!< current profiling timestamp for command
 
   AmdVQueueHeader* vqHeader_;  //!< Sysmem copy for virtual queue header
   Memory* virtualQueue_;       //!< Virtual device queue

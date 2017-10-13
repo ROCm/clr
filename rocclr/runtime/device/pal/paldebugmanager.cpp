@@ -143,7 +143,7 @@ void GpuDebugManager::unregisterDebugger() {
 
 void GpuDebugManager::flushCache(uint32_t mask) {
   HwDbgGpuCacheMask cacheMask(mask);
-  device()->xferQueue()->flushCuCaches(cacheMask);
+  //device()->xferQueue()->flushCuCaches(cacheMask);
 }
 
 
