@@ -707,13 +707,13 @@ VirtualGPU::VirtualGPU(Device& device)
       engineID_(MainEngine),
       gpuDevice_(static_cast<Device&>(device)),
       execution_("Virtual GPU execution lock", true),
-      printfDbg_(nullptr),
       printfDbgHSA_(nullptr),
       tsCache_(nullptr),
       dmaFlushMgmt_(device),
       hwRing_(0),
       readjustTimeGPU_(0),
-      currTs_(nullptr),
+      lastTS_(nullptr),
+      profileTs_(nullptr),
       vqHeader_(nullptr),
       virtualQueue_(nullptr),
       schedParams_(nullptr),
@@ -722,10 +722,6 @@ VirtualGPU::VirtualGPU(Device& device)
       maskGroups_(1),
       hsaQueueMem_(nullptr),
       cmdAllocator_(nullptr) {
-  memset(&cal_, 0, sizeof(CalVirtualDesc));
-  for (uint i = 0; i < AllEngines; ++i) {
-    cal_.events_[i].invalidate();
-  }
 
   // Note: Virtual GPU device creation must be a thread safe operation
   index_ = gpuDevice_.numOfVgpus_++;
@@ -829,14 +825,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
-  // Create Printf class
-  printfDbg_ = new PrintfDbg(gpuDevice_);
-  if ((nullptr == printfDbg_) || !printfDbg_->create()) {
-    delete printfDbg_;
-    LogError("Could not allocate debug buffer for printf()!");
-    return false;
-  }
-
   // Create HSAILPrintf class
   printfDbgHSA_ = new PrintfDbgHSA(gpuDevice_);
   if (nullptr == printfDbgHSA_) {
@@ -929,9 +917,6 @@ VirtualGPU::~VirtualGPU() {
     delete cb;
     freeCbQueue_.pop();
   }
-
-  // Destroy printf object
-  delete printfDbg_;
 
   // Destroy printfHSA object
   delete printfDbgHSA_;
@@ -1833,53 +1818,6 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
-void VirtualGPU::findIterations(const amd::NDRangeContainer& sizes, const amd::NDRange& local,
-                                amd::NDRange& groups, amd::NDRange& remainder, size_t& extra) {
-  size_t dimensions = sizes.dimensions();
-
-  if (cal()->iterations_ > 1) {
-    size_t iterations = cal()->iterations_;
-    cal_.iterations_ = 1;
-
-    // Find the total amount of all groups
-    groups = sizes.global() / local;
-    if (dev().settings().partialDispatch_) {
-      for (uint j = 0; j < dimensions; ++j) {
-        if ((sizes.global()[j] % local[j]) != 0) {
-          groups[j]++;
-        }
-      }
-    }
-
-    // Calculate the real number of required iterations and
-    // the workgroup size of each iteration
-    for (int j = (dimensions - 1); j >= 0; --j) {
-      // Find possible size of each iteration
-      size_t tmp = (groups[j] / iterations);
-      // Make sure the group size is more than 1
-      if (tmp > 0) {
-        remainder = groups;
-        remainder[j] = (groups[j] % tmp);
-
-        extra = ((groups[j] / tmp) +
-                 // Check for the remainder
-                 ((remainder[j] != 0) ? 1 : 0));
-        // Recalculate the number of iterations
-        cal_.iterations_ *= extra;
-        if (remainder[j] == 0) {
-          extra = 0;
-        }
-        groups[j] = tmp;
-        break;
-      } else {
-        iterations = ((iterations / groups[j]) + (((iterations % groups[j]) != 0) ? 1 : 0));
-        cal_.iterations_ *= groups[j];
-        groups[j] = 1;
-      }
-    }
-  }
-}
-
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -2651,7 +2589,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
   bool gpuCommand = false;
 
   for (uint i = 0; i < AllEngines; ++i) {
-    if (cal_.events_[i].isValid()) {
+    if (events_[i].isValid()) {
       gpuCommand = true;
     }
   }
@@ -2668,10 +2606,10 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
     }
 
     if (nullptr == cb) {
-      cb = new CommandBatch(list, cal()->events_, cal()->lastTS_);
+      cb = new CommandBatch(list, events_, lastTS_);
     } else {
       freeCbQueue_.pop();
-      cb->init(list, cal()->events_, cal()->lastTS_);
+      cb->init(list, events_, lastTS_);
     }
   }
 
@@ -2684,12 +2622,12 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
       // if runtime didn't submit any commands
       //! @note: it's safe to invalidate events, since
       //! we already saved them with the batch creation step above
-      cal_.events_[i].invalidate();
+      events_[i].invalidate();
     }
   }
 
   // Mark last TS as nullptr, so runtime won't process empty batches with the old TS
-  cal_.lastTS_ = nullptr;
+  lastTS_ = nullptr;
   if (nullptr != cb) {
     cbQueue_.push(cb);
   }
@@ -2721,7 +2659,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
 void VirtualGPU::enableSyncedBlit() const { return blitMgr_->enableSynchronization(); }
 
 void VirtualGPU::setGpuEvent(GpuEvent gpuEvent, bool flush) {
-  cal_.events_[engineID_] = gpuEvent;
+  events_[engineID_] = gpuEvent;
 
   // Flush current DMA buffer if requested
   if (flush) {
@@ -2738,7 +2676,7 @@ void VirtualGPU::flushDMA(uint engineID) {
     //! but L1 still has to be invalidated.
   }
 
-  isDone(&cal_.events_[engineID]);
+  isDone(&events_[engineID]);
 }
 
 bool VirtualGPU::waitAllEngines(CommandBatch* cb) {
@@ -2747,7 +2685,7 @@ bool VirtualGPU::waitAllEngines(CommandBatch* cb) {
 
   // If command batch is nullptr then wait for the current
   if (nullptr == cb) {
-    events = cal_.events_;
+    events = events_;
   } else {
     events = cb->events_;
   }
@@ -2844,7 +2782,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
     }
     // Save the TimeStamp object in the current OCL event
     command.setData(ts);
-    currTs_ = ts;
+    profileTs_ = ts;
     state_.profileEnabled_ = true;
   }
 }
@@ -2855,7 +2793,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
   if (ts != nullptr) {
     // Check if the command actually did any GPU submission
     if (ts->isValid()) {
-      cal_.lastTS_ = ts;
+      lastTS_ = ts;
     } else {
       // Destroy the TimeStamp object
       tsCache_->freeTimeStamp(ts);
@@ -2949,13 +2887,13 @@ void VirtualGPU::addDoppRef(const Memory* memory, bool lastDoppCmd, bool pfpaDop
 }
 
 void VirtualGPU::profileEvent(EngineType engine, bool type) const {
-  if (nullptr == currTs_) {
+  if (nullptr == profileTs_) {
     return;
   }
   if (type) {
-    currTs_->begin((engine == SdmaEngine) ? true : false);
+    profileTs_->begin((engine == SdmaEngine) ? true : false);
   } else {
-    currTs_->end((engine == SdmaEngine) ? true : false);
+    profileTs_->end((engine == SdmaEngine) ? true : false);
   }
 }
 
@@ -3103,20 +3041,6 @@ void VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable) {
   const static bool Wait = true;
   vqHeader_->kernel_table = kernelTable;
   virtualQueue_->writeRawData(hostQ, 0, sizeof(AmdVQueueHeader), vqHeader_, Wait);
-}
-
-void VirtualGPU::flushCuCaches(HwDbgGpuCacheMask cache_mask) {
-  Unimplemented();
-  /*
-      //! @todo:  fix issue of no event available for the flush/invalidate cache command
-      InvalidateSqCaches(cache_mask.sqICache_,
-                         cache_mask.sqKCache_,
-                         cache_mask.tcL1_,
-                         cache_mask.tcL2_);
-  */
-  flushDMA(engineID_);
-
-  return;
 }
 
 void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispatch_packet_t* aqlPkt,
