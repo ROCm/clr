@@ -707,8 +707,8 @@ bool Kernel::init_LC() {
 
   /// TODO: Are there any other fields that are getting queried from akc?
   /// If so, code properties metadata should be used instead.
-  workGroupInfo_.usedSGPRs_ = kernelMD->mCodeProps.mWavefrontNumSGPRs;
-  workGroupInfo_.usedVGPRs_ = kernelMD->mCodeProps.mWorkitemNumVGPRs;
+  workGroupInfo_.usedSGPRs_ = kernelMD->mCodeProps.mNumSGPRs;
+  workGroupInfo_.usedVGPRs_ = kernelMD->mCodeProps.mNumVGPRs;
 
   workGroupInfo_.usedStackSize_ = 0;
 
