@@ -168,7 +168,7 @@ global:
     clGetHostTimer;
     clGetKernelSubGroupInfo;
     clSetDefaultDeviceCommandQueue;
-} OPENCL_2.1;
+} OPENCL_2.0;
 #endif
 
 ACL_0.8 {
