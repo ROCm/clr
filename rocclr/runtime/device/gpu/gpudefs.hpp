@@ -204,7 +204,7 @@ static const char* Gfx1000 = "AMD:AMDGPU:10:0:0";
 static const char* Gfx1001 = "AMD:AMDGPU:10:0:1";
 
 // Supported OpenCL versions
-enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20 };
+enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
 
 struct CalFormat {
   gslChannelOrder channelOrder_;  //!< Texel/pixel GSL channel order

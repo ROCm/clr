@@ -265,6 +265,9 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
         libSelector_ = amd::GPU_Library_SI;
       }
 
+      // Cap at OpenCL20 for now
+      if (oclVersion_ > OpenCL20) oclVersion_ = OpenCL20;
+
       // This needs to be cleaned once 64bit addressing is stable
       if (oclVersion_ < OpenCL20) {
         use64BitPtr_ = flagIsDefault(GPU_FORCE_64BIT_PTR)
