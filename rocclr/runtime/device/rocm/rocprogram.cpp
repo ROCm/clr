@@ -1092,20 +1092,20 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   }
 
 #if !defined(WITH_LIGHTNING_COMPILER)
-  hsa_agent_t hsaDevice = dev().getBackendDevice();
-
-  std::string fin_options(options->origOptionStr);
-  // Append an option so that we can selectively enable a SCOption on CZ
-  // whenever IOMMUv2 is enabled.
-  if (dev().isFineGrainedSystem(true)) {
-    fin_options.append(" -sc-xnack-iommu");
-  }
-  errorCode = aclCompile(dev().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
-                         ACL_TYPE_ISA, logFunction);
-  buildLog_ += aclGetCompilerLog(dev().compiler());
-  if (errorCode != ACL_SUCCESS) {
-    buildLog_ += "Error: BRIG finalization to ISA failed.\n";
-    return false;
+  if (finalize) {
+    std::string fin_options(options->origOptionStr);
+    // Append an option so that we can selectively enable a SCOption on CZ
+    // whenever IOMMUv2 is enabled.
+    if (dev().isFineGrainedSystem(true)) {
+      fin_options.append(" -sc-xnack-iommu");
+    }
+    errorCode = aclCompile(dev().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
+                           ACL_TYPE_ISA, logFunction);
+    buildLog_ += aclGetCompilerLog(dev().compiler());
+    if (errorCode != ACL_SUCCESS) {
+      buildLog_ += "Error: BRIG finalization to ISA failed.\n";
+      return false;
+    }
   }
   size_t secSize;
   void* data =
@@ -1135,6 +1135,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     return false;
   }
 
+  hsa_agent_t hsaDevice = dev().getBackendDevice();
   status = hsa_executable_load_agent_code_object(hsaExecutable_, hsaDevice, codeObjectReader,
                                                  nullptr, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
