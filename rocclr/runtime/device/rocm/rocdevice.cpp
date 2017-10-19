@@ -37,6 +37,7 @@
 #endif  // WITHOUT_HSA_BACKEND
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
+#define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
 namespace device {
@@ -111,7 +112,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
   info_.extensions_ = getExtensionString();
   info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
-  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_VERSION_STR, "1.2") " ";
+  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
   strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
   info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
   return true;
@@ -952,7 +953,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.addressBits_ = LP64_SWITCH(32, 64);
   info_.maxSamplers_ = 16;
   info_.bufferFromImageSupport_ = CL_FALSE;
-  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_VERSION_STR, "1.2") " ";
+  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
 
   uint16_t major, minor;
   if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MAJOR, &major) !=

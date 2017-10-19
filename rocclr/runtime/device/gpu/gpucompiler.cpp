@@ -138,6 +138,7 @@ bool NullProgram::compileImpl(const std::string& src,
         opts << " -cl-std=CL1.1";
         break;
       case OpenCL20:
+      case OpenCL21:
       default:
       case OpenCL12:
         opts << " -cl-std=CL1.2";

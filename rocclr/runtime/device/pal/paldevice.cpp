@@ -439,7 +439,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
              );
 
   info_.profile_ = "FULL_PROFILE";
-  if (settings().oclVersion_ == OpenCL20) {
+  if (settings().oclVersion_ >= OpenCL20) {
     info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
     info_.oclcVersion_ = "OpenCL C 2.0 ";
     info_.spirVersions_ = "1.2";
@@ -2151,7 +2151,7 @@ bool Device::createBlitProgram() {
   const char* ocl20 = nullptr;
 #if !defined(WITH_LIGHTNING_COMPILER)
   std::string sch = SchedulerSourceCode;
-  if (settings().oclVersion_ == OpenCL20) {
+  if (settings().oclVersion_ >= OpenCL20) {
     size_t loc = sch.find("%s");
     sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
     scheduler = sch.c_str();

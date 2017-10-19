@@ -924,7 +924,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     }
   }
 
-  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ == OpenCL20)) && !cal()->buffer_) {
+  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ >= OpenCL20)) && !cal()->buffer_) {
     hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
     if (0 == hwSrd_) {
       return false;
@@ -1032,7 +1032,7 @@ void Resource::free() {
   }
 
   // Free SRD for images
-  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ == OpenCL20)) && !cal()->buffer_) {
+  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ >= OpenCL20)) && !cal()->buffer_) {
     dev().srds().freeSrdSlot(hwSrd_);
   }
 }
