@@ -216,7 +216,7 @@ bool NullDevice::create(CALtarget target) {
     compiler_ = aclCompilerInit(&opts, NULL);
   }
 
-  if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
+  if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
     // Runtime doesn't know what local size could be on the real board
     info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
 
@@ -487,7 +487,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING);
 
   info_.profile_ = "FULL_PROFILE";
-  if (settings().oclVersion_ == OpenCL20) {
+  if (settings().oclVersion_ >= OpenCL20) {
     info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
     info_.oclcVersion_ = "OpenCL C 2.0 ";
     info_.spirVersions_ = "1.2";
@@ -958,7 +958,7 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
     compiler_ = aclCompilerInit(&opts, NULL);
   }
 
-  if (settings().hsail_ || (settings().oclVersion_ == OpenCL20)) {
+  if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
     if (NULL == hsaCompiler_) {
       const char* library = getenv("HSA_COMPILER_LIBRARY");
       aclCompilerOptions opts = {
@@ -1068,7 +1068,7 @@ bool Device::initializeHeapResources() {
     if (settings().ciPlus_) {
       const char* CL20extraBlits = NULL;
       const char* ocl20 = NULL;
-      if (settings().oclVersion_ == OpenCL20) {
+      if (settings().oclVersion_ >= OpenCL20) {
         CL20extraBlits = SchedulerSourceCode;
         ocl20 = "-cl-std=CL2.0";
       }
