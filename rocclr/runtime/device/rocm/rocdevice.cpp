@@ -113,6 +113,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
   info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
   info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
+  info_.spirVersions_ = "";
   strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
   info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
   return true;
@@ -954,6 +955,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxSamplers_ = 16;
   info_.bufferFromImageSupport_ = CL_FALSE;
   info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
+  info_.spirVersions_ = "";
 
   uint16_t major, minor;
   if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MAJOR, &major) !=
