@@ -954,7 +954,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.addressBits_ = LP64_SWITCH(32, 64);
   info_.maxSamplers_ = 16;
   info_.bufferFromImageSupport_ = CL_FALSE;
-  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
+  info_.oclcVersion_ = "OpenCL C " OPENCL_C_VERSION_STR " ";
   info_.spirVersions_ = "";
 
   uint16_t major, minor;
