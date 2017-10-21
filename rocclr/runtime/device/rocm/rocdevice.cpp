@@ -112,7 +112,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
   info_.extensions_ = getExtensionString();
   info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
-  info_.oclcVersion_ = "OpenCL C " IF(IS_LIGHTNING, OPENCL_C_VERSION_STR, "1.2") " ";
+  info_.oclcVersion_ = "OpenCL C " OPENCL_C_VERSION_STR " ";
   info_.spirVersions_ = "";
   strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
   info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
