@@ -8,6 +8,7 @@
 #include "platform/ndrange.hpp"
 #include "platform/command.hpp"
 #include "platform/program.hpp"
+#include "os/os.hpp"
 
 #include <icd/icd_dispatch.h>
 
@@ -967,10 +968,14 @@ RUNTIME_ENTRY(cl_int, clGetDeviceAndHostTimer,
     return CL_INVALID_DEVICE;
   }
 
-  // TODO: Implement get device and host timer logic
-  LogWarning("Device support for clGetDeviceAndHostTimer() has not been implemented.");
+  if (!device_timestamp || !host_timestamp) {
+    return CL_INVALID_VALUE;
+  }
 
-  return CL_INVALID_VALUE;
+  // The device timestamp and host timestamp use the same timebase.
+  *device_timestamp = *host_timestamp = amd::Os::timeNanos();
+
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -1011,10 +1016,12 @@ RUNTIME_ENTRY(cl_int, clGetHostTimer,
     return CL_INVALID_DEVICE;
   }
 
-  // TODO: Implement get host timer logic
-  LogWarning("Device support for clGetHostTimer() has not been implemented.");
+  if (!host_timestamp) {
+    return CL_INVALID_VALUE;
+  }
 
-  return CL_INVALID_VALUE;
+  *host_timestamp = amd::Os::timeNanos();
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
