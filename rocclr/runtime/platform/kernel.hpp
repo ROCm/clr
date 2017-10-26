@@ -93,11 +93,27 @@ class KernelParameters : protected HeapObject {
         execNewVcop_(0),
         execPfpaVcop_(0) {
     values_ = (address) this + alignUp(sizeof(KernelParameters), 16);
-    defined_ = (bool*)(values_ + signature.paramsSize());
-    svmBound_ = (bool*)((address)defined_ + signature.numParameters() * sizeof(bool));
+    defined_ = (bool*)(values_ + signature_.paramsSize());
+    svmBound_ = (bool*)((address)defined_ + signature_.numParameters() * sizeof(bool));
 
-    address limit = (address)&svmBound_[signature.numParameters()];
+    address limit = (address)&svmBound_[signature_.numParameters()];
     ::memset(values_, '\0', limit - values_);
+  }
+
+  explicit KernelParameters(const KernelParameters& rhs)
+      : signature_(rhs.signature_),
+        execInfoOffset_(rhs.execInfoOffset_),
+        execSvmPtr_(rhs.execSvmPtr_),
+        svmSystemPointersSupport_(rhs.svmSystemPointersSupport_),
+        validated_(rhs.validated_),
+        execNewVcop_(rhs.execNewVcop_),
+        execPfpaVcop_(rhs.execPfpaVcop_) {
+    values_ = (address) this + alignUp(sizeof(KernelParameters), 16);
+    defined_ = (bool*)(values_ + signature_.paramsSize());
+    svmBound_ = (bool*)((address)defined_ + signature_.numParameters() * sizeof(bool));
+
+    address limit = (address)&svmBound_[signature_.numParameters()];
+    ::memcpy(values_, rhs.values_, limit - values_);
   }
 
   //! Reset the parameter at the given \a index (becomes undefined).
@@ -201,6 +217,9 @@ class Kernel : public RuntimeObject {
    *  \a kernelName in the given \a program.
    */
   Kernel(Program& program, const Symbol& symbol, const std::string& name);
+
+  //! Construct a new kernel object from an existing one. Used by CloneKernel.
+  explicit Kernel(const Kernel& rhs);
 
   //! Return the program containing this kernel.
   Program& program() const { return program_(); }

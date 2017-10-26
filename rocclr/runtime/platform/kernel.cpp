@@ -13,11 +13,15 @@ namespace amd {
 
 Kernel::Kernel(Program& program, const Symbol& symbol, const std::string& name)
     : program_(program), symbol_(symbol), name_(name) {
-  const KernelSignature& s = signature();
-  size_t stackSize = s.paramsSize();
-  parameters_ = new (s) KernelParameters(s);
+  parameters_ = new (signature()) KernelParameters(signature());
   fixme_guarantee(parameters_ != NULL && "out of memory");
   name_ += '\0';
+}
+
+Kernel::Kernel(const Kernel& rhs)
+    : program_(rhs.program_()), symbol_(rhs.symbol_), name_(rhs.name_) {
+  parameters_ = new(signature()) KernelParameters(*rhs.parameters_);
+  fixme_guarantee(parameters_ != NULL && "out of memory");
 }
 
 Kernel::~Kernel() {
