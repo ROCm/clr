@@ -149,7 +149,8 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 
   assert(mapTarget != nullptr);
 
-  if (!isHostMemDirectAccess()) {
+  const cl_mem_flags memFlags = owner()->getMemFlags();
+  if (!isHostMemDirectAccess() && !(memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
     if (!vDev.blitMgr().readBuffer(*this, mapTarget, amd::Coord3D(0), amd::Coord3D(size()), true)) {
       decIndMapCount();
       return nullptr;
@@ -160,7 +161,8 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 }
 
 void Memory::cpuUnmap(device::VirtualDevice& vDev) {
-  if (!isHostMemDirectAccess()) {
+  const cl_mem_flags memFlags = owner()->getMemFlags();
+  if (!isHostMemDirectAccess() && !(memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
     if (!vDev.blitMgr().writeBuffer(mapMemory_->getHostMem(), *this, amd::Coord3D(0),
                                     amd::Coord3D(size()), true)) {
       LogError("[OCL] Fail sync the device memory on cpuUnmap");
@@ -647,7 +649,6 @@ bool Buffer::create() {
     if (deviceMemory_ == nullptr) {
       return false;
     }
-    flags_ |= HostMemoryDirectAccess | MemoryCpuUncached;
     owner()->setHostMem(host_ptr);
     return true;
   }
@@ -1030,8 +1031,8 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   size_t elementSize = image->getImageFormat().getElementSize();
 
   size_t offset = origin[0] * elementSize;
-
-  if (pHostMem == nullptr) {
+  const cl_mem_flags memFlags = owner()->getMemFlags();
+  if ((pHostMem == nullptr) || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
     if (indirectMapCount_ == 1) {
       if (!allocateMapMemory(owner()->getSize())) {
         decIndMapCount();
