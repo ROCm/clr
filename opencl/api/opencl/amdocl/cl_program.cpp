@@ -1097,6 +1097,93 @@ RUNTIME_ENTRY(cl_int, clGetProgramBuildInfo,
 }
 RUNTIME_EXIT
 
+/*! \brief Sets the values of a SPIR-V specialization constants.
+ *
+ *  \param program must be a valid OpenCL program created from a SPIR-V module.
+ *
+ *  \param spec id_ identifies the SPIR-V specialization constant whose value will be set.
+ *
+ *  \param spec_size specifies the size in bytes of the data pointed to by spec_value. This should
+ *  be 1 for boolean constants. For all other constant types this should match the size of the
+ *  specialization constant in the SPIR-V module.
+ *
+ *  \param spec_value is a pointer to the memory location that contains the value of the
+ *  specialization constant. The data pointed to by \a spec_value are copied and can be safely
+ *  reused by the application after \a clSetProgramSpecializationConstant returns. This
+ *  specialization value will be used by subsequent calls to \a clBuildProgram until another call to
+ *  \a clSetProgramSpecializationConstant changes it. If a specialization constant is a boolean
+ *  constant, _spec value_should be a pointer to a cl_uchar value. A value of zero will set the
+ *  specialization constant to false; any other value will set it to true.
+ *
+ *  Calling this function multiple times for the same specialization constant shall cause the last
+ *  provided value to override any previously specified value. The values are used by a subsequent
+ *  \a clBuildProgram call for the program.
+ *
+ *  Application is not required to provide values for every specialization constant contained in
+ *  SPIR-V module. SPIR-V provides default values for all specialization constants.
+ *
+ *  \return One of the following values:
+ *  - CL_SUCCESS if the function is executed successfully.
+ *  - CL_INVALID_PROGRAM if program is not a valid program object created from a SPIR-V module.
+ *  - CL_INVALID_SPEC_ID if spec_id is not a valid specialization constant ID
+ *  - CL_INVALID_VALUE if spec_size does not match the size of the specialization constant in the
+ *    SPIR-V module, or if spec_value is NULL.
+ *  - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required by the OpenCL
+ *    implementation on the device.
+ *  - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required by the OpenCL
+ *    implementation on the host.
+ *
+ *  \version 2.2-3
+ */
+RUNTIME_ENTRY(cl_int, clSetProgramSpecializationConstant,
+              (cl_program program, cl_uint spec_id, size_t spec_size, const void* spec_value)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
+/*! \brief registers a user callback function with a program object. Each call to
+ * \a clSetProgramReleaseCallback registers the specified user callback function on a callback stack
+ * associated with program. The registered user callback functions are called in the reverse order
+ * in which they were registered. The user callback functions are called after destructors (if any)
+ * for program scope global variables (if any) are called and before the program is released.
+ * This provides a mechanism for the application (and libraries) to be notified when destructors
+ * are complete.
+ *
+ * \param program is a valid program object
+ *
+ * \param pfn_notify is the callback function that can be registered by the application. This
+ * callback function may be called asynchronously by the OpenCL implementation. It is the
+ * application's responsibility to ensure that the callback function is thread safe. The parameters
+ * to this callback function are:
+ * - \a prog is the program object whose destructors are being called. When the user callback is
+ *   called by the implementation, this program object is not longer valid. \a prog is only provided
+ *   for reference purposes.
+ * - \a user_data is a pointer to user supplied data. \a user_data will be passed as the
+ *   \a user_data argument when pfn_notify is called. user data can be NULL.
+ *
+ *  \return One of the following values:
+ * - CL_SUCCESS if the function is executed successfully.
+ * - CL_INVALID_PROGRAM if program is not a valid program object.
+ * - CL_INVALID_VALUE if pfn_notify is NULL.
+ * - CL_OUT_OF_RESOURCES if there is a failure to allocate resources required by the OpenCL
+ * implementation on the device.
+ *
+ * \version 2.2-3
+ */
+RUNTIME_ENTRY(cl_int, clSetProgramReleaseCallback,
+              (cl_program program, void (CL_CALLBACK *pfn_notify)(
+                  cl_program program, void *user_data
+                  ), void *user_data)) {
+  if (!is_valid(program)) {
+    return CL_INVALID_PROGRAM;
+  }
+  return CL_INVALID_VALUE;
+}
+RUNTIME_EXIT
+
 /*! @}
  *  @}
  *
