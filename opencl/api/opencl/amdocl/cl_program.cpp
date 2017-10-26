@@ -456,12 +456,12 @@ RUNTIME_ENTRY(cl_int, clBuildProgram,
 }
 RUNTIME_EXIT
 
-/*! \brief compiles a program’s source for all the devices or a specific
+/*! \brief compiles a program's source for all the devices or a specific
  *  device(s) in the OpenCL context associated with program. The pre-processor
  *  runs before the program sources are compiled.
  *  The compiled binary is built for all devices associated with program or
  *  the list of devices specified. The compiled binary can be queried using
- *  \a clGetProgramInfo(program, CL_PROGRAM_BINARIES, …) and can be specified
+ *  \a clGetProgramInfo(program, CL_PROGRAM_BINARIES, ...) and can be specified
  *  to \a clCreateProgramWithBinary to create a new program object.
  *
  *  \param program is the program object that is the compilation target.
@@ -489,7 +489,7 @@ RUNTIME_EXIT
  *  source in program that comes from an embedded header. The corresponding entry
  *  in input_headers identifies the program object which contains the header
  *  source to be used. The embedded headers are first searched before the headers
- *  in the list of directories specified by the –I compile option (as described in
+ *  in the list of directories specified by the -I compile option (as described in
  *  section 5.6.4.1). If multiple entries in header_include_names refer to the same
  *  header name, the first one encountered will be used.
  *
@@ -500,7 +500,7 @@ RUNTIME_EXIT
  *  \a clCompileProgram does not need to wait for the compiler to complete and can
  *  return immediately. If \a pfn_notify is NULL, \a clCompileProgram does not
  *  return until the compiler has completed. This callback function may be called
- *  asynchronously by the OpenCL implementation. It is the application’s
+ *  asynchronously by the OpenCL implementation. It is the application's
  *  responsibility to ensure that the callback function is thread-safe.
  *
  *  \param user_data will be passed as an argument when pfn_notify is called.
@@ -596,7 +596,7 @@ RUNTIME_EXIT
  *  the devices or a specific device(s) in the OpenCL context and creates
  *  an executable. clLinkProgram creates a new program object which contains
  *  this executable. The executable binary can be queried using
- *  \a clGetProgramInfo(program, CL_PROGRAM_BINARIES, …) and can be specified
+ *  \a clGetProgramInfo(program, CL_PROGRAM_BINARIES, ...) and can be specified
  *  to \a clCreateProgramWithBinary to create a new program object.
  *  The devices associated with the returned program object will be the list
  *  of devices specified by device_list or if device_list is NULL it will be
@@ -639,7 +639,7 @@ RUNTIME_EXIT
  *  callback function is called with a valid program object (if the link was
  *  successful) or NULL (if the link encountered a failure). This callback
  *  function may be called asynchronously by the OpenCL implementation. It is
- *  the application’s responsibility to ensure that the callback function is
+ *  the application's responsibility to ensure that the callback function is
  *  thread-safe. If \a pfn_notify is NULL, \a clLinkProgram does not return
  *  until the linker has completed. clLinkProgram returns a valid non-zero
  *  program object (if the link was successful) or NULL (if the link
@@ -1320,45 +1320,13 @@ RUNTIME_ENTRY_RET(cl_kernel, clCloneKernel,
     return (cl_kernel)0;
   }
 
-  amd::Kernel* srcKernel = as_amd(source_kernel);
-  amd::Program* program = &(srcKernel->program());
-  const char* kernelName = srcKernel->name().c_str();
-  const amd::Symbol* symbol = program->findSymbol(kernelName);
-  if (symbol == NULL) {
-    *not_null(errcode_ret) = CL_INVALID_KERNEL_NAME;
-    return (cl_kernel)0;
-  }
-
-  amd::Kernel* kernel = new amd::Kernel(*program, *symbol, kernelName);
+  amd::Kernel* kernel = new amd::Kernel(*as_amd(source_kernel));
   if (kernel == NULL) {
     *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
     return (cl_kernel)0;
   }
 
-  //TODO:  implemente the clone kernel logic
-  LogWarning("Device support for clCloneKernel() has not been implemented");
-
-#if 0
-  // clone kernel logic - unverified
-
-  // clone the parameter values_, defined_, svmBound_ arrays
-  amd::KernelParameters* srcParameters = &(srcKernel->parameters());
-  amd::KernelParameters* parameters = &(kernel->parameters());
-  const amd::KernelSignature& signature = kernel->signature();
-  size_t size = signature.paramsSize() + signature.numParameters() * sizeof(bool) * 2;
-  ::memcpy(parameters->values(), srcParameters->values(), size);
-
-  // clone the exec info
-  parameters->setExecInfoOffset(srcParameters->getExecInfoOffset());
-
-  parameters->addSvmPtr(srcParameters->getExecSvmPtr(), srcParameters->getNumberOfSvmPtr());
-  parameters->setSvmSystemPointersSupport(srcParameters->getSvmSystemPointersSupport());
-  parameters->setValidated(srcParameters->getValidated());
-  parameters->setExecNewVcop(srcParameters->getExecNewVcop());
-  parameters->setExecPfpaVcop(srcParameters->getExecPfpaVcop());
-#endif
-
-  *not_null(errcode_ret) = CL_INVALID_VALUE;
+  *not_null(errcode_ret) = CL_SUCCESS;
   return as_cl(kernel);
 }
 RUNTIME_EXIT
@@ -1800,8 +1768,8 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
 
   // Get the corresponded parameters
   switch (param_name) {
-    case CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE_KHR:
-    case CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE_KHR: {
+    case CL_KERNEL_MAX_SUB_GROUP_SIZE_FOR_NDRANGE:
+    case CL_KERNEL_SUB_GROUP_COUNT_FOR_NDRANGE: {
       // Infer the number of dimensions from 'input_value_size'
       size_t dims = input_value_size / sizeof(size_t);
       if (dims == 0 || dims > 3 || input_value_size != dims * sizeof(size_t)) {
@@ -1828,12 +1796,55 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
                                 : numSubGroups,
                             param_value_size, param_value, param_value_size_ret);
     }
-    case CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT:
-    case CL_KERNEL_MAX_NUM_SUB_GROUPS:
-    case CL_KERNEL_COMPILE_NUM_SUB_GROUPS:
-      //TODO:  implemente the kernel subgroup info query
-      LogWarning("Device support for clGetKernelSubGroupInfo() query has not been implemented.");
-      return CL_INVALID_VALUE;
+    case CL_KERNEL_COMPILE_NUM_SUB_GROUPS: {
+      size_t numSubGroups = 0;
+      return amd::clGetInfo(numSubGroups, param_value_size, param_value, param_value_size_ret);
+    }
+    case CL_KERNEL_MAX_NUM_SUB_GROUPS: {
+      size_t waveSize = as_amd(device)->info().wavefrontWidth_;
+      size_t numSubGroups = as_amd(device)->type() == CL_DEVICE_TYPE_CPU
+          ? 1 : (devKernel->workGroupInfo()->size_  + waveSize - 1) / waveSize;
+      return amd::clGetInfo(numSubGroups, param_value_size, param_value, param_value_size_ret);
+    }
+    case CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT: {
+      if (input_value_size != sizeof(size_t)) {
+        return CL_INVALID_VALUE;
+      }
+      size_t numSubGroups = ((size_t*)input_value)[0];
+
+      // Infer the number of dimensions from 'param_value_size'
+      size_t dims = param_value_size / sizeof(size_t);
+      if (dims == 0 || dims > 3 || param_value_size != dims * sizeof(size_t)) {
+        return CL_INVALID_VALUE;
+      }
+      *not_null(param_value_size_ret) = param_value_size;
+
+      size_t localSize;
+      if (as_amd(device)->type() == CL_DEVICE_TYPE_CPU) {
+        if (numSubGroups != 1) {
+          ::memset(param_value, '\0', dims * sizeof(size_t));
+          return CL_SUCCESS;
+        }
+        localSize = devKernel->workGroupInfo()->size_;
+      }
+      else {
+        localSize = numSubGroups * as_amd(device)->info().wavefrontWidth_;
+        if (localSize > devKernel->workGroupInfo()->size_) {
+          ::memset(param_value, '\0', dims * sizeof(size_t));
+          return CL_SUCCESS;
+        }
+      }
+
+      switch (dims) {
+        case 3:
+          ((size_t*)param_value)[2] = 1;
+        case 2:
+          ((size_t*)param_value)[1] = 1;
+        case 1:
+          ((size_t*)param_value)[0] = localSize;
+      }
+      return CL_SUCCESS;
+    }
     default:
       return CL_INVALID_VALUE;
   }
