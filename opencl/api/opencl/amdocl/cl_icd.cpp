@@ -106,7 +106,10 @@ KHRicdVendorDispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
      clGetDeviceAndHostTimer,
      clGetHostTimer,
      clGetKernelSubGroupInfo,
-     clSetDefaultDeviceCommandQueue}};
+     clSetDefaultDeviceCommandQueue,
+
+     clSetProgramReleaseCallback,
+     clSetProgramSpecializationConstant }};
 
 #if defined(ATI_OS_WIN)
 #include <Shlwapi.h>
