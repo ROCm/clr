@@ -93,7 +93,8 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
 
   incIndMapCount();
   // If the device backing storage is direct accessible, use it.
-  if (isHostMemDirectAccess()) {
+  const cl_mem_flags memFlags = owner()->getMemFlags();
+  if (isHostMemDirectAccess() || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD))
     if (owner()->getHostMem() != nullptr) {
       return (static_cast<char*>(owner()->getHostMem()) + origin[0]);
     }
@@ -1031,8 +1032,7 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   size_t elementSize = image->getImageFormat().getElementSize();
 
   size_t offset = origin[0] * elementSize;
-  const cl_mem_flags memFlags = owner()->getMemFlags();
-  if ((pHostMem == nullptr) || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
+  if (pHostMem == nullptr) {
     if (indirectMapCount_ == 1) {
       if (!allocateMapMemory(owner()->getSize())) {
         decIndMapCount();
