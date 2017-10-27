@@ -101,8 +101,10 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
         delete queue;
         return nullptr;
       }
-      static const bool InitiallySignaled = false;
-      result = palDev->CreateFence(InitiallySignaled, &addrF[i * fSize], &queue->iCmdFences_[i]);
+
+      Pal::FenceCreateInfo fenceCreateinfo = {};
+      fenceCreateinfo.flags.signaled = false;
+      result = palDev->CreateFence(fenceCreateinfo, &addrF[i * fSize], &queue->iCmdFences_[i]);
       if (result != Pal::Result::Success) {
         delete queue;
         return nullptr;
