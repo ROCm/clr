@@ -94,7 +94,7 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
   incIndMapCount();
   // If the device backing storage is direct accessible, use it.
   const cl_mem_flags memFlags = owner()->getMemFlags();
-  if (isHostMemDirectAccess() || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD))
+  if (isHostMemDirectAccess() || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
     if (owner()->getHostMem() != nullptr) {
       return (static_cast<char*>(owner()->getHostMem()) + origin[0]);
     }
