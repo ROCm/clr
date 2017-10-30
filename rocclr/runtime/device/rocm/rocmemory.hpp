@@ -85,8 +85,7 @@ class Memory : public device::Memory {
 
   size_t version() const { return version_; }
 
-  bool IsPersistentDirectMap() const {
-    return ((owner() != nullptr) && (owner()->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD)); }
+  bool IsPersistentDirectMap() const { return (persistent_host_ptr_ != nullptr); }
 
   void* PersistentHostPtr() const { return persistent_host_ptr_; }
 
