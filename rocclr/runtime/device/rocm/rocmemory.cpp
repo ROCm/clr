@@ -33,6 +33,7 @@ Memory::Memory(const roc::Device& dev, amd::Memory& owner)
       deviceMemory_(nullptr),
       kind_(MEMORY_KIND_NORMAL),
       amdImageDesc_(nullptr),
+      persistent_host_ptr_(nullptr),
       pinnedMemory_(nullptr) {}
 
 Memory::Memory(const roc::Device& dev, size_t size)
@@ -41,6 +42,7 @@ Memory::Memory(const roc::Device& dev, size_t size)
       deviceMemory_(nullptr),
       kind_(MEMORY_KIND_NORMAL),
       amdImageDesc_(nullptr),
+      persistent_host_ptr_(nullptr),
       pinnedMemory_(nullptr) {}
 
 Memory::~Memory() {
@@ -93,15 +95,16 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
 
   incIndMapCount();
   // If the device backing storage is direct accessible, use it.
-  const cl_mem_flags memFlags = owner()->getMemFlags();
-  if (isHostMemDirectAccess() || (memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
+  if (isHostMemDirectAccess()) {
     if (owner()->getHostMem() != nullptr) {
       return (static_cast<char*>(owner()->getHostMem()) + origin[0]);
     }
 
     return (static_cast<char*>(deviceMemory_) + origin[0]);
   }
-
+  if (IsPersistentDirectMap()) {
+    return (static_cast<char*>(persistent_host_ptr_) + origin[0]);
+  }
   // Otherwise, check for host memory.
   void* hostMem = owner()->getHostMem();
   if (hostMem != nullptr) {
@@ -150,8 +153,7 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 
   assert(mapTarget != nullptr);
 
-  const cl_mem_flags memFlags = owner()->getMemFlags();
-  if (!isHostMemDirectAccess() && !(memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
+  if (!isHostMemDirectAccess() && !IsPersistentDirectMap()) {
     if (!vDev.blitMgr().readBuffer(*this, mapTarget, amd::Coord3D(0), amd::Coord3D(size()), true)) {
       decIndMapCount();
       return nullptr;
@@ -162,8 +164,7 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 }
 
 void Memory::cpuUnmap(device::VirtualDevice& vDev) {
-  const cl_mem_flags memFlags = owner()->getMemFlags();
-  if (!isHostMemDirectAccess() && !(memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD)) {
+  if (!isHostMemDirectAccess() && !IsPersistentDirectMap()) {
     if (!vDev.blitMgr().writeBuffer(mapMemory_->getHostMem(), *this, amd::Coord3D(0),
                                     amd::Coord3D(size()), true)) {
       LogError("[OCL] Fail sync the device memory on cpuUnmap");
@@ -650,7 +651,7 @@ bool Buffer::create() {
     if (deviceMemory_ == nullptr) {
       return false;
     }
-    owner()->setHostMem(host_ptr);
+    persistent_host_ptr_ = host_ptr;
     return true;
   }
 #endif

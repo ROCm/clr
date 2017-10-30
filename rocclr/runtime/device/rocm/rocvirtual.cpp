@@ -1188,6 +1188,8 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
       // Add memory to VA cache, so rutnime can detect direct access to VA
       dev().addVACache(devMemory);
     }
+  } else if (devMemory->IsPersistentDirectMap()) {
+    // Persistent memory - NOP map
   } else if (mapFlag & (CL_MAP_READ | CL_MAP_WRITE)) {
     bool result = false;
     roc::Memory* hsaMemory = static_cast<roc::Memory*>(devMemory);
@@ -1266,6 +1268,8 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
       // Remove memory from VA cache
       dev().removeVACache(devMemory);
     }
+  } else if (devMemory->IsPersistentDirectMap()) {
+    // Persistent memory - NOP unmap
   } else if (mapInfo->isUnmapWrite()) {
     // Commit the changes made by the user.
     if (!devMemory->isHostMemDirectAccess()) {

@@ -197,7 +197,8 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire) const {
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess()) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
     size_t dstSize = size[0];
@@ -283,7 +284,8 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
                                      const amd::BufferRect& bufRect, const amd::Coord3D& size,
                                      bool entire) const {
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess()) {
+  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
   } else {
     Memory& xferBuf = dev().xferWrite().acquire();
@@ -1631,7 +1633,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess()) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
     synchronize();
     return result;
@@ -1679,7 +1682,8 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess()) {
+  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
     synchronize();
     return result;
