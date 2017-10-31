@@ -60,7 +60,6 @@ add_subdirectory(api/opencl/khronos/icd)
 
 add_subdirectory(tools/clinfo)
 
-
 install(PROGRAMS $<TARGET_FILE:OpenCL>
         DESTINATION lib)
 
