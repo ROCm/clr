@@ -1232,50 +1232,6 @@ class SvmUnmapMemoryCommand : public Command {
   void* svmPtr() const { return svmPtr_; }
 };
 
-/*!  \brief Enqueues a command to indicate which device a set of ranges of SVM allocations
- *          should be associated with.
- */
-class SvmMigrateMemCommand: public Command {
- private:
-  cl_mem_migration_flags migrationFlags_;   //!< Migration flags
-  std::vector<const void*> svmPointers_;    //!< The list of SVM pointers
-  std::vector<size_t> svmSizes_;            //!< Number of bytes to be migrated for svm_pointers[i]
-
- public:
-  SvmMigrateMemCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                        cl_uint numSvmPointers, const void** svmPointers,
-                        const size_t *size, cl_mem_migration_flags flags)
-    : Command(queue, CL_COMMAND_SVM_MIGRATE_MEM, eventWaitList), migrationFlags_(flags) {
-    for (cl_uint i=0; i < numSvmPointers; i++) {
-      svmPointers_.push_back(svmPointers[i]);
-      if (size == NULL) {
-        svmSizes_.push_back(0);
-      }
-      else {
-        svmSizes_.push_back(size[i]);
-      }
-    }
-  }
-
-  virtual void submit(device::VirtualDevice& device) {
-          //TODO:  implement the submit function to the support device
-          //       i.e. device.submitSvmMigrateMem(*this);
-          return;
-    }
-
-  //! Returns the migration flags
-  cl_mem_migration_flags migrationFlags() const { return migrationFlags_; }
-
-  //! Returns the number of svm pointers in the command
-  cl_uint numSvmPointers() const { return (cl_uint)svmPointers_.size(); }
-
-  //! Returns a pointer to the svm pointers
-  const void* svmPointer(uint i) const { return svmPointers_[i]; }
-
-  //! Returns a pointer to the size of svm range
-  const size_t svmSize(uint i) const { return svmSizes_[i]; }
-};
-
 /*! \brief      A generic transfer memory from/to file command.
  *
  *  \details    Currently supports buffers only. Buffers
