@@ -53,7 +53,7 @@ add_subdirectory(runtime)
 
 set(OPENCL_INCLUDE_DIRS
   ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers
-  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.0)
+  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2)
 
 add_subdirectory(api/opencl/amdocl)
 add_subdirectory(api/opencl/khronos/icd)
@@ -64,7 +64,7 @@ install(PROGRAMS $<TARGET_FILE:OpenCL>
         DESTINATION lib)
 
 install(DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.0"
+        "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2"
         DESTINATION include
         USE_SOURCE_PERMISSIONS
         PATTERN cl_egl.h EXCLUDE)
