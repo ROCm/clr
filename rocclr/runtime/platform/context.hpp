@@ -187,6 +187,10 @@ class Context : public RuntimeObject {
                          DeviceQueue* queue  //!< Device queue
                          );
 
+  //! Set the default device queue
+  void setDefDeviceQueue(const Device& dev, DeviceQueue* queue)
+      { deviceQueues_[&dev].defDeviceQueue_ = queue; };
+
  private:
   const Info info_;                      //!< Context info structure
   cl_context_properties* properties_;    //!< Original properties
