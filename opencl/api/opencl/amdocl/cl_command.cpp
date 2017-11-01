@@ -195,42 +195,28 @@ RUNTIME_ENTRY(cl_int, clSetDefaultDeviceCommandQueue,
     return CL_INVALID_CONTEXT;
   }
 
-  amd::Context& amdContext = *as_amd(context);
-  amd::Device& amdDevice = *as_amd(device);
-  amd::DeviceQueue* deviceQueue = as_amd(command_queue)->asDeviceQueue();
+  if (!is_valid(command_queue)) {
+    return CL_INVALID_COMMAND_QUEUE;
+  }
 
-  if (!is_valid(device) || !amdContext.containsDevice(&amdDevice)) {
+  amd::Context* amdContext = as_amd(context);
+  amd::Device* amdDevice = as_amd(device);
+  if (!is_valid(device) || !amdContext->containsDevice(amdDevice)) {
     return CL_INVALID_DEVICE;
   }
 
-  if (!is_valid(command_queue)) {
-    return CL_INVALID_VALUE;
+  amd::DeviceQueue* deviceQueue = as_amd(command_queue)->asDeviceQueue();
+  if ((deviceQueue == NULL) || (amdContext != &deviceQueue->context()) ||
+	  (amdDevice != &deviceQueue->device())) {
+    return CL_INVALID_COMMAND_QUEUE;
   }
 
-
-  //TODO:  implemente the set default device command queue logic
-  LogWarning("Device support for clSetDefaultDeviceCommandQueue() has not been implemented");
-
-#if 0
-  // implementation of the set default device command queue logic - unverified
-
-  //TODO: Need to update the clGetCommandQueueInfo to support CL_QUEUE_DEVICE_DEFAULT
-  //
   {
-    amd::ScopedLock lock(amdContext.lock());
-
-    amd::DeviceQueue* queue = amdContext.defDeviceQueue(amdDevice);
-    if (NULL != queue) {
-      amdContext.removeDeviceQueue(amdDevice, queue);
-      queue->release();
-    }
-
-    amdContext.addDeviceQueue(amdDevice, deviceQueue, true);
-    deviceQueue->retain();
+    amd::ScopedLock lock(amdContext->lock());
+    amdContext->setDefDeviceQueue(*amdDevice, deviceQueue);
   }
-#endif
 
-  return CL_INVALID_VALUE;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 
@@ -347,6 +333,12 @@ RUNTIME_ENTRY(cl_int, clGetCommandQueueInfo,
       }
       const void* handle = hostQueue->thread().handle();
       return amd::clGetInfo(handle, param_value_size, param_value, param_value_size_ret);
+    }
+    case CL_QUEUE_DEVICE_DEFAULT: {
+      const amd::Device& device = as_amd(command_queue)->device();
+      amd::CommandQueue* defQueue = as_amd(command_queue)->context().defDeviceQueue(device);
+      cl_command_queue queue = defQueue ? as_cl(defQueue) : NULL;
+      return amd::clGetInfo(queue, param_value_size, param_value, param_value_size_ret);
     }
     default:
       break;

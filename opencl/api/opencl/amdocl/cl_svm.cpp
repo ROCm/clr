@@ -1143,14 +1143,9 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
     return CL_INVALID_VALUE;
   }
 
-  //TODO:  implemente the svm migration memory logic
-  LogWarning("Device support for clEnqueueSVMMigrateMem() has not been implemented");
-
-#if 0
-  // implementation of the svm migration memory logic - unverified
-
-  for (int i = 0; i < num_svm_pointers; i++) {
-    const void*  svm_ptr = svm_pointers[i];
+  std::vector<amd::Memory*> memObjects;
+  for (cl_uint i = 0; i < num_svm_pointers; i++) {
+    const void* svm_ptr = svm_pointers[i];
 
     amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
     if (NULL != svmMem) {
@@ -1161,19 +1156,15 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
       }
 
       // Make sure the specified size[i] is within a valid range
+      // TODO: handle the size parameter properly
       size_t svm_size = (size == NULL) ? 0 : size[i];
-      size_t offset = reinterpret_cast<uintptr_t>(svm_ptr) - reinterpret_cast<uintptr_t>(svmMem->getSvmPtr());
-      if (offset < 0 || (offset + svm_size) > svmMem->getSize()) {
+      size_t offset = reinterpret_cast<const_address>(svm_ptr) - reinterpret_cast<address>(svmMem->getSvmPtr());
+      if ((offset + svm_size) > svmMem->getSize()) {
         LogWarning("wrong svm address ");
         return CL_INVALID_VALUE;
       }
 
-      // Make sure we have memory for the command execution
-      device::Memory* mem = svmMem->getDeviceMemory(queue->device());
-      if (NULL == mem) {
-        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", svmMem->getSize());
-        return CL_OUT_OF_RESOURCES;
-      }
+      memObjects.push_back(svmMem);
     }
   }
 
@@ -1184,11 +1175,17 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
     return err;
   }
 
-  amd::Command* command = new amd::SvmMigrateMemCommand(hostQueue, eventWaitList, num_svm_pointers,
-                                                        svm_pointers, size, flags);
+  amd::MigrateMemObjectsCommand* command = new amd::MigrateMemObjectsCommand(
+      hostQueue, CL_COMMAND_MIGRATE_MEM_OBJECTS, eventWaitList, memObjects, flags);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
+  }
+
+  // Make sure we have memory for the command execution
+  if (!command->validateMemory()) {
+    delete command;
+    return CL_MEM_OBJECT_ALLOCATION_FAILURE;
   }
 
   command->enqueue();
@@ -1197,9 +1194,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
   if (event == NULL) {
     command->release();
   }
-#endif
 
-  return CL_INVALID_VALUE;
+  return CL_SUCCESS;
 }
 RUNTIME_EXIT
 /*! @}
