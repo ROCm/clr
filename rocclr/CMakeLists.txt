@@ -21,6 +21,9 @@ set(LLVM_TARGETS_TO_BUILD "AMDGPU" CACHE STRING "")
 set(CLANG_ENABLE_ARCMT OFF CACHE BOOL "")
 set(CLANG_ENABLE_STATIC_ANALYZER OFF CACHE BOOL "")
 
+# override default option value in library and driver
+set(GENERIC_IS_ZERO ON CACHE BOOL ON FORCE)
+
 add_subdirectory(compiler/llvm)
 
 find_package(LLVM REQUIRED CONFIG PATHS ${CMAKE_BINARY_DIR}/compiler/llvm NO_DEFAULT_PATH)
@@ -43,7 +46,7 @@ add_subdirectory(compiler/driver)
 set(BUILD_HC_LIB OFF CACHE BOOL "")
 set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
 set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
-set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-opencl")
+set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-amdgizcl")
 add_subdirectory(library/amdgcn)
 
 add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
