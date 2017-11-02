@@ -10,7 +10,7 @@
 #include "cl_lqdflash_amd.h"
 
 #if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
-      defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
+      defined(WITH_AMDGPU_PRO)) || defined(_WIN32) || defined(WITH_PAL_DEVICE)
 #define WITH_LIQUID_FLASH 1
 #endif  // _WIN32
 
