@@ -8,6 +8,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${ROCM_OCL_INCLUDES})
 
 add_library(oclrocm OBJECT
+  roccounters.cpp
   rocprintf.cpp
   rocprogram.cpp
   rocmemory.cpp
