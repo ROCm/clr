@@ -370,6 +370,12 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   switch (memoryType()) {
     case Persistent:
       createInfo->heaps[0] = Pal::GpuHeapLocal;
+#ifdef ATI_OS_LINUX
+      // Note: SSG in Linux requires DGMA heap
+      if (dev().properties().gpuMemoryProperties.busAddressableMemSize > 0) {
+        createInfo->flags.busAddressable = true;
+      }
+#endif
       break;
     case RemoteUSWC:
       createInfo->heaps[0] = Pal::GpuHeapGartUswc;
