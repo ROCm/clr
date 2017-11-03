@@ -1533,12 +1533,10 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
   // Copy wavefront size
   workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
-  // Find total workgroup size
-  if (workGroupInfo_.compileSize_[0] != 0) {
-    workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
-        workGroupInfo_.compileSize_[2];
-  } else {
-    workGroupInfo_.size_ = dev().info().preferredWorkGroupSize_;
+
+  workGroupInfo_.size_ = kernelMD->mCodeProps.mMaxFlatWorkGroupSize;
+  if (workGroupInfo_.size_ == 0) {
+    return false;
   }
 
   initPrintf(programMD->mPrintf);
