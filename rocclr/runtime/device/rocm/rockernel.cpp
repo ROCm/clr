@@ -716,11 +716,9 @@ bool Kernel::init_LC() {
 
   workGroupInfo_.wavefrontSize_ = wavefront_size;
 
-  if (workGroupInfo_.compileSize_[0] != 0) {
-    workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
-        workGroupInfo_.compileSize_[2];
-  } else {
-    workGroupInfo_.size_ = program_->dev().info().preferredWorkGroupSize_;
+  workGroupInfo_.size_ = kernelMD->mCodeProps.mMaxFlatWorkGroupSize;
+  if (workGroupInfo_.size_ == 0) {
+    return false;
   }
 
   initPrintf_LC(programMD->mPrintf);
