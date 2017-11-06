@@ -455,7 +455,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 
   Pal::Result result;
 
-#ifdef _WIN32
   if ((memoryType() == OGLInterop) || (memoryType() == D3D9Interop) ||
       (memoryType() == D3D10Interop) || (memoryType() == D3D11Interop)) {
     Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
@@ -491,13 +490,18 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       mipLevel = oglRes->mipLevel_;
 
       if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
-                                &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_,
-                                openInfo.doppDesktopInfo)) {
+                                &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
+#ifdef ATI_OS_WIN
+								, openInfo.doppDesktopInfo
+#endif
+								)) {
         return false;
       }
       desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
       format = dev().getPalFormat(desc().format_, &channels);
-    } else {
+    }
+#ifdef ATI_OS_WIN	
+    else {
       D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
       openInfo.hExternalResource = d3dRes->handle_;
       misc = d3dRes->misc;
@@ -505,6 +509,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       type = d3dRes->type_;
       mipLevel = d3dRes->mipLevel_;
     }
+#endif
 //! @todo PAL query for image/buffer object doesn't work properly!
 #if 0
         bool    isImage = false;
@@ -685,6 +690,8 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         case Pal::ImageType::Tex1d:
           viewInfo.viewType = Pal::ImageViewType::Tex1d;
           break;
+        default:
+          break;
       }
       viewInfo.pImage = image_;
       viewInfo.swizzledFormat.format = format;
@@ -720,7 +727,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     }
     return true;
   }
-#endif  // _WIN32
 
   if (!desc_.buffer_) {
     if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
