@@ -25,24 +25,44 @@
 #include "GL/wglATIPrivate.h"
 #endif
 
+/**
+ * Device information returned by Mesa/Orca.
+ */
+typedef struct _mesa_glinterop_device_info {
+  uint32_t size; /* size of this structure */
+
+  /* PCI location */
+  uint32_t pci_segment_group;
+  uint32_t pci_bus;
+  uint32_t pci_device;
+  uint32_t pci_function;
+
+  /* Device identification */
+  uint32_t vendor_id;
+  uint32_t device_id;
+} mesa_glinterop_device_info;
+
 #ifdef ATI_OS_LINUX
 typedef void* (*PFNGlxGetProcAddress)(const GLubyte* procName);
-static PFNGlxGetProcAddress pfnGlxGetProcAddress = NULL;
-static PFNGLXBEGINCLINTEROPAMD glXBeginCLInteropAMD = NULL;
-static PFNGLXENDCLINTEROPAMD glXEndCLInteropAMD = NULL;
-static PFNGLXRESOURCEATTACHAMD glXResourceAttachAMD = NULL;
-static PFNGLXRESOURCEDETACHAMD glxResourceAcquireAMD = NULL;
-static PFNGLXRESOURCEDETACHAMD glxResourceReleaseAMD = NULL;
-static PFNGLXRESOURCEDETACHAMD glXResourceDetachAMD = NULL;
-static PFNGLXGETCONTEXTMVPUINFOAMD glXGetContextMVPUInfoAMD = NULL;
+static PFNGlxGetProcAddress pfnGlxGetProcAddress = nullptr;
+typedef int(APIENTRYP PFNMesaGLInteropGLXQueryDeviceInfo)(
+    Display* dpy, GLXContext context, mesa_glinterop_device_info* out);
+static PFNMesaGLInteropGLXQueryDeviceInfo pfnMesaGLInteropGLXQueryDeviceInfo = nullptr;
+static PFNGLXBEGINCLINTEROPAMD glXBeginCLInteropAMD = nullptr;
+static PFNGLXENDCLINTEROPAMD glXEndCLInteropAMD = nullptr;
+static PFNGLXRESOURCEATTACHAMD glXResourceAttachAMD = nullptr;
+static PFNGLXRESOURCEDETACHAMD glxResourceAcquireAMD = nullptr;
+static PFNGLXRESOURCEDETACHAMD glxResourceReleaseAMD = nullptr;
+static PFNGLXRESOURCEDETACHAMD glXResourceDetachAMD = nullptr;
+static PFNGLXGETCONTEXTMVPUINFOAMD glXGetContextMVPUInfoAMD = nullptr;
 #else
-static PFNWGLBEGINCLINTEROPAMD wglBeginCLInteropAMD = NULL;
-static PFNWGLENDCLINTEROPAMD wglEndCLInteropAMD = NULL;
-static PFNWGLRESOURCEATTACHAMD wglResourceAttachAMD = NULL;
-static PFNWGLRESOURCEDETACHAMD wglResourceAcquireAMD = NULL;
-static PFNWGLRESOURCEDETACHAMD wglResourceReleaseAMD = NULL;
-static PFNWGLRESOURCEDETACHAMD wglResourceDetachAMD = NULL;
-static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = NULL;
+static PFNWGLBEGINCLINTEROPAMD wglBeginCLInteropAMD = nullptr;
+static PFNWGLENDCLINTEROPAMD wglEndCLInteropAMD = nullptr;
+static PFNWGLRESOURCEATTACHAMD wglResourceAttachAMD = nullptr;
+static PFNWGLRESOURCEDETACHAMD wglResourceAcquireAMD = nullptr;
+static PFNWGLRESOURCEDETACHAMD wglResourceReleaseAMD = nullptr;
+static PFNWGLRESOURCEDETACHAMD wglResourceDetachAMD = nullptr;
+static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = nullptr;
 #endif
 
 namespace pal {
@@ -529,12 +549,17 @@ bool Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceCont
   GLXContext ctx = (GLXContext)GLplatformContext;
   void* pModule = dlopen("libGL.so.1", RTLD_NOW);
 
-  if (NULL == pModule) {
+  if (nullptr == pModule) {
     return false;
   }
   pfnGlxGetProcAddress = (PFNGlxGetProcAddress)dlsym(pModule, "glXGetProcAddress");
+  if (nullptr == pfnGlxGetProcAddress) {
+    return false;
+  }
 
-  if (NULL == pfnGlxGetProcAddress) {
+  pfnMesaGLInteropGLXQueryDeviceInfo = (PFNMesaGLInteropGLXQueryDeviceInfo)dlsym(
+    pModule, "MesaGLInteropGLXQueryDeviceInfo");
+  if (nullptr == pfnMesaGLInteropGLXQueryDeviceInfo) {
     return false;
   }
 
@@ -557,13 +582,13 @@ bool Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceCont
   }
 
   if (!glXBeginCLInteropAMD || !glXEndCLInteropAMD || !glXResourceAttachAMD ||
-      !glXResourceDetachAMD) {
+      !glXResourceDetachAMD || !glXGetContextMVPUInfoAMD) {
     return false;
   }
 #else
   if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
       !wglResourceDetachAMD || !wglGetContextGPUInfoAMD) {
-    HGLRC fakeRC = NULL;
+    HGLRC fakeRC = nullptr;
 
     if (!wglGetCurrentContext()) {
       fakeRC = wglCreateContext((HDC)GLdeviceContext);
@@ -581,7 +606,7 @@ bool Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceCont
         (PFNWGLGETCONTEXTGPUINFOAMD)wglGetProcAddress("wglGetContextGPUInfoAMD");
 
     if (fakeRC) {
-      wglMakeCurrent(NULL, NULL);
+      wglMakeCurrent(nullptr, nullptr);
       wglDeleteContext(fakeRC);
     }
   }
@@ -609,7 +634,22 @@ bool Device::glCanInterop(void* GLplatformContext, void* GLdeviceContext) const 
         ((1 << properties().gpuIndex) == glChainBitMask);
   }
 #else
-  canInteroperate = true;
+  GLuint glDeviceId = 0 ;
+  GLuint glChainMask = 0 ;
+  GLXContext ctx = static_cast<GLXContext>(GLplatformContext);
+  Display* disp = static_cast<Display*>(GLdeviceContext);
+
+  
+  if (glXGetContextMVPUInfoAMD(ctx, &glDeviceId, &glChainMask)) {
+      mesa_glinterop_device_info info = {};
+    if (pfnMesaGLInteropGLXQueryDeviceInfo(disp, ctx, &info) == 0) {
+        // match the adapter
+        canInteroperate = (properties().pciProperties.busNumber == info.pci_bus) &&
+          (properties().pciProperties.deviceNumber == info.pci_device) &&
+          (properties().pciProperties.functionNumber == info.pci_function) &&
+          (static_cast<GLuint>(1 << properties().gpuIndex) == glChainMask);
+    }
+  }
 #endif
   return canInteroperate;
 }
@@ -654,7 +694,7 @@ bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const 
 #endif
 }
 
-bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle,
+bool Device::resGLAssociate(void* GLContext, uint name, uint type, Pal::OsExternalHandle* handle,
                             void** mbResHandle, size_t* offset, cl_image_format& newClFormat
 #ifdef ATI_OS_WIN
                             ,
@@ -675,7 +715,6 @@ bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle
 #ifdef ATI_OS_LINUX
   GLXContext ctx = (GLXContext)GLContext;
   if (glXResourceAttachAMD(ctx, &hRes, &hData)) {
-    // attribs.dynamicSharedBufferID = hData->sharedBufferID;
     status = true;
   }
 #else
@@ -689,10 +728,10 @@ bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle
     return false;
   }
 
-  *handle = reinterpret_cast<void*>(hData.handle);
   *mbResHandle = reinterpret_cast<void*>(hData.mbResHandle);
   *offset = static_cast<size_t>(hData.offset);
 #ifdef ATI_OS_WIN
+  *handle = reinterpret_cast<Pal::OsExternalHandle>(hData.handle);
   if (hData.isDoppDesktopTexture) {
     doppDesktopInfo.gpuVirtAddr = hData.cardAddr;
     doppDesktopInfo.vidPnSourceId = hData.vidpnSourceId;
@@ -700,6 +739,8 @@ bool Device::resGLAssociate(void* GLContext, uint name, uint type, void** handle
     doppDesktopInfo.gpuVirtAddr = 0;
     doppDesktopInfo.vidPnSourceId = 0;
   }
+#else
+  *handle = static_cast<Pal::OsExternalHandle>(hData.sharedBufferID);
 #endif
 
   // OCL supports only a limited number of cm_surf formats, so we
