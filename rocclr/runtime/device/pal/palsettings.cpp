@@ -322,7 +322,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
   // Enable some platform extensions
   enableExtension(ClAmdDeviceAttributeQuery);
+#if !defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClKhrSpir);
+#endif // !defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClAMDLiquidFlash);
 
   hwLDSSize_ = 32 * Ki;
