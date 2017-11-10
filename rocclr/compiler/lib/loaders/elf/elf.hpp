@@ -34,6 +34,9 @@
 #ifndef EM_ATI_CALIMAGE_BINARY
 #define EM_ATI_CALIMAGE_BINARY 125
 #endif
+#ifndef EM_AMDGPU
+#define EM_AMDGPU 224
+#endif
 #ifndef ELFOSABI_AMD_OPENCL
 #define ELFOSABI_AMD_OPENCL 201
 #endif

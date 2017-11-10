@@ -176,7 +176,7 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
     if (ilProgram_.empty()) {
       // Setup elfIn() and try to load ISA from binary
       // This elfIn() will be released at the end of build by finiBuild().
-      if (!clBinary()->setElfIn(ELFCLASS32)) {
+      if (!clBinary()->setElfIn()) {
         buildLog_ += "Internal error: Setting input OCL binary failed!\n";
         LogError("Setting input OCL binary failed");
         return false;
@@ -479,7 +479,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       // We are using CL binary directly.
       // Setup elfIn() and try to load llvmIR from binary
       // This elfIn() will be released at the end of build by finiBuild().
-      if (!program->clBinary()->setElfIn(ELFCLASS32)) {
+      if (!program->clBinary()->setElfIn()) {
         buildLog_ += "Internal error: Setting input OCL binary failed!\n";
         LogError("Setting input OCL binary failed");
         return false;
