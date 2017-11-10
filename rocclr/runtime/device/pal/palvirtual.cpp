@@ -738,12 +738,14 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
                         amd::CommandQueue::Priority priority) {
   device::BlitManager::Setup blitSetup;
 
+  // Resize the list of device resources always,
+  // because destructor calls eraseResourceList() even if create() failed
+  dev().resizeResoureList(index());
+
   if (index() >= GPU_MAX_COMMAND_QUEUES) {
     // Cap the maximum number of concurrent Virtual GPUs
     return false;
   }
-
-  dev().resizeResoureList(index());
 
   // Virtual GPU will have profiling enabled
   state_.profiling_ = profiling;
