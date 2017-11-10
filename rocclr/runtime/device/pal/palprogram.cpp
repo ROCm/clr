@@ -971,8 +971,10 @@ void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_ag
   assert(size);
   assert(align);
   if (program_->isNull()) {
+    // Note: In Linux ::posix_memalign() requires at least 16 bytes for the alignment.
+    align = amd::alignUp(align, 16);
     void* ptr = amd::Os::alignedMalloc(size, align);
-    if (zero) {
+    if ((ptr != nullptr) && zero) {
       memset(ptr, 0, size);
     }
     return ptr;
