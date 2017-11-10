@@ -919,7 +919,7 @@ bool Program::linkImpl(amd::option::Options* options) {
     // Load ISA
     // For elf format, setup elfIn() and this elfIn() will be released
     // at the end of build by finiBuild().
-    if (!clBinary()->setElfIn(LP64_SWITCH(ELFCLASS32, ELFCLASS64))) {
+    if (!clBinary()->setElfIn()) {
       buildLog_ += "Internal error: Setting up input OpenCL binary failed!\n";
       LogError("Setting up input binary failed");
       return false;
@@ -1044,7 +1044,7 @@ bool Program::linkImpl(const std::vector<device::Program*>& inputPrograms,
       // Load ISA
       // For elf format, setup elfIn() and this elfIn() will be released
       // at the end of build by finiBuild().
-      if (!program->clBinary()->setElfIn(LP64_SWITCH(ELFCLASS32, ELFCLASS64))) {
+      if (!program->clBinary()->setElfIn()) {
         buildLog_ +=
             "Internal error: Setting up input OpenCL binary"
             " failed!\n";

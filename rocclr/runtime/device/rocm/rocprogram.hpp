@@ -6,9 +6,6 @@
 #ifndef WITHOUT_HSA_BACKEND
 
 #include "rocbinary.hpp"
-#if !defined(WITH_LIGHTNING_COMPILER)
-#include "roccompilerlib.hpp"
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 #include "acl.h"
 #include <string>
 #include <sstream>
@@ -29,26 +26,24 @@ typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 //! \namespace roc HSA Device Implementation
 namespace roc {
 
+class HSAILProgram;
+class LightningProgram;
+
 //! \class empty program
-class HSAILProgram : public device::Program {
+class Program : public device::Program {
   friend class ClBinary;
 
  public:
   //! Default constructor
-  HSAILProgram(roc::NullDevice& device);
+  Program(roc::NullDevice& device);
   //! Default destructor
-  ~HSAILProgram();
+  ~Program();
 
   // Initialize Binary for GPU (used only for clCreateProgramWithBinary()).
   virtual bool initClBinary(char* binaryIn, size_t size);
 
   //! Returns the aclBinary associated with the program
   const aclBinary* binaryElf() const { return static_cast<const aclBinary*>(binaryElf_); }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-  //! Returns the program metadata.
-  const CodeObjectMD* metadata() const { return metadata_; }
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 
   //! Return a typecasted GPU device
   const NullDevice& dev() const { return static_cast<const NullDevice&>(device()); }
@@ -65,23 +60,6 @@ class HSAILProgram : public device::Program {
   //! post-compile setup for GPU
   virtual bool finiBuild(bool isBuildGood);
 
-  /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
-   *
-   *  \return True if we successfully compiled a GPU program
-   */
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           );
-#if defined(WITH_LIGHTNING_COMPILER)
-  virtual bool compileImpl_LC(const std::string& sourceCode,  //!< the program's source code
-                              const std::vector<const std::string*>& headers,
-                              const char** headerIncludeNames,
-                              amd::option::Options* options  //!< compile options's object
-                              );
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
   /*! \brief Compiles LLVM binary to HSAIL code (compiler backend: link+opt+codegen)
    *
    *  \return The build error code
@@ -89,22 +67,7 @@ class HSAILProgram : public device::Program {
   int compileBinaryToHSAIL(amd::option::Options* options  //!< options for compilation
                            );
 
-
-  virtual bool linkImpl(amd::option::Options* options);
-#if defined(WITH_LIGHTNING_COMPILER)
-  virtual bool linkImpl_LC(amd::option::Options* options);
-  bool setKernels_LC(amd::option::Options* options, void* binary, size_t binSize);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
-  //! Link the device programs.
-  virtual bool linkImpl(const std::vector<Program*>& inputPrograms, amd::option::Options* options,
-                        bool createLibrary);
-#if defined(WITH_LIGHTNING_COMPILER)
-  virtual bool linkImpl_LC(const std::vector<Program*>& inputPrograms,
-                           amd::option::Options* options, bool createLibrary);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
-  virtual bool createBinary(amd::option::Options* options);
+  virtual bool createBinary(amd::option::Options* options) = 0;
 
   //! Initialize Binary
   virtual bool initClBinary();
@@ -127,28 +90,27 @@ class HSAILProgram : public device::Program {
     return static_cast<const ClBinary*>(device::Program::clBinary());
   }
 
- private:
+ protected:
   /* \brief Returns the next stage to compile from, based on sections in binary,
    *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
    *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
    */
-  aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                         bool& needOptionsCheck);
+  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
+                                         bool& needOptionsCheck) = 0;
 
   /* \brief Returns the next stage to compile from, based on sections and options in binary
    */
   aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-  bool saveBinaryAndSetType(type_t type, void* binary = nullptr, size_t size = 0);
 
   //! Disable default copy constructor
-  HSAILProgram(const HSAILProgram&) = delete;
+  Program(const Program&) = delete;
   //! Disable operator=
-  HSAILProgram& operator=(const HSAILProgram&) = delete;
+  Program& operator=(const Program&) = delete;
 
+protected:
   //! Returns all the options to be appended while passing to the
   // compiler
   std::string preprocessorOptions(amd::option::Options* options);
-  std::string codegenOptions(amd::option::Options* options);
 
   // aclBinary and aclCompiler - for the compiler library
   aclBinary* binaryElf_;      //!< Binary for the new compiler library
@@ -158,13 +120,72 @@ class HSAILProgram : public device::Program {
   /* HSA executable */
   hsa_executable_t hsaExecutable_;               //!< Handle to HSA executable
   hsa_code_object_reader_t hsaCodeObjectReader_; //!< Handle to HSA code reader
+};
+
+class HSAILProgram : public roc::Program {
+ public:
+  HSAILProgram(roc::NullDevice& device);
+  virtual ~HSAILProgram();
+
+ protected:
+  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
+                           const std::vector<const std::string*>& headers,
+                           const char** headerIncludeNames,
+                           amd::option::Options* options  //!< compile options's object
+                           ) final;
+
+  virtual bool linkImpl(amd::option::Options* options) final;
+
+  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
+                        amd::option::Options* options, bool createLibrary) final;
+
+  virtual bool createBinary(amd::option::Options* options) final;
+
+private:
+  std::string codegenOptions(amd::option::Options* options);
+
+  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
+                                                 bool& needOptionsCheck) final;
+
+  bool saveBinaryAndSetType(type_t type);
+};
 
 #if defined(WITH_LIGHTNING_COMPILER)
+class LightningProgram : public roc::Program {
+public:
+  LightningProgram(roc::NullDevice& device);
+  virtual ~LightningProgram();
+
+  //! Returns the program metadata.
+  const CodeObjectMD* metadata() const { return metadata_; }
+
+protected:
+  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
+                           const std::vector<const std::string*>& headers,
+                           const char** headerIncludeNames,
+                           amd::option::Options* options  //!< compile options's object
+                           ) final;
+
+  virtual bool linkImpl(amd::option::Options* options) final;
+
+  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
+                        amd::option::Options* options, bool createLibrary) final;
+
+  virtual bool createBinary(amd::option::Options* options) final;
+
+private:
+  bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
+
+  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
+                                                 bool& needOptionsCheck) final;
+
+  bool setKernels(amd::option::Options* options, void* binary, size_t binSize);
+
   CodeObjectMD* metadata_;  //!< Runtime metadata
   //! Return a new transient compiler instance.
   static amd::opencl_driver::Compiler* newCompilerInstance();
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 };
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 /*@}*/} // namespace roc
 

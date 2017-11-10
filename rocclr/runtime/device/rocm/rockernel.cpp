@@ -498,7 +498,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQual(const aclArgData* argI
   return rv;
 }
 
-void Kernel::initArguments(const aclArgData* aclArg) {
+void HSAILKernel::initArguments(const aclArgData* aclArg) {
   device::Kernel::parameters_t params;
 
   // Iterate through the arguments and insert into parameterList
@@ -562,7 +562,7 @@ void Kernel::initArguments(const aclArgData* aclArg) {
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-void Kernel::initArguments_LC(const KernelMD& kernelMD) {
+void LightningKernel::initArguments(const KernelMD& kernelMD) {
   device::Kernel::parameters_t params;
 
   size_t offset = 0;
@@ -632,7 +632,7 @@ void Kernel::initArguments_LC(const KernelMD& kernelMD) {
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
-Kernel::Kernel(std::string name, HSAILProgram* prog, const uint64_t& kernelCodeHandle,
+Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
                const uint32_t kernargSegmentAlignment)
@@ -645,7 +645,6 @@ Kernel::Kernel(std::string name, HSAILProgram* prog, const uint64_t& kernelCodeH
       kernargSegmentAlignment_(kernargSegmentAlignment) {}
 
 #if defined(WITH_LIGHTNING_COMPILER)
-
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
   for (const KernelMD& kernelMD : programMD->mKernels) {
     if (kernelMD.mName == name) {
@@ -655,18 +654,18 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
   return nullptr;
 }
 
-bool Kernel::init_LC() {
+bool LightningKernel::init() {
   hsa_agent_t hsaDevice = program_->hsaDevice();
 
   // Pull out metadata from the ELF
-  const CodeObjectMD* programMD = program_->metadata();
+  const CodeObjectMD* programMD = static_cast<LightningProgram*>(program_)->metadata();
   assert(programMD != nullptr);
 
   const KernelMD* kernelMD = FindKernelMetadata(programMD, name());
   if (kernelMD == nullptr) {
     return false;
   }
-  initArguments_LC(*kernelMD);
+  initArguments(*kernelMD);
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
@@ -721,16 +720,13 @@ bool Kernel::init_LC() {
     return false;
   }
 
-  initPrintf_LC(programMD->mPrintf);
+  initPrintf(programMD->mPrintf);
 
   return true;
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
-bool Kernel::init() {
-#if defined(WITH_LIGHTNING_COMPILER)
-  return init_LC();
-#else   // !defined(WITH_LIGHTNING_COMPILER)
+bool HSAILKernel::init() {
   acl_error errorCode;
   // compile kernel down to ISA
   hsa_agent_t hsaDevice = program_->hsaDevice();
@@ -738,13 +734,13 @@ bool Kernel::init() {
   size_t sizeOfArgList;
   aclCompiler* compileHandle = program_->dev().compiler();
   std::string openClKernelName("&__OpenCL_" + name() + "_kernel");
-  errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
     return false;
   }
   std::unique_ptr<char[]> argList(new char[sizeOfArgList]);
-  errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), argList.get(), &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
     return false;
@@ -760,12 +756,12 @@ bool Kernel::init() {
   workGroupInfo_.availableSGPRs_ = 104;
   workGroupInfo_.availableVGPRs_ = 256;
   size_t sizeOfWorkGroupSize;
-  errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
+  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
     return false;
   }
-  errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
+  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), workGroupInfo_.compileSize_,
                                          &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
@@ -810,7 +806,7 @@ bool Kernel::init() {
 
   // Pull out printf metadata from the ELF
   size_t sizeOfPrintfList;
-  errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(), RT_GPU_PRINTF_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_GPU_PRINTF_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
   if (errorCode != ACL_SUCCESS) {
     return false;
@@ -822,7 +818,7 @@ bool Kernel::init() {
     if (!aclPrintfList) {
       return false;
     }
-    errorCode = g_complibApi._aclQueryInfo(compileHandle, program_->binaryElf(),
+    errorCode = aclQueryInfo(compileHandle, program_->binaryElf(),
                                            RT_GPU_PRINTF_ARRAY, openClKernelName.c_str(),
                                            aclPrintfList.get(), &sizeOfPrintfList);
     if (errorCode != ACL_SUCCESS) {
@@ -833,11 +829,10 @@ bool Kernel::init() {
     initPrintf(reinterpret_cast<aclPrintfFmt*>(aclPrintfList.get()));
   }
   return true;
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 #if defined(WITH_LIGHTNING_COMPILER)
-void Kernel::initPrintf_LC(const std::vector<std::string>& printfInfoStrings) {
+void LightningKernel::initPrintf(const std::vector<std::string>& printfInfoStrings) {
   for (auto str : printfInfoStrings) {
     std::vector<std::string> tokens;
 
@@ -928,7 +923,7 @@ void Kernel::initPrintf_LC(const std::vector<std::string>& printfInfoStrings) {
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
-void Kernel::initPrintf(const aclPrintfFmt* aclPrintf) {
+void HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf) {
   PrintfInfo info;
   uint index = 0;
   for (; aclPrintf->struct_size != 0; aclPrintf++) {

@@ -614,7 +614,7 @@ bool CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
 
   return true;
 }
-#endif
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 }  // namespace amd
 
@@ -1088,7 +1088,7 @@ bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputProgr
   return true;
 }
 
-bool Program::initClBinary(char* binaryIn, size_t size) {
+bool Program::initClBinary(const char* binaryIn, size_t size) {
   if (!initClBinary()) {
     return false;
   }
@@ -1096,7 +1096,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   // Save the original binary that isn't owned by ClBinary
   clBinary()->saveOrigBinary(binaryIn, size);
 
-  char* bin = binaryIn;
+  const char* bin = binaryIn;
   size_t sz = size;
 
   // unencrypted
@@ -1130,7 +1130,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
       return false;
     }
     if (info().arch_id == aclHSAIL || info().arch_id == aclHSAIL64) {
-      err = aclWriteToMem(aclbin_v30, reinterpret_cast<void**>(&bin), &sz);
+      err = aclWriteToMem(aclbin_v30, (void**)const_cast<char**>(&bin), &sz);
       if (err != ACL_SUCCESS) {
         LogWarning("aclWriteToMem failed");
         aclBinaryFini(aclbin_v30);
@@ -1139,7 +1139,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
       aclBinaryFini(aclbin_v30);
     } else {
       aclBinary* aclbin_v21 = aclCreateFromBinary(aclbin_v30, aclBIFVersion21);
-      err = aclWriteToMem(aclbin_v21, reinterpret_cast<void**>(&bin), &sz);
+      err = aclWriteToMem(aclbin_v21, (void**)const_cast<char**>(&bin), &sz);
       if (err != ACL_SUCCESS) {
         LogWarning("aclWriteToMem failed");
         aclBinaryFini(aclbin_v30);
@@ -1150,7 +1150,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
       aclBinaryFini(aclbin_v21);
     }
   } else
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // !defined(WITH_LIGHTNING_COMPILER)
   {
     size_t decryptedSize;
     if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
@@ -1177,16 +1177,12 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
 }
 
 
-bool Program::setBinary(char* binaryIn, size_t size) {
+bool Program::setBinary(const char* binaryIn, size_t size) {
   if (!initClBinary(binaryIn, size)) {
     return false;
   }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  if (!clBinary()->setElfIn(ELFCLASS64)) {
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  if (!clBinary()->setElfIn(ELFCLASS32)) {
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+  if (!clBinary()->setElfIn()) {
     LogError("Setting input OCL binary failed");
     return false;
   }
@@ -1209,7 +1205,14 @@ bool Program::setBinary(char* binaryIn, size_t size) {
       break;
     }
     case ET_DYN: {
-      setType(TYPE_LIBRARY);
+      char* sect = NULL;
+      size_t sz = 0;
+      // FIXME: we should look for the e_machine to detect an HSACO.
+      if (clBinary()->elfIn()->getSection(amd::OclElf::TEXT, &sect, &sz) && sect && sz > 0) {
+        setType(TYPE_EXECUTABLE);
+      } else {
+        setType(TYPE_LIBRARY);
+      }
       break;
     }
     case ET_EXEC: {
@@ -1223,35 +1226,12 @@ bool Program::setBinary(char* binaryIn, size_t size) {
 
   clBinary()->loadCompileOptions(compileOptions_);
   clBinary()->loadLinkOptions(linkOptions_);
-#if defined(WITH_LIGHTNING_COMPILER)
-  // TODO:  Remove this once BIF is no longer used as we should have a machinasm in
-  //       place to get the binary type correctly from above.
-  //       It is a workaround for executable build from the library. The code object
-  //       binary does not have the type information.
 
-  char* sect = NULL;
-  size_t sz = 0;
-  if (clBinary()->elfIn()->getSection(amd::OclElf::TEXT, &sect, &sz) && sect && sz > 0) {
-    setType(TYPE_EXECUTABLE);
-  }
-
-  sect = NULL;
-  sz = 0;
-  if (type != ET_DYN &&  // binary is not a library
-      (clBinary()->elfIn()->getSection(amd::OclElf::LLVMIR, &sect, &sz) && sect && sz > 0)) {
-    setType(TYPE_COMPILED);
-  }
-
-#endif
   clBinary()->resetElfIn();
   return true;
 }
 
 bool Program::createBIFBinary(aclBinary* bin) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  assert(!"createBIFBinary() should not be called when using LC");
-  return false;
-#else   // defined(WITH_LIGHTNING_COMPILER)
   acl_error err;
   char* binaryIn = NULL;
   size_t size;
@@ -1263,7 +1243,6 @@ bool Program::createBIFBinary(aclBinary* bin) {
   clBinary()->saveBIFBinary(binaryIn, size);
   aclFreeMem(bin, binaryIn);
   return true;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 }
 
 ClBinary::ClBinary(const amd::Device& dev, BinaryImageFormat bifVer)
@@ -1399,7 +1378,7 @@ void ClBinary::release() {
   }
 }
 
-void ClBinary::saveBIFBinary(char* binaryIn, size_t size) {
+void ClBinary::saveBIFBinary(const char* binaryIn, size_t size) {
   char* image = new char[size];
   memcpy(image, binaryIn, size);
 
@@ -1492,7 +1471,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
 
 Program::binary_t ClBinary::data() const { return std::make_pair(binary_, size_); }
 
-bool ClBinary::setBinary(char* theBinary, size_t theBinarySize, bool allocated) {
+bool ClBinary::setBinary(const char* theBinary, size_t theBinarySize, bool allocated) {
   release();
 
   size_ = theBinarySize;
@@ -1514,7 +1493,7 @@ void ClBinary::setFlags(int encryptCode) {
   }
 }
 
-bool ClBinary::decryptElf(char* binaryIn, size_t size, char** decryptBin, size_t* decryptSize,
+bool ClBinary::decryptElf(const char* binaryIn, size_t size, char** decryptBin, size_t* decryptSize,
                           int* encryptCode) {
   *decryptBin = NULL;
 #if defined(HAVE_BLOWFISH_H)
@@ -1540,13 +1519,13 @@ bool ClBinary::decryptElf(char* binaryIn, size_t size, char** decryptBin, size_t
   return true;
 }
 
-bool ClBinary::setElfIn(unsigned char eclass) {
+bool ClBinary::setElfIn() {
   if (elfIn_) return true;
 
   if (binary_ == NULL) {
     return false;
   }
-  elfIn_ = new amd::OclElf(eclass, binary_, size_, NULL, ELF_C_READ);
+  elfIn_ = new amd::OclElf(ELFCLASSNONE, binary_, size_, NULL, ELF_C_READ);
   if ((elfIn_ == NULL) || elfIn_->hasError()) {
     if (elfIn_) {
       delete elfIn_;

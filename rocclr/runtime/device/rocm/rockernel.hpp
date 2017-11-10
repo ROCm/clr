@@ -85,7 +85,7 @@ class Kernel : public device::Kernel {
     ROC_ACCESS_TYPE access_;          //!< Access type for the argument
   };
 
-  Kernel(std::string name, HSAILProgram* prog, const uint64_t& kernelCodeHandle,
+  Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
          const uint32_t workgroupGroupSegmentByteSize,
          const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
          const uint32_t kernargSegmentAlignment);
@@ -103,13 +103,9 @@ class Kernel : public device::Kernel {
   ~Kernel();
 
   //! Initializes the metadata required for this kernel
-  bool init();
-#if defined(WITH_LIGHTNING_COMPILER)
-  //! Initializes the metadata required for this kernel
-  bool init_LC();
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+  virtual bool init() = 0;
 
-  const HSAILProgram* program() const { return static_cast<const HSAILProgram*>(program_); }
+  const Program* program() const { return static_cast<const Program*>(program_); }
 
   //! Returns the kernel argument list
   const std::vector<Argument*>& hsailArgs() const { return hsailArgList_; }
@@ -131,7 +127,7 @@ class Kernel : public device::Kernel {
   //! set internal kernel flag
   void setInternalKernelFlag(bool flag) { flags_.internalKernel_ = flag; }
 
- private:
+ protected:
   union Flags {
     struct {
       uint internalKernel_ : 1;  //!< Is a blit kernel?
@@ -140,21 +136,8 @@ class Kernel : public device::Kernel {
     Flags() : value_(0) {}
   } flags_;
 
-  //! Populates hsailArgList_
-  void initArguments(const aclArgData* aclArg);
-#if defined(WITH_LIGHTNING_COMPILER)
-  //! Initializes Hsail Argument metadata and info for LC
-  void initArguments_LC(const KernelMD& kernelMD);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 
-  //! Initializes HSAIL Printf metadata and info
-  void initPrintf(const aclPrintfFmt* aclPrintf);
-#if defined(WITH_LIGHTNING_COMPILER)
-  //! Initializes HSAIL Printf metadata and info for LC
-  void initPrintf_LC(const std::vector<std::string>& printfInfoStrings);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
-  HSAILProgram* program_;                //!< The roc::HSAILProgram context
+  Program* program_;                //!< The roc::Program context
   std::vector<Argument*> hsailArgList_;  //!< Vector list of HSAIL Arguments
   uint64_t kernelCodeHandle_;            //!< Kernel code handle (aka amd_kernel_code_t)
   const uint32_t workgroupGroupSegmentByteSize_;
@@ -164,6 +147,51 @@ class Kernel : public device::Kernel {
   size_t kernelDirectiveOffset_;
   std::vector<PrintfInfo> printf_;
 };
+
+class HSAILKernel : public roc::Kernel {
+ public:
+  HSAILKernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
+              const uint32_t workgroupGroupSegmentByteSize,
+              const uint32_t workitemPrivateSegmentByteSize,
+              const uint32_t kernargSegmentByteSize,
+              const uint32_t kernargSegmentAlignment)
+   : roc::Kernel(name, prog, kernelCodeHandle, workgroupGroupSegmentByteSize,
+                 workitemPrivateSegmentByteSize, kernargSegmentByteSize, kernargSegmentAlignment) {
+  }
+
+  //! Initializes the metadata required for this kernel
+  virtual bool init() final;
+
+ private:
+  //! Populates hsailArgList_
+  void initArguments(const aclArgData* aclArg);
+
+  //! Initializes HSAIL Printf metadata and info
+  void initPrintf(const aclPrintfFmt* aclPrintf);
+};
+
+#if defined(WITH_LIGHTNING_COMPILER)
+class LightningKernel : public roc::Kernel {
+ public:
+  LightningKernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
+                  const uint32_t workgroupGroupSegmentByteSize,
+                  const uint32_t workitemPrivateSegmentByteSize,
+                  const uint32_t kernargSegmentByteSize,
+                  const uint32_t kernargSegmentAlignment)
+   : roc::Kernel(name, prog, kernelCodeHandle, workgroupGroupSegmentByteSize,
+                 workitemPrivateSegmentByteSize, kernargSegmentByteSize, kernargSegmentAlignment) {
+  }
+  //! Initializes the metadata required for this kernel
+  virtual bool init() final;
+
+private:
+  //! Initializes Hsail Argument metadata and info for LC
+  void initArguments(const KernelMD& kernelMD);
+
+  //! Initializes HSAIL Printf metadata and info for LC
+  void initPrintf(const std::vector<std::string>& printfInfoStrings);
+};
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 }  // namespace roc
 

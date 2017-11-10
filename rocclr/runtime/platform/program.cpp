@@ -49,18 +49,14 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
 
 cl_int Program::addDeviceProgram(Device& device, const void* image, size_t length,
                                  amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  // LC binary must be in ELF format
-  if (image != NULL && !amd::isElfMagic((const char*)image)) {
+  if (image != NULL &&  !amd::isElfMagic((const char*)image)
+#if !defined(WITH_LIGHTNING_COMPILER)
+      && !aclValidateBinaryImage(
+          image, length, isSPIRV_ ? BINARY_TYPE_SPIRV : BINARY_TYPE_ELF | BINARY_TYPE_LLVM)
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+  ) {
     return CL_INVALID_BINARY;
   }
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  if (image != NULL &&
-      !aclValidateBinaryImage(image, length,
-                              isSPIRV_ ? BINARY_TYPE_SPIRV : BINARY_TYPE_ELF | BINARY_TYPE_LLVM)) {
-    return CL_INVALID_BINARY;
-  }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 
   // Check if the device is already associated with this program
   if (deviceList_.find(&device) != deviceList_.end()) {
@@ -80,7 +76,6 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     emptyOptions = true;
   }
 
-#if !defined(WITH_LIGHTNING_COMPILER)
   if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
     acl_error errorCode;
     aclBinary* binary = aclReadFromMem(image, length, &errorCode);
@@ -102,10 +97,11 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
         return CL_INVALID_COMPILER_OPTIONS;
       }
     }
-    options->oVariables->Legacy = isAMDILTarget(*aclutGetTargetInfo(binary));
+    options->oVariables->Legacy = !IS_LIGHTNING ?
+                                     isAMDILTarget(*aclutGetTargetInfo(binary)) :
+                                     isHSAILTarget(*aclutGetTargetInfo(binary));
     aclBinaryFini(binary);
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
   options->oVariables->BinaryIsSpirv = isSPIRV_;
   device::Program* program = rootDev.createProgram(options);
   if (program == NULL) {
@@ -133,7 +129,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
       return CL_INVALID_BINARY;
     }
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if 0 && defined(WITH_LIGHTNING_COMPILER)
     // load the compiler options from the binary if it is not provided
     std::string sBinOptions = program->compileOptions();
     if (!sBinOptions.empty() && emptyOptions) {
@@ -143,7 +139,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
         return CL_INVALID_COMPILER_OPTIONS;
       }
     }
-#endif
+#endif // defined(WITH_LIGHTNING_COMPILER)
   }
 
   devicePrograms_[&rootDev] = program;
@@ -300,8 +296,8 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
 // Check the binary's target for the first found device program.
 // TODO: Revise these binary's target checks
 // and possibly remove them after switching to HSAIL by default.
-#if !defined(WITH_LIGHTNING_COMPILER)
-      if (!found && binary.first != NULL && binary.second > 0) {
+      if (!found && binary.first != NULL && binary.second > 0 &&
+          aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
         acl_error errorCode = ACL_SUCCESS;
         void* mem = const_cast<void*>(binary.first);
         aclBinary* aclBin = aclReadFromMem(mem, binary.second, &errorCode);
@@ -311,12 +307,14 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
         }
         if (isHSAILTarget(*aclutGetTargetInfo(aclBin))) {
           parsedOptions.oVariables->Frontend = "clang";
+#if defined(WITH_LIGHTNING_COMPILER)
+          parsedOptions.oVariables->Legacy = true;
+#endif // defined(WITH_LIGHTNING_COMPILER)
         } else if (isAMDILTarget(*aclutGetTargetInfo(aclBin))) {
           parsedOptions.oVariables->Frontend = "edg";
         }
         aclBinaryFini(aclBin);
       }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
       found = true;
     }
     if (inputDevPrograms.size() == 0) {
