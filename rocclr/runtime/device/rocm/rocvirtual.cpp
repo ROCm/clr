@@ -1984,7 +1984,11 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     }
 
     // create the AQL packet for start profiling
-    profileRef->createStartPacket();
+    if (profileRef->createStartPacket() == nullptr) {
+      LogError("Failed to create AQL packet for start profiling");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+    }
+
     dispatchCounterAqlPacket(profileRef->prePacket(), counter->gfxVersion(), false,
                              profileRef->api());
 
@@ -1997,7 +2001,10 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     PerfCounterProfile* profileRef =  counter->profileRef();
 
     // create the AQL packet for stop profiling
-    profileRef->createStopPacket();
+    if (profileRef->createStopPacket() == nullptr) {
+      LogError("Failed to create AQL packet for stop profiling");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+    }
     dispatchCounterAqlPacket(profileRef->postPacket(), counter->gfxVersion(), true,
                              profileRef->api());
   } else {

@@ -366,55 +366,49 @@ bool PerfCounterProfile::initialize() {
   uint32_t  cmd_buf_size;
   uint32_t  out_buf_size;
 
-  if (api_.hsa_ven_amd_aqlprofile_get_info(
-            &profile_,
-            HSA_VEN_AMD_AQLPROFILE_INFO_COMMAND_BUFFER_SIZE,
-            &cmd_buf_size) != HSA_STATUS_SUCCESS) {
-    return false;
-  }
+  // save the current command and output buffer information
+  hsa_ven_amd_aqlprofile_descriptor_t cmd_buf = profile_.command_buffer;
+  hsa_ven_amd_aqlprofile_descriptor_t out_buf = profile_.output_buffer;
 
-  if (api_.hsa_ven_amd_aqlprofile_get_info(
-            &profile_,
-            HSA_VEN_AMD_AQLPROFILE_INFO_PMC_DATA_SIZE,
-            &out_buf_size) != HSA_STATUS_SUCCESS) {
+  // determine the required buffer sizes for the profiling events
+  profile_.events = &events_[0];
+  profile_.event_count = events_.size();
+  profile_.command_buffer = {nullptr, 0};
+  profile_.output_buffer = {nullptr, 0};
+
+  if (api_.hsa_ven_amd_aqlprofile_start(&profile_, nullptr) != HSA_STATUS_SUCCESS) {
     return false;
   }
 
   const uint32_t alignment = amd::Os::pageSize();     // use page alignment
 
-  hsa_ven_amd_aqlprofile_descriptor_t cmd_buf = profile_.command_buffer;
-  if (cmd_buf.ptr != nullptr && cmd_buf.size != cmd_buf_size) {
+  if (cmd_buf.ptr != nullptr && cmd_buf.size != profile_.command_buffer.size) {
     roc_device_.memFree(cmd_buf.ptr, cmd_buf.size);
     cmd_buf.ptr = nullptr;
   }
 
   if (cmd_buf.ptr == nullptr) {
-    void *buf_ptr = roc_device_.hostAlloc(cmd_buf_size, alignment, 1);
+    void *buf_ptr = roc_device_.hostAlloc(profile_.command_buffer.size, alignment, 1);
     if (buf_ptr != nullptr) {
-      cmd_buf.ptr = buf_ptr;
-      cmd_buf.size = cmd_buf_size;
-      profile_.command_buffer = cmd_buf;
+      profile_.command_buffer.ptr = buf_ptr;
     }
     else {
       return false;
     }
   }
 
-  hsa_ven_amd_aqlprofile_descriptor_t out_buf = profile_.output_buffer;
-  if (out_buf.ptr != nullptr && out_buf.size != out_buf_size) {
+  if (out_buf.ptr != nullptr && out_buf.size != profile_.output_buffer.size) {
     roc_device_.memFree(out_buf.ptr, out_buf.size);
     out_buf.ptr = nullptr;
   }
 
   if (out_buf.ptr == nullptr) {
-    void *buf_ptr = roc_device_.hostAlloc(out_buf_size, alignment, 1);
+    void *buf_ptr = roc_device_.hostAlloc(profile_.output_buffer.size, alignment, 1);
     if (buf_ptr != nullptr) {
-      out_buf.ptr = buf_ptr;
-      out_buf.size = out_buf_size;
-      profile_.output_buffer = out_buf;
+      profile_.output_buffer.ptr = buf_ptr;
     }
     else {
-      roc_device_.hostFree(cmd_buf.ptr, cmd_buf.size);
+      roc_device_.hostFree(profile_.command_buffer.ptr, profile_.command_buffer.size);
       return false;
     }
   }
