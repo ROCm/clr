@@ -80,23 +80,6 @@ static const hsa_barrier_and_packet_t kBarrierReleasePacket = {
 
 double Timestamp::ticksToTime_ = 0;
 
-/**
-* Set the ocl correlation handle (essentially the cl_event handle)
-* to correlate the cl kernel launch and HSA kernel dispatch
-*/
-typedef hsa_status_t (*hsa_ext_tools_set_correlation_handle)(const hsa_agent_t agent,
-                                                             void* correlation_handle);
-static void SetOclCorrelationHandle(void* tools_lib, const hsa_agent_t agent, void* handle) {
-  hsa_ext_tools_set_correlation_handle func =
-      (hsa_ext_tools_set_correlation_handle)amd::Os::getSymbol(
-          tools_lib, "hsa_ext_tools_set_correlation_handler");
-  if (func) {
-    func(agent, handle);
-  }
-
-  return;
-}
-
 bool VirtualGPU::MemoryDependency::create(size_t numMemObj) {
   if (numMemObj > 0) {
     // Allocate the array of memory objects for dependency tracking
@@ -467,7 +450,6 @@ VirtualGPU::VirtualGPU(Device& device)
   // Initialize the last signal and dispatch flags
   timestamp_ = nullptr;
   hasPendingDispatch_ = false;
-  tools_lib_ = nullptr;
 
   kernarg_pool_base_ = nullptr;
   kernarg_pool_size_ = 0;
@@ -489,23 +471,10 @@ VirtualGPU::~VirtualGPU() {
     printfdbg_ = nullptr;
   }
 
-  tools_lib_ = nullptr;
   --roc_device_.numOfVgpus_;  // Virtual gpu unique index decrementing
 }
 
 bool VirtualGPU::create(bool profilingEna) {
-  // Set the event handle to the tools lib if the env var
-  // Load the library using its advertised "soname"
-  std::string lib_name = amd::Os::getEnvironment("HSA_TOOLS_LIB");
-  if (lib_name != "") {
-#if defined(_WIN32) || defined(__CYGWIN__)
-    const char* tools_lib_name = "hsa-runtime-tools" LP64_SWITCH("", "64") ".dll";
-#else
-    const char* tools_lib_name = "libhsa-runtime-tools" LP64_SWITCH("", "64") ".so.1";
-#endif
-    tools_lib_ = amd::Os::loadLibrary(tools_lib_name);
-  }
-
   // Checking Virtual gpu unique index for ROCm backend
   if (index() > device().settings().commandQueues_) {
     return false;
@@ -587,11 +556,6 @@ bool VirtualGPU::terminate() {
 
   if (barrier_signal_.handle != 0) {
     hsa_signal_destroy(barrier_signal_);
-  }
-
-  if (tools_lib_) {
-    amd::Os::unloadLibrary(tools_lib_);
-    tools_lib_ = nullptr;
   }
 
   destroyPool();
@@ -1492,10 +1456,6 @@ static void fillSampleDescriptor(hsa_ext_sampler_descriptor_t& samplerDescriptor
 
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
                                       const_address parameters, void* eventHandle) {
-  if (tools_lib_) {
-    SetOclCorrelationHandle(tools_lib_, this->gpu_device_, eventHandle);
-  }
-
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
 
