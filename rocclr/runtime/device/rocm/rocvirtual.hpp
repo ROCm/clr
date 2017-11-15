@@ -277,7 +277,6 @@ class VirtualGPU : public device::VirtualDevice {
   hsa_signal_t barrier_signal_;
   uint32_t dispatch_id_;  //!< This variable must be updated atomically.
   Device& roc_device_;    //!< roc device object
-  void* tools_lib_;
   PrintfDbg* printfdbg_;
   MemoryDependency memoryDependency_;  //!< Memory dependency class
   uint16_t aqlHeader_;                 //!< AQL header for dispatch
