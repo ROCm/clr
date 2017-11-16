@@ -498,6 +498,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQual(const aclArgData* argI
   return rv;
 }
 
+#if defined(WITH_COMPILER_LIB)
 void HSAILKernel::initArguments(const aclArgData* aclArg) {
   device::Kernel::parameters_t params;
 
@@ -560,6 +561,7 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
   }
   createSignature(params);
 }
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void LightningKernel::initArguments(const KernelMD& kernelMD) {
@@ -726,6 +728,7 @@ bool LightningKernel::init() {
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
+#if defined(WITH_COMPILER_LIB)
 bool HSAILKernel::init() {
   acl_error errorCode;
   // compile kernel down to ISA
@@ -830,6 +833,7 @@ bool HSAILKernel::init() {
   }
   return true;
 }
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void LightningKernel::initPrintf(const std::vector<std::string>& printfInfoStrings) {
@@ -923,6 +927,7 @@ void LightningKernel::initPrintf(const std::vector<std::string>& printfInfoStrin
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
+#if defined(WITH_COMPILER_LIB)
 void HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf) {
   PrintfInfo info;
   uint index = 0;
@@ -986,7 +991,7 @@ void HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf) {
     info.arguments_.clear();
   }
 }
-
+#endif // defined(WITH_COMPILER_LIB)
 
 Kernel::~Kernel() {
   while (!hsailArgList_.empty()) {

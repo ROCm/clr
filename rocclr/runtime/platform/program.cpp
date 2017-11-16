@@ -76,6 +76,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     emptyOptions = true;
   }
 
+#if defined(WITH_COMPILER_LIB)
   if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
     acl_error errorCode;
     aclBinary* binary = aclReadFromMem(image, length, &errorCode);
@@ -102,6 +103,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
                                      isHSAILTarget(*aclutGetTargetInfo(binary));
     aclBinaryFini(binary);
   }
+#endif // defined(WITH_COMPILER_LIB)
   options->oVariables->BinaryIsSpirv = isSPIRV_;
   device::Program* program = rootDev.createProgram(options);
   if (program == NULL) {
@@ -296,6 +298,7 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
 // Check the binary's target for the first found device program.
 // TODO: Revise these binary's target checks
 // and possibly remove them after switching to HSAIL by default.
+#if defined(WITH_COMPILER_LIB)
       if (!found && binary.first != NULL && binary.second > 0 &&
           aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
         acl_error errorCode = ACL_SUCCESS;
@@ -315,6 +318,7 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
         }
         aclBinaryFini(aclBin);
       }
+#endif // defined(WITH_COMPILER_LIB)
       found = true;
     }
     if (inputDevPrograms.size() == 0) {

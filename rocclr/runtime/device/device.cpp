@@ -1232,6 +1232,7 @@ bool Program::setBinary(const char* binaryIn, size_t size) {
 }
 
 bool Program::createBIFBinary(aclBinary* bin) {
+#if defined(WITH_COMPILER_LIB)
   acl_error err;
   char* binaryIn = NULL;
   size_t size;
@@ -1243,6 +1244,9 @@ bool Program::createBIFBinary(aclBinary* bin) {
   clBinary()->saveBIFBinary(binaryIn, size);
   aclFreeMem(bin, binaryIn);
   return true;
+#else // !defined(WITH_COMPILER_LIB)
+  return false;
+#endif // !defined(WITH_COMPILER_LIB)
 }
 
 ClBinary::ClBinary(const amd::Device& dev, BinaryImageFormat bifVer)

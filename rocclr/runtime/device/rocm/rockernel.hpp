@@ -148,6 +148,7 @@ class Kernel : public device::Kernel {
   std::vector<PrintfInfo> printf_;
 };
 
+#if defined(WITH_COMPILER_LIB)
 class HSAILKernel : public roc::Kernel {
  public:
   HSAILKernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
@@ -169,6 +170,7 @@ class HSAILKernel : public roc::Kernel {
   //! Initializes HSAIL Printf metadata and info
   void initPrintf(const aclPrintfFmt* aclPrintf);
 };
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 class LightningKernel : public roc::Kernel {

@@ -190,6 +190,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
   binary_t binary = this->binary();
   // If the binary already exists
   if ((binary.first != nullptr) && (binary.second > 0)) {
+#if defined(WITH_COMPILER_LIB)
     if (aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
       acl_error errorCode;
       binaryElf_ = aclReadFromMem(binary.first, binary.second, &errorCode);
@@ -198,6 +199,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
         return continueCompileFrom;
       }
     }
+#endif // defined(WITH_COMPILER_LIB)
 
     // save the current options
     std::string sCurCompileOptions = compileOptions_;
@@ -227,6 +229,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
         if (compileOptions_.empty()) break;
 
         std::string sBinOptions;
+#if defined(WITH_COMPILER_LIB)
         if (binaryElf_ != nullptr) {
           const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
           assert(symbol && "symbol not found");
@@ -242,7 +245,9 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
             break;
           }
           sBinOptions = std::string((char*)opts, symSize);
-        } else {
+        } else 
+#endif // defined(WITH_COMPILER_LIB)
+        {
           sBinOptions = sCurOptions;
         }
 
@@ -282,6 +287,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
   return continueCompileFrom;
 }
 
+#if defined(WITH_COMPILER_LIB)
 std::string HSAILProgram::codegenOptions(amd::option::Options* options) {
   std::string optionsStr;
 
@@ -294,6 +300,7 @@ std::string HSAILProgram::codegenOptions(amd::option::Options* options) {
 
   return optionsStr;
 }
+#endif // defined(WITH_COMPILER_LIB)
 
 std::string Program::preprocessorOptions(amd::option::Options* options) {
   std::string optionsStr;
@@ -368,6 +375,7 @@ std::string Program::preprocessorOptions(amd::option::Options* options) {
   return optionsStr;
 }
 
+#if defined(WITH_COMPILER_LIB)
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
 }
 
@@ -816,6 +824,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   buildLog_ += aclGetCompilerLog(device().compiler());
   return true;
 }
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 LightningProgram::LightningProgram(roc::NullDevice& device) : roc::Program(device) {
