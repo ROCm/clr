@@ -190,6 +190,7 @@ Device::~Device() {
   }
 }
 bool NullDevice::initCompiler(bool isOffline) {
+#if defined(WITH_COMPILER_LIB)
   // Initialize the compiler handle if has already not been initialized
   // This is destroyed in Device::teardown
   acl_error error;
@@ -207,10 +208,12 @@ bool NullDevice::initCompiler(bool isOffline) {
 #endif // !defined(WITH_LIGHTNING_COMPILER)
     }
   }
+#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 
 bool NullDevice::destroyCompiler() {
+#if defined(WITH_COMPILER_LIB)
   if (compilerHandle_ != nullptr) {
     acl_error error = aclCompilerFini(compilerHandle_);
     if (error != ACL_SUCCESS) {
@@ -218,6 +221,7 @@ bool NullDevice::destroyCompiler() {
       return false;
     }
   }
+#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 
@@ -665,7 +669,11 @@ bool Device::create() {
 }
 
 device::Program* NullDevice::createProgram(amd::option::Options* options) {
+#if defined(WITH_COMPILER_LIB)
   return new roc::HSAILProgram(*this);
+#else // !defined(WITH_COMPILER_LIB)
+  return NULL;
+#endif // !defined(WITH_COMPILER_LIB)
 }
 
 device::Program* Device::createProgram(amd::option::Options* options) {
@@ -674,7 +682,9 @@ device::Program* Device::createProgram(amd::option::Options* options) {
     return new roc::LightningProgram(*this);
   }
 #endif // defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   return new roc::HSAILProgram(*this);
+#endif // defined(WITH_COMPILER_LIB)
 }
 
 hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {

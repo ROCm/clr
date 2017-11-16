@@ -46,6 +46,7 @@ static void logFunction(const char* msg, size_t size) {
 
 static int programsCount = 0;
 
+#if defined(WITH_COMPILER_LIB)
 bool HSAILProgram::compileImpl(const std::string& sourceCode,
                                const std::vector<const std::string*>& headers,
                                const char** headerIncludeNames, amd::option::Options* options) {
@@ -160,6 +161,7 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
   saveBinaryAndSetType(TYPE_COMPILED);
   return true;
 }
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 bool LightningProgram::compileImpl(const std::string& sourceCode,

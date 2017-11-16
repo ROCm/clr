@@ -122,6 +122,7 @@ protected:
   hsa_code_object_reader_t hsaCodeObjectReader_; //!< Handle to HSA code reader
 };
 
+#if defined(WITH_COMPILER_LIB)
 class HSAILProgram : public roc::Program {
  public:
   HSAILProgram(roc::NullDevice& device);
@@ -149,6 +150,7 @@ private:
 
   bool saveBinaryAndSetType(type_t type);
 };
+#endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 class LightningProgram : public roc::Program {
