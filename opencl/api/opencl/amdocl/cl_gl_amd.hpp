@@ -43,12 +43,6 @@ protected:
     GLint   gliDepth_;
     GLenum  glCubemapFace_;
     GLsizei glNumSamples_;
-    //! Need to pass PBO name from acquire to release
-    GLuint  gluiPBO_;
-
-    // @todo: TBD: Do we need to sync data after access
-    // or it'll be done by the GL driver?
-    cl_int  cliChecksum_;
 
 public:
 //! GLObject constructor initializes member variables
@@ -73,8 +67,7 @@ public:
             gliHeight_(gliHeight),
             gliDepth_(gliDepth),
             glCubemapFace_(glCubemapFace),
-            glNumSamples_(glNumSamples),
-            cliChecksum_(0)
+            glNumSamples_(glNumSamples)
     {
     }
 
@@ -93,9 +86,6 @@ public:
     cl_gl_object_type getCLGLObjectType() const { return clGLType_; }
     GLenum  getCubemapFace() const {return glCubemapFace_;}
     GLsizei getNumSamples() const { return glNumSamples_;}
-    void    setPBOName(GLuint gluiName) {gluiPBO_ = gluiName;}
-    GLuint  getPBOName() const {return gluiPBO_;}
-
 };
 
 
