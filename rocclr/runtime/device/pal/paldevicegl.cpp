@@ -349,21 +349,21 @@ static const   cmFormatXlateParams cmFormatXlateTable[] = {
     { CM_SURF_FMT_RGBX4,                 500,                    CL_RGB       },
     { CM_SURF_FMT_RGB5_X1,               CL_UNORM_INT16,         CL_BGRA      },
     { CM_SURF_FMT_RGBX8,                 CL_UNORM_INT8,          CL_RGBA      },
-    { CM_SURF_FMT_RGB10_X2,              CL_UNORM_INT_101010,    CL_RGBA      },
+    { CM_SURF_FMT_RGB10_X2,              CL_UNORM_INT_101010,    CL_RGB       },
     { CM_SURF_FMT_RGBX16,                CL_UNORM_INT16,         CL_RGBA      },
     { CM_SURF_FMT_RGBX16F,               CL_HALF_FLOAT,          CL_RGBA      },
     { CM_SURF_FMT_RGBX32F,               CL_FLOAT,               CL_RGBA      },
     { CM_SURF_FMT_BGRA4,                 500,                    CL_BGRA      },
     { CM_SURF_FMT_BGR5_A1,               CL_UNSIGNED_INT16,      CL_BGRA      },
     { CM_SURF_FMT_BGRA8,                 CL_UNORM_INT8,          CL_BGRA      },
-    { CM_SURF_FMT_BGR10_A2,              CL_UNORM_INT_101010,    CL_BGRA      },
+    { CM_SURF_FMT_BGR10_A2,              500,                    CL_BGRA      },
     { CM_SURF_FMT_BGRA16,                CL_UNORM_INT16,         CL_BGRA      },
     { CM_SURF_FMT_BGRA16F,               CL_UNORM_INT16,         CL_BGRA      },
     { CM_SURF_FMT_BGRA32F,               CL_FLOAT,               CL_BGRA      },
     { CM_SURF_FMT_RGBA4,                 500,                    CL_RGBA      },
     { CM_SURF_FMT_RGB5_A1,               CL_UNSIGNED_INT16,      CL_RGBA      },
     { CM_SURF_FMT_RGBA8,                 CL_UNORM_INT8,          CL_RGBA      },
-    { CM_SURF_FMT_RGB10_A2,              CL_UNORM_INT_101010,    CL_RGBA      },
+    { CM_SURF_FMT_RGB10_A2,              CL_UNORM_INT_101010,    CL_RGB       },
     { CM_SURF_FMT_RGBA16,                CL_UNORM_INT16,         CL_RGBA      },
     { CM_SURF_FMT_RGBA16F,               CL_HALF_FLOAT,          CL_RGBA      },
     { CM_SURF_FMT_RGBA32I,               CL_UNSIGNED_INT32,      CL_RGBA      },
@@ -392,7 +392,7 @@ static const   cmFormatXlateParams cmFormatXlateTable[] = {
     { CM_SURF_FMT_ABGR4,                 500,                    CL_ARGB      },
     { CM_SURF_FMT_A1_BGR5,               CL_UNSIGNED_INT16,      CL_ARGB      },
     { CM_SURF_FMT_ABGR8,                 CL_UNORM_INT8,          CL_ARGB      },
-    { CM_SURF_FMT_A2_BGR10,              CL_UNORM_INT_101010,    CL_ARGB      },
+    { CM_SURF_FMT_A2_BGR10,              CL_UNORM_INT_101010,    CL_RGB       },
     { CM_SURF_FMT_ABGR16,                CL_UNORM_INT16,         CL_ARGB      },
     { CM_SURF_FMT_ABGR16F,               CL_HALF_FLOAT,          CL_ARGB      },
     { CM_SURF_FMT_ABGR32F,               CL_FLOAT,               CL_ARGB      },
@@ -760,7 +760,6 @@ bool Device::resGLAssociate(void* GLContext, uint name, uint type, Pal::OsExtern
 
   newClFormat.image_channel_data_type = cmFormatXlateTable[index].image_channel_data_type;
   newClFormat.image_channel_order = cmFormatXlateTable[index].image_channel_order;
-
 
   return status;
 }
