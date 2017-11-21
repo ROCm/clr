@@ -22,6 +22,7 @@ static inline ROC_ARG_TYPE GetKernelArgType(const KernelArgMD& lcArg) {
   switch (lcArg.mValueKind) {
     case ValueKind::GlobalBuffer:
     case ValueKind::DynamicSharedPointer:
+    case ValueKind::Pipe:
       return ROC_ARGTYPE_POINTER;
     case ValueKind::ByValue:
       return ROC_ARGTYPE_VALUE;
@@ -193,7 +194,9 @@ static inline ROC_ADDRESS_QUALIFIER GetKernelAddrQual(const KernelArgMD& lcArg) 
     }
     LogError("Unsupported address type");
     return ROC_ADDRESS_ERROR;
-  } else if (lcArg.mValueKind == ValueKind::Image || lcArg.mValueKind == ValueKind::Sampler) {
+  } else if (lcArg.mValueKind == ValueKind::Image || 
+             lcArg.mValueKind == ValueKind::Sampler ||
+             lcArg.mValueKind == ValueKind::Pipe) {
     return ROC_ADDRESS_GLOBAL;
   }
   return ROC_ADDRESS_ERROR;
@@ -468,6 +471,10 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQual(const KernelArgMD& lcA
     if (lcArg.mIsConst) {
       rv |= CL_KERNEL_ARG_TYPE_CONST;
     }
+  }
+  else if (lcArg.mIsPipe) {
+    assert(lcArg.mValueKind == ValueKind::Pipe);
+    rv |= CL_KERNEL_ARG_TYPE_PIPE;
   }
   return rv;
 }
