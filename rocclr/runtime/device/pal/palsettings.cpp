@@ -325,7 +325,13 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 #if !defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClKhrSpir);
 #endif // !defined(WITH_LIGHTNING_COMPILER)
-  enableExtension(ClAMDLiquidFlash);
+
+#ifdef ATI_OS_LINUX
+  if (palProp.gpuMemoryProperties.busAddressableMemSize > 0)
+#endif
+  {
+    enableExtension(ClAMDLiquidFlash);
+  }
 
   hwLDSSize_ = 32 * Ki;
 
