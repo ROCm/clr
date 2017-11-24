@@ -102,11 +102,7 @@ static const TargetMapping AMDILTargetMapping_0_8[] = {
   { "VI", "Baffin",     "baffin",  amd::GPU_Library_CI,        VI_BAFFIN_M_A1,          F_SI_BASE, true,  true, FAMILY_VI },
   { "VI", "Ellesmere",  "ellesmere", amd::GPU_Library_CI,      VI_ELLESMERE_P_A0,       F_SI_BASE, true, false, FAMILY_VI },
   { "VI", "Ellesmere",  "ellesmere", amd::GPU_Library_CI,      VI_ELLESMERE_P_A1,       F_SI_BASE, true,  true, FAMILY_VI },
-#ifndef BRAHMA
   { "VI", "gfx804",     "gfx804",    amd::GPU_Library_CI,      VI_LEXA_V_A0,            F_SI_BASE, true,  true, FAMILY_VI },
-#else
-  UnknownTarget,
-#endif
   InvalidTarget
 };
 

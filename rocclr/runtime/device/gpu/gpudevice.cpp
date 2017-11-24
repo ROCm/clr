@@ -848,8 +848,8 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
   }
 
 #if defined(BRAHMA)
-  if (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_LEXA ||
-      calTarget_ == CAL_TARGET_RAVEN || calTarget_ == CAL_TARGET_POLARIS22) {
+  if (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
+      calTarget_ == CAL_TARGET_POLARIS22) {
     return false;
   }
 #endif

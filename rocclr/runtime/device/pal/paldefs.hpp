@@ -145,6 +145,7 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 804},
     /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 804},
     /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 804},
+    /* Lexa */ {"gfx804", "gfx804", 4, 16, 1, 256, 64 * Ki, 32, 804},
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and

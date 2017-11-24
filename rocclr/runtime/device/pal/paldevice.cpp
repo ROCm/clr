@@ -741,7 +741,7 @@ bool Device::create(Pal::IDevice* device) {
   uint subtarget = isXNACKSupported;
 
   // Update HW info for the device
-  if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Polaris11)) {
+  if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Polaris12)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
   } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
       // For compiler sub targets
