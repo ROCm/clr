@@ -209,7 +209,7 @@ static const char* calTargetMapping[] = {
       "Carrizo", "Ellesmere", "Baffin",
       IF(IS_BRAHMA,"","gfx900"),
       "Stoney",
-      IF(IS_BRAHMA,"","gfx804"),
+      "gfx804",
       IF(IS_BRAHMA,"","gfx901"),
       IF(IS_BRAHMA,"","gfx902"),
       IF(IS_BRAHMA,"","gfx903"),
