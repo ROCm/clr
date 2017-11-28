@@ -479,6 +479,9 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
 #if defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
       CL_EXTENSION_ENTRYPOINT_CHECK2(clCreateProgramWithILKHR,clCreateProgramWithIL);
 #endif // defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
+#if cl_amd_assembly_program
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithAssemblyAMD);
+#endif  // cl_amd_assembly_program
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
 #endif  // cl_amd_liquid_flash

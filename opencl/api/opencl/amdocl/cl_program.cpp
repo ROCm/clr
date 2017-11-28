@@ -134,7 +134,7 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource,
   }
 
   // Create the program
-  amd::Program* program = new amd::Program(*as_amd(context), sourceCode);
+  amd::Program* program = new amd::Program(*as_amd(context), sourceCode, amd::Program::OpenCL_C);
   if (program == NULL) {
     *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
     return (cl_program)0;
@@ -196,7 +196,7 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithIL,
   }
 
   // Create the program
-  amd::Program* program = new amd::Program(*as_amd(context), "", true);
+  amd::Program* program = new amd::Program(*as_amd(context), amd::Program::SPIRV);
   if (program == NULL) {
     *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
     return (cl_program)0;
@@ -326,6 +326,58 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithBinary,
       binary_status[i] = status;
     }
   }
+  return as_cl(program);
+}
+RUNTIME_EXIT
+
+RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithAssemblyAMD,
+    (cl_context context, cl_uint count, const char** strings, const size_t* lengths,
+        cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    return (cl_program)0;
+  }
+  if (count == 0 || strings == NULL) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  std::string assembly;
+  for (cl_uint i = 0; i < count; ++i) {
+    if (strings[i] == NULL) {
+      *not_null(errcode_ret) = CL_INVALID_VALUE;
+      return (cl_program)0;
+    }
+    if (lengths && lengths[i] != 0) {
+      assembly.append(strings[i], lengths[i]);
+    } else {
+      assembly.append(strings[i]);
+    }
+  }
+  if (assembly.empty()) {
+    *not_null(errcode_ret) = CL_INVALID_VALUE;
+    return (cl_program)0;
+  }
+
+  // Create the program
+  amd::Program* program = new amd::Program(*as_amd(context), assembly, amd::Program::Assembly);
+  if (program == NULL) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_program)0;
+  }
+
+  // Add programs for all devices in the context.
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  std::vector<amd::Device*>::const_iterator it;
+  for (it = devices.begin(); it != devices.end(); ++it) {
+    if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      program->release();
+      return (cl_program)0;
+    }
+  }
+
+  *not_null(errcode_ret) = CL_SUCCESS;
   return as_cl(program);
 }
 RUNTIME_EXIT
