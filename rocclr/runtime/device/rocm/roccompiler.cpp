@@ -165,13 +165,25 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
 
 #if defined(WITH_LIGHTNING_COMPILER)
 bool LightningProgram::compileImpl(const std::string& sourceCode,
-                                   const std::vector<const std::string*>& headers,
-                                   const char** headerIncludeNames, amd::option::Options* options) {
+                                  const std::vector<const std::string*>& headers,
+                                  const char** headerIncludeNames, amd::option::Options* options) {
+  const char* xLang = options->oVariables->XLang;
+  if (xLang != nullptr) {
+    if (strcmp(xLang,"asm") == 0) {
+      clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
+      return true;
+    } else if (!strcmp(xLang,"cl")) {
+      buildLog_ += "Unsupported language: \"" + std::string(xLang) + "\".\n";
+      return false;
+    }
+  }
+
   using namespace amd::opencl_driver;
+  amd::opencl_driver::DataType inputType(DT_CL);
   std::unique_ptr<Compiler> C(newCompilerInstance());
   std::vector<Data*> inputs;
 
-  Data* input = C->NewBufferReference(DT_CL, sourceCode.c_str(), sourceCode.length());
+  Data* input = C->NewBufferReference(inputType, sourceCode.c_str(), sourceCode.length());
   if (input == nullptr) {
     buildLog_ += "Error while creating data from source code";
     return false;
@@ -192,11 +204,6 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
             std::ostream_iterator<std::string>(ostrstr, " "));
 
   std::string driverOptions(ostrstr.str());
-
-  const char* xLang = options->oVariables->XLang;
-  if (xLang != nullptr && strcmp(xLang, "cl")) {
-    buildLog_ += "Unsupported OpenCL language.\n";
-  }
 
   // FIXME_Nikolay: the program manager should be setting the language
   // driverOptions.append(" -x cl");
