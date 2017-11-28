@@ -196,6 +196,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Fiji:
     case Pal::AsicRevision::Polaris10:
     case Pal::AsicRevision::Polaris11:
+    case Pal::AsicRevision::Polaris12:
       // Disable tiling aperture on VI+
       linearPersistentImage_ = true;
       // Keep this false even though we have support
