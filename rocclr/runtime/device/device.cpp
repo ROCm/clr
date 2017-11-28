@@ -116,7 +116,7 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   }
 
   // Create a program with all blit kernels
-  program_ = new Program(*context_, kernels.c_str());
+  program_ = new Program(*context_, kernels.c_str(), Program::OpenCL_C);
   if (program_ == NULL) {
     return false;
   }

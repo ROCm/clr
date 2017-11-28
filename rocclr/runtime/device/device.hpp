@@ -119,6 +119,7 @@ enum OclExtensions {
   ClKhrIlProgram,
   ClAMDLiquidFlash,
   ClAmdCopyBufferP2P,
+  ClAmdAssemblyProgram,
   ClExtTotal
 };
 
@@ -161,6 +162,7 @@ static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "",
                                             "cl_amd_liquid_flash ",
                                             "cl_amd_copy_buffer_p2p ",
+                                            "cl_amd_assembly_program ",
                                             NULL};
 
 static constexpr int AmdVendor = 0x1002;

@@ -72,6 +72,12 @@ class Program : public RuntimeObject {
   typedef std::map<Device const*, device::Program*> deviceprograms_t;
   typedef std::map<std::string, Symbol> symbols_t;
 
+  enum Language {
+    Binary = 0,
+    OpenCL_C,
+    SPIRV,
+    Assembly
+  };
  private:
   //! Replaces the compiled program with the new version from HD
   void StubProgramSource(const std::string& app_name);
@@ -80,7 +86,7 @@ class Program : public RuntimeObject {
   SharedReference<Context> context_;
 
   std::string sourceCode_;   //!< Strings that make up the source code
-  bool isSPIRV_;             //!< The binary image is SPIRV
+  Language language_;        //!< Input source language
   devicebinary_t binary_;    //!< The binary image, provided by the app
   symbols_t* symbolTable_;   //!< The program's kernels symbol table
   std::string kernelNames_;  //!< The program kernel names
@@ -103,15 +109,16 @@ class Program : public RuntimeObject {
 
  public:
   //! Construct a new program to be compiled from the given source code.
-  Program(Context& context, const std::string& sourceCode, bool isSPIRV = false)
+  Program(Context& context, const std::string& sourceCode, Language language)
       : context_(context),
         sourceCode_(sourceCode),
-        isSPIRV_(isSPIRV),
+        language_(language),
         symbolTable_(NULL),
         programLog_() {}
 
   //! Construct a new program associated with a context.
-  Program(Context& context) : context_(context), isSPIRV_(false), symbolTable_(NULL) {}
+  Program(Context& context, Language language = Binary)
+      : context_(context), language_(language), symbolTable_(NULL) {}
 
   //! Returns context, associated with the current program.
   const Context& context() const { return context_(); }
