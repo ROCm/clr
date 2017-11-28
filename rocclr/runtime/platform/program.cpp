@@ -52,7 +52,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
   if (image != NULL &&  !amd::isElfMagic((const char*)image)
 #if !defined(WITH_LIGHTNING_COMPILER)
       && !aclValidateBinaryImage(
-          image, length, isSPIRV_ ? BINARY_TYPE_SPIRV : BINARY_TYPE_ELF | BINARY_TYPE_LLVM)
+          image, length, language_ == SPIRV ? BINARY_TYPE_SPIRV : BINARY_TYPE_ELF | BINARY_TYPE_LLVM)
 #endif // !defined(WITH_LIGHTNING_COMPILER)
   ) {
     return CL_INVALID_BINARY;
@@ -104,7 +104,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     aclBinaryFini(binary);
   }
 #endif // defined(WITH_COMPILER_LIB)
-  options->oVariables->BinaryIsSpirv = isSPIRV_;
+  options->oVariables->BinaryIsSpirv = language_ == SPIRV;
   device::Program* program = rootDev.createProgram(options);
   if (program == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -210,7 +210,7 @@ cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
       devProgram = getDeviceProgram(**it);
     }
 
-    if (devProgram->type() == device::Program::TYPE_INTERMEDIATE || isSPIRV_) {
+    if (devProgram->type() == device::Program::TYPE_INTERMEDIATE || language_ == SPIRV) {
       continue;
     }
     // We only build a Device-Program once
@@ -284,8 +284,8 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
     bool found = false;
     for (size_t i = 0; i < numInputs; ++i) {
       Program& inputProgram = *inputPrograms[i];
-      if (inputProgram.isSPIRV_) {
-        parsedOptions.oVariables->BinaryIsSpirv = inputProgram.isSPIRV_;
+      if (inputProgram.language_ == SPIRV) {
+        parsedOptions.oVariables->BinaryIsSpirv = true;
       }
       deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
       deviceprograms_t::const_iterator findIt = inputDevProgs.find(*it);
@@ -491,6 +491,11 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
     }
 
     parsedOptions.oVariables->AssumeAlias = true;
+
+    if (language_ == Assembly) {
+      constexpr char asmLang[] = "asm";
+      parsedOptions.oVariables->XLang = asmLang;
+    }
 
     // We only build a Device-Program once
     if (devProgram->buildStatus() != CL_BUILD_NONE) {
