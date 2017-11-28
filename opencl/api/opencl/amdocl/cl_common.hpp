@@ -291,6 +291,14 @@ clCreateBufferFromImageAMD(
     cl_mem                  image,
     cl_int *                errcode_ret);
 
+extern CL_API_ENTRY cl_program CL_API_CALL
+clCreateProgramWithAssemblyAMD(
+    cl_context              context,
+    cl_uint                 count,
+    const char **           strings,
+    const size_t *          lengths,
+    cl_int *                errcode_ret);
+
 } // extern "C"
 
 //! \endcond

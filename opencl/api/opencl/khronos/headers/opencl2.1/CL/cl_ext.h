@@ -352,6 +352,18 @@ typedef CL_API_ENTRY cl_int
                                              const cl_event* /*event_wait_list*/,
                                              cl_event* /*event*/) CL_EXT_SUFFIX__VERSION_1_2;
 
+/***********************************
+* cl_amd_assembly_program extension *
+***********************************/
+#define cl_amd_assembly_program   1
+
+typedef CL_API_ENTRY cl_program (CL_API_CALL * clCreateProgramWithAssemblyAMD_fn) (
+    cl_context          /* context */,
+    cl_uint             /* count */,
+    const char**        /* strings */,
+    const size_t*       /* lengths */,
+    cl_int*             /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
+
 // <amd_internal>
 /***************************
 * cl_amd_command_intercept *
