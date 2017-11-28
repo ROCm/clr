@@ -284,6 +284,14 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
       }
     }
   }
+#if defined(WITH_LIGHTNING_COMPILER)
+  else {
+    const char* xLang = options->oVariables->XLang;
+    if (xLang != nullptr && strcmp(xLang, "asm") == 0) {
+      continueCompileFrom = ACL_TYPE_ASM_TEXT;
+    }
+  }
+#endif
   return continueCompileFrom;
 }
 
@@ -999,13 +1007,29 @@ bool LightningProgram::linkImpl(const std::vector<device::Program*>& inputProgra
 bool LightningProgram::linkImpl(amd::option::Options* options) {
   acl_error errorCode;
   aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
-
+  using namespace amd::opencl_driver;
+  std::vector<Data*> inputs;
+  std::unique_ptr<Compiler> C(newCompilerInstance());
+  bool bLinkLLVMBitcode = true;
   if (llvmBinary_.empty()) {
     continueCompileFrom = getNextCompilationStageFromBinary(options);
   }
   switch (continueCompileFrom) {
     case ACL_TYPE_CG:
     case ACL_TYPE_LLVMIR_BINARY: {
+      break;
+    }
+    case ACL_TYPE_ASM_TEXT: {
+      char* section;
+      size_t sz;
+      clBinary()->elfOut()->getSection(amd::OclElf::SOURCE, &section, &sz);
+      Data* input = C->NewBufferReference(DT_ASSEMBLY, section, sz);
+      if (!input) {
+        buildLog_ += "Error: Failed to open the assembler text.\n";
+        return false;
+      }
+      inputs.push_back(input);
+      bLinkLLVMBitcode = false;
       break;
     }
       break;
@@ -1020,119 +1044,117 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
       break;
     }
     default:
-      buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n";
+      buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
       return false;
   }
 
-  using namespace amd::opencl_driver;
-  std::unique_ptr<Compiler> C(newCompilerInstance());
-
   // call LinkLLVMBitcode
-  std::vector<Data*> inputs;
+  if (bLinkLLVMBitcode) {
+    // open the input IR source
+    Data* input = C->NewBufferReference(DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
 
-  // open the input IR source
-  Data* input = C->NewBufferReference(DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
+    if (!input) {
+      buildLog_ += "Error: Failed to open the compiled program.\n";
+      return false;
+    }
 
-  if (!input) {
-    buildLog_ += "Error: Failed to open the compiled program.\n";
-    return false;
-  }
+    inputs.push_back(input);  //< must be the first input
 
-  inputs.push_back(input);  //< must be the first input
-
-  // open the bitcode libraries
-  Data* opencl_bc =
+    // open the bitcode libraries
+    Data* opencl_bc =
       C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_amdgcn, opencl_amdgcn_size);
-  Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
-  Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
-  Data* irif_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)irif_amdgcn, irif_amdgcn_size);
+    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
+    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
+    Data* irif_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)irif_amdgcn, irif_amdgcn_size);
 
-  if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
-    buildLog_ += "Error: Failed to open the bitcode library.\n";
-    return false;
-  }
+    if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
+      buildLog_ += "Error: Failed to open the bitcode library.\n";
+      return false;
+    }
 
-  inputs.push_back(opencl_bc);  // depends on oclm & ockl
-  inputs.push_back(ockl_bc);    // depends on irif
-  inputs.push_back(ocml_bc);    // depends on irif
-  inputs.push_back(irif_bc);
+    inputs.push_back(opencl_bc);  // depends on oclm & ockl
+    inputs.push_back(ockl_bc);    // depends on irif
+    inputs.push_back(ocml_bc);    // depends on irif
+    inputs.push_back(irif_bc);
 
-  // open the control functions
-  auto isa_version = get_oclc_isa_version(dev().deviceInfo().gfxipVersion_);
-  if (!isa_version.first) {
-    buildLog_ += "Error: Linking for this device is not supported\n";
-    return false;
-  }
+    // open the control functions
+    auto isa_version = get_oclc_isa_version(dev().deviceInfo().gfxipVersion_);
+    if (!isa_version.first) {
+      buildLog_ += "Error: Linking for this device is not supported\n";
+      return false;
+    }
 
-  Data* isa_version_bc =
+    Data* isa_version_bc =
       C->NewBufferReference(DT_LLVM_BC, (const char*)isa_version.first, isa_version.second);
 
-  if (!isa_version_bc) {
-    buildLog_ += "Error: Failed to open the control functions.\n";
-    return false;
-  }
-
-  inputs.push_back(isa_version_bc);
-
-  auto correctly_rounded_sqrt =
-      get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
-  Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
-                                                          correctly_rounded_sqrt.second);
-
-  auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
-                                  AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-                                  (dev().deviceInfo().gfxipVersion_ < 900 &&
-                                   AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
-  Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
-
-  auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
-                                          options->oVariables->FastRelaxedMath);
-  Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC, finite_only.first, finite_only.second);
-
-  auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
-                                          options->oVariables->FastRelaxedMath);
-  Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
-
-  if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
-    buildLog_ += "Error: Failed to open the control functions.\n";
-    return false;
-  }
-
-  inputs.push_back(correctly_rounded_sqrt_bc);
-  inputs.push_back(daz_opt_bc);
-  inputs.push_back(finite_only_bc);
-  inputs.push_back(unsafe_math_bc);
-
-  // open the linked output
-  std::vector<std::string> linkOptions;
-  Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
-
-  if (!linked_bc) {
-    buildLog_ += "Error: Failed to open the linked program.\n";
-    return false;
-  }
-
-  // NOTE: The linkOptions parameter is also used to identy cached code object. This parameter
-  //       should not contain any dyanamically generated filename.
-  bool ret =
-      dev().cacheCompilation()->linkLLVMBitcode(C.get(), inputs, linked_bc, linkOptions, buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
-    return false;
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
-    std::ofstream f(options->getDumpFileName("_linked.bc").c_str(), std::ios::trunc);
-    if (f.is_open()) {
-      f.write(linked_bc->Buf().data(), linked_bc->Size());
-    } else {
-      buildLog_ += "Warning: opening the file to dump the linked IR failed.\n";
+    if (!isa_version_bc) {
+      buildLog_ += "Error: Failed to open the control functions.\n";
+      return false;
     }
-  }
 
-  inputs.clear();
-  inputs.push_back(linked_bc);
+    inputs.push_back(isa_version_bc);
+
+    auto correctly_rounded_sqrt =
+      get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
+    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
+      correctly_rounded_sqrt.second);
+
+    auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
+      AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
+      (dev().deviceInfo().gfxipVersion_ < 900 &&
+        AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
+    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
+
+    auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
+      options->oVariables->FastRelaxedMath);
+    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC, finite_only.first, finite_only.second);
+
+    auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
+      options->oVariables->FastRelaxedMath);
+    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
+
+    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+      buildLog_ += "Error: Failed to open the control functions.\n";
+      return false;
+    }
+
+    inputs.push_back(correctly_rounded_sqrt_bc);
+    inputs.push_back(daz_opt_bc);
+    inputs.push_back(finite_only_bc);
+    inputs.push_back(unsafe_math_bc);
+
+    // open the linked output
+    std::vector<std::string> linkOptions;
+    Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
+
+    if (!linked_bc) {
+      buildLog_ += "Error: Failed to open the linked program.\n";
+      return false;
+    }
+
+    // NOTE: The linkOptions parameter is also used to identy cached code object. This parameter
+    //       should not contain any dyanamically generated filename.
+    bool ret =
+      dev().cacheCompilation()->linkLLVMBitcode(C.get(), inputs, linked_bc, linkOptions, buildLog_);
+    buildLog_ += C->Output();
+    if (!ret) {
+      buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+      return false;
+    }
+
+    if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+      std::ofstream f(options->getDumpFileName("_linked.bc").c_str(), std::ios::trunc);
+      if (f.is_open()) {
+        f.write(linked_bc->Buf().data(), linked_bc->Size());
+      }
+      else {
+        buildLog_ += "Warning: opening the file to dump the linked IR failed.\n";
+      }
+    }
+
+    inputs.clear();
+    inputs.push_back(linked_bc);
+  }
 
   Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
   if (!out_exec) {
@@ -1165,13 +1187,17 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
   std::istream_iterator<std::string> sit(strstr), end;
   std::vector<std::string> params(sit, end);
 
-  // NOTE: The params is also used to identy cached code object.  This paramete
+  // NOTE: The params is also used to identy cached code object. This parameter
   //       should not contain any dyanamically generated filename.
-  ret = dev().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
+  bool ret = dev().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
                                                            buildLog_);
   buildLog_ += C->Output();
   if (!ret) {
-    buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to executable\n";
+    if (continueCompileFrom == ACL_TYPE_ASM_TEXT) {
+      buildLog_ += "Error: Creating the executable from ISA assembly text failed.\n";
+    } else {
+      buildLog_ += "Error: Creating the executable from LLVM IRs failed.\n";
+    }
     return false;
   }
 

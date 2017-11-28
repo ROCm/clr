@@ -114,7 +114,8 @@ typedef enum _acl_type_enum_0_8 {
   ACL_TYPE_HEADER         = 15,
   ACL_TYPE_RSLLVMIR_BINARY  = 16,
   ACL_TYPE_SPIRV_BINARY   = 17,
-  ACL_TYPE_LAST           = 18
+  ACL_TYPE_ASM_TEXT       = 18,
+  ACL_TYPE_LAST           = 19
 } aclType_0_8;
 
 //! Enum of the various loader types that are supported.
