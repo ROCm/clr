@@ -116,6 +116,7 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   supportDepthsRGB_ = true;
 
 #if defined(WITH_LIGHTNING_COMPILER)
+  enableExtension(ClAmdAssemblyProgram);
   switch (gfxipVersion) {
     case 900:
       singleFpDenorm_ = true;
