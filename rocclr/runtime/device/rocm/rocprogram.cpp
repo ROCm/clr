@@ -283,15 +283,12 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
         completeStages.pop_back();
       }
     }
-  }
-#if defined(WITH_LIGHTNING_COMPILER)
-  else {
+  } else {
     const char* xLang = options->oVariables->XLang;
     if (xLang != nullptr && strcmp(xLang, "asm") == 0) {
       continueCompileFrom = ACL_TYPE_ASM_TEXT;
     }
   }
-#endif
   return continueCompileFrom;
 }
 
