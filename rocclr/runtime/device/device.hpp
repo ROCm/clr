@@ -575,6 +575,10 @@ struct Info : public amd::EmbeddedObject {
   size_t globalVariablePreferredTotalSize_;
   //! Driver store location
   char driverStore_[200];
+  //! Device ID
+  uint32_t pcieDeviceId_;
+  //! Revision ID
+  uint32_t pcieRevisionId_;
 };
 
 //! Device settings

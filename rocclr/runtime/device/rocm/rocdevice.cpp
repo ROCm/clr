@@ -568,6 +568,7 @@ bool Device::create() {
   if (pro_device_ != nullptr) {
     pro_ena_ = true;
     settings_->enableExtension(ClAMDLiquidFlash);
+    pro_device_->GetAsicIdAndRevisionId(&info_.pcieDeviceId_, &info_.pcieRevisionId_);
   }
 #endif
 
