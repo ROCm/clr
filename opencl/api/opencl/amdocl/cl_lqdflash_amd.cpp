@@ -112,6 +112,28 @@ bool LiquidFlashFile::transferBlock(bool writeBuffer, void* srcDst, uint64_t buf
 RUNTIME_ENTRY_RET(cl_file_amd, clCreateSsgFileObjectAMD,
                   (cl_context context, cl_file_flags_amd flags, const wchar_t* file_name,
                    cl_int* errcode_ret)) {
+#if defined WITH_LIQUID_FLASH && defined ATI_OS_LINUX
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return (cl_file_amd)0;
+  }
+
+  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
+  bool supportPass = false;
+  for (auto& dev : devices) {
+    if (lf_success == lfCheckExtensionSupportForDevice(dev->info().pcieDeviceId_,
+                                                       dev->info().pcieRevisionId_)) {
+      supportPass = true;
+      break;
+    }
+  }
+  if (!supportPass) {
+    *not_null(errcode_ret) = CL_INVALID_DEVICE;
+    LogWarning("SSG isn't supported");
+    return (cl_file_amd)0;
+  }
+#endif
   amd::LiquidFlashFile* file = new amd::LiquidFlashFile(file_name, flags);
 
   if (file == NULL) {
