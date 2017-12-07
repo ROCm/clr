@@ -772,12 +772,10 @@ bool Device::create(Pal::IDevice* device) {
   Pal::PalPublicSettings* const palSettings = iDev()->GetPublicSettings();
   // Modify settings here
   // palSettings ...
-  palSettings->textureOptLevel = Pal::TextureFilterOptimizationsDisabled;
   palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
   palSettings->longRunningSubmissions = true;
   palSettings->cmdBufBatchedSubmitChainLimit = 0;
   palSettings->disableResourceProcessingManager = true;
-  palSettings->disableScManager = true;
   palSettings->numScratchWavesPerCu = settings().numScratchWavesPerCu_;
 
   // Commit the new settings for the device
