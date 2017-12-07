@@ -35,6 +35,11 @@ public:
   virtual void* AllocDmaBuffer(
       hsa_agent_t agent, size_t size, void** host_ptr) const override;
   virtual void FreeDmaBuffer(void* ptr) const override;
+  virtual void GetAsicIdAndRevisionId(uint32_t* asic_id, uint32_t* rev_id) const override
+  {
+    *asic_id    = gpu_info_.asic_id;
+    *rev_id     = gpu_info_.pci_rev_id;
+  }
 
 private:
   static void*          lib_drm_handle_;

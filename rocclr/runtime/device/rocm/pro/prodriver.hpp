@@ -22,6 +22,7 @@ public:
 
   virtual void* AllocDmaBuffer(hsa_agent_t agent, size_t size, void** host_ptr) const = 0;
   virtual void FreeDmaBuffer(void* ptr) const = 0;
+  virtual void GetAsicIdAndRevisionId(uint32_t* asic_id, uint32_t* rev_id) const = 0;
 
   IProDevice() {}
   virtual ~IProDevice() {}
