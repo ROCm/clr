@@ -18,6 +18,7 @@
 #include "palQueue.h"
 #include "palFence.h"
 #include "palLinearAllocator.h"
+#include "palDeveloperHooks.h"
 
 /*! \addtogroup PAL PAL Resource Implementation
  *  @{
@@ -448,6 +449,7 @@ class VirtualGPU : public device::VirtualDevice {
                                      Pal::LayoutShaderRead}};
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
+    barrier.reason = Pal::Developer::BarrierReasonUnknown;
     iCmd()->CmdBarrier(barrier);
     queues_[engineID_]->submit(false);
   }
