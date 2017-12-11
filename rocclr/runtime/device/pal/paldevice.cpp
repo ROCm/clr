@@ -526,6 +526,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
   }
+  info_.pcieDeviceId_   = palProp.deviceId;
+  info_.pcieRevisionId_ = palProp.revisionId;
 }
 
 Device::XferBuffers::~XferBuffers() {
