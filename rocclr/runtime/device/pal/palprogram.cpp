@@ -875,8 +875,12 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
     isa.handle = gfx801;
     return isa;
   }
-  if (!strcmp(Gfx804, name)) {
-    isa.handle = gfx804;
+  if (!strcmp(Gfx802, name)) {
+      isa.handle = gfx802;
+      return isa;
+  }
+  if (!strcmp(Gfx803, name)) {
+    isa.handle = gfx803;
     return isa;
   }
   if (!strcmp(Gfx810, name)) {
