@@ -945,10 +945,12 @@ bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) 
       return isa.handle == gfx800;
     case gfx801:
       return isa.handle == gfx801;
-    case gfx804:
+    case gfx802:
+        return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx802;
+    case gfx803:
       // gfx800 ISA has only sgrps limited and can be loaded.
       // gfx801 ISA has XNACK limitations and can be loaded.
-      return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
+      return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx802 || isa.handle == gfx803;
     case gfx810:
       return isa.handle == gfx810;
     case gfx900:
