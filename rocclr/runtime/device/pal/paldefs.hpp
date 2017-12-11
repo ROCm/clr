@@ -140,12 +140,12 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* Bristol */ {"Bristol Ridge", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801},
     /* Stoney */ {"Stoney", "stoney", 4, 16, 1, 256, 64 * Ki, 32, 810},
 
-    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, 800},
-    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, 800},
-    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 804},
-    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 804},
-    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 804},
-    /* Lexa */ {"gfx804", "gfx804", 4, 16, 1, 256, 64 * Ki, 32, 804},
+    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, 802},
+    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, 802},
+    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 803},
+    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 803},
+    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 803},
+    /* Lexa */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, 803},
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
