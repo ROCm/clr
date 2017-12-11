@@ -2716,9 +2716,12 @@ bool VirtualGPU::waitAllEngines(CommandBatch* cb) {
 }
 
 void VirtualGPU::waitEventLock(CommandBatch* cb) {
-  // Make sure VirtualGPU has an exclusive access to the resources
-  amd::ScopedLock lock(execution());
-  bool earlyDone = waitAllEngines(cb);
+  bool earlyDone = false;
+  {
+    // Make sure VirtualGPU has an exclusive access to the resources
+    amd::ScopedLock lock(execution());
+    earlyDone = waitAllEngines(cb);
+  }
 
   // Free resource cache if we have too many entries
   //! \note we do it here, when all engines are idle,
