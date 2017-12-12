@@ -88,6 +88,8 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
       return HSA_VEGA10_ID;
     case 901:
       return HSA_VEGA10_HBCC_ID;
+    case 902:
+      return HSA_RAVEN_ID;
     default:
       return HSA_INVALID_DEVICE_ID;
   }
@@ -810,7 +812,11 @@ bool Device::populateOCLDeviceConstants() {
                          &info_.maxClockFrequency_)) {
     return false;
   }
-  assert(info_.maxClockFrequency_ > 0);
+
+  //TODO: add the assert statement for Raven
+  if (deviceInfo_.gfxipVersion_ != 902) {
+    assert(info_.maxClockFrequency_ > 0);
+  }
 
   if (HSA_STATUS_SUCCESS !=
       hsa_amd_agent_iterate_memory_pools(cpu_agent_, Device::iterateCpuMemoryPoolCallback, this)) {
