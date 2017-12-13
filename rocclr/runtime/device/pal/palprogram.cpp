@@ -859,117 +859,42 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
 
 hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
   hsa_isa_t isa = {0};
-  if (!strcmp(Gfx700, name)) {
-    isa.handle = gfx700;
-    return isa;
-  }
-  if (!strcmp(Gfx701, name)) {
-    isa.handle = gfx701;
-    return isa;
-  }
-  if (!strcmp(Gfx800, name)) {
-    isa.handle = gfx800;
-    return isa;
-  }
-  if (!strcmp(Gfx801, name)) {
-    isa.handle = gfx801;
-    return isa;
-  }
-  if (!strcmp(Gfx802, name)) {
-      isa.handle = gfx802;
-      return isa;
-  }
-  if (!strcmp(Gfx803, name)) {
-    isa.handle = gfx803;
-    return isa;
-  }
-  if (!strcmp(Gfx810, name)) {
-    isa.handle = gfx810;
-    return isa;
-  }
-  if (!strcmp(Gfx900, name)) {
-    isa.handle = gfx900;
-    return isa;
-  }
-  if (!strcmp(Gfx901, name)) {
-    isa.handle = gfx901;
-    return isa;
-  }
-  if (!strcmp(Gfx902, name)) {
-      isa.handle = gfx902;
-      return isa;
-  }
-  if (!strcmp(Gfx903, name)) {
-      isa.handle = gfx903;
-      return isa;
-  }
-  if (!strcmp(Gfx904, name)) {
-      isa.handle = gfx904;
-      return isa;
-  }
-  if (!strcmp(Gfx905, name)) {
-      isa.handle = gfx905;
-      return isa;
-  }
-  if (!strcmp(Gfx906, name)) {
-      isa.handle = gfx906;
-      return isa;
-  }
-  if (!strcmp(Gfx907, name)) {
-      isa.handle = gfx907;
-      return isa;
-  }
-  if (!strcmp(Gfx1000, name)) {
-      isa.handle = gfx1000;
-      return isa;
-  }
-  if (!strcmp(Gfx1001, name)) {
-      isa.handle = gfx1001;
-      return isa;
-  }
-
+  uint32_t gfxip  = 0;
+  std::string gfx_target(name);
+  uint32_t shift = 1;
+  size_t first;
+  size_t last = gfx_target.length();
+  std::string ver;
+  do {
+    first = gfx_target.find_last_of(':', last);
+    ver = gfx_target.substr(first + 1, last - first);
+    last = first - 1;
+    gfxip += static_cast<uint32_t>(atoi(ver.c_str())) * shift;
+    shift *= 10;
+  } while (shift <= 100);
+  isa.handle = gfxip;
   return isa;
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  switch (program_->dev().hwInfo()->gfxipVersion_) {
-    default:
-      LogError("Unsupported gfxip version");
-      return false;
-    case gfx700:
-    case gfx701:
-    case gfx702:
-      // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
-      return isa.handle == gfx700 || isa.handle == gfx701;
-    case gfx800:
-      return isa.handle == gfx800;
-    case gfx801:
-      return isa.handle == gfx801;
-    case gfx802:
-        return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx802;
-    case gfx803:
-      // gfx800 ISA has only sgrps limited and can be loaded.
-      // gfx801 ISA has XNACK limitations and can be loaded.
-      return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx802 || isa.handle == gfx803;
-    case gfx810:
-      return isa.handle == gfx810;
-    case gfx900:
-    case gfx901:
-      return isa.handle == gfx900 || isa.handle == gfx901;
-    case gfx902:
-    case gfx903:
-      return isa.handle == gfx902 || isa.handle == gfx903;
-    case gfx904:
-    case gfx905:
-        return isa.handle == gfx904 || isa.handle == gfx905;
-    case gfx906:
-    case gfx907:
-        return isa.handle == gfx906 || isa.handle == gfx907;
-    case gfx1000:
-    case gfx1001:
-        return isa.handle == gfx1000 || isa.handle == gfx1001;
+  uint32_t majorSrc = program_->dev().hwInfo()->gfxipVersion_ / 10;
+  uint32_t minorSrc = program_->dev().hwInfo()->gfxipVersion_ % 10;
 
+  uint32_t majorTrg = isa.handle / 10;
+  uint32_t minorTrg = isa.handle % 10;
+
+  if (majorSrc != majorTrg) {
+    return false;
   }
+  else if (minorTrg == minorSrc) {
+    return true;
+  }
+  else if (minorTrg < minorSrc) {
+    LogWarning("ISA downgrade for execution!");
+    return true;
+  }
+
+  return false;
 }
 
 void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,
