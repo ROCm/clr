@@ -608,7 +608,10 @@ bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
 
       // parse the debug buffer
       while (sbt < copySize) {
-        assert(((*dbgBufferPtr) < printfInfo.size()) && "Cound't find the reported PrintfID!");
+        if (*dbgBufferPtr >= printfInfo.size()) {
+          LogError("Couldn't find the reported PrintfID!");
+          return false;
+        }
         const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
         sb += sizeof(uint32_t);
         for (ita = info.arguments_.begin(); ita != info.arguments_.end(); ++ita) {
