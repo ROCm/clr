@@ -449,7 +449,9 @@ class VirtualGPU : public device::VirtualDevice {
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
     iCmd()->CmdBarrier(barrier);
-    queues_[engineID_]->submit(false);
+    if (!profiling()) {
+      queues_[engineID_]->submit(false);
+    }
   }
 
   void eventBegin(EngineType engId) const {

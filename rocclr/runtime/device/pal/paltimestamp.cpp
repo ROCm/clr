@@ -19,7 +19,7 @@ TimeStamp::~TimeStamp() {}
 
 void TimeStamp::begin(bool sdma) {
   if (!flags_.beginIssued_) {
-    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
+    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
                                     memOffset_ + CommandStartTime * sizeof(uint64_t));
     flags_.beginIssued_ = true;
   }
@@ -27,7 +27,7 @@ void TimeStamp::begin(bool sdma) {
 
 void TimeStamp::end(bool sdma) {
   CondLog(!flags_.beginIssued_, "We didn't issue a begin operation!");
-  gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
+  gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
                                   memOffset_ + CommandEndTime * sizeof(uint64_t));
   flags_.endIssued_ = true;
   flags_.sdma_ = sdma;

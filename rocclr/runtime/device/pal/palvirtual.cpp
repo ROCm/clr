@@ -451,7 +451,9 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (flushL1Cache) {
     // Flush cache
-    gpu.flushCUCaches();
+    if (!gpu.profiling()) {
+        gpu.flushCUCaches();
+    }
 
     // Clear memory dependency state
     const static bool All = true;
@@ -757,7 +759,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
-    VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 64 : 0));
+    VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
 
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 64 * Ki;
@@ -1980,7 +1982,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);
+    // Note: This a workaround for incorrect results reported with release_mem packet,
+    // when the packet can be processed later after this dispatch and including extra time
+    if (profiling()) {
+      flushCUCaches();
+    }
     eventEnd(MainEngine, gpuEvent);
+
     if (id != gpuEvent.id) {
       LogError("something is wrong. ID mismatch!\n");
     }
