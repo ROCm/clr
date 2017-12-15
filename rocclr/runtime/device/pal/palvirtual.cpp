@@ -1984,7 +1984,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     iCmd()->CmdDispatchAql(dispatchParam);
     // Note: This a workaround for incorrect results reported with release_mem packet,
     // when the packet can be processed later after this dispatch and including extra time
-    if (profiling()) {
+    if (profiling() || state_.profileEnabled_) {
       flushCUCaches();
     }
     eventEnd(MainEngine, gpuEvent);
