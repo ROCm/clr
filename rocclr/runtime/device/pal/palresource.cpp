@@ -530,7 +530,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         imgOpenInfo.resourceInfo = openInfo;
         imgOpenInfo.swizzledFormat.format = format;
         imgOpenInfo.swizzledFormat.swizzle = channels;
-        imgOpenInfo.flags.formatChangeSrd = true;
         imgOpenInfo.usage.shaderRead = true;
         imgOpenInfo.usage.shaderWrite = true;
         size_t imageSize;
@@ -549,7 +548,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         imgCreateInfo.extent.height = desc().height_;
         imgCreateInfo.extent.depth = desc().depth_;
         imgCreateInfo.arraySize = 1;
-        imgCreateInfo.flags.formatChangeSrd = true;
         imgCreateInfo.usageFlags.shaderRead = true;
         imgCreateInfo.usageFlags.shaderWrite = true;
         imgCreateInfo.swizzledFormat.format = format;
@@ -669,7 +667,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       imgOpenInfo.resourceInfo = openInfo;
       imgOpenInfo.swizzledFormat.format = format;
       imgOpenInfo.swizzledFormat.swizzle = channels;
-      imgOpenInfo.flags.formatChangeSrd = true;
       imgOpenInfo.usage.shaderRead = true;
       imgOpenInfo.usage.shaderWrite = true;
       memRef_ = GpuMemoryReference::Create(dev(), imgOpenInfo, &imgCreateInfo, &image_);
@@ -831,7 +828,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     if ((memoryType() != ImageView) ||
         //! @todo PAL doesn't allow an SRD view creation with different pixel size
         (elementSize() != viewOwner_->elementSize())) {
-      imgCreateInfo.flags.formatChangeSrd = true;
       imgCreateInfo.usageFlags.shaderRead = true;
       imgCreateInfo.usageFlags.shaderWrite =
           (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
