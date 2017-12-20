@@ -1264,7 +1264,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   dstResource.wait(gpu, waitOnBusyEngine);
 
   if (gpu.validateSdmaOverlap(*this, dstResource)) {
-    gpu.flushDMA(SdmaEngine);
+    // Note: PAL should insert a NOP into the command buffer for synchronization
+    gpu.flushCUCaches();
   }
 
   Pal::ImageLayout imgLayout = {};
