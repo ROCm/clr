@@ -433,7 +433,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns queue, associated with VirtualGPU
   Queue& queue(EngineType id) const { return *queues_[id]; }
 
-  void flushCUCaches(bool flushL2 = false) const {
+  void addBarrier(bool flushL2 = false) const {
     Pal::BarrierInfo barrier = {};
     barrier.pipePointWaitCount = 1;
     Pal::HwPipePoint point = Pal::HwPipePostCs;
