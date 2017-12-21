@@ -646,7 +646,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         return false;
       }
       Pal::BufferViewInfo viewInfo = {};
-      viewInfo.gpuAddr = memRef_->iMem()->Desc().gpuVirtAddr + offset();
+      viewInfo.gpuAddr = vmAddress() + offset();
       viewInfo.range = memRef_->iMem()->Desc().size;
       viewInfo.stride = elementSize();
       viewInfo.swizzledFormat.format = format;
@@ -760,7 +760,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         mapCount_++;
       }
       Pal::BufferViewInfo viewInfo = {};
-      viewInfo.gpuAddr = memRef_->iMem()->Desc().gpuVirtAddr + offset();
+      viewInfo.gpuAddr = vmAddress() + offset();
       viewInfo.range = memRef_->iMem()->Desc().size;
       viewInfo.stride = elementSize();
       viewInfo.swizzledFormat.format = format;
@@ -1058,7 +1058,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     desc_.cardMemory_ = false;
     if ((nullptr != params) && (nullptr != params->owner_) &&
         (nullptr != params->owner_->getSvmPtr())) {
-      params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+      params->owner_->setSvmPtr(reinterpret_cast<void*>(vmAddress()));
     }
     return true;
   }
@@ -1265,7 +1265,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   if (gpu.validateSdmaOverlap(*this, dstResource)) {
     // Note: PAL should insert a NOP into the command buffer for synchronization
-    gpu.flushCUCaches();
+    gpu.addBarrier();
   }
 
   Pal::ImageLayout imgLayout = {};

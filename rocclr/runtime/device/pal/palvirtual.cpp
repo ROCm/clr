@@ -416,7 +416,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (maxMemObjectsInQueue_ == 0) {
     // Flush cache
-    gpu.flushCUCaches();
+    gpu.addBarrier();
     return;
   }
 
@@ -452,7 +452,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   if (flushL1Cache) {
     // Flush cache
     if (!gpu.profiling()) {
-        gpu.flushCUCaches();
+        gpu.addBarrier();
     }
 
     // Clear memory dependency state
@@ -1985,7 +1985,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // Note: This a workaround for incorrect results reported with release_mem packet,
     // when the packet can be processed later after this dispatch and including extra time
     if (profiling() || state_.profileEnabled_) {
-      flushCUCaches();
+      addBarrier();
     }
     eventEnd(MainEngine, gpuEvent);
 
@@ -2127,7 +2127,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                         gpuDefQueue->schedParamIdx_,
                         gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
       const static bool FlushL2 = true;
-      gpuDefQueue->flushCUCaches(FlushL2);
+      gpuDefQueue->addBarrier(FlushL2);
 
       // Get the address of PM4 template and add write it to params
       //! @note DMA flush must not occur between patch and the scheduler
@@ -2955,7 +2955,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
       if (!supportFineGrainedSystem) {
         return false;
       } else if (sync) {
-        flushCUCaches();
+        addBarrier();
         // Clear memory dependency state
         const static bool All = true;
         memoryDependency().clear(!All);
@@ -3001,7 +3001,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         svmMem =
             amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(params + desc.offset_));
         if (!svmMem) {
-          flushCUCaches();
+          addBarrier();
           // Clear memory dependency state
           const static bool All = true;
           memoryDependency().clear(!All);
