@@ -100,9 +100,11 @@
 
 #ifdef WITH_LIGHTNING_COMPILER
 #define LIGHTNING_ONLY(x) x
+#define NOT_LIGHTNING(x)
 #define IS_LIGHTNING true
 #else /* !WITH_LIGHTNING_COMPILER */
 #define LIGHTNING_ONLY(x)
+#define NOT_LIGHTNING(x) x
 #endif /* !WITH_LIGHTNING_COMPILER */
 
 #ifndef IS_LINUX
@@ -127,6 +129,7 @@
 #define IF_RIGHT(cond, x) IF_RIGHT_##cond(x)
 #define IF(cond, x, y) IF_LEFT(cond, x) IF_RIGHT(cond, y)
 
+#define LIGHTNING_SWITCH(x, other) LIGHTNING_ONLY(x) NOT_LIGHTNING(other)
 #define LINUX_SWITCH(x, other) LINUX_ONLY(x) NOT_LINUX(other)
 #define MACOS_SWITCH(x, other) MACOS_ONLY(x) NOT_MACOS(other)
 #define WINDOWS_SWITCH(x, other) WINDOWS_ONLY(x) NOT_WINDOWS(other)

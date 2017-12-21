@@ -140,19 +140,20 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* Bristol */ {"Bristol Ridge", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801},
     /* Stoney */ {"Stoney", "stoney", 4, 16, 1, 256, 64 * Ki, 32, 810},
 
-    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, 802},
-    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, 802},
-    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 803},
-    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 803},
-    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 803},
-    /* Lexa */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, 803},
+    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800)},
+    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800)},
+    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
+    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
+    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
+    /* Lexa */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
 // http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900},
-    /* Vega10 XNACK */{"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 901},
+    /* Vega10 XNACK */{ LIGHTNING_SWITCH("gfx900","gfx901"),  LIGHTNING_SWITCH("gfx900","gfx901"),
+                        4, 16, 1, 256, 64 * Ki, 32,  LIGHTNING_SWITCH(900, 901)},
     /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904},
     /* Vega12 XNACK */{"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 905},
     /* Vega20       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 906},
