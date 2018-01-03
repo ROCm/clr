@@ -116,7 +116,7 @@ bool ThreadTrace::create() {
   size_t se = 0;
   for (auto itMemObj = memObj_.begin(); itMemObj != memObj_.end(); ++itMemObj, ++se) {
     // Initialize the thread trace
-    Pal::PerfTraceInfo sqttInfo = {};
+    Pal::ThreadTraceInfo sqttInfo = {};
     sqttInfo.traceType = Pal::PerfTraceType::ThreadTrace;
     sqttInfo.instance = se;
 
@@ -127,7 +127,7 @@ bool ThreadTrace::create() {
     sqttInfo.optionFlags.threadTraceTokenMask = 1;
     sqttInfo.optionValues.threadTraceTokenMask = 0x0000ffff;
 
-    Pal::Result result = iPerf()->AddTrace(sqttInfo);
+    Pal::Result result = iPerf()->AddThreadTrace(sqttInfo);
     if (result != Pal::Result::Success) {
       return false;
     }
