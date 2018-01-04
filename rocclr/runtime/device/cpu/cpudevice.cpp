@@ -617,13 +617,13 @@ cl_int Device::partitionByCounts(const device::CreateSubDevicesInfo& create_info
       return CL_INVALID_VALUE;
     }
     uint coreId = (uint)-1;
-    while (numSubDevices-- > 0) {
+    for (uint subDev = 0; subDev < numSubDevices; ++subDev) {
       Device* device = new Device(this);
       if (device == NULL) {
         return CL_OUT_OF_HOST_MEMORY;
       }
 
-      cl_uint subComputeUnits = create_info.countsListAt((size_t)numSubDevices);
+      cl_uint subComputeUnits = create_info.countsListAt((size_t)subDev);
       if (!device->create() || !device->initSubDevice(info_, subComputeUnits, create_info)) {
         device->release();
         return CL_OUT_OF_HOST_MEMORY;
