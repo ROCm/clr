@@ -1136,6 +1136,7 @@ bool Device::populateOCLDeviceConstants() {
     }
     //TODO: set to true once thread trace support is available
     info_.threadTraceEnable_ = false;
+    info_.pcieDeviceId_ = deviceInfo_.pciDeviceId_;
   }
 
   info_.maxPipePacketSize_ = info_.maxMemAllocSize_;

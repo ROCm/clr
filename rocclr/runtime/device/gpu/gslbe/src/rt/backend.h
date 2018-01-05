@@ -88,6 +88,8 @@ typedef struct CALdeviceattribsRec {
     CALuint    maxRTCUs;                            /**< The maximum number of RT CUs for RT queues */
     CALuint    asicRevision;                        /**< The ASIC revision ID */
     CALchar    driverStore[CAL_DRIVER_STORE_MAX_LEN];/**< Driver store location. */
+    CALuint    pcieDeviceID;                        /**< The ASIC PCIE device ID */
+    CALuint    pcieRevisionID;                      /**< The ASIC PCIE revision ID */
 } CALdeviceattribs;
 
 

@@ -465,14 +465,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.localMemSize_ = settings().hwLDSSize_;
   info_.extensions_ = getExtensionString();
 
-  info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-  info_.deviceTopology_.pcie.bus = palProp.pciProperties.busNumber;
-  info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
-  info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
-
-  ::strncpy(info_.boardName_, palProp.gpuName,
-            ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
-
   // OpenCL1.2 device info fields
   info_.builtInKernels_ = "";
   info_.imageMaxBufferSize_ = MaxImageBufferSize;
@@ -511,6 +503,14 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   }
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
+    ::strncpy(info_.boardName_, palProp.gpuName,
+              ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
+
+    info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
+    info_.deviceTopology_.pcie.bus = palProp.pciProperties.busNumber;
+    info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
+    info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
+
     info_.simdPerCU_ = hwInfo()->simdPerCU_;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
@@ -521,13 +521,17 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
     info_.gfxipVersion_ = hwInfo()->gfxipVersion_;
+
     info_.numAsyncQueues_ = numComputeRings;
+
     info_.numRTQueues_ = numExclusiveComputeRings;
     info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
+
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
+
+    info_.pcieDeviceId_ = palProp.deviceId;
+    info_.pcieRevisionId_ = palProp.revisionId;
   }
-  info_.pcieDeviceId_   = palProp.deviceId;
-  info_.pcieRevisionId_ = palProp.revisionId;
 }
 
 Device::XferBuffers::~XferBuffers() {
