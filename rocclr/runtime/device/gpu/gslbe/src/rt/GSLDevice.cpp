@@ -119,6 +119,8 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.isWDDM2Enabled = m_adp->pAsicInfo->vaAvailable && m_adp->pAsicInfo->bNoVATranslation;
     m_attribs.maxRTCUs = cs->getMaxRTCUs();
     m_attribs.asicRevision = cs->getChipRev();
+    m_attribs.pcieDeviceID = cs->getAsicDID();
+    m_attribs.pcieRevisionID = cs->getPciRevID();
 }
 
 bool

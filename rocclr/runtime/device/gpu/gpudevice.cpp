@@ -519,12 +519,6 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
   info_.extensions_ = getExtensionString();
 
-  info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
-  info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation & (0xFF << 8)) >> 8;
-  info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation & (0x1F << 3)) >> 3;
-  info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation & 0x07);
-
-  ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
   ::strncpy(info_.driverStore_, calAttr.driverStore, sizeof(info_.driverStore_));
 
   // OpenCL1.2 device info fields
@@ -565,6 +559,13 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   }
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
+    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
+
+    info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
+    info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation & (0xFF << 8)) >> 8;
+    info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation & (0x1F << 3)) >> 3;
+    info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation & 0x07);
+
     info_.simdPerCU_ = hwInfo()->simdPerCU_;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
@@ -575,10 +576,16 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
     info_.gfxipVersion_ = hwInfo()->gfxipVersion_;
+
     info_.numAsyncQueues_ = numComputeRings;
+
     info_.numRTQueues_ = numComputeRingsRT;
     info_.numRTCUs_ = calAttr.maxRTCUs;
+
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
+
+    info_.pcieDeviceId_ = calAttr.pcieDeviceID;
+    info_.pcieRevisionId_ = calAttr.pcieRevisionID;
   }
 }
 
