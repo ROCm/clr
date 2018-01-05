@@ -587,6 +587,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
         }
         return CL_SUCCESS;
       }
+      CASE(CL_DEVICE_PCIE_ID_AMD, pcieDeviceId_);
       default:
         break;
     }
