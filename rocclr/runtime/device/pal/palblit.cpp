@@ -304,7 +304,6 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
     size_t dstSize = size[0];
-    size_t tmpSize = 0;
     size_t offset = 0;
     size_t pinSize = dev().settings().pinnedXferSize_;
     pinSize = std::min(pinSize, dstSize);
@@ -320,12 +319,12 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
 
       amd::Memory* pinned = NULL;
       bool first = true;
-      size_t tmpSize;
       size_t pinAllocSize;
 
       // Copy memory, using pinning
       while (dstSize > 0) {
-        // If it's the first iterarion, then readjust the copy size
+        size_t tmpSize;
+          // If it's the first iterarion, then readjust the copy size
         // to include alignment
         if (first) {
           pinAllocSize = amd::alignUp(pinSize + partial, PinnedMemoryAlignment);

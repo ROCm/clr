@@ -512,7 +512,7 @@ uint32_t* PrintfDbg::mapWorkitem(VirtualGPU& gpu, size_t idx, bool* realloc) {
     }
 
     // Get a pointer to the workitem data
-    uint32_t* workitem = reinterpret_cast<uint32_t*>(xferBufRead_->map(&gpu));
+    workitem = reinterpret_cast<uint32_t*>(xferBufRead_->map(&gpu));
 
     return workitem;
   }
