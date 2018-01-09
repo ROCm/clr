@@ -170,7 +170,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
   }
 
   if (result) {
-    if ((params != nullptr) && (memoryType() == Pinned)) { 
+    if ((params != nullptr) && (memoryType() == Pinned)) {
       memRef()->gpu_ = params->gpu_;
     }
   }
@@ -789,7 +789,6 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
       if (memory == nullptr) {
         // for map target of svm buffer , we need use svm host ptr
         memory = new (dev().context()) amd::Buffer(dev().context(), flag, owner()->getSize());
-        Memory* gpuMemory;
 
         do {
           if ((memory == nullptr) || !memory->create(initHostPtr, SysMem)) {
@@ -798,7 +797,7 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
           }
           memory->setCacheStatus(canBeCached);
 
-          gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
+          Memory* gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
 
           // Create, Map and get the base pointer for the resource
           if ((gpuMemory == nullptr) || (nullptr == gpuMemory->map(nullptr))) {
@@ -1099,14 +1098,13 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
             amd::Buffer(dev().context(), 0, desc().width_ * height * depth * elementSize());
         memory->setVirtualDevice(owner()->getVirtualDevice());
 
-        Memory* gpuMemory;
         do {
           if ((memory == nullptr) || !memory->create(nullptr, SysMem)) {
             failed = true;
             break;
           }
 
-          gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
+          Memory* gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
 
           // Create, Map and get the base pointer for the resource
           if ((gpuMemory == nullptr) || (nullptr == gpuMemory->map(nullptr))) {

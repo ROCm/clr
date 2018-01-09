@@ -1366,7 +1366,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   profilingBegin(vcmd, true);
 
   std::vector<amd::Memory*>::const_iterator itr;
-  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); itr++) {
+  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); ++itr) {
     // Find device memory
     gpu::Memory* memory = dev().getGpuMemory(*itr);
 
@@ -1395,7 +1395,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   std::vector<void*>& svmPointers = vcmd.svmPointers();
   if (vcmd.pfnFreeFunc() == NULL) {
     // pointers allocated using clSVMAlloc
-    for (cl_uint i = 0; i < svmPointers.size(); i++) {
+    for (cl_uint i = 0; i < svmPointers.size(); ++i) {
       dev().svmFree(svmPointers[i]);
     }
   } else {
@@ -2298,7 +2298,7 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
   profilingBegin(vcmd);
 
   for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); it++) {
+       it != vcmd.getMemList().end(); ++it) {
     // amd::Memory object should never be NULL
     assert(*it && "Memory object for interop is NULL");
     gpu::Memory* memory = dev().getGpuMemory(*it);
@@ -2337,7 +2337,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   profilingBegin(vcmd);
 
   for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); it++) {
+       it != vcmd.getMemList().end(); ++it) {
     // amd::Memory object should never be NULL
     assert(*it && "Memory object for interop is NULL");
     gpu::Memory* memory = dev().getGpuMemory(*it);

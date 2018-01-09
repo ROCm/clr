@@ -384,7 +384,6 @@ void VirtualGPU::Queue::DumpMemoryReferences() const {
   }
   if (last_kernel_ != nullptr) {
     const amd::KernelSignature& signature = last_kernel_->signature();
-    const amd::KernelParameters& params = last_kernel_->parameters();
     dump << last_kernel_->name() << std::endl;
     for (size_t i = 0; i < signature.numParameters(); ++i) {
       const amd::KernelParameterDescriptor& desc = signature.at(i);
@@ -1427,7 +1426,6 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
           vcmd.setStatus(CL_MAP_FAILURE);
         }
       } else if ((vcmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
-        amd::Memory* bufferFromImage = nullptr;
         Memory* memoryBuf = memory;
         amd::Coord3D origin(vcmd.origin()[0]);
         amd::Coord3D size(vcmd.size()[0]);
@@ -1435,7 +1433,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
         origin.c[0] *= elemSize;
         size.c[0] *= elemSize;
 
-        bufferFromImage = createBufferFromImage(vcmd.memory());
+        amd::Memory* bufferFromImage = createBufferFromImage(vcmd.memory());
         if (nullptr == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
@@ -1531,7 +1529,6 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
           vcmd.setStatus(CL_OUT_OF_RESOURCES);
         }
       } else if ((vcmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
-        amd::Memory* bufferFromImage = nullptr;
         Memory* memoryBuf = memory;
         amd::Coord3D origin(writeMapInfo->origin_[0]);
         amd::Coord3D size(writeMapInfo->region_[0]);
@@ -1539,7 +1536,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
         origin.c[0] *= elemSize;
         size.c[0] *= elemSize;
 
-        bufferFromImage = createBufferFromImage(vcmd.memory());
+        amd::Memory* bufferFromImage = createBufferFromImage(vcmd.memory());
         if (nullptr == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
@@ -1747,12 +1744,10 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd) {
   if (!dev().isFineGrainedSystem()) {
     size_t patternSize = vcmd.patternSize();
     size_t fillSize = patternSize * vcmd.times();
-    size_t offset = 0;
     amd::Memory* dstMemory = amd::SvmManager::FindSvmBuffer(vcmd.dst());
     assert(dstMemory && "No svm Buffer to fill with!");
-    offset = reinterpret_cast<uintptr_t>(vcmd.dst()) -
+    size_t offset = reinterpret_cast<uintptr_t>(vcmd.dst()) -
         reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
-    assert((offset >= 0) && "wrong svm ptr to fill with!");
 
     pal::Memory* memory = dev().getGpuMemory(dstMemory);
 
@@ -1785,7 +1780,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   profilingBegin(vcmd, true);
 
   std::vector<amd::Memory*>::const_iterator itr;
-  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); itr++) {
+  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); ++itr) {
     // Find device memory
     pal::Memory* memory = dev().getGpuMemory(*itr);
 
@@ -1814,7 +1809,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   std::vector<void*>& svmPointers = vcmd.svmPointers();
   if (vcmd.pfnFreeFunc() == nullptr) {
     // pointers allocated using clSVMAlloc
-    for (cl_uint i = 0; i < svmPointers.size(); i++) {
+    for (cl_uint i = 0; i < svmPointers.size(); ++i) {
       dev().svmFree(svmPointers[i]);
     }
   } else {
@@ -2428,7 +2423,7 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
   profilingBegin(vcmd);
 
   for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); it++) {
+       it != vcmd.getMemList().end(); ++it) {
     // amd::Memory object should never be nullptr
     assert(*it && "Memory object for interop is nullptr");
     pal::Memory* memory = dev().getGpuMemory(*it);
@@ -2467,7 +2462,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   profilingBegin(vcmd);
 
   for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); it++) {
+       it != vcmd.getMemList().end(); ++it) {
     // amd::Memory object should never be nullptr
     assert(*it && "Memory object for interop is nullptr");
     pal::Memory* memory = dev().getGpuMemory(*it);
@@ -2992,7 +2987,6 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const HSAILKernel::Argument* arg = hsaKernel.argumentAt(i);
     Memory* memory = nullptr;
-    bool readOnly = false;
     amd::Memory* svmMem = nullptr;
 
     // Find if current argument is a buffer
@@ -3024,7 +3018,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
 
       if (memory != nullptr) {
         // Check image
-        readOnly = (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
+        bool readOnly = (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
         // Check buffer
         readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
         // Validate memory for a dependency in the queue
@@ -3236,7 +3230,7 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       }
       staging->cpuUnmap(*this);
 
-      bool result = blitMgr().copyBuffer(*staging, *mem, 0, dstOffset, dstSize, false);
+      blitMgr().copyBuffer(*staging, *mem, 0, dstOffset, dstSize, false);
       flushDMA(staging->getGpuEvent(*this)->engineId_);
       fileOffset += dstSize;
       dstOffset += dstSize;
@@ -3248,7 +3242,7 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
       size_t srcSize = amd::TransferBufferFileCommand::StagingBufferSize;
       srcSize = std::min(srcSize, copySize);
-      bool result = blitMgr().copyBuffer(*mem, *staging, srcOffset, 0, srcSize, false);
+      blitMgr().copyBuffer(*mem, *staging, srcOffset, 0, srcSize, false);
 
       void* srcBuffer = staging->cpuMap(*this);
       if (!cmd.file()->transferBlock(writeBuffer, srcBuffer, staging->size(), fileOffset, 0,

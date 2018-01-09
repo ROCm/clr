@@ -1031,7 +1031,6 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
   if (workGroupInfo()->compileSize_[0] == 0) {
     // Find the default local workgroup size, if it wasn't specified
     if (lclWorkSize[0] == 0) {
-      size_t thrPerGrp;
       bool b1DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE);
       bool b2DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
           !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y);
@@ -1043,7 +1042,7 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
           ((workDim == 3) && b3DOverrideSet);
       if (!overrideSet) {
         // Find threads per group
-        thrPerGrp = workGroupInfo()->size_;
+        size_t thrPerGrp = workGroupInfo()->size_;
 
         // Check if kernel uses images
         if ((flags() & ImageEnable) &&
@@ -1376,8 +1375,6 @@ bool Kernel::bindConstantBuffers(VirtualGPU& gpu) const {
 
 void Kernel::processMemObjects(VirtualGPU& gpu, const amd::Kernel& kernel, const_address params,
                                bool nativeMem) const {
-  VirtualGPU::MemoryDependency& dependecy = gpu.memoryDependency();
-
   // Mark the tracker with a new kernel,
   // so we can avoid checks of the aliased objects
   gpu.memoryDependency().newKernel();
@@ -3323,7 +3320,6 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
   if (workGroupInfo()->compileSize_[0] == 0) {
     // Find the default local workgroup size, if it wasn't specified
     if (lclWorkSize[0] == 0) {
-      size_t thrPerGrp;
       bool b1DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE);
       bool b2DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
           !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y);
@@ -3335,7 +3331,7 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
           ((workDim == 3) && b3DOverrideSet);
       if (!overrideSet) {
         // Find threads per group
-        thrPerGrp = workGroupInfo()->size_;
+        size_t thrPerGrp = workGroupInfo()->size_;
 
         // Check if kernel uses images
         if (flags_.imageEna_ &&

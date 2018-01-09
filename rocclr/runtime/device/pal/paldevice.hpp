@@ -159,7 +159,7 @@ class ThreadTrace;
 class Sampler : public device::Sampler {
  public:
   //! Constructor
-  Sampler(const Device& dev) : dev_(dev) {}
+    Sampler(const Device& dev) : dev_(dev) {}
 
   //! Default destructor for the device memory object
   virtual ~Sampler();
@@ -252,7 +252,7 @@ class Device : public NullDevice {
     uint64_t size_;    //!< Scratch buffer size on this queue
 
     //! Default constructor
-    ScratchBuffer() : regNum_(0), memObj_(NULL), offset_(0) {}
+    ScratchBuffer() : regNum_(0), memObj_(NULL), offset_(0), size_(0) {}
 
     //! Default constructor
     ~ScratchBuffer();
@@ -493,7 +493,7 @@ class Device : public NullDevice {
   bool resGLFree(void* GLplatformContext, void* mbResHandle, uint type) const;
 
   //! Adds a resource to the global list
-  void addResource(GpuMemoryReference* mem) const { 
+  void addResource(GpuMemoryReference* mem) const {
     amd::ScopedLock lock(lockResources());
     auto findIt = std::find(resourceList_->begin(), resourceList_->end(), mem);
     mem->events_.resize(numOfVgpus());

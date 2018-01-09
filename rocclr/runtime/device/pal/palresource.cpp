@@ -614,7 +614,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         if (memImg != nullptr) {
           result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
           if (result != Pal::Result::Success) {
-            delete memImg;
+            delete [] memImg;
             return false;
           }
         }
@@ -782,7 +782,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     Pal::ImageViewInfo viewInfo = {};
     Pal::ImageCreateInfo imgCreateInfo = {};
     Pal::GpuMemoryRequirements req = {};
-    char* memImg;
     imgCreateInfo.imageType = Pal::ImageType::Tex2d;
     viewInfo.viewType = Pal::ImageViewType::Tex2d;
     imgCreateInfo.extent.width = desc_.width_;
@@ -868,11 +867,11 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         return false;
       }
 
-      memImg = new char[imageSize];
+      char* memImg = new char[imageSize];
       if (memImg != nullptr) {
         result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
         if (result != Pal::Result::Success) {
-          delete memImg;
+          delete [] memImg;
           return false;
         }
       }
@@ -1208,7 +1207,6 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
                                 Resource& dstResource, bool enableCopyRect, bool flushDMA,
                                 uint bytesPerElement) const {
   GpuEvent event;
-  bool result = true;
   EngineType activeEngineID = gpu.engineID_;
   static const bool waitOnBusyEngine = true;
 
@@ -1350,19 +1348,17 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   gpu.eventEnd(gpu.engineID_, event);
 
-  if (result) {
-    // Mark source and destination as busy
-    setBusy(gpu, event);
-    dstResource.setBusy(gpu, event);
+  // Mark source and destination as busy
+  setBusy(gpu, event);
+  dstResource.setBusy(gpu, event);
 
-    // Update the global GPU event
-    gpu.setGpuEvent(event, flushDMA);
-  }
+  // Update the global GPU event
+  gpu.setGpuEvent(event, flushDMA);
 
   // Restore the original engine
   gpu.engineID_ = activeEngineID;
 
-  return result;
+  return true;
 }
 
 void Resource::setBusy(VirtualGPU& gpu, GpuEvent gpuEvent) const {
@@ -1380,7 +1376,7 @@ void Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const {
   // Check if we have to wait unconditionally
   if (!waitOnBusyEngine ||
       // or we have to wait only if another engine was used on this resource
-      (waitOnBusyEngine && (gpuEvent->engineId_ != gpu.engineID_))) {
+      (gpuEvent->engineId_ != gpu.engineID_)) {
     gpu.waitForEvent(gpuEvent);
   }
 
@@ -1418,9 +1414,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
     // Copy memory
     amd::Os::fastMemcpy(dst, hostPtr, copySize);
   } else {
-    size_t srcOffs = 0;
     size_t dstOffsBase = origin[0] * elementSize_;
-    size_t dstOffs;
 
     // Make sure we use the right pitch if it's not specified
     if (rowPitch == 0) {
@@ -1440,8 +1434,8 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
 
     // Copy memory slice by slice
     for (size_t slice = 0; slice < size[2]; ++slice) {
-      dstOffs = dstOffsBase + slice * desc().slice_ * elementSize_;
-      srcOffs = slice * slicePitch;
+      size_t dstOffs = dstOffsBase + slice * desc().slice_ * elementSize_;
+      size_t srcOffs = slice * slicePitch;
 
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
@@ -1490,8 +1484,6 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
     amd::Os::fastMemcpy(hostPtr, src, copySize);
   } else {
     size_t srcOffsBase = origin[0] * elementSize_;
-    size_t srcOffs;
-    size_t dstOffs = 0;
 
     // Make sure we use the right pitch if it's not specified
     if (rowPitch == 0) {
@@ -1511,8 +1503,8 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
 
     // Copy memory line by line
     for (size_t slice = 0; slice < size[2]; ++slice) {
-      srcOffs = srcOffsBase + slice * desc().slice_ * elementSize_;
-      dstOffs = slice * slicePitch;
+      size_t srcOffs = srcOffsBase + slice * desc().slice_ * elementSize_;
+      size_t dstOffs = slice * slicePitch;
 
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
@@ -1701,85 +1693,8 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
 }
 
 void* Resource::mapLayers(VirtualGPU* gpu, uint flags) {
-  size_t srcOffs = 0;
-  size_t dstOffs = 0;
-  Pal::IGpuMemory* sliceResource = 0;
-  PalGpuMemoryType palDim = PAL_TEXTURE_2D;
-  size_t layers = desc().depth_;
-  size_t height = desc().height_;
-
-  // Use 1D layers
-  if (CL_MEM_OBJECT_IMAGE1D_ARRAY == desc().topology_) {
-    palDim = PAL_TEXTURE_1D;
-    height = 1;
-    layers = desc().height_;
-  }
-
-  desc_.pitch_ = desc().width_;
-  desc_.slice_ = desc().pitch_ * height;
-  address_ = new char[desc().slice_ * layers * elementSize()];
-  if (nullptr == address_) {
-    return nullptr;
-  }
-
-  // Check if map is write only
-  if (flags & WriteOnly) {
-    return address_;
-  }
-
-  if (numLayers_ != 0) {
-    layers = startLayer_ + numLayers_;
-  }
-
-  dstOffs = startLayer_ * desc().slice_ * elementSize();
-
-  // Loop through all layers
-  for (uint i = startLayer_; i < layers; ++i) {
-    //      gslResource3D   gslSize;
-    size_t calOffset;
-    void* sliceAddr;
-    size_t pitch;
-    Unimplemented();
-    // Allocate a layer from the image
-    //    gslSize.width   = desc().width_;
-    // gslSize.height  = height;
-    // gslSize.depth   = 1;
-    calOffset = 0;
-    /*
-            sliceResource = dev().resAllocView(
-                iMem(), gslSize,
-                calOffset, desc().format_, desc().channelOrder_, palDim,
-                0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
-            if (0 == sliceResource) {
-                LogError("Map layer. resAllocSliceView failed!");
-                return nullptr;
-            }
-    */
-    // Map 2D layer
-    sliceAddr = gpuMemoryMap(&pitch, ReadOnly, sliceResource);
-    if (sliceAddr == nullptr) {
-      LogError("Map layer. CalResMap failed!");
-      return nullptr;
-    }
-
-    srcOffs = 0;
-    // Copy memory line by line
-    for (size_t rows = 0; rows < height; ++rows) {
-      // Copy memory
-      amd::Os::fastMemcpy((reinterpret_cast<address>(address_) + dstOffs),
-                          (reinterpret_cast<const_address>(sliceAddr) + srcOffs),
-                          desc().width_ * elementSize_);
-
-      dstOffs += desc().pitch_ * elementSize();
-      srcOffs += pitch * elementSize();
-    }
-
-    // Unmap a layer
-    gpuMemoryUnmap(sliceResource);
-    // dev().resFree(sliceResource);
-  }
-
-  return address_;
+  Unimplemented();
+  return nullptr;
 }
 
 void Resource::unmap(VirtualGPU* gpu) {
@@ -1809,77 +1724,7 @@ void Resource::unmap(VirtualGPU* gpu) {
 }
 
 void Resource::unmapLayers(VirtualGPU* gpu) {
-  size_t srcOffs = 0;
-  size_t dstOffs = 0;
-  PalGpuMemoryType palDim = PAL_TEXTURE_2D;
-  Pal::IGpuMemory* sliceResource = nullptr;
-  uint layers = desc().depth_;
-  uint height = desc().height_;
-
-  // Use 1D layers
-  if (CL_MEM_OBJECT_IMAGE1D_ARRAY == desc().topology_) {
-    palDim = PAL_TEXTURE_1D;
-    height = 1;
-    layers = desc().height_;
-  }
-
-  if (numLayers_ != 0) {
-    layers = startLayer_ + numLayers_;
-  }
-
-  srcOffs = startLayer_ * desc().slice_ * elementSize();
-
-  // Check if map is write only
-  if (!(mapFlags_ & ReadOnly)) {
-    // Loop through all layers
-    for (uint i = startLayer_; i < layers; ++i) {
-      Unimplemented();
-      //            gslResource3D   gslSize;
-      size_t calOffset;
-      void* sliceAddr;
-      size_t pitch;
-
-      // Allocate a layer from the image
-      // gslSize.width   = desc().width_;
-      // gslSize.height  = height;
-      // gslSize.depth   = 1;
-      calOffset = 0;
-      /*sliceResource = dev().resAllocView(
-          iMem(), gslSize,
-          calOffset, desc().format_, desc().channelOrder_, palDim,
-          0, i, CAL_RESALLOCSLICEVIEW_LEVEL_AND_LAYER);
-      if (0 == sliceResource) {
-          LogError("Unmap layer. resAllocSliceView failed!");
-          return;
-      }
-*/
-      // Map a layer
-      sliceAddr = gpuMemoryMap(&pitch, WriteOnly, sliceResource);
-      if (sliceAddr == nullptr) {
-        LogError("Unmap layer. CalResMap failed!");
-        return;
-      }
-
-      dstOffs = 0;
-      // Copy memory line by line
-      for (size_t rows = 0; rows < height; ++rows) {
-        // Copy memory
-        amd::Os::fastMemcpy((reinterpret_cast<address>(sliceAddr) + dstOffs),
-                            (reinterpret_cast<const_address>(address_) + srcOffs),
-                            desc().width_ * elementSize_);
-
-        dstOffs += pitch * elementSize();
-        srcOffs += desc().pitch_ * elementSize();
-      }
-
-      // Unmap a layer
-      gpuMemoryUnmap(sliceResource);
-      // dev().resFree(sliceResource);
-    }
-  }
-
-  // Destroy the mapped memory
-  delete[] reinterpret_cast<char*>(address_);
+  Unimplemented();
 }
 
 void Resource::setActiveRename(VirtualGPU& gpu, GpuMemoryReference* rename) {

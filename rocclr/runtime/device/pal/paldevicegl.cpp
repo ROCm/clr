@@ -639,7 +639,7 @@ bool Device::glCanInterop(void* GLplatformContext, void* GLdeviceContext) const 
   GLXContext ctx = static_cast<GLXContext>(GLplatformContext);
   Display* disp = static_cast<Display*>(GLdeviceContext);
 
-  
+
   if (glXGetContextMVPUInfoAMD(ctx, &glDeviceId, &glChainMask)) {
       mesa_glinterop_device_info info = {};
     if (pfnMesaGLInteropGLXQueryDeviceInfo(disp, ctx, &info) == 0) {
@@ -661,7 +661,6 @@ bool Device::glAssociate(void* GLplatformContext, void* GLdeviceContext) const {
     return false;
   }
 
-  int flags = 0;
 /*
     if (m_adp->pAsicInfo->svmFineGrainSystem)
     {
@@ -673,12 +672,11 @@ bool Device::glAssociate(void* GLplatformContext, void* GLdeviceContext) const {
   return (glXBeginCLInteropAMD(ctx, 0)) ? true : false;
 #else
   HGLRC hRC = (HGLRC)GLplatformContext;
-  return (wglBeginCLInteropAMD(hRC, flags)) ? true : false;
+  return (wglBeginCLInteropAMD(hRC, 0)) ? true : false;
 #endif
 }
 
 bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const {
-  int flags = 0;
 /*
     if (m_adp->pAsicInfo->svmFineGrainSystem)
     {
@@ -690,7 +688,7 @@ bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const 
   return (glXEndCLInteropAMD(ctx, 0)) ? true : false;
 #else
   HGLRC hRC = (HGLRC)GLplatformContext;
-  return (wglEndCLInteropAMD(hRC, flags)) ? true : false;
+  return (wglEndCLInteropAMD(hRC, 0)) ? true : false;
 #endif
 }
 
