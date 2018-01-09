@@ -213,7 +213,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   // Report 512MB for all offline devices
   Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
-  heaps[Pal::GpuHeapLocal].heapSize = 
+  heaps[Pal::GpuHeapLocal].heapSize =
   heaps[Pal::GpuHeapLocal].physicalHeapSize = 512 * Mi;
 
   Pal::WorkStationCaps wscaps = {};
@@ -547,10 +547,9 @@ Device::XferBuffers::~XferBuffers() {
 }
 
 bool Device::XferBuffers::create() {
-  Memory* xferBuf = nullptr;
   bool result = false;
   // Create a buffer object
-  xferBuf = new Memory(dev(), bufSize_);
+  Memory* xferBuf = new Memory(dev(), bufSize_);
 
   // Try to allocate memory for the transfer buffer
   if ((nullptr == xferBuf) || !xferBuf->create(type_)) {
@@ -990,14 +989,13 @@ bool Device::initializeHeapResources() {
 
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   bool profiling = false;
-  bool interopQueue = false;
   uint rtCUs = amd::CommandQueue::RealTimeDisabled;
   uint deviceQueueSize = 0;
 
   if (queue != nullptr) {
     profiling = queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
     if (queue->asHostQueue() != nullptr) {
-      interopQueue = (0 != (queue->context().info().flags_ &
+      bool interopQueue = (0 != (queue->context().info().flags_ &
                             (amd::Context::GLDeviceKhr | amd::Context::D3D10DeviceKhr |
                              amd::Context::D3D11DeviceKhr)));
       rtCUs = queue->rtCUs();
@@ -1044,11 +1042,10 @@ typedef std::map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
 static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
-  char* pch = nullptr;
   int requestedDeviceCount = 0;
   const char* requestedDeviceList = GPU_DEVICE_ORDINAL;
 
-  pch = strtok(const_cast<char*>(requestedDeviceList), ",");
+  char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != nullptr) {
     bool deviceIdValid = true;
     int currentDeviceIndex = atoi(pch);
@@ -1196,10 +1193,8 @@ Pal::ChNumFormat Device::getPalFormat(const amd::Image::Format& format,
 
 // Create buffer without an owner (merge common code with createBuffer() ?)
 pal::Memory* Device::createScratchBuffer(size_t size) const {
-  Memory* gpuMemory = nullptr;
-
   // Create a memory object
-  gpuMemory = new pal::Memory(*this, size);
+  Memory* gpuMemory = new pal::Memory(*this, size);
   if (nullptr == gpuMemory || !gpuMemory->create(Resource::Local)) {
     delete gpuMemory;
     gpuMemory = nullptr;
@@ -1381,7 +1376,6 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
 }
 
 pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
-  size_t size = owner.getSize();
   amd::Image& image = *owner.asImage();
   pal::Memory* gpuImage = nullptr;
 
@@ -1527,8 +1521,6 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
 //! Otherwise a deadlock in lockVgpus() is possible
 
 bool Device::reallocMemory(amd::Memory& owner) const {
-  bool directAccess = false;
-
   // For now we have to serialize reallocation code
   amd::ScopedLock lk(*lockAsyncOps_);
 
@@ -1548,7 +1540,7 @@ bool Device::reallocMemory(amd::Memory& owner) const {
   }
 
   if (owner.asBuffer()) {
-    gpuMemory = createBuffer(owner, directAccess);
+    gpuMemory = createBuffer(owner, false);
   } else if (owner.asImage()) {
     return true;
   } else {
@@ -1584,17 +1576,14 @@ bool Device::reallocMemory(amd::Memory& owner) const {
 }
 
 device::Memory* Device::createView(amd::Memory& owner, const device::Memory& parent) const {
-  size_t size = owner.getSize();
   assert((owner.asImage() != nullptr) && "View supports images only");
   const amd::Image& image = *owner.asImage();
-  pal::Memory* gpuImage = nullptr;
-
-  gpuImage = new pal::Image(*this, owner, image.getWidth(), image.getHeight(), image.getDepth(),
-                            image.getImageFormat(), image.getType(), image.getMipLevels());
+  pal::Memory* gpuImage = new pal::Image(
+    *this, owner, image.getWidth(), image.getHeight(), image.getDepth(),
+    image.getImageFormat(), image.getType(), image.getMipLevels());
 
   // Create resource
   if (nullptr != gpuImage) {
-    bool result = false;
     Resource::ImageViewParams params;
     const pal::Memory& gpuMem = static_cast<const pal::Memory&>(parent);
 
@@ -1606,7 +1595,7 @@ device::Memory* Device::createView(amd::Memory& owner, const device::Memory& par
     params.memory_ = &gpuMem;
 
     // Create memory object
-    result = gpuImage->create(Resource::ImageView, &params);
+    bool result = gpuImage->create(Resource::ImageView, &params);
     if (!result) {
       delete gpuImage;
       return nullptr;
@@ -2033,8 +2022,7 @@ void Device::svmFree(void* ptr) const {
   if (freeCPUMem_) {
     amd::Os::alignedFree(ptr);
   } else {
-    amd::Memory* svmMem = nullptr;
-    svmMem = amd::SvmManager::FindSvmBuffer(ptr);
+    amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(ptr);
     if (nullptr != svmMem) {
       svmMem->release();
       amd::SvmManager::RemoveSvmBuffer(ptr);

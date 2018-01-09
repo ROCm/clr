@@ -261,7 +261,6 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
                                        size_t origin, size_t& offset, size_t& totalSize,
                                        size_t xferSize) const {
   amd::Coord3D src(0, 0, 0);
-  size_t tmpSize;
   size_t chunkSize;
   static const bool CopyRect = false;
   // Flush DMA for ASYNC copy
@@ -278,7 +277,7 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
 
   while (xferSize != 0) {
     // Find the partial transfer size
-    tmpSize = std::min(chunkSize, xferSize);
+    size_t tmpSize = std::min(chunkSize, xferSize);
     amd::Coord3D dst(origin + offset, 0, 0);
     amd::Coord3D copySize(tmpSize, 0, 0);
 
@@ -1717,11 +1716,10 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
 
   const static uint CopyRectAlignment[3] = {16, 4, 1};
 
-  bool aligned;
   uint i;
   for (i = 0; i < sizeof(CopyRectAlignment) / sizeof(uint); i++) {
     // Check source alignments
-    aligned = ((srcRectIn.rowPitch_ % CopyRectAlignment[i]) == 0);
+    bool aligned = ((srcRectIn.rowPitch_ % CopyRectAlignment[i]) == 0);
     aligned &= ((srcRectIn.slicePitch_ % CopyRectAlignment[i]) == 0);
     aligned &= ((srcRectIn.start_ % CopyRectAlignment[i]) == 0);
 
@@ -2310,9 +2308,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
 bool KernelBlitManager::runScheduler(device::Memory& vqueue, device::Memory& params, uint paramIdx,
                                      uint threads) const {
   amd::ScopedLock k(lockXferOps_);
-  bool result = false;
 
-  size_t dim = 1;
   size_t globalWorkOffset[1] = {0};
   size_t globalWorkSize[1] = {threads};
   size_t localWorkSize[1] = {1};
@@ -2329,7 +2325,7 @@ bool KernelBlitManager::runScheduler(device::Memory& vqueue, device::Memory& par
 
   // Execute the blit
   address parameters = kernels_[Scheduler]->parameters().values();
-  result = gpu().submitKernelInternal(ndrange, *kernels_[Scheduler], parameters);
+  bool result = gpu().submitKernelInternal(ndrange, *kernels_[Scheduler], parameters);
 
   synchronize();
 
@@ -2385,15 +2381,13 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
 
 Memory* KernelBlitManager::createView(const Memory& parent, const CalFormat& format) const {
   assert(!parent.cal()->buffer_ && "View supports images only");
-  gpu::Memory* gpuImage = NULL;
-
-  gpuImage = new gpu::Image(dev(), parent.size(), parent.cal()->width_, parent.cal()->height_,
-                            parent.cal()->depth_, format.type_, format.channelOrder_,
-                            parent.cal()->imageType_, 1);
+  gpu::Memory* gpuImage = new gpu::Image(
+    dev(), parent.size(), parent.cal()->width_, parent.cal()->height_,
+    parent.cal()->depth_, format.type_, format.channelOrder_,
+    parent.cal()->imageType_, 1);
 
   // Create resource
   if (NULL != gpuImage) {
-    bool result = false;
     Resource::ImageViewParams params;
     const Memory& gpuMem = static_cast<const Memory&>(parent);
 
@@ -2405,7 +2399,7 @@ Memory* KernelBlitManager::createView(const Memory& parent, const CalFormat& for
     params.gpu_ = &gpu();
 
     // Create memory object
-    result = gpuImage->create(Resource::ImageView, &params);
+    bool result = gpuImage->create(Resource::ImageView, &params);
     if (!result) {
       delete gpuImage;
       return NULL;

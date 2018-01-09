@@ -56,11 +56,9 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
 
   // Find the temp folder for the OS
   std::string tempFolder = amd::Os::getTempPath();
-  std::string tempFileName = amd::Os::getTempFileName();
 
   // Iterate through each source code and dump it into tmp
   std::fstream f;
-  std::vector<std::string> headerFileNames(headers.size());
   std::vector<std::string> newDirs;
   for (size_t i = 0; i < headers.size(); ++i) {
     std::string headerPath = tempFolder;
@@ -84,7 +82,6 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
       newDirs.push_back(headerPath);
     }
     std::string headerFullName = headerPath + amd::Os::fileSeparator() + headerIncludeName;
-    headerFileNames[i] = headerFullName;
     f.open(headerFullName.c_str(), std::fstream::out);
     // Should we allow asserts
     assert(!f.fail() && "failed creating header file!");

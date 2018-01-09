@@ -2032,11 +2032,11 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
                              &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
-      delete kernelNames;
+      delete [] kernelNames;
       return false;
     }
     std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
-    delete kernelNames;
+    delete [] kernelNames;
     std::vector<std::string>::iterator it = vKernels.begin();
     bool dynamicParallelism = false;
     aclMetadata md;

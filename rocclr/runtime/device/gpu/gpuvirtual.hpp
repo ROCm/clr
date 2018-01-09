@@ -120,7 +120,7 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
    public:
     //! Default constructor
     MemoryDependency()
-        : memObjectsInQueue_(NULL), numMemObjectsInQueue_(0), maxMemObjectsInQueue_(0) {}
+        : memObjectsInQueue_(NULL), endMemObjectsInQueue_(0), numMemObjectsInQueue_(0), maxMemObjectsInQueue_(0) {}
 
     ~MemoryDependency() { delete[] memObjectsInQueue_; }
 
@@ -183,7 +183,7 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   typedef std::vector<ResourceSlot> ResourceSlots;
 
  public:
-  VirtualGPU(Device& device);
+  explicit VirtualGPU(Device& device);
   bool create(bool profiling, uint rtCUs = amd::CommandQueue::RealTimeDisabled,
               uint deviceQueueSize = 0,
               amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);

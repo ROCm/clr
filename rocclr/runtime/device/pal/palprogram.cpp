@@ -93,8 +93,7 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
     size_t srcOffs = 0;
     while (size != 0) {
       xferBuf.hostWrite(&gpu, reinterpret_cast<const_address>(src) + srcOffs, 0, tmpSize);
-      bool result =
-          xferBuf.partialMemCopyTo(gpu, 0, (offset + srcOffs), tmpSize, *gpuAccess_, false, true);
+      xferBuf.partialMemCopyTo(gpu, 0, (offset + srcOffs), tmpSize, *gpuAccess_, false, true);
       size -= tmpSize;
       srcOffs += tmpSize;
       tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
@@ -648,11 +647,11 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
                              &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
-      delete kernelNames;
+      delete [] kernelNames;
       return false;
     }
     std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
-    delete kernelNames;
+    delete [] kernelNames;
     std::vector<std::string>::iterator it = vKernels.begin();
     bool dynamicParallelism = false;
     for (it; it != vKernels.end(); ++it) {
@@ -862,11 +861,10 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
   uint32_t gfxip  = 0;
   std::string gfx_target(name);
   uint32_t shift = 1;
-  size_t first;
   size_t last = gfx_target.length();
   std::string ver;
   do {
-    first = gfx_target.find_last_of(':', last);
+    size_t first = gfx_target.find_last_of(':', last);
     ver = gfx_target.substr(first + 1, last - first);
     last = first - 1;
     gfxip += static_cast<uint32_t>(atoi(ver.c_str())) * shift;

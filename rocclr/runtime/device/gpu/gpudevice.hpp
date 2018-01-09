@@ -300,7 +300,7 @@ class Device : public NullDevice, public CALGSLDevice {
     size_t bufSize_;                  //!< Staged buffer size
     std::list<Memory*> freeBuffers_;  //!< The list of free buffers
     amd::Atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
-    amd::Monitor lock_;               //!< Stgaed buffer acquire/release lock
+    amd::Monitor lock_;               //!< Staged buffer acquire/release lock
     const Device& gpuDevice_;         //!< GPU device object
   };
 
@@ -311,7 +311,7 @@ class Device : public NullDevice, public CALGSLDevice {
     uint64_t size_;    //!< Scratch buffer size on this queue
 
     //! Default constructor
-    ScratchBuffer() : regNum_(0), memObj_(NULL), offset_(0) {}
+    ScratchBuffer() : regNum_(0), memObj_(NULL), offset_(0), size_(0) {}
 
     //! Default constructor
     ~ScratchBuffer();
