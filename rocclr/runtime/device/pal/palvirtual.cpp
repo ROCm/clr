@@ -1922,13 +1922,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       }
     }
   }
-  for (int j = 0; j < iteration; j++) {
+  for (int iter = 0; iter < iteration; ++iter) {
     GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
     uint32_t id = gpuEvent.id;
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
-      newOffset[dim] = sizes.offset()[dim] + globalStep * j;
-      if (((newOffset[dim] + globalStep) < sizes.global()[dim]) && (j != (iteration - 1))) {
+      newOffset[dim] = sizes.offset()[dim] + globalStep * iter;
+      if (((newOffset[dim] + globalStep) < sizes.global()[dim]) && (iter != (iteration - 1))) {
         newGlobalSize[dim] = globalStep;
       } else {
         newGlobalSize[dim] = sizes.global()[dim] - newOffset[dim];
@@ -2642,7 +2642,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
   wait |= state_.forceWait_;
   // Loop through all outstanding command batches
   while (!cbQueue_.empty()) {
-    auto cb = cbQueue_.front();
+    cb = cbQueue_.front();
     // Check if command batch finished without a wait
     bool finished = true;
     for (uint i = 0; i < AllEngines; ++i) {
@@ -2941,11 +2941,10 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
   size_t execInfoOffset = kernelParams.getExecInfoOffset();
   bool sync = true;
 
-  amd::Memory* memory = nullptr;
   // get svm non arugment information
   void* const* svmPtrArray = reinterpret_cast<void* const*>(params + execInfoOffset);
   for (size_t i = 0; i < count; i++) {
-    memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
+    amd::Memory* memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
     if (nullptr == memory) {
       if (!supportFineGrainedSystem) {
         return false;

@@ -1051,7 +1051,7 @@ static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
     int currentDeviceIndex = atoi(pch);
     // Validate device index.
     for (size_t i = 0; i < strlen(pch); i++) {
-      if (!isdigit(pch[i])) {
+      if (!isdigit(reinterpret_cast<unsigned char*>(pch)[i])) {
         deviceIdValid = false;
         break;
       }
