@@ -1435,10 +1435,15 @@ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
           tmp /= div;
       }
 
+      // Assuming DWORD access
+      const uint cacheLineMatch = dev.info().globalMemCacheLineSize_ >> 2;
+
       // Check if partial dispatch is enabled and
       if (dev.settings().partialDispatch_ &&
           // we couldn't find optimal workload
-          (sizes.local().product() % devKernel->workGroupInfo()->wavefrontSize_) != 0) {
+          ((sizes.local().product() % devKernel->workGroupInfo()->wavefrontSize_) != 0 ||
+                // or size is too small for the cache line
+           (sizes.local()[0] < cacheLineMatch))) {
         size_t maxSize = 0;
         size_t maxDim = 0;
         for (uint d = 0; d < sizes.dimensions(); ++d) {
@@ -1447,18 +1452,30 @@ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
             maxDim = d;
           }
         }
-        // Check if a local workgroup has the most optimal size
-        if (thrPerGrp > maxSize) {
-          thrPerGrp = maxSize;
+
+        if ((maxDim != 0) && (sizes.global()[0] >= (cacheLineMatch / 2))) {
+          sizes.local()[0] = cacheLineMatch;
+          thrPerGrp /= cacheLineMatch;
+          sizes.local()[maxDim] = thrPerGrp;
+          for (uint d = 1; d < sizes.dimensions(); ++d) {
+            if (d != maxDim) {
+              sizes.local()[d] = 1;
+            }
+          }
         }
-        sizes.local()[maxDim] = thrPerGrp;
-        for (uint d = 0; d < sizes.dimensions(); ++d) {
-          if (d != maxDim) {
-            sizes.local()[d] = 1;
+        else {
+          // Check if a local workgroup has the most optimal size
+          if (thrPerGrp > maxSize) {
+            thrPerGrp = maxSize;
+          }
+          sizes.local()[maxDim] = thrPerGrp;
+          for (uint d = 0; d < sizes.dimensions(); ++d) {
+            if (d != maxDim) {
+              sizes.local()[d] = 1;
+            }
           }
         }
       }
-
       dispatchPacket.workgroup_size_x = sizes.dimensions() > 0 ? sizes.local()[0] : 1;
       dispatchPacket.workgroup_size_y = sizes.dimensions() > 1 ? sizes.local()[1] : 1;
       dispatchPacket.workgroup_size_z = sizes.dimensions() > 2 ? sizes.local()[2] : 1;
