@@ -419,7 +419,6 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
   } else {
     resourceCacheSize_ = std::max((calAttr.localRAM / 8) * Mi, GPU_RESOURCE_CACHE_SIZE * Mi);
   }
-  resourceCacheSize_ = std::min(resourceCacheSize_, 512 * Mi);
 #endif
 
   // Override current device settings
