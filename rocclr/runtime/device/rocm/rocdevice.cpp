@@ -90,6 +90,8 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
       return HSA_VEGA10_HBCC_ID;
     case 902:
       return HSA_RAVEN_ID;
+    case 904:
+      return HSA_VEGA12_ID;
     default:
       return HSA_INVALID_DEVICE_ID;
   }
