@@ -400,17 +400,12 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     }
   }
 
-
   if (apuSystem_ &&
       ((heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize) < (150 * Mi))) {
     remoteAlloc_ = true;
   }
 
-// Save resource cache size
-#ifdef ATI_OS_LINUX
-  // Due to EPR#406216, set the default value for Linux for now
-  resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
-#else
+  // Update resource cache size
   if (remoteAlloc_) {
     resourceCacheSize_ = std::max((heaps[Pal::GpuHeapGartUswc].heapSize / 8),
                                   (uint64_t)GPU_RESOURCE_CACHE_SIZE * Mi);
@@ -419,8 +414,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         std::max(((heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize) / 8),
                  (uint64_t)GPU_RESOURCE_CACHE_SIZE * Mi);
   }
-  resourceCacheSize_ = std::min(resourceCacheSize_, 512 * Mi);
-#endif
 
 #if defined(WITH_LIGHTNING_COMPILER)
   switch (palProp.gfxLevel) {
