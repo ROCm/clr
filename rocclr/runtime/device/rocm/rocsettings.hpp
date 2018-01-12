@@ -29,7 +29,8 @@ class Settings : public device::Settings {
       uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
       uint singleFpDenorm_ : 1;         //!< Support Single FP Denorm
-      uint reserved_ : 21;
+      uint apuSystem_ : 1;              //!< APU system
+      uint reserved_ : 20;
     };
     uint value_;
   };
