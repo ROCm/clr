@@ -1837,7 +1837,6 @@ ResourceCache::~ResourceCache() { free(); }
 
 //! \note the cache works in FILO mode
 bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference* ref) {
-  amd::ScopedLock l(&lockCacheOps_);
   bool result = false;
   size_t size = ref->iMem()->Desc().size;
 
@@ -1845,6 +1844,7 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   if (((desc->type_ == Resource::Local) || (desc->type_ == Resource::Persistent) ||
        (desc->type_ == Resource::Remote) || (desc->type_ == Resource::RemoteUSWC)) &&
       (size < cacheSizeLimit_) && !desc->SVMRes_) {
+    amd::ScopedLock l(&lockCacheOps_);
     // Validate the cache size limit. Loop until we have enough space
     while ((cacheSize_ + size) > cacheSizeLimit_) {
       removeLast();
