@@ -478,8 +478,8 @@ class ResourceCache : public amd::HeapObject {
 
   amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
-  size_t cacheSize_;       //!< Current cache size in bytes
-  size_t cacheSizeLimit_;  //!< Cache size limit in bytes
+  size_t cacheSize_;            //!< Current cache size in bytes
+  const size_t cacheSizeLimit_; //!< Cache size limit in bytes
 
   //! CAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;
