@@ -72,6 +72,8 @@ Settings::Settings() {
 
   // Don't support Denormals for single precision by default
   singleFpDenorm_ = false;
+
+  apuSystem_ = false;
 }
 
 bool Settings::create(bool fullProfile, int gfxipVersion) {
@@ -123,6 +125,10 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
       break;
   }
 #endif  // WITH_LIGHTNING_COMPILER
+
+  if (gfxipVersion == 902) {
+    apuSystem_ = true;
+  }
 
   // Override current device settings
   override();

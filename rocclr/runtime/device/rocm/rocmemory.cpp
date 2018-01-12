@@ -579,17 +579,25 @@ void Buffer::destroy() {
     return;
   }
 #endif
-  if ((deviceMemory_ != nullptr) && (deviceMemory_ != owner()->getHostMem())) {
-    // if they are identical, the host pointer will be
-    // deallocated later on => avoid double deallocation
-    if (isHostMemDirectAccess()) {
-      if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-        if (dev().agent_profile() != HSA_PROFILE_FULL) {
-          hsa_amd_memory_unlock(owner()->getHostMem());
+  if (deviceMemory_ != nullptr) {
+    if (deviceMemory_ != owner()->getHostMem()) {
+      // if they are identical, the host pointer will be
+      // deallocated later on => avoid double deallocation
+      if (isHostMemDirectAccess()) {
+        if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
+          if (dev().agent_profile() != HSA_PROFILE_FULL) {
+            hsa_amd_memory_unlock(owner()->getHostMem());
+          }
         }
+      } else {
+        dev().memFree(deviceMemory_, size());
+        const_cast<Device&>(dev()).updateFreeMemory(size(), true);
       }
-    } else {
-      dev().memFree(deviceMemory_, size());
+    }
+    else if (dev().settings().apuSystem_) {
+      if (!(memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
+        dev().memFree(deviceMemory_, size());
+      }
       const_cast<Device&>(dev()).updateFreeMemory(size(), true);
     }
   }
@@ -672,6 +680,10 @@ bool Buffer::create() {
 
       deviceMemory_ = dev().hostAlloc(size(), 1, false);
       owner()->setHostMem(deviceMemory_);
+
+      if (dev().settings().apuSystem_) {
+        const_cast<Device&>(dev()).updateFreeMemory(size(), false);
+      }
     }
     else {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
@@ -938,6 +950,9 @@ bool Image::create() {
 
   if (originalDeviceMemory_ == nullptr) {
     originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, false);
+    if (dev().settings().apuSystem_) {
+      const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
+    }
   }
   else {
     const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
