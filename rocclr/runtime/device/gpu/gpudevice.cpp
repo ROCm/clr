@@ -838,9 +838,13 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
     smallMemSystem = true;
   }
 
+  bool noSVM = LP64_SWITCH(true, false) && !GPU_FORCE_OCL20_32BIT;
   // Open GSL device
   if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-            smallMemSystem || appProfile_.reportAsOCL12Device() || (OPENCL_VERSION < 200))) {
+            (smallMemSystem ||
+             appProfile_.reportAsOCL12Device() ||
+             (OPENCL_VERSION < 200) ||
+             noSVM))) {
     return false;
   }
 
