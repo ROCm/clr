@@ -545,6 +545,15 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
     desc.typeQualifier_ = GetOclTypeQual(aclArg);
     desc.typeName_ = arg->typeName_.c_str();
 
+    // set image related flags
+    if (arg->type_ == ROC_ARGTYPE_IMAGE) {
+      flags_.imageEnable_ = true;
+      if (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_WRITE_ONLY ||
+          desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_WRITE) {
+        flags_.imageWrite_ = true;
+      }
+    }
+
     // Make a check if it is local or global
     if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
       desc.size_ = 0;
@@ -614,6 +623,15 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
     desc.accessQualifier_ = GetOclAccessQual(arg);
     desc.typeQualifier_ = GetOclTypeQual(lcArg);
     desc.typeName_ = lcArg.mTypeName.c_str();
+
+    // set image related flags
+    if (arg->type_ == ROC_ARGTYPE_IMAGE) {
+      flags_.imageEnable_ = true;
+      if (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_WRITE_ONLY ||
+          desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_WRITE) {
+        flags_.imageWrite_ = true;
+      }
+    }
 
     // Make a check if it is local or global
     if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {

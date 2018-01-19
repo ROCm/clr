@@ -142,6 +142,23 @@ void Settings::override() {
     preferredWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
   }
 
+  if (GPU_MAX_WORKGROUP_SIZE_2D_X != 0) {
+    maxWorkGroupSize2DX_ = GPU_MAX_WORKGROUP_SIZE_2D_X;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_2D_Y != 0) {
+    maxWorkGroupSize2DY_ = GPU_MAX_WORKGROUP_SIZE_2D_Y;
+  }
+
+  if (GPU_MAX_WORKGROUP_SIZE_3D_X != 0) {
+    maxWorkGroupSize3DX_ = GPU_MAX_WORKGROUP_SIZE_3D_X;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_3D_Y != 0) {
+    maxWorkGroupSize3DY_ = GPU_MAX_WORKGROUP_SIZE_3D_Y;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_3D_Z != 0) {
+    maxWorkGroupSize3DZ_ = GPU_MAX_WORKGROUP_SIZE_3D_Z;
+  }
+
   if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
     commandQueues_ = GPU_MAX_COMMAND_QUEUES;
   }

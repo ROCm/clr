@@ -1401,6 +1401,7 @@ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
                                  amd::NDRangeContainer sizes, device::Kernel* devKernel,
                                  const roc::Device& dev) {
 
+  Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   const size_t* compile_size = devKernel->workGroupInfo()->compileSize_;
 
   // Todo (sramalin) need to check if compile_size is set to 0 if dimension is not valid
@@ -1425,53 +1426,75 @@ void setRuntimeCompilerLocalSize(hsa_kernel_dispatch_packet_t& dispatchPacket,
       // Find threads per group
       thrPerGrp = devKernel->workGroupInfo()->size_;
 
-      size_t tmp = thrPerGrp;
-      // Split the local workgroup into the most efficient way
-      for (uint d = 0; d < sizes.dimensions(); ++d) {
-          size_t div = tmp;
-          for (; (sizes.global()[d] % div) != 0; div--)
-            ;
-          sizes.local()[d] = div;
-          tmp /= div;
-      }
-
-      // Assuming DWORD access
-      const uint cacheLineMatch = dev.info().globalMemCacheLineSize_ >> 2;
-
-      // Check if partial dispatch is enabled and
-      if (dev.settings().partialDispatch_ &&
-          // we couldn't find optimal workload
-          ((sizes.local().product() % devKernel->workGroupInfo()->wavefrontSize_) != 0 ||
-                // or size is too small for the cache line
-           (sizes.local()[0] < cacheLineMatch))) {
-        size_t maxSize = 0;
-        size_t maxDim = 0;
-        for (uint d = 0; d < sizes.dimensions(); ++d) {
-          if (maxSize < sizes.global()[d]) {
-            maxSize = sizes.global()[d];
-            maxDim = d;
-          }
-        }
-
-        if ((maxDim != 0) && (sizes.global()[0] >= (cacheLineMatch / 2))) {
-          sizes.local()[0] = cacheLineMatch;
-          thrPerGrp /= cacheLineMatch;
-          sizes.local()[maxDim] = thrPerGrp;
-          for (uint d = 1; d < sizes.dimensions(); ++d) {
-            if (d != maxDim) {
-              sizes.local()[d] = 1;
-            }
-          }
+      if (gpuKernel.imageEnable() &&
+          // and thread group is a multiple value of wavefronts
+          ((thrPerGrp % devKernel->workGroupInfo()->wavefrontSize_) == 0) &&
+          // and it's 2 or 3-dimensional workload
+          (sizes.dimensions() > 1) &&
+          ((dev.settings().partialDispatch_) ||
+           (((sizes.global()[0] % 16) == 0) && ((sizes.global()[1] % 16) == 0)))) {
+          // Use 8x8 workgroup size if kernel has image writes)
+        if (gpuKernel.imageWrite() || (thrPerGrp != dev.settings().preferredWorkGroupSize_)) {
+          sizes.local()[0] = 8;
+          sizes.local()[1] = 8;
         }
         else {
-          // Check if a local workgroup has the most optimal size
-          if (thrPerGrp > maxSize) {
-            thrPerGrp = maxSize;
-          }
-          sizes.local()[maxDim] = thrPerGrp;
+          sizes.local()[0] = 16;
+          sizes.local()[1] = 16;
+        }
+        if (sizes.dimensions() == 3)  {
+          sizes.local()[2] = 1;
+        }
+      }
+      else {
+        size_t tmp = thrPerGrp;
+        // Split the local workgroup into the most efficient way
+        for (uint d = 0; d < sizes.dimensions(); ++d) {
+            size_t div = tmp;
+            for (; (sizes.global()[d] % div) != 0; div--)
+              ;
+            sizes.local()[d] = div;
+            tmp /= div;
+        }
+
+        // Assuming DWORD access
+        const uint cacheLineMatch = dev.info().globalMemCacheLineSize_ >> 2;
+
+        // Check if partial dispatch is enabled and
+        if (dev.settings().partialDispatch_ &&
+            // we couldn't find optimal workload
+            ((sizes.local().product() % devKernel->workGroupInfo()->wavefrontSize_) != 0 ||
+                  // or size is too small for the cache line
+             (sizes.local()[0] < cacheLineMatch))) {
+          size_t maxSize = 0;
+          size_t maxDim = 0;
           for (uint d = 0; d < sizes.dimensions(); ++d) {
-            if (d != maxDim) {
-              sizes.local()[d] = 1;
+            if (maxSize < sizes.global()[d]) {
+              maxSize = sizes.global()[d];
+              maxDim = d;
+            }
+          }
+
+          if ((maxDim != 0) && (sizes.global()[0] >= (cacheLineMatch / 2))) {
+            sizes.local()[0] = cacheLineMatch;
+            thrPerGrp /= cacheLineMatch;
+            sizes.local()[maxDim] = thrPerGrp;
+            for (uint d = 1; d < sizes.dimensions(); ++d) {
+              if (d != maxDim) {
+                sizes.local()[d] = 1;
+              }
+            }
+          }
+          else {
+            // Check if a local workgroup has the most optimal size
+            if (thrPerGrp > maxSize) {
+              thrPerGrp = maxSize;
+            }
+            sizes.local()[maxDim] = thrPerGrp;
+            for (uint d = 0; d < sizes.dimensions(); ++d) {
+              if (d != maxDim) {
+                sizes.local()[d] = 1;
+              }
             }
           }
         }

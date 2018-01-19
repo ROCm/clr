@@ -127,10 +127,18 @@ class Kernel : public device::Kernel {
   //! set internal kernel flag
   void setInternalKernelFlag(bool flag) { flags_.internalKernel_ = flag; }
 
+  //! Return TRUE if kernel uses images
+  bool imageEnable() const { return (flags_.imageEnable_) ? true : false; }
+
+  //! Return TRUE if kernel wirtes images
+  bool imageWrite() const { return (flags_.imageWrite_) ? true : false; }
+
  protected:
   union Flags {
     struct {
       uint internalKernel_ : 1;  //!< Is a blit kernel?
+      uint imageEnable_    : 1;  //!< Kernel uses images
+      uint imageWrite_     : 1;  //!< Kernel writes images
     };
     uint value_;
     Flags() : value_(0) {}
