@@ -91,6 +91,11 @@ bool khrIcdOsVendorsEnumerateDXGK(void)
           QueryAdapterInfo.pPrivateDriverData = &QueryArgs;
           QueryAdapterInfo.PrivateDriverDataSize = sizeof(QueryArgs);
           Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
+          if (!NT_SUCCESS(Status))
+          {
+            if (pAdapterInfo) free(pAdapterInfo);
+            return FALSE;
+          }
           if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_BUFFER_OVERFLOW)
           {
             unsigned int QueryBufferSize = sizeof(D3DDDI_QUERYREGISTRY_INFO) + QueryArgs.OutputValueSize;
