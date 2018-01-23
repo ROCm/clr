@@ -56,85 +56,88 @@ bool khrIcdOsVendorsEnumerateDXGK(void)
         D3DKMT_ADAPTERINFO* pAdapterInfo;
         D3DKMT_ENUMADAPTERS2 EnumAdapters;
         NTSTATUS Status = STATUS_SUCCESS;
+
         // Get handle to GDI Runtime
-        HMODULE h = GetModuleHandle("gdi32.dll");
-        if (!h)
-        {
-            return FALSE;
-        }
+        HMODULE h = LoadLibrary("gdi32.dll");
+
         char cszLibraryName[1024] = { 0 };
         EnumAdapters.NumAdapters = 0;
         EnumAdapters.pAdapters = NULL;
         PFND3DKMT_ENUMADAPTERS2 pEnumAdapters2 = (PFND3DKMT_ENUMADAPTERS2)GetProcAddress((HMODULE)h, "D3DKMTEnumAdapters2");
         if (!pEnumAdapters2)
         {
+            FreeLibrary(h);
             return FALSE;
         }
         Status = pEnumAdapters2(&EnumAdapters);
         if (!NT_SUCCESS(Status) && (Status != STATUS_BUFFER_TOO_SMALL))
         {
-          return FALSE;
+            FreeLibrary(h);
+            return FALSE;
         }
         pAdapterInfo = (D3DKMT_ADAPTERINFO*)malloc(sizeof(D3DKMT_ADAPTERINFO)*(EnumAdapters.NumAdapters));
         EnumAdapters.pAdapters = pAdapterInfo;
         Status = pEnumAdapters2(&EnumAdapters);
         if (!NT_SUCCESS(Status))
         {
-          if (pAdapterInfo) free(pAdapterInfo);
-          return FALSE;
+            FreeLibrary(h);
+            if (pAdapterInfo) free(pAdapterInfo);
+            return FALSE;
         }
         for (UINT AdapterIndex = 0; AdapterIndex < EnumAdapters.NumAdapters; AdapterIndex++)
         {
-          D3DDDI_QUERYREGISTRY_INFO QueryArgs = {0};
-          D3DDDI_QUERYREGISTRY_INFO* pQueryArgs = &QueryArgs;
-          D3DDDI_QUERYREGISTRY_INFO* pQueryBuffer = NULL;
-          QueryArgs.QueryType = D3DDDI_QUERYREGISTRY_ADAPTERKEY;
-          QueryArgs.QueryFlags.TranslatePath = TRUE;
-          QueryArgs.ValueType = REG_MULTI_SZ;
+            D3DDDI_QUERYREGISTRY_INFO QueryArgs = {0};
+            D3DDDI_QUERYREGISTRY_INFO* pQueryArgs = &QueryArgs;
+            D3DDDI_QUERYREGISTRY_INFO* pQueryBuffer = NULL;
+            QueryArgs.QueryType = D3DDDI_QUERYREGISTRY_ADAPTERKEY;
+            QueryArgs.QueryFlags.TranslatePath = TRUE;
+            QueryArgs.ValueType = REG_MULTI_SZ;
 #ifdef _WIN64
-          wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverName"), L"OpenCLDriverName");
+            wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverName"), L"OpenCLDriverName");
 #else
-          wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverNameWow"), L"OpenCLDriverNameWow");
+            wcscpy_s(QueryArgs.ValueName, ARRAYSIZE(L"OpenCLDriverNameWow"), L"OpenCLDriverNameWow");
 #endif
-          D3DKMT_QUERYADAPTERINFO QueryAdapterInfo = {0};
-          QueryAdapterInfo.hAdapter = pAdapterInfo[AdapterIndex].hAdapter;
-          QueryAdapterInfo.Type = KMTQAITYPE_QUERYREGISTRY;
-          QueryAdapterInfo.pPrivateDriverData = &QueryArgs;
-          QueryAdapterInfo.PrivateDriverDataSize = sizeof(QueryArgs);
-          Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
-          if (!NT_SUCCESS(Status))
-          {
-            if (pAdapterInfo) free(pAdapterInfo);
-            return FALSE;
-          }
-          if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_BUFFER_OVERFLOW)
-          {
-            unsigned int QueryBufferSize = sizeof(D3DDDI_QUERYREGISTRY_INFO) + QueryArgs.OutputValueSize;
-            pQueryBuffer = (D3DDDI_QUERYREGISTRY_INFO*)malloc(QueryBufferSize);
-            memcpy(pQueryBuffer, &QueryArgs, sizeof(D3DDDI_QUERYREGISTRY_INFO));
-            QueryAdapterInfo.pPrivateDriverData = pQueryBuffer;
-            QueryAdapterInfo.PrivateDriverDataSize = QueryBufferSize;
+            D3DKMT_QUERYADAPTERINFO QueryAdapterInfo = {0};
+            QueryAdapterInfo.hAdapter = pAdapterInfo[AdapterIndex].hAdapter;
+            QueryAdapterInfo.Type = KMTQAITYPE_QUERYREGISTRY;
+            QueryAdapterInfo.pPrivateDriverData = &QueryArgs;
+            QueryAdapterInfo.PrivateDriverDataSize = sizeof(QueryArgs);
             Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
-            pQueryArgs = pQueryBuffer;
-          }
-          if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_SUCCESS)
-          {
-            wchar_t* pWchar = pQueryArgs->OutputString;
-            unsigned int i = 0;
-            memset(cszLibraryName, 0, sizeof(cszLibraryName));
+            if (!NT_SUCCESS(Status))
             {
-              while ((*pWchar != L'\0') && (i<1023))
-              {
-                cszLibraryName[i] = (char)*pWchar;
-                i++;
-                pWchar++;
-              }
-              if (i < 1023) khrIcdVendorAdd(cszLibraryName);
+                FreeLibrary(h);
+                if (pAdapterInfo) free(pAdapterInfo);
+                return FALSE;
             }
-          }
-          if (pQueryBuffer) free(pQueryBuffer);
+            if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_BUFFER_OVERFLOW)
+            {
+                unsigned int QueryBufferSize = sizeof(D3DDDI_QUERYREGISTRY_INFO) + QueryArgs.OutputValueSize;
+                pQueryBuffer = (D3DDDI_QUERYREGISTRY_INFO*)malloc(QueryBufferSize);
+                memcpy(pQueryBuffer, &QueryArgs, sizeof(D3DDDI_QUERYREGISTRY_INFO));
+                QueryAdapterInfo.pPrivateDriverData = pQueryBuffer;
+                QueryAdapterInfo.PrivateDriverDataSize = QueryBufferSize;
+                Status = D3DKMTQueryAdapterInfo(&QueryAdapterInfo);
+                pQueryArgs = pQueryBuffer;
+            }
+            if (NT_SUCCESS(Status) && pQueryArgs->Status == D3DDDI_QUERYREGISTRY_STATUS_SUCCESS)
+            {
+                wchar_t* pWchar = pQueryArgs->OutputString;
+                unsigned int i = 0;
+                memset(cszLibraryName, 0, sizeof(cszLibraryName));
+                {
+                    while ((*pWchar != L'\0') && (i<1023))
+                    {
+                        cszLibraryName[i] = (char)*pWchar;
+                        i++;
+                        pWchar++;
+                    }
+                    if (i < 1023) khrIcdVendorAdd(cszLibraryName);
+                }
+            }
+            if (pQueryBuffer) free(pQueryBuffer);
         }
         if (pAdapterInfo) free(pAdapterInfo);
+        FreeLibrary(h);
         return TRUE;
     }
 #endif
