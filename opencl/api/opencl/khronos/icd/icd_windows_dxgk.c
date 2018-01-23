@@ -56,17 +56,28 @@ bool khrIcdOsVendorsEnumerateDXGK(void)
         D3DKMT_ADAPTERINFO* pAdapterInfo;
         D3DKMT_ENUMADAPTERS2 EnumAdapters;
         NTSTATUS Status = STATUS_SUCCESS;
+        // Get handle to GDI Runtime
+        HMODULE h = GetModuleHandle("gdi32.dll");
+        if (!h)
+        {
+            return FALSE;
+        }
         char cszLibraryName[1024] = { 0 };
         EnumAdapters.NumAdapters = 0;
         EnumAdapters.pAdapters = NULL;
-        Status = D3DKMTEnumAdapters2(&EnumAdapters);
+        PFND3DKMT_ENUMADAPTERS2 pEnumAdapters2 = (PFND3DKMT_ENUMADAPTERS2)GetProcAddress((HMODULE)h, "D3DKMTEnumAdapters2");
+        if (!pEnumAdapters2)
+        {
+            return FALSE;
+        }
+        Status = pEnumAdapters2(&EnumAdapters);
         if (!NT_SUCCESS(Status) && (Status != STATUS_BUFFER_TOO_SMALL))
         {
           return FALSE;
         }
         pAdapterInfo = (D3DKMT_ADAPTERINFO*)malloc(sizeof(D3DKMT_ADAPTERINFO)*(EnumAdapters.NumAdapters));
         EnumAdapters.pAdapters = pAdapterInfo;
-        Status = D3DKMTEnumAdapters2(&EnumAdapters);
+        Status = pEnumAdapters2(&EnumAdapters);
         if (!NT_SUCCESS(Status))
         {
           if (pAdapterInfo) free(pAdapterInfo);
