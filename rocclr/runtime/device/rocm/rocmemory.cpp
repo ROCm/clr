@@ -991,6 +991,10 @@ bool Image::createView(const Memory& parent) {
   kind_ = parent.getKind();
   version_ = parent.version();
 
+  if (parent.isHostMemDirectAccess()) {
+    flags_ |= HostMemoryDirectAccess;
+  }
+
   hsa_status_t status;
   if (linearLayout) {
     size_t rowPitch;
@@ -1064,14 +1068,18 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
 
     pHostMem = mapMemory_->getHostMem();
 
-    *rowPitch = region[0] * elementSize;
+    size_t rowPitchTemp = 0;
+    if (rowPitch != nullptr) {
+      *rowPitch = region[0] * elementSize;
+      rowPitchTemp = *rowPitch;
+    }
 
     size_t slicePitchTmp = 0;
 
     if (imageDescriptor_.geometry == HSA_EXT_IMAGE_GEOMETRY_1DA) {
-      slicePitchTmp = *rowPitch;
+      slicePitchTmp = rowPitchTemp;
     } else {
-      slicePitchTmp = *rowPitch * region[1];
+      slicePitchTmp = rowPitchTemp * region[1];
     }
     if (slicePitch != nullptr) {
       *slicePitch = slicePitchTmp;
@@ -1086,7 +1094,10 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   // Adjust offset with Z dimension
   offset += image->getSlicePitch() * origin[2];
 
-  *rowPitch = image->getRowPitch();
+  if (rowPitch != nullptr) {
+    *rowPitch = image->getRowPitch();
+  }
+
   if (slicePitch != nullptr) {
     *slicePitch = image->getSlicePitch();
   }
