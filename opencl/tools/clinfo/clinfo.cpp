@@ -155,7 +155,7 @@ main(int argc, char** argv)
     err = cl::Platform::get(&platforms);
 
     checkErr(
-        err && (platforms.size() == 0 ? -1 : CL_SUCCESS),
+        platforms.size() == 0 ? -1 : err,
         "cl::Platform::get()");
 
     try {
