@@ -61,7 +61,8 @@ uint64_t Event::recordProfilingInfo(cl_int status, uint64_t timeStamp) {
     default:
       profilingInfo_.end_ = timeStamp;
       if (profilingInfo_.callback_ != NULL) {
-        profilingInfo_.callback_->callback(timeStamp - profilingInfo_.start_);
+        profilingInfo_.callback_->callback(timeStamp - profilingInfo_.start_,
+            profilingInfo_.waves_);
       }
       break;
   }
@@ -227,7 +228,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   parameters_ = kernel.parameters().capture(queue.device());
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
-  profilingInfo_.setCallback(devKernel->getProfilingCallback(queue.vdev()));
+  profilingInfo_.setCallback(devKernel->getProfilingCallback(
+    queue.vdev()), devKernel->getWavesPerSH(queue.vdev()));
   fixme_guarantee(parameters_ != NULL && "out of memory");
   kernel_.retain();
 }

@@ -75,7 +75,7 @@ class Options;
 }  // option
 
 struct ProfilingCallback : public amd::HeapObject {
-  virtual void callback(ulong duration) = 0;
+  virtual void callback(ulong duration, uint32_t waves) = 0;
 };
 }
 
@@ -968,6 +968,10 @@ class Kernel : public amd::HeapObject {
   //! Get profiling callback object
   virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdv) {
     return NULL;
+  }
+
+  virtual uint getWavesPerSH(const device::VirtualDevice* vdv) const {
+      return 0;
   }
 
   void setVecTypeHint(const std::string& hint) { workGroupInfo_.compileVecTypeHint_ = hint; }

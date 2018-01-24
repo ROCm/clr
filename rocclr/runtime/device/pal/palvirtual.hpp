@@ -135,6 +135,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Flushes the current command buffer to HW
     //! Returns ID associated with the submission
+    template <bool avoidBarrierSubmit = false>
     uint submit(bool forceFlush);
 
     bool flush();
@@ -449,9 +450,7 @@ class VirtualGPU : public device::VirtualDevice {
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
     iCmd()->CmdBarrier(barrier);
-    if (!profiling()) {
-      queues_[engineID_]->submit(false);
-    }
+    queues_[engineID_]->submit<true>(false);
   }
 
   void eventBegin(EngineType engId) const {

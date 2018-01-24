@@ -193,8 +193,6 @@ release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
         "Set maximum waves per SIMD to try for wave limiter")                 \
 release_on_stg(uint, GPU_WAVE_LIMIT_WARMUP, 100,                              \
         "Set warming up kernel execution count for wave limiter")             \
-release_on_stg(uint, GPU_WAVE_LIMIT_ADAPT, 1,                                 \
-        "Set adapting factor for wave limiter")                               \
 release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 20,                                  \
         "Set running factor for wave limiter")                                \
 release_on_stg(uint, GPU_WAVE_LIMIT_ABANDON, 105,                             \

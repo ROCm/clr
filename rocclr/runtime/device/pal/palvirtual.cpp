@@ -204,10 +204,12 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
   palDoppRefs_.push_back(doppRef);
 }
 
+template <bool avoidBarrierSubmit>
 uint VirtualGPU::Queue::submit(bool forceFlush) {
   cmdCnt_++;
   uint id = cmdBufIdCurrent_;
-  if ((cmdCnt_ > MaxCommands) || forceFlush) {
+  bool flushCmd = ((cmdCnt_ > MaxCommands) || forceFlush) && !avoidBarrierSubmit;
+  if (flushCmd) {
     if (!flush()) {
       return GpuEvent::InvalidID;
     }
@@ -1972,7 +1974,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    dispatchParam.wavesPerSh = hsaKernel.getWavesPerSH(this);
+    dispatchParam.wavesPerSh = (enqueueEvent != nullptr) ?
+      enqueueEvent->profilingInfo().waves_ : 0;
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
