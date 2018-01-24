@@ -9,6 +9,7 @@
 #include <iterator>
 #include <cstdlib>
 #include <cassert>
+#include <cstring>
 #include "library.hpp"
 #include "utils/bif_section_labels.hpp"
 #include "utils/options.hpp"
