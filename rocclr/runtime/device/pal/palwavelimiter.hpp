@@ -63,8 +63,8 @@ class WaveLimiter : public amd::ProfilingCallback {
 
   static uint MaxWave;      // Maximum number of waves per SIMD
   static uint RunCount;     // Number of kernel executions for normal run
-  const static uint MaxContinuousSamples = 8;
   static uint AdaptCount;   // Number of kernel executions for adapting
+  const static uint MaxContinuousSamples = 8;
 
   //! Call back from Event::recordProfilingInfo to get execution time.
   virtual void callback(ulong duration, uint32_t waves) = 0;
