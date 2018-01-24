@@ -13,7 +13,7 @@ namespace pal {
 
 uint WaveLimiter::MaxWave;
 uint WaveLimiter::RunCount;
-uint WLAlgorithmSmooth::AdaptCount;
+uint WaveLimiter::AdaptCount;
 
 WaveLimiter::WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump)
     : manager_(manager), dumper_(manager_->name() + "_" + std::to_string(seqNum), enableDump) {
@@ -45,9 +45,9 @@ uint WaveLimiter::getWavesPerSH() {
   // Generate different wave counts in the adaptation mode
   if ((state_ == ADAPT) && (sampleCount_ < AdaptCount)) {
     if (numContinuousSamples_ == 0) {
-        waves_ = ++waves_ % (MaxWave + 1);
+        waves_ = (++waves_) % (MaxWave + 1);
     }
-    numContinuousSamples_ = ++numContinuousSamples_ % MaxContinuousSamples;
+    numContinuousSamples_ = (++numContinuousSamples_) % MaxContinuousSamples;
     ++sampleCount_;
   }
   else {
