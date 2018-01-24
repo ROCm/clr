@@ -66,7 +66,7 @@ class WaveLimiter : public amd::ProfilingCallback {
   static uint RunCount;     // Number of kernel executions for normal run
 
   //! Call back from Event::recordProfilingInfo to get execution time.
-  virtual void callback(ulong duration) = 0;
+  virtual void callback(ulong duration, uint32_t waves) = 0;
 
   //! Output trace of measurement/adaptation.
   virtual void outputTrace() = 0;
@@ -109,20 +109,7 @@ class WLAlgorithmSmooth : public WaveLimiter {
   void clearData();
 
   //! Call back from Event::recordProfilingInfo to get execution time.
-  void callback(ulong duration);
-
-  //! Output trace of measurement/adaptation.
-  void outputTrace();
-};
-
-class WLAlgorithmAvrg : public WaveLimiter {
- public:
-  explicit WLAlgorithmAvrg(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump);
-  virtual ~WLAlgorithmAvrg();
-
- private:
-  //! Call back from Event::recordProfilingInfo to get execution time.
-  void callback(ulong duration);
+  void callback(ulong duration, uint32_t waves);
 
   //! Output trace of measurement/adaptation.
   void outputTrace();

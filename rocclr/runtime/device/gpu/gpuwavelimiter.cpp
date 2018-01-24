@@ -121,7 +121,7 @@ void WLAlgorithmSmooth::outputTrace() {
 }
 
 
-void WLAlgorithmSmooth::callback(ulong duration) {
+void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
   dumper_.addData(duration, currWaves_, static_cast<char>(state_));
 
   if (!enable_ || (duration == 0)) {
@@ -203,65 +203,6 @@ void WaveLimiter::DataDumper::addData(ulong time, uint wave, char state) {
   time_.push_back(time);
   wavePerSIMD_.push_back(wave);
   state_.push_back(state);
-}
-
-WLAlgorithmAvrg::WLAlgorithmAvrg(WaveLimiterManager* manager, uint seqNum, bool enable,
-                                 bool enableDump)
-    : WaveLimiter(manager, seqNum, enable, enableDump) {
-  measure_.resize(MaxWave + 1);
-  clear(measure_);
-  countAll_ = 0;
-}
-
-WLAlgorithmAvrg::~WLAlgorithmAvrg() {}
-
-void WLAlgorithmAvrg::outputTrace() {
-  if (!traceStream_.is_open()) {
-    return;
-  }
-
-  traceStream_ << "[WaveLimiter] " << manager_->name() << " state=" << state_
-               << " currWaves=" << currWaves_ << " waves=" << waves_ << " bestWave=" << bestWave_
-               << '\n';
-  output(traceStream_, "\n measure = ", measure_);
-  traceStream_ << "\n\n";
-}
-
-
-void WLAlgorithmAvrg::callback(ulong duration) {
-  dumper_.addData(duration, currWaves_, static_cast<char>(state_));
-
-  if (!enable_) {
-    return;
-  }
-
-  countAll_++;
-
-  switch (state_) {
-    case WARMUP:
-      state_ = ADAPT;
-    case ADAPT:
-      measure_[waves_] += duration;
-      if (countAll_ <= MaxWave * 5) {
-        waves_--;
-        if (waves_ == 0) {
-          waves_ = MaxWave;
-        }
-      } else {
-        bestWave_ = MaxWave;
-        for (uint i = 1; i < MaxWave; i++) {
-          if (measure_[i] < measure_[bestWave_]) {
-            bestWave_ = i;
-          }
-        }
-        waves_ = bestWave_;
-        state_ = RUN;
-      }
-      break;
-    case RUN:
-    default:
-      break;
-  }
 }
 
 WaveLimiterManager::WaveLimiterManager(device::Kernel* kernel, const uint simdPerSH)
