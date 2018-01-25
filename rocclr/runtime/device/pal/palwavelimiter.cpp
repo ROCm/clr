@@ -45,9 +45,11 @@ uint WaveLimiter::getWavesPerSH() {
   // Generate different wave counts in the adaptation mode
   if ((state_ == ADAPT) && (sampleCount_ < AdaptCount)) {
     if (numContinuousSamples_ == 0) {
-        waves_ = (++waves_) % (MaxWave + 1);
+        ++waves_;
+        waves_ %= MaxWave + 1;
     }
-    numContinuousSamples_ = (++numContinuousSamples_) % MaxContinuousSamples;
+    ++numContinuousSamples_;
+    numContinuousSamples_ %= MaxContinuousSamples;
     ++sampleCount_;
   }
   else {
