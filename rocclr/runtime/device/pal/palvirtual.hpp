@@ -611,4 +611,17 @@ inline void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
   queues_[MainEngine]->last_kernel_ = &kernel;
 }
 
+template <bool avoidBarrierSubmit>
+uint VirtualGPU::Queue::submit(bool forceFlush) {
+  cmdCnt_++;
+  uint id = cmdBufIdCurrent_;
+  bool flushCmd = ((cmdCnt_ > MaxCommands) || forceFlush) && !avoidBarrierSubmit;
+  if (flushCmd) {
+    if (!flush()) {
+      return GpuEvent::InvalidID;
+    }
+  }
+  return id;
+}
+
 /*@}*/} // namespace pal

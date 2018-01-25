@@ -204,19 +204,6 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
   palDoppRefs_.push_back(doppRef);
 }
 
-template <bool avoidBarrierSubmit>
-uint VirtualGPU::Queue::submit(bool forceFlush) {
-  cmdCnt_++;
-  uint id = cmdBufIdCurrent_;
-  bool flushCmd = ((cmdCnt_ > MaxCommands) || forceFlush) && !avoidBarrierSubmit;
-  if (flushCmd) {
-    if (!flush()) {
-      return GpuEvent::InvalidID;
-    }
-  }
-  return id;
-}
-
 bool VirtualGPU::Queue::flush() {
   // Stop commands building
   if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
