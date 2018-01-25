@@ -41,6 +41,8 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
     if (result != Pal::Result::Success) {
       memRef->release();
+      // Free cache if PAL failed allocation
+      dev.resourceCache().free();
       return nullptr;
     }
   }
