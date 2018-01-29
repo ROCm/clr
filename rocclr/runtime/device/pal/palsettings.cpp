@@ -413,6 +413,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     resourceCacheSize_ =
         std::max(((heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize) / 8),
                  (uint64_t)GPU_RESOURCE_CACHE_SIZE * Mi);
+#if !defined(_LP64)
+    resourceCacheSize_ = std::min(resourceCacheSize_, 1 * Gi);
+#endif
   }
 
 #if defined(WITH_LIGHTNING_COMPILER)
