@@ -52,6 +52,7 @@ class WaveLimiter : public amd::ProfilingCallback {
   uint SIMDPerSH_;  // Number of SIMDs per SH
   uint waves_;      // Waves per SIMD to be set
   uint bestWave_;   // Optimal waves per SIMD
+  uint worstWave_;  // Wave number with the worst performance 
   uint countAll_;   // Number of kernel executions
   StateKind state_;
   WaveLimiterManager* manager_;
@@ -64,7 +65,7 @@ class WaveLimiter : public amd::ProfilingCallback {
   static uint MaxWave;      // Maximum number of waves per SIMD
   static uint RunCount;     // Number of kernel executions for normal run
   static uint AdaptCount;   // Number of kernel executions for adapting
-  const static uint MaxContinuousSamples = 8;
+  const static uint MaxContinuousSamples = 2;
 
   //! Call back from Event::recordProfilingInfo to get execution time.
   virtual void callback(ulong duration, uint32_t waves) = 0;
@@ -73,8 +74,12 @@ class WaveLimiter : public amd::ProfilingCallback {
   virtual void outputTrace() = 0;
 
   template <class T> void clear(T& A) {
+    uint idx = 0;
     for (auto& I : A) {
-      I = 0;
+      if (idx > worstWave_) {
+        I = 0;
+      }
+      ++idx;
     }
   }
   template <class T> void output(std::ofstream& ofs, const std::string& prompt, T& A) {
@@ -136,9 +141,8 @@ class WaveLimiterManager {
  private:
   device::Kernel* owner_;  // The kernel which owns this object
   uint simdPerSH_;         // Simd Per SH
-  std::unordered_map<const device::VirtualDevice*,
-                     WaveLimiter*>
-      limiters_;          // Maps virtual device to wave limiter
+  std::unordered_map<const device::VirtualDevice*, WaveLimiter*>
+    limiters_;            // Maps virtual device to wave limiter
   bool enable_;           // Whether the adaptation is enabled
   bool enableDump_;       // Whether the data dumper is enabled
   uint fixed_;            // The fixed waves/simd value if not zero
