@@ -30,6 +30,7 @@ WaveLimiter::WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, 
   waves_ = MaxWave;
   enable_ = (SIMDPerSH_ == 0) ? false : enable;
   bestWave_ = (enable_) ? MaxWave : 0;
+  worstWave_ = 0;
   sampleCount_ = 0;
   resultCount_ = 0;
   numContinuousSamples_ = 0;
@@ -47,6 +48,13 @@ uint WaveLimiter::getWavesPerSH() {
     if (numContinuousSamples_ == 0) {
         ++waves_;
         waves_ %= MaxWave + 1;
+        // Don't execute the wave count with the worst performance
+        if (waves_ != 0) {
+          while (worstWave_ >= waves_) {
+            ++waves_;
+            waves_ %= MaxWave + 1;
+          }
+        }
     }
     ++numContinuousSamples_;
     numContinuousSamples_ %= MaxContinuousSamples;
@@ -89,8 +97,8 @@ void WLAlgorithmSmooth::outputTrace() {
     return;
   }
 
-  traceStream_ << "[WaveLimiter] " << manager_->name() << " state=" << state_
-               << " waves=" << waves_ << " bestWave=" << bestWave_ << '\n';
+  traceStream_ << "[WaveLimiter] " << manager_->name() << " state=" << state_ <<
+    " waves=" << waves_ << " bestWave=" << bestWave_ << " worstWave=" << worstWave_ << '\n';
   output(traceStream_, "\n adaptive measure = ", adpMeasure_);
   output(traceStream_, "\n adaptive smaple count = ", adpSampleCnt_);
   output(traceStream_, "\n run measure = ", runMeasure_);
@@ -135,6 +143,7 @@ void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
           // Reset the counters
           resultCount_ = sampleCount_ = 0;
           float min = std::numeric_limits<float>::max();
+          float max = std::numeric_limits<float>::min();
           uint32_t best = bestWave_;
           // Check performance for the previous run if it's available
           if (runSampleCnt_[bestWave_] > 0) {
@@ -154,9 +163,14 @@ void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
             else {
               average = 0.0f;
             }
-            if (average < min) {
+            // More waves have 5% advantage over the lower number
+            if (average * 1.05f < min) {
               min = average;
               bestWave_ = i;
+            }
+            if (average > max) {
+              max = average;
+              worstWave_ = i;
             }
           }
           // Check for 5% acceptance
@@ -168,6 +182,12 @@ void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
           }
           else {
             dynRunCount_ = RunCount;
+          }
+          // Find the middle between the best and the worst
+          if (worstWave_ < bestWave_) {
+            worstWave_ += ((bestWave_ - worstWave_) >> 1);
+          } else {
+            worstWave_ = 0;
           }
           state_ = RUN;
           outputTrace();
