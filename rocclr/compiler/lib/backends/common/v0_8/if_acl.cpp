@@ -1420,7 +1420,29 @@ internal_compile_failure:
 acl_error
 IsValidCompilationOptions(aclBinary *bin, aclLogFunction compile_callback)
 {
-  return ACL_SUCCESS;
+  acl_error error_code = ACL_SUCCESS;
+#if defined(WITH_TARGET_HSAIL)
+  amd::option::Options* opts = reinterpret_cast<amd::option::Options*>(bin->options);
+  std::string error_msg;
+  if (isHSAILTarget(bin->target)) {
+    if (opts->oVariables->XLang) {
+      std::string ext = std::string(opts->oVariables->XLang);
+      if (ext == "clc++" || ext == "spir") {
+        error_msg = "Error: HSAIL doesn't support OpenCL extension " + ext + ".";
+        error_code = ACL_INVALID_OPTION;
+      }
+    }
+    if (getFamilyEnum(&bin->target) == FAMILY_SI) {
+      std::string device = std::string(getDeviceName(bin->target));
+      error_msg = "Error: HSAIL doesn't support device " + device + ".";
+      error_code = ACL_INVALID_TARGET;
+    }
+  }
+  if (ACL_SUCCESS != error_code && compile_callback) {
+    compile_callback(error_msg.c_str(), error_msg.size());
+  }
+#endif
+  return error_code;
 }
 
 acl_error  ACL_API_ENTRY
