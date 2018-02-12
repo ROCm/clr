@@ -327,6 +327,9 @@ public:
     Display* getIntDpy() const {return intDpy_;}
     GLXDrawable getIntDrawable() const {return intDrawable_;}
     GLXContext getIntCtx() const {return intCtx_;}
+
+    EGLDisplay getEglDpy() const { return eglDisplay_; }
+    EGLContext getEglOrigCtx() const { return eglOriginalContext_; }
 #endif //!_WIN32
 
     // Initialize GL dynamic library and function pointers
