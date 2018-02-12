@@ -367,8 +367,6 @@ class Device : public NullDevice {
 
   const hsa_profile_t agent_profile() const { return agent_profile_; }
 
-  const MesaInterop& mesa() const { return mesa_; }
-
   //! Finds an appropriate map target
   amd::Memory* findMapTarget(size_t size) const;
 
@@ -417,7 +415,6 @@ class Device : public NullDevice {
   static hsa_agent_t cpu_agent_;
   static std::vector<hsa_agent_t> gpu_agents_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
-  MesaInterop mesa_;
   hsa_agent_t _bkendDevice;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;

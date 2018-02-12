@@ -1205,14 +1205,11 @@ bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxCo
 
   mesa_glinterop_device_info info;
   info.size = sizeof(mesa_glinterop_device_info);
-  MesaInterop temp;
-  if (!temp.Bind(kind, display, context)) {
-    assert(false && "Failed mesa interop bind.");
+  if (!MesaInterop::Init(kind)) {
     return false;
   }
 
-  if (!temp.GetInfo(info)) {
-    assert(false && "Failed to get mesa interop device info.");
+  if (!MesaInterop::GetInfo(info, kind, display, context)) {
     return false;
   }
 
@@ -1222,8 +1219,6 @@ bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxCo
   match &= info_.deviceTopology_.pcie.function == info.pci_function;
   match &= info_.vendorId_ == info.vendor_id;
   match &= deviceInfo_.pciDeviceId_ == info.device_id;
-
-  if (!validateOnly) mesa_ = temp;
 
   return match;
 #endif
@@ -1235,7 +1230,6 @@ bool Device::unbindExternalDevice(uint flags, void* const gfxDevice[], void* gfx
   return false;
 #else
   if ((flags & amd::Context::GLDeviceKhr) == 0) return false;
-  if (!validateOnly) mesa_.Unbind();
   return true;
 #endif
 }
