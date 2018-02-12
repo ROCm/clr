@@ -20,8 +20,6 @@ typedef void* GLXContext;
 #include "device/rocm/rocregisters.hpp"
 #include "hsa_ext_amd.h"
 
-#include <atomic>
-
 namespace roc {
 
 // Specific typed container for version 1
@@ -78,63 +76,38 @@ class image_metadata {
   }
 };
 
-class MesaInterop {
- public:
-  enum MESA_INTEROP_KIND { MESA_INTEROP_NONE = 0, MESA_INTEROP_GLX = 1, MESA_INTEROP_EGL = 2 };
+namespace MesaInterop {
+enum MESA_INTEROP_KIND { MESA_INTEROP_NONE = 0, MESA_INTEROP_GLX = 1, MESA_INTEROP_EGL = 2 };
 
-  union DisplayHandle {
-    Display* glxDisplay;
-    EGLDisplay eglDisplay;
-  };
-
-  union ContextHandle {
-    GLXContext glxContext;
-    EGLContext eglContext;
-  };
-
-  // True if the configuration supports the indicated interop ability.
-  static bool Supported();
-
-  MesaInterop() { kind = MESA_INTEROP_NONE; }
-  MesaInterop(const MesaInterop& rhs) { *this = rhs; }
-  ~MesaInterop() { Unbind(); }
-
-  const MesaInterop& operator=(const MesaInterop& rhs) {
-    display = rhs.display;
-    context = rhs.context;
-    kind = rhs.kind;
-    if (kind != MESA_INTEROP_NONE) refCount++;
-    return *this;
-  }
-
-  /*
-  Loads Mesa interop APIs and sets this interface object to use the indicated
-  subsystem (GLX/EGL).  Returns true if the required subsystem is found.
-  */
-  bool Bind(MESA_INTEROP_KIND Kind, const DisplayHandle& Display, const ContextHandle& Context);
-
-  /*
-  Releases use of Mesa interop APIs.
-  Used to check for bad load/unload sequences.
-  */
-  void Unbind() {
-    if (kind == MESA_INTEROP_NONE) return;
-    assert(refCount > 0 && "Invalid refCount in MesaInterop.");
-    refCount--;
-    kind = MESA_INTEROP_NONE;
-  }
-
-  bool GetInfo(mesa_glinterop_device_info& info) const;
-
-  bool Export(mesa_glinterop_export_in& in, mesa_glinterop_export_out& out) const;
-
- private:
-  static std::atomic<uint32_t> refCount;
-
-  DisplayHandle display;
-  ContextHandle context;
-  MESA_INTEROP_KIND kind;
+union DisplayHandle {
+  Display* glxDisplay;
+  EGLDisplay eglDisplay;
+  DisplayHandle() {}
+  DisplayHandle(Display* display) : glxDisplay(display) {}
+  DisplayHandle(EGLDisplay display) : eglDisplay(display) {}
 };
+
+union ContextHandle {
+  GLXContext glxContext;
+  EGLContext eglContext;
+  ContextHandle() {}
+  ContextHandle(GLXContext context) : glxContext(context) {}
+  ContextHandle(EGLContext context) : eglContext(context) {}
+};
+
+// True if the build supports Mesa interop.
+bool Supported();
+
+// Returns true if the required subsystem is supported on the GL device.
+// Must be called at least once, may be called multiple times.
+bool Init(MESA_INTEROP_KIND Kind);
+
+bool GetInfo(mesa_glinterop_device_info& info, MESA_INTEROP_KIND Kind, const DisplayHandle display,
+             const ContextHandle context);
+
+bool Export(mesa_glinterop_export_in& in, mesa_glinterop_export_out& out, MESA_INTEROP_KIND Kind,
+            const DisplayHandle display, const ContextHandle context);
+}
 }
 
 #endif /*WITHOUT_HSA_BACKEND*/

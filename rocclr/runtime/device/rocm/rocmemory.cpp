@@ -213,7 +213,16 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
   in.out_driver_data_size = MaxMetadataSizeBytes;
   in.out_driver_data = &amdImageDesc_->data[0];
 
-  if (!dev().mesa().Export(in, out)) return false;
+  const auto& glenv = owner()->getContext().glenv();
+  if (glenv->isEGL()) {
+    if (!MesaInterop::Export(in, out, MesaInterop::MESA_INTEROP_EGL, glenv->getEglDpy(),
+                             glenv->getEglOrigCtx()))
+      return false;
+  } else {
+    if (!MesaInterop::Export(in, out, MesaInterop::MESA_INTEROP_GLX, glenv->getDpy(),
+                             glenv->getOrigCtx()))
+      return false;
+  }
 
   size_t size;
   size_t metadata_size = 0;
