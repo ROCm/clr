@@ -291,6 +291,8 @@ inline bool isHSAILTarget(const aclTargetInfo& target)
   return (target.arch_id == aclHSAIL || target.arch_id == aclHSAIL64);
 }
 
+const std::string& getLegacyLibName();
+
 enum scId {
   SC_AMDIL = 0,
   SC_HSAIL = 0,

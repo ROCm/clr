@@ -33,6 +33,8 @@ static const std::string sgfx907 = "AMD:AMDGPU:9:0:7";
 static const std::string sgfx1000 = "AMD:AMDGPU:10:0:0";
 static const std::string sgfx1001 = "AMD:AMDGPU:10:0:1";
 
+static const std::string legacyLibName = LINUX_ONLY("lib") "amdocl12cl" LP64_SWITCH(LINUX_SWITCH("32", ""), "64") LINUX_SWITCH(".so", ".dll");
+
 // Utility function to set a flag in option structure
 // of the aclDevCaps.
 void
@@ -1138,4 +1140,8 @@ convertBIF31ToBIF30(aclBinary *src) {
 void dump(aclBinary *bin) {
   bifbase *elfBin = reinterpret_cast<bifbase*>(bin->bin);
   elfBin->dump();
+}
+
+const std::string &getLegacyLibName() {
+  return legacyLibName;
 }
