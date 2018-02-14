@@ -242,7 +242,6 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
   bool isHSAILcapable = settings().hsail_;
   bool isBlit = false;
   bool isSPIRV = false;
-  bool isLangExt = false;
   bool isClang = false;
   bool isEDG = false;
   bool isLegacy = false;
@@ -270,10 +269,6 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
     if (!isLegacy) {
       isLegacy = op->oVariables->Legacy;
     }
-    if (!isLangExt) {
-      isLangExt = op->isCStrOptionsEqual(op->oVariables->XLang, "clc++") ||
-          op->isCStrOptionsEqual(op->oVariables->XLang, "spir");
-    }
     // Checks Frontend option only from input *options, not from Env,
     // because they might be only calculated by RT based on the binaries to link.
     // -frontend is being queried now instead of -cl-std=CL2.0, because the last one
@@ -296,7 +291,7 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
   if (isSPIRV || (isBlit && isCIPlus && isHSAILcapable) || isClang || isOCL20) {
     return true;
   }
-  if (isLegacy || !isHSAILcapable || isEDG || isLangExt) {
+  if (isLegacy || !isHSAILcapable || isEDG) {
     return false;
   }
   return true;
