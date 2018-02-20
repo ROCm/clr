@@ -53,6 +53,7 @@ class Settings : public device::Settings {
       uint syncObject_ : 1;              //!< Enable syncobject
       uint viPlus_ : 1;                  //!< VI and post VI features
       uint aiPlus_ : 1;                  //!< AI and post AI features
+      uint gfx10Plus_ : 1;               //!< gfx10 and post gfx10 features
       uint threadTraceEnable_ : 1;       //!< Thread trace enable
       uint linearPersistentImage_ : 1;   //!< Allocates linear images in persistent
       uint useSingleScratch_ : 1;        //!< Allocates single scratch per device
@@ -63,7 +64,7 @@ class Settings : public device::Settings {
       uint useDeviceQueue_ : 1;          //!< Submit to separate device queue
       uint singleFpDenorm_ : 1;          //!< Support Single FP Denorm
       uint sdamPageFaultWar_ : 1;        //!< SDMA page fault workaround
-      uint reserved_ : 9;
+      uint reserved_ : 8;
     };
     uint value_;
   };
