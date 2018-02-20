@@ -102,6 +102,7 @@ Settings::Settings() {
   // Disable ASIC specific features by default
   viPlus_ = false;
   aiPlus_ = false;
+  gfx10Plus_ = false;
 
   // Number of compute rings.
   numComputeRings_ = 0;
@@ -165,6 +166,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Unknown:
       switch (palProp.gfxLevel) {
         case Pal::GfxIpLevel::GfxIp10:
+          gfx10Plus_ = true;
         case Pal::GfxIpLevel::GfxIp9:
           aiPlus_ = true;
           break;
@@ -173,6 +175,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           return false;
       }
     case Pal::AsicRevision::Navi10:
+      gfx10Plus_ = true;
+    // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
     case Pal::AsicRevision::Vega12:
     case Pal::AsicRevision::Vega10:
