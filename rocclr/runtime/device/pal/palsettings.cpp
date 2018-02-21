@@ -133,12 +133,17 @@ Settings::Settings() {
 
   // Disable SDMA workaround by default
   sdamPageFaultWar_ = false;
+
+  // SQTT buffer size in bytes
+  rgpSqttDispCount_ = PAL_RGP_DISP_COUNT;
+  rgpSqttWaitIdle_ = true;
+  rgpSqttForceDisable_ = false;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
                       const Pal::GpuMemoryHeapProperties* heaps, const Pal::WorkStationCaps& wscaps,
-                      bool reportAsOCL12Device) {
-  //    uint    target = calAttr.target;
+                      bool reportAsOCL12Device)
+{
   uint32_t osVer = 0x0;
 
   // Disable thread trace by default for all devices

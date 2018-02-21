@@ -18,6 +18,7 @@
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palsettings.hpp"
 #include "device/pal/palappprofile.hpp"
+#include "device/pal/palgpuopen.hpp"
 #include "acl.h"
 #include "memory"
 
@@ -469,6 +470,8 @@ class Device : public NullDevice {
   //! Return private device context for internal allocations
   amd::Context& context() const { return *context_; }
 
+  RgpCaptureMgr* rgpCaptureMgr() const { return rgpCaptureMgr_; }
+
   //! Update free memory for OCL extension
   void updateFreeMemory(Pal::GpuHeap heap,  //!< PAL GPU heap for update
                         Pal::gpusize size,  //!< Size of alocated/destroyed memory
@@ -590,6 +593,7 @@ class Device : public NullDevice {
   std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
   amd::Monitor* lockResourceOps_;        //!< Lock to serialise resource access
   std::list<GpuMemoryReference*>* resourceList_;     //!< Active resource list
+  RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
 };
 
 /*@}*/} // namespace pal
