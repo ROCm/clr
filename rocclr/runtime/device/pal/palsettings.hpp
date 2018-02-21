@@ -64,7 +64,9 @@ class Settings : public device::Settings {
       uint useDeviceQueue_ : 1;          //!< Submit to separate device queue
       uint singleFpDenorm_ : 1;          //!< Support Single FP Denorm
       uint sdamPageFaultWar_ : 1;        //!< SDMA page fault workaround
-      uint reserved_ : 8;
+      uint rgpSqttWaitIdle_: 1;          //!< Wait for idle after SQTT trace
+      uint rgpSqttForceDisable_: 1;      //!< Disables SQTT
+      uint reserved_ : 6;
     };
     uint value_;
   };
@@ -94,6 +96,7 @@ class Settings : public device::Settings {
   size_t resourceCacheSize_;   //!< Resource cache size in MB
   size_t numMemDependencies_;  //!< The array size for memory dependencies tracking
   uint64_t maxAllocSize_;      //!< Maximum single allocation size
+  uint rgpSqttDispCount_;      //!< The number of dispatches captured in SQTT
 
   amd::LibrarySelector libSelector_;  //!< Select linking libraries for compiler
 

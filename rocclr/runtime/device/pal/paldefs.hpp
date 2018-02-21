@@ -170,7 +170,13 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
 };
 
 // Supported OpenCL versions
-enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
+enum OclVersion {
+  OpenCL10 = 0x10,
+  OpenCL11 = 0x11,
+  OpenCL12 = 0x12,
+  OpenCL20 = 0x20,
+  OpenCL21 = 0x21
+};
 
 struct MemoryFormat {
   cl_image_format clFormat_;        //!< CL image format

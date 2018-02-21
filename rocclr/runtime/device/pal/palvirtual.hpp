@@ -153,7 +153,7 @@ class VirtualGPU : public device::VirtualDevice {
     Pal::IFence* iCmdFences_[MaxCmdBuffers];     //!< PAL fences, associated with CMD
     const amd::Kernel* last_kernel_;             //!< Last submitted kernel
 
-   private:
+  private:
     void DumpMemoryReferences() const;
     Pal::IDevice* iDev_;    //!< PAL device
     uint cmdBufIdSlot_;     //!< Command buffer ID slot for submissions
@@ -201,6 +201,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint forceWait_          : 1;     //!< Forces wait in flush()
       uint profileEnabled_     : 1;     //!< Profiling is enabled for WaveLimiter
       uint perfCounterEnabled_ : 1;     //!< PerfCounter is enabled
+      uint rgpCaptureEnabled_  : 1;     //!< RGP capture is enabled in the runtime
     };
     uint value_;
     State() : value_(0) {}
@@ -496,6 +497,9 @@ class VirtualGPU : public device::VirtualDevice {
                            const Resource& dst   //!< Destination resource for SDMA transfer
                            );
 
+  //! Checks if RGP capture is enabled
+  bool rgpCaptureEna() const { return state_.rgpCaptureEnabled_; }
+
  protected:
   void profileEvent(EngineType engine, bool type) const;
 
@@ -560,6 +564,24 @@ class VirtualGPU : public device::VirtualDevice {
   void assignDebugTrapHandler(const DebugToolInfo& dbgSetting,  //!< debug settings
                               HwDbgKernelInfo& kernelInfo       //!< kernel info for the dispatch
                               );
+
+  void PrintChildren(const HSAILKernel& hsaKernel,  //!< The parent HSAIL kernel
+                     VirtualGPU* gpuDefQueue        //!< Device queue for children execution
+                     );
+
+  bool PreDeviceEnqueue(const amd::Kernel& kernel,    //!< Parent amd kernel object
+                        const HSAILKernel& hsaKernel, //!< Parent HSAIL object
+                        VirtualGPU** gpuDefQueue,     //!< [Return] GPU default queue
+                        uint64_t* vmDefQueue          //!< [Return] VM handle to the virtual queue
+                        );
+
+  void PostDeviceEnqueue(const amd::Kernel& kernel,    //!< Parent amd kernel object
+                         const HSAILKernel& hsaKernel, //!< Parent HSAIL object
+                         VirtualGPU* gpuDefQueue,      //!< GPU default queue
+                         uint64_t vmDefQueue,          //!< VM handle to the virtual queue
+                         uint64_t vmParentWrap,        //!< VM handle to the wrapped AQL packet location
+                         GpuEvent* gpuEvent            //!< [Return] GPU event associated with the device enqueue
+                         );
 
   Device& gpuDevice_;       //!< physical GPU device
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects

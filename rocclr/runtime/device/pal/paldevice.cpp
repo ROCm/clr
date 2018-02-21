@@ -659,7 +659,8 @@ Device::Device()
       globalScratchBuf_(nullptr),
       srdManager_(nullptr),
       lockResourceOps_(nullptr),
-      resourceList_(nullptr)
+      resourceList_(nullptr),
+      rgpCaptureMgr_(nullptr)
       {}
 
 Device::~Device() {
@@ -717,6 +718,9 @@ Device::~Device() {
   }
 
   device_ = nullptr;
+
+  // Delete developer driver manager
+  delete rgpCaptureMgr_;
 }
 
 extern const char* SchedulerSourceCode;
@@ -914,6 +918,8 @@ bool Device::create(Pal::IDevice* device) {
   return true;
 }
 
+static Pal::IPlatform* platform;
+
 bool Device::initializeHeapResources() {
   amd::ScopedLock k(lockForInitHeap_);
   if (!heapInitComplete_) {
@@ -983,6 +989,9 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
+
+    // Create RGP capture manager
+    rgpCaptureMgr_ = RgpCaptureMgr::Create(platform, *this);
   }
   return true;
 }
@@ -1081,7 +1090,6 @@ static int reportHook(int reportType, char* message, int* returnValue) {
 #endif  // _WIN32 & DEBUG
 
 static char* platformObj;
-static Pal::IPlatform* platform;
 
 bool Device::init() {
   uint32_t numDevices = 0;
