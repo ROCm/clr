@@ -186,6 +186,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Vega12:
     case Pal::AsicRevision::Vega10:
     case Pal::AsicRevision::Raven:
+    case Pal::AsicRevision::Raven2:
       aiPlus_ = true;
     // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:

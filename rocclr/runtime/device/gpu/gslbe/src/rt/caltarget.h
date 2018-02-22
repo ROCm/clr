@@ -47,6 +47,7 @@ typedef enum CALtargetEnum {
     CAL_TARGET_STONEY,             /**< STONEY GPU ISA*/
     CAL_TARGET_LEXA,               /**< LEXA GPU ISA*/
     CAL_TARGET_RAVEN,              /**< RAVEN GPU ISA*/
+    CAL_TARGET_RAVEN2,             /**< RAVEN2 GPU ISA*/
     CAL_TARGET_POLARIS22,          /**< POLARIS22 GPU ISA*/
     CAL_TARGET_VEGA12,            /**< VEGA12 GPU ISA*/
     CAL_TARGET_VEGA20,            /**< VEGA20 GPU ISA*/
