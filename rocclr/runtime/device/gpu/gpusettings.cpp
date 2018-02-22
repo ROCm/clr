@@ -161,6 +161,7 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
 
   switch (target) {
     case CAL_TARGET_RAVEN:
+    case CAL_TARGET_RAVEN2:
       // APU systems for AI
       apuSystem_ = true;
     case CAL_TARGET_GREENLAND:

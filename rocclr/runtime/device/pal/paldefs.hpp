@@ -163,8 +163,9 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
     /* Raven XNACK  */{ LIGHTNING_SWITCH("gfx902","gfx903"), LIGHTNING_SWITCH("gfx902","gfx903"),
                         4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903)},
-    /* Raven2       */{""      , ""      , 0, 0 , 0, 0  , 0      , 0 , 0},
-    /* Raven2 XNACK */{""      , ""      , 0, 0 , 0, 0  , 0      , 0 , 0},
+    /* Raven2       */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
+    /* Raven2 XNACK */{ LIGHTNING_SWITCH("gfx902","gfx903"), LIGHTNING_SWITCH("gfx902","gfx903"),
+                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903)},
     /* Navi10       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000},
     /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1001},
 };

@@ -511,6 +511,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
       m_target = CAL_TARGET_RAVEN;
       m_elfmachine = ED_ATI_CAL_MACHINE_RAVEN_ISA;
       break;
+  case GSL_ATIASIC_ID_RAVEN2:
+      m_target = CAL_TARGET_RAVEN2;
+      m_elfmachine = ED_ATI_CAL_MACHINE_RAVEN2_ISA;
+      break;
   case GSL_ATIASIC_ID_POLARIS22:
       m_target = CAL_TARGET_POLARIS22;
       m_elfmachine = ED_ATI_CAL_MACHINE_POLARIS22_ISA;

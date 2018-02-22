@@ -166,6 +166,7 @@ bool NullDevice::create(CALtarget target) {
     case CAL_TARGET_STONEY:
     case CAL_TARGET_LEXA:
     case CAL_TARGET_RAVEN:
+    case CAL_TARGET_RAVEN2:
     case CAL_TARGET_POLARIS22:
     case CAL_TARGET_VEGA12:
     case CAL_TARGET_VEGA20:
@@ -854,13 +855,13 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
 
   if ((GPU_ENABLE_PAL == 2) &&
       (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-       calTarget_ >= CAL_TARGET_VEGA12)) {
+       calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ >= CAL_TARGET_VEGA12)) {
     return false;
   }
 
 #if defined(BRAHMA)
   if (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-      calTarget_ == CAL_TARGET_POLARIS22) {
+      calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_POLARIS22) {
     return false;
   }
 #endif
