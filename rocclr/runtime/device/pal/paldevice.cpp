@@ -1281,6 +1281,13 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
   } else if (owner.getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
     // Attempt to allocate from persistent heap
     result = gpuMemory->create(Resource::Persistent);
+    // Disallow permanent map for Win7 only, since OS will move buffer to sysmem
+    if (IS_LINUX ||
+        // Or Win10
+        (properties().gpuMemoryProperties.flags.supportPerSubmitMemRefs == false)) {
+      void* address = gpuMemory->map(nullptr);
+      CondLog(address == nullptr, "PAL failed lock of persistent memory!");
+    }
   } else if (directAccess || (type == Resource::Remote)) {
     // Check for system memory allocations
     if ((owner.getMemFlags() & (CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_HOST_PTR)) ||

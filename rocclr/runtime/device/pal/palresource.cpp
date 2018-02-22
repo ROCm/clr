@@ -1106,7 +1106,8 @@ void Resource::free() {
   }
 
   // Sanity check for the map calls
-  if ((mapCount_ != 0) && (memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
+  if ((mapCount_ != 0) && (memoryType() != Remote) &&
+      (memoryType() != RemoteUSWC) && (memoryType() != Persistent)) {
     LogWarning("Resource wasn't unlocked, but destroyed!");
   }
   const bool wait =
