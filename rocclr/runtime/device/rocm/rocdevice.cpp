@@ -813,13 +813,19 @@ bool Device::populateOCLDeviceConstants() {
 
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MAX_CLOCK_FREQUENCY,
-                         &info_.maxClockFrequency_)) {
+                         &info_.maxEngineClockFrequency_)) {
     return false;
   }
 
   //TODO: add the assert statement for Raven
   if (deviceInfo_.gfxipVersion_ != 902) {
-    assert(info_.maxClockFrequency_ > 0);
+    assert(info_.maxEngineClockFrequency_ > 0);
+  }
+
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_MAX_FREQUENCY,
+          &info_.maxMemoryClockFrequency_)) {
+      return false;
   }
 
   if (HSA_STATUS_SUCCESS !=
@@ -1123,10 +1129,17 @@ bool Device::populateOCLDeviceConstants() {
       return false;
     }
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.globalMemChannels_)) {
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.vramBusBitWidth_)) {
       return false;
     }
-    info_.globalMemChannels_ /= 32;
+    uint32_t cache_sizes[4];
+    /* FIXIT [skudchad] -  Seems like hardcoded in HSA backend so 0*/
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AGENT_INFO_CACHE_SIZE, cache_sizes)) {
+        return false;
+    }
+    info_.l2CacheSize_ = cache_sizes[1];
+    info_.timeStampFrequency_ = 1000000;
     info_.globalMemChannelBanks_ = 4;
     info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;

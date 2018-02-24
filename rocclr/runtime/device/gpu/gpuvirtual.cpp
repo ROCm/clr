@@ -124,7 +124,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
 
 VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev) : cbWorkload_(0), dispatchSplitSize_(0) {
   aluCnt_ = dev.info().simdPerCU_ * dev.info().simdWidth_ * dev.info().maxComputeUnits_;
-  maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
+  maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
       // find time in us
       dev.settings().maxWorkloadTime_ * aluCnt_;
   resetCbWorkload(dev);
@@ -132,7 +132,7 @@ VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev) : cbWorkload_(0), disp
 
 void VirtualGPU::DmaFlushMgmt::resetCbWorkload(const Device& dev) {
   cbWorkload_ = 0;
-  maxCbWorkload_ = static_cast<uint64_t>(dev.info().maxClockFrequency_) *
+  maxCbWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
       // find time in us
       dev.settings().minWorkloadTime_ * aluCnt_;
 }
@@ -1794,7 +1794,7 @@ bool VirtualGPU::submitKernelInternalHSA(const amd::NDRangeContainer& sizes,
           gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
       param->signal = 1;
       // Scale clock to 1024 to avoid 64 bit div in the scheduler
-      param->eng_clk = (1000 * 1024) / dev().info().maxClockFrequency_;
+      param->eng_clk = (1000 * 1024) / dev().info().maxEngineClockFrequency_;
       param->hw_queue = patchStart + sizeof(uint32_t) /* Rewind packet*/;
       param->hsa_queue = gpuDefQueue->hsaQueueMem()->vmAddress();
       param->releaseHostCP = 0;

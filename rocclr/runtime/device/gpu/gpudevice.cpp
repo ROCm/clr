@@ -333,7 +333,11 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
       (settings().checkExtension(ClKhrFp64)) ? 1 : 0;
   info_.nativeVectorWidthHalf_ = info_.preferredVectorWidthHalf_ = 0;  // no half support
 
-  info_.maxClockFrequency_ = (calAttr.engineClock != 0) ? calAttr.engineClock : 555;
+  info_.maxEngineClockFrequency_ = (calAttr.engineClock != 0) ? calAttr.engineClock : 555;
+  info_.maxMemoryClockFrequency_ = (calAttr.memoryClock != 0) ? calAttr.memoryClock : 555;
+  info_.timeStampFrequency_ = 1000000;
+  info_.vramBusBitWidth_ = calAttr.memBusWidth;
+  info_.l2CacheSize_ = 0;
   info_.maxParameterSize_ = 1024;
   info_.minDataTypeAlignSize_ = sizeof(cl_long16);
   info_.singleFPConfig_ =
@@ -571,7 +575,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
     info_.wavefrontWidth_ = calAttr.wavefrontSize;
-    info_.globalMemChannels_ = calAttr.memBusWidth / 32;
+
     info_.globalMemChannelBanks_ = calAttr.numMemBanks;
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;

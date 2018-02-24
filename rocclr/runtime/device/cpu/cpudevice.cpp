@@ -293,7 +293,7 @@ bool Device::init() {
         ::strcpy(info.name_, line.substr(line.find_first_of(':') + 2).c_str());
         name = true;
       } else if (!freq && (line.find("cpu MHz\t\t: ") != std::string::npos)) {
-        info.maxClockFrequency_ = ::atoi(line.substr(line.find_first_of(':') + 2).c_str());
+        info.maxEngineClockFrequency_ = ::atoi(line.substr(line.find_first_of(':') + 2).c_str());
         freq = true;
       }
     }
@@ -338,7 +338,8 @@ bool Device::init() {
   }
 
 
-  info.maxClockFrequency_ = 0;
+  info.maxEngineClockFrequency_ = 0;
+  info.maxMemoryClockFrequency_ = 0;
   HKEY hKey;
 
   // Open the key
@@ -346,7 +347,7 @@ bool Device::init() {
                    KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
     // Read the value
     DWORD dwLen = 4;
-    RegQueryValueEx(hKey, "~MHz", NULL, NULL, (LPBYTE)&info.maxClockFrequency_, &dwLen);
+    RegQueryValueEx(hKey, "~MHz", NULL, NULL, (LPBYTE)&info.maxEngineClockFrequency_, &dwLen);
 
     // Cleanup and return
     RegCloseKey(hKey);
@@ -355,7 +356,8 @@ bool Device::init() {
 #else
   ::strcpy(info.name_, "Unknown Processor");
   ::strcpy(info.vendor_, "Unknown Vendor");
-  info.maxClockFrequency_ = 0;
+  info.maxEngineClockFrequency_ = 0;
+  info.maxMemoryClockFrequency_ = 0;
 #endif
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)

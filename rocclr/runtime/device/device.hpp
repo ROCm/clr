@@ -312,8 +312,20 @@ struct Info : public amd::EmbeddedObject {
   cl_uint nativeVectorWidthDouble_;
   cl_uint nativeVectorWidthHalf_;
 
-  //! Maximum configured clock frequency of the device in MHz.
-  cl_uint maxClockFrequency_;
+  //! Maximum configured engine clock frequency of the device in MHz.
+  cl_uint maxEngineClockFrequency_;
+
+  //! Maximum configured memory clock frequency of the device in MHz.
+  cl_uint maxMemoryClockFrequency_;
+
+  //! Memory bus width in bits.
+  cl_uint vramBusBitWidth_;
+
+  //! Size of L2 Cache in bytes.
+  cl_uint l2CacheSize_;
+
+  //! Timestamp frequency in Hz.
+  cl_uint timeStampFrequency_;
 
   //! Describes the address spaces supported  by the device.
   cl_uint addressBits_;
@@ -518,6 +530,8 @@ struct Info : public amd::EmbeddedObject {
   cl_uint simdInstructionWidth_;
   //! The number of workitems per wavefront
   cl_uint wavefrontWidth_;
+  //! Available number of SGPRs
+  cl_uint availableSGPRs_;
   //! Number of global memory channels
   cl_uint globalMemChannels_;
   //! Number of banks in each global memory channel

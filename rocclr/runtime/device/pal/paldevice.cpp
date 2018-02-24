@@ -276,9 +276,14 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       (settings().checkExtension(ClKhrFp64)) ? 1 : 0;
   info_.nativeVectorWidthHalf_ = info_.preferredVectorWidthHalf_ = 0;  // no half support
 
-  info_.maxClockFrequency_ = (palProp.gfxipProperties.performance.maxGpuClock != 0)
+  info_.maxEngineClockFrequency_ = (palProp.gfxipProperties.performance.maxGpuClock != 0)
       ? palProp.gfxipProperties.performance.maxGpuClock
       : 555;
+  info_.maxMemoryClockFrequency_ = (palProp.gpuMemoryProperties.performance.maxMemClock != 0)
+      ? palProp.gpuMemoryProperties.performance.maxMemClock
+      : 555;
+  info_.vramBusBitWidth_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth;
+  info_.l2CacheSize_ = palProp.gfxipProperties.shaderCore.tccSizeInBytes;
   info_.maxParameterSize_ = 1024;
   info_.minDataTypeAlignSize_ = sizeof(cl_long16);
   info_.singleFPConfig_ =
@@ -515,13 +520,15 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
     info_.wavefrontWidth_ = palProp.gfxipProperties.shaderCore.wavefrontSize;
-    info_.globalMemChannels_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth / 32;
+    info_.availableSGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableSgprs;
+
     info_.globalMemChannelBanks_ = 4;
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
     info_.gfxipVersion_ = hwInfo()->gfxipVersion_;
 
+    info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;
 
     info_.numRTQueues_ = numExclusiveComputeRings;
