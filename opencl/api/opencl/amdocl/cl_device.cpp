@@ -271,7 +271,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_NATIVE_VECTOR_WIDTH_FLOAT, nativeVectorWidthFloat_);
       CASE(CL_DEVICE_NATIVE_VECTOR_WIDTH_DOUBLE, nativeVectorWidthDouble_);
       CASE(CL_DEVICE_NATIVE_VECTOR_WIDTH_HALF, nativeVectorWidthDouble_);
-      CASE(CL_DEVICE_MAX_CLOCK_FREQUENCY, maxClockFrequency_);
+      CASE(CL_DEVICE_MAX_CLOCK_FREQUENCY, maxEngineClockFrequency_);
       CASE(CL_DEVICE_ADDRESS_BITS, addressBits_);
       CASE(CL_DEVICE_MAX_READ_IMAGE_ARGS, maxReadImageArgs_);
       CASE(CL_DEVICE_MAX_WRITE_IMAGE_ARGS, maxWriteImageArgs_);
@@ -550,7 +550,10 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
         CASE(CL_DEVICE_SIMD_WIDTH_AMD, simdWidth_);
         CASE(CL_DEVICE_SIMD_INSTRUCTION_WIDTH_AMD, simdInstructionWidth_);
         CASE(CL_DEVICE_WAVEFRONT_WIDTH_AMD, wavefrontWidth_);
-        CASE(CL_DEVICE_GLOBAL_MEM_CHANNELS_AMD, globalMemChannels_);
+      case CL_DEVICE_GLOBAL_MEM_CHANNELS_AMD: {
+            cl_uint globalMemChannels = as_amd(device)->info().vramBusBitWidth_ / 32;
+            return amd::clGetInfo(globalMemChannels, param_value_size, param_value, param_value_size_ret);
+      }
         CASE(CL_DEVICE_GLOBAL_MEM_CHANNEL_BANKS_AMD, globalMemChannelBanks_);
         CASE(CL_DEVICE_GLOBAL_MEM_CHANNEL_BANK_WIDTH_AMD, globalMemChannelBankWidth_);
         CASE(CL_DEVICE_LOCAL_MEM_SIZE_PER_COMPUTE_UNIT_AMD, localMemSizePerCU_);
