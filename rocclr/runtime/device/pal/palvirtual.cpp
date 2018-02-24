@@ -2085,11 +2085,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                                       const_address parameters, bool nativeMem,
                                       amd::Event* enqueueEvent)
 {
-  uint64_t vmParentWrap = 0;
-  uint64_t vmDefQueue = 0;
-  VirtualGPU* gpuDefQueue = nullptr;
-  amd::HwDebugManager* dbgManager = dev().hwDebugMgr();
-
   // If RGP capturing is enabled, then start SQTT trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->PreDispatch(this);
@@ -2110,8 +2105,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     return false;
   }
 
+  // Add ISA memory object to the resource tracking list
   AddKernel(kernel);
 
+  uint64_t vmDefQueue = 0;
+  VirtualGPU* gpuDefQueue = nullptr;
   if (hsaKernel.dynamicParallelism()) {
     // Initialize GPU device queue for execution (gpuDefQueue)
     if (!PreDeviceEnqueue(kernel, hsaKernel, &gpuDefQueue, &vmDefQueue)) {
@@ -2119,14 +2117,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
   }
 
-  //  setup the storage for the memory pointers of the kernel parameters
-  uint numParams = kernel.signature().numParameters();
-  if (dbgManager) {
-    dbgManager->allocParamMemList(numParams);
-  }
-
   bool needFlush = false;
-
   // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd
   // are in the same cmdBuffer
   if (!state_.perfCounterEnabled_) {
@@ -2175,6 +2166,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     amd::NDRangeContainer tmpSizes(sizes.dimensions(), &newOffset[0], &newGlobalSize[0],
                                    &(const_cast<amd::NDRangeContainer&>(sizes).local()[0]));
 
+    uint64_t vmParentWrap = 0;
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
         *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap);
@@ -2188,15 +2180,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
       scratch = dev().scratch(hwRing());
       addVmMemory(scratch->memObj_);
-    }
-
-    // HW Debug for the kernel?
-    HwDbgKernelInfo kernelInfo;
-    HwDbgKernelInfo* pKernelInfo = nullptr;
-
-    if (dbgManager) {
-      buildKernelInfo(hsaKernel, aqlPkt, kernelInfo, enqueueEvent);
-      pKernelInfo = &kernelInfo;
     }
 
     // Set up the dispatch information
@@ -2222,13 +2205,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
     eventEnd(MainEngine, gpuEvent);
 
-    if (id != gpuEvent.id) {
-      LogError("something is wrong. ID mismatch!\n");
-    }
-    if (dbgManager && (nullptr != dbgManager->postDispatchCallBackFunc())) {
-      dbgManager->executePostDispatchCallBack();
-    }
-
     // Execute scheduler for device enqueue
     if (hsaKernel.dynamicParallelism()) {
       PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
@@ -2245,7 +2221,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
   }
-
+  // Perform post dispatch logic for RGP traces
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->PostDispatch(this);
   }
