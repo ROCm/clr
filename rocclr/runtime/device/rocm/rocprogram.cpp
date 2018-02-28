@@ -312,10 +312,12 @@ std::string Program::preprocessorOptions(amd::option::Options* options) {
 
   // Set options for the standard device specific options
 
+#ifndef WITH_LIGHTNING_COMPILER
   optionsStr.append(" -D__AMD__=1");
 
   optionsStr.append(" -D__").append(device().info().name_).append("__=1");
   optionsStr.append(" -D__").append(device().info().name_).append("=1");
+#endif
 
   int major, minor;
   ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
@@ -328,6 +330,7 @@ std::string Program::preprocessorOptions(amd::option::Options* options) {
     optionsStr.append(" -D__IMAGE_SUPPORT__=1");
   }
 
+#ifndef WITH_LIGHTNING_COMPILER
   // This is just for legacy compiler code
   // All our devices support these options now
   if (options->oVariables->FastFMA) {
@@ -336,6 +339,7 @@ std::string Program::preprocessorOptions(amd::option::Options* options) {
   if (options->oVariables->FastFMAF) {
     optionsStr.append(" -DFP_FAST_FMAF=1");
   }
+#endif
 
   uint clcStd =
       (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
