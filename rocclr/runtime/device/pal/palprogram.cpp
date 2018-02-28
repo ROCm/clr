@@ -714,10 +714,12 @@ void HSAILProgram::releaseClBinary() {
 std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
   std::string hsailOptions;
 
+#ifndef WITH_LIGHTNING_COMPILER
   hsailOptions.append(" -D__AMD__=1");
 
   hsailOptions.append(" -D__").append(device().info().name_).append("__=1");
   hsailOptions.append(" -D__").append(device().info().name_).append("=1");
+#endif
 
   int major, minor;
   ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
@@ -732,6 +734,7 @@ std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
     hsailOptions.append(" -D__IMAGE_SUPPORT__=1");
   }
 
+#ifndef WITH_LIGHTNING_COMPILER
   // Set options for the standard device specific options
   // All our devices support these options now
   if (dev().settings().reportFMAF_) {
@@ -740,6 +743,7 @@ std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
   if (dev().settings().reportFMA_) {
     hsailOptions.append(" -DFP_FAST_FMA=1");
   }
+#endif
 
   uint clcStd =
       (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
