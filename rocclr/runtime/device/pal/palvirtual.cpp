@@ -2537,6 +2537,17 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
     iCmd()->CmdWaitBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value, 0xFFFFFFFF,
                                               Pal::CompareFunc::GreaterEqual);
   } else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
+    // Make sure GPU finished operation and data reached memory before the marker write
+    static constexpr bool FlushL2 = true;
+    addBarrier(FlushL2);
+    // \todo: Implement the right changes in PAL
+    // Workarounds: for CP overfetch issues and the lack of SDMA sync
+    {
+      // Flush CB associated with the DGMA buffer
+      isDone(pGpuMemory->getGpuEvent(*this));
+      // Make sure SDMA is done on the DGMA buffer
+      pGpuMemory->wait(*this, true);
+    }
     iCmd()->CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
   }
   eventEnd(MainEngine, gpuEvent);

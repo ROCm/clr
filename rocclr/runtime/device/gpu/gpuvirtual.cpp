@@ -2380,6 +2380,8 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
     uint64_t markerOffset = markerAddr - surfAddr;
     cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(), markerOffset, false);
   } else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
+    static constexpr bool FlushL2 = true;
+    flushCUCaches(FlushL2);
     cs()->p2pMarkerOp(gpuMemory->gslResource(), vcmd.markerValue(), vcmd.markerOffset(), true);
   }
   eventEnd(MainEngine, gpuEvent);
