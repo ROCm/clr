@@ -5,7 +5,6 @@
 #include "api/v0_8/aclValidation.h"
 #include "libUtils.h"
 #include "bif/bifbase.hpp"
-#include "utils/target_mappings.h"
 #include "utils/versions.hpp"
 #include "utils/options.hpp"
 #include <cstring>
@@ -459,37 +458,6 @@ const char *getDeviceName(const aclTargetInfo &target)
     return aclGetArchitecture(target);
   }
   return NULL;
-}
-
-/*! Function that returns the TargetMapping for
- *the specific target device.
- */
-static const TargetMapping& getTargetMapping(const aclTargetInfo &target)
-{
-  switch(target.arch_id) {
-    default:
-      assert(!"Passed a device id that is invalid!");
-      break;
-    case aclX64:
-      return X64TargetMapping[target.chip_id];
-      break;
-    case aclX86:
-      return X86TargetMapping[target.chip_id];
-      break;
-    case aclHSAIL:
-      return HSAILTargetMapping[target.chip_id];
-      break;
-    case aclHSAIL64:
-      return HSAIL64TargetMapping[target.chip_id];
-      break;
-    case aclAMDIL:
-      return AMDILTargetMapping[target.chip_id];
-      break;
-    case aclAMDIL64:
-      return AMDIL64TargetMapping[target.chip_id];
-      break;
-  };
-  return UnknownTarget;
 }
 
 /*! Function that returns the library type from the TargetMapping table for

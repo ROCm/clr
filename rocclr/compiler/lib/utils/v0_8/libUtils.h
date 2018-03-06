@@ -11,6 +11,7 @@
 #include <cassert>
 #include <cstring>
 #include "library.hpp"
+#include "utils/target_mappings.h"
 #include "utils/bif_section_labels.hpp"
 #include "utils/options.hpp"
 using namespace bif;
@@ -263,6 +264,34 @@ aclutUpdateMetadataWithHiddenKernargsNum(aclCompiler* cl, aclBinary* bin, uint32
 }
 #endif
 
+// Returns the TargetMapping for the specific target device.
+inline const TargetMapping& getTargetMapping(const aclTargetInfo &target)
+{
+  switch (target.arch_id) {
+  default:
+    break;
+  case aclX64:
+    return X64TargetMapping[target.chip_id];
+    break;
+  case aclX86:
+    return X86TargetMapping[target.chip_id];
+    break;
+  case aclHSAIL:
+    return HSAILTargetMapping[target.chip_id];
+    break;
+  case aclHSAIL64:
+    return HSAIL64TargetMapping[target.chip_id];
+    break;
+  case aclAMDIL:
+    return AMDILTargetMapping[target.chip_id];
+    break;
+  case aclAMDIL64:
+    return AMDIL64TargetMapping[target.chip_id];
+    break;
+  };
+  return UnknownTarget;
+}
+
 inline bool is64BitTarget(const aclTargetInfo& target)
 {
   return (target.arch_id == aclX64 ||
@@ -292,6 +321,23 @@ inline bool isHSAILTarget(const aclTargetInfo& target)
 }
 
 const std::string& getLegacyLibName();
+
+inline bool isValidTarget(const aclTargetInfo& target)
+{
+  return (target.arch_id && target.chip_id);
+}
+
+inline bool isChipSupported(const aclTargetInfo& target)
+{
+  if (!isValidTarget(target)) {
+    return false;
+  }
+  const TargetMapping& Mapping = getTargetMapping(target);
+  if (Mapping.family_enum == FAMILY_UNKNOWN) {
+    return false;
+  }
+  return Mapping.supported;
+}
 
 enum scId {
   SC_AMDIL = 0,

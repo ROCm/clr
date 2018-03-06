@@ -34,9 +34,9 @@ typedef struct _target_mappings_rec {
 } TargetMapping;
 
 const TargetMapping UnknownTarget = { "UnknownFamily", "UnknownChip", "UnknownCodeGen",
-  amd::LibraryUndefined, 0, 0, false, false, FAMILY_UNKNOWN};
+  amd::LibraryUndefined, 0, 0, false, false, FAMILY_UNKNOWN, false};
 const TargetMapping InvalidTarget = { NULL, NULL, NULL,
-  amd::LibraryUndefined, 0, 0, false, false, FAMILY_UNKNOWN};
+  amd::LibraryUndefined, 0, 0, false, false, FAMILY_UNKNOWN, false};
 
 typedef struct _family_map_rec {
   const TargetMapping*  target;
