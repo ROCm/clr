@@ -602,6 +602,9 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
             }
             imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
             break;
+          case 3:  // YUY2 format
+            imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+            break;
           default:
             LogError("Unknown Interop View Type");
             return false;

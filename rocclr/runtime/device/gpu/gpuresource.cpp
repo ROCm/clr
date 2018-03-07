@@ -789,6 +789,8 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
               break;
           }
           break;
+        case 3:
+          break;
         default:
           LogError("Unknown Interop View Type");
           calRes = false;
