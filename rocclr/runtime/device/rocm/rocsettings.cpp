@@ -119,10 +119,9 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
 
 #if defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClAmdAssemblyProgram);
-  switch (gfxipVersion) {
-    case 900:
+  // enable subnormals for gfx900 and later
+  if (gfxipVersion >= 900) {
       singleFpDenorm_ = true;
-      break;
   }
 #endif  // WITH_LIGHTNING_COMPILER
 
