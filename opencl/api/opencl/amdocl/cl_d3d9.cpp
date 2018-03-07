@@ -16,6 +16,7 @@
 
 #define D3DFMT_NV_12 static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2'))
 #define D3DFMT_YV_12 static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'V', '1', '2'))
+#define D3DFMT_YUY2  static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'U', 'Y', '2'))
 
 
 RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR,
@@ -306,7 +307,6 @@ size_t D3D9Object::getElementBytes(D3DFORMAT d3d9Format, cl_uint plane) {
   switch (d3d9Format) {
     case D3DFMT_UNKNOWN:
     case D3DFMT_UYVY:
-    case D3DFMT_YUY2:
     case D3DFMT_DXT1:
     case D3DFMT_DXT2:
     case D3DFMT_DXT3:
@@ -372,6 +372,7 @@ size_t D3D9Object::getElementBytes(D3DFORMAT d3d9Format, cl_uint plane) {
     case D3DFMT_R8G8_B8G8:
     case D3DFMT_G8R8_G8B8:
     case D3DFMT_G16R16F:
+    case D3DFMT_YUY2:
       bytesPerPixel = 4;
       break;
 
@@ -459,6 +460,9 @@ void setObjDesc(amd::D3D9ObjDesc_t& objDesc, D3DSURFACE_DESC& resDesc, cl_uint p
       objDesc.surfRect_.top = 0;
       objDesc.surfRect_.right = resDesc.Width - 1;
       objDesc.surfRect_.bottom = resDesc.Height - 1;
+      if (resDesc.Format == D3DFMT_YUY2) {
+        objDesc.objSize_.Width >>= 1;
+      }
       break;
   }
 }
@@ -576,6 +580,9 @@ cl_uint D3D9Object::getMiscFlag() {
     case D3DFMT_YV_12:
       return 2;
       break;
+    case D3DFMT_YUY2:
+      return 3;
+      break;
     default:
       return 0;
       break;
@@ -684,7 +691,10 @@ cl_image_format D3D9Object::getCLFormatFromD3D9(D3DFORMAT d3d9Fmt, cl_uint plane
       fmt.image_channel_order = CL_R;
       fmt.image_channel_data_type = CL_UNORM_INT8;
       break;
-
+    case D3DFMT_YUY2:
+      fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNSIGNED_INT8;
+      break;
     case D3DFMT_UNKNOWN:
     case D3DFMT_R8G8B8:
     case D3DFMT_R5G6B5:
@@ -707,7 +717,6 @@ cl_image_format D3D9Object::getCLFormatFromD3D9(D3DFORMAT d3d9Fmt, cl_uint plane
     case D3DFMT_A2W10V10U10:
     case D3DFMT_UYVY:
     case D3DFMT_R8G8_B8G8:
-    case D3DFMT_YUY2:
     case D3DFMT_G8R8_G8B8:
     case D3DFMT_DXT1:
     case D3DFMT_DXT2:

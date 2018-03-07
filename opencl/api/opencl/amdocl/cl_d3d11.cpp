@@ -600,6 +600,9 @@ cl_uint D3D11Object::getMiscFlag() {
   if (objDesc_.dxgiFormat_ == DXGI_FORMAT_NV12) {
     return 1;
   }
+  else if (objDesc_.dxgiFormat_ == DXGI_FORMAT_YUY2) {
+    return 3;
+  }
   return 0;
 }
 
@@ -814,6 +817,10 @@ int D3D11Object::initD3D11Object(const Context& amdContext, ID3D11Resource* pRes
           obj.objDesc_.objSize_.Width /= 2;
           obj.objDesc_.objSize_.Height /= 2;
         }
+      }
+      // RGBA8 covers 2 pixels, thus divide width by 2
+      if (desc.Format == DXGI_FORMAT_YUY2) {
+        obj.objDesc_.objSize_.Width /= 2;
       }
     } break;
 
@@ -1450,6 +1457,8 @@ size_t D3D11Object::getElementBytes(DXGI_FORMAT dxgiFmt, cl_uint plane) {
 
     case DXGI_FORMAT_B8G8R8A8_UNORM:
     case DXGI_FORMAT_B8G8R8X8_UNORM:
+
+    case DXGI_FORMAT_YUY2:
       bytesPerPixel = 4;
       break;
 
@@ -1651,6 +1660,7 @@ cl_image_format D3D11Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt, cl_uint pl
       break;
 
     case DXGI_FORMAT_R8G8B8A8_UINT:
+    case DXGI_FORMAT_YUY2:
       fmt.image_channel_order = CL_RGBA;
       fmt.image_channel_data_type = CL_UNSIGNED_INT8;
       break;
