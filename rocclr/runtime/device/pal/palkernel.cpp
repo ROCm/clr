@@ -749,11 +749,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 }
 
 bool HSAILKernel::validateMemory(uint idx, amd::Memory* amdMem) const {
-  // Check if memory doesn't require reallocation
-  bool noRealloc = true;
-  // amdMem->reallocedDeviceMemory(&dev()));
-
-  return noRealloc;
+  // HSAIL path doesn't require memory reallocations
+  return true;
 }
 
 const Device& HSAILKernel::dev() const { return reinterpret_cast<const Device&>(dev_); }
@@ -1026,7 +1023,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         }
 
         //! 64 bit isn't supported with 32 bit binary
-        uint64_t globalAddress = gpuMem->vmAddress() + gpuMem->pinOffset();
+        uint64_t globalAddress = gpuMem->vmAddress();
         WriteAqlArg(&aqlArgBuf, &globalAddress, arg->size_, arg->alignment_);
 
         // Wait for resource if it was used on an inactive engine

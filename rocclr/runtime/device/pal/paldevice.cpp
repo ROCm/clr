@@ -1538,63 +1538,11 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
   return true;
 }
 
-//! \note reallocMemory() must be called only from outside of
-//! VirtualGPU submit commands methods.
-//! Otherwise a deadlock in lockVgpus() is possible
-
+//! \note reallocMemory() must be called only from outside of VirtualGPU submit
+//! commands methods. Otherwise a deadlock in lockVgpus() is possible
 bool Device::reallocMemory(amd::Memory& owner) const {
-  // For now we have to serialize reallocation code
-  amd::ScopedLock lk(*lockAsyncOps_);
-
-  // Read device memory after the lock,
-  // since realloc from another thread can replace the pointer
-  pal::Memory* gpuMemory = getGpuMemory(&owner);
-  if (gpuMemory == nullptr) {
-    return false;
-  }
-
-  if (gpuMemory->pinOffset() == 0) {
-    return true;
-  } else if (nullptr != owner.parent()) {
-    if (!reallocMemory(*owner.parent())) {
-      return false;
-    }
-  }
-
-  if (owner.asBuffer()) {
-    gpuMemory = createBuffer(owner, false);
-  } else if (owner.asImage()) {
-    return true;
-  } else {
-    LogError("Unknown memory type!");
-  }
-
-  if (gpuMemory != nullptr) {
-    pal::Memory* newMemory = gpuMemory;
-    pal::Memory* oldMemory = getGpuMemory(&owner);
-
-    // Transfer the object
-    if (oldMemory != nullptr) {
-      if (!oldMemory->moveTo(*newMemory)) {
-        delete newMemory;
-        return false;
-      }
-    }
-
-    // Attempt to pin system memory
-    if ((newMemory->memoryType() != Resource::Pinned) &&
-        ((owner.getHostMem() != nullptr) ||
-         ((nullptr != owner.parent()) && (owner.getHostMem() != nullptr)))) {
-      bool ok = newMemory->pinSystemMemory(owner.getHostMem(), (owner.getHostMemRef()->size())
-                                               ? owner.getHostMemRef()->size()
-                                               : owner.getSize());
-      //! \note: Ignore the pinning result for now
-    }
-
-    return true;
-  }
-
-  return false;
+  // Empty body, since HSAIL path doesn't require memory reallocations
+  return true;
 }
 
 device::Memory* Device::createView(amd::Memory& owner, const device::Memory& parent) const {

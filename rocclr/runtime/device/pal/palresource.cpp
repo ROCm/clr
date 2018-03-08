@@ -189,7 +189,6 @@ Resource::Resource(const Device& gpuDev, size_t size)
       curRename_(0),
       memRef_(nullptr),
       viewOwner_(nullptr),
-      pinOffset_(0),
       image_(nullptr),
       hwSrd_(0) {
   // Fill resource descriptor fields
@@ -226,7 +225,6 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
       curRename_(0),
       memRef_(nullptr),
       viewOwner_(nullptr),
-      pinOffset_(0),
       image_(nullptr),
       hwSrd_(0) {
   // Fill resource descriptor fields
@@ -949,7 +947,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       if (viewOwner_->data() != nullptr) {
         address_ = viewOwner_->data() + view->offset_;
       }
-      pinOffset_ = viewOwner_->pinOffset();
       memRef_ = viewOwner_->memRef_;
       memRef_->retain();
       desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
@@ -974,7 +971,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       // Find the partial size for unaligned copy
       hostMemOffset = static_cast<uint>(reinterpret_cast<const char*>(address_) - tmpHost);
 
-      pinOffset_ = hostMemOffset;
+      offset_ = hostMemOffset;
 
       pinAddress = tmpHost;
 
@@ -1012,7 +1009,6 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     if (nullptr == memRef_) {
       LogError("Failed PAL memory allocation!");
-      pinOffset_ = 0;
       return false;
     }
     desc_.cardMemory_ = false;
@@ -1218,17 +1214,6 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   assert(!(desc().cardMemory_ && dstResource.desc().cardMemory_) && "Unsupported configuraiton!");
 
-  size_t calSrcOrigin[3], calDstOrigin[3], calSize[3];
-  calSrcOrigin[0] = srcOrigin[0] + pinOffset();
-  calSrcOrigin[1] = srcOrigin[1];
-  calSrcOrigin[2] = srcOrigin[2];
-  calDstOrigin[0] = dstOrigin[0] + dstResource.pinOffset();
-  calDstOrigin[1] = dstOrigin[1];
-  calDstOrigin[2] = dstOrigin[2];
-  calSize[0] = size[0];
-  calSize[1] = size[1];
-  calSize[2] = size[2];
-
   uint64_t gpuMemoryOffset = 0;
   uint64_t gpuMemoryRowPitch = 0;
   uint64_t imageOffsetx = 0;
@@ -1236,16 +1221,16 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   bool img2Darray = false;
 
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    imageOffsetx = calDstOrigin[0] % dstResource.elementSize();
-    gpuMemoryOffset = calSrcOrigin[0] + offset();
+    imageOffsetx = dstOrigin[0] % dstResource.elementSize();
+    gpuMemoryOffset = srcOrigin[0] + offset();
     gpuMemoryRowPitch =
-        (calSrcOrigin[1]) ? calSrcOrigin[1] : calSize[0] * dstResource.elementSize();
+        (srcOrigin[1]) ? srcOrigin[1] : size[0] * dstResource.elementSize();
     img1Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
     img2Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
-    imageOffsetx = calSrcOrigin[0] % elementSize();
-    gpuMemoryOffset = calDstOrigin[0] + dstResource.offset();
-    gpuMemoryRowPitch = (calDstOrigin[1]) ? calDstOrigin[1] : calSize[0] * elementSize();
+    imageOffsetx = srcOrigin[0] % elementSize();
+    gpuMemoryOffset = dstOrigin[0] + dstResource.offset();
+    gpuMemoryRowPitch = (dstOrigin[1]) ? dstOrigin[1] : size[0] * elementSize();
     img1Darray = (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
     img2Darray = (desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY);
   }
@@ -1280,12 +1265,12 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, dstResource.desc().baseLevel_, 0};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
-    copyRegion.imageOffset.x = calDstOrigin[0];
-    copyRegion.imageOffset.y = calDstOrigin[1];
-    copyRegion.imageOffset.z = calDstOrigin[2];
-    copyRegion.imageExtent.width = calSize[0];
-    copyRegion.imageExtent.height = calSize[1];
-    copyRegion.imageExtent.depth = calSize[2];
+    copyRegion.imageOffset.x = dstOrigin[0];
+    copyRegion.imageOffset.y = dstOrigin[1];
+    copyRegion.imageOffset.z = dstOrigin[2];
+    copyRegion.imageExtent.width = size[0];
+    copyRegion.imageExtent.height = size[1];
+    copyRegion.imageExtent.depth = size[2];
     copyRegion.numSlices = 1;
     if (img1Darray) {
       copyRegion.numSlices = copyRegion.imageExtent.height;
@@ -1296,20 +1281,20 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     }
     copyRegion.gpuMemoryOffset = gpuMemoryOffset;
     copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
-    copyRegion.gpuMemoryDepthPitch = (calSrcOrigin[2])
-        ? calSrcOrigin[2]
+    copyRegion.gpuMemoryDepthPitch = (srcOrigin[2])
+        ? srcOrigin[2]
         : copyRegion.gpuMemoryRowPitch * copyRegion.imageExtent.height;
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
     Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, desc().baseLevel_, 0};
     copyRegion.imageSubres = ImgSubresId;
-    copyRegion.imageOffset.x = calSrcOrigin[0];
-    copyRegion.imageOffset.y = calSrcOrigin[1];
-    copyRegion.imageOffset.z = calSrcOrigin[2];
-    copyRegion.imageExtent.width = calSize[0];
-    copyRegion.imageExtent.height = calSize[1];
-    copyRegion.imageExtent.depth = calSize[2];
+    copyRegion.imageOffset.x = srcOrigin[0];
+    copyRegion.imageOffset.y = srcOrigin[1];
+    copyRegion.imageOffset.z = srcOrigin[2];
+    copyRegion.imageExtent.width = size[0];
+    copyRegion.imageExtent.height = size[1];
+    copyRegion.imageExtent.depth = size[2];
     copyRegion.numSlices = 1;
     if (img1Darray) {
       copyRegion.numSlices = copyRegion.imageExtent.height;
@@ -1320,8 +1305,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     }
     copyRegion.gpuMemoryOffset = gpuMemoryOffset;
     copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
-    copyRegion.gpuMemoryDepthPitch = (calDstOrigin[2])
-        ? calDstOrigin[2]
+    copyRegion.gpuMemoryDepthPitch = (dstOrigin[2]) ? dstOrigin[2]
         : copyRegion.gpuMemoryRowPitch * copyRegion.imageExtent.height;
     gpu.iCmd()->CmdCopyImageToMemory(*image_, imgLayout, *dstResource.iMem(), 1, &copyRegion);
   } else {
@@ -1331,23 +1315,23 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
                                       Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::W};
       copyRegion.srcBuffer.swizzledFormat.format = ChannelFmt(bytesPerElement);
       copyRegion.srcBuffer.swizzledFormat.swizzle = channels;
-      copyRegion.srcBuffer.offset = calSrcOrigin[0] + offset();
-      copyRegion.srcBuffer.rowPitch = calSrcOrigin[1];
-      copyRegion.srcBuffer.depthPitch = calSrcOrigin[2];
-      copyRegion.extent.width = calSize[0] / bytesPerElement;
-      copyRegion.extent.height = calSize[1];
-      copyRegion.extent.depth = calSize[2];
+      copyRegion.srcBuffer.offset = srcOrigin[0] + offset();
+      copyRegion.srcBuffer.rowPitch = srcOrigin[1];
+      copyRegion.srcBuffer.depthPitch = srcOrigin[2];
+      copyRegion.extent.width = size[0] / bytesPerElement;
+      copyRegion.extent.height = size[1];
+      copyRegion.extent.depth = size[2];
       copyRegion.dstBuffer.swizzledFormat.format = ChannelFmt(bytesPerElement);
       copyRegion.dstBuffer.swizzledFormat.swizzle = channels;
-      copyRegion.dstBuffer.offset = calDstOrigin[0] + dstResource.offset();
-      copyRegion.dstBuffer.rowPitch = calDstOrigin[1];
-      copyRegion.dstBuffer.depthPitch = calDstOrigin[2];
+      copyRegion.dstBuffer.offset = dstOrigin[0] + dstResource.offset();
+      copyRegion.dstBuffer.rowPitch = dstOrigin[1];
+      copyRegion.dstBuffer.depthPitch = dstOrigin[2];
       gpu.iCmd()->CmdCopyTypedBuffer(*iMem(), *dstResource.iMem(), 1, &copyRegion);
     } else {
       Pal::MemoryCopyRegion copyRegion = {};
-      copyRegion.srcOffset = calSrcOrigin[0] + offset();
-      copyRegion.dstOffset = calDstOrigin[0] + dstResource.offset();
-      copyRegion.copySize = calSize[0];
+      copyRegion.srcOffset = srcOrigin[0] + offset();
+      copyRegion.dstOffset = dstOrigin[0] + dstResource.offset();
+      copyRegion.copySize = size[0];
       gpu.iCmd()->CmdCopyMemory(*iMem(), *dstResource.iMem(), 1, &copyRegion);
     }
   }
