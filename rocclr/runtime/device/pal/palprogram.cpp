@@ -598,6 +598,10 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     if (dev().settings().svmFineGrainSystem_) {
       fin_options.append(" -sc-xnack-iommu");
     }
+    if (dev().settings().gfx10Plus_ && GPU_FORCE_WAVE_SIZE_32) {
+      fin_options.append(" -force-wave-size-32");
+    }
+
     errorCode = aclCompile(dev().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
                            ACL_TYPE_ISA, nullptr);
     buildLog_ += aclGetCompilerLog(dev().compiler());
