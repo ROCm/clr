@@ -247,9 +247,6 @@ class Resource : public amd::HeapObject {
   //! Returns the offset in GPU memory for aliases
   size_t offset() const { return offset_; }
 
-  //! Returns the pinned memory offset
-  uint64_t pinOffset() const { return pinOffset_; }
-
   //! Returns the GPU device that owns this resource
   const Device& dev() const { return gpuDevice_; }
 
@@ -428,7 +425,6 @@ class Resource : public amd::HeapObject {
   RenameList renames_;          //!< Rename resource list
   GpuMemoryReference* memRef_;  //!< PAL resource reference
   const Resource* viewOwner_;   //!< GPU resource, which owns this view
-  uint64_t pinOffset_;          //!< Pinned memory offset
   void* glInteropMbRes_;        //!< Mb Res handle
   uint32_t glType_;             //!< GL interop type
   void* glPlatformContext_;
