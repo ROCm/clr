@@ -138,6 +138,12 @@ Settings::Settings() {
   rgpSqttDispCount_ = PAL_RGP_DISP_COUNT;
   rgpSqttWaitIdle_ = true;
   rgpSqttForceDisable_ = false;
+
+  // Sub allocation parameters
+  subAllocationMinSize_ = 4 * Ki;
+  subAllocationChunkSize_ = 64 * Mi;
+  subAllocationMaxSize_ =
+    std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,

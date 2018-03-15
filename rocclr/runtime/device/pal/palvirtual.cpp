@@ -409,7 +409,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   }
 
   uint64_t curStart = memory->vmAddress();
-  uint64_t curEnd = curStart + memory->vmSize();
+  uint64_t curEnd = curStart + memory->size();
 
   // Loop through all memory objects in the queue and find dependency
   // @note don't include objects from the current kernel
@@ -1974,6 +1974,7 @@ void VirtualGPU::PostDeviceEnqueue(
     uint64_t vmParentWrap,
     GpuEvent* gpuEvent)
 {
+  uint32_t id  = gpuEvent->id;
   amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(dev());
 
   // Make sure exculsive access to the device queue
@@ -2055,6 +2056,9 @@ void VirtualGPU::PostDeviceEnqueue(
     iCmd()->CmdVirtualQueueHandshake(vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
       vmParentWrap + offsetof(AmdAqlWrap, child_counter),
       signalAddr, dev().settings().useDeviceQueue_);
+    if (id != gpuEvent->id) {
+        LogError("Something is wrong. ID mismatch!\n");
+    }
     eventEnd(MainEngine, *gpuEvent);
   }
 
@@ -2203,6 +2207,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     if (profiling() || state_.profileEnabled_) {
       addBarrier();
     }
+    if (id != gpuEvent.id) {
+      LogError("Something is wrong. ID mismatch!\n");
+    }
     eventEnd(MainEngine, gpuEvent);
 
     // Execute scheduler for device enqueue
@@ -2210,9 +2217,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
     }
 
-    if (id != gpuEvent.id) {
-      LogError("Something is wrong. ID mismatch!\n");
-    }
     // Update the global GPU event
     setGpuEvent(gpuEvent, needFlush);
 
@@ -2266,7 +2270,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   }
 }
 
-void VirtualGPU::releaseMemory(GpuMemoryReference* mem, GpuEvent* event) {
+void VirtualGPU::releaseMemory(GpuMemoryReference* mem) {
   queues_[MainEngine]->removeCmdMemRef(mem);
   queues_[SdmaEngine]->removeCmdMemRef(mem);
 }

@@ -98,6 +98,10 @@ class Settings : public device::Settings {
   uint64_t maxAllocSize_;      //!< Maximum single allocation size
   uint rgpSqttDispCount_;      //!< The number of dispatches captured in SQTT
 
+  uint64_t subAllocationMinSize_;   //!< Minimum size allowed for suballocations
+  uint64_t subAllocationMaxSize_;   //!< Maximum size allowed with suballocations
+  uint64_t subAllocationChunkSize_; //!< Chunk size for suballocaitons
+  
   amd::LibrarySelector libSelector_;  //!< Select linking libraries for compiler
 
   //! Default constructor

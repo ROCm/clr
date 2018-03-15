@@ -89,14 +89,14 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
     amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
     Memory& xferBuf = gpuAccess_->dev().xferWrite().acquire();
-    size_t tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
+    size_t tmpSize = std::min(static_cast<size_t>(xferBuf.size()), size);
     size_t srcOffs = 0;
     while (size != 0) {
       xferBuf.hostWrite(&gpu, reinterpret_cast<const_address>(src) + srcOffs, 0, tmpSize);
       xferBuf.partialMemCopyTo(gpu, 0, (offset + srcOffs), tmpSize, *gpuAccess_, false, true);
       size -= tmpSize;
       srcOffs += tmpSize;
-      tmpSize = std::min(static_cast<size_t>(xferBuf.vmSize()), size);
+      tmpSize = std::min(static_cast<size_t>(xferBuf.size()), size);
     }
     gpu.waitAllEngines();
   }
