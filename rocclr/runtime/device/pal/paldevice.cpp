@@ -54,6 +54,10 @@ void PalDeviceUnload() { pal::Device::tearDown(); }
 
 namespace pal {
 
+Util::GenericAllocator  NullDevice::allocator_;
+char* Device::platformObj_;
+Pal::IPlatform*  Device::platform_;
+
 NullDevice::Compiler* NullDevice::compiler_;
 AppProfile Device::appProfile_;
 
@@ -182,6 +186,7 @@ bool NullDevice::init() {
 
   return true;
 }
+
 
 bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
                         uint xNACKSupported) {
@@ -736,7 +741,7 @@ bool Device::create(Pal::IDevice* device) {
   if (!amd::Device::create()) {
     return false;
   }
-  resourceList_ = new std::list<GpuMemoryReference*>();
+  resourceList_ = new std::list<Resource*>();
   if (nullptr == resourceList_) {
     return false;
   }
@@ -865,7 +870,7 @@ bool Device::create(Pal::IDevice* device) {
   size_t resourceCacheSize = settings().resourceCacheSize_;
   // Create resource cache.
   // \note Cache must be created before any resource creation to avoid nullptr check
-  resourceCache_ = new ResourceCache(resourceCacheSize);
+  resourceCache_ = new ResourceCache(this, resourceCacheSize);
   if (nullptr == resourceCache_) {
     return false;
   }
@@ -924,8 +929,6 @@ bool Device::create(Pal::IDevice* device) {
 
   return true;
 }
-
-static Pal::IPlatform* platform;
 
 bool Device::initializeHeapResources() {
   amd::ScopedLock k(lockForInitHeap_);
@@ -998,7 +1001,7 @@ bool Device::initializeHeapResources() {
     xferQueue_->enableSyncedBlit();
 
     // Create RGP capture manager
-    rgpCaptureMgr_ = RgpCaptureMgr::Create(platform, *this);
+    rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
   }
   return true;
 }
@@ -1096,8 +1099,6 @@ static int reportHook(int reportType, char* message, int* returnValue) {
 }
 #endif  // _WIN32 & DEBUG
 
-static char* platformObj;
-
 bool Device::init() {
   uint32_t numDevices = 0;
   bool useDeviceList = false;
@@ -1123,7 +1124,7 @@ bool Device::init() {
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 
   size_t size = Pal::GetPlatformSize();
-  platformObj = new char[size];
+  platformObj_ = new char[size];
   Pal::PlatformCreateInfo info = {};
   info.flags.disableGpuTimeout = true;
 #if !defined(PAL_BUILD_DTIF)
@@ -1138,14 +1139,14 @@ bool Device::init() {
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
 
   // PAL init
-  if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj, &platform)) {
+  if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
     return false;
   }
 
   // Get the total number of active devices
   // Count up all the devices in the system.
   Pal::IDevice* deviceList[Pal::MaxDevices] = {};
-  platform->EnumerateDevices(&numDevices, &deviceList[0]);
+  platform_->EnumerateDevices(&numDevices, &deviceList[0]);
 
   uint ordinal = 0;
   const char* selectDeviceByName = nullptr;
@@ -1175,8 +1176,8 @@ bool Device::init() {
 }
 
 void Device::tearDown() {
-  platform->Destroy();
-  delete platformObj;
+  platform_->Destroy();
+  delete platformObj_;
 
 #if !defined(WITH_LIGHTNING_COMPILER)
   if (compiler_ != nullptr) {

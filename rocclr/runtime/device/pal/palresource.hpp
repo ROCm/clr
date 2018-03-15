@@ -6,6 +6,7 @@
 #include "platform/command.hpp"
 #include "platform/program.hpp"
 #include "device/pal/paldefs.hpp"
+#include "util/palBuddyAllocatorImpl.h"
 
 //! \namespace pal PAL Resource Implementation
 namespace pal {
@@ -16,7 +17,6 @@ class VirtualGPU;
 /*! \addtogroup PAL PAL Resource Implementation
  *  @{
  */
-
 class GpuMemoryReference : public amd::ReferenceCountedObject {
  public:
   static GpuMemoryReference* Create(const Device& dev, const Pal::GpuMemoryCreateInfo& createInfo);
@@ -36,12 +36,6 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   //! Default constructor
   GpuMemoryReference(const Device& dev);
 
-  //! Resizes the events array to account the new queue
-  void resizeGpuEvents(uint index) { events_.resize(index + 1); }
-
-  //! Erase an entry in the array for provided queue index
-  void eraseGpuEvents(uint index) { events_.erase(events_.begin() + index); }
-
   //! Get PAL memory object
   Pal::IGpuMemory* iMem() const { return gpuMem_; }
 
@@ -50,7 +44,6 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   const Device& device_;      //!< GPU device
   //! @note: This field is necessary for the thread safe release only
   VirtualGPU* gpu_;           //!< Resource will be used only on this queue
-  std::vector<GpuEvent> events_;  //!< GPU events associated with the resource
 
  protected:
   //! Default destructor
@@ -63,6 +56,8 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   //! Disable operator=
   GpuMemoryReference& operator=(const GpuMemoryReference&);
 };
+
+static constexpr Pal::gpusize MaxGpuAlignment = 4 * Ki;
 
 //! GPU resource
 class Resource : public amd::HeapObject {
@@ -178,7 +173,7 @@ class Resource : public amd::HeapObject {
         uint imageArray_ : 1;      //!< PAL resource is an array of images
         uint buffer_ : 1;          //!< PAL resource is a buffer
         uint tiled_ : 1;           //!< PAL resource is tiled
-        uint SVMRes_ : 1;          //!< SVM flag to the cal resource
+        uint SVMRes_ : 1;          //!< SVM flag to the pal resource
         uint scratch_ : 1;         //!< Scratch buffer
         uint isAllocExecute_ : 1;  //!< SVM resource allocation attribute for shader\cmdbuf
         uint isDoppTexture_ : 1;   //!< PAL resource is for a DOPP desktop texture
@@ -205,9 +200,9 @@ class Resource : public amd::HeapObject {
   //! Destructor of the resource
   virtual ~Resource();
 
-  /*! \brief Creates a CAL object, associated with the resource
+  /*! \brief Creates a PAL object, associated with the resource
    *
-   *  \return True if we succesfully created a CAL resource
+   *  \return True if we succesfully created a PAL resource
    */
   virtual bool create(MemoryType memType,       //!< memory type
                       CreateParams* params = 0  //!< special parameters for resource allocation
@@ -263,7 +258,7 @@ class Resource : public amd::HeapObject {
   uint64_t vmAddress() const { return iMem()->Desc().gpuVirtAddr + offset_; }
 
   //! Returns global memory offset
-  uint64_t vmSize() const { return iMem()->Desc().size - offset_; }
+  uint64_t vmSize() const { return desc_.width_ * elementSize(); }
 
   //! Returns global memory offset
   bool mipMapped() const { return (desc().mipLevels_ > 1) ? true : false; }
@@ -290,7 +285,7 @@ class Resource : public amd::HeapObject {
 
   //! Marks the resource as busy
   void setBusy(VirtualGPU& gpu,   //!< Virtual GPU device object
-               GpuEvent calEvent  //!< CAL event
+               GpuEvent calEvent  //!< PAL event
                ) const;
 
   //! Wait for the resource
@@ -326,7 +321,7 @@ class Resource : public amd::HeapObject {
   //! Get the mapped address of this resource
   address data() const { return reinterpret_cast<address>(address_); }
 
-  //! Frees all allocated CAL memories and resources,
+  //! Frees all allocated PAL memories and resources,
   //! associated with this objects. And also destroys all rename structures
   //! Note: doesn't destroy the object itself
   void free();
@@ -360,7 +355,42 @@ class Resource : public amd::HeapObject {
   //! Returns GPU event associated with this resource and specified queue
   GpuEvent* getGpuEvent(const VirtualGPU& gpu) const;
 
+  //! Resizes the events array to account the new queue
+  void resizeGpuEvents(uint index) { events_.resize(index + 1); }
+
+  //! Erase an entry in the array for provided queue index
+  void eraseGpuEvents(uint index) { events_.erase(events_.begin() + index); }
+
  protected:
+  /*! \brief Creates a PAL iamge object, associated with the resource
+  *
+  *  \return True if we succesfully created a PAL resource
+  */
+  bool CreateImage(CreateParams* params //!< special parameters for resource allocation
+                   );
+
+  /*! \brief Creates a PAL interop object, associated with the resource
+  *
+  *  \return True if we succesfully created a PAL interop resource
+  */
+  bool CreateInterop(CreateParams* params //!< special parameters for resource allocation
+                     );
+
+  /*! \brief Creates a PAL pinned object, associated with the resource
+  *
+  *  \return True if we succesfully created a PAL pinned resource
+  */
+  bool CreatePinned(CreateParams* params //!< special parameters for resource allocation
+                    );
+
+  /*! \brief Creates a PAL SVM object, associated with the resource
+  *
+  *  \return True if we succesfully created a PAL SVM resource
+  */
+  bool CreateSvm(CreateParams* params,  //!< special parameters for resource allocation
+                 Pal::gpusize svmPtr
+                 );
+
   uint elementSize_;  //!< Size of a single element in bytes
 
  private:
@@ -424,6 +454,7 @@ class Resource : public amd::HeapObject {
   uint32_t curRename_;          //!< Current active rename in the list
   RenameList renames_;          //!< Rename resource list
   GpuMemoryReference* memRef_;  //!< PAL resource reference
+  Pal::gpusize  subOffset_;     //!< GPU memory offset in the oririnal resource
   const Resource* viewOwner_;   //!< GPU resource, which owns this view
   void* glInteropMbRes_;        //!< Mb Res handle
   uint32_t glType_;             //!< GL interop type
@@ -438,26 +469,50 @@ class Resource : public amd::HeapObject {
 
   uint32_t* hwState_;  //!< HW state for image object
   uint64_t hwSrd_;     //!< GPU pointer to HW SRD
+
+  //! Note: Access to the events are thread safe.
+  mutable std::vector<GpuEvent> events_;  //!< GPU events associated with the resource
+};
+
+typedef Util::BuddyAllocator<Device> MemBuddyAllocator;
+
+class MemorySubAllocator : public amd::HeapObject {
+public:
+  MemorySubAllocator(Device* device) : device_(device) {}
+
+  ~MemorySubAllocator();
+
+  GpuMemoryReference*  Allocate(Pal::gpusize size,
+    Pal::gpusize alignment, Pal::gpusize* offset);
+  bool Free(GpuMemoryReference* ref, Pal::gpusize offset);
+
+private:
+  Device* device_;
+  std::map<GpuMemoryReference*, MemBuddyAllocator*>  mem_heap_;
 };
 
 class ResourceCache : public amd::HeapObject {
  public:
   //! Default constructor
-  ResourceCache(size_t cacheSizeLimit)
-      : lockCacheOps_("PAL resource cache", true), cacheSize_(0), cacheSizeLimit_(cacheSizeLimit) {}
+  ResourceCache(Device* device, size_t cacheSizeLimit)
+      : lockCacheOps_("PAL resource cache", true)
+      , cacheSize_(0)
+      , cacheSizeLimit_(cacheSizeLimit)
+      , memSubAllocLocal_(device) {}
 
   //! Default destructor
   ~ResourceCache();
 
-  //! Adds a CAL resource to the cache
-  bool addGpuMemory(Resource::Descriptor* desc,  //!< Resource descriptor - cache key
-                    GpuMemoryReference* ref      //!< Resource reference
+  //! Adds a PAL resource to the cache
+  bool addGpuMemory(Resource::Descriptor* desc,   //!< Resource descriptor - cache key
+                    GpuMemoryReference*   ref,    //!< Resource reference
+                    Pal::gpusize          offset  //!< Original resource offset
                     );
 
-  //! Finds a CAL resource from the cache
+  //! Finds a PAL resource from the cache
   GpuMemoryReference* findGpuMemory(
       Resource::Descriptor* desc,  //!< Resource descriptor - cache key
-      Pal::gpusize size, Pal::gpusize alignment);
+      Pal::gpusize size, Pal::gpusize alignment, Pal::gpusize* offset);
 
   //! Destroys cache
   bool free(size_t minCacheEntries = 0);
@@ -477,8 +532,10 @@ class ResourceCache : public amd::HeapObject {
   size_t cacheSize_;            //!< Current cache size in bytes
   const size_t cacheSizeLimit_; //!< Cache size limit in bytes
 
-  //! CAL resource cache
+  //! PAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;
+
+  MemorySubAllocator  memSubAllocLocal_;  //!< Allocator for suballocations in Local
 };
 
 /*@}*/} // namespace pal

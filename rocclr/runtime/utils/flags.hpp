@@ -86,6 +86,8 @@ release(size_t, GPU_PINNED_MIN_XFER_SIZE, 512,                                \
         "The minimal buffer size for pinned read/write transfers in KBytes")  \
 release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
+release(size_t, GPU_MAX_SUBALLOC_SIZE, 4096,                                  \
+        "The maximum size accepted for suballocaitons in KB")                 \
 release(uint, GPU_ASYNC_MEM_COPY, 0,                                          \
         "Enables async memory transfers with DRM engine")                     \
 release(bool, GPU_FORCE_64BIT_PTR, 0,                                         \

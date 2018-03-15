@@ -120,7 +120,12 @@ class NullDevice : public amd::Device {
   amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
 #endif
 
+  void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
+  void  Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
+
  protected:
+  static Util::GenericAllocator allocator_; //!< Generic memory allocator in PAL
+
   Pal::AsicRevision asicRevision_;  //!< ASIC revision
   Pal::GfxIpLevel ipLevel_;         //!< Device IP level
   const AMDDeviceInfo* hwInfo_;     //!< Device HW info structure
@@ -464,6 +469,9 @@ class Device : public NullDevice {
   //! Returns PAL device properties
   const Pal::DeviceProperties& properties() const { return properties_; }
 
+  //! Returns PAL platform interface
+  Pal::IPlatform* iPlat() const { return platform_; }
+
   //! Returns PAL device interface
   Pal::IDevice* iDev() const { return device_; }
 
@@ -496,19 +504,19 @@ class Device : public NullDevice {
   bool resGLFree(void* GLplatformContext, void* mbResHandle, uint type) const;
 
   //! Adds a resource to the global list
-  void addResource(GpuMemoryReference* mem) const {
+  void addResource(Resource* res) const {
     amd::ScopedLock lock(lockResources());
-    auto findIt = std::find(resourceList_->begin(), resourceList_->end(), mem);
-    mem->events_.resize(numOfVgpus());
+    auto findIt = std::find(resourceList_->begin(), resourceList_->end(), res);
+    res->resizeGpuEvents(numOfVgpus() - 1);
     if (resourceList_->end() == findIt) {
-      resourceList_->push_back(mem);
+      resourceList_->push_back(res);
     }
   }
 
   //! Removes a resource from the global list
-  void removeResource(GpuMemoryReference* mem) const {
+  void removeResource(Resource* res) const {
     amd::ScopedLock lock(lockResources());
-    resourceList_->remove(mem);
+    resourceList_->remove(res);
   }
 
   //! Resizes global resource list to accumulate a new queue
@@ -566,6 +574,9 @@ class Device : public NullDevice {
   bool glAssociate(void* GLplatformContext, void* GLdeviceContext) const;
   bool glDissociate(void* GLplatformContext, void* GLdeviceContext) const;
 
+  static char* platformObj_;          //!< Memory allocated for PAL platform object
+  static Pal::IPlatform*  platform_;  //!< Pointer to the PAL platform object
+
   amd::Context* context_;       //!< A dummy context for internal allocations
   amd::Monitor* lockAsyncOps_;  //!< Lock to serialise all async ops on this device
   amd::Monitor*
@@ -592,7 +603,7 @@ class Device : public NullDevice {
   Pal::IDevice* device_;                 //!< PAL device object
   std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
   amd::Monitor* lockResourceOps_;        //!< Lock to serialise resource access
-  std::list<GpuMemoryReference*>* resourceList_;     //!< Active resource list
+  std::list<Resource*>* resourceList_;   //!< Active resource list
   RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
 };
 

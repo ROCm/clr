@@ -314,7 +314,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
-  void releaseMemory(GpuMemoryReference* mem, GpuEvent* event);
+  void releaseMemory(GpuMemoryReference* mem);
 
   void flush(amd::Command* list = nullptr, bool wait = false);
   bool terminate() { return true; }

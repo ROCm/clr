@@ -28,6 +28,7 @@
 
 namespace pal {
 
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::GpuMemoryCreateInfo& createInfo) {
   Pal::Result result;
@@ -48,10 +49,10 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(createInfo.heaps[0], createInfo.size, false);
-  dev.addResource(memRef);
   return memRef;
 }
 
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::PinnedGpuMemoryCreateInfo& createInfo) {
   Pal::Result result;
@@ -71,10 +72,10 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
-  dev.addResource(memRef);
   return memRef;
 }
 
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::SvmGpuMemoryCreateInfo& createInfo) {
   Pal::Result result;
@@ -94,10 +95,10 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   // Update free memory size counters
   const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size,
                                             false);
-  dev.addResource(memRef);
   return memRef;
 }
 
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::ExternalGpuMemoryOpenInfo& openInfo) {
   Pal::Result result;
@@ -116,10 +117,10 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-  dev.addResource(memRef);
   return memRef;
 }
 
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::ExternalImageOpenInfo& openInfo,
                                                Pal::ImageCreateInfo* imgCreateInfo,
@@ -143,33 +144,34 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-  dev.addResource(memRef);
   return memRef;
 }
 
+// ================================================================================================
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
-  : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr), events_(dev.numOfVgpus()) {}
+  : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr)
+{}
 
+// ================================================================================================
 GpuMemoryReference::~GpuMemoryReference() {
   if (gpu_ == nullptr) {
-    {
-      Device::ScopedLockVgpus lock(device_);
-      // Release all memory objects on all virtual GPUs
-      for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
-        device_.vgpus()[idx]->releaseMemory(this, &events_[idx]);
-      }
+    Device::ScopedLockVgpus lock(device_);
+    // Release all memory objects on all virtual GPUs
+    for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
+      device_.vgpus()[idx]->releaseMemory(this);
     }
   } else {
     amd::ScopedLock l(gpu_->execution());
-    gpu_->releaseMemory(this, &events_[gpu_->index()]);
+    gpu_->releaseMemory(this);
   }
   if (device_.vgpus().size() != 0) {
     assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
     // Lock the transfer queue, since it's not handled by ScopedLockVgpus
     amd::ScopedLock k(device_.xferMgr().lockXfer());
-    device_.vgpus()[0]->releaseMemory(this, &events_[0]);
+    device_.vgpus()[0]->releaseMemory(this);
   }
 
+  // Destroy PAL object if it's not a suballocation
   if (cpuAddress_ != nullptr) {
     iMem()->Unmap();
   }
@@ -177,9 +179,9 @@ GpuMemoryReference::~GpuMemoryReference() {
     iMem()->Destroy();
     gpuMem_ = nullptr;
   }
-  device_.removeResource(this);
 }
 
+// ================================================================================================
 Resource::Resource(const Device& gpuDev, size_t size)
     : elementSize_(0),
       gpuDevice_(gpuDev),
@@ -188,9 +190,11 @@ Resource::Resource(const Device& gpuDev, size_t size)
       offset_(0),
       curRename_(0),
       memRef_(nullptr),
+      subOffset_(0),
       viewOwner_(nullptr),
       image_(nullptr),
-      hwSrd_(0) {
+      hwSrd_(0),
+      events_(gpuDev.numOfVgpus()) {
   // Fill resource descriptor fields
   desc_.state_ = 0;
   desc_.type_ = Empty;
@@ -213,8 +217,10 @@ Resource::Resource(const Device& gpuDev, size_t size)
   desc_.scratch_ = false;
   desc_.isAllocExecute_ = false;
   desc_.baseLevel_ = 0;
+  gpuDev.addResource(this);
 }
 
+// ================================================================================================
 Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t depth,
                    cl_image_format format, cl_mem_object_type imageType, uint mipLevels)
     : elementSize_(0),
@@ -224,9 +230,11 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
       offset_(0),
       curRename_(0),
       memRef_(nullptr),
+      subOffset_(0),
       viewOwner_(nullptr),
       image_(nullptr),
-      hwSrd_(0) {
+      hwSrd_(0),
+      events_(gpuDev.numOfVgpus()) {
   // Fill resource descriptor fields
   desc_.state_ = 0;
   desc_.type_ = Empty;
@@ -273,8 +281,10 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
       LogError("Unknown image type!");
       break;
   }
+  gpuDev.addResource(this);
 }
 
+// ================================================================================================
 Resource::~Resource() {
   Pal::GpuHeap heap = Pal::GpuHeapCount;
   switch (memoryType()) {
@@ -313,8 +323,10 @@ Resource::~Resource() {
     image_->Destroy();
     delete[] reinterpret_cast<char*>(image_);
   }
+  gpuDevice_.removeResource(this);
 }
 
+// ================================================================================================
 static uint32_t GetHSAILImageFormatType(const cl_image_format& format) {
   static const uint32_t FormatType[] = {HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT8,
                                         HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT16,
@@ -338,6 +350,7 @@ static uint32_t GetHSAILImageFormatType(const cl_image_format& format) {
   return FormatType[idx];
 }
 
+// ================================================================================================
 static uint32_t GetHSAILImageOrderType(const cl_image_format& format) {
   static const uint32_t OrderType[] = {HSA_EXT_IMAGE_CHANNEL_ORDER_R,
                                        HSA_EXT_IMAGE_CHANNEL_ORDER_A,
@@ -365,6 +378,7 @@ static uint32_t GetHSAILImageOrderType(const cl_image_format& format) {
   return OrderType[idx];
 }
 
+// ================================================================================================
 void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   createInfo->heapCount = 1;
   switch (memoryType()) {
@@ -400,18 +414,623 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   }
 }
 
-bool Resource::create(MemoryType memType, CreateParams* params) {
-  static const Pal::gpusize MaxGpuAlignment = 64 * Ki;
-  const amd::HostMemoryReference* hostMemRef = nullptr;
-  bool imageCreateView = false;
+// ================================================================================================
+bool Resource::CreateImage(CreateParams* params)
+{
+  Pal::Result result;
+  Pal::SubresId ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
+  Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
+  Pal::ChannelMapping channels;
+  Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
+
+  if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
+    if (memoryType() == ImageBuffer) {
+      ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
+      viewOwner_ = imageBuffer->resource_;
+      memRef_ = viewOwner_->memRef_;
+      memRef_->retain();
+      desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+    }
+    else {
+      Pal::GpuMemoryCreateInfo createInfo = {};
+      createInfo.size = desc().width_ * elementSize();
+      createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
+      createInfo.alignment = MaxGpuAlignment;
+      createInfo.vaRange = Pal::VaRange::Default;
+      createInfo.priority = Pal::GpuMemPriority::Normal;
+      memTypeToHeap(&createInfo);
+      // createInfo.priority;
+      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
+        createInfo.alignment, &subOffset_);
+      if (nullptr == memRef_) {
+        memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+        if (nullptr == memRef_) {
+          LogError("Failed PAL memory allocation!");
+          return false;
+        }
+      }
+      offset_ += static_cast<size_t>(subOffset_);
+    }
+    // Check if memory is locked already and restore CPU pointer
+    if (memRef_->cpuAddress_ != nullptr) {
+      address_ = memRef_->cpuAddress_;
+      memRef_->cpuAddress_ = nullptr;
+      mapCount_++;
+    }
+    Pal::BufferViewInfo viewInfo = {};
+    viewInfo.gpuAddr = vmAddress();
+    viewInfo.range = memRef_->iMem()->Desc().size;
+    viewInfo.stride = elementSize();
+    viewInfo.swizzledFormat.format = format;
+    viewInfo.swizzledFormat.swizzle = channels;
+    // viewInfo.channels = channels;
+    hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
+    if ((0 == hwSrd_) && (memoryType() != ImageView)) {
+      return false;
+    }
+
+    dev().iDev()->CreateTypedBufferViewSrds(1, &viewInfo, hwState_);
+    hwState_[8] = GetHSAILImageFormatType(desc().format_);
+    hwState_[9] = GetHSAILImageOrderType(desc().format_);
+    hwState_[10] = static_cast<uint32_t>(desc().width_);
+    hwState_[11] = 0;  // one extra reserved field in the argument
+    return true;
+  }
+
+  Pal::ImageViewInfo viewInfo = {};
+  Pal::ImageCreateInfo imgCreateInfo = {};
+  Pal::GpuMemoryRequirements req = {};
+  imgCreateInfo.imageType = Pal::ImageType::Tex2d;
+  viewInfo.viewType = Pal::ImageViewType::Tex2d;
+  imgCreateInfo.extent.width = desc_.width_;
+  imgCreateInfo.extent.height = desc_.height_;
+  imgCreateInfo.extent.depth = desc_.depth_;
+  imgCreateInfo.arraySize = 1;
+
+  switch (desc_.topology_) {
+  case CL_MEM_OBJECT_IMAGE3D:
+    imgCreateInfo.imageType = Pal::ImageType::Tex3d;
+    viewInfo.viewType = Pal::ImageViewType::Tex3d;
+    break;
+  case CL_MEM_OBJECT_IMAGE1D:
+  case CL_MEM_OBJECT_IMAGE1D_ARRAY:
+  case CL_MEM_OBJECT_IMAGE1D_BUFFER:
+    imgCreateInfo.imageType = Pal::ImageType::Tex1d;
+    viewInfo.viewType = Pal::ImageViewType::Tex1d;
+    break;
+  }
+  if (desc_.topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
+    ImgSubresRange.numSlices = imgCreateInfo.arraySize = desc_.height_;
+    imgCreateInfo.extent.depth = desc_.height_;
+    imgCreateInfo.extent.height = 1;
+  }
+  if (desc_.topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
+    ImgSubresRange.numSlices = imgCreateInfo.arraySize = desc_.depth_;
+  }
+
+  if (memoryType() == ImageView) {
+    ImageViewParams* imageView = reinterpret_cast<ImageViewParams*>(params);
+    ImgSubresRange.startSubres.mipLevel = imageView->level_;
+    desc_.baseLevel_ = imageView->level_;
+    ImgSubresRange.startSubres.arraySlice = imageView->layer_;
+    viewOwner_ = imageView->resource_;
+    image_ = viewOwner_->image_;
+  }
+  else if (memoryType() == ImageBuffer) {
+    ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
+    viewOwner_ = imageBuffer->resource_;
+  }
+  if (nullptr != viewOwner_) {
+    offset_ = viewOwner_->offset();
+  }
+  ImgSubresRange.numMips = desc().mipLevels_;
+
+  if ((memoryType() != ImageView) ||
+    //! @todo PAL doesn't allow an SRD view creation with different pixel size
+    (elementSize() != viewOwner_->elementSize())) {
+    imgCreateInfo.usageFlags.shaderRead = true;
+    imgCreateInfo.usageFlags.shaderWrite =
+      (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
+    imgCreateInfo.swizzledFormat.format = format;
+    imgCreateInfo.swizzledFormat.swizzle = channels;
+    imgCreateInfo.mipLevels = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
+    imgCreateInfo.samples = 1;
+    imgCreateInfo.fragments = 1;
+    Pal::ImageTiling tiling = Pal::ImageTiling::Optimal;
+    uint32_t rowPitch = 0;
+
+    if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
+      (memoryType() == ImageBuffer)) {
+      tiling = Pal::ImageTiling::Linear;
+    }
+    else if (memoryType() == ImageView) {
+      tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
+      // Find the new pitch in pixels for the new format
+      rowPitch = viewOwner_->desc().pitch_ * viewOwner_->elementSize() / elementSize();
+    }
+
+    if (memoryType() == ImageBuffer) {
+      if ((params->owner_ != NULL) && params->owner_->asImage() &&
+        (params->owner_->asImage()->getRowPitch() != 0)) {
+        rowPitch = params->owner_->asImage()->getRowPitch() / elementSize();
+      }
+      else {
+        rowPitch = desc().width_;
+      }
+    }
+    desc_.pitch_ = rowPitch;
+    // Make sure the row pitch is aligned to pixels
+    imgCreateInfo.rowPitch =
+      elementSize() * amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
+    imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+    imgCreateInfo.tiling = tiling;
+
+    size_t imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
+    if (result != Pal::Result::Success) {
+      return false;
+    }
+
+    char* memImg = new char[imageSize];
+    if (memImg != nullptr) {
+      result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
+      if (result != Pal::Result::Success) {
+        delete[] memImg;
+        return false;
+      }
+    }
+    image_->GetGpuMemoryRequirements(&req);
+    // createInfo.priority;
+  }
+
+  if ((memoryType() != ImageView) && (memoryType() != ImageBuffer)) {
+    Pal::GpuMemoryCreateInfo createInfo = {};
+    createInfo.size = amd::alignUp(req.size, MaxGpuAlignment);
+    createInfo.alignment = std::max(req.alignment, MaxGpuAlignment);
+    createInfo.vaRange = Pal::VaRange::Default;
+    createInfo.priority = Pal::GpuMemPriority::Normal;
+    memTypeToHeap(&createInfo);
+
+    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
+      createInfo.alignment, &subOffset_);
+    if (nullptr == memRef_) {
+      memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+      if (nullptr == memRef_) {
+        LogError("Failed PAL memory allocation!");
+        return false;
+      }
+    }
+    offset_ += static_cast<size_t>(subOffset_);
+  }
+  else {
+    memRef_ = viewOwner_->memRef_;
+    memRef_->retain();
+    desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+    if (req.size > viewOwner_->iMem()->Desc().size) {
+      LogWarning("Image is bigger than the original mem object!");
+    }
+  }
+  // Check if memory is locked already and restore CPU pointer
+  if (memRef_->cpuAddress_ != nullptr) {
+    address_ = memRef_->cpuAddress_;
+    memRef_->cpuAddress_ = nullptr;
+    mapCount_++;
+  }
+  result = image_->BindGpuMemory(memRef_->gpuMem_, offset_);
+  if (result != Pal::Result::Success) {
+    return false;
+  }
+
+  hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
+  if ((0 == hwSrd_) && (memoryType() != ImageView)) {
+    return false;
+  }
+  viewInfo.pImage = image_;
+  viewInfo.swizzledFormat.format = format;
+  viewInfo.swizzledFormat.swizzle = channels;
+  viewInfo.subresRange = ImgSubresRange;
+  dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
+
+  hwState_[8] = GetHSAILImageFormatType(desc().format_);
+  hwState_[9] = GetHSAILImageOrderType(desc().format_);
+  hwState_[10] = static_cast<uint32_t>(desc().width_);
+  hwState_[11] = 0;  // one extra reserved field in the argument
+  return true;
+}
+
+// ================================================================================================
+bool Resource::CreateInterop(CreateParams* params)
+{
+  Pal::Result result;
+  Pal::SubresId ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
+  Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
+  Pal::ChannelMapping channels;
+  Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
+  Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
+  Pal::ExternalResourceOpenInfo& openInfo = gpuMemOpenInfo.resourceInfo;
+  uint misc = 0;
+  uint layer = 0;
+  uint mipLevel = 0;
+  InteropType type = InteropTypeless;
+
+  if (memoryType() == OGLInterop) {
+    OGLInteropParams* oglRes = reinterpret_cast<OGLInteropParams*>(params);
+    assert(oglRes->glPlatformContext_ && "We don't have OGL context!");
+    switch (oglRes->type_) {
+    case InteropVertexBuffer:
+      glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
+      break;
+    case InteropRenderBuffer:
+      glType_ = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
+      break;
+    case InteropTexture:
+    case InteropTextureViewLevel:
+    case InteropTextureViewCube:
+      glType_ = GL_RESOURCE_ATTACH_TEXTURE_AMD;
+      break;
+    default:
+      LogError("Unknown OGL interop type!");
+      return false;
+      break;
+    }
+    glPlatformContext_ = oglRes->glPlatformContext_;
+    layer = oglRes->layer_;
+    type = oglRes->type_;
+    mipLevel = oglRes->mipLevel_;
+
+    if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
+      &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
+#ifdef ATI_OS_WIN
+      , openInfo.doppDesktopInfo
+#endif
+    )) {
+      return false;
+    }
+    desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
+    format = dev().getPalFormat(desc().format_, &channels);
+  }
+#ifdef ATI_OS_WIN	
+  else {
+    D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
+    openInfo.hExternalResource = d3dRes->handle_;
+    misc = d3dRes->misc;
+    layer = d3dRes->layer_;
+    type = d3dRes->type_;
+    mipLevel = d3dRes->mipLevel_;
+  }
+#endif
+  //! @todo PAL query for image/buffer object doesn't work properly!
+#if 0
+  bool    isImage = false;
+  if (Pal::Result::Success !=
+    dev().iDev()->DetermineExternalSharedResourceType(openInfo, &isImage)) {
+    return false;
+  }
+#endif  // 0
+  if (desc().buffer_ || misc) {
+    memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
+    if (nullptr == memRef_) {
+      return false;
+    }
+
+    if (misc) {
+      Pal::ImageCreateInfo imgCreateInfo = {};
+      Pal::ExternalImageOpenInfo imgOpenInfo = {};
+      imgOpenInfo.resourceInfo = openInfo;
+      imgOpenInfo.swizzledFormat.format = format;
+      imgOpenInfo.swizzledFormat.swizzle = channels;
+      imgOpenInfo.usage.shaderRead = true;
+      imgOpenInfo.usage.shaderWrite = true;
+      size_t imageSize;
+      size_t gpuMemSize;
+
+      if (Pal::Result::Success !=
+        dev().iDev()->GetExternalSharedImageSizes(imgOpenInfo, &imageSize, &gpuMemSize,
+          &imgCreateInfo)) {
+        return false;
+      }
+
+      Pal::gpusize viewOffset = 0;
+      imgCreateInfo.flags.shareable = false;
+      imgCreateInfo.imageType = Pal::ImageType::Tex2d;
+      imgCreateInfo.extent.width = desc().width_;
+      imgCreateInfo.extent.height = desc().height_;
+      imgCreateInfo.extent.depth = desc().depth_;
+      imgCreateInfo.arraySize = 1;
+      imgCreateInfo.usageFlags.shaderRead = true;
+      imgCreateInfo.usageFlags.shaderWrite = true;
+      imgCreateInfo.swizzledFormat.format = format;
+      imgCreateInfo.swizzledFormat.swizzle = channels;
+      imgCreateInfo.mipLevels = 1;
+      imgCreateInfo.samples = 1;
+      imgCreateInfo.fragments = 1;
+      imgCreateInfo.tiling = Pal::ImageTiling::Linear;
+      imgCreateInfo.depthPitch = desc().height_ * imgCreateInfo.rowPitch;
+
+      switch (misc) {
+      case 1:  // NV12 format
+        switch (layer) {
+        case -1:
+        case 0:
+          break;
+        case 1:
+          // Y - plane size to the offset
+          // NV12 format. UV is 2 times smaller plane Y
+          viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
+          imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+          break;
+        default:
+          LogError("Unknown Interop View Type");
+          return false;
+        }
+        break;
+      case 2:  // YV12 format
+        switch (layer) {
+        case -1:
+        case 0:
+          break;
+        case 1:
+          // Y - plane size to the offset
+          // YV12 format. U is 4 times smaller plane than Y
+          viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
+          imgCreateInfo.rowPitch >>= 1;
+          break;
+        case 2:
+          // Y + U plane sizes to the offest.
+          // U plane is 4 times smaller than Y and U == V
+          viewOffset = 5 * imgCreateInfo.rowPitch * desc().height_ / 2;
+          imgCreateInfo.rowPitch >>= 1;
+          break;
+        default:
+          LogError("Unknown Interop View Type");
+          return false;
+        }
+        imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+        break;
+      case 3:  // YUY2 format
+        imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+        break;
+      default:
+        LogError("Unknown Interop View Type");
+        return false;
+      }
+
+      imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
+      if (result != Pal::Result::Success) {
+        return false;
+      }
+
+      char* memImg = new char[imageSize];
+      if (memImg != nullptr) {
+        result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
+        if (result != Pal::Result::Success) {
+          delete[] memImg;
+          return false;
+        }
+      }
+      offset_ += static_cast<size_t>(viewOffset);
+      result = image_->BindGpuMemory(iMem(), offset_);
+      if (result != Pal::Result::Success) {
+        return false;
+      }
+      hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
+      if ((0 == hwSrd_) && (memoryType() != ImageView)) {
+        return false;
+      }
+      Pal::ImageViewInfo viewInfo = {};
+      viewInfo.viewType = Pal::ImageViewType::Tex2d;
+      viewInfo.pImage = image_;
+      viewInfo.swizzledFormat.format = format;
+      viewInfo.swizzledFormat.swizzle = channels;
+      viewInfo.subresRange = ImgSubresRange;
+      dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
+
+      hwState_[8] = GetHSAILImageFormatType(desc().format_);
+      hwState_[9] = GetHSAILImageOrderType(desc().format_);
+      hwState_[10] = static_cast<uint32_t>(desc().width_);
+      hwState_[11] = 0;  // one extra reserved field in the argument
+    }
+  }
+  else if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
+    memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
+    if (nullptr == memRef_) {
+      return false;
+    }
+    Pal::BufferViewInfo viewInfo = {};
+    viewInfo.gpuAddr = vmAddress();
+    viewInfo.range = memRef_->iMem()->Desc().size;
+    viewInfo.stride = elementSize();
+    viewInfo.swizzledFormat.format = format;
+    viewInfo.swizzledFormat.swizzle = channels;
+    hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
+    if ((0 == hwSrd_) && (memoryType() != ImageView)) {
+      return false;
+    }
+
+    dev().iDev()->CreateTypedBufferViewSrds(1, &viewInfo, hwState_);
+    hwState_[8] = GetHSAILImageFormatType(desc().format_);
+    hwState_[9] = GetHSAILImageOrderType(desc().format_);
+    hwState_[10] = static_cast<uint32_t>(desc().width_);
+    hwState_[11] = 0;  // one extra reserved field in the argument
+  }
+  else {
+    Pal::ExternalImageOpenInfo imgOpenInfo = {};
+    Pal::ImageCreateInfo imgCreateInfo = {};
+    imgOpenInfo.resourceInfo = openInfo;
+    imgOpenInfo.swizzledFormat.format = format;
+    imgOpenInfo.swizzledFormat.swizzle = channels;
+    imgOpenInfo.usage.shaderRead = true;
+    imgOpenInfo.usage.shaderWrite = true;
+    memRef_ = GpuMemoryReference::Create(dev(), imgOpenInfo, &imgCreateInfo, &image_);
+    if (nullptr == memRef_) {
+      return false;
+    }
+
+    hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
+    if ((0 == hwSrd_) && (memoryType() != ImageView)) {
+      return false;
+    }
+    Pal::ImageViewInfo viewInfo = {};
+    viewInfo.viewType = Pal::ImageViewType::Tex2d;
+    switch (imgCreateInfo.imageType) {
+    case Pal::ImageType::Tex3d:
+      viewInfo.viewType = Pal::ImageViewType::Tex3d;
+      break;
+    case Pal::ImageType::Tex1d:
+      viewInfo.viewType = Pal::ImageViewType::Tex1d;
+      break;
+    default:
+      break;
+    }
+    viewInfo.pImage = image_;
+    viewInfo.swizzledFormat.format = format;
+    viewInfo.swizzledFormat.swizzle = channels;
+    if ((type == InteropTextureViewLevel) || (type == InteropTextureViewCube)) {
+      ImgSubresRange.startSubres.mipLevel = mipLevel;
+      if (type == InteropTextureViewCube) {
+        ImgSubresRange.startSubres.arraySlice = layer;
+        viewInfo.viewType = Pal::ImageViewType::Tex2d;
+      }
+    }
+    if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
+      ImgSubresRange.numSlices = desc_.height_;
+    }
+    if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
+      ImgSubresRange.numSlices = desc_.depth_;
+    }
+    ImgSubresRange.numMips = desc().mipLevels_;
+    viewInfo.subresRange = ImgSubresRange;
+
+    dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
+    //! It's a workaround for D24S8 format, since PAL doesn't support this format
+    //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
+    if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
+      (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
+      hwState_[1] &= ~0x3c000000;
+      hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
+    }
+    hwState_[8] = GetHSAILImageFormatType(desc().format_);
+    hwState_[9] = GetHSAILImageOrderType(desc().format_);
+    hwState_[10] = static_cast<uint32_t>(desc().width_);
+    hwState_[11] = 0;  // one extra reserved field in the argument
+  }
+  return true;
+}
+
+// ================================================================================================
+bool Resource::CreatePinned(CreateParams* params)
+{
+  PinnedParams* pinned = reinterpret_cast<PinnedParams*>(params);
+  size_t allocSize = pinned->size_;
+  const amd::HostMemoryReference* hostMemRef = pinned->hostMemRef_;
+  void* pinAddress = address_ = hostMemRef->hostMem();
   uint hostMemOffset = 0;
+  // assert((allocSize == (desc().width_ * elementSize())) && "Sizes don't match");
+  if (desc().topology_ == CL_MEM_OBJECT_BUFFER) {
+    // Allign offset to 4K boundary (Vista/Win7 limitation)
+    char* tmpHost = const_cast<char*>(
+      amd::alignDown(reinterpret_cast<const char*>(address_), PinnedMemoryAlignment));
+
+    // Find the partial size for unaligned copy
+    hostMemOffset = static_cast<uint>(reinterpret_cast<const char*>(address_) - tmpHost);
+
+    offset_ = hostMemOffset;
+
+    pinAddress = tmpHost;
+
+    if (hostMemOffset != 0) {
+      allocSize += hostMemOffset;
+    }
+    allocSize = amd::alignUp(allocSize, PinnedMemoryAlignment);
+    //            hostMemOffset &= ~(0xff);
+  }
+  else if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D) {
+    //! @todo: Width has to be aligned for 3D.
+    //! Need to be replaced with a compute copy
+    // Width aligned by 8 texels
+    if (((desc().width_ % 0x8) != 0) ||
+      // Pitch aligned by 64 bytes
+      (((desc().width_ * elementSize()) % 0x40) != 0)) {
+      return false;
+    }
+  }
+  else {
+    //! @todo GSL doesn't support pinning with resAlloc_
+    return false;
+  }
+
+  if (dev().settings().svmFineGrainSystem_) {
+    desc_.SVMRes_ = true;
+  }
+
+  // Ensure page alignment
+  if ((uint64_t)(pinAddress) & (amd::Os::pageSize() - 1)) {
+    return false;
+  }
+  Pal::PinnedGpuMemoryCreateInfo createInfo = {};
+  createInfo.pSysMem = pinAddress;
+  createInfo.size = allocSize;
+  createInfo.vaRange = Pal::VaRange::Default;
+  memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+  if (nullptr == memRef_) {
+    LogError("Failed PAL memory allocation!");
+    return false;
+  }
+  desc_.cardMemory_ = false;
+  return true;
+}
+
+// ================================================================================================
+bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
+{
+  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
+  if ((memoryType() == RemoteUSWC) || (memoryType() == Remote)) {
+    Pal::SvmGpuMemoryCreateInfo createInfo = {};
+    createInfo.isUsedForKernel = desc_.isAllocExecute_;
+    createInfo.size = allocSize;
+    createInfo.alignment = MaxGpuAlignment;
+    if (svmPtr != 0) {
+      createInfo.flags.useReservedGpuVa = true;
+      createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+    }
+    else {
+      createInfo.flags.useReservedGpuVa = false;
+      createInfo.pReservedGpuVaOwner = nullptr;
+    }
+    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+  }
+  else {
+    Pal::GpuMemoryCreateInfo createInfo = {};
+    createInfo.size = allocSize;
+    createInfo.alignment = MaxGpuAlignment;
+    createInfo.vaRange = Pal::VaRange::Svm;
+    createInfo.priority = Pal::GpuMemPriority::Normal;
+    if (svmPtr != 0) {
+      createInfo.flags.useReservedGpuVa = true;
+      createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+    }
+    memTypeToHeap(&createInfo);
+    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+  }
+  if (nullptr == memRef_) {
+    LogError("Failed PAL memory allocation!");
+    return false;
+  }
+  desc_.cardMemory_ = false;
+  if ((nullptr != params) && (nullptr != params->owner_) &&
+    (nullptr != params->owner_->getSvmPtr())) {
+    params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+  }
+  return true;
+}
+
+// ================================================================================================
+bool Resource::create(MemoryType memType, CreateParams* params) {
+  bool imageCreateView = false;
   bool foundCalRef = false;
   bool viewDefined = false;
   uint viewLayer = 0;
   uint viewLevel = 0;
   uint viewFlags = 0;
-  Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
-  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
 
@@ -453,486 +1072,17 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     desc_.type_ = RemoteUSWC;
   }
 
-  Pal::Result result;
-
   if ((memoryType() == OGLInterop) || (memoryType() == D3D9Interop) ||
       (memoryType() == D3D10Interop) || (memoryType() == D3D11Interop)) {
-    Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
-    Pal::ExternalResourceOpenInfo& openInfo = gpuMemOpenInfo.resourceInfo;
-    uint misc = 0;
-    uint layer = 0;
-    uint mipLevel = 0;
-    InteropType type = InteropTypeless;
-
-    if (memoryType() == OGLInterop) {
-      OGLInteropParams* oglRes = reinterpret_cast<OGLInteropParams*>(params);
-      assert(oglRes->glPlatformContext_ && "We don't have OGL context!");
-      switch (oglRes->type_) {
-        case InteropVertexBuffer:
-          glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-          break;
-        case InteropRenderBuffer:
-          glType_ = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-          break;
-        case InteropTexture:
-        case InteropTextureViewLevel:
-        case InteropTextureViewCube:
-          glType_ = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-          break;
-        default:
-          LogError("Unknown OGL interop type!");
-          return false;
-          break;
-      }
-      glPlatformContext_ = oglRes->glPlatformContext_;
-      layer = oglRes->layer_;
-      type = oglRes->type_;
-      mipLevel = oglRes->mipLevel_;
-
-      if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
-                                &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
-#ifdef ATI_OS_WIN
-								, openInfo.doppDesktopInfo
-#endif
-								)) {
-        return false;
-      }
-      desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
-      format = dev().getPalFormat(desc().format_, &channels);
-    }
-#ifdef ATI_OS_WIN	
-    else {
-      D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
-      openInfo.hExternalResource = d3dRes->handle_;
-      misc = d3dRes->misc;
-      layer = d3dRes->layer_;
-      type = d3dRes->type_;
-      mipLevel = d3dRes->mipLevel_;
-    }
-#endif
-//! @todo PAL query for image/buffer object doesn't work properly!
-#if 0
-        bool    isImage = false;
-        if (Pal::Result::Success !=
-            dev().iDev()->DetermineExternalSharedResourceType(openInfo, &isImage)) {
-            return false;
-        }
-#endif  // 0
-    if (desc().buffer_ || misc) {
-      memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
-      if (nullptr == memRef_) {
-        return false;
-      }
-
-      if (misc) {
-        Pal::ImageCreateInfo imgCreateInfo = {};
-        Pal::ExternalImageOpenInfo imgOpenInfo = {};
-        imgOpenInfo.resourceInfo = openInfo;
-        imgOpenInfo.swizzledFormat.format = format;
-        imgOpenInfo.swizzledFormat.swizzle = channels;
-        imgOpenInfo.usage.shaderRead = true;
-        imgOpenInfo.usage.shaderWrite = true;
-        size_t imageSize;
-        size_t gpuMemSize;
-
-        if (Pal::Result::Success !=
-            dev().iDev()->GetExternalSharedImageSizes(imgOpenInfo, &imageSize, &gpuMemSize,
-                                                      &imgCreateInfo)) {
-          return false;
-        }
-
-        Pal::gpusize viewOffset = 0;
-        imgCreateInfo.flags.shareable = false;
-        imgCreateInfo.imageType = Pal::ImageType::Tex2d;
-        imgCreateInfo.extent.width = desc().width_;
-        imgCreateInfo.extent.height = desc().height_;
-        imgCreateInfo.extent.depth = desc().depth_;
-        imgCreateInfo.arraySize = 1;
-        imgCreateInfo.usageFlags.shaderRead = true;
-        imgCreateInfo.usageFlags.shaderWrite = true;
-        imgCreateInfo.swizzledFormat.format = format;
-        imgCreateInfo.swizzledFormat.swizzle = channels;
-        imgCreateInfo.mipLevels = 1;
-        imgCreateInfo.samples = 1;
-        imgCreateInfo.fragments = 1;
-        imgCreateInfo.tiling = Pal::ImageTiling::Linear;
-        imgCreateInfo.depthPitch = desc().height_ * imgCreateInfo.rowPitch;
-
-        switch (misc) {
-          case 1:  // NV12 format
-            switch (layer) {
-              case -1:
-                break;
-              case 0:
-                break;
-              case 1:
-                // Y - plane size to the offset
-                // NV12 format. UV is 2 times smaller plane Y
-                viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
-                imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-                break;
-              default:
-                LogError("Unknown Interop View Type");
-                return false;
-            }
-            break;
-          case 2:  // YV12 format
-            switch (layer) {
-              case -1:
-                break;
-              case 0:
-                break;
-              case 1:
-                // Y - plane size to the offset
-                // YV12 format. U is 4 times smaller plane than Y
-                viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
-                imgCreateInfo.rowPitch >>= 1;
-                break;
-              case 2:
-                // Y + U plane sizes to the offest.
-                // U plane is 4 times smaller than Y and U == V
-                viewOffset = 5 * imgCreateInfo.rowPitch * desc().height_ / 2;
-                imgCreateInfo.rowPitch >>= 1;
-                break;
-              default:
-                LogError("Unknown Interop View Type");
-                return false;
-            }
-            imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-            break;
-          case 3:  // YUY2 format
-            imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-            break;
-          default:
-            LogError("Unknown Interop View Type");
-            return false;
-        }
-
-        imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
-        if (result != Pal::Result::Success) {
-          return false;
-        }
-
-        char* memImg = new char[imageSize];
-        if (memImg != nullptr) {
-          result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
-          if (result != Pal::Result::Success) {
-            delete [] memImg;
-            return false;
-          }
-        }
-        result = image_->BindGpuMemory(iMem(), viewOffset);
-        if (result != Pal::Result::Success) {
-          return false;
-        }
-        offset_ = static_cast<size_t>(viewOffset);
-        hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
-        if ((0 == hwSrd_) && (memoryType() != ImageView)) {
-          return false;
-        }
-        Pal::ImageViewInfo viewInfo = {};
-        viewInfo.viewType = Pal::ImageViewType::Tex2d;
-        viewInfo.pImage = image_;
-        viewInfo.swizzledFormat.format = format;
-        viewInfo.swizzledFormat.swizzle = channels;
-        viewInfo.subresRange = ImgSubresRange;
-        dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
-
-        hwState_[8] = GetHSAILImageFormatType(desc().format_);
-        hwState_[9] = GetHSAILImageOrderType(desc().format_);
-        hwState_[10] = static_cast<uint32_t>(desc().width_);
-        hwState_[11] = 0;  // one extra reserved field in the argument
-      }
-    } else if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
-      memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
-      if (nullptr == memRef_) {
-        return false;
-      }
-      Pal::BufferViewInfo viewInfo = {};
-      viewInfo.gpuAddr = vmAddress();
-      viewInfo.range = memRef_->iMem()->Desc().size;
-      viewInfo.stride = elementSize();
-      viewInfo.swizzledFormat.format = format;
-      viewInfo.swizzledFormat.swizzle = channels;
-      hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
-      if ((0 == hwSrd_) && (memoryType() != ImageView)) {
-        return false;
-      }
-
-      dev().iDev()->CreateTypedBufferViewSrds(1, &viewInfo, hwState_);
-      hwState_[8] = GetHSAILImageFormatType(desc().format_);
-      hwState_[9] = GetHSAILImageOrderType(desc().format_);
-      hwState_[10] = static_cast<uint32_t>(desc().width_);
-      hwState_[11] = 0;  // one extra reserved field in the argument
-    } else {
-      Pal::ExternalImageOpenInfo imgOpenInfo = {};
-      Pal::ImageCreateInfo imgCreateInfo = {};
-      imgOpenInfo.resourceInfo = openInfo;
-      imgOpenInfo.swizzledFormat.format = format;
-      imgOpenInfo.swizzledFormat.swizzle = channels;
-      imgOpenInfo.usage.shaderRead = true;
-      imgOpenInfo.usage.shaderWrite = true;
-      memRef_ = GpuMemoryReference::Create(dev(), imgOpenInfo, &imgCreateInfo, &image_);
-      if (nullptr == memRef_) {
-        return false;
-      }
-
-      hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
-      if ((0 == hwSrd_) && (memoryType() != ImageView)) {
-        return false;
-      }
-      Pal::ImageViewInfo viewInfo = {};
-      viewInfo.viewType = Pal::ImageViewType::Tex2d;
-      switch (imgCreateInfo.imageType) {
-        case Pal::ImageType::Tex3d:
-          viewInfo.viewType = Pal::ImageViewType::Tex3d;
-          break;
-        case Pal::ImageType::Tex1d:
-          viewInfo.viewType = Pal::ImageViewType::Tex1d;
-          break;
-        default:
-          break;
-      }
-      viewInfo.pImage = image_;
-      viewInfo.swizzledFormat.format = format;
-      viewInfo.swizzledFormat.swizzle = channels;
-      if ((type == InteropTextureViewLevel) || (type == InteropTextureViewCube)) {
-        ImgSubresRange.startSubres.mipLevel = mipLevel;
-        if (type == InteropTextureViewCube) {
-          ImgSubresRange.startSubres.arraySlice = layer;
-          viewInfo.viewType = Pal::ImageViewType::Tex2d;
-        }
-      }
-      if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
-        ImgSubresRange.numSlices = desc_.height_;
-      }
-      if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
-        ImgSubresRange.numSlices = desc_.depth_;
-      }
-      ImgSubresRange.numMips = desc().mipLevels_;
-      viewInfo.subresRange = ImgSubresRange;
-
-      dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
-      //! It's a workaround for D24S8 format, since PAL doesn't support this format
-      //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
-      if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
-          (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
-        hwState_[1] &= ~0x3c000000;
-        hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
-      }
-      hwState_[8] = GetHSAILImageFormatType(desc().format_);
-      hwState_[9] = GetHSAILImageOrderType(desc().format_);
-      hwState_[10] = static_cast<uint32_t>(desc().width_);
-      hwState_[11] = 0;  // one extra reserved field in the argument
-    }
-    return true;
+    return CreateInterop(params);
   }
 
   if (!desc_.buffer_) {
-    if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
-      if (memoryType() == ImageBuffer) {
-        ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
-        viewOwner_ = imageBuffer->resource_;
-        memRef_ = viewOwner_->memRef_;
-        memRef_->retain();
-        desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
-      } else {
-        Pal::GpuMemoryCreateInfo createInfo = {};
-        createInfo.size = desc().width_ * elementSize();
-        // @todo 64K alignment is too big
-        createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-        createInfo.alignment = MaxGpuAlignment;
-        createInfo.vaRange = Pal::VaRange::Default;
-        createInfo.priority = Pal::GpuMemPriority::Normal;
-        memTypeToHeap(&createInfo);
-        // createInfo.priority;
-        memRef_ =
-            dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
-        if (nullptr == memRef_) {
-          memRef_ = GpuMemoryReference::Create(dev(), createInfo);
-          if (nullptr == memRef_) {
-            LogError("Failed PAL memory allocation!");
-            return false;
-          }
-        }
-      }
-      // Check if memory is locked already and restore CPU pointer
-      if (memRef_->cpuAddress_ != nullptr) {
-        address_ = memRef_->cpuAddress_;
-        memRef_->cpuAddress_ = nullptr;
-        mapCount_++;
-      }
-      Pal::BufferViewInfo viewInfo = {};
-      viewInfo.gpuAddr = vmAddress();
-      viewInfo.range = memRef_->iMem()->Desc().size;
-      viewInfo.stride = elementSize();
-      viewInfo.swizzledFormat.format = format;
-      viewInfo.swizzledFormat.swizzle = channels;
-      // viewInfo.channels = channels;
-      hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
-      if ((0 == hwSrd_) && (memoryType() != ImageView)) {
-        return false;
-      }
-
-      dev().iDev()->CreateTypedBufferViewSrds(1, &viewInfo, hwState_);
-      hwState_[8] = GetHSAILImageFormatType(desc().format_);
-      hwState_[9] = GetHSAILImageOrderType(desc().format_);
-      hwState_[10] = static_cast<uint32_t>(desc().width_);
-      hwState_[11] = 0;  // one extra reserved field in the argument
-      return true;
-    }
-
-    Pal::ImageViewInfo viewInfo = {};
-    Pal::ImageCreateInfo imgCreateInfo = {};
-    Pal::GpuMemoryRequirements req = {};
-    imgCreateInfo.imageType = Pal::ImageType::Tex2d;
-    viewInfo.viewType = Pal::ImageViewType::Tex2d;
-    imgCreateInfo.extent.width = desc_.width_;
-    imgCreateInfo.extent.height = desc_.height_;
-    imgCreateInfo.extent.depth = desc_.depth_;
-    imgCreateInfo.arraySize = 1;
-
-    switch (desc_.topology_) {
-      case CL_MEM_OBJECT_IMAGE3D:
-        imgCreateInfo.imageType = Pal::ImageType::Tex3d;
-        viewInfo.viewType = Pal::ImageViewType::Tex3d;
-        break;
-      case CL_MEM_OBJECT_IMAGE1D:
-      case CL_MEM_OBJECT_IMAGE1D_ARRAY:
-      case CL_MEM_OBJECT_IMAGE1D_BUFFER:
-        imgCreateInfo.imageType = Pal::ImageType::Tex1d;
-        viewInfo.viewType = Pal::ImageViewType::Tex1d;
-        break;
-    }
-    if (desc_.topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
-      ImgSubresRange.numSlices = imgCreateInfo.arraySize = desc_.height_;
-      imgCreateInfo.extent.depth = desc_.height_;
-      imgCreateInfo.extent.height = 1;
-    }
-    if (desc_.topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY) {
-      ImgSubresRange.numSlices = imgCreateInfo.arraySize = desc_.depth_;
-    }
-
-    if (memoryType() == ImageView) {
-      ImageViewParams* imageView = reinterpret_cast<ImageViewParams*>(params);
-      ImgSubresRange.startSubres.mipLevel = imageView->level_;
-      desc_.baseLevel_ = imageView->level_;
-      ImgSubresRange.startSubres.arraySlice = imageView->layer_;
-      viewOwner_ = imageView->resource_;
-      image_ = viewOwner_->image_;
-      offset_ = viewOwner_->offset_;
-    } else if (memoryType() == ImageBuffer) {
-      ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
-      viewOwner_ = imageBuffer->resource_;
-    }
-    ImgSubresRange.numMips = desc().mipLevels_;
-
-    if ((memoryType() != ImageView) ||
-        //! @todo PAL doesn't allow an SRD view creation with different pixel size
-        (elementSize() != viewOwner_->elementSize())) {
-      imgCreateInfo.usageFlags.shaderRead = true;
-      imgCreateInfo.usageFlags.shaderWrite =
-          (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
-      imgCreateInfo.swizzledFormat.format = format;
-      imgCreateInfo.swizzledFormat.swizzle = channels;
-      imgCreateInfo.mipLevels = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
-      imgCreateInfo.samples = 1;
-      imgCreateInfo.fragments = 1;
-      Pal::ImageTiling tiling = Pal::ImageTiling::Optimal;
-      uint32_t rowPitch = 0;
-
-      if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
-          (memoryType() == ImageBuffer)) {
-        tiling = Pal::ImageTiling::Linear;
-      } else if (memoryType() == ImageView) {
-        tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
-        // Find the new pitch in pixels for the new format
-        rowPitch = viewOwner_->desc().pitch_ * viewOwner_->elementSize() / elementSize();
-      }
-
-      if (memoryType() == ImageBuffer) {
-        if ((params->owner_ != NULL) && params->owner_->asImage() &&
-            (params->owner_->asImage()->getRowPitch() != 0)) {
-          rowPitch = params->owner_->asImage()->getRowPitch() / elementSize();
-        } else {
-          rowPitch = desc().width_;
-        }
-      }
-      desc_.pitch_ = rowPitch;
-      // Make sure the row pitch is aligned to pixels
-      imgCreateInfo.rowPitch =
-          elementSize() * amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
-      imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-      imgCreateInfo.tiling = tiling;
-
-      size_t imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
-      if (result != Pal::Result::Success) {
-        return false;
-      }
-
-      char* memImg = new char[imageSize];
-      if (memImg != nullptr) {
-        result = dev().iDev()->CreateImage(imgCreateInfo, memImg, &image_);
-        if (result != Pal::Result::Success) {
-          delete [] memImg;
-          return false;
-        }
-      }
-      image_->GetGpuMemoryRequirements(&req);
-      // createInfo.priority;
-    }
-
-    if ((memoryType() != ImageView) && (memoryType() != ImageBuffer)) {
-      Pal::GpuMemoryCreateInfo createInfo = {};
-      createInfo.size = amd::alignUp(req.size, MaxGpuAlignment);
-      createInfo.alignment = std::max(req.alignment, MaxGpuAlignment);
-      createInfo.vaRange = Pal::VaRange::Default;
-      createInfo.priority = Pal::GpuMemPriority::Normal;
-      memTypeToHeap(&createInfo);
-
-      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
-      if (nullptr == memRef_) {
-        memRef_ = GpuMemoryReference::Create(dev(), createInfo);
-        if (nullptr == memRef_) {
-          LogError("Failed PAL memory allocation!");
-          return false;
-        }
-      }
-    } else {
-      memRef_ = viewOwner_->memRef_;
-      memRef_->retain();
-      desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
-      if (req.size > viewOwner_->iMem()->Desc().size) {
-        LogWarning("Image is bigger than the original mem object!");
-      }
-    }
-    // Check if memory is locked already and restore CPU pointer
-    if (memRef_->cpuAddress_ != nullptr) {
-      address_ = memRef_->cpuAddress_;
-      memRef_->cpuAddress_ = nullptr;
-      mapCount_++;
-    }
-
-    result = image_->BindGpuMemory(memRef_->gpuMem_, offset_);
-    if (result != Pal::Result::Success) {
-      return false;
-    }
-
-    hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
-    if ((0 == hwSrd_) && (memoryType() != ImageView)) {
-      return false;
-    }
-    viewInfo.pImage = image_;
-    viewInfo.swizzledFormat.format = format;
-    viewInfo.swizzledFormat.swizzle = channels;
-    viewInfo.subresRange = ImgSubresRange;
-    dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
-
-    hwState_[8] = GetHSAILImageFormatType(desc().format_);
-    hwState_[9] = GetHSAILImageOrderType(desc().format_);
-    hwState_[10] = static_cast<uint32_t>(desc().width_);
-    hwState_[11] = 0;  // one extra reserved field in the argument
-    return true;
+    return CreateImage(params);
+  }
+  
+  if (memoryType() == Pinned) {
+    return CreatePinned(params);
   }
 
   if (memoryType() == View) {
@@ -956,116 +1106,19 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     return true;
   }
 
-  if (memoryType() == Pinned) {
-    PinnedParams* pinned = reinterpret_cast<PinnedParams*>(params);
-    size_t allocSize = pinned->size_;
-    void* pinAddress;
-    hostMemRef = pinned->hostMemRef_;
-    pinAddress = address_ = hostMemRef->hostMem();
-    // assert((allocSize == (desc().width_ * elementSize())) && "Sizes don't match");
-    if (desc().topology_ == CL_MEM_OBJECT_BUFFER) {
-      // Allign offset to 4K boundary (Vista/Win7 limitation)
-      char* tmpHost = const_cast<char*>(
-          amd::alignDown(reinterpret_cast<const char*>(address_), PinnedMemoryAlignment));
-
-      // Find the partial size for unaligned copy
-      hostMemOffset = static_cast<uint>(reinterpret_cast<const char*>(address_) - tmpHost);
-
-      offset_ = hostMemOffset;
-
-      pinAddress = tmpHost;
-
-      if (hostMemOffset != 0) {
-        allocSize += hostMemOffset;
-      }
-      allocSize = amd::alignUp(allocSize, PinnedMemoryAlignment);
-      //            hostMemOffset &= ~(0xff);
-    } else if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D) {
-      //! @todo: Width has to be aligned for 3D.
-      //! Need to be replaced with a compute copy
-      // Width aligned by 8 texels
-      if (((desc().width_ % 0x8) != 0) ||
-          // Pitch aligned by 64 bytes
-          (((desc().width_ * elementSize()) % 0x40) != 0)) {
-        return false;
-      }
-    } else {
-      //! @todo GSL doesn't support pinning with resAlloc_
-      return false;
-    }
-
-    if (dev().settings().svmFineGrainSystem_) {
-      desc_.SVMRes_ = true;
-    }
-
-    // Ensure page alignment
-    if ((uint64_t)(pinAddress) & (amd::Os::pageSize() - 1)) {
-      return false;
-    }
-    Pal::PinnedGpuMemoryCreateInfo createInfo = {};
-    createInfo.pSysMem = pinAddress;
-    createInfo.size = allocSize;
-    createInfo.vaRange = Pal::VaRange::Default;
-    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
-    if (nullptr == memRef_) {
-      LogError("Failed PAL memory allocation!");
-      return false;
-    }
-    desc_.cardMemory_ = false;
-    return true;
-  }
-
   Pal::gpusize svmPtr = 0;
   if ((nullptr != params) && (nullptr != params->owner_) &&
       (nullptr != params->owner_->getSvmPtr())) {
-    svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
-    desc_.SVMRes_ = true;
-    svmPtr = (svmPtr == 1) ? 0 : svmPtr;
+      svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+      desc_.SVMRes_ = true;
+      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
   }
   if (desc_.SVMRes_) {
-    // @todo 64K alignment is too big
-    size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
-    if ((memoryType() == RemoteUSWC) || (memoryType() == Remote)) {
-      Pal::SvmGpuMemoryCreateInfo createInfo = {};
-      createInfo.isUsedForKernel = desc_.isAllocExecute_;
-      createInfo.size = allocSize;
-      createInfo.alignment = MaxGpuAlignment;
-      if (svmPtr != 0) {
-        createInfo.flags.useReservedGpuVa = true;
-        createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
-      } else {
-        createInfo.flags.useReservedGpuVa = false;
-        createInfo.pReservedGpuVaOwner = nullptr;
-      }
-      memRef_ = GpuMemoryReference::Create(dev(), createInfo);
-    } else {
-      Pal::GpuMemoryCreateInfo createInfo = {};
-      createInfo.size = allocSize;
-      createInfo.alignment = MaxGpuAlignment;
-      createInfo.vaRange = Pal::VaRange::Svm;
-      createInfo.priority = Pal::GpuMemPriority::Normal;
-      if (svmPtr != 0) {
-        createInfo.flags.useReservedGpuVa = true;
-        createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
-      }
-      memTypeToHeap(&createInfo);
-      memRef_ = GpuMemoryReference::Create(dev(), createInfo);
-    }
-    if (nullptr == memRef_) {
-      LogError("Failed PAL memory allocation!");
-      return false;
-    }
-    desc_.cardMemory_ = false;
-    if ((nullptr != params) && (nullptr != params->owner_) &&
-        (nullptr != params->owner_->getSvmPtr())) {
-      params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
-    }
-    return true;
+      return CreateSvm(params, svmPtr);
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = desc().width_ * elementSize_;
-  // @todo 64K alignment is too big
   createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
   createInfo.alignment = MaxGpuAlignment;
   createInfo.vaRange = Pal::VaRange::Default;
@@ -1082,7 +1135,8 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 
   memTypeToHeap(&createInfo);
   // createInfo.priority;
-  memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment);
+  memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
+    createInfo.alignment, &subOffset_);
   if (nullptr == memRef_) {
     memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     if (nullptr == memRef_) {
@@ -1090,6 +1144,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       return false;
     }
   }
+  offset_ += static_cast<size_t>(subOffset_);
   // Check if memory is locked already and restore CPU pointer
   if (memRef_->cpuAddress_ != nullptr) {
     address_ = memRef_->cpuAddress_;
@@ -1099,7 +1154,9 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   return true;
 }
 
-void Resource::free() {
+// ================================================================================================
+void Resource::free()
+{
   if (memRef_ == nullptr) {
     return;
   }
@@ -1112,17 +1169,19 @@ void Resource::free() {
   const bool wait =
     (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
 
+  // OCL has to wait, even if resource is placed in the cache, since reallocation can occur
+  // and resource can be reused on another async queue without a wait on a busy operation
   if (wait) {
     if (memRef_->gpu_ == nullptr) {
       Device::ScopedLockVgpus lock(dev());
       // Release all memory objects on all virtual GPUs
       for (uint idx = 1; idx < dev().vgpus().size(); ++idx) {
-        dev().vgpus()[idx]->waitForEvent(&memRef_->events_[idx]);
+        dev().vgpus()[idx]->waitForEvent(&events_[idx]);
       }
     }
     else {
       amd::ScopedLock l(memRef_->gpu_->execution());
-      memRef_->gpu_->waitForEvent(&memRef_->events_[memRef_->gpu_->index()]);
+      memRef_->gpu_->waitForEvent(&events_[memRef_->gpu_->index()]);
     }
   } else {
     // After a view destruction the original object is no longer can be associated with a vgpu
@@ -1144,8 +1203,8 @@ void Resource::free() {
         }
       }
 
-      // Add resource to the cache if it's not assigned to a specific queue
-      if ((memRef_->gpu_ != nullptr) || !dev().resourceCache().addGpuMemory(&desc_, memRef_)) {
+      // Add resource to the cache
+      if (!dev().resourceCache().addGpuMemory(&desc_, memRef_, subOffset_)) {
         palFree();
       }
     }
@@ -1166,8 +1225,10 @@ void Resource::free() {
   }
 }
 
+// ================================================================================================
 void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const void* data,
-                            bool waitForEvent) const {
+                            bool waitForEvent) const
+{
   GpuEvent event;
 
   // Write data size bytes to surface
@@ -1175,7 +1236,8 @@ void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const v
   assert((size & 3) == 0);
   gpu.eventBegin(MainEngine);
   gpu.queue(MainEngine).addCmdMemRef(memRef());
-  gpu.iCmd()->CmdUpdateMemory(*iMem(), offset, size, reinterpret_cast<const uint32_t*>(data));
+  gpu.iCmd()->CmdUpdateMemory(*iMem(), offset_ + offset, size,
+    reinterpret_cast<const uint32_t*>(data));
   gpu.eventEnd(MainEngine, event);
 
   if (waitForEvent) {
@@ -1190,7 +1252,10 @@ void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const v
     gpu.setGpuEvent(event, false);
   }
 }
-static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement) {
+
+// ================================================================================================
+static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement)
+{
   if (bytesPerElement == 16) {
     return Pal::ChNumFormat::X32Y32Z32W32_Uint;
   } else if (bytesPerElement == 8) {
@@ -1204,6 +1269,7 @@ static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement) {
   }
 }
 
+// ================================================================================================
 bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
                                 const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
                                 Resource& dstResource, bool enableCopyRect, bool flushDMA,
@@ -1351,6 +1417,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   return true;
 }
 
+// ================================================================================================
 void Resource::setBusy(VirtualGPU& gpu, GpuEvent gpuEvent) const {
   addGpuEvent(gpu, gpuEvent);
 
@@ -1360,6 +1427,7 @@ void Resource::setBusy(VirtualGPU& gpu, GpuEvent gpuEvent) const {
   }
 }
 
+// ================================================================================================
 void Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const {
   GpuEvent* gpuEvent = getGpuEvent(gpu);
 
@@ -1377,6 +1445,7 @@ void Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const {
   }
 }
 
+// ================================================================================================
 bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3D& origin,
                          const amd::Coord3D& size, uint flags, size_t rowPitch, size_t slicePitch) {
   void* dst;
@@ -1446,6 +1515,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
   return true;
 }
 
+// ================================================================================================
 bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& origin,
                         const amd::Coord3D& size, size_t rowPitch, size_t slicePitch) {
   void* src;
@@ -1515,6 +1585,7 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
   return true;
 }
 
+// ================================================================================================
 void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resource) const {
   if (desc_.cardMemory_ && !isPersistentDirectMap()) {
     // @todo remove const cast
@@ -1540,6 +1611,7 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
   }
 }
 
+// ================================================================================================
 void Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const {
   if (desc_.cardMemory_ && !isPersistentDirectMap()) {
     // @todo remove const cast
@@ -1553,6 +1625,7 @@ void Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const {
   }
 }
 
+// ================================================================================================
 bool Resource::glAcquire() {
   bool retVal = true;
   if (desc().type_ == OGLInterop) {
@@ -1561,6 +1634,7 @@ bool Resource::glAcquire() {
   return retVal;
 }
 
+// ================================================================================================
 bool Resource::glRelease() {
   bool retVal = true;
   if (desc().type_ == OGLInterop) {
@@ -1569,18 +1643,21 @@ bool Resource::glRelease() {
   return retVal;
 }
 
+// ================================================================================================
 void Resource::addGpuEvent(const VirtualGPU& gpu, GpuEvent event) const {
   uint idx = gpu.index();
-  assert(idx < memRef_->events_.size());
-  memRef_->events_[idx] = event;
+  assert(idx < events_.size());
+  events_[idx] = event;
 }
 
+// ================================================================================================
 GpuEvent* Resource::getGpuEvent(const VirtualGPU& gpu) const {
   uint idx = gpu.index();
-  assert((idx < memRef_->events_.size()) && "Undeclared queue access!");
-  return &memRef_->events_[idx];
+  assert((idx < events_.size()) && "Undeclared queue access!");
+  return &events_[idx];
 }
 
+// ================================================================================================
 void Resource::palFree() const {
   if (desc().type_ == OGLInterop) {
     amd::ScopedLock lk(dev().lockPAL());
@@ -1589,6 +1666,7 @@ void Resource::palFree() const {
   memRef_->release();
 }
 
+// ================================================================================================
 bool Resource::isMemoryType(MemoryType memType) const {
   if (memoryType() == memType) {
     return true;
@@ -1599,6 +1677,7 @@ bool Resource::isMemoryType(MemoryType memType) const {
   return false;
 }
 
+// ================================================================================================
 bool Resource::isPersistentDirectMap() const {
   bool directMap =
       ((memoryType() == Resource::Persistent) && (desc().dimSize_ < 3) && !desc().imageArray_);
@@ -1613,6 +1692,7 @@ bool Resource::isPersistentDirectMap() const {
   return directMap;
 }
 
+// ================================================================================================
 void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers) {
   if (isMemoryType(Pinned)) {
     // Check if we have to wait
@@ -1682,11 +1762,13 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
   return address_;
 }
 
+// ================================================================================================
 void* Resource::mapLayers(VirtualGPU* gpu, uint flags) {
   Unimplemented();
   return nullptr;
 }
 
+// ================================================================================================
 void Resource::unmap(VirtualGPU* gpu) {
   if (isMemoryType(Pinned)) {
     return;
@@ -1713,22 +1795,26 @@ void Resource::unmap(VirtualGPU* gpu) {
   }
 }
 
+// ================================================================================================
 void Resource::unmapLayers(VirtualGPU* gpu) {
   Unimplemented();
 }
 
+// ================================================================================================
 void Resource::setActiveRename(VirtualGPU& gpu, GpuMemoryReference* rename) {
   // Copy the unique GSL data
   memRef_ = rename;
   address_ = rename->cpuAddress_;
 }
 
+// ================================================================================================
 bool Resource::getActiveRename(VirtualGPU& gpu, GpuMemoryReference** rename) {
   // Copy the old data to the rename descriptor
   *rename = memRef_;
   return true;
 }
 
+// ================================================================================================
 bool Resource::rename(VirtualGPU& gpu, bool force) {
   GpuEvent* gpuEvent = getGpuEvent(gpu);
   if (!gpuEvent->isValid() && !force) {
@@ -1809,6 +1895,7 @@ bool Resource::rename(VirtualGPU& gpu, bool force) {
   return true;
 }
 
+// ================================================================================================
 void Resource::warmUpRenames(VirtualGPU& gpu) {
   // Make sure OCL touches every command buffer in the queue to avoid delays on the first submit
   uint flush = dev().settings().maxRenames_ / VirtualGPU::Queue::MaxCmdBuffers;
@@ -1823,12 +1910,112 @@ void Resource::warmUpRenames(VirtualGPU& gpu) {
   }
 }
 
+// ================================================================================================
+MemorySubAllocator::~MemorySubAllocator()
+{
+  // Release memory heap for suballocations
+  for (auto it : mem_heap_) {
+    it.first->release();
+    delete it.second;
+  }
+}
+
+// ================================================================================================
+GpuMemoryReference* MemorySubAllocator::Allocate(
+  Pal::gpusize size, Pal::gpusize alignment, Pal::gpusize* offset)
+{
+  GpuMemoryReference* mem_ref = nullptr;
+  // Check if resource size is allowed for suballocation
+  if (size < device_->settings().subAllocationMaxSize_) {
+    uint i = 0;
+    size = amd::alignUp(size, device_->settings().subAllocationMinSize_);
+    do {
+      MemBuddyAllocator*  allocator = nullptr;
+      // Find if current heap has enough empty space
+      for (auto it : mem_heap_) {
+        mem_ref = it.first;
+        allocator = it.second;
+        // If we have found a valid chunk, then suballocate memory
+        if (Pal::Result::Success == allocator->Allocate(size, alignment, offset)) {
+          return mem_ref;
+        } else {
+          mem_ref = nullptr;
+        }
+      }
+      
+      // Check if a chunk for suballocation doesn't exist
+      if (mem_ref == nullptr) {
+        // Allocate a new chunk in memory
+        Pal::GpuMemoryCreateInfo createInfo = {};
+        createInfo.size       = device_->settings().subAllocationChunkSize_;
+        createInfo.alignment  = 0;
+        createInfo.vaRange    = Pal::VaRange::Default;
+        createInfo.priority   = Pal::GpuMemPriority::Normal;
+        createInfo.heapCount  = 1;
+        createInfo.heaps[0]   = Pal::GpuHeapInvisible;
+        mem_ref = GpuMemoryReference::Create(*device_, createInfo);
+        // If chunk was allocated, then allocate BuddyAllocator object
+        if (mem_ref != nullptr) {
+          allocator = new MemBuddyAllocator(device_,
+          device_->settings().subAllocationChunkSize_,
+          device_->settings().subAllocationMinSize_);
+          if ((allocator != nullptr) &&
+              (Pal::Result::Success == allocator->Init())) {
+            // Add the chunk and suballocator into the heap
+            mem_heap_.insert(std::pair<GpuMemoryReference*, MemBuddyAllocator*>(
+                mem_ref, allocator));
+          } else {
+            delete allocator;
+            mem_ref->release();
+            return nullptr;  
+          }
+        } else {
+          return nullptr;
+        }
+      }
+      i++;
+    } while (i < 2);
+  }
+  return mem_ref;
+}
+
+// ================================================================================================
+bool MemorySubAllocator::Free(GpuMemoryReference* ref, Pal::gpusize offset)
+{
+  // Find if current memory reference is a chunk allocation
+  auto it = mem_heap_.find(ref);
+  if (it == mem_heap_.end()) {
+    return false;
+  }
+  // Free suballocation at the specified offset
+  it->second->Free(offset);
+  // If this suballocator empty, then release memory chunk
+  if (it->second->IsEmpty()) {
+    delete it->second;
+    it->first->release();
+    mem_heap_.erase(it);
+  }
+  return true;
+}
+
+// ================================================================================================
 ResourceCache::~ResourceCache() { free(); }
 
+// ================================================================================================
 //! \note the cache works in FILO mode
-bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference* ref) {
+bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
+  GpuMemoryReference* ref, Pal::gpusize offset)
+{
   bool result = false;
   size_t size = ref->iMem()->Desc().size;
+
+  if (desc->type_ == Resource::Local) {
+      amd::ScopedLock l(&lockCacheOps_);
+    // Check if runtime can free suballocation in local memory
+    if (memSubAllocLocal_.Free(ref, offset)) {
+      return true;
+    }
+  }
 
   // Make sure current allocation isn't bigger than cache
   if (((desc->type_ == Resource::Local) || (desc->type_ == Resource::Persistent) ||
@@ -1855,8 +2042,9 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   return result;
 }
 
+// ================================================================================================
 GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal::gpusize size,
-                                                 Pal::gpusize alignment) {
+                                                 Pal::gpusize alignment, Pal::gpusize* offset) {
   amd::ScopedLock l(&lockCacheOps_);
   GpuMemoryReference* ref = nullptr;
 
@@ -1864,6 +2052,13 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
   if (size >= cacheSizeLimit_ || desc->SVMRes_) {
     //! \note we may need to free the cache here to reduce memory pressure
     return ref;
+  }
+
+  if (desc->type_ == Resource::Local) {
+    ref = memSubAllocLocal_.Allocate(size, alignment, offset);
+    if (ref != nullptr) {
+      return ref;
+    }
   }
 
   // Serach the right resource through the cache list
@@ -1886,6 +2081,7 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
   return ref;
 }
 
+// ================================================================================================
 bool ResourceCache::free(size_t minCacheEntries) {
   amd::ScopedLock l(&lockCacheOps_);
   bool result = false;
@@ -1903,6 +2099,7 @@ bool ResourceCache::free(size_t minCacheEntries) {
   return result;
 }
 
+// ================================================================================================
 void ResourceCache::removeLast() {
   std::pair<Resource::Descriptor*, GpuMemoryReference*> entry;
   entry = resCache_.back();
@@ -1913,7 +2110,7 @@ void ResourceCache::removeLast() {
   // Delete Descriptor
   delete entry.first;
 
-  // Destroy GSL resource
+  // Destroy PAL resource
   entry.second->release();
   cacheSize_ -= size;
 }

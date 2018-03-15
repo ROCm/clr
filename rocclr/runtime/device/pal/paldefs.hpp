@@ -8,6 +8,7 @@
 #include "palGpuMemory.h"
 #include "palImage.h"
 #include "palFormatInfo.h"
+#include "util/palSysMemory.h"
 
 //
 /// Memory Object Type
