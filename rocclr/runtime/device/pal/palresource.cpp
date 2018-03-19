@@ -982,12 +982,15 @@ bool Resource::CreatePinned(CreateParams* params)
 // ================================================================================================
 bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
 {
-  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
-  if ((memoryType() == RemoteUSWC) || (memoryType() == Remote)) {
+  const bool isFineGrain = (memoryType() == RemoteUSWC) || (memoryType() == Remote);
+  const Pal::gpusize svmAlignment = isFineGrain ? MaxGpuAlignment :
+    dev().properties().gpuMemoryProperties.fragmentSize;
+  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, svmAlignment);
+  if (isFineGrain) {
     Pal::SvmGpuMemoryCreateInfo createInfo = {};
     createInfo.isUsedForKernel = desc_.isAllocExecute_;
     createInfo.size = allocSize;
-    createInfo.alignment = MaxGpuAlignment;
+    createInfo.alignment = svmAlignment;
     if (svmPtr != 0) {
       createInfo.flags.useReservedGpuVa = true;
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
@@ -1001,7 +1004,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
   else {
     Pal::GpuMemoryCreateInfo createInfo = {};
     createInfo.size = allocSize;
-    createInfo.alignment = MaxGpuAlignment;
+    createInfo.alignment = svmAlignment;
     createInfo.vaRange = Pal::VaRange::Svm;
     createInfo.priority = Pal::GpuMemPriority::Normal;
     if (svmPtr != 0) {
