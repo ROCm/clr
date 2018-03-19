@@ -75,7 +75,7 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       forceSysMemAlloc_(false),
       mapCount_(0),
       svmHostAddress_(svmPtr),
-      svmPtrCommited_(false),
+      svmPtrCommited_(flags & CL_MEM_SVM_FINE_GRAIN_BUFFER ? true : false),
       canBeCached_(true),
       lockMemoryOps_("Memory Ops Lock", true) {}
 
