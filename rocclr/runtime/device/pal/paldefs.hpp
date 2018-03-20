@@ -117,58 +117,59 @@ struct AMDDeviceInfo {
   uint localMemSizePerCU_;     //!< Local memory size per CU
   uint localMemBanks_;         //!< Number of banks of local memory
   uint gfxipVersion_;          //!< The core engine GFXIP version
+  bool xnackEnabled_;          //!< Enable XNACK feature
 };
 
 static const AMDDeviceInfo DeviceInfo[] = {
-    /* Unknown */ {"", "unknown", 4, 16, 1, 256, 64 * Ki, 32, 0},
-    /* Tahiti */ {"", "tahiti", 4, 16, 1, 256, 64 * Ki, 32, 600},
-    /* Pitcairn */ {"", "pitcairn", 4, 16, 1, 256, 64 * Ki, 32, 600},
-    /* Capeverde */ {"", "bonaire", 4, 16, 1, 256, 64 * Ki, 32, 700},
-    /* Oland */ {"", "oland", 4, 16, 1, 256, 64 * Ki, 32, 600},
-    /* Hainan */ {"", "hainan", 4, 16, 1, 256, 64 * Ki, 32, 600},
+    /* Unknown */ {"", "unknown", 4, 16, 1, 256, 64 * Ki, 32, 0, false},
+    /* Tahiti */ {"", "tahiti", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
+    /* Pitcairn */ {"", "pitcairn", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
+    /* Capeverde */ {"", "bonaire", 4, 16, 1, 256, 64 * Ki, 32, 700, false},
+    /* Oland */ {"", "oland", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
+    /* Hainan */ {"", "hainan", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
 
-    /* Bonaire */ {"Bonaire", "bonaire", 4, 16, 1, 256, 64 * Ki, 32, 700},
-    /* Hawaii */ {"Hawaii", "hawaii", 4, 16, 1, 256, 64 * Ki, 32, 701},
-    /* Hawaii */ {"", "grenada", 4, 16, 1, 256, 64 * Ki, 32, 701},
-    /* Hawaii */ {"", "maui", 4, 16, 1, 256, 64 * Ki, 32, 701},
+    /* Bonaire */ {"Bonaire", "bonaire", 4, 16, 1, 256, 64 * Ki, 32, 700, false},
+    /* Hawaii */ {"Hawaii", "hawaii", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
+    /* Hawaii */ {"", "grenada", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
+    /* Hawaii */ {"", "maui", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
 
-    /* Kalindi */ {"Kalindi", "kalindi", 4, 16, 1, 256, 64 * Ki, 32, 702},
-    /* Godavari */ {"Mullins", "mullins", 4, 16, 1, 256, 64 * Ki, 32, 702},
-    /* Spectre */ {"Spectre", "spectre", 4, 16, 1, 256, 64 * Ki, 32, 701},
-    /* Spooky */ {"Spooky", "spooky", 4, 16, 1, 256, 64 * Ki, 32, 701},
+    /* Kalindi */ {"Kalindi", "kalindi", 4, 16, 1, 256, 64 * Ki, 32, 702, false},
+    /* Godavari */ {"Mullins", "mullins", 4, 16, 1, 256, 64 * Ki, 32, 702, false},
+    /* Spectre */ {"Spectre", "spectre", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
+    /* Spooky */ {"Spooky", "spooky", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
 
-    /* Carrizo */ {"Carrizo", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801},
-    /* Bristol */ {"Bristol Ridge", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801},
-    /* Stoney */ {"Stoney", "stoney", 4, 16, 1, 256, 64 * Ki, 32, 810},
+    /* Carrizo */ {"Carrizo", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801, false},
+    /* Bristol */ {"Bristol Ridge", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 801, false},
+    /* Stoney */ {"Stoney", "stoney", 4, 16, 1, 256, 64 * Ki, 32, 810, false},
 
-    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800)},
-    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800)},
-    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
-    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
-    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
-    /* Lexa */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804)},
+    /* Iceland */ {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800), false},
+    /* Tonga */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(802, 800), false},
+    /* Fiji */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804), false},
+    /* Ellesmere */ {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804), false},
+    /* Baffin */ {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804), false},
+    /* Lexa */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(803, 804), false},
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
 // http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
-    /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900},
+    /* Vega10       */{"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 900, false},
     /* Vega10 XNACK */{ LIGHTNING_SWITCH("gfx900","gfx901"),  LIGHTNING_SWITCH("gfx900","gfx901"),
-                        4, 16, 1, 256, 64 * Ki, 32,  LIGHTNING_SWITCH(900, 901)},
-    /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904},
+                        4, 16, 1, 256, 64 * Ki, 32,  LIGHTNING_SWITCH(900, 901), true},
+    /* Vega12       */{"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 904, false},
     /* Vega12 XNACK */{ LIGHTNING_SWITCH("gfx904","gfx905"), LIGHTNING_SWITCH("gfx904","gfx905"),
-                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(904, 905)},
-    /* Vega20       */{"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 906},
+                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(904, 905), true},
+    /* Vega20       */{"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 906, false},
     /* Vega20 XNACK */{ LIGHTNING_SWITCH("gfx906","gfx907"), LIGHTNING_SWITCH("gfx906","gfx907"),
-                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(906, 907)},
-    /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
+                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(906, 907), true},
+    /* Raven        */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902, false},
     /* Raven XNACK  */{ LIGHTNING_SWITCH("gfx902","gfx903"), LIGHTNING_SWITCH("gfx902","gfx903"),
-                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903)},
-    /* Raven2       */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902},
+                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903), true},
+    /* Raven2       */{"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902, false},
     /* Raven2 XNACK */{ LIGHTNING_SWITCH("gfx902","gfx903"), LIGHTNING_SWITCH("gfx902","gfx903"),
-                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903)},
-    /* Navi10       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000},
-    /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1001},
+                        4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903), true},
+    /* Navi10       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000, false},
+    /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1001, true},
 };
 
 // Supported OpenCL versions

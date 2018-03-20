@@ -144,30 +144,26 @@ bool NullDevice::init() {
       }
 
       Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
-      uint xNACKSupported = 0;
+      uint xNACKSupported = pal::Gfx9PlusSubDeviceInfo[id].xnackEnabled_ ? 1 : 0;
+
       switch (pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_) {
       case 901:
-          xNACKSupported = 1;
       case 900:
           revision = Pal::AsicRevision::Vega10;
           break;
       case 903:
-          xNACKSupported = 1;
       case 902:
           revision = Pal::AsicRevision::Raven;
           break;
       case 905:
-          xNACKSupported = 1;
       case 904:
           revision = Pal::AsicRevision::Vega12;
           break;
       case 907:
-          xNACKSupported = 1;
       case 906:
           revision = Pal::AsicRevision::Vega20;
           break;
       case 1001:
-          xNACKSupported = 1;
       case 1000:
           revision = Pal::AsicRevision::Navi10;
           break;
@@ -437,7 +433,11 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     const static char* bristol = "Bristol Ridge";
     ::strcpy(info_.name_, bristol);
   } else {
-    ::strcpy(info_.name_, hwInfo()->targetName_);
+    if (IS_LIGHTNING && hwInfo()->xnackEnabled_) {
+      ::snprintf(info_.name_, sizeof(info_.name_) - 1, "%s-xnack", hwInfo()->targetName_);
+    } else {
+      ::strcpy(info_.name_, hwInfo()->targetName_);
+    }
   }
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)",
@@ -916,6 +916,9 @@ bool Device::create(Pal::IDevice* device) {
   // with dash as delimiter to be compatible with Windows directory name
   std::ostringstream cacheTarget;
   cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+  if (isXNACKSupported) {
+    cacheTarget << "-xnack";
+  }
 
   amd::CacheCompilation* compObj = new amd::CacheCompilation(
       cacheTarget.str(), "_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);

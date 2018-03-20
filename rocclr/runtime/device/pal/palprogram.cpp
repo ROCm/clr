@@ -1437,6 +1437,11 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
   mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
   codegenOptions.append(mCPU.str());
 
+  // Set xnack option if needed
+  if (dev().hwInfo()->xnackEnabled_) {
+      codegenOptions.append(" -mxnack");
+  }
+
   // Set the -O#
   std::ostringstream optLevel;
   optLevel << "-O" << options->oVariables->OptLevel;
