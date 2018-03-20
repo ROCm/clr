@@ -219,6 +219,11 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
   driverOptions.append(" -mcpu=");
   driverOptions.append(dev().deviceInfo().machineTarget_);
 
+  // Set xnack option if needed
+  if (dev().deviceInfo().xnackEnabled_) {
+    driverOptions.append(" -mxnack");
+  }
+
   driverOptions.append(options->llvmOptions);
 
   // Set whole program mode

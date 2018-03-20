@@ -253,6 +253,11 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
   mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
   driverOptions.append(mCPU.str());
 
+  // Set xnack option if needed
+  if (dev().hwInfo()->xnackEnabled_) {
+    driverOptions.append(" -mxnack");
+  }
+
   driverOptions.append(options->llvmOptions);
   driverOptions.append(hsailOptions(options));
 
