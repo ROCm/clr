@@ -561,7 +561,7 @@ bool Resource::CreateImage(CreateParams* params)
     desc_.pitch_ = rowPitch;
     // Make sure the row pitch is aligned to pixels
     imgCreateInfo.rowPitch =
-      elementSize() * amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
+        amd::alignUp(elementSize() * rowPitch, dev().info().imagePitchAlignment_);
     imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
     imgCreateInfo.tiling = tiling;
 
@@ -1983,20 +1983,27 @@ GpuMemoryReference* MemorySubAllocator::Allocate(
 }
 
 // ================================================================================================
-bool MemorySubAllocator::Free(GpuMemoryReference* ref, Pal::gpusize offset)
+bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset)
 {
-  // Find if current memory reference is a chunk allocation
-  auto it = mem_heap_.find(ref);
-  if (it == mem_heap_.end()) {
-    return false;
+  bool releaseMem =  false;
+  {
+    amd::ScopedLock l(monitor);
+    // Find if current memory reference is a chunk allocation
+    auto it = mem_heap_.find(ref);
+    if (it == mem_heap_.end()) {
+      return false;
+    }
+    // Free suballocation at the specified offset
+    it->second->Free(offset);
+    // If this suballocator empty, then release memory chunk
+    if (it->second->IsEmpty()) {
+      delete it->second;
+      mem_heap_.erase(it);
+      releaseMem = true;
+    }
   }
-  // Free suballocation at the specified offset
-  it->second->Free(offset);
-  // If this suballocator empty, then release memory chunk
-  if (it->second->IsEmpty()) {
-    delete it->second;
-    it->first->release();
-    mem_heap_.erase(it);
+  if (releaseMem) {
+    ref->release();
   }
   return true;
 }
@@ -2013,9 +2020,8 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
   size_t size = ref->iMem()->Desc().size;
 
   if (desc->type_ == Resource::Local) {
-      amd::ScopedLock l(&lockCacheOps_);
     // Check if runtime can free suballocation in local memory
-    if (memSubAllocLocal_.Free(ref, offset)) {
+    if (memSubAllocLocal_.Free(&lockCacheOps_, ref, offset)) {
       return true;
     }
   }
@@ -2024,16 +2030,17 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
   if (((desc->type_ == Resource::Local) || (desc->type_ == Resource::Persistent) ||
        (desc->type_ == Resource::Remote) || (desc->type_ == Resource::RemoteUSWC)) &&
       (size < cacheSizeLimit_) && !desc->SVMRes_) {
-    amd::ScopedLock l(&lockCacheOps_);
     // Validate the cache size limit. Loop until we have enough space
     while ((cacheSize_ + size) > cacheSizeLimit_) {
       removeLast();
     }
+
     Resource::Descriptor* descCached = new Resource::Descriptor;
     if (descCached != nullptr) {
       // Copy the original desc to the cached version
       memcpy(descCached, desc, sizeof(Resource::Descriptor));
 
+      amd::ScopedLock l(&lockCacheOps_);
       // Add the current resource to the cache
       resCache_.push_front(std::make_pair(descCached, ref));
       ref->gpu_ = nullptr;
@@ -2085,37 +2092,32 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
 }
 
 // ================================================================================================
-bool ResourceCache::free(size_t minCacheEntries) {
-  amd::ScopedLock l(&lockCacheOps_);
-  bool result = false;
-
+void ResourceCache::free(size_t minCacheEntries) {
   if (minCacheEntries < resCache_.size()) {
-    if (static_cast<int>(cacheSize_) > 0) {
-      result = true;
-    }
     // Clear the cache
     while (static_cast<int>(cacheSize_) > 0) {
       removeLast();
     }
     CondLog((cacheSize_ != 0), "Incorrect size for cache release!");
   }
-  return result;
 }
 
 // ================================================================================================
-void ResourceCache::removeLast() {
+void ResourceCache::removeLast()
+{
   std::pair<Resource::Descriptor*, GpuMemoryReference*> entry;
-  entry = resCache_.back();
-  resCache_.pop_back();
-
-  size_t size = entry.second->iMem()->Desc().size;
-
-  // Delete Descriptor
-  delete entry.first;
+  {
+    // Protect access to the global data
+    amd::ScopedLock l(&lockCacheOps_);
+    entry = resCache_.back();
+    resCache_.pop_back();
+    // Delete Descriptor
+    delete entry.first;
+    cacheSize_ -= entry.second->iMem()->Desc().size;
+  }
 
   // Destroy PAL resource
   entry.second->release();
-  cacheSize_ -= size;
 }
 
 }  // namespace pal
