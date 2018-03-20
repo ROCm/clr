@@ -258,7 +258,8 @@ class Resource : public amd::HeapObject {
   uint64_t vmAddress() const { return iMem()->Desc().gpuVirtAddr + offset_; }
 
   //! Returns global memory offset
-  uint64_t vmSize() const { return desc_.width_ * elementSize(); }
+  uint64_t vmSize() const
+    { return desc_.width_ * desc_.height_ * desc_.depth_ * elementSize(); }
 
   //! Returns global memory offset
   bool mipMapped() const { return (desc().mipLevels_ > 1) ? true : false; }
@@ -484,7 +485,7 @@ public:
 
   GpuMemoryReference*  Allocate(Pal::gpusize size,
     Pal::gpusize alignment, Pal::gpusize* offset);
-  bool Free(GpuMemoryReference* ref, Pal::gpusize offset);
+  bool Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset);
 
 private:
   Device* device_;
@@ -515,7 +516,7 @@ class ResourceCache : public amd::HeapObject {
       Pal::gpusize size, Pal::gpusize alignment, Pal::gpusize* offset);
 
   //! Destroys cache
-  bool free(size_t minCacheEntries = 0);
+  void free(size_t minCacheEntries = 0);
 
  private:
   //! Disable copy constructor
