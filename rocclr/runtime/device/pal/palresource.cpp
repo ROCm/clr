@@ -188,7 +188,6 @@ Resource::Resource(const Device& gpuDev, size_t size)
       mapCount_(0),
       address_(nullptr),
       offset_(0),
-      curRename_(0),
       memRef_(nullptr),
       subOffset_(0),
       viewOwner_(nullptr),
@@ -228,7 +227,6 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
       mapCount_(0),
       address_(nullptr),
       offset_(0),
-      curRename_(0),
       memRef_(nullptr),
       subOffset_(0),
       viewOwner_(nullptr),
@@ -747,7 +745,7 @@ bool Resource::CreateInterop(CreateParams* params)
       imgCreateInfo.depthPitch = desc().height_ * imgCreateInfo.rowPitch;
 
       switch (misc) {
-      case 1:  // NV12 format
+      case 1:  // NV12 or P010 formats
         switch (layer) {
         case -1:
         case 0:
@@ -1191,34 +1189,22 @@ void Resource::free()
     memRef_->gpu_ = nullptr;
   }
 
-  if (renames_.size() == 0) {
-    // Destroy GSL resource
-    if (iMem() != 0) {
-      if (mapCount_ != 0) {
-        if ((memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
-          //! @note: This is a workaround for bad applications that
-          //! don't unmap memory
-          unmap(nullptr);
-        } else {
-          // Delay CPU address unmap until memRef_ destruction
-          assert(memRef_->cpuAddress_ == nullptr && "Memref shouldn't have a valid CPU address");
-          memRef_->cpuAddress_ = address_;
-        }
-      }
-
-      // Add resource to the cache
-      if (!dev().resourceCache().addGpuMemory(&desc_, memRef_, subOffset_)) {
-        palFree();
+  // Destroy PAL resource
+  if (iMem() != 0) {
+    if (mapCount_ != 0) {
+      if ((memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
+        //! @note: This is a workaround for bad applications that don't unmap memory
+        unmap(nullptr);
+      } else {
+        // Delay CPU address unmap until memRef_ destruction
+        assert(memRef_->cpuAddress_ == nullptr && "Memref shouldn't have a valid CPU address");
+        memRef_->cpuAddress_ = address_;
       }
     }
-  } else {
-    renames_[curRename_]->cpuAddress_ = 0;
-    for (size_t i = 0; i < renames_.size(); ++i) {
-      memRef_ = renames_[i];
-      // Destroy PAL resource
-      if (iMem() != 0) {
-        palFree();
-      }
+
+    // Add resource to the cache
+    if (!dev().resourceCache().addGpuMemory(&desc_, memRef_, subOffset_)) {
+    palFree();
     }
   }
 
@@ -1280,9 +1266,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   GpuEvent event;
   EngineType activeEngineID = gpu.engineID_;
   static const bool waitOnBusyEngine = true;
-
   assert(!(desc().cardMemory_ && dstResource.desc().cardMemory_) && "Unsupported configuraiton!");
-
   uint64_t gpuMemoryOffset = 0;
   uint64_t gpuMemoryRowPitch = 0;
   uint64_t imageOffsetx = 0;
@@ -1714,16 +1698,6 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
   if (flags & WriteOnly) {
   }
 
-  // Check if use map discard
-  if (flags & Discard) {
-    if (gpu != nullptr) {
-      // If we use a new renamed allocation, then skip the wait
-      if (rename(*gpu)) {
-        flags |= NoWait;
-      }
-    }
-  }
-
   // Check if we have to wait
   if (!(flags & NoWait)) {
     if (gpu != nullptr) {
@@ -1801,116 +1775,6 @@ void Resource::unmap(VirtualGPU* gpu) {
 // ================================================================================================
 void Resource::unmapLayers(VirtualGPU* gpu) {
   Unimplemented();
-}
-
-// ================================================================================================
-void Resource::setActiveRename(VirtualGPU& gpu, GpuMemoryReference* rename) {
-  // Copy the unique GSL data
-  memRef_ = rename;
-  address_ = rename->cpuAddress_;
-}
-
-// ================================================================================================
-bool Resource::getActiveRename(VirtualGPU& gpu, GpuMemoryReference** rename) {
-  // Copy the old data to the rename descriptor
-  *rename = memRef_;
-  return true;
-}
-
-// ================================================================================================
-bool Resource::rename(VirtualGPU& gpu, bool force) {
-  GpuEvent* gpuEvent = getGpuEvent(gpu);
-  if (!gpuEvent->isValid() && !force) {
-    return true;
-  }
-
-  bool useNext = false;
-  uint resSize = desc().width_ * ((desc().height_) ? desc().height_ : 1) * elementSize_;
-
-  // Rename will work with real GSL resources
-  if (((memoryType() != Local) && (memoryType() != Persistent) && (memoryType() != Remote) &&
-       (memoryType() != RemoteUSWC)) ||
-      (dev().settings().maxRenames_ == 0)) {
-    return false;
-  }
-
-  // If the resource for renaming is too big, then lets check the current status first
-  // at the cost of an extra flush
-  if (resSize >= (dev().settings().maxRenameSize_ / dev().settings().maxRenames_)) {
-    if (gpu.isDone(gpuEvent)) {
-      return true;
-    }
-  }
-
-  // Save the first
-  if (renames_.size() == 0) {
-    GpuMemoryReference* rename;
-    if (mapCount_ > 0) {
-      memRef_->cpuAddress_ = address_;
-    }
-    if (!getActiveRename(gpu, &rename)) {
-      return false;
-    }
-
-    curRename_ = renames_.size();
-    renames_.push_back(rename);
-  }
-
-  // Can we use a new rename?
-  if ((renames_.size() <= dev().settings().maxRenames_) &&
-      ((renames_.size() * resSize) <= dev().settings().maxRenameSize_)) {
-    GpuMemoryReference* rename;
-
-    // Create a new GSL allocation
-    if (create(memoryType())) {
-      if (mapCount_ > 0) {
-        assert(!desc().cardMemory_ && "Unsupported memory type!");
-        memRef_->cpuAddress_ = gpuMemoryMap(&desc_.pitch_, 0, iMem());
-        if (memRef_->cpuAddress_ == nullptr) {
-          LogError("gslMap fails on rename!");
-        }
-        address_ = memRef_->cpuAddress_;
-      }
-      if (getActiveRename(gpu, &rename)) {
-        curRename_ = renames_.size();
-        renames_.push_back(rename);
-      } else {
-        memRef_->release();
-        useNext = true;
-      }
-    } else {
-      useNext = true;
-    }
-  } else {
-    useNext = true;
-  }
-
-  if (useNext) {
-    // Get the last submitted
-    curRename_++;
-    if (curRename_ >= renames_.size()) {
-      curRename_ = 0;
-    }
-    setActiveRename(gpu, renames_[curRename_]);
-    return false;
-  }
-
-  return true;
-}
-
-// ================================================================================================
-void Resource::warmUpRenames(VirtualGPU& gpu) {
-  // Make sure OCL touches every command buffer in the queue to avoid delays on the first submit
-  uint flush = dev().settings().maxRenames_ / VirtualGPU::Queue::MaxCmdBuffers;
-  flush = (flush == 0) ? 1 : flush;
-  for (uint i = 1; i <= dev().settings().maxRenames_; ++i) {
-    uint dummy = 0;
-    const bool Wait = (i % flush == 0) ? true : false;
-    // Write 0 for the buffer paging by VidMM
-    writeRawData(gpu, 0, sizeof(dummy), &dummy, Wait);
-    const bool Force = true;
-    rename(gpu, Force);
-  }
 }
 
 // ================================================================================================

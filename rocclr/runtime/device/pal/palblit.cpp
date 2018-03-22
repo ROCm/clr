@@ -278,8 +278,7 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     amd::Coord3D copySize(tmpSize, 0, 0);
 
     // Copy data into the temporary buffer, using CPU
-    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset, src, copySize,
-                           Resource::Discard)) {
+    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset, src, copySize)) {
       return false;
     }
 
@@ -412,7 +411,7 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
 
           // Copy data into the temporary buffer, using CPU
           if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + hostOffset, src,
-                                 copySize, Resource::Discard)) {
+                                 copySize)) {
             LogError("DmaBlitManager::writeBufferRect failed!");
             return false;
           }
