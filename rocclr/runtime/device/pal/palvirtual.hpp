@@ -207,7 +207,7 @@ class VirtualGPU : public device::VirtualDevice {
     State() : value_(0) {}
   };
 
-  typedef std::vector<ConstBuffer*> constbufs_t;
+  typedef std::vector<ManagedBuffer*> constbufs_t;
 
   class MemoryDependency : public amd::EmbeddedObject {
    public:
@@ -341,10 +341,10 @@ class VirtualGPU : public device::VirtualDevice {
                      );
 
   //! Returns a resource associated with the constant buffer
-  const ConstBuffer* cb(uint idx) const { return constBufs_[idx]; }
+  const ManagedBuffer* cb(uint idx) const { return constBufs_[idx]; }
 
   //! Adds CAL objects into the constant buffer vector
-  void addConstBuffer(ConstBuffer* cb) { constBufs_.push_back(cb); }
+  void addConstBuffer(ManagedBuffer* cb) { constBufs_.push_back(cb); }
 
   constbufs_t constBufs_;  //!< constant buffers
 

@@ -2803,18 +2803,15 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
 }
 
 bool VirtualGPU::allocConstantBuffers() {
-  // Allocate/reallocate constant buffers
-  size_t minCbSize;
-  // GCN doesn't really have a limit
-  minCbSize = 256 * Ki;
+  // Allocate constant buffers, GCN doesn't really have a limit
+  static constexpr uint32_t MinCbSize = 256 * Ki;
   uint i;
 
   // Create/reallocate constant buffer resources
   for (i = 0; i < MaxConstBuffersArguments; ++i) {
-    ConstBuffer* constBuf = new ConstBuffer(
-        *this, ((minCbSize + ConstBuffer::VectorSize - 1) / ConstBuffer::VectorSize));
+    ManagedBuffer* constBuf = new ManagedBuffer(*this, MinCbSize);
 
-    if ((constBuf != nullptr) && constBuf->create()) {
+    if ((constBuf != nullptr) && constBuf->create(Resource::RemoteUSWC, true)) {
       addConstBuffer(constBuf);
     } else {
       // We failed to create a constant buffer

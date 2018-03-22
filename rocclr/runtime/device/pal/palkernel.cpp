@@ -908,10 +908,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(aqlStruct);
     memset(wrap, 0, sizeof(AmdAqlWrap));
     wrap->state = AQL_WRAP_BUSY;
-    ConstBuffer* cb = gpu.constBufs_[1];
+    ManagedBuffer* cb = gpu.constBufs_[1];
     cb->uploadDataToHw(sizeof(AmdAqlWrap));
     *vmParentWrap = cb->vmAddress() + cb->wrtOffset();
-    gpu.addVmMemory(cb);
+    gpu.addVmMemory(cb->activeMemory());
   }
 
   const amd::KernelSignature& signature = kernel.signature();
@@ -1045,12 +1045,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
       case HSAIL_ARGTYPE_REFERENCE: {
         // Copy the current structure into CB1
         memcpy(aqlStruct, paramaddr, arg->size_);
-        ConstBuffer* cb = gpu.constBufs_[1];
+        ManagedBuffer* cb = gpu.constBufs_[1];
         cb->uploadDataToHw(arg->size_);
         // Then use a pointer in aqlArgBuffer to CB1
         size_t gpuPtr = static_cast<size_t>(cb->vmAddress() + cb->wrtOffset());
         WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t));
-        gpu.addVmMemory(cb);
+        gpu.addVmMemory(cb->activeMemory());
         break;
       }
       case HSAIL_ARGTYPE_VALUE:
@@ -1080,12 +1080,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         if (image->memoryType() == Resource::ImageView) {
           // Copy the current structre into CB1
           memcpy(aqlStruct, image->hwState(), HsaImageObjectSize);
-          ConstBuffer* cb = gpu.constBufs_[1];
+          ManagedBuffer* cb = gpu.constBufs_[1];
           cb->uploadDataToHw(HsaImageObjectSize);
           // Then use a pointer in aqlArgBuffer to CB1
           uint64_t srd = cb->vmAddress() + cb->wrtOffset();
           WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
-          gpu.addVmMemory(cb);
+          gpu.addVmMemory(cb->activeMemory());
         } else {
           uint64_t srd = image->hwSrd();
           WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
@@ -1175,7 +1175,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->group_segment_size = ldsAddress - ldsSize();
   hsaDisp->kernel_object = gpuAqlCode();
 
-  ConstBuffer* cb = gpu.constBufs_[0];
+  ManagedBuffer* cb = gpu.constBufs_[0];
   cb->uploadDataToHw(argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t));
   uint64_t argList = cb->vmAddress() + cb->wrtOffset();
 
@@ -1183,7 +1183,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->reserved2 = 0;
   hsaDisp->completion_signal.handle = 0;
 
-  gpu.addVmMemory(cb);
+  gpu.addVmMemory(cb->activeMemory());
   gpu.addVmMemory(&prog().codeSegGpu());
   for (pal::Memory* mem : prog().globalStores()) {
     gpu.addVmMemory(mem);
