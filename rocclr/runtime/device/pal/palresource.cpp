@@ -1692,7 +1692,6 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
   }
 
   if (flags & ReadOnly) {
-    assert(!(flags & Discard) && "We can't use lock discard with read only!");
   }
 
   if (flags & WriteOnly) {
