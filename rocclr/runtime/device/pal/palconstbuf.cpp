@@ -74,8 +74,10 @@ bool ManagedBuffer::uploadDataToHw(uint32_t size) {
 
   // Check if CB has enough space for copy
   if ((wrtOffset_ + count) > size_) {
-    activeBuffer_ = (++activeBuffer_) % MaxNumberOfBuffers;
-    //! Make sure buffer isn't busy
+    // Get the next buffer in the list
+    ++activeBuffer_;
+    activeBuffer_ %= MaxNumberOfBuffers;
+    // Make sure the buffer isn't busy
     buffers_[activeBuffer_]->wait(gpu_);
     wrtAddress_ = buffers_[activeBuffer_]->data();
     wrtOffset_ = 0;
