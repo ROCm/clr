@@ -47,9 +47,6 @@ Settings::Settings() {
   // By Default persistent writes will be disabled.
   stagingWritePersistent_ = GPU_STAGING_WRITE_PERSISTENT;
 
-  maxRenames_ = 4;
-  maxRenameSize_ = 4 * Mi;
-
   imageSupport_ = false;
   hwLDSSize_ = 0;
 

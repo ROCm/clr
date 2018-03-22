@@ -73,8 +73,6 @@ class Settings : public device::Settings {
 
   uint oclVersion_;            //!< Reported OpenCL version support
   uint debugFlags_;            //!< Debug GPU flags
-  uint maxRenames_;            //!< Maximum number of possible renames
-  uint maxRenameSize_;         //!< Maximum size for all renames
   uint hwLDSSize_;             //!< HW local data store size
   uint maxWorkGroupSize_;      //!< Requested workgroup size for this device
   uint preferredWorkGroupSize_;//!< Requested preferred workgroup size for this device

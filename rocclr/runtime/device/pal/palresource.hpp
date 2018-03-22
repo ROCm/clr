@@ -146,7 +146,6 @@ class Resource : public amd::HeapObject {
 
   //! Resource map flags
   enum MapFlags {
-    Discard = 0x00000001,      //!< discard lock
     NoOverwrite = 0x00000002,  //!< lock with no overwrite
     ReadOnly = 0x00000004,     //!< lock for read only operation
     WriteOnly = 0x00000008,    //!< lock for write only operation
@@ -313,17 +312,13 @@ class Resource : public amd::HeapObject {
                 size_t slicePitch = 0        //!< Raw data slice pitch
                 );
 
-  //! Warms up the rename list for this resource
-  void warmUpRenames(VirtualGPU& gpu);
-
   //! Gets the resource element size
   uint elementSize() const { return elementSize_; }
 
   //! Get the mapped address of this resource
   address data() const { return reinterpret_cast<address>(address_); }
 
-  //! Frees all allocated PAL memories and resources,
-  //! associated with this objects. And also destroys all rename structures
+  //! Frees all allocated PAL memories and resources, associated with this objects.
   //! Note: doesn't destroy the object itself
   void free();
 
@@ -401,23 +396,6 @@ class Resource : public amd::HeapObject {
   //! Disable operator=
   Resource& operator=(const Resource&);
 
-  typedef std::vector<GpuMemoryReference*> RenameList;
-
-  //! Rename current resource
-  bool rename(VirtualGPU& gpu,    //!< Virtual GPU device object
-              bool force = false  //!< Force renaming
-              );
-
-  //! Sets the rename as active
-  void setActiveRename(VirtualGPU& gpu,            //!< Virtual GPU device object
-                       GpuMemoryReference* rename  //!< new active rename
-                       );
-
-  //! Gets the active rename
-  bool getActiveRename(VirtualGPU& gpu,             //!< Virtual GPU device object
-                       GpuMemoryReference** rename  //!< Saved active rename
-                       );
-
   /*! \brief Locks the resource with layers and returns a physical pointer
    *
    *  \return Pointer to the physical memory
@@ -452,8 +430,6 @@ class Resource : public amd::HeapObject {
   amd::Atomic<int> mapCount_;   //!< Total number of maps
   void* address_;               //!< Physical address of this resource
   size_t offset_;               //!< Resource offset
-  uint32_t curRename_;          //!< Current active rename in the list
-  RenameList renames_;          //!< Rename resource list
   GpuMemoryReference* memRef_;  //!< PAL resource reference
   Pal::gpusize  subOffset_;     //!< GPU memory offset in the oririnal resource
   const Resource* viewOwner_;   //!< GPU resource, which owns this view
