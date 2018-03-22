@@ -8,55 +8,61 @@
 //! \namespace pal PAL Resource Implementation
 namespace pal {
 
-//! Cconstant buffer
-class ConstBuffer : public Memory {
+//! Managed buffer (staging or constant)
+class ManagedBuffer : public amd::HeapObject {
  public:
-  //! Vector size of the constant buffer
-  static const size_t VectorSize = 16;
-
   //! Constructor for the ConstBuffer class
-  ConstBuffer(VirtualGPU& gpu,  //!< Virtual GPU device object
-              size_t size       //!< size of the constant buffer in vectors
-              );
+  ManagedBuffer(VirtualGPU& gpu,    //!< Virtual GPU device object
+                uint32_t    size    //!< size of the managed buffers in bytes
+                );
 
   //! Destructor for the ConstBuffer class
-  ~ConstBuffer();
+  ~ManagedBuffer();
 
   //! Creates the real HW constant buffer
-  bool create();
+  bool create(Resource::MemoryType type, bool constBuf = false);
 
   /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
    *
    *  \return True if the data upload was succesful
    */
-  bool uploadDataToHw(size_t size  //!< real data size for upload
+  bool uploadDataToHw(uint32_t size  //!< real data size for upload
                       );
 
   //! Returns a pointer to the system memory copy for CB
   address sysMemCopy() const { return sysMemCopy_; }
 
   //! Returns CB size
-  size_t size() const { return size_; }
+  uint32_t size() const { return size_; }
 
   //! Returns current write offset for the constant buffer
-  size_t wrtOffset() const { return wrtOffset_; }
+  uint32_t wrtOffset() const { return wrtOffset_; }
 
   //! Returns last write size for the constant buffer
-  size_t lastWrtSize() const { return lastWrtSize_; }
+  uint32_t lastWrtSize() const { return lastWrtSize_; }
+
+  Memory* activeMemory() const { return buffers_[activeBuffer_]; }
+
+  uint64_t vmAddress() const { return buffers_[activeBuffer_]->vmAddress(); }
 
  private:
+  //! The maximum number of the managed buffers
+  static constexpr uint32_t MaxNumberOfBuffers = 3;
+
   //! Disable copy constructor
-  ConstBuffer(const ConstBuffer&);
+  ManagedBuffer(const ManagedBuffer&) = delete;
 
   //! Disable operator=
-  ConstBuffer& operator=(const ConstBuffer&);
+  ManagedBuffer& operator=(const ManagedBuffer&) = delete;
 
-  VirtualGPU& gpu_;     //!< Virtual GPU object
-  address sysMemCopy_;  //!< System memory copy
-  size_t size_;         //!< Constant buffer size
-  size_t wrtOffset_;    //!< Current write offset
-  size_t lastWrtSize_;  //!< Last write size
-  void* wrtAddress_;    //!< Write address in CB
+  VirtualGPU& gpu_;                 //!< Virtual GPU object
+  std::vector<Memory*>  buffers_;   //!< Buffers for management
+  uint32_t  activeBuffer_;          //!< Current active buffer
+  address   sysMemCopy_;            //!< System memory copy
+  uint32_t  size_;                  //!< Constant buffer size
+  uint32_t  wrtOffset_;             //!< Current write offset
+  uint32_t  lastWrtSize_;           //!< Last write size
+  void*     wrtAddress_;            //!< Write address in CB
 };
 
 /*@}*/} // namespace pal
