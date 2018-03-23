@@ -207,7 +207,7 @@ class VirtualGPU : public device::VirtualDevice {
     State() : value_(0) {}
   };
 
-  typedef std::vector<ManagedBuffer*> constbufs_t;
+  typedef std::vector<ConstantBuffer*> constbufs_t;
 
   class MemoryDependency : public amd::EmbeddedObject {
    public:
@@ -341,12 +341,10 @@ class VirtualGPU : public device::VirtualDevice {
                      );
 
   //! Returns a resource associated with the constant buffer
-  const ManagedBuffer* cb(uint idx) const { return constBufs_[idx]; }
+  const ConstantBuffer* cb(uint idx) const { return constBufs_[idx]; }
 
   //! Adds CAL objects into the constant buffer vector
-  void addConstBuffer(ManagedBuffer* cb) { constBufs_.push_back(cb); }
-
-  constbufs_t constBufs_;  //!< constant buffers
+  void addConstBuffer(ConstantBuffer* cb) { constBufs_.push_back(cb); }
 
   //! Start the command profiling
   void profilingBegin(amd::Command& command,     //!< Command queue object
@@ -596,6 +594,9 @@ class VirtualGPU : public device::VirtualDevice {
 
   std::vector<Memory*> xferWriteBuffers_;  //!< Stage write buffers
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
+
+  ManagedBuffer* writeBuffer_;  //!< Managed write buffer
+  constbufs_t constBufs_;       //!< constant buffers
 
   typedef std::queue<CommandBatch*> CommandBatchQueue;
   CommandBatchQueue cbQueue_;      //!< Queue of command batches
