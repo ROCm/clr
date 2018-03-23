@@ -33,9 +33,10 @@ ManagedBuffer::~ManagedBuffer() {
 // ================================================================================================
 bool ManagedBuffer::create(Resource::MemoryType type, bool constbuf) {
   if (constbuf) {
-    // Create sysmem copy for the constant buffer
+    // Create sysmem copy for the constant buffer.
+    // Allocate extra memory to account the internal arguments
     sysMemCopy_ = reinterpret_cast<address>(amd::AlignedMemory::allocate(
-        gpu_.dev().info().maxParameterSize_, 256));
+        2 * gpu_.dev().info().maxParameterSize_, 256));
     if (sysMemCopy_ == nullptr) {
       LogPrintfError("We couldn't allocate sysmem copy for constant buffer, size(%d)!", size_);
       return false;
