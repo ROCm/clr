@@ -702,6 +702,7 @@ VirtualGPU::VirtualGPU(Device& device)
       printfDbgHSA_(nullptr),
       tsCache_(nullptr),
       dmaFlushMgmt_(device),
+      writeBuffer_(nullptr),
       hwRing_(0),
       readjustTimeGPU_(0),
       lastTS_(nullptr),
@@ -810,6 +811,13 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     }
   } else {
     Unimplemented();
+  }
+
+  writeBuffer_ = new ManagedBuffer(*this, dev().settings().stagedXferSize_);
+  if ((writeBuffer_ == nullptr) || !writeBuffer_->create(Resource::RemoteUSWC)) {
+    // We failed to create a constant buffer
+    delete writeBuffer_;
+    return false;
   }
 
   // Diable double copy optimization,
@@ -933,6 +941,8 @@ VirtualGPU::~VirtualGPU() {
   for (uint i = 0; i < constBufs_.size(); ++i) {
     delete constBufs_[i];
   }
+
+  delete writeBuffer_;
 
   //! @todo Temporarily keep the buffer mapped for debug purpose
   if (nullptr != schedParams_) {
@@ -2803,15 +2813,16 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
 }
 
 bool VirtualGPU::allocConstantBuffers() {
-  // Allocate constant buffers, GCN doesn't really have a limit
-  static constexpr uint32_t MinCbSize = 256 * Ki;
+  // Allocate constant buffers. 
+  // Use double size, reported to the app to account for internal arguments
+  const uint32_t MinCbSize = 2 * dev().info().maxParameterSize_;
   uint i;
 
   // Create/reallocate constant buffer resources
   for (i = 0; i < MaxConstBuffersArguments; ++i) {
-    ManagedBuffer* constBuf = new ManagedBuffer(*this, MinCbSize);
+    ConstantBuffer* constBuf = new ConstantBuffer(*writeBuffer_, MinCbSize);
 
-    if ((constBuf != nullptr) && constBuf->create(Resource::RemoteUSWC, true)) {
+    if ((constBuf != nullptr) && constBuf->Create()) {
       addConstBuffer(constBuf);
     } else {
       // We failed to create a constant buffer

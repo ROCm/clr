@@ -20,27 +20,22 @@ class ManagedBuffer : public amd::HeapObject {
   ~ManagedBuffer();
 
   //! Creates the real HW constant buffer
-  bool create(Resource::MemoryType type, bool constBuf = false);
+  bool create(Resource::MemoryType type);
 
   /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
    *
    *  \return True if the data upload was succesful
    */
-  bool uploadDataToHw(uint32_t size  //!< real data size for upload
-                      );
-
-  //! Returns a pointer to the system memory copy for CB
-  address sysMemCopy() const { return sysMemCopy_; }
+  address reserve(uint32_t size,  //!< real data size for upload
+                  uint64_t* gpu_address);
 
   //! Returns CB size
   uint32_t size() const { return size_; }
 
-  //! Returns current write offset for the constant buffer
+  //! Returns current write offset for the managed buffer
   uint32_t wrtOffset() const { return wrtOffset_; }
 
-  //! Returns last write size for the constant buffer
-  uint32_t lastWrtSize() const { return lastWrtSize_; }
-
+  //! Returns active GPU buffer
   Memory* activeMemory() const { return buffers_[activeBuffer_]; }
 
   uint64_t vmAddress() const { return buffers_[activeBuffer_]->vmAddress(); }
@@ -58,11 +53,48 @@ class ManagedBuffer : public amd::HeapObject {
   VirtualGPU& gpu_;                 //!< Virtual GPU object
   std::vector<Memory*>  buffers_;   //!< Buffers for management
   uint32_t  activeBuffer_;          //!< Current active buffer
-  address   sysMemCopy_;            //!< System memory copy
   uint32_t  size_;                  //!< Constant buffer size
   uint32_t  wrtOffset_;             //!< Current write offset
-  uint32_t  lastWrtSize_;           //!< Last write size
-  void*     wrtAddress_;            //!< Write address in CB
+  address   wrtAddress_;            //!< Write address in CB
+};
+
+//! Constant buffer
+class ConstantBuffer : public amd::HeapObject {
+public:
+  //! Constructor for the ConstBuffer class
+  ConstantBuffer(ManagedBuffer& mbuf,  //!< Managed buffer
+                 uint32_t       size
+                 );
+
+  //! Destructor for the ConstBuffer class
+  ~ConstantBuffer();
+
+  //! Creates the real HW constant buffer
+  bool Create();
+
+  /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
+  *
+  *  \return GPU address for the uploaded data
+  */
+  uint64_t UploadDataToHw(uint32_t size  //!< real data size for upload
+                          ) const;
+
+  //! Returns a pointer to the system memory copy for CB
+  address SysMemCopy(uint32_t size = 0) const { return sys_mem_copy_; }
+
+  //! Returns active GPU buffer
+  Memory* ActiveMemory() const { return mbuf_.activeMemory(); }
+
+private:
+  //! Disable copy constructor
+  ConstantBuffer(const ConstantBuffer&) = delete;
+
+  //! Disable operator=
+  ConstantBuffer& operator=(const ConstantBuffer&) = delete;
+
+  ManagedBuffer&  mbuf_;    //!< Managed buffer on GPU
+  address   sys_mem_copy_;  //!< System memory copy
+  uint32_t  size_;          //!< Constant buffer size
 };
 
 /*@}*/} // namespace pal

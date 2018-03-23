@@ -16,7 +16,6 @@ ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
     , activeBuffer_(0)
     , size_(size)
     , wrtOffset_(0)
-    , lastWrtSize_(0)
     , wrtAddress_(nullptr) {}
 
 // ================================================================================================
@@ -27,23 +26,10 @@ ManagedBuffer::~ManagedBuffer() {
     }
     delete it;
   }
-  amd::AlignedMemory::deallocate(sysMemCopy_);
 }
 
 // ================================================================================================
-bool ManagedBuffer::create(Resource::MemoryType type, bool constbuf) {
-  if (constbuf) {
-    // Create sysmem copy for the constant buffer.
-    // Allocate extra memory to account the internal arguments
-    sysMemCopy_ = reinterpret_cast<address>(amd::AlignedMemory::allocate(
-        2 * gpu_.dev().info().maxParameterSize_, 256));
-    if (sysMemCopy_ == nullptr) {
-      LogPrintfError("We couldn't allocate sysmem copy for constant buffer, size(%d)!", size_);
-      return false;
-    }
-    memset(sysMemCopy_, 0, gpu_.dev().info().maxParameterSize_);
-  }
-
+bool ManagedBuffer::create(Resource::MemoryType type) {
   for (uint i = 0; i < buffers_.size(); ++i) {
     buffers_[i] = new Memory(const_cast<pal::Device&>(gpu_.dev()), size_);
     if (nullptr == buffers_[i] || !buffers_[i]->create(type)) {
@@ -66,14 +52,13 @@ bool ManagedBuffer::create(Resource::MemoryType type, bool constbuf) {
 }
 
 // ================================================================================================
-bool ManagedBuffer::uploadDataToHw(uint32_t size) {
-  static constexpr uint32_t HwCbAlignment = 256;
+address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
+  static constexpr uint32_t MemAlignment = 256;
 
-  // Align copy size on the vector's boundary
-  uint32_t count = amd::alignUp(size, 16);
-  wrtOffset_ += lastWrtSize_;
+  // Align reserve size on the vector's boundary
+  uint32_t count = amd::alignUp(size, MemAlignment);
 
-  // Check if CB has enough space for copy
+  // Check if buffer has enough space for reservation
   if ((wrtOffset_ + count) > size_) {
     // Get the next buffer in the list
     ++activeBuffer_;
@@ -82,15 +67,49 @@ bool ManagedBuffer::uploadDataToHw(uint32_t size) {
     buffers_[activeBuffer_]->wait(gpu_);
     wrtAddress_ = buffers_[activeBuffer_]->data();
     wrtOffset_ = 0;
-    lastWrtSize_ = 0;
   }
 
-  // Update memory with new CB data
-  memcpy((reinterpret_cast<char*>(wrtAddress_) + wrtOffset_), sysMemCopy_, count);
+  *gpu_address = buffers_[activeBuffer_]->vmAddress() + wrtOffset_;
+  address cpu_address = wrtAddress_ + wrtOffset_;
+  
+  // Adjust the offset by the reserved size
+  wrtOffset_ += count;
 
-  // Adjust the size by the HW CB buffer alignment
-  lastWrtSize_ = amd::alignUp(size, HwCbAlignment);
+  return cpu_address;
+}
+
+// ================================================================================================
+ConstantBuffer::ConstantBuffer(ManagedBuffer& mbuf, uint32_t size)
+    : mbuf_(mbuf)
+    , sys_mem_copy_(nullptr)
+    , size_(size)
+{}
+
+// ================================================================================================
+ConstantBuffer::~ConstantBuffer() {
+  amd::AlignedMemory::deallocate(sys_mem_copy_);
+}
+
+// ================================================================================================
+bool ConstantBuffer::Create() {
+  // Create sysmem copy for the constant buffer.
+  sys_mem_copy_ = reinterpret_cast<address>(amd::AlignedMemory::allocate(size_, 256));
+  if (sys_mem_copy_ == nullptr) {
+    LogPrintfError("We couldn't allocate sysmem copy for constant buffer, size(%d)!", size_);
+    return false;
+  }
+  memset(sys_mem_copy_, 0, size_);
   return true;
+}
+
+// ================================================================================================
+uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const
+{
+  uint64_t  vm_address;
+  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  // Update memory with new CB data
+  memcpy(cpu_address, sys_mem_copy_, size);
+  return vm_address;
 }
 
 }  // namespace pal
