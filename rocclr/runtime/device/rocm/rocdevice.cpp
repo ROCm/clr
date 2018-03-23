@@ -466,28 +466,57 @@ bool Device::init() {
     isaName[isaNameLength] = '\0';
 
     std::string str(isaName);
-    std::vector<std::string> tokens;
-    size_t end, pos = 0;
-    do {
-      end = str.find_first_of(':', pos);
-      tokens.push_back(str.substr(pos, end - pos));
-      pos = end + 1;
-    } while (end != std::string::npos);
 
-    if (tokens.size() != 5 || tokens[0] != "AMD" || tokens[1] != "AMDGPU") {
-      LogError("Not an AMD:AMDGPU ISA name");
-      continue;
+    unsigned gfxipVersionNum = (unsigned)-1;
+    if (str.find("amdgcn-") == 0) {
+      // New way.
+      std::vector<std::string> tokens;
+      size_t end, pos = 0;
+      do {
+        end = str.find_first_of('-', pos);
+        tokens.push_back(str.substr(pos, end - pos));
+        pos = end + 1;
+      } while (end != std::string::npos);
+
+      if (tokens.size() != 5 && tokens.size() != 6) {
+        LogError("Not an amdgcn name");
+        continue;
+      }
+
+      if (tokens[4].find("gfx") != 0) {
+        LogError("Invalid ISA string");
+        continue;
+      }
+
+      std::string gfxipVersionStr = tokens[4].substr(tokens[4].find("gfx") + 3);
+      gfxipVersionNum = std::atoi(gfxipVersionStr.c_str());
+    } else {
+      // FIXME(kzhuravl): Old way. Remove.
+      std::vector<std::string> tokens;
+      size_t end, pos = 0;
+      do {
+        end = str.find_first_of(':', pos);
+        tokens.push_back(str.substr(pos, end - pos));
+        pos = end + 1;
+      } while (end != std::string::npos);
+
+      if (tokens.size() != 5 || tokens[0] != "AMD" || tokens[1] != "AMDGPU") {
+        LogError("Not an AMD:AMDGPU ISA name");
+        continue;
+      }
+
+      uint major = atoi(tokens[2].c_str());
+      uint minor = atoi(tokens[3].c_str());
+      uint stepping = atoi(tokens[4].c_str());
+      if (minor >= 10 && stepping >= 10) {
+        LogError("Invalid ISA string");
+        continue;
+      }
+      gfxipVersionNum = major * 100 + minor * 10 + stepping;
     }
+    assert(gfxipVersionNum != (unsigned)-1);
 
-    uint major = atoi(tokens[2].c_str());
-    uint minor = atoi(tokens[3].c_str());
-    uint stepping = atoi(tokens[4].c_str());
-    if (minor >= 10 && stepping >= 10) {
-      LogError("Invalid ISA string");
-      continue;
-    }
-
-    roc_device->deviceInfo_.gfxipVersion_ = major * 100 + minor * 10 + stepping;
+    roc_device->deviceInfo_.gfxipVersion_ = gfxipVersionNum;
 
     if (!roc_device->create()) {
       LogError("Error creating new instance of Device.");
