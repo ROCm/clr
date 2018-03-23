@@ -874,18 +874,39 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
   }
 }
 
+template <typename T>
 inline static void WriteAqlArg(
     unsigned char** dst,  //!< The write pointer to the buffer
-    const void* src,      //!< The source pointer
+    const T* src,         //!< The source pointer
     uint size,            //!< The size in bytes to copy
-    uint alignment = 0    //!< The alignment to follow while writing to the buffer
-    ) {
-  if (alignment == 0) {
-    *dst = amd::alignUp(*dst, size);
-  } else {
-    *dst = amd::alignUp(*dst, alignment);
-  }
+    uint alignment        //!< The alignment to follow while writing to the buffer
+) {
+  *dst = amd::alignUp(*dst, alignment);
   memcpy(*dst, src, size);
+  *dst += size;
+}
+
+template <>
+inline static void WriteAqlArg(
+    unsigned char** dst,  //!< The write pointer to the buffer
+    const uint32_t* src,  //!< The source pointer
+    uint size,            //!< The size in bytes to copy
+    uint alignment        //!< The alignment to follow while writing to the buffer
+) {
+  *dst = amd::alignUp(*dst, alignment);
+  *(reinterpret_cast<uint32_t*>(*dst)) = *src;
+  *dst += size;
+}
+
+template <>
+inline static void WriteAqlArg(
+    unsigned char** dst,  //!< The write pointer to the buffer
+    const uint64_t* src,  //!< The source pointer
+    uint size,            //!< The size in bytes to copy
+    uint alignment        //!< The alignment to follow while writing to the buffer
+) {
+  *dst = amd::alignUp(*dst, alignment);
+  *(reinterpret_cast<uint64_t*>(*dst)) = *src;
   *dst += size;
 }
 
@@ -989,7 +1010,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         amd::Memory* mem = nullptr;
 
         if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
-          WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr));
+          WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr), sizeof(paramaddr));
           mem = amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(paramaddr));
           if (mem != nullptr) {
             gpuMem = dev().getGpuMemory(mem);
@@ -1049,12 +1070,20 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         cb->uploadDataToHw(arg->size_);
         // Then use a pointer in aqlArgBuffer to CB1
         size_t gpuPtr = static_cast<size_t>(cb->vmAddress() + cb->wrtOffset());
-        WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t));
+        WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t), sizeof(size_t));
         gpu.addVmMemory(cb->activeMemory());
         break;
       }
       case HSAIL_ARGTYPE_VALUE:
-        WriteAqlArg(&aqlArgBuf, paramaddr, arg->size_, arg->alignment_);
+        if (arg->size_ == sizeof(uint32_t)) {
+          WriteAqlArg(&aqlArgBuf, reinterpret_cast<const uint32_t*>(paramaddr),
+            sizeof(uint32_t), arg->alignment_);
+        } else if (arg->size_ == sizeof(uint64_t)) {
+          WriteAqlArg(&aqlArgBuf, reinterpret_cast<const uint64_t*>(paramaddr),
+            sizeof(uint64_t), arg->alignment_);
+        } else {
+          WriteAqlArg(&aqlArgBuf, paramaddr, arg->size_, arg->alignment_);
+        }
         break;
       case HSAIL_ARGTYPE_IMAGE: {
         Image* image = nullptr;
@@ -1084,11 +1113,11 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           cb->uploadDataToHw(HsaImageObjectSize);
           // Then use a pointer in aqlArgBuffer to CB1
           uint64_t srd = cb->vmAddress() + cb->wrtOffset();
-          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
           gpu.addVmMemory(cb->activeMemory());
         } else {
           uint64_t srd = image->hwSrd();
-          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
           srdResource = true;
         }
 
@@ -1108,7 +1137,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         const amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(paramaddr);
         const Sampler* gpuSampler = static_cast<Sampler*>(sampler->getDeviceSampler(dev()));
         uint64_t srd = gpuSampler->hwSrd();
-        WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
+        WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
         srdResource = true;
         break;
       }
@@ -1125,7 +1154,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           }
           vmQueue = gpu.vQueue()->vmAddress();
         }
-        WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue));
+        WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue), sizeof(vmQueue));
         break;
       }
       default:
