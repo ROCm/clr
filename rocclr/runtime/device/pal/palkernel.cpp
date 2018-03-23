@@ -875,7 +875,7 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
 }
 
 template <typename T>
-inline static void WriteAqlArg(
+inline void WriteAqlArg(
     unsigned char** dst,  //!< The write pointer to the buffer
     const T* src,         //!< The source pointer
     uint size,            //!< The size in bytes to copy
@@ -887,7 +887,7 @@ inline static void WriteAqlArg(
 }
 
 template <>
-inline static void WriteAqlArg(
+inline void WriteAqlArg(
     unsigned char** dst,  //!< The write pointer to the buffer
     const uint32_t* src,  //!< The source pointer
     uint size,            //!< The size in bytes to copy
@@ -899,7 +899,7 @@ inline static void WriteAqlArg(
 }
 
 template <>
-inline static void WriteAqlArg(
+inline void WriteAqlArg(
     unsigned char** dst,  //!< The write pointer to the buffer
     const uint64_t* src,  //!< The source pointer
     uint size,            //!< The size in bytes to copy
