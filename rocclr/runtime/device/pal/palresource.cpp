@@ -428,6 +428,7 @@ bool Resource::CreateImage(CreateParams* params)
       memRef_ = viewOwner_->memRef_;
       memRef_->retain();
       desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+      offset_ += viewOwner_->offset_;
     }
     else {
       Pal::GpuMemoryCreateInfo createInfo = {};
