@@ -1425,17 +1425,46 @@ IsValidCompilationOptions(aclBinary *bin, aclLogFunction compile_callback)
   amd::option::Options* opts = reinterpret_cast<amd::option::Options*>(bin->options);
   std::string error_msg;
   if (isHSAILTarget(bin->target)) {
-    if (opts->oVariables->XLang) {
-      std::string ext = std::string(opts->oVariables->XLang);
-      if (ext == "clc++" || ext == "spir") {
-        error_msg = "Error: HSAIL doesn't support OpenCL extension " + ext + ".";
-        error_code = ACL_INVALID_OPTION;
-      }
-    }
     if (getFamilyEnum(&bin->target) == FAMILY_SI) {
       std::string device = std::string(getDeviceName(bin->target));
       error_msg = "Error: HSAIL doesn't support device " + device + ".";
       error_code = ACL_INVALID_TARGET;
+    }
+    if (opts->oVariables->Legacy) {
+      if (error_msg.empty()) {
+        error_code = ACL_INVALID_OPTION;
+      }
+      else {
+        error_msg += "\n";
+      }
+      error_msg += "Error: AMDIL wasn't forced by -legacy option due to the following conflicting HSAIL only option(s):";
+      if (opts->oVariables->Frontend) {
+        std::string frontend = std::string(opts->oVariables->Frontend);
+        if (frontend == "clang") {
+          error_msg += " -frontend=clang";
+        }
+      }
+      if (opts->oVariables->CLStd) {
+        std::string sCL = std::string(opts->oVariables->CLStd);
+        std::string major = sCL.substr(2, 1);
+        if (std::stoul(major) >= 2) {
+          error_msg += " -cl-std=" + sCL;
+        }
+      }
+      if (opts->oVariables->BinaryIsSpirv) {
+        error_msg += " -binary_is_spirv";
+      }
+    }
+    if (opts->oVariables->XLang) {
+      std::string ext = std::string(opts->oVariables->XLang);
+      if (ext == "clc++" || ext == "spir") {
+        if (error_msg.empty()) {
+          error_code = ACL_INVALID_OPTION;
+        } else {
+          error_msg += "\n";
+        }
+        error_msg += "Error: HSAIL doesn't support OpenCL extension " + ext + ".";
+      }
     }
   }
   if (ACL_SUCCESS != error_code && compile_callback) {
