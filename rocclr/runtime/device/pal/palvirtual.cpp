@@ -2542,29 +2542,40 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
   pal::Memory* pGpuMemory = dev().getGpuMemory(&vcmd.memory());
 
   GpuEvent gpuEvent;
-  eventBegin(MainEngine);
-
   uint32_t value = vcmd.markerValue();
 
-  addVmMemory(pGpuMemory);
   if (vcmd.type() == CL_COMMAND_WAIT_SIGNAL_AMD) {
+    eventBegin(MainEngine);
+    addVmMemory(pGpuMemory);
+
     iCmd()->CmdWaitBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value, 0xFFFFFFFF,
                                               Pal::CompareFunc::GreaterEqual);
+    eventEnd(MainEngine, gpuEvent);
+
   } else if (vcmd.type() == CL_COMMAND_WRITE_SIGNAL_AMD) {
+
+    EngineType activeEngineID = engineID_;
+    engineID_ = static_cast<EngineType>(pGpuMemory->getGpuEvent(*this)->engineId_);
+
     // Make sure GPU finished operation and data reached memory before the marker write
     static constexpr bool FlushL2 = true;
     addBarrier(FlushL2);
-    // \todo: Implement the right changes in PAL
-    // Workarounds: for CP overfetch issues and the lack of SDMA sync
+    // Workarounds: We had systems where an extra delay was necessary.
     {
-      // Flush CB associated with the DGMA buffer
-      isDone(pGpuMemory->getGpuEvent(*this));
-      // Make sure SDMA is done on the DGMA buffer
-      pGpuMemory->wait(*this, true);
+        // Flush CB associated with the DGMA buffer
+        isDone(pGpuMemory->getGpuEvent(*this));
     }
-    iCmd()->CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
+
+    eventBegin(engineID_);
+    queues_[engineID_]->addCmdMemRef(pGpuMemory->memRef());
+
+    queues_[engineID_]->iCmd()->
+        CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
+    eventEnd(engineID_, gpuEvent);
+
+    // Restore the original engine
+    engineID_ = activeEngineID;
   }
-  eventEnd(MainEngine, gpuEvent);
 
   // Update the global GPU event
   setGpuEvent(gpuEvent);
