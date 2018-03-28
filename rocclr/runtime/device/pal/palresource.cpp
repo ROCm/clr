@@ -1814,7 +1814,7 @@ bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {
 bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = device_->settings().subAllocationChunkSize_;
-  createInfo.alignment = 0;
+  createInfo.alignment = device_->properties().gpuMemoryProperties.fragmentSize;
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
   createInfo.heapCount = 1;
@@ -1877,8 +1877,9 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
 {
   GpuMemoryReference* mem_ref = nullptr;
   MemBuddyAllocator* allocator = nullptr;
-  // Check if resource size is allowed for suballocation
-  if (size < device_->settings().subAllocationMaxSize_) {
+  // Check if the resource size and alignment are allowed for suballocation
+  if ((size < device_->settings().subAllocationMaxSize_) &&
+      (alignment <= device_->properties().gpuMemoryProperties.fragmentSize)) {
     uint i = 0;
     size = amd::alignUp(size, device_->settings().subAllocationMinSize_);
     do {
