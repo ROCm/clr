@@ -8,6 +8,8 @@
 #include "device/pal/paldefs.hpp"
 #include "util/palBuddyAllocatorImpl.h"
 
+#include <unordered_map>
+
 //! \namespace pal PAL Resource Implementation
 namespace pal {
 
@@ -459,13 +461,39 @@ public:
 
   ~MemorySubAllocator();
 
-  GpuMemoryReference*  Allocate(Pal::gpusize size,
-    Pal::gpusize alignment, Pal::gpusize* offset);
-  bool Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset);
+  //! Create suballocation
+  GpuMemoryReference* Allocate(Pal::gpusize size,
+                               Pal::gpusize alignment,
+                               const Pal::IGpuMemory* reserved_va,
+                               Pal::gpusize* offset
+                               );
+  //! Free suballocation
+  bool Free(amd::Monitor* monitor,
+            GpuMemoryReference* mem_ref,
+            Pal::gpusize offset
+            );
 
-private:
+protected:
+  //! Allocate new chunk of memory
+  virtual bool CreateChunk(const Pal::IGpuMemory* reserved_va);
+  bool InitAllocator(GpuMemoryReference* mem_ref);
+
   Device* device_;
-  std::map<GpuMemoryReference*, MemBuddyAllocator*>  mem_heap_;
+  std::unordered_map<GpuMemoryReference*, MemBuddyAllocator*>  heaps_;
+};
+
+class CoarseMemorySubAllocator : public MemorySubAllocator {
+public:
+  CoarseMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
+
+  bool CreateChunk(const Pal::IGpuMemory* reservedVa) override;
+};
+
+class FineMemorySubAllocator : public MemorySubAllocator {
+public:
+  FineMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
+
+  bool CreateChunk(const Pal::IGpuMemory* reserved_va) override;
 };
 
 class ResourceCache : public amd::HeapObject {
@@ -475,7 +503,9 @@ class ResourceCache : public amd::HeapObject {
       : lockCacheOps_("PAL resource cache", true)
       , cacheSize_(0)
       , cacheSizeLimit_(cacheSizeLimit)
-      , memSubAllocLocal_(device) {}
+      , mem_sub_alloc_local_(device)
+      , mem_sub_alloc_coarse_ (device)
+      , mem_sub_alloc_fine_ (device) {}
 
   //! Default destructor
   ~ResourceCache();
@@ -489,7 +519,10 @@ class ResourceCache : public amd::HeapObject {
   //! Finds a PAL resource from the cache
   GpuMemoryReference* findGpuMemory(
       Resource::Descriptor* desc,  //!< Resource descriptor - cache key
-      Pal::gpusize size, Pal::gpusize alignment, Pal::gpusize* offset);
+      Pal::gpusize size,
+      Pal::gpusize alignment,
+      const Pal::IGpuMemory* reserved_va, //!< Reserved VA for SVM suballocations
+      Pal::gpusize* offset);
 
   //! Destroys cache
   void free(size_t minCacheEntries = 0);
@@ -512,7 +545,9 @@ class ResourceCache : public amd::HeapObject {
   //! PAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;
 
-  MemorySubAllocator  memSubAllocLocal_;  //!< Allocator for suballocations in Local
+  MemorySubAllocator  mem_sub_alloc_local_;  //!< Allocator for suballocations in Local
+  CoarseMemorySubAllocator mem_sub_alloc_coarse_; //!< Allocator for suballocations in Coarse SVM
+  FineMemorySubAllocator mem_sub_alloc_fine_; //!< Allocator for suballocations in Fine SVM
 };
 
 /*@}*/} // namespace pal

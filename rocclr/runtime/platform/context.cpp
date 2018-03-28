@@ -296,6 +296,7 @@ void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags) {
     void* svmPtrAlloced = NULL;
     void* tempPtr = NULL;
 
+    amd::ScopedLock lock(&ctxLock_);
     for (const auto& dev : svmAllocDevice_) {
       if (dev->type() == CL_DEVICE_TYPE_GPU) {
         // check if the device support svm platform atomics,
@@ -320,6 +321,7 @@ void Context::svmFree(void* ptr) const {
     return;
   }
 
+  amd::ScopedLock lock(&ctxLock_);
   for (const auto& dev : svmAllocDevice_) {
     if (dev->type() == CL_DEVICE_TYPE_GPU) {
       dev->svmFree(ptr);
