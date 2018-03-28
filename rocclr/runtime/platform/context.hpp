@@ -198,7 +198,7 @@ class Context : public RuntimeObject {
   Device* customHostAllocDevice_;        //!< Device responsible for host allocations
   std::vector<Device*> svmAllocDevice_;  //!< Devices can support SVM allocations
   std::map<const Device*, DeviceQueueInfo> deviceQueues_;  //!< Device queues mapping
-  Monitor ctxLock_;                                        //!< Lock for the context access
+  mutable Monitor ctxLock_;                                //!< Lock for the context access
 };
 
 /*! @}

@@ -440,7 +440,7 @@ bool Resource::CreateImage(CreateParams* params)
       memTypeToHeap(&createInfo);
       // createInfo.priority;
       memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-        createInfo.alignment, &subOffset_);
+        createInfo.alignment, nullptr, &subOffset_);
       if (nullptr == memRef_) {
         memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         if (nullptr == memRef_) {
@@ -590,7 +590,7 @@ bool Resource::CreateImage(CreateParams* params)
     memTypeToHeap(&createInfo);
 
     memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-      createInfo.alignment, &subOffset_);
+      createInfo.alignment, nullptr, &subOffset_);
     if (nullptr == memRef_) {
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
       if (nullptr == memRef_) {
@@ -982,14 +982,12 @@ bool Resource::CreatePinned(CreateParams* params)
 bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
 {
   const bool isFineGrain = (memoryType() == RemoteUSWC) || (memoryType() == Remote);
-  const Pal::gpusize svmAlignment = isFineGrain ? MaxGpuAlignment :
-    dev().properties().gpuMemoryProperties.fragmentSize;
-  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, svmAlignment);
+  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
   if (isFineGrain) {
     Pal::SvmGpuMemoryCreateInfo createInfo = {};
     createInfo.isUsedForKernel = desc_.isAllocExecute_;
     createInfo.size = allocSize;
-    createInfo.alignment = svmAlignment;
+    createInfo.alignment = MaxGpuAlignment;
     if (svmPtr != 0) {
       createInfo.flags.useReservedGpuVa = true;
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
@@ -998,12 +996,18 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
       createInfo.flags.useReservedGpuVa = false;
       createInfo.pReservedGpuVaOwner = nullptr;
     }
-    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+    if (!dev().settings().svmFineGrainSystem_) {
+      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
+        createInfo.alignment, createInfo.pReservedGpuVaOwner, &subOffset_);
+    }
+    if (memRef_ == nullptr) {
+      memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+    }
   }
   else {
     Pal::GpuMemoryCreateInfo createInfo = {};
     createInfo.size = allocSize;
-    createInfo.alignment = svmAlignment;
+    createInfo.alignment = MaxGpuAlignment;
     createInfo.vaRange = Pal::VaRange::Svm;
     createInfo.priority = Pal::GpuMemPriority::Normal;
     if (svmPtr != 0) {
@@ -1011,7 +1015,12 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
     }
     memTypeToHeap(&createInfo);
-    memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
+      createInfo.alignment, createInfo.pReservedGpuVaOwner, &subOffset_);
+    if (memRef_ == nullptr) {
+      createInfo.alignment = dev().properties().gpuMemoryProperties.fragmentSize;
+      memRef_ = GpuMemoryReference::Create(dev(), createInfo);
+    }
   }
   if (nullptr == memRef_) {
     LogError("Failed PAL memory allocation!");
@@ -1020,7 +1029,9 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
   desc_.cardMemory_ = false;
   if ((nullptr != params) && (nullptr != params->owner_) &&
     (nullptr != params->owner_->getSvmPtr())) {
-    params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+    params->owner_->setSvmPtr(
+      reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr + subOffset_));
+    offset_ += static_cast<size_t>(subOffset_);
   }
   return true;
 }
@@ -1138,7 +1149,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   memTypeToHeap(&createInfo);
   // createInfo.priority;
   memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-    createInfo.alignment, &subOffset_);
+    createInfo.alignment, nullptr, &subOffset_);
   if (nullptr == memRef_) {
     memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     if (nullptr == memRef_) {
@@ -1198,14 +1209,16 @@ void Resource::free()
         unmap(nullptr);
       } else {
         // Delay CPU address unmap until memRef_ destruction
-        assert(memRef_->cpuAddress_ == nullptr && "Memref shouldn't have a valid CPU address");
-        memRef_->cpuAddress_ = address_;
+        if (!desc_.SVMRes_) {
+          assert(memRef_->cpuAddress_ == nullptr && "Memref shouldn't have a valid CPU address");
+          memRef_->cpuAddress_ = address_;
+        }
       }
     }
 
     // Add resource to the cache
     if (!dev().resourceCache().addGpuMemory(&desc_, memRef_, subOffset_)) {
-    palFree();
+      palFree();
     }
   }
 
@@ -1717,7 +1730,12 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
       address_ = mapLayers(gpu, flags);
     } else {
       // Map current resource
-      address_ = gpuMemoryMap(&desc_.pitch_, flags, iMem());
+      if (memRef_->cpuAddress_ != nullptr) {
+        // Suballocations are mapped by the memory suballocator
+        address_ = reinterpret_cast<uint8_t*>(memRef_->cpuAddress_) + subOffset_;
+      } else {
+        address_ = gpuMemoryMap(&desc_.pitch_, flags, iMem());
+      }
       if (address_ == nullptr) {
         LogError("cal::ResMap failed!");
         --mapCount_;
@@ -1778,67 +1796,108 @@ void Resource::unmapLayers(VirtualGPU* gpu) {
 }
 
 // ================================================================================================
+bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {
+  MemBuddyAllocator* allocator = new MemBuddyAllocator(
+    device_, device_->settings().subAllocationChunkSize_,
+    device_->settings().subAllocationMinSize_);
+  if ((allocator != nullptr) && (allocator->Init() == Pal::Result::Success)) {
+    heaps_.insert({mem_ref, allocator});
+    return true;
+  } else {
+    delete allocator;
+    return false;
+  }
+  return false;
+}
+
+// ================================================================================================
+bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
+  Pal::GpuMemoryCreateInfo createInfo = {};
+  createInfo.size = device_->settings().subAllocationChunkSize_;
+  createInfo.alignment = 0;
+  createInfo.vaRange = Pal::VaRange::Default;
+  createInfo.priority = Pal::GpuMemPriority::Normal;
+  createInfo.heapCount = 1;
+  createInfo.heaps[0] = Pal::GpuHeapInvisible;
+  GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
+  if (mem_ref != nullptr) {
+    return InitAllocator(mem_ref);
+  }
+  return false;
+}
+
+// ================================================================================================
+bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
+  Pal::GpuMemoryCreateInfo createInfo = {};
+  createInfo.size = device_->settings().subAllocationChunkSize_;
+  createInfo.alignment = device_->properties().gpuMemoryProperties.fragmentSize;
+  createInfo.vaRange = Pal::VaRange::Svm;
+  createInfo.priority = Pal::GpuMemPriority::Normal;
+  createInfo.flags.useReservedGpuVa = (reserved_va != nullptr);
+  createInfo.pReservedGpuVaOwner = reserved_va;
+  createInfo.heapCount = 2;
+  createInfo.heaps[0] = Pal::GpuHeapInvisible;
+  createInfo.heaps[1] = Pal::GpuHeapLocal;
+  GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
+  if (mem_ref != nullptr) {
+    return InitAllocator(mem_ref);
+  }
+  return false;
+}
+
+// ================================================================================================
+bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
+  Pal::SvmGpuMemoryCreateInfo createInfo = {};
+  createInfo.isUsedForKernel = false;
+  createInfo.size = device_->settings().subAllocationChunkSize_;
+  createInfo.alignment = MaxGpuAlignment;
+  createInfo.flags.useReservedGpuVa = (reserved_va != nullptr);
+  createInfo.pReservedGpuVaOwner = reserved_va;
+  GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
+  if ((mem_ref != nullptr) && InitAllocator(mem_ref)) {
+    mem_ref->iMem()->Map(&mem_ref->cpuAddress_);
+    return mem_ref->cpuAddress_ != nullptr;
+  }
+  return false;
+}
+
+// ================================================================================================
 MemorySubAllocator::~MemorySubAllocator()
 {
   // Release memory heap for suballocations
-  for (auto it : mem_heap_) {
+  for (auto it : heaps_) {
     it.first->release();
     delete it.second;
   }
 }
 
 // ================================================================================================
-GpuMemoryReference* MemorySubAllocator::Allocate(
-  Pal::gpusize size, Pal::gpusize alignment, Pal::gpusize* offset)
+GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize alignment,
+  const Pal::IGpuMemory* reserved_va, Pal::gpusize* offset)
 {
   GpuMemoryReference* mem_ref = nullptr;
+  MemBuddyAllocator* allocator = nullptr;
   // Check if resource size is allowed for suballocation
   if (size < device_->settings().subAllocationMaxSize_) {
     uint i = 0;
     size = amd::alignUp(size, device_->settings().subAllocationMinSize_);
     do {
-      MemBuddyAllocator*  allocator = nullptr;
       // Find if current heap has enough empty space
-      for (auto it : mem_heap_) {
+      for (auto it : heaps_) {
         mem_ref = it.first;
         allocator = it.second;
+        // SVM allocations may required a fixed VA, make sure we find the heap with the same VA
+        if (reserved_va &&
+            (reserved_va->Desc().gpuVirtAddr != mem_ref->iMem()->Desc().gpuVirtAddr)) {
+          continue;
+        }
         // If we have found a valid chunk, then suballocate memory
         if (Pal::Result::Success == allocator->Allocate(size, alignment, offset)) {
           return mem_ref;
-        } else {
-          mem_ref = nullptr;
         }
       }
-      
-      // Check if a chunk for suballocation doesn't exist
-      if (mem_ref == nullptr) {
-        // Allocate a new chunk in memory
-        Pal::GpuMemoryCreateInfo createInfo = {};
-        createInfo.size       = device_->settings().subAllocationChunkSize_;
-        createInfo.alignment  = 0;
-        createInfo.vaRange    = Pal::VaRange::Default;
-        createInfo.priority   = Pal::GpuMemPriority::Normal;
-        createInfo.heapCount  = 1;
-        createInfo.heaps[0]   = Pal::GpuHeapInvisible;
-        mem_ref = GpuMemoryReference::Create(*device_, createInfo);
-        // If chunk was allocated, then allocate BuddyAllocator object
-        if (mem_ref != nullptr) {
-          allocator = new MemBuddyAllocator(device_,
-          device_->settings().subAllocationChunkSize_,
-          device_->settings().subAllocationMinSize_);
-          if ((allocator != nullptr) &&
-              (Pal::Result::Success == allocator->Init())) {
-            // Add the chunk and suballocator into the heap
-            mem_heap_.insert(std::pair<GpuMemoryReference*, MemBuddyAllocator*>(
-                mem_ref, allocator));
-          } else {
-            delete allocator;
-            mem_ref->release();
-            return nullptr;  
-          }
-        } else {
+      if ((mem_ref == nullptr) && !CreateChunk(reserved_va)) {
           return nullptr;
-        }
       }
       i++;
     } while (i < 2);
@@ -1849,24 +1908,24 @@ GpuMemoryReference* MemorySubAllocator::Allocate(
 // ================================================================================================
 bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset)
 {
-  bool releaseMem =  false;
+  bool release_mem = false;
   {
     amd::ScopedLock l(monitor);
     // Find if current memory reference is a chunk allocation
-    auto it = mem_heap_.find(ref);
-    if (it == mem_heap_.end()) {
+    auto it = heaps_.find(ref);
+    if (it == heaps_.end()) {
       return false;
     }
-    // Free suballocation at the specified offset
+
     it->second->Free(offset);
     // If this suballocator empty, then release memory chunk
     if (it->second->IsEmpty()) {
       delete it->second;
-      mem_heap_.erase(it);
-      releaseMem = true;
+      heaps_.erase(it);
+      release_mem = true;
     }
   }
-  if (releaseMem) {
+  if (release_mem) {
     ref->release();
   }
   return true;
@@ -1883,11 +1942,13 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
   bool result = false;
   size_t size = ref->iMem()->Desc().size;
 
-  if (desc->type_ == Resource::Local) {
-    // Check if runtime can free suballocation in local memory
-    if (memSubAllocLocal_.Free(&lockCacheOps_, ref, offset)) {
-      return true;
-    }
+  // Check if runtime can free suballocation
+  if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
+    return mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
+  } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
+    return mem_sub_alloc_coarse_.Free(&lockCacheOps_, ref, offset);
+  } else if (desc->SVMRes_) {
+    return mem_sub_alloc_fine_.Free(&lockCacheOps_, ref, offset);
   }
 
   // Make sure current allocation isn't bigger than cache
@@ -1918,21 +1979,27 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
 
 // ================================================================================================
 GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal::gpusize size,
-                                                 Pal::gpusize alignment, Pal::gpusize* offset) {
+  Pal::gpusize alignment, const Pal::IGpuMemory* reserved_va, Pal::gpusize* offset) {
   amd::ScopedLock l(&lockCacheOps_);
   GpuMemoryReference* ref = nullptr;
+
+  // Check if the runtime can suballocate memory
+  if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
+    ref = mem_sub_alloc_local_.Allocate(size, alignment, reserved_va, offset);
+  } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
+    ref = mem_sub_alloc_coarse_.Allocate(size, alignment, reserved_va, offset);
+  } else if (desc->SVMRes_) {
+    ref = mem_sub_alloc_fine_.Allocate(size, alignment, reserved_va, offset);
+  }
+
+  if (ref != nullptr) {
+    return ref;
+  }
 
   // Early exit if resource is too big
   if (size >= cacheSizeLimit_ || desc->SVMRes_) {
     //! \note we may need to free the cache here to reduce memory pressure
     return ref;
-  }
-
-  if (desc->type_ == Resource::Local) {
-    ref = memSubAllocLocal_.Allocate(size, alignment, offset);
-    if (ref != nullptr) {
-      return ref;
-    }
   }
 
   // Serach the right resource through the cache list
