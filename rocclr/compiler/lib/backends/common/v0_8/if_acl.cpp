@@ -1418,7 +1418,7 @@ internal_compile_failure:
 #define CONDITIONAL_CMP_ASSIGN(A, B, C) A = (A && B != A) ? (A) : (C)
 
 acl_error
-IsValidCompilationOptions(aclBinary *bin, aclLogFunction compile_callback)
+IsValidCompilationOptions(aclCompiler *cl, aclBinary *bin, aclLogFunction compile_callback)
 {
   acl_error error_code = ACL_SUCCESS;
 #if defined(WITH_TARGET_HSAIL)
@@ -1467,8 +1467,13 @@ IsValidCompilationOptions(aclBinary *bin, aclLogFunction compile_callback)
       }
     }
   }
-  if (ACL_SUCCESS != error_code && compile_callback) {
-    compile_callback(error_msg.c_str(), error_msg.size());
+  if (ACL_SUCCESS != error_code) {
+    if (compile_callback) {
+      compile_callback(error_msg.c_str(), error_msg.size());
+    }
+    if (cl != NULL) {
+      appendLogToCL(cl, error_msg.c_str());
+    }
   }
 #endif
   return error_code;
@@ -1490,7 +1495,7 @@ if_aclCompile(aclCompiler *cl,
       ((from == ACL_TYPE_HSAIL_TEXT || from == ACL_TYPE_HSAIL_BINARY) && !isHSAILTarget(bin->target))) {
     return ACL_INVALID_BINARY;
   }
-  acl_error error_code = IsValidCompilationOptions(bin, compile_callback);
+  acl_error error_code = IsValidCompilationOptions(cl, bin, compile_callback);
   if (error_code != ACL_SUCCESS) {
     return error_code;
   }
