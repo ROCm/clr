@@ -1895,6 +1895,8 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
         // If we have found a valid chunk, then suballocate memory
         if (Pal::Result::Success == allocator->Allocate(size, alignment, offset)) {
           return mem_ref;
+        } else {
+          mem_ref = nullptr;
         }
       }
       if ((mem_ref == nullptr) && !CreateChunk(reserved_va)) {
