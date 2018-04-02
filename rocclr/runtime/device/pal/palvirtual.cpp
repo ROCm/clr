@@ -2570,7 +2570,11 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
     queues_[engineID_]->addCmdMemRef(pGpuMemory->memRef());
 
     queues_[engineID_]->iCmd()->
+#if (PAL_CLIENT_INTERFACE_MAJOR_VERSION < 396)
         CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), value);
+#else
+        CmdUpdateBusAddressableMemoryMarker(*(pGpuMemory->iMem()), vcmd.markerOffset(), value);
+#endif
     eventEnd(engineID_, gpuEvent);
 
     // Restore the original engine

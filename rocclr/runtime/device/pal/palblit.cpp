@@ -298,7 +298,9 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire) const {
   // Use host copy if memory has direct access or it's persistent
-  if (setup_.disableWriteBuffer_ || gpuMem(dstMemory).isHostMemDirectAccess() ||
+  if (setup_.disableWriteBuffer_ ||
+      (gpuMem(dstMemory).isHostMemDirectAccess() &&
+      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
@@ -384,7 +386,9 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
                                      const amd::BufferRect& bufRect, const amd::Coord3D& size,
                                      bool entire) const {
   // Use host copy if memory has direct access or it's persistent
-  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+  if (setup_.disableWriteBufferRect_ ||
+      (dstMemory.isHostMemDirectAccess() &&
+      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
   } else {
@@ -1926,7 +1930,9 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access or it's persistent
-  if (setup_.disableWriteBuffer_ || gpuMem(dstMemory).isHostMemDirectAccess() ||
+  if (setup_.disableWriteBuffer_ ||
+      (gpuMem(dstMemory).isHostMemDirectAccess() &&
+      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       (gpuMem(dstMemory).memoryType() == Resource::Persistent)) {
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
     synchronize();
@@ -1975,7 +1981,9 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   bool result = false;
 
   // Use host copy if memory has direct access or it's persistent
-  if (setup_.disableWriteBufferRect_ || gpuMem(dstMemory).isHostMemDirectAccess() ||
+  if (setup_.disableWriteBufferRect_ ||
+      (gpuMem(dstMemory).isHostMemDirectAccess() &&
+      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
     synchronize();
