@@ -109,6 +109,7 @@ bool NullDevice::init() {
   for (uint id = 0;
         id < sizeof(Gfx9PlusSubDeviceInfo)/sizeof(AMDDeviceInfo); ++id) {
       bool foundActive = false;
+      bool foundDuplicate = false;
       uint gfxipVersion = pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
       if (pal::Gfx9PlusSubDeviceInfo[id].targetName_[0] == '\0') {
@@ -129,6 +130,26 @@ bool NullDevice::init() {
 
       // Don't report an offline device if it's active
       if (foundActive) {
+          continue;
+      }
+
+      // Loop through all previous devices in the Gfx9PlusSubDeviceInfo list
+      // and compare them with the current entry to see if the current entry
+      // was listed previously in the Gfx9PlusSubDeviceInfo, if so, then it
+      // means the current entry already has been added in the offline device list
+      for (uint j = 0; j < id; ++j) {
+          if (pal::Gfx9PlusSubDeviceInfo[j].targetName_[0] == '\0') {
+              continue;
+          }
+          if (strcmp(pal::Gfx9PlusSubDeviceInfo[j].targetName_,
+                     pal::Gfx9PlusSubDeviceInfo[id].targetName_) == 0) {
+              foundDuplicate = true;
+              break;
+          }
+      }
+
+      // Don't report an offline device twice
+      if (foundDuplicate) {
           continue;
       }
 
