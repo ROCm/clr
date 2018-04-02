@@ -14,6 +14,7 @@
 #include "device/pal/paltimestamp.hpp"
 #include "device/pal/palblit.hpp"
 #include "device/pal/paldebugger.hpp"
+#include "device/appprofile.hpp"
 #include "hsa.h"
 #include "amd_hsa_kernel_code.h"
 #include "amd_hsa_queue.h"
@@ -90,7 +91,7 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
       delete queue;
       return nullptr;
     }
-
+    queue->UpdateAppPowerProfile();
     address addrCmd = addrQ + qSize;
     address addrF = addrCmd + MaxCmdBuffers * cmdSize;
     Pal::CmdBufferBuildInfo cmdBuildInfo = {};
@@ -144,6 +145,18 @@ VirtualGPU::Queue::~Queue() {
   if (nullptr != iQueue_) {
     iQueue_->Destroy();
   }
+}
+
+Pal::Result VirtualGPU::Queue::UpdateAppPowerProfile()
+{
+    std::wstring wsAppPathAndFileName = Device::appProfile()->wsAppPathAndFileName();
+
+    const wchar_t* wAppPathAndName = wsAppPathAndFileName.c_str();
+    // Find the last occurance of the '\\' character and extract the name of the application as wide char.
+    const wchar_t* wAppNamePtr = wcsrchr(wAppPathAndName, '\\');
+    const wchar_t* wAppName = wAppNamePtr ? wAppNamePtr + 1 : wAppPathAndName;
+
+    return iQueue_->UpdateAppPowerProfile(wAppName, wAppPathAndName);
 }
 
 void VirtualGPU::Queue::addCmdMemRef(GpuMemoryReference* mem) {

@@ -19,6 +19,7 @@ class AppProfile {
   const std::string& GetBuildOptsAppend() const { return buildOptsAppend_; }
 
   const std::string& appFileName() const { return appFileName_; }
+  const std::wstring& wsAppPathAndFileName() const { return wsAppPathAndFileName_; }
 
  protected:
   enum DataTypes {
@@ -38,6 +39,8 @@ class AppProfile {
   DataMap propertyDataMap_;
   std::string appFileName_;  // without extension
   std::wstring wsAppFileName_;
+  std::string  appPathAndFileName_;  // with path and extension
+  std::wstring wsAppPathAndFileName_;
 
   virtual bool ParseApplicationProfile();
 

@@ -249,8 +249,8 @@ class Os : AllStatic {
   // return gloabal memory size to be assigned to device info
   static size_t getPhysicalMemSize();
 
-  //! get Application file name
-  static std::string getAppFileName();
+  //! get Application file name and path
+  static void getAppPathAndFileName(std::string& appName, std::string& appPathAndName);
 
   //! Install SIGFPE handler for CPU device
   static bool installSigfpeHandler();

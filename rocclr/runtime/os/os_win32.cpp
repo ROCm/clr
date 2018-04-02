@@ -931,19 +931,22 @@ size_t Os::getPhysicalMemSize() {
   return (size_t)statex.ullTotalPhys;
 }
 
-std::string Os::getAppFileName() {
-  std::string strFileName;
+void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName) {
   char* buff = new char[FILE_PATH_MAX_LENGTH];
 
   if (GetModuleFileNameA(NULL, buff, FILE_PATH_MAX_LENGTH) != 0) {
     // Get filename without path and extension.
-    strFileName = strrchr(buff, '\\') ? strrchr(buff, '\\') + 1 : buff;
+    appPathAndName = buff;
+    appName = strrchr(buff, '\\') ? strrchr(buff, '\\') + 1 : buff;
+  }
+  else {
+    appPathAndName = "";
+    appName = "";
   }
 
   delete[] buff;
-  return strFileName;
+  return;
 }
-
 }  // namespace amd
 
 #endif  // _WIN32 || __CYGWIN__
