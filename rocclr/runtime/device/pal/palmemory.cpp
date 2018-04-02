@@ -127,6 +127,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
   if (result) {
     switch (memoryType()) {
       case Resource::Pinned:
+      case Resource::ExternalPhysical:
         // Marks memory object for direct GPU access to the host memory
         flags_ |= HostMemoryDirectAccess;
         break;
