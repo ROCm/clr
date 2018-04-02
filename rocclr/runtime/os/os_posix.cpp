@@ -729,15 +729,19 @@ size_t Os::getPhysicalMemSize() {
   return (size_t)si.totalram * si.mem_unit;
 }
 
-std::string Os::getAppFileName() {
+void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName) {
   std::unique_ptr<char[]> buff(new char[FILE_PATH_MAX_LENGTH]());
 
   if (readlink("/proc/self/exe", buff.get(), FILE_PATH_MAX_LENGTH) > 0) {
     // Get filename without path and extension.
-    return std::string(basename(buff.get()));
+    appName = std::string(basename(buff.get()));
+    appPathAndName = std::string(buff.get());
   }
-
-  return "";
+  else {
+    appName = "";
+    appPathAndName = "";
+  }
+  return;
 }
 
 }  // namespace amd

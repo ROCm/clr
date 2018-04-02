@@ -96,6 +96,9 @@ class VirtualGPU : public device::VirtualDevice {
       iDev_->RemoveGpuMemoryReferences(1, &iMem, nullptr);
     }
 
+    // Notice KMD to update applicaiton profile
+    Pal::Result UpdateAppPowerProfile();
+
     // ibReuse forces event wait without polling, to make sure event occured
     template <bool ibReuse>
     bool waifForFence(uint cbId) const {

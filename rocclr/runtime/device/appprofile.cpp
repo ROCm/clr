@@ -134,7 +134,7 @@ bool ADL::init() {
 #endif  // BRAHMA
 
 AppProfile::AppProfile() : gpuvmHighAddr_(false), profileOverridesAllSettings_(false) {
-  appFileName_ = amd::Os::getAppFileName();
+  amd::Os::getAppPathAndFileName(appFileName_, appPathAndFileName_);
   propertyDataMap_.insert(
       DataMap::value_type("BuildOptsAppend", PropertyData(DataType_String, &buildOptsAppend_)));
 }
@@ -148,7 +148,8 @@ bool AppProfile::init() {
 
   // Convert appName to wide char for X2_Search ADL interface
   size_t strLength = appFileName_.length() + 1;
-  wchar_t* appName = new wchar_t[strLength];
+  size_t strPathLength = appPathAndFileName_.length() + 1;
+  wchar_t* appName = new wchar_t[strPathLength];
 
   size_t success = mbstowcs(appName, appFileName_.c_str(), strLength);
   if (success > 0) {
@@ -157,6 +158,14 @@ bool AppProfile::init() {
   }
 
   wsAppFileName_ = appName;
+
+  success = mbstowcs(appName, appPathAndFileName_.c_str(), strPathLength);
+  if (success > 0) {
+    // mbstowcs was able to convert to wide character successfully.
+    appName[strPathLength - 1] = L'\0';
+  }
+
+  wsAppPathAndFileName_ = appName;
 
   delete[] appName;
 
