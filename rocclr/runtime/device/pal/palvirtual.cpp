@@ -129,7 +129,7 @@ VirtualGPU::Queue::~Queue() {
     memRef.push_back(it.first->iMem());
   }
   if (memRef.size() != 0) {
-    iDev_->RemoveGpuMemoryReferences(memRef.size(), &memRef[0], NULL);
+    iDev_->RemoveGpuMemoryReferences(memRef.size(), &memRef[0], iQueue_);
   }
   memReferences_.clear();
 
