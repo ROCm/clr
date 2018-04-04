@@ -72,7 +72,7 @@ size_t SvmManager::size() {
 
 void SvmManager::AddSvmBuffer(const void* k, amd::Memory* v) {
   amd::ScopedLock lock(AllocatedLock_);
-  svmBufferMap_.insert(std::pair<uintptr_t, amd::Memory*>(reinterpret_cast<uintptr_t>(k), v));
+  svmBufferMap_.insert({reinterpret_cast<uintptr_t>(k), v});
 }
 
 void SvmManager::RemoveSvmBuffer(const void* k) {
@@ -83,7 +83,7 @@ void SvmManager::RemoveSvmBuffer(const void* k) {
 amd::Memory* SvmManager::FindSvmBuffer(const void* k) {
   amd::ScopedLock lock(AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
-  std::map<uintptr_t, amd::Memory*>::iterator it = svmBufferMap_.upper_bound(key);
+  auto it = svmBufferMap_.upper_bound(key);
   if (it == svmBufferMap_.begin()) {
     return NULL;
   }
@@ -320,8 +320,7 @@ device::Memory* Device::findMemoryFromVA(const void* ptr, size_t* offset) const 
   amd::ScopedLock lk(*vaCacheAccess_);
 
   uintptr_t key = reinterpret_cast<uintptr_t>(ptr);
-  std::map<uintptr_t, device::Memory*>::iterator it =
-      vaCacheMap_->upper_bound(reinterpret_cast<uintptr_t>(ptr));
+  auto it = vaCacheMap_->upper_bound(reinterpret_cast<uintptr_t>(ptr));
   if (it == vaCacheMap_->begin()) {
     return nullptr;
   }
@@ -352,10 +351,10 @@ std::vector<Device*> Device::getDevices(cl_device_type type, bool offlineDevices
   }
 
   // Create the list of available devices
-  for (device_iterator it = devices_->begin(); it != devices_->end(); ++it) {
+  for (const auto& it : *devices_) {
     // Check if the device type is matched
-    if ((*it)->IsTypeMatching(type, offlineDevices)) {
-      result.push_back(*it);
+    if (it->IsTypeMatching(type, offlineDevices)) {
+      result.push_back(it);
     }
   }
 
@@ -369,9 +368,9 @@ size_t Device::numDevices(cl_device_type type, bool offlineDevices) {
     return 0;
   }
 
-  for (device_iterator it = devices_->begin(); it != devices_->end(); ++it) {
+  for (const auto& it : *devices_) {
     // Check if the device type is matched
-    if ((*it)->IsTypeMatching(type, offlineDevices)) {
+    if (it->IsTypeMatching(type, offlineDevices)) {
       ++result;
     }
   }
@@ -393,7 +392,7 @@ bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_devi
     return false;
   }
 
-  std::vector<amd::Device*>::iterator it = ret.begin();
+  auto it = ret.cbegin();
   cl_uint count = std::min(numEntries, (cl_uint)ret.size());
 
   while (count--) {
@@ -707,7 +706,7 @@ void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
 
   // Insert into the map if it's the first region
   if (++pInfo->count_ == 1) {
-    writeMapInfo_.insert(std::pair<const void*, WriteMapInfo>(mapAddress, info));
+    writeMapInfo_.insert({mapAddress, info});
   }
 }
 
@@ -729,9 +728,8 @@ Program::~Program() { clear(); }
 
 void Program::clear() {
   // Destroy all device kernels
-  kernels_t::const_iterator it;
-  for (it = kernels_.begin(); it != kernels_.end(); ++it) {
-    delete it->second;
+  for (const auto& it : kernels_) {
+    delete it.second;
   }
   kernels_.clear();
 }
@@ -1035,8 +1033,8 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
 bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,
                                          const amd::option::Options* linkOptions) {
   amd::option::Options compileOptions;
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   for (size_t i = 0; it != itEnd; ++it, ++i) {
     Program* program = *it;
 
@@ -1473,7 +1471,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
   return true;
 }
 
-Program::binary_t ClBinary::data() const { return std::make_pair(binary_, size_); }
+Program::binary_t ClBinary::data() const { return {binary_, size_}; }
 
 bool ClBinary::setBinary(const char* theBinary, size_t theBinarySize, bool allocated) {
   release();

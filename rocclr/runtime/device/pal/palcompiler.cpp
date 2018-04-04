@@ -65,9 +65,8 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
     std::string headerIncludeName(headerIncludeNames[i]);
     // replace / in path with current os's file separator
     if (amd::Os::fileSeparator() != '/') {
-      for (std::string::iterator it = headerIncludeName.begin(), end = headerIncludeName.end();
-           it != end; ++it) {
-        if (*it == '/') *it = amd::Os::fileSeparator();
+      for (auto& it : headerIncludeName) {
+        if (it == '/') it = amd::Os::fileSeparator();
       }
     }
     size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
@@ -282,9 +281,8 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
     std::string headerIncludeName(headerIncludeNames[i]);
     // replace / in path with current os's file separator
     if (amd::Os::fileSeparator() != '/') {
-      for (std::string::iterator it = headerIncludeName.begin(), end = headerIncludeName.end();
-           it != end; ++it) {
-        if (*it == '/') *it = amd::Os::fileSeparator();
+      for (auto& it : headerIncludeName) {
+        if (it == '/') it = amd::Os::fileSeparator();
       }
     }
     size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
@@ -343,10 +341,10 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
     case 100:
     case 110:
     case 120:
-      hdr = std::make_pair(opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size);
+      hdr = {opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size};
       break;
     case 200:
-      hdr = std::make_pair(opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size);
+      hdr = {opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size};
       break;
     default:
       buildLog_ += "Unsupported requested OpenCL C version (-cl-std).\n";

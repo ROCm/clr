@@ -1802,10 +1802,9 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
 
   profilingBegin(vcmd, true);
 
-  std::vector<amd::Memory*>::const_iterator itr;
-  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); ++itr) {
+  for (const auto& it : vcmd.memObjects()) {
     // Find device memory
-    pal::Memory* memory = dev().getGpuMemory(*itr);
+    pal::Memory* memory = dev().getGpuMemory(it);
 
     if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_HOST) {
       memory->mgpuCacheWriteBack();
@@ -2478,15 +2477,14 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
 
-  for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); ++it) {
+  for (const auto& it : vcmd.getMemList()) {
     // amd::Memory object should never be nullptr
-    assert(*it && "Memory object for interop is nullptr");
-    pal::Memory* memory = dev().getGpuMemory(*it);
+    assert(it && "Memory object for interop is nullptr");
+    pal::Memory* memory = dev().getGpuMemory(it);
 
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data from original resource
-    (*it)->getInteropObj()->copyOrigToShared();
+    it->getInteropObj()->copyOrigToShared();
 
     // Check if OpenCL has direct access to the interop memory
     if (memory->interopType() == Memory::InteropDirectAccess) {
@@ -2517,11 +2515,10 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
 
-  for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); ++it) {
+  for (const auto& it : vcmd.getMemList()) {
     // amd::Memory object should never be nullptr
-    assert(*it && "Memory object for interop is nullptr");
-    pal::Memory* memory = dev().getGpuMemory(*it);
+    assert(it && "Memory object for interop is nullptr");
+    pal::Memory* memory = dev().getGpuMemory(it);
 
     // Check if we can use HW interop
     if (memory->interopType() == Memory::InteropHwEmulation) {
@@ -2543,7 +2540,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data back to original resource
-    (*it)->getInteropObj()->copySharedToOrig();
+    it->getInteropObj()->copySharedToOrig();
   }
 
   profilingEnd(vcmd);

@@ -539,7 +539,7 @@ bool PrintfDbgHSA::init(VirtualGPU& gpu, bool printfEnabled) {
     // First DWORD = Offset to where next information is to
     // be written, initialized to 0
     // Second DWORD = Number of bytes available for printf data
-    // = buffer size – 2*sizeof(uint32_t)
+    // = buffer size ï¿½ 2*sizeof(uint32_t)
     const uint8_t initSize = 2 * sizeof(uint32_t);
     uint8_t sysMem[initSize];
     memset(sysMem, 0, initSize);
@@ -597,7 +597,6 @@ bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
         return false;
       }
 
-      std::vector<uint>::const_iterator ita;
       uint sb = 0;
       uint sbt = 0;
 
@@ -609,8 +608,8 @@ bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
         }
         const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
         sb += sizeof(uint32_t);
-        for (ita = info.arguments_.begin(); ita != info.arguments_.end(); ++ita) {
-          sb += *ita;
+        for (const auto& it : info.arguments_) {
+          sb += it;
         }
 
         if (sbt + sb > bufSize) {

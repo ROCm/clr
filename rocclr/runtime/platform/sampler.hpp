@@ -14,7 +14,7 @@ namespace amd {
 //! Abstraction layer sampler class
 class Sampler : public RuntimeObject {
  public:
-  typedef std::map<Device const*, device::Sampler*> DeviceSamplers;
+  typedef std::unordered_map<Device const*, device::Sampler*> DeviceSamplers;
 
   //! \note the sampler states must match the compiler's defines.
   //! See amd_ocl_sys_predef.c

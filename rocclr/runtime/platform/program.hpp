@@ -35,7 +35,7 @@ namespace amd {
 //! A kernel function symbol
 class Symbol : public HeapObject {
  public:
-  typedef std::map<const Device*, const device::Kernel*> devicekernels_t;
+  typedef std::unordered_map<const Device*, const device::Kernel*> devicekernels_t;
 
  private:
   devicekernels_t deviceKernels_;    //! All device kernels objects.
@@ -68,9 +68,9 @@ class Program : public RuntimeObject {
  public:
   typedef std::pair<uint8_t*, size_t> binary_t;
   typedef std::set<Device const*> devicelist_t;
-  typedef std::map<Device const*, binary_t> devicebinary_t;
-  typedef std::map<Device const*, device::Program*> deviceprograms_t;
-  typedef std::map<std::string, Symbol> symbols_t;
+  typedef std::unordered_map<Device const*, binary_t> devicebinary_t;
+  typedef std::unordered_map<Device const*, device::Program*> deviceprograms_t;
+  typedef std::unordered_map<std::string, Symbol> symbols_t;
 
   enum Language {
     Binary = 0,

@@ -370,11 +370,10 @@ void UnmapMemoryCommand::releaseResources() {
 
 bool MigrateMemObjectsCommand::validateMemory() {
   if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
-    std::vector<amd::Memory*>::const_iterator itr;
-    for (itr = memObjects_.begin(); itr != memObjects_.end(); itr++) {
-      device::Memory* mem = (*itr)->getDeviceMemory(queue()->device());
+    for (const auto& it : memObjects_) {
+      device::Memory* mem = it->getDeviceMemory(queue()->device());
       if (NULL == mem) {
-        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", (*itr)->getSize());
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", it->getSize());
         return false;
       }
     }
@@ -434,11 +433,10 @@ cl_int NDRangeKernelCommand::validateMemory() {
 bool ExtObjectsCommand::validateMemory() {
   bool retVal = true;
   if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
-    for (std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
-         itr != memObjects_.end(); itr++) {
-      device::Memory* mem = (*itr)->getDeviceMemory(queue()->device());
+    for (const auto& it : memObjects_) {
+      device::Memory* mem = it->getDeviceMemory(queue()->device());
       if (NULL == mem) {
-        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", (*itr)->getSize());
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", it->getSize());
         return false;
       }
       retVal = processGLResource(mem);
@@ -457,11 +455,10 @@ bool ReleaseExtObjectsCommand::processGLResource(device::Memory* mem) {
 
 bool MakeBuffersResidentCommand::validateMemory() {
   if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
-    for (std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
-         itr != memObjects_.end(); itr++) {
-      device::Memory* mem = (*itr)->getDeviceMemory(queue()->device());
+    for (const auto& it : memObjects_) {
+      device::Memory* mem = it->getDeviceMemory(queue()->device());
       if (NULL == mem) {
-        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", (*itr)->getSize());
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", it->getSize());
         return false;
       }
     }
@@ -471,16 +468,14 @@ bool MakeBuffersResidentCommand::validateMemory() {
 }
 bool ThreadTraceMemObjectsCommand::validateMemory() {
   if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
-    for (std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
-         itr != memObjects_.end(); itr++) {
-      device::Memory* mem = (*itr)->getDeviceMemory(queue()->device());
+    for (auto& it = memObjects_.cbegin(); it != memObjects_.cend(); it++) {
+      device::Memory* mem = (*it)->getDeviceMemory(queue()->device());
       if (NULL == mem) {
-        std::vector<amd::Memory*>::const_iterator tmpItr;
-        for (tmpItr = memObjects_.begin(); tmpItr != itr; tmpItr++) {
-          device::Memory* tmpMem = (*tmpItr)->getDeviceMemory(queue()->device());
+        for (auto& tmpIt = memObjects_.cbegin(); tmpIt != it; tmpIt++) {
+          device::Memory* tmpMem = (*tmpIt)->getDeviceMemory(queue()->device());
           delete tmpMem;
         }
-        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", (*itr)->getSize());
+        LogPrintfError("Can't allocate memory size - 0x%08X bytes!", (*it)->getSize());
         return false;
       }
     }

@@ -51,19 +51,19 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   if (${AMDGCN_LIB_TARGET} MATCHES "^oclc_isa_version_[0-9]+_lib$")
     string(REGEX REPLACE "^oclc_isa_version_([0-9]+)_lib$" "\\1" gfxip ${AMDGCN_LIB_TARGET})
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
-      "case ${gfxip}: return std::make_pair(oclc_isa_version_${gfxip}_amdgcn, oclc_isa_version_${gfxip}_amdgcn_size); break;\n")
+      "case ${gfxip}: return {oclc_isa_version_${gfxip}_amdgcn, oclc_isa_version_${gfxip}_amdgcn_size}; break;\n")
   endif()
 endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
-  "default: return std::make_pair((const void*)0,(size_t)0);\n}\n}\n")
+  "default: return {(const void*)0,(size_t)0};\n}\n}\n")
 
 foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   if (${AMDGCN_LIB_TARGET} MATCHES "oclc_(.*)_on_lib")
     string(REGEX REPLACE "oclc_(.*)_on_lib" "\\1" function ${AMDGCN_LIB_TARGET})
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
-      "static inline std::pair<const char*, size_t> get_oclc_${function}(bool on)\n{ return std::make_pair("
+      "static inline std::pair<const char*, size_t> get_oclc_${function}(bool on)\n{ return {"
                 "(const char*)(on ? oclc_${function}_on_amdgcn : oclc_${function}_off_amdgcn),"
-                "on ? oclc_${function}_on_amdgcn_size : oclc_${function}_off_amdgcn_size);}\n")
+                "on ? oclc_${function}_on_amdgcn_size : oclc_${function}_off_amdgcn_size};}\n")
   endif()
 endforeach()
 

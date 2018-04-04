@@ -1744,7 +1744,7 @@ bool ResourceCache::addCalResource(Resource::CalResourceDesc* desc, GslResourceR
       memcpy(descCached, desc, sizeof(Resource::CalResourceDesc));
 
       // Add the current resource to the cache
-      resCache_.push_front(std::make_pair(descCached, ref));
+      resCache_.push_front({descCached, ref});
       cacheSize_ += size;
       result = true;
     }

@@ -74,9 +74,8 @@ bool NullProgram::compileImpl(const std::string& src,
     std::string headerIncludeName(headerIncludeNames[i]);
     // replace / in path with current os's file separator
     if (amd::Os::fileSeparator() != '/') {
-      for (std::string::iterator it = headerIncludeName.begin(), end = headerIncludeName.end();
-           it != end; ++it) {
-        if (*it == '/') *it = amd::Os::fileSeparator();
+      for (auto& it : headerIncludeName) {
+        if (it == '/') it = amd::Os::fileSeparator();
       }
     }
     size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
@@ -355,9 +354,8 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
     std::string headerIncludeName(headerIncludeNames[i]);
     // replace / in path with current os's file separator
     if (amd::Os::fileSeparator() != '/') {
-      for (std::string::iterator it = headerIncludeName.begin(), end = headerIncludeName.end();
-           it != end; ++it) {
-        if (*it == '/') *it = amd::Os::fileSeparator();
+      for (auto& it : headerIncludeName) {
+        if (it == '/') it = amd::Os::fileSeparator();
       }
     }
     size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());

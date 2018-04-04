@@ -720,10 +720,9 @@ class MigrateMemObjectsCommand : public Command {
                            const std::vector<amd::Memory*>& memObjects,
                            cl_mem_migration_flags flags)
       : Command(queue, type, eventWaitList), migrationFlags_(flags) {
-    std::vector<amd::Memory*>::const_iterator itr;
-    for (itr = memObjects.begin(); itr != memObjects.end(); itr++) {
-      (*itr)->retain();
-      memObjects_.push_back(*itr);
+    for (const auto& it : memObjects) {
+      it->retain();
+      memObjects_.push_back(it);
     }
   }
 
@@ -731,9 +730,8 @@ class MigrateMemObjectsCommand : public Command {
 
   //! Release all resources associated with this command
   void releaseResources() {
-    std::vector<amd::Memory*>::const_iterator itr;
-    for (itr = memObjects_.begin(); itr != memObjects_.end(); itr++) {
-      (*itr)->release();
+    for (const auto& it : memObjects_) {
+      it->release();
     }
     Command::releaseResources();
   }
@@ -837,18 +835,16 @@ class ExtObjectsCommand : public Command {
   ExtObjectsCommand(HostQueue& queue, const EventWaitList& eventWaitList, cl_uint num_objects,
                     const std::vector<amd::Memory*>& memoryObjects, cl_command_type type)
       : Command(queue, type, eventWaitList) {
-    for (std::vector<amd::Memory*>::const_iterator itr = memoryObjects.begin();
-         itr != memoryObjects.end(); itr++) {
-      (*itr)->retain();
-      memObjects_.push_back(*itr);
+    for (const auto& it : memoryObjects) {
+      it->retain();
+      memObjects_.push_back(it);
     }
   }
 
   //! Release all resources associated with this command
   void releaseResources() {
-    for (std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
-         itr != memObjects_.end(); itr++) {
-      (*itr)->release();
+    for (const auto& it : memObjects_) {
+      it->release();
     }
     Command::releaseResources();
   }
@@ -954,9 +950,8 @@ class ThreadTraceMemObjectsCommand : public Command {
   //! Release all resources associated with this command
   void releaseResources() {
     threadTrace_.release();
-    for (std::vector<amd::Memory*>::const_iterator itr = memObjects_.begin();
-         itr != memObjects_.end(); itr++) {
-      (*itr)->release();
+    for (const auto& itr : memObjects_) {
+      itr->release();
     }
     Command::releaseResources();
   }
@@ -1067,19 +1062,17 @@ class MakeBuffersResidentCommand : public Command {
                              const std::vector<amd::Memory*>& memObjects,
                              cl_bus_address_amd* busAddr)
       : Command(queue, type, eventWaitList), busAddresses_(busAddr) {
-    std::vector<amd::Memory*>::const_iterator itr;
-    for (itr = memObjects.begin(); itr != memObjects.end(); itr++) {
-      (*itr)->retain();
-      memObjects_.push_back(*itr);
+    for (const auto& it : memObjects) {
+      it->retain();
+      memObjects_.push_back(it);
     }
   }
 
   virtual void submit(device::VirtualDevice& device) { device.submitMakeBuffersResident(*this); }
 
   void releaseResources() {
-    std::vector<amd::Memory*>::const_iterator itr;
-    for (itr = memObjects_.begin(); itr != memObjects_.end(); itr++) {
-      (*itr)->release();
+    for (const auto& it : memObjects_) {
+      it->release();
     }
     Command::releaseResources();
   }

@@ -256,7 +256,7 @@ class NullProgram : public device::Program {
   /*! Get all per-kernel IL from programIL, where programIL is the IL for the
    *  whole compilation unit.
    */
-  bool getAllKernelILs(std::map<std::string, std::string>& allKernelILs, std::string& programIL,
+  bool getAllKernelILs(std::unordered_map<std::string, std::string>& allKernelILs, std::string& programIL,
                        const char* ilKernelName);
 
  protected:
@@ -322,7 +322,7 @@ class Program : public NullProgram {
                                    size_t binarySize = 0           //!< the machine code size
                                    );
 
-  typedef std::map<uint, gpu::Memory*> HwConstBuffers;
+  typedef std::unordered_map<uint, gpu::Memory*> HwConstBuffers;
 
   //! Global HW constant buffers
   const HwConstBuffers& glbHwCb() const { return constBufs_; }

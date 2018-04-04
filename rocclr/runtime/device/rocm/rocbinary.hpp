@@ -10,7 +10,7 @@
 
 namespace roc {
 
-typedef std::map<std::string, device::Kernel*> NameKernelMap;
+typedef std::unordered_map<std::string, device::Kernel*> NameKernelMap;
 
 class ClBinary : public device::ClBinary {
  public:

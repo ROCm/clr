@@ -163,7 +163,7 @@ class VirtualGPU : public device::VirtualDevice {
     uint cmdBufIdCurrent_;  //!< Current global command buffer ID
     uint cmbBufIdRetired_;  //!< The last retired command buffer ID
     uint cmdCnt_;           //!< Counter of commands
-    std::map<GpuMemoryReference*, uint> memReferences_;
+    std::unordered_map<GpuMemoryReference*, uint> memReferences_;
     Util::VirtualLinearAllocator vlAlloc_;
     std::vector<Pal::GpuMemoryRef> palMemRefs_;
     std::vector<Pal::IGpuMemory*> palMems_;

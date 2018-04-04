@@ -21,13 +21,12 @@ namespace amd {
 
 Program::~Program() {
   // Destroy all device programs
-  deviceprograms_t::const_iterator it, itEnd;
-  for (it = devicePrograms_.begin(), itEnd = devicePrograms_.end(); it != itEnd; ++it) {
-    delete it->second;
+  for (const auto& it : devicePrograms_) {
+    delete it.second;
   }
 
-  for (devicebinary_t::const_iterator IT = binary_.begin(), IE = binary_.end(); IT != IE; ++IT) {
-    const binary_t& Bin = IT->second;
+  for (const auto& it : binary_) {
+    const binary_t& Bin = it.second;
     if (Bin.first) {
       delete[] Bin.first;
     }
@@ -43,8 +42,8 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
     return NULL;
   }
 
-  symbols_t::const_iterator it = symbolTable_->find(kernelName);
-  return (it == symbolTable_->end()) ? NULL : &it->second;
+  const auto it = symbolTable_->find(kernelName);
+  return (it == symbolTable_->cend()) ? NULL : &it->second;
 }
 
 cl_int Program::addDeviceProgram(Device& device, const void* image, size_t length,
@@ -151,8 +150,8 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
 }
 
 device::Program* Program::getDeviceProgram(const Device& device) const {
-  deviceprograms_t::const_iterator it = devicePrograms_.find(&device.rootDevice());
-  if (it == devicePrograms_.end()) {
+  const auto it = devicePrograms_.find(&device.rootDevice());
+  if (it == devicePrograms_.cend()) {
     return NULL;
   }
   return it->second;
@@ -198,16 +197,15 @@ cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
   }
 
   // Compile the program programs associated with the given devices.
-  std::vector<Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    device::Program* devProgram = getDeviceProgram(**it);
+  for (const auto& it : devices) {
+    device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
-      const binary_t& bin = binary(**it);
-      retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
+      const binary_t& bin = binary(*it);
+      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
-      devProgram = getDeviceProgram(**it);
+      devProgram = getDeviceProgram(*it);
     }
 
     if (devProgram->type() == device::Program::TYPE_INTERMEDIATE || language_ == SPIRV) {
@@ -277,8 +275,7 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
   }
 
   // Link the program programs associated with the given devices.
-  std::vector<Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
+  for (const auto& it : devices) {
     // find the corresponding device program in each input program
     std::vector<device::Program*> inputDevPrograms(numInputs);
     bool found = false;
@@ -288,8 +285,8 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
         parsedOptions.oVariables->BinaryIsSpirv = true;
       }
       deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
-      deviceprograms_t::const_iterator findIt = inputDevProgs.find(*it);
-      if (findIt == inputDevProgs.end()) {
+      const auto findIt = inputDevProgs.find(it);
+      if (findIt == inputDevProgs.cend()) {
         if (found) break;
         continue;
       }
@@ -328,14 +325,14 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
       return CL_INVALID_VALUE;
     }
 
-    device::Program* devProgram = getDeviceProgram(**it);
+    device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
-      const binary_t& bin = binary(**it);
-      retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
+      const binary_t& bin = binary(*it);
+      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
-      devProgram = getDeviceProgram(**it);
+      devProgram = getDeviceProgram(*it);
     }
 
     // We only build a Device-Program once
@@ -359,16 +356,14 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
   }
 
   // Rebuild the symbol table
-  deviceprograms_t::iterator sit;
-  for (sit = devicePrograms_.begin(); sit != devicePrograms_.end(); ++sit) {
-    const Device& device = *sit->first;
-    const device::Program& program = *sit->second;
+  for (const auto& sit : devicePrograms_) {
+    const Device& device = *(sit.first);
+    const device::Program& program = *(sit.second);
 
     const device::Program::kernels_t& kernels = program.kernels();
-    device::Program::kernels_t::const_iterator kit;
-    for (kit = kernels.begin(); kit != kernels.end(); ++kit) {
-      const std::string& name = kit->first;
-      const device::Kernel* devKernel = kit->second;
+    for (const auto& it : kernels) {
+      const std::string& name = it.first;
+      const device::Kernel* devKernel = it.second;
 
       Symbol& symbol = (*symbolTable_)[name];
       if (!symbol.setDeviceKernel(device, devKernel)) {
@@ -379,9 +374,8 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
 
   // Create a string with all kernel names from the program
   if (kernelNames_.length() == 0) {
-    amd::Program::symbols_t::const_iterator it;
-    for (it = symbols().begin(); it != symbols().end(); ++it) {
-      if (it != symbols().begin()) {
+    for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
+      if (it != symbols().cbegin()) {
         kernelNames_.append(1, ';');
       }
       kernelNames_.append(it->first.c_str());
@@ -474,20 +468,19 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
   }
 
   // Build the program programs associated with the given devices.
-  std::vector<Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    device::Program* devProgram = getDeviceProgram(**it);
+  for (const auto& it : devices) {
+    device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
-      const binary_t& bin = binary(**it);
+      const binary_t& bin = binary(*it);
       if (sourceCode_.empty() && (bin.first == NULL)) {
         retval = false;
         continue;
       }
-      retval = addDeviceProgram(**it, bin.first, bin.second, &parsedOptions);
+      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
-      devProgram = getDeviceProgram(**it);
+      devProgram = getDeviceProgram(*it);
     }
 
     parsedOptions.oVariables->AssumeAlias = true;
@@ -518,16 +511,14 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
   }
 
   // Rebuild the symbol table
-  deviceprograms_t::iterator sit;
-  for (sit = devicePrograms_.begin(); sit != devicePrograms_.end(); ++sit) {
-    const Device& device = *sit->first;
-    const device::Program& program = *sit->second;
+  for (const auto& it : devicePrograms_) {
+    const Device& device = *(it.first);
+    const device::Program& program = *(it.second);
 
     const device::Program::kernels_t& kernels = program.kernels();
-    device::Program::kernels_t::const_iterator kit;
-    for (kit = kernels.begin(); kit != kernels.end(); ++kit) {
-      const std::string& name = kit->first;
-      const device::Kernel* devKernel = kit->second;
+    for (const auto& kit : kernels) {
+      const std::string& name = kit.first;
+      const device::Kernel* devKernel = kit.second;
 
       Symbol& symbol = (*symbolTable_)[name];
       if (!symbol.setDeviceKernel(device, devKernel)) {
@@ -538,9 +529,8 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
 
   // Create a string with all kernel names from the program
   if (kernelNames_.length() == 0) {
-    amd::Program::symbols_t::const_iterator it;
-    for (it = symbols().begin(); it != symbols().end(); ++it) {
-      if (it != symbols().begin()) {
+    for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
+      if (it != symbols().cbegin()) {
         kernelNames_.append(1, ';');
       }
       kernelNames_.append(it->first.c_str());
@@ -555,12 +545,10 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
 }
 
 void Program::clear() {
-  deviceprograms_t::iterator sit;
-
   // Destroy old programs if we have any
-  for (sit = devicePrograms_.begin(); sit != devicePrograms_.end(); ++sit) {
+  for (const auto& it : devicePrograms_) {
     // Destroy device program
-    delete sit->second;
+    delete it.second;
   }
 
   devicePrograms_.clear();
@@ -631,13 +619,13 @@ bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func, b
 
 const device::Kernel* Symbol::getDeviceKernel(const Device& device, bool noAlias) const {
   const devicekernels_t* devKernels = (noAlias) ? &deviceKernels_ : &devKernelsNoOpt_;
-  devicekernels_t::const_iterator itEnd = devKernels->end();
-  devicekernels_t::const_iterator it = devKernels->find(&device);
+  const auto itEnd = devKernels->cend();
+  auto it = devKernels->find(&device);
   if (it != itEnd) {
     return it->second;
   }
 
-  for (it = devKernels->begin(); it != itEnd; ++it) {
+  for (it = devKernels->cbegin(); it != itEnd; ++it) {
     if (it->first->isAncestor(&device)) {
       return it->second;
     }

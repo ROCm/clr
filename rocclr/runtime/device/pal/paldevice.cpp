@@ -1081,7 +1081,7 @@ device::Program* Device::createProgram(amd::option::Options* options) {
 }
 
 //! Requested devices list as configured by the GPU_DEVICE_ORDINAL
-typedef std::map<int, bool> requestedDevices_t;
+typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
 static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {

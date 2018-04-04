@@ -380,8 +380,8 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
       ) const;
 
  private:
-  typedef std::map<CALimage, GslKernelDesc*> GslKernels;
-  typedef std::map<gslMemObject, GpuEvent> GpuEvents;
+  typedef std::unordered_map<CALimage, GslKernelDesc*> GslKernels;
+  typedef std::unordered_map<gslMemObject, GpuEvent> GpuEvents;
 
   //! Finds total amount of necessary iterations
   inline void findIterations(const amd::NDRangeContainer& sizes,  //!< Original workload sizes

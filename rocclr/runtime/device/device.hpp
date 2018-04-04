@@ -828,9 +828,9 @@ class Memory : public amd::HeapObject {
   //! NB, the map data below is for an API-level map (from clEnqueueMapBuffer),
   //! not a physical map. When a memory object does not use USE_HOST_PTR we
   //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
-  amd::Memory* mapMemory_;                            //!< Memory used as map target buffer
-  volatile size_t indirectMapCount_;                  //!< Number of maps
-  std::map<const void*, WriteMapInfo> writeMapInfo_;  //!< Saved write map info for partial unmap
+  amd::Memory* mapMemory_;                                      //!< Memory used as map target buffer
+  volatile size_t indirectMapCount_;                            //!< Number of maps
+  std::unordered_map<const void*, WriteMapInfo> writeMapInfo_;  //!< Saved write map info for partial unmap
 
   //! Increment map count
   void incIndMapCount() { ++indirectMapCount_; }
@@ -1017,7 +1017,7 @@ class Kernel : public amd::HeapObject {
 class Program : public amd::HeapObject {
  public:
   typedef std::pair<const void*, size_t> binary_t;
-  typedef std::map<std::string, Kernel*> kernels_t;
+  typedef std::unordered_map<std::string, Kernel*> kernels_t;
   // type of the program
   typedef enum {
     TYPE_NONE = 0,     // uncompiled
@@ -1347,14 +1347,14 @@ class ClBinary : public amd::HeapObject {
 
 inline const Program::binary_t Program::binary() const {
   if (clBinary() == NULL) {
-    return std::make_pair((const void*)0, 0);
+    return {(const void*)0, 0};
   }
   return clBinary()->data();
 }
 
 inline Program::binary_t Program::binary() {
   if (clBinary() == NULL) {
-    return std::make_pair((const void*)0, 0);
+    return {(const void*)0, 0};
   }
   return clBinary()->data();
 }
@@ -1750,7 +1750,6 @@ class Device : public RuntimeObject {
   static AppProfile* rocAppProfile_;
 #endif
 
-  typedef std::vector<Device*>::iterator device_iterator;
   static std::vector<Device*>* devices_;  //!< All known devices
 
   Device* parent_;                                    //!< This device's parent

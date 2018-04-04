@@ -73,16 +73,14 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
        functionNameMap[] maps from a function name (linkage name in the generated code)
        to ElfSymbol_t, which is defined as above.
      */
-    std::map<std::string, ElfSymbol_t*> functionNameMap;
+    std::unordered_map<std::string, ElfSymbol_t*> functionNameMap;
 
     // Keep all kernel ILs if -use-debugil is present (gpu debugging)
-    std::map<std::string, std::string> kernelILs;
+    std::unordered_map<std::string, std::string> kernelILs;
 
     ~TempWrapper() {
-      std::map<std::string, ElfSymbol_t *>::iterator I, IB = functionNameMap.begin(),
-                                                        IE = functionNameMap.end();
-      for (I = IB; I != IE; ++I) {
-        delete[](*I).second;
+      for (const auto& it : functionNameMap) {
+        delete[] it.second;
       }
 
       kernelILs.clear();
@@ -177,10 +175,8 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
     }
 
     // Append all function metadata to debugIL
-    std::map<std::string, ElfSymbol_t *>::iterator I, IB = tempObj.functionNameMap.begin(),
-                                                      IE = tempObj.functionNameMap.end();
-    for (I = IB; I != IE; ++I) {
-      ElfSymbol_t* elfsymbol = (*I).second;
+    for (const auto& it : tempObj.functionNameMap) {
+      ElfSymbol_t* elfsymbol = it.second;
       if (elfsymbol == NULL) {
         // Not valid, skip
         continue;
@@ -202,11 +198,9 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
     }
 
     // Now, patch the IL from debugIL into functionNameMap[]
-    std::map<std::string, std::string>::iterator KI, KIB = tempObj.kernelILs.begin(),
-                                                     KIE = tempObj.kernelILs.end();
-    for (KI = KIB; KI != KIE; ++KI) {
-      const std::string& kn = (*KI).first;
-      const std::string& ilstr = (*KI).second;
+    for (const auto& it : tempObj.kernelILs) {
+      const std::string& kn = it.first;
+      const std::string& ilstr = it.second;
 
       ElfSymbol_t* elfsymbol = tempObj.functionNameMap[kn];
       if (elfsymbol == NULL) {
@@ -225,10 +219,8 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
 
   bool recompiled = false;
   bool hasKernels = false;
-  std::map<std::string, ElfSymbol_t *>::iterator I, IB = tempObj.functionNameMap.begin(),
-                                                    IE = tempObj.functionNameMap.end();
-  for (I = IB; I != IE; ++I) {
-    ElfSymbol_t* elfsymbol = (*I).second;
+  for (const auto& it : tempObj.functionNameMap) {
+    ElfSymbol_t* elfsymbol = it.second;
     if (elfsymbol == NULL) {
       // Not valid, skip
       continue;
@@ -237,7 +229,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       // and the new binary is needed.
       if (saveAMDIL() && (elfsymbol->SymInfo[NDX_METADATA].size > 0)) {
         std::string fmetadata = "__OpenCL_";
-        fmetadata.append((*I).first);
+        fmetadata.append(it.first);
         fmetadata.append("_fmetadata");
 
         if (!elfOut()->addSymbol(amd::OclElf::RODATA, fmetadata.c_str(),
@@ -250,7 +242,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       continue;
     }
     amd::OclElf::SymbolInfo* sinfo = &(elfsymbol->SymInfo[0]);
-    std::string FName = (*I).first;
+    std::string FName = it.first;
 
     // For this kernel, get the demangled kernel name, which is used to identify each kernel.
     const size_t name_sz = FName.size() - (sizeof(_kernel) - 1) - (sizeof(__OpenCL_) - 1);

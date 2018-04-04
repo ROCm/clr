@@ -96,15 +96,14 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
 
     // Process the command's event wait list.
     const Command::EventWaitList& events = command->eventWaitList();
-    Command::EventWaitList::const_iterator it;
     bool dependencyFailed = false;
 
-    for (it = events.begin(); it != events.end(); ++it) {
+    for (const auto& it : events) {
       // Only wait if the command is enqueued into another queue.
-      if ((*it)->command().queue() != this) {
+      if (it->command().queue() != this) {
         virtualDevice->flush(head, true);
         tail = head = NULL;
-        dependencyFailed |= !(*it)->awaitCompletion();
+        dependencyFailed |= !it->awaitCompletion();
       }
     }
 
