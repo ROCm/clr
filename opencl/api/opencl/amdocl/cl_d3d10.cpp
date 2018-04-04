@@ -125,7 +125,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromD3D10KHR,
         break;
       }
 
-      std::vector<amd::Device*>::iterator it = compatible_devices.begin();
+      auto it = compatible_devices.cbegin();
       cl_uint compatible_count = std::min(num_entries, (cl_uint)compatible_devices.size());
 
       while (compatible_count--) {
@@ -298,9 +298,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImageFromD3D10Resource,
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
   bool sizePass = false;
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if ((*it)->info().imageSupport_) {
+  for (const auto& it : devices) {
+    if (it->info().imageSupport_) {
       supportPass = true;
     }
   }
@@ -1104,9 +1103,8 @@ int D3D10Object::initD3D10Object(const Context& amdContext, ID3D10Resource* pRes
   ScopedLock sl(resLock_);
 
   // Check if this ressource has already been used for interop
-  std::vector<std::pair<void*, UINT>>::iterator it;
-  for (it = resources_.begin(); it != resources_.end(); ++it) {
-    if ((*it).first == (void*)pRes && (*it).second == subres) {
+  for (const auto& it : resources_) {
+    if (it.first == (void*)pRes && it.second == subres) {
       return CL_INVALID_D3D10_RESOURCE_KHR;
     }
   }
@@ -1349,7 +1347,7 @@ int D3D10Object::initD3D10Object(const Context& amdContext, ID3D10Resource* pRes
       return CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
     }
   }
-  resources_.push_back(std::make_pair(pRes, subres));
+  resources_.push_back({pRes, subres});
   return CL_SUCCESS;
 }
 

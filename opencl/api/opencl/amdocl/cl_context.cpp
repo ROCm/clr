@@ -296,9 +296,8 @@ RUNTIME_ENTRY(cl_int, clGetContextInfo,
       *not_null(param_value_size_ret) = valueSize;
       if (param_value != NULL) {
         cl_device_id* device_list = (cl_device_id*)param_value;
-        std::vector<amd::Device*>::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          *device_list++ = const_cast<cl_device_id>(as_cl(*it));
+        for (const auto& it : devices) {
+          *device_list++ = const_cast<cl_device_id>(as_cl(it));
         }
       }
       return CL_SUCCESS;

@@ -163,9 +163,8 @@ public:
             if(pD3D10ResOrig_) pD3D10ResOrig_->Release();
             if(pQuery_) pQuery_->Release();
             // Check if this resource has already been used for interop
-            std::vector<std::pair<void*, UINT>>::iterator it;
             if(resources_.size()) {
-                for(it = resources_.begin(); it != resources_.end(); ++it) {
+                for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
                     if(((pD3D10ResOrig_ && (*it).first == (void*) pD3D10ResOrig_)
                         || ((*it).first == (void*) pD3D10Res_))
                         && (*it).second == subRes_) {

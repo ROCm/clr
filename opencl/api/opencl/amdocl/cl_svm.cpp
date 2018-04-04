@@ -74,7 +74,7 @@ static bool validateMapFlags(cl_map_flags flags) {
  *  \param size is the size in bytes of the SVM buffer to be allocated.
  *
  *  \param alignment is the minimum alignment in bytes that is required for the
- *  newly created buffer’s memory region. It must be a power of two up to the
+ *  newly created bufferâ€™s memory region. It must be a power of two up to the
  *  largest data type supported by the OpenCL device. For the full profile, the
  *  largest data type is long16. For the embedded profile, it is long16 if the
  *  device supports 64-bit integers; otherwise it is int16. If alignment is 0, a
@@ -127,25 +127,24 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (cl_context context, cl_svm_mem_f
   cl_device_svm_capabilities combinedSvmCapabilities = 0;
   const cl_uint hostAddressBits = LP64_SWITCH(32, 64);
   cl_uint minContextAlignment = std::numeric_limits<uint>::max();
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    cl_device_svm_capabilities svmCapabilities = (*it)->info().svmCapabilities_;
+  for (const auto& it : devices) {
+    cl_device_svm_capabilities svmCapabilities = it->info().svmCapabilities_;
     if (svmCapabilities == 0) {
       continue;
     }
     combinedSvmCapabilities |= svmCapabilities;
 
-    if ((*it)->info().maxMemAllocSize_ >= size) {
+    if (it->info().maxMemAllocSize_ >= size) {
       sizePass = true;
     }
 
-    if ((*it)->info().addressBits_ < hostAddressBits) {
+    if (it->info().addressBits_ < hostAddressBits) {
       LogWarning("address mode mismatch between host and device");
       return NULL;
     }
 
     // maximum alignment for a device is given in bits.
-    cl_uint baseAlignment = (*it)->info().memBaseAddrAlign_ >> 3;
+    cl_uint baseAlignment = it->info().memBaseAddrAlign_ >> 3;
     if (alignment > baseAlignment) {
       LogWarning("invalid parameter \"alignment\"");
       return NULL;
@@ -877,7 +876,7 @@ RUNTIME_EXIT
  *  (clEnqueueNDRangeKernel) until the argument value is changed by a call to
  *  clSetKernelArgSVMPointer for \a kernel. The SVM pointer can only be used for
  *  arguments that are declared to be a pointer to global or constant memory.
- *  The SVM pointer value must be aligned according to the argument’s type. For
+ *  The SVM pointer value must be aligned according to the argumentï¿½s type. For
  *  example, if the argument is declared to be global float4 *p, the SVM pointer
  *  value passed for p must be at a minimum aligned to a float4. The SVM pointer
  *  value specified as the argument value can be the pointer returned by
@@ -985,9 +984,8 @@ RUNTIME_ENTRY(cl_int, clSetKernelExecInfo, (cl_kernel kernel, cl_kernel_exec_inf
         const amd::Context* amdContext = &amdKernel->program().context();
         bool foundFineGrainedSystemDevice = false;
         const std::vector<amd::Device*>& devices = amdContext->devices();
-        std::vector<amd::Device*>::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          if ((*it)->info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
+        for (const auto it : devices) {
+          if (it->info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) {
             foundFineGrainedSystemDevice = true;
             break;
           }

@@ -24,9 +24,8 @@ static amd::Program* createProgram(cl_context context, cl_uint num_devices,
   // Add programs for all devices in the context.
   if (device_list == NULL) {
     const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-    std::vector<amd::Device*>::const_iterator it;
-    for (it = devices.begin(); it != devices.end(); ++it) {
-      if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
+    for (const auto& it : devices) {
+      if (program->addDeviceProgram(*it) == CL_OUT_OF_HOST_MEMORY) {
         *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
         program->release();
         return NULL;
@@ -142,9 +141,8 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithSource,
 
   // Add programs for all devices in the context.
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
+  for (const auto& it : devices) {
+    if (program->addDeviceProgram(*it) == CL_OUT_OF_HOST_MEMORY) {
       *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
       program->release();
       return (cl_program)0;
@@ -204,9 +202,8 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithIL,
 
   // Add programs for all devices in the context.
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if (program->addDeviceProgram(**it, il, length) == CL_OUT_OF_HOST_MEMORY) {
+  for (const auto& it : devices) {
+    if (program->addDeviceProgram(*it, il, length) == CL_OUT_OF_HOST_MEMORY) {
       *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
       program->release();
       return (cl_program)0;
@@ -368,9 +365,8 @@ RUNTIME_ENTRY_RET(cl_program, clCreateProgramWithAssemblyAMD,
 
   // Add programs for all devices in the context.
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if (program->addDeviceProgram(**it) == CL_OUT_OF_HOST_MEMORY) {
+  for (const auto& it : devices) {
+    if (program->addDeviceProgram(*it) == CL_OUT_OF_HOST_MEMORY) {
       *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
       program->release();
       return (cl_program)0;
@@ -964,9 +960,8 @@ RUNTIME_ENTRY(cl_int, clGetProgramInfo,
       *not_null(param_value_size_ret) = valueSize;
       if (param_value != NULL) {
         cl_device_id* device_list = (cl_device_id*)param_value;
-        amd::Program::devicelist_t::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          *device_list++ = const_cast<cl_device_id>(as_cl(*it));
+        for (const auto& it : devices) {
+          *device_list++ = const_cast<cl_device_id>(as_cl(it));
         }
         if (param_value_size > valueSize) {
           ::memset(static_cast<address>(param_value) + valueSize, '\0',
@@ -991,9 +986,8 @@ RUNTIME_ENTRY(cl_int, clGetProgramInfo,
       *not_null(param_value_size_ret) = valueSize;
       if (param_value != NULL) {
         size_t* binary_sizes = (size_t*)param_value;
-        amd::Program::devicelist_t::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          *binary_sizes++ = amdProgram->getDeviceProgram(**it)->binary().second;
+        for (const auto& it : devices) {
+          *binary_sizes++ = amdProgram->getDeviceProgram(*it)->binary().second;
         }
         if (param_value_size > valueSize) {
           ::memset(static_cast<address>(param_value) + valueSize, '\0',
@@ -1014,9 +1008,8 @@ RUNTIME_ENTRY(cl_int, clGetProgramInfo,
       *not_null(param_value_size_ret) = valueSize;
       if (param_value != NULL) {
         char** binaries = (char**)param_value;
-        amd::Program::devicelist_t::const_iterator it;
-        for (it = devices.begin(); it != devices.end(); ++it) {
-          const device::Program::binary_t& binary = amdProgram->getDeviceProgram(**it)->binary();
+        for (const auto& it : devices) {
+          const device::Program::binary_t& binary = amdProgram->getDeviceProgram(*it)->binary();
           // If an entry value in the array is NULL,
           // then runtime should skip copying the program binary
           if (*binaries != NULL) {
@@ -1376,9 +1369,8 @@ RUNTIME_ENTRY(cl_int, clCreateKernelsInProgram, (cl_program program, cl_uint num
   const amd::Program::symbols_t& symbols = as_amd(program)->symbols();
   cl_kernel* result = kernels;
 
-  amd::Program::symbols_t::const_iterator it;
-  for (it = symbols.begin(); it != symbols.end(); ++it) {
-    amd::Kernel* kernel = new amd::Kernel(*as_amd(program), it->second, it->first);
+  for (const auto& it : symbols) {
+    amd::Kernel* kernel = new amd::Kernel(*as_amd(program), it.second, it.first);
     if (kernel == NULL) {
       while (--result >= kernels) {
         as_amd(*result)->release();
