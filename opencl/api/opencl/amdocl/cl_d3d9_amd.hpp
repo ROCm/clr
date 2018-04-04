@@ -239,9 +239,8 @@ public:
             if(pD3D9Aux_) pD3D9Aux_->Release();
             if(pQuery_) pQuery_->Release();
             //if the resouce is being used
-            std::vector<std::pair<TD3D9RESINFO, TD3D9RESINFO>>::iterator it;
             if(resources_.size()) {
-                for(it = resources_.begin(); it != resources_.end(); ++it) {
+                for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
                     if( surfInfo_.resource && 
                         ((*it).first.surfInfo.resource == surfInfo_.resource) &&
                         ((*it).first.surfPlane == surfPlane_)) {

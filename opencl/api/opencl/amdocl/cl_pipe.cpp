@@ -81,10 +81,9 @@ RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
   size_t size = sizeof(struct clk_pipe_t) + pipe_packet_size * pipe_max_packets;
 
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-  std::vector<amd::Device*>::const_iterator it;
   bool sizePass = false;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if (((*it)->info().maxMemAllocSize_ >= size)) {
+  for (const auto& it : devices) {
+    if (it->info().maxMemAllocSize_ >= size) {
       sizePass = true;
       break;
     }

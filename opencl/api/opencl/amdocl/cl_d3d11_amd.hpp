@@ -171,9 +171,8 @@ public:
             if(pD3D11ResOrig_) pD3D11ResOrig_->Release();
             if(pQuery_) pQuery_->Release();
             // Check if this resource has already been used for interop
-            std::vector<std::pair<void*, std::pair<UINT,UINT>>>::iterator it;
             if(resources_.size()) {
-                for(it = resources_.begin(); it != resources_.end(); ++it) {
+                for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
                     if(((pD3D11ResOrig_ && (*it).first == (void*) pD3D11ResOrig_)
                         || ((*it).first == (void*) pD3D11Res_))
                         && (*it).second.first  == subRes_

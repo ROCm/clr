@@ -101,7 +101,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR,
         break;
       }
 
-      std::vector<amd::Device*>::iterator it = compatible_devices.begin();
+      auto it = compatible_devices.cbegin();
       cl_uint compatible_count = std::min(num_entries, (cl_uint)compatible_devices.size());
 
       while (compatible_count--) {
@@ -183,9 +183,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromDX9MediaSurfaceKHR,
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
   bool sizePass = false;
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if ((*it)->info().imageSupport_) {
+  for (const auto& it : devices) {
+    if (it->info().imageSupport_) {
       supportPass = true;
     }
   }
@@ -484,9 +483,8 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
     return CL_INVALID_DX9_MEDIA_ADAPTER_KHR;  // Not supported yet
   }
 
-  std::vector<std::pair<TD3D9RESINFO, TD3D9RESINFO>>::iterator it;
-  for (it = resources_.begin(); it != resources_.end(); ++it) {
-    if ((*it).first.surfInfo.resource == cl_surf_info->resource && (*it).first.surfPlane == plane) {
+  for (const auto& it : resources_) {
+    if (it.first.surfInfo.resource == cl_surf_info->resource && it.first.surfPlane == plane) {
       return CL_INVALID_D3D9_RESOURCE_KHR;
     }
   }
@@ -519,12 +517,11 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
   // first check if the format is NV12 or YV12, which we need special handling
   if (NULL == shared_handle) {
     bool found = false;
-    std::vector<std::pair<TD3D9RESINFO, TD3D9RESINFO>>::iterator it;
-    for (it = resources_.begin(); it != resources_.end(); ++it) {
-      if ((*it).first.surfInfo.resource == cl_surf_info->resource &&
-          (*it).first.surfPlane != plane) {
-        obj.handleShared_ = (*it).second.surfInfo.shared_handle;
-        obj.pD3D9Res_ = (*it).second.surfInfo.resource;
+    for (const auto& it : resources_) {
+      if (it.first.surfInfo.resource == cl_surf_info->resource &&
+          it.first.surfPlane != plane) {
+        obj.handleShared_ = it.second.surfInfo.shared_handle;
+        obj.pD3D9Res_ = it.second.surfInfo.resource;
         obj.pD3D9Res_->AddRef();
         obj.objDesc_ = obj.objDescOrig_;
         found = true;
@@ -567,7 +564,7 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
   TD3D9RESINFO d3d9ObjShared = {{obj.pD3D9Res_, obj.handleShared_}, plane};
 
   if (errcode == CL_SUCCESS) {
-    resources_.push_back(std::make_pair(d3d9ObjOri, d3d9ObjShared));
+    resources_.push_back({d3d9ObjOri, d3d9ObjShared});
   }
 
   return errcode;

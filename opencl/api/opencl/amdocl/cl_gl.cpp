@@ -199,9 +199,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture,
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
   bool sizePass = false;
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if ((*it)->info().imageSupport_) {
+  for (const auto& it : devices) {
+    if (it->info().imageSupport_) {
       supportPass = true;
     }
   }
@@ -285,9 +284,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture2D,
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
   bool sizePass = false;
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if ((*it)->info().imageSupport_) {
+  for (const auto& it : devices) {
+    if (it->info().imageSupport_) {
       supportPass = true;
     }
   }
@@ -366,9 +364,8 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture3D,
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
   bool sizePass = false;
-  std::vector<amd::Device*>::const_iterator it;
-  for (it = devices.begin(); it != devices.end(); ++it) {
-    if ((*it)->info().imageSupport_) {
+  for (const auto& it : devices) {
+    if (it->info().imageSupport_) {
       supportPass = true;
     }
   }
@@ -914,9 +911,8 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR,
 
       if (param_value != NULL) {
         cl_device_id* deviceList = (cl_device_id*)param_value;
-        std::vector<amd::Device*>::const_iterator it;
-        for (it = compatible_devices.begin(); it != compatible_devices.end(); ++it) {
-          *deviceList++ = as_cl(*it);
+        for (const auto& it : compatible_devices) {
+          *deviceList++ = as_cl(it);
         }
       }
 
@@ -1616,8 +1612,8 @@ cl_mem clCreateFromGLBufferAMD(Context& amdContext, cl_mem_flags flags, GLuint b
   // We should come up with a more elegant solution to handle this.
   assert(amdContext.devices().size() == 1);
 
-  std::vector<amd::Device*>::const_iterator itr = amdContext.devices().begin();
-  amd::Device& dev = *(*itr);
+  const auto it = amdContext.devices().cbegin();
+  const amd::Device& dev = *(*it);
 
   if (dev.type() != CL_DEVICE_TYPE_CPU) {
     device::Memory* mem = pBufferGL->getDeviceMemory(dev);
