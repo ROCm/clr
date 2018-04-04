@@ -24,7 +24,7 @@ namespace amd {
  */
 class PerfCounter : public RuntimeObject {
  public:
-  typedef std::map<cl_perfcounter_property, ulong> Properties;
+  typedef std::unordered_map<cl_perfcounter_property, ulong> Properties;
 
   //! Constructor of the performance counter object
   PerfCounter(const Device& device,    //!< device object

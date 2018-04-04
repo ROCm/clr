@@ -1349,10 +1349,9 @@ bool Kernel::bindGlobalHwCb(VirtualGPU& gpu, VirtualGPU::GslKernelDesc* desc) co
 
   // Bind HW constant buffers used for the global data store
   const Program::HwConstBuffers& gds = prog().glbHwCb();
-  for (Program::HwConstBuffers::const_iterator it = gds.begin(); (it != gds.end() && result);
-       ++it) {
-    uint idx = it->first;
-    result = bindResource(gpu, *(it->second), idx, ConstantBuffer, idx);
+  for (const auto& it : gds) {
+    uint idx = it.first;
+    result = bindResource(gpu, *(it.second), idx, ConstantBuffer, idx);
   }
 
   return result;
@@ -1535,16 +1534,16 @@ void Kernel::debug(VirtualGPU& gpu) const {
     }
   }
   const Program::HwConstBuffers& gds = prog().glbHwCb();
-  for (Program::HwConstBuffers::const_iterator it = gds.begin(); it != gds.end(); ++it) {
-    uint idx = it->first;
+  for (const auto& it : gds) {
+    uint idx = it.first;
     std::stringstream fileName;
     fileName << counter++ << "_kernel_" << name() << "_const" << idx << ".bin";
     stubWrite.open(fileName.str().c_str(), (std::fstream::out | std::fstream::binary));
     if (stubWrite.is_open()) {
-      address memory = reinterpret_cast<address>((it->second)->map(&gpu, Resource::ReadOnly));
+      address memory = reinterpret_cast<address>(it.second->map(&gpu, Resource::ReadOnly));
       // Check if we have OpenCL program
-      stubWrite.write(reinterpret_cast<char*>(memory), (it->second)->size());
-      (it->second)->unmap(&gpu);
+      stubWrite.write(reinterpret_cast<char*>(memory), it.second->size());
+      it.second->unmap(&gpu);
       stubWrite.close();
     }
   }

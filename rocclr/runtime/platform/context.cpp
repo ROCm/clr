@@ -62,10 +62,9 @@ Context::~Context() {
 
   // Dissociate OCL context with any external device
   if (info_.flags_ & (GLDeviceKhr | D3D10DeviceKhr | D3D11DeviceKhr)) {
-    std::vector<Device*>::const_iterator it;
     // Loop through all devices
-    for (it = devices_.begin(); it != devices_.end(); it++) {
-      (*it)->unbindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY);
+    for (const auto& it : devices_) {
+      it->unbindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY);
     }
   }
 
@@ -218,10 +217,9 @@ int Context::create(const intptr_t* properties) {
   // Check if OCL context can be associated with any external device
   if (info_.flags_ & (D3D10DeviceKhr | D3D11DeviceKhr | GLDeviceKhr | D3D9DeviceKhr |
                       D3D9DeviceEXKhr | D3D9DeviceVAKhr)) {
-    std::vector<Device*>::const_iterator it;
     // Loop through all devices
-    for (it = devices_.begin(); it != devices_.end(); it++) {
-      if (!(*it)->bindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY)) {
+    for (const auto& it : devices_) {
+      if (!it->bindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY)) {
         result = CL_INVALID_VALUE;
       }
     }
@@ -331,10 +329,9 @@ void Context::svmFree(void* ptr) const {
 }
 
 bool Context::containsDevice(const Device* device) const {
-  std::vector<Device*>::const_iterator it;
 
-  for (it = devices_.begin(); it != devices_.end(); ++it) {
-    if (device == *it || (*it)->isAncestor(device)) {
+  for (const auto& it : devices_) {
+    if (device == it || it->isAncestor(device)) {
       return true;
     }
   }
@@ -342,8 +339,8 @@ bool Context::containsDevice(const Device* device) const {
 }
 
 DeviceQueue* Context::defDeviceQueue(const Device& dev) const {
-  std::map<const Device*, DeviceQueueInfo>::const_iterator it = deviceQueues_.find(&dev);
-  if (it != deviceQueues_.end()) {
+  const auto it = deviceQueues_.find(&dev);
+  if (it != deviceQueues_.cend()) {
     return it->second.defDeviceQueue_;
   } else {
     return NULL;

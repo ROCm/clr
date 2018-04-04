@@ -228,8 +228,8 @@ bool HSAILProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
   assert(!"Should not reach here");
   return false;
 #else   // !defined(WITH_LIGHTNING_COMPILER)
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create
@@ -656,10 +656,9 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     }
     std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
     delete [] kernelNames;
-    std::vector<std::string>::iterator it = vKernels.begin();
     bool dynamicParallelism = false;
-    for (it; it != vKernels.end(); ++it) {
-      std::string kernelName(*it);
+    for (const auto& it : vKernels) {
+      std::string kernelName(it);
       std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
 
       HSAILKernel* aKernel =

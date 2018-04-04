@@ -183,8 +183,7 @@ void* ProDevice::AllocDmaBuffer(hsa_agent_t agent, size_t size, void** host_ptr)
                                           flags, &buf_size, &ptr, nullptr, nullptr)) {
         // Ask GPUPro driver to provide CPU access to allocation
         if (0 == Funcs().AmdgpuBoCpuMap(buf_handle, host_ptr)) {
-          allocs_.insert(std::pair<void*, std::pair<amdgpu_bo_handle, uint32_t>>(
-                         ptr, std::pair<amdgpu_bo_handle, uint32_t>(buf_handle, shared_handle)));
+          allocs_.insert({ptr, {buf_handle, shared_handle}});
         }
         else {
           hsa_amd_interop_unmap_buffer(ptr);

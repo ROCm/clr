@@ -430,10 +430,9 @@ void VirtualCPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& cmd) {
 
   //! Go through ext objects by one and call member function to execute
   //! a sequence of external graphics API commands for each external object
-  for (std::vector<amd::Memory*>::const_iterator itr = cmd.getMemList().begin();
-       itr != cmd.getMemList().end(); itr++) {
-    if (*itr) {
-      bError |= !((*itr)->mapExtObjectInCQThread());
+  for (const auto& it : cmd.getMemList()) {
+    if (it) {
+      bError |= !(it->mapExtObjectInCQThread());
     }
   }
   if (bError) {
@@ -453,10 +452,9 @@ void VirtualCPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& cmd) {
 
   bool bError = false;
 
-  for (std::vector<amd::Memory*>::const_iterator itr = cmd.getMemList().begin();
-       itr != cmd.getMemList().end(); itr++) {
-    if (*itr) {
-      bError |= !((*itr)->unmapExtObjectInCQThread());
+  for (const auto& it : cmd.getMemList()) {
+    if (it) {
+      bError |= !(it->unmapExtObjectInCQThread());
     }
   }
   if (bError) {

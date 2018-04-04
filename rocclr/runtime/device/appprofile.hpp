@@ -4,7 +4,7 @@
 #ifndef APPPROFILE_HPP_
 #define APPPROFILE_HPP_
 
-#include <map>
+#include <unordered_map>
 #include <string>
 
 namespace amd {
@@ -34,7 +34,7 @@ class AppProfile {
     void* data_;      //!< Pointer to the data
   };
 
-  typedef std::map<std::string, PropertyData> DataMap;
+  typedef std::unordered_map<std::string, PropertyData> DataMap;
 
   DataMap propertyDataMap_;
   std::string appFileName_;  // without extension

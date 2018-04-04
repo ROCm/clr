@@ -545,9 +545,9 @@ VirtualGPU::~VirtualGPU() {
 
   uint i;
   // Destroy all kernels
-  for (GslKernels::const_iterator it = gslKernels_.begin(); it != gslKernels_.end(); ++it) {
-    if (it->first != 0) {
-      freeKernelDesc(it->second);
+  for (const auto& it : gslKernels_) {
+    if (it.first != 0) {
+      freeKernelDesc(it.second);
     }
   }
   gslKernels_.clear();
@@ -1365,10 +1365,9 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
 
   profilingBegin(vcmd, true);
 
-  std::vector<amd::Memory*>::const_iterator itr;
-  for (itr = vcmd.memObjects().begin(); itr != vcmd.memObjects().end(); ++itr) {
+  for (const auto& it : vcmd.memObjects()) {
     // Find device memory
-    gpu::Memory* memory = dev().getGpuMemory(*itr);
+    gpu::Memory* memory = dev().getGpuMemory(it);
 
     if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_HOST) {
       memory->mgpuCacheWriteBack();
@@ -2016,7 +2015,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
 
     // Loop through all outstanding command batches
     while (!cbList_.empty()) {
-      CommandBatchList::const_iterator it = cbList_.begin();
+      const auto it = cbList_.cbegin();
       // Wait for completion
       foundEvent = awaitCompletion(*it, vcmd.waitingEvent());
       // Release a command batch
@@ -2210,8 +2209,8 @@ void VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& 
       const size_t memObjSize = cmd.getMemoryObjectSize();
       const std::vector<amd::Memory*>& memObj = cmd.getMemList();
       size_t se = 0;
-      for (std::vector<amd::Memory *>::const_iterator itMemObj = memObj.begin();
-           itMemObj != memObj.end(); ++itMemObj, ++se) {
+      for (auto itMemObj = memObj.cbegin();
+           itMemObj != memObj.cend(); ++itMemObj, ++se) {
         // Find GSL Mem Object
         gslMemObject gslMemObj = dev().getGpuMemory(*itMemObj)->gslResource();
 
@@ -2297,15 +2296,14 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
 
-  for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); ++it) {
+  for (const auto& it : vcmd.getMemList()) {
     // amd::Memory object should never be NULL
-    assert(*it && "Memory object for interop is NULL");
-    gpu::Memory* memory = dev().getGpuMemory(*it);
+    assert(it && "Memory object for interop is NULL");
+    gpu::Memory* memory = dev().getGpuMemory(it);
 
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data from original resource
-    (*it)->getInteropObj()->copyOrigToShared();
+    it->getInteropObj()->copyOrigToShared();
 
     // Check if OpenCL has direct access to the interop memory
     if (memory->interopType() == Memory::InteropDirectAccess) {
@@ -2336,11 +2334,10 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
 
-  for (std::vector<amd::Memory*>::const_iterator it = vcmd.getMemList().begin();
-       it != vcmd.getMemList().end(); ++it) {
+  for (const auto& it : vcmd.getMemList()) {
     // amd::Memory object should never be NULL
-    assert(*it && "Memory object for interop is NULL");
-    gpu::Memory* memory = dev().getGpuMemory(*it);
+    assert(it && "Memory object for interop is NULL");
+    gpu::Memory* memory = dev().getGpuMemory(it);
 
     // Check if we can use HW interop
     if (memory->interopType() == Memory::InteropHwEmulation) {
@@ -2362,7 +2359,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data back to original resource
-    (*it)->getInteropObj()->copySharedToOrig();
+    it->getInteropObj()->copySharedToOrig();
   }
 
   profilingEnd(vcmd);
@@ -2513,7 +2510,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
   wait |= state_.forceWait_;
   // Loop through all outstanding command batches
   while (!cbList_.empty()) {
-    CommandBatchList::const_iterator it = cbList_.begin();
+    const auto it = cbList_.cbegin();
     // Check if command batch finished without a wait
     bool finished = true;
     for (uint i = 0; i < AllEngines; ++i) {
@@ -2537,8 +2534,8 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
 void VirtualGPU::enableSyncedBlit() const { return blitMgr_->enableSynchronization(); }
 
 void VirtualGPU::releaseMemObjects(bool scratch) {
-  for (GpuEvents::const_iterator it = gpuEvents_.begin(); it != gpuEvents_.end(); ++it) {
-    GpuEvent event = it->second;
+  for (const auto& it : gpuEvents_) {
+    GpuEvent event = it.second;
     waitForEvent(&event);
   }
   // Unbind all resources.So the queue won't have any bound mem objects

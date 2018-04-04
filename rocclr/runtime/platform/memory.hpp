@@ -18,6 +18,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <unordered_map>
 
 namespace device {
 class Memory;
@@ -124,7 +125,7 @@ class Memory : public amd::RuntimeObject {
   DeviceMemory* deviceMemories_;
 
   //! The device alloced state
-  std::map<const Device*, AllocState> deviceAlloced_;
+  std::unordered_map<const Device*, AllocState> deviceAlloced_;
 
   //! Linked list of destructor callbacks.
   std::atomic<DestructorCallBackEntry*> destructorCallbacks_;

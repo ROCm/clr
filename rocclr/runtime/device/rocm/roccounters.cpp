@@ -336,12 +336,11 @@ uint64_t PerfCounter::getInfo(uint64_t infoType) const {
                                                               &data);
 
       uint64_t result = 0;
-      std::vector<hsa_ven_amd_aqlprofile_info_data_t>::iterator it;
-      for (it = data.begin(); it != data.end(); ++it) {
-        if (it->pmc_data.event.block_name == event_.block_name &&
-            it->pmc_data.event.block_index == event_.block_index &&
-            it->pmc_data.event.counter_id == event_.counter_id) {
-            result += it->pmc_data.result;
+      for (const auto& it : data) {
+        if (it.pmc_data.event.block_name == event_.block_name &&
+            it.pmc_data.event.block_index == event_.block_index &&
+            it.pmc_data.event.counter_id == event_.counter_id) {
+            result += it.pmc_data.result;
         }
       }
       return result;

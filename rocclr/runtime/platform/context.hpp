@@ -11,7 +11,7 @@
 #include "platform/agent.hpp"
 
 #include <vector>
-#include <map>
+#include <unordered_map>
 
 namespace amd {
 
@@ -197,8 +197,8 @@ class Context : public RuntimeObject {
   GLFunctions* glenv_;                   //!< OpenGL context
   Device* customHostAllocDevice_;        //!< Device responsible for host allocations
   std::vector<Device*> svmAllocDevice_;  //!< Devices can support SVM allocations
-  std::map<const Device*, DeviceQueueInfo> deviceQueues_;  //!< Device queues mapping
-  mutable Monitor ctxLock_;                                //!< Lock for the context access
+  std::unordered_map<const Device*, DeviceQueueInfo> deviceQueues_;  //!< Device queues mapping
+  mutable Monitor ctxLock_;                                          //!< Lock for the context access
 };
 
 /*! @}

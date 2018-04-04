@@ -1133,7 +1133,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = desc().width_ * elementSize_;
   createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-  createInfo.alignment = MaxGpuAlignment;
+  createInfo.alignment = desc().scratch_ ? 64*Ki : MaxGpuAlignment;
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
 
@@ -1970,7 +1970,7 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
 
       amd::ScopedLock l(&lockCacheOps_);
       // Add the current resource to the cache
-      resCache_.push_front(std::make_pair(descCached, ref));
+      resCache_.push_front({descCached, ref});
       ref->gpu_ = nullptr;
       cacheSize_ += size;
       result = true;

@@ -318,7 +318,7 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
         std::string metadataStr;
         std::vector<ILFunc*> notCalled;
         std::vector<ILFunc*> called;
-        std::map<int, const char**> macros;
+        std::unordered_map<int, const char**> macros;
         size_t j;
         Kernel::InitData initData = {0};
 
@@ -464,8 +464,8 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                            amd::option::Options* options, bool createLibrary) {
   std::vector<std::string*> llvmBinaries(inputPrograms.size());
   std::vector<amd::OclElf::oclElfSections> elfSectionType(inputPrograms.size());
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   for (size_t i = 0; it != itEnd; ++it, ++i) {
     NullProgram* program = (NullProgram*)*it;
 
@@ -682,7 +682,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
         std::string metadataStr;
         std::vector<ILFunc*> notCalled;
         std::vector<ILFunc*> called;
-        std::map<int, const char**> macros;
+        std::unordered_map<int, const char**> macros;
         size_t j;
         Kernel::InitData initData = {0};
 
@@ -1433,7 +1433,7 @@ NullKernel* NullProgram::createKernel(const std::string& name, const Kernel::Ini
 }
 
 // Invoked from ClBinary
-bool NullProgram::getAllKernelILs(std::map<std::string, std::string>& allKernelILs,
+bool NullProgram::getAllKernelILs(std::unordered_map<std::string, std::string>& allKernelILs,
                                   std::string& programIL, const char* ilKernelName) {
   llvm::CompUnit compunit(programIL);
   if (ilKernelName != NULL) {
@@ -1471,8 +1471,8 @@ bool NullProgram::createBinary(amd::option::Options* options) {
 Program::~Program() {
   // Destroy the global HW constant buffers
   const Program::HwConstBuffers& gds = glbHwCb();
-  for (Program::HwConstBuffers::const_iterator it = gds.begin(); it != gds.end(); ++it) {
-    delete it->second;
+  for (const auto& it : gds) {
+    delete it.second;
   }
 
   // Destroy the global data store
@@ -1634,8 +1634,8 @@ bool HSAILProgram::finiBuild(bool isBuildGood) {
 
 bool HSAILProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                             amd::option::Options* options, bool createLibrary) {
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create
@@ -2037,13 +2037,12 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     }
     std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
     delete [] kernelNames;
-    std::vector<std::string>::iterator it = vKernels.begin();
     bool dynamicParallelism = false;
     aclMetadata md;
     md.numHiddenKernelArgs = 0;
     size_t sizeOfnumHiddenKernelArgs = sizeof(md.numHiddenKernelArgs);
-    for (it; it != vKernels.end(); ++it) {
-      std::string kernelName(*it);
+    for (const auto& it : vKernels) {
+      std::string kernelName(it);
       std::string openclKernelName = Kernel::openclMangledName(kernelName);
       errorCode = aclQueryInfo(dev().hsaCompiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
                                openclKernelName.c_str(), &md.numHiddenKernelArgs,

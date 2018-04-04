@@ -702,9 +702,8 @@ bool Program::compileImpl(const std::string& sourceCode,
     std::string headerIncludeName(headerIncludeNames[i]);
     // replace / in path with current os's file separator
     if (amd::Os::fileSeparator() != '/') {
-      for (std::string::iterator it = headerIncludeName.begin(), end = headerIncludeName.end();
-           it != end; ++it) {
-        if (*it == '/') *it = amd::Os::fileSeparator();
+      for (auto& it : headerIncludeName) {
+        if (it == '/') it = amd::Os::fileSeparator();
       }
     }
     size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
@@ -1028,8 +1027,8 @@ bool Program::linkImpl(const std::vector<device::Program*>& inputPrograms,
 #if defined(WITH_ONLINE_COMPILER)
   std::vector<std::string*> llvmBinaries(inputPrograms.size());
   std::vector<amd::OclElf::oclElfSections> elfSectionType(inputPrograms.size());
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   for (size_t i = 0; it != itEnd; ++it, ++i) {
     Program* program = (Program*)*it;
 

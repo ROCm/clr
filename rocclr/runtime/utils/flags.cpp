@@ -5,7 +5,7 @@
 #include "top.hpp"
 #include "utils/flags.hpp"
 
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <cstdlib>
 #include <cstring>
@@ -75,7 +75,7 @@ void Flag::tearDown() {
 }
 
 bool Flag::init() {
-  typedef std::map<std::string, const char*> vars_type;
+  typedef std::unordered_map<std::string, const char*> vars_type;
   vars_type vars;
 
 #ifdef _WIN32
@@ -116,8 +116,8 @@ bool Flag::init() {
   for (size_t i = 0; i < numFlags_; ++i) {
     Flag& flag = flags_[i];
 
-    vars_type::iterator it = vars.find(flag.name_);
-    if (it != vars.end()) {
+    const auto it = vars.find(flag.name_);
+    if (it != vars.cend()) {
       flag.setValue(it->second);
     }
   }

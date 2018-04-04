@@ -9,7 +9,7 @@
 #include "profuncs.hpp"
 #include "prodriver.hpp"
 #include "thread/monitor.hpp"
-#include <map>
+#include <unordered_map>
 
 /*! \addtogroup HSA
  *  @{
@@ -53,7 +53,7 @@ private:
   amdgpu_device_handle  dev_handle_;  //!< AMD gpu device handle
   amdgpu_gpu_info       gpu_info_;    //!< GPU info structure
   amdgpu_heap_info      heap_info_;   //!< Information about memory
-  mutable std::map<void*, std::pair<amdgpu_bo_handle, uint32_t>> allocs_; //!< Alloced memory mapping
+  mutable std::unordered_map<void*, std::pair<amdgpu_bo_handle, uint32_t>> allocs_; //!< Alloced memory mapping
   amd::Monitor*         alloc_ops_;   //!< Serializes memory allocations/destructions
 };
 

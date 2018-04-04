@@ -415,7 +415,6 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
       return false;
     }
 
-    std::vector<uint>::const_iterator ita;
     uint sb = 0;
     uint sbt = 0;
 
@@ -427,8 +426,8 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
       }
       const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
       sb += sizeof(uint32_t);
-      for (ita = info.arguments_.begin(); ita != info.arguments_.end(); ++ita) {
-        sb += *ita;
+      for (const auto& ita : info.arguments_) {
+        sb += ita;
       }
 
       size_t idx = 1;

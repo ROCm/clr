@@ -24,7 +24,6 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include <iterator>
 
 namespace roc {
 
@@ -535,8 +534,8 @@ aclType HSAILProgram::getCompilationStagesFromBinary(std::vector<aclType>& compl
 
 bool HSAILProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
                             amd::option::Options* options, bool createLibrary) {
-  std::vector<device::Program*>::const_iterator it = inputPrograms.begin();
-  std::vector<device::Program*>::const_iterator itEnd = inputPrograms.end();
+  auto it = inputPrograms.cbegin();
+  const auto itEnd = inputPrograms.cend();
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create

@@ -11,10 +11,8 @@ namespace pal {
 
 AppProfile::AppProfile()
     : amd::AppProfile(), enableHighPerformanceState_(true), reportAsOCL12Device_(false) {
-  propertyDataMap_.insert(DataMap::value_type(
-      "HighPerfState", PropertyData(DataType_Boolean, &enableHighPerformanceState_)));
+  propertyDataMap_.insert({"HighPerfState", PropertyData(DataType_Boolean, &enableHighPerformanceState_)});
 
-  propertyDataMap_.insert(
-      DataMap::value_type("OCL12Device", PropertyData(DataType_Boolean, &reportAsOCL12Device_)));
+  propertyDataMap_.insert({"OCL12Device", PropertyData(DataType_Boolean, &reportAsOCL12Device_)});
 }
 }
