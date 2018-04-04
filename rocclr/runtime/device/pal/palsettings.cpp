@@ -257,7 +257,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
             ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR))
             : OpenCL12;
       }
-      if (OPENCL_VERSION < 200) {
+      if (OPENCL_VERSION < 200 || (IS_LINUX && IS_MAINLINE)) {
         oclVersion_ = OpenCL12;
       }
       numComputeRings_ = 8;
