@@ -468,10 +468,10 @@ bool MakeBuffersResidentCommand::validateMemory() {
 }
 bool ThreadTraceMemObjectsCommand::validateMemory() {
   if (queue()->device().info().type_ & CL_DEVICE_TYPE_GPU) {
-    for (auto& it = memObjects_.cbegin(); it != memObjects_.cend(); it++) {
+    for (auto it = memObjects_.cbegin(); it != memObjects_.cend(); it++) {
       device::Memory* mem = (*it)->getDeviceMemory(queue()->device());
       if (NULL == mem) {
-        for (auto& tmpIt = memObjects_.cbegin(); tmpIt != it; tmpIt++) {
+        for (auto tmpIt = memObjects_.cbegin(); tmpIt != it; tmpIt++) {
           device::Memory* tmpMem = (*tmpIt)->getDeviceMemory(queue()->device());
           delete tmpMem;
         }
