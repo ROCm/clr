@@ -58,8 +58,11 @@ bool PalThreadTraceReference::finalize() {
   // Acquire GPU memory for the query from the pool and bind it.
   Pal::GpuMemoryRequirements gpuMemReqs = {};
   iPerf()->GetGpuMemoryRequirements(&gpuMemReqs);
-
-  memory_ = new Memory(gpu().dev(), amd::alignUp(gpuMemReqs.size, gpuMemReqs.alignment));
+  // Note: Pal:::PerfExperiments can't apply the runtime offsets for suballocaiotns,
+  // thus disable suballocation.
+  Pal::gpusize bufSize = std::max(gpuMemReqs.size,
+    gpu_.dev().settings().subAllocationMaxSize_ + gpuMemReqs.alignment);
+  memory_ = new Memory(gpu().dev(), amd::alignUp(bufSize, gpuMemReqs.alignment));
 
   if (nullptr == memory_) {
     return false;

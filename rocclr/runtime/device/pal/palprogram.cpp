@@ -98,6 +98,7 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
       srcOffs += tmpSize;
       tmpSize = std::min(static_cast<size_t>(xferBuf.size()), size);
     }
+    gpuAccess_->dev().xferWrite().release(gpu, xferBuf);
     gpu.waitAllEngines();
   }
 }

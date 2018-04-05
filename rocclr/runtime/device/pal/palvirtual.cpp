@@ -2427,6 +2427,8 @@ void VirtualGPU::submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& 
       LogError("Unsupported command type for ThreadTraceMemObjects!");
       break;
   }
+
+  profilingEnd(cmd);
 }
 
 void VirtualGPU::submitThreadTrace(amd::ThreadTraceCommand& cmd) {
@@ -2469,6 +2471,8 @@ void VirtualGPU::submitThreadTrace(amd::ThreadTraceCommand& cmd) {
       LogError("Unsupported command type for ThreadTrace!");
       break;
   }
+
+  profilingEnd(cmd);
 }
 
 void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
