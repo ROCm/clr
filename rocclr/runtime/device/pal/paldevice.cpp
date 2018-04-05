@@ -1309,7 +1309,7 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
 
   // Check if owner is interop memory
   if (owner.isInterop()) {
-    result = gpuMemory->createInterop(Memory::InteropDirectAccess);
+    result = gpuMemory->createInterop();
   } else if (owner.getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
     // Attempt to allocate from persistent heap
     result = gpuMemory->create(Resource::Persistent);
@@ -1454,7 +1454,7 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
 
     // Check if owner is interop memory
     if (owner.isInterop()) {
-      result = gpuImage->createInterop(Memory::InteropDirectAccess);
+      result = gpuImage->createInterop();
     } else if (imageBuffer) {
       Resource::ImageBufferParams params;
       pal::Memory* buffer = reinterpret_cast<pal::Memory*>(image.parent()->getDeviceMemory(*this));

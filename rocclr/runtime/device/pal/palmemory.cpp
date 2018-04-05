@@ -23,22 +23,26 @@
 namespace pal {
 
 Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t size)
-    : device::Memory(owner), Resource(gpuDev, size) {
-  init();
+  : device::Memory(owner), Resource(gpuDev, size)
+  , pinnedMemory_(nullptr)
+  , parent_(nullptr) {
 
   if (owner.parent() != nullptr) {
     flags_ |= SubMemoryObject;
   }
 }
 
-Memory::Memory(const Device& gpuDev, size_t size) : device::Memory(size), Resource(gpuDev, size) {
-  init();
+Memory::Memory(const Device& gpuDev, size_t size)
+  : device::Memory(size), Resource(gpuDev, size)
+  , pinnedMemory_(nullptr)
+  , parent_(nullptr) {
 }
 
 Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t width, size_t height, size_t depth,
                cl_image_format format, cl_mem_object_type imageType, uint mipLevels)
-    : device::Memory(owner), Resource(gpuDev, width, height, depth, format, imageType, mipLevels) {
-  init();
+    : device::Memory(owner), Resource(gpuDev, width, height, depth, format, imageType, mipLevels)
+    , pinnedMemory_(nullptr)
+    , parent_(nullptr) {
 
   if (owner.parent() != nullptr) {
     flags_ |= SubMemoryObject;
@@ -47,16 +51,9 @@ Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t width, size_t he
 
 Memory::Memory(const Device& gpuDev, size_t size, size_t width, size_t height, size_t depth,
                cl_image_format format, cl_mem_object_type imageType, uint mipLevels)
-    : device::Memory(size), Resource(gpuDev, width, height, depth, format, imageType, mipLevels) {
-  init();
-}
-
-void Memory::init() {
-  indirectMapCount_ = 0;
-  interopType_ = InteropNone;
-  interopMemory_ = nullptr;
-  pinnedMemory_ = nullptr;
-  parent_ = nullptr;
+  : device::Memory(size), Resource(gpuDev, width, height, depth, format, imageType, mipLevels)
+  , pinnedMemory_(nullptr)
+  , parent_(nullptr) {
 }
 
 #ifdef _WIN32
@@ -194,7 +191,7 @@ bool Memory::processGLResource(GLResourceOP operation) {
   return retVal;
 }
 
-bool Memory::createInterop(InteropType type) {
+bool Memory::createInterop() {
   Resource::MemoryType memType = Resource::Empty;
   Resource::OGLInteropParams oglRes;
 #ifdef _WIN32
@@ -374,25 +371,10 @@ bool Memory::createInterop(InteropType type) {
     return false;
   }
 
-  // Get the interop settings
-  if (type == InteropDirectAccess) {
-    // Create memory object
-    if (!create(memType, createParams)) {
-      return false;
-    }
-  } else {
-    // Allocate Resource object for interop as buffer
-    interopMemory_ = new Memory(dev(), size());
-
-    // Create the interop object in CAL
-    if (nullptr == interopMemory_ || !interopMemory_->create(memType, createParams)) {
-      delete interopMemory_;
-      interopMemory_ = nullptr;
-      return false;
-    }
+  // Create memory object
+  if (!create(memType, createParams)) {
+    return false;
   }
-
-  setInteropType(type);
 
   return true;
 }
@@ -400,8 +382,6 @@ bool Memory::createInterop(InteropType type) {
 Memory::~Memory() {
   // Clean VA cache
   dev().removeVACache(this);
-
-  delete interopMemory_;
 
   // Release associated map target, if any
   if (nullptr != mapMemory_) {
