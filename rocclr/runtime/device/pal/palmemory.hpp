@@ -28,12 +28,6 @@ class VirtualGPU;
 //  Wrapper that can contain a heap block or an interop buffer/image.
 class Memory : public device::Memory, public Resource {
  public:
-  enum InteropType {
-    InteropNone = 0,         //!< None interop memory
-    InteropHwEmulation = 1,  //!< Uses HW emulaiton with calMemCopy
-    InteropDirectAccess = 2  //!< Uses direct access to the interop surface
-  };
-
   //! Constructor (with owner)
   Memory(const Device& gpuDev,  //!< GPU device object
          amd::Memory& owner,    //!< Abstraction layer memory object
@@ -71,8 +65,7 @@ class Memory : public device::Memory, public Resource {
   ~Memory();
 
   //! Creates the interop memory
-  bool createInterop(InteropType type  //!< The interop type
-                     );
+  bool createInterop();
 
   //! Overloads the resource create method
   virtual bool create(Resource::MemoryType memType,          //!< Memory type
@@ -133,18 +126,6 @@ class Memory : public device::Memory, public Resource {
   //! Accessors for indirect map memory object
   Memory* mapMemory() const;
 
-  //! Returns the interop memory for this memory object
-  Memory* interop() const { return interopMemory_; }
-
-  //! Gets interop type for this memory object
-  InteropType interopType() const { return interopType_; }
-
-  //! Sets interop type for this memory object
-  void setInteropType(InteropType type) { interopType_ = type; }
-
-  //! Set the owner
-  void setOwner(amd::Memory* owner) { owner_ = owner; }
-
   // Decompress GL depth-stencil/MSAA resources for CL access
   // Invalidates any FBOs the resource may be bound to, otherwise the GL driver may crash.
   virtual bool processGLResource(GLResourceOP operation);
@@ -165,9 +146,6 @@ class Memory : public device::Memory, public Resource {
   //! Decrement map count
   void decIndMapCount();
 
-  //! Initialize the object members
-  void init();
-
  private:
   //! Disable copy constructor
   Memory(const Memory&);
@@ -175,8 +153,6 @@ class Memory : public device::Memory, public Resource {
   //! Disable operator=
   Memory& operator=(const Memory&);
 
-  InteropType interopType_;  //!< Interop type
-  Memory* interopMemory_;    //!< interop memory
   Memory* pinnedMemory_;     //!< Memory used as pinned system memory
   const Memory* parent_;     //!< Parent memory object
 };

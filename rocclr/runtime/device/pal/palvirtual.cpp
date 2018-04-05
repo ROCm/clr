@@ -2489,25 +2489,6 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data from original resource
     it->getInteropObj()->copyOrigToShared();
-
-    // Check if OpenCL has direct access to the interop memory
-    if (memory->interopType() == Memory::InteropDirectAccess) {
-      continue;
-    }
-
-    // Does interop use HW emulation?
-    if (memory->interopType() == Memory::InteropHwEmulation) {
-      static const bool Entire = true;
-      amd::Coord3D origin(0, 0, 0);
-      amd::Coord3D region(memory->size());
-
-      // Synchronize the object
-      if (!blitMgr().copyBuffer(*memory->interop(), *memory, origin, origin, region, Entire)) {
-        LogError("submitAcquireExtObjects - Interop synchronization failed!");
-        vcmd.setStatus(CL_INVALID_OPERATION);
-        return;
-      }
-    }
   }
 
   profilingEnd(vcmd);
@@ -2523,24 +2504,6 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
     // amd::Memory object should never be nullptr
     assert(it && "Memory object for interop is nullptr");
     pal::Memory* memory = dev().getGpuMemory(it);
-
-    // Check if we can use HW interop
-    if (memory->interopType() == Memory::InteropHwEmulation) {
-      static const bool Entire = true;
-      amd::Coord3D origin(0, 0, 0);
-      amd::Coord3D region(memory->size());
-
-      // Synchronize the object
-      if (!blitMgr().copyBuffer(*memory, *memory->interop(), origin, origin, region, Entire)) {
-        LogError("submitReleaseExtObjects interop synchronization failed!");
-        vcmd.setStatus(CL_INVALID_OPERATION);
-        return;
-      }
-    } else {
-      if (memory->interopType() != Memory::InteropDirectAccess) {
-        LogError("None interop release!");
-      }
-    }
 
     // If resource is a shared copy of original resource, then
     // runtime needs to copy data back to original resource
