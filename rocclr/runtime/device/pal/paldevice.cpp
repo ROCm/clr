@@ -1814,7 +1814,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
               scratchBuf->regNum_ * numMaxWaves * sizeof(uint32_t);
           scratchBuf->size_ = std::min(scratchBuf->size_, info().maxMemAllocSize_);
           scratchBuf->size_ = std::min(scratchBuf->size_, uint64_t(3 * Gi));
-          scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 0xFFFF);
+          // Note: Generic address space setup in HW requires 64KB alignment for scratch
+          scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 64 * Ki);
           scratchBuf->offset_ = offset;
           size += scratchBuf->size_;
           offset += scratchBuf->size_;
