@@ -16,8 +16,6 @@
 #include <cstring>
 #include <utility>
 
-#define DXGI_FORMAT_NV12 103
-
 /*! \addtogroup API
  *  @{
  *
@@ -596,7 +594,8 @@ size_t D3D11Object::getResourceByteSize() {
 }
 
 cl_uint D3D11Object::getMiscFlag() {
-  if (objDesc_.dxgiFormat_ == DXGI_FORMAT_NV12) {
+  if ((objDesc_.dxgiFormat_ == DXGI_FORMAT_NV12) ||
+      (objDesc_.dxgiFormat_ == DXGI_FORMAT_P010)) {
     return 1;
   }
   else if (objDesc_.dxgiFormat_ == DXGI_FORMAT_YUY2) {
@@ -807,7 +806,7 @@ int D3D11Object::initD3D11Object(const Context& amdContext, ID3D11Resource* pRes
         STORE_SHARED_FLAGS(ID3D11Texture2D);
       }
 
-      if (desc.Format == DXGI_FORMAT_NV12) {
+      if ((desc.Format == DXGI_FORMAT_NV12) || (desc.Format == DXGI_FORMAT_P010)) {
         if (plane == -1) {
           obj.objDesc_.objSize_.Height += obj.objDesc_.objSize_.Height / 2;
         }
@@ -1513,6 +1512,12 @@ size_t D3D11Object::getElementBytes(DXGI_FORMAT dxgiFmt, cl_uint plane) {
         bytesPerPixel = 2;
       }
       break;
+    case DXGI_FORMAT_P010:
+        bytesPerPixel = 2;
+        if (plane == 1) {
+            bytesPerPixel = 4;
+        }
+        break;
     default:
       bytesPerPixel = 0;
       _ASSERT(FALSE);
@@ -1874,11 +1879,17 @@ cl_image_format D3D11Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt, cl_uint pl
     case DXGI_FORMAT_NV12:
       fmt.image_channel_order = CL_R;
       fmt.image_channel_data_type = CL_UNSIGNED_INT8;
-
       if (plane == 1) {
         fmt.image_channel_order = CL_RG;
       }
       break;
+    case DXGI_FORMAT_P010:
+        fmt.image_channel_order = CL_R;
+        fmt.image_channel_data_type = CL_UNSIGNED_INT16;
+        if (plane == 1) {
+            fmt.image_channel_order = CL_RG;
+        }
+        break;
     default:
       _ASSERT(FALSE);
       break;
