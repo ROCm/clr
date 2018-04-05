@@ -1046,6 +1046,9 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   uint viewFlags = 0;
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
+  // Set the initial offset value for any resource to 0. 
+  // Note: Runtime can call create() more than once, if the initial memory type failed  
+  offset_ = 0;
 
   // This is a thread safe operation
   const_cast<Device&>(dev()).initializeHeapResources();
