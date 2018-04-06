@@ -921,16 +921,14 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   static const bool WaitOnBusyEngine = true;
   uint64_t ldsAddress = ldsSize();
   address aqlArgBuf = gpu.cb(0)->SysMemCopy();
-  address aqlStruct = gpu.cb(1)->SysMemCopy();
   bool srdResource = false;
 
   if (dynamicParallelism()) {
     // Provide the host parent AQL wrap object to the kernel
-    AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(aqlStruct);
-    memset(wrap, 0, sizeof(AmdAqlWrap));
-    wrap->state = AQL_WRAP_BUSY;
+    AmdAqlWrap wrap = {};
+    wrap.state = AQL_WRAP_BUSY;
     const ConstantBuffer* cb = gpu.cb(1);
-    *vmParentWrap = cb->UploadDataToHw(sizeof(AmdAqlWrap));
+    *vmParentWrap = cb->UploadDataToHw(&wrap, sizeof(AmdAqlWrap));
     gpu.addVmMemory(cb->ActiveMemory());
   }
 
@@ -1063,11 +1061,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         break;
       }
       case HSAIL_ARGTYPE_REFERENCE: {
-        // Copy the current structure into CB1
-        memcpy(aqlStruct, paramaddr, arg->size_);
         const ConstantBuffer* cb = gpu.cb(1);
+        // Copy the current structure into CB1
+        size_t gpuPtr = static_cast<size_t>(cb->UploadDataToHw(paramaddr, arg->size_));
         // Then use a pointer in aqlArgBuffer to CB1
-        size_t gpuPtr = static_cast<size_t>(cb->UploadDataToHw(arg->size_));
         WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t), sizeof(size_t));
         gpu.addVmMemory(cb->ActiveMemory());
         break;
@@ -1105,11 +1102,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         //! Copy SRD to CB1, so blit manager will be able to release
         //! this view without a wait for SRD resource.
         if (image->memoryType() == Resource::ImageView) {
-          // Copy the current structre into CB1
-          memcpy(aqlStruct, image->hwState(), HsaImageObjectSize);
+          // Copy the current image SRD into CB1
           const ConstantBuffer* cb = gpu.cb(1);
+          uint64_t srd = cb->UploadDataToHw(image->hwState(), HsaImageObjectSize);
           // Then use a pointer in aqlArgBuffer to CB1
-          uint64_t srd = cb->UploadDataToHw(HsaImageObjectSize);
           WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
           gpu.addVmMemory(cb->ActiveMemory());
         } else {

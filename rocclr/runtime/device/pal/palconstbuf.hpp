@@ -79,6 +79,14 @@ public:
   uint64_t UploadDataToHw(uint32_t size  //!< real data size for upload
                           ) const;
 
+  /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
+  *
+  *  \return GPU address for the uploaded data
+  */
+  uint64_t UploadDataToHw(const void* sysmem,  //!< Pointer to the data for upload
+                          uint32_t    size     //!< Real data size for upload
+                          ) const;
+
   //! Returns a pointer to the system memory copy for CB
   address SysMemCopy(uint32_t size = 0) const { return sys_mem_copy_; }
 

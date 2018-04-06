@@ -53,7 +53,8 @@ bool ManagedBuffer::create(Resource::MemoryType type) {
 
 // ================================================================================================
 address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
-  static constexpr uint32_t MemAlignment = 256;
+  // Align to the maximum data size available in OpenCL
+  static constexpr uint32_t MemAlignment = sizeof(cl_double16);
 
   // Align reserve size on the vector's boundary
   uint32_t count = amd::alignUp(size, MemAlignment);
@@ -103,12 +104,20 @@ bool ConstantBuffer::Create() {
 }
 
 // ================================================================================================
-uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const
-{
+uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const {
   uint64_t  vm_address;
   address   cpu_address = mbuf_.reserve(size, &vm_address);
   // Update memory with new CB data
   memcpy(cpu_address, sys_mem_copy_, size);
+  return vm_address;
+}
+
+// ================================================================================================
+uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const {
+  uint64_t  vm_address;
+  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  // Update memory with new CB data
+  memcpy(cpu_address, sysmem, size);
   return vm_address;
 }
 
