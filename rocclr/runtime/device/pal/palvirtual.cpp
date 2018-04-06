@@ -360,42 +360,45 @@ void VirtualGPU::Queue::DumpMemoryReferences() const {
   if (dump.is_open()) {
     dump << start << " Queue: ";
     switch (iQueue_->Type()) {
-      case Pal::QueueTypeCompute:
-        dump << "Compute";
-        break;
-      case Pal::QueueTypeDma:
-        dump << "SDMA";
-        break;
-      default:
-        dump << "unknown";
-        break;
+    case Pal::QueueTypeCompute:
+      dump << "Compute";
+      break;
+    case Pal::QueueTypeDma:
+      dump << "SDMA";
+      break;
+    default:
+      dump << "unknown";
+      break;
     }
     dump << "\n"
-         << "Resident memory resources:\n";
+        << "Resident memory resources:\n";
     uint idx = 0;
     for (auto it : memReferences_) {
       dump << " " << idx << "\t[";
       dump.setf(std::ios::hex, std::ios::basefield);
       dump.setf(std::ios::showbase);
       dump << (it.first)->iMem()->Desc().gpuVirtAddr << ", "
-           << (it.first)->iMem()->Desc().gpuVirtAddr + (it.first)->iMem()->Desc().size;
+          << (it.first)->iMem()->Desc().gpuVirtAddr + (it.first)->iMem()->Desc().size;
       dump.setf(std::ios::dec);
-      dump << "] CbId:" << it.second << "\n";
+      dump << "] CbId:" << it.second <<
+          ", Heap: " << (it.first)->iMem()->Desc().preferredHeap << "\n";
       idx++;
     }
-  }
-  if (last_kernel_ != nullptr) {
-    const amd::KernelSignature& signature = last_kernel_->signature();
-    dump << last_kernel_->name() << std::endl;
-    for (size_t i = 0; i < signature.numParameters(); ++i) {
-      const amd::KernelParameterDescriptor& desc = signature.at(i);
-      // Find if the current argument is a memory object
-      if ((desc.type_ == T_POINTER) && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
-        dump << " " << desc.name_ << ": " << std::endl;
+
+    if (last_kernel_ != nullptr) {
+      const amd::KernelSignature& signature = last_kernel_->signature();
+      dump << last_kernel_->name() << std::endl;
+      for (size_t i = 0; i < signature.numParameters(); ++i) {
+        const amd::KernelParameterDescriptor& desc = signature.at(i);
+        // Find if the current argument is a memory object
+        if ((desc.type_ == T_POINTER) &&
+            (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
+          dump << " " << desc.name_ << ": " << std::endl;
+        }
       }
     }
+    dump.close();
   }
-  dump.close();
 }
 
 bool VirtualGPU::MemoryDependency::create(size_t numMemObj) {
