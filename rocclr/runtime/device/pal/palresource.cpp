@@ -1803,14 +1803,14 @@ bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {
   MemBuddyAllocator* allocator = new MemBuddyAllocator(
     device_, device_->settings().subAllocationChunkSize_,
     device_->settings().subAllocationMinSize_);
-  if ((allocator != nullptr) && (allocator->Init() == Pal::Result::Success)) {
-    heaps_.insert({mem_ref, allocator});
-    return true;
-  } else {
+  if (!((allocator != nullptr) &&
+        (allocator->Init() == Pal::Result::Success) &&
+        heaps_.insert({mem_ref, allocator}).second)) {
+    mem_ref->release();
     delete allocator;
     return false;
   }
-  return false;
+  return true;
 }
 
 // ================================================================================================
@@ -1868,7 +1868,7 @@ bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
 MemorySubAllocator::~MemorySubAllocator()
 {
   // Release memory heap for suballocations
-  for (auto it : heaps_) {
+  for (const auto& it : heaps_) {
     it.first->release();
     delete it.second;
   }
@@ -1887,7 +1887,7 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
     size = amd::alignUp(size, device_->settings().subAllocationMinSize_);
     do {
       // Find if current heap has enough empty space
-      for (auto it : heaps_) {
+      for (const auto& it : heaps_) {
         mem_ref = it.first;
         allocator = it.second;
         // SVM allocations may required a fixed VA, make sure we find the heap with the same VA
@@ -1898,17 +1898,16 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
         // If we have found a valid chunk, then suballocate memory
         if (Pal::Result::Success == allocator->Allocate(size, alignment, offset)) {
           return mem_ref;
-        } else {
-          mem_ref = nullptr;
         }
       }
-      if ((mem_ref == nullptr) && !CreateChunk(reserved_va)) {
+      // We didn't find a valid chunk, so create a new one
+      if (!CreateChunk(reserved_va)) {
           return nullptr;
       }
       i++;
     } while (i < 2);
   }
-  return mem_ref;
+  return nullptr;
 }
 
 // ================================================================================================
@@ -1950,11 +1949,16 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
 
   // Check if runtime can free suballocation
   if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
-    return mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
+    result = mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
-    return mem_sub_alloc_coarse_.Free(&lockCacheOps_, ref, offset);
+    result = mem_sub_alloc_coarse_.Free(&lockCacheOps_, ref, offset);
   } else if (desc->SVMRes_) {
-    return mem_sub_alloc_fine_.Free(&lockCacheOps_, ref, offset);
+    result = mem_sub_alloc_fine_.Free(&lockCacheOps_, ref, offset);
+  }
+
+  // If a resource was a suballocation, don't try to cache it
+  if (result == true) {
+    return result;
   }
 
   // Make sure current allocation isn't bigger than cache
