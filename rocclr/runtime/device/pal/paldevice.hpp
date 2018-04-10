@@ -22,6 +22,8 @@
 #include "acl.h"
 #include "memory"
 
+#include <unordered_set>
+
 /*! \addtogroup PAL
  *  @{
  */
@@ -506,17 +508,17 @@ class Device : public NullDevice {
   //! Adds a resource to the global list
   void addResource(Resource* res) const {
     amd::ScopedLock lock(lockResources());
-    auto findIt = std::find(resourceList_->begin(), resourceList_->end(), res);
+    auto findIt = resourceList_->find(res);
     res->resizeGpuEvents(numOfVgpus() - 1);
     if (resourceList_->end() == findIt) {
-      resourceList_->push_back(res);
+      resourceList_->insert(res);
     }
   }
 
   //! Removes a resource from the global list
   void removeResource(Resource* res) const {
     amd::ScopedLock lock(lockResources());
-    resourceList_->remove(res);
+    resourceList_->erase(res);
   }
 
   //! Resizes global resource list to accumulate a new queue
@@ -525,7 +527,7 @@ class Device : public NullDevice {
     // or other queues process a command, since the size of the TS array can change
     Device::ScopedLockVgpus v(*this);
     amd::ScopedLock r(lockResources());
-    for (auto it : *resourceList_) {
+    for (const auto& it : *resourceList_) {
       it->resizeGpuEvents(index);
     }
   }
@@ -533,7 +535,7 @@ class Device : public NullDevice {
   //! Erases an old queue from the list
   void eraseResoureList(uint index) const {
     amd::ScopedLock lock(lockResources());
-    for (auto it : *resourceList_) {
+    for (const auto& it : *resourceList_) {
       it->eraseGpuEvents(index);
     }
   }
@@ -603,7 +605,7 @@ class Device : public NullDevice {
   Pal::IDevice* device_;                 //!< PAL device object
   std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
   amd::Monitor* lockResourceOps_;        //!< Lock to serialise resource access
-  std::list<Resource*>* resourceList_;   //!< Active resource list
+  std::unordered_set<Resource*>* resourceList_;   //!< Active resource list
   RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
 };
 
