@@ -41,8 +41,6 @@ class VirtualGPU : public device::VirtualDevice {
  public:
   class Queue : public amd::HeapObject {
    public:
-    // Note: More command buffers may cause a HW hang with HWSC on VI family in OCLPerfKernelArguments
-    static const uint MaxCmdBuffers = 8;
     static const uint MaxCommands = 256;
     static const uint StartCmdBufIdx = 1;
     static const uint FirstMemoryReference = 0x80000000;
@@ -58,11 +56,14 @@ class VirtualGPU : public device::VirtualDevice {
                          Pal::ICmdAllocator* cmdAlloc,         //!< PAL CMD buffer allocator
                          uint rtCU,                            //!< The number of reserved CUs
                          amd::CommandQueue::Priority priority, //!< Queue priority
-                         uint64_t residency_limit              //!< Enables residency limit
+                         uint64_t residency_limit,             //!< Enables residency limit
+                         uint max_command_buffers              //!< Number of allocated command buffers
                          );
 
-    Queue(Pal::IDevice* palDev, uint64_t residency_limit)
+    Queue(Pal::IDevice* palDev, uint64_t residency_limit, uint max_command_buffers)
         : iQueue_(nullptr),
+          iCmdBuffs_(max_command_buffers, nullptr),
+          iCmdFences_(max_command_buffers, nullptr),
           last_kernel_(nullptr),
           iDev_(palDev),
           cmdBufIdSlot_(StartCmdBufIdx),
@@ -71,12 +72,9 @@ class VirtualGPU : public device::VirtualDevice {
           cmdCnt_(0),
           vlAlloc_(64 * Ki),
           residency_size_(0),
-          residency_limit_(residency_limit)
+          residency_limit_(residency_limit),
+          max_command_buffers_(max_command_buffers)
     {
-      for (uint i = 0; i < MaxCmdBuffers; ++i) {
-        iCmdBuffs_[i] = nullptr;
-        iCmdFences_[i] = nullptr;
-      }
       vlAlloc_.Init();
     }
 
@@ -152,8 +150,8 @@ class VirtualGPU : public device::VirtualDevice {
     uint cmdBufId() const { return cmdBufIdCurrent_; }
 
     Pal::IQueue* iQueue_;                        //!< PAL queue object
-    Pal::ICmdBuffer* iCmdBuffs_[MaxCmdBuffers];  //!< PAL command buffers
-    Pal::IFence* iCmdFences_[MaxCmdBuffers];     //!< PAL fences, associated with CMD
+    std::vector<Pal::ICmdBuffer*> iCmdBuffs_;    //!< PAL command buffers
+    std::vector<Pal::IFence*> iCmdFences_;       //!< PAL fences, associated with CMD
     const amd::Kernel* last_kernel_;             //!< Last submitted kernel
 
   private:
@@ -172,6 +170,7 @@ class VirtualGPU : public device::VirtualDevice {
     std::vector<const Pal::IGpuMemory*>   palSdiRefs_;
     uint64_t  residency_size_;  //!< Resource residency size
     uint64_t  residency_limit_; //!< Enables residency limit
+    uint max_command_buffers_;
   };
 
   struct CommandBatch : public amd::HeapObject {

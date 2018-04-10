@@ -95,6 +95,7 @@ class Settings : public device::Settings {
   size_t numMemDependencies_;  //!< The array size for memory dependencies tracking
   uint64_t maxAllocSize_;      //!< Maximum single allocation size
   uint rgpSqttDispCount_;      //!< The number of dispatches captured in SQTT
+  uint maxCmdBuffers_;         //!< Maximum number of command buffers allocated per queue
 
   uint64_t subAllocationMinSize_;   //!< Minimum size allowed for suballocations
   uint64_t subAllocationMaxSize_;   //!< Maximum size allowed with suballocations

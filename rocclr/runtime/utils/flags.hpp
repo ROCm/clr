@@ -217,6 +217,8 @@ release_on_stg(uint, PAL_RGP_DISP_COUNT, 10,                                  \
         "The number of dispatches for RGP capture with SQTT")                 \
 release(bool, GPU_FORCE_WAVE_SIZE_32, false,                                  \
         "Forces WaveSize32 compilation in SC")                                \
+release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
+         "The maximum number of command buffers allocated per queue")         \
 
 
 namespace amd {

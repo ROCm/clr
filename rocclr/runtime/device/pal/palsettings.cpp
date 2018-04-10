@@ -141,6 +141,9 @@ Settings::Settings() {
   subAllocationChunkSize_ = 64 * Mi;
   subAllocationMaxSize_ =
     std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
+
+  // Note: More command buffers may cause a HW hang with HWSC on VI family in OCLPerfKernelArguments
+  maxCmdBuffers_ = 8;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -494,6 +497,10 @@ void Settings::override() {
       default:
         break;
     }
+  }
+
+  if (!flagIsDefault(GPU_MAX_COMMAND_BUFFERS)) {
+    maxCmdBuffers_ = GPU_MAX_COMMAND_BUFFERS;
   }
 }
 
