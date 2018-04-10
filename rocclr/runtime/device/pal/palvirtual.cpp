@@ -36,7 +36,7 @@ namespace pal {
 VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueType queueType,
                                              uint engineIdx, Pal::ICmdAllocator* cmdAllocator,
                                              uint rtCU, amd::CommandQueue::Priority priority,
-                                             uint64_t residency_limit) {
+                                             uint64_t residency_limit, uint max_command_buffers) {
   Pal::Result result;
   Pal::CmdBufferCreateInfo cmdCreateInfo = {};
   Pal::QueueCreateInfo qCreateInfo = {};
@@ -81,8 +81,8 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
     return nullptr;
   }
 
-  size_t allocSize = qSize + MaxCmdBuffers * (cmdSize + fSize);
-  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(palDev, residency_limit);
+  size_t allocSize = qSize + max_command_buffers * (cmdSize + fSize);
+  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(palDev, residency_limit, max_command_buffers);
   if (queue != nullptr) {
     address addrQ = reinterpret_cast<address>(&queue[1]);
     // Create PAL queue object
@@ -93,10 +93,10 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
     }
     queue->UpdateAppPowerProfile();
     address addrCmd = addrQ + qSize;
-    address addrF = addrCmd + MaxCmdBuffers * cmdSize;
+    address addrF = addrCmd + max_command_buffers * cmdSize;
     Pal::CmdBufferBuildInfo cmdBuildInfo = {};
 
-    for (uint i = 0; i < MaxCmdBuffers; ++i) {
+    for (uint i = 0; i < max_command_buffers; ++i) {
       result = palDev->CreateCmdBuffer(cmdCreateInfo, &addrCmd[i * cmdSize], &queue->iCmdBuffs_[i]);
       if (result != Pal::Result::Success) {
         delete queue;
@@ -133,7 +133,7 @@ VirtualGPU::Queue::~Queue() {
   }
   memReferences_.clear();
 
-  for (uint i = 0; i < MaxCmdBuffers; ++i) {
+  for (uint i = 0; i < max_command_buffers_; ++i) {
     if (nullptr != iCmdBuffs_[i]) {
       iCmdBuffs_[i]->Destroy();
     }
@@ -274,14 +274,14 @@ bool VirtualGPU::Queue::flush() {
   }
 
   // Wrap current slot
-  cmdBufIdSlot_ = cmdBufIdCurrent_ % MaxCmdBuffers;
+  cmdBufIdSlot_ = cmdBufIdCurrent_ % max_command_buffers_;
 
   waifForFence<IbReuse>(cmdBufIdSlot_);
 
   // Progress retired TS
-  if ((cmdBufIdCurrent_ > MaxCmdBuffers) &&
-      (cmbBufIdRetired_ < (cmdBufIdCurrent_ - MaxCmdBuffers))) {
-    cmbBufIdRetired_ = cmdBufIdCurrent_ - MaxCmdBuffers;
+  if ((cmdBufIdCurrent_ > max_command_buffers_) &&
+      (cmbBufIdRetired_ < (cmdBufIdCurrent_ - max_command_buffers_))) {
+    cmbBufIdRetired_ = cmdBufIdCurrent_ - max_command_buffers_;
   }
 
   // Reset command buffer, so CB chunks could be reused
@@ -326,7 +326,7 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
     return true;
   }
 
-  uint slotId = id % MaxCmdBuffers;
+  uint slotId = id % max_command_buffers_;
   constexpr bool IbReuse = true;
   bool result = waifForFence<!IbReuse>(slotId);
   cmbBufIdRetired_ = id;
@@ -343,7 +343,7 @@ bool VirtualGPU::Queue::isDone(uint id) {
     flush();
   }
 
-  if (Pal::Result::Success != iCmdFences_[id % MaxCmdBuffers]->GetStatus()) {
+  if (Pal::Result::Success != iCmdFences_[id % max_command_buffers_]->GetStatus()) {
     return false;
   }
   cmbBufIdRetired_ = id;
@@ -784,6 +784,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   uint idx = index() % (dev().numComputeEngines() - firstQueue);
   uint64_t residency_limit = dev().properties().gpuMemoryProperties.flags.supportPerSubmitMemRefs ? 0 :
     (dev().properties().gpuMemoryProperties.maxLocalMemSize >> 2);
+  uint max_cmd_buffers = dev().settings().maxCmdBuffers_;
 
   if (dev().numComputeEngines()) {
     //! @todo There is a hang with a mix of user and non user queues.
@@ -795,7 +796,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
 
     queues_[MainEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue,
                                         cmdAllocator_, rtCUs, priority,
-                                        residency_limit);
+                                        residency_limit, max_cmd_buffers);
     if (nullptr == queues_[MainEngine]) {
       return false;
     }
@@ -813,14 +814,14 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
       queues_[SdmaEngine] =
           Queue::Create(dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_,
                         amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal,
-                        residency_limit);
+                        residency_limit, max_cmd_buffers);
       if (nullptr == queues_[SdmaEngine]) {
         return false;
       }
     } else {
         queues_[SdmaEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute,
             idx, cmdAllocator_, rtCUs, amd::CommandQueue::Priority::Normal,
-            residency_limit);
+            residency_limit, max_cmd_buffers);
         if (nullptr == queues_[SdmaEngine]) {
             return false;
         }
