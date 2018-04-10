@@ -762,7 +762,7 @@ bool Device::create(Pal::IDevice* device) {
   if (!amd::Device::create()) {
     return false;
   }
-  resourceList_ = new std::list<Resource*>();
+  resourceList_ = new std::unordered_set<Resource*>();
   if (nullptr == resourceList_) {
     return false;
   }
