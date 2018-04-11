@@ -770,6 +770,10 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 64 * Ki;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].suballocSize = 64 * Ki;
 
+  createInfo.allocInfo[Pal::GpuScratchMemAlloc].allocHeap = Pal::GpuHeapLocal;
+  createInfo.allocInfo[Pal::GpuScratchMemAlloc].allocSize = 64 * Ki;
+  createInfo.allocInfo[Pal::GpuScratchMemAlloc].suballocSize = 64 * Ki;
+
   Pal::Result result;
   size_t cmdAllocSize = dev().iDev()->GetCmdAllocatorSize(createInfo, &result);
   if (Pal::Result::Success != result) {
