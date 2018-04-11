@@ -868,16 +868,23 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
   hsa_isa_t isa = {0};
   uint32_t gfxip  = 0;
   std::string gfx_target(name);
-  uint32_t shift = 1;
-  size_t last = gfx_target.length();
-  std::string ver;
-  do {
-    size_t first = gfx_target.find_last_of(':', last);
-    ver = gfx_target.substr(first + 1, last - first);
-    last = first - 1;
-    gfxip += static_cast<uint32_t>(atoi(ver.c_str())) * shift;
-    shift *= 10;
-  } while (shift <= 100);
+  if (gfx_target.find("amdgcn-") == 0) {
+    std::string gfxip_version_str = gfx_target.substr(gfx_target.find("gfx") + 3);
+    gfxip = std::atoi(gfxip_version_str.c_str());
+  }
+  else {
+    // FIXME: Old way. To be remove.
+    uint32_t shift = 1;
+    size_t last = gfx_target.length();
+    std::string ver;
+    do {
+      size_t first = gfx_target.find_last_of(':', last);
+      ver = gfx_target.substr(first + 1, last - first);
+      last = first - 1;
+      gfxip += static_cast<uint32_t>(atoi(ver.c_str())) * shift;
+      shift *= 10;
+    } while (shift <= 100);
+  }
   isa.handle = gfxip;
   return isa;
 }
