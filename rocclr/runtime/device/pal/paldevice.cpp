@@ -1156,7 +1156,7 @@ bool Device::init() {
   info.flags.force32BitVaSpace = true;
   info.flags.enableSvmMode = false;
 #else
-  info.flags.enableSvmMode = true;
+  info.flags.enableSvmMode = !IS_LINUX;
 #endif
 #endif
   info.pSettingsPath = "OCL";
