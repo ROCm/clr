@@ -397,9 +397,6 @@ class Device : public NullDevice {
                                    ) const;
 
   //! Returns transfer buffer object
-  XferBuffers& xferWrite() const { return *xferWrite_; }
-
-  //! Returns transfer buffer object
   XferBuffers& xferRead() const { return *xferRead_; }
 
   //! Finds an appropriate map target
@@ -588,7 +585,6 @@ class Device : public NullDevice {
   amd::Monitor* scratchAlloc_;           //!< Lock to serialise scratch allocation
   amd::Monitor* mapCacheOps_;            //!< Lock to serialise cache for the map resources
   XferBuffers* xferRead_;                //!< Transfer buffers read
-  XferBuffers* xferWrite_;               //!< Transfer buffers write
   std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure
   ResourceCache* resourceCache_;         //!< Resource cache
   uint numComputeEngines_;               //!< The number of available compute engines

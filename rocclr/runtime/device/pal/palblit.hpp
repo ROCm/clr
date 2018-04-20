@@ -352,7 +352,7 @@ class KernelBlitManager : public DmaBlitManager {
                     const void* data         //!< Raw data pointer
                     ) const;
 
-  virtual amd::Monitor* lockXfer() const { return lockXferOps_; }
+  virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
  private:
   static const size_t MaxXferBuffers = 2;
@@ -397,10 +397,9 @@ class KernelBlitManager : public DmaBlitManager {
 
   amd::Program* program_;                     //!< GPU program obejct
   amd::Kernel* kernels_[BlitTotal];           //!< GPU kernels for blit
-  amd::Memory* constantBuffer_;               //!< An internal CB for blits
   amd::Memory* xferBuffers_[MaxXferBuffers];  //!< Transfer buffers for images
   size_t xferBufferSize_;                     //!< Transfer buffer size
-  amd::Monitor* lockXferOps_;                 //!< Lock transfer operation
+  mutable amd::Monitor lockXferOps_;          //!< Lock transfer operation
 };
 
 static const char* BlitName[KernelBlitManager::BlitTotal] = {

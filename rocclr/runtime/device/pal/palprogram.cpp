@@ -86,19 +86,19 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
   if (cpuAccess_ != nullptr) {
     amd::Os::fastMemcpy(cpuAddress(offset), src, size);
   } else {
+    amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
-    Memory& xferBuf = gpuAccess_->dev().xferWrite().acquire();
+    Memory& xferBuf = gpu.xferWrite().Acquire(size);
     size_t tmpSize = std::min(static_cast<size_t>(xferBuf.size()), size);
     size_t srcOffs = 0;
     while (size != 0) {
-      amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
       xferBuf.hostWrite(&gpu, reinterpret_cast<const_address>(src) + srcOffs, 0, tmpSize);
       xferBuf.partialMemCopyTo(gpu, 0, (offset + srcOffs), tmpSize, *gpuAccess_, false, true);
       size -= tmpSize;
       srcOffs += tmpSize;
       tmpSize = std::min(static_cast<size_t>(xferBuf.size()), size);
     }
-    gpuAccess_->dev().xferWrite().release(gpu, xferBuf);
+    gpu.xferWrite().Release(xferBuf);
     gpu.waitAllEngines();
   }
 }
