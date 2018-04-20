@@ -375,8 +375,8 @@ class VirtualGPU : public device::VirtualDevice {
                   bool pfpaDoppCmd       //!< is a submission for the pre-present primary
                   );
 
-  //! Adds a stage write buffer into a list
-  void addXferWrite(Memory& memory);
+  //! Return xfer buffer for staging operations
+  const XferBuffer& xferWrite() const { return writeBuffer_; }
 
   //! Adds a pinned memory object into a map
   void addPinnedMem(amd::Memory* mem);
@@ -518,9 +518,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Allocates constant buffers
   bool allocConstantBuffers();
 
-  //! Releases stage write buffers
-  void releaseXferWrite();
-
   //! Allocate hsaQueueMem_
   bool allocHsaQueueMem();
 
@@ -594,11 +591,11 @@ class VirtualGPU : public device::VirtualDevice {
 
   DmaFlushMgmt dmaFlushMgmt_;  //!< DMA flush management
 
-  std::vector<Memory*> xferWriteBuffers_;  //!< Stage write buffers
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
-  ManagedBuffer* writeBuffer_;  //!< Managed write buffer
-  constbufs_t constBufs_;       //!< constant buffers
+  ManagedBuffer managedBuffer_; //!< Managed write buffer
+  constbufs_t   constBufs_;     //!< constant buffers
+  XferBuffer    writeBuffer_;   //!< Transfer/staging buffer for uploads
 
   typedef std::queue<CommandBatch*> CommandBatchQueue;
   CommandBatchQueue cbQueue_;      //!< Queue of command batches

@@ -256,34 +256,36 @@ bool DmaBlitManager::readImage(device::Memory& srcMemory, void* dstHost, const a
 bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, Memory& xferBuf,
                                        size_t origin, size_t& offset, size_t& totalSize,
                                        size_t xferSize) const {
-  amd::Coord3D src(0, 0, 0);
   size_t chunkSize;
   static const bool CopyRect = false;
   // Flush DMA for ASYNC copy
   // @todo Blocking write requires a flush to start earlier,
   // but currently VDI doesn't provide that info
-  static const bool FlushDMA = false;
+  bool flushDMA = false;
 
-  if (dev().xferRead().bufSize() < 128 * Ki) {
-    chunkSize = dev().xferWrite().bufSize();
+  if (gpu().xferWrite().MaxSize() < 128 * Ki) {
+    chunkSize = gpu().xferWrite().MaxSize();
   } else {
-    chunkSize = std::min(amd::alignUp(xferSize / 4, 256), dev().xferWrite().bufSize());
+    chunkSize = std::min(amd::alignUp(xferSize / 4, 256), gpu().xferWrite().MaxSize());
     chunkSize = std::max(chunkSize, 128 * Ki);
+    bool flushDMA = true;
   }
 
   while (xferSize != 0) {
     // Find the partial transfer size
     size_t tmpSize = std::min(chunkSize, xferSize);
+    amd::Coord3D src(offset, 0, 0);
     amd::Coord3D dst(origin + offset, 0, 0);
     amd::Coord3D copySize(tmpSize, 0, 0);
 
     // Copy data into the temporary buffer, using CPU
-    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset, src, copySize)) {
+    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset,
+        src, copySize, Resource::NoWait)) {
       return false;
     }
 
     // Copy data into the original destination memory
-    if (!xferBuf.partialMemCopyTo(gpu(), src, dst, copySize, dstMemory, CopyRect, FlushDMA)) {
+    if (!xferBuf.partialMemCopyTo(gpu(), src, dst, copySize, dstMemory, CopyRect, flushDMA)) {
       return false;
     }
 
@@ -365,7 +367,7 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
     }
 
     if (dstSize != 0) {
-      Memory& xferBuf = dev().xferWrite().acquire();
+      Memory& xferBuf = gpu().xferWrite().Acquire(dstSize);
 
       // Write memory using a staged resource
       if (!writeMemoryStaged(srcHost, gpuMem(dstMemory), xferBuf, origin[0], offset, dstSize,
@@ -374,7 +376,7 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
         return false;
       }
 
-      gpu().addXferWrite(xferBuf);
+      gpu().xferWrite().Release(xferBuf);
     }
   }
 
@@ -392,7 +394,7 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
       gpuMem(dstMemory).isPersistentDirectMap()) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
   } else {
-    Memory& xferBuf = dev().xferWrite().acquire();
+    Memory& xferBuf = gpu().xferWrite().Acquire(std::min(gpu().xferWrite().MaxSize(), size[0]));
 
     amd::Coord3D src(0, 0, 0);
     size_t tmpSize = 0;
@@ -408,7 +410,7 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
 
         while (dstSize != 0) {
           // Find the partial transfer size
-          tmpSize = std::min(dev().xferWrite().bufSize(), dstSize);
+          tmpSize = std::min(gpu().xferWrite().MaxSize(), dstSize);
 
           amd::Coord3D dst(bufOffset, 0, 0);
           amd::Coord3D copySize(tmpSize, 0, 0);
@@ -432,7 +434,7 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
         }
       }
     }
-    gpu().addXferWrite(xferBuf);
+    gpu().xferWrite().Release(xferBuf);
   }
 
   return true;
@@ -576,8 +578,8 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
                                                 entire, rowPitch, slicePitch);
   } else {
     // Use PAL path for a transfer
-    result =
-        gpuMem(srcMemory).partialMemCopyTo(gpu(), srcOrigin, dstOrigin, size, gpuMem(dstMemory));
+    result = gpuMem(srcMemory).partialMemCopyTo(gpu(), srcOrigin, dstOrigin,
+        size, gpuMem(dstMemory));
 
     // Check if a HostBlit transfer is required
     if (completeOperation_ && !result) {
@@ -607,9 +609,8 @@ bool DmaBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMem
 KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup),
       program_(NULL),
-      constantBuffer_(NULL),
       xferBufferSize_(0),
-      lockXferOps_(NULL) {
+      lockXferOps_("Transfer Ops Lock", true) {
   for (uint i = 0; i < BlitTotal; ++i) {
     kernels_[i] = NULL;
   }
@@ -636,17 +637,11 @@ KernelBlitManager::~KernelBlitManager() {
     context_->release();
   }
 
-  if (NULL != constantBuffer_) {
-    constantBuffer_->release();
-  }
-
   for (uint i = 0; i < MaxXferBuffers; ++i) {
     if (NULL != xferBuffers_[i]) {
       xferBuffers_[i]->release();
     }
   }
-
-  delete lockXferOps_;
 }
 
 bool KernelBlitManager::create(amd::Device& device) {
@@ -693,19 +688,6 @@ bool KernelBlitManager::createProgram(Device& device) {
     result = true;
   } while (!result);
 
-  // Create an internal constant buffer
-  constantBuffer_ = new (*context_) amd::Buffer(*context_, CL_MEM_ALLOC_HOST_PTR, 4 * Ki);
-
-  if ((constantBuffer_ != NULL) && !constantBuffer_->create(NULL)) {
-    constantBuffer_->release();
-    constantBuffer_ = NULL;
-    return false;
-  } else if (constantBuffer_ == NULL) {
-    return false;
-  }
-
-  // Assign the constant buffer to the current virtual GPU
-  constantBuffer_->setVirtualDevice(&gpu());
 
   if (dev().settings().xferBufSize_ > 0) {
     xferBufferSize_ = dev().settings().xferBufSize_;
@@ -732,11 +714,6 @@ bool KernelBlitManager::createProgram(Device& device) {
       //! runtime runs out of 4GB space.
       dev().getGpuMemory(xferBuffers_[i]);
     }
-  }
-
-  lockXferOps_ = new amd::Monitor("Transfer Ops Lock", true);
-  if (NULL == lockXferOps_) {
-    return false;
   }
 
   return result;
@@ -1685,30 +1662,43 @@ bool KernelBlitManager::writeImage(const void* srcHost, device::Memory& dstMemor
   } else {
     size_t pinSize;
     FindPinSize(pinSize, size, rowPitch, slicePitch, gpuMem(dstMemory));
+    size_t partial = 0;
+    bool pinned;
 
-    size_t partial;
-    amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
-
-    if (amdMemory == NULL) {
-      // Force SW copy
-      result = HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch,
-                                           entire);
-      synchronize();
-      return result;
+    amd::Memory* amdMemory = nullptr;
+    Memory* srcMemory;
+    if (pinSize > gpu().xferWrite().MaxSize()) {
+      amdMemory = pinHostMemory(srcHost, pinSize, partial);
+      if (amdMemory == nullptr) {
+        // Force SW copy
+        result = HostBlitManager::writeImage(srcHost, dstMemory,
+                    origin, size, rowPitch, slicePitch, entire);
+        synchronize();
+        return result;
+      }
+      // Get device memory for this virtual device
+      srcMemory = dev().getGpuMemory(amdMemory);
+      pinned = true;
+    }
+    else {
+      srcMemory = &gpu().xferWrite().Acquire(pinSize);
+      srcMemory->hostWrite(&gpu(), srcHost, 0, pinSize, Resource::NoWait);
+      pinned = false;
     }
 
     // Readjust destination offset
     const amd::Coord3D srcOrigin(partial);
 
-    // Get device memory for this virtual device
-    Memory* srcMemory = dev().getGpuMemory(amdMemory);
-
     // Copy image to buffer
     result = copyBufferToImage(*srcMemory, dstMemory, srcOrigin, origin, size, entire, rowPitch,
                                slicePitch);
 
-    // Add pinned memory for a later release
-    gpu().addPinnedMem(amdMemory);
+    if (pinned) {
+      // Add pinned memory for a later release
+      gpu().addPinnedMem(amdMemory);
+    } else {
+      gpu().xferWrite().Release(*srcMemory);
+    }
   }
 
   synchronize();
@@ -2054,14 +2044,12 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
       setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
       setArgument(kernels_[fillType], 1, sizeof(cl_mem), NULL);
     }
-    Memory* gpuCB = dev().getGpuMemory(constantBuffer_);
-    if (gpuCB == NULL) {
-      return false;
-    }
-    void* constBuf = gpuCB->map(&gpu(), Resource::WriteOnly);
+    Memory& gpuCB = gpu().xferWrite().Acquire(patternSize);
+    void* constBuf = gpuCB.map(&gpu(), Resource::NoWait);
     memcpy(constBuf, pattern, patternSize);
-    gpuCB->unmap(&gpu());
-    setArgument(kernels_[fillType], 2, sizeof(cl_mem), &gpuCB);
+    gpuCB.unmap(&gpu());
+    Memory* pGpuCB = &gpuCB;
+    setArgument(kernels_[fillType], 2, sizeof(cl_mem), &pGpuCB);
     cl_ulong offset = origin[0];
     if (dwordAligned) {
       patternSize /= sizeof(uint32_t);
@@ -2077,6 +2065,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     // Execute the blit
     address parameters = kernels_[fillType]->parameters().values();
     result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters);
+    gpu().xferWrite().Release(gpuCB);
   }
 
   synchronize();
@@ -2137,12 +2126,10 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
     // Program source origin
     cl_ulong srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
-    ;
     setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
     cl_ulong dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
-    ;
     setArgument(kernels_[blitType], 3, sizeof(dstOffset), &dstOffset);
 
     cl_ulong copySize = size[0];

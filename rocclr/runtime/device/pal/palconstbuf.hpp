@@ -9,18 +9,19 @@
 namespace pal {
 
 //! Managed buffer (staging or constant)
-class ManagedBuffer : public amd::HeapObject {
+class ManagedBuffer : public amd::EmbeddedObject {
  public:
   //! Constructor for the ConstBuffer class
   ManagedBuffer(VirtualGPU& gpu,    //!< Virtual GPU device object
                 uint32_t    size    //!< size of the managed buffers in bytes
                 );
+  ~ManagedBuffer() {}
 
-  //! Destructor for the ConstBuffer class
-  ~ManagedBuffer();
-
-  //! Creates the real HW constant buffer
+  //! Creates the managed buffers
   bool create(Resource::MemoryType type);
+
+  //! Release the managed buffers
+  void release();
 
   /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
    *
@@ -28,6 +29,9 @@ class ManagedBuffer : public amd::HeapObject {
    */
   address reserve(uint32_t size,  //!< real data size for upload
                   uint64_t* gpu_address);
+
+  //! Reserves memory at the top of the active buffer
+  Memory& reserveAtTheTop(uint32_t size);
 
   //! Returns CB size
   uint32_t size() const { return size_; }
@@ -39,6 +43,9 @@ class ManagedBuffer : public amd::HeapObject {
   Memory* activeMemory() const { return buffers_[activeBuffer_]; }
 
   uint64_t vmAddress() const { return buffers_[activeBuffer_]->vmAddress(); }
+
+  //! Returns VirtualGPU object this managed resource associated
+  VirtualGPU& gpu() const { return gpu_; }
 
  private:
   //! The maximum number of the managed buffers
@@ -63,13 +70,13 @@ class ConstantBuffer : public amd::HeapObject {
 public:
   //! Constructor for the ConstBuffer class
   ConstantBuffer(ManagedBuffer& mbuf,  //!< Managed buffer
-                 uint32_t       size
+                 uint32_t       size   //!< Max size of the constant buffer
                  );
 
   //! Destructor for the ConstBuffer class
   ~ConstantBuffer();
 
-  //! Creates the real HW constant buffer
+  //! Creates the HW constant buffer
   bool Create();
 
   /*! \brief Uploads current constant buffer data from sysMemCopy_ to HW
@@ -88,7 +95,7 @@ public:
                           ) const;
 
   //! Returns a pointer to the system memory copy for CB
-  address SysMemCopy(uint32_t size = 0) const { return sys_mem_copy_; }
+  address SysMemCopy() const { return sys_mem_copy_; }
 
   //! Returns active GPU buffer
   Memory* ActiveMemory() const { return mbuf_.activeMemory(); }
@@ -105,4 +112,38 @@ private:
   uint32_t  size_;          //!< Constant buffer size
 };
 
+//! Staging buffer
+class XferBuffer : public amd::EmbeddedObject {
+public:
+  //! Constructor for the ConstBuffer class
+  XferBuffer(ManagedBuffer& mbuf, //!< Managed buffer
+             uint32_t       size  //!< Maximum size of the transfer buffer
+  );
+
+  //! Destructor for the ConstBuffer class
+  ~XferBuffer() {}
+
+  /*! \brief Acquires free memory from the managed buffer
+  *
+  *  \return GPU memory object associated with free memory
+  */
+  Memory& Acquire(uint32_t size     //!< data size for transfers
+                  ) const;
+
+  //! Releases memory object used in the staging transfer
+  void Release(Memory& mem  //!< Memory object for release
+               ) const;
+
+  size_t MaxSize() const { return static_cast<size_t>(size_); }
+
+private:
+  //! Disable copy constructor
+  XferBuffer(const XferBuffer&) = delete;
+
+  //! Disable operator=
+  XferBuffer& operator=(const XferBuffer&) = delete;
+
+  ManagedBuffer&  mbuf_;    //!< Managed buffer on GPU
+  uint32_t  size_;          //!< Mx staging buffer size
+};
 /*@}*/} // namespace pal

@@ -1046,8 +1046,8 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   uint viewFlags = 0;
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
-  // Set the initial offset value for any resource to 0. 
-  // Note: Runtime can call create() more than once, if the initial memory type failed  
+  // Set the initial offset value for any resource to 0.
+  // Note: Runtime can call create() more than once, if the initial memory type failed
   offset_ = 0;
 
   // This is a thread safe operation
@@ -1096,7 +1096,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   if (!desc_.buffer_) {
     return CreateImage(params);
   }
-  
+
   if (memoryType() == Pinned) {
     return CreatePinned(params);
   }
@@ -1112,6 +1112,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
       offset_ += viewOwner_->offset();
       if (viewOwner_->data() != nullptr) {
         address_ = viewOwner_->data() + view->offset_;
+        mapCount_++;
       }
       memRef_ = viewOwner_->memRef_;
       memRef_->retain();
@@ -1177,11 +1178,6 @@ void Resource::free()
     return;
   }
 
-  // Sanity check for the map calls
-  if ((mapCount_ != 0) && (memoryType() != Remote) &&
-      (memoryType() != RemoteUSWC) && (memoryType() != Persistent)) {
-    LogWarning("Resource wasn't unlocked, but destroyed!");
-  }
   const bool wait =
     (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
 
@@ -1206,7 +1202,7 @@ void Resource::free()
 
   // Destroy PAL resource
   if (iMem() != 0) {
-    if (mapCount_ != 0) {
+    if (mapCount_ != 0 && wait) {
       if ((memoryType() != Remote) && (memoryType() != RemoteUSWC)) {
         //! @note: This is a workaround for bad applications that don't unmap memory
         unmap(nullptr);
@@ -1738,6 +1734,7 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
         address_ = reinterpret_cast<uint8_t*>(memRef_->cpuAddress_) + subOffset_;
       } else {
         address_ = gpuMemoryMap(&desc_.pitch_, flags, iMem());
+        address_ = reinterpret_cast<address>(address_) + offset_;
       }
       if (address_ == nullptr) {
         LogError("cal::ResMap failed!");

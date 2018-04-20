@@ -19,7 +19,7 @@ ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
     , wrtAddress_(nullptr) {}
 
 // ================================================================================================
-ManagedBuffer::~ManagedBuffer() {
+void ManagedBuffer::release() {
   for (auto it : buffers_) {
     if (it->data() != nullptr) {
       it->unmap(&gpu_);
@@ -72,11 +72,24 @@ address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
 
   *gpu_address = buffers_[activeBuffer_]->vmAddress() + wrtOffset_;
   address cpu_address = wrtAddress_ + wrtOffset_;
-  
+
   // Adjust the offset by the reserved size
   wrtOffset_ += count;
 
   return cpu_address;
+}
+
+// ================================================================================================
+Memory& ManagedBuffer::reserveAtTheTop(uint32_t size)
+{
+  // Get the next buffer in the list
+  ++activeBuffer_;
+  activeBuffer_ %= MaxNumberOfBuffers;
+  // Make sure the buffer isn't busy
+  buffers_[activeBuffer_]->wait(gpu_);
+  wrtAddress_ = buffers_[activeBuffer_]->data();
+  wrtOffset_ = 0;
+  return *buffers_[activeBuffer_];
 }
 
 // ================================================================================================
@@ -114,11 +127,47 @@ uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const {
 
 // ================================================================================================
 uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const {
+    uint64_t  vm_address;
+    address   cpu_address = mbuf_.reserve(size, &vm_address);
+    // Update memory with new CB data
+    memcpy(cpu_address, sysmem, size);
+    return vm_address;
+}
+
+// ================================================================================================
+XferBuffer::XferBuffer(ManagedBuffer& mbuf, uint32_t size)
+  : mbuf_(mbuf)
+  , size_(size)
+{}
+
+// ================================================================================================
+Memory& XferBuffer::Acquire(uint32_t size) const
+{
   uint64_t  vm_address;
+  // Reserve space in the managed buffer
   address   cpu_address = mbuf_.reserve(size, &vm_address);
-  // Update memory with new CB data
-  memcpy(cpu_address, sysmem, size);
-  return vm_address;
+  // Create a view for access
+  Memory* mem = new Memory(mbuf_.gpu().dev(), static_cast<size_t>(size));
+  Resource::ViewParams params = {};
+  params.gpu_ = &mbuf_.gpu();
+  params.offset_ = vm_address - mbuf_.vmAddress();
+  params.size_ = size;
+  params.resource_ = mbuf_.activeMemory();
+  if (nullptr == mem || !mem->create(Resource::View, &params)) {
+    delete mem;
+    // If the suballocaiton failed for some reason, then return the top of the active buffer
+    return mbuf_.reserveAtTheTop(size);
+  }
+  return *mem;
+}
+
+// ================================================================================================
+void XferBuffer::Release(Memory& mem) const
+{
+  // Delete view
+  if (mem.desc().type_ == Resource::View) {
+    delete &mem;
+  }
 }
 
 }  // namespace pal

@@ -542,23 +542,6 @@ bool VirtualGPU::DmaFlushMgmt::isCbReady(VirtualGPU& gpu, uint64_t threads, uint
   return cbReady;
 }
 
-void VirtualGPU::addXferWrite(Memory& memory) {
-  if (xferWriteBuffers_.size() > 7) {
-    dev().xferWrite().release(*this, *xferWriteBuffers_.front());
-    xferWriteBuffers_.erase(xferWriteBuffers_.begin());
-  }
-
-  // Delay destruction
-  xferWriteBuffers_.push_back(&memory);
-}
-
-void VirtualGPU::releaseXferWrite() {
-  for (auto& memory : xferWriteBuffers_) {
-    dev().xferWrite().release(*this, *memory);
-  }
-  xferWriteBuffers_.resize(0);
-}
-
 void VirtualGPU::addPinnedMem(amd::Memory* mem) {
   if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
     if (pinnedMems_.size() > 7) {
@@ -718,7 +701,8 @@ VirtualGPU::VirtualGPU(Device& device)
       printfDbgHSA_(nullptr),
       tsCache_(nullptr),
       dmaFlushMgmt_(device),
-      writeBuffer_(nullptr),
+      managedBuffer_(*this, device.settings().stagedXferSize_ + 32 * Ki),
+      writeBuffer_(managedBuffer_, device.settings().stagedXferSize_),
       hwRing_(0),
       readjustTimeGPU_(0),
       lastTS_(nullptr),
@@ -834,10 +818,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     Unimplemented();
   }
 
-  writeBuffer_ = new ManagedBuffer(*this, dev().settings().stagedXferSize_);
-  if ((writeBuffer_ == nullptr) || !writeBuffer_->create(Resource::RemoteUSWC)) {
-    // We failed to create a constant buffer
-    delete writeBuffer_;
+  if (!managedBuffer_.create(Resource::RemoteUSWC)) {
     return false;
   }
 
@@ -963,7 +944,7 @@ VirtualGPU::~VirtualGPU() {
     delete constBufs_[i];
   }
 
-  delete writeBuffer_;
+  managedBuffer_.release();
 
   //! @todo Temporarily keep the buffer mapped for debug purpose
   if (nullptr != schedParams_) {
@@ -2758,9 +2739,6 @@ bool VirtualGPU::waitAllEngines(CommandBatch* cb) {
     earlyDone &= isDone(&events[i]);
   }
 
-  // Release all transfer buffers on this command queue
-  releaseXferWrite();
-
   // Rlease all pinned memory
   releasePinnedMem();
 
@@ -2813,14 +2791,14 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
 }
 
 bool VirtualGPU::allocConstantBuffers() {
-  // Allocate constant buffers. 
+  // Allocate constant buffers.
   // Use double size, reported to the app to account for internal arguments
   const uint32_t MinCbSize = 2 * dev().info().maxParameterSize_;
   uint i;
 
   // Create/reallocate constant buffer resources
   for (i = 0; i < MaxConstBuffersArguments; ++i) {
-    ConstantBuffer* constBuf = new ConstantBuffer(*writeBuffer_, MinCbSize);
+    ConstantBuffer* constBuf = new ConstantBuffer(managedBuffer_, MinCbSize);
 
     if ((constBuf != nullptr) && constBuf->Create()) {
       addConstBuffer(constBuf);

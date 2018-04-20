@@ -681,7 +681,6 @@ Device::Device()
       scratchAlloc_(nullptr),
       mapCacheOps_(nullptr),
       xferRead_(nullptr),
-      xferWrite_(nullptr),
       mapCache_(nullptr),
       resourceCache_(nullptr),
       numComputeEngines_(0),
@@ -732,7 +731,6 @@ Device::~Device() {
 
   // Destroy temporary buffers for read/write
   delete xferRead_;
-  delete xferWrite_;
 
   // Destroy resource cache
   delete resourceCache_;
@@ -986,21 +984,6 @@ bool Device::initializeHeapResources() {
     }
 
     if (settings().stagedXferSize_ != 0) {
-      // Initialize staged write buffers
-      if (settings().stagedXferWrite_) {
-        Resource::MemoryType type;
-        if (settings().stagingWritePersistent_ && !settings().disablePersistent_) {
-          type = Resource::Persistent;
-        } else {
-          type = Resource::RemoteUSWC;
-        }
-        xferWrite_ = new XferBuffers(*this, type, amd::alignUp(settings().stagedXferSize_, 4 * Ki));
-        if ((xferWrite_ == nullptr) || !xferWrite_->create()) {
-          LogError("Couldn't allocate transfer buffer objects for read");
-          return false;
-        }
-      }
-
       // Initialize staged read buffers
       if (settings().stagedXferRead_) {
         xferRead_ = new XferBuffers(*this, Resource::Remote,
