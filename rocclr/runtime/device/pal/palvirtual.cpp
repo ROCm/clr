@@ -590,17 +590,10 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   if (deviceQueueSize_ == deviceQueueSize) {
     return true;
   } else {
-    //! @todo Temporarily keep the buffer mapped for debug purpose
-    if (nullptr != schedParams_) {
-      schedParams_->unmap(this);
-    }
     delete vqHeader_;
     delete virtualQueue_;
-    delete schedParams_;
     vqHeader_ = nullptr;
     virtualQueue_ = nullptr;
-    schedParams_ = nullptr;
-    schedParamIdx_ = 0;
     deviceQueueSize_ = 0;
   }
   uint numSlots = deviceQueueSize / sizeof(AmdAqlWrap);
@@ -681,13 +674,6 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
     offset += sizeof(AmdAqlWrap);
   }
 
-  schedParams_ = new Memory(dev(), 64 * Ki);
-  if ((schedParams_ == nullptr) || !schedParams_->create(Resource::RemoteUSWC)) {
-    return false;
-  }
-
-  address ptr = reinterpret_cast<address>(schedParams_->map(this));
-
   deviceQueueSize_ = deviceQueueSize;
 
   return true;
@@ -710,7 +696,6 @@ VirtualGPU::VirtualGPU(Device& device)
       vqHeader_(nullptr),
       virtualQueue_(nullptr),
       schedParams_(nullptr),
-      schedParamIdx_(0),
       deviceQueueSize_(0),
       maskGroups_(1),
       hsaQueueMem_(nullptr),
@@ -894,26 +879,21 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
 bool VirtualGPU::allocHsaQueueMem() {
   // Allocate a dummy HSA queue
   hsaQueueMem_ = new Memory(dev(), sizeof(amd_queue_t));
-  if ((hsaQueueMem_ == nullptr) || (!hsaQueueMem_->create(Resource::RemoteUSWC))) {
+  if ((hsaQueueMem_ == nullptr) || (!hsaQueueMem_->create(Resource::Local))) {
     delete hsaQueueMem_;
     return false;
   }
-  amd_queue_t* queue =
-      reinterpret_cast<amd_queue_t*>(hsaQueueMem_->map(nullptr, Resource::WriteOnly));
-  if (nullptr == queue) {
-    delete hsaQueueMem_;
-    return false;
-  }
-  memset(queue, 0, sizeof(amd_queue_t));
+  amd_queue_t hsa_queue = {};
 
   // Provide private and local heap addresses
-  const static uint addressShift = LP64_SWITCH(0, 32);
-  queue->private_segment_aperture_base_hi = static_cast<uint32_t>(
+  constexpr uint addressShift = LP64_SWITCH(0, 32);
+  hsa_queue.private_segment_aperture_base_hi = static_cast<uint32_t>(
       dev().properties().gpuMemoryProperties.privateApertureBase >> addressShift);
-  queue->group_segment_aperture_base_hi = static_cast<uint32_t>(
+  hsa_queue.group_segment_aperture_base_hi = static_cast<uint32_t>(
       dev().properties().gpuMemoryProperties.sharedApertureBase >> addressShift);
 
-  hsaQueueMem_->unmap(nullptr);
+  hsaQueueMem_->writeRawData(*this, 0, sizeof(amd_queue_t), &hsa_queue, true);
+
   return true;
 }
 
@@ -946,14 +926,8 @@ VirtualGPU::~VirtualGPU() {
 
   managedBuffer_.release();
 
-  //! @todo Temporarily keep the buffer mapped for debug purpose
-  if (nullptr != schedParams_) {
-    schedParams_->unmap(this);
-  }
-
   delete vqHeader_;
   delete virtualQueue_;
-  delete schedParams_;
   delete hsaQueueMem_;
 
   // Release scratch buffer memory to reduce memory pressure
@@ -1969,6 +1943,9 @@ bool VirtualGPU::PreDeviceEnqueue(
   *vmDefQueue = (*gpuDefQueue)->virtualQueue_->vmAddress();
 
   (*gpuDefQueue)->writeVQueueHeader(*this, hsaKernel.prog().kernelTable()->vmAddress());
+  // Acquire USWC memory for the scheduler parameters
+  (*gpuDefQueue)->schedParams_ = &xferWrite().Acquire(sizeof(SchedulerParam));
+
   // Add memory handles before the actual dispatch
   addVmMemory((*gpuDefQueue)->virtualQueue_);
   addVmMemory((*gpuDefQueue)->schedParams_);
@@ -1990,6 +1967,7 @@ void VirtualGPU::PostDeviceEnqueue(
 
   // Make sure exculsive access to the device queue
   amd::ScopedLock(defQueue->lock());
+  Memory& schedParams = xferWrite().Acquire(sizeof(SchedulerParam));
 
   if (GPU_PRINT_CHILD_KERNEL != 0) {
     waitForEvent(gpuEvent);
@@ -2008,8 +1986,7 @@ void VirtualGPU::PostDeviceEnqueue(
   // Get the global loop start before the scheduler
   Pal::gpusize loopStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
   static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr())
-    .runScheduler(*gpuDefQueue->virtualQueue_, *gpuDefQueue->schedParams_,
-      gpuDefQueue->schedParamIdx_,
+    .runScheduler(*gpuDefQueue->virtualQueue_, *gpuDefQueue->schedParams_, 0,
       gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
   const static bool FlushL2 = true;
   gpuDefQueue->addBarrier(FlushL2);
@@ -2018,8 +1995,8 @@ void VirtualGPU::PostDeviceEnqueue(
   //! @note DMA flush must not occur between patch and the scheduler
   Pal::gpusize patchStart = gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherStart();
   // Program parameters for the scheduler
-  SchedulerParam* param = &reinterpret_cast<SchedulerParam*>(
-    gpuDefQueue->schedParams_->data())[gpuDefQueue->schedParamIdx_];
+  SchedulerParam* param = reinterpret_cast<SchedulerParam*>(
+    gpuDefQueue->schedParams_->data());
   param->signal = 1;
   // Scale clock to 1024 to avoid 64 bit div in the scheduler
   param->eng_clk = (1000 * 1024) / dev().info().maxEngineClockFrequency_;
@@ -2050,8 +2027,7 @@ void VirtualGPU::PostDeviceEnqueue(
   //! \note Runtime doesn't know which one will be called
   hsaKernel.prog().fillResListWithKernels(*this);
 
-  Pal::gpusize signalAddr = gpuDefQueue->schedParams_->vmAddress() +
-    gpuDefQueue->schedParamIdx_ * sizeof(SchedulerParam);
+  Pal::gpusize signalAddr = gpuDefQueue->schedParams_->vmAddress();
   gpuDefQueue->eventBegin(MainEngine);
   gpuDefQueue->iCmd()->CmdVirtualQueueDispatcherEnd(
     signalAddr, loopStart,
@@ -2073,11 +2049,8 @@ void VirtualGPU::PostDeviceEnqueue(
     eventEnd(MainEngine, *gpuEvent);
   }
 
-  ++gpuDefQueue->schedParamIdx_ %= gpuDefQueue->schedParams_->size() / sizeof(SchedulerParam);
-  //! \todo optimize the wrap around
-  if (gpuDefQueue->schedParamIdx_ == 0) {
-    gpuDefQueue->schedParams_->wait(*gpuDefQueue);
-  }
+  xferWrite().Release(*gpuDefQueue->schedParams_);
+  gpuDefQueue->schedParams_ = nullptr;
 }
 
 // ================================================================================================

@@ -613,7 +613,6 @@ class VirtualGPU : public device::VirtualDevice {
   AmdVQueueHeader* vqHeader_;  //!< Sysmem copy for virtual queue header
   Memory* virtualQueue_;       //!< Virtual device queue
   Memory* schedParams_;        //!< The scheduler parameters
-  uint schedParamIdx_;         //!< Index in the scheduler parameters buffer
   uint deviceQueueSize_;       //!< Device queue size
   uint maskGroups_;  //!< The number of mask groups processed in the scheduler by one thread
 
