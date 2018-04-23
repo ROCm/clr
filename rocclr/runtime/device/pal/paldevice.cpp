@@ -650,7 +650,7 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
 
 Device::ScopedLockVgpus::ScopedLockVgpus(const Device& dev) : dev_(dev) {
   // Lock the virtual GPU list
-  dev_.vgpusAccess()->lock();
+  dev_.vgpusAccess().lock();
 
   // Find all available virtual GPUs and lock them
   // from the execution of commands
@@ -667,19 +667,20 @@ Device::ScopedLockVgpus::~ScopedLockVgpus() {
   }
 
   // Unock the virtual GPU list
-  dev_.vgpusAccess()->unlock();
+  dev_.vgpusAccess().unlock();
 }
 
 Device::Device()
     : NullDevice(),
       numOfVgpus_(0),
       context_(nullptr),
-      lockAsyncOps_(nullptr),
-      lockForInitHeap_(nullptr),
-      lockPAL_(nullptr),
-      vgpusAccess_(nullptr),
-      scratchAlloc_(nullptr),
-      mapCacheOps_(nullptr),
+      lockAsyncOps_("Device Async Ops Lock", true),
+      lockForInitHeap_("Initialization of Heap Resource", true),
+      lockPAL_("PAL Ops Lock", true),
+      vgpusAccess_("Virtual GPU List Ops Lock", true),
+      scratchAlloc_("Scratch Allocation Lock", true),
+      mapCacheOps_("Map Cache Lock", true),
+      lockResourceOps_("Resource List Ops Lock", true),
       xferRead_(nullptr),
       mapCache_(nullptr),
       resourceCache_(nullptr),
@@ -690,7 +691,6 @@ Device::Device()
       xferQueue_(nullptr),
       globalScratchBuf_(nullptr),
       srdManager_(nullptr),
-      lockResourceOps_(nullptr),
       resourceList_(nullptr),
       rgpCaptureMgr_(nullptr)
       {}
@@ -735,13 +735,6 @@ Device::~Device() {
   // Destroy resource cache
   delete resourceCache_;
 
-  delete lockAsyncOps_;
-  delete lockForInitHeap_;
-  delete lockPAL_;
-  delete vgpusAccess_;
-  delete scratchAlloc_;
-  delete mapCacheOps_;
-  delete lockResourceOps_;
   delete resourceList_;
 
   if (context_ != nullptr) {
@@ -841,41 +834,6 @@ bool Device::create(Pal::IDevice* device) {
   // Create a dummy context
   context_ = new amd::Context(devices, info);
   if (context_ == nullptr) {
-    return false;
-  }
-
-  // Create the locks
-  lockAsyncOps_ = new amd::Monitor("Device Async Ops Lock", true);
-  if (nullptr == lockAsyncOps_) {
-    return false;
-  }
-  lockPAL_ = new amd::Monitor("PAL Ops Lock", true);
-  if (nullptr == lockPAL_) {
-    return false;
-  }
-
-  lockResourceOps_ = new amd::Monitor("Resource List Ops Lock", true);
-  if (nullptr == lockResourceOps_) {
-    return false;
-  }
-
-  lockForInitHeap_ = new amd::Monitor("Async Ops Lock For Initialization of Heap Resource", true);
-  if (nullptr == lockForInitHeap_) {
-    return false;
-  }
-
-  vgpusAccess_ = new amd::Monitor("Virtual GPU List Ops Lock", true);
-  if (nullptr == vgpusAccess_) {
-    return false;
-  }
-
-  scratchAlloc_ = new amd::Monitor("Scratch Allocation Lock", true);
-  if (nullptr == scratchAlloc_) {
-    return false;
-  }
-
-  mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
-  if (nullptr == mapCacheOps_) {
     return false;
   }
 
@@ -1680,7 +1638,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
 
 amd::Memory* Device::findMapTarget(size_t size) const {
   // Must be serialised for access
-  amd::ScopedLock lk(*mapCacheOps_);
+  amd::ScopedLock lk(mapCacheOps_);
 
   amd::Memory* map = nullptr;
   size_t minSize = 0;
@@ -1735,7 +1693,7 @@ amd::Memory* Device::findMapTarget(size_t size) const {
 
 bool Device::addMapTarget(amd::Memory* memory) const {
   // Must be serialised for access
-  amd::ScopedLock lk(*mapCacheOps_);
+  amd::ScopedLock lk(mapCacheOps_);
 
   // the svm memory shouldn't be cached
   if (!memory->canBeCached()) {
@@ -1766,7 +1724,7 @@ void Device::ScratchBuffer::destroyMemory() {
 bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
   if (regNum > 0) {
     // Serialize the scratch buffer allocation code
-    amd::ScopedLock lk(*scratchAlloc_);
+    amd::ScopedLock lk(scratchAlloc_);
     uint sb = vgpu->hwRing();
     static const uint WaveSizeLimit = ((1 << 21) - 256);
     const uint threadSizeLimit =

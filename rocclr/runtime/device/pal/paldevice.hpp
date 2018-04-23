@@ -371,16 +371,16 @@ class Device : public NullDevice {
   pal::Memory* getGpuMemory(amd::Memory* mem  //!< Pointer to AMD memory object
                             ) const;
 
-  amd::Monitor& lockAsyncOps() const { return *lockAsyncOps_; }
+  amd::Monitor& lockAsyncOps() const { return lockAsyncOps_; }
 
   //! Returns the lock object for the virtual gpus list
-  amd::Monitor* vgpusAccess() const { return vgpusAccess_; }
+  amd::Monitor& vgpusAccess() const { return vgpusAccess_; }
 
   //! Returns the monitor object for PAL
-  amd::Monitor& lockPAL() const { return *lockPAL_; }
+  amd::Monitor& lockPAL() const { return lockPAL_; }
 
   //! Returns the monitor object for PAL
-  amd::Monitor& lockResources() const { return *lockResourceOps_; }
+  amd::Monitor& lockResources() const { return lockResourceOps_; }
 
   //! Returns the number of virtual GPUs allocated on this device
   uint numOfVgpus() const { return numOfVgpus_; }
@@ -577,13 +577,14 @@ class Device : public NullDevice {
   static Pal::IPlatform*  platform_;  //!< Pointer to the PAL platform object
 
   amd::Context* context_;       //!< A dummy context for internal allocations
-  amd::Monitor* lockAsyncOps_;  //!< Lock to serialise all async ops on this device
-  amd::Monitor*
-      lockForInitHeap_;        //!< Lock to serialise all async ops on initialization heap operation
-  amd::Monitor* lockPAL_;      //!< Lock to serialise PAL access
-  amd::Monitor* vgpusAccess_;  //!< Lock to serialise virtual gpu list access
-  amd::Monitor* scratchAlloc_;           //!< Lock to serialise scratch allocation
-  amd::Monitor* mapCacheOps_;            //!< Lock to serialise cache for the map resources
+  mutable amd::Monitor lockAsyncOps_;    //!< Lock to serialise all async ops on this device
+  //! Lock to serialise all async ops on initialization heap operation
+  mutable amd::Monitor lockForInitHeap_;        
+  mutable amd::Monitor lockPAL_;         //!< Lock to serialise PAL access
+  mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
+  mutable amd::Monitor scratchAlloc_;    //!< Lock to serialise scratch allocation
+  mutable amd::Monitor mapCacheOps_;     //!< Lock to serialise cache for the map resources
+  mutable amd::Monitor lockResourceOps_; //!< Lock to serialise resource access
   XferBuffers* xferRead_;                //!< Transfer buffers read
   std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure
   ResourceCache* resourceCache_;         //!< Resource cache
@@ -600,7 +601,6 @@ class Device : public NullDevice {
   Pal::DeviceProperties properties_;     //!< PAL device properties
   Pal::IDevice* device_;                 //!< PAL device object
   std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
-  amd::Monitor* lockResourceOps_;        //!< Lock to serialise resource access
   std::unordered_set<Resource*>* resourceList_;   //!< Active resource list
   RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
 };
