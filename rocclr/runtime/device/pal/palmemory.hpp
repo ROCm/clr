@@ -142,6 +142,12 @@ class Memory : public device::Memory, public Resource {
              (CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_ONLY)));
   }
 
+  //! Quick view update for managed buffers. It should avoid expensive object allocations
+  void updateView(Resource* view, size_t offset, size_t size) {
+    size_ = size;
+    Resource::updateView(view, offset, size);
+  }
+
  protected:
   //! Decrement map count
   void decIndMapCount();

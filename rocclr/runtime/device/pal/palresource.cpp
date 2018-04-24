@@ -321,6 +321,8 @@ Resource::~Resource() {
     image_->Destroy();
     delete[] reinterpret_cast<char*>(image_);
   }
+
+  // Remove the current resource from the global resource list
   gpuDevice_.removeResource(this);
 }
 
@@ -1225,6 +1227,8 @@ void Resource::free()
   if (!desc().buffer_) {
     dev().srds().freeSrdSlot(hwSrd_);
   }
+
+  memRef_ = nullptr;
 }
 
 // ================================================================================================

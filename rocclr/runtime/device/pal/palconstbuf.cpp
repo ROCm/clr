@@ -135,39 +135,28 @@ uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const
 }
 
 // ================================================================================================
-XferBuffer::XferBuffer(ManagedBuffer& mbuf, uint32_t size)
-  : mbuf_(mbuf)
-  , size_(size)
-{}
-
-// ================================================================================================
-Memory& XferBuffer::Acquire(uint32_t size) const
-{
-  uint64_t  vm_address;
-  // Reserve space in the managed buffer
-  address   cpu_address = mbuf_.reserve(size, &vm_address);
+XferBuffer::XferBuffer(const Device& device, ManagedBuffer& mbuf, uint32_t size)
+  : buffer_view_(device, size)
+  , mbuf_(mbuf)
+  , size_(size) {
   // Create a view for access
-  Memory* mem = new Memory(mbuf_.gpu().dev(), static_cast<size_t>(size));
   Resource::ViewParams params = {};
   params.gpu_ = &mbuf_.gpu();
-  params.offset_ = vm_address - mbuf_.vmAddress();
-  params.size_ = size;
+  params.offset_ = 0;
+  params.size_ = size_;
   params.resource_ = mbuf_.activeMemory();
-  if (nullptr == mem || !mem->create(Resource::View, &params)) {
-    delete mem;
-    // If the suballocaiton failed for some reason, then return the top of the active buffer
-    return mbuf_.reserveAtTheTop(size);
-  }
-  return *mem;
+  bool result = buffer_view_.create(Resource::View, &params);
+  assert(result && "View creaiton should never return an error!");
 }
 
 // ================================================================================================
-void XferBuffer::Release(Memory& mem) const
-{
-  // Delete view
-  if (mem.desc().type_ == Resource::View) {
-    delete &mem;
-  }
+Memory& XferBuffer::Acquire(uint32_t size) {
+  uint64_t  vm_address;
+  // Reserve space in the managed buffer
+  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  // Update a view for access
+  buffer_view_.updateView(mbuf_.activeMemory(), vm_address - mbuf_.vmAddress(), size);
+  return buffer_view_;
 }
 
 }  // namespace pal
