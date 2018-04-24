@@ -376,7 +376,7 @@ class VirtualGPU : public device::VirtualDevice {
                   );
 
   //! Return xfer buffer for staging operations
-  const XferBuffer& xferWrite() const { return writeBuffer_; }
+  XferBuffer& xferWrite() { return writeBuffer_; }
 
   //! Adds a pinned memory object into a map
   void addPinnedMem(amd::Memory* mem);

@@ -116,8 +116,9 @@ private:
 class XferBuffer : public amd::EmbeddedObject {
 public:
   //! Constructor for the ConstBuffer class
-  XferBuffer(ManagedBuffer& mbuf, //!< Managed buffer
-             uint32_t       size  //!< Maximum size of the transfer buffer
+  XferBuffer(const Device& device,  //!< Active GPU device 
+             ManagedBuffer& mbuf,   //!< Managed buffer
+             uint32_t       size    //!< Maximum size of the transfer buffer
   );
 
   //! Destructor for the ConstBuffer class
@@ -128,11 +129,11 @@ public:
   *  \return GPU memory object associated with free memory
   */
   Memory& Acquire(uint32_t size     //!< data size for transfers
-                  ) const;
+                  );
 
   //! Releases memory object used in the staging transfer
   void Release(Memory& mem  //!< Memory object for release
-               ) const;
+               ) { buffer_view_.updateView(nullptr, 0, 0); }
 
   size_t MaxSize() const { return static_cast<size_t>(size_); }
 
@@ -143,6 +144,7 @@ private:
   //! Disable operator=
   XferBuffer& operator=(const XferBuffer&) = delete;
 
+  Memory  buffer_view_;     //!< Buffer view returned in the acquire
   ManagedBuffer&  mbuf_;    //!< Managed buffer on GPU
   uint32_t  size_;          //!< Mx staging buffer size
 };

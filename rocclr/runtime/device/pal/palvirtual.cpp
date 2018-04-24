@@ -688,7 +688,7 @@ VirtualGPU::VirtualGPU(Device& device)
       tsCache_(nullptr),
       dmaFlushMgmt_(device),
       managedBuffer_(*this, device.settings().stagedXferSize_ + 32 * Ki),
-      writeBuffer_(managedBuffer_, device.settings().stagedXferSize_),
+      writeBuffer_(device, managedBuffer_, device.settings().stagedXferSize_),
       hwRing_(0),
       readjustTimeGPU_(0),
       lastTS_(nullptr),

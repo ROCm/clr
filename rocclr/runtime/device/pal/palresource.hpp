@@ -359,6 +359,28 @@ class Resource : public amd::HeapObject {
   //! Erase an entry in the array for provided queue index
   void eraseGpuEvents(uint index) { events_.erase(events_.begin() + index); }
 
+  //! Quick view update for managed buffers. It should avoid expensive object allocations
+  //! If the base resource is null, then the view is released
+  void updateView(Resource* base, size_t offset, size_t size) {
+    if (base == nullptr) {
+      desc_.type_ = Empty;
+      memRef_->release();
+      memRef_ = nullptr;
+      viewOwner_ = nullptr;
+    } else {
+      desc_.type_ = View;
+      viewOwner_ = base;
+      offset_ = offset + viewOwner_->offset();
+      assert(viewOwner_->data() != nullptr && "CPU access must be provide for this call!");
+      address_ = viewOwner_->data() + offset;
+      desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+      memRef_ = viewOwner_->memRef_;
+      memRef_->retain();
+      desc_.width_ = amd::alignUp(size, Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint)) /
+        Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint);
+    }
+  }
+
  protected:
   /*! \brief Creates a PAL iamge object, associated with the resource
   *

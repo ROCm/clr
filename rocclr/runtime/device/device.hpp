@@ -838,15 +838,14 @@ class Memory : public amd::HeapObject {
   //! Decrement map count
   virtual void decIndMapCount() {}
 
+  size_t size_;   //!< Memory size
+
  private:
   //! Disable default copy constructor
-  Memory& operator=(const Memory&);
+  Memory& operator=(const Memory&) = delete;
 
   //! Disable operator=
-  Memory(const Memory&);
-
-  //! Our size
-  size_t size_;
+  Memory(const Memory&) = delete;
 };
 
 class Sampler : public amd::HeapObject {
