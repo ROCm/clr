@@ -21,7 +21,7 @@ ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
 // ================================================================================================
 void ManagedBuffer::release() {
   for (auto it : buffers_) {
-    if (it->data() != nullptr) {
+    if ((it != nullptr) && (it->data() != nullptr)) {
       it->unmap(&gpu_);
     }
     delete it;
