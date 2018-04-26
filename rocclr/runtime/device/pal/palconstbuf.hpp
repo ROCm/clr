@@ -30,9 +30,6 @@ class ManagedBuffer : public amd::EmbeddedObject {
   address reserve(uint32_t size,  //!< real data size for upload
                   uint64_t* gpu_address);
 
-  //! Reserves memory at the top of the active buffer
-  Memory& reserveAtTheTop(uint32_t size);
-
   //! Returns CB size
   uint32_t size() const { return size_; }
 
@@ -40,14 +37,23 @@ class ManagedBuffer : public amd::EmbeddedObject {
   uint32_t wrtOffset() const { return wrtOffset_; }
 
   //! Returns active GPU buffer
-  Memory* activeMemory() const { return buffers_[activeBuffer_]; }
+  Memory* activeMemory() const { return pool_[activeBuffer_].buf; }
 
-  uint64_t vmAddress() const { return buffers_[activeBuffer_]->vmAddress(); }
+  //! Retruns VM address for the active buffer
+  uint64_t vmAddress() const { return pool_[activeBuffer_].buf->vmAddress(); }
+
+  //! Update the timestamp for the HW operation
+  void pinGpuEvent();
 
   //! Returns VirtualGPU object this managed resource associated
   VirtualGPU& gpu() const { return gpu_; }
 
  private:
+  struct TimeStampedBuffer {
+    Memory*   buf;
+    GpuEvent  events[AllEngines];
+  };
+
   //! The maximum number of the managed buffers
   static constexpr uint32_t MaxNumberOfBuffers = 3;
 
@@ -58,7 +64,7 @@ class ManagedBuffer : public amd::EmbeddedObject {
   ManagedBuffer& operator=(const ManagedBuffer&) = delete;
 
   VirtualGPU& gpu_;                 //!< Virtual GPU object
-  std::vector<Memory*>  buffers_;   //!< Buffers for management
+  std::vector<TimeStampedBuffer>  pool_;   //!< Buffers for management
   uint32_t  activeBuffer_;          //!< Current active buffer
   uint32_t  size_;                  //!< Constant buffer size
   uint32_t  wrtOffset_;             //!< Current write offset
