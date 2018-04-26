@@ -757,7 +757,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   uint idx = index() % (dev().numComputeEngines() - firstQueue);
   uint64_t residency_limit = dev().properties().gpuMemoryProperties.flags.supportPerSubmitMemRefs ? 0 :
     (dev().properties().gpuMemoryProperties.maxLocalMemSize >> 2);
-  uint max_cmd_buffers = (idx == 0) ? 2 : dev().settings().maxCmdBuffers_;
+  uint max_cmd_buffers = dev().settings().maxCmdBuffers_;
 
   if (dev().numComputeEngines()) {
     //! @todo There is a hang with a mix of user and non user queues.
