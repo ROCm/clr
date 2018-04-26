@@ -11,32 +11,34 @@ namespace pal {
 
 // ================================================================================================
 ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
-    : gpu_(gpu)
-    , buffers_(MaxNumberOfBuffers)
-    , activeBuffer_(0)
-    , size_(size)
-    , wrtOffset_(0)
-    , wrtAddress_(nullptr) {}
+  : gpu_(gpu)
+  , pool_(MaxNumberOfBuffers)
+  , activeBuffer_(0)
+  , size_(size)
+  , wrtOffset_(0)
+  , wrtAddress_(nullptr) {}
 
 // ================================================================================================
 void ManagedBuffer::release() {
-  for (auto it : buffers_) {
-    if ((it != nullptr) && (it->data() != nullptr)) {
-      it->unmap(&gpu_);
+  for (auto it : pool_) {
+    if ((it.buf != nullptr) && (it.buf->data() != nullptr)) {
+      it.buf->unmap(&gpu_);
     }
-    delete it;
+    delete it.buf;
   }
 }
 
 // ================================================================================================
 bool ManagedBuffer::create(Resource::MemoryType type) {
-  for (uint i = 0; i < buffers_.size(); ++i) {
-    buffers_[i] = new Memory(const_cast<pal::Device&>(gpu_.dev()), size_);
-    if (nullptr == buffers_[i] || !buffers_[i]->create(type)) {
+  for (uint i = 0; i < pool_.size(); ++i) {
+    pool_[i].buf = new Memory(const_cast<pal::Device&>(gpu_.dev()), size_);
+    if (nullptr == pool_[i].buf || !pool_[i].buf->create(type)) {
       LogPrintfError("We couldn't create HW constant buffer, size(%d)!", size_);
       return false;
     }
-    void* wrtAddress = buffers_[i]->map(&gpu_);
+    // Assign virtual gpu to the allocation. Buffer will be used only on a particular queue
+    pool_[i].buf->memRef()->gpu_ = &gpu_;
+    void* wrtAddress = pool_[i].buf->map(&gpu_);
     if (wrtAddress == nullptr) {
         LogPrintfError("We couldn't map HW constant buffer, size(%d)!", size_);
         return false;
@@ -45,9 +47,9 @@ bool ManagedBuffer::create(Resource::MemoryType type) {
     uint dummy = 0;
     static constexpr bool Wait = true;
     // Write 0 for the buffer paging by VidMM
-    buffers_[i]->writeRawData(gpu_, 0, sizeof(dummy), &dummy, Wait);
+    pool_[i].buf->writeRawData(gpu_, 0, sizeof(dummy), &dummy, Wait);
   }
-  wrtAddress_ = buffers_[activeBuffer_]->data();
+  wrtAddress_ = pool_[activeBuffer_].buf->data();
   return true;
 }
 
@@ -59,18 +61,22 @@ address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
   // Align reserve size on the vector's boundary
   uint32_t count = amd::alignUp(size, MemAlignment);
 
+  // Save previous event
+  pinGpuEvent();
+
   // Check if buffer has enough space for reservation
   if ((wrtOffset_ + count) > size_) {
     // Get the next buffer in the list
     ++activeBuffer_;
     activeBuffer_ %= MaxNumberOfBuffers;
     // Make sure the buffer isn't busy
-    buffers_[activeBuffer_]->wait(gpu_);
-    wrtAddress_ = buffers_[activeBuffer_]->data();
+    gpu().waitForEvent(&pool_[activeBuffer_].events[SdmaEngine]);
+    gpu().waitForEvent(&pool_[activeBuffer_].events[MainEngine]);
+    wrtAddress_ = pool_[activeBuffer_].buf->data();
     wrtOffset_ = 0;
   }
 
-  *gpu_address = buffers_[activeBuffer_]->vmAddress() + wrtOffset_;
+  *gpu_address = pool_[activeBuffer_].buf->vmAddress() + wrtOffset_;
   address cpu_address = wrtAddress_ + wrtOffset_;
 
   // Adjust the offset by the reserved size
@@ -80,23 +86,17 @@ address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
 }
 
 // ================================================================================================
-Memory& ManagedBuffer::reserveAtTheTop(uint32_t size)
-{
-  // Get the next buffer in the list
-  ++activeBuffer_;
-  activeBuffer_ %= MaxNumberOfBuffers;
-  // Make sure the buffer isn't busy
-  buffers_[activeBuffer_]->wait(gpu_);
-  wrtAddress_ = buffers_[activeBuffer_]->data();
-  wrtOffset_ = 0;
-  return *buffers_[activeBuffer_];
+void ManagedBuffer::pinGpuEvent() {
+  GpuEvent* event = activeMemory()->getGpuEvent(gpu());
+  pool_[activeBuffer_].events[event->engineId_] = *event;
+  activeMemory()->setBusy(gpu(), GpuEvent::InvalidID);
 }
 
 // ================================================================================================
 ConstantBuffer::ConstantBuffer(ManagedBuffer& mbuf, uint32_t size)
-    : mbuf_(mbuf)
-    , sys_mem_copy_(nullptr)
-    , size_(size)
+  : mbuf_(mbuf)
+  , sys_mem_copy_(nullptr)
+  , size_(size)
 {}
 
 // ================================================================================================
@@ -127,11 +127,11 @@ uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const {
 
 // ================================================================================================
 uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const {
-    uint64_t  vm_address;
-    address   cpu_address = mbuf_.reserve(size, &vm_address);
-    // Update memory with new CB data
-    memcpy(cpu_address, sysmem, size);
-    return vm_address;
+  uint64_t  vm_address;
+  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  // Update memory with new CB data
+  memcpy(cpu_address, sysmem, size);
+  return vm_address;
 }
 
 // ================================================================================================

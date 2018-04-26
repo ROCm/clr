@@ -145,6 +145,7 @@ class Memory : public device::Memory, public Resource {
   //! Quick view update for managed buffers. It should avoid expensive object allocations
   void updateView(Resource* view, size_t offset, size_t size) {
     size_ = size;
+    flags_ |= HostMemoryDirectAccess;
     Resource::updateView(view, offset, size);
   }
 

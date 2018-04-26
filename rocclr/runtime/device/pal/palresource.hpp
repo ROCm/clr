@@ -378,6 +378,7 @@ class Resource : public amd::HeapObject {
       memRef_->retain();
       desc_.width_ = amd::alignUp(size, Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint)) /
         Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint);
+      setBusy(*memRef()->gpu_, GpuEvent::InvalidID);
     }
   }
 

@@ -267,7 +267,7 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     chunkSize = gpu().xferWrite().MaxSize();
   } else {
     chunkSize = std::min(amd::alignUp(xferSize / 4, 256), gpu().xferWrite().MaxSize());
-    chunkSize = std::max(chunkSize, 128 * Ki);
+    chunkSize = std::max(chunkSize, 64 * Ki);
     bool flushDMA = true;
   }
 
