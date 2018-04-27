@@ -548,7 +548,8 @@ class ResourceCache : public amd::HeapObject {
       Pal::gpusize* offset);
 
   //! Destroys cache
-  void free(size_t minCacheEntries = 0);
+  //! Returns true if cache was freed and false if cache is already empty.
+  bool free(size_t minCacheEntries = 0);
 
  private:
   //! Disable copy constructor
