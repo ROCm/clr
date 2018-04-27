@@ -40,10 +40,14 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
+    if ((result != Pal::Result::Success) &&
+         // Free cache if PAL failed allocation
+         dev.resourceCache().free()) {
+      // If cache was freed, then try to allocate again
+      result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
-      // Free cache if PAL failed allocation
-      dev.resourceCache().free();
       return nullptr;
     }
   }
@@ -2034,14 +2038,17 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
 }
 
 // ================================================================================================
-void ResourceCache::free(size_t minCacheEntries) {
+bool ResourceCache::free(size_t minCacheEntries) {
+  bool result = false;
   if (minCacheEntries < resCache_.size()) {
+    result = true;
     // Clear the cache
     while (static_cast<int>(cacheSize_) > 0) {
       removeLast();
     }
     CondLog((cacheSize_ != 0), "Incorrect size for cache release!");
   }
+  return result;
 }
 
 // ================================================================================================
