@@ -187,7 +187,7 @@ static inline ROC_ADDRESS_QUALIFIER GetKernelAddrQual(const KernelArgMD& lcArg) 
   if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
     return ROC_ADDRESS_LOCAL;
   } else if (lcArg.mValueKind == ValueKind::GlobalBuffer) {
-    if (lcArg.mAddrSpaceQual == AddressSpaceQualifier::Global) {
+    if (lcArg.mAddrSpaceQual == AddressSpaceQualifier::Global || lcArg.mAddrSpaceQual == AddressSpaceQualifier::Generic) {
       return ROC_ADDRESS_GLOBAL;
     } else if (lcArg.mAddrSpaceQual == AddressSpaceQualifier::Constant) {
       return ROC_ADDRESS_CONSTANT;
