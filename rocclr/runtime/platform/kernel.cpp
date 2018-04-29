@@ -75,7 +75,7 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
 
   if (desc.type_ == T_POINTER && desc.size_ != 0) {
     if (svmBound) {
-      LP64_SWITCH(uint32_value, uint64_value) = (LP64_SWITCH(uint32_t, uint64_t))value;
+      LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
       svmBound_[index] = true;
     } else if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       LP64_SWITCH(uint32_value, uint64_value) = 0;
