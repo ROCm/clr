@@ -928,7 +928,7 @@ RUNTIME_ENTRY(cl_int, clSetKernelArgSVMPointer,
   // -verifying system pointers (if supported) requires matching the pointer
   //  against the address space of the current process.
 
-  as_amd(kernel)->parameters().set(static_cast<size_t>(arg_index), sizeof(arg_value), arg_value,
+  as_amd(kernel)->parameters().set(static_cast<size_t>(arg_index), sizeof(arg_value), &arg_value,
                                    true);
   return CL_SUCCESS;
 }
