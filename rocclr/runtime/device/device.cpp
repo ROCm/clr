@@ -11,10 +11,6 @@
 extern amd::AppProfile* rocCreateAppProfile();
 #endif
 
-#if defined(WITH_CPU_DEVICE)
-#include "device/cpu/cpudevice.hpp"
-#endif  // WITH_CPU_DEVICE
-
 #if defined(WITH_PAL_DEVICE)
 // namespace pal {
 extern bool PalDeviceLoad();
@@ -176,9 +172,6 @@ bool Device::init() {
     ret |= PalDeviceLoad();
   }
 #endif  // WITH_PAL_DEVICE
-#if defined(WITH_CPU_DEVICE)
-  ret |= cpu::Device::init();
-#endif  // WITH_CPU_DEVICE
   return ret;
 }
 
@@ -203,9 +196,6 @@ void Device::tearDown() {
     PalDeviceUnload();
   }
 #endif  // WITH_PAL_DEVICE
-#if defined(WITH_CPU_DEVICE)
-  cpu::Device::tearDown();
-#endif  // WITH_CPU_DEVICE
 }
 
 Device::Device(Device* parent)
