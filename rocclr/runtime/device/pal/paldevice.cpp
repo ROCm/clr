@@ -70,6 +70,12 @@ bool NullDevice::init() {
 
   devices = getDevices(CL_DEVICE_TYPE_GPU, false);
 
+// TODO: Currently PAL only supports for GFXIP9+.
+//       Comment out this section for SWDEV-146950 since Kalindi and Mullins
+//       does not works for LC offline compilation without knowing which GFXIP
+//       should be used for them.
+#ifndef WITH_LIGHTNING_COMPILER
+
   // Loop through all supported devices and create each of them
   for (uint id = 0; id < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
     bool foundActive = false;
@@ -104,6 +110,7 @@ bool NullDevice::init() {
       }
     }
   }
+#endif
 
   // Loop through all supported devices and create each of them
   for (uint id = 0;
@@ -252,6 +259,31 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
 
   info_.wavefrontWidth_ = (ipLevel >= Pal::GfxIpLevel::GfxIp10) ? 32 : 64;
+
+#if defined(WITH_LIGHTNING_COMPILER)
+  //  create compilation object with cache support
+  int gfxipMajor = hwInfo_->gfxipVersion_ / 100;
+  int gfxipMinor = hwInfo_->gfxipVersion_ / 10 % 10;
+  int gfxipStepping = hwInfo_->gfxipVersion_ % 10;
+
+  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+  // with dash as delimiter to be compatible with Windows directory name
+  std::ostringstream cacheTarget;
+  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+  if (hwInfo_->xnackEnabled_) {
+    cacheTarget << "-xnack";
+  }
+
+  // Create CacheCompilation for the offline device
+  amd::CacheCompilation* compObj = new amd::CacheCompilation(
+      cacheTarget.str(), "_null_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
+  if (!compObj) {
+    LogError("Unable to create cache compilation object!");
+    return false;
+  }
+
+  cacheCompilation_.reset(compObj);
+#endif
 
   return true;
 }
