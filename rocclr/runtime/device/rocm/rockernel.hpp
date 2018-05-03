@@ -96,7 +96,7 @@ class Kernel : public device::Kernel {
 
   const uint32_t workitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
 
-  const uint64_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
+  const uint64_t KernargSegmentByteSize() const { return kernargSegmentByteSize_ + 48; }
 
   const uint8_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
 
