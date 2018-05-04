@@ -31,14 +31,12 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 
 bool HostQueue::terminate() {
   if (Os::isThreadAlive(thread_)) {
-    // Make sure all the commands are finished on the device.
-    finish();
-
-    // Kill the command queue loop.
-    thread_.acceptingCommands_ = false;
-
     // Wake-up the command loop, so it can exit
-    flush();
+    {
+      ScopedLock sl(queueLock_);
+      thread_.acceptingCommands_ = false;
+      queueLock_.notify();
+    }
 
     // FIXME_lmoriche: fix termination handshake
     while (thread_.state() < Thread::FINISHED) {
