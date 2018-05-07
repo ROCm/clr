@@ -902,14 +902,21 @@ bool Image::createInteropImage() {
     return false;
   }
 
+  originalDeviceMemory_ = deviceMemory_;
+
+  if(obj->getGLTarget() == GL_TEXTURE_BUFFER) {
+    hsa_status_t err =
+        hsa_ext_image_create(dev().getBackendDevice(), &imageDescriptor_,
+                             originalDeviceMemory_, permission_, &hsaImageObject_);
+    return (err == HSA_STATUS_SUCCESS);
+  }
+
   image_metadata desc;
   if (!desc.create(amdImageDesc_)) return false;
 
   if (!desc.setMipLevel(obj->getGLMipLevel())) return false;
 
   if (obj->getGLTarget() == GL_TEXTURE_CUBE_MAP) desc.setFace(obj->getCubemapFace());
-
-  originalDeviceMemory_ = deviceMemory_;
 
   hsa_status_t err =
       hsa_amd_image_create(dev().getBackendDevice(), &imageDescriptor_, amdImageDesc_,
