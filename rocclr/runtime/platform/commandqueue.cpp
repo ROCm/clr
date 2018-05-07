@@ -31,9 +31,25 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 
 bool HostQueue::terminate() {
   if (Os::isThreadAlive(thread_)) {
+    Command* marker = nullptr;
+
+    // Send a finish if the queue is still accepting commands.
+    { ScopedLock sl(queueLock_);
+      if (thread_.acceptingCommands_) {
+        marker = new Marker(*this, false);
+        if (marker != nullptr) {
+          append(*marker);
+          queueLock_.notify();
+        }
+      }
+    }
+    if (marker != nullptr) {
+      marker->awaitCompletion();
+      marker->release();
+    }
+
     // Wake-up the command loop, so it can exit
-    {
-      ScopedLock sl(queueLock_);
+    { ScopedLock sl(queueLock_);
       thread_.acceptingCommands_ = false;
       queueLock_.notify();
     }
