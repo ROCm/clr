@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <string>
+#include <intrin.h>
 
 namespace amd {
 
