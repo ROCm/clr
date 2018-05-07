@@ -390,7 +390,9 @@ void* Thread::entry(Thread* thread) {
   return thread->main();
 }
 
-bool Os::isThreadAlive(const Thread& thread) { return true; }
+bool Os::isThreadAlive(const Thread& thread) {
+  return ::pthread_kill((pthread_t)thread.handle(), 0) == 0;
+}
 
 const void* Os::createOsThread(amd::Thread* thread) {
   pthread_attr_t threadAttr;
