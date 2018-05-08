@@ -230,11 +230,6 @@ Device::~Device() {
       delete[] info_.extensions_;
     }
   }
-
-  if (info_.partitionCreateInfo_.type_.byCounts_ &&
-      info_.partitionCreateInfo_.byCounts_.countsList_ != NULL) {
-    delete[] info_.partitionCreateInfo_.byCounts_.countsList_;
-  }
 }
 
 bool Device::create() {
@@ -1634,84 +1629,5 @@ bool ClBinary::isSPIRV() const {
   }
   return false;
 }
-
-cl_device_partition_property PartitionType::toCL() const {
-  static cl_device_partition_property conv[] = {CL_DEVICE_PARTITION_EQUALLY,
-                                                CL_DEVICE_PARTITION_BY_COUNTS,
-                                                CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN};
-  return conv[amd::leastBitSet(value_)];
-}
-
-size_t PartitionType::toCL(cl_device_partition_property* types) const {
-  size_t i = 0;
-  if (equally_) {
-    types[i++] = CL_DEVICE_PARTITION_EQUALLY;
-  }
-  if (byCounts_) {
-    types[i++] = CL_DEVICE_PARTITION_BY_COUNTS;
-  }
-  if (byAffinityDomain_) {
-    types[i++] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN;
-  }
-  return i;
-}
-
-cl_device_affinity_domain AffinityDomain::toCL() const { return (cl_device_affinity_domain)value_; }
-
-#ifdef cl_ext_device_fission
-
-cl_device_partition_property_ext PartitionType::toCLExt() const {
-  static cl_device_partition_property_ext conv[] = {CL_DEVICE_PARTITION_EQUALLY_EXT,
-                                                    CL_DEVICE_PARTITION_BY_COUNTS_EXT,
-                                                    CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT};
-  return conv[amd::leastBitSet(value_)];
-}
-
-size_t PartitionType::toCLExt(cl_device_partition_property_ext* types) const {
-  size_t i = 0;
-  if (equally_) {
-    types[i++] = CL_DEVICE_PARTITION_EQUALLY_EXT;
-  }
-  if (byCounts_) {
-    types[i++] = CL_DEVICE_PARTITION_BY_COUNTS_EXT;
-  }
-  if (byAffinityDomain_) {
-    types[i++] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT;
-  }
-  return i;
-}
-
-cl_device_partition_property_ext AffinityDomain::toCLExt() const {
-  static cl_device_partition_property_ext conv[] = {
-      CL_AFFINITY_DOMAIN_NUMA_EXT,     CL_AFFINITY_DOMAIN_L4_CACHE_EXT,
-      CL_AFFINITY_DOMAIN_L3_CACHE_EXT, CL_AFFINITY_DOMAIN_L2_CACHE_EXT,
-      CL_AFFINITY_DOMAIN_L1_CACHE_EXT, CL_AFFINITY_DOMAIN_NEXT_FISSIONABLE_EXT};
-  return conv[amd::leastBitSet(value_)];
-}
-
-size_t AffinityDomain::toCLExt(cl_device_partition_property_ext* affinities) const {
-  size_t i = 0;
-  if (numa_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_NUMA_EXT;
-  }
-  if (cacheL4_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_L4_CACHE_EXT;
-  }
-  if (cacheL3_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_L3_CACHE_EXT;
-  }
-  if (cacheL2_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_L2_CACHE_EXT;
-  }
-  if (cacheL1_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_L1_CACHE_EXT;
-  }
-  if (next_) {
-    affinities[i++] = CL_AFFINITY_DOMAIN_NEXT_FISSIONABLE_EXT;
-  }
-  return i;
-}
-
-#endif  // cl_ext_device_fission
 
 }  // namespace device

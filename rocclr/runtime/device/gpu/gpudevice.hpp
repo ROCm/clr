@@ -52,11 +52,6 @@ class NullDevice : public amd::Device {
   bool create(CALtarget target  //!< GPU device identifier
               );
 
-  virtual cl_int createSubDevices(device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
-                                  cl_device_id* devices, cl_uint* num_devices) {
-    return CL_INVALID_VALUE;
-  }
-
   //! Instantiate a new virtual device
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = NULL) {
     return NULL;
