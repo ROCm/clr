@@ -284,19 +284,6 @@ class Memory : public amd::RuntimeObject {
   //! Force an asynchronous writeback from the most-recent dirty cache to host
   void cacheWriteBack(void);
 
-  //! For CPU device only!
-  //! Base functions for mapping/unmapping GL/D3D objects
-  //! Functions may be left empty, if not needed
-  //! Virtual member function mapExtObjectInCQThread() maps a GL object
-  //! and store CPU memory pointer in Memory::hostMem_.
-  //! Returns true if ok, false 0 if error(s)
-  virtual bool mapExtObjectInCQThread(void) { return true; }
-
-  //! Virtual member functions unmapExtObjectInCQThread() unmaps a GL object
-  //! and clears pointer Memory::hostMem_.
-  //! Returns true if ok, false 0 if error(s)
-  virtual bool unmapExtObjectInCQThread(void) { return true; }
-
   //! Returns true if the specified area covers memory intirely
   virtual bool isEntirelyCovered(const Coord3D& origin,  //!< Origin location of the covered region
                                  const Coord3D& region   //!< Covered region dimensions
