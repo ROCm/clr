@@ -469,9 +469,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture3DKHR);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromDX9MediaSurfaceKHR);
 #endif  //_WIN32
-#if defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
-      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSubDevicesEXT);
-#endif // defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
@@ -570,10 +567,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainPerfCounterAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseThreadTraceAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainThreadTraceAMD);
-#if defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
-      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainDeviceEXT);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseDeviceEXT);
-#endif // defined(cl_ext_device_fission) || defined(CL_VERSION_1_2)
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);

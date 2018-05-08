@@ -227,30 +227,6 @@ public:
 
 extern "C" {
 
-#ifdef cl_ext_device_fission
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clCreateSubDevicesEXT(
-    cl_device_id in_device,
-    const cl_device_partition_property_ext * partition_properties,
-    cl_uint num_entries,
-    cl_device_id * out_devices,
-    cl_uint * num_devices);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clRetainDeviceEXT(cl_device_id device);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clReleaseDeviceEXT(cl_device_id device);
-
-#else // cl_ext_device_fission
-
-#define clCreateSubDevicesEXT ((void (*)(void))0)
-#define clRetainDeviceEXT     ((void (*)(void))0)
-#define clReleaseDeviceEXT    ((void (*)(void))0)
-
-#endif // cl_ext_device_fission
-
 extern CL_API_ENTRY cl_key_amd CL_API_CALL
 clCreateKeyAMD(
     cl_platform_id platform,

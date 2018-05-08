@@ -335,105 +335,6 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_QUEUE_ON_DEVICE_MAX_SIZE, queueOnDeviceMaxSize_);
       CASE(CL_DEVICE_MAX_ON_DEVICE_QUEUES, maxOnDeviceQueues_);
       CASE(CL_DEVICE_MAX_ON_DEVICE_EVENTS, maxOnDeviceEvents_);
-#ifdef cl_ext_device_fission
-    case CL_DEVICE_AFFINITY_DOMAINS_EXT: {
-      const device::AffinityDomain& affinityDomain = as_amd(device)->info().affinityDomain_;
-
-      size_t valueSize = affinityDomain.getNumSet() * sizeof(cl_device_partition_property_ext);
-      if (param_value != NULL && param_value_size < valueSize) {
-        return CL_INVALID_VALUE;
-      }
-      *not_null(param_value_size_ret) = valueSize;
-      if (param_value != NULL) {
-        affinityDomain.toCLExt(reinterpret_cast<cl_device_partition_property_ext*>(param_value));
-        if (param_value_size > valueSize) {
-          ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
-        }
-      }
-      return CL_SUCCESS;
-    }
-    case CL_DEVICE_PARTITION_STYLE_EXT: {
-      const device::PartitionInfo& partitionInfo = as_amd(device)->info().partitionCreateInfo_;
-      size_t valueSize = 0;
-      cl_device_partition_property_ext* properties =
-          reinterpret_cast<cl_device_partition_property_ext*>(param_value);
-
-      switch (partitionInfo.type_.value_) {
-        case device::PartitionType::EQUALLY:
-          valueSize = 3 * sizeof(cl_device_partition_property_ext);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            properties[0] = CL_DEVICE_PARTITION_EQUALLY_EXT;
-            properties[1] =
-                (cl_device_partition_property_ext)partitionInfo.equally_.numComputeUnits_;
-            properties[2] = CL_PROPERTIES_LIST_END_EXT;
-          }
-          break;
-
-        case device::PartitionType::BY_COUNTS:
-          valueSize =
-              (partitionInfo.byCounts_.listSize_ + 2) * sizeof(cl_device_partition_property_ext);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            *properties++ = CL_DEVICE_PARTITION_BY_COUNTS_EXT;
-            for (size_t i = 0; i < partitionInfo.byCounts_.listSize_; ++i) {
-              *properties++ = partitionInfo.byCounts_.countsList_[i];
-            }
-            *properties = CL_PROPERTIES_LIST_END_EXT;
-          }
-          break;
-
-        case device::PartitionType::BY_AFFINITY_DOMAIN:
-          valueSize = 3 * sizeof(cl_device_partition_property_ext);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            properties[0] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT;
-            properties[1] = partitionInfo.byAffinityDomain_.toCLExt();
-            properties[2] = CL_PROPERTIES_LIST_END_EXT;
-          }
-          break;
-      }
-
-      *not_null(param_value_size_ret) = valueSize;
-      if (param_value != NULL && param_value_size > valueSize) {
-        ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
-      }
-      return CL_SUCCESS;
-    }
-    case CL_DEVICE_PARTITION_TYPES_EXT: {
-      const device::PartitionType& partitionProperties =
-          as_amd(device)->info().partitionProperties_;
-      size_t valueSize = partitionProperties.getNumSet() * sizeof(cl_device_partition_property_ext);
-
-      if (param_value != NULL && param_value_size < valueSize) {
-        return CL_INVALID_VALUE;
-      }
-      *not_null(param_value_size_ret) = valueSize;
-      if (param_value != NULL) {
-        partitionProperties.toCLExt(
-            reinterpret_cast<cl_device_partition_property_ext*>(param_value));
-        if (param_value_size > valueSize) {
-          ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
-        }
-      }
-      return CL_SUCCESS;
-    }
-    case CL_DEVICE_PARENT_DEVICE_EXT: {
-      cl_device_id parent =
-          !as_amd(device)->isRootDevice() ? as_cl(as_amd(device)->parent()) : (cl_device_id)0;
-      return amd::clGetInfo(parent, param_value_size, param_value, param_value_size_ret);
-    }
-    case CL_DEVICE_REFERENCE_COUNT_EXT: {
-      cl_uint count = as_amd(device)->referenceCount();
-      return amd::clGetInfo(count, param_value_size, param_value, param_value_size_ret);
-    }
-#endif  // cl_ext_device_fission
       CASE(CL_DEVICE_LINKER_AVAILABLE, linkerAvailable_);
       CASE(CL_DEVICE_BUILT_IN_KERNELS, builtInKernels_);
       CASE(CL_DEVICE_IMAGE_MAX_BUFFER_SIZE, imageMaxBufferSize_);
@@ -445,78 +346,16 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
     }
       CASE(CL_DEVICE_PARTITION_MAX_SUB_DEVICES, maxComputeUnits_);
     case CL_DEVICE_PARTITION_PROPERTIES: {
-      const device::PartitionType& partitionProperties =
-          as_amd(device)->info().partitionProperties_;
-      size_t valueSize = partitionProperties.getNumSet() * sizeof(cl_device_partition_property);
-
-      if (param_value != NULL && param_value_size < valueSize) {
-        return CL_INVALID_VALUE;
-      }
-      *not_null(param_value_size_ret) = valueSize;
-      if (param_value != NULL) {
-        partitionProperties.toCL(reinterpret_cast<cl_device_partition_property*>(param_value));
-        if (param_value_size > valueSize) {
-          ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
-        }
-      }
-      return CL_SUCCESS;
+      cl_device_partition_property cl_property = {};
+      return amd::clGetInfo(cl_property, param_value_size, param_value, param_value_size_ret);
     }
     case CL_DEVICE_PARTITION_AFFINITY_DOMAIN: {
-      cl_device_affinity_domain deviceAffinity = as_amd(device)->info().affinityDomain_.toCL();
+      cl_device_affinity_domain deviceAffinity = {};
       return amd::clGetInfo(deviceAffinity, param_value_size, param_value, param_value_size_ret);
     }
     case CL_DEVICE_PARTITION_TYPE: {
-      const device::PartitionInfo& partitionInfo = as_amd(device)->info().partitionCreateInfo_;
-      size_t valueSize = 0;
-      cl_device_partition_property* properties =
-          reinterpret_cast<cl_device_partition_property*>(param_value);
-
-      switch (partitionInfo.type_.value_) {
-        case device::PartitionType::EQUALLY:
-          valueSize = 3 * sizeof(cl_device_partition_property);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            properties[0] = CL_DEVICE_PARTITION_EQUALLY;
-            properties[1] = (cl_device_partition_property)partitionInfo.equally_.numComputeUnits_;
-            properties[2] = (cl_device_partition_property)0;
-          }
-          break;
-
-        case device::PartitionType::BY_COUNTS:
-          valueSize =
-              (partitionInfo.byCounts_.listSize_ + 2) * sizeof(cl_device_partition_property);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            *properties++ = CL_DEVICE_PARTITION_BY_COUNTS;
-            for (size_t i = 0; i < partitionInfo.byCounts_.listSize_; ++i) {
-              *properties++ = partitionInfo.byCounts_.countsList_[i];
-            }
-            *properties = (cl_device_partition_property)0;
-          }
-          break;
-
-        case device::PartitionType::BY_AFFINITY_DOMAIN:
-          valueSize = 3 * sizeof(cl_device_partition_property);
-          if (param_value != NULL) {
-            if (param_value_size < valueSize) {
-              return CL_INVALID_VALUE;
-            }
-            properties[0] = CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN;
-            properties[1] = (cl_device_partition_property)partitionInfo.byAffinityDomain_.toCL();
-            properties[2] = (cl_device_partition_property)0;
-          }
-          break;
-      }
-
-      *not_null(param_value_size_ret) = valueSize;
-      if (param_value != NULL && param_value_size > valueSize) {
-        ::memset(static_cast<char*>(param_value) + valueSize, '\0', param_value_size - valueSize);
-      }
-      return CL_SUCCESS;
+      cl_device_partition_property cl_property = {};
+      return amd::clGetInfo(cl_property, param_value_size, param_value, param_value_size_ret);
     }
     case CL_DEVICE_REFERENCE_COUNT: {
       cl_uint count = as_amd(device)->referenceCount();
@@ -601,73 +440,6 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
 }
 RUNTIME_EXIT
 
-#ifdef cl_ext_device_fission
-
-RUNTIME_ENTRY(cl_int, clCreateSubDevicesEXT,
-              (cl_device_id in_device, const cl_device_partition_property_ext* partition_properties,
-               cl_uint num_entries, cl_device_id* out_devices, cl_uint* num_devices)) {
-  if (!is_valid(in_device)) {
-    return CL_INVALID_DEVICE;
-  }
-  if (partition_properties == NULL || *partition_properties == 0u) {
-    return CL_INVALID_VALUE;
-  }
-  if (((num_entries > 0 || num_devices == NULL) && out_devices == NULL) ||
-      (num_entries == 0 && out_devices != NULL)) {
-    return CL_INVALID_VALUE;
-  }
-
-  device::CreateSubDevicesInfoT<cl_device_partition_property_ext> create_info;
-  switch (*partition_properties) {
-    case CL_DEVICE_PARTITION_EQUALLY_EXT:
-      create_info.p_.type_.value_ = device::PartitionType::EQUALLY;
-      create_info.p_.equally_.numComputeUnits_ = (size_t)partition_properties[1];
-      break;
-    case CL_DEVICE_PARTITION_BY_COUNTS_EXT:
-      create_info.p_.type_.value_ = device::PartitionType::BY_COUNTS;
-      create_info.initCountsList(partition_properties + 1);
-      break;
-    case CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN_EXT:
-      create_info.p_.type_.value_ = device::PartitionType::BY_AFFINITY_DOMAIN;
-      create_info.p_.byAffinityDomain_.value_ = (uint)partition_properties[1];
-      break;
-    default:
-      return CL_INVALID_VALUE;
-  }
-
-  cl_int ret =
-      as_amd(in_device)->createSubDevices(create_info, num_entries, out_devices, num_devices);
-
-  if (ret == CL_DEVICE_PARTITION_FAILED) {
-    return CL_DEVICE_PARTITION_FAILED_EXT;
-  }
-  if (ret == CL_INVALID_DEVICE_PARTITION_COUNT) {
-    return CL_INVALID_PARTITION_COUNT_EXT;
-  }
-  return ret;
-}
-RUNTIME_EXIT
-
-RUNTIME_ENTRY(cl_int, clRetainDeviceEXT, (cl_device_id device)) {
-  if (!is_valid(device)) {
-    return CL_INVALID_DEVICE;
-  }
-  as_amd(device)->retain();
-  return CL_SUCCESS;
-}
-RUNTIME_EXIT
-
-RUNTIME_ENTRY(cl_int, clReleaseDeviceEXT, (cl_device_id device)) {
-  if (!is_valid(device)) {
-    return CL_INVALID_DEVICE;
-  }
-  as_amd(device)->release();
-  return CL_SUCCESS;
-}
-RUNTIME_EXIT
-
-#endif  // cl_ext_device_fission
-
 RUNTIME_ENTRY(cl_int, clCreateSubDevices,
               (cl_device_id in_device, const cl_device_partition_property* partition_properties,
                cl_uint num_entries, cl_device_id* out_devices, cl_uint* num_devices)) {
@@ -681,25 +453,7 @@ RUNTIME_ENTRY(cl_int, clCreateSubDevices,
     return CL_INVALID_VALUE;
   }
 
-  device::CreateSubDevicesInfoT<cl_device_partition_property> create_info;
-  switch (*partition_properties) {
-    case CL_DEVICE_PARTITION_EQUALLY:
-      create_info.p_.type_.value_ = device::PartitionType::EQUALLY;
-      create_info.p_.equally_.numComputeUnits_ = (size_t)partition_properties[1];
-      break;
-    case CL_DEVICE_PARTITION_BY_COUNTS:
-      create_info.p_.type_.value_ = device::PartitionType::BY_COUNTS;
-      create_info.initCountsList(partition_properties + 1);
-      break;
-    case CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN:
-      create_info.p_.type_.value_ = device::PartitionType::BY_AFFINITY_DOMAIN;
-      create_info.p_.byAffinityDomain_.value_ = (uint)partition_properties[1];
-      break;
-    default:
-      return CL_INVALID_VALUE;
-  }
-
-  return as_amd(in_device)->createSubDevices(create_info, num_entries, out_devices, num_devices);
+  return CL_INVALID_VALUE;
 }
 RUNTIME_EXIT
 
