@@ -66,7 +66,7 @@ KHRicdVendorDispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
      WINDOWS_SWITCH(clEnqueueReleaseD3D10ObjectsKHR, NULL), clSetEventCallback, clCreateSubBuffer,
      clSetMemObjectDestructorCallback, clCreateUserEvent, clSetUserEventStatus,
      clEnqueueReadBufferRect, clEnqueueWriteBufferRect, clEnqueueCopyBufferRect,
-     clCreateSubDevicesEXT, clRetainDeviceEXT, clReleaseDeviceEXT, clCreateEventFromGLsyncKHR,
+     NULL, NULL, NULL, clCreateEventFromGLsyncKHR,
 
      /* OpenCL 1.2*/
      clCreateSubDevices, clRetainDevice, clReleaseDevice, clCreateImage,
