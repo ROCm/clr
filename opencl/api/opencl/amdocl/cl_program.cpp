@@ -1913,11 +1913,8 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
         workGroupSize *= ((size_t*)input_value)[i];
       }
 
-      // Get the subgroup size. CPU devices only have one subgroup
-      // per workgroup. GPU devices sub-groups are wavefronts.
-      size_t subGroupSize = as_amd(device)->type() == CL_DEVICE_TYPE_CPU
-          ? workGroupSize
-          : as_amd(device)->info().wavefrontWidth_;
+      // Get the subgroup size. GPU devices sub-groups are wavefronts.
+      size_t subGroupSize = as_amd(device)->info().wavefrontWidth_;
 
       size_t numSubGroups = (workGroupSize + subGroupSize - 1) / subGroupSize;
 
@@ -1933,8 +1930,7 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
     }
     case CL_KERNEL_MAX_NUM_SUB_GROUPS: {
       size_t waveSize = as_amd(device)->info().wavefrontWidth_;
-      size_t numSubGroups = as_amd(device)->type() == CL_DEVICE_TYPE_CPU
-          ? 1 : (devKernel->workGroupInfo()->size_  + waveSize - 1) / waveSize;
+      size_t numSubGroups = (devKernel->workGroupInfo()->size_  + waveSize - 1) / waveSize;
       return amd::clGetInfo(numSubGroups, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_LOCAL_SIZE_FOR_SUB_GROUP_COUNT: {
@@ -1951,19 +1947,10 @@ RUNTIME_ENTRY(cl_int, clGetKernelSubGroupInfo,
       *not_null(param_value_size_ret) = param_value_size;
 
       size_t localSize;
-      if (as_amd(device)->type() == CL_DEVICE_TYPE_CPU) {
-        if (numSubGroups != 1) {
-          ::memset(param_value, '\0', dims * sizeof(size_t));
-          return CL_SUCCESS;
-        }
-        localSize = devKernel->workGroupInfo()->size_;
-      }
-      else {
-        localSize = numSubGroups * as_amd(device)->info().wavefrontWidth_;
-        if (localSize > devKernel->workGroupInfo()->size_) {
-          ::memset(param_value, '\0', dims * sizeof(size_t));
-          return CL_SUCCESS;
-        }
+      localSize = numSubGroups * as_amd(device)->info().wavefrontWidth_;
+      if (localSize > devKernel->workGroupInfo()->size_) {
+        ::memset(param_value, '\0', dims * sizeof(size_t));
+        return CL_SUCCESS;
       }
 
       switch (dims) {
