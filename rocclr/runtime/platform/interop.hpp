@@ -37,10 +37,6 @@ class InteropObject {
   virtual bool copyOrigToShared() { return true; }
   // On release copy data from shared copy to the original resource
   virtual bool copySharedToOrig() { return true; }
-
-  //! Mapping functions for interop objects
-  virtual bool mapExtObjectInCQThread() { return true; }
-  virtual bool unmapExtObjectInCQThread() { return true; }
 };
 
 }  // namespace amd
