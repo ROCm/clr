@@ -814,9 +814,7 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR,
                size_t param_value_size, void* param_value, size_t* param_value_size_ret)) {
   cl_int errcode;
   cl_device_id* gpu_devices;
-  cl_device_id* cpu_devices;
   cl_uint num_gpu_devices = 0;
-  cl_uint num_cpu_devices = 0;
   amd::Context::Info info;
   static const bool VALIDATE_ONLY = true;
 
@@ -835,12 +833,8 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR,
   if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
     return CL_INVALID_VALUE;
   }
-  errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, 0, NULL, &num_cpu_devices);
-  if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
-    return CL_INVALID_VALUE;
-  }
 
-  if (!num_gpu_devices && !num_cpu_devices) {
+  if (!num_gpu_devices) {
     return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
   }
 
@@ -865,25 +859,17 @@ RUNTIME_ENTRY(cl_int, clGetGLContextInfoKHR,
         }
 
         *not_null(param_value_size_ret) = 0;
-      } else {
-        cpu_devices = (cl_device_id*)alloca(num_cpu_devices * sizeof(cl_device_id));
-
-        errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, num_cpu_devices, cpu_devices, NULL);
-        if (errcode != CL_SUCCESS) {
-          return errcode;
-        }
-        return amd::clGetInfo(cpu_devices[0], param_value_size, param_value, param_value_size_ret);
       }
       break;
 
     case CL_DEVICES_FOR_GL_CONTEXT_KHR: {
       // List of all CL devices that can be associated with the specified OpenGL context.
-      cl_uint total_devices = num_gpu_devices + num_cpu_devices;
+      cl_uint total_devices = num_gpu_devices;
       size_t size = total_devices * sizeof(cl_device_id);
 
       cl_device_id* devices = (cl_device_id*)alloca(size);
 
-      errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_CPU, total_devices,
+      errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, total_devices,
                                devices, NULL);
       if (errcode != CL_SUCCESS) {
         return errcode;
@@ -1310,58 +1296,6 @@ void BufferGL::initDeviceMemory() {
   memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool BufferGL::mapExtObjectInCQThread() {
-  assert(!context_().glenv()->isEGL());
-  GLFunctions::SetIntEnv ie(context_().glenv());
-  if (!ie.isValid()) {
-    return false;
-  }
-
-  GLenum glAccess = GL_READ_WRITE;  // Default
-  if (getMemFlags() & CL_MEM_READ_ONLY) {
-    glAccess = GL_READ_ONLY;
-  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-    glAccess = GL_WRITE_ONLY;
-  }
-  clearGLErrors(context_());
-  context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
-
-  void* pCpuMem = context_().glenv()->glMapBuffer_(GL_ARRAY_BUFFER, glAccess);
-
-  if (checkForGLError(context_()) != GL_NO_ERROR || !pCpuMem) {
-    LogError("cannot map GL buffer");
-    return false;
-  }
-
-  setHostMem(pCpuMem);
-
-  return true;
-}
-
-bool BufferGL::unmapExtObjectInCQThread() {
-  assert(!context_().glenv()->isEGL());
-  GLFunctions::SetIntEnv ie(context_().glenv());
-  if (!ie.isValid()) {
-    return false;
-  }
-
-  clearGLErrors(context_());
-  context_().glenv()->glBindBuffer_(GL_ARRAY_BUFFER, gluiName_);
-
-  if (GL_FALSE == context_().glenv()->glUnmapBuffer_(GL_ARRAY_BUFFER)) {
-    LogError("context_().glenv()->glUnmapBuffer_ returned GL_FALSE - buffer may be corrupted");
-    return false;
-  }
-  if (checkForGLError(context_()) != GL_NO_ERROR) {
-    LogWarning("Error unmapping GL buffer");
-    return false;
-  }
-
-  setHostMem(NULL);
-
-  return true;
-}
-
 static GLenum clChannelDataTypeToGlType(cl_channel_type channel_type) {
   // Pick
   // GL_BYTE, GL_UNSIGNED_BYTE, GL_SHORT, GL_UNSIGNED_SHORT, GL_INT,
@@ -1431,92 +1365,6 @@ void ImageGL::initDeviceMemory() {
   deviceMemories_ =
       reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(ImageGL));
   memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
-}
-
-bool ImageGL::mapExtObjectInCQThread() {
-  assert(!context_().glenv()->isEGL());
-  GLFunctions::SetIntEnv ie(context_().glenv());
-  if (!ie.isValid()) {
-    return false;
-  }
-
-  GLenum glAccess = GL_READ_WRITE;  // Default
-
-  if (getMemFlags() & CL_MEM_READ_ONLY) {
-    glAccess = GL_READ_ONLY;
-  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-    glAccess = GL_WRITE_ONLY;
-  }
-  clearGLErrors(context_());
-  context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
-
-  size_t mem_size = getSize();
-
-  char* pCpuMem = new char[mem_size];
-  if (pCpuMem == NULL) {
-    LogError("Cannot alloc host memory for ImageGL");
-    return false;
-  }
-
-  context_().glenv()->glGetTexImage_(
-      getGLTarget(), gliMipLevel_, glInternalFormatToGlFormat(glInternalFormat_),
-      clChannelDataTypeToGlType(getImageFormat().image_channel_data_type), pCpuMem);
-
-  if (checkForGLError(context_()) != GL_NO_ERROR) {
-    LogError("cannot map GL texture");
-    delete[] pCpuMem;
-    return false;
-  }
-
-  setHostMem(pCpuMem);
-
-  return true;
-}
-
-bool ImageGL::unmapExtObjectInCQThread() {
-  assert(!context_().glenv()->isEGL());
-  GLFunctions::SetIntEnv ie(context_().glenv());
-  if (!ie.isValid()) {
-    return false;
-  }
-
-  bool status = true;
-
-  clearGLErrors(context_());
-  context_().glenv()->glBindTexture_(getGLTarget(), gluiName_);
-
-  char* pCpuMem = (char*)getHostMem();
-
-  if (checkForGLError(context_()) != GL_NO_ERROR) {
-    LogError("Cannot map GL texture");
-    status = false;
-    goto cleanup;
-  }
-
-  context_().glenv()->glTexImage2D_(
-      getGLTarget(),      // target
-      gliMipLevel_,       // miplevel
-      glInternalFormat_,  // internalFormat or bytes per pixel
-      gliWidth_,          // width
-      gliHeight_,         // height
-      0,                  // border
-      // format
-      glInternalFormatToGlFormat(glInternalFormat_),
-      // type
-      clChannelDataTypeToGlType(getImageFormat().image_channel_data_type),
-      pCpuMem);  // data
-
-  if (checkForGLError(context_()) != GL_NO_ERROR) {
-    LogError("Cannot update GL texture");
-    status = false;
-    goto cleanup;
-  }
-
-cleanup:
-  delete[] pCpuMem;
-  setHostMem(NULL);
-
-  return status;
 }
 
 //*******************************************************************
@@ -1615,15 +1463,13 @@ cl_mem clCreateFromGLBufferAMD(Context& amdContext, cl_mem_flags flags, GLuint b
   const auto it = amdContext.devices().cbegin();
   const amd::Device& dev = *(*it);
 
-  if (dev.type() != CL_DEVICE_TYPE_CPU) {
-    device::Memory* mem = pBufferGL->getDeviceMemory(dev);
-    if (NULL == mem) {
-      LogPrintfError("Can't allocate memory size - 0x%08X bytes!", pBufferGL->getSize());
-      *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
-      return (cl_mem)0;
-    }
-    mem->processGLResource(device::Memory::GLDecompressResource);
+  device::Memory* mem = pBufferGL->getDeviceMemory(dev);
+  if (NULL == mem) {
+    LogPrintfError("Can't allocate memory size - 0x%08X bytes!", pBufferGL->getSize());
+    *not_null(errcode_ret) = CL_INVALID_GL_OBJECT;
+    return (cl_mem)0;
   }
+  mem->processGLResource(device::Memory::GLDecompressResource);
 
   return as_cl<Memory>(pBufferGL);
 }

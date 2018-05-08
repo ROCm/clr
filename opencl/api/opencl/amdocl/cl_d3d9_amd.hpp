@@ -311,10 +311,6 @@ public:
             setInteropObj(this);
         }
     virtual ~Image2DD3D9() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 cl_mem clCreateImage2DFromD3D9ResourceAMD(

@@ -816,48 +816,6 @@ void Image2DD3D9::initDeviceMemory() {
   memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool Image2DD3D9::mapExtObjectInCQThread() {
-  void* pCpuMem = NULL;
-  HRESULT hr;
-  DWORD lockFlags = 0;
-
-  if (getMemFlags() & CL_MEM_READ_WRITE) {
-    lockFlags = 0;
-  } else if (getMemFlags() & CL_MEM_READ_ONLY) {
-    lockFlags = D3DLOCK_READONLY;
-  } else if (getMemFlags() & CL_MEM_WRITE_ONLY) {
-    lockFlags = D3DLOCK_DISCARD;
-  } else {
-    // Should not get here, the flags had been checked before
-    LogError("\nInvalid memrory flags");
-    return false;
-  }
-  ScopedLock sl(getResLock());
-
-  D3DLOCKED_RECT lockedRect;
-  hr = getD3D9Resource()->LockRect(&lockedRect, NULL, lockFlags);
-  if ((hr != D3D_OK) || !lockedRect.pBits) {
-    LogError("Cannot lock D3D9 surface for CPU access");
-    return false;
-  }
-
-  setHostMem(lockedRect.pBits);
-  return true;
-}
-
-bool Image2DD3D9::unmapExtObjectInCQThread() {
-  HRESULT hr;
-  ScopedLock sl(getResLock());
-  hr = getD3D9Resource()->UnlockRect();
-  if (hr != D3D_OK) {
-    LogError("Cannot unlock D3D9 surface");
-    return false;
-  }
-
-  setHostMem(NULL);
-  return true;
-}
-
 }  // namespace amd
 
 #endif  //_WIN32
