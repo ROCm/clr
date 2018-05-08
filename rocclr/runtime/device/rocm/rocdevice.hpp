@@ -93,13 +93,6 @@ class NullDevice : public amd::Device {
 
   // List of dummy functions which are disabled for NullDevice
 
-  //! Create sub-devices according to the given partition scheme.
-  virtual cl_int createSubDevices(device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
-                                  cl_device_id* devices, cl_uint* num_devices) {
-    ShouldNotReachHere();
-    return CL_INVALID_VALUE;
-  };
-
   //! Create a new virtual device environment.
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr) {
     ShouldNotReachHere();
