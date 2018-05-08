@@ -16,12 +16,6 @@ release(uint, GPU_MAX_COMMAND_QUEUES, 70,                                     \
         "The maximum number of concurrent Virtual GPUs")                      \
 release(size_t, CQ_THREAD_STACK_SIZE, 256*Ki, /* @todo: that much! */         \
         "The default command queue thread stack size")                        \
-release(size_t, CPU_WORKER_THREAD_STACK_SIZE, 64*Ki,                          \
-        "The default CPU worker thread stack size")                           \
-release(int, CPU_MAX_COMPUTE_UNITS, -1,                                       \
-        "Override the number of computation units per CPU device")            \
-debug(bool, CPU_USE_ALIGNMENT_MAP, false,                                     \
-        "Use flag to enable alignment mapping for parameters for CPU")        \
 release(int, GPU_MAX_WORKGROUP_SIZE, 0,                                       \
         "Maximum number of workitems in a workgroup for GPU, 0 -use default") \
 release(int, GPU_MAX_WORKGROUP_SIZE_2D_X, 0,                                  \
@@ -34,8 +28,6 @@ release(int, GPU_MAX_WORKGROUP_SIZE_3D_Y, 0,                                  \
         "Maximum number of workitems in a 3D workgroup for GPU, y component, 0 -use default") \
 release(int, GPU_MAX_WORKGROUP_SIZE_3D_Z, 0,                                  \
         "Maximum number of workitems in a 3D workgroup for GPU, z component, 0 -use default") \
-release(int, CPU_MAX_WORKGROUP_SIZE, 1024,                                    \
-        "Maximum number of workitems in a workgroup for CPU")                 \
 debug(bool, CPU_MEMORY_GUARD_PAGES, false,                                    \
         "Use guard pages for CPU memory")                                     \
 debug(size_t, CPU_MEMORY_GUARD_PAGE_SIZE, 64,                                 \
@@ -96,8 +88,6 @@ release(bool, GPU_FORCE_OCL20_32BIT, 0,                                       \
         "Forces 32 bit apps to take CLANG\HSAIL path")                        \
 release(bool, GPU_RAW_TIMESTAMP, 0,                                           \
         "Reports GPU raw timestamps in GPU timeline")                         \
-release(bool, CPU_IMAGE_SUPPORT, true,                                        \
-        "Turn on image support on the CPU device")                            \
 release(bool, GPU_PARTIAL_DISPATCH, true,                                     \
         "Enables partial dispatch on GPU")                                    \
 release(size_t, GPU_NUM_MEM_DEPENDENCY, 256,                                  \
@@ -106,8 +96,6 @@ release(size_t, GPU_XFER_BUFFER_SIZE, 0,                                      \
         "Transfer buffer size for image copy optimization in KB")             \
 release(bool, GPU_IMAGE_DMA, true,                                            \
         "Enable DRM DMA for image transfers")                                 \
-release(uint, CPU_MAX_ALLOC_PERCENT, 25,                                      \
-        "Maximum size of a single allocation in MiB")                         \
 release(uint, GPU_SINGLE_ALLOC_PERCENT, 85,                                   \
         "Maximum size of a single allocation as percentage of total")         \
 release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
@@ -147,8 +135,6 @@ release(bool, AMD_THREAD_TRACE_ENABLE, true,                                  \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
         "Force GPU opencl verison")                                           \
-release(uint, CPU_OPENCL_VERSION, 120,                                        \
-        "Force CPU opencl verison")                                           \
 release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
         "Determines if Hsa runtime should use polling scheme")                \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
@@ -169,8 +155,6 @@ release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
-debug(bool, OCL_FORCE_CPU_SVM, false,                                         \
-        "force svm support for CPU")                                          \
 release(uint, OCL_SET_SVM_SIZE, 4096,                                        \
         "set SVM space size for discrete GPU")                                \
 debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
