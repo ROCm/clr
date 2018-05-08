@@ -285,16 +285,6 @@ class Device : public NullDevice {
   // need real implementation.
   ///////////////////////////////////////////////////////////////////////////////
 
-  // #ifdef cl_ext_device_fission
-  //! Create sub-devices according to the given partition scheme.
-  virtual cl_int createSubDevices(device::CreateSubDevicesInfo& create_inf, cl_uint num_entries,
-                                  cl_device_id* devices, cl_uint* num_devices) {
-    return CL_INVALID_VALUE;
-  }
-  // #endif // cl_ext_device_fission
-
-  // bool Device::create(CALuint ordinal);
-
   //! Instantiate a new virtual device
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr);
 

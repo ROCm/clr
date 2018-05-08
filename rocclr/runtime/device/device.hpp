@@ -171,97 +171,6 @@ namespace device {
 class ClBinary;
 class BlitManager;
 
-struct PartitionType : public amd::EmbeddedObject {
-  enum { EQUALLY = (1 << 0), BY_COUNTS = (1 << 1), BY_AFFINITY_DOMAIN = (1 << 2) };
-
-  union {
-    struct {
-      uint equally_ : 1;
-      uint byCounts_ : 1;
-      uint byAffinityDomain_ : 1;
-    };
-    uint value_;
-  };
-
-  size_t getNumSet() const { return (size_t)amd::countBitsSet(value_); }
-
-  cl_device_partition_property toCL() const;
-  size_t toCL(cl_device_partition_property* types) const;
-#ifdef cl_ext_device_fission
-  cl_device_partition_property_ext toCLExt() const;
-  size_t toCLExt(cl_device_partition_property_ext* types) const;
-#endif
-};
-
-struct AffinityDomain : public amd::EmbeddedObject {
-  enum {
-    AFFINITY_DOMAIN_NUMA = (1 << 0),
-    AFFINITY_DOMAIN_L4_CACHE = (1 << 1),
-    AFFINITY_DOMAIN_L3_CACHE = (1 << 2),
-    AFFINITY_DOMAIN_L2_CACHE = (1 << 3),
-    AFFINITY_DOMAIN_L1_CACHE = (1 << 4),
-    AFFINITY_DOMAIN_NEXT_PARTITIONABLE = (1 << 5)
-  };
-
-  union {
-    struct {
-      uint numa_ : 1;
-      uint cacheL4_ : 1;
-      uint cacheL3_ : 1;
-      uint cacheL2_ : 1;
-      uint cacheL1_ : 1;
-      uint next_ : 1;
-    };
-    uint value_;
-  };
-
-  size_t getNumSet() const { return (size_t)amd::countBitsSet(value_); }
-
-  cl_device_affinity_domain toCL() const;
-#ifdef cl_ext_device_fission
-  cl_device_partition_property_ext toCLExt() const;
-  size_t toCLExt(cl_device_partition_property_ext* affinities) const;
-#endif
-};
-
-//! Device partition properties.
-struct PartitionInfo : public amd::EmbeddedObject {
-  PartitionType type_;
-  union {
-    struct {
-      size_t numComputeUnits_;
-    } equally_;
-
-    AffinityDomain byAffinityDomain_;
-
-    struct {
-      const cl_uint* countsList_;
-      size_t listSize_;
-    } byCounts_;
-  };
-};
-
-//! Create Sub-Devices request properties.
-struct CreateSubDevicesInfo : public amd::HeapObject {
-  PartitionInfo p_;
-  virtual cl_uint countsListAt(size_t i) const = 0;
-  virtual ~CreateSubDevicesInfo() {}
-};
-
-template <typename PROP_T> struct CreateSubDevicesInfoT : public CreateSubDevicesInfo {
-  virtual cl_uint countsListAt(size_t i) const {
-    return (cl_uint) reinterpret_cast<const PROP_T*>(p_.byCounts_.countsList_)[i];
-  }
-
-  void initCountsList(const PROP_T* props) {
-    p_.byCounts_.countsList_ = reinterpret_cast<const cl_uint*>(props);
-    p_.byCounts_.listSize_ = 0;
-    for (; *props != ((PROP_T)0); ++props) {
-      ++p_.byCounts_.listSize_;
-    }
-  }
-};
-
 //! Physical device properties.
 struct Info : public amd::EmbeddedObject {
   //! The OpenCL device type.
@@ -486,17 +395,6 @@ struct Info : public amd::EmbeddedObject {
 
   //! Returns max number of images in a 1D or 2D image array
   size_t imageMaxArraySize_;
-
-  //! Returns the list of partition types supported by device
-  PartitionType partitionProperties_;
-
-  //! Returns the list of supported affinity domains for
-  //! partitioning the device using CL_DEVICE_PARTITION_BY_AFFINITY_DOMAIN
-  AffinityDomain affinityDomain_;
-
-  //! Returns the properties argument specified in clCreateSubDevices
-  //! if device is a subdevice.
-  PartitionInfo partitionCreateInfo_;
 
   //! Returns CL_TRUE if the devices preference is for the user to be
   //! responsible for synchronization
@@ -1573,10 +1471,6 @@ class Device : public RuntimeObject {
 
   //! Return this device's type.
   cl_device_type type() const { return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT); }
-
-  //! Create sub-devices according to the given partition scheme.
-  virtual cl_int createSubDevices(device::CreateSubDevicesInfo& create_info, cl_uint num_entries,
-                                  cl_device_id* devices, cl_uint* num_devices) = 0;
 
   //! Create a new virtual device environment.
   virtual device::VirtualDevice* createVirtualDevice(CommandQueue* queue = NULL) = 0;
