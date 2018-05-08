@@ -222,8 +222,7 @@ CL_API_ENTRY cl_int CL_API_CALL clIcdGetPlatformIDsKHR(cl_uint num_entries,
   }
 
   if (num_platforms != NULL && platforms == NULL) {
-    int numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_CPU, false) +
-                     amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+    int numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
     if (numDevices == 0) {
       *num_platforms = 0;
       return CL_INVALID_PLATFORM;
