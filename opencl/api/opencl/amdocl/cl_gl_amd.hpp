@@ -131,10 +131,6 @@ public:
     virtual ~BufferGL() {}
 
     virtual BufferGL* asBufferGL() { return this; }
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 
@@ -172,10 +168,6 @@ public:
     }
 
     virtual ~ImageGL() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 
 protected:
     //! Initializes the device memory array which is nested

@@ -240,10 +240,6 @@ public:
         setInteropObj(this);
     }
     virtual ~BufferD3D10() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 //! Class Image1DD3D10 is derived from classes Image1D and D3D10Object
@@ -278,10 +274,6 @@ public:
         setInteropObj(this);
     }
     virtual ~Image1DD3D10() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 //! Class Image2DD3D10 is derived from classes Image2D and D3D10Object
@@ -316,10 +308,6 @@ public:
         setInteropObj(this);
     }
     virtual ~Image2DD3D10() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 //! Class Image3DD3D10 is derived from classes Image3D and D3D10Object
@@ -354,10 +342,6 @@ public:
         setInteropObj(this);
     }
     virtual ~Image3DD3D10() {}
-
-    //! For CPU device only!
-    virtual bool mapExtObjectInCQThread(void);
-    virtual bool unmapExtObjectInCQThread(void);
 };
 
 //! Functions for executing the D3D10 related stuff
