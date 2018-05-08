@@ -605,7 +605,7 @@ bool Program::ParseAllOptions(const std::string& options, option::Options& parse
 
 bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func, bool noAlias) {
   // FIXME_lmoriche: check that the signatures are compatible
-  if (deviceKernels_.size() == 0 || device.type() == CL_DEVICE_TYPE_CPU) {
+  if (deviceKernels_.size() == 0) {
     signature_ = func->signature();
   }
 

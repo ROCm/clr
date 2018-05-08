@@ -40,16 +40,10 @@ Context::Context(const std::vector<Device*>& devices, const Info& info)
     }
   }
   if (svmAllocDevice_.size() > 1) {
-    // make sure the CPU is the last device to do allocation.
-    if ((svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU)) {
-      std::swap(svmAllocDevice_.front(), svmAllocDevice_.back());
-    }
-
     uint isFirstDeviceFGSEnabled = svmAllocDevice_.front()->isFineGrainedSystem(true);
     for (auto& dev : svmAllocDevice_) {
       // allocation on fine - grained system incapable device first
-      if (isFirstDeviceFGSEnabled && (dev->type() == CL_DEVICE_TYPE_GPU) &&
-          (!(dev->isFineGrainedSystem(true)))) {
+      if (isFirstDeviceFGSEnabled && !dev->isFineGrainedSystem(true)) {
         std::swap(svmAllocDevice_.front(), dev);
         break;
       }
@@ -288,42 +282,29 @@ void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags) {
     return NULL;
   }
 
-  if (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU) {
-    return AlignedMemory::allocate(size, alignment);
-  } else {
-    void* svmPtrAlloced = NULL;
-    void* tempPtr = NULL;
-
-    amd::ScopedLock lock(&ctxLock_);
-    for (const auto& dev : svmAllocDevice_) {
-      if (dev->type() == CL_DEVICE_TYPE_GPU) {
-        // check if the device support svm platform atomics,
-        // skipped allocation for platform atomics if not supported by this device
-        if ((flags & CL_MEM_SVM_ATOMICS) &&
-            !(dev->info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS)) {
-          continue;
-        }
-        svmPtrAlloced = dev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
-        if (svmPtrAlloced == NULL) {
-          return NULL;
-        }
-      }
-    }
-    return svmPtrAlloced;
-  }
-}
-
-void Context::svmFree(void* ptr) const {
-  if (svmAllocDevice_.front()->type() == CL_DEVICE_TYPE_CPU) {
-    AlignedMemory::deallocate(ptr);
-    return;
-  }
+  void* svmPtrAlloced = NULL;
+  void* tempPtr = NULL;
 
   amd::ScopedLock lock(&ctxLock_);
   for (const auto& dev : svmAllocDevice_) {
-    if (dev->type() == CL_DEVICE_TYPE_GPU) {
-      dev->svmFree(ptr);
+    // check if the device support svm platform atomics,
+    // skipped allocation for platform atomics if not supported by this device
+    if ((flags & CL_MEM_SVM_ATOMICS) &&
+        !(dev->info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS)) {
+      continue;
     }
+    svmPtrAlloced = dev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
+    if (svmPtrAlloced == NULL) {
+      return NULL;
+    }
+  }
+  return svmPtrAlloced;
+}
+
+void Context::svmFree(void* ptr) const {
+  amd::ScopedLock lock(&ctxLock_);
+  for (const auto& dev : svmAllocDevice_) {
+    dev->svmFree(ptr);
   }
   return;
 }

@@ -156,14 +156,6 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
 
   const std::vector<Device*>& devices = context_().devices();
 
-  // Find if a non GPU device was created with the context
-  for (size_t i = 0; i < devices.size(); i++) {
-    if (!(devices[i]->info().type_ & CL_DEVICE_TYPE_GPU)) {
-      allocHostMem = true;
-      break;
-    }
-  }
-
   // This allocation is necessary to use coherency mechanism
   // for the initialization
   if (getMemFlags() & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
@@ -243,11 +235,8 @@ bool Memory::create(void* initFrom, bool sysMemAlloc) {
   for (size_t i = 0; i < devices.size(); i++) {
     deviceAlloced_[devices[i]] = AllocInit;
 
-    // Only GPU devices have device memory objects
-    if (devices[i]->info().type_ & CL_DEVICE_TYPE_GPU) {
-      deviceMemories_[i].ref_ = devices[i];
-      deviceMemories_[i].value_ = NULL;
-    }
+    deviceMemories_[i].ref_ = devices[i];
+    deviceMemories_[i].value_ = NULL;
 
     if (DISABLE_DEFERRED_ALLOC) {
       device::Memory* mem = getDeviceMemory(*devices[i]);
