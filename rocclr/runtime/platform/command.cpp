@@ -279,6 +279,11 @@ cl_int NativeFnCommand::invoke() {
 }
 
 bool OneMemoryArgCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   device::Memory* mem = memory_->getDeviceMemory(queue()->device());
   if (NULL == mem) {
     LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memory_->getSize());
@@ -288,6 +293,11 @@ bool OneMemoryArgCommand::validateMemory() {
 }
 
 bool TwoMemoryArgsCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   device::Memory* mem = memory1_->getDeviceMemory(queue()->device());
   if (NULL == mem) {
     LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memory1_->getSize());
@@ -364,6 +374,11 @@ void UnmapMemoryCommand::releaseResources() {
 }
 
 bool MigrateMemObjectsCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   for (const auto& it : memObjects_) {
     device::Memory* mem = it->getDeviceMemory(queue()->device());
     if (NULL == mem) {
@@ -380,7 +395,11 @@ cl_int NDRangeKernelCommand::validateMemory() {
   if (!queue()->device().validateKernel(kernel(), queue()->vdev())) {
     return CL_OUT_OF_RESOURCES;
   }
-
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+      return CL_SUCCESS;
+  }
   const amd::KernelSignature& signature = kernel().signature();
   for (uint i = 0; i != signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
@@ -421,6 +440,11 @@ cl_int NDRangeKernelCommand::validateMemory() {
 }
 
 bool ExtObjectsCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   bool retVal = true;
   for (const auto& it : memObjects_) {
     device::Memory* mem = it->getDeviceMemory(queue()->device());
@@ -442,6 +466,11 @@ bool ReleaseExtObjectsCommand::processGLResource(device::Memory* mem) {
 }
 
 bool MakeBuffersResidentCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   for (const auto& it : memObjects_) {
     device::Memory* mem = it->getDeviceMemory(queue()->device());
     if (NULL == mem) {
@@ -453,6 +482,11 @@ bool MakeBuffersResidentCommand::validateMemory() {
 }
 
 bool ThreadTraceMemObjectsCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   for (auto it = memObjects_.cbegin(); it != memObjects_.cend(); it++) {
     device::Memory* mem = (*it)->getDeviceMemory(queue()->device());
     if (NULL == mem) {
@@ -510,6 +544,11 @@ void TransferBufferFileCommand::submit(device::VirtualDevice& device) {
 }
 
 bool TransferBufferFileCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   // Check if the destination buffer has direct host access
   if (!(memory_->getMemFlags() &
         (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
@@ -537,6 +576,11 @@ bool TransferBufferFileCommand::validateMemory() {
 }
 
 bool CopyMemoryP2PCommand::validateMemory() {
+  // Runtime disables deferred memory allocation for single device.
+  // Hence ignore memory validations
+  if (queue()->context().devices().size() == 1) {
+    return true;
+  }
   const std::vector<Device*>& devices = memory1_->getContext().devices();
   if (devices.size() != 1) {
     LogError("Can't allocate memory object for P2P extension");
