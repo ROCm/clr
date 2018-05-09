@@ -238,7 +238,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc) {
     deviceMemories_[i].ref_ = devices[i];
     deviceMemories_[i].value_ = NULL;
 
-    if (DISABLE_DEFERRED_ALLOC) {
+    if ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC) {
       device::Memory* mem = getDeviceMemory(*devices[i]);
       if (NULL == mem) {
         LogPrintfError("Can't allocate memory size - 0x%08X bytes!", getSize());
