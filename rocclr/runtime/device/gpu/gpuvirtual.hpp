@@ -377,7 +377,7 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   //! Creates buffer object from image
   amd::Memory* createBufferFromImage(
       amd::Memory& amdImage  //! The parent image object(untiled images only)
-      ) const;
+      );
 
  private:
   typedef std::unordered_map<CALimage, GslKernelDesc*> GslKernels;

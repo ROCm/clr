@@ -506,7 +506,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Creates buffer object from image
   amd::Memory* createBufferFromImage(
       amd::Memory& amdImage  //! The parent image object(untiled images only)
-      ) const;
+      );
 
  private:
   struct MemoryRange {

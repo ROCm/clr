@@ -720,7 +720,8 @@ bool KernelBlitManager::createProgram(Device& device) {
 
   // Create an internal constant buffer
   constantBuffer_ = new (*context_) amd::Buffer(*context_, CL_MEM_ALLOC_HOST_PTR, 4 * Ki);
-
+  // Assign the constant buffer to the current virtual GPU
+  constantBuffer_->setVirtualDevice(&gpu());
   if ((constantBuffer_ != nullptr) && !constantBuffer_->create(nullptr)) {
     constantBuffer_->release();
     constantBuffer_ = nullptr;
@@ -729,14 +730,14 @@ bool KernelBlitManager::createProgram(Device& device) {
     return false;
   }
 
-  // Assign the constant buffer to the current virtual GPU
-  constantBuffer_->setVirtualDevice(&gpu());
-
   if (dev().settings().xferBufSize_ > 0) {
     xferBufferSize_ = dev().settings().xferBufSize_;
     for (uint i = 0; i < MaxXferBuffers; ++i) {
       // Create internal xfer buffers for image copy optimization
       xferBuffers_[i] = new (*context_) amd::Buffer(*context_, 0, xferBufferSize_);
+
+      // Assign the xfer buffer to the current virtual GPU
+      xferBuffers_[i]->setVirtualDevice(&gpu());
 
       if ((xferBuffers_[i] != nullptr) && !xferBuffers_[i]->create(nullptr)) {
         xferBuffers_[i]->release();
@@ -746,8 +747,6 @@ bool KernelBlitManager::createProgram(Device& device) {
         return false;
       }
 
-      // Assign the xfer buffer to the current virtual GPU
-      xferBuffers_[i]->setVirtualDevice(&gpu());
       //! @note Workaround for conformance allocation test.
       //! Force GPU mem alloc.
       //! Unaligned images require xfer optimization,
@@ -2051,7 +2050,7 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
   }
 
   amdMemory = new (*context_) amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
-
+  amdMemory->setVirtualDevice(&gpu());
   if ((amdMemory != nullptr) && !amdMemory->create(tmpHost, SysMem)) {
     amdMemory->release();
     return nullptr;
@@ -2059,7 +2058,6 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
 
   // Get device memory for this virtual device
   // @note: This will force real memory pinning
-  amdMemory->setVirtualDevice(&gpu());
   Memory* srcMemory = dev().getRocMemory(amdMemory);
 
   if (srcMemory == nullptr) {

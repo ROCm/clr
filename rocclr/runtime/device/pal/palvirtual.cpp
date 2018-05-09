@@ -1015,7 +1015,6 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
       LogError("We should not fail buffer creation from image_buffer!");
     } else {
       type = CL_COMMAND_READ_BUFFER;
-      bufferFromImage->setVirtualDevice(this);
       memory = dev().getGpuMemory(bufferFromImage);
     }
   }
@@ -1113,7 +1112,6 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd) {
       LogError("We should not fail buffer creation from image_buffer!");
     } else {
       type = CL_COMMAND_WRITE_BUFFER;
-      bufferFromImage->setVirtualDevice(this);
       memory = dev().getGpuMemory(bufferFromImage);
     }
   }
@@ -1205,7 +1203,6 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
       LogError("We should not fail buffer creation from image_buffer!");
     } else {
       type = CL_COMMAND_COPY_BUFFER;
-      bufferFromImageSrc->setVirtualDevice(this);
       srcMemory = dev().getGpuMemory(bufferFromImageSrc);
     }
   }
@@ -1216,7 +1213,6 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
       LogError("We should not fail buffer creation from image_buffer!");
     } else {
       type = CL_COMMAND_COPY_BUFFER;
-      bufferFromImageDst->setVirtualDevice(this);
       dstMemory = dev().getGpuMemory(bufferFromImageDst);
     }
   }
@@ -1423,7 +1419,6 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
         if (nullptr == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
-          bufferFromImage->setVirtualDevice(this);
           memoryBuf = dev().getGpuMemory(bufferFromImage);
         }
         if (!blitMgr().copyBuffer(*memoryBuf, *memory->mapMemory(), origin, dstOrigin, size,
@@ -1526,7 +1521,6 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
         if (nullptr == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
-          bufferFromImage->setVirtualDevice(this);
           memoryBuf = dev().getGpuMemory(bufferFromImage);
         }
         if (!blitMgr().copyBuffer(*memory->mapMemory(), *memoryBuf, srcOrigin, origin, size,
@@ -1586,7 +1580,6 @@ bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const 
       LogError("We should not fail buffer creation from image_buffer!");
     } else {
       type = CL_COMMAND_FILL_BUFFER;
-      bufferFromImage->setVirtualDevice(this);
       memory = dev().getGpuMemory(bufferFromImage);
     }
   }
@@ -3038,9 +3031,9 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
   return true;
 }
 
-amd::Memory* VirtualGPU::createBufferFromImage(amd::Memory& amdImage) const {
+amd::Memory* VirtualGPU::createBufferFromImage(amd::Memory& amdImage) {
   amd::Memory* mem = new (amdImage.getContext()) amd::Buffer(amdImage, 0, 0, amdImage.getSize());
-
+  mem->setVirtualDevice(this);
   if ((mem != nullptr) && !mem->create()) {
     mem->release();
   }
