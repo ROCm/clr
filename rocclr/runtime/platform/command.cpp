@@ -440,11 +440,8 @@ cl_int NDRangeKernelCommand::validateMemory() {
 }
 
 bool ExtObjectsCommand::validateMemory() {
-  // Runtime disables deferred memory allocation for single device.
-  // Hence ignore memory validations
-  if (queue()->context().devices().size() == 1) {
-    return true;
-  }
+  // Always process GL objects, even if deferred allocations are disabled,
+  // because processGLResource() calls OGL Acquire().
   bool retVal = true;
   for (const auto& it : memObjects_) {
     device::Memory* mem = it->getDeviceMemory(queue()->device());
