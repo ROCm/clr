@@ -695,6 +695,9 @@ bool KernelBlitManager::createProgram(Device& device) {
       // Create internal xfer buffers for image copy optimization
       xferBuffers_[i] = new (*context_) amd::Buffer(*context_, 0, xferBufferSize_);
 
+      // Assign the xfer buffer to the current virtual GPU
+      xferBuffers_[i]->setVirtualDevice(&gpu());
+
       if ((xferBuffers_[i] != NULL) && !xferBuffers_[i]->create(NULL)) {
         xferBuffers_[i]->release();
         xferBuffers_[i] = NULL;
@@ -703,8 +706,6 @@ bool KernelBlitManager::createProgram(Device& device) {
         return false;
       }
 
-      // Assign the xfer buffer to the current virtual GPU
-      xferBuffers_[i]->setVirtualDevice(&gpu());
       //! @note Workaround for conformance allocation test.
       //! Force GPU mem alloc.
       //! Unaligned images require xfer optimization,
@@ -2375,7 +2376,7 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
   }
 
   amdMemory = new (*context_) amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
-
+  amdMemory->setVirtualDevice(&gpu());
   if ((amdMemory != NULL) && !amdMemory->create(tmpHost, SysMem)) {
     amdMemory->release();
     return NULL;
@@ -2383,7 +2384,6 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
 
   // Get device memory for this virtual device
   // @note: This will force real memory pinning
-  amdMemory->setVirtualDevice(&gpu());
   Memory* srcMemory = dev().getGpuMemory(amdMemory);
 
   if (srcMemory == NULL) {
