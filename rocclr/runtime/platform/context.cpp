@@ -18,6 +18,11 @@
 #include "CL/cl_dx9_media_sharing.h"
 #endif  //_WIN32
 
+#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
+      defined(WITH_AMDGPU_PRO)) || defined(_WIN32) || defined(WITH_PAL_DEVICE)
+#define WITH_LIQUID_FLASH 1
+#endif
+
 #ifdef WITH_LIQUID_FLASH 
 #include "lf.h"
 #endif
