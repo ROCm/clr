@@ -228,7 +228,8 @@ class Memory : public amd::RuntimeObject {
 
   //! Creates and initializes device (cache) memory for all devices
   virtual bool create(void* initFrom = NULL,    //!< Pointer to the initialization data
-                      bool sysMemAlloc = false  //!< Allocate device memory in system memory
+                      bool sysMemAlloc = false, //!< Allocate device memory in system memory
+                      bool skipAlloc = false    //!< Skip device memory allocation
                       );
 
   //! Allocates device (cache) memory for a specific device
@@ -338,7 +339,8 @@ class Buffer : public Memory {
       : Memory(parent, flags, origin, size) {}
 
   bool create(void* initFrom = NULL,    //!< Pointer to the initialization data
-              bool sysMemAlloc = false  //!< Allocate device memory in system memory
+              bool sysMemAlloc = false, //!< Allocate device memory in system memory
+              bool skipAlloc = false    //!< Skip device memory allocation
               );
 
   //! static_cast to Buffer with sanity check
