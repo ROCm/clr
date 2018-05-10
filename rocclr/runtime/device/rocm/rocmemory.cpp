@@ -708,7 +708,7 @@ bool Buffer::create() {
       // data transfer to the view of the buffer.
       amd::Buffer* bufferView = new (owner()->getContext())
           amd::Buffer(*owner(), 0, owner()->getOrigin(), owner()->getSize());
-      bufferView->create();
+      bufferView->create(nullptr, false, true);
 
       roc::Buffer* devBufferView = new roc::Buffer(dev_, *bufferView);
       devBufferView->deviceMemory_ = deviceMemory_;

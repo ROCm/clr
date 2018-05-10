@@ -205,7 +205,7 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
   return true;
 }
 
-bool Memory::create(void* initFrom, bool sysMemAlloc) {
+bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc) {
   static const bool forceAllocHostMem = false;
 
   initDeviceMemory();
@@ -238,7 +238,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc) {
     deviceMemories_[i].ref_ = devices[i];
     deviceMemories_[i].value_ = NULL;
 
-    if ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC) {
+    if (!skipAlloc && ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC)) {
       device::Memory* mem = getDeviceMemory(*devices[i]);
       if (NULL == mem) {
         LogPrintfError("Can't allocate memory size - 0x%08X bytes!", getSize());
@@ -436,7 +436,7 @@ void Buffer::initDeviceMemory() {
   memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
 }
 
-bool Buffer::create(void* initFrom, bool sysMemAlloc) {
+bool Buffer::create(void* initFrom, bool sysMemAlloc, bool skipAlloc) {
   if ((getMemFlags() & CL_MEM_EXTERNAL_PHYSICAL_AMD) && (initFrom != NULL)) {
     busAddress_ = *(reinterpret_cast<cl_bus_address_amd*>(initFrom));
     initFrom = NULL;
@@ -444,7 +444,7 @@ bool Buffer::create(void* initFrom, bool sysMemAlloc) {
     busAddress_.surface_bus_address = 0;
     busAddress_.marker_bus_address = 0;
   }
-  return Memory::create(initFrom, sysMemAlloc);
+  return Memory::create(initFrom, sysMemAlloc, skipAlloc);
 }
 
 bool Buffer::isEntirelyCovered(const Coord3D& origin, const Coord3D& region) const {
