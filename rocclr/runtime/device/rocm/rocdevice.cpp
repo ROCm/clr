@@ -1513,7 +1513,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     if (ptr != nullptr) {
       // Copy paste from ORCA code.
       // create a hidden buffer, which will allocated on the device later
-      mem = new (context) amd::Buffer(context, CL_MEM_USE_HOST_PTR, size, ptr);
+      mem = new (context) amd::Buffer(context, (CL_MEM_USE_HOST_PTR | (flags & 0xFFFF0000)), size, ptr);
       if (mem == nullptr) {
         LogError("failed to create a svm mem object!");
         return nullptr;
