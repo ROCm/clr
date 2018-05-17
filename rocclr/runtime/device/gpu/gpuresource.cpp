@@ -765,8 +765,10 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
           viewChannelOrder = cal()->channelOrder_;
           switch (d3dRes->layer_) {
             case -1:
+              bytePitch *= elementSize();
               break;
             case 0:
+              bytePitch *= elementSize();
               break;
             case 1:
               // Y - plane size to the offset
