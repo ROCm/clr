@@ -403,6 +403,10 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
     if (GPU_ENABLE_HW_DEBUG) {
       enableHwDebug_ = true;
     }
+
+#if defined(_WIN32)
+    enableExtension(ClAmdPlanarYuv);
+#endif
   }
 
   if (apuSystem_ && ((calAttr.totalVisibleHeap + calAttr.totalInvisibleHeap) < 150)) {

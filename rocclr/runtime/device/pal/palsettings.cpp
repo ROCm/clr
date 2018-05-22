@@ -419,6 +419,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     if (GPU_ENABLE_HW_DEBUG) {
       enableHwDebug_ = true;
     }
+
+#if defined(_WIN32)
+    enableExtension(ClAmdPlanarYuv);
+#endif
   }
 
   if (apuSystem_ &&
