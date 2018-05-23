@@ -167,7 +167,7 @@ static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_amd_copy_buffer_p2p ",
                                             "cl_amd_assembly_program ",
 #if defined(_WIN32)
-                                            "",
+                                            "cl_amd_planar_yuv",
 #endif
                                             NULL};
 
