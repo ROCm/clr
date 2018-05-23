@@ -1534,18 +1534,18 @@ RUNTIME_ENTRY(cl_int, clSetKernelArg,
     return CL_INVALID_ARG_INDEX;
   }
 
-  as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
-
   const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
   const bool is_local = desc.size_ == 0;
   if (((arg_value == NULL) && !is_local && (desc.type_ != T_POINTER)) ||
       ((arg_value != NULL) && is_local)) {
+    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
     return CL_INVALID_ARG_VALUE;
   }
   if (!is_local && (desc.type_ == T_POINTER) && (arg_value != NULL)) {
     cl_mem memObj = *static_cast<const cl_mem*>(arg_value);
     amd::RuntimeObject* pObject = as_amd(memObj);
     if (NULL != memObj && amd::RuntimeObject::ObjectTypeMemory != pObject->objectType()) {
+      as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
       return CL_INVALID_MEM_OBJECT;
     }
   } else if ((desc.type_ == T_SAMPLER) && !is_valid(*static_cast<const cl_sampler*>(arg_value))) {
@@ -1553,13 +1553,16 @@ RUNTIME_ENTRY(cl_int, clSetKernelArg,
   } else if (desc.type_ == T_QUEUE) {
     cl_command_queue queue = *static_cast<const cl_command_queue*>(arg_value);
     if (!is_valid(queue)) {
+      as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
       return CL_INVALID_DEVICE_QUEUE;
     }
     if (NULL == as_amd(queue)->asDeviceQueue()) {
+      as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
       return CL_INVALID_DEVICE_QUEUE;
     }
   }
   if ((!is_local && (arg_size != desc.size_)) || (is_local && (arg_size == 0))) {
+    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
     return CL_INVALID_ARG_SIZE;
   }
 

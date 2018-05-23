@@ -908,10 +908,9 @@ RUNTIME_ENTRY(cl_int, clSetKernelArgSVMPointer,
   const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
   if (desc.type_ != T_POINTER ||
       !(desc.addressQualifier_ & (CL_KERNEL_ARG_ADDRESS_GLOBAL | CL_KERNEL_ARG_ADDRESS_CONSTANT))) {
+    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
     return CL_INVALID_ARG_VALUE;
   }
-
-  as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
 
   //! @todo We need to check that the alignment of \a arg_value. For instance,
   // if the argument is of type 'global float4*', then \a arg_value must be
