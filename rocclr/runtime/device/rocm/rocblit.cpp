@@ -859,10 +859,6 @@ void CalcRowSlicePitches(cl_ulong* pitch, const cl_int* copySize, size_t rowPitc
   }
 }
 
-static inline void setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) {
-  kernel->parameters().set(index, size, value);
-}
-
 bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
                                                 device::Memory& dstMemory,
                                                 const amd::Coord3D& srcOrigin,
@@ -2106,21 +2102,10 @@ Memory* KernelBlitManager::createView(const Memory& parent, cl_image_format form
 }
 
 address KernelBlitManager::captureArguments(const amd::Kernel* kernel) const {
-  const size_t stackSize = kernel->signature().paramsSize();
-  const size_t svmInfoSize = kernel->signature().numParameters() * sizeof(bool);
-  address args = reinterpret_cast<address>(
-      amd::AlignedMemory::allocate(stackSize + svmInfoSize, PARAMETERS_MIN_ALIGNMENT));
-  if (args == nullptr) {
-    LogWarning("Failed to allocate memory for arguments");
-    return nullptr;
-  }
-  memcpy(args, kernel->parameters().values(), kernel->signature().paramsSize());
-  memset(args + stackSize, 0, svmInfoSize);
-  return args;
+  return kernel->parameters().values();
 }
 
 void KernelBlitManager::releaseArguments(address args) const {
-  amd::AlignedMemory::deallocate(args);
 }
 
 }  // namespace pal

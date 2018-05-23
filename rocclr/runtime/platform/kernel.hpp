@@ -36,12 +36,15 @@ class Program;
 class KernelSignature : public HeapObject {
  private:
   std::vector<KernelParameterDescriptor> params_;
-  size_t paramsSize_;
   std::string attributes_;  //!< The kernel attributes
+  uint32_t  paramsSize_;
+  uint32_t  numMemories_;
+  uint32_t  numSamplers_;
+  uint32_t  numQueues_;
 
  public:
   //! Default constructor
-  KernelSignature() : paramsSize_(0) {}
+  KernelSignature() : paramsSize_(0), numMemories_(0), numSamplers_(0), numQueues_(0) {}
 
   //! Construct a new signature.
   KernelSignature(const std::vector<KernelParameterDescriptor>& params, const std::string& attrib);
@@ -55,8 +58,19 @@ class KernelSignature : public HeapObject {
     return params_[index];
   }
 
+  std::vector<KernelParameterDescriptor>& params() { return params_; }
+
   //! Return the size in bytes required for the arguments on the stack.
-  size_t paramsSize() const { return paramsSize_; }
+  uint32_t paramsSize() const { return paramsSize_; }
+
+  //! Returns the number of memory objects.
+  uint32_t numMemories() const { return numMemories_; }
+
+  //! Returns the number of sampler objects.
+  uint32_t numSamplers() const { return numSamplers_; }
+
+  //! Returns the number of queue objects.
+  uint32_t numQueues() const { return numQueues_; }
 
   //! Return the kernel attributes
   const std::string& attributes() const { return attributes_; }
@@ -67,15 +81,22 @@ class KernelSignature : public HeapObject {
 class KernelParameters : protected HeapObject {
  private:
   //! The signature describing these parameters.
-  const KernelSignature& signature_;
+  KernelSignature& signature_;
 
   address values_;                      //!< pointer to the base of the values stack.
-  bool* defined_;                       //!< pointer to the isDefined flags.
-  bool* svmBound_;                      //!< True at 'i' if parameter 'i' is bound to SVM pointer
-  size_t execInfoOffset_;               //!< The offset of execInfo
+  uint32_t execInfoOffset_;             //!< The offset of execInfo
   std::vector<void*> execSvmPtr_;       //!< The non argument svm pointers for kernel
   FGSStatus svmSystemPointersSupport_;  //!< The flag for the status of the kernel
                                         //   support of fine-grain system sharing.
+  uint32_t  memoryObjOffset_;       //!< The offset of execInfo
+  uint32_t  samplerObjOffset_;      //!< The offset of execInfo
+  uint32_t  queueObjOffset_;        //!< The offset of execInfo
+  amd::Memory** memoryObjects_;     //!< The non argument svm pointers for kernel
+  amd::Sampler** samplerObjects_;   //!< The non argument svm pointers for kernel
+  amd::DeviceQueue** queueObjects_; //!< The non argument svm pointers for kernel
+
+  uint32_t  totalSize_;             //!< The total size of all captured parameters
+
   struct {
     uint32_t validated_ : 1;     //!< True if all parameters are defined.
     uint32_t execNewVcop_ : 1;   //!< special new VCOP for kernel execution
@@ -85,18 +106,26 @@ class KernelParameters : protected HeapObject {
 
  public:
   //! Construct a new instance of parameters for the given signature.
-  KernelParameters(const KernelSignature& signature)
+  KernelParameters(KernelSignature& signature)
       : signature_(signature),
         execInfoOffset_(0),
         svmSystemPointersSupport_(FGS_DEFAULT),
+        memoryObjects_(nullptr),
+        samplerObjects_(nullptr),
+        queueObjects_(nullptr),
         validated_(0),
         execNewVcop_(0),
         execPfpaVcop_(0) {
-    values_ = (address) this + alignUp(sizeof(KernelParameters), 16);
-    defined_ = (bool*)(values_ + signature_.paramsSize());
-    svmBound_ = (bool*)((address)defined_ + signature_.numParameters() * sizeof(bool));
-
-    address limit = (address)&svmBound_[signature_.numParameters()];
+    totalSize_ = signature.paramsSize() + (signature.numMemories() +
+        signature.numSamplers() + signature.numQueues()) * sizeof(void*);
+    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
+    memoryObjOffset_ = signature_.paramsSize();
+    memoryObjects_ = reinterpret_cast<amd::Memory**>(values_ + memoryObjOffset_);
+    samplerObjOffset_ = memoryObjOffset_ + signature_.numMemories() * sizeof(amd::Memory*);
+    samplerObjects_ = reinterpret_cast<amd::Sampler**>(values_ + samplerObjOffset_);
+    queueObjOffset_ = samplerObjOffset_ + signature_.numSamplers() * sizeof(amd::Sampler*);
+    queueObjects_ = reinterpret_cast<amd::DeviceQueue**>(values_ + queueObjOffset_);
+    address limit = reinterpret_cast<address>(&queueObjects_[signature_.numQueues()]);
     ::memset(values_, '\0', limit - values_);
   }
 
@@ -105,21 +134,27 @@ class KernelParameters : protected HeapObject {
         execInfoOffset_(rhs.execInfoOffset_),
         execSvmPtr_(rhs.execSvmPtr_),
         svmSystemPointersSupport_(rhs.svmSystemPointersSupport_),
+        memoryObjects_(nullptr),
+        samplerObjects_(nullptr),
+        queueObjects_(nullptr),
+        totalSize_(rhs.totalSize_),
         validated_(rhs.validated_),
         execNewVcop_(rhs.execNewVcop_),
         execPfpaVcop_(rhs.execPfpaVcop_) {
-    values_ = (address) this + alignUp(sizeof(KernelParameters), 16);
-    defined_ = (bool*)(values_ + signature_.paramsSize());
-    svmBound_ = (bool*)((address)defined_ + signature_.numParameters() * sizeof(bool));
-
-    address limit = (address)&svmBound_[signature_.numParameters()];
+    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
+    memoryObjOffset_ = signature_.paramsSize();
+    memoryObjects_ = reinterpret_cast<amd::Memory**>(values_ + memoryObjOffset_);
+    samplerObjOffset_ = memoryObjOffset_ + signature_.numMemories() * sizeof(amd::Memory*);
+    samplerObjects_ = reinterpret_cast<amd::Sampler**>(values_ + samplerObjOffset_);
+    queueObjOffset_ = samplerObjOffset_ + signature_.numSamplers() * sizeof(amd::Sampler*);
+    queueObjects_ = reinterpret_cast<amd::DeviceQueue**>(values_ + queueObjOffset_);
+    address limit = reinterpret_cast<address>(&queueObjects_[signature_.numQueues()]);
     ::memcpy(values_, rhs.values_, limit - values_);
   }
 
   //! Reset the parameter at the given \a index (becomes undefined).
   void reset(size_t index) {
-    defined_[index] = false;
-    svmBound_[index] = false;
+    signature_.params()[index].info_.defined_ = false;
     validated_ = 0;
   }
   //! Set the parameter at the given \a index to the value pointed by \a value
@@ -127,7 +162,7 @@ class KernelParameters : protected HeapObject {
   void set(size_t index, size_t size, const void* value, bool svmBound = false);
 
   //! Return true if the parameter at the given \a index is defined.
-  bool test(size_t index) const { return defined_[index]; }
+  bool test(size_t index) const { return signature_.at(index).info_.defined_; }
 
   //! Return true if all the parameters have been defined.
   bool check();
@@ -141,10 +176,11 @@ class KernelParameters : protected HeapObject {
   void release(address parameters, const amd::Device& device) const;
 
   //! Allocate memory for this instance as well as the required storage for
-  //  the values_, defined_, and svmBound_ arrays.
+  //  the values_, defined_, and rawPointer_ arrays.
   void* operator new(size_t size, const KernelSignature& signature) {
-    size_t requiredSize =
-        alignUp(size, 16) + signature.paramsSize() + signature.numParameters() * sizeof(bool) * 2;
+    size_t requiredSize = alignUp(size, 16) + signature.paramsSize() +
+      (signature.numMemories() + signature.numSamplers() + signature.numQueues()) *
+       sizeof(void*);
     return AlignedMemory::allocate(requiredSize, PARAMETERS_MIN_ALIGNMENT);
   }
   //! Deallocate the memory reserved for this instance.
@@ -172,8 +208,17 @@ class KernelParameters : protected HeapObject {
   //! get the number of svmPtr in the execInfo container
   size_t getNumberOfSvmPtr() const { return execSvmPtr_.size(); }
 
-  //! get the number of svmPtr in the execInfo container
-  size_t getExecInfoOffset() const { return execInfoOffset_; }
+  //! get the offset of svmPtr in the parameters
+  uint32_t getExecInfoOffset() const { return execInfoOffset_; }
+
+  //! get the offset of memory objects in the parameters
+  uint32_t memoryObjOffset() const { return memoryObjOffset_; }
+
+  //! get the offset of sampler objects in the parameters
+  uint32_t samplerObjOffset() const { return samplerObjOffset_; }
+
+  //! get the offset of memory objects in the parameters
+  uint32_t queueObjOffset() const { return queueObjOffset_; }
 
   //! set the status of kernel support fine-grained SVM system pointer sharing
   void setSvmSystemPointersSupport(FGSStatus svmSystemSupport) {

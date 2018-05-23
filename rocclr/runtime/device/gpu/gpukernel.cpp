@@ -1380,6 +1380,9 @@ void Kernel::processMemObjects(VirtualGPU& gpu, const amd::Kernel& kernel, const
 
   // Check all parameters for the current kernel
   const amd::KernelSignature& signature = kernel.signature();
+  amd::Memory* const* memories =
+      reinterpret_cast<amd::Memory* const*>(params + kernel.parameters().memoryObjOffset());
+
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const KernelArg* arg = argument(i);
@@ -1388,10 +1391,11 @@ void Kernel::processMemObjects(VirtualGPU& gpu, const amd::Kernel& kernel, const
     // Find if current argument is a buffer
     if ((desc.type_ == T_POINTER) && (arg->type_ != KernelArg::PointerLocal) &&
         (arg->type_ != KernelArg::PointerHwLocal)) {
+      uint32_t index = desc.info_.arrayIndex_;
       if (nativeMem) {
-        memory = *reinterpret_cast<Memory* const*>(params + desc.offset_);
+        memory = reinterpret_cast<Memory* const*>(memories)[index];
       } else if (*reinterpret_cast<amd::Memory* const*>(params + desc.offset_) != NULL) {
-        memory = dev().getGpuMemory(*reinterpret_cast<amd::Memory* const*>(params + desc.offset_));
+        memory = dev().getGpuMemory(memories[index]);
         // Synchronize data with other memory instances if necessary
         memory->syncCacheFromHost(gpu);
       }
@@ -1425,7 +1429,7 @@ bool Kernel::loadParameters(VirtualGPU& gpu, const amd::Kernel& kernel, const_ad
   for (i = 0; i != signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     // Set current argument
-    if (!setArgument(gpu, i, params + desc.offset_, desc.size_, nativeMem)) {
+    if (!setArgument(gpu, kernel, i, params, desc, nativeMem)) {
       result = false;
       break;
     }
@@ -1597,8 +1601,12 @@ bool Kernel::setInternalSamplers(VirtualGPU& gpu) const {
   return true;
 }
 
-bool Kernel::setArgument(VirtualGPU& gpu, uint idx, const void* param, size_t size,
+bool Kernel::setArgument(VirtualGPU& gpu, const amd::Kernel& kernel,
+                         uint idx, const_address params,
+                         const amd::KernelParameterDescriptor& desc,
                          bool nativeMem) const {
+  size_t size = desc.size_;
+  const void* param = params + desc.offset_;
   bool result = true;
   const KernelArg* arg;
   address memory;
@@ -1629,10 +1637,13 @@ bool Kernel::setArgument(VirtualGPU& gpu, uint idx, const void* param, size_t si
     case KernelArg::PointerHwConst:
     case KernelArg::PointerGlobal: {
       gpu::Memory* gpuMem = NULL;
+      amd::Memory* const* memories =
+        reinterpret_cast<amd::Memory* const*>(params + kernel.parameters().memoryObjOffset());
+      uint32_t index = desc.info_.arrayIndex_;
       if (nativeMem) {
-        gpuMem = *reinterpret_cast<Memory* const*>(param);
-      } else if (*reinterpret_cast<amd::Memory* const*>(param) != NULL) {
-        gpuMem = dev().getGpuMemory(*reinterpret_cast<amd::Memory* const*>(param));
+        gpuMem = reinterpret_cast<Memory*>(memories[index]);
+      } else if (memories[index] != nullptr) {
+        gpuMem = dev().getGpuMemory(memories[index]);
       }
       bool forceZeroOffset = false;
 
@@ -1707,10 +1718,13 @@ bool Kernel::setArgument(VirtualGPU& gpu, uint idx, const void* param, size_t si
     case KernelArg::Image1DA:
     case KernelArg::Image2DA: {
       gpu::Memory* gpuMem = NULL;
+      amd::Memory* const* memories =
+        reinterpret_cast<amd::Memory* const*>(params + kernel.parameters().memoryObjOffset());
+      uint32_t index = desc.info_.arrayIndex_;
       if (nativeMem) {
-        gpuMem = *reinterpret_cast<Memory* const*>(param);
-      } else if (*reinterpret_cast<amd::Memory* const*>(param) != NULL) {
-        gpuMem = dev().getGpuMemory(*reinterpret_cast<amd::Memory* const*>(param));
+        gpuMem = reinterpret_cast<Memory*>(memories[index]);
+      } else if (memories[index] != nullptr) {
+        gpuMem = dev().getGpuMemory(memories[index]);
       }
 
       if (gpuMem == NULL) {
@@ -1746,7 +1760,9 @@ bool Kernel::setArgument(VirtualGPU& gpu, uint idx, const void* param, size_t si
       }
     } break;
     case KernelArg::Sampler: {
-      amd::Sampler* amdSampler = *reinterpret_cast<amd::Sampler* const*>(param);
+      uint32_t index = desc.info_.arrayIndex_;
+      const amd::Sampler* amdSampler = reinterpret_cast<amd::Sampler* const*>(params +
+        kernel.parameters().samplerObjOffset())[index];
       uint idx = arg->index_;
       uint32_t state = amdSampler->state();
 
@@ -3473,6 +3489,9 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
 
+  amd::Memory* const* memories =
+    reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
+
   // Find all parameters for the current kernel
   for (uint i = 0; i != signature.numParameters(); ++i) {
     const HSAILKernel::Argument* arg = argument(i);
@@ -3486,43 +3505,23 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           Memory* gpuMem = NULL;
           amd::Memory* mem = NULL;
 
-          if (kernelParams.boundToSvmPointer(dev(), parameters, i)) {
-            WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr));
-            mem = amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(paramaddr));
-            if (mem != NULL) {
-              gpuMem = dev().getGpuMemory(mem);
-              gpuMem->wait(gpu, WaitOnBusyEngine);
-              if ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
-                mem->signalWrite(&dev());
-              }
-              memList.push_back(gpuMem);
-            }
-            // If finegrainsystem is present then the pointer can be malloced by the app and
-            // passed to kernel directly. If so copy the pointer location to aqlArgBuf
-            else if (!dev().isFineGrainedSystem(true)) {
-              return NULL;
-            }
-            break;
-          }
+          uint32_t index = signature.at(i).info_.arrayIndex_;
           if (nativeMem) {
-            gpuMem = *reinterpret_cast<Memory* const*>(paramaddr);
-            if (NULL != gpuMem) {
+            gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
+            if (nullptr != gpuMem) {
               mem = gpuMem->owner();
             }
           } else {
-            mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
-            if (mem != NULL) {
+            mem = memories[index];
+            if (mem != nullptr) {
               gpuMem = dev().getGpuMemory(mem);
             }
           }
-          if (gpuMem == NULL) {
-            WriteAqlArg(&aqlArgBuf, &gpuMem, sizeof(void*));
+
+          WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr), sizeof(paramaddr));
+          if (gpuMem == nullptr) {
             break;
           }
-
-          //! @todo 64 bit isn't supported with 32 bit binary
-          uint64_t globalAddress = gpuMem->vmAddress() + gpuMem->pinOffset();
-          WriteAqlArg(&aqlArgBuf, &globalAddress, sizeof(void*));
 
           // Wait for resource if it was used on an inactive engine
           //! \note syncCache may call DRM transfer
@@ -3563,12 +3562,16 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         }
         break;
       case HSAIL_ARGTYPE_IMAGE: {
-        Image* image = NULL;
-        amd::Memory* mem = NULL;
+        Image* image = nullptr;
+        amd::Memory* mem = nullptr;
+        uint32_t index = signature.at(i).info_.arrayIndex_;
         if (nativeMem) {
-          image = static_cast<Image*>(*reinterpret_cast<Memory* const*>(paramaddr));
+          image = reinterpret_cast<Image* const*>(memories)[index];
+          if (nullptr != image) {
+            mem = image->owner();
+          }
         } else {
-          mem = *reinterpret_cast<amd::Memory* const*>(paramaddr);
+          mem = memories[index];
           if (mem == NULL) {
             LogError("The kernel image argument isn't an image object!");
             return nullptr;
@@ -3607,7 +3610,9 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         break;
       }
       case HSAIL_ARGTYPE_SAMPLER: {
-        const amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(paramaddr);
+        uint32_t index = signature.at(i).info_.arrayIndex_;
+        const amd::Sampler* sampler = reinterpret_cast<amd::Sampler* const*>(parameters +
+            kernelParams.samplerObjOffset())[index];
         const Sampler* gpuSampler = static_cast<Sampler*>(sampler->getDeviceSampler(dev()));
         uint64_t srd = gpuSampler->hwSrd();
         WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd));
@@ -3615,7 +3620,9 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         break;
       }
       case HSAIL_ARGTYPE_QUEUE: {
-        const amd::DeviceQueue* queue = *reinterpret_cast<amd::DeviceQueue* const*>(paramaddr);
+        uint32_t index = signature.at(i).info_.arrayIndex_;
+        const amd::DeviceQueue* queue = reinterpret_cast<amd::DeviceQueue* const*>(
+          parameters + kernelParams.queueObjOffset())[index];
         VirtualGPU* gpuQueue = static_cast<VirtualGPU*>(queue->vDev());
         uint64_t vmQueue;
         if (dev().settings().useDeviceQueue_) {

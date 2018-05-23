@@ -117,6 +117,8 @@ class Memory : public device::Memory, public Resource {
       amd::Memory& subBufferOwner  //!< The abstraction layer subbuf owner
       );
 
+  virtual uint64_t virtualAddress() const override { return vmAddress(); }
+
   //! Allocates host memory for synchronization with MGPU context
   void mgpuCacheWriteBack();
 

@@ -2977,47 +2977,45 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
   for (auto it : memList) {
     addVmMemory(it);
   }
+  amd::Memory* const* memories =
+      reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
   // Check all parameters for the current kernel
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const HSAILKernel::Argument* arg = hsaKernel.argumentAt(i);
-    Memory* memory = nullptr;
-    amd::Memory* svmMem = nullptr;
+    Memory* gpuMem = nullptr;
+    amd::Memory* mem = nullptr;
 
     // Find if current argument is a buffer
     if ((desc.type_ == T_POINTER) && (arg->addrQual_ != HSAIL_ADDRESS_LOCAL)) {
-      if (kernelParams.boundToSvmPointer(dev(), params, i)) {
-        svmMem =
-            amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(params + desc.offset_));
-        if (!svmMem) {
-          addBarrier();
-          // Clear memory dependency state
-          const static bool All = true;
-          memoryDependency().clear(!All);
-          continue;
-        }
-      }
-
+      uint32_t index = desc.info_.arrayIndex_;
       if (nativeMem) {
-        memory = *reinterpret_cast<Memory* const*>(params + desc.offset_);
-      } else if (*reinterpret_cast<amd::Memory* const*>(params + desc.offset_) != nullptr) {
-        if (nullptr == svmMem) {
-          memory =
-              dev().getGpuMemory(*reinterpret_cast<amd::Memory* const*>(params + desc.offset_));
-        } else {
-          memory = dev().getGpuMemory(svmMem);
+        gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
+        if (nullptr != gpuMem) {
+          mem = gpuMem->owner();
         }
-        // Synchronize data with other memory instances if necessary
-        memory->syncCacheFromHost(*this);
+      } else {
+        mem = memories[index];
+        if (mem != nullptr) {
+          gpuMem = dev().getGpuMemory(mem);
+          // Synchronize data with other memory instances if necessary
+          gpuMem->syncCacheFromHost(*this);
+        }
       }
-
-      if (memory != nullptr) {
+      //! This condition is for SVM fine-grain
+      if ((gpuMem == nullptr) && dev().isFineGrainedSystem(true)) {
+        addBarrier();
+        // Clear memory dependency state
+        const static bool All = true;
+        memoryDependency().clear(!All);
+        continue;
+      } else if (gpuMem != nullptr) {
         // Check image
         bool readOnly = (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
         // Check buffer
         readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
         // Validate memory for a dependency in the queue
-        memoryDependency().validate(*this, memory, readOnly);
+        memoryDependency().validate(*this, gpuMem, readOnly);
       }
     }
   }
