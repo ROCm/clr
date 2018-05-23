@@ -947,9 +947,15 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
   if (desc.type_ == T_POINTER && desc.size_ != 0) {
     if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       LP64_SWITCH(uint32_value, uint64_value) = 0;
+      reinterpret_cast<Memory**>(kernel->parameters().values() +
+        kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
     } else {
       // convert cl_mem to amd::Memory*, return false if invalid.
-      LP64_SWITCH(uint32_value, uint64_value) = (uintptr_t)(*static_cast<Memory* const*>(value));
+      LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>((
+        *static_cast<Memory* const*>(value))->vmAddress());
+      reinterpret_cast<Memory**>(kernel->parameters().values() +
+        kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
+        *static_cast<Memory* const*>(value);
     }
   } else if (desc.type_ == T_SAMPLER) {
     assert(false && "No sampler support in blit manager! Use internal samplers!");

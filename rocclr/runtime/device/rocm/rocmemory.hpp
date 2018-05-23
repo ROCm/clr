@@ -76,6 +76,8 @@ class Memory : public device::Memory {
   // batch.
   virtual bool processGLResource(GLResourceOP operation) { return true; }
 
+  virtual uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
+
   // Accessors for indirect map memory object
   amd::Memory* mapMemory() const { return mapMemory_; }
 

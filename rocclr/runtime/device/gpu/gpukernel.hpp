@@ -657,10 +657,11 @@ class Kernel : public NullKernel {
    *
    *  \return True if we succefully updated the arguments
    */
-  bool setArgument(VirtualGPU& gpu,    //!< Virtual GPU device object
-                   uint idx,           //!< the argument index
-                   const void* param,  //!< the arguments data
-                   size_t size,        //!< size of the provided data
+  bool setArgument(VirtualGPU& gpu,     //!< Virtual GPU device object
+                   const amd::Kernel& kernel, //!< AMD kernel object
+                   uint idx,            //!< the argument index
+                   const_address params,//!< the arguments data
+                   const amd::KernelParameterDescriptor& desc, //!< Argument's descriptor
                    bool nativeMem      //!< Native memory objects
                    ) const;
 

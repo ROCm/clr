@@ -713,6 +713,8 @@ class Memory : public amd::HeapObject {
   //! Returns the state of CPU uncached access
   bool isCpuUncached() const { return (flags_ & MemoryCpuUncached) ? true : false; }
 
+  virtual uint64_t virtualAddress() const { return 0; }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -755,7 +757,7 @@ class Memory : public amd::HeapObject {
 class Sampler : public amd::HeapObject {
  public:
   //! Constructor
-  Sampler() {}
+  Sampler() : hwSrd_(0) {}
 
   //! Default destructor for the device memory object
   virtual ~Sampler(){};
@@ -1667,7 +1669,19 @@ struct KernelParameterDescriptor {
   cl_kernel_arg_access_qualifier accessQualifier_;
   //! Argument's type qualifier
   cl_kernel_arg_type_qualifier typeQualifier_;
-  const char* typeName_;  //!< Argument's type name
+  const char* typeName_;   //!< Argument's type name
+  union InfoData {
+    struct {
+      uint32_t oclObject_  : 4;   //!< OCL object type
+      uint32_t readOnly_   : 1;   //!< OCL object is read only, applied to memory only
+      uint32_t rawPointer_ : 1;   //!< Arguments have a raw GPU VA
+      uint32_t defined_    : 1;   //!< The argument was defined by the app
+      uint32_t reserved_   : 1;   //!< reserved
+      uint32_t arrayIndex_ : 28;  //!< Index in the objects array
+    };
+    uint32_t allValues_;
+    InfoData() : allValues_(0) {}
+  } info_;
 };
 
 #if defined(WITH_LIGHTNING_COMPILER)

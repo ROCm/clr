@@ -290,8 +290,12 @@ class Device : public NullDevice {
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                              device::Sampler** sampler   //!< device sampler object
                              ) const {
-    //! \todo HSA team has to implement sampler allocation
-    *sampler = nullptr;
+    //! \todo HSA team has to implement sampler allocation.
+    //! Currently allocate the base device class 
+    *sampler = new device::Sampler();
+    if (*sampler == nullptr) {
+      return false;
+    }
     return true;
   }
 

@@ -13,7 +13,7 @@ namespace amd {
 
 Kernel::Kernel(Program& program, const Symbol& symbol, const std::string& name)
     : program_(program), symbol_(symbol), name_(name) {
-  parameters_ = new (signature()) KernelParameters(signature());
+  parameters_ = new (signature()) KernelParameters(const_cast<KernelSignature&>(signature()));
   fixme_guarantee(parameters_ != NULL && "out of memory");
   name_ += '\0';
 }
@@ -64,7 +64,7 @@ size_t KernelParameters::localMemSize(size_t minDataTypeAlignment) const {
 }
 
 void KernelParameters::set(size_t index, size_t size, const void* value, bool svmBound) {
-  const KernelParameterDescriptor& desc = signature_.at(index);
+  KernelParameterDescriptor& desc = signature_.params()[index];
 
   void* param = values_ + desc.offset_;
   assert((desc.type_ == T_POINTER || value != NULL || desc.size_ == 0) &&
@@ -75,23 +75,27 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
 
   if (desc.type_ == T_POINTER && desc.size_ != 0) {
     if (svmBound) {
+      desc.info_.rawPointer_ = true;
       LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
-      svmBound_[index] = true;
+      memoryObjects_[desc.info_.arrayIndex_] = amd::SvmManager::FindSvmBuffer(
+        *reinterpret_cast<const void* const*>(value));
     } else if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
+      desc.info_.rawPointer_ = false;
       LP64_SWITCH(uint32_value, uint64_value) = 0;
+      memoryObjects_[desc.info_.arrayIndex_] = nullptr;
     } else {
+      desc.info_.rawPointer_ = false;
       // convert cl_mem to amd::Memory*
-      LP64_SWITCH(uint32_value, uint64_value) =
-          (uintptr_t)as_amd(*static_cast<const cl_mem*>(value));
+      memoryObjects_[desc.info_.arrayIndex_] = as_amd(*static_cast<const cl_mem*>(value));
     }
   } else if (desc.type_ == T_SAMPLER) {
     // convert cl_sampler to amd::Sampler*
-    amd::Sampler* sampler = as_amd(*static_cast<const cl_sampler*>(value));
-    LP64_SWITCH(uint32_value, uint64_value) = (uintptr_t)sampler;
+    samplerObjects_[desc.info_.arrayIndex_] =
+      as_amd(*static_cast<const cl_sampler*>(value));
   } else if (desc.type_ == T_QUEUE) {
     // convert cl_command_queue to amd::DeviceQueue*
-    amd::DeviceQueue* queue = as_amd(*static_cast<const cl_command_queue*>(value))->asDeviceQueue();
-    LP64_SWITCH(uint32_value, uint64_value) = (uintptr_t)queue;
+    queueObjects_[desc.info_.arrayIndex_] =
+      as_amd(*static_cast<const cl_command_queue*>(value))->asDeviceQueue();
   } else
     switch (desc.size_) {
       case 1:
@@ -125,49 +129,58 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
       break;
   }
 
-  defined_[index] = true;
+  desc.info_.defined_ = true;
 }
 
 address KernelParameters::capture(const Device& device) {
-  const size_t stackSize = signature_.paramsSize();
   //! Information about which arguments are SVM pointers is stored after
   // the actual parameters, but only if the device has any SVM capability
-  const size_t svmInfoSize =
-      device.info().svmCapabilities_ ? signature_.numParameters() * sizeof(bool) : 0;
   const size_t execInfoSize = getNumberOfSvmPtr() * sizeof(void*);
-  address mem = (address)AlignedMemory::allocate(stackSize + svmInfoSize + execInfoSize,
-                                                 PARAMETERS_MIN_ALIGNMENT);
 
-  address last = mem + stackSize;
-  if (mem != NULL) {
-    ::memcpy(mem, values_, stackSize);
+  address mem = reinterpret_cast<address>(AlignedMemory::allocate(
+    totalSize_ + execInfoSize, PARAMETERS_MIN_ALIGNMENT));
+
+  if (mem != nullptr) {
+    ::memcpy(mem, values_, totalSize_);
 
     for (size_t i = 0; i < signature_.numParameters(); ++i) {
       const KernelParameterDescriptor& desc = signature_.at(i);
-      if (desc.type_ == T_POINTER && desc.size_ != 0 && !svmBound_[i]) {
-        Memory* memArg = *(Memory**)(mem + desc.offset_);
-        if (memArg != NULL) {
+      if (desc.type_ == T_POINTER && desc.size_ != 0) {
+        Memory* memArg = memoryObjects_[desc.info_.arrayIndex_];
+        if (memArg != nullptr) {
           memArg->retain();
+          // Write GPU VA addreess to the arguments
+          if (!desc.info_.rawPointer_) {
+            *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = static_cast<uintptr_t>
+              (memArg->getDeviceMemory(device)->virtualAddress());
+          }
+        } else if (desc.info_.rawPointer_) {
+          if (!device.isFineGrainedSystem(true)) {
+          }
         }
       } else if (desc.type_ == T_SAMPLER) {
-        Sampler* samplerArg = *(Sampler**)(mem + desc.offset_);
-        if (samplerArg != NULL) {
+        Sampler* samplerArg = samplerObjects_[desc.info_.arrayIndex_];
+        if (samplerArg != nullptr) {
           samplerArg->retain();
+          // todo: It's uint64_t type
+          *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = static_cast<uintptr_t>(
+            samplerArg->getDeviceSampler(device)->hwSrd());
         }
       } else if (desc.type_ == T_QUEUE) {
-        DeviceQueue* queue = *(DeviceQueue**)(mem + desc.offset_);
-        if (queue != NULL) {
+        DeviceQueue* queue = queueObjects_[desc.info_.arrayIndex_];
+        if (queue != nullptr) {
           queue->retain();
+          // todo: It's uint64_t type
+          *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = 0;
         }
       }
     }
-    ::memcpy(last, svmBound_, svmInfoSize);
-    last += svmInfoSize;
 
+    execInfoOffset_ = totalSize_;
+    address last = mem + execInfoOffset_;
     if (0 != execInfoSize) {
       ::memcpy(last, &execSvmPtr_[0], execInfoSize);
     }
-    execInfoOffset_ = stackSize + svmInfoSize;
   }
 
   return mem;
@@ -185,26 +198,32 @@ bool KernelParameters::boundToSvmPointer(const Device& device, const_address cap
 }
 
 void KernelParameters::release(address mem, const amd::Device& device) const {
-  if (mem == NULL) {
+  if (mem == nullptr) {
     // nothing to do!
     return;
   }
 
-  for (size_t i = 0; i < signature_.numParameters(); ++i) {
-    const KernelParameterDescriptor& desc = signature_.at(i);
-    if (desc.type_ == T_POINTER && desc.size_ != 0 && !boundToSvmPointer(device, mem, i)) {
-      Memory* memArg = *(Memory**)(mem + desc.offset_);
-      if (memArg != NULL) {
-        memArg->release();
-      }
-    } else if (desc.type_ == T_SAMPLER) {
-      Sampler* samplerArg = *(Sampler**)(mem + desc.offset_);
-      if (samplerArg != NULL) {
+  amd::Memory* const* memories = reinterpret_cast<amd::Memory* const*>(mem + memoryObjOffset());
+  for (uint32_t i = 0; i < signature_.numMemories(); ++i) {
+    Memory* memArg = memories[i];
+    if (memArg != nullptr) {
+      memArg->release();
+    }
+  }
+  if (signature_.numSamplers() > 0) {
+    amd::Sampler* const* samplers = reinterpret_cast<amd::Sampler* const*>(mem + samplerObjOffset());
+    for (uint32_t i = 0; i < signature_.numSamplers(); ++i) {
+      Sampler* samplerArg = samplers[i];
+      if (samplerArg != nullptr) {
         samplerArg->release();
       }
-    } else if (desc.type_ == T_QUEUE) {
-      DeviceQueue* queue = *(DeviceQueue**)(mem + desc.offset_);
-      if (queue != NULL) {
+    }
+  }
+  if (signature_.numQueues() > 0) {
+    amd::DeviceQueue* const* queues = reinterpret_cast<amd::DeviceQueue* const*>(mem + queueObjOffset());
+    for (uint32_t i = 0; i < signature_.numQueues(); ++i) {
+      DeviceQueue* queue = queues[i];
+      if (queue != nullptr) {
         queue->release();
       }
     }
@@ -213,19 +232,48 @@ void KernelParameters::release(address mem, const amd::Device& device) const {
   AlignedMemory::deallocate(mem);
 }
 
-
 KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& params,
-                                 const std::string& attrib)
-    : params_(params), paramsSize_(0), attributes_(attrib) {
-  if (params.size() > 0) {
-    KernelParameterDescriptor last = params.back();
+  const std::string& attrib)
+  : params_(params)
+  , attributes_(attrib)
+  , paramsSize_(0)
+  , numMemories_(0)
+  , numSamplers_(0)
+  , numQueues_(0) {
+  size_t maxOffset = 0;
+  size_t last = 0;
+  // Find the last entry
+  for (size_t i = 0; i < params.size(); ++i) {
+    const KernelParameterDescriptor& desc = params[i];
+    // Serach for the max offset, since due to the pass by reference
+    // we can't rely on the last argument as the max offset
+    if (maxOffset < desc.offset_) {
+      maxOffset = desc.offset_;
+      last = i;
+    }
+    // Collect all OCL memory objects
+    if (desc.type_ == T_POINTER && desc.size_ != 0) {
+      params_[i].info_.arrayIndex_ = numMemories_;
+      ++numMemories_;
+    }
+    // Collect all OCL sampler objects
+    else if (desc.type_ == T_SAMPLER) {
+      params_[i].info_.arrayIndex_ = numSamplers_;
+      ++numSamplers_;
+    }
+    // Collect all OCL queues
+    else if (desc.type_ == T_QUEUE) {
+      params_[i].info_.arrayIndex_ = numQueues_   ;
+      ++numQueues_;
+    }
+  }
 
-    size_t lastSize = last.size_;
+  if (params.size() > 0) {
+    size_t lastSize = params[last].size_;
     if (lastSize == 0 /* local mem */) {
       lastSize = sizeof(cl_mem);
     }
-    paramsSize_ = last.offset_ + alignUp(lastSize, sizeof(intptr_t));
+    paramsSize_ = params[last].offset_ + alignUp(lastSize, sizeof(intptr_t));
   }
 }
-
 }  // namespace amd

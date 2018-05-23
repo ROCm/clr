@@ -236,49 +236,42 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
     }
   }
 
+  amd::Memory* const* memories =
+    reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
+
   // Check all parameters for the current kernel
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const Kernel::Argument* arg = hsaKernel.hsailArgAt(i);
-    Memory* memory = nullptr;
+    Memory* gpuMem = nullptr;
     bool readOnly = false;
-    amd::Memory* svmMem = nullptr;
+    amd::Memory* mem = nullptr;
 
     // Find if current argument is a buffer
     if ((desc.type_ == T_POINTER) && (arg->addrQual_ != ROC_ADDRESS_LOCAL)) {
-      if (kernelParams.boundToSvmPointer(dev(), params, i)) {
-        svmMem =
-            amd::SvmManager::FindSvmBuffer(*reinterpret_cast<void* const*>(params + desc.offset_));
-        if (!svmMem) {
-          // Sync AQL packets
-          setAqlHeader(kDispatchPacketHeader);
-          // Clear memory dependency state
-          const static bool All = true;
-          memoryDependency().clear(!All);
-          continue;
-        }
-      }
-
-      if (*reinterpret_cast<amd::Memory* const*>(params + desc.offset_) != nullptr) {
-        if (nullptr == svmMem) {
-          memory =
-              static_cast<Memory*>((*reinterpret_cast<amd::Memory* const*>(params + desc.offset_))
-                                       ->getDeviceMemory(dev()));
-        } else {
-          memory = static_cast<Memory*>(svmMem->getDeviceMemory(dev()));
-        }
+      uint32_t index = desc.info_.arrayIndex_;
+      mem = memories[index];
+      if (mem != nullptr) {
+        gpuMem = static_cast<Memory*>(mem->getDeviceMemory(dev()));
         // Don't sync for internal objects,
         // since they are not shared between devices
-        if (memory->owner()->getVirtualDevice() == nullptr) {
+        if (gpuMem->owner()->getVirtualDevice() == nullptr) {
           // Synchronize data with other memory instances if necessary
-          memory->syncCacheFromHost(*this);
+          gpuMem->syncCacheFromHost(*this);
         }
       }
-
-      if (memory != nullptr) {
+      //! This condition is for SVM fine-grain
+      if ((gpuMem == nullptr) && dev().isFineGrainedSystem(true)) {
+        // Sync AQL packets
+        setAqlHeader(kDispatchPacketHeader);
+        // Clear memory dependency state
+        const static bool All = true;
+        memoryDependency().clear(!All);
+        continue;
+      } else if (gpuMem != nullptr) {
         readOnly |= (arg->access_ == ROC_ACCESS_TYPE_RO);
         // Validate memory for a dependency in the queue
-        memoryDependency().validate(*this, memory, readOnly);
+        memoryDependency().validate(*this, gpuMem, readOnly);
       }
     }
   }
@@ -1601,6 +1594,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
   }
 
+  amd::Memory* const* memories =
+      reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
+
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
@@ -1675,20 +1671,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           }
           assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL || arg->addrQual_ == ROC_ADDRESS_CONSTANT) &&
                  "Unsupported address qualifier");
-          if (kernelParams.boundToSvmPointer(dev(), parameters, arg->index_)) {
-            argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
-            break;
-          }
-          amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
+          argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
+          uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
+          amd::Memory* mem = memories[index];
           if (mem == nullptr) {
-            argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
             break;
           }
-
-          Memory* devMem = static_cast<Memory*>(mem->getDeviceMemory(dev()));
-          //! @todo add multi-devices synchronization when supported.
-          void* globalAddress = devMem->getDeviceMemory();
-          argPtr = addArg(argPtr, &globalAddress, arg->size_, arg->alignment_);
 
           const bool readOnly =
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -1715,7 +1703,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           argPtr = addArg(argPtr, srcArgPtr, arg->size_, arg->alignment_);
           break;
         case ROC_ARGTYPE_IMAGE: {
-          amd::Memory* mem = *reinterpret_cast<amd::Memory* const*>(srcArgPtr);
+          uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
+          amd::Memory* mem = memories[index];
           Image* image = static_cast<Image*>(mem->getDeviceMemory(dev()));
           if (image == nullptr) {
             LogError("Kernel image argument is not an image object");
@@ -1744,7 +1733,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           break;
         }
         case ROC_ARGTYPE_SAMPLER: {
-          amd::Sampler* sampler = *reinterpret_cast<amd::Sampler* const*>(srcArgPtr);
+          uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
+          const amd::Sampler* sampler = reinterpret_cast<amd::Sampler* const*>(parameters +
+            kernelParams.samplerObjOffset())[index];
           if (sampler == nullptr) {
             LogError("Kernel sampler argument is not an sampler object");
             return false;
