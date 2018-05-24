@@ -199,6 +199,9 @@ clSetEventWaitList(
         if (&context != &amdEvent->context()) {
             return CL_INVALID_CONTEXT;
         }
+        if (!amdEvent->notifyCmdQueue()) {
+            return CL_INVALID_EVENT_WAIT_LIST;
+        }
         eventWaitList.push_back(amdEvent);
     }
     return CL_SUCCESS;
