@@ -534,11 +534,6 @@ class Kernel : public NullKernel {
               size_t binarySize = 0           //!< the machine code size
               );
 
-  //! Validates memory argument
-  virtual bool validateMemory(uint idx,            //!< Argument's index
-                              amd::Memory* amdMem  //!< AMD memory object for validation
-                              ) const;
-
   //! Initializes the CAL program grid for the kernel execution
   void setupProgramGrid(VirtualGPU& gpu,                    //!< virtual GPU device object
                         size_t workDim,                     //!< work dimension
@@ -788,9 +783,6 @@ class HSAILKernel : public device::Kernel {
   //! Initializes the metadata required for this kernel,
   //! finalizes the kernel if needed
   bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
-
-  //! Returns true if memory is valid for execution
-  virtual bool validateMemory(uint idx, amd::Memory* amdMem) const;
 
   //! Returns a pointer to the hsail argument
   const Argument* argument(size_t i) const { return arguments_[i]; }

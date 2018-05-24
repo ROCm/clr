@@ -2642,13 +2642,6 @@ bool NullKernel::parseArguments(const std::string& metaData, uint* uavRefCount) 
   return true;
 }
 
-bool Kernel::validateMemory(uint idx, amd::Memory* amdMem) const {
-  // Check if memory doesn't require reallocation
-  bool noRealloc = (!argument(idx)->memory_.realloc_ || amdMem->reallocedDeviceMemory(&dev()));
-
-  return noRealloc;
-}
-
 inline static HSAIL_ARG_TYPE GetHSAILArgType(const aclArgData* argInfo) {
   switch (argInfo->type) {
     case ARG_TYPE_POINTER:
@@ -3312,14 +3305,6 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   delete[] aclArgList;
 
   return true;
-}
-
-bool HSAILKernel::validateMemory(uint idx, amd::Memory* amdMem) const {
-  // Check if memory doesn't require reallocation
-  bool noRealloc = true;
-  // amdMem->reallocedDeviceMemory(&dev()));
-
-  return noRealloc;
 }
 
 const Device& HSAILKernel::dev() const { return reinterpret_cast<const Device&>(dev_); }

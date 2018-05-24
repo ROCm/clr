@@ -252,11 +252,6 @@ class Memory : public amd::RuntimeObject {
                        bool forceCopy = false  //!< Force system memory allocation
                        );
 
-  //! Checks if memory was reallocated
-  bool reallocedDeviceMemory(const Device* dev) {
-    return (AllocRealloced == deviceAlloced_[dev]) ? true : false;
-  }
-
   // Accessors
   Memory* parent() const { return parent_; }
   bool isParent() const { return isParent_; }

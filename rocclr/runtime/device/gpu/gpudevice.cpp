@@ -1633,67 +1633,6 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
   return true;
 }
 
-//! \note reallocMemory() must be called only from outside of
-//! VirtualGPU submit commands methods.
-//! Otherwise a deadlock in lockVgpus() is possible
-
-bool Device::reallocMemory(amd::Memory& owner) const {
-  bool directAccess = false;
-
-  // For now we have to serialize reallocation code
-  amd::ScopedLock lk(*lockAsyncOps_);
-
-  // Read device memory after the lock,
-  // since realloc from another thread can replace the pointer
-  gpu::Memory* gpuMemory = getGpuMemory(&owner);
-  if (gpuMemory == NULL) {
-    return false;
-  }
-
-  if (gpuMemory->pinOffset() == 0) {
-    return true;
-  } else if (NULL != owner.parent()) {
-    if (!reallocMemory(*owner.parent())) {
-      return false;
-    }
-  }
-
-  if (owner.asBuffer()) {
-    gpuMemory = createBuffer(owner, directAccess);
-  } else if (owner.asImage()) {
-    return true;
-  } else {
-    LogError("Unknown memory type!");
-  }
-
-  if (gpuMemory != NULL) {
-    gpu::Memory* newMemory = gpuMemory;
-    gpu::Memory* oldMemory = getGpuMemory(&owner);
-
-    // Transfer the object
-    if (oldMemory != NULL) {
-      if (!oldMemory->moveTo(*newMemory)) {
-        delete newMemory;
-        return false;
-      }
-    }
-
-    // Attempt to pin system memory
-    if ((newMemory->memoryType() != Resource::Pinned) &&
-        ((owner.getHostMem() != NULL) ||
-         ((NULL != owner.parent()) && (owner.getHostMem() != NULL)))) {
-      bool ok = newMemory->pinSystemMemory(owner.getHostMem(), (owner.getHostMemRef()->size())
-                                               ? owner.getHostMemRef()->size()
-                                               : owner.getSize());
-      //! \note: Ignore the pinning result for now
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
 device::Memory* Device::createView(amd::Memory& owner, const device::Memory& parent) const {
   size_t size = owner.getSize();
   assert((owner.asImage() != NULL) && "View supports images only");

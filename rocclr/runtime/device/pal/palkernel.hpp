@@ -128,9 +128,6 @@ class HSAILKernel : public device::Kernel {
   //! finalizes the kernel if needed
   bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
 
-  //! Returns true if memory is valid for execution
-  virtual bool validateMemory(uint idx, amd::Memory* amdMem) const;
-
   //! Returns the kernel argument list
   const std::vector<Argument*>& arguments() const { return arguments_; }
 

@@ -1541,13 +1541,6 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
   return true;
 }
 
-//! \note reallocMemory() must be called only from outside of VirtualGPU submit
-//! commands methods. Otherwise a deadlock in lockVgpus() is possible
-bool Device::reallocMemory(amd::Memory& owner) const {
-  // Empty body, since HSAIL path doesn't require memory reallocations
-  return true;
-}
-
 device::Memory* Device::createView(amd::Memory& owner, const device::Memory& parent) const {
   assert((owner.asImage() != nullptr) && "View supports images only");
   const amd::Image& image = *owner.asImage();

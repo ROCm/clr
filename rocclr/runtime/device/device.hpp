@@ -842,13 +842,6 @@ class Kernel : public amd::HeapObject {
   //! Default destructor
   virtual ~Kernel();
 
-  //! Validates memory argument
-  virtual bool validateMemory(uint idx,            //!< Argument's index
-                              amd::Memory* amdMem  //!< memory object for validation
-                              ) const {
-    return true;
-  }
-
   //! Returns the kernel info structure
   const WorkGroupInfo* workGroupInfo() const { return &workGroupInfo_; }
 
@@ -1497,9 +1490,6 @@ class Device : public RuntimeObject {
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
       ) const = 0;
-
-  //! Reallocates device memory object
-  virtual bool reallocMemory(Memory& owner) const = 0;
 
   //! Return true if initialized external API interop, otherwise false
   virtual bool bindExternalDevice(

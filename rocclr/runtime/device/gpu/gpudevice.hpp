@@ -79,9 +79,6 @@ class NullDevice : public amd::Device {
     return NULL;
   }
 
-  //! Reallocates the provided buffer object
-  virtual bool reallocMemory(amd::Memory& owner) const { return true; }
-
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 
@@ -384,10 +381,6 @@ class Device : public NullDevice, public CALGSLDevice {
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                              device::Sampler** sampler   //!< device sampler object
-                             ) const;
-
-  //! Reallocates the provided buffer object
-  virtual bool reallocMemory(amd::Memory& owner  //!< Buffer for reallocation
                              ) const;
 
   //! Allocates a view object from the device memory
