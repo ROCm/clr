@@ -29,8 +29,8 @@ Kernel::~Kernel() {
   delete parameters_;
 }
 
-const device::Kernel* Kernel::getDeviceKernel(const Device& device, bool noAlias) const {
-  return symbol_.getDeviceKernel(device, noAlias);
+const device::Kernel* Kernel::getDeviceKernel(const Device& device) const {
+  return symbol_.getDeviceKernel(device);
 }
 
 const KernelSignature& Kernel::signature() const { return symbol_.signature(); }

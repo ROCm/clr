@@ -273,8 +273,7 @@ class Kernel : public RuntimeObject {
   const KernelSignature& signature() const;
 
   //! Return the kernel entry point for the given device.
-  const device::Kernel* getDeviceKernel(const Device& device,  //!< Device object
-                                        bool noAlias = true    //!< Controls alias optimization
+  const device::Kernel* getDeviceKernel(const Device& device  //!< Device object
                                         ) const;
 
   //! Return the parameters.

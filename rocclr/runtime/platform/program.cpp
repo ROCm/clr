@@ -603,22 +603,17 @@ bool Program::ParseAllOptions(const std::string& options, option::Options& parse
   return amd::option::parseAllOptions(allOpts, parsedOptions, linkOptsOnly);
 }
 
-bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func, bool noAlias) {
+bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func) {
   // FIXME_lmoriche: check that the signatures are compatible
   if (deviceKernels_.size() == 0) {
     signature_ = func->signature();
   }
-
-  if (noAlias) {
-    deviceKernels_[&device] = func;
-  } else {
-    devKernelsNoOpt_[&device] = func;
-  }
+  deviceKernels_[&device] = func;
   return true;
 }
 
-const device::Kernel* Symbol::getDeviceKernel(const Device& device, bool noAlias) const {
-  const devicekernels_t* devKernels = (noAlias) ? &deviceKernels_ : &devKernelsNoOpt_;
+const device::Kernel* Symbol::getDeviceKernel(const Device& device) const {
+  const devicekernels_t* devKernels = &deviceKernels_;
   const auto itEnd = devKernels->cend();
   auto it = devKernels->find(&device);
   if (it != itEnd) {
