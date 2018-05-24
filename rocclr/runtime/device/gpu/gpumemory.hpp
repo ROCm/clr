@@ -142,9 +142,6 @@ class Memory : public device::Memory, public Resource {
   //! Allocates host memory for synchronization with MGPU context
   void mgpuCacheWriteBack();
 
-  //! Transfers objects data to the destination object
-  bool moveTo(Memory& dst);
-
   //! Accessors for indirect map memory object
   Memory* mapMemory() const;
 

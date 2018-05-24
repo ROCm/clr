@@ -918,52 +918,6 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 
 void Memory::cpuUnmap(device::VirtualDevice& vDev) { unmap(&static_cast<VirtualGPU&>(vDev)); }
 
-//! \note moveTo() must be called only from outside of
-//! VirtualGPU submit command methods.
-//! Otherwise a deadlock in lockVgpus() is possible.
-//! Also the logic in this function is very specific to
-//! the zero-copy functionality.
-
-bool Memory::moveTo(Memory& dst) {
-  bool result = false;
-
-  // Make sure that all virtual devices don't process any commands
-  Device::ScopedLockVgpus lock(dev());
-
-  // Wait for idle on all virtual GPUs
-  //!@note It's enough to wait on the active queue only
-  for (uint idx = 0; idx < dev().vgpus().size(); ++idx) {
-    wait(*(dev().vgpus()[idx]));
-  }
-
-  static const bool Entire = true;
-  amd::Coord3D origin(0, 0, 0);
-  amd::Coord3D region(size());
-
-  // Transfer the data from old location to a new one
-  if (dev().xferMgr().copyBuffer(*this, dst, origin, origin, region, Entire)) {
-    // Move all properties to the new object
-    dst.mapMemory_ = mapMemory_;
-    mapMemory_ = NULL;
-
-    dst.flags_ |= flags_ & ~HostMemoryDirectAccess;
-    flags_ &= HostMemoryDirectAccess;
-
-    dst.indirectMapCount_ = indirectMapCount_;
-    indirectMapCount_ = 0;
-
-    dst.pinnedMemory_ = pinnedMemory_;
-    pinnedMemory_ = NULL;
-
-    // Replace the device memory object
-    //! @note: current object will be destroyed
-    owner()->replaceDeviceMemory(&dev(), &dst);
-    result = true;
-  }
-
-  return result;
-}
-
 Memory* Memory::mapMemory() const {
   Memory* map = NULL;
   if (NULL != mapMemory_) {

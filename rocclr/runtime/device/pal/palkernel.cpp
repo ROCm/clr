@@ -748,11 +748,6 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   return true;
 }
 
-bool HSAILKernel::validateMemory(uint idx, amd::Memory* amdMem) const {
-  // HSAIL path doesn't require memory reallocations
-  return true;
-}
-
 const Device& HSAILKernel::dev() const { return reinterpret_cast<const Device&>(dev_); }
 
 const HSAILProgram& HSAILKernel::prog() const {

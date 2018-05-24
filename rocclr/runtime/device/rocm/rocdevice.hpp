@@ -147,12 +147,6 @@ class NullDevice : public amd::Device {
     return;
   }
 
-  //! Reallocates the provided buffer object
-  virtual bool reallocMemory(amd::Memory& owner) const {
-    ShouldNotReachHere();
-    return false;
-  }
-
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 
@@ -307,9 +301,6 @@ class Device : public NullDevice {
       ) const {
     return nullptr;
   }
-
-  //! Reallocates the provided buffer object
-  virtual bool reallocMemory(amd::Memory& owner) const { return true; }
 
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
