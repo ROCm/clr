@@ -1623,6 +1623,12 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
       return false;
     }
     *sampler = gpuSampler;
+  } else {
+    //! Currently allocate the base device class for AMDIL path
+    *sampler = new device::Sampler();
+    if (*sampler == nullptr) {
+      return false;
+    }
   }
   return true;
 }
