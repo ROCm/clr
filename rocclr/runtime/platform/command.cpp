@@ -387,56 +387,16 @@ bool MigrateMemObjectsCommand::validateMemory() {
   return true;
 }
 
-cl_int NDRangeKernelCommand::validateMemory() {
+cl_int NDRangeKernelCommand::captureAndValidate() {
   const amd::Device& device = queue()->device();
   // Validate the kernel before submission
   if (!queue()->device().validateKernel(kernel(), queue()->vdev())) {
     return CL_OUT_OF_RESOURCES;
   }
 
-  // Runtime disables deferred memory allocation for single device.
-  // Hence ignore memory validations
-  if (queue()->context().devices().size() > 1) {
-    amd::Memory* const* memories = reinterpret_cast<amd::Memory* const*>(
-      kernel().parameters().values() + kernel().parameters().memoryObjOffset());
-
-    const amd::KernelSignature& signature = kernel().signature();
-    for (uint i = 0; i != signature.numParameters(); ++i) {
-      const amd::KernelParameterDescriptor& desc = signature.at(i);
-      // Check if it's a memory object
-      if ((desc.type_ == T_POINTER) && (desc.size_ != 0)) {
-        amd::Memory* amdMemory = memories[desc.info_.arrayIndex_];
-        if (amdMemory != NULL) {
-          if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_CONSTANT) {
-            // Make sure argument size isn't bigger than the device limit
-            if (amdMemory->getSize() > device.info().maxConstantBufferSize_) {
-              LogPrintfError("HW constant buffer is too big (0x%X bytes)!", amdMemory->getSize());
-              return CL_OUT_OF_RESOURCES;
-            }
-          }
-          device::Memory* mem = amdMemory->getDeviceMemory(device);
-          if (!kernel().getDeviceKernel(device)->validateMemory(i, amdMemory)) {
-            if (device.reallocMemory(*amdMemory)) {
-              mem = amdMemory->getDeviceMemory(device);
-            } else {
-              mem = NULL;
-            }
-          }
-          if (NULL == mem) {
-            LogPrintfError("Can't allocate memory size - 0x%08X bytes!", amdMemory->getSize());
-            return CL_MEM_OBJECT_ALLOCATION_FAILURE;
-          }
-        }
-      }
-    }
-  }
-
-  parameters_ = kernel().parameters().capture(device);
-  if (nullptr == parameters_) {
-    return CL_OUT_OF_HOST_MEMORY;
-  }
-
-  return CL_SUCCESS;
+  cl_int error;
+  parameters_ = kernel().parameters().capture(device, &error);
+  return error;
 }
 
 bool ExtObjectsCommand::validateMemory() {

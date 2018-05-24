@@ -132,7 +132,8 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
   desc.info_.defined_ = true;
 }
 
-address KernelParameters::capture(const Device& device) {
+address KernelParameters::capture(const Device& device, cl_int* error) {
+  *error = CL_SUCCESS;
   //! Information about which arguments are SVM pointers is stored after
   // the actual parameters, but only if the device has any SVM capability
   const size_t execInfoSize = getNumberOfSvmPtr() * sizeof(void*);
@@ -149,10 +150,17 @@ address KernelParameters::capture(const Device& device) {
         Memory* memArg = memoryObjects_[desc.info_.arrayIndex_];
         if (memArg != nullptr) {
           memArg->retain();
+          device::Memory* devMem = memArg->getDeviceMemory(device);
+          if (nullptr == devMem) {
+            LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memArg->getSize());
+            *error = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+            AlignedMemory::deallocate(mem);
+            return nullptr;
+          }
           // Write GPU VA addreess to the arguments
           if (!desc.info_.rawPointer_) {
             *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = static_cast<uintptr_t>
-              (memArg->getDeviceMemory(device)->virtualAddress());
+              (devMem->virtualAddress());
           }
         } else if (desc.info_.rawPointer_) {
           if (!device.isFineGrainedSystem(true)) {
@@ -181,6 +189,8 @@ address KernelParameters::capture(const Device& device) {
     if (0 != execInfoSize) {
       ::memcpy(last, &execSvmPtr_[0], execInfoSize);
     }
+  } else {
+    *error = CL_OUT_OF_HOST_MEMORY;
   }
 
   return mem;
