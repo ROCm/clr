@@ -2905,9 +2905,8 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
                                       bool nativeMem) {
-  static const bool NoAlias = true;
   const HSAILKernel& hsaKernel =
-      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev(), NoAlias)));
+      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
   std::vector<const Memory*> memList;

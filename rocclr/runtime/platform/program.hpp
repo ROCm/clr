@@ -39,7 +39,6 @@ class Symbol : public HeapObject {
 
  private:
   devicekernels_t deviceKernels_;    //! All device kernels objects.
-  devicekernels_t devKernelsNoOpt_;  //! Kernel objects without optimization
   KernelSignature signature_;        //! Kernel signature.
 
  public:
@@ -48,13 +47,11 @@ class Symbol : public HeapObject {
 
   //! Set the entry point and check or set the signature.
   bool setDeviceKernel(const Device& device,        //!< Device object.
-                       const device::Kernel* func,  //!< Device kernel object.
-                       bool noAlias = true          //!< No-alias optimization
+                       const device::Kernel* func   //!< Device kernel object.
                        );
 
   //! Return the device kernel.
-  const device::Kernel* getDeviceKernel(const Device& device,  //!< Device object.
-                                        bool noAlias = true    //!< No-alias optimization
+  const device::Kernel* getDeviceKernel(const Device& device //!< Device object.
                                         ) const;
 
   //! Return this Symbol's signature.

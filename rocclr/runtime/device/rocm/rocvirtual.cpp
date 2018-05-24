@@ -171,8 +171,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
 }
 
 bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address params) {
-  static const bool NoAlias = true;
-  const Kernel& hsaKernel = static_cast<const Kernel&>(*(kernel.getDeviceKernel(dev(), NoAlias)));
+  const Kernel& hsaKernel = static_cast<const Kernel&>(*(kernel.getDeviceKernel(dev())));
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
 

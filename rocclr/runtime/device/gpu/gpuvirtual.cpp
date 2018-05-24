@@ -1879,9 +1879,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   GpuEvent gpuEvent;
   groupOffset = 0;
 
-  // Get the GPU kernel object with optimization enabled
-  bool noAlias = true;
-  device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev(), noAlias));
+  // Get the GPU kernel object
+  device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernelOpt = static_cast<gpu::Kernel&>(*devKernel);
 
   if (gpuKernelOpt.hsa()) {
@@ -2922,9 +2921,8 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
                                       bool nativeMem, std::vector<const Memory*>* memList) {
-  static const bool NoAlias = true;
   const HSAILKernel& hsaKernel =
-      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev(), NoAlias)));
+      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
 
