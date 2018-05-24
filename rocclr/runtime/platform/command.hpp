@@ -775,7 +775,7 @@ class NDRangeKernelCommand : public Command {
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
 
-  cl_int validateMemory();
+  cl_int captureAndValidate();
 };
 
 class NativeFnCommand : public Command {
