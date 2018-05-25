@@ -730,12 +730,12 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.flags.threadSafe = true;
   // \todo forces PAL to reuse CBs, but requires postamble
   createInfo.flags.autoMemoryReuse = false;
-  createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
+  createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
     VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
 
-  createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartCacheable;
+  createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 64 * Ki;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].suballocSize = 64 * Ki;
 
