@@ -250,7 +250,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueNDRangeKernel,
   }
 
   amd::Command::EventWaitList eventWaitList;
-  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events_in_wait_list,
                                        event_wait_list);
   if (err != CL_SUCCESS) {
     return err;
@@ -459,7 +459,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueNativeKernel,
   }
 
   amd::Command::EventWaitList eventWaitList;
-  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events_in_wait_list,
                                        event_wait_list);
   if (err != CL_SUCCESS) {
     return err;
@@ -640,7 +640,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueMarkerWithWaitList,
   }
 
   amd::Command::EventWaitList eventWaitList;
-  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+  cl_int err = amd::clSetEventWaitList(eventWaitList, *hostQueue, num_events_in_wait_list,
                                        event_wait_list);
   if (err != CL_SUCCESS) {
     return err;
@@ -702,7 +702,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWaitForEvents,
   amd::HostQueue& hostQueue = *queue;
 
   amd::Command::EventWaitList eventWaitList;
-  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events, event_list);
+  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events, event_list);
   if (err != CL_SUCCESS) {
     return err;
   }
@@ -796,7 +796,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueBarrierWithWaitList,
   }
 
   amd::Command::EventWaitList eventWaitList;
-  cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue->context(), num_events_in_wait_list,
+  cl_int err = amd::clSetEventWaitList(eventWaitList, *hostQueue, num_events_in_wait_list,
                                        event_wait_list);
   if (err != CL_SUCCESS) {
     return err;

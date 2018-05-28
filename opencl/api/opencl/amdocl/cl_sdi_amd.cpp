@@ -38,7 +38,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWaitSignalAMD,
 
   amd::Command::EventWaitList eventWaitList;
   cl_int err =
-      amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events, event_wait_list);
+      amd::clSetEventWaitList(eventWaitList, hostQueue, num_events, event_wait_list);
 
   if (err != CL_SUCCESS) {
     return err;
@@ -107,7 +107,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteSignalAMD,
 
   amd::Command::EventWaitList eventWaitList;
   cl_int err =
-      amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events, event_wait_list);
+      amd::clSetEventWaitList(eventWaitList, hostQueue, num_events, event_wait_list);
 
   if (err != CL_SUCCESS) {
     return err;
@@ -186,7 +186,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueMakeBuffersResidentAMD,
 
   amd::Command::EventWaitList eventWaitList;
   cl_int err =
-      amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events, event_wait_list);
+      amd::clSetEventWaitList(eventWaitList, hostQueue, num_events, event_wait_list);
 
   if (err != CL_SUCCESS) {
     return err;
