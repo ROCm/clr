@@ -1934,7 +1934,7 @@ cl_int clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue, cl_uint num
   }
 
   amd::Command::EventWaitList eventWaitList;
-  err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+  err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events_in_wait_list,
                                 event_wait_list);
   if (err != CL_SUCCESS) {
     return err;
@@ -2007,7 +2007,7 @@ cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue, cl_uint num
   }
 
   amd::Command::EventWaitList eventWaitList;
-  err = amd::clSetEventWaitList(eventWaitList, hostQueue.context(), num_events_in_wait_list,
+  err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events_in_wait_list,
                                 event_wait_list);
   if (err != CL_SUCCESS) {
     return err;

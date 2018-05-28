@@ -181,7 +181,7 @@ clGetInfo(
 static inline cl_int
 clSetEventWaitList(
     Command::EventWaitList& eventWaitList,
-    const Context& context,
+    const amd::HostQueue& hostQueue,
     cl_uint num_events_in_wait_list,
     const cl_event* event_wait_list)
 {
@@ -196,10 +196,10 @@ clSetEventWaitList(
         if (!is_valid(event)) {
             return CL_INVALID_EVENT_WAIT_LIST;
         }
-        if (&context != &amdEvent->context()) {
+        if (&hostQueue.context() != &amdEvent->context()) {
             return CL_INVALID_CONTEXT;
         }
-        if (!amdEvent->notifyCmdQueue()) {
+        if ((amdEvent->command().queue() != &hostQueue) && !amdEvent->notifyCmdQueue()) {
             return CL_INVALID_EVENT_WAIT_LIST;
         }
         eventWaitList.push_back(amdEvent);
