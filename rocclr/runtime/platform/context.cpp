@@ -315,9 +315,8 @@ void Context::svmFree(void* ptr) const {
 }
 
 bool Context::containsDevice(const Device* device) const {
-
   for (const auto& it : devices_) {
-    if (device == it || it->isAncestor(device)) {
+    if (device == it) {
       return true;
     }
   }

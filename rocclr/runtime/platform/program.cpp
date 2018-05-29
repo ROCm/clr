@@ -62,7 +62,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     return CL_INVALID_VALUE;
   }
 
-  Device& rootDev = device.rootDevice();
+  Device& rootDev = device;
 
   // if the rootDev is already associated with a program
   if (devicePrograms_[&rootDev] != NULL) {
@@ -150,7 +150,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
 }
 
 device::Program* Program::getDeviceProgram(const Device& device) const {
-  const auto it = devicePrograms_.find(&device.rootDevice());
+  const auto it = devicePrograms_.find(&device);
   if (it == devicePrograms_.cend()) {
     return NULL;
   }
@@ -613,20 +613,11 @@ bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func) {
 }
 
 const device::Kernel* Symbol::getDeviceKernel(const Device& device) const {
-  const devicekernels_t* devKernels = &deviceKernels_;
-  const auto itEnd = devKernels->cend();
-  auto it = devKernels->find(&device);
-  if (it != itEnd) {
+  auto it = deviceKernels_.find(&device);
+  if (it != deviceKernels_.cend()) {
     return it->second;
   }
-
-  for (it = devKernels->cbegin(); it != itEnd; ++it) {
-    if (it->first->isAncestor(&device)) {
-      return it->second;
-    }
-  }
-
-  return NULL;
+  return nullptr;
 }
 
 }  // namespace amd
