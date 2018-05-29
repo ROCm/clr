@@ -1666,6 +1666,31 @@ GpuEvent* Resource::getGpuEvent(const VirtualGPU& gpu) const {
 }
 
 // ================================================================================================
+void Resource::setModified(VirtualGPU& gpu, bool modified) const {
+  uint idx = gpu.index();
+  assert(idx < events_.size());
+  events_[idx].modified_ = modified;
+
+  // If current resource is a view, then update the parent as well
+  if (viewOwner_ != nullptr) {
+    viewOwner_->setModified(gpu, modified);
+  }
+}
+
+// ================================================================================================
+bool Resource::isModified(VirtualGPU& gpu) const {
+  uint idx = gpu.index();
+  assert(idx < events_.size());
+  bool modified = events_[idx].modified_;
+
+  // If current resource is a view, then get the parent state as well
+  if (viewOwner_ != nullptr) {
+    modified |= viewOwner_->isModified(gpu);
+  }
+  return modified;
+}
+
+// ================================================================================================
 void Resource::palFree() const {
   if (desc().type_ == OGLInterop) {
     amd::ScopedLock lk(dev().lockPAL());

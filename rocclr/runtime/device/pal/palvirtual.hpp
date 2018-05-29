@@ -463,11 +463,11 @@ class VirtualGPU : public device::VirtualDevice {
     constexpr bool End = false;
     if (forceExec) {
       constexpr bool ForceFlush = true;
-      event.id = queues_[engId]->submit(ForceFlush);
+      event.id_ = queues_[engId]->submit(ForceFlush);
       profileEvent(engId, End);
     } else {
       profileEvent(engId, End);
-      event.id = queues_[engId]->submit(GPU_FLUSH_ON_EXECUTION);
+      event.id_ = queues_[engId]->submit(GPU_FLUSH_ON_EXECUTION);
     }
     event.engineId_ = engId;
   }
@@ -475,7 +475,7 @@ class VirtualGPU : public device::VirtualDevice {
   void waitForEvent(GpuEvent* event) const {
     if (event->isValid()) {
       assert(event->engineId_ < AllEngines);
-      queues_[event->engineId_]->waitForEvent(event->id);
+      queues_[event->engineId_]->waitForEvent(event->id_);
       event->invalidate();
     }
   }
@@ -483,7 +483,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool isDone(GpuEvent* event) {
     if (event->isValid()) {
       assert(event->engineId_ < AllEngines);
-      if (queues_[event->engineId_]->isDone(event->id)) {
+      if (queues_[event->engineId_]->isDone(event->id_)) {
         event->invalidate();
         return true;
       }
@@ -623,9 +623,8 @@ class VirtualGPU : public device::VirtualDevice {
 };
 
 inline void VirtualGPU::addVmMemory(const Memory* memory) {
-  GpuEvent event(queues_[MainEngine]->cmdBufId());
   queues_[MainEngine]->addCmdMemRef(memory->memRef());
-  memory->setBusy(*this, event);
+  memory->setBusy(*this, queues_[MainEngine]->cmdBufId());
 }
 
 inline void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
