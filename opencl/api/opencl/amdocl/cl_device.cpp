@@ -340,8 +340,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_IMAGE_MAX_BUFFER_SIZE, imageMaxBufferSize_);
       CASE(CL_DEVICE_IMAGE_MAX_ARRAY_SIZE, imageMaxArraySize_);
     case CL_DEVICE_PARENT_DEVICE: {
-      cl_device_id parent =
-          !as_amd(device)->isRootDevice() ? as_cl(as_amd(device)->parent()) : (cl_device_id)0;
+      cl_device_id parent = (cl_device_id)0;
       return amd::clGetInfo(parent, param_value_size, param_value, param_value_size_ret);
     }
       CASE(CL_DEVICE_PARTITION_MAX_SUB_DEVICES, maxComputeUnits_);
