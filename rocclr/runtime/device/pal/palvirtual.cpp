@@ -427,24 +427,26 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   uint64_t curStart = memory->vmAddress();
   uint64_t curEnd = curStart + memory->size();
 
-  // Loop through all memory objects in the queue and find dependency
-  // @note don't include objects from the current kernel
-  for (size_t j = 0; j < endMemObjectsInQueue_; ++j) {
-    // Check if the queue already contains this mem object and
-    // GPU operations aren't readonly
-    uint64_t busyStart = memObjectsInQueue_[j].start_;
-    uint64_t busyEnd = memObjectsInQueue_[j].end_;
+  if (memory->isModified(gpu) || !readOnly) {
+    // Loop through all memory objects in the queue and find dependency
+    // @note don't include objects from the current kernel
+    for (size_t j = 0; j < endMemObjectsInQueue_; ++j) {
+      // Check if the queue already contains this mem object and
+      // GPU operations aren't readonly
+      uint64_t busyStart = memObjectsInQueue_[j].start_;
+      uint64_t busyEnd = memObjectsInQueue_[j].end_;
 
-    // Check if the start inside the busy region
-    if ((((curStart >= busyStart) && (curStart < busyEnd)) ||
-         // Check if the end inside the busy region
-         ((curEnd > busyStart) && (curEnd <= busyEnd)) ||
-         // Check if the start/end cover the busy region
-         ((curStart <= busyStart) && (curEnd >= busyEnd))) &&
-        // If the buys region was written or the current one is for write
-        (!memObjectsInQueue_[j].readOnly_ || !readOnly)) {
-      flushL1Cache = true;
-      break;
+      // Check if the start inside the busy region
+      if ((((curStart >= busyStart) && (curStart < busyEnd)) ||
+           // Check if the end inside the busy region
+           ((curEnd > busyStart) && (curEnd <= busyEnd)) ||
+           // Check if the start/end cover the busy region
+           ((curStart <= busyStart) && (curEnd >= busyEnd))) &&
+          // If the buys region was written or the current one is for write
+          (!memObjectsInQueue_[j].readOnly_ || !readOnly)) {
+        flushL1Cache = true;
+        break;
+      }
     }
   }
 
@@ -471,6 +473,8 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   memObjectsInQueue_[numMemObjectsInQueue_].end_ = curEnd;
   memObjectsInQueue_[numMemObjectsInQueue_].readOnly_ = readOnly;
   numMemObjectsInQueue_++;
+  // Mark resource as modified
+  memory->setModified(gpu, !readOnly);
 }
 
 void VirtualGPU::MemoryDependency::clear(bool all) {
@@ -1955,7 +1959,7 @@ void VirtualGPU::PostDeviceEnqueue(
     uint64_t vmParentWrap,
     GpuEvent* gpuEvent)
 {
-  uint32_t id  = gpuEvent->id;
+  uint32_t id  = gpuEvent->id_;
   amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(dev());
 
   // Make sure exculsive access to the device queue
@@ -2036,7 +2040,7 @@ void VirtualGPU::PostDeviceEnqueue(
     iCmd()->CmdVirtualQueueHandshake(vmParentWrap + offsetof(AmdAqlWrap, state), AQL_WRAP_DONE,
       vmParentWrap + offsetof(AmdAqlWrap, child_counter),
       signalAddr, dev().settings().useDeviceQueue_);
-    if (id != gpuEvent->id) {
+    if (id != gpuEvent->id_) {
         LogError("Something is wrong. ID mismatch!\n");
     }
     eventEnd(MainEngine, *gpuEvent);
@@ -2133,7 +2137,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 
   for (int iter = 0; iter < iteration; ++iter) {
     GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
-    uint32_t id = gpuEvent.id;
+    uint32_t id = gpuEvent.id_;
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
       newOffset[dim] = sizes.offset()[dim] + globalStep * iter;
@@ -2184,7 +2188,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     if (profiling() || state_.profileEnabled_) {
       addBarrier();
     }
-    if (id != gpuEvent.id) {
+    if (id != gpuEvent.id_) {
       LogError("Something is wrong. ID mismatch!\n");
     }
     eventEnd(MainEngine, gpuEvent);

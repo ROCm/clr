@@ -44,22 +44,27 @@ struct HwDbgKernelInfo {
 enum EngineType { MainEngine = 0, SdmaEngine, AllEngines };
 
 struct GpuEvent {
-  static const unsigned int InvalidID = ((1 << 30) - 1);
+  static constexpr uint32_t InvalidID = ((1 << 30) - 1);
 
   struct {
-    uint32_t id : 31;         ///< actual event id
-    uint32_t engineId_ : 1;   ///< type of the id
+    uint32_t id_ : 30;        ///< Actual event id
+    uint32_t modified_ : 1;   ///< Resource associated with the event was modified
+    uint32_t engineId_ : 1;   ///< Type of the id
   };
   //! GPU event default constructor
-  GpuEvent() : id(InvalidID), engineId_(MainEngine) {}
+  GpuEvent() : id_(InvalidID), engineId_(MainEngine), modified_(false) {}
   //! GPU event constructor
-  GpuEvent(uint evt) : id(evt), engineId_(MainEngine) {}
+  GpuEvent(uint evt) : id_(evt), engineId_(MainEngine), modified_(false) {}
 
   //! Returns true if the current event is valid
-  bool isValid() const { return (id != InvalidID) ? true : false; }
+  bool isValid() const { return (id_ != InvalidID) ? true : false; }
 
   //! Set invalid event id
-  void invalidate() { id = InvalidID; }
+  void invalidate() { id_ = InvalidID; }
+
+  // Overwrite default assign operator to preserve modified_ field
+  GpuEvent& operator=(const GpuEvent& evt)
+    { id_ = evt.id_; engineId_ = evt.engineId_; return *this; }
 };
 
 /*! \addtogroup PAL

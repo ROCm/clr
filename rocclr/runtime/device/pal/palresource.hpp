@@ -382,6 +382,12 @@ class Resource : public amd::HeapObject {
     }
   }
 
+  //! Update the modified field of the event, meaning the resource was updated
+  void setModified(VirtualGPU& gpu, bool modified) const;
+
+  //! Update the modified field of the event, meaning the resource was updated
+  bool isModified(VirtualGPU& gpu) const;
+
  protected:
   /*! \brief Creates a PAL iamge object, associated with the resource
   *
