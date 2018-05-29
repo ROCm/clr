@@ -1411,23 +1411,11 @@ class Device : public RuntimeObject {
 
   virtual Compiler* compiler() const = 0;
 
-  Device(Device* parent = NULL);
+  Device();
   virtual ~Device();
 
   //! Initializes abstraction layer device object
   bool create();
-
-  //! Increment the reference count
-  uint retain() {
-    // Only increment the reference count of sub-devices
-    return !isRootDevice() ? RuntimeObject::retain() : 0u;
-  }
-
-  //! Decrement the reference count
-  uint release() {
-    // Only decrement the reference count of sub-devices
-    return !isRootDevice() ? RuntimeObject::release() : 0u;
-  }
 
   //! Register a device as available
   void registerDevice();
@@ -1561,30 +1549,6 @@ class Device : public RuntimeObject {
 
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
-  //! Returns TRUE if the device is a root device (as opposed to sub-device)
-  bool isRootDevice() const { return parent_ == NULL; }
-  //! Returns TRUE if 'this' is an ancestor of the given sub-device.
-  bool isAncestor(const Device* sub) const;
-
-  //! Return the parent device.
-  Device* parent() const { return parent_; }
-
-  //! Return the root device for this instance;
-  Device& rootDevice() {
-    Device* root = this;
-    while (!root->isRootDevice()) {
-      root = root->parent_;
-    }
-    return *root;
-  }
-
-  const Device& rootDevice() const {
-    const Device* root = this;
-    while (!root->isRootDevice()) {
-      root = root->parent_;
-    }
-    return *root;
-  }
 
   //! Returns device settings
   const device::Settings& settings() const { return *settings_; }
@@ -1643,7 +1607,6 @@ class Device : public RuntimeObject {
 
   static std::vector<Device*>* devices_;  //!< All known devices
 
-  Device* parent_;                                    //!< This device's parent
   Monitor* vaCacheAccess_;                            //!< Lock to serialize VA caching access
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
 };

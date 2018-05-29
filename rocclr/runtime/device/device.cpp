@@ -198,18 +198,14 @@ void Device::tearDown() {
 #endif  // WITH_PAL_DEVICE
 }
 
-Device::Device(Device* parent)
+Device::Device()
     : settings_(NULL),
       online_(true),
       blitProgram_(NULL),
       hwDebugMgr_(NULL),
-      parent_(parent),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr) {
   memset(&info_, '\0', sizeof(info_));
-  if (parent_ != NULL) {
-    parent_->retain();
-  }
 }
 
 Device::~Device() {
@@ -223,12 +219,8 @@ Device::~Device() {
     delete settings_;
   }
 
-  if (parent_ != NULL) {
-    parent_->release();
-  } else {
-    if (info_.extensions_ != NULL) {
-      delete[] info_.extensions_;
-    }
+  if (info_.extensions_ != NULL) {
+    delete[] info_.extensions_;
   }
 }
 
@@ -242,15 +234,6 @@ bool Device::create() {
     return false;
   }
   return true;
-}
-
-bool Device::isAncestor(const Device* sub) const {
-  for (const Device* d = sub->parent_; d != NULL; d = d->parent_) {
-    if (d == this) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void Device::registerDevice() {

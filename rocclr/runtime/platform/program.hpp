@@ -149,7 +149,7 @@ class Program : public RuntimeObject {
   const Symbol* findSymbol(const char* name) const;
 
   //! Return the binary image.
-  const binary_t& binary(const Device& device) { return binary_[&device.rootDevice()]; }
+  const binary_t& binary(const Device& device) { return binary_[&device]; }
 
   //! Return the program kernel names
   const std::string& kernelNames() const { return kernelNames_; }

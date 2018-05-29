@@ -63,7 +63,7 @@ aclCompiler* NullDevice::hsaCompiler_;
 AppProfile Device::appProfile_;
 
 NullDevice::NullDevice()
-    : amd::Device(NULL), calTarget_(static_cast<CALtarget>(0)), hwInfo_(NULL) {}
+    : amd::Device(), calTarget_(static_cast<CALtarget>(0)), hwInfo_(NULL) {}
 
 bool NullDevice::init() {
   std::vector<Device*> devices;

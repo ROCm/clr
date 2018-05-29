@@ -62,7 +62,7 @@ NullDevice::Compiler* NullDevice::compiler_;
 AppProfile Device::appProfile_;
 
 NullDevice::NullDevice()
-    : amd::Device(nullptr), ipLevel_(Pal::GfxIpLevel::None), hwInfo_(nullptr) {}
+    : amd::Device(), ipLevel_(Pal::GfxIpLevel::None), hwInfo_(nullptr) {}
 
 bool NullDevice::init() {
   std::vector<Device*> devices;
