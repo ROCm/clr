@@ -2540,7 +2540,7 @@ void VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand& vcmd
     pGpuMems[i] = pGpuMemory->iMem();
   }
 
-  dev().iDev()->AddGpuMemoryReferences(numObjects, pGpuMemRef, NULL, Pal::GpuMemoryRefCantTrim);
+  dev().iDev()->AddGpuMemoryReferences(numObjects, pGpuMemRef, queues_[MainEngine]->iQueue_, Pal::GpuMemoryRefCantTrim);
   dev().iDev()->InitBusAddressableGpuMemory(queues_[MainEngine]->iQueue_, numObjects, pGpuMems);
   if (numObjects != 0) {
       dev().iDev()->RemoveGpuMemoryReferences(numObjects, &pGpuMems[0], queues_[MainEngine]->iQueue_);
