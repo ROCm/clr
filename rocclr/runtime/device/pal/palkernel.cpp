@@ -998,42 +998,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         assert(
             (arg->addrQual_ == HSAIL_ADDRESS_GLOBAL || arg->addrQual_ == HSAIL_ADDRESS_CONSTANT) &&
             "Unsupported address qualifier");
-
-        // If it is a global pointer
-        Memory* gpuMem = nullptr;
-        amd::Memory* mem = nullptr;
-        uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
-        if (nativeMem) {
-          gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
-          if (nullptr != gpuMem) {
-            mem = gpuMem->owner();
-          }
-        } else {
-          mem = memories[index];
-          if (mem != nullptr) {
-            gpuMem = dev().getGpuMemory(mem);
-          }
-        }
-
         WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr), sizeof(paramaddr));
-        if (gpuMem == nullptr) {
-          break;
-        }
-
-        // Wait for resource if it was used on an inactive engine
-        //! \note syncCache may call DRM transfer
-        gpuMem->wait(gpu, WaitOnBusyEngine);
-
-        //! @todo Compiler has to return read/write attributes
-        if ((nullptr != mem) && ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0)) {
-          mem->signalWrite(&dev());
-        }
-        gpu.addVmMemory(gpuMem);
-
-        // save the memory object pointer to allow global memory access
-        if (nullptr != dev().hwDebugMgr()) {
-          dev().hwDebugMgr()->assignKernelParamMem(arg->index_, gpuMem->owner());
-        }
         break;
       }
       case HSAIL_ARGTYPE_REFERENCE: {
@@ -1072,10 +1037,6 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           }
         }
 
-        // Wait for resource if it was used on an inactive engine
-        //! \note syncCache may call DRM transfer
-        image->wait(gpu, WaitOnBusyEngine);
-
         //! \note Special case for the image views.
         //! Copy SRD to CB1, so blit manager will be able to release
         //! this view without a wait for SRD resource.
@@ -1092,12 +1053,6 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
           srdResource = true;
         }
 
-        //! @todo Compiler has to return read/write attributes
-        if ((nullptr != mem) && ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0)) {
-          mem->signalWrite(&dev());
-        }
-
-        gpu.addVmMemory(image);
         if (image->desc().isDoppTexture_) {
           gpu.addDoppRef(image, kernel.parameters().getExecNewVcop(),
             kernel.parameters().getExecPfpaVcop());

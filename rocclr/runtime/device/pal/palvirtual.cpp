@@ -428,6 +428,9 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   uint64_t curEnd = curStart + memory->size();
 
   if (memory->isModified(gpu) || !readOnly) {
+    // Mark resource as modified
+    memory->setModified(gpu, !readOnly);
+
     // Loop through all memory objects in the queue and find dependency
     // @note don't include objects from the current kernel
     for (size_t j = 0; j < endMemObjectsInQueue_; ++j) {
@@ -473,8 +476,6 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   memObjectsInQueue_[numMemObjectsInQueue_].end_ = curEnd;
   memObjectsInQueue_[numMemObjectsInQueue_].readOnly_ = readOnly;
   numMemObjectsInQueue_++;
-  // Mark resource as modified
-  memory->setModified(gpu, !readOnly);
 }
 
 void VirtualGPU::MemoryDependency::clear(bool all) {
@@ -490,8 +491,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
       memObjectsInQueue_[i].end_ = memObjectsInQueue_[j].end_;
       memObjectsInQueue_[i].readOnly_ = memObjectsInQueue_[j].readOnly_;
     }
-    // Clear all objects except current kernel
-    memset(&memObjectsInQueue_[i], 0, sizeof(amd::Memory*) * numMemObjectsInQueue_);
+    // Adjust the number of active objects
     numMemObjectsInQueue_ -= endMemObjectsInQueue_;
     endMemObjectsInQueue_ = 0;
   }
@@ -1925,17 +1925,17 @@ bool VirtualGPU::PreDeviceEnqueue(
     return false;
   }
   else {
-      if (dev().settings().useDeviceQueue_) {
-          *gpuDefQueue = static_cast<VirtualGPU*>(defQueue->vDev());
-          if ((*gpuDefQueue)->hwRing() == hwRing()) {
-              LogError("Can't submit the child kernels to the same HW ring as the host queue!");
-              return false;
-          }
+    if (dev().settings().useDeviceQueue_) {
+      *gpuDefQueue = static_cast<VirtualGPU*>(defQueue->vDev());
+      if ((*gpuDefQueue)->hwRing() == hwRing()) {
+        LogError("Can't submit the child kernels to the same HW ring as the host queue!");
+        return false;
       }
-      else {
-          createVirtualQueue(defQueue->size());
-          *gpuDefQueue = this;
-      }
+    }
+    else {
+      createVirtualQueue(defQueue->size());
+      *gpuDefQueue = this;
+    }
   }
   *vmDefQueue = (*gpuDefQueue)->virtualQueue_->vmAddress();
 
@@ -2084,12 +2084,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     return false;
   }
 
-  // Check memory dependency and SVM objects
-  if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
-    LogError("Wrong memory objects!");
-    return false;
-  }
-
   // Add ISA memory object to the resource tracking list
   AddKernel(kernel);
 
@@ -2100,6 +2094,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     if (!PreDeviceEnqueue(kernel, hsaKernel, &gpuDefQueue, &vmDefQueue)) {
       return false;
     }
+  }
+
+  // Check memory dependency and SVM objects
+  if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
+      LogError("Wrong memory objects!");
+      return false;
   }
 
   bool needFlush = false;
@@ -2151,10 +2151,33 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     amd::NDRangeContainer tmpSizes(sizes.dimensions(), &newOffset[0], &newGlobalSize[0],
                                    &(const_cast<amd::NDRangeContainer&>(sizes).local()[0]));
 
+    if (iter > 0) {
+      // Updates the timestamp values, since a CB flush could occur.
+      // Resource processing was  moved from loadArguments() and
+      // an extra loop is required.
+      const amd::KernelParameters& kernelParams = kernel.parameters();
+      amd::Memory* const* memories =
+        reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
+      for (uint32_t i = 0; i < kernel.signature().numMemories(); ++i) {
+        if (nativeMem) {
+          Memory* gpuMem = reinterpret_cast<Memory* const*>(memories)[i];
+          if (gpuMem != nullptr) {
+            gpuMem->setBusy(*this, gpuEvent);
+          }
+        }
+        else {
+          amd::Memory* mem = memories[i];
+          if (mem != nullptr) {
+            dev().getGpuMemory(mem)->setBusy(*this, gpuEvent);
+          }
+        }
+      }
+    }
+
     uint64_t vmParentWrap = 0;
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-        *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap);
+      *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap);
     if (nullptr == aqlPkt) {
       LogError("Couldn't load kernel arguments");
       return false;
@@ -2909,88 +2932,87 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
                                       bool nativeMem) {
-  const HSAILKernel& hsaKernel =
-      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
-  const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
-  std::vector<const Memory*> memList;
+
   // Mark the tracker with a new kernel,
   // so we can avoid checks of the aliased objects
   memoryDependency().newKernel();
 
-  bool deviceSupportFGS = 0 != dev().isFineGrainedSystem(true);
-  bool supportFineGrainedSystem = deviceSupportFGS;
-  FGSStatus status = kernelParams.getSvmSystemPointersSupport();
-  switch (status) {
-    case FGS_YES:
-      if (!deviceSupportFGS) {
-        return false;
-      }
-      supportFineGrainedSystem = true;
-      break;
-    case FGS_NO:
-      supportFineGrainedSystem = false;
-      break;
-    case FGS_DEFAULT:
-    default:
-      break;
-  }
-
   size_t count = kernelParams.getNumberOfSvmPtr();
-  size_t execInfoOffset = kernelParams.getExecInfoOffset();
-  bool sync = true;
-
-  // get svm non arugment information
-  void* const* svmPtrArray = reinterpret_cast<void* const*>(params + execInfoOffset);
-  for (size_t i = 0; i < count; i++) {
-    amd::Memory* memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
-    if (nullptr == memory) {
-      if (!supportFineGrainedSystem) {
-        return false;
-      } else if (sync) {
-        addBarrier();
-        // Clear memory dependency state
-        const static bool All = true;
-        memoryDependency().clear(!All);
-        continue;
-      }
-    } else {
-      Memory* gpuMemory = dev().getGpuMemory(memory);
-      if (nullptr != gpuMemory) {
-        // Synchronize data with other memory instances if necessary
-        gpuMemory->syncCacheFromHost(*this);
-
-        const static bool IsReadOnly = false;
-        // Validate SVM passed in the non argument list
-        memoryDependency().validate(*this, gpuMemory, IsReadOnly);
-
-        // Mark signal write for cache coherency,
-        // since this object isn't a part of kernel arg setup
-        if ((memory->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
-          memory->signalWrite(&dev());
+  if (count > 0) {
+    bool supportFineGrainedSystem = dev().isFineGrainedSystem(true);
+    FGSStatus status = kernelParams.getSvmSystemPointersSupport();
+    switch (status) {
+      case FGS_YES:
+        if (!supportFineGrainedSystem) {
+          return false;
         }
-
-        memList.push_back(gpuMemory);
+        break;
+      case FGS_NO:
+        supportFineGrainedSystem = false;
+        break;
+      case FGS_DEFAULT:
+      default:
+        break;
+    }
+    // get svm non arugment information
+    void* const* svmPtrArray = reinterpret_cast<void* const*>(
+      params + kernelParams.getExecInfoOffset());
+    for (size_t i = 0; i < count; i++) {
+      amd::Memory* memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
+      if (nullptr == memory) {
+        if (!supportFineGrainedSystem) {
+          return false;
+        } else {
+          addBarrier();
+          // Clear memory dependency state
+          const static bool All = true;
+          memoryDependency().clear(!All);
+          continue;
+        }
       } else {
-        return false;
+        Memory* gpuMemory = dev().getGpuMemory(memory);
+        if (nullptr != gpuMemory) {
+          // Synchronize data with other memory instances if necessary
+          gpuMemory->syncCacheFromHost(*this);
+
+          const static bool IsReadOnly = false;
+          // Validate SVM passed in the non argument list
+          memoryDependency().validate(*this, gpuMemory, IsReadOnly);
+
+          // Wait for resource if it was used on an inactive engine
+          //! \note syncCache may call DRM transfer
+          constexpr bool WaitOnBusyEngine = true;
+          gpuMemory->wait(*this, WaitOnBusyEngine);
+
+          // Mark signal write for cache coherency,
+          // since this object isn't a part of kernel arg setup
+          if ((memory->getMemFlags() & CL_MEM_READ_ONLY) == 0) {
+            memory->signalWrite(&dev());
+          }
+          addVmMemory(gpuMemory);
+        } else {
+          return false;
+        }
       }
     }
   }
 
-  for (auto it : memList) {
-    addVmMemory(it);
-  }
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
+  const HSAILKernel& hsaKernel =
+      static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
+  const amd::KernelSignature& signature = kernel.signature();
+
   // Check all parameters for the current kernel
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const HSAILKernel::Argument* arg = hsaKernel.argumentAt(i);
-    Memory* gpuMem = nullptr;
-    amd::Memory* mem = nullptr;
 
     // Find if current argument is a buffer
     if ((desc.type_ == T_POINTER) && (arg->addrQual_ != HSAIL_ADDRESS_LOCAL)) {
+      Memory* gpuMem = nullptr;
+      amd::Memory* mem = nullptr;
       uint32_t index = desc.info_.arrayIndex_;
       if (nativeMem) {
         gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
@@ -3019,6 +3041,17 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
         // Validate memory for a dependency in the queue
         memoryDependency().validate(*this, gpuMem, readOnly);
+
+        // Wait for resource if it was used on an inactive engine
+        //! \note syncCache may call DRM transfer
+        constexpr bool WaitOnBusyEngine = true;
+        gpuMem->wait(*this, WaitOnBusyEngine);
+
+        //! Check if compiler expects read/write
+        if ((mem != nullptr) && !desc.info_.readOnly_) {
+          mem->signalWrite(&dev());
+        }
+        addVmMemory(gpuMem);
       }
     }
   }
