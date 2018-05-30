@@ -231,7 +231,7 @@ bool VirtualGPU::Queue::flush() {
       LogError("PAL failed to make resident resources!");
       return false;
     }
-    palMemRefs_.resize(0);
+    palMemRefs_.clear();
   }
 
   // Reset the fence. PAL will reset OS event
@@ -298,8 +298,8 @@ bool VirtualGPU::Queue::flush() {
   }
 
   // Clear dopp references
-  palDoppRefs_.resize(0);
-  palSdiRefs_.resize(0);
+  palDoppRefs_.clear();
+  palSdiRefs_.clear();
 
   // Remove old memory references
   if ((memReferences_.size() > 2048) || (residency_size_ > residency_limit_)) {
@@ -315,7 +315,7 @@ bool VirtualGPU::Queue::flush() {
   }
   if (palMems_.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
-    palMems_.resize(0);
+    palMems_.clear();
   }
 
   return true;
@@ -565,7 +565,7 @@ void VirtualGPU::releasePinnedMem() {
   for (auto& amdMemory : pinnedMems_) {
     amdMemory->release();
   }
-  pinnedMems_.resize(0);
+  pinnedMems_.clear();
 }
 
 amd::Memory* VirtualGPU::findPinnedMem(void* addr, size_t size) {
