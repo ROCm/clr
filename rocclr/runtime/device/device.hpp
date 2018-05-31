@@ -1417,6 +1417,18 @@ class Device : public RuntimeObject {
   //! Initializes abstraction layer device object
   bool create();
 
+  uint retain() {
+    // Overwrite the RuntimeObject::retain().
+    // There is an issue in the old SHOC11_DeviceMemory test on TC
+    return 0u;
+  }
+
+  uint release() {
+    // Overwrite the RuntimeObject::release().
+    // There is an issue in the old SHOC11_DeviceMemory test on TC
+    return 0u;
+  }
+
   //! Register a device as available
   void registerDevice();
 
