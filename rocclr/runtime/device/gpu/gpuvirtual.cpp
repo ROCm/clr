@@ -922,8 +922,8 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd) {
     amd::BufferRect dstRect;
 
     bool result = false;
-    amd::Memory* srcMem = amd::SvmManager::FindSvmBuffer(vcmd.src());
-    amd::Memory* dstMem = amd::SvmManager::FindSvmBuffer(vcmd.dst());
+    amd::Memory* srcMem = amd::MemObjMap::FindMemObj(vcmd.src());
+    amd::Memory* dstMem = amd::MemObjMap::FindMemObj(vcmd.dst());
 
     device::Memory::SyncFlags syncFlags;
     if (nullptr != srcMem) {
@@ -1327,7 +1327,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd) {
     size_t patternSize = vcmd.patternSize();
     size_t fillSize = patternSize * vcmd.times();
     size_t offset = 0;
-    amd::Memory* dstMemory = amd::SvmManager::FindSvmBuffer(vcmd.dst());
+    amd::Memory* dstMemory = amd::MemObjMap::FindMemObj(vcmd.dst());
     assert(dstMemory && "No svm Buffer to fill with!");
     offset = reinterpret_cast<uintptr_t>(vcmd.dst()) -
         reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
@@ -2956,7 +2956,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
   // get svm non arugment information
   void* const* svmPtrArray = reinterpret_cast<void* const*>(params + execInfoOffset);
   for (size_t i = 0; i < count; i++) {
-    memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
+    memory = amd::MemObjMap::FindMemObj(svmPtrArray[i]);
     if (NULL == memory) {
       if (!supportFineGrainedSystem) {
         return false;

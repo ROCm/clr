@@ -208,7 +208,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
   // get svm non arugment information
   void* const* svmPtrArray = reinterpret_cast<void* const*>(params + execInfoOffset);
   for (size_t i = 0; i < count; i++) {
-    memory = amd::SvmManager::FindSvmBuffer(svmPtrArray[i]);
+    memory = amd::MemObjMap::FindMemObj(svmPtrArray[i]);
     if (nullptr == memory) {
       if (!supportFineGrainedSystem) {
         return false;
