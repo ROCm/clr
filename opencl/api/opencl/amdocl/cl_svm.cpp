@@ -693,7 +693,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap,
   if ((queue->device()).isFineGrainedSystem()) {
     // leave blank on purpose for FGS no op
   } else {
-    svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    svmMem = amd::MemObjMap::FindMemObj(svm_ptr);
     if (NULL != svmMem) {
       // make sure the context is the same as the context of creation of svm space
       if (hostQueue.context() != svmMem->getContext()) {
@@ -826,7 +826,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMUnmap,
   amd::Memory* svmMem = NULL;
   if (!(queue->device()).isFineGrainedSystem()) {
     // check if the ptr is in the svm space
-    svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    svmMem = amd::MemObjMap::FindMemObj(svm_ptr);
     // Make sure we have memory for the command execution
     if (NULL != svmMem) {
       // Make sure we have memory for the command execution
@@ -1144,7 +1144,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMigrateMem,
   for (cl_uint i = 0; i < num_svm_pointers; i++) {
     const void* svm_ptr = svm_pointers[i];
 
-    amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(svm_ptr);
+    amd::Memory* svmMem = amd::MemObjMap::FindMemObj(svm_ptr);
     if (NULL != svmMem) {
       // make sure the context is the same as the context of creation of svm space
       if (hostQueue.context() != svmMem->getContext()) {

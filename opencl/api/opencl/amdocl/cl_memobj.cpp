@@ -404,7 +404,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (cl_context context, cl_mem_flags flag
   amd::Context& amdContext = *as_amd(context);
   amd::Memory* mem = NULL;
   // check if the ptr is in the svm space, if yes, we need return SVM buffer
-  amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(host_ptr);
+  amd::Memory* svmMem = amd::MemObjMap::FindMemObj(host_ptr);
   if ((NULL != svmMem) && (flags & CL_MEM_USE_HOST_PTR)) {
     size_t svmSize = svmMem->getSize();
     size_t offset = static_cast<address>(host_ptr) - static_cast<address>(svmMem->getSvmPtr());
