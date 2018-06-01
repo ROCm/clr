@@ -58,29 +58,29 @@ namespace amd {
 std::vector<Device*>* Device::devices_ = NULL;
 AppProfile Device::appProfile_;
 
-amd::Monitor SvmManager::AllocatedLock_("Guards SVM allocation list");
-std::map<uintptr_t, amd::Memory*> SvmManager::svmBufferMap_;
+amd::Monitor MemObjMap::AllocatedLock_("Guards SVM allocation list");
+std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_;
 
-size_t SvmManager::size() {
+size_t MemObjMap::size() {
   amd::ScopedLock lock(AllocatedLock_);
-  return svmBufferMap_.size();
+  return MemObjMap_.size();
 }
 
-void SvmManager::AddSvmBuffer(const void* k, amd::Memory* v) {
+void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
   amd::ScopedLock lock(AllocatedLock_);
-  svmBufferMap_.insert({reinterpret_cast<uintptr_t>(k), v});
+  MemObjMap_.insert({reinterpret_cast<uintptr_t>(k), v});
 }
 
-void SvmManager::RemoveSvmBuffer(const void* k) {
+void MemObjMap::RemoveMemObj(const void* k) {
   amd::ScopedLock lock(AllocatedLock_);
-  svmBufferMap_.erase(reinterpret_cast<uintptr_t>(k));
+  MemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
 }
 
-amd::Memory* SvmManager::FindSvmBuffer(const void* k) {
+amd::Memory* MemObjMap::FindMemObj(const void* k) {
   amd::ScopedLock lock(AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
-  auto it = svmBufferMap_.upper_bound(key);
-  if (it == svmBufferMap_.begin()) {
+  auto it = MemObjMap_.upper_bound(key);
+  if (it == MemObjMap_.begin()) {
     return NULL;
   }
 

@@ -1526,7 +1526,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
       }
 
       // add the information to context so that we can use it later.
-      amd::SvmManager::AddSvmBuffer(ptr, mem);
+      amd::MemObjMap::AddMemObj(ptr, mem);
 
       return ptr;
     } else {
@@ -1535,7 +1535,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   } else {
     // Copy paste from ORCA code.
     // Find the existing amd::mem object
-    mem = amd::SvmManager::FindSvmBuffer(svmPtr);
+    mem = amd::MemObjMap::FindMemObj(svmPtr);
 
     if (nullptr == mem) {
       return nullptr;
@@ -1547,10 +1547,10 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
 
 void Device::svmFree(void* ptr) const {
   amd::Memory* svmMem = nullptr;
-  svmMem = amd::SvmManager::FindSvmBuffer(ptr);
+  svmMem = amd::MemObjMap::FindMemObj(ptr);
   if (nullptr != svmMem) {
     svmMem->release();
-    amd::SvmManager::RemoveSvmBuffer(ptr);
+    amd::MemObjMap::RemoveMemObj(ptr);
     hostFree(ptr);
   }
 }

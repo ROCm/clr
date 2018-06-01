@@ -1966,11 +1966,11 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     pal::Memory* gpuMem = getGpuMemory(mem);
 
     // add the information to context so that we can use it later.
-    amd::SvmManager::AddSvmBuffer(mem->getSvmPtr(), mem);
+    amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     svmPtr = mem->getSvmPtr();
   } else {
     // find the existing amd::mem object
-    mem = amd::SvmManager::FindSvmBuffer(svmPtr);
+    mem = amd::MemObjMap::FindMemObj(svmPtr);
     if (nullptr == mem) {
       return nullptr;
     }
@@ -1989,10 +1989,10 @@ void Device::svmFree(void* ptr) const {
   if (freeCPUMem_) {
     amd::Os::alignedFree(ptr);
   } else {
-    amd::Memory* svmMem = amd::SvmManager::FindSvmBuffer(ptr);
+    amd::Memory* svmMem = amd::MemObjMap::FindMemObj(ptr);
     if (nullptr != svmMem) {
       svmMem->release();
-      amd::SvmManager::RemoveSvmBuffer(ptr);
+      amd::MemObjMap::RemoveMemObj(ptr);
     }
   }
 }

@@ -1368,17 +1368,17 @@ class VirtualDevice : public amd::HeapObject {
 namespace amd {
 
 
-//! SvmManager class
-class SvmManager : public AllStatic {
+//! MemoryObject map lookup  class
+class MemObjMap : public AllStatic {
  public:
   static size_t size();  //!< obtain the size of the container
-  static void AddSvmBuffer(const void* k,
-                           amd::Memory* v);    //!< add the svm pointer and buffer in the container
-  static void RemoveSvmBuffer(const void* k);  //!< Remove an entry of svm info from the container
-  static amd::Memory* FindSvmBuffer(
-      const void* k);  //!< find the svm buffer based on the input pointer
+  static void AddMemObj(const void* k,
+                           amd::Memory* v);    //!< add the host mem pointer and buffer in the container
+  static void RemoveMemObj(const void* k);  //!< Remove an entry of mem object from the container
+  static amd::Memory* FindMemObj(
+      const void* k);  //!< find the mem object based on the input pointer
  private:
-  static std::map<uintptr_t, amd::Memory*> svmBufferMap_;  //!< the svm space information container
+  static std::map<uintptr_t, amd::Memory*> MemObjMap_;  //!< the mem object<->hostptr information container
   static amd::Monitor AllocatedLock_;                      //!< amd monitor locker
 };
 

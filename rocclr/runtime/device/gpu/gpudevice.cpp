@@ -2102,11 +2102,11 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     gpu::Memory* gpuMem = getGpuMemory(mem);
 
     // add the information to context so that we can use it later.
-    amd::SvmManager::AddSvmBuffer(mem->getSvmPtr(), mem);
+    amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     svmPtr = mem->getSvmPtr();
   } else {
     // find the existing amd::mem object
-    mem = amd::SvmManager::FindSvmBuffer(svmPtr);
+    mem = amd::MemObjMap::FindMemObj(svmPtr);
     if (NULL == mem) {
       return NULL;
     }
@@ -2126,14 +2126,13 @@ void Device::svmFree(void* ptr) const {
     amd::Os::alignedFree(ptr);
   } else {
     amd::Memory* svmMem = NULL;
-    svmMem = amd::SvmManager::FindSvmBuffer(ptr);
+    svmMem = amd::MemObjMap::FindMemObj(ptr);
     if (NULL != svmMem) {
       svmMem->release();
-      amd::SvmManager::RemoveSvmBuffer(ptr);
+      amd::MemObjMap::RemoveMemObj(ptr);
     }
   }
 }
-
 
 Device::SrdManager::~SrdManager() {
   for (uint i = 0; i < pool_.size(); ++i) {

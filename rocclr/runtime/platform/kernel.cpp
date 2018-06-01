@@ -77,7 +77,7 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
     if (svmBound) {
       desc.info_.rawPointer_ = true;
       LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
-      memoryObjects_[desc.info_.arrayIndex_] = amd::SvmManager::FindSvmBuffer(
+      memoryObjects_[desc.info_.arrayIndex_] = amd::MemObjMap::FindMemObj(
         *reinterpret_cast<const void* const*>(value));
     } else if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       desc.info_.rawPointer_ = false;
