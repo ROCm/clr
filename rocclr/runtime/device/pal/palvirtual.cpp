@@ -454,7 +454,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   }
 
   // Did we reach the limit?
-  if (maxMemObjectsInQueue_ <= (numMemObjectsInQueue_ + 1)) {
+  if (maxMemObjectsInQueue_ <= numMemObjectsInQueue_) {
     flushL1Cache = true;
   }
 
@@ -485,12 +485,28 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
       endMemObjectsInQueue_ = numMemObjectsInQueue_;
     }
 
-    // Preserve all objects from the current kernel
-    for (i = 0, j = endMemObjectsInQueue_; j < numMemObjectsInQueue_; i++, j++) {
-      memObjectsInQueue_[i].start_ = memObjectsInQueue_[j].start_;
-      memObjectsInQueue_[i].end_ = memObjectsInQueue_[j].end_;
-      memObjectsInQueue_[i].readOnly_ = memObjectsInQueue_[j].readOnly_;
+    // If the current launch didn't start from the beginning, then move the data
+    if (0 != endMemObjectsInQueue_) {
+      // Preserve all objects from the current kernel
+      for (i = 0, j = endMemObjectsInQueue_; j < numMemObjectsInQueue_; i++, j++) {
+        memObjectsInQueue_[i].start_ = memObjectsInQueue_[j].start_;
+        memObjectsInQueue_[i].end_ = memObjectsInQueue_[j].end_;
+        memObjectsInQueue_[i].readOnly_ = memObjectsInQueue_[j].readOnly_;
+      }
+    } else if (numMemObjectsInQueue_ >= maxMemObjectsInQueue_) {
+      // note: The array growth shouldn't occur under the normal conditions,
+      // but in a case when SVM path sends the amount of SVM ptrs over
+      // the max size of kernel arguments
+      MemoryState* ptr  = new MemoryState[maxMemObjectsInQueue_ << 1];
+      if (nullptr == ptr) {
+        numMemObjectsInQueue_ = 0;
+        return;
+      }
+      maxMemObjectsInQueue_ <<= 1;
+      memcpy(ptr, memObjectsInQueue_, sizeof(MemoryState) * numMemObjectsInQueue_);
+      memObjectsInQueue_= ptr;
     }
+
     // Adjust the number of active objects
     numMemObjectsInQueue_ -= endMemObjectsInQueue_;
     endMemObjectsInQueue_ = 0;
