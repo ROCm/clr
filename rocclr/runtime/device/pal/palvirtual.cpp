@@ -504,6 +504,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
       }
       maxMemObjectsInQueue_ <<= 1;
       memcpy(ptr, memObjectsInQueue_, sizeof(MemoryState) * numMemObjectsInQueue_);
+      delete[] memObjectsInQueue_;
       memObjectsInQueue_= ptr;
     }
 
