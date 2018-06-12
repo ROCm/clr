@@ -5,7 +5,8 @@
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocmemory.hpp"
-#include "device/rocm/rocvirtual.hpp"
+#include "device/rocm/rockernel.hpp"
+#include "device/rocm/rocsched.hpp"
 #include "utils/debug.hpp"
 #include <algorithm>
 
@@ -2106,6 +2107,71 @@ address KernelBlitManager::captureArguments(const amd::Kernel* kernel) const {
 }
 
 void KernelBlitManager::releaseArguments(address args) const {
+}
+
+bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
+                                     hsa_queue_t* schedulerQueue,
+                                     hsa_signal_t& schedulerSignal,
+                                     uint threads) {
+  size_t globalWorkOffset[1] = {0};
+  size_t globalWorkSize[1] = {threads};
+  size_t localWorkSize[1] = {1};
+
+  amd::NDRangeContainer ndrange(1, globalWorkOffset, globalWorkSize, localWorkSize);
+
+  device::Kernel* devKernel = const_cast<device::Kernel*>(kernels_[Scheduler]->getDeviceKernel(dev()));
+  Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
+
+  SchedulerParam* sp = reinterpret_cast<SchedulerParam*>(schedulerParam->getHostMem());
+  memset(sp, 0, sizeof(SchedulerParam));
+
+  Memory* schedulerMem = dev().getRocMemory(schedulerParam);
+  sp->kernarg_address = reinterpret_cast<uint64_t>(schedulerMem->getDeviceMemory());
+
+  sp->hidden_global_offset_x = 0;
+  sp->hidden_global_offset_y = 0;
+  sp->hidden_global_offset_z = 0;
+  sp->thread_counter = 0;
+  sp->child_queue = reinterpret_cast<uint64_t>(schedulerQueue);
+  sp->complete_signal = schedulerSignal;
+
+  hsa_signal_t  signal1;
+  signal1 = schedulerSignal;
+  hsa_signal_store_relaxed(signal1, 1);
+
+  sp->scheduler_aql.header = 0;
+  sp->scheduler_aql.setup = 1;
+  sp->scheduler_aql.workgroup_size_x = 1;
+  sp->scheduler_aql.workgroup_size_y = 1;
+  sp->scheduler_aql.workgroup_size_z = 1;
+  sp->scheduler_aql.grid_size_x = threads;
+  sp->scheduler_aql.grid_size_y = 1;
+  sp->scheduler_aql.grid_size_z = 1;
+  sp->scheduler_aql.kernel_object = gpuKernel.KernelCodeHandle();
+  sp->scheduler_aql.kernarg_address = (void*)sp->kernarg_address;
+  sp->scheduler_aql.private_segment_size = 0;
+  sp->scheduler_aql.group_segment_size = 0;
+  sp->vqueue_header = vqVM;
+
+  sp->parentAQL = sp->kernarg_address + sizeof(SchedulerParam);
+
+  cl_mem mem = as_cl<amd::Memory>(schedulerParam);
+  setArgument(kernels_[Scheduler], 0, sizeof(cl_mem), &mem);
+
+  address parameters = captureArguments(kernels_[Scheduler]);
+
+  bool result = false;
+  result = gpu().submitKernelInternal(ndrange, *kernels_[Scheduler], parameters, nullptr);
+  releaseArguments(parameters);
+  synchronize();
+
+  if (hsa_signal_wait_acquire(signal1, HSA_SIGNAL_CONDITION_LT, 1, (-1),
+                                HSA_WAIT_STATE_BLOCKED) != 0) {
+    LogWarning("Failed schedulerSignal wait");
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace pal

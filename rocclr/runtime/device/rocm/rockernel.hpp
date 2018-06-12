@@ -22,6 +22,7 @@ enum ROC_ARG_TYPE {
   ROC_ARGTYPE_REFERENCE,
   ROC_ARGTYPE_IMAGE,
   ROC_ARGTYPE_SAMPLER,
+  ROC_ARGTYPE_QUEUE,
   ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
   ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
   ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
@@ -121,6 +122,12 @@ class Kernel : public device::Kernel {
   //! Return printf info array
   const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
 
+  //! Returns TRUE if kernel uses dynamic parallelism
+  bool dynamicParallelism() const { return (flags_.dynamicParallelism_) ? true : false; }
+
+  //! set dynamic parallelism flag
+  void setDynamicParallelFlag(bool flag) { flags_.dynamicParallelism_ = flag; }
+
   //! Return TRUE if kernel is internal blit kernel
   bool isInternalKernel() const { return (flags_.internalKernel_) ? true : false; }
 
@@ -139,6 +146,7 @@ class Kernel : public device::Kernel {
       uint internalKernel_ : 1;  //!< Is a blit kernel?
       uint imageEnable_    : 1;  //!< Kernel uses images
       uint imageWrite_     : 1;  //!< Kernel writes images
+      uint dynamicParallelism_ : 1;  //!< Dynamic parallelism enabled
     };
     uint value_;
     Flags() : value_(0) {}

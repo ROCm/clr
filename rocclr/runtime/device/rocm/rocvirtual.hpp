@@ -11,6 +11,7 @@
 #include "hsa_ext_amd.h"
 #include "rocprintf.hpp"
 #include "hsa_ven_amd_aqlprofile.h"
+#include "rocsched.hpp"
 
 namespace roc {
 class Device;
@@ -253,6 +254,13 @@ class VirtualGPU : public device::VirtualDevice {
   void* allocKernArg(size_t size, size_t alignment);
   void resetKernArgPool() { kernarg_pool_cur_offset_ = 0; }
 
+  uint64_t getVQVirtualAddress();
+
+  bool createSchedulerParam();
+
+  //! Returns TRUE if virtual queue was successfully allocatted
+  bool createVirtualQueue(uint deviceQueueSize);
+
   //! Updates AQL header for the upcomming dispatch
   void setAqlHeader(uint16_t header) { aqlHeader_ = header; }
 
@@ -280,6 +288,15 @@ class VirtualGPU : public device::VirtualDevice {
   PrintfDbg* printfdbg_;
   MemoryDependency memoryDependency_;  //!< Memory dependency class
   uint16_t aqlHeader_;                 //!< AQL header for dispatch
+
+  amd::Memory* virtualQueue_;     //!< Virtual device queue
+  uint deviceQueueSize_;          //!< Device queue size
+  uint maskGroups_;               //!< The number of mask groups processed in the scheduler by one thread
+  uint schedulerThreads_;         //!< The number of scheduler threads
+
+  amd::Memory* schedulerParam_;
+  hsa_queue_t* schedulerQueue_;
+  hsa_signal_t schedulerSignal_;
 
   char* kernarg_pool_base_;
   size_t kernarg_pool_size_;

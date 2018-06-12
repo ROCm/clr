@@ -74,6 +74,10 @@ Settings::Settings() {
   singleFpDenorm_ = false;
 
   apuSystem_ = false;
+
+  // Device enqueuing settings
+  numDeviceEvents_ = 1024;
+  numWaitEvents_ = 8;
 }
 
 bool Settings::create(bool fullProfile, int gfxipVersion) {

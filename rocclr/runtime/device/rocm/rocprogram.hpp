@@ -51,6 +51,8 @@ class Program : public device::Program {
   //! Returns the hsaBinary associated with the program
   hsa_agent_t hsaDevice() const { return dev().getBackendDevice(); }
 
+  hsa_executable_t hsaExecutable() const { return hsaExecutable_; }
+
   bool hasGlobalStores() const { return hasGlobalStores_; }
 
  protected:

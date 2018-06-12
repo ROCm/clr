@@ -560,6 +560,8 @@ bool Device::init() {
   return true;
 }
 
+extern const char* SchedulerSourceCode;
+
 void Device::tearDown() {
   NullDevice::tearDown();
   hsa_shut_down();
@@ -611,7 +613,12 @@ bool Device::create() {
     return false;
   }
 
+  const char* scheduler = nullptr;
+
 #if defined(WITH_LIGHTNING_COMPILER)
+  std::string sch = SchedulerSourceCode;
+  scheduler = sch.c_str();
+
   //  create compilation object with cache support
   int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
   int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
@@ -647,7 +654,7 @@ bool Device::create() {
 
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this)) {
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler)) {
     delete blitProgram_;
     blitProgram_ = nullptr;
     LogError("Couldn't create blit kernels!");
@@ -1025,7 +1032,7 @@ bool Device::populateOCLDeviceConstants() {
   ss <<  ")";
 
   strcpy(info_.driverVersion_, ss.str().c_str());
-  info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
+  info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
 
   info_.builtInKernels_ = "";
   info_.linkerAvailable_ = true;
@@ -1195,6 +1202,13 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
   info_.maxPipeActiveReservations_ = 16;
   info_.maxPipeArgs_ = 16;
+
+  info_.queueOnDeviceProperties_ =
+      CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE | CL_QUEUE_PROFILING_ENABLE;
+  info_.queueOnDevicePreferredSize_ = 256 * Ki;
+  info_.queueOnDeviceMaxSize_ = 8 * Mi;
+  info_.maxOnDeviceQueues_ = 1;
+  info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
 
   return true;
 }

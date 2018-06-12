@@ -9,6 +9,7 @@
 #include "device/device.hpp"
 #include "device/blit.hpp"
 #include "device/rocm/rocdefs.hpp"
+#include "device/rocm/rocsched.hpp"
 
 /*! \addtogroup ROC Blit Implementation
  *  @{
@@ -232,6 +233,7 @@ class KernelBlitManager : public DmaBlitManager {
     BlitCopyBufferAligned,
     FillBuffer,
     FillImage,
+    Scheduler,
     BlitTotal
   };
 
@@ -366,6 +368,12 @@ class KernelBlitManager : public DmaBlitManager {
                          bool entire = false          //!< Entire buffer will be updated
                          ) const;
 
+  bool runScheduler(uint64_t vqVM,
+                    amd::Memory* schedulerParam,
+                    hsa_queue_t* schedulerQueue,
+                    hsa_signal_t& schedulerSignal,
+                    uint threads);
+
  private:
   static const size_t MaxXferBuffers = 2;
   static const uint TransferSplitSize = 1;
@@ -426,7 +434,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "copyImage",         "copyImage1DA",      "copyImageToBuffer",
     "copyBufferToImage", "copyBufferRect",    "copyBufferRectAligned",
     "copyBuffer",        "copyBufferAligned", "fillBuffer",
-    "fillImage",
+    "fillImage",         "scheduler",
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) const {

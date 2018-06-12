@@ -7,6 +7,9 @@ namespace roc {
 //! Alignment restriciton for the pinned memory
 const static size_t PinnedMemoryAlignment = 4 * Ki;
 
+//! Specific defines for images for Dynamic Parallelism
+const static uint DeviceQueueMaskSize = 32;
+
 typedef uint HsaDeviceId;
 
 struct AMDDeviceInfo {
