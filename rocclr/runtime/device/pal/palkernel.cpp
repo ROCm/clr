@@ -228,6 +228,37 @@ inline static int GetHSAILArgSize(const aclArgData* argInfo) {
   }
 }
 
+inline static uint32_t GetOclArgumentType(const HSAILKernel::Argument* arg) {
+  switch (arg->type_){
+    case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetX;
+    case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetY;
+    case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetZ;
+    case HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER:
+      return amd::KernelParameterDescriptor::HiddenPrintfBuffer;
+    case HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
+      return amd::KernelParameterDescriptor::HiddenDefaultQueue;
+    case HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION:
+      return amd::KernelParameterDescriptor::HiddenCompletionAction;
+    case HSAIL_ARGTYPE_POINTER:
+        return amd::KernelParameterDescriptor::MemoryObject;
+    case HSAIL_ARGTYPE_IMAGE:
+        return amd::KernelParameterDescriptor::ImageObject;
+    case HSAIL_ARGTYPE_REFERENCE:
+        return amd::KernelParameterDescriptor::ReferenceObject;
+    case HSAIL_ARGTYPE_VALUE:
+        return amd::KernelParameterDescriptor::ValueObject;
+    case HSAIL_ARGTYPE_SAMPLER:
+        return amd::KernelParameterDescriptor::SamplerObject;
+    case HSAIL_ARGTYPE_QUEUE:
+        return amd::KernelParameterDescriptor::QueueObject;
+    default:
+      return amd::KernelParameterDescriptor::HiddenNone;
+  }
+}
+
 inline static clk_value_type_t GetOclType(const HSAILKernel::Argument* arg) {
   static const clk_value_type_t ClkValueMapType[6][6] = {
       {T_CHAR, T_CHAR2, T_CHAR3, T_CHAR4, T_CHAR8, T_CHAR16},
@@ -422,12 +453,22 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
 
   // Iterate through the arguments and insert into parameterList
   device::Kernel::parameters_t params;
+  device::Kernel::parameters_t hiddenParams;
   amd::KernelParameterDescriptor desc;
   size_t offset = 0;
+  size_t offsetStruct = argsBufferSize();
 
   for (uint i = 0; aclArg->struct_size != 0; i++, aclArg++) {
-    // skip the hidden arguments
-    if (arguments_[i]->index_ == uint(-1)) continue;
+    // Allocate the hidden arguments, but abstraction layer will skip them
+    if (arguments_[i]->index_ == uint(-1)) {
+      offset = amd::alignUp(offset, arguments_[i]->alignment_);
+      desc.offset_ = offset;
+      desc.size_ = arguments_[i]->size_;
+      offset += arguments_[i]->size_;
+      desc.info_.oclObject_ = GetOclArgumentType(arguments_[i]);
+      hiddenParams.push_back(desc);
+      continue;
+    }
 
     desc.name_ = arguments_[i]->name_.c_str();
     desc.type_ = GetOclType(arguments_[i]);
@@ -435,6 +476,8 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
     desc.accessQualifier_ = GetOclAccessQual(arguments_[i]);
     desc.typeQualifier_ = GetOclTypeQual(aclArg);
     desc.typeName_ = arguments_[i]->typeName_.c_str();
+    desc.info_.oclObject_ = GetOclArgumentType(arguments_[i]);
+    desc.info_.arrayIndex_ = arguments_[i]->pointeeAlignment_;
 
     // Make a check if it is local or global
     if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
@@ -451,9 +494,32 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
       // Local memory for CPU
       size = sizeof(cl_mem);
     }
-    offset = amd::alignUp(offset, std::min(size, size_t(16)));
-    desc.offset_ = offset;
-    offset += amd::alignUp(size, sizeof(uint32_t));
+    // Check if HSAIL expects data by reference and allocate it behind
+    if (arguments_[i]->type_ == HSAIL_ARGTYPE_REFERENCE) {
+      desc.offset_ = offsetStruct;
+      // Align the offset reference
+      offset = amd::alignUp(offset, sizeof(size_t));
+      patchReferences_.insert({desc.offset_, offset});
+      offsetStruct += size;
+      // Adjust the offset of arguments
+      offset += sizeof(size_t);
+    } else {
+      // These objects have forced data size to uint64_t
+      if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+          (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+          (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+        offset = amd::alignUp(offset, sizeof(uint64_t));
+        desc.offset_ = offset;
+        offset += sizeof(uint64_t);
+      } else {
+        offset = amd::alignUp(offset, arguments_[i]->alignment_);
+        desc.offset_ = offset;
+        offset += size;
+      }
+    }
+    // Update read only flag
+    desc.info_.readOnly_ = (arguments_[i]->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
+
     params.push_back(desc);
 
     if (arguments_[i]->type_ == HSAIL_ARGTYPE_IMAGE) {
@@ -464,7 +530,7 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
     }
   }
 
-  createSignature(params);
+  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_1);
 }
 
 void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {
@@ -869,253 +935,91 @@ void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkS
   }
 }
 
-template <typename T>
-inline void WriteAqlArg(
-    unsigned char** dst,  //!< The write pointer to the buffer
-    const T* src,         //!< The source pointer
-    uint size,            //!< The size in bytes to copy
-    uint alignment        //!< The alignment to follow while writing to the buffer
-) {
-  *dst = amd::alignUp(*dst, alignment);
-  memcpy(*dst, src, size);
-  *dst += size;
-}
-
-template <>
-inline void WriteAqlArg(
-    unsigned char** dst,  //!< The write pointer to the buffer
-    const uint32_t* src,  //!< The source pointer
-    uint size,            //!< The size in bytes to copy
-    uint alignment        //!< The alignment to follow while writing to the buffer
-) {
-  *dst = amd::alignUp(*dst, alignment);
-  *(reinterpret_cast<uint32_t*>(*dst)) = *src;
-  *dst += size;
-}
-
-template <>
-inline void WriteAqlArg(
-    unsigned char** dst,  //!< The write pointer to the buffer
-    const uint64_t* src,  //!< The source pointer
-    uint size,            //!< The size in bytes to copy
-    uint alignment        //!< The alignment to follow while writing to the buffer
-) {
-  *dst = amd::alignUp(*dst, alignment);
-  *(reinterpret_cast<uint64_t*>(*dst)) = *src;
-  *dst += size;
-}
-
-const uint16_t kDispatchPacketHeader = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
-    (1 << HSA_PACKET_HEADER_BARRIER) |
-    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
-
 hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     VirtualGPU& gpu, const amd::Kernel& kernel, const amd::NDRangeContainer& sizes,
-    const_address parameters, bool nativeMem, uint64_t vmDefQueue, uint64_t* vmParentWrap) const {
-  static const bool WaitOnBusyEngine = true;
-  uint64_t ldsAddress = ldsSize();
-  address aqlArgBuf = gpu.cb(0)->SysMemCopy();
-  bool srdResource = false;
+    const_address parameters, size_t ldsAddress, uint64_t vmDefQueue, uint64_t* vmParentWrap) const {
+  uint64_t argList;
+  address aqlArgBuf = gpu.managedBuffer().reserve(
+    argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t), &argList);
+  gpu.addVmMemory(gpu.managedBuffer().activeMemory());
 
   if (dynamicParallelism()) {
     // Provide the host parent AQL wrap object to the kernel
     AmdAqlWrap wrap = {};
     wrap.state = AQL_WRAP_BUSY;
-    const ConstantBuffer* cb = gpu.cb(1);
-    *vmParentWrap = cb->UploadDataToHw(&wrap, sizeof(AmdAqlWrap));
-    gpu.addVmMemory(cb->ActiveMemory());
+    *vmParentWrap = gpu.cb(1)->UploadDataToHw(&wrap, sizeof(AmdAqlWrap));
+    gpu.addVmMemory(gpu.cb(1)->ActiveMemory());
   }
 
   const amd::KernelSignature& signature = kernel.signature();
-  const amd::KernelParameters& kernelParams = kernel.parameters();
-  amd::Memory* const* memories =
-    reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
 
-  // Find all parameters for the current kernel
-  for (auto arg : arguments_) {
-    const_address paramaddr = nullptr;
-    if (arg->index_ != uint(-1)) {
-      paramaddr = parameters + signature.at(arg->index_).offset_;
-    }
-
-    // Handle the hidden arguments first, as they do not have a
-    // matching parameter in the OCL signature (not a valid arg->index_)
-    switch (arg->type_) {
-      case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X: {
-        size_t offset_x = sizes.dimensions() >= 1 ? sizes.offset()[0] : 0;
-        assert(arg->size_ == sizeof(offset_x) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &offset_x, arg->size_, arg->alignment_);
+  // Check if runtime has to setup hidden arguments
+  for (const auto& it : signature.hiddenParameters()) {
+    size_t offset;
+    switch (it.info_.oclObject_) {
+      case amd::KernelParameterDescriptor::HiddenNone:
+        //WriteAqlArgAt(aqlArgBuf, &zero, it.size_, it.offset_);
         break;
-      }
-      case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y: {
-        size_t offset_y = sizes.dimensions() >= 2 ? sizes.offset()[1] : 0;
-        assert(arg->size_ == sizeof(offset_y) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &offset_y, arg->size_, arg->alignment_);
+      case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
+        offset = sizes.offset()[0];
+        WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
         break;
-      }
-      case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z: {
-        size_t offset_z = sizes.dimensions() == 3 ? sizes.offset()[2] : 0;
-        assert(arg->size_ == sizeof(offset_z) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &offset_z, arg->size_, arg->alignment_);
+      case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
+        if (sizes.dimensions() >= 2) {
+            offset = sizes.offset()[1];
+            WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+        }
         break;
-      }
-      case HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER: {
-        size_t bufferPtr = 0;
+      case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
+        if (sizes.dimensions() >= 3) {
+          offset = sizes.offset()[2];
+          WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
         if ((printfInfo().size() > 0) &&
             // and printf buffer was allocated
             (gpu.printfDbgHSA().dbgBuffer() != nullptr)) {
           // and set the fourth argument as the printf_buffer pointer
-          bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
+          size_t bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().
+            dbgBuffer()->vmAddress());
           gpu.addVmMemory(gpu.printfDbgHSA().dbgBuffer());
-        }
-        assert(arg->size_ == sizeof(bufferPtr) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &bufferPtr, arg->size_, arg->alignment_);
-        break;
-      }
-      case HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
-        assert(arg->size_ == sizeof(static_cast<size_t>(vmDefQueue)) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &vmDefQueue, arg->size_, arg->alignment_);
-        break;
-      case HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION:
-        assert(arg->size_ == sizeof(static_cast<size_t>(*vmParentWrap)) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, vmParentWrap, arg->size_, arg->alignment_);
-        break;
-      case HSAIL_ARGTYPE_HIDDEN_NONE: {
-        void* zero = 0;
-        assert(arg->size_ <= sizeof(zero) && "check the sizes");
-        WriteAqlArg(&aqlArgBuf, &zero, arg->size_, arg->alignment_);
-        break;
-      }
-      case HSAIL_ARGTYPE_POINTER: {
-        // If it is a local pointer
-        if (arg->addrQual_ == HSAIL_ADDRESS_LOCAL) {
-          ldsAddress = amd::alignUp(ldsAddress, arg->pointeeAlignment_);
-          WriteAqlArg(&aqlArgBuf, &ldsAddress, arg->size_, arg->alignment_);
-          ldsAddress += *reinterpret_cast<const size_t*>(paramaddr);
-          break;
-        }
-        assert(
-            (arg->addrQual_ == HSAIL_ADDRESS_GLOBAL || arg->addrQual_ == HSAIL_ADDRESS_CONSTANT) &&
-            "Unsupported address qualifier");
-        WriteAqlArg(&aqlArgBuf, paramaddr, sizeof(paramaddr), sizeof(paramaddr));
-        break;
-      }
-      case HSAIL_ARGTYPE_REFERENCE: {
-        const ConstantBuffer* cb = gpu.cb(1);
-        // Copy the current structure into CB1
-        size_t gpuPtr = static_cast<size_t>(cb->UploadDataToHw(paramaddr, arg->size_));
-        // Then use a pointer in aqlArgBuffer to CB1
-        WriteAqlArg(&aqlArgBuf, &gpuPtr, sizeof(size_t), sizeof(size_t));
-        gpu.addVmMemory(cb->ActiveMemory());
-        break;
-      }
-      case HSAIL_ARGTYPE_VALUE:
-        if (arg->size_ == sizeof(uint32_t)) {
-          WriteAqlArg(&aqlArgBuf, reinterpret_cast<const uint32_t*>(paramaddr),
-            sizeof(uint32_t), arg->alignment_);
-        } else if (arg->size_ == sizeof(uint64_t)) {
-          WriteAqlArg(&aqlArgBuf, reinterpret_cast<const uint64_t*>(paramaddr),
-            sizeof(uint64_t), arg->alignment_);
-        } else {
-          WriteAqlArg(&aqlArgBuf, paramaddr, arg->size_, arg->alignment_);
+          WriteAqlArgAt(const_cast<address>(parameters), &bufferPtr, it.size_, it.offset_);
         }
         break;
-      case HSAIL_ARGTYPE_IMAGE: {
-        Image* image = nullptr;
-        amd::Memory* mem = nullptr;
-        uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
-        if (nativeMem) {
-          image = reinterpret_cast<Image* const*>(memories)[index];
-          if (nullptr != image) {
-            mem = image->owner();
-          }
-        } else {
-          mem = memories[index];
-          if (mem != nullptr) {
-            image = static_cast<Image*>(dev().getGpuMemory(mem));
-          }
-        }
-
-        //! \note Special case for the image views.
-        //! Copy SRD to CB1, so blit manager will be able to release
-        //! this view without a wait for SRD resource.
-        if (image->memoryType() == Resource::ImageView) {
-          // Copy the current image SRD into CB1
-          const ConstantBuffer* cb = gpu.cb(1);
-          uint64_t srd = cb->UploadDataToHw(image->hwState(), HsaImageObjectSize);
-          // Then use a pointer in aqlArgBuffer to CB1
-          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
-          gpu.addVmMemory(cb->ActiveMemory());
-        } else {
-          uint64_t srd = image->hwSrd();
-          WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
-          srdResource = true;
-        }
-
-        if (image->desc().isDoppTexture_) {
-          gpu.addDoppRef(image, kernel.parameters().getExecNewVcop(),
-            kernel.parameters().getExecPfpaVcop());
+      case amd::KernelParameterDescriptor::HiddenDefaultQueue:
+        if (vmDefQueue != 0) {
+          WriteAqlArgAt(const_cast<address>(parameters), &vmDefQueue, it.size_, it.offset_);
         }
         break;
-      }
-      case HSAIL_ARGTYPE_SAMPLER: {
-        uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
-        const amd::Sampler* sampler = reinterpret_cast<amd::Sampler* const*>(parameters +
-            kernelParams.samplerObjOffset())[index];
-        const Sampler* gpuSampler = static_cast<Sampler*>(sampler->getDeviceSampler(dev()));
-        uint64_t srd = gpuSampler->hwSrd();
-        WriteAqlArg(&aqlArgBuf, &srd, sizeof(srd), sizeof(srd));
-        srdResource = true;
-        break;
-      }
-      case HSAIL_ARGTYPE_QUEUE: {
-        uint32_t index = signature.at(arg->index_).info_.arrayIndex_;
-        const amd::DeviceQueue* queue = reinterpret_cast<amd::DeviceQueue* const*>(
-          parameters + kernelParams.queueObjOffset())[index];
-        VirtualGPU* gpuQueue = static_cast<VirtualGPU*>(queue->vDev());
-        uint64_t vmQueue;
-        if (dev().settings().useDeviceQueue_) {
-          vmQueue = gpuQueue->vQueue()->vmAddress();
-        } else {
-          if (!gpu.createVirtualQueue(queue->size())) {
-            LogError("Virtual queue creation failed!");
-            return nullptr;
-          }
-          vmQueue = gpu.vQueue()->vmAddress();
+      case amd::KernelParameterDescriptor::HiddenCompletionAction:
+        if (*vmParentWrap != 0) {
+          WriteAqlArgAt(const_cast<address>(parameters), vmParentWrap, it.size_, it.offset_);
         }
-        WriteAqlArg(&aqlArgBuf, &vmQueue, sizeof(vmQueue), sizeof(vmQueue));
         break;
-      }
-      default:
-        LogError(" Unsupported argument type ");
-        return nullptr;
     }
   }
 
-  if (ldsAddress > dev().info().localMemSize_) {
-    LogError("No local memory available\n");
-    return nullptr;
-  }
+  // Load all kernel arguments
+  WriteAqlArgAt(aqlArgBuf, parameters, signature.paramsSize(), 0);
+  assert(argsBufferSize() == amd::alignUp(signature.paramsSize(), 16) &&
+    "A mismatch of sizes of arguments between compiler and runtime!");
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  // Check there is no arguments' buffer overflow. We may not use all the
-  // hidden argument slots.
-  assert(aqlArgBuf <= (gpu.cb(0)->SysMemCopy() + argsBufferSize()));
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  // HSAIL kernarg segment size is rounded up to multiple of 16.
-  aqlArgBuf = amd::alignUp(aqlArgBuf, 16);
-  assert((aqlArgBuf == (gpu.cb(0)->SysMemCopy() + argsBufferSize())) &&
-         "Size and the number of arguments don't match!");
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
-  hsa_kernel_dispatch_packet_t* hsaDisp =
-      reinterpret_cast<hsa_kernel_dispatch_packet_t*>(gpu.cb(0)->SysMemCopy() + argsBufferSize());
+  //hsa_kernel_dispatch_packet_t disp;
+  hsa_kernel_dispatch_packet_t* hsaDisp = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(
+    gpu.cb(0)->SysMemCopy());
 
   amd::NDRange local(sizes.local());
   const amd::NDRange& global = sizes.global();
 
   // Check if runtime has to find local workgroup size
   findLocalWorkSize(sizes.dimensions(), sizes.global(), local);
+
+  constexpr uint16_t kDispatchPacketHeader =
+    (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+    (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
   hsaDisp->header = kDispatchPacketHeader;
   hsaDisp->setup = sizes.dimensions();
@@ -1134,26 +1038,14 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->group_segment_size = ldsAddress - ldsSize();
   hsaDisp->kernel_object = gpuAqlCode();
 
-  const ConstantBuffer* cb = gpu.cb(0);
-  uint64_t argList = cb->UploadDataToHw(
-    argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t));
-
   hsaDisp->kernarg_address = reinterpret_cast<void*>(argList);
   hsaDisp->reserved2 = 0;
   hsaDisp->completion_signal.handle = 0;
+  memcpy(aqlArgBuf + argsBufferSize(), hsaDisp, sizeof(hsa_kernel_dispatch_packet_t));
 
-  gpu.addVmMemory(cb->ActiveMemory());
-  gpu.addVmMemory(&prog().codeSegGpu());
-  for (pal::Memory* mem : prog().globalStores()) {
-    gpu.addVmMemory(mem);
-  }
   if (AMD_HSA_BITS_GET(cpuAqlCode_->kernel_code_properties,
-                       AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
+      AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
     gpu.addVmMemory(gpu.hsaQueueMem());
-  }
-
-  if (srdResource || prog().isStaticSampler()) {
-    dev().srds().fillResourceList(gpu);
   }
 
   return hsaDisp;
@@ -1398,6 +1290,8 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQual(const KernelArgMD& lcA
 
 void LightningKernel::initArgList(const KernelMD& kernelMD) {
   device::Kernel::parameters_t params;
+  device::Kernel::parameters_t hiddenParams;
+  size_t offsetStruct = argsBufferSize();
 
   size_t offset = 0;
 
@@ -1426,13 +1320,18 @@ void LightningKernel::initArgList(const KernelMD& kernelMD) {
 
     arg->index_ = isHidden ? uint(-1) : params.size();
     arguments_.push_back(arg);
-
-    if (isHidden) {
-      continue;
-    }
-
     // Initialize Device kernel parameters
     amd::KernelParameterDescriptor desc;
+
+    if (isHidden) {
+      offset = amd::alignUp(offset, arguments_[i]->alignment_);
+      desc.offset_ = offset;
+      desc.size_ = arguments_[i]->size_;
+      offset += arguments_[i]->size_;
+      desc.info_.oclObject_ = GetOclArgumentType(arguments_[i]);
+      hiddenParams.push_back(desc);
+      continue;
+    }
 
     desc.name_ = lcArg.mName.c_str();
     desc.type_ = GetOclType(arg);
@@ -1440,6 +1339,8 @@ void LightningKernel::initArgList(const KernelMD& kernelMD) {
     desc.accessQualifier_ = GetOclAccessQual(arg);
     desc.typeQualifier_ = GetOclTypeQual(lcArg);
     desc.typeName_ = lcArg.mTypeName.c_str();
+    desc.info_.oclObject_ = GetOclArgumentType(arg);
+    desc.info_.arrayIndex_ = arg->pointeeAlignment_;
 
     // Make a check if it is local or global
     if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
@@ -1456,14 +1357,37 @@ void LightningKernel::initArgList(const KernelMD& kernelMD) {
       // Local memory for CPU
       size = sizeof(cl_mem);
     }
-    offset = (size_t)amd::alignUp(offset, std::min(size, size_t(16)));
-    desc.offset_ = offset;
-    offset += amd::alignUp(size, sizeof(uint32_t));
+    // Check if HSAIL expects data by reference and allocate it behind
+    if (arguments_[i]->type_ == HSAIL_ARGTYPE_REFERENCE) {
+      desc.offset_ = offsetStruct;
+      // Align the offset reference
+      offset = amd::alignUp(offset, sizeof(size_t));
+      patchReferences_.insert({ desc.offset_, offset });
+      offsetStruct += size;
+      // Adjust the offset of arguments
+      offset += sizeof(size_t);
+    }
+    else {
+      // These objects have forced data size to uint64_t
+      if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+          (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+          (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+        offset = amd::alignUp(offset, sizeof(uint64_t));
+        desc.offset_ = offset;
+        offset += sizeof(uint64_t);
+      } else {
+        offset = amd::alignUp(offset, arguments_[i]->alignment_);
+        desc.offset_ = offset;
+        offset += size;
+      }
+    }
+    // Update read only flag
+    desc.info_.readOnly_ = (arguments_[i]->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
 
     params.push_back(desc);
   }
 
-  createSignature(params);
+  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_1);
 }
 
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {

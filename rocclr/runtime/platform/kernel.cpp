@@ -243,13 +243,17 @@ void KernelParameters::release(address mem, const amd::Device& device) const {
 }
 
 KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& params,
-  const std::string& attrib)
+  const std::string& attrib,
+    const std::vector<KernelParameterDescriptor>& hiddenParams,
+    uint32_t version)
   : params_(params)
+  , hiddenParams_(hiddenParams)
   , attributes_(attrib)
   , paramsSize_(0)
   , numMemories_(0)
   , numSamplers_(0)
-  , numQueues_(0) {
+  , numQueues_(0)
+  , version_(version) {
   size_t maxOffset = 0;
   size_t last = 0;
   // Find the last entry
@@ -283,7 +287,15 @@ KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& p
     if (lastSize == 0 /* local mem */) {
       lastSize = sizeof(cl_mem);
     }
-    paramsSize_ = params[last].offset_ + alignUp(lastSize, sizeof(intptr_t));
+    // Note: It's a special case. HW ABI expects 64 bit for SRD, regardless of the binary.
+    // Force the size to 64 bit for those cases.
+    if ((params[last].info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+        (params[last].info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+        (params[last].info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+      lastSize = alignUp(lastSize, sizeof(uint64_t));
+    }
+    paramsSize_ = params[last].offset_ + lastSize;
+    paramsSize_ = alignUp(paramsSize_, sizeof(intptr_t));
   }
 }
 }  // namespace amd

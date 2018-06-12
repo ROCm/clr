@@ -752,7 +752,8 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
   workGroupInfo_.usedStackSize_ = calFuncInfo.stackSizeUsed;
 
   device::Kernel::parameters_t params;
-  if (!createSignature(params)) {
+  device::Kernel::parameters_t hiddenParams;
+  if (!createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_0)) {
     return false;
   }
 
@@ -1337,7 +1338,8 @@ bool Kernel::initParameters() {
     workGroupInfo_.localMemSize_ = hwLocalSize_;
   }
 
-  if (!createSignature(params)) {
+  device::Kernel::parameters_t hiddenParams;
+  if (!createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_0)) {
     return false;
   }
 
@@ -3017,7 +3019,8 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
     }
   }
 
-  createSignature(params);
+  device::Kernel::parameters_t hiddenParams;
+  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_0);
 }
 
 void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {

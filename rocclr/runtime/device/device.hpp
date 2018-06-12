@@ -852,7 +852,9 @@ class Kernel : public amd::HeapObject {
   const std::string& name() const { return name_; }
 
   //! Initializes the kernel parameters for the abstraction layer
-  bool createSignature(const parameters_t& params);
+  bool createSignature(
+    const parameters_t& params, const parameters_t& hiddenParams,
+    uint32_t version);
 
   //! Returns TRUE if it's a HSA kernel
   bool hsa() const { return hsa_; }
@@ -1624,6 +1626,22 @@ class Device : public RuntimeObject {
 };
 
 struct KernelParameterDescriptor {
+  enum {
+    Value = 0,
+    HiddenNone = 1,
+    HiddenGlobalOffsetX = 2,
+    HiddenGlobalOffsetY = 3,
+    HiddenGlobalOffsetZ = 4,
+    HiddenPrintfBuffer = 5,
+    HiddenDefaultQueue = 6,
+    HiddenCompletionAction = 7,
+    MemoryObject = 8,
+    ReferenceObject = 9,
+    ValueObject = 10,
+    ImageObject = 11,
+    SamplerObject = 12,
+    QueueObject = 13
+  };
   const char* name_;       //!< The parameter's name in the source
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
@@ -1642,7 +1660,7 @@ struct KernelParameterDescriptor {
       uint32_t rawPointer_ : 1;   //!< Arguments have a raw GPU VA
       uint32_t defined_    : 1;   //!< The argument was defined by the app
       uint32_t reserved_   : 1;   //!< reserved
-      uint32_t arrayIndex_ : 28;  //!< Index in the objects array
+      uint32_t arrayIndex_ : 24;  //!< Index in the objects array or LDS alignment
     };
     uint32_t allValues_;
     InfoData() : allValues_(0) {}

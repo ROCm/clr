@@ -461,9 +461,8 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   if (flushL1Cache) {
     // Flush cache
     if (!gpu.profiling()) {
-        gpu.addBarrier();
+      gpu.addBarrier();
     }
-
     // Clear memory dependency state
     const static bool All = true;
     clear(!All);
@@ -2112,13 +2111,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
   }
-
+  size_t ldsSize;
   // Check memory dependency and SVM objects
-  if (!processMemObjectsHSA(kernel, parameters, nativeMem)) {
+  if (!processMemObjectsHSA(kernel, parameters, nativeMem, ldsSize)) {
       LogError("Wrong memory objects!");
       return false;
   }
-
   bool needFlush = false;
   // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd
   // are in the same cmdBuffer
@@ -2194,7 +2192,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     uint64_t vmParentWrap = 0;
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-      *this, kernel, tmpSizes, parameters, nativeMem, vmDefQueue, &vmParentWrap);
+      *this, kernel, tmpSizes, parameters, ldsSize, vmDefQueue, &vmParentWrap);
     if (nullptr == aqlPkt) {
       LogError("Couldn't load kernel arguments");
       return false;
@@ -2948,7 +2946,7 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 }
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
-                                      bool nativeMem) {
+                                      bool nativeMem, size_t& ldsAddress) {
   const amd::KernelParameters& kernelParams = kernel.parameters();
 
   // Mark the tracker with a new kernel,
@@ -3015,68 +3013,155 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     }
   }
 
+  bool srdResource = false;
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
   const HSAILKernel& hsaKernel =
       static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
   const amd::KernelSignature& signature = kernel.signature();
+  ldsAddress = hsaKernel.ldsSize();
 
-  // Check all parameters for the current kernel
-  for (size_t i = 0; i < signature.numParameters(); ++i) {
-    const amd::KernelParameterDescriptor& desc = signature.at(i);
-    const HSAILKernel::Argument* arg = hsaKernel.argumentAt(i);
-
-    // Find if current argument is a buffer
-    if ((desc.type_ == T_POINTER) && (arg->addrQual_ != HSAIL_ADDRESS_LOCAL)) {
-      Memory* gpuMem = nullptr;
-      amd::Memory* mem = nullptr;
-      uint32_t index = desc.info_.arrayIndex_;
-      if (nativeMem) {
-        gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
-        if (nullptr != gpuMem) {
-          mem = gpuMem->owner();
-        }
-      } else {
-        mem = memories[index];
-        if (mem != nullptr) {
-          gpuMem = dev().getGpuMemory(mem);
-          // Synchronize data with other memory instances if necessary
-          gpuMem->syncCacheFromHost(*this);
-        }
-      }
-      //! This condition is for SVM fine-grain
-      if ((gpuMem == nullptr) && dev().isFineGrainedSystem(true)) {
-        addBarrier();
-        // Clear memory dependency state
-        const static bool All = true;
-        memoryDependency().clear(!All);
-        continue;
-      } else if (gpuMem != nullptr) {
-        // Check image
-        bool readOnly = (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
-        // Check buffer
-        readOnly |= (arg->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
-        // Validate memory for a dependency in the queue
-        memoryDependency().validate(*this, gpuMem, readOnly);
-
-        // Wait for resource if it was used on an inactive engine
-        //! \note syncCache may call DRM transfer
-        constexpr bool WaitOnBusyEngine = true;
-        gpuMem->wait(*this, WaitOnBusyEngine);
-
-        //! Check if compiler expects read/write
-        if ((mem != nullptr) && !desc.info_.readOnly_) {
-          mem->signalWrite(&dev());
-        }
-        addVmMemory(gpuMem);
+  if (!nativeMem) {
+    // Process cache coherency first, since the extra transfers may affect
+    // other mem dependency tracking logic: TS and signalWrite()
+    for (uint i = 0; i < signature.numMemories(); ++i) {
+      amd::Memory* mem = memories[i];
+      if (mem != nullptr) {
+        // Synchronize data with other memory instances if necessary
+        dev().getGpuMemory(mem)->syncCacheFromHost(*this);
       }
     }
   }
 
-  for (pal::Memory* mem : hsaKernel.prog().globalStores()) {
+  // Check all parameters for the current kernel
+  for (size_t i = 0; i < signature.numParameters(); ++i) {
+    const amd::KernelParameterDescriptor& desc = signature.at(i);
+    const amd::KernelParameterDescriptor::InfoData& info = desc.info_;
+
+    // Find if current argument is a buffer
+    if (desc.type_ == T_POINTER) {
+      // If it is a local pointer
+      if (desc.size_ == 0) {
+        ldsAddress = amd::alignUp(ldsAddress, desc.info_.arrayIndex_);
+        // Save the original LDS size
+        size_t ldsSize = *reinterpret_cast<const size_t*>(params + desc.offset_);
+        // Patch the LDS address in the original arguments with an LDS address(offset)
+        WriteAqlArgAt(const_cast<address>(params), &ldsAddress, sizeof(void*), desc.offset_);
+        // Add the original size
+        ldsAddress += ldsSize;
+      } else {
+        Memory* gpuMem = nullptr;
+        amd::Memory* mem = nullptr;
+        uint32_t index = info.arrayIndex_;
+        if (nativeMem) {
+          gpuMem = reinterpret_cast<Memory* const*>(memories)[index];
+          if (nullptr != gpuMem) {
+            mem = gpuMem->owner();
+          }
+        } else {
+          mem = memories[index];
+          if (mem != nullptr) {
+            gpuMem = dev().getGpuMemory(mem);
+          }
+        }
+        //! This condition is for SVM fine-grain
+        if ((gpuMem == nullptr) && dev().isFineGrainedSystem(true)) {
+          addBarrier();
+          // Clear memory dependency state
+          const static bool All = true;
+          memoryDependency().clear(!All);
+          continue;
+        } else if (gpuMem != nullptr) {
+          // Validate memory for a dependency in the queue
+          memoryDependency().validate(*this, gpuMem, info.readOnly_);
+          // Wait for resource if it was used on an inactive engine
+          //! \note syncCache may call DRM transfer
+          constexpr bool WaitOnBusyEngine = true;
+          gpuMem->wait(*this, WaitOnBusyEngine);
+
+          addVmMemory(gpuMem);
+
+          //! Check if compiler expects read/write.
+          //! Note: SVM with subbuffers has an issue with tracking.
+          //! Conformance can send read only subbuffer, but update the region
+          //! in the kernel.
+          if ((mem != nullptr) &&
+              ((!info.readOnly_ && (mem->getSvmPtr() == nullptr)) ||
+               ((mem->getMemFlags() & CL_MEM_READ_ONLY) == 0))) {
+            mem->signalWrite(&dev());
+          }
+          if (info.oclObject_ == amd::KernelParameterDescriptor::ImageObject) {
+            //! \note Special case for the image views.
+            //! Copy SRD to CB1, so blit manager will be able to release
+            //! this view without a wait for SRD resource.
+            if (gpuMem->memoryType() == Resource::ImageView) {
+              // Copy the current image SRD into CB1
+              uint64_t srd = cb(1)->UploadDataToHw(gpuMem->hwState(), HsaImageObjectSize);
+              // Then use a pointer in aqlArgBuffer to CB1
+              // Patch the GPU VA address in the original arguments
+              WriteAqlArgAt(const_cast<address>(params), &srd, sizeof(srd), desc.offset_);
+              addVmMemory(cb(1)->ActiveMemory());
+            } else {
+              srdResource = true;
+            }
+            if (gpuMem->desc().isDoppTexture_) {
+              addDoppRef(gpuMem, kernel.parameters().getExecNewVcop(),
+                kernel.parameters().getExecPfpaVcop());
+            }
+          }
+        }
+      }
+    }
+    else if (desc.type_ == T_VOID) {
+      if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ReferenceObject) {
+        // Copy the current structure into CB1
+        size_t gpuPtr = static_cast<size_t>(cb(1)->UploadDataToHw(params, desc.size_));
+        // Then use a pointer in aqlArgBuffer to CB1
+        const auto it = hsaKernel.patch().find(desc.offset_);
+        // Patch the GPU VA address in the original arguments
+        WriteAqlArgAt(const_cast<address>(params), &gpuPtr, sizeof(size_t), it->second);
+        addVmMemory(cb(1)->ActiveMemory());
+      }
+    }
+    else if (desc.type_ == T_SAMPLER) {
+      srdResource = true;
+    } else if (desc.type_ == T_QUEUE) {
+      uint32_t index = desc.info_.arrayIndex_;
+      const amd::DeviceQueue* queue = reinterpret_cast<amd::DeviceQueue* const*>(
+        params + kernelParams.queueObjOffset())[index];
+      VirtualGPU* gpuQueue = static_cast<VirtualGPU*>(queue->vDev());
+      uint64_t vmQueue;
+      if (dev().settings().useDeviceQueue_) {
+        vmQueue = gpuQueue->vQueue()->vmAddress();
+      } else {
+        if (!createVirtualQueue(queue->size())) {
+          LogError("Virtual queue creation failed!");
+          return false;
+        }
+        vmQueue = vQueue()->vmAddress();
+      }
+      // Patch the GPU VA address in the original arguments
+      WriteAqlArgAt(const_cast<address>(params), &vmQueue, sizeof(vmQueue), desc.offset_);
+      break;
+    }
+  }
+
+  if (ldsAddress > dev().info().localMemSize_) {
+    LogError("No local memory available\n");
+    return false;
+  }
+
+  if (srdResource || hsaKernel.prog().isStaticSampler()) {
+    dev().srds().fillResourceList(*this);
+  }
+
+  addVmMemory(&hsaKernel.prog().codeSegGpu());
+
+  for (const pal::Memory* mem : hsaKernel.prog().globalStores()) {
     const static bool IsReadOnly = false;
     // Validate global store for a dependency in the queue
     memoryDependency().validate(*this, mem, IsReadOnly);
+    addVmMemory(mem);
   }
 
   return true;

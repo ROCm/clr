@@ -604,8 +604,8 @@ bool Program::ParseAllOptions(const std::string& options, option::Options& parse
 }
 
 bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func) {
-  // FIXME_lmoriche: check that the signatures are compatible
-  if (deviceKernels_.size() == 0) {
+  if (deviceKernels_.size() == 0 ||
+      (func->signature().version() > KernelSignature::ABIVersion_0)) {
     signature_ = func->signature();
   }
   deviceKernels_[&device] = func;

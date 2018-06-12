@@ -943,24 +943,30 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
 
   uint32_t uint32_value = 0;
   uint64_t uint64_value = 0;
+  size_t argSize = desc.size_;
 
   if (desc.type_ == T_POINTER && desc.size_ != 0) {
     if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
-      LP64_SWITCH(uint32_value, uint64_value) = 0;
       reinterpret_cast<Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
     } else {
       // convert cl_mem to amd::Memory*, return false if invalid.
       LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>((
-        *static_cast<Memory* const*>(value))->vmAddress());
+        *static_cast<Memory* const*>(value))->virtualAddress());
       reinterpret_cast<Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
         *static_cast<Memory* const*>(value);
+      // Note: Special case for image SRD, which is 64 bit always
+      if (LP64_SWITCH(true, false) &&
+          (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject)) {
+        uint64_value = uint32_value;
+        argSize = sizeof(uint64_t);
+      }
     }
   } else if (desc.type_ == T_SAMPLER) {
     assert(false && "No sampler support in blit manager! Use internal samplers!");
   } else
-    switch (desc.size_) {
+    switch (argSize) {
       case 1:
         uint32_value = *static_cast<const uint8_t*>(value);
         break;
@@ -977,7 +983,7 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
         break;
     }
 
-  switch (desc.size_) {
+  switch (argSize) {
     case 0 /*local mem*/:
       *static_cast<size_t*>(param) = size;
       break;

@@ -600,7 +600,9 @@ Settings::Settings() {
                          //!< concurrent Virtual GPUs for default
 }
 
-bool Kernel::createSignature(const parameters_t& params) {
+bool Kernel::createSignature(
+  const parameters_t& params, const parameters_t& hiddenParams,
+  uint32_t version) {
   std::stringstream attribs;
   if (workGroupInfo_.compileSize_[0] != 0) {
     attribs << "reqd_work_group_size(";
@@ -632,7 +634,7 @@ bool Kernel::createSignature(const parameters_t& params) {
   // Destroy old signature if it was allocated before
   // (offline devices path)
   delete signature_;
-  signature_ = new amd::KernelSignature(params, attribs.str());
+  signature_ = new amd::KernelSignature(params, attribs.str(), hiddenParams, version);
   if (NULL != signature_) {
     return true;
   }

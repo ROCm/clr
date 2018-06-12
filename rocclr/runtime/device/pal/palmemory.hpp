@@ -219,6 +219,8 @@ class Image : public pal::Memory {
                                size_t* slicePitch = NULL    //!< Slice for the mapped memory
                                );
 
+  virtual uint64_t virtualAddress() const override { return hwSrd(); }
+
  private:
   //! Disable copy constructor
   Image(const Image&);

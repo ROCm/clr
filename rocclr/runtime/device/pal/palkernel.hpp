@@ -182,7 +182,7 @@ class HSAILKernel : public device::Kernel {
       const amd::Kernel& kernel,           //!< AMD kernel object
       const amd::NDRangeContainer& sizes,  //!< NDrange container
       const_address parameters,            //!< Application arguments for the kernel
-      bool nativeMem,                      //!< Native memory objects are passed
+      size_t ldsAddress,                   //!< LDS address that includes all arguments.
       uint64_t vmDefQueue,                 //!< GPU VM default queue pointer
       uint64_t* vmParentWrap               //!< GPU VM parent aql wrap object
       ) const;
@@ -203,6 +203,8 @@ class HSAILKernel : public device::Kernel {
   virtual uint getWavesPerSH(const device::VirtualDevice* vdev) const {
     return waveLimiter_.getWavesPerSH(vdev);
   };
+
+  const std::unordered_map<size_t, size_t>& patch() const { return patchReferences_; }
 
  private:
   //! Disable copy constructor
@@ -234,6 +236,7 @@ class HSAILKernel : public device::Kernel {
   const HSAILProgram& prog_;          //!< Reference to the parent program
   std::vector<PrintfInfo> printf_;    //!< Format strings for GPU printf support
   uint index_;                        //!< Kernel index in the program
+  std::unordered_map<size_t, size_t> patchReferences_;  //!< Patch table for references
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
   size_t codeSize_;  //!< Size of ISA code
