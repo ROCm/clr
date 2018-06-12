@@ -581,7 +581,8 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
 
     params.push_back(desc);
   }
-  createSignature(params);
+  device::Kernel::parameters_t hiddenParams;
+  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_0);
 }
 #endif // defined(WITH_COMPILER_LIB)
 
@@ -660,8 +661,8 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
 
     params.push_back(desc);
   }
-
-  createSignature(params);
+  device::Kernel::parameters_t hiddenParams;
+  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_0);
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 

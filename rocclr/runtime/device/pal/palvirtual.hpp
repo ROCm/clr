@@ -378,6 +378,9 @@ class VirtualGPU : public device::VirtualDevice {
   //! Return xfer buffer for staging operations
   XferBuffer& xferWrite() { return writeBuffer_; }
 
+  //! Return managed buffer for staging operations
+  ManagedBuffer& managedBuffer() { return managedBuffer_; }
+
   //! Adds a pinned memory object into a map
   void addPinnedMem(amd::Memory* mem);
 
@@ -529,7 +532,8 @@ class VirtualGPU : public device::VirtualDevice {
   //! Detects memory dependency for HSAIL kernels and flushes caches
   bool processMemObjectsHSA(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                             const_address params,       //!< Pointer to the param's store
-                            bool nativeMem              //!< Native memory objects
+                            bool nativeMem,             //!< Native memory objects
+                            size_t& ldsAddess         //!< Returns LDS size, used in the kernel
                             );
 
   //! Common function for fill memory used by both svm Fill and non-svm fill
@@ -644,4 +648,33 @@ uint VirtualGPU::Queue::submit(bool forceFlush) {
   return id;
 }
 
+template <typename T>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const T* src,         //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  memcpy(dst + offset, src, size);
+}
+
+template <>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const uint32_t* src,  //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  *(reinterpret_cast<uint32_t*>(dst + offset)) = *src;
+}
+
+template <>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const uint64_t* src,  //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  *(reinterpret_cast<uint64_t*>(dst + offset)) = *src;
+}
 /*@}*/} // namespace pal

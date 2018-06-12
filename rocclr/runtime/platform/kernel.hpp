@@ -36,18 +36,30 @@ class Program;
 class KernelSignature : public HeapObject {
  private:
   std::vector<KernelParameterDescriptor> params_;
+  std::vector<KernelParameterDescriptor> hiddenParams_;
   std::string attributes_;  //!< The kernel attributes
   uint32_t  paramsSize_;
   uint32_t  numMemories_;
   uint32_t  numSamplers_;
   uint32_t  numQueues_;
+  uint32_t  version_;
 
  public:
+  enum {
+    ABIVersion_0 = 0,   //! ABI constructed based on the OCL semantics
+    ABIVersion_1 = 1    //! ABI constructed based on the HW ABI returned from the compiler
+  };
+
   //! Default constructor
-  KernelSignature() : paramsSize_(0), numMemories_(0), numSamplers_(0), numQueues_(0) {}
+  KernelSignature():
+    paramsSize_(0), numMemories_(0), numSamplers_(0),
+    numQueues_(0), version_(ABIVersion_0) {}
 
   //! Construct a new signature.
-  KernelSignature(const std::vector<KernelParameterDescriptor>& params, const std::string& attrib);
+  KernelSignature(const std::vector<KernelParameterDescriptor>& params,
+    const std::string& attrib,
+    const std::vector<KernelParameterDescriptor>& hiddenParams,
+    uint32_t version);
 
   //! Return the number of parameters
   size_t numParameters() const { return params_.size(); }
@@ -72,8 +84,17 @@ class KernelSignature : public HeapObject {
   //! Returns the number of queue objects.
   uint32_t numQueues() const { return numQueues_; }
 
+  //! Returns the signature version
+  uint32_t version() const { return version_; }
+
   //! Return the kernel attributes
   const std::string& attributes() const { return attributes_; }
+
+  const std::vector<KernelParameterDescriptor>& hiddenParameters() const
+    { return hiddenParams_; }
+
+  const std::vector<KernelParameterDescriptor>& parameters() const
+    { return params_; }
 };
 
 // @todo: look into a copy-on-write model instead of copy-on-read.
