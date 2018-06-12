@@ -30,6 +30,8 @@ static inline ROC_ARG_TYPE GetKernelArgType(const KernelArgMD& lcArg) {
       return ROC_ARGTYPE_IMAGE;
     case ValueKind::Sampler:
       return ROC_ARGTYPE_SAMPLER;
+    case ValueKind::Queue:
+      return ROC_ARGTYPE_QUEUE;
     case ValueKind::HiddenGlobalOffsetX:
       return ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X;
     case ValueKind::HiddenGlobalOffsetY:
@@ -78,6 +80,8 @@ static inline ROC_ARG_TYPE GetKernelArgType(const aclArgData* argInfo) {
       return ROC_ARGTYPE_IMAGE;
     case ARG_TYPE_SAMPLER:
       return ROC_ARGTYPE_SAMPLER;
+    case ARG_TYPE_QUEUE:
+      return ROC_ARGTYPE_QUEUE;
     case ARG_TYPE_ERROR:
     default:
       return ROC_ARGTYPE_ERROR;
@@ -417,6 +421,8 @@ static inline clk_value_type_t GetOclType(const Kernel::Argument* arg) {
     }
   } else if (arg->type_ == ROC_ARGTYPE_SAMPLER) {
     return T_SAMPLER;
+  } else if (arg->type_ == ROC_ARGTYPE_QUEUE) {
+    return T_QUEUE;
   } else {
     return T_VOID;
   }
@@ -716,6 +722,43 @@ bool LightningKernel::init() {
 
   if (!kernelMD->mAttrs.mVecTypeHint.empty()) {
     workGroupInfo_.compileVecTypeHint_ = kernelMD->mAttrs.mVecTypeHint.c_str();
+  }
+
+  if (!kernelMD->mAttrs.mRuntimeHandle.empty()) {
+    hsa_agent_t             agent = program_->hsaDevice();
+    hsa_executable_symbol_t kernelSymbol;
+    hsa_status_t            status;
+    int                     variable_size;
+    uint64_t                variable_address;
+
+    // Only kernels that could be enqueued by another kernel has the RuntimeHandle metadata. The RuntimeHandle
+    // metadata is a string that represents a variable from which the library code can retrieve the kernel code
+    // object handle of such a kernel. The address of the variable and the kernel code object handle are known
+    // only after the hsa executable is loaded. The below code copies the kernel code object handle to the
+    // address of the variable.
+
+    status = hsa_executable_get_symbol_by_name(program_->hsaExecutable(), kernelMD->mAttrs.mRuntimeHandle.c_str(),
+                                               &agent, &kernelSymbol);
+    if (status != HSA_STATUS_SUCCESS) {
+      return false;
+    }
+
+    status = hsa_executable_symbol_get_info(kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                                            &variable_size);
+    if (status != HSA_STATUS_SUCCESS) {
+      return false;
+    }
+
+    status = hsa_executable_symbol_get_info(kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
+                                            &variable_address);
+    if (status != HSA_STATUS_SUCCESS) {
+      return false;
+    }
+
+    status = hsa_memory_copy(reinterpret_cast<void*>(variable_address), &kernelCodeHandle_, variable_size);
+    if (status != HSA_STATUS_SUCCESS) {
+      return false;
+    }
   }
 
   uint32_t wavefront_size = 0;

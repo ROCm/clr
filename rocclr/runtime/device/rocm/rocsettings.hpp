@@ -52,6 +52,8 @@ class Settings : public device::Settings {
 
   uint kernargPoolSize_;
   uint signalPoolSize_;
+  uint numDeviceEvents_;      //!< The number of device events
+  uint numWaitEvents_;        //!< The number of wait events for device enqueue
 
   size_t xferBufSize_;        //!< Transfer buffer size for image copy optimization
   size_t stagedXferSize_;     //!< Staged buffer size
