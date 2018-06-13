@@ -244,11 +244,11 @@ void KernelParameters::release(address mem, const amd::Device& device) const {
 
 KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& params,
   const std::string& attrib,
-    const std::vector<KernelParameterDescriptor>& hiddenParams,
-    uint32_t version)
+  uint32_t numParameters,
+  uint32_t version)
   : params_(params)
-  , hiddenParams_(hiddenParams)
   , attributes_(attrib)
+  , numParameters_(numParameters)
   , paramsSize_(0)
   , numMemories_(0)
   , numSamplers_(0)
@@ -297,16 +297,6 @@ KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& p
     paramsSize_ = params[last].offset_ + lastSize;
     // 16 bytes is the current HW alignment for the arguments
     paramsSize_ = alignUp(paramsSize_, 16);
-  }
-
-  if (hiddenParams.size() > 0) {
-    uint32_t lastArg = hiddenParams.size() - 1;
-    // Check if it's LC path and the hidden arguments are placed at the end
-    if (hiddenParams[lastArg].offset_ >= paramsSize_) {
-      paramsSize_ = hiddenParams[lastArg].offset_ + hiddenParams[lastArg].size_;
-      // 16 bytes is the current HW alignment for the arguments
-      paramsSize_ = alignUp(paramsSize_, 16);
-    }
   }
 }
 }  // namespace amd

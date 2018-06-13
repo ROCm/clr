@@ -529,8 +529,11 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
       }
     }
   }
-
-  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_1);
+  // Save the number of OCL arguments
+  uint32_t numParams = params.size();
+  // Append the hidden arguments to the OCL arguments
+  params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 
 void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {
@@ -954,7 +957,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   const amd::KernelSignature& signature = kernel.signature();
 
   // Check if runtime has to setup hidden arguments
-  for (const auto& it : signature.hiddenParameters()) {
+  for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
+    const auto it = signature.at(i);
     size_t offset;
     switch (it.info_.oclObject_) {
       case amd::KernelParameterDescriptor::HiddenNone:
@@ -1387,10 +1391,19 @@ void LightningKernel::initArgList(const KernelMD& kernelMD) {
     // Update read only flag
     desc.info_.readOnly_ = (arguments_[i]->access_ == HSAIL_ACCESS_TYPE_RO) ? true : false;
 
+    if (arguments_[i]->type_ == HSAIL_ARGTYPE_IMAGE) {
+      flags_.imageEna_ = true;
+      if (desc.accessQualifier_ != CL_KERNEL_ARG_ACCESS_READ_ONLY) {
+        flags_.imageWriteEna_ = true;
+      }
+    }
     params.push_back(desc);
   }
-
-  createSignature(params, hiddenParams, amd::KernelSignature::ABIVersion_1);
+  // Save the number of OCL arguments
+  uint32_t numParams = params.size();
+  // Append the hidden arguments to the OCL arguments
+  params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {

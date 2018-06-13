@@ -853,7 +853,7 @@ class Kernel : public amd::HeapObject {
 
   //! Initializes the kernel parameters for the abstraction layer
   bool createSignature(
-    const parameters_t& params, const parameters_t& hiddenParams,
+    const parameters_t& params, uint32_t numParameters,
     uint32_t version);
 
   //! Returns TRUE if it's a HSA kernel
