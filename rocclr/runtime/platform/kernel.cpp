@@ -298,5 +298,15 @@ KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& p
     // 16 bytes is the current HW alignment for the arguments
     paramsSize_ = alignUp(paramsSize_, 16);
   }
+
+  if (hiddenParams.size() > 0) {
+    uint32_t lastArg = hiddenParams.size() - 1;
+    // Check if it's LC path and the hidden arguments are placed at the end
+    if (hiddenParams[lastArg].offset_ >= paramsSize_) {
+      paramsSize_ = hiddenParams[lastArg].offset_ + hiddenParams[lastArg].size_;
+      // 16 bytes is the current HW alignment for the arguments
+      paramsSize_ = alignUp(paramsSize_, 16);
+    }
+  }
 }
 }  // namespace amd
