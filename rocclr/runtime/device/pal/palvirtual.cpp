@@ -3115,7 +3115,8 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     else if (desc.type_ == T_VOID) {
       if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ReferenceObject) {
         // Copy the current structure into CB1
-        size_t gpuPtr = static_cast<size_t>(cb(1)->UploadDataToHw(params, desc.size_));
+        size_t gpuPtr = static_cast<size_t>(cb(1)->UploadDataToHw(
+          params + desc.offset_, desc.size_));
         // Then use a pointer in aqlArgBuffer to CB1
         const auto it = hsaKernel.patch().find(desc.offset_);
         // Patch the GPU VA address in the original arguments

@@ -295,7 +295,8 @@ KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& p
       lastSize = alignUp(lastSize, sizeof(uint64_t));
     }
     paramsSize_ = params[last].offset_ + lastSize;
-    paramsSize_ = alignUp(paramsSize_, sizeof(intptr_t));
+    // 16 bytes is the current HW alignment for the arguments
+    paramsSize_ = alignUp(paramsSize_, 16);
   }
 }
 }  // namespace amd
