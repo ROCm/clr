@@ -958,7 +958,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     size_t offset;
     switch (it.info_.oclObject_) {
       case amd::KernelParameterDescriptor::HiddenNone:
-        //WriteAqlArgAt(aqlArgBuf, &zero, it.size_, it.offset_);
+        // void* zero = 0;
+        // WriteAqlArgAt(const_cast<address>(parameters), &zero, it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
         offset = sizes.offset()[0];
@@ -1001,8 +1002,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   }
 
   // Load all kernel arguments
-  WriteAqlArgAt(aqlArgBuf, parameters, signature.paramsSize(), 0);
-  assert(argsBufferSize() == amd::alignUp(signature.paramsSize(), 16) &&
+  WriteAqlArgAt(aqlArgBuf, parameters, argsBufferSize(), 0);
+  // Note: In a case of structs the size won't match,
+  // since HSAIL compiler expects a reference...
+  assert(argsBufferSize() <= signature.paramsSize() &&
     "A mismatch of sizes of arguments between compiler and runtime!");
 
   //hsa_kernel_dispatch_packet_t disp;
