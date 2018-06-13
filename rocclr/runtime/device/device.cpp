@@ -601,7 +601,7 @@ Settings::Settings() {
 }
 
 bool Kernel::createSignature(
-  const parameters_t& params, const parameters_t& hiddenParams,
+  const parameters_t& params, uint32_t numParameters,
   uint32_t version) {
   std::stringstream attribs;
   if (workGroupInfo_.compileSize_[0] != 0) {
@@ -634,7 +634,7 @@ bool Kernel::createSignature(
   // Destroy old signature if it was allocated before
   // (offline devices path)
   delete signature_;
-  signature_ = new amd::KernelSignature(params, attribs.str(), hiddenParams, version);
+  signature_ = new amd::KernelSignature(params, attribs.str(), numParameters, version);
   if (NULL != signature_) {
     return true;
   }
