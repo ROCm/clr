@@ -2139,7 +2139,10 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   signal1 = schedulerSignal;
   hsa_signal_store_relaxed(signal1, 1);
 
-  sp->scheduler_aql.header = 0;
+  sp->scheduler_aql.header = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+                             (1 << HSA_PACKET_HEADER_BARRIER) |
+                             (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+                             (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
   sp->scheduler_aql.setup = 1;
   sp->scheduler_aql.workgroup_size_x = 1;
   sp->scheduler_aql.workgroup_size_y = 1;
