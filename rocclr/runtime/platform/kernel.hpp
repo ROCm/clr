@@ -36,13 +36,14 @@ class Program;
 class KernelSignature : public HeapObject {
  private:
   std::vector<KernelParameterDescriptor> params_;
-  std::vector<KernelParameterDescriptor> hiddenParams_;
   std::string attributes_;  //!< The kernel attributes
-  uint32_t  paramsSize_;
-  uint32_t  numMemories_;
-  uint32_t  numSamplers_;
-  uint32_t  numQueues_;
-  uint32_t  version_;
+
+  uint32_t  numParameters_; //!< Number of OCL arguments in the kernel
+  uint32_t  paramsSize_;    //!< The size of all arguments
+  uint32_t  numMemories_;   //!< The number of memory objects used in the kernel
+  uint32_t  numSamplers_;   //!< The number of sampler objects used in the kernel
+  uint32_t  numQueues_;     //!< The number of queue objects used in the kernel
+  uint32_t  version_;       //!< The ABI version
 
  public:
   enum {
@@ -52,17 +53,20 @@ class KernelSignature : public HeapObject {
 
   //! Default constructor
   KernelSignature():
-    paramsSize_(0), numMemories_(0), numSamplers_(0),
+    numParameters_(0), paramsSize_(0), numMemories_(0), numSamplers_(0),
     numQueues_(0), version_(ABIVersion_0) {}
 
   //! Construct a new signature.
   KernelSignature(const std::vector<KernelParameterDescriptor>& params,
     const std::string& attrib,
-    const std::vector<KernelParameterDescriptor>& hiddenParams,
+    uint32_t numParameters,
     uint32_t version);
 
   //! Return the number of parameters
-  size_t numParameters() const { return params_.size(); }
+  uint32_t numParameters() const { return numParameters_; }
+
+  //! Return the total number of parameters, including hidden
+  uint32_t numParametersAll() const { return params_.size(); }
 
   //! Return the parameter descriptor at the given index.
   const KernelParameterDescriptor& at(size_t index) const {
@@ -89,9 +93,6 @@ class KernelSignature : public HeapObject {
 
   //! Return the kernel attributes
   const std::string& attributes() const { return attributes_; }
-
-  const std::vector<KernelParameterDescriptor>& hiddenParameters() const
-    { return hiddenParams_; }
 
   const std::vector<KernelParameterDescriptor>& parameters() const
     { return params_; }
