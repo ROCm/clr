@@ -1032,7 +1032,7 @@ bool Device::populateOCLDeviceConstants() {
   ss <<  ")";
 
   strcpy(info_.driverVersion_, ss.str().c_str());
-  info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
+  info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
 
   info_.builtInKernels_ = "";
   info_.linkerAvailable_ = true;
