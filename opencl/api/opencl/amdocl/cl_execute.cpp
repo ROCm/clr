@@ -239,16 +239,6 @@ RUNTIME_ENTRY(cl_int, clEnqueueNDRangeKernel,
     return CL_INVALID_KERNEL_ARGS;
   }
 
-  // Check that we do not exceed the amount of available local memory.
-  const size_t align = device.info().minDataTypeAlignSize_;
-  cl_ulong requiredLocalMemSize =
-      static_cast<cl_ulong>(amdKernel->parameters().localMemSize(align)) +
-      amd::alignUp(devKernel->workGroupInfo()->localMemSize_, align);
-
-  if (requiredLocalMemSize > device.info().localMemSize_) {
-    return CL_OUT_OF_RESOURCES;
-  }
-
   amd::Command::EventWaitList eventWaitList;
   cl_int err = amd::clSetEventWaitList(eventWaitList, hostQueue, num_events_in_wait_list,
                                        event_wait_list);

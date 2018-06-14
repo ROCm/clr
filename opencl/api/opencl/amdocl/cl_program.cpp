@@ -1535,7 +1535,7 @@ RUNTIME_ENTRY(cl_int, clSetKernelArg,
   }
 
   const amd::KernelParameterDescriptor& desc = signature.at(arg_index);
-  const bool is_local = desc.size_ == 0;
+  const bool is_local = (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL);
   if (((arg_value == NULL) && !is_local && (desc.type_ != T_POINTER)) ||
       ((arg_value != NULL) && is_local)) {
     as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
