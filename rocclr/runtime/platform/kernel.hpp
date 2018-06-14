@@ -193,7 +193,7 @@ class KernelParameters : protected HeapObject {
   size_t localMemSize(size_t minDataTypeAlignment) const;
 
   //! Capture the state of the parameters and return the stack base pointer.
-  address capture(const Device& device, cl_int* error);
+  address capture(const Device& device, cl_ulong lclMemSize, cl_int* error);
   //! Release the captured state of the parameters.
   void release(address parameters, const amd::Device& device) const;
 

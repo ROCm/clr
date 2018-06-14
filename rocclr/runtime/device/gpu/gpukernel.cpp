@@ -378,7 +378,7 @@ size_t KernelArg::size(bool gpuLayer) const {
       return (gpuLayer) ? 0 : sizeof(cl_mem);
     case PointerLocal:
     case PointerHwLocal:
-      return (gpuLayer) ? sizeof(uint32_t) * size_ : 0;
+      return (gpuLayer) ? sizeof(uint32_t) * size_ : sizeof(cl_mem);
     case PointerPrivate:
     case PointerHwPrivate:
       return (gpuLayer) ? sizeof(uint32_t) * size_ : 0;
@@ -2991,7 +2991,7 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
 
     // Make a check if it is local or global
     if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-      desc.size_ = 0;
+      desc.size_ = sizeof(cl_mem);
     } else {
       desc.size_ = GetOclSize(aclArg);
     }
@@ -3000,10 +3000,7 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
     // in multidevice config abstraction layer has a single signature
     // and CPU sends the paramaters as they are allocated in memory
     size_t size = desc.size_;
-    if (size == 0) {
-      // Local memory for CPU
-      size = sizeof(cl_mem);
-    }
+
     offset = amd::alignUp(offset, std::min(size, size_t(16)));
     desc.offset_ = offset;
     offset += amd::alignUp(size, sizeof(uint32_t));
@@ -3527,8 +3524,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         else {
           assert((arg->addrQual_ == HSAIL_ADDRESS_LOCAL) && "Unsupported address type");
           ldsAddress = amd::alignUp(ldsAddress, arg->alignment_);
-          WriteAqlArg(&aqlArgBuf, &ldsAddress, sizeof(size_t));
-          ldsAddress += *reinterpret_cast<const size_t*>(paramaddr);
+          WriteAqlArg(&aqlArgBuf, &ldsAddress, desc.size_);
+          if (desc.size_ == 8) {
+            ldsAddress += *reinterpret_cast<const uint64_t*>(paramaddr);
+          } else {
+            ldsAddress += *reinterpret_cast<const uint32_t*>(paramaddr);
+          }
         }
         break;
       case HSAIL_ARGTYPE_VALUE:

@@ -559,22 +559,13 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
         flags_.imageWrite_ = true;
       }
     }
-
-    // Make a check if it is local or global
-    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-      desc.size_ = 0;
-    } else {
-      desc.size_ = arg->size_;
-    }
+    desc.size_ = arg->size_;
 
     // Make offset alignment to match CPU metadata, since
     // in multidevice config abstraction layer has a single signature
     // and CPU sends the parameters as they are allocated in memory
     size_t size = desc.size_;
-    if (size == 0) {
-      // Local memory for CPU
-      size = sizeof(cl_mem);
-    }
+
     offset = amd::alignUp(offset, std::min(size, size_t(16)));
     desc.offset_ = offset;
     offset += amd::alignUp(size, sizeof(uint32_t));
@@ -638,22 +629,13 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
         flags_.imageWrite_ = true;
       }
     }
-
-    // Make a check if it is local or global
-    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-      desc.size_ = 0;
-    } else {
-      desc.size_ = arg->size_;
-    }
+    desc.size_ = arg->size_;
 
     // Make offset alignment to match CPU metadata, since
     // in multidevice config abstraction layer has a single signature
     // and CPU sends the parameters as they are allocated in memory
     size_t size = desc.size_;
-    if (size == 0) {
-      // Local memory for CPU
-      size = sizeof(cl_mem);
-    }
+
     offset = (size_t)amd::alignUp(offset, std::min(size, size_t(16)));
     desc.offset_ = offset;
     offset += amd::alignUp(size, sizeof(uint32_t));

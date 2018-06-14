@@ -478,22 +478,13 @@ void HSAILKernel::initArgList(const aclArgData* aclArg) {
     desc.typeName_ = arguments_[i]->typeName_.c_str();
     desc.info_.oclObject_ = GetOclArgumentType(arguments_[i]);
     desc.info_.arrayIndex_ = arguments_[i]->pointeeAlignment_;
-
-    // Make a check if it is local or global
-    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-      desc.size_ = 0;
-    } else {
-      desc.size_ = arguments_[i]->size_;
-    }
+    desc.size_ = arguments_[i]->size_;
 
     // Make offset alignment to match CPU metadata, since
     // in multidevice config abstraction layer has a single signature
     // and CPU sends the paramaters as they are allocated in memory
     size_t size = desc.size_;
-    if (size == 0) {
-      // Local memory for CPU
-      size = sizeof(cl_mem);
-    }
+
     // Check if HSAIL expects data by reference and allocate it behind
     if (arguments_[i]->type_ == HSAIL_ARGTYPE_REFERENCE) {
       desc.offset_ = offsetStruct;
@@ -1348,22 +1339,13 @@ void LightningKernel::initArgList(const KernelMD& kernelMD) {
     desc.typeName_ = lcArg.mTypeName.c_str();
     desc.info_.oclObject_ = GetOclArgumentType(arg);
     desc.info_.arrayIndex_ = arg->pointeeAlignment_;
-
-    // Make a check if it is local or global
-    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
-      desc.size_ = 0;
-    } else {
-      desc.size_ = arg->size_;
-    }
+    desc.size_ = arg->size_;
 
     // Make offset alignment to match CPU metadata, since
     // in multidevice config abstraction layer has a single signature
     // and CPU sends the parameters as they are allocated in memory
     size_t size = desc.size_;
-    if (size == 0) {
-      // Local memory for CPU
-      size = sizeof(cl_mem);
-    }
+
     // Check if HSAIL expects data by reference and allocate it behind
     if (arguments_[i]->type_ == HSAIL_ARGTYPE_REFERENCE) {
       desc.offset_ = offsetStruct;
