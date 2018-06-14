@@ -441,13 +441,14 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, si
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
   void* param = kernel->parameters().values() + desc.offset_;
-  assert((desc.type_ == T_POINTER || value != NULL || desc.size_ == 0) &&
-         "not a valid local mem arg");
+  assert((desc.type_ == T_POINTER || value != NULL ||
+    (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL)) &&
+    "not a valid local mem arg");
 
   uint32_t uint32_value = 0;
   uint64_t uint64_value = 0;
 
-  if (desc.type_ == T_POINTER && desc.size_ != 0) {
+  if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
     if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       LP64_SWITCH(uint32_value, uint64_value) = 0;
       reinterpret_cast<Memory**>(kernel->parameters().values() +
@@ -461,28 +462,27 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, si
     }
   } else if (desc.type_ == T_SAMPLER) {
     assert(false && "No sampler support in blit manager! Use internal samplers!");
-  } else
+  } else {
     switch (desc.size_) {
-      case 1:
-        uint32_value = *static_cast<const uint8_t*>(value);
-        break;
-      case 2:
-        uint32_value = *static_cast<const uint16_t*>(value);
-        break;
       case 4:
-        uint32_value = *static_cast<const uint32_t*>(value);
+        if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+          uint32_value = size;
+        } else {
+          uint32_value = *static_cast<const uint32_t*>(value);
+        }
         break;
       case 8:
-        uint64_value = *static_cast<const uint64_t*>(value);
+        if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+          uint64_value = size;
+        } else {
+          uint64_value = *static_cast<const uint64_t*>(value);
+        }
         break;
       default:
         break;
     }
-
+  }
   switch (desc.size_) {
-    case 0 /*local mem*/:
-      *static_cast<size_t*>(param) = size;
-      break;
     case sizeof(uint32_t):
       *static_cast<uint32_t*>(param) = uint32_value;
       break;

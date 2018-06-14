@@ -395,7 +395,8 @@ cl_int NDRangeKernelCommand::captureAndValidate() {
   }
 
   cl_int error;
-  parameters_ = kernel().parameters().capture(device, &error);
+  cl_ulong lclMemSize = kernel().getDeviceKernel(device)->workGroupInfo()->localMemSize_;
+  parameters_ = kernel().parameters().capture(device, lclMemSize, &error);
   return error;
 }
 

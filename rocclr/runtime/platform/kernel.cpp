@@ -55,9 +55,14 @@ size_t KernelParameters::localMemSize(size_t minDataTypeAlignment) const {
 
   for (size_t i = 0; i < signature_.numParameters(); ++i) {
     const KernelParameterDescriptor& desc = signature_.at(i);
-    if (desc.size_ == 0) {
-      memSize = alignUp(memSize, minDataTypeAlignment) +
-          *reinterpret_cast<const size_t*>(values_ + desc.offset_);
+    if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+      if (desc.size_ == 8) {
+        memSize = alignUp(memSize, minDataTypeAlignment) +
+          *reinterpret_cast<const uint64_t*>(values_ + desc.offset_);
+      } else {
+        memSize = alignUp(memSize, minDataTypeAlignment) +
+          *reinterpret_cast<const uint32_t*>(values_ + desc.offset_);
+      }
     }
   }
   return memSize;
@@ -67,13 +72,14 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
   KernelParameterDescriptor& desc = signature_.params()[index];
 
   void* param = values_ + desc.offset_;
-  assert((desc.type_ == T_POINTER || value != NULL || desc.size_ == 0) &&
-         "not a valid local mem arg");
+  assert((desc.type_ == T_POINTER || value != NULL ||
+    (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL)) &&
+    "not a valid local mem arg");
 
   uint32_t uint32_value = 0;
   uint64_t uint64_value = 0;
 
-  if (desc.type_ == T_POINTER && desc.size_ != 0) {
+  if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
     if (svmBound) {
       desc.info_.rawPointer_ = true;
       LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
@@ -81,7 +87,6 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
         *reinterpret_cast<const void* const*>(value));
     } else if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       desc.info_.rawPointer_ = false;
-      LP64_SWITCH(uint32_value, uint64_value) = 0;
       memoryObjects_[desc.info_.arrayIndex_] = nullptr;
     } else {
       desc.info_.rawPointer_ = false;
@@ -96,28 +101,28 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
     // convert cl_command_queue to amd::DeviceQueue*
     queueObjects_[desc.info_.arrayIndex_] =
       as_amd(*static_cast<const cl_command_queue*>(value))->asDeviceQueue();
-  } else
+  } else {
     switch (desc.size_) {
-      case 1:
-        uint32_value = *static_cast<const uint8_t*>(value);
-        break;
-      case 2:
-        uint32_value = *static_cast<const uint16_t*>(value);
-        break;
       case 4:
-        uint32_value = *static_cast<const uint32_t*>(value);
+        if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+          uint32_value = size;
+        } else {
+          uint32_value = *static_cast<const uint32_t*>(value);
+        }
         break;
       case 8:
-        uint64_value = *static_cast<const uint64_t*>(value);
+        if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+          uint64_value = size;
+        } else {
+          uint64_value = *static_cast<const uint64_t*>(value);
+        }
         break;
       default:
         break;
     }
+  }
 
   switch (desc.size_) {
-    case 0 /*local mem*/:
-      *static_cast<size_t*>(param) = size;
-      break;
     case sizeof(uint32_t):
       *static_cast<uint32_t*>(param) = uint32_value;
       break;
@@ -132,7 +137,7 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
   desc.info_.defined_ = true;
 }
 
-address KernelParameters::capture(const Device& device, cl_int* error) {
+address KernelParameters::capture(const Device& device, cl_ulong lclMemSize, cl_int* error) {
   *error = CL_SUCCESS;
   //! Information about which arguments are SVM pointers is stored after
   // the actual parameters, but only if the device has any SVM capability
@@ -146,7 +151,7 @@ address KernelParameters::capture(const Device& device, cl_int* error) {
 
     for (size_t i = 0; i < signature_.numParameters(); ++i) {
       const KernelParameterDescriptor& desc = signature_.at(i);
-      if (desc.type_ == T_POINTER && desc.size_ != 0) {
+      if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
         Memory* memArg = memoryObjects_[desc.info_.arrayIndex_];
         if (memArg != nullptr) {
           memArg->retain();
@@ -154,8 +159,7 @@ address KernelParameters::capture(const Device& device, cl_int* error) {
           if (nullptr == devMem) {
             LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memArg->getSize());
             *error = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-            AlignedMemory::deallocate(mem);
-            return nullptr;
+            break;
           }
           // Write GPU VA addreess to the arguments
           if (!desc.info_.rawPointer_) {
@@ -181,6 +185,14 @@ address KernelParameters::capture(const Device& device, cl_int* error) {
           // todo: It's uint64_t type
           *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = 0;
         }
+      } else if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+        if (desc.size_ == 8) {
+          lclMemSize = alignUp(lclMemSize, device.info().minDataTypeAlignSize_) +
+            *reinterpret_cast<const uint64_t*>(values_ + desc.offset_);
+        } else {
+          lclMemSize = alignUp(lclMemSize, device.info().minDataTypeAlignSize_) +
+            *reinterpret_cast<const uint32_t*>(values_ + desc.offset_);
+        }
       }
     }
 
@@ -192,7 +204,16 @@ address KernelParameters::capture(const Device& device, cl_int* error) {
   } else {
     *error = CL_OUT_OF_HOST_MEMORY;
   }
+  // Validate the local memory oversubscription
+  if (lclMemSize > device.info().localMemSize_) {
+    *error = CL_OUT_OF_RESOURCES;
+  }
 
+  // Check if capture was successful 
+  if (CL_SUCCESS != *error) {
+    AlignedMemory::deallocate(mem);
+    mem = nullptr;
+  }
   return mem;
 }
 
@@ -266,7 +287,7 @@ KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& p
       last = i;
     }
     // Collect all OCL memory objects
-    if (desc.type_ == T_POINTER && desc.size_ != 0) {
+    if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
       params_[i].info_.arrayIndex_ = numMemories_;
       ++numMemories_;
     }

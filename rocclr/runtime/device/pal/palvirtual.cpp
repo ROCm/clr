@@ -3041,14 +3041,24 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     // Find if current argument is a buffer
     if (desc.type_ == T_POINTER) {
       // If it is a local pointer
-      if (desc.size_ == 0) {
+      if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
         ldsAddress = amd::alignUp(ldsAddress, desc.info_.arrayIndex_);
-        // Save the original LDS size
-        size_t ldsSize = *reinterpret_cast<const size_t*>(params + desc.offset_);
-        // Patch the LDS address in the original arguments with an LDS address(offset)
-        WriteAqlArgAt(const_cast<address>(params), &ldsAddress, sizeof(void*), desc.offset_);
-        // Add the original size
-        ldsAddress += ldsSize;
+        if (desc.size_ == 8) {
+          // Save the original LDS size
+          uint64_t ldsSize = *reinterpret_cast<const uint64_t*>(params + desc.offset_);
+          // Patch the LDS address in the original arguments with an LDS address(offset)
+          WriteAqlArgAt(const_cast<address>(params), &ldsAddress, desc.size_, desc.offset_);
+          // Add the original size
+          ldsAddress += ldsSize;
+        } else {
+          // Save the original LDS size
+          uint32_t ldsSize = *reinterpret_cast<const uint32_t*>(params + desc.offset_);
+          // Patch the LDS address in the original arguments with an LDS address(offset)
+          uint32_t ldsAddr = ldsAddress;
+          WriteAqlArgAt(const_cast<address>(params), &ldsAddr, desc.size_, desc.offset_);
+          // Add the original size
+          ldsAddress += ldsSize;
+        }
       } else {
         Memory* gpuMem = nullptr;
         amd::Memory* mem = nullptr;
