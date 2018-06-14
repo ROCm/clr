@@ -910,8 +910,13 @@ bool Resource::CreateInterop(CreateParams* params)
     //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
     if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
       (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
-      hwState_[1] &= ~0x3c000000;
-      hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
+        if (dev().settings().gfx10Plus_) {
+          hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
+        }
+        else {
+          hwState_[1] &= ~0x3c000000;
+          hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
+        }
     }
     hwState_[8] = GetHSAILImageFormatType(desc().format_);
     hwState_[9] = GetHSAILImageOrderType(desc().format_);
