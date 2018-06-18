@@ -1920,7 +1920,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
             // Align the LDS on the alignment requirement of type pointed to
             ldsUsage = amd::alignUp(ldsUsage, arg->pointeeAlignment_);
             argPtr = addArg(argPtr, &ldsUsage, arg->size_, arg->alignment_);
-            ldsUsage += *reinterpret_cast<const size_t*>(srcArgPtr);
+            if (sizeof(uint64_t) == arg->size_) {
+              ldsUsage += *reinterpret_cast<const uint64_t*>(srcArgPtr);
+            } else {
+              ldsUsage += *reinterpret_cast<const uint32_t*>(srcArgPtr);
+            }
             break;
           }
           assert((arg->addrQual_ == ROC_ADDRESS_GLOBAL || arg->addrQual_ == ROC_ADDRESS_CONSTANT) &&
