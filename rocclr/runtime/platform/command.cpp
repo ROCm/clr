@@ -502,11 +502,6 @@ void TransferBufferFileCommand::submit(device::VirtualDevice& device) {
 }
 
 bool TransferBufferFileCommand::validateMemory() {
-  // Runtime disables deferred memory allocation for single device.
-  // Hence ignore memory validations
-  if (queue()->context().devices().size() == 1) {
-    return true;
-  }
   // Check if the destination buffer has direct host access
   if (!(memory_->getMemFlags() &
         (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_USE_PERSISTENT_MEM_AMD))) {
@@ -534,11 +529,6 @@ bool TransferBufferFileCommand::validateMemory() {
 }
 
 bool CopyMemoryP2PCommand::validateMemory() {
-  // Runtime disables deferred memory allocation for single device.
-  // Hence ignore memory validations
-  if (queue()->context().devices().size() == 1) {
-    return true;
-  }
   const std::vector<Device*>& devices = memory1_->getContext().devices();
   if (devices.size() != 1) {
     LogError("Can't allocate memory object for P2P extension");
