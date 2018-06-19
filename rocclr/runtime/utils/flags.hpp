@@ -197,7 +197,7 @@ release(bool, GPU_VEGA10_ONLY, VEGA10_ONLY,                                   \
         "1 = Report vega10 only on OCL/ROCR")                                 \
 release_on_stg(bool, PAL_DISABLE_SDMA, false,                                 \
         "1 = Disable SDMA for PAL")                                           \
-release_on_stg(uint, PAL_RGP_DISP_COUNT, 10,                                  \
+release(uint, PAL_RGP_DISP_COUNT, 10,                                         \
         "The number of dispatches for RGP capture with SQTT")                 \
 release(bool, GPU_FORCE_WAVE_SIZE_32, false,                                  \
         "Forces WaveSize32 compilation in SC")                                \
