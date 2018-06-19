@@ -956,6 +956,14 @@ VirtualGPU::~VirtualGPU() {
   //! The first queue is reserved for the transfers on device
   if (static_cast<int>(gpuDevice_.numOfVgpus_ - 1) <= 1) {
     gpuDevice_.destroyScratchBuffers();
+
+    // Restore the ClockMode back to Default.
+    // This will be removed once KMD/PPLIB supports restoring the ClockMode when KMD
+    // detects the OCL process is gone.
+    Pal::SetClockModeInput input = {};
+    Pal::SetClockModeOutput output = {};
+    input.clockMode = Pal::DeviceClockMode::Default;
+    dev().iDev()->SetClockMode(input, &output);
   }
 
   // Destroy BlitManager object
