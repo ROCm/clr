@@ -74,15 +74,177 @@ class Settings;
 class Device;
 class VirtualGPU;
 
+// ================================================================================================
+// RgpSqttMarkerIdentifier - Identifiers for RGP SQ thread-tracing markers (Table 1)
+enum RgpSqttMarkerIdentifier : uint32_t
+{
+  RgpSqttMarkerIdentifierEvent = 0x0,
+  RgpSqttMarkerIdentifierCbStart = 0x1,
+  RgpSqttMarkerIdentifierCbEnd = 0x2,
+  RgpSqttMarkerIdentifierBarrierStart = 0x3,
+  RgpSqttMarkerIdentifierBarrierEnd = 0x4,
+  RgpSqttMarkerIdentifierUserEvent = 0x5,
+  RgpSqttMarkerIdentifierGeneralApi = 0x6,
+  RgpSqttMarkerIdentifierSync = 0x7,
+  RgpSqttMarkerIdentifierPresent = 0x8,
+  RgpSqttMarkerIdentifierLayoutTransition = 0x9,
+  RgpSqttMarkerIdentifierRenderPass = 0xA,
+  RgpSqttMarkerIdentifierReserved2 = 0xB,
+  RgpSqttMarkerIdentifierReserved3 = 0xC,
+  RgpSqttMarkerIdentifierReserved4 = 0xD,
+  RgpSqttMarkerIdentifierReserved5 = 0xE,
+  RgpSqttMarkerIdentifierReserved6 = 0xF
+};
+
+// ================================================================================================
+enum class RgpSqttMarkerEventType : uint32_t
+{
+  CmdDispatch = 6,            // CmdDispatch
+  CmdCopyBuffer = 8,          // CmdCopyBuffer
+  CmdCopyImage = 9,           // CmdCopyImage
+  CmdCopyBufferToImage = 11,  // CmdCopyBufferToImage
+  CmdCopyImageToBuffer = 12,  // CmdCopyImageToBuffer
+  CmdPipelineBarrier = 20,    // CmdPipelineBarrier
+  InternalUnknown = 26,       // Uknown operaiton
+  Invalid = 0xffffffff
+};
+
+// ================================================================================================
+// RgpSqttMarkerEvent - "Event (Per-draw/dispatch)" RGP SQ thread-tracing marker.  
+// These are generated ahead of draws or dispatches for commands that trigger generation of waves
+//  i.e. draws/dispatches (Table 4).
+struct RgpSqttMarkerEvent
+{
+  union
+  {
+    struct
+    {
+      uint32_t identifier : 4;    // Identifier for this marker
+      uint32_t extDwords : 3;     // Number of extra dwords following this marker
+      uint32_t apiType : 24;      // The API type for this command
+      uint32_t hasThreadDims : 1; // Whether thread dimensions are included
+    };
+
+    uint32_t     dword01;            // The first dword
+  };
+
+  union
+  {
+    // Some information about the vertex/instance/draw register indices.  These values are not 
+    // always valid because they are not available for one reason or another:
+    //
+    // - If vertex offset index or instance offset index are not (together) valid, they are both
+    //  equal to 0
+    // - If draw index is not valid, it is equal to the vertex offset index
+    struct
+    {
+      uint32_t cbID : 20; // Command buffer ID for this marker
+      uint32_t vertexOffsetRegIdx : 4;  // SPI userdata register index for the first vertex offset
+      uint32_t instanceOffsetRegIdx : 4;  // SPI userdata register index for the first instance offset
+      uint32_t drawIndexRegIdx : 4;  // SPI userdata register index for the draw index (multi draw indirect)
+    };
+    uint32_t     dword02; // The second dword
+  };
+
+  union
+  {
+    uint32_t cmdID;      // Command index within the command buffer
+    uint32_t dword03;    // The third dword
+  };
+};
+
+// ================================================================================================
+// RgpSqttMarkerEventWithDims - Per-dispatch specific marker where workgroup dims are included
+struct RgpSqttMarkerEventWithDims
+{
+  RgpSqttMarkerEvent event;   // Per-draw/dispatch marker.  API type should be Dispatch, threadDim = 1
+  uint32_t           threadX; // Work group count in X
+  uint32_t           threadY; // Work group count in Y
+  uint32_t           threadZ; // Work group count in Z
+};
+
+// ================================================================================================
+// RgpSqttMarkerBarrierStart - "Barrier Start" RGP SQTT instrumentation marker (Table 5)
+struct RgpSqttMarkerBarrierStart
+{
+  union
+  {
+    struct
+    {
+      uint32_t identifier : 4;  // Identifier for this marker
+      uint32_t extDwords : 3;   // Number of extra dwords following this marker
+      uint32_t cbId : 20;       // Command buffer ID within queue
+      uint32_t reserved : 5;    // Reserved
+    };
+
+    uint32_t     dword01;            // The first dword
+  };
+
+  union
+  {
+    struct
+    {
+      uint32_t driverReason : 31;
+      uint32_t internal: 1;
+    };
+
+    uint32_t     dword02;            // The second dword
+  };
+};
+
+// ================================================================================================
+// RgpSqttMarkerBarrierEnd - "Barrier End" RGP SQTT instrumentation marker (Table 6)
+struct RgpSqttMarkerBarrierEnd
+{
+  union
+  {
+    struct
+    {
+      uint32_t identifier : 4;  // Identifier for this marker
+      uint32_t extDwords : 3;   // Number of extra dwords following this marker
+      uint32_t cbId : 20;       // Command buffer ID within queue
+      uint32_t waitOnEopTs : 1; // Issued EOP_TS VGT event followed by a WAIT_REG_MEM for that timestamp
+                                // to be written.  Quintessential full pipeline stall.
+      uint32_t vsPartialFlush : 1;  // Stall at ME waiting for all prior VS waves to complete.
+      uint32_t psPartialFlush : 1;  // Stall at ME waiting for all prior PS waves to complete.
+      uint32_t csPartialFlush : 1;  // Stall at ME waiting for all prior CS waves to complete.
+      uint32_t pfpSyncMe : 1;   // Stall PFP until ME is at same point in command stream.
+    };
+
+    uint32_t     dword01;             // The first dword
+  };
+
+  union
+  {
+    struct
+    {
+      uint32_t syncCpDma : 1;  // Issue dummy CP-DMA command to confirm all prior CP-DMAs have completed.
+      uint32_t invalTcp : 1;  // Invalidate the L1 vector caches.
+      uint32_t invalSqI : 1;  // Invalidate the SQ instruction caches
+      uint32_t invalSqK : 1;  // Invalidate the SQ constant caches (i.e. L1 scalar caches)
+      uint32_t flushTcc : 1;  // Flush L2
+      uint32_t invalTcc : 1;  // Invalidate L2
+      uint32_t flushCb : 1;  // Flush CB caches (including DCC, cmask, fmask)
+      uint32_t invalCb : 1;  // Invalidate CB caches (including DCC, cmask, fmask)
+      uint32_t flushDb : 1;  // Flush DB caches (including htile)
+      uint32_t invalDb : 1;  // Invalidate DB caches (including htile)
+      uint32_t numLayoutTransitions : 16; // Number of layout transitions following this packet
+      uint32_t reserved : 6;  // Reserved for future expansion.  Always 0
+    };
+
+    uint32_t  dword02;                // The second dword
+  };
+};
+
 // RGP SQTT Instrumentation Specification version (API-independent)
 constexpr uint32_t RgpSqttInstrumentationSpecVersion = 1;
 
 // RGP SQTT Instrumentation Specification version for Vulkan-specific tables
 constexpr uint32_t RgpSqttInstrumentationApiVersion  = 0;
 
-// =====================================================================================================================
-// This class provides functionality to interact with the GPU Open Developer Mode message passing service and the rest
-// of the driver.
+// ================================================================================================
+// This class provides functionality to interact with the GPU Open Developer Mode message passing
+// service and the rest of the driver.
 class RgpCaptureMgr
 {
 public:
@@ -92,7 +254,7 @@ public:
 
   void Finalize();
 
-  void PreDispatch(VirtualGPU* pQueue);
+  void PreDispatch(VirtualGPU* pQueue, size_t x, size_t y, size_t z);
   void PostDispatch(VirtualGPU* pQueue);
   void WaitForDriverResume();
 
@@ -117,21 +279,22 @@ private:
   // All per-device state to support RGP tracing
   struct TraceState
   {
-    TraceStatus           status_;              // Current trace status (idle, running, etc.)
+    TraceStatus   status_;              // Current trace status (idle, running, etc.)
 
-    GpuEvent              begin_sqtt_event_;    // Event that is signaled when a trace-end cmdbuf retires
-    GpuEvent              end_sqtt_event_;      // Event that is signaled when a trace-end cmdbuf retires
-    GpuEvent              end_event_;           // Event that is signaled when a trace-end cmdbuf retires
+    GpuEvent      begin_sqtt_event_;    // Event that is signaled when a trace-end cmdbuf retires
+    GpuEvent      end_sqtt_event_;      // Event that is signaled when a trace-end cmdbuf retires
+    GpuEvent      end_event_;           // Event that is signaled when a trace-end cmdbuf retires
 
-    VirtualGPU*           trace_prepare_queue_; // The queue that triggered the full start of a trace
-    VirtualGPU*           trace_begin_queue_;   // The queue that triggered starting SQTT
+    VirtualGPU*   prepare_queue_;       // The queue that triggered the full start of a trace
+    VirtualGPU*   begin_queue_;         // The queue that triggered starting SQTT
 
-    GpuUtil::GpaSession*  gpa_session_;         // GPA session helper object for building RGP data
-    uint32_t              gpa_sample_id_;       // Sample ID associated with the current trace
-    bool                  queue_timing_;        // Queue timing is enabled
+    GpuUtil::GpaSession*  gpa_session_; // GPA session helper object for building RGP data
+    uint32_t      gpa_sample_id_;       // Sample ID associated with the current trace
+    bool          queue_timing_;        // Queue timing is enabled
 
-    uint32_t              prepared_disp_count_; // Number of dispatches counted while preparing for a trace
-    uint32_t              sqtt_disp_count_;     // Number of dispatches counted while SQTT tracing is active
+    uint32_t      prepared_disp_count_; // Number of dispatches counted while preparing for a trace
+    uint32_t      sqtt_disp_count_;     // Number of dispatches counted while SQTT tracing is active
+    uint32_t      current_event_id_;    // Current event ID
   };
 
   RgpCaptureMgr(Pal::IPlatform* platform, const Device& device);
@@ -144,6 +307,9 @@ private:
   void DestroyRGPTracing();
   Pal::Result CheckForTraceResults();
   static bool GpuSupportsTracing(const Pal::DeviceProperties& props, const Settings& settings);
+  RgpSqttMarkerEvent BuildEventMarker(RgpSqttMarkerEventType api_type);
+  void WriteMarker(const void* data, size_t data_size) const;
+  void WriteEventWithDimsMarker(RgpSqttMarkerEventType apiType, uint32_t x, uint32_t y, uint32_t z);
 
   const Device&               device_;
   DevDriver::DevDriverServer* dev_driver_server_;
@@ -160,7 +326,7 @@ private:
   PAL_DISALLOW_COPY_AND_ASSIGN(RgpCaptureMgr);
 };
 
-// =====================================================================================================================
+// ================================================================================================
 // Returns true if queue operations are currently being timed by RGP traces.
 inline bool RgpCaptureMgr::IsQueueTimingActive() const
 {

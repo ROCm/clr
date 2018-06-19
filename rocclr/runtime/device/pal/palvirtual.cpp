@@ -2094,9 +2094,20 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                                       const_address parameters, bool nativeMem,
                                       amd::Event* enqueueEvent)
 {
+  size_t newOffset[3] = { 0, 0, 0 };
+  size_t newGlobalSize[3] = { 0, 0, 0 };
+
+  int dim = -1;
+  int iteration = 1;
+  size_t globalStep = 0;
+  for (uint i = 0; i < sizes.dimensions(); i++) {
+    newGlobalSize[i] = sizes.global()[i];
+    newOffset[i] = sizes.offset()[i];
+  }
+
   // If RGP capturing is enabled, then start SQTT trace
   if (rgpCaptureEna()) {
-    dev().rgpCaptureMgr()->PreDispatch(this);
+    dev().rgpCaptureMgr()->PreDispatch(this, newGlobalSize[0], newGlobalSize[1], newGlobalSize[2]);
   }
 
   // Get the HSA kernel object
@@ -2135,16 +2146,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
   }
 
-  size_t newOffset[3] = {0, 0, 0};
-  size_t newGlobalSize[3] = {0, 0, 0};
-
-  int dim = -1;
-  int iteration = 1;
-  size_t globalStep = 0;
-  for (uint i = 0; i < sizes.dimensions(); i++) {
-    newGlobalSize[i] = sizes.global()[i];
-    newOffset[i] = sizes.offset()[i];
-  }
   // Check if it is blit kernel. If it is, then check if split is needed.
   if (hsaKernel.isInternalKernel()) {
     // Calculate new group size for each submission

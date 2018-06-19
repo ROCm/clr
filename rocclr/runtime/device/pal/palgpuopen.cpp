@@ -227,7 +227,7 @@ Pal::Result RgpCaptureMgr::CheckForTraceResults()
 
   // Check if trace results are ready
   if (trace_.gpa_session_->IsReady() && // GPA session is ready
-      (trace_.trace_begin_queue_->isDone(&trace_.end_event_)))   // "Trace end" cmdbuf has retired
+      (trace_.begin_queue_->isDone(&trace_.end_event_)))   // "Trace end" cmdbuf has retired
   {
     bool success = false;
 
@@ -267,7 +267,7 @@ Pal::Result RgpCaptureMgr::CheckForTraceResults()
 // ================================================================================================
 // Called after a swap chain presents.  This signals a (next) frame-begin boundary and is
 // used to coordinate RGP trace start/stop.
-void RgpCaptureMgr::PreDispatch(VirtualGPU* pQueue)
+void RgpCaptureMgr::PreDispatch(VirtualGPU* pQueue, size_t x, size_t y, size_t z)
 {
   // Wait for the driver to be resumed in case it's been paused.
   WaitForDriverResume();
@@ -309,7 +309,7 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* pQueue)
     else if (trace_.status_ == TraceStatus::WaitingForSqtt) {
       Pal::Result result      = Pal::Result::Success;
 
-      if (trace_.trace_begin_queue_->isDone(&trace_.end_sqtt_event_)) {
+      if (trace_.begin_queue_->isDone(&trace_.end_sqtt_event_)) {
         result = EndRGPTrace(pQueue);
       } else {
         // todo: There is a wait inside the trace end for now
@@ -332,6 +332,12 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* pQueue)
       else if (result != Pal::Result::NotReady) {
           FinishRGPTrace(true);
       }
+    }
+
+    if (trace_.status_ == TraceStatus::Running) {
+      // Write disaptch marker
+      WriteEventWithDimsMarker(RgpSqttMarkerEventType::CmdDispatch,
+        static_cast<uint32_t>(x), static_cast<uint32_t>(y), static_cast<uint32_t>(z));
     }
   }
 
@@ -381,8 +387,8 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* pQueue)
 
   if (result == Pal::Result::Success) {
     // Remember which queue started the trace
-    trace_.trace_prepare_queue_ = pQueue;
-    trace_.trace_begin_queue_   = nullptr;
+    trace_.prepare_queue_ = pQueue;
+    trace_.begin_queue_   = nullptr;
 
     trace_.status_ = TraceStatus::Preparing;
   } else {
@@ -415,7 +421,7 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* pQueue)
   if (result == Pal::Result::Success) {
     // Only allow trace to start if the queue family at prep-time matches the queue
     // family at begin time because the command buffer engine type must match
-    if (trace_.trace_prepare_queue_ != pQueue) {
+    if (trace_.prepare_queue_ != pQueue) {
         result = Pal::Result::ErrorIncompatibleQueue;
     }
   }
@@ -445,8 +451,8 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* pQueue)
 
   // Make the trace active and remember which queue started it
   if (result == Pal::Result::Success) {
-    trace_.status_            = TraceStatus::Running;
-    trace_.trace_begin_queue_ = pQueue;
+    trace_.status_      = TraceStatus::Running;
+    trace_.begin_queue_ = pQueue;
   }
 
   return result;
@@ -464,7 +470,7 @@ Pal::Result RgpCaptureMgr::EndRGPHardwareTrace(VirtualGPU* pQueue)
 
   // Only allow SQTT trace to start and end on the same queue because it's critical that these are
   // in the same order
-  if (pQueue != trace_.trace_begin_queue_) {
+  if (pQueue != trace_.begin_queue_) {
     result = Pal::Result::ErrorIncompatibleQueue;
   }
 
@@ -536,7 +542,7 @@ Pal::Result RgpCaptureMgr::EndRGPTrace(VirtualGPU* pQueue)
 // It frees any dependent resources.
 void RgpCaptureMgr::FinishRGPTrace(bool aborted)
 {
-  if (trace_.trace_prepare_queue_ == nullptr) {
+  if (trace_.prepare_queue_ == nullptr) {
     return;
   }
 
@@ -556,8 +562,8 @@ void RgpCaptureMgr::FinishRGPTrace(bool aborted)
   trace_.sqtt_disp_count_     = 0;
   trace_.gpa_sample_id_       = 0;
   trace_.status_              = TraceStatus::Idle;
-  trace_.trace_prepare_queue_ = nullptr;
-  trace_.trace_begin_queue_   = nullptr;
+  trace_.prepare_queue_       = nullptr;
+  trace_.begin_queue_         = nullptr;
 }
 
 // ================================================================================================
@@ -618,6 +624,51 @@ void RgpCaptureMgr::PreDeviceDestroy()
   if (trace_.status_ == TraceStatus::Idle) {
     DestroyRGPTracing();
   }
+}
+
+// ================================================================================================
+// Sets up an Event marker's basic data.
+RgpSqttMarkerEvent RgpCaptureMgr::BuildEventMarker(RgpSqttMarkerEventType api_type)
+{
+  RgpSqttMarkerEvent marker = {};
+
+  marker.identifier = RgpSqttMarkerIdentifierEvent;
+  marker.apiType = static_cast<uint32_t>(api_type);
+  marker.cmdID = trace_.current_event_id_++;
+  marker.cbID = trace_.begin_queue_->queue(MainEngine).cmdBufId();
+
+  return marker;
+}
+
+// ================================================================================================
+void RgpCaptureMgr::WriteMarker(const void* data, size_t data_size) const
+{
+  assert((data_size % sizeof(uint32_t)) == 0);
+  assert((data_size / sizeof(uint32_t)) > 0);
+
+  trace_.begin_queue_->queue(MainEngine).iCmd()->CmdInsertRgpTraceMarker(
+    static_cast<uint32_t>(data_size / sizeof(uint32_t)), data);
+}
+
+// =====================================================================================================================
+// Inserts an RGP pre-dispatch marker
+void RgpCaptureMgr::WriteEventWithDimsMarker(
+  RgpSqttMarkerEventType apiType,
+  uint32_t               x,
+  uint32_t               y,
+  uint32_t               z)
+{
+  assert(apiType != RgpSqttMarkerEventType::Invalid);
+
+  RgpSqttMarkerEventWithDims eventWithDims = {};
+
+  eventWithDims.event = BuildEventMarker(apiType);
+  eventWithDims.event.hasThreadDims = 1;
+  eventWithDims.threadX = x;
+  eventWithDims.threadY = y;
+  eventWithDims.threadZ = z;
+
+  WriteMarker(&eventWithDims, sizeof(eventWithDims));
 }
 
 }; // namespace vk
