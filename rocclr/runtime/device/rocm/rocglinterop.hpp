@@ -5,18 +5,17 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#ifdef _WIN32
-// GLX header cannot be included in Windows due to X11 header dependency
-#define MESA_GLINTEROP_NO_GLX
-#include "device/rocm/mesa_glinterop.h"
-// Give GLX parameters void* size
-typedef void Display;
-typedef void* GLXContext;
-#undef MESA_GLINTEROP_NO_GLX
+#ifndef _WIN32
+#include <GL/glx.h>
+#include <EGL/egl.h>
 #else
-#include "device/rocm/mesa_glinterop.h"
+#include <GL/gl.h>
+#include <EGL/egl.h>
+typedef _XDisplay Display;
+typedef __GLXcontextRec* GLXContext;
 #endif
 
+#include "device/rocm/mesa_glinterop.h"
 #include "device/rocm/rocregisters.hpp"
 #include "hsa_ext_amd.h"
 

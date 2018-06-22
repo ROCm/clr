@@ -50,154 +50,196 @@
 #ifndef MESA_GLINTEROP_H
 #define MESA_GLINTEROP_H
 
+#include <stddef.h>
 #include <stdint.h>
-
-#if !defined(MESA_GLINTEROP_NO_GLX)
-#include <GL/glx.h>
-#include <EGL/egl.h>
-#else
-#include <GL/gl.h>
-#include <EGL/egl.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define MESA_GLINTEROP_VERSION 1
+/* Forward declarations to avoid inclusion of GL/glx.h */
+#ifndef GLX_H
+struct _XDisplay;
+struct __GLXcontextRec;
+#endif
+
+/* Forward declarations to avoid inclusion of EGL/egl.h */
+#ifndef __egl_h_
+typedef void *EGLDisplay;
+typedef void *EGLContext;
+#endif
 
 /** Returned error codes. */
 enum {
-  MESA_GLINTEROP_SUCCESS = 0,
-  MESA_GLINTEROP_OUT_OF_RESOURCES,
-  MESA_GLINTEROP_OUT_OF_HOST_MEMORY,
-  MESA_GLINTEROP_INVALID_OPERATION,
-  MESA_GLINTEROP_INVALID_VALUE,
-  MESA_GLINTEROP_INVALID_DISPLAY,
-  MESA_GLINTEROP_INVALID_CONTEXT,
-  MESA_GLINTEROP_INVALID_TARGET,
-  MESA_GLINTEROP_INVALID_OBJECT,
-  MESA_GLINTEROP_INVALID_MIP_LEVEL,
-  MESA_GLINTEROP_UNSUPPORTED
+   MESA_GLINTEROP_SUCCESS = 0,
+   MESA_GLINTEROP_OUT_OF_RESOURCES,
+   MESA_GLINTEROP_OUT_OF_HOST_MEMORY,
+   MESA_GLINTEROP_INVALID_OPERATION,
+   MESA_GLINTEROP_INVALID_VERSION,
+   MESA_GLINTEROP_INVALID_DISPLAY,
+   MESA_GLINTEROP_INVALID_CONTEXT,
+   MESA_GLINTEROP_INVALID_TARGET,
+   MESA_GLINTEROP_INVALID_OBJECT,
+   MESA_GLINTEROP_INVALID_MIP_LEVEL,
+   MESA_GLINTEROP_UNSUPPORTED
 };
 
 /** Access flags. */
 enum {
-  MESA_GLINTEROP_ACCESS_READ_WRITE = 0,
-  MESA_GLINTEROP_ACCESS_READ_ONLY,
-  MESA_GLINTEROP_ACCESS_WRITE_ONLY
+   MESA_GLINTEROP_ACCESS_READ_WRITE = 0,
+   MESA_GLINTEROP_ACCESS_READ_ONLY,
+   MESA_GLINTEROP_ACCESS_WRITE_ONLY
 };
 
+#define MESA_GLINTEROP_DEVICE_INFO_VERSION 1
 
 /**
  * Device information returned by Mesa.
  */
-typedef struct _mesa_glinterop_device_info {
-  uint32_t size; /* size of this structure */
+struct mesa_glinterop_device_info {
+   /* The caller should set this to the version of the struct they support */
+   /* The callee will overwrite it if it supports a lower version.
+    *
+    * The caller should check the value and access up-to the version supported
+    * by the callee.
+    */
+   /* NOTE: Do not use the MESA_GLINTEROP_DEVICE_INFO_VERSION macro */
+   uint32_t version;
 
-  /* PCI location */
-  uint32_t pci_segment_group;
-  uint32_t pci_bus;
-  uint32_t pci_device;
-  uint32_t pci_function;
+   /* PCI location */
+   uint32_t pci_segment_group;
+   uint32_t pci_bus;
+   uint32_t pci_device;
+   uint32_t pci_function;
 
-  /* Device identification */
-  uint32_t vendor_id;
-  uint32_t device_id;
-} mesa_glinterop_device_info;
+   /* Device identification */
+   uint32_t vendor_id;
+   uint32_t device_id;
 
+   /* Structure version 1 ends here. */
+};
+
+#define MESA_GLINTEROP_EXPORT_IN_VERSION 1
 
 /**
  * Input parameters to Mesa interop export functions.
  */
-typedef struct _mesa_glinterop_export_in {
-  uint32_t size; /* size of this structure */
+struct mesa_glinterop_export_in {
+   /* The caller should set this to the version of the struct they support */
+   /* The callee will overwrite it if it supports a lower version.
+    *
+    * The caller should check the value and access up-to the version supported
+    * by the callee.
+    */
+   /* NOTE: Do not use the MESA_GLINTEROP_EXPORT_IN_VERSION macro */
+   uint32_t version;
 
-  /* One of the following:
-   * - GL_TEXTURE_BUFFER
-   * - GL_TEXTURE_1D
-   * - GL_TEXTURE_2D
-   * - GL_TEXTURE_3D
-   * - GL_TEXTURE_RECTANGLE
-   * - GL_TEXTURE_1D_ARRAY
-   * - GL_TEXTURE_2D_ARRAY
-   * - GL_TEXTURE_CUBE_MAP_ARRAY
-   * - GL_TEXTURE_CUBE_MAP
-   * - GL_TEXTURE_CUBE_MAP_POSITIVE_X
-   * - GL_TEXTURE_CUBE_MAP_NEGATIVE_X
-   * - GL_TEXTURE_CUBE_MAP_POSITIVE_Y
-   * - GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
-   * - GL_TEXTURE_CUBE_MAP_POSITIVE_Z
-   * - GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
-   * - GL_TEXTURE_2D_MULTISAMPLE
-   * - GL_TEXTURE_2D_MULTISAMPLE_ARRAY
-   * - GL_TEXTURE_EXTERNAL_OES
-   * - GL_RENDERBUFFER
-   * - GL_ARRAY_BUFFER
-   */
-  GLenum target;
+   /* One of the following:
+    * - GL_TEXTURE_BUFFER
+    * - GL_TEXTURE_1D
+    * - GL_TEXTURE_2D
+    * - GL_TEXTURE_3D
+    * - GL_TEXTURE_RECTANGLE
+    * - GL_TEXTURE_1D_ARRAY
+    * - GL_TEXTURE_2D_ARRAY
+    * - GL_TEXTURE_CUBE_MAP_ARRAY
+    * - GL_TEXTURE_CUBE_MAP
+    * - GL_TEXTURE_CUBE_MAP_POSITIVE_X
+    * - GL_TEXTURE_CUBE_MAP_NEGATIVE_X
+    * - GL_TEXTURE_CUBE_MAP_POSITIVE_Y
+    * - GL_TEXTURE_CUBE_MAP_NEGATIVE_Y
+    * - GL_TEXTURE_CUBE_MAP_POSITIVE_Z
+    * - GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+    * - GL_TEXTURE_2D_MULTISAMPLE
+    * - GL_TEXTURE_2D_MULTISAMPLE_ARRAY
+    * - GL_TEXTURE_EXTERNAL_OES
+    * - GL_RENDERBUFFER
+    * - GL_ARRAY_BUFFER
+    */
+   unsigned target;
 
-  /* If target is GL_ARRAY_BUFFER, it's a buffer object.
-   * If target is GL_RENDERBUFFER, it's a renderbuffer object.
-   * If target is GL_TEXTURE_*, it's a texture object.
-   */
-  GLuint obj;
+   /* If target is GL_ARRAY_BUFFER, it's a buffer object.
+    * If target is GL_RENDERBUFFER, it's a renderbuffer object.
+    * If target is GL_TEXTURE_*, it's a texture object.
+    */
+   unsigned obj;
 
-  /* Mipmap level. Ignored for non-texture objects. */
-  GLuint miplevel;
+   /* Mipmap level. Ignored for non-texture objects. */
+   unsigned miplevel;
 
-  /* One of MESA_GLINTEROP_ACCESS_* flags. This describes how the exported
-   * object is going to be used.
-   */
-  uint32_t access;
+   /* One of MESA_GLINTEROP_ACCESS_* flags. This describes how the exported
+    * object is going to be used.
+    */
+   uint32_t access;
 
-  /* Size of memory pointed to by out_driver_data. */
-  uint32_t out_driver_data_size;
+   /* Size of memory pointed to by out_driver_data. */
+   uint32_t out_driver_data_size;
 
-  /* If the caller wants to query driver-specific data about the OpenGL
-   * object, this should point to the memory where that data will be stored.
-   */
-  void* out_driver_data;
-} mesa_glinterop_export_in;
+   /* If the caller wants to query driver-specific data about the OpenGL
+    * object, this should point to the memory where that data will be stored.
+    * This is expected to be a temporary staging memory. The pointer is not
+    * allowed to be saved for later use by Mesa.
+    */
+   void *out_driver_data;
+   /* Structure version 1 ends here. */
+};
 
+#define MESA_GLINTEROP_EXPORT_OUT_VERSION 1
 
 /**
  * Outputs of Mesa interop export functions.
  */
-typedef struct _mesa_glinterop_export_out {
-  uint32_t size; /* size of this structure */
+struct mesa_glinterop_export_out {
+   /* The caller should set this to the version of the struct they support */
+   /* The callee will overwrite it if it supports a lower version.
+    *
+    * The caller should check the value and access up-to the version supported
+    * by the callee.
+    */
+   /* NOTE: Do not use the MESA_GLINTEROP_EXPORT_OUT_VERSION macro */
+   uint32_t version;
 
-  /* The DMABUF handle. It must be closed by the caller using the POSIX
-   * close() function when it's not needed anymore. Mesa is not responsible
-   * for closing the handle.
-   *
-   * Not closing the handle by the caller will lead to a resource leak,
-   * prevents releasing the GPU buffer, and may prevent creating new DMABUF
-   * handles until the process termination.
-   */
-  int dmabuf_fd;
+   /* The DMABUF handle. It must be closed by the caller using the POSIX
+    * close() function when it's not needed anymore. Mesa is not responsible
+    * for closing the handle.
+    *
+    * Not closing the handle by the caller will lead to a resource leak,
+    * will prevent releasing the GPU buffer, and may prevent creating new
+    * DMABUF handles within the process.
+    */
+   int dmabuf_fd;
 
-  /* The mutable OpenGL internal format specified by glTextureView or
-   * glTexBuffer. If the object is not one of those, the original internal
-   * format specified by glTexStorage, glTexImage, or glRenderbufferStorage
-   * will be returned.
-   */
-  GLenum internalformat;
+   /* The mutable OpenGL internal format specified by glTextureView or
+    * glTexBuffer. If the object is not one of those, the original internal
+    * format specified by glTexStorage, glTexImage, or glRenderbufferStorage
+    * will be returned.
+    */
+   unsigned internal_format;
 
-  /* Parameters specified by glTexBufferRange for GL_TEXTURE_BUFFER. */
-  GLintptr buf_offset;
-  GLsizeiptr buf_size;
+   /* Buffer offset and size for GL_ARRAY_BUFFER and GL_TEXTURE_BUFFER.
+    * This allows interop with suballocations (a buffer allocated within
+    * a larger buffer).
+    *
+    * Parameters specified by glTexBufferRange for GL_TEXTURE_BUFFER are
+    * applied to these and can shrink the range further.
+    */
+   ptrdiff_t buf_offset;
+   ptrdiff_t buf_size;
 
-  /* Parameters specified by glTextureView. If the object is not a texture
-   * view, default parameters covering the whole texture will be returned.
-   */
-  GLuint view_minlevel;
-  GLuint view_numlevels;
-  GLuint view_minlayer;
-  GLuint view_numlayers;
-} mesa_glinterop_export_out;
+   /* Parameters specified by glTextureView. If the object is not a texture
+    * view, default parameters covering the whole texture will be returned.
+    */
+   unsigned view_minlevel;
+   unsigned view_numlevels;
+   unsigned view_minlayer;
+   unsigned view_numlayers;
 
-#if !defined(MESA_GLINTEROP_NO_GLX)
+   /* The number of bytes written to out_driver_data. */
+   uint32_t out_driver_data_written;
+   /* Structure version 1 ends here. */
+};
+
+
 /**
  * Query device information.
  *
@@ -207,19 +249,20 @@ typedef struct _mesa_glinterop_export_out {
  *
  * \return MESA_GLINTEROP_SUCCESS or MESA_GLINTEROP_* != 0 on error
  */
-GLAPI int GLAPIENTRY MesaGLInteropGLXQueryDeviceInfo(Display* dpy, GLXContext context,
-                                                     mesa_glinterop_device_info* out);
-#endif
+int
+MesaGLInteropGLXQueryDeviceInfo(struct _XDisplay *dpy, struct __GLXcontextRec *context,
+                                struct mesa_glinterop_device_info *out);
+
 
 /**
  * Same as MesaGLInteropGLXQueryDeviceInfo except that it accepts EGLDisplay
  * and EGLContext.
  */
-GLAPI int GLAPIENTRY MesaGLInteropEGLQueryDeviceInfo(EGLDisplay dpy, EGLContext context,
-                                                     mesa_glinterop_device_info* out);
+int
+MesaGLInteropEGLQueryDeviceInfo(EGLDisplay dpy, EGLContext context,
+                                struct mesa_glinterop_device_info *out);
 
 
-#if !defined(MESA_GLINTEROP_NO_GLX)
 /**
  * Create and return a DMABUF handle corresponding to the given OpenGL
  * object, and return other parameters about the OpenGL object.
@@ -231,34 +274,32 @@ GLAPI int GLAPIENTRY MesaGLInteropEGLQueryDeviceInfo(EGLDisplay dpy, EGLContext 
  *
  * \return MESA_GLINTEROP_SUCCESS or MESA_GLINTEROP_* != 0 on error
  */
-GLAPI int GLAPIENTRY MesaGLInteropGLXExportObject(Display* dpy, GLXContext context,
-                                                  mesa_glinterop_export_in* in,
-                                                  mesa_glinterop_export_out* out);
-#endif
+int
+MesaGLInteropGLXExportObject(struct _XDisplay *dpy, struct __GLXcontextRec *context,
+                             struct mesa_glinterop_export_in *in,
+                             struct mesa_glinterop_export_out *out);
+
 
 /**
  * Same as MesaGLInteropGLXExportObject except that it accepts
  * EGLDisplay and EGLContext.
  */
-GLAPI int GLAPIENTRY MesaGLInteropEGLExportObject(EGLDisplay dpy, EGLContext context,
-                                                  mesa_glinterop_export_in* in,
-                                                  mesa_glinterop_export_out* out);
+int
+MesaGLInteropEGLExportObject(EGLDisplay dpy, EGLContext context,
+                             struct mesa_glinterop_export_in *in,
+                             struct mesa_glinterop_export_out *out);
 
 
-#if !defined(MESA_GLINTEROP_NO_GLX)
-typedef int(APIENTRYP PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC)(Display* dpy, GLXContext context,
-                                                              mesa_glinterop_device_info* out);
-#endif
-typedef int(APIENTRYP PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC)(EGLDisplay dpy, EGLContext context,
-                                                              mesa_glinterop_device_info* out);
-#if !defined(MESA_GLINTEROP_NO_GLX)
-typedef int(APIENTRYP PFNMESAGLINTEROPGLXEXPORTOBJECTPROC)(Display* dpy, GLXContext context,
-                                                           mesa_glinterop_export_in* in,
-                                                           mesa_glinterop_export_out* out);
-#endif
-typedef int(APIENTRYP PFNMESAGLINTEROPEGLEXPORTOBJECTPROC)(EGLDisplay dpy, EGLContext context,
-                                                           mesa_glinterop_export_in* in,
-                                                           mesa_glinterop_export_out* out);
+typedef int (PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC)(struct _XDisplay *dpy, struct __GLXcontextRec *context,
+                                                     struct mesa_glinterop_device_info *out);
+typedef int (PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC)(EGLDisplay dpy, EGLContext context,
+                                                     struct mesa_glinterop_device_info *out);
+typedef int (PFNMESAGLINTEROPGLXEXPORTOBJECTPROC)(struct _XDisplay *dpy, struct __GLXcontextRec *context,
+                                                  struct mesa_glinterop_export_in *in,
+                                                  struct mesa_glinterop_export_out *out);
+typedef int (PFNMESAGLINTEROPEGLEXPORTOBJECTPROC)(EGLDisplay dpy, EGLContext context,
+                                                  struct mesa_glinterop_export_in *in,
+                                                  struct mesa_glinterop_export_out *out);
 
 #ifdef __cplusplus
 }

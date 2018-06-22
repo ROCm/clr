@@ -184,8 +184,8 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
   mesa_glinterop_export_in in = {0};
   mesa_glinterop_export_out out = {0};
 
-  in.size = sizeof(mesa_glinterop_export_in);
-  out.size = sizeof(mesa_glinterop_export_out);
+  in.version = MESA_GLINTEROP_EXPORT_IN_VERSION;
+  out.version = MESA_GLINTEROP_EXPORT_OUT_VERSION;
 
   if (owner()->getMemFlags() & CL_MEM_READ_ONLY)
     in.access = MESA_GLINTEROP_ACCESS_READ_ONLY;

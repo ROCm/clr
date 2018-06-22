@@ -1267,7 +1267,7 @@ bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxCo
   }
 
   mesa_glinterop_device_info info;
-  info.size = sizeof(mesa_glinterop_device_info);
+  info.version = MESA_GLINTEROP_DEVICE_INFO_VERSION;
   if (!MesaInterop::Init(kind)) {
     return false;
   }
