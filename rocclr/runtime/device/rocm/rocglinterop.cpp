@@ -18,10 +18,10 @@ namespace roc {
 namespace MesaInterop {
 
 #if !defined(_WIN32)
-static PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC GlxInfo = nullptr;
-static PFNMESAGLINTEROPGLXEXPORTOBJECTPROC GlxExport = nullptr;
-static PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC EglInfo = nullptr;
-static PFNMESAGLINTEROPEGLEXPORTOBJECTPROC EglExport = nullptr;
+static PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC* GlxInfo   = nullptr;
+static PFNMESAGLINTEROPGLXEXPORTOBJECTPROC*    GlxExport = nullptr;
+static PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC* EglInfo   = nullptr;
+static PFNMESAGLINTEROPEGLEXPORTOBJECTPROC*    EglExport = nullptr;
 static MESA_INTEROP_KIND loadedGLAPITypes(MESA_INTEROP_NONE);
 #endif
 
@@ -29,7 +29,7 @@ static const char* errorStrings[] = {"MESA_GLINTEROP_SUCCESS",
                                      "MESA_GLINTEROP_OUT_OF_RESOURCES",
                                      "MESA_GLINTEROP_OUT_OF_HOST_MEMORY",
                                      "MESA_GLINTEROP_INVALID_OPERATION",
-                                     "MESA_GLINTEROP_INVALID_VALUE",
+                                     "MESA_GLINTEROP_INVALID_VERSION",
                                      "MESA_GLINTEROP_INVALID_DISPLAY",
                                      "MESA_GLINTEROP_INVALID_CONTEXT",
                                      "MESA_GLINTEROP_INVALID_TARGET",
@@ -52,18 +52,16 @@ bool Init(MESA_INTEROP_KIND Kind) {
   return false;
 #else
   if (loadedGLAPITypes == MESA_INTEROP_NONE) {
-    void* glxinfo = dlsym(RTLD_DEFAULT, "MesaGLInteropGLXQueryDeviceInfo");
-    void* eglinfo = dlsym(RTLD_DEFAULT, "MesaGLInteropEGLQueryDeviceInfo");
+  void* glxinfo=dlsym(RTLD_DEFAULT, "MesaGLInteropGLXQueryDeviceInfo");
+  void* eglinfo=dlsym(RTLD_DEFAULT, "MesaGLInteropEGLQueryDeviceInfo");
+  
+  GlxInfo=(PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC*)glxinfo;
+  EglInfo=(PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC*)eglinfo;
 
-    GlxInfo = (PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC)glxinfo;
-    EglInfo = (PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC)eglinfo;
+  GlxExport=(PFNMESAGLINTEROPGLXEXPORTOBJECTPROC*)dlsym(RTLD_DEFAULT, "MesaGLInteropGLXExportObject");
+  EglExport=(PFNMESAGLINTEROPEGLEXPORTOBJECTPROC*)dlsym(RTLD_DEFAULT, "MesaGLInteropEGLExportObject");
 
-    GlxExport =
-        (PFNMESAGLINTEROPGLXEXPORTOBJECTPROC)dlsym(RTLD_DEFAULT, "MesaGLInteropGLXExportObject");
-    EglExport =
-        (PFNMESAGLINTEROPEGLEXPORTOBJECTPROC)dlsym(RTLD_DEFAULT, "MesaGLInteropEGLExportObject");
-
-    uint32_t ret = MESA_INTEROP_NONE;
+  uint32_t ret=MESA_INTEROP_NONE;
     if (GlxInfo && GlxExport) ret |= MESA_INTEROP_GLX;
     if (EglInfo && EglExport) ret |= MESA_INTEROP_EGL;
     loadedGLAPITypes = MESA_INTEROP_KIND(ret);
@@ -81,15 +79,15 @@ bool GetInfo(mesa_glinterop_device_info& info, MESA_INTEROP_KIND Kind, const Dis
   assert((loadedGLAPITypes & Kind) == Kind && "Requested interop API is not currently loaded.");
   int ret;
   switch (Kind) {
-    case MESA_INTEROP_GLX:
+  case MESA_INTEROP_GLX:
       ret = GlxInfo(display.glxDisplay, context.glxContext, &info);
       break;
-    case MESA_INTEROP_EGL:
+  case MESA_INTEROP_EGL:
       ret = EglInfo(display.eglDisplay, context.eglContext, &info);
       break;
-    default:
+  default:
       assert(false && "Invalid interop kind.");
-      return false;
+    return false;
   }
   if (ret == MESA_GLINTEROP_SUCCESS) return true;
   if (ret < int(sizeof(errorStrings) / sizeof(errorStrings[0])))
@@ -108,15 +106,15 @@ bool Export(mesa_glinterop_export_in& in, mesa_glinterop_export_out& out, MESA_I
   assert((loadedGLAPITypes & Kind) == Kind && "Requested interop API is not currently loaded.");
   int ret;
   switch (Kind) {
-    case MESA_INTEROP_GLX:
+  case MESA_INTEROP_GLX:
       ret = GlxExport(display.glxDisplay, context.glxContext, &in, &out);
       break;
-    case MESA_INTEROP_EGL:
+  case MESA_INTEROP_EGL:
       ret = EglExport(display.eglDisplay, context.eglContext, &in, &out);
       break;
-    default:
+  default:
       assert(false && "Invalid interop kind.");
-      return false;
+    return false;
   }
   if (ret == MESA_GLINTEROP_SUCCESS) return true;
   if (ret < int(sizeof(errorStrings) / sizeof(errorStrings[0])))
