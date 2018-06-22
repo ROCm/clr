@@ -1696,7 +1696,16 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
       GLint size;
 
       // In case target is GL_TEXTURE_BUFFER
-      amdContext.glenv()->glBindBuffer_(glTarget, texture);
+      GLint backingBuffer;
+      clearGLErrors(amdContext);
+      amdContext.glenv()->glGetTexLevelParameteriv_(
+          glTarget, 0, GL_TEXTURE_BUFFER_DATA_STORE_BINDING, &backingBuffer);
+      if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+        *not_null(errcode_ret) = CL_INVALID_IMAGE_FORMAT_DESCRIPTOR;
+        LogWarning("Cannot get backing buffer for GL \"texture buffer\" object");
+        return static_cast<cl_mem>(0);
+      }
+      amdContext.glenv()->glBindBuffer_(glTarget, backingBuffer);
 
       // Get GL texture format and check if it's compatible with CL format
       clearGLErrors(amdContext);
