@@ -1032,7 +1032,15 @@ bool Device::populateOCLDeviceConstants() {
   ss <<  ")";
 
   strcpy(info_.driverVersion_, ss.str().c_str());
-  info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
+
+  // Allow testing OpenCL 2.1 features with the OPENCL_VERSION variable. We don't accept OPENCL_VERSION
+  // values other than 210, since the default value of OPENCL_VERSION is 200. Accepting 200 would report
+  // 'OpenCL 2.0' by default.
+  if (OPENCL_VERSION == 210) {
+    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.1" " ";
+  } else {
+    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
+  }
 
   info_.builtInKernels_ = "";
   info_.linkerAvailable_ = true;
