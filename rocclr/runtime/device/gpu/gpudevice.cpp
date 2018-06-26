@@ -840,11 +840,21 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
 
   bool noSVM = LP64_SWITCH(true, false) && !GPU_FORCE_OCL20_32BIT;
   // Open GSL device
-  if (!open(ordinal, appProfile_.enableHighPerformanceState(),
-            (smallMemSystem ||
-             appProfile_.reportAsOCL12Device() ||
-             (OPENCL_VERSION < 200) ||
-             noSVM))) {
+  CALGSLDevice::OpenParams openData = {0};
+  openData.enableHighPerformanceState = appProfile_.enableHighPerformanceState();
+  openData.reportAsOCL12Device = (smallMemSystem ||
+                                  appProfile_.reportAsOCL12Device() ||
+                                  (OPENCL_VERSION < 200) ||
+                                  noSVM);
+  openData.sclkThreshold = appProfile_.GetSclkThreshold().c_str();
+  openData.downHysteresis = appProfile_.GetDownHysteresis().c_str();
+  openData.upHysteresis = appProfile_.GetUpHysteresis().c_str();
+  openData.powerLimit = appProfile_.GetPowerLimit().c_str();
+  openData.mclkThreshold = appProfile_.GetMclkThreshold().c_str();
+  openData.mclkUpHyst = appProfile_.GetMclkUpHyst().c_str();
+  openData.mclkDownHyst = appProfile_.GetMclkDownHyst().c_str();
+
+  if (!open(ordinal, openData)) {
     return false;
   }
 

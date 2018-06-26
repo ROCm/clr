@@ -48,10 +48,22 @@ public:
         gslMemObject  fMaskObject;  //(OUT) gsl memobject of the an MSAA resource F-mask.
     };
 
+    struct OpenParams {
+        bool        enableHighPerformanceState;
+        bool        reportAsOCL12Device;
+        const char* sclkThreshold;
+        const char* downHysteresis;
+        const char* upHysteresis;
+        const char* powerLimit;
+        const char* mclkThreshold;
+        const char* mclkUpHyst;
+        const char* mclkDownHyst;
+    };
+
     CALGSLDevice();
     ~CALGSLDevice();
 
-    bool open(uint32 gpuIndex, bool enableHighPerformanceState, bool reportAsOCL12Device);
+    bool open(uint32 gpuIndex, OpenParams& openData);
     void close();
 
     gslMemObject     resAlloc(const CALresourceDesc* desc) const;
@@ -192,6 +204,8 @@ private:
 
     void             getAttribs_int(gsl::gsCtx* cs);
     bool             ResolveAperture(const gslMemObjectAttribTiling tiling) const;
+
+    void             parsePowerParam(const char* element, gslRuntimeConfigUint32Value& pwrCount, gslRuntimeConfigUint32pValue& pwrPointer);
 
     CALdeviceattribs      m_attribs;
     gslMemInfo            m_memInfo;
