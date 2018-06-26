@@ -50,6 +50,28 @@ CALGSLDevice::~CALGSLDevice()
 {
     assert(m_adp == 0);    /// CALBE client must call close explicitly. Check that here
 
+    if (m_scfg.sclkActivityThresholdPtr.hasValue) {
+        osMemFree(m_scfg.sclkActivityThresholdPtr.value);
+    }
+    if (m_scfg.sclkDownHysteresisPtr.hasValue) {
+        osMemFree(m_scfg.sclkDownHysteresisPtr.value);
+    }
+    if (m_scfg.sclkUpHysteresisPtr.hasValue) {
+        osMemFree(m_scfg.sclkUpHysteresisPtr.value);
+    }
+    if (m_scfg.packagePowerLimitPtr.hasValue) {
+        osMemFree(m_scfg.packagePowerLimitPtr.value);
+    }
+    if (m_scfg.mclkActivityThresholdPtr.hasValue) {
+        osMemFree(m_scfg.mclkActivityThresholdPtr.value);
+    }
+    if (m_scfg.mclkUpHysteresisPtr.hasValue) {
+        osMemFree(m_scfg.mclkUpHysteresisPtr.value);
+    }
+    if (m_scfg.mclkDownHysteresisPtr.hasValue) {
+        osMemFree(m_scfg.mclkDownHysteresisPtr.value);
+    }
+
     delete gslDeviceOps_;
 }
 
@@ -123,8 +145,122 @@ CALGSLDevice::getAttribs_int(gsl::gsCtx* cs)
     m_attribs.pcieRevisionID = cs->getPciRevID();
 }
 
+// Parses a single unsigned integer from a comma separated string of integers such as
+// 0x24, 0x9235, 0x123,...
+//
+// pStr    (in)  The input string
+// pValue (out)  The unsigned integer output when parsing is successful
+//
+// Return Pointer to next location in string following a comma. If no such location is found
+// then pointer is null.
+static char* getNextValue(char* pStr, uint32* pValue)
+{
+    char* pRetStr = NULL;
+
+    if (pStr != NULL) {
+        if (pValue != NULL) {
+            *pValue = strtoul(pStr, NULL, 0);
+        }
+
+        pRetStr = strchr(pStr, ',');
+        if (pRetStr) {
+            pRetStr++;
+        }
+    }
+
+    return pRetStr;
+}
+
+// Parse string element to extract <deviceid, revisionid, clientid, value> 4-tuples of
+// comma-separated uint values and allocate and write those values to output array.
+//
+// Example input string:
+//     0x67A0,0x00,0x06,0x28,0x67A1,0x00,0x06,0x28
+//
+// Return the number of 4-tuple entries successfully parsed.
+static uint32 parse4TupleValues(const char* element, uint32*& values)
+{
+    // Early out if something else (e.g oglPanel) has already set this value
+    if (values != NULL) {
+        return 0;
+    }
+
+    const size_t strSize = strlen(element);
+
+    if (0 == strSize) {
+        return 0;
+    }
+
+    char * const str = (char*)alloca(sizeof(char) * (strSize + 1));
+    char * pCurStr = str;
+    uint32 curDevID;
+    uint32 curRevID;
+    uint32 curClientID;
+    uint32 curValue;
+    uint32 numTuples = 0;
+
+    // Find size
+    memcpy(str, element, strSize);
+    str[strSize] = '\0';
+    while (pCurStr != NULL) {
+        pCurStr = getNextValue(pCurStr, &curDevID);
+        if (pCurStr != NULL) {
+            pCurStr = getNextValue(pCurStr, &curRevID);
+            if (pCurStr != NULL) {
+                pCurStr = getNextValue(pCurStr, &curClientID);
+                if (pCurStr != NULL) {
+                    pCurStr = getNextValue(pCurStr, &curValue);
+                    numTuples ++;
+                }
+            }
+        }
+    }
+
+    if (numTuples == 0) {
+        return 0;
+    }
+
+    // Allocate
+    values = (uint32*)osMemAlloc(numTuples * sizeof(uint32) * 4);
+    if (!values) {
+        return 0;
+    }
+
+    // Copy
+    uint32 * pCurValue = values;
+    pCurStr = str;
+    memcpy(str, element, strSize);
+    str[strSize] = '\0';
+    while (pCurStr != NULL) {
+        pCurStr = getNextValue(pCurStr, pCurValue);
+        pCurValue++;
+        pCurStr = getNextValue(pCurStr, pCurValue);
+        pCurValue++;
+        pCurStr = getNextValue(pCurStr, pCurValue);
+        pCurValue++;
+        pCurStr = getNextValue(pCurStr, pCurValue);
+        pCurValue++;
+    }
+
+    return numTuples;
+}
+
+void
+CALGSLDevice::parsePowerParam(const char* element, gslRuntimeConfigUint32Value& pwrCount, gslRuntimeConfigUint32pValue& pwrPointer)
+{
+    uint32  count = 0;
+    uint32* values = NULL;
+    count = parse4TupleValues(element, values);
+    if (0 != count) {
+        pwrCount.hasValue = true;
+        pwrCount.value = count;
+        pwrPointer.hasValue = true;
+        pwrPointer.value = values;
+    }
+}
+
 bool
-CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool reportAsOCL12Device)
+CALGSLDevice::open(uint32 gpuIndex, OpenParams& openData)
 {
     gslDeviceOps_ = new amd::Monitor("GSL Device Ops Lock", true);
     if (NULL == gslDeviceOps_) {
@@ -168,10 +304,18 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_scfg.vpuMask.value = m_vpuMask;
 
     m_scfg.bEnableHighPerformanceState.hasValue = true;
-    m_scfg.bEnableHighPerformanceState.value = enableHighPerformanceState;
+    m_scfg.bEnableHighPerformanceState.value = openData.enableHighPerformanceState;
 
     m_scfg.bEnableReusableMemCache.hasValue = true;
     m_scfg.bEnableReusableMemCache.value = false;
+
+    parsePowerParam(openData.sclkThreshold, m_scfg.sclkActivityThresholdCount, m_scfg.sclkActivityThresholdPtr);
+    parsePowerParam(openData.downHysteresis, m_scfg.sclkDownHysteresisCount, m_scfg.sclkDownHysteresisPtr);
+    parsePowerParam(openData.upHysteresis, m_scfg.sclkUpHysteresisCount, m_scfg.sclkUpHysteresisPtr);
+    parsePowerParam(openData.powerLimit, m_scfg.packagePowerLimitCount, m_scfg.packagePowerLimitPtr);
+    parsePowerParam(openData.mclkThreshold, m_scfg.mclkActivityThresholdCount, m_scfg.mclkActivityThresholdPtr);
+    parsePowerParam(openData.mclkUpHyst, m_scfg.mclkUpHysteresisCount, m_scfg.mclkUpHysteresisPtr);
+    parsePowerParam(openData.mclkDownHyst, m_scfg.mclkDownHysteresisCount, m_scfg.mclkDownHysteresisPtr);
 
     m_dcfg.disableMarkUsedInCmdBuf.hasValue = true;
     m_dcfg.disableMarkUsedInCmdBuf.value    = false;
@@ -181,13 +325,13 @@ CALGSLDevice::open(uint32 gpuIndex, bool enableHighPerformanceState, bool report
     m_dcfg.immediateMemoryRelease.value    = true;
 
     m_dcfg.bEnableSvm.hasValue = true;
-    m_dcfg.bEnableSvm.value    = reportAsOCL12Device ? false : OPENCL_MAJOR >= 2;
+    m_dcfg.bEnableSvm.value    = openData.reportAsOCL12Device ? false : OPENCL_MAJOR >= 2;
 
     m_dcfg.bEnableFlatAddressing.hasValue = true;
 #if defined(ATI_BITS_32) && defined(ATI_OS_LINUX)
     m_dcfg.bEnableFlatAddressing.value    = false;
 #else
-    m_dcfg.bEnableFlatAddressing.value    = reportAsOCL12Device ? false : (OPENCL_MAJOR >= 2);
+    m_dcfg.bEnableFlatAddressing.value    = openData.reportAsOCL12Device ? false : (OPENCL_MAJOR >= 2);
 #endif
 
     if (GPU_ENABLE_HW_DEBUG) {
