@@ -73,6 +73,7 @@ namespace pal
 class Settings;
 class Device;
 class VirtualGPU;
+class HSAILKernel;
 
 // ================================================================================================
 // RgpSqttMarkerIdentifier - Identifiers for RGP SQ thread-tracing markers (Table 1)
@@ -99,13 +100,16 @@ enum RgpSqttMarkerIdentifier : uint32_t
 // ================================================================================================
 enum class RgpSqttMarkerEventType : uint32_t
 {
-  CmdDispatch = 6,            // CmdDispatch
-  CmdCopyBuffer = 8,          // CmdCopyBuffer
-  CmdCopyImage = 9,           // CmdCopyImage
-  CmdCopyBufferToImage = 11,  // CmdCopyBufferToImage
-  CmdCopyImageToBuffer = 12,  // CmdCopyImageToBuffer
-  CmdPipelineBarrier = 20,    // CmdPipelineBarrier
-  InternalUnknown = 26,       // Uknown operaiton
+  CmdNDRangeKernel = 0,
+  CmdScheduler = 1,
+  CmdCopyBuffer = 2,
+  CmdCopyImageToBuffer = 3,
+  CmdCopyBufferToImage = 4,
+  CmdFillBuffer = 5,
+  CmdCopyImage = 6,
+  CmdFillImage = 7,
+  CmdPipelineBarrier = 8,
+  InternalUnknown = 26,
   Invalid = 0xffffffff
 };
 
@@ -242,6 +246,47 @@ constexpr uint32_t RgpSqttInstrumentationSpecVersion = 1;
 // RGP SQTT Instrumentation Specification version for Vulkan-specific tables
 constexpr uint32_t RgpSqttInstrumentationApiVersion  = 0;
 
+// RgpSqttMarkeUserEventDataType - Data types used in RGP SQ thread-tracing markers for an user event
+enum RgpSqttMarkerUserEventType : uint32_t
+{
+    RgpSqttMarkerUserEventTrigger = 0x0,
+    RgpSqttMarkerUserEventPop = 0x1,
+    RgpSqttMarkerUserEventPush = 0x2,
+    RgpSqttMarkerUserEventObjectName = 0x3,
+    RgpSqttMarkerUserEventReserved1 = 0x4,
+    RgpSqttMarkerUserEventReserved2 = 0x5,
+    RgpSqttMarkerUserEventReserved3 = 0x6,
+    RgpSqttMarkerUserEventReserved4 = 0x7,
+};
+
+// RgpSqttMarkerUserEvent - RGP SQ thread-tracing marker for an user event.
+union RgpSqttMarkerUserEvent
+{
+    struct
+    {
+        uint32_t identifier : 4;  // Identifier for this marker
+        uint32_t extDwords : 8;  // Number of extra dwords following this marker
+        uint32_t dataType : 8;  // The type for this marker
+        uint32_t reserved : 12; // reserved
+    };
+
+    uint32_t dword01;                               // The first dword
+};
+
+constexpr uint32_t RgpSqttMarkerUserEventWordCount = 1;
+
+// The max lengths of frame marker strings
+static constexpr size_t RgpSqttMaxUserEventStringLengthInDwords = 1024;
+
+// RgpSqttMarkerUserEvent - RGP SQ thread-tracing marker for an user event with a string (push and trigger data types)
+struct RgpSqttMarkerUserEventWithString
+{
+    RgpSqttMarkerUserEvent header;
+
+    uint32_t stringLength;                                        // Length of the string (in characters)
+    uint32_t stringData[RgpSqttMaxUserEventStringLengthInDwords]; // String data in UTF-8 format
+};
+
 // ================================================================================================
 // This class provides functionality to interact with the GPU Open Developer Mode message passing
 // service and the rest of the driver.
@@ -254,15 +299,19 @@ public:
 
   void Finalize();
 
-  void PreDispatch(VirtualGPU* pQueue, size_t x, size_t y, size_t z);
+  void PreDispatch(VirtualGPU* pQueue, const HSAILKernel& kernel, size_t x, size_t y, size_t z);
   void PostDispatch(VirtualGPU* pQueue);
+
   void WaitForDriverResume();
 
   void PostDeviceCreate();
   void PreDeviceDestroy();
-  void FinishRGPTrace(bool aborted);
+  void FinishRGPTrace(VirtualGPU* gpu, bool aborted);
 
   bool IsQueueTimingActive() const;
+
+  void WriteBarrierStartMarker(const Pal::Developer::BarrierData& data) const;
+  void WriteBarrierEndMarker(const Pal::Developer::BarrierData& data) const;
 
 private:
   // Steps that an RGP trace goes through
@@ -294,7 +343,7 @@ private:
 
     uint32_t      prepared_disp_count_; // Number of dispatches counted while preparing for a trace
     uint32_t      sqtt_disp_count_;     // Number of dispatches counted while SQTT tracing is active
-    uint32_t      current_event_id_;    // Current event ID
+    mutable uint32_t current_event_id_; // Current event ID
   };
 
   RgpCaptureMgr(Pal::IPlatform* platform, const Device& device);
@@ -307,18 +356,20 @@ private:
   void DestroyRGPTracing();
   Pal::Result CheckForTraceResults();
   static bool GpuSupportsTracing(const Pal::DeviceProperties& props, const Settings& settings);
-  RgpSqttMarkerEvent BuildEventMarker(RgpSqttMarkerEventType api_type);
+  RgpSqttMarkerEvent BuildEventMarker(RgpSqttMarkerEventType api_type) const;
   void WriteMarker(const void* data, size_t data_size) const;
-  void WriteEventWithDimsMarker(RgpSqttMarkerEventType apiType, uint32_t x, uint32_t y, uint32_t z);
+  void WriteEventWithDimsMarker(RgpSqttMarkerEventType apiType, uint32_t x, uint32_t y, uint32_t z) const;
+  void WriteUserEventMarker(RgpSqttMarkerUserEventType eventType, const std::string& name) const;
 
   const Device&               device_;
   DevDriver::DevDriverServer* dev_driver_server_;
   DevDriver::RGPProtocol::RGPServer* rgp_server_;
-  amd::Monitor                trace_mutex_;
+  mutable amd::Monitor        trace_mutex_;
   TraceState                  trace_;
   uint32_t                    num_prep_disp_;
   uint32_t                    trace_gpu_mem_limit_;
   uint32_t                    global_disp_count_;
+  RgpSqttMarkerUserEventWithString* user_event_;
   bool                        trace_enabled_;         // True if tracing is currently enabled (master flag)
   bool                        inst_tracing_enabled_;  // Enable instruction-level SQTT tokens
 

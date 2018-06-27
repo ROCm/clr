@@ -942,6 +942,33 @@ bool Device::create(Pal::IDevice* device) {
   return true;
 }
 
+// =====================================================================================================================
+// Master function that handles developer callbacks from PAL.
+void PAL_STDCALL Device::PalDeveloperCallback(
+  void*                        pPrivateData,
+  const Pal::uint32            deviceIndex,
+  Pal::Developer::CallbackType type,
+  void*                        pCbData) {
+  Device* device = static_cast<Device*>(pPrivateData);
+  const auto& barrier = *static_cast<const Pal::Developer::BarrierData*>(pCbData);
+
+  switch (type) {
+  case Pal::Developer::CallbackType::BarrierBegin:
+    device->rgpCaptureMgr()->WriteBarrierStartMarker(barrier);
+  break;
+  case Pal::Developer::CallbackType::BarrierEnd:
+    device->rgpCaptureMgr()->WriteBarrierEndMarker(barrier);
+  break;
+  case Pal::Developer::CallbackType::ImageBarrier:
+    assert(false);
+    break;
+  case Pal::Developer::CallbackType::DrawDispatch:
+      break;
+  default:
+      break;
+  }
+}
+
 bool Device::initializeHeapResources() {
   amd::ScopedLock k(lockForInitHeap_);
   if (!heapInitComplete_) {
@@ -999,6 +1026,9 @@ bool Device::initializeHeapResources() {
 
     // Create RGP capture manager
     rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
+    if (nullptr != rgpCaptureMgr_) {
+      Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
+    }
   }
   return true;
 }
