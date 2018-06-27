@@ -920,7 +920,7 @@ bool VirtualGPU::allocHsaQueueMem() {
 VirtualGPU::~VirtualGPU() {
   // Destroy RGP trace
   if (rgpCaptureEna()) {
-    dev().rgpCaptureMgr()->FinishRGPTrace(true);
+    dev().rgpCaptureMgr()->FinishRGPTrace(this, true);
   }
 
   // Not safe to remove a queue. So lock the device
@@ -2105,13 +2105,14 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     newOffset[i] = sizes.offset()[i];
   }
 
-  // If RGP capturing is enabled, then start SQTT trace
-  if (rgpCaptureEna()) {
-    dev().rgpCaptureMgr()->PreDispatch(this, newGlobalSize[0], newGlobalSize[1], newGlobalSize[2]);
-  }
-
   // Get the HSA kernel object
   const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
+
+  // If RGP capturing is enabled, then start SQTT trace
+  if (rgpCaptureEna()) {
+    dev().rgpCaptureMgr()->PreDispatch(this, hsaKernel,
+      newGlobalSize[0], newGlobalSize[1], newGlobalSize[2]);
+  }
 
   bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true : false;
   if (printfEnabled && !printfDbgHSA().init(*this, printfEnabled)) {

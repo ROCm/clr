@@ -526,6 +526,12 @@ class Device : public NullDevice {
   }
 
  private:
+  static void PAL_STDCALL PalDeveloperCallback(
+    void*                        pPrivateData,
+    const Pal::uint32            deviceIndex,
+    Pal::Developer::CallbackType type,
+    void*                        pCbData);
+
   //! Disable copy constructor
   Device(const Device&);
 
