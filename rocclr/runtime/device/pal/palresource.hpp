@@ -531,6 +531,7 @@ class ResourceCache : public amd::HeapObject {
   ResourceCache(Device* device, size_t cacheSizeLimit)
       : lockCacheOps_("PAL resource cache", true)
       , cacheSize_(0)
+      , lclCacheSize_(0)
       , cacheSizeLimit_(cacheSizeLimit)
       , mem_sub_alloc_local_(device)
       , mem_sub_alloc_coarse_ (device)
@@ -557,6 +558,9 @@ class ResourceCache : public amd::HeapObject {
   //! Returns true if cache was freed and false if cache is already empty.
   bool free(size_t minCacheEntries = 0);
 
+  //! Returns the size of local memory, stored in the cache
+  size_t lclCacheSize() const { return lclCacheSize_; }
+
  private:
   //! Disable copy constructor
   ResourceCache(const ResourceCache&);
@@ -570,6 +574,7 @@ class ResourceCache : public amd::HeapObject {
   amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
   size_t cacheSize_;            //!< Current cache size in bytes
+  size_t lclCacheSize_;         //!< Local memory stored in the cache
   const size_t cacheSizeLimit_; //!< Cache size limit in bytes
 
   //! PAL resource cache

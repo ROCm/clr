@@ -468,10 +468,10 @@ class Device : public NullDevice {
   RgpCaptureMgr* rgpCaptureMgr() const { return rgpCaptureMgr_; }
 
   //! Update free memory for OCL extension
-  void updateFreeMemory(Pal::GpuHeap heap,  //!< PAL GPU heap for update
-                        Pal::gpusize size,  //!< Size of alocated/destroyed memory
-                        bool free           //!< TRUE if runtime frees memory
-                        );
+  void updateAllocedMemory(Pal::GpuHeap heap,  //!< PAL GPU heap for update
+                           Pal::gpusize size,  //!< Size of alocated/destroyed memory
+                           bool free           //!< TRUE if runtime frees memory
+                           ) const;
 
   //! Create internal blit program
   bool createBlitProgram();
@@ -594,9 +594,10 @@ class Device : public NullDevice {
   mutable bool freeCPUMem_;              //!< flag to mark GPU free SVM CPU mem
   Pal::DeviceProperties properties_;     //!< PAL device properties
   Pal::IDevice* device_;                 //!< PAL device object
-  std::atomic<Pal::gpusize> freeMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
+  mutable std::atomic<Pal::gpusize> allocedMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
   std::unordered_set<Resource*>* resourceList_;   //!< Active resource list
   RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
+  Pal::GpuMemoryHeapProperties heaps_[Pal::GpuHeapCount]; //!< Information about heaps, returned from PAL
 };
 
 /*@}*/} // namespace pal

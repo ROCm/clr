@@ -428,7 +428,10 @@ class ResourceCache : public amd::HeapObject {
  public:
   //! Default constructor
   ResourceCache(size_t cacheSizeLimit)
-      : lockCacheOps_("CAL resource cache", true), cacheSize_(0), cacheSizeLimit_(cacheSizeLimit) {}
+      : lockCacheOps_("CAL resource cache", true)
+      , cacheSize_(0)
+      , lclCacheSize_(0)
+      , cacheSizeLimit_(cacheSizeLimit) {}
 
   //! Default destructor
   ~ResourceCache();
@@ -446,6 +449,9 @@ class ResourceCache : public amd::HeapObject {
   //! Destroys cache
   bool free(size_t minCacheEntries = 0);
 
+  //! Returns the size of local memory, stored in the cache
+  size_t lclCacheSize() const { return lclCacheSize_; }
+
  private:
   //! Disable copy constructor
   ResourceCache(const ResourceCache&);
@@ -462,6 +468,7 @@ class ResourceCache : public amd::HeapObject {
   amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
   size_t cacheSize_;       //!< Current cache size in bytes
+  size_t lclCacheSize_;    //!< Local memory stored in the cache
   size_t cacheSizeLimit_;  //!< Cache size limit in bytes
 
   //! CAL resource cache
