@@ -431,6 +431,14 @@ void Memory::commitSvmMemory() {
   }
 }
 
+void Memory::uncommitSvmMemory() {
+  ScopedLock lock(lockMemoryOps_);
+  if (svmPtrCommited_ && !(flags_ & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
+    amd::Os::uncommitMemory(svmHostAddress_, size_);
+    svmPtrCommited_ = false;
+  }
+}
+
 void Buffer::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Buffer));
   memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));

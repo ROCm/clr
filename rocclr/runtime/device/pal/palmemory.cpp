@@ -385,6 +385,10 @@ Memory::~Memory() {
 
   // Release associated map target, if any
   if (nullptr != mapMemory_) {
+    if (owner()->getSvmPtr() != nullptr) {
+      owner()->uncommitSvmMemory();
+    }
+
     mapMemory()->unmap(nullptr);
     mapMemory_->release();
   }
