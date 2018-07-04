@@ -720,10 +720,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueSVMMap,
       device::Memory* mem = svmMem->getDeviceMemory(queue->device());
       if (NULL == mem) {
         LogPrintfError("Can't allocate memory size - 0x%08X bytes!", svmMem->getSize());
-        return CL_OUT_OF_RESOURCES;
+        return CL_MEM_OBJECT_ALLOCATION_FAILURE;
       }
       // Attempt to allocate the map target now (whether blocking or non-blocking)
-      void* mapPtr = (queue->device()).allocMapTarget(*svmMem, srcOffset, srcSize, map_flags);
+      void* mapPtr = mem->allocMapTarget(srcOffset, srcSize, map_flags);
       if (NULL == mapPtr || mapPtr != svm_ptr) {
         return CL_OUT_OF_RESOURCES;
       }
