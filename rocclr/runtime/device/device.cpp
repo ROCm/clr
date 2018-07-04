@@ -399,21 +399,6 @@ char* Device::getExtensionString() {
   return result;
 }
 
-void* Device::allocMapTarget(amd::Memory& mem, const amd::Coord3D& origin,
-                             const amd::Coord3D& region, uint mapFlags, size_t* rowPitch,
-                             size_t* slicePitch) {
-  // Translate memory references
-  device::Memory* devMem = mem.getDeviceMemory(*this);
-  if (devMem == NULL) {
-    LogError("allocMapTarget failed. Can't allocate video memory");
-    return NULL;
-  }
-
-  // Pass request over to memory
-  return devMem->allocMapTarget(origin, region, mapFlags, rowPitch, slicePitch);
-}
-
-
 #if defined(WITH_LIGHTNING_COMPILER)
 CacheCompilation::CacheCompilation(std::string targetStr, std::string postfix, bool enableCache,
                                    bool resetCache)

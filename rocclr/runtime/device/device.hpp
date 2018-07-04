@@ -1513,16 +1513,6 @@ class Device : public RuntimeObject {
   //! resolves GL depth/msaa buffer
   virtual bool resolveGLMemory(device::Memory*) const { return true; }
 
-  //! Gets a pointer to a region of host-visible memory for use as the target
-  //! of an indirect map for a given memory object
-  virtual void* allocMapTarget(amd::Memory& mem,            //!< Abstraction layer memory object
-                               const amd::Coord3D& origin,  //!< The map location in memory
-                               const amd::Coord3D& region,  //!< The map region in memory
-                               uint mapFlags,               //!< Map flags
-                               size_t* rowPitch = NULL,     //!< Row pitch for the mapped memory
-                               size_t* slicePitch = NULL    //!< Slice for the mapped memory
-                               );
-
   //! Gets free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory  //!< Free memory information on a GPU device
                                 ) const = 0;
