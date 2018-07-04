@@ -306,6 +306,7 @@ class Memory : public amd::RuntimeObject {
     return svmPtrCommited_;
   }                        //!< svm host address committed accessor;
   void commitSvmMemory();  //!< svm host address committed accessor;
+  void uncommitSvmMemory();
   void setCacheStatus(bool canBeCached) {
     canBeCached_ = canBeCached;
   }                                                     //!< set the memobject cached status;
