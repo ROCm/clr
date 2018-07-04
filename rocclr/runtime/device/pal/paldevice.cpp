@@ -846,15 +846,14 @@ bool Device::create(Pal::IDevice* device) {
   // Commit the new settings for the device
   result = iDev()->CommitSettingsAndInit();
 
-  Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
-  iDev()->GetGpuMemoryHeapProperties(heaps);
+  iDev()->GetGpuMemoryHeapProperties(heaps_);
 
   Pal::WorkStationCaps wscaps = {};
   iDev()->QueryWorkStationCaps(&wscaps);
 
   pal::Settings* gpuSettings = reinterpret_cast<pal::Settings*>(settings_);
   if ((gpuSettings == nullptr) ||
-      !gpuSettings->create(properties(), heaps, wscaps, appProfile_.reportAsOCL12Device())) {
+      !gpuSettings->create(properties(), heaps_, wscaps, appProfile_.reportAsOCL12Device())) {
     return false;
   }
   numComputeEngines_ = std::min(numComputeEngines_, settings().numComputeRings_);
@@ -885,7 +884,7 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   // Fill the device info structure
-  fillDeviceInfo(properties(), heaps, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines());
+  fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines());
 
 #ifdef DEBUG
   std::stringstream message;
@@ -901,7 +900,7 @@ bool Device::create(Pal::IDevice* device) {
 #endif  // DEBUG
 
   for (uint i = 0; i < Pal::GpuHeap::GpuHeapCount; ++i) {
-    freeMem[i] = heaps[i].heapSize;
+    allocedMem[i] = 0;
   }
 
   // Allocate SRD manager
@@ -1677,15 +1676,31 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
     return false;
   }
 
-  Pal::gpusize local = freeMem[Pal::GpuHeapLocal];
-  Pal::gpusize invisible = freeMem[Pal::GpuHeapInvisible];
+  Pal::gpusize local = allocedMem[Pal::GpuHeapLocal];
+  Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
+  // Calculate free memory
+  if (local >= heaps_[Pal::GpuHeapLocal].heapSize) {
+    local = 0;
+  } else {
+    local = heaps_[Pal::GpuHeapLocal].heapSize - local;
+  }
+  if (invisible >= info().maxMemAllocSize_) {
+    invisible = 0;
+  } else {
+    invisible = info().maxMemAllocSize_ - invisible;
+  }
 
   // Fill free memory info
   freeMemory[TotalFreeMemory] = static_cast<size_t>((local + invisible) / Ki);
   freeMemory[LargestFreeBlock] = static_cast<size_t>(std::max(local, invisible) / Ki);
 
   if (settings().apuSystem_) {
-    Pal::gpusize uswc = freeMem[Pal::GpuHeapGartUswc];
+    Pal::gpusize uswc = allocedMem[Pal::GpuHeapGartUswc];
+    if (uswc >= heaps_[Pal::GpuHeapGartUswc].heapSize) {
+      uswc = 0;
+    } else {
+      uswc = heaps_[Pal::GpuHeapGartUswc].heapSize - uswc;
+    }
     uswc /= Ki;
     freeMemory[TotalFreeMemory] += static_cast<size_t>(uswc);
     if (freeMemory[LargestFreeBlock] < uswc) {
@@ -2124,11 +2139,11 @@ void Device::SrdManager::freeSrdSlot(uint64_t addr) {
   assert(false && "Wrong slot address!");
 }
 
-void Device::updateFreeMemory(Pal::GpuHeap heap, Pal::gpusize size, bool free) {
+void Device::updateAllocedMemory(Pal::GpuHeap heap, Pal::gpusize size, bool free) const {
   if (free) {
-    freeMem[heap] += size;
-  } else {
-    freeMem[heap] -= size;
+    allocedMem[heap] -= size;
+  }  else {
+    allocedMem[heap] += size;
   }
 }
 

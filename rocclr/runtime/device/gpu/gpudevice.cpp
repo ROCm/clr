@@ -1805,7 +1805,8 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
 
   // Fill free memory info
   freeMemory[TotalFreeMemory] =
-      (memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) / Ki;
+      (memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes +   
+       resourceCache().lclCacheSize()) / Ki;
   freeMemory[LargestFreeBlock] =
       std::max(memInfo.cardLargestFreeBlockBytes, memInfo.cardExtLargestFreeBlockBytes) / Ki;
   if (settings().apuSystem_) {

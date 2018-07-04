@@ -51,8 +51,10 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-  // Update free memory size counters
-  const_cast<Device&>(dev).updateFreeMemory(createInfo.heaps[0], createInfo.size, false);
+  if (!createInfo.flags.sdiExternal) {
+    // Update free memory size counters
+    dev.updateAllocedMemory(createInfo.heaps[0], createInfo.size, false);
+  }
   return memRef;
 }
 
@@ -75,7 +77,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
+  dev.updateAllocedMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
   return memRef;
 }
 
@@ -97,8 +99,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  const_cast<Device&>(dev).updateFreeMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size,
-                                            false);
+  dev.updateAllocedMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
   return memRef;
 }
 
@@ -180,6 +181,12 @@ GpuMemoryReference::~GpuMemoryReference() {
     iMem()->Unmap();
   }
   if (0 != iMem()) {
+    if (!(iMem()->Desc().flags.isShared ||
+          iMem()->Desc().flags.isExternal ||
+          iMem()->Desc().flags.isExternPhys)) {
+      // Update free memory size counters
+      device_.updateAllocedMemory(iMem()->Desc().preferredHeap, iMem()->Desc().size, true);
+    }
     iMem()->Destroy();
     gpuMem_ = nullptr;
   }
@@ -288,34 +295,6 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
 
 // ================================================================================================
 Resource::~Resource() {
-  Pal::GpuHeap heap = Pal::GpuHeapCount;
-  switch (memoryType()) {
-    case Persistent:
-      heap = Pal::GpuHeapLocal;
-      break;
-    case RemoteUSWC:
-      heap = Pal::GpuHeapGartUswc;
-      break;
-    case Pinned:
-    case Remote:
-      heap = Pal::GpuHeapGartCacheable;
-      break;
-    case Shader:
-    case BusAddressable:
-    case ExternalPhysical:
-    // Fall through to process the memory allocation ...
-    case Local:
-      heap = Pal::GpuHeapInvisible;
-      break;
-    default:
-      heap = Pal::GpuHeapLocal;
-      break;
-  }
-  if ((memRef_ != nullptr) && (heap != Pal::GpuHeapCount)) {
-    // Update free memory size counters
-    const_cast<Device&>(dev()).updateFreeMemory(heap, iMem()->Desc().size, true);
-  }
-
   free();
 
   if ((nullptr != image_) &&
@@ -1228,6 +1207,7 @@ void Resource::free()
 
     // Add resource to the cache
     if (!dev().resourceCache().addGpuMemory(&desc_, memRef_, subOffset_)) {
+      // Free PAL resource
       palFree();
     }
   }
@@ -2015,6 +1995,9 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
       resCache_.push_front({descCached, ref});
       ref->gpu_ = nullptr;
       cacheSize_ += size;
+      if (desc->type_ == Resource::Local) {
+        lclCacheSize_ += size;
+      }
       result = true;
     }
   }
@@ -2056,10 +2039,13 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
         (size > (sizeRes >> 2)) && ((it.second->iMem()->Desc().gpuVirtAddr % alignment) == 0) &&
         (entry->isAllocExecute_ == desc->isAllocExecute_)) {
       ref = it.second;
+      cacheSize_ -= sizeRes;
+      if (entry->type_ == Resource::Local) {
+          lclCacheSize_ -= sizeRes;
+      }
       delete it.first;
       // Remove the found etry from the cache
       resCache_.remove(it);
-      cacheSize_ -= sizeRes;
       break;
     }
   }
@@ -2090,9 +2076,12 @@ void ResourceCache::removeLast()
     amd::ScopedLock l(&lockCacheOps_);
     entry = resCache_.back();
     resCache_.pop_back();
+    cacheSize_ -= entry.second->iMem()->Desc().size;
+    if (entry.first->type_ == Resource::Local) {
+      lclCacheSize_ -= entry.second->iMem()->Desc().size;
+    }
     // Delete Descriptor
     delete entry.first;
-    cacheSize_ -= entry.second->iMem()->Desc().size;
   }
 
   // Destroy PAL resource

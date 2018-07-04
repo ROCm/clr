@@ -1748,6 +1748,9 @@ bool ResourceCache::addCalResource(Resource::CalResourceDesc* desc, GslResourceR
       // Add the current resource to the cache
       resCache_.push_front({descCached, ref});
       cacheSize_ += size;
+      if (desc->type_ == Resource::Local) {
+          lclCacheSize_ += size;
+      }
       result = true;
     }
   }
@@ -1777,10 +1780,13 @@ GslResourceReference* ResourceCache::findCalResource(Resource::CalResourceDesc* 
         (entry->mipLevels_ == desc->mipLevels_) && (entry->isAllocSVM_ == desc->isAllocSVM_) &&
         (entry->isAllocExecute_ == desc->isAllocExecute_)) {
       ref = it.second;
+      cacheSize_ -= size;
+      if (entry->type_ == Resource::Local) {
+          lclCacheSize_ -= size;
+      }
       delete it.first;
       // Remove the found etry from the cache
       resCache_.remove(it);
-      cacheSize_ -= size;
       break;
     }
   }
@@ -1823,12 +1829,16 @@ void ResourceCache::removeLast() {
 
   size_t size = getResourceSize(entry.first);
 
+  cacheSize_ -= size;
+  if (entry.first->type_ == Resource::Local) {
+      lclCacheSize_ -= size;
+  }
+
   // Delete CalResourceDesc
   delete entry.first;
 
   // Destroy GSL resource
   entry.second->release();
-  cacheSize_ -= size;
 }
 
 }  // namespace gpu
