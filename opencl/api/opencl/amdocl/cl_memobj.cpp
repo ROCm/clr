@@ -3067,8 +3067,15 @@ RUNTIME_ENTRY_RET(void*, clEnqueueMapBuffer,
     return (void*)0;
   }
 
+  // Make sure we have memory for the command execution
+  device::Memory* mem = srcBuffer->getDeviceMemory(hostQueue.device());
+  if (NULL == mem) {
+    LogPrintfError("Can't allocate memory size - 0x%08X bytes!", srcBuffer->getSize());
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    return NULL;
+  }
   // Attempt to allocate the map target now (whether blocking or non-blocking)
-  void* mapPtr = hostQueue.device().allocMapTarget(*srcBuffer, srcOffset, srcSize, map_flags);
+  void* mapPtr = mem->allocMapTarget(srcOffset, srcSize, map_flags);
   if (NULL == mapPtr) {
     *not_null(errcode_ret) = CL_MAP_FAILURE;
     return NULL;
@@ -3332,9 +3339,16 @@ RUNTIME_ENTRY_RET(void*, clEnqueueMapImage,
     return (void*)0;
   }
 
+  // Make sure we have memory for the command execution
+  device::Memory* mem = srcImage->getDeviceMemory(hostQueue.device());
+  if (NULL == mem) {
+    LogPrintfError("Can't allocate memory size - 0x%08X bytes!", srcImage->getSize());
+    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+    return NULL;
+  }
   // Attempt to allocate the map target now (whether blocking or non-blocking)
-  void* mapPtr = hostQueue.device().allocMapTarget(*srcImage, srcOrigin, srcRegion, map_flags,
-                                                   image_row_pitch, image_slice_pitch);
+  void* mapPtr = mem->allocMapTarget(srcOrigin, srcRegion, map_flags,
+                                     image_row_pitch, image_slice_pitch);
   if (NULL == mapPtr) {
     *not_null(errcode_ret) = CL_MAP_FAILURE;
     return NULL;
