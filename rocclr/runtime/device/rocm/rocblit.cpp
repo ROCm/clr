@@ -2135,9 +2135,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   sp->child_queue = reinterpret_cast<uint64_t>(schedulerQueue);
   sp->complete_signal = schedulerSignal;
 
-  hsa_signal_t  signal1;
-  signal1 = schedulerSignal;
-  hsa_signal_store_relaxed(signal1, 1);
+  hsa_signal_store_relaxed(schedulerSignal, 1);
 
   sp->scheduler_aql.header = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
                              (1 << HSA_PACKET_HEADER_BARRIER) |
@@ -2166,9 +2164,8 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   bool result = false;
   result = gpu().submitKernelInternal(ndrange, *kernels_[Scheduler], parameters, nullptr);
   releaseArguments(parameters);
-  synchronize();
 
-  if (hsa_signal_wait_acquire(signal1, HSA_SIGNAL_CONDITION_LT, 1, (-1),
+  if (hsa_signal_wait_acquire(schedulerSignal, HSA_SIGNAL_CONDITION_LT, 1, (-1),
                                 HSA_WAIT_STATE_BLOCKED) != 0) {
     LogWarning("Failed schedulerSignal wait");
     return false;
