@@ -558,6 +558,9 @@ class ResourceCache : public amd::HeapObject {
   //! Returns true if cache was freed and false if cache is already empty.
   bool free(size_t minCacheEntries = 0);
 
+  //! Returns the size of all memory, stored in the cache
+  size_t cacheSize() const { return cacheSize_; }
+
   //! Returns the size of local memory, stored in the cache
   size_t lclCacheSize() const { return lclCacheSize_; }
 

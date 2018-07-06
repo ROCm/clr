@@ -1812,10 +1812,12 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   if (settings().apuSystem_) {
     if (settings().viPlus_) {
       // for viPlus_, OCL is using remote instead remoteUSWC to avoid extra copy
-      freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableCacheableBytes / Ki;
+      freeMemory[TotalFreeMemory] += (memInfo.agpMemAvailableCacheableBytes -
+        resourceCache().lclCacheSize() + resourceCache().cacheSize()) / Ki;
       freeMemory[LargestFreeBlock] += memInfo.agpCacheableLargestFreeBlockBytes / Ki;
     } else {
-      freeMemory[TotalFreeMemory] += memInfo.agpMemAvailableBytes / Ki;
+      freeMemory[TotalFreeMemory] += (memInfo.agpMemAvailableBytes -
+        resourceCache().lclCacheSize() + resourceCache().cacheSize()) / Ki;
       freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
     }
   }
