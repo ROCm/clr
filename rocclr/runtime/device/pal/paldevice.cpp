@@ -1695,16 +1695,18 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   freeMemory[LargestFreeBlock] = static_cast<size_t>(std::max(local, invisible) / Ki);
 
   if (settings().apuSystem_) {
-    Pal::gpusize uswc = allocedMem[Pal::GpuHeapGartUswc];
-    if (uswc >= heaps_[Pal::GpuHeapGartUswc].heapSize) {
-      uswc = 0;
+    Pal::GpuHeap heap = settings().viPlus_ ? Pal::GpuHeapGartCacheable: Pal::GpuHeapGartUswc;
+    Pal::gpusize sysMem = allocedMem[heap];
+    if (sysMem >= heaps_[heap].heapSize) {
+      sysMem = 0;
     } else {
-      uswc = heaps_[Pal::GpuHeapGartUswc].heapSize - uswc;
+      sysMem = heaps_[heap].heapSize - sysMem +
+        resourceCache().cacheSize() - resourceCache().lclCacheSize();
     }
-    uswc /= Ki;
-    freeMemory[TotalFreeMemory] += static_cast<size_t>(uswc);
-    if (freeMemory[LargestFreeBlock] < uswc) {
-      freeMemory[LargestFreeBlock] = static_cast<size_t>(uswc);
+    sysMem /= Ki;
+    freeMemory[TotalFreeMemory] += static_cast<size_t>(sysMem);
+    if (freeMemory[LargestFreeBlock] < sysMem) {
+      freeMemory[LargestFreeBlock] = static_cast<size_t>(sysMem);
     }
   }
 
