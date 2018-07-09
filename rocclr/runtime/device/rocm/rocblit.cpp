@@ -2155,6 +2155,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   sp->vqueue_header = vqVM;
 
   sp->parentAQL = sp->kernarg_address + sizeof(SchedulerParam);
+  sp->eng_clk = (1000 * 1024) / dev().info().maxEngineClockFrequency_;
 
   cl_mem mem = as_cl<amd::Memory>(schedulerParam);
   setArgument(kernels_[Scheduler], 0, sizeof(cl_mem), &mem);
