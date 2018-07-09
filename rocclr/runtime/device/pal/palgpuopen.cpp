@@ -401,7 +401,7 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* gpu)
   if (result == Pal::Result::Success) {
     GpuUtil::GpaSessionBeginInfo info = {};
 
-    info.flags.enableQueueTiming   = false;// trace_.queueTimingEnabled;
+    info.flags.enableQueueTiming   = true;// trace_.queueTimingEnabled;
 
     result = trace_.gpa_session_->Begin(info);
   }
