@@ -299,8 +299,8 @@ public:
 
   void Finalize();
 
-  void PreDispatch(VirtualGPU* pQueue, const HSAILKernel& kernel, size_t x, size_t y, size_t z);
-  void PostDispatch(VirtualGPU* pQueue);
+  void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size_t x, size_t y, size_t z);
+  void PostDispatch(VirtualGPU* gpu);
 
   void WaitForDriverResume();
 
@@ -312,6 +312,9 @@ public:
 
   void WriteBarrierStartMarker(const Pal::Developer::BarrierData& data) const;
   void WriteBarrierEndMarker(const Pal::Developer::BarrierData& data) const;
+  bool RegisterTimedQueue(VirtualGPU* gpu, bool* debug_vmid) const;
+  Pal::Result TimedQueueSubmit(
+    Pal::IQueue* queue, uint64_t cmdId, const Pal::SubmitInfo& submitInfo) const;
 
 private:
   // Steps that an RGP trace goes through
