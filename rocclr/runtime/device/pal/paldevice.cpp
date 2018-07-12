@@ -1678,35 +1678,29 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
 
   Pal::gpusize local = allocedMem[Pal::GpuHeapLocal];
   Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
-  // Calculate free memory
-  if (local >= heaps_[Pal::GpuHeapLocal].heapSize) {
-    local = 0;
-  } else {
-    local = heaps_[Pal::GpuHeapLocal].heapSize - local;
-  }
-  if (invisible >= info().maxMemAllocSize_) {
-    invisible = 0;
-  } else {
-    invisible = info().maxMemAllocSize_ - invisible;
-  }
 
   // Fill free memory info
-  freeMemory[TotalFreeMemory] = static_cast<size_t>((local + invisible) / Ki);
-  freeMemory[LargestFreeBlock] = static_cast<size_t>(std::max(local, invisible) / Ki);
+  freeMemory[TotalFreeMemory] = static_cast<size_t>((info().globalMemSize_ -
+    (local + invisible)) / Ki);
+  if (invisible >= heaps_[Pal::GpuHeapInvisible].heapSize) {
+    invisible = 0;
+  }
+  else {
+    invisible = heaps_[Pal::GpuHeapInvisible].heapSize - invisible;
+  }
+  freeMemory[LargestFreeBlock] = static_cast<size_t>(invisible) / Ki;
 
   if (settings().apuSystem_) {
-    Pal::GpuHeap heap = settings().viPlus_ ? Pal::GpuHeapGartCacheable: Pal::GpuHeapGartUswc;
-    Pal::gpusize sysMem = allocedMem[heap];
-    if (sysMem >= heaps_[heap].heapSize) {
-      sysMem = 0;
-    } else {
-      sysMem = heaps_[heap].heapSize - sysMem +
-        resourceCache().cacheSize() - resourceCache().lclCacheSize();
-    }
+    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] -
+      resourceCache().cacheSize() + resourceCache().lclCacheSize();
     sysMem /= Ki;
-    freeMemory[TotalFreeMemory] += static_cast<size_t>(sysMem);
-    if (freeMemory[LargestFreeBlock] < sysMem) {
-      freeMemory[LargestFreeBlock] = static_cast<size_t>(sysMem);
+    if (sysMem >= freeMemory[TotalFreeMemory]) {
+      freeMemory[TotalFreeMemory] = 0;
+    } else {
+      freeMemory[TotalFreeMemory] -= sysMem;
+    }
+    if (freeMemory[LargestFreeBlock] < freeMemory[TotalFreeMemory]) {
+      freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
     }
   }
 
