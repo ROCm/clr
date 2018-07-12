@@ -33,10 +33,11 @@
 
 namespace pal {
 
-VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueType queueType,
+VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueType queueType,
                                              uint engineIdx, Pal::ICmdAllocator* cmdAllocator,
                                              uint rtCU, amd::CommandQueue::Priority priority,
                                              uint64_t residency_limit, uint max_command_buffers) {
+  Pal::IDevice* palDev = gpu.dev().iDev();
   Pal::Result result;
   Pal::CmdBufferCreateInfo cmdCreateInfo = {};
   Pal::QueueCreateInfo qCreateInfo = {};
@@ -82,7 +83,8 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(Pal::IDevice* palDev, Pal::QueueTyp
   }
 
   size_t allocSize = qSize + max_command_buffers * (cmdSize + fSize);
-  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(palDev, residency_limit, max_command_buffers);
+  VirtualGPU::Queue* queue = new (allocSize) VirtualGPU::Queue(gpu, palDev,
+    residency_limit, max_command_buffers);
   if (queue != nullptr) {
     address addrQ = reinterpret_cast<address>(&queue[1]);
     // Create PAL queue object
@@ -250,7 +252,14 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.ppExternPhysMem = palSdiRefs_.data();
 
   // Submit command buffer to OS
-  if (Pal::Result::Success != iQueue_->Submit(submitInfo)) {
+  Pal::Result result;
+  if (gpu_.rgpCaptureEna()) {
+    result = gpu_.dev().rgpCaptureMgr()->TimedQueueSubmit(
+      iQueue_, cmdBufIdCurrent_, submitInfo);
+  } else {
+    result = iQueue_->Submit(submitInfo);
+  }
+  if (Pal::Result::Success != result) {
     LogError("PAL failed to submit CMD!");
     return false;
   }
@@ -787,7 +796,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     // hwRing_ should be set 0 if forced to have single scratch buffer
     hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
-    queues_[MainEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute, idx + firstQueue,
+    queues_[MainEngine] = Queue::Create(*this, Pal::QueueTypeCompute, idx + firstQueue,
                                         cmdAllocator_, rtCUs, priority,
                                         residency_limit, max_cmd_buffers);
     if (nullptr == queues_[MainEngine]) {
@@ -805,14 +814,14 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
       }
 
       queues_[SdmaEngine] =
-          Queue::Create(dev().iDev(), Pal::QueueTypeDma, sdma, cmdAllocator_,
+          Queue::Create(*this, Pal::QueueTypeDma, sdma, cmdAllocator_,
                         amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal,
                         residency_limit, max_cmd_buffers);
       if (nullptr == queues_[SdmaEngine]) {
         return false;
       }
     } else {
-        queues_[SdmaEngine] = Queue::Create(dev().iDev(), Pal::QueueTypeCompute,
+        queues_[SdmaEngine] = Queue::Create(*this, Pal::QueueTypeCompute,
             idx, cmdAllocator_, rtCUs, amd::CommandQueue::Priority::Normal,
             residency_limit, max_cmd_buffers);
         if (nullptr == queues_[SdmaEngine]) {
@@ -890,7 +899,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   // If the developer mode manager is available and it's not a device queue,
   // then enable RGP capturing
   if ((index() != 0) && dev().rgpCaptureMgr() != nullptr) {
+    bool dbg_vmid = false;
     state_.rgpCaptureEnabled_ = true;
+    dev().rgpCaptureMgr()->RegisterTimedQueue(this, &dbg_vmid);
   }
 
   return true;

@@ -122,20 +122,11 @@ bool RgpCaptureMgr::Init(Pal::IPlatform* platform)
     result = false;
   }
 
-  // Initialize trace resources required by each queue (and queue family)
-  bool hasDebugVmid = true;
-
   if (result) {
     user_event_ = new RgpSqttMarkerUserEventWithString;
     if (nullptr == user_event_) {
       result = false;
     }
-    //result = InitTraceQueueResources(trace_, &hasDebugVmid);
-  }
-
-  // If we've failed to acquire the debug VMID, fail to trace
-  if (hasDebugVmid == false) {
-    result = false;
   }
 
   if (!result) {
@@ -150,6 +141,59 @@ bool RgpCaptureMgr::Init(Pal::IPlatform* platform)
     DestroyRGPTracing();
   } else {
     PostDeviceCreate();
+  }
+
+  return result;
+}
+
+// ================================================================================================
+// This function finds out all the queues in the device that we have to synchronize for RGP-traced
+// frames and initializes resources for them.
+bool RgpCaptureMgr::RegisterTimedQueue(VirtualGPU* gpu, bool* debug_vmid) const
+{
+  bool result = true;
+
+  // Get the OS context handle for this queue (this is a thing that RGP needs on DX clients;
+  // it may be optional for Vulkan, but we provide it anyway if available).
+  Pal::KernelContextInfo kernelContextInfo = {};
+
+  Pal::Result palResult = gpu->queue(MainEngine).iQueue_->QueryKernelContextInfo(&kernelContextInfo);
+
+  // Ensure we've acquired the debug VMID (note that some platforms do not
+  // implement this function, so don't fail the whole trace if so)
+  *debug_vmid = kernelContextInfo.flags.hasDebugVmid;
+
+  // Register the queue with the GPA session class for timed queue operation support.
+  if (trace_.gpa_session_->RegisterTimedQueue(gpu->queue(MainEngine).iQueue_, gpu->index(),
+      kernelContextInfo.contextIdentifier) != Pal::Result::Success) {
+    result = false;
+  }
+
+  return result;
+}
+
+// ================================================================================================
+Pal::Result RgpCaptureMgr::TimedQueueSubmit(
+  Pal::IQueue*  queue,
+  uint64_t      cmdId,
+  const Pal::SubmitInfo& submitInfo) const
+{
+  // Fill in extra meta-data information to associate the API command buffer data with
+  // the generated timing information.
+  GpuUtil::TimedSubmitInfo timedSubmitInfo = {};
+  Pal::uint64 apiCmdBufIds = cmdId;
+  Pal::uint32 sqttCmdBufIds = 0;
+
+  timedSubmitInfo.pApiCmdBufIds = &apiCmdBufIds;
+  timedSubmitInfo.pSqttCmdBufIds = &sqttCmdBufIds;
+  timedSubmitInfo.frameIndex = 0;
+
+  // Do a timed submit of all the command buffers
+  Pal::Result result = trace_.gpa_session_->TimedSubmit(queue, submitInfo, timedSubmitInfo);
+
+  // Punt to non-timed submit if a timed submit fails (or is not supported)
+  if (result != Pal::Result::Success) {
+    result = queue->Submit(submitInfo);
   }
 
   return result;

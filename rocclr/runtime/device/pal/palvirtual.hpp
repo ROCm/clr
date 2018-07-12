@@ -50,7 +50,7 @@ class VirtualGPU : public device::VirtualDevice {
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
 
-    static Queue* Create(Pal::IDevice* palDev,                 //!< PAL device object
+    static Queue* Create(const VirtualGPU& gpu,                //!< OCL virtual GPU object
                          Pal::QueueType queueType,             //!< PAL queue type
                          uint engineIdx,                       //!< Select particular engine index
                          Pal::ICmdAllocator* cmdAlloc,         //!< PAL CMD buffer allocator
@@ -60,12 +60,13 @@ class VirtualGPU : public device::VirtualDevice {
                          uint max_command_buffers              //!< Number of allocated command buffers
                          );
 
-    Queue(Pal::IDevice* palDev, uint64_t residency_limit, uint max_command_buffers)
+    Queue(const VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit, uint max_command_buffers)
         : iQueue_(nullptr),
           iCmdBuffs_(max_command_buffers, nullptr),
           iCmdFences_(max_command_buffers, nullptr),
           last_kernel_(nullptr),
-          iDev_(palDev),
+          gpu_(gpu),
+          iDev_(iDev),
           cmdBufIdSlot_(StartCmdBufIdx),
           cmdBufIdCurrent_(StartCmdBufIdx),
           cmbBufIdRetired_(0),
@@ -156,16 +157,17 @@ class VirtualGPU : public device::VirtualDevice {
 
   private:
     void DumpMemoryReferences() const;
+    const VirtualGPU& gpu_; //!< OCL virtual GPU object
     Pal::IDevice* iDev_;    //!< PAL device
     uint cmdBufIdSlot_;     //!< Command buffer ID slot for submissions
     uint cmdBufIdCurrent_;  //!< Current global command buffer ID
     uint cmbBufIdRetired_;  //!< The last retired command buffer ID
     uint cmdCnt_;           //!< Counter of commands
     std::unordered_map<GpuMemoryReference*, uint> memReferences_;
-    Util::VirtualLinearAllocator vlAlloc_;
-    std::vector<Pal::GpuMemoryRef> palMemRefs_;
-    std::vector<Pal::IGpuMemory*> palMems_;
-    std::vector<Pal::DoppRef> palDoppRefs_;
+    Util::VirtualLinearAllocator    vlAlloc_;
+    std::vector<Pal::GpuMemoryRef>  palMemRefs_;
+    std::vector<Pal::IGpuMemory*>   palMems_;
+    std::vector<Pal::DoppRef>       palDoppRefs_;
     std::set<Pal::IGpuMemory*>      sdiReferences_;
     std::vector<const Pal::IGpuMemory*>   palSdiRefs_;
     uint64_t  residency_size_;  //!< Resource residency size
