@@ -1800,28 +1800,29 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
     return false;
   }
 
-  gslMemInfo memInfo = {0};
+  gslMemInfo memInfo = { 0 };
   gslCtx()->getMemInfo(&memInfo, GSL_MEMINFO_BASIC);
 
   // Fill free memory info
-  freeMemory[TotalFreeMemory] =
-      (memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes +   
-       resourceCache().lclCacheSize()) / Ki;
+  freeMemory[TotalFreeMemory] = (memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes +
+    resourceCache().lclCacheSize()) / Ki;
   freeMemory[LargestFreeBlock] =
-      std::max(memInfo.cardLargestFreeBlockBytes, memInfo.cardExtLargestFreeBlockBytes) / Ki;
+    std::max(memInfo.cardLargestFreeBlockBytes, memInfo.cardExtLargestFreeBlockBytes) / Ki;
   if (settings().apuSystem_) {
+    uint64_t sysMem = 0;
+    if ((memInfo.agpMemAvailableBytes + resourceCache().cacheSize()) > resourceCache().lclCacheSize()) {
+      sysMem = (memInfo.agpMemAvailableBytes + resourceCache().cacheSize()) - resourceCache().lclCacheSize();
+    }
+    sysMem /= Ki;
+    freeMemory[TotalFreeMemory] += sysMem;
+
     if (settings().viPlus_) {
       // for viPlus_, OCL is using remote instead remoteUSWC to avoid extra copy
-      freeMemory[TotalFreeMemory] += (memInfo.agpMemAvailableCacheableBytes -
-        resourceCache().lclCacheSize() + resourceCache().cacheSize()) / Ki;
       freeMemory[LargestFreeBlock] += memInfo.agpCacheableLargestFreeBlockBytes / Ki;
     } else {
-      freeMemory[TotalFreeMemory] += (memInfo.agpMemAvailableBytes -
-        resourceCache().lclCacheSize() + resourceCache().cacheSize()) / Ki;
       freeMemory[LargestFreeBlock] += memInfo.agpLargestFreeBlockBytes / Ki;
     }
   }
-
   return true;
 }
 
