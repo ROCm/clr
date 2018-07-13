@@ -829,13 +829,31 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
       break;
     }
     case CL_COMMAND_READ_BUFFER_RECT: {
-      result = blitMgr().readBufferRect(*devMem, dst, cmd.bufRect(), cmd.hostRect(), size,
-                                        cmd.isEntireMemory());
+      amd::BufferRect hostbufferRect;
+      amd::Coord3D region(0);
+      amd::Coord3D hostOrigin(cmd.hostRect().start_ + offset);
+      hostbufferRect.create(hostOrigin.c, size.c, cmd.hostRect().rowPitch_,
+                            cmd.hostRect().slicePitch_);
+      if (hostMemory != nullptr) {
+        result = blitMgr().copyBufferRect(*devMem, *hostMemory, cmd.bufRect(), hostbufferRect,
+                                          size, cmd.isEntireMemory());
+      } else {
+        result = blitMgr().readBufferRect(*devMem, dst, cmd.bufRect(), cmd.hostRect(), size,
+                                          cmd.isEntireMemory());
+      }
       break;
     }
     case CL_COMMAND_READ_IMAGE: {
-      result = blitMgr().readImage(*devMem, dst, cmd.origin(), size, cmd.rowPitch(),
-                                   cmd.slicePitch(), cmd.isEntireMemory());
+      if (hostMemory != nullptr) {
+        // Accelerated image to buffer transfer without pinning
+        amd::Coord3D dstOrigin(offset);
+        result =
+            blitMgr().copyImageToBuffer(*devMem, *hostMemory, cmd.origin(), dstOrigin, size,
+                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch());
+      } else {
+        result = blitMgr().readImage(*devMem, dst, cmd.origin(), size, cmd.rowPitch(),
+                                     cmd.slicePitch(), cmd.isEntireMemory());
+      }
       break;
     }
     default:
@@ -903,13 +921,31 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
       break;
     }
     case CL_COMMAND_WRITE_BUFFER_RECT: {
-      result = blitMgr().writeBufferRect(src, *devMem, cmd.hostRect(), cmd.bufRect(), size,
-                                         cmd.isEntireMemory());
+      amd::BufferRect hostbufferRect;
+      amd::Coord3D region(0);
+      amd::Coord3D hostOrigin(cmd.hostRect().start_ + offset);
+      hostbufferRect.create(hostOrigin.c, size.c, cmd.hostRect().rowPitch_,
+                            cmd.hostRect().slicePitch_);
+      if (hostMemory != nullptr) {
+        result = blitMgr().copyBufferRect(*hostMemory, *devMem, hostbufferRect, cmd.bufRect(),
+                                          size, cmd.isEntireMemory());
+      } else {
+        result = blitMgr().writeBufferRect(src, *devMem, cmd.hostRect(), cmd.bufRect(), size,
+                                          cmd.isEntireMemory());
+      }
       break;
     }
     case CL_COMMAND_WRITE_IMAGE: {
-      result = blitMgr().writeImage(src, *devMem, cmd.origin(), size, cmd.rowPitch(),
-                                    cmd.slicePitch(), cmd.isEntireMemory());
+      if (hostMemory != nullptr) {
+        // Accelerated buffer to image transfer without pinning
+        amd::Coord3D srcOrigin(offset);
+        result =
+            blitMgr().copyBufferToImage(*hostMemory, *devMem, srcOrigin, cmd.origin(), size,
+                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch());
+      } else {
+        result = blitMgr().writeImage(src, *devMem, cmd.origin(), size, cmd.rowPitch(),
+                                      cmd.slicePitch(), cmd.isEntireMemory());
+      }
       break;
     }
     default:
