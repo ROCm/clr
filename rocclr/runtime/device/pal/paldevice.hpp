@@ -155,7 +155,11 @@ class ThreadTrace;
 #ifndef CL_FILTER_NONE
 #define CL_FILTER_NONE 0x1142
 #endif
-
+enum class ExclusiveQueueType : uint32_t {
+  RealTime0 = 0,
+  RealTime1,
+  Medium
+};
 class Sampler : public device::Sampler {
  public:
   //! Constructor
@@ -400,7 +404,10 @@ class Device : public NullDevice {
   uint numComputeEngines() const { return numComputeEngines_; }
 
   //! Returns the number of available compute rings
-  uint numExclusiveComputeEngines() const { return numExclusiveComputeEngines_; }
+  uint numExclusiveComputeEngines() const { return exclusiveComputeEnginesId_.size(); }
+
+  //! Returns the array of available compute rings
+  const auto& exclusiveComputeEnginesId() const { return exclusiveComputeEnginesId_; }
 
   //! Returns the number of available DMA engines
   uint numDMAEngines() const { return numDmaEngines_; }
@@ -583,7 +590,7 @@ class Device : public NullDevice {
   std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure
   ResourceCache* resourceCache_;         //!< Resource cache
   uint numComputeEngines_;               //!< The number of available compute engines
-  uint numExclusiveComputeEngines_;      //!< The number of available compute engines
+  std::map<ExclusiveQueueType, uint32_t> exclusiveComputeEnginesId_;//!< The number of available compute engines
   uint numDmaEngines_;                   //!< The number of available compute engines
   bool heapInitComplete_;                //!< Keep track of initialization status of heap resources
   VirtualGPU* xferQueue_;                //!< Transfer queue

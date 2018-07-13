@@ -717,7 +717,6 @@ Device::Device()
       mapCache_(nullptr),
       resourceCache_(nullptr),
       numComputeEngines_(0),
-      numExclusiveComputeEngines_(0),
       numDmaEngines_(0),
       heapInitComplete_(false),
       xferQueue_(nullptr),
@@ -822,11 +821,18 @@ bool Device::create(Pal::IDevice* device) {
   if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu > 0) {
     for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineCount;
          ++i) {
-      if ((properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
-           Pal::EngineSubType::RtCuHighCompute) ||
-          (properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
-           Pal::EngineSubType::RtCuMedCompute)) {
-        numExclusiveComputeEngines_++;
+      if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
+          Pal::EngineSubType::RtCuHighCompute) {
+        if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
+            exclusiveComputeEnginesId_.end()) {
+          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
+        } else {
+          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
+        }
+      }
+      if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
+          Pal::EngineSubType::RtCuMedCompute) {
+        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
       }
     }
   }
@@ -976,9 +982,10 @@ bool Device::initializeHeapResources() {
     // Request all compute engines
     finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
         ((1 << numComputeEngines_) - 1);
-    // Request real time compute engines
-    finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines =
-        ((1 << numExclusiveComputeEngines_) - 1);
+    for (const auto& it: exclusiveComputeEnginesId_) {
+      // Request real time compute engines
+      finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines |= (1 << it.second);
+    }
     // Request all SDMA engines
     finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines = (1 << numDmaEngines_) - 1;
 

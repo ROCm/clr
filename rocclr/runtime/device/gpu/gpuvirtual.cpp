@@ -422,10 +422,15 @@ bool VirtualGPU::create(bool profiling, uint rtCUs, uint deviceQueueSize,
                                           : (dev().getFirstAvailableComputeEngineID() + idx)));
 
       } else {
-        if (priority == amd::CommandQueue::Priority::Medium) {
+        if ((priority == amd::CommandQueue::Priority::Medium) &&
+            (amd::CommandQueue::RealTimeDisabled == rtCUs)) {
           engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_MEDIUM_PRIORITY));
         } else {
-          engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT));
+          if (priority == amd::CommandQueue::Priority::Medium) {
+            engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT));
+          } else {
+            engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT));
+          }
         }
         //!@todo This is not a generic solution and
         // may have issues with > 8 queues

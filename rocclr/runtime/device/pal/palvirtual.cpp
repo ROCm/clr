@@ -50,17 +50,30 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
   } else {
     cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeCompute;
   }
-
-  if (priority == amd::CommandQueue::Priority::Medium) {
-    qCreateInfo.engineIndex = 0x1;
+  std::map<ExclusiveQueueType, uint32_t>::const_iterator it;
+  if ((priority == amd::CommandQueue::Priority::Medium) &&
+      (amd::CommandQueue::RealTimeDisabled == rtCU)) {
+    it = gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::Medium);
     cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
   } else if (amd::CommandQueue::RealTimeDisabled != rtCU) {
     qCreateInfo.numReservedCu = rtCU;
-    qCreateInfo.engineIndex = 0x0;
+    if (priority == amd::CommandQueue::Priority::Medium) {
+      it = gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime1);
+    } else {
+      it = gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime0);
+    }
     cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeExclusiveCompute;
     cmdCreateInfo.flags.realtimeComputeUnits = true;
   }
-
+  // If the app creates an exclusive compute, then find the engine id
+  if (qCreateInfo.engineType == Pal::EngineTypeExclusiveCompute) {
+    if (it != gpu.dev().exclusiveComputeEnginesId().end()) {
+      qCreateInfo.engineIndex = it->second;
+    }
+    else {
+      return nullptr;
+    }
+  }
   // Find queue object size
   size_t qSize = palDev->GetQueueSize(qCreateInfo, &result);
   if (result != Pal::Result::Success) {
