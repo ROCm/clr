@@ -103,6 +103,9 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties,
 #define CL_QUEUE_MEDIUM_PRIORITY_AMD 0x4050
         case CL_QUEUE_MEDIUM_PRIORITY_AMD:
           priority = amd::CommandQueue::Priority::Medium;
+          if (p->value.size != 0) {
+            queueRTCUs = p->value.size;
+          }
           break;
         default:
           *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
