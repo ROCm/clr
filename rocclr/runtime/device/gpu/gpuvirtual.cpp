@@ -427,7 +427,7 @@ bool VirtualGPU::create(bool profiling, uint rtCUs, uint deviceQueueSize,
           engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_MEDIUM_PRIORITY));
         } else {
           if (priority == amd::CommandQueue::Priority::Medium) {
-            engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT));
+            engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT1));
           } else {
             engineMask = dev().engines().getMask((gslEngineID)(GSL_ENGINEID_COMPUTE_RT));
           }
