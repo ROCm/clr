@@ -149,7 +149,8 @@ bool RgpCaptureMgr::Init(Pal::IPlatform* platform)
 // ================================================================================================
 // This function finds out all the queues in the device that we have to synchronize for RGP-traced
 // frames and initializes resources for them.
-bool RgpCaptureMgr::RegisterTimedQueue(VirtualGPU* gpu, bool* debug_vmid) const
+bool RgpCaptureMgr::RegisterTimedQueue(
+  uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const
 {
   bool result = true;
 
@@ -157,14 +158,14 @@ bool RgpCaptureMgr::RegisterTimedQueue(VirtualGPU* gpu, bool* debug_vmid) const
   // it may be optional for Vulkan, but we provide it anyway if available).
   Pal::KernelContextInfo kernelContextInfo = {};
 
-  Pal::Result palResult = gpu->queue(MainEngine).iQueue_->QueryKernelContextInfo(&kernelContextInfo);
+  Pal::Result palResult = iQueue->QueryKernelContextInfo(&kernelContextInfo);
 
   // Ensure we've acquired the debug VMID (note that some platforms do not
   // implement this function, so don't fail the whole trace if so)
   *debug_vmid = kernelContextInfo.flags.hasDebugVmid;
 
   // Register the queue with the GPA session class for timed queue operation support.
-  if (trace_.gpa_session_->RegisterTimedQueue(gpu->queue(MainEngine).iQueue_, gpu->index(),
+  if (trace_.gpa_session_->RegisterTimedQueue(iQueue, queue_id,
       kernelContextInfo.contextIdentifier) != Pal::Result::Success) {
     result = false;
   }
