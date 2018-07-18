@@ -688,13 +688,6 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
   }
 }
 
-struct DestroySampler : public std::binary_function<hsa_ext_sampler_t, hsa_agent_t, bool> {
-  bool operator()(hsa_ext_sampler_t& sampler, hsa_agent_t agent) const {
-    hsa_status_t status = hsa_ext_sampler_destroy(agent, sampler);
-    return status == HSA_STATUS_SUCCESS;
-  }
-};
-
 void VirtualGPU::updateCommandsState(amd::Command* list) {
   Timestamp* ts = nullptr;
 
@@ -774,8 +767,11 @@ void VirtualGPU::updateCommandsState(amd::Command* list) {
 
   // Release the sampler handles allocated for the various
   // on one or more kernel submissions
-  std::for_each(samplerList_.begin(), samplerList_.end(),
-                std::bind2nd<DestroySampler>(DestroySampler(), gpu_device_));
+  for (const auto& it: samplerList_) {
+    if (hsa_ext_sampler_destroy(gpu_device_, it) != HSA_STATUS_SUCCESS) {
+      LogWarning("Error destroying device sampler object!");
+    }
+  }
   samplerList_.clear();
 
   return;
@@ -2046,9 +2042,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
             releaseGpuMemoryFence();
             // Release the sampler handles allocated for the various
             // on one or more kernel submissions
-            std::for_each(samplerList_.begin(), samplerList_.end(),
-                std::bind2nd<DestroySampler>(DestroySampler(), gpu_device_));
+            for (const auto& it: samplerList_) {
+              if (hsa_ext_sampler_destroy(gpu_device_, it) != HSA_STATUS_SUCCESS) {
+                LogWarning("Error destroying device sampler object!");
+              }
+            }
             samplerList_.clear();
+
             status = hsa_ext_sampler_create(dev().getBackendDevice(), &samplerDescriptor, &hsa_sampler);
             if (status != HSA_STATUS_SUCCESS) {
               LogError("Error creating device sampler object!");
