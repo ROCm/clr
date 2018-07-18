@@ -914,7 +914,8 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   if ((index() != 0) && dev().rgpCaptureMgr() != nullptr) {
     bool dbg_vmid = false;
     state_.rgpCaptureEnabled_ = true;
-    dev().rgpCaptureMgr()->RegisterTimedQueue(this, &dbg_vmid);
+    dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index(), queue(MainEngine).iQueue_, &dbg_vmid);
+    dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_, &dbg_vmid);
   }
 
   return true;

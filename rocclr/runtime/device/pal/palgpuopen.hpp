@@ -312,7 +312,7 @@ public:
 
   void WriteBarrierStartMarker(const Pal::Developer::BarrierData& data) const;
   void WriteBarrierEndMarker(const Pal::Developer::BarrierData& data) const;
-  bool RegisterTimedQueue(VirtualGPU* gpu, bool* debug_vmid) const;
+  bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const;
   Pal::Result TimedQueueSubmit(
     Pal::IQueue* queue, uint64_t cmdId, const Pal::SubmitInfo& submitInfo) const;
 
