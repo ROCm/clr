@@ -2036,7 +2036,7 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
     size_t sizeRes = it.second->iMem()->Desc().size;
     // Find if we can reuse this entry
     if ((entry->type_ == desc->type_) && (entry->flags_ == desc->flags_) && (size <= sizeRes) &&
-        (size > (sizeRes >> 2)) && ((it.second->iMem()->Desc().gpuVirtAddr % alignment) == 0) &&
+        (size > (sizeRes >> 1)) && ((it.second->iMem()->Desc().gpuVirtAddr % alignment) == 0) &&
         (entry->isAllocExecute_ == desc->isAllocExecute_)) {
       ref = it.second;
       cacheSize_ -= sizeRes;
