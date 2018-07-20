@@ -1985,11 +1985,6 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
                        void* svmPtr) const {
   alignment = std::max(alignment, static_cast<size_t>(info_.memBaseAddrAlign_));
 
-  // VAM for GPU needs 64K alignment for Tahiti and CI+, will pull idnfo from gsl later
-  size_t vmBigK = 64 * Ki;
-  alignment = (alignment < vmBigK) ? vmBigK : alignment;
-
-  size = amd::alignUp(size, alignment);
   amd::Memory* mem = nullptr;
   freeCPUMem_ = false;
   if (nullptr == svmPtr) {

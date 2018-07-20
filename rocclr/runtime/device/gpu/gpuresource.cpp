@@ -415,6 +415,9 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         //! @todo Remove alignment.
         //! GSL asserts in mem copy with an unaligned size
         cal_.width_ = amd::alignUp(cal_.width_, 64);
+        if ((desc.section == GSL_SECTION_SVM || desc.section == GSL_SECTION_SVM_ATOMICS)) {
+          cal_.width_ = amd::alignUp(cal_.width_, 64 * Ki / sizeof(uint32_t));
+        }
       }
 
       desc.dimension = cal()->dimension_;
