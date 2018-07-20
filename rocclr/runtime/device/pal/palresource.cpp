@@ -972,7 +972,8 @@ bool Resource::CreatePinned(CreateParams* params)
 bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
 {
   const bool isFineGrain = (memoryType() == RemoteUSWC) || (memoryType() == Remote);
-  size_t allocSize = amd::alignUp(desc().width_ * elementSize_, MaxGpuAlignment);
+  size_t allocSize = amd::alignUp(desc().width_ * elementSize_,
+                                  dev().properties().gpuMemoryProperties.fragmentSize);
   if (isFineGrain) {
     Pal::SvmGpuMemoryCreateInfo createInfo = {};
     createInfo.isUsedForKernel = desc_.isAllocExecute_;
