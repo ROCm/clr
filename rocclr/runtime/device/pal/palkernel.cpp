@@ -420,7 +420,6 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
     return false;
   }
 
-  assert((akc->workitem_private_segment_byte_size & 3) == 0 && "Scratch must be DWORD aligned");
   workGroupInfo_.scratchRegs_ =
       amd::alignUp(akc->workitem_private_segment_byte_size, 16) / sizeof(uint);
   workGroupInfo_.privateMemSize_ = akc->workitem_private_segment_byte_size;

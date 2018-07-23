@@ -161,7 +161,7 @@ class HSAILKernel : public device::Kernel {
   size_t argsBufferSize() const { return cpuAqlCode_->kernarg_segment_byte_size; }
 
   //! Returns spill reg size per workitem
-  int spillSegSize() const { return cpuAqlCode_->workitem_private_segment_byte_size; }
+  int spillSegSize() const { return amd::alignUp(cpuAqlCode_->workitem_private_segment_byte_size, sizeof(uint32_t)); }
 
   //! Returns TRUE if kernel uses dynamic parallelism
   bool dynamicParallelism() const { return (flags_.dynamicParallelism_) ? true : false; }
