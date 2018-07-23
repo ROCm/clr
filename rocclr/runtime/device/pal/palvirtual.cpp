@@ -2260,6 +2260,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // when the packet can be processed later after this dispatch and including extra time
     if (profiling() || state_.profileEnabled_) {
       addBarrier();
+      // Clear memory dependency to avoid the second L1 invalidation
+      memoryDependency().clear();
     }
     if (id != gpuEvent.id_) {
       LogError("Something is wrong. ID mismatch!\n");
