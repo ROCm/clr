@@ -964,7 +964,10 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd) {
       }
     }
 
-    if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
+    if (nullptr == srcMem && nullptr == dstMem) { // both not in svm space
+      amd::Os::fastMemcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
+      result = true;
+    } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
       Memory* memory = dev().getGpuMemory(dstMem);
       // Synchronize source and destination memory
       syncFlags.skipEntire_ = dstMem->isEntirelyCovered(dstOrigin, size);
@@ -981,7 +984,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd) {
 
       result = blitMgr().readBuffer(*memory, vcmd.dst(), srcOrigin, size,
                                     srcMem->isEntirelyCovered(srcOrigin, size));
-    } else if (nullptr != srcMem && nullptr != dstMem) {  // both not in svm space
+    } else if (nullptr != srcMem && nullptr != dstMem) {  // both in svm space
       bool entire =
           srcMem->isEntirelyCovered(srcOrigin, size) && dstMem->isEntirelyCovered(dstOrigin, size);
       result =
