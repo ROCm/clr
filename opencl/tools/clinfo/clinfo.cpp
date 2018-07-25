@@ -120,17 +120,6 @@ jurisdiction and venue of these courts.
 
 bool verbose = false;
 
-inline
-void
-checkErr(cl_int err, const char * name)
-{
-    if (err != CL_SUCCESS) {
-        std::cerr << "ERROR: " <<  name << " (" << err << ")" << std::endl;
-        exit(1);
-    }
-}
-
-
 int
 main(int argc, char** argv)
 {
@@ -152,13 +141,10 @@ main(int argc, char** argv)
 
     // Platform info
     std::vector<cl::Platform> platforms;
-    err = cl::Platform::get(&platforms);
-
-    checkErr(
-        platforms.size() == 0 ? -1 : err,
-        "cl::Platform::get()");
 
     try {
+    err = cl::Platform::get(&platforms);
+
     // Iteratate over platforms
     std::cout << "Number of platforms:\t\t\t\t "
               << platforms.size()
