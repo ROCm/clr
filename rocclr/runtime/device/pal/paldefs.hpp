@@ -174,7 +174,7 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Raven2 XNACK */{ LIGHTNING_SWITCH("gfx902","gfx903"), LIGHTNING_SWITCH("gfx902","gfx903"),
                         4, 16, 1, 256, 64 * Ki, 32, LIGHTNING_SWITCH(902, 903), true},
     /* Navi10       */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000, false},
-    /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1001, true},
+    /* Navi10 XNACK */{ "", "", 4, 16, 1, 256, 64 * Ki, 32, 1000, true},
 };
 
 // Supported OpenCL versions

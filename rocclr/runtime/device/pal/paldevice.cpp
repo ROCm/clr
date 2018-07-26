@@ -191,7 +191,6 @@ bool NullDevice::init() {
       case 906:
           revision = Pal::AsicRevision::Vega20;
           break;
-      case 1001:
       case 1000:
           revision = Pal::AsicRevision::Navi10;
           break;
