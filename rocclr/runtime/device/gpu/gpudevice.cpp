@@ -135,12 +135,10 @@ bool NullDevice::create(CALtarget target) {
   assert((target >= CAL_TARGET_TAHITI) && (target != CAL_TARGET_SCRAPPER) &&
          (target != CAL_TARGET_DEVASTATOR));
 
-
-  if ((GPU_ENABLE_PAL == 2) &&
-      (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-          calTarget_ >= CAL_TARGET_VEGA12)) {
-      return false;
+  if ((GPU_ENABLE_PAL == 2) && usePal()) {
+    return false;
   }
+
   // Force double if it could be supported
   switch (target) {
     case CAL_TARGET_PITCAIRN:
@@ -862,9 +860,7 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
   calTarget_ = getAttribs().target;
   hwInfo_ = &DeviceInfo[calTarget_];
 
-  if ((GPU_ENABLE_PAL == 2) &&
-      (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-       calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ >= CAL_TARGET_VEGA12)) {
+  if ((GPU_ENABLE_PAL == 2) && usePal()) {
     return false;
   }
 
