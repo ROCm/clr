@@ -42,7 +42,6 @@ class NullDevice : public amd::Device {
   aclCompiler* compiler() const { return compiler_; }
   aclCompiler* hsaCompiler() const { return hsaCompiler_; }
 
- public:
   static bool init(void);
 
   //! Construct a new identifier
@@ -111,8 +110,10 @@ class NullDevice : public amd::Device {
   virtual void svmFree(void* ptr) const { return; }
 
  protected:
-  CALtarget calTarget_;          //!< GPU device identifier
-  const AMDDeviceInfo* hwInfo_;  //!< Device HW info structure
+  bool usePal() const {
+    return (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
+            calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ >= CAL_TARGET_VEGA12);
+  }
 
   //! Answer the question: "Should HSAIL Program be created?",
   //! based on the given options.
@@ -125,6 +126,9 @@ class NullDevice : public amd::Device {
                       uint numComputeRings,             //!< Number of compute rings
                       uint numComputeRingsRT            //!< Number of RT compute rings
                       );
+
+  CALtarget calTarget_;          //!< GPU device identifier
+  const AMDDeviceInfo* hwInfo_;  //!< Device HW info structure
 };
 
 //! Forward declarations
