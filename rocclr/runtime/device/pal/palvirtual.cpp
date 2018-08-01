@@ -2139,7 +2139,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   // If RGP capturing is enabled, then start SQTT trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->PreDispatch(this, hsaKernel,
-      newGlobalSize[0], newGlobalSize[1], newGlobalSize[2]);
+      // Report global size in workgroups, since that's the RGP trace semantics
+      newGlobalSize[0] / sizes.local[0],
+      newGlobalSize[1] / sizes.local[1],
+      newGlobalSize[2] / sizes.local[2]);
   }
 
   bool printfEnabled = (hsaKernel.printfInfo().size() > 0) ? true : false;
