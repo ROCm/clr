@@ -20,7 +20,6 @@ Settings::Settings() {
   pollCompletion_ = ENVVAR_HSA_POLL_KERNEL_COMPLETION;
 
   enableLocalMemory_ = HSA_LOCAL_MEMORY_ENABLE;
-  enableImageHandle_ = true;
 
   maxWorkGroupSize_ = 1024;
   preferredWorkGroupSize_ = 256;

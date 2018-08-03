@@ -231,6 +231,37 @@ static inline ROC_ADDRESS_QUALIFIER GetKernelAddrQual(const aclArgData* argInfo)
   return ROC_ADDRESS_ERROR;
 }
 
+inline static uint32_t GetOclArgumentType(const HSAILKernel::Argument* arg) {
+  switch (arg->type_){
+    case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetX;
+    case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetY;
+    case ROC_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z:
+      return amd::KernelParameterDescriptor::HiddenGlobalOffsetZ;
+    case ROC_ARGTYPE_HIDDEN_PRINTF_BUFFER:
+      return amd::KernelParameterDescriptor::HiddenPrintfBuffer;
+    case ROC_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
+      return amd::KernelParameterDescriptor::HiddenDefaultQueue;
+    case ROC_ARGTYPE_HIDDEN_COMPLETION_ACTION:
+      return amd::KernelParameterDescriptor::HiddenCompletionAction;
+    case ROC_ARGTYPE_POINTER:
+        return amd::KernelParameterDescriptor::MemoryObject;
+    case ROC_ARGTYPE_IMAGE:
+        return amd::KernelParameterDescriptor::ImageObject;
+    case ROC_ARGTYPE_REFERENCE:
+        return amd::KernelParameterDescriptor::ReferenceObject;
+    case ROC_ARGTYPE_VALUE:
+        return amd::KernelParameterDescriptor::ValueObject;
+    case ROC_ARGTYPE_SAMPLER:
+        return amd::KernelParameterDescriptor::SamplerObject;
+    case ROC_ARGTYPE_QUEUE:
+        return amd::KernelParameterDescriptor::QueueObject;
+    default:
+      return amd::KernelParameterDescriptor::HiddenNone;
+  }
+}
+
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline ROC_DATA_TYPE GetKernelDataType(const KernelArgMD& lcArg) {
   aclArgDataType dataType;
@@ -514,6 +545,8 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQual(const aclArgData* argI
 #if defined(WITH_COMPILER_LIB)
 void HSAILKernel::initArguments(const aclArgData* aclArg) {
   device::Kernel::parameters_t params;
+  device::Kernel::parameters_t hiddenParams;
+  size_t offsetStruct = KernargSegmentByteSize();
 
   // Iterate through the arguments and insert into parameterList
   for (size_t offset = 0; aclArg->struct_size != 0; aclArg++) {
@@ -539,17 +572,27 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
     arg->index_ = isHidden ? uint(-1) : params.size();
     hsailArgList_.push_back(arg);
 
+    amd::KernelParameterDescriptor desc;
+
+    // Allocate the hidden arguments, but abstraction layer will skip them
     if (isHidden) {
+      offset = amd::alignUp(offset, arg->alignment_);
+      desc.offset_ = offset;
+      desc.size_ = arg->size_;
+      offset += arg->size_;
+      desc.info_.oclObject_ = GetOclArgumentType(arg);
+      hiddenParams.push_back(desc);
       continue;
     }
 
-    amd::KernelParameterDescriptor desc;
     desc.name_ = arg->name_.c_str();
     desc.type_ = GetOclType(arg);
     desc.addressQualifier_ = GetOclAddrQual(arg);
     desc.accessQualifier_ = GetOclAccessQual(arg);
     desc.typeQualifier_ = GetOclTypeQual(aclArg);
     desc.typeName_ = arg->typeName_.c_str();
+    desc.info_.oclObject_ = GetOclArgumentType(arg);
+    desc.info_.arrayIndex_ = arg->pointeeAlignment_;
 
     // set image related flags
     if (arg->type_ == ROC_ARGTYPE_IMAGE) {
@@ -566,19 +609,48 @@ void HSAILKernel::initArguments(const aclArgData* aclArg) {
     // and CPU sends the parameters as they are allocated in memory
     size_t size = desc.size_;
 
-    offset = amd::alignUp(offset, std::min(size, size_t(16)));
-    desc.offset_ = offset;
-    offset += amd::alignUp(size, sizeof(uint32_t));
+    // Check if HSAIL expects data by reference and allocate it behind
+    if (arg->type_ == ROC_ARGTYPE_REFERENCE) {
+      desc.offset_ = offsetStruct;
+      // Align the offset reference
+      offset = amd::alignUp(offset, sizeof(size_t));
+      patchReferences_.insert({desc.offset_, offset});
+      offsetStruct += size;
+      // Adjust the offset of arguments
+      offset += sizeof(size_t);
+    }
+    else if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+      // These objects have forced data size to uint64_t
+      offset = amd::alignUp(offset, sizeof(uint64_t));
+      desc.offset_ = offset;
+      offset += sizeof(uint64_t);
+    } else {
+      offset = amd::alignUp(offset, arg->alignment_);
+      desc.offset_ = offset;
+      offset += size;
+    }
+
+    // Update read only flag
+    desc.info_.readOnly_ = (arg->access_ == ROC_ACCESS_TYPE_RO) ? true : false;
 
     params.push_back(desc);
   }
-  createSignature(params, params.size(), amd::KernelSignature::ABIVersion_0);
+
+  // Save the number of OCL arguments
+  uint32_t numParams = params.size();
+  // Append the hidden arguments to the OCL arguments
+  params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 #endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
 void LightningKernel::initArguments(const KernelMD& kernelMD) {
   device::Kernel::parameters_t params;
+  device::Kernel::parameters_t hiddenParams;
+  size_t offsetStruct = KernargSegmentByteSize();
 
   size_t offset = 0;
 
@@ -607,12 +679,18 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
     arg->index_ = isHidden ? uint(-1) : params.size();
     hsailArgList_.push_back(arg);
 
-    if (isHidden) {
-      continue;
-    }
-
     // Initialize Device kernel parameters
     amd::KernelParameterDescriptor desc;
+
+    if (isHidden) {
+      offset = amd::alignUp(offset, arg->alignment_);
+      desc.offset_ = offset;
+      desc.size_ = arg->size_;
+      offset += arg->size_;
+      desc.info_.oclObject_ = GetOclArgumentType(arg);
+      hiddenParams.push_back(desc);
+      continue;
+    }
 
     desc.name_ = lcArg.mName.c_str();
     desc.type_ = GetOclType(arg);
@@ -620,6 +698,8 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
     desc.accessQualifier_ = GetOclAccessQual(arg);
     desc.typeQualifier_ = GetOclTypeQual(lcArg);
     desc.typeName_ = lcArg.mTypeName.c_str();
+    desc.info_.oclObject_ = GetOclArgumentType(arg);
+    desc.info_.arrayIndex_ = arg->pointeeAlignment_;
 
     // set image related flags
     if (arg->type_ == ROC_ARGTYPE_IMAGE) {
@@ -629,6 +709,7 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
         flags_.imageWrite_ = true;
       }
     }
+
     desc.size_ = arg->size_;
 
     // Make offset alignment to match CPU metadata, since
@@ -636,13 +717,40 @@ void LightningKernel::initArguments(const KernelMD& kernelMD) {
     // and CPU sends the parameters as they are allocated in memory
     size_t size = desc.size_;
 
-    offset = (size_t)amd::alignUp(offset, std::min(size, size_t(16)));
-    desc.offset_ = offset;
-    offset += amd::alignUp(size, sizeof(uint32_t));
+    // Check if HSAIL expects data by reference and allocate it behind
+    if (arg->type_ == ROC_ARGTYPE_REFERENCE) {
+      desc.offset_ = offsetStruct;
+      // Align the offset reference
+      offset = amd::alignUp(offset, sizeof(size_t));
+      patchReferences_.insert({desc.offset_, offset});
+      offsetStruct += size;
+      // Adjust the offset of arguments
+      offset += sizeof(size_t);
+    }
+    else if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+      // These objects have forced data size to uint64_t
+      offset = amd::alignUp(offset, sizeof(uint64_t));
+      desc.offset_ = offset;
+      offset += sizeof(uint64_t);
+    } else {
+      offset = amd::alignUp(offset, arg->alignment_);
+      desc.offset_ = offset;
+      offset += size;
+    }
+
+    // Update read only flag
+    desc.info_.readOnly_ = (arg->access_ == ROC_ACCESS_TYPE_RO) ? true : false;
 
     params.push_back(desc);
   }
-  createSignature(params, params.size(), amd::KernelSignature::ABIVersion_0);
+
+  // Save the number of OCL arguments
+  uint32_t numParams = params.size();
+  // Append the hidden arguments to the OCL arguments
+  params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
