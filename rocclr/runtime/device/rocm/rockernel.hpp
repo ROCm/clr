@@ -140,6 +140,8 @@ class Kernel : public device::Kernel {
   //! Return TRUE if kernel wirtes images
   bool imageWrite() const { return (flags_.imageWrite_) ? true : false; }
 
+  const std::unordered_map<size_t, size_t>& patch() const { return patchReferences_; }
+
  protected:
   union Flags {
     struct {
@@ -162,6 +164,7 @@ class Kernel : public device::Kernel {
   const uint32_t kernargSegmentAlignment_;
   size_t kernelDirectiveOffset_;
   std::vector<PrintfInfo> printf_;
+  std::unordered_map<size_t, size_t> patchReferences_;  //!< Patch table for references
 };
 
 #if defined(WITH_COMPILER_LIB)

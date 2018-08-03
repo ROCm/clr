@@ -217,7 +217,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Detects memory dependency for HSAIL kernels and uses appropriate AQL header
   bool processMemObjects(const amd::Kernel& kernel,  //!< AMD kernel object for execution
-                         const_address params        //!< Pointer to the param's store
+                         const_address params,       //!< Pointer to the param's store
+			 size_t& ldsAddress          //!< LDS usage
                          );
   // Retun the virtual gpu unique index
   uint index() const { return index_; }
@@ -313,4 +314,34 @@ class VirtualGPU : public device::VirtualDevice {
   };
 
 };
+
+template <typename T>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const T* src,         //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  memcpy(dst + offset, src, size);
+}
+
+template <>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const uint32_t* src,  //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  *(reinterpret_cast<uint32_t*>(dst + offset)) = *src;
+}
+
+template <>
+inline void WriteAqlArgAt(
+  unsigned char* dst,   //!< The write pointer to the buffer
+  const uint64_t* src,  //!< The source pointer
+  uint size,            //!< The size in bytes to copy
+  size_t offset         //!< The alignment to follow while writing to the buffer
+) {
+  *(reinterpret_cast<uint64_t*>(dst + offset)) = *src;
+}
 }

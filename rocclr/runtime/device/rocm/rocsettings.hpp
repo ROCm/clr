@@ -22,7 +22,6 @@ class Settings : public device::Settings {
       uint doublePrecision_ : 1;        //!< Enables double precision support
       uint pollCompletion_ : 1;         //!< Enables polling in HSA
       uint enableLocalMemory_ : 1;      //!< Enable GPUVM memory
-      uint enableImageHandle_ : 1;      //!< Use HSAIL image/sampler pointer
       uint enableNCMode_ : 1;           //!< Enable Non Coherent mode for system memory
       uint enablePartialDispatch_ : 1;  //!< Enable support for Partial Dispatch
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
