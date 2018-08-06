@@ -1169,6 +1169,11 @@ bool Device::init() {
 #endif
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
+#if defined(BUILD_HIP)
+  if (flagIsDefault(OCL_SET_SVM_SIZE)) {
+    info.maxSvmSize = static_cast<Pal::gpusize>(16384 * Mi);
+  }
+#endif
 
   // PAL init
   if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
