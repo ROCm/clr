@@ -1194,6 +1194,7 @@ bool Device::init() {
     selectDeviceByName = GPU_DEVICE_NAME;
   }
 
+  bool foundDevice = false;
   // Loop through all active devices and initialize the device info structure
   for (; ordinal < numDevices; ++ordinal) {
     // Create the GPU device object
@@ -1204,10 +1205,14 @@ bool Device::init() {
     }
     if (result && ((nullptr == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
                    (strstr(selectDeviceByName, d->info().name_) != nullptr))) {
+      foundDevice = true;
       d->registerDevice();
     } else {
       delete d;
     }
+  }
+  if (!foundDevice) {
+    Device::tearDown();
   }
   return true;
 }
