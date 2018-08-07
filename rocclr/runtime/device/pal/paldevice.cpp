@@ -1218,12 +1218,16 @@ bool Device::init() {
 }
 
 void Device::tearDown() {
-  platform_->Destroy();
-  delete platformObj_;
+  if (platform_ != nullptr) {
+    platform_->Destroy();
+    delete platformObj_;
+    platform_ = nullptr;
+  }
 
 #if !defined(WITH_LIGHTNING_COMPILER)
   if (compiler_ != nullptr) {
     aclCompilerFini(compiler_);
+    compiler_ = nullptr;
   }
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 }
