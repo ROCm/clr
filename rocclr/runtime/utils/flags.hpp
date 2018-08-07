@@ -155,7 +155,7 @@ release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
-release(uint, OCL_SET_SVM_SIZE, 4096,                                        \
+release(uint, OCL_SET_SVM_SIZE, 4096,                                         \
         "set SVM space size for discrete GPU")                                \
 debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
         "Use flag to change the minimum requirement of system memory not to downgrade")        \
@@ -171,7 +171,7 @@ release(bool, GPU_ANALYZE_HANG, false,                                        \
         "1 = Enables GPU hang analysis")                                      \
 release(uint, GPU_MAX_REMOTE_MEM_SIZE, 2,                                     \
         "Maximum size (in Ki) that allows device memory substitution with system") \
-release(bool, GPU_ADD_HBCC_SIZE, false,                                       \
+release(bool, GPU_ADD_HBCC_SIZE, true,                                        \
         "Add HBCC size to the reported device memory")                        \
 release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
         "Assume the number of CU per SH for wave limiter")                    \
