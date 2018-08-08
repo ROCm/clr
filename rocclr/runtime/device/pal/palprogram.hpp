@@ -319,7 +319,7 @@ class LightningProgram : public HSAILProgram {
   virtual bool createBinary(amd::option::Options* options) override;
 
   //! Return a new transient compiler instance.
-  static std::auto_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
+  static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 
  private:
   CodeObjectMD* metadata_;  //!< Runtime metadata
