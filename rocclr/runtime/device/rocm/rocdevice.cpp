@@ -1532,43 +1532,37 @@ void Device::updateFreeMemory(size_t size, bool free) {
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
   amd::Memory* mem = nullptr;
+
   if (nullptr == svmPtr) {
-    bool atomics = (flags & CL_MEM_SVM_ATOMICS) != 0;
-    void* ptr = hostAlloc(size, alignment, atomics);
-
-    if (ptr != nullptr) {
-      // Copy paste from ORCA code.
-      // create a hidden buffer, which will allocated on the device later
-      mem = new (context) amd::Buffer(context, (CL_MEM_USE_HOST_PTR | (flags & 0xFFFF0000)), size, ptr);
-      if (mem == nullptr) {
-        LogError("failed to create a svm mem object!");
-        return nullptr;
-      }
-
-      if (!mem->create(ptr)) {
-        LogError("failed to create a svm hidden buffer!");
-        mem->release();
-        return nullptr;
-      }
-
-      // add the information to context so that we can use it later.
-      amd::MemObjMap::AddMemObj(ptr, mem);
-
-      return ptr;
-    } else {
+    // create a hidden buffer, which will allocated on the device later
+    mem = new (context) amd::Buffer(context, flags, size, reinterpret_cast<void*>(1));
+    if (mem == nullptr) {
+      LogError("failed to create a svm mem object!");
       return nullptr;
     }
+
+    if (!mem->create(nullptr)) {
+      LogError("failed to create a svm hidden buffer!");
+      mem->release();
+      return nullptr;
+    }
+    // if the device supports SVM FGS, return the committed CPU address directly.
+    Memory* gpuMem = getRocMemory(mem);
+
+    // add the information to context so that we can use it later.
+    amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+    svmPtr = mem->getSvmPtr();
   } else {
-    // Copy paste from ORCA code.
     // Find the existing amd::mem object
     mem = amd::MemObjMap::FindMemObj(svmPtr);
-
     if (nullptr == mem) {
       return nullptr;
     }
 
-    return svmPtr;
+    svmPtr = mem->getSvmPtr();
   }
+
+  return svmPtr;
 }
 
 void Device::svmFree(void* ptr) const {
@@ -1577,7 +1571,6 @@ void Device::svmFree(void* ptr) const {
   if (nullptr != svmMem) {
     svmMem->release();
     amd::MemObjMap::RemoveMemObj(ptr);
-    hostFree(ptr);
   }
 }
 

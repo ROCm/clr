@@ -20,6 +20,7 @@ Settings::Settings() {
   pollCompletion_ = ENVVAR_HSA_POLL_KERNEL_COMPLETION;
 
   enableLocalMemory_ = HSA_LOCAL_MEMORY_ENABLE;
+  enableCoarseGrainSVM_ = HSA_ENABLE_COARSE_GRAIN_SVM;
 
   maxWorkGroupSize_ = 1024;
   preferredWorkGroupSize_ = 256;
