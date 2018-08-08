@@ -1217,7 +1217,7 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
 bool LightningProgram::linkImpl(const std::vector<Program*>& inputPrograms,
                                 amd::option::Options* options, bool createLibrary) {
   using namespace amd::opencl_driver;
-  std::auto_ptr<Compiler> C(newCompilerInstance());
+  std::unique_ptr<Compiler> C(newCompilerInstance());
 
   std::vector<Data*> inputs;
   for (auto program : (const std::vector<LightningProgram*>&)inputPrograms) {
@@ -1327,7 +1327,7 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
     return false;
   }
 
-  std::auto_ptr<Compiler> C(newCompilerInstance());
+  std::unique_ptr<Compiler> C(newCompilerInstance());
   // call LinkLLVMBitcode
   std::vector<Data*> inputs;
 

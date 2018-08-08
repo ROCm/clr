@@ -182,7 +182,7 @@ static void checkLLVM_BIN() {
 }
 #endif  // defined(ATI_OS_LINUX)
 
-std::auto_ptr<amd::opencl_driver::Compiler> LightningProgram::newCompilerInstance() {
+std::unique_ptr<amd::opencl_driver::Compiler> LightningProgram::newCompilerInstance() {
 #if defined(ATI_OS_WIN)
   static INIT_ONCE initOnce;
   InitOnceExecuteOnce(&initOnce, checkLLVM_BIN, NULL, NULL);
@@ -199,7 +199,7 @@ std::auto_ptr<amd::opencl_driver::Compiler> LightningProgram::newCompilerInstanc
   }
 #endif  // defined(DEBUG)
 
-  return std::auto_ptr<amd::opencl_driver::Compiler>(
+  return std::unique_ptr<amd::opencl_driver::Compiler>(
       amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
 }
 
@@ -207,7 +207,7 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
                                    const std::vector<const std::string*>& headers,
                                    const char** headerIncludeNames, amd::option::Options* options) {
   using namespace amd::opencl_driver;
-  std::auto_ptr<Compiler> C(newCompilerInstance());
+  std::unique_ptr<Compiler> C(newCompilerInstance());
   std::vector<Data*> inputs;
 
   Data* input = C->NewBufferReference(DT_CL, sourceCode.c_str(), sourceCode.length());
