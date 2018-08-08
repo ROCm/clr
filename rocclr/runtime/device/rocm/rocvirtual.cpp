@@ -1109,94 +1109,70 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
-void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
-  // in-order semantics: previous commands need to be done before we start
-  releaseGpuMemoryFence();
-  profilingBegin(cmd);
-  amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1);
-  profilingEnd(cmd);
-}
-
-void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
-  // in-order semantics: previous commands need to be done before we start
-  releaseGpuMemoryFence();
-  profilingBegin(cmd);
-  amd::SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
-  profilingEnd(cmd);
-}
-
-void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
-  profilingBegin(cmd);
-
-  Memory* srcDevMem = dev().getRocMemory(&cmd.source());
-  Memory* dstDevMem = dev().getRocMemory(&cmd.destination());
+bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memory& dstMem,
+                            bool entire, const amd::Coord3D& srcOrigin,
+                            const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
+                            const amd::BufferRect& srcRect, const amd::BufferRect& dstRect) {
+  Memory* srcDevMem = dev().getRocMemory(&srcMem);
+  Memory* dstDevMem = dev().getRocMemory(&dstMem);
 
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;
-  syncFlags.skipEntire_ = cmd.isEntireMemory();
+  syncFlags.skipEntire_ = entire;
   dstDevMem->syncCacheFromHost(*this, syncFlags);
   srcDevMem->syncCacheFromHost(*this);
 
-  amd::Coord3D size = cmd.size();
-
-  cl_command_type type = cmd.type();
   bool result = false;
   bool srcImageBuffer = false;
   bool dstImageBuffer = false;
 
   // Force buffer copy for IMAGE1D_BUFFER
-  if (cmd.source().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
+  if (srcMem.getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
     srcImageBuffer = true;
     type = CL_COMMAND_COPY_BUFFER;
   }
-  if (cmd.destination().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
+  if (dstMem.getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
     dstImageBuffer = true;
     type = CL_COMMAND_COPY_BUFFER;
   }
 
-  switch (cmd.type()) {
+  switch (type) {
+    case CL_COMMAND_SVM_MEMCPY:
     case CL_COMMAND_COPY_BUFFER: {
-      amd::Coord3D srcOrigin(cmd.srcOrigin()[0]);
-      amd::Coord3D dstOrigin(cmd.dstOrigin()[0]);
+      amd::Coord3D realSrcOrigin(srcOrigin[0]);
+      amd::Coord3D realDstOrigin(dstOrigin[0]);
+      amd::Coord3D realSize(size.c[0], size.c[1], size.c[2]);
 
       if (srcImageBuffer) {
-        const size_t elemSize = cmd.source().asImage()->getImageFormat().getElementSize();
-        srcOrigin.c[0] *= elemSize;
+        const size_t elemSize = srcMem.asImage()->getImageFormat().getElementSize();
+        realSrcOrigin.c[0] *= elemSize;
         if (dstImageBuffer) {
-          dstOrigin.c[0] *= elemSize;
+          realDstOrigin.c[0] *= elemSize;
         }
-        size.c[0] *= elemSize;
+        realSize.c[0] *= elemSize;
       } else if (dstImageBuffer) {
-        const size_t elemSize = cmd.destination().asImage()->getImageFormat().getElementSize();
-        dstOrigin.c[0] *= elemSize;
-        size.c[0] *= elemSize;
+        const size_t elemSize = dstMem.asImage()->getImageFormat().getElementSize();
+        realDstOrigin.c[0] *= elemSize;
+        realSize.c[0] *= elemSize;
       }
 
-      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size,
-                                    cmd.isEntireMemory());
+      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, realSrcOrigin, realDstOrigin, realSize, entire);
       break;
     }
     case CL_COMMAND_COPY_BUFFER_RECT: {
-      result = blitMgr().copyBufferRect(*srcDevMem, *dstDevMem, cmd.srcRect(), cmd.dstRect(), size,
-                                        cmd.isEntireMemory());
+      result = blitMgr().copyBufferRect(*srcDevMem, *dstDevMem, srcRect, dstRect, size, entire);
       break;
     }
     case CL_COMMAND_COPY_IMAGE: {
-      result = blitMgr().copyImage(*srcDevMem, *dstDevMem, cmd.srcOrigin(), cmd.dstOrigin(), size,
-                                   cmd.isEntireMemory());
+      result = blitMgr().copyImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
       break;
     }
     case CL_COMMAND_COPY_IMAGE_TO_BUFFER: {
-      result = blitMgr().copyImageToBuffer(*srcDevMem, *dstDevMem, cmd.srcOrigin(), cmd.dstOrigin(),
-                                           size, cmd.isEntireMemory());
+      result = blitMgr().copyImageToBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
       break;
     }
     case CL_COMMAND_COPY_BUFFER_TO_IMAGE: {
-      result = blitMgr().copyBufferToImage(*srcDevMem, *dstDevMem, cmd.srcOrigin(), cmd.dstOrigin(),
-                                           size, cmd.isEntireMemory());
+      result = blitMgr().copyBufferToImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
       break;
     }
     default:
@@ -1206,11 +1182,103 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
 
   if (!result) {
     LogError("submitCopyMemory failed!");
-    cmd.setStatus(CL_OUT_OF_RESOURCES);
+    return false;
   }
 
-  cmd.destination().signalWrite(&dev());
+  // Mark this as the most-recently written cache of the destination
+  dstMem.signalWrite(&dev());
+  return true;
+}
 
+void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
+  // Wait on a kernel if one is outstanding
+  releaseGpuMemoryFence();
+
+  profilingBegin(cmd);
+
+  cl_command_type type = cmd.type();
+  bool entire = cmd.isEntireMemory();
+
+  if (!copyMemory(type, cmd.source(), cmd.destination(), entire, cmd.srcOrigin(),
+                  cmd.dstOrigin(), cmd.size(), cmd.srcRect(), cmd.dstRect())) {
+    cmd.setStatus(CL_INVALID_OPERATION);
+  }
+
+  profilingEnd(cmd);
+}
+
+void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
+  // in-order semantics: previous commands need to be done before we start
+  releaseGpuMemoryFence();
+
+  profilingBegin(cmd);
+  // no op for FGS supported device
+  if (!dev().isFineGrainedSystem() &&
+      dev().settings().enableCoarseGrainSVM_) {
+    amd::Coord3D srcOrigin(0, 0, 0);
+    amd::Coord3D dstOrigin(0, 0, 0);
+    amd::Coord3D size(cmd.srcSize(), 1, 1);
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+
+    bool result = false;
+    amd::Memory* srcMem = amd::MemObjMap::FindMemObj(cmd.src());
+    amd::Memory* dstMem = amd::MemObjMap::FindMemObj(cmd.dst());
+
+    device::Memory::SyncFlags syncFlags;
+    if (nullptr != srcMem) {
+      srcMem->commitSvmMemory();
+      srcOrigin.c[0] =
+          static_cast<const_address>(cmd.src()) - static_cast<address>(srcMem->getSvmPtr());
+      if (!(srcMem->validateRegion(srcOrigin, size))) {
+        cmd.setStatus(CL_INVALID_OPERATION);
+        return;
+      }
+    }
+    if (nullptr != dstMem) {
+      dstMem->commitSvmMemory();
+      dstOrigin.c[0] =
+          static_cast<const_address>(cmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
+      if (!(dstMem->validateRegion(dstOrigin, size))) {
+        cmd.setStatus(CL_INVALID_OPERATION);
+        return;
+      }
+    }
+
+    if (nullptr == srcMem && nullptr == dstMem) { // both not in svm space
+      amd::Os::fastMemcpy(cmd.dst(), cmd.src(), cmd.srcSize());
+      result = true;
+    } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
+      Memory* memory = dev().getRocMemory(dstMem);
+      // Synchronize source and destination memory
+      syncFlags.skipEntire_ = dstMem->isEntirelyCovered(dstOrigin, size);
+      memory->syncCacheFromHost(*this, syncFlags);
+
+      result = blitMgr().writeBuffer(cmd.src(), *memory, dstOrigin, size,
+                                     dstMem->isEntirelyCovered(dstOrigin, size));
+      // Mark this as the most-recently written cache of the destination
+      dstMem->signalWrite(&dev());
+    } else if (nullptr != srcMem && nullptr == dstMem) {  // dst not in svm space
+      Memory* memory = dev().getRocMemory(srcMem);
+      // Synchronize source and destination memory
+      memory->syncCacheFromHost(*this);
+
+      result = blitMgr().readBuffer(*memory, cmd.dst(), srcOrigin, size,
+                                    srcMem->isEntirelyCovered(srcOrigin, size));
+    } else if (nullptr != srcMem && nullptr != dstMem) {  // both in svm space
+      bool entire =
+          srcMem->isEntirelyCovered(srcOrigin, size) && dstMem->isEntirelyCovered(dstOrigin, size);
+      result =
+          copyMemory(cmd.type(), *srcMem, *dstMem, entire, srcOrigin, dstOrigin, size, srcRect, dstRect);
+    }
+
+    if (!result) {
+      cmd.setStatus(CL_INVALID_OPERATION);
+    }
+  } else {
+    // direct memcpy for FGS enabled system
+    amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1);
+  }
   profilingEnd(cmd);
 }
 
@@ -1480,53 +1548,48 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
-void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
+bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const void* pattern,
+                            size_t patternSize, const amd::Coord3D& origin,
+                            const amd::Coord3D& size) {
+  Memory* memory = dev().getRocMemory(amdMemory);
 
-  profilingBegin(cmd);
-
-  Memory* memory = dev().getRocMemory(&cmd.memory());
-
-  bool entire = cmd.isEntireMemory();
+  bool entire = amdMemory->isEntirelyCovered(origin, size);
   // Synchronize memory from host if necessary
   device::Memory::SyncFlags syncFlags;
   syncFlags.skipEntire_ = entire;
   memory->syncCacheFromHost(*this, syncFlags);
 
-  cl_command_type type = cmd.type();
   bool result = false;
   bool imageBuffer = false;
   float fillValue[4];
 
   // Force fill buffer for IMAGE1D_BUFFER
-  if ((type == CL_COMMAND_FILL_IMAGE) && (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
+  if ((type == CL_COMMAND_FILL_IMAGE) && (amdMemory->getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
     type = CL_COMMAND_FILL_BUFFER;
     imageBuffer = true;
   }
 
   // Find the the right fill operation
   switch (type) {
+    case CL_COMMAND_SVM_MEMFILL:
     case CL_COMMAND_FILL_BUFFER: {
-      const void* pattern = cmd.pattern();
-      size_t patternSize = cmd.patternSize();
-      amd::Coord3D origin(cmd.origin()[0]);
-      amd::Coord3D size(cmd.size()[0]);
+      amd::Coord3D realOrigin(origin[0]);
+      amd::Coord3D realSize(size[0]);
       // Reprogram fill parameters if it's an IMAGE1D_BUFFER object
       if (imageBuffer) {
-        size_t elemSize = cmd.memory().asImage()->getImageFormat().getElementSize();
-        origin.c[0] *= elemSize;
-        size.c[0] *= elemSize;
+        size_t elemSize = amdMemory->asImage()->getImageFormat().getElementSize();
+        realOrigin.c[0] *= elemSize;
+        realSize.c[0] *= elemSize;
         memset(fillValue, 0, sizeof(fillValue));
-        cmd.memory().asImage()->getImageFormat().formatColor(pattern, fillValue);
+        amdMemory->asImage()->getImageFormat().formatColor(pattern, fillValue);
         pattern = fillValue;
         patternSize = elemSize;
       }
-      result = blitMgr().fillBuffer(*memory, pattern, patternSize, origin, size, entire);
+      result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize, entire);
       break;
     }
     case CL_COMMAND_FILL_IMAGE: {
-      result = blitMgr().fillImage(*memory, cmd.pattern(), cmd.origin(), cmd.size(), entire);
+      result = blitMgr().fillImage(*memory, pattern, origin, size, entire);
       break;
     }
     default:
@@ -1536,10 +1599,60 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
 
   if (!result) {
     LogError("submitFillMemory failed!");
-    cmd.setStatus(CL_OUT_OF_RESOURCES);
   }
 
-  cmd.memory().signalWrite(&dev());
+  amdMemory->signalWrite(&dev());
+  return true;
+}
+
+void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
+  // Wait on a kernel if one is outstanding
+  releaseGpuMemoryFence();
+
+  profilingBegin(cmd);
+
+  if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(), cmd.origin(),
+                  cmd.size())) {
+    cmd.setStatus(CL_INVALID_OPERATION);
+  }
+  profilingEnd(cmd);
+}
+
+void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
+  // in-order semantics: previous commands need to be done before we start
+  releaseGpuMemoryFence();
+
+  profilingBegin(cmd);
+
+  if (!dev().isFineGrainedSystem() &&
+      dev().settings().enableCoarseGrainSVM_) {
+    size_t patternSize = cmd.patternSize();
+    size_t fillSize = patternSize * cmd.times();
+    amd::Memory* dstMemory = amd::MemObjMap::FindMemObj(cmd.dst());
+    assert(dstMemory && "No svm Buffer to fill with!");
+    size_t offset = reinterpret_cast<uintptr_t>(cmd.dst()) -
+        reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
+
+    Memory* memory = dev().getRocMemory(dstMemory);
+
+    amd::Coord3D origin(offset, 0, 0);
+    amd::Coord3D size(fillSize, 1, 1);
+
+    assert((dstMemory->validateRegion(origin, size)) && "The incorrect fill size!");
+    // Synchronize memory from host if necessary
+    device::Memory::SyncFlags syncFlags;
+    syncFlags.skipEntire_ = dstMemory->isEntirelyCovered(origin, size);
+    memory->syncCacheFromHost(*this, syncFlags);
+
+    if (!fillMemory(cmd.type(), dstMemory, cmd.pattern(), cmd.patternSize(), origin, size)) {
+      cmd.setStatus(CL_INVALID_OPERATION);
+    }
+    // Mark this as the most-recently written cache of the destination
+    dstMemory->signalWrite(&dev());
+  } else {
+    // for FGS capable device, fill CPU memory directly
+    amd::SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
+  }
 
   profilingEnd(cmd);
 }

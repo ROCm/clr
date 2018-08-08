@@ -179,6 +179,10 @@ class VirtualGPU : public device::VirtualDevice {
   void submitFillMemory(amd::FillMemoryCommand& cmd);
   void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
 
+  void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);
+  void submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd);
+  void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
+
   // { roc OpenCL integration
   // Added these stub (no-ops) implementation of pure virtual methods,
   // when integrating HSA and OpenCL branches.
@@ -187,9 +191,6 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 
-  virtual void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);
-  virtual void submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd);
-  virtual void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
   virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
   virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
@@ -261,6 +262,27 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns TRUE if virtual queue was successfully allocatted
   bool createVirtualQueue(uint deviceQueueSize);
+
+  //! Common function for fill memory used by both svm Fill and non-svm fill
+  bool fillMemory(cl_command_type type,        //!< the command type
+                  amd::Memory* amdMemory,      //!< memory object to fill
+                  const void* pattern,         //!< pattern to fill the memory
+                  size_t patternSize,          //!< pattern size
+                  const amd::Coord3D& origin,  //!< memory origin
+                  const amd::Coord3D& size     //!< memory size for filling
+                  );
+
+  //! Common function for memory copy used by both svm Copy and non-svm Copy
+  bool copyMemory(cl_command_type type,            //!< the command type
+                  amd::Memory& srcMem,             //!< source memory object
+                  amd::Memory& dstMem,             //!< destination memory object
+                  bool entire,                     //!< flag of entire memory copy
+                  const amd::Coord3D& srcOrigin,   //!< source memory origin
+                  const amd::Coord3D& dstOrigin,   //!< destination memory object
+                  const amd::Coord3D& size,        //!< copy size
+                  const amd::BufferRect& srcRect,  //!< region of source for copy
+                  const amd::BufferRect& dstRect   //!< region of destination for copy
+                  );
 
   //! Updates AQL header for the upcomming dispatch
   void setAqlHeader(uint16_t header) { aqlHeader_ = header; }

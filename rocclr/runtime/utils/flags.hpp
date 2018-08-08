@@ -145,6 +145,8 @@ release(uint, HSA_SIGNAL_POOL_SIZE, 16,                                       \
         "Signal object pool size")                                            \
 release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
         "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
+release(bool, HSA_ENABLE_COARSE_GRAIN_SVM, IS_HIP,                            \
+        "Enable device memory for coarse grain SVM allocations") \
 release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, GPU_MIPMAP, true,                                               \

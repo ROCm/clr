@@ -581,7 +581,27 @@ void Buffer::destroy() {
     return;
   }
 
-  const cl_mem_flags memFlags = owner()->getMemFlags();
+  cl_mem_flags memFlags = owner()->getMemFlags();
+
+  if (owner()->getSvmPtr() != nullptr) {
+    if (!dev().settings().enableCoarseGrainSVM_) {
+      memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
+    }
+    const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
+
+    if (isFineGrain) {
+      dev().hostFree(deviceMemory_, size());
+    } else {
+      dev().memFree(deviceMemory_, size());
+    }
+
+    if (dev().settings().apuSystem_ || !isFineGrain) {
+      const_cast<Device&>(dev()).updateFreeMemory(size(), true);
+    }
+
+    return;
+  }
+
 #ifdef WITH_AMDGPU_PRO
   if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {
     dev().iPro().FreeDmaBuffer(deviceMemory_);
@@ -628,6 +648,34 @@ bool Buffer::create() {
     return false;
   }
 
+  // Allocate backing storage in device local memory unless UHP or AHP are set
+  cl_mem_flags memFlags = owner()->getMemFlags();
+
+  if (owner()->getSvmPtr() != nullptr) {
+    if (!dev().settings().enableCoarseGrainSVM_) {
+      memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
+      flags_ |= HostMemoryDirectAccess;
+    }
+    const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
+
+    if (owner()->getSvmPtr() == reinterpret_cast<void*>(1)) {
+      if (isFineGrain) {
+        deviceMemory_ = dev().hostAlloc(size(), 1, false);
+      } else {
+        deviceMemory_ = dev().deviceLocalAlloc(size());
+      }
+      owner()->setSvmPtr(deviceMemory_);
+    } else {
+      deviceMemory_ = owner()->getSvmPtr();
+    }
+
+    if (dev().settings().apuSystem_ || !isFineGrain) {
+      const_cast<Device&>(dev()).updateFreeMemory(size(), false);
+    }
+
+    return deviceMemory_ != nullptr;
+  }
+
   // Interop buffer
   if (owner()->isInterop()) return createInteropBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -657,9 +705,6 @@ bool Buffer::create() {
 
     return true;
   }
-
-  // Allocate backing storage in device local memory unless UHP or AHP are set
-  const cl_mem_flags memFlags = owner()->getMemFlags();
 
 #ifdef WITH_AMDGPU_PRO
   if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {

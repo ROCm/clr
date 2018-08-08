@@ -22,6 +22,7 @@ class Settings : public device::Settings {
       uint doublePrecision_ : 1;        //!< Enables double precision support
       uint pollCompletion_ : 1;         //!< Enables polling in HSA
       uint enableLocalMemory_ : 1;      //!< Enable GPUVM memory
+      uint enableCoarseGrainSVM_ : 1;   //!< Enable device memory for coarse grain SVM allocations
       uint enableNCMode_ : 1;           //!< Enable Non Coherent mode for system memory
       uint enablePartialDispatch_ : 1;  //!< Enable support for Partial Dispatch
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
@@ -29,7 +30,7 @@ class Settings : public device::Settings {
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
       uint singleFpDenorm_ : 1;         //!< Support Single FP Denorm
       uint apuSystem_ : 1;              //!< APU system
-      uint reserved_ : 20;
+      uint reserved_ : 21;
     };
     uint value_;
   };
