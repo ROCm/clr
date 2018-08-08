@@ -62,4 +62,4 @@ add_library(amdocl64 SHARED
 
 target_link_libraries(amdocl64 opencl_driver oclelf pthread dl ${ROCR_LIBRARIES})
 
-install(TARGETS amdocl64 LIBRARY DESTINATION lib)
+install(TARGETS amdocl64 LIBRARY DESTINATION lib/x86_64 COMPONENT applications)

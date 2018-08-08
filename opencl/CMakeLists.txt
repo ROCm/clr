@@ -24,7 +24,7 @@ set(CLANG_ENABLE_STATIC_ANALYZER OFF CACHE BOOL "")
 # override default option value in library and driver
 set(GENERIC_IS_ZERO ON CACHE BOOL ON FORCE)
 
-add_subdirectory(compiler/llvm)
+add_subdirectory(compiler/llvm EXCLUDE_FROM_ALL)
 
 find_package(LLVM REQUIRED CONFIG PATHS ${CMAKE_BINARY_DIR}/compiler/llvm NO_DEFAULT_PATH)
 
@@ -41,13 +41,13 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/tools/lld/include)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
 include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
 
-add_subdirectory(compiler/driver)
+add_subdirectory(compiler/driver EXCLUDE_FROM_ALL)
 
 set(BUILD_HC_LIB OFF CACHE BOOL "")
 set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
 set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
 set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-amdgizcl")
-add_subdirectory(library/amdgcn)
+add_subdirectory(library/amdgcn EXCLUDE_FROM_ALL)
 
 add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
 
@@ -63,11 +63,120 @@ add_subdirectory(api/opencl/khronos/icd)
 
 add_subdirectory(tools/clinfo)
 
+install(PROGRAMS $<TARGET_FILE:clang> $<TARGET_FILE:lld>
+        DESTINATION bin/x86_64
+        COMPONENT libraries)
+
 install(PROGRAMS $<TARGET_FILE:OpenCL>
-        DESTINATION lib)
+        DESTINATION lib/x86_64
+        COMPONENT applications)
+
+install(PROGRAMS $<TARGET_LINKER_FILE:OpenCL>
+        DESTINATION lib/x86_64
+        COMPONENT libraries)
 
 install(DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2"
+        "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2/CL"
         DESTINATION include
+        COMPONENT libraries
         USE_SOURCE_PERMISSIONS
         PATTERN cl_egl.h EXCLUDE)
+
+foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
+  get_target_property(lib_file_name ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_NAME)
+  get_target_property(lib_file_path ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_DIRECTORY)
+  install(FILES ${lib_file_path}/${lib_file_name}.amdgcn.bc
+        DESTINATION lib/x86_64/bitcode
+        COMPONENT libraries)
+endforeach()
+
+## CPack standard variables
+set ( CPACK_PACKAGE_NAME "rocm-opencl" )
+set ( CPACK_PACKAGE_FILE_NAME "rocm-opencl-1.2.0" )
+set ( CPACK_PACKAGE_VENDOR "AMD" )
+set ( CPACK_PACKAGE_VERSION_MAJOR "1" )
+set ( CPACK_PACKAGE_VERSION_MINOR "2" )
+set ( CPACK_PACKAGE_VERSION_PATCH "0" )
+set ( CPACK_PACKAGE_CONTACT "Advanced Micro Devices Inc." )
+set ( CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime" )
+
+set ( CPACK_GENERATOR RPM DEB )
+set ( CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl" )
+
+## Debian package values
+file(GENERATE OUTPUT "postinst"
+     CONTENT "#!/bin/bash
+
+set -e
+
+do_ldconfig() {
+    echo /opt/rocm/opencl/lib/x86_64 > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
+    mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)
+}
+
+case \"$1\" in
+   configure)
+       do_ldconfig
+   ;;
+   abort-upgrade|abort-remove|abort-deconfigure)
+       echo \"$1\"
+   ;;
+   *)
+       exit 0
+   ;;
+esac
+")
+
+file(GENERATE OUTPUT "prerm"
+     CONTENT "#!/bin/bash
+
+set -e
+
+rm_ldconfig() {
+    rm -f /etc/OpenCL/vendors/amdocl64.icd
+    rm -f /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
+}
+
+case \"$1\" in
+   remove)
+       rm_ldconfig
+   ;;
+   purge)
+   ;;
+   *)
+       exit 0
+   ;;
+esac
+")
+
+set ( CPACK_DEBIAN_PACKAGE_MAINTAINER "AMD" )
+set ( CPACK_DEBIAN_PACKAGE_DEPENDS "" )
+set ( CPACK_DEB_COMPONENT_INSTALL ON)
+set ( CPACK_DEBIAN_applications_PACKAGE_NAME "rocm-opencl" )
+set ( CPACK_DEBIAN_applications_FILE_NAME "rocm-opencl-1.2.0.deb" )
+set ( CPACK_DEBIAN_libraries_PACKAGE_NAME "rocm-opencl-dev" )
+set ( CPACK_DEBIAN_libraries_FILE_NAME "rocm-opencl-dev-1.2.0.deb" )
+set ( CPACK_DEBIAN_libraries_PACKAGE_DEPENDS "rocm-opencl" )
+set ( CPACK_DEBIAN_applications_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/prerm;${CMAKE_CURRENT_BINARY_DIR}/postinst" )
+
+## RPM package values
+
+file(GENERATE OUTPUT "rpm_postinst"
+     CONTENT "echo /opt/rocm/opencl/lib/x86_64 > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig;
+mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)")
+file(GENERATE OUTPUT "rpm_prerm"
+     CONTENT "rm -f /etc/OpenCL/vendors/amdocl64.icd
+rm -f /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig")
+
+set ( CPACK_RPM_COMPONENT_INSTALL ON)
+set ( CPACK_RPM_applications_PACKAGE_NAME "rocm-opencl" )
+set ( CPACK_RPM_applications_FILE_NAME "rocm-opencl-1.2.0.rpm" )
+set ( CPACK_RPM_libraries_PACKAGE_NAME "rocm-opencl-devel" )
+set ( CPACK_RPM_libraries_FILE_NAME "rocm-opencl-devel-1.2.0.rpm" )
+set ( CPACK_RPM_libraries_PACKAGE_DEPENDS "rocm-opencl" )
+set ( CPACK_RPM_applications_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/rpm_postinst" )
+set ( CPACK_RPM_applications_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/rpm_prerm" )
+
+
+set ( CPACK_COMPONENTS_ALL applications libraries )
+include ( CPack )
