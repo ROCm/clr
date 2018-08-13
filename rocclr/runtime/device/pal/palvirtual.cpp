@@ -2167,6 +2167,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
   }
   size_t ldsSize;
+
+  LogPrintfInfo("!\tShaderName : %s\n", hsaKernel.name().c_str());
+
   // Check memory dependency and SVM objects
   if (!processMemObjectsHSA(kernel, parameters, nativeMem, ldsSize)) {
       LogError("Wrong memory objects!");
@@ -3137,6 +3140,11 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           gpuMem->wait(*this, WaitOnBusyEngine);
 
           addVmMemory(gpuMem);
+
+          void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p]\n", index, desc.typeName_, desc.name_,
+                  globalAddress, (void*)gpuMem->vmAddress(),
+                  (void*)((intptr_t)gpuMem->vmAddress() + gpuMem->size()));
 
           //! Check if compiler expects read/write.
           //! Note: SVM with subbuffers has an issue with tracking.
