@@ -331,7 +331,9 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             // Synchronize data with other memory instances if necessary
             gpuMem->syncCacheFromHost(*this);
           }
-
+          void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p]\n", index, desc.typeName_, desc.name_,
+                  globalAddress, gpuMem->getDeviceMemory(), (void*)((intptr_t)gpuMem->getDeviceMemory() + mem->getSize()));
           // Validate memory for a dependency in the queue
           memoryDependency().validate(*this, gpuMem, (desc.info_.readOnly_ == 1));
 
@@ -2061,6 +2063,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       LogError("Out of memory");
       return false;
     }
+
+    LogPrintfInfo("!\tShaderName : %s\n", gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
