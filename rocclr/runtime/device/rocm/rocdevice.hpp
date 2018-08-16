@@ -147,6 +147,11 @@ class NullDevice : public amd::Device {
     return;
   }
 
+  //! Determine if we can use device memory for SVM
+  const bool forceFineGrain(amd::Memory* memory) const {
+    return !settings().enableCoarseGrainSVM_ || (memory->getContext().devices().size() > 1);
+  }
+
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 
@@ -285,7 +290,7 @@ class Device : public NullDevice {
                              device::Sampler** sampler   //!< device sampler object
                              ) const {
     //! \todo HSA team has to implement sampler allocation.
-    //! Currently allocate the base device class 
+    //! Currently allocate the base device class
     *sampler = new device::Sampler();
     if (*sampler == nullptr) {
       return false;

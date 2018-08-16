@@ -1215,8 +1215,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
 
   profilingBegin(cmd);
   // no op for FGS supported device
-  if (!dev().isFineGrainedSystem() &&
-      dev().settings().enableCoarseGrainSVM_) {
+  if (!dev().isFineGrainedSystem()) {
     amd::Coord3D srcOrigin(0, 0, 0);
     amd::Coord3D dstOrigin(0, 0, 0);
     amd::Coord3D size(cmd.srcSize(), 1, 1);
@@ -1229,7 +1228,6 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
 
     device::Memory::SyncFlags syncFlags;
     if (nullptr != srcMem) {
-      srcMem->commitSvmMemory();
       srcOrigin.c[0] =
           static_cast<const_address>(cmd.src()) - static_cast<address>(srcMem->getSvmPtr());
       if (!(srcMem->validateRegion(srcOrigin, size))) {
@@ -1238,7 +1236,6 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
       }
     }
     if (nullptr != dstMem) {
-      dstMem->commitSvmMemory();
       dstOrigin.c[0] =
           static_cast<const_address>(cmd.dst()) - static_cast<address>(dstMem->getSvmPtr());
       if (!(dstMem->validateRegion(dstOrigin, size))) {
@@ -1247,7 +1244,11 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
       }
     }
 
-    if (nullptr == srcMem && nullptr == dstMem) { // both not in svm space
+    if ((nullptr == srcMem && nullptr == dstMem) || // both not in svm space
+        dev().forceFineGrain(srcMem) ||
+        dev().forceFineGrain(dstMem)) {
+      // If these are from different contexts, then one of them could be in the device memory
+      // This is fine, since spec doesn't allow for copies with pointers from different contexts
       amd::Os::fastMemcpy(cmd.dst(), cmd.src(), cmd.srcSize());
       result = true;
     } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
@@ -1367,18 +1368,75 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
 }
 
 void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
-  // No fence is needed since this is a no-op: the
-  // command will be completed only after all the
-  // previous commands are complete
+  // Wait on a kernel if one is outstanding
+  releaseGpuMemoryFence();
+
   profilingBegin(cmd);
+
+  // no op for FGS supported device
+  if (!dev().isFineGrainedSystem() &&
+      !dev().forceFineGrain(cmd.getSvmMem())) {
+    // Make sure we have memory for the command execution
+    Memory* memory = dev().getRocMemory(cmd.getSvmMem());
+
+    memory->saveMapInfo(cmd.svmPtr(), cmd.origin(), cmd.size(), cmd.mapFlags(),
+                        cmd.isEntireMemory());
+
+    if (memory->mapMemory() != nullptr) {
+      if (cmd.mapFlags() & (CL_MAP_READ | CL_MAP_WRITE)) {
+        Memory* hsaMapMemory = dev().getRocMemory(memory->mapMemory());
+
+        if (!blitMgr().copyBuffer(*memory, *hsaMapMemory, cmd.origin(), cmd.origin(),
+                                  cmd.size(), cmd.isEntireMemory())) {
+          LogError("submitSVMMapMemory() - copy failed");
+          cmd.setStatus(CL_MAP_FAILURE);
+        }
+        releaseGpuMemoryFence();
+        const void* mappedPtr = hsaMapMemory->owner()->getHostMem();
+        amd::Os::fastMemcpy(cmd.svmPtr(), mappedPtr, cmd.size()[0]);
+      }
+    } else {
+      LogError("Unhandled svm map!");
+    }
+  }
+
   profilingEnd(cmd);
 }
 
 void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
-  // No fence is needed since this is a no-op: the
-  // command will be completed only after all the
-  // previous commands are complete
+  // Wait on a kernel if one is outstanding
+  releaseGpuMemoryFence();
+
   profilingBegin(cmd);
+
+  // no op for FGS supported device
+  if (!dev().isFineGrainedSystem() &&
+      !dev().forceFineGrain(cmd.getSvmMem())) {
+    Memory* memory = dev().getRocMemory(cmd.getSvmMem());
+    const device::Memory::WriteMapInfo* writeMapInfo = memory->writeMapInfo(cmd.svmPtr());
+
+    if (memory->mapMemory() != nullptr) {
+      if (writeMapInfo->isUnmapWrite()) {
+        amd::Coord3D srcOrigin(0, 0, 0);
+        Memory* hsaMapMemory = dev().getRocMemory(memory->mapMemory());
+
+        void* mappedPtr = hsaMapMemory->owner()->getHostMem();
+        amd::Os::fastMemcpy(mappedPtr, cmd.svmPtr(), writeMapInfo->region_[0]);
+        // Target is a remote resource, so copy
+        if (!blitMgr().copyBuffer(*hsaMapMemory, *memory, writeMapInfo->origin_,
+                                  writeMapInfo->origin_, writeMapInfo->region_,
+                                  writeMapInfo->isEntire())) {
+          LogError("submitSvmUnmapMemory() - copy failed");
+          cmd.setStatus(CL_OUT_OF_RESOURCES);
+        }
+      }
+    } else {
+      LogError("Unhandled svm map!");
+    }
+
+    memory->clearUnmapInfo(cmd.svmPtr());
+  }
+
   profilingEnd(cmd);
 }
 
@@ -1408,7 +1466,8 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
 
   // Sync to the map target.
   // If we have host memory, use it
-  if (devMemory->owner()->getHostMem() != nullptr) {
+  if ((devMemory->owner()->getHostMem() != nullptr) &&
+      (devMemory->owner()->getSvmPtr() == nullptr)) {
     // Target is the backing store, so just ensure that owner is up-to-date
     devMemory->owner()->cacheWriteBack();
 
@@ -1441,6 +1500,12 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
             static_cast<roc::Memory*>(mapMemory->getDeviceMemory(dev(), false));
         result = blitMgr().copyBuffer(*hsaMemory, *hsaMapMemory, origin, dstOrigin, size,
                                       cmd.isEntireMemory());
+        void* svmPtr = devMemory->owner()->getSvmPtr();
+        if ((svmPtr != nullptr) &&
+            (hostPtr != svmPtr)) {
+          releaseGpuMemoryFence();
+          amd::Os::fastMemcpy(svmPtr, hostPtr, size[0]);
+        }
       } else {
         result = blitMgr().readBuffer(*hsaMemory, static_cast<char*>(hostPtr) + origin[0], origin,
                                       size, cmd.isEntireMemory());
@@ -1448,10 +1513,10 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
     } else if (type == CL_COMMAND_MAP_IMAGE) {
       amd::Image* image = cmd.memory().asImage();
       if (mapMemory != nullptr) {
-        roc::Memory* mapMemory =
-            static_cast<roc::Memory*>(devMemory->mapMemory()->getDeviceMemory(dev(), false));
+        roc::Memory* hsaMapMemory =
+            static_cast<roc::Memory*>(mapMemory->getDeviceMemory(dev(), false));
         result =
-            blitMgr().copyImageToBuffer(*hsaMemory, *mapMemory, cmd.origin(), amd::Coord3D(0, 0, 0),
+            blitMgr().copyImageToBuffer(*hsaMemory, *hsaMapMemory, cmd.origin(), amd::Coord3D(0, 0, 0),
                                         cmd.size(), cmd.isEntireMemory());
       } else {
         result = blitMgr().readImage(*hsaMemory, hostPtr, amd::Coord3D(0), image->getRegion(),
@@ -1486,7 +1551,8 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
   bool imageBuffer = (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER);
 
   // We used host memory
-  if (devMemory->owner()->getHostMem() != nullptr) {
+  if ((devMemory->owner()->getHostMem() != nullptr) &&
+      (devMemory->owner()->getSvmPtr() == nullptr)) {
     if (mapInfo->isUnmapWrite()) {
       // Target is the backing store, so sync
       devMemory->owner()->signalWrite(nullptr);
@@ -1503,14 +1569,14 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
     if (!devMemory->isHostMemDirectAccess()) {
       bool result = false;
 
+      amd::Memory* mapMemory = devMemory->mapMemory();
       if (cmd.memory().asImage() && !imageBuffer) {
         amd::Image* image = cmd.memory().asImage();
-        amd::Memory* mapMemory = devMemory->mapMemory();
-        if (devMemory->mapMemory() != nullptr) {
-          roc::Memory* mapMemory =
-              static_cast<roc::Memory*>(devMemory->mapMemory()->getDeviceMemory(dev(), false));
+        if (mapMemory != nullptr) {
+          roc::Memory* hsaMapMemory =
+              static_cast<roc::Memory*>(mapMemory->getDeviceMemory(dev(), false));
           result =
-              blitMgr().copyBufferToImage(*mapMemory, *devMemory, amd::Coord3D(0, 0, 0),
+              blitMgr().copyBufferToImage(*hsaMapMemory, *devMemory, amd::Coord3D(0, 0, 0),
                                           mapInfo->origin_, mapInfo->region_, mapInfo->isEntire());
         } else {
           void* hostPtr = devMemory->owner()->getHostMem();
@@ -1526,11 +1592,17 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
           origin.c[0] *= elemSize;
           size.c[0] *= elemSize;
         }
-        if (devMemory->mapMemory() != nullptr) {
-          roc::Memory* mapMemory =
-              static_cast<roc::Memory*>(devMemory->mapMemory()->getDeviceMemory(dev(), false));
+        if (mapMemory != nullptr) {
+          roc::Memory* hsaMapMemory =
+              static_cast<roc::Memory*>(mapMemory->getDeviceMemory(dev(), false));
 
-          result = blitMgr().copyBuffer(*mapMemory, *devMemory, mapInfo->origin_, mapInfo->origin_,
+          const void* svmPtr = devMemory->owner()->getSvmPtr();
+          void* hostPtr = mapMemory->getHostMem();
+          if ((svmPtr != nullptr) &&
+              (hostPtr != svmPtr)) {
+            amd::Os::fastMemcpy(hostPtr, svmPtr, size[0]);
+          }
+          result = blitMgr().copyBuffer(*hsaMapMemory, *devMemory, mapInfo->origin_, mapInfo->origin_,
                                         mapInfo->region_, mapInfo->isEntire());
         } else {
           result = blitMgr().writeBuffer(cmd.mapPtr(), *devMemory, origin, size);
@@ -1626,12 +1698,14 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
 
   profilingBegin(cmd);
 
-  if (!dev().isFineGrainedSystem() &&
-      dev().settings().enableCoarseGrainSVM_) {
+  amd::Memory* dstMemory = amd::MemObjMap::FindMemObj(cmd.dst());
+
+  if (!dev().isFineGrainedSystem() ||
+      ((dstMemory != nullptr) &&
+       !dev().forceFineGrain(dstMemory))) {
     size_t patternSize = cmd.patternSize();
     size_t fillSize = patternSize * cmd.times();
-    amd::Memory* dstMemory = amd::MemObjMap::FindMemObj(cmd.dst());
-    assert(dstMemory && "No svm Buffer to fill with!");
+
     size_t offset = reinterpret_cast<uintptr_t>(cmd.dst()) -
         reinterpret_cast<uintptr_t>(dstMemory->getSvmPtr());
 
