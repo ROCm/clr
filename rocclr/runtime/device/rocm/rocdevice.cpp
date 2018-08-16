@@ -1454,7 +1454,9 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   }
 
   // Prepin sysmem buffer for possible data synchronization between CPU and GPU
-  if (!memory->isHostMemDirectAccess() && (owner.getHostMem() != nullptr)) {
+  if (!memory->isHostMemDirectAccess() &&
+      (owner.getHostMem() != nullptr) &&
+      (owner.getSvmPtr() == nullptr)) {
     memory->pinSystemMemory(owner.getHostMem(), owner.getSize());
   }
 

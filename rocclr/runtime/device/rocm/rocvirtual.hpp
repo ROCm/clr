@@ -182,6 +182,8 @@ class VirtualGPU : public device::VirtualDevice {
   void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);
   void submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd);
   void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
+  void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
+  void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
 
   // { roc OpenCL integration
   // Added these stub (no-ops) implementation of pure virtual methods,
@@ -191,8 +193,6 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 
-  virtual void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
-  virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
 
   void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) {}
@@ -219,7 +219,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Detects memory dependency for HSAIL kernels and uses appropriate AQL header
   bool processMemObjects(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                          const_address params,       //!< Pointer to the param's store
-			 size_t& ldsAddress          //!< LDS usage
+                         size_t& ldsAddress          //!< LDS usage
                          );
   // Retun the virtual gpu unique index
   uint index() const { return index_; }

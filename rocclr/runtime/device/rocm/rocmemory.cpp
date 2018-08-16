@@ -105,11 +105,6 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
   if (IsPersistentDirectMap()) {
     return (static_cast<char*>(persistent_host_ptr_) + origin[0]);
   }
-  // Otherwise, check for host memory.
-  void* hostMem = owner()->getHostMem();
-  if (hostMem != nullptr) {
-    return (static_cast<char*>(hostMem) + origin[0]);
-  }
 
   // Allocate one if needed.
   if (indirectMapCount_ == 1) {
@@ -124,7 +119,17 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
       return nullptr;
     }
   }
-  return reinterpret_cast<address>(mapMemory_->getHostMem()) + origin[0];
+
+  void* mappedMemory = nullptr;
+
+  if (owner()->getSvmPtr() != nullptr) {
+    owner()->commitSvmMemory();
+    mappedMemory = owner()->getSvmPtr();
+  } else {
+    mappedMemory = reinterpret_cast<address>(mapMemory_->getHostMem()) + origin[0];
+  }
+
+  return mappedMemory;
 }
 
 void Memory::decIndMapCount() {
@@ -584,7 +589,7 @@ void Buffer::destroy() {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (owner()->getSvmPtr() != nullptr) {
-    if (!dev().settings().enableCoarseGrainSVM_) {
+    if (dev().forceFineGrain(owner())) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
@@ -652,7 +657,7 @@ bool Buffer::create() {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (owner()->getSvmPtr() != nullptr) {
-    if (!dev().settings().enableCoarseGrainSVM_) {
+    if (dev().forceFineGrain(owner())) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
       flags_ |= HostMemoryDirectAccess;
     }
@@ -667,6 +672,12 @@ bool Buffer::create() {
       owner()->setSvmPtr(deviceMemory_);
     } else {
       deviceMemory_ = owner()->getSvmPtr();
+    }
+
+    if (!isFineGrain &&
+        (owner()->parent() != nullptr) &&
+        (owner()->parent()->getSvmPtr() != nullptr)) {
+      owner()->parent()->commitSvmMemory();
     }
 
     if (dev().settings().apuSystem_ || !isFineGrain) {
