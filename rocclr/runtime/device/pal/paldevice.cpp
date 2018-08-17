@@ -1092,9 +1092,13 @@ device::Program* Device::createProgram(amd::option::Options* options) {
 typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
-static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
+static void parseRequestedDeviceList(requestedDevices_t& requestedDevices,
+                                     uint32_t numDevices) {
   int requestedDeviceCount = 0;
-  const char* requestedDeviceList = GPU_DEVICE_ORDINAL;
+
+  const char* requestedDeviceList = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+                                    HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
+                                    : GPU_DEVICE_ORDINAL;
 
   char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != nullptr) {
@@ -1107,17 +1111,27 @@ static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
         break;
       }
     }
-    if (currentDeviceIndex < 0) {
+    if (currentDeviceIndex < 0 ||
+      static_cast<uint32_t>(currentDeviceIndex) >= numDevices) {
       deviceIdValid = false;
     }
     // Get next token.
     pch = strtok(nullptr, ",");
-    if (!deviceIdValid) {
-      continue;
+
+    // FIXME Allow atleast one valid deviceId so compilation etc doesnt break
+    // but set validOrdinal_ flag
+    if (!deviceIdValid && (requestedDevices.size() != 0)) {
+      // Exit the loop as anything to the right of invalid deviceId
+      // has to be discarded unless its the first one
+      break;
+    }
+
+    if (!deviceIdValid && (requestedDevices.size() == 0)) {
+      Device::setvalidOrdinal(false);
     }
 
     // Requested device is valid.
-    requestedDevices[currentDeviceIndex] = true;
+    requestedDevices[currentDeviceIndex] = deviceIdValid;
   }
 }
 
@@ -1182,14 +1196,21 @@ bool Device::init() {
 
   uint ordinal = 0;
   const char* selectDeviceByName = nullptr;
-  if (!flagIsDefault(GPU_DEVICE_ORDINAL)) {
+
+  if (IS_HIP) {
+    if (HIP_VISIBLE_DEVICES[0] != '\0' || CUDA_VISIBLE_DEVICES[0] != '\0') {
+      useDeviceList = true;
+      parseRequestedDeviceList(requestedDevices, numDevices);
+    }
+  } else if (GPU_DEVICE_ORDINAL[0] != '\0') {
     useDeviceList = true;
-    parseRequestedDeviceList(requestedDevices);
+    parseRequestedDeviceList(requestedDevices, numDevices);
   } else if (!flagIsDefault(GPU_DEVICE_NAME)) {
     selectDeviceByName = GPU_DEVICE_NAME;
   }
 
   bool foundDevice = false;
+
   // Loop through all active devices and initialize the device info structure
   for (; ordinal < numDevices; ++ordinal) {
     // Create the GPU device object
@@ -1197,6 +1218,10 @@ bool Device::init() {
     bool result = (nullptr != d) && d->create(deviceList[ordinal]);
     if (useDeviceList) {
       result &= (requestedDevices.find(ordinal) != requestedDevices.end());
+      if (!result) {
+        delete d;
+        break;
+      }
     }
     if (result && ((nullptr == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
                    (strstr(selectDeviceByName, d->info().name_) != nullptr))) {

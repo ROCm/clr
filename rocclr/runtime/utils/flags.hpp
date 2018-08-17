@@ -205,7 +205,10 @@ release(bool, GPU_FORCE_WAVE_SIZE_32, false,                                  \
         "Forces WaveSize32 compilation in SC")                                \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
-
+release(cstring, HIP_VISIBLE_DEVICES, "",                                             \
+        "Only devices whose index is present in the sequence are visible to HIP")    \
+release(cstring, CUDA_VISIBLE_DEVICES, "",                                            \
+        "Only devices whose index is present in the sequence are visible to HIP")    \
 
 namespace amd {
 
