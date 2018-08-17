@@ -716,10 +716,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
         workGroupInfo_.compileSize_[2];
   } else {
-      size_t nItems = (workGroupInfo_.availableVGPRs_ / workGroupInfo_.usedVGPRs_) *
-        dev().hwInfo()->simdPerCU_ * workGroupInfo_.wavefrontSize_;
-      workGroupInfo_.size_ = nItems > dev().info().preferredWorkGroupSize_ ?
-        std::min(size_t(1024) , nItems) : dev().info().preferredWorkGroupSize_;
+    workGroupInfo_.size_ = dev().info().preferredWorkGroupSize_;
   }
 
   // Pull out printf metadata from the ELF
@@ -1438,12 +1435,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
   // Copy wavefront size
   workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
 
-
-  size_t nItems = (workGroupInfo_.availableVGPRs_ / workGroupInfo_.usedVGPRs_) *
-    dev().hwInfo()->simdPerCU_ * workGroupInfo_.wavefrontSize_;
-  workGroupInfo_.size_ = nItems > kernelMD->mCodeProps.mMaxFlatWorkGroupSize ?
-    std::min(size_t(1024), nItems) : kernelMD->mCodeProps.mMaxFlatWorkGroupSize;
-
+  workGroupInfo_.size_ = kernelMD->mCodeProps.mMaxFlatWorkGroupSize;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }
