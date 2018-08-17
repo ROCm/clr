@@ -224,6 +224,8 @@ Device::~Device() {
   }
 }
 
+bool amd::Device::validOrdinal_ = true;
+
 bool Device::create() {
   vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
   if (NULL == vaCacheAccess_) {

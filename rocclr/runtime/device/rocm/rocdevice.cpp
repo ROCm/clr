@@ -403,19 +403,37 @@ bool Device::init() {
     return false;
   }
 
-  std::vector<bool> selectedDevices;
-  selectedDevices.resize(gpu_agents_.size(), true);
+  std::unordered_map<int, bool> selectedDevices;
+  bool useDeviceList = false;
 
-  if (!flagIsDefault(GPU_DEVICE_ORDINAL)) {
-    std::fill(selectedDevices.begin(), selectedDevices.end(), false);
+  if ((GPU_DEVICE_ORDINAL != '\0') || (HIP_VISIBLE_DEVICES[0] != '\0')
+      || (CUDA_VISIBLE_DEVICES != '\0')) {
+    useDeviceList = true;
+    std::string ordinals = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+                           HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
+                           : GPU_DEVICE_ORDINAL;
 
-    std::string ordinals(GPU_DEVICE_ORDINAL);
     size_t end, pos = 0;
     do {
+      bool deviceIdValid = true;
       end = ordinals.find_first_of(',', pos);
-      size_t index = atoi(ordinals.substr(pos, end - pos).c_str());
-      selectedDevices.resize(index + 1);
-      selectedDevices[index] = true;
+      int index = atoi(ordinals.substr(pos, end - pos).c_str());
+      if (index < 0 || static_cast<size_t>(index) >= gpu_agents_.size()) {
+        deviceIdValid = false;
+      }
+      // FIXME Allow atleast one valid deviceId so compilation etc doesnt break
+      // but set validOrdinal_ flag
+      if (!deviceIdValid && (selectedDevices.size() != 0)) {
+        // Exit the loop as anything to the right of invalid deviceId
+        // has to be discarded unless its the first one
+        break;
+      }
+
+      if (!deviceIdValid && (selectedDevices.size() == 0)) {
+        Device::setvalidOrdinal(false);
+      }
+
+      selectedDevices[index] = deviceIdValid;
       pos = end + 1;
     } while (end != std::string::npos);
   }
@@ -538,10 +556,13 @@ bool Device::init() {
       }
     }
 
-    if (selectedDevices[ordinal++] &&
-        (flagIsDefault(GPU_DEVICE_NAME) || GPU_DEVICE_NAME == 0 || GPU_DEVICE_NAME[0] == '\0' ||
-         !strcmp(GPU_DEVICE_NAME, roc_device->info_.name_))) {
-      roc_device.release()->registerDevice();
+    if (!useDeviceList && (flagIsDefault(GPU_DEVICE_NAME) || GPU_DEVICE_NAME == 0
+        || GPU_DEVICE_NAME[0] == '\0' || !strcmp(GPU_DEVICE_NAME, roc_device->info_.name_))) {
+        roc_device.release()->registerDevice();
+    } else if (useDeviceList && selectedDevices[ordinal++]) {
+        roc_device.release()->registerDevice();
+    } else {
+      break;
     }
   }
 
