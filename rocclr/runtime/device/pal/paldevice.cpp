@@ -1092,13 +1092,9 @@ device::Program* Device::createProgram(amd::option::Options* options) {
 typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
-static void parseRequestedDeviceList(requestedDevices_t& requestedDevices,
+static void parseRequestedDeviceList(const char* requestedDeviceList,
+                                     requestedDevices_t& requestedDevices,
                                      uint32_t numDevices) {
-  int requestedDeviceCount = 0;
-
-  const char* requestedDeviceList = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
-                                    HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
-                                    : GPU_DEVICE_ORDINAL;
 
   char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != nullptr) {
@@ -1118,16 +1114,10 @@ static void parseRequestedDeviceList(requestedDevices_t& requestedDevices,
     // Get next token.
     pch = strtok(nullptr, ",");
 
-    // FIXME Allow atleast one valid deviceId so compilation etc doesnt break
-    // but set validOrdinal_ flag
-    if (!deviceIdValid && (requestedDevices.size() != 0)) {
+    if (!deviceIdValid) {
       // Exit the loop as anything to the right of invalid deviceId
-      // has to be discarded unless its the first one
+      // has to be discarded
       break;
-    }
-
-    if (!deviceIdValid && (requestedDevices.size() == 0)) {
-      Device::setvalidOrdinal(false);
     }
 
     // Requested device is valid.
@@ -1196,16 +1186,14 @@ bool Device::init() {
 
   uint ordinal = 0;
   const char* selectDeviceByName = nullptr;
+  const char* requestedDeviceList = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+                                    HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
+                                    : GPU_DEVICE_ORDINAL;
 
-  if (IS_HIP) {
-    if (HIP_VISIBLE_DEVICES[0] != '\0' || CUDA_VISIBLE_DEVICES[0] != '\0') {
-      useDeviceList = true;
-      parseRequestedDeviceList(requestedDevices, numDevices);
-    }
-  } else if (GPU_DEVICE_ORDINAL[0] != '\0') {
+  if (requestedDeviceList[0] != '\0') {
     useDeviceList = true;
-    parseRequestedDeviceList(requestedDevices, numDevices);
-  } else if (!flagIsDefault(GPU_DEVICE_NAME)) {
+    parseRequestedDeviceList(requestedDeviceList, requestedDevices, numDevices);
+  } else if (GPU_DEVICE_NAME[0] != '\0') {
     selectDeviceByName = GPU_DEVICE_NAME;
   }
 

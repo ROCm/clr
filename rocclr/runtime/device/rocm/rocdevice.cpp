@@ -406,12 +406,11 @@ bool Device::init() {
   std::unordered_map<int, bool> selectedDevices;
   bool useDeviceList = false;
 
-  if ((GPU_DEVICE_ORDINAL != '\0') || (HIP_VISIBLE_DEVICES[0] != '\0')
-      || (CUDA_VISIBLE_DEVICES != '\0')) {
+  std::string ordinals = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+                         HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
+                         : GPU_DEVICE_ORDINAL;
+  if (ordinals[0] != '\0') {
     useDeviceList = true;
-    std::string ordinals = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
-                           HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
-                           : GPU_DEVICE_ORDINAL;
 
     size_t end, pos = 0;
     do {
@@ -421,16 +420,11 @@ bool Device::init() {
       if (index < 0 || static_cast<size_t>(index) >= gpu_agents_.size()) {
         deviceIdValid = false;
       }
-      // FIXME Allow atleast one valid deviceId so compilation etc doesnt break
-      // but set validOrdinal_ flag
-      if (!deviceIdValid && (selectedDevices.size() != 0)) {
-        // Exit the loop as anything to the right of invalid deviceId
-        // has to be discarded unless its the first one
-        break;
-      }
 
-      if (!deviceIdValid && (selectedDevices.size() == 0)) {
-        Device::setvalidOrdinal(false);
+      if (!deviceIdValid) {
+        // Exit the loop as anything to the right of invalid deviceId
+        // has to be discarded
+        break;
       }
 
       selectedDevices[index] = deviceIdValid;
