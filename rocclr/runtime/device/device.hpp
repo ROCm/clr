@@ -1591,13 +1591,6 @@ class Device : public RuntimeObject {
   // P2P devices that are accessible from the current device
   std::vector<cl_device_id> p2pDevices_;
 
-  //! Check for invalid ordinal passed via environment var
-  bool isOrdinalValid() { return validOrdinal_; }
-
-  //! Write to validOrdinal_
-  static void setvalidOrdinal(bool val) { validOrdinal_ = val; }
-
-
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1608,7 +1601,6 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
-  static bool validOrdinal_;      //!< Valid Ordinal
 
  private:
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);
