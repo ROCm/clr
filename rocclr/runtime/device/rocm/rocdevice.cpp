@@ -963,6 +963,7 @@ bool Device::populateOCLDeviceConstants() {
     // We suppose half of physical memory can be used by GPU in APU system
     info_.globalMemSize_ =
         cl_ulong(sysconf(_SC_PAGESIZE)) * cl_ulong(sysconf(_SC_PHYS_PAGES)) / 2;
+    info_.globalMemSize_ = std::max(info_.globalMemSize_, cl_ulong(1 * Gi));
     info_.maxMemAllocSize_ =
         cl_ulong(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
