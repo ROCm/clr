@@ -960,9 +960,11 @@ bool Device::populateOCLDeviceConstants() {
 
     assert(alloc_granularity_ > 0);
   } else {
-    static const cl_ulong kDefaultGlobalMemSize = cl_ulong(1 * Gi);
-    info_.globalMemSize_ = kDefaultGlobalMemSize;
-    info_.maxMemAllocSize_ = info_.globalMemSize_ / 4;
+    // We suppose half of physical memory can be used by GPU in APU system
+    info_.globalMemSize_ =
+        cl_ulong(sysconf(_SC_PAGESIZE)) * cl_ulong(sysconf(_SC_PHYS_PAGES)) / 2;
+    info_.maxMemAllocSize_ =
+        cl_ulong(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
     if (HSA_STATUS_SUCCESS !=
         hsa_amd_memory_pool_get_info(
