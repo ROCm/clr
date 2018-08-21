@@ -1206,10 +1206,6 @@ bool Device::init() {
     bool result = (nullptr != d) && d->create(deviceList[ordinal]);
     if (useDeviceList) {
       result &= (requestedDevices.find(ordinal) != requestedDevices.end());
-      if (!result) {
-        delete d;
-        break;
-      }
     }
     if (result && ((nullptr == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
                    (strstr(selectDeviceByName, d->info().name_) != nullptr))) {

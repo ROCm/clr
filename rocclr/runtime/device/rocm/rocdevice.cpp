@@ -555,8 +555,6 @@ bool Device::init() {
         roc_device.release()->registerDevice();
     } else if (useDeviceList && selectedDevices[ordinal++]) {
         roc_device.release()->registerDevice();
-    } else {
-      break;
     }
   }
 
