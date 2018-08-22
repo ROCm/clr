@@ -589,7 +589,8 @@ void Buffer::destroy() {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (owner()->getSvmPtr() != nullptr) {
-    if (dev().forceFineGrain(owner())) {
+    if (dev().forceFineGrain(owner()) ||
+        dev().isFineGrainedSystem(true)) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
@@ -657,7 +658,8 @@ bool Buffer::create() {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (owner()->getSvmPtr() != nullptr) {
-    if (dev().forceFineGrain(owner())) {
+    if (dev().forceFineGrain(owner()) ||
+        dev().isFineGrainedSystem(true)) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
       flags_ |= HostMemoryDirectAccess;
     }

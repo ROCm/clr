@@ -1215,7 +1215,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
 
   profilingBegin(cmd);
   // no op for FGS supported device
-  if (!dev().isFineGrainedSystem()) {
+  if (!dev().isFineGrainedSystem(true)) {
     amd::Coord3D srcOrigin(0, 0, 0);
     amd::Coord3D dstOrigin(0, 0, 0);
     amd::Coord3D size(cmd.srcSize(), 1, 1);
@@ -1374,7 +1374,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
   profilingBegin(cmd);
 
   // no op for FGS supported device
-  if (!dev().isFineGrainedSystem() &&
+  if (!dev().isFineGrainedSystem(true) &&
       !dev().forceFineGrain(cmd.getSvmMem())) {
     // Make sure we have memory for the command execution
     Memory* memory = dev().getRocMemory(cmd.getSvmMem());
@@ -1410,7 +1410,7 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
   profilingBegin(cmd);
 
   // no op for FGS supported device
-  if (!dev().isFineGrainedSystem() &&
+  if (!dev().isFineGrainedSystem(true) &&
       !dev().forceFineGrain(cmd.getSvmMem())) {
     Memory* memory = dev().getRocMemory(cmd.getSvmMem());
     const device::Memory::WriteMapInfo* writeMapInfo = memory->writeMapInfo(cmd.svmPtr());
@@ -1700,7 +1700,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
 
   amd::Memory* dstMemory = amd::MemObjMap::FindMemObj(cmd.dst());
 
-  if (!dev().isFineGrainedSystem() ||
+  if (!dev().isFineGrainedSystem(true) ||
       ((dstMemory != nullptr) &&
        !dev().forceFineGrain(dstMemory))) {
     size_t patternSize = cmd.patternSize();
