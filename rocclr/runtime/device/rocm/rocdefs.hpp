@@ -69,8 +69,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET RAVEN */ {HSA_RAVEN_ID, "", "gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, true},
     /* TARGET VEGA12 */ {HSA_VEGA12_ID, "", "gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
     /* TARGET VEGA20 */ {HSA_VEGA20_ID, "", "gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, true},
-    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, true}};
+    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
+    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false}};
 }
 
 const uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
