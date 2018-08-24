@@ -21,6 +21,7 @@
 #include <vector>
 #include <string>
 #include <limits>
+#include <thread>
 
 /**
 * HSA image object size in bytes (see HSAIL spec)
@@ -332,8 +333,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             gpuMem->syncCacheFromHost(*this);
           }
           void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
-          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p]\n", index, desc.typeName_, desc.name_,
-                  globalAddress, gpuMem->getDeviceMemory(), (void*)((intptr_t)gpuMem->getDeviceMemory() + mem->getSize()));
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index, desc.typeName_,
+                        desc.name_, globalAddress, gpuMem->getDeviceMemory(),
+                        (void*)((intptr_t)gpuMem->getDeviceMemory() + mem->getSize()),
+                        std::this_thread::get_id());
           // Validate memory for a dependency in the queue
           memoryDependency().validate(*this, gpuMem, (desc.info_.readOnly_ == 1));
 
