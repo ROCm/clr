@@ -21,6 +21,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <thread>
 #include "palQueue.h"
 #include "palFence.h"
 
@@ -3140,11 +3141,10 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           gpuMem->wait(*this, WaitOnBusyEngine);
 
           addVmMemory(gpuMem);
-
           void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
-          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p]\n", index, desc.typeName_, desc.name_,
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index, desc.typeName_, desc.name_,
                   globalAddress, (void*)gpuMem->vmAddress(),
-                  (void*)((intptr_t)gpuMem->vmAddress() + gpuMem->size()));
+                  (void*)((intptr_t)gpuMem->vmAddress() + gpuMem->size()), std::this_thread::get_id());
 
           //! Check if compiler expects read/write.
           //! Note: SVM with subbuffers has an issue with tracking.
