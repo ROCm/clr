@@ -1632,17 +1632,9 @@ struct KernelParameterDescriptor {
     SamplerObject = 12,
     QueueObject = 13
   };
-  const char* name_;       //!< The parameter's name in the source
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
   size_t size_;            //!< Its size in bytes
-  //! Argument's address qualifier
-  cl_kernel_arg_address_qualifier addressQualifier_;
-  //! Argument's access qualifier
-  cl_kernel_arg_access_qualifier accessQualifier_;
-  //! Argument's type qualifier
-  cl_kernel_arg_type_qualifier typeQualifier_;
-  const char* typeName_;   //!< Argument's type name
   union InfoData {
     struct {
       uint32_t oclObject_  : 4;   //!< OCL object type
@@ -1655,6 +1647,13 @@ struct KernelParameterDescriptor {
     uint32_t allValues_;
     InfoData() : allValues_(0) {}
   } info_;
+
+  cl_kernel_arg_address_qualifier addressQualifier_;  //!< Argument's address qualifier
+  cl_kernel_arg_access_qualifier accessQualifier_;    //!< Argument's access qualifier
+  cl_kernel_arg_type_qualifier typeQualifier_;        //!< Argument's type qualifier
+
+  std::string name_;      //!< The parameter's name in the source
+  std::string typeName_;  //!< Argument's type name
 };
 
 #if defined(WITH_LIGHTNING_COMPILER)

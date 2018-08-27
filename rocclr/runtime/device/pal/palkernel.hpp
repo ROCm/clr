@@ -48,77 +48,8 @@ class LightningProgram;
 /*! \addtogroup pal PAL Device Implementation
  *  @{
  */
-
-enum HSAIL_ADDRESS_QUALIFIER {
-  HSAIL_ADDRESS_ERROR = 0,
-  HSAIL_ADDRESS_GLOBAL,
-  HSAIL_ADDRESS_LOCAL,
-  HSAIL_ADDRESS_CONSTANT,
-  HSAIL_MAX_ADDRESS_QUALIFIERS
-};
-
-enum HSAIL_ARG_TYPE {
-  HSAIL_ARGTYPE_ERROR = 0,
-  HSAIL_ARGTYPE_POINTER,
-  HSAIL_ARGTYPE_VALUE,
-  HSAIL_ARGTYPE_REFERENCE,
-  HSAIL_ARGTYPE_IMAGE,
-  HSAIL_ARGTYPE_SAMPLER,
-  HSAIL_ARGTYPE_QUEUE,
-  HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X,
-  HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y,
-  HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z,
-  HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER,
-  HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE,
-  HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION,
-  HSAIL_ARGTYPE_HIDDEN_NONE,
-  HSAIL_ARGMAX_ARG_TYPES
-};
-
-enum HSAIL_DATA_TYPE {
-  HSAIL_DATATYPE_ERROR = 0,
-  HSAIL_DATATYPE_B1,
-  HSAIL_DATATYPE_B8,
-  HSAIL_DATATYPE_B16,
-  HSAIL_DATATYPE_B32,
-  HSAIL_DATATYPE_B64,
-  HSAIL_DATATYPE_S8,
-  HSAIL_DATATYPE_S16,
-  HSAIL_DATATYPE_S32,
-  HSAIL_DATATYPE_S64,
-  HSAIL_DATATYPE_U8,
-  HSAIL_DATATYPE_U16,
-  HSAIL_DATATYPE_U32,
-  HSAIL_DATATYPE_U64,
-  HSAIL_DATATYPE_F16,
-  HSAIL_DATATYPE_F32,
-  HSAIL_DATATYPE_F64,
-  HSAIL_DATATYPE_STRUCT,
-  HSAIL_DATATYPE_OPAQUE,
-  HSAIL_DATATYPE_MAX_TYPES
-};
-
-enum HSAIL_ACCESS_TYPE {
-  HSAIL_ACCESS_TYPE_NONE = 0,
-  HSAIL_ACCESS_TYPE_RO,
-  HSAIL_ACCESS_TYPE_WO,
-  HSAIL_ACCESS_TYPE_RW
-};
-
 class HSAILKernel : public device::Kernel {
  public:
-  struct Argument {
-    uint index_;                        //!< Argument's index in the OCL signature
-    std::string name_;                  //!< Argument's name
-    std::string typeName_;              //!< Argument's type name
-    uint size_;                         //!< Size in bytes
-    uint alignment_;                    //!< Argument's alignment
-    uint pointeeAlignment_;             //!< Alignment of the data pointed to
-    HSAIL_ARG_TYPE type_;               //!< Type of the argument
-    HSAIL_ADDRESS_QUALIFIER addrQual_;  //!< Address qualifier of the argument
-    HSAIL_DATA_TYPE dataType_;          //!< The type of data
-    HSAIL_ACCESS_TYPE access_;          //!< Access type for the argument
-  };
 
   HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions);
 
@@ -127,17 +58,6 @@ class HSAILKernel : public device::Kernel {
   //! Initializes the metadata required for this kernel,
   //! finalizes the kernel if needed
   bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
-
-  //! Returns the kernel argument list
-  const std::vector<Argument*>& arguments() const { return arguments_; }
-
-  //! Returns a pointer to the hsail argument at the specified index
-  Argument* argumentAt(size_t index) const {
-    for (auto arg : arguments_)
-      if (arg->index_ == index) return arg;
-    assert(!"Should not reach here");
-    return NULL;
-  }
 
   //! Returns GPU device object, associated with this kernel
   const Device& dev() const;
@@ -217,19 +137,14 @@ class HSAILKernel : public device::Kernel {
   //! Creates AQL kernel HW info
   bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
 
-  //! Initializes arguments_ and the abstraction layer kernel parameters
+  //! Initializes the abstraction layer kernel parameters
   void initArgList(const aclArgData* aclArg  //!< List of ACL arguments
                    );
-
-  //! Initializes Hsail Argument metadata and info
-  void initHsailArgs(const aclArgData* aclArg  //!< List of ACL arguments
-                     );
 
   //! Initializes Hsail Printf metadata and info
   void initPrintf(const aclPrintfFmt* aclPrintf  //!< List of ACL printfs
                   );
 
-  std::vector<Argument*> arguments_;  //!< Vector list of HSAIL Arguments
   std::string compileOptions_;        //!< compile used for finalizing this kernel
   amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
   const NullDevice& dev_;             //!< GPU device object
