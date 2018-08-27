@@ -1706,16 +1706,18 @@ RUNTIME_ENTRY(cl_int, clGetKernelArgInfo,
       return amd::clGetInfo(qualifier, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_TYPE_NAME: {
+      const char* typeName = desc.typeName_.c_str();
       // Return the argument's type name
-      return amd::clGetInfo(desc.typeName_, param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(typeName, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_TYPE_QUALIFIER: {
       cl_kernel_arg_type_qualifier qualifier = desc.typeQualifier_;
       return amd::clGetInfo(qualifier, param_value_size, param_value, param_value_size_ret);
     }
     case CL_KERNEL_ARG_NAME: {
+      const char* name = desc.name_.c_str();
       // Return the argument's name
-      return amd::clGetInfo(desc.name_, param_value_size, param_value, param_value_size_ret);
+      return amd::clGetInfo(name, param_value_size, param_value, param_value_size_ret);
     }
     default:
       return CL_INVALID_VALUE;
