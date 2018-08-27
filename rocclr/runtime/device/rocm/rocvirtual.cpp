@@ -332,11 +332,13 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             // Synchronize data with other memory instances if necessary
             gpuMem->syncCacheFromHost(*this);
           }
-          void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
-          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index, desc.typeName_,
-                        desc.name_, globalAddress, gpuMem->getDeviceMemory(),
-                        (void*)((intptr_t)gpuMem->getDeviceMemory() + mem->getSize()),
-                        std::this_thread::get_id());
+          const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
+            desc.typeName_.c_str(), desc.name_.c_str(),
+            globalAddress, gpuMem->getDeviceMemory(),
+            reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize(),
+            std::this_thread::get_id());
+
           // Validate memory for a dependency in the queue
           memoryDependency().validate(*this, gpuMem, (desc.info_.readOnly_ == 1));
 

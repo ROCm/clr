@@ -1918,46 +1918,50 @@ void VirtualGPU::PrintChildren(const HSAILKernel& hsaKernel, VirtualGPU* gpuDefQ
       uint offsArg = kernarg_address - gpuDefQueue->virtualQueue_->vmAddress();
       address argum = gpuDefQueue->virtualQueue_->data() + offsArg;
       print << "Kernel: " << child->name() << "\n";
-      for (auto arg : child->arguments()) {
+      const amd::KernelSignature&  signature = child->signature();
+
+      // Check if runtime has to setup hidden arguments
+      for (const auto it : signature.parameters()) {
         const char* extraArgName = nullptr;
-        switch (arg->type_) {
-        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_X:
+        switch (it.info_.oclObject_) {
+          case amd::KernelParameterDescriptor::HiddenNone:
+            // void* zero = 0;
+            // WriteAqlArgAt(const_cast<address>(parameters), &zero, it.size_, it.offset_);
+            break;
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
             extraArgName = "Offset0: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Y:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
             extraArgName = "Offset1: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_GLOBAL_OFFSET_Z:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
             extraArgName = "Offset2: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_PRINTF_BUFFER:
+          case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
             extraArgName = "PrintfBuf: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_DEFAULT_QUEUE:
+          case amd::KernelParameterDescriptor::HiddenDefaultQueue:
             extraArgName = "VqueuePtr: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_COMPLETION_ACTION:
+          case amd::KernelParameterDescriptor::HiddenCompletionAction:
             extraArgName = "AqlWrap: ";
             break;
-        case HSAIL_ARGTYPE_HIDDEN_NONE:
-            extraArgName = "Unknown: ";
-            break;
-        default:
+          default:
             break;
         }
         if (extraArgName) {
-            print << "\t" << extraArgName << *(size_t*)argum;
-            print << "\n";
-            argum += sizeof(size_t);
-            continue;
+          print << "\t" << extraArgName << *reinterpret_cast<size_t*>(argum);
+          print << "\n";
+          argum += sizeof(size_t);
+          continue;
         }
-        print << "\t" << arg->name_ << ": ";
-        for (int s = arg->size_ - 1; s >= 0; --s) {
-            print.width(2);
-            print.fill('0');
-            print << (uint32_t)(argum[s]);
+        print << "\t" << it.name_ << ": ";
+        for (int s = it.size_- 1; s >= 0; --s) {
+          print.width(2);
+          print.fill('0');
+          print << static_cast<uint32_t>(argum[s]);
         }
-        argum += arg->size_;
+        argum += it.offset_;
         print << "\n";
       }
       printf("%s", print.str().c_str());
@@ -3141,10 +3145,12 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           gpuMem->wait(*this, WaitOnBusyEngine);
 
           addVmMemory(gpuMem);
-          void* globalAddress = *(void**)(const_cast<address>(params) + desc.offset_);
-          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index, desc.typeName_, desc.name_,
-                  globalAddress, (void*)gpuMem->vmAddress(),
-                  (void*)((intptr_t)gpuMem->vmAddress() + gpuMem->size()), std::this_thread::get_id());
+          const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
+          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
+            desc.typeName_.c_str(), desc.name_.c_str(),
+            globalAddress, reinterpret_cast<void*>(gpuMem->vmAddress()),
+            reinterpret_cast<void*>(gpuMem->vmAddress() + gpuMem->size()),
+            std::this_thread::get_id());
 
           //! Check if compiler expects read/write.
           //! Note: SVM with subbuffers has an issue with tracking.
