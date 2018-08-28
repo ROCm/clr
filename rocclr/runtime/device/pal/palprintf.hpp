@@ -29,12 +29,6 @@
 //! GPU Device Implementation
 namespace pal {
 
-//! Printf info structure
-struct PrintfInfo {
-  std::string fmtString_;        //!< formated string for printf
-  std::vector<uint> arguments_;  //!< passed arguments to the printf() call
-};
-
 class Kernel;
 class VirtualGPU;
 class Memory;
@@ -63,7 +57,7 @@ class PrintfDbg : public amd::HeapObject {
   bool output(VirtualGPU& gpu,                           //!< Virtual GPU object
               bool printfEnabled,                        //!< checks for printf
               const amd::NDRange& size,                  //!< Kernel's workload
-              const std::vector<PrintfInfo>& printfInfo  //!< printf info
+              const std::vector<device::PrintfInfo>& printfInfo  //!< printf info
               );
 
   //! Debug buffer size per workitem
@@ -107,7 +101,7 @@ class PrintfDbg : public amd::HeapObject {
                         ) const;
 
   //! Displays the PrintfDbg
-  void outputDbgBuffer(const PrintfInfo& info,        //!< printf info
+  void outputDbgBuffer(const device::PrintfInfo& info,//!< printf info
                        const uint32_t* workitemData,  //!< The PrintfDbg dump buffer
                        size_t& i                      //!< index to the data in the buffer
                        ) const;
@@ -152,7 +146,7 @@ class PrintfDbgHSA : public PrintfDbg {
   //! Prints the kernel's debug informaiton from the buffer
   bool output(VirtualGPU& gpu,                           //!< Virtual GPU object
               bool printfEnabled,                        //!< checks for printf
-              const std::vector<PrintfInfo>& printfInfo  //!< printf info
+              const std::vector<device::PrintfInfo>& printfInfo  //!< printf info
               );
 
  private:

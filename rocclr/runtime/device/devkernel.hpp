@@ -85,6 +85,12 @@ struct KernelParameterDescriptor {
 
 namespace device {
 
+//! Printf info structure
+struct PrintfInfo {
+  std::string fmtString_;        //!< formated string for printf
+  std::vector<uint> arguments_;  //!< passed arguments to the printf() call
+};
+
 //! \class DeviceKernel, which will contain the common fields for any device
 class Kernel : public amd::HeapObject {
  public:
@@ -228,21 +234,29 @@ class Kernel : public amd::HeapObject {
   //! Returns TRUE if it's a HSA kernel
   bool hsa() const { return (flags_.hsa_) ? true : false; }
 
+  //! Return printf info array
+  const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
+
  protected:
   //! Initializes the abstraction layer kernel parameters
 #if defined(WITH_LIGHTNING_COMPILER)
   void InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize);
+  //! Initializes HSAIL Printf metadata and info for LC
+  void InitPrintf(const std::vector<std::string>& printfInfoStrings);
 #endif
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   void InitParameters(
     const aclArgData* aclArg,   //!< List of ACL arguments
     uint32_t argBufferSize
   );
+  //! Initializes HSAIL Printf metadata and info
+  void InitPrintf(const aclPrintfFmt* aclPrintf);
 #endif
   std::string name_;                //!< kernel name
   WorkGroupInfo workGroupInfo_;     //!< device kernel info structure
   amd::KernelSignature* signature_; //!< kernel signature
   std::string buildLog_;            //!< build log
+  std::vector<PrintfInfo> printf_;  //!< Format strings for GPU printf support
 
   union Flags {
     struct {

@@ -32,15 +32,12 @@ class Kernel : public device::Kernel {
 
   const uint8_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
 
-  ~Kernel();
+  ~Kernel() {}
 
   //! Initializes the metadata required for this kernel
   virtual bool init() = 0;
 
   const Program* program() const { return static_cast<const Program*>(program_); }
-
-  //! Return printf info array
-  const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
 
  protected:
   Program* program_;                      //!< The roc::Program context
@@ -50,7 +47,6 @@ class Kernel : public device::Kernel {
   const uint32_t kernargSegmentByteSize_;
   const uint32_t kernargSegmentAlignment_;
   size_t kernelDirectiveOffset_;
-  std::vector<PrintfInfo> printf_;
 };
 
 #if defined(WITH_COMPILER_LIB)
@@ -67,10 +63,6 @@ class HSAILKernel : public roc::Kernel {
 
   //! Initializes the metadata required for this kernel
   virtual bool init() final;
-
- private:
-  //! Initializes HSAIL Printf metadata and info
-  void initPrintf(const aclPrintfFmt* aclPrintf);
 };
 #endif // defined(WITH_COMPILER_LIB)
 
@@ -87,10 +79,6 @@ class LightningKernel : public roc::Kernel {
   }
   //! Initializes the metadata required for this kernel
   virtual bool init() final;
-
-private:
-  //! Initializes HSAIL Printf metadata and info for LC
-  void initPrintf(const std::vector<std::string>& printfInfoStrings);
 };
 #endif // defined(WITH_LIGHTNING_COMPILER)
 

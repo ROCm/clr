@@ -27,12 +27,6 @@
 //! GPU Device Implementation
 namespace roc {
 
-//! Printf info structure
-struct PrintfInfo {
-  std::string fmtString_;        //!< formated string for printf
-  std::vector<uint> arguments_;  //!< passed arguments to the printf() call
-};
-
 class Kernel;
 class VirtualGPU;
 class Device;
@@ -55,7 +49,7 @@ class PrintfDbg : public amd::HeapObject {
   //! Prints the kernel's debug informaiton from the buffer
   bool output(VirtualGPU& gpu,
               bool printfEnabled,                        //!< checks for printf
-              const std::vector<PrintfInfo>& printfInfo  //!< printf info
+              const std::vector<device::PrintfInfo>& printfInfo  //!< printf info
               );
 
   //! Returns debug buffer object
@@ -96,7 +90,7 @@ class PrintfDbg : public amd::HeapObject {
                         ) const;
 
   //! Displays the PrintfDbg
-  void outputDbgBuffer(const PrintfInfo& info,        //!< printf info
+  void outputDbgBuffer(const device::PrintfInfo& info,//!< printf info
                        const uint32_t* workitemData,  //!< The PrintfDbg dump buffer
                        size_t& i                      //!< index to the data in the buffer
                        ) const;

@@ -101,10 +101,6 @@ class HSAILKernel : public device::Kernel {
       uint64_t* vmParentWrap               //!< GPU VM parent aql wrap object
       ) const;
 
-
-  //! Returns pritnf info array
-  const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
-
   //! Returns the kernel index in the program
   uint index() const { return index_; }
 
@@ -129,15 +125,10 @@ class HSAILKernel : public device::Kernel {
   //! Creates AQL kernel HW info
   bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
 
-  //! Initializes Hsail Printf metadata and info
-  void initPrintf(const aclPrintfFmt* aclPrintf  //!< List of ACL printfs
-                  );
-
   std::string compileOptions_;        //!< compile used for finalizing this kernel
   amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
   const NullDevice& dev_;             //!< GPU device object
   const HSAILProgram& prog_;          //!< Reference to the parent program
-  std::vector<PrintfInfo> printf_;    //!< Format strings for GPU printf support
   uint index_;                        //!< Kernel index in the program
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
@@ -157,9 +148,6 @@ class LightningKernel : public HSAILKernel {
 
   //! Initializes the metadata required for this kernel,
   bool init(amd::hsa::loader::Symbol* symbol);
-
-  //! Initializes HSAIL Printf metadata and info for LC
-  void initPrintf(const std::vector<std::string>& printfInfoStrings);
 };
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
