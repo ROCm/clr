@@ -823,7 +823,6 @@ Kernel::Kernel(const std::string& name, const Device& gpuDev, const Program& pro
   workGroupInfo_.privateMemSize_ = hwPrivateSize_;
   // Default wavesPerSimdHint_
   workGroupInfo_.wavesPerSimdHint_ = ~0U;
-  hsa_ = false;
 }
 
 Kernel::~Kernel() {
@@ -3127,7 +3126,7 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       extraArgumentsNum_(extraArgsNum),
       waveLimiter_(this, (prog->isNull() ? 1 : dev().getAttribs().numberOfCUsperShaderArray) *
                        dev().hwInfo()->simdPerCU_) {
-  hsa_ = true;
+  flags_.hsa_ = true;
 }
 
 HSAILKernel::~HSAILKernel() {

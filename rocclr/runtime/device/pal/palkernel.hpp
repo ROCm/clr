@@ -83,12 +83,6 @@ class HSAILKernel : public device::Kernel {
   //! Returns spill reg size per workitem
   int spillSegSize() const { return amd::alignUp(cpuAqlCode_->workitem_private_segment_byte_size, sizeof(uint32_t)); }
 
-  //! Returns TRUE if kernel uses dynamic parallelism
-  bool dynamicParallelism() const { return (flags_.dynamicParallelism_) ? true : false; }
-
-  //! Returns TRUE if kernel is internal kernel
-  bool isInternalKernel() const { return (flags_.internalKernel_) ? true : false; }
-
   //! Finds local workgroup size
   void findLocalWorkSize(size_t workDim,                   //!< Work dimension
                          const amd::NDRange& gblWorkSize,  //!< Global work size
@@ -124,8 +118,6 @@ class HSAILKernel : public device::Kernel {
     return waveLimiter_.getWavesPerSH(vdev);
   };
 
-  const std::unordered_map<size_t, size_t>& patch() const { return patchReferences_; }
-
  private:
   //! Disable copy constructor
   HSAILKernel(const HSAILKernel&);
@@ -137,10 +129,6 @@ class HSAILKernel : public device::Kernel {
   //! Creates AQL kernel HW info
   bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
 
-  //! Initializes the abstraction layer kernel parameters
-  void initArgList(const aclArgData* aclArg  //!< List of ACL arguments
-                   );
-
   //! Initializes Hsail Printf metadata and info
   void initPrintf(const aclPrintfFmt* aclPrintf  //!< List of ACL printfs
                   );
@@ -151,21 +139,9 @@ class HSAILKernel : public device::Kernel {
   const HSAILProgram& prog_;          //!< Reference to the parent program
   std::vector<PrintfInfo> printf_;    //!< Format strings for GPU printf support
   uint index_;                        //!< Kernel index in the program
-  std::unordered_map<size_t, size_t> patchReferences_;  //!< Patch table for references
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
   size_t codeSize_;  //!< Size of ISA code
-
-  union Flags {
-    struct {
-      uint imageEna_ : 1;            //!< Kernel uses images
-      uint imageWriteEna_ : 1;       //!< Kernel uses image writes
-      uint dynamicParallelism_ : 1;  //!< Dynamic parallelism enabled
-      uint internalKernel_ : 1;      //!< True: internal kernel
-    };
-    uint value_;
-    Flags() : value_(0) {}
-  } flags_;
 
   WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 };
@@ -181,9 +157,6 @@ class LightningKernel : public HSAILKernel {
 
   //! Initializes the metadata required for this kernel,
   bool init(amd::hsa::loader::Symbol* symbol);
-
-  //! Initializes Hsail Argument metadata and info for LC
-  void initArgList(const KernelMD& kernelMD);
 
   //! Initializes HSAIL Printf metadata and info for LC
   void initPrintf(const std::vector<std::string>& printfInfoStrings);

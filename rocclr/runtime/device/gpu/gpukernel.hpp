@@ -814,12 +814,6 @@ class HSAILKernel : public device::Kernel {
   //! Returns spill reg size per workitem
   int spillSegSize() const { return cpuAqlCode_->workitem_private_segment_byte_size; }
 
-  //! Returns TRUE if kernel uses dynamic parallelism
-  bool dynamicParallelism() const { return (flags_.dynamicParallelism_) ? true : false; }
-
-  //! Returns TRUE if kernel is internal kernel
-  bool isInternalKernel() const { return (flags_.internalKernel_) ? true : false; }
-
   //! Finds local workgroup size
   void findLocalWorkSize(size_t workDim,                   //!< Work dimension
                          const amd::NDRange& gblWorkSize,  //!< Global work size
@@ -894,17 +888,6 @@ class HSAILKernel : public device::Kernel {
   char* hwMetaData_;  //!< SI metadata
 
   uint extraArgumentsNum_;  //! Number of extra (hidden) kernel arguments
-
-  union Flags {
-    struct {
-      uint imageEna_ : 1;            //!< Kernel uses images
-      uint imageWriteEna_ : 1;       //!< Kernel uses image writes
-      uint dynamicParallelism_ : 1;  //!< Dynamic parallelism enabled
-      uint internalKernel_ : 1;      //!< True: internal kernel
-    };
-    uint value_;
-    Flags() : value_(0) {}
-  } flags_;
 
   WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 };
