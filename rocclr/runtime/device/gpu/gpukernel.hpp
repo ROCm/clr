@@ -833,9 +833,6 @@ class HSAILKernel : public device::Kernel {
       std::vector<const Memory*>& memList  //!< Memory list for GSL/VidMM handles
       ) const;
 
-  //! Returns pritnf info array
-  const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
-
   //! Returns the kernel index in the program
   uint index() const { return index_; }
 
@@ -870,16 +867,11 @@ class HSAILKernel : public device::Kernel {
   void initHsailArgs(const aclArgData* aclArg  //!< List of ACL arguments
                      );
 
-  //! Initializes Hsail Printf metadata and info
-  void initPrintf(const aclPrintfFmt* aclPrintf  //!< List of ACL printfs
-                  );
-
   std::vector<Argument*> arguments_;  //!< Vector list of HSAIL Arguments
   std::string compileOptions_;        //!< compile used for finalizing this kernel
   amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
   const NullDevice& dev_;             //!< GPU device object
   const HSAILProgram& prog_;          //!< Reference to the parent program
-  std::vector<PrintfInfo> printf_;    //!< Format strings for GPU printf support
   uint index_;                        //!< Kernel index in the program
 
   gpu::Memory* code_;  //!< Memory object with ISA code

@@ -260,7 +260,7 @@ class NullProgram : public device::Program {
                        const char* ilKernelName);
 
  protected:
-  std::vector<PrintfInfo> printf_;  //!< Format strings for GPU printf support
+  std::vector<device::PrintfInfo> printf_;  //!< Format strings for GPU printf support
   std::vector<uint> glbCb_;         //!< Global constant buffers
 
   virtual bool isElf(const char* bin) const { return amd::isElfMagic(bin); }
@@ -328,7 +328,7 @@ class Program : public NullProgram {
   const HwConstBuffers& glbHwCb() const { return constBufs_; }
 
   //! Returns pritnf info array
-  const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
+  const std::vector<device::PrintfInfo>& printfInfo() const { return printf_; }
 
   //! Return a typecasted GPU device
   gpu::Device& dev() { return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device())); }

@@ -228,7 +228,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
   return copiedBytes;
 }
 
-void PrintfDbg::outputDbgBuffer(const PrintfInfo& info, const uint32_t* workitemData,
+void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* workitemData,
                                 size_t& i) const {
   static const char* specifiers = "cdieEfgGaosuxXp";
   static const char* modifiers = "hl";
@@ -390,7 +390,7 @@ bool PrintfDbg::init(bool printfEnabled) {
 }
 
 bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
-                       const std::vector<PrintfInfo>& printfInfo) {
+                       const std::vector<device::PrintfInfo>& printfInfo) {
   if (printfEnabled) {
     uint32_t offsetSize = 0;
 
@@ -424,7 +424,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
         LogError("Couldn't find the reported PrintfID!");
         return false;
       }
-      const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
+      const device::PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
       sb += sizeof(uint32_t);
       for (const auto& ita : info.arguments_) {
         sb += ita;

@@ -1157,7 +1157,7 @@ bool NullProgram::parseFuncMetadata(const std::string& source, size_t posBegin, 
         } else if (ArgState[k].type_ == KernelArg::PrintfFormatStr) {
           uint tmp;
           uint arguments;
-          PrintfInfo info;
+          device::PrintfInfo info;
 
           // Read index
           if (!getuint(source, &pos, &index)) {

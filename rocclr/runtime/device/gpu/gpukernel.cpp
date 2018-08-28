@@ -3045,74 +3045,6 @@ void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {
   }
 }
 
-void HSAILKernel::initPrintf(const aclPrintfFmt* aclPrintf) {
-  PrintfInfo info;
-  uint index = 0;
-  for (; aclPrintf->struct_size != 0; aclPrintf++) {
-    index = aclPrintf->ID;
-    if (printf_.size() <= index) {
-      printf_.resize(index + 1);
-    }
-    std::string pfmt = aclPrintf->fmtStr;
-    info.fmtString_.clear();
-    size_t pos = 0;
-    bool need_nl = true;
-    for (size_t pos = 0; pos < pfmt.size(); ++pos) {
-      char symbol = pfmt[pos];
-      need_nl = true;
-      if (symbol == '\\') {
-        // Rest of the C escape sequences (e.g. \') are handled correctly
-        // by the MDParser, we are not sure exactly how!
-        switch (pfmt[pos + 1]) {
-          case 'a':
-            pos++;
-            symbol = '\a';
-            break;
-          case 'b':
-            pos++;
-            symbol = '\b';
-            break;
-          case 'f':
-            pos++;
-            symbol = '\f';
-            break;
-          case 'n':
-            pos++;
-            symbol = '\n';
-            need_nl = false;
-            break;
-          case 'r':
-            pos++;
-            symbol = '\r';
-            break;
-          case 'v':
-            pos++;
-            symbol = '\v';
-            break;
-          case '7':
-            if (pfmt[pos + 2] == '2') {
-              pos += 2;
-              symbol = '\72';
-            }
-            break;
-          default:
-            break;
-        }
-      }
-      info.fmtString_.push_back(symbol);
-    }
-    if (need_nl) {
-      info.fmtString_ += "\n";
-    }
-    uint32_t* tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
-    for (uint i = 0; i < aclPrintf->numSizes; i++, tmp_ptr++) {
-      info.arguments_.push_back(*tmp_ptr);
-    }
-    printf_[index] = info;
-    info.arguments_.clear();
-  }
-}
-
 HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions,
                          uint extraArgsNum)
     : device::Kernel(name),
@@ -3233,7 +3165,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     }
 
     // Set the PrintfList
-    initPrintf(reinterpret_cast<aclPrintfFmt*>(aclPrintfList));
+    InitPrintf(reinterpret_cast<aclPrintfFmt*>(aclPrintfList));
     delete[] aclPrintfList;
   }
 

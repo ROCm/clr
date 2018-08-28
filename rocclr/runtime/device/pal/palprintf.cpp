@@ -72,7 +72,7 @@ bool PrintfDbg::init(VirtualGPU& gpu, bool printfEnabled, const amd::NDRange& si
 }
 
 bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled, const amd::NDRange& size,
-                       const std::vector<PrintfInfo>& printfInfo) {
+                       const std::vector<device::PrintfInfo>& printfInfo) {
   // Are we expected to generate debug output?
   if (printfEnabled && !printfInfo.empty()) {
     uint32_t* workitemData;
@@ -115,7 +115,7 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled, const amd::NDRange& 
                 return false;
               }
               // Get the PrintfDbg info
-              const PrintfInfo& info = printfInfo[workitemData[z++]];
+              const device::PrintfInfo& info = printfInfo[workitemData[z++]];
               // There's something in this buffer
               outputDbgBuffer(info, workitemData, z);
             }
@@ -337,7 +337,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
   return copiedBytes;
 }
 
-void PrintfDbg::outputDbgBuffer(const PrintfInfo& info, const uint32_t* workitemData,
+void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* workitemData,
                                 size_t& i) const {
   static const char* specifiers = "cdieEfgGaosuxXp";
   static const char* modifiers = "hl";
@@ -554,7 +554,7 @@ bool PrintfDbgHSA::init(VirtualGPU& gpu, bool printfEnabled) {
 }
 
 bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
-                          const std::vector<PrintfInfo>& printfInfo) {
+                          const std::vector<device::PrintfInfo>& printfInfo) {
   if (printfEnabled) {
     uint32_t offsetSize = 0;
     xferBufRead_ = &(dev().xferRead().acquire());
@@ -606,7 +606,7 @@ bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
           LogError("Couldn't find the reported PrintfID!");
           return false;
         }
-        const PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
+        const device::PrintfInfo& info = printfInfo[(*dbgBufferPtr)];
         sb += sizeof(uint32_t);
         for (const auto& it : info.arguments_) {
           sb += it;
