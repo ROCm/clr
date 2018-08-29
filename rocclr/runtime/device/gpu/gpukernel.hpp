@@ -15,7 +15,7 @@
 #include "device/gpu/gpuvirtual.hpp"
 #include "amd_hsa_kernel_code.h"
 #include "device/gpu/gpuprintf.hpp"
-#include "device/gpu/gpuwavelimiter.hpp"
+#include "device/devwavelimiter.hpp"
 #include "hsa.h"
 
 namespace amd {
@@ -608,11 +608,6 @@ class Kernel : public NullKernel {
                       VirtualGPU::GslKernelDesc* desc  //!< Kernel descriptor
                       ) const;
 
-  //! Get profiling callback object
-  virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdev) {
-    return waveLimiter_.getProfilingCallback(vdev);
-  }
-
  protected:
   //! Initializes the kernel parameters for the abstraction layer
   bool initParameters();
@@ -707,8 +702,6 @@ class Kernel : public NullKernel {
 
   uint hwPrivateSize_;  //!< initial HW private size
   uint hwLocalSize_;    //!< initial HW local size
-
-  WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 };
 
 enum HSAIL_ADDRESS_QUALIFIER {
@@ -833,16 +826,6 @@ class HSAILKernel : public device::Kernel {
   //! Returns kernel's extra argument count
   uint extraArgumentsNum() const { return extraArgumentsNum_; }
 
-  //! Get profiling callback object
-  virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdev) {
-    return waveLimiter_.getProfilingCallback(vdev);
-  }
-
-  //! Get waves per shader array to be used for kernel execution.
-  uint getWavesPerSH(const device::VirtualDevice* vdev) const {
-    return waveLimiter_.getWavesPerSH(vdev);
-  }
-
  private:
   //! Disable copy constructor
   HSAILKernel(const HSAILKernel&);
@@ -873,8 +856,6 @@ class HSAILKernel : public device::Kernel {
   char* hwMetaData_;  //!< SI metadata
 
   uint extraArgumentsNum_;  //! Number of extra (hidden) kernel arguments
-
-  WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 };
 
 /*@}*/} // namespace gpu

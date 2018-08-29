@@ -425,6 +425,7 @@ struct Info : public amd::EmbeddedObject {
   //! that execute in parallel. All work items from the same work group must be
   //! executed by SIMDs in the same compute unit.
   cl_uint simdPerCU_;
+  cl_uint cuPerShaderArray_;  //!< Number of CUs per shader array
   //! The maximum number of work items from the same work group that can be
   //! executed by a SIMD in parallel
   cl_uint simdWidth_;

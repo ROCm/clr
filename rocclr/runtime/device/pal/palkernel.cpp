@@ -74,12 +74,7 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       prog_(*prog),
       index_(0),
       code_(0),
-      codeSize_(0),
-      waveLimiter_(
-          this,
-          (prog->isNull() ? 1
-                          : dev().properties().gfxipProperties.shaderCore.numCusPerShaderArray) *
-              dev().hwInfo()->simdPerCU_) {
+      codeSize_(0) {
   flags_.hsa_ = true;
 }
 

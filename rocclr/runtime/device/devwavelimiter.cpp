@@ -1,20 +1,22 @@
 //
 // Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
 //
-#include "device/pal/palkernel.hpp"
-#include "device/pal/palwavelimiter.hpp"
+#include "platform/command.hpp"
+#include "device/devkernel.hpp"
+#include "device/devwavelimiter.hpp"
 #include "os/os.hpp"
 #include "utils/flags.hpp"
 
 #include <cstdlib>
 using namespace std;
 
-namespace pal {
+namespace device {
 
 uint WaveLimiter::MaxWave;
 uint WaveLimiter::RunCount;
 uint WaveLimiter::AdaptCount;
 
+// ================================================================================================
 WaveLimiter::WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, bool enableDump)
     : manager_(manager), dumper_(manager_->name() + "_" + std::to_string(seqNum), enableDump) {
   setIfNotDefault(SIMDPerSH_, GPU_WAVE_LIMIT_CU_PER_SH, manager->getSimdPerSH());
@@ -36,12 +38,14 @@ WaveLimiter::WaveLimiter(WaveLimiterManager* manager, uint seqNum, bool enable, 
   numContinuousSamples_ = 0;
 }
 
+// ================================================================================================
 WaveLimiter::~WaveLimiter() {
   if (traceStream_.is_open()) {
     traceStream_.close();
   }
 }
 
+// ================================================================================================
 uint WaveLimiter::getWavesPerSH() {
   // Generate different wave counts in the adaptation mode
   if ((state_ == ADAPT) && (sampleCount_ < AdaptCount)) {
@@ -66,6 +70,7 @@ uint WaveLimiter::getWavesPerSH() {
   return waves_ * SIMDPerSH_;
 }
 
+// ================================================================================================
 WLAlgorithmSmooth::WLAlgorithmSmooth(WaveLimiterManager* manager, uint seqNum, bool enable,
                                      bool enableDump)
     : WaveLimiter(manager, seqNum, enable, enableDump) {
@@ -78,8 +83,10 @@ WLAlgorithmSmooth::WLAlgorithmSmooth(WaveLimiterManager* manager, uint seqNum, b
   clearData();
 }
 
+// ================================================================================================
 WLAlgorithmSmooth::~WLAlgorithmSmooth() {}
 
+// ================================================================================================
 void WLAlgorithmSmooth::clearData() {
   waves_ = MaxWave;
   countAll_ = 0;
@@ -88,10 +95,11 @@ void WLAlgorithmSmooth::clearData() {
   dataCount_ = 0;
 }
 
+// ================================================================================================
 void WLAlgorithmSmooth::updateData(ulong time) {
-
 }
 
+// ================================================================================================
 void WLAlgorithmSmooth::outputTrace() {
   if (!traceStream_.is_open()) {
     return;
@@ -114,7 +122,7 @@ void WLAlgorithmSmooth::outputTrace() {
   traceStream_ << "\n\n";
 }
 
-
+// ================================================================================================
 void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
   dumper_.addData(duration, waves, static_cast<char>(state_));
 
@@ -212,6 +220,7 @@ void WLAlgorithmSmooth::callback(ulong duration, uint32_t waves) {
   }
 }
 
+// ================================================================================================
 WaveLimiter::DataDumper::DataDumper(const std::string& kernelName, bool enable) {
   enable_ = enable;
   if (enable_) {
@@ -219,6 +228,7 @@ WaveLimiter::DataDumper::DataDumper(const std::string& kernelName, bool enable) 
   }
 }
 
+// ================================================================================================
 WaveLimiter::DataDumper::~DataDumper() {
   if (!enable_) {
     return;
@@ -232,6 +242,7 @@ WaveLimiter::DataDumper::~DataDumper() {
   OFS.close();
 }
 
+// ================================================================================================
 void WaveLimiter::DataDumper::addData(ulong time, uint wave, char state) {
   if (!enable_) {
     return;
@@ -242,18 +253,24 @@ void WaveLimiter::DataDumper::addData(ulong time, uint wave, char state) {
   state_.push_back(state);
 }
 
+// ================================================================================================
 WaveLimiterManager::WaveLimiterManager(device::Kernel* kernel, const uint simdPerSH)
     : owner_(kernel), enable_(false), enableDump_(!flagIsDefault(GPU_WAVE_LIMIT_DUMP)) {
-  setIfNotDefault(simdPerSH_, GPU_WAVE_LIMIT_CU_PER_SH, simdPerSH);
+  setIfNotDefault(simdPerSH_, GPU_WAVE_LIMIT_CU_PER_SH, ((simdPerSH == 0) ? 1 : simdPerSH));
   fixed_ = GPU_WAVES_PER_SIMD * simdPerSH_;
 }
 
+// ================================================================================================
 WaveLimiterManager::~WaveLimiterManager() {
   for (auto& I : limiters_) {
     delete I.second;
   }
 }
 
+// ================================================================================================
+const std::string& WaveLimiterManager::name() const { return owner_->name(); }
+
+// ================================================================================================
 uint WaveLimiterManager::getWavesPerSH(const device::VirtualDevice* vdev) const {
   if (fixed_ > 0) {
     return fixed_;
@@ -291,7 +308,8 @@ amd::ProfilingCallback* WaveLimiterManager::getProfilingCallback(
   return limiter;
 }
 
-void WaveLimiterManager::enable() {
+// ================================================================================================
+void WaveLimiterManager::enable(bool isSupported) {
   if (fixed_ > 0) {
     return;
   }
@@ -300,7 +318,7 @@ void WaveLimiterManager::enable() {
   // Disabled for SI due to bug #10817
   if (!flagIsDefault(GPU_WAVE_LIMIT_ENABLE)) {
     enable_ = GPU_WAVE_LIMIT_ENABLE;
-  } else {
+  } else if (isSupported) {
     if (owner_->workGroupInfo()->wavesPerSimdHint_ == 0) {
       enable_ = true;
     } else if (owner_->workGroupInfo()->wavesPerSimdHint_ <= GPU_WAVE_LIMIT_MAX_WAVE) {
