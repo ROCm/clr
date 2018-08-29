@@ -43,16 +43,7 @@ Settings::Settings() {
   nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
   enableNCMode_ = (nonCoherentMode) ? true : false;
 
-  // Determine if user wishes to disable support for
-  // partial dispatch. By default support for partial
-  // dispatch is enabled. Users can turn it off for
-  // devices that do not support this feature.
-  //
-  // @note Update appropriate field of device::Settings
-  char* partialDispatch = nullptr;
-  partialDispatch = getenv("OPENCL_DISABLE_PARTIAL_DISPATCH");
-  enablePartialDispatch_ = (partialDispatch) ? false : true;
-  partialDispatch_ = (partialDispatch) ? false : true;
+  partialDispatch_ = GPU_PARTIAL_DISPATCH;
   commandQueues_ = 100;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for ROCm backend
 

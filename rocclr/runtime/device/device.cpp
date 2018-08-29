@@ -585,6 +585,37 @@ Settings::Settings() {
                          //!< concurrent Virtual GPUs for default
 }
 
+void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
+  const amd::Coord3D region, uint mapFlags, bool entire,
+  amd::Image* baseMip) {
+  // Map/Unmap must be serialized.
+  amd::ScopedLock lock(owner()->lockMemoryOps());
+
+  WriteMapInfo info = {};
+  WriteMapInfo* pInfo = &info;
+  auto it = writeMapInfo_.find(mapAddress);
+  if (it != writeMapInfo_.end()) {
+    LogWarning("Double map of the same or overlapped region!");
+    pInfo = &it->second;
+  }
+
+  if (mapFlags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
+    pInfo->origin_ = origin;
+    pInfo->region_ = region;
+    pInfo->entire_ = entire;
+    pInfo->unmapWrite_ = true;
+  }
+  if (mapFlags & CL_MAP_READ) {
+    pInfo->unmapRead_ = true;
+  }
+  pInfo->baseMip_ = baseMip;
+
+  // Insert into the map if it's the first region
+  if (++pInfo->count_ == 1) {
+    writeMapInfo_.insert({ mapAddress, info });
+  }
+}
+
 Program::Program(amd::Device& device)
     : device_(device),
       type_(TYPE_NONE),

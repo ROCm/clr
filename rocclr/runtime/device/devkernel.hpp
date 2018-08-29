@@ -35,6 +35,7 @@ namespace amd {
 
 class Device;
 class KernelSignature;
+class NDRange;
 
 struct ProfilingCallback : public amd::HeapObject {
   virtual void callback(ulong duration, uint32_t waves) = 0;
@@ -123,7 +124,10 @@ class Kernel : public amd::HeapObject {
   };
 
   //! Default constructor
-  Kernel(const std::string& name) : name_(name), signature_(NULL) {
+  Kernel(const amd::Device& dev, const std::string& name)
+    : dev_(dev)
+    , name_(name)
+    , signature_(nullptr) {
     // Instead of memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_));
     // Due to std::string not being able to be memset to 0
     workGroupInfo_.size_ = 0;
@@ -193,12 +197,15 @@ class Kernel : public amd::HeapObject {
 
   //! Get profiling callback object
   virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdv) {
-    return NULL;
+    return nullptr;
   }
 
   virtual uint getWavesPerSH(const device::VirtualDevice* vdv) const {
       return 0;
   }
+
+  //! Returns GPU device object, associated with this kernel
+  const amd::Device& dev() const { return dev_; }
 
   void setVecTypeHint(const std::string& hint) { workGroupInfo_.compileVecTypeHint_ = hint; }
 
@@ -237,6 +244,13 @@ class Kernel : public amd::HeapObject {
   //! Return printf info array
   const std::vector<PrintfInfo>& printfInfo() const { return printf_; }
 
+  //! Finds local workgroup size
+  void FindLocalWorkSize(
+    size_t workDim,                   //!< Work dimension
+    const amd::NDRange& gblWorkSize,  //!< Global work size
+    amd::NDRange& lclWorkSize         //!< Calculated local work size
+  ) const;
+
  protected:
   //! Initializes the abstraction layer kernel parameters
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -252,6 +266,7 @@ class Kernel : public amd::HeapObject {
   //! Initializes HSAIL Printf metadata and info
   void InitPrintf(const aclPrintfFmt* aclPrintf);
 #endif
+  const amd::Device& dev_;          //!< GPU device object
   std::string name_;                //!< kernel name
   WorkGroupInfo workGroupInfo_;     //!< device kernel info structure
   amd::KernelSignature* signature_; //!< kernel signature

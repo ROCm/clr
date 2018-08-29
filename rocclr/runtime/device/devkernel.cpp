@@ -3,6 +3,7 @@
 //
 #include "platform/runtime.hpp"
 #include "platform/program.hpp"
+#include "platform/ndrange.hpp"
 #include "devkernel.hpp"
 #include "utils/macros.hpp"
 #include "utils/options.hpp"
@@ -22,6 +23,7 @@ typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 
 namespace device {
 
+ // ================================================================================================
 bool Kernel::createSignature(
   const parameters_t& params, uint32_t numParameters,
   uint32_t version) {
@@ -63,45 +65,139 @@ bool Kernel::createSignature(
   return false;
 }
 
+// ================================================================================================
 Kernel::~Kernel() { delete signature_; }
 
+// ================================================================================================
 std::string Kernel::openclMangledName(const std::string& name) {
   const oclBIFSymbolStruct* bifSym = findBIF30SymStruct(symOpenclKernel);
   assert(bifSym && "symbol not found");
   return std::string("&") + bifSym->str[bif::PRE] + name + bifSym->str[bif::POST];
 }
 
-void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
-  const amd::Coord3D region, uint mapFlags, bool entire,
-  amd::Image* baseMip) {
-  // Map/Unmap must be serialized.
-  amd::ScopedLock lock(owner()->lockMemoryOps());
+// ================================================================================================
+void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
+  amd::NDRange& lclWorkSize) const {
+  // Initialize the default workgoup info
+  // Check if the kernel has the compiled sizes
+  if (workGroupInfo()->compileSize_[0] == 0) {
+    // Find the default local workgroup size, if it wasn't specified
+    if (lclWorkSize[0] == 0) {
+      bool b1DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE);
+      bool b2DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
+        !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y);
+      bool b3DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
+        !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
+        !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z);
 
-  WriteMapInfo info = {};
-  WriteMapInfo* pInfo = &info;
-  auto it = writeMapInfo_.find(mapAddress);
-  if (it != writeMapInfo_.end()) {
-    LogWarning("Double map of the same or overlapped region!");
-    pInfo = &it->second;
-  }
+      bool overrideSet = ((workDim == 1) && b1DOverrideSet) || ((workDim == 2) && b2DOverrideSet) ||
+        ((workDim == 3) && b3DOverrideSet);
+      if (!overrideSet) {
+        // Find threads per group
+        size_t thrPerGrp = workGroupInfo()->size_;
 
-  if (mapFlags & (CL_MAP_WRITE | CL_MAP_WRITE_INVALIDATE_REGION)) {
-    pInfo->origin_ = origin;
-    pInfo->region_ = region;
-    pInfo->entire_ = entire;
-    pInfo->unmapWrite_ = true;
-  }
-  if (mapFlags & CL_MAP_READ) {
-    pInfo->unmapRead_ = true;
-  }
-  pInfo->baseMip_ = baseMip;
+        // Check if kernel uses images
+        if (flags_.imageEna_ &&
+          // and thread group is a multiple value of wavefronts
+          ((thrPerGrp % workGroupInfo()->wavefrontSize_) == 0) &&
+          // and it's 2 or 3-dimensional workload
+          (workDim > 1) && ((dev().settings().partialDispatch_) ||
+          (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)))) {
+          // Use 8x8 workgroup size if kernel has image writes
+          if (flags_.imageWriteEna_ || (thrPerGrp != dev().info().preferredWorkGroupSize_)) {
+            lclWorkSize[0] = 8;
+            lclWorkSize[1] = 8;
+          }
+          else {
+            lclWorkSize[0] = 16;
+            lclWorkSize[1] = 16;
+          }
+          if (workDim == 3) {
+            lclWorkSize[2] = 1;
+          }
+        }
+        else {
+          size_t tmp = thrPerGrp;
+          // Split the local workgroup into the most efficient way
+          for (uint d = 0; d < workDim; ++d) {
+            size_t div = tmp;
+            for (; (gblWorkSize[d] % div) != 0; div--)
+              ;
+            lclWorkSize[d] = div;
+            tmp /= div;
+          }
 
-  // Insert into the map if it's the first region
-  if (++pInfo->count_ == 1) {
-    writeMapInfo_.insert({ mapAddress, info });
+          // Assuming DWORD access
+          const uint cacheLineMatch = dev().info().globalMemCacheLineSize_ >> 2;
+
+          // Check if partial dispatch is enabled and
+          if (dev().settings().partialDispatch_ &&
+            // we couldn't find optimal workload
+            (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
+              // or size is too small for the cache line
+            (lclWorkSize[0] < cacheLineMatch))) {
+            size_t maxSize = 0;
+            size_t maxDim = 0;
+            for (uint d = 0; d < workDim; ++d) {
+              if (maxSize < gblWorkSize[d]) {
+                maxSize = gblWorkSize[d];
+                maxDim = d;
+              }
+            }
+            // Use X dimension as high priority. Runtime will assume that
+            // X dimension is more important for the address calculation
+            if ((maxDim != 0) && (gblWorkSize[0] >= (cacheLineMatch / 2))) {
+              lclWorkSize[0] = cacheLineMatch;
+              thrPerGrp /= cacheLineMatch;
+              lclWorkSize[maxDim] = thrPerGrp;
+              for (uint d = 1; d < workDim; ++d) {
+                if (d != maxDim) {
+                  lclWorkSize[d] = 1;
+                }
+              }
+            }
+            else {
+              // Check if a local workgroup has the most optimal size
+              if (thrPerGrp > maxSize) {
+                thrPerGrp = maxSize;
+              }
+              lclWorkSize[maxDim] = thrPerGrp;
+              for (uint d = 0; d < workDim; ++d) {
+                if (d != maxDim) {
+                  lclWorkSize[d] = 1;
+                }
+              }
+            }
+          }
+        }
+      }
+      else {
+        // Use overrides when app doesn't provide workgroup dimensions
+        if (workDim == 1) {
+          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE;
+        }
+        else if (workDim == 2) {
+          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE_2D_X;
+          lclWorkSize[1] = GPU_MAX_WORKGROUP_SIZE_2D_Y;
+        }
+        else if (workDim == 3) {
+          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE_3D_X;
+          lclWorkSize[1] = GPU_MAX_WORKGROUP_SIZE_3D_Y;
+          lclWorkSize[2] = GPU_MAX_WORKGROUP_SIZE_3D_Z;
+        }
+        else {
+          assert(0 && "Invalid workDim!");
+        }
+      }
+    }
+  }
+  else {
+    for (uint d = 0; d < workDim; ++d) {
+      lclWorkSize[d] = workGroupInfo()->compileSize_[d];
+    }
   }
 }
-
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 using llvm::AMDGPU::HSAMD::AccessQualifier;
 using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
@@ -145,6 +241,7 @@ static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isH
   }
 }
 #endif
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* isHidden) {
   if (argInfo->argStr[0] == '_' && argInfo->argStr[1] == '.') {
@@ -189,6 +286,7 @@ static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* is
 }
 #endif
 
+// ================================================================================================
 static const clk_value_type_t ClkValueMapType[6][6] = {
   { T_CHAR, T_CHAR2, T_CHAR3, T_CHAR4, T_CHAR8, T_CHAR16 },
   { T_SHORT, T_SHORT2, T_SHORT3, T_SHORT4, T_SHORT8, T_SHORT16 },
@@ -198,6 +296,7 @@ static const clk_value_type_t ClkValueMapType[6][6] = {
   { T_DOUBLE, T_DOUBLE2, T_DOUBLE3, T_DOUBLE4, T_DOUBLE8, T_DOUBLE16 },
 };
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t size = 0) {
   uint sizeType;
@@ -274,6 +373,7 @@ static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t si
   return T_VOID;
 }
 #endif
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t size = 0) {
   uint sizeType;
@@ -351,9 +451,12 @@ static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t s
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline size_t GetArgAlignmentOCL(const KernelArgMD& lcArg) { return lcArg.mAlign; }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
   switch (argInfo->type) {
@@ -392,6 +495,7 @@ static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline size_t GetArgPointeeAlignmentOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
@@ -405,6 +509,8 @@ static inline size_t GetArgPointeeAlignmentOCL(const KernelArgMD& lcArg) {
   return 1;
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline size_t GetArgPointeeAlignmentOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
@@ -414,6 +520,7 @@ static inline size_t GetArgPointeeAlignmentOCL(const aclArgData* argInfo) {
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline bool GetReadOnlyOCL(const KernelArgMD& lcArg) {
   if ((lcArg.mValueKind == ValueKind::GlobalBuffer) || (lcArg.mValueKind == ValueKind::Image)) {
@@ -429,6 +536,8 @@ static inline bool GetReadOnlyOCL(const KernelArgMD& lcArg) {
   return false;
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline bool GetReadOnlyOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
@@ -441,9 +550,12 @@ static inline bool GetReadOnlyOCL(const aclArgData* argInfo) {
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline int GetArgSizeOCL(const KernelArgMD& lcArg) { return lcArg.mSize; }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 inline static int GetArgSizeOCL(const aclArgData* argInfo) {
   switch (argInfo->type) {
@@ -481,6 +593,7 @@ inline static int GetArgSizeOCL(const aclArgData* argInfo) {
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
@@ -504,6 +617,8 @@ static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const KernelArgM
   return CL_KERNEL_ARG_ADDRESS_PRIVATE;
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
@@ -534,6 +649,7 @@ static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::Image) {
@@ -550,6 +666,8 @@ static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const KernelArg
   return CL_KERNEL_ARG_ACCESS_NONE;
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_IMAGE) {
@@ -566,6 +684,7 @@ static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgDat
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const KernelArgMD& lcArg) {
   cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
@@ -588,6 +707,8 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const KernelArgMD& 
   return rv;
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* argInfo) {
   cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
@@ -618,6 +739,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   // Iterate through the arguments and insert into parameterList
@@ -689,6 +811,8 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 #endif
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 void Kernel::InitParameters(const aclArgData* aclArg, uint32_t argBufferSize) {
   // Iterate through the arguments and insert into parameterList
@@ -769,6 +893,7 @@ void Kernel::InitParameters(const aclArgData* aclArg, uint32_t argBufferSize) {
 }
 #endif
 
+// ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
 void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
   for (auto str : printfInfoStrings) {
@@ -860,6 +985,8 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
   }
 }
 #endif  // defined(WITH_LIGHTNING_COMPILER)
+
+// ================================================================================================
 #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
   PrintfInfo info;
