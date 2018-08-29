@@ -270,17 +270,18 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     chunkSize = std::max(chunkSize, 64 * Ki);
     bool flushDMA = true;
   }
-
+  size_t srcOffset = 0;
+  uint32_t flags = Resource::NoWait;
   while (xferSize != 0) {
     // Find the partial transfer size
     size_t tmpSize = std::min(chunkSize, xferSize);
-    amd::Coord3D src(offset, 0, 0);
+    amd::Coord3D src(srcOffset, 0, 0);
     amd::Coord3D dst(origin + offset, 0, 0);
     amd::Coord3D copySize(tmpSize, 0, 0);
 
     // Copy data into the temporary buffer, using CPU
     if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset,
-        src, copySize, Resource::NoWait)) {
+        src, copySize, flags)) {
       return false;
     }
 
@@ -292,6 +293,13 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     totalSize -= tmpSize;
     offset += tmpSize;
     xferSize -= tmpSize;
+    srcOffset += tmpSize;
+    if ((srcOffset + tmpSize) > gpu().xferWrite().MaxSize()) {
+      srcOffset = 0;
+      flags =  0;
+    } else {
+      flags = Resource::NoWait;
+    }
   }
   return true;
 }
@@ -1950,7 +1958,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
 
       if (amdMemory == NULL) {
         // Force SW copy
-        result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
+        result = DmaBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
         synchronize();
         return result;
       }
