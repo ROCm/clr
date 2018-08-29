@@ -814,12 +814,6 @@ class HSAILKernel : public device::Kernel {
   //! Returns spill reg size per workitem
   int spillSegSize() const { return cpuAqlCode_->workitem_private_segment_byte_size; }
 
-  //! Finds local workgroup size
-  void findLocalWorkSize(size_t workDim,                   //!< Work dimension
-                         const amd::NDRange& gblWorkSize,  //!< Global work size
-                         amd::NDRange& lclWorkSize         //!< Local work size
-                         ) const;
-
   //! Returns AQL packet in CPU memory
   //! if the kerenl arguments were successfully loaded, otherwise NULL
   hsa_kernel_dispatch_packet_t* loadArguments(
@@ -870,7 +864,6 @@ class HSAILKernel : public device::Kernel {
   std::vector<Argument*> arguments_;  //!< Vector list of HSAIL Arguments
   std::string compileOptions_;        //!< compile used for finalizing this kernel
   amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
-  const NullDevice& dev_;             //!< GPU device object
   const HSAILProgram& prog_;          //!< Reference to the parent program
   uint index_;                        //!< Kernel index in the program
 

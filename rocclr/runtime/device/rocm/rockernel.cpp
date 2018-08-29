@@ -15,7 +15,7 @@ Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
                const uint32_t kernargSegmentAlignment)
-    : device::Kernel(name),
+    : device::Kernel(prog->dev(), name),
       program_(prog),
       kernelCodeHandle_(kernelCodeHandle),
       workgroupGroupSegmentByteSize_(workgroupGroupSegmentByteSize),

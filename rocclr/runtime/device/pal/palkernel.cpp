@@ -69,9 +69,8 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
 }
 
 HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions)
-    : device::Kernel(name),
+    : device::Kernel(prog->dev(), name),
       compileOptions_(compileOptions),
-      dev_(prog->dev()),
       prog_(*prog),
       index_(0),
       code_(0),
@@ -253,121 +252,6 @@ const HSAILProgram& HSAILKernel::prog() const {
   return reinterpret_cast<const HSAILProgram&>(prog_);
 }
 
-void HSAILKernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
-                                    amd::NDRange& lclWorkSize) const {
-  // Initialize the default workgoup info
-  // Check if the kernel has the compiled sizes
-  if (workGroupInfo()->compileSize_[0] == 0) {
-    // Find the default local workgroup size, if it wasn't specified
-    if (lclWorkSize[0] == 0) {
-      bool b1DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE);
-      bool b2DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y);
-      bool b3DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z);
-
-      bool overrideSet = ((workDim == 1) && b1DOverrideSet) || ((workDim == 2) && b2DOverrideSet) ||
-          ((workDim == 3) && b3DOverrideSet);
-      if (!overrideSet) {
-        // Find threads per group
-        size_t thrPerGrp = workGroupInfo()->size_;
-
-        // Check if kernel uses images
-        if (flags_.imageEna_ &&
-            // and thread group is a multiple value of wavefronts
-            ((thrPerGrp % workGroupInfo()->wavefrontSize_) == 0) &&
-            // and it's 2 or 3-dimensional workload
-            (workDim > 1) && ((dev().settings().partialDispatch_) ||
-                              (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)))) {
-          // Use 8x8 workgroup size if kernel has image writes
-          if (flags_.imageWriteEna_ || (thrPerGrp != dev().info().preferredWorkGroupSize_)) {
-            lclWorkSize[0] = 8;
-            lclWorkSize[1] = 8;
-          } else {
-            lclWorkSize[0] = 16;
-            lclWorkSize[1] = 16;
-          }
-          if (workDim == 3) {
-            lclWorkSize[2] = 1;
-          }
-        } else {
-          size_t tmp = thrPerGrp;
-          // Split the local workgroup into the most efficient way
-          for (uint d = 0; d < workDim; ++d) {
-            size_t div = tmp;
-            for (; (gblWorkSize[d] % div) != 0; div--)
-              ;
-            lclWorkSize[d] = div;
-            tmp /= div;
-          }
-
-          // Assuming DWORD access
-          const uint cacheLineMatch = dev().settings().cacheLineSize_ >> 2;
-
-          // Check if partial dispatch is enabled and
-          if (dev().settings().partialDispatch_ &&
-            // we couldn't find optimal workload
-            (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
-                // or size is too small for the cache line
-            (lclWorkSize[0] < cacheLineMatch))) {
-            size_t maxSize = 0;
-            size_t maxDim = 0;
-            for (uint d = 0; d < workDim; ++d) {
-              if (maxSize < gblWorkSize[d]) {
-                maxSize = gblWorkSize[d];
-                maxDim = d;
-              }
-            }
-            // Use X dimension as high priority. Runtime will assume that
-            // X dimension is more important for the address calculation
-            if ((maxDim != 0) && (gblWorkSize[0] >= (cacheLineMatch / 2))) {
-              lclWorkSize[0] = cacheLineMatch;
-              thrPerGrp /= cacheLineMatch;
-              lclWorkSize[maxDim] = thrPerGrp;
-              for (uint d = 1; d < workDim; ++d) {
-                if (d != maxDim) {
-                  lclWorkSize[d] = 1;
-                }
-              }
-            }
-            else {
-              // Check if a local workgroup has the most optimal size
-              if (thrPerGrp > maxSize) {
-                thrPerGrp = maxSize;
-              }
-              lclWorkSize[maxDim] = thrPerGrp;
-              for (uint d = 0; d < workDim; ++d) {
-                if (d != maxDim) {
-                  lclWorkSize[d] = 1;
-                }
-              }
-            }
-          }
-        }
-      } else {
-        // Use overrides when app doesn't provide workgroup dimensions
-        if (workDim == 1) {
-          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE;
-        } else if (workDim == 2) {
-          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE_2D_X;
-          lclWorkSize[1] = GPU_MAX_WORKGROUP_SIZE_2D_Y;
-        } else if (workDim == 3) {
-          lclWorkSize[0] = GPU_MAX_WORKGROUP_SIZE_3D_X;
-          lclWorkSize[1] = GPU_MAX_WORKGROUP_SIZE_3D_Y;
-          lclWorkSize[2] = GPU_MAX_WORKGROUP_SIZE_3D_Z;
-        } else {
-          assert(0 && "Invalid workDim!");
-        }
-      }
-    }
-  } else {
-    for (uint d = 0; d < workDim; ++d) {
-      lclWorkSize[d] = workGroupInfo()->compileSize_[d];
-    }
-  }
-}
-
 hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
     VirtualGPU& gpu, const amd::Kernel& kernel, const amd::NDRangeContainer& sizes,
     const_address parameters, size_t ldsAddress, uint64_t vmDefQueue, uint64_t* vmParentWrap) const {
@@ -450,7 +334,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   const amd::NDRange& global = sizes.global();
 
   // Check if runtime has to find local workgroup size
-  findLocalWorkSize(sizes.dimensions(), sizes.global(), local);
+  FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
   constexpr uint16_t kDispatchPacketHeader =
     (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
