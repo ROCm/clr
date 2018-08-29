@@ -7,6 +7,7 @@
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
+#include "devwavelimiter.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
 namespace llvm {
@@ -36,10 +37,6 @@ namespace amd {
 class Device;
 class KernelSignature;
 class NDRange;
-
-struct ProfilingCallback : public amd::HeapObject {
-  virtual void callback(ulong duration, uint32_t waves) = 0;
-};
 
 struct KernelParameterDescriptor {
   enum {
@@ -124,39 +121,7 @@ class Kernel : public amd::HeapObject {
   };
 
   //! Default constructor
-  Kernel(const amd::Device& dev, const std::string& name)
-    : dev_(dev)
-    , name_(name)
-    , signature_(nullptr) {
-    // Instead of memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_));
-    // Due to std::string not being able to be memset to 0
-    workGroupInfo_.size_ = 0;
-    workGroupInfo_.compileSize_[0] = 0;
-    workGroupInfo_.compileSize_[1] = 0;
-    workGroupInfo_.compileSize_[2] = 0;
-    workGroupInfo_.localMemSize_ = 0;
-    workGroupInfo_.preferredSizeMultiple_ = 0;
-    workGroupInfo_.privateMemSize_ = 0;
-    workGroupInfo_.scratchRegs_ = 0;
-    workGroupInfo_.wavefrontPerSIMD_ = 0;
-    workGroupInfo_.wavefrontSize_ = 0;
-    workGroupInfo_.availableGPRs_ = 0;
-    workGroupInfo_.usedGPRs_ = 0;
-    workGroupInfo_.availableSGPRs_ = 0;
-    workGroupInfo_.usedSGPRs_ = 0;
-    workGroupInfo_.availableVGPRs_ = 0;
-    workGroupInfo_.usedVGPRs_ = 0;
-    workGroupInfo_.availableLDSSize_ = 0;
-    workGroupInfo_.usedLDSSize_ = 0;
-    workGroupInfo_.availableStackSize_ = 0;
-    workGroupInfo_.usedStackSize_ = 0;
-    workGroupInfo_.compileSizeHint_[0] = 0;
-    workGroupInfo_.compileSizeHint_[1] = 0;
-    workGroupInfo_.compileSizeHint_[2] = 0;
-    workGroupInfo_.compileVecTypeHint_ = "";
-    workGroupInfo_.uniformWorkGroupSize_ = false;
-    workGroupInfo_.wavesPerSimdHint_ = 0;
-  }
+  Kernel(const amd::Device& dev, const std::string& name);
 
   //! Default destructor
   virtual ~Kernel();
@@ -196,13 +161,14 @@ class Kernel : public amd::HeapObject {
   size_t getWorkGroupSizeHint(int dim) const { return workGroupInfo_.compileSizeHint_[dim]; }
 
   //! Get profiling callback object
-  virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdv) {
-    return nullptr;
-  }
+  amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdev) {
+    return waveLimiter_.getProfilingCallback(vdev);
+  };
 
-  virtual uint getWavesPerSH(const device::VirtualDevice* vdv) const {
-      return 0;
-  }
+  //! Get waves per shader array to be used for kernel execution.
+  uint getWavesPerSH(const device::VirtualDevice* vdev) const {
+    return waveLimiter_.getWavesPerSH(vdev);
+  };
 
   //! Returns GPU device object, associated with this kernel
   const amd::Device& dev() const { return dev_; }
@@ -272,6 +238,7 @@ class Kernel : public amd::HeapObject {
   amd::KernelSignature* signature_; //!< kernel signature
   std::string buildLog_;            //!< build log
   std::vector<PrintfInfo> printf_;  //!< Format strings for GPU printf support
+  WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 
   union Flags {
     struct {

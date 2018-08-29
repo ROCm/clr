@@ -810,9 +810,7 @@ bool Kernel::create(const std::string& code, const std::string& metadata, const 
 
 Kernel::Kernel(const std::string& name, const Device& gpuDev, const Program& prog,
                const InitData* initData)
-    : NullKernel(name, gpuDev, prog),
-      waveLimiter_(this,
-                   dev().getAttribs().numberOfCUsperShaderArray * dev().hwInfo()->simdPerCU_) {
+    : NullKernel(name, gpuDev, prog) {
   hwPrivateSize_ = 0;
   if (NULL != initData) {
     flags_ = initData->flags_;
@@ -3054,9 +3052,7 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       code_(NULL),
       codeSize_(0),
       hwMetaData_(NULL),
-      extraArgumentsNum_(extraArgsNum),
-      waveLimiter_(this, (prog->isNull() ? 1 : dev().getAttribs().numberOfCUsperShaderArray) *
-                       dev().hwInfo()->simdPerCU_) {
+      extraArgumentsNum_(extraArgsNum) {
   flags_.hsa_ = true;
 }
 

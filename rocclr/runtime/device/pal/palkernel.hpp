@@ -13,7 +13,7 @@
 #include "device/pal/palvirtual.hpp"
 #include "amd_hsa_kernel_code.h"
 #include "device/pal/palprintf.hpp"
-#include "device/pal/palwavelimiter.hpp"
+#include "device/devwavelimiter.hpp"
 #include "hsa.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -98,16 +98,6 @@ class HSAILKernel : public device::Kernel {
   //! Returns the kernel index in the program
   uint index() const { return index_; }
 
-  //! Get profiling callback object
-  virtual amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdev) {
-    return waveLimiter_.getProfilingCallback(vdev);
-  };
-
-  //! Get waves per shader array to be used for kernel execution.
-  virtual uint getWavesPerSH(const device::VirtualDevice* vdev) const {
-    return waveLimiter_.getWavesPerSH(vdev);
-  };
-
  private:
   //! Disable copy constructor
   HSAILKernel(const HSAILKernel&);
@@ -126,8 +116,6 @@ class HSAILKernel : public device::Kernel {
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
   size_t codeSize_;  //!< Size of ISA code
-
-  WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
 };
 
 #if defined(WITH_LIGHTNING_COMPILER)

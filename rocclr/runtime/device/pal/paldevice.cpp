@@ -574,6 +574,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
 
     info_.simdPerCU_ = hwInfo()->simdPerCU_;
+    info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
     info_.wavefrontWidth_ = palProp.gfxipProperties.shaderCore.wavefrontSize;

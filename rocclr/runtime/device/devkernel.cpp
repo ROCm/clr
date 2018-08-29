@@ -23,7 +23,43 @@ typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 
 namespace device {
 
- // ================================================================================================
+// ================================================================================================
+Kernel::Kernel(const amd::Device& dev, const std::string& name)
+  : dev_(dev)
+  , name_(name)
+  , signature_(nullptr)
+  , waveLimiter_(this, dev.info().cuPerShaderArray_ * dev.info().cuPerShaderArray_) {
+  // Instead of memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_));
+  // Due to std::string not being able to be memset to 0
+  workGroupInfo_.size_ = 0;
+  workGroupInfo_.compileSize_[0] = 0;
+  workGroupInfo_.compileSize_[1] = 0;
+  workGroupInfo_.compileSize_[2] = 0;
+  workGroupInfo_.localMemSize_ = 0;
+  workGroupInfo_.preferredSizeMultiple_ = 0;
+  workGroupInfo_.privateMemSize_ = 0;
+  workGroupInfo_.scratchRegs_ = 0;
+  workGroupInfo_.wavefrontPerSIMD_ = 0;
+  workGroupInfo_.wavefrontSize_ = 0;
+  workGroupInfo_.availableGPRs_ = 0;
+  workGroupInfo_.usedGPRs_ = 0;
+  workGroupInfo_.availableSGPRs_ = 0;
+  workGroupInfo_.usedSGPRs_ = 0;
+  workGroupInfo_.availableVGPRs_ = 0;
+  workGroupInfo_.usedVGPRs_ = 0;
+  workGroupInfo_.availableLDSSize_ = 0;
+  workGroupInfo_.usedLDSSize_ = 0;
+  workGroupInfo_.availableStackSize_ = 0;
+  workGroupInfo_.usedStackSize_ = 0;
+  workGroupInfo_.compileSizeHint_[0] = 0;
+  workGroupInfo_.compileSizeHint_[1] = 0;
+  workGroupInfo_.compileSizeHint_[2] = 0;
+  workGroupInfo_.compileVecTypeHint_ = "";
+  workGroupInfo_.uniformWorkGroupSize_ = false;
+  workGroupInfo_.wavesPerSimdHint_ = 0;
+}
+
+// ================================================================================================
 bool Kernel::createSignature(
   const parameters_t& params, uint32_t numParameters,
   uint32_t version) {

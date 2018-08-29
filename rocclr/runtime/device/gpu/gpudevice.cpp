@@ -565,6 +565,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation & 0x07);
 
     info_.simdPerCU_ = hwInfo()->simdPerCU_;
+    info_.cuPerShaderArray_ = calAttr.numberOfCUsperShaderArray;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
     info_.wavefrontWidth_ = calAttr.wavefrontSize;

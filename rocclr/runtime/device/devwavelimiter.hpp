@@ -1,11 +1,8 @@
 //
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
+#pragma once
 
-#ifndef GPUWAVELIMITER_HPP_
-#define GPUWAVELIMITER_HPP_
-
-#include "platform/command.hpp"
 #include "thread/thread.hpp"
 #include <cstdio>
 #include <cstdlib>
@@ -13,10 +10,17 @@
 #include <fstream>
 #include <unordered_map>
 
-//! \namespace gpu GPU Device Implementation
-namespace gpu {
+namespace amd {
+  struct ProfilingCallback : public amd::HeapObject {
+    virtual void callback(ulong duration, uint32_t waves) = 0;
+  };
+}
+
+//! \namespace pal PAL Device Implementation
+namespace device {
 
 class WaveLimiterManager;
+class Kernel;
 
 // Adaptively limit the number of waves per SIMD based on kernel execution time
 class WaveLimiter : public amd::ProfilingCallback {
@@ -49,21 +53,24 @@ class WaveLimiter : public amd::ProfilingCallback {
     std::vector<char> state_;
   };
 
-  std::vector<uint64_t> measure_;
   bool enable_;
   uint SIMDPerSH_;  // Number of SIMDs per SH
   uint waves_;      // Waves per SIMD to be set
   uint bestWave_;   // Optimal waves per SIMD
+  uint worstWave_;  // Wave number with the worst performance 
   uint countAll_;   // Number of kernel executions
   StateKind state_;
   WaveLimiterManager* manager_;
   DataDumper dumper_;
   std::ofstream traceStream_;
-  uint currWaves_;  // Current waves per SIMD
+  uint32_t sampleCount_;            //!< The number of samples for adaptive mode
+  uint32_t resultCount_;            //!< The number of results for adaptive mode
+  uint32_t numContinuousSamples_;   //!< The number of samples with the same wave count
 
   static uint MaxWave;      // Maximum number of waves per SIMD
-  static uint WarmUpCount;  // Number of kernel executions for warm up
   static uint RunCount;     // Number of kernel executions for normal run
+  static uint AdaptCount;   // Number of kernel executions for adapting
+  const static uint MaxContinuousSamples = 2;
 
   //! Call back from Event::recordProfilingInfo to get execution time.
   virtual void callback(ulong duration, uint32_t waves) = 0;
@@ -72,8 +79,12 @@ class WaveLimiter : public amd::ProfilingCallback {
   virtual void outputTrace() = 0;
 
   template <class T> void clear(T& A) {
+    uint idx = 0;
     for (auto& I : A) {
-      I = 0;
+      if (idx > worstWave_) {
+        I = 0;
+      }
+      ++idx;
     }
   }
   template <class T> void output(std::ofstream& ofs, const std::string& prompt, T& A) {
@@ -91,16 +102,12 @@ class WLAlgorithmSmooth : public WaveLimiter {
   virtual ~WLAlgorithmSmooth();
 
  private:
-  std::vector<uint64_t> reference_;
-  std::vector<uint64_t> trial_;
-  std::vector<uint64_t> ratio_;
-  bool discontinuous_;  // Measured data is discontinuous
+  std::vector<uint64_t> adpMeasure_;    //!< Accumulated performance in the adaptation mode
+  std::vector<uint32_t> adpSampleCnt_;  //!< The number of samples in the adaptation mode
+  std::vector<uint64_t> runMeasure_;    //!< Accumulated performance in the run mode
+  std::vector<uint32_t> runSampleCnt_;  //!< The number of samples in the run mode
   uint dynRunCount_;
   uint dataCount_;
-
-  static uint AdaptCount;     // Number of kernel executions for adapting
-  static uint AbandonThresh;  // Threshold to abandon adaptation
-  static uint DscThresh;      // Threshold for identifying discontinuities
 
   //! Update measurement data and optimal waves/simd with execution time.
   void updateData(ulong time);
@@ -109,7 +116,7 @@ class WLAlgorithmSmooth : public WaveLimiter {
   void clearData();
 
   //! Call back from Event::recordProfilingInfo to get execution time.
-  void callback(ulong duration, uint32_t waves);
+  virtual void callback(ulong duration, uint32_t waves) override;
 
   //! Output trace of measurement/adaptation.
   void outputTrace();
@@ -118,20 +125,20 @@ class WLAlgorithmSmooth : public WaveLimiter {
 // Create wave limiter for each virtual device for a kernel and manages the wave limiters.
 class WaveLimiterManager {
  public:
-  explicit WaveLimiterManager(device::Kernel* owner, const uint simdPerSH);
+  explicit WaveLimiterManager(Kernel* owner, const uint simdPerSH);
   virtual ~WaveLimiterManager();
 
   //! Get waves per shader array for a specific virtual device.
-  uint getWavesPerSH(const device::VirtualDevice*) const;
+  uint getWavesPerSH(const VirtualDevice*) const;
 
   //! Provide call back function for a specific virtual device.
-  amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice*);
+  amd::ProfilingCallback* getProfilingCallback(const VirtualDevice*);
 
   //! Enable wave limiter manager by kernel metadata and flags.
-  void enable(const bool isCiPlus);
+  void enable(bool isSupported = true);
 
   //! Returns the kernel name
-  const std::string& name() const { return owner_->name(); }
+  const std::string& name() const;
 
   //! Get SimdPerSH.
   uint getSimdPerSH() const { return simdPerSH_; }
@@ -139,13 +146,11 @@ class WaveLimiterManager {
  private:
   device::Kernel* owner_;  // The kernel which owns this object
   uint simdPerSH_;         // Simd Per SH
-  std::unordered_map<const device::VirtualDevice*,
-                     WaveLimiter*>
-      limiters_;          // Maps virtual device to wave limiter
+  std::unordered_map<const VirtualDevice*, WaveLimiter*>
+    limiters_;            // Maps virtual device to wave limiter
   bool enable_;           // Whether the adaptation is enabled
   bool enableDump_;       // Whether the data dumper is enabled
   uint fixed_;            // The fixed waves/simd value if not zero
   amd::Monitor monitor_;  // The mutex for updating the wave limiter map
 };
 }
-#endif
