@@ -834,13 +834,6 @@ bool NullProgram::initClBinary() {
   return true;
 }
 
-void NullProgram::releaseClBinary() {
-  if (clBinary_ != NULL) {
-    delete clBinary_;
-    clBinary_ = NULL;
-  }
-}
-
 bool NullProgram::loadBinary(bool* hasRecompiled) {
   if (!clBinary()->loadKernels(*this, hasRecompiled)) {
     clear();
@@ -2086,23 +2079,6 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
 }
 
 bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
-
-bool HSAILProgram::initClBinary() {
-  if (clBinary_ == NULL) {
-    clBinary_ = new ClBinaryHsa(static_cast<const Device&>(device()));
-    if (clBinary_ == NULL) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void HSAILProgram::releaseClBinary() {
-  if (clBinary_ != NULL) {
-    delete clBinary_;
-    clBinary_ = NULL;
-  }
-}
 
 std::string HSAILProgram::hsailOptions() {
   std::string hsailOptions;

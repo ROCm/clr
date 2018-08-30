@@ -704,23 +704,6 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
 
 bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
 
-bool HSAILProgram::initClBinary() {
-  if (clBinary_ == nullptr) {
-    clBinary_ = new ClBinaryHsa(static_cast<const Device&>(device()));
-    if (clBinary_ == nullptr) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void HSAILProgram::releaseClBinary() {
-  if (clBinary_ != nullptr) {
-    delete clBinary_;
-    clBinary_ = nullptr;
-  }
-}
-
 std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
   std::string hsailOptions;
 

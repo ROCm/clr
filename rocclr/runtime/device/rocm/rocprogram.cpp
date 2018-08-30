@@ -167,23 +167,6 @@ bool Program::finiBuild(bool isBuildGood) {
   return device::Program::finiBuild(isBuildGood);
 }
 
-bool Program::initClBinary() {
-  if (clBinary_ == nullptr) {
-    clBinary_ = new ClBinary(static_cast<const Device&>(device()));
-    if (clBinary_ == nullptr) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void Program::releaseClBinary() {
-  if (clBinary_ != nullptr) {
-    delete clBinary_;
-    clBinary_ = nullptr;
-  }
-}
-
 aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options) {
   aclType continueCompileFrom = ACL_TYPE_DEFAULT;
   binary_t binary = this->binary();
@@ -399,7 +382,7 @@ HSAILProgram::~HSAILProgram() {
 }
 
 bool HSAILProgram::createBinary(amd::option::Options* options) {
-  return false;
+  return true;
 }
 
 bool HSAILProgram::saveBinaryAndSetType(type_t type) {

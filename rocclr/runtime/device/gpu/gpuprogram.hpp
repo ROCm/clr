@@ -114,8 +114,6 @@ class NullProgram : public device::Program {
 
   // Initialize Binary for GPU
   virtual bool initClBinary();
-  // Release Binary for GPU
-  virtual void releaseClBinary();
 
   //! Returns global constant buffers
   const std::vector<uint>& glbCb() const { return glbCb_; }
@@ -520,25 +518,11 @@ class HSAILProgram : public device::Program {
 
   virtual bool createBinary(amd::option::Options* options);
 
-  //! Initialize Binary
-  virtual bool initClBinary();
-
-  //! Release the Binary
-  virtual void releaseClBinary();
-
   virtual const aclTargetInfo& info(const char* str = "");
 
   virtual bool isElf(const char* bin) const {
     return amd::isElfMagic(bin);
     // return false;
-  }
-
-  //! Returns the binary
-  // This should ensure that the binary is updated with all the kernels
-  //    ClBinary& clBinary() { return binary_; }
-  ClBinary* clBinary() { return static_cast<ClBinary*>(device::Program::clBinary()); }
-  const ClBinary* clBinary() const {
-    return static_cast<const ClBinary*>(device::Program::clBinary());
   }
 
  private:

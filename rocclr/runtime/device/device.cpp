@@ -55,7 +55,7 @@ extern const char* BlitSourceCode;
 
 namespace amd {
 
-std::vector<Device*>* Device::devices_ = NULL;
+std::vector<Device*>* Device::devices_ = nullptr;
 AppProfile Device::appProfile_;
 
 amd::Monitor MemObjMap::AllocatedLock_("Guards SVM allocation list");
@@ -81,7 +81,7 @@ amd::Memory* MemObjMap::FindMemObj(const void* k) {
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
   auto it = MemObjMap_.upper_bound(key);
   if (it == MemObjMap_.begin()) {
-    return NULL;
+    return nullptr;
   }
 
   --it;
@@ -90,13 +90,13 @@ amd::Memory* MemObjMap::FindMemObj(const void* k) {
     // the k is in the range
     return mem;
   } else {
-    return NULL;
+    return nullptr;
   }
 }
 
 
 Device::BlitProgram::~BlitProgram() {
-  if (program_ != NULL) {
+  if (program_ != nullptr) {
     program_->release();
   }
 }
@@ -107,13 +107,13 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   devices.push_back(device);
   std::string kernels(device::BlitSourceCode);
 
-  if (extraKernels != NULL) {
+  if (extraKernels != nullptr) {
     kernels += extraKernels;
   }
 
   // Create a program with all blit kernels
   program_ = new Program(*context_, kernels.c_str(), Program::OpenCL_C);
-  if (program_ == NULL) {
+  if (program_ == nullptr) {
     return false;
   }
 
@@ -126,13 +126,13 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
       ;
 
-  if (extraOptions != NULL) {
+  if (extraOptions != nullptr) {
     opt += extraOptions;
   }
   if (!GPU_DUMP_BLIT_KERNELS) {
     opt += " -fno-enable-dump";
   }
-  if (CL_SUCCESS != program_->build(devices, opt.c_str(), NULL, NULL, GPU_DUMP_BLIT_KERNELS)) {
+  if (CL_SUCCESS != program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS)) {
     return false;
   }
 
@@ -142,7 +142,7 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
 bool Device::init() {
   assert(!Runtime::initialized() && "initialize only once");
   bool ret = false;
-  devices_ = NULL;
+  devices_ = nullptr;
   appProfile_.init();
 
 
@@ -176,7 +176,7 @@ bool Device::init() {
 }
 
 void Device::tearDown() {
-  if (devices_ != NULL) {
+  if (devices_ != nullptr) {
     for (uint i = 0; i < devices_->size(); ++i) {
       delete devices_->at(i);
     }
@@ -199,10 +199,10 @@ void Device::tearDown() {
 }
 
 Device::Device()
-    : settings_(NULL),
+    : settings_(nullptr),
       online_(true),
-      blitProgram_(NULL),
-      hwDebugMgr_(NULL),
+      blitProgram_(nullptr),
+      hwDebugMgr_(nullptr),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr) {
   memset(&info_, '\0', sizeof(info_));
@@ -215,22 +215,22 @@ Device::~Device() {
   delete vaCacheAccess_;
 
   // Destroy device settings
-  if (settings_ != NULL) {
+  if (settings_ != nullptr) {
     delete settings_;
   }
 
-  if (info_.extensions_ != NULL) {
+  if (info_.extensions_ != nullptr) {
     delete[] info_.extensions_;
   }
 }
 
 bool Device::create() {
   vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
-  if (NULL == vaCacheAccess_) {
+  if (nullptr == vaCacheAccess_) {
     return false;
   }
   vaCacheMap_ = new std::map<uintptr_t, device::Memory*>();
-  if (NULL == vaCacheMap_) {
+  if (nullptr == vaCacheMap_) {
     return false;
   }
   return true;
@@ -241,7 +241,7 @@ void Device::registerDevice() {
 
   static bool defaultIsAssigned = false;
 
-  if (devices_ == NULL) {
+  if (devices_ == nullptr) {
     devices_ = new std::vector<Device*>;
   }
 
@@ -314,7 +314,7 @@ bool Device::IsTypeMatching(cl_device_type type, bool offlineDevices) {
 std::vector<Device*> Device::getDevices(cl_device_type type, bool offlineDevices) {
   std::vector<Device*> result;
 
-  if (devices_ == NULL) {
+  if (devices_ == nullptr) {
     return result;
   }
 
@@ -332,7 +332,7 @@ std::vector<Device*> Device::getDevices(cl_device_type type, bool offlineDevices
 size_t Device::numDevices(cl_device_type type, bool offlineDevices) {
   size_t result = 0;
 
-  if (devices_ == NULL) {
+  if (devices_ == nullptr) {
     return 0;
   }
 
@@ -348,11 +348,11 @@ size_t Device::numDevices(cl_device_type type, bool offlineDevices) {
 
 bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_device_id* devices,
                           cl_uint* numDevices, bool offlineDevices) {
-  if (numDevices != NULL && devices == NULL) {
+  if (numDevices != nullptr && devices == nullptr) {
     *numDevices = (cl_uint)amd::Device::numDevices(deviceType, offlineDevices);
     return (*numDevices > 0) ? true : false;
   }
-  assert(devices != NULL && "check the code above");
+  assert(devices != nullptr && "check the code above");
 
   std::vector<amd::Device*> ret = amd::Device::getDevices(deviceType, offlineDevices);
   if (ret.size() == 0) {
@@ -378,7 +378,7 @@ bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_devi
 char* Device::getExtensionString() {
   std::stringstream extStream;
   size_t size;
-  char* result = NULL;
+  char* result = nullptr;
 
   // Generate the extension string
   for (uint i = 0; i < ClExtTotal; ++i) {
@@ -391,7 +391,7 @@ char* Device::getExtensionString() {
 
   // Create a single string with all extensions
   result = new char[size];
-  if (result != NULL) {
+  if (result != nullptr) {
     memcpy(result, extStream.str().data(), (size - 1));
     result[size - 1] = 0;
   }
@@ -619,7 +619,7 @@ void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
 Program::Program(amd::Device& device)
     : device_(device),
       type_(TYPE_NONE),
-      clBinary_(NULL),
+      clBinary_(nullptr),
       llvmBinary_(),
       elfSectionType_(amd::OclElf::LLVMIR),
       compileOptions_(),
@@ -628,7 +628,7 @@ Program::Program(amd::Device& device)
       buildStatus_(CL_BUILD_NONE),
       buildError_(CL_SUCCESS),
       globalVariableTotalSize_(0),
-      programOptions(NULL) {}
+      programOptions(nullptr) {}
 
 Program::~Program() { clear(); }
 
@@ -638,6 +638,23 @@ void Program::clear() {
     delete it.second;
   }
   kernels_.clear();
+}
+
+bool Program::initClBinary() {
+  if (clBinary_ == nullptr) {
+    clBinary_ = new ClBinary(device());
+    if (clBinary_ == nullptr) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void Program::releaseClBinary() {
+  if (clBinary_ != nullptr) {
+    delete clBinary_;
+    clBinary_ = nullptr;
+  }
 }
 
 bool Program::initBuild(amd::option::Options* options) {
@@ -877,7 +894,7 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
   // Compile the source code if any
   std::vector<const std::string*> headers;
   if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty() &&
-      !compileImpl(sourceCode, headers, NULL, options)) {
+      !compileImpl(sourceCode, headers, nullptr, options)) {
     buildStatus_ = CL_BUILD_ERROR;
     if (buildLog_.empty()) {
       buildLog_ = "Internal error: Compilation failed.";
@@ -1005,7 +1022,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 
   // unencrypted
   int encryptCode = 0;
-  char* decryptedBin = NULL;
+  char* decryptedBin = nullptr;
 
 #if !defined(WITH_LIGHTNING_COMPILER)
   bool isSPIRV = isSPIRVMagic(binaryIn, size);
@@ -1060,7 +1077,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
     if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
       return false;
     }
-    if (decryptedBin != NULL) {
+    if (decryptedBin != nullptr) {
       // It is decrypted binary.
       bin = decryptedBin;
       sz = decryptedSize;
@@ -1068,7 +1085,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 
     if (!isElf(bin)) {
       // Invalid binary.
-      if (decryptedBin != NULL) {
+      if (decryptedBin != nullptr) {
         delete[] decryptedBin;
       }
       return false;
@@ -1077,7 +1094,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 
   clBinary()->setFlags(encryptCode);
 
-  return clBinary()->setBinary(bin, sz, (decryptedBin != NULL));
+  return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
 }
 
 
@@ -1109,7 +1126,7 @@ bool Program::setBinary(const char* binaryIn, size_t size) {
       break;
     }
     case ET_DYN: {
-      char* sect = NULL;
+      char* sect = nullptr;
       size_t sz = 0;
       // FIXME: we should look for the e_machine to detect an HSACO.
       if (clBinary()->elfIn()->getSection(amd::OclElf::TEXT, &sect, &sz) && sect && sz > 0) {
@@ -1138,7 +1155,7 @@ bool Program::setBinary(const char* binaryIn, size_t size) {
 bool Program::createBIFBinary(aclBinary* bin) {
 #if defined(WITH_COMPILER_LIB)
   acl_error err;
-  char* binaryIn = NULL;
+  char* binaryIn = nullptr;
   size_t size;
   err = aclWriteToMem(bin, reinterpret_cast<void**>(&binaryIn), &size);
   if (err != ACL_SUCCESS) {
@@ -1155,14 +1172,14 @@ bool Program::createBIFBinary(aclBinary* bin) {
 
 ClBinary::ClBinary(const amd::Device& dev, BinaryImageFormat bifVer)
     : dev_(dev),
-      binary_(NULL),
+      binary_(nullptr),
       size_(0),
       flags_(0),
-      origBinary_(NULL),
+      origBinary_(nullptr),
       origSize_(0),
       encryptCode_(0),
-      elfIn_(NULL),
-      elfOut_(NULL),
+      elfIn_(nullptr),
+      elfOut_(nullptr),
       format_(bifVer) {}
 
 ClBinary::~ClBinary() {
@@ -1174,6 +1191,14 @@ ClBinary::~ClBinary() {
   if (elfOut_) {
     delete elfOut_;
   }
+}
+
+bool ClBinary::setElfTarget() {
+  static const uint32_t Target = 21;
+  assert(((0xFFFF8000 & Target) == 0) && "ASIC target ID >= 2^15");
+  uint16_t elf_target = static_cast<uint16_t>(0x7FFF & Target);
+  return elfOut()->setTarget(elf_target, amd::OclElf::CAL_PLATFORM);
+  return true;
 }
 
 std::string ClBinary::getBIFSymbol(unsigned int symbolID) const {
@@ -1279,9 +1304,9 @@ bool ClBinary::isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatfo
 }
 
 void ClBinary::release() {
-  if (isBinaryAllocated() && (binary_ != NULL)) {
+  if (isBinaryAllocated() && (binary_ != nullptr)) {
     delete[] binary_;
-    binary_ = NULL;
+    binary_ = nullptr;
     flags_ &= ~BinaryAllocated;
   }
 }
@@ -1309,7 +1334,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
   // Insert Version string that builds this binary into .comment section
   const device::Info& devInfo = dev_.info();
   std::string buildVerInfo("@(#) ");
-  if (devInfo.version_ != NULL) {
+  if (devInfo.version_ != nullptr) {
     buildVerInfo.append(devInfo.version_);
     buildVerInfo.append(".  Driver version: ");
     buildVerInfo.append(devInfo.driverVersion_);
@@ -1356,7 +1381,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
     // Increase the size by 64 to accomodate extra headers
     int outBufSize = (int)(imageSize + 64);
     char* outBuf = new char[outBufSize];
-    if (outBuf == NULL) {
+    if (outBuf == nullptr) {
       return false;
     }
     memset(outBuf, '\0', outBufSize);
@@ -1403,12 +1428,12 @@ void ClBinary::setFlags(int encryptCode) {
 
 bool ClBinary::decryptElf(const char* binaryIn, size_t size, char** decryptBin, size_t* decryptSize,
                           int* encryptCode) {
-  *decryptBin = NULL;
+  *decryptBin = nullptr;
 #if defined(HAVE_BLOWFISH_H)
   int outBufSize = 0;
   if (amd::isEncryptedBIF(binaryIn, (int)size, &outBufSize)) {
     char* outBuf = new (std::nothrow) char[outBufSize];
-    if (outBuf == NULL) {
+    if (outBuf == nullptr) {
       return false;
     }
 
@@ -1430,14 +1455,14 @@ bool ClBinary::decryptElf(const char* binaryIn, size_t size, char** decryptBin, 
 bool ClBinary::setElfIn() {
   if (elfIn_) return true;
 
-  if (binary_ == NULL) {
+  if (binary_ == nullptr) {
     return false;
   }
-  elfIn_ = new amd::OclElf(ELFCLASSNONE, binary_, size_, NULL, ELF_C_READ);
-  if ((elfIn_ == NULL) || elfIn_->hasError()) {
+  elfIn_ = new amd::OclElf(ELFCLASSNONE, binary_, size_, nullptr, ELF_C_READ);
+  if ((elfIn_ == nullptr) || elfIn_->hasError()) {
     if (elfIn_) {
       delete elfIn_;
-      elfIn_ = NULL;
+      elfIn_ = nullptr;
     }
     LogError("Creating input ELF object failed");
     return false;
@@ -1449,16 +1474,16 @@ bool ClBinary::setElfIn() {
 void ClBinary::resetElfIn() {
   if (elfIn_) {
     delete elfIn_;
-    elfIn_ = NULL;
+    elfIn_ = nullptr;
   }
 }
 
 bool ClBinary::setElfOut(unsigned char eclass, const char* outFile) {
-  elfOut_ = new amd::OclElf(eclass, NULL, 0, outFile, ELF_C_WRITE);
-  if ((elfOut_ == NULL) || elfOut_->hasError()) {
+  elfOut_ = new amd::OclElf(eclass, nullptr, 0, outFile, ELF_C_WRITE);
+  if ((elfOut_ == nullptr) || elfOut_->hasError()) {
     if (elfOut_) {
       delete elfOut_;
-      elfOut_ = NULL;
+      elfOut_ = nullptr;
     }
     LogError("Creating ouput ELF object failed");
     return false;
@@ -1470,14 +1495,14 @@ bool ClBinary::setElfOut(unsigned char eclass, const char* outFile) {
 void ClBinary::resetElfOut() {
   if (elfOut_) {
     delete elfOut_;
-    elfOut_ = NULL;
+    elfOut_ = nullptr;
   }
 }
 
 bool ClBinary::loadLlvmBinary(std::string& llvmBinary,
                               amd::OclElf::oclElfSections& elfSectionType) const {
   // Check if current binary already has LLVMIR
-  char* section = NULL;
+  char* section = nullptr;
   size_t sz = 0;
   const amd::OclElf::oclElfSections SectionTypes[] = {amd::OclElf::LLVMIR, amd::OclElf::SPIR,
                                                       amd::OclElf::SPIRV};
@@ -1494,7 +1519,7 @@ bool ClBinary::loadLlvmBinary(std::string& llvmBinary,
 }
 
 bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
-  char* options = NULL;
+  char* options = nullptr;
   size_t sz;
   compileOptions.clear();
   if (elfIn_->getSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
@@ -1508,7 +1533,7 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
 }
 
 bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
-  char* options = NULL;
+  char* options = nullptr;
   size_t sz;
   linkOptions.clear();
   if (elfIn_->getSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
@@ -1532,7 +1557,7 @@ void ClBinary::storeLinkOptions(const std::string& linkOptions) {
 }
 
 bool ClBinary::isSPIR() const {
-  char* section = NULL;
+  char* section = nullptr;
   size_t sz = 0;
   if (elfIn_->getSection(amd::OclElf::LLVMIR, &section, &sz) && section && sz > 0) return false;
 
@@ -1542,7 +1567,7 @@ bool ClBinary::isSPIR() const {
 }
 
 bool ClBinary::isSPIRV() const {
-  char* section = NULL;
+  char* section = nullptr;
   size_t sz = 0;
 
   if (elfIn_->getSection(amd::OclElf::SPIRV, &section, &sz) && section && sz > 0) {
