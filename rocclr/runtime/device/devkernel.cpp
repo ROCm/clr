@@ -28,7 +28,7 @@ Kernel::Kernel(const amd::Device& dev, const std::string& name)
   : dev_(dev)
   , name_(name)
   , signature_(nullptr)
-  , waveLimiter_(this, dev.info().cuPerShaderArray_ * dev.info().cuPerShaderArray_) {
+  , waveLimiter_(this, dev.info().cuPerShaderArray_ * dev.info().simdPerCU_) {
   // Instead of memset(&workGroupInfo_, '\0', sizeof(workGroupInfo_));
   // Due to std::string not being able to be memset to 0
   workGroupInfo_.size_ = 0;
