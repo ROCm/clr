@@ -906,10 +906,10 @@ class Program : public amd::HeapObject {
   bool initClBinary(const char* binaryIn, size_t size);
 
   //! Initialize Binary
-  virtual bool initClBinary() = 0;
+  virtual bool initClBinary();
 
   //! Release the Binary
-  virtual void releaseClBinary() = 0;
+  void releaseClBinary();
 
   //! return target info
   virtual const aclTargetInfo& info(const char* str = "") = 0;
@@ -943,7 +943,7 @@ class ClBinary : public amd::HeapObject {
   };
 
   //! Constructor
-  ClBinary(const amd::Device& dev, BinaryImageFormat bifVer = BIF_VERSION2);
+  ClBinary(const amd::Device& dev, BinaryImageFormat bifVer = BIF_VERSION3);
 
   //! Destructor
   virtual ~ClBinary();
@@ -963,7 +963,7 @@ class ClBinary : public amd::HeapObject {
   void resetElfOut();
 
   //! Set elf header information
-  virtual bool setElfTarget() = 0;
+  virtual bool setElfTarget();
 
   // class used in for loading images in new format
   amd::OclElf* elfIn() { return elfIn_; }

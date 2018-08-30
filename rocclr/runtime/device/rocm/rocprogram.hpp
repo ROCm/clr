@@ -5,7 +5,6 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#include "rocbinary.hpp"
 #include "acl.h"
 #include <string>
 #include <sstream>
@@ -68,28 +67,13 @@ class Program : public device::Program {
    */
   int compileBinaryToHSAIL(amd::option::Options* options  //!< options for compilation
                            );
-
   virtual bool createBinary(amd::option::Options* options) = 0;
-
-  //! Initialize Binary
-  virtual bool initClBinary();
-
-  //! Release the Binary
-  virtual void releaseClBinary();
 
   virtual const aclTargetInfo& info(const char* str = "") { return info_; }
 
   virtual bool isElf(const char* bin) const {
     return amd::isElfMagic(bin);
     // return false;
-  }
-
-  //! Returns the binary
-  // This should ensure that the binary is updated with all the kernels
-  //    ClBinary& clBinary() { return binary_; }
-  ClBinary* clBinary() { return static_cast<ClBinary*>(device::Program::clBinary()); }
-  const ClBinary* clBinary() const {
-    return static_cast<const ClBinary*>(device::Program::clBinary());
   }
 
  protected:

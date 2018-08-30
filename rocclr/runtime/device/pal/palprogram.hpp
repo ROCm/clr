@@ -4,7 +4,6 @@
 #pragma once
 
 #include "device/pal/palkernel.hpp"
-#include "device/pal/palbinary.hpp"
 #include "amd_hsa_loader.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -216,25 +215,11 @@ class HSAILProgram : public device::Program {
 
   virtual bool createBinary(amd::option::Options* options);
 
-  //! Initialize Binary
-  virtual bool initClBinary();
-
-  //! Release the Binary
-  virtual void releaseClBinary();
-
   virtual const aclTargetInfo& info(const char* str = "");
 
   virtual bool isElf(const char* bin) const {
     return amd::isElfMagic(bin);
     // return false;
-  }
-
-  //! Returns the binary
-  // This should ensure that the binary is updated with all the kernels
-  //    ClBinary& clBinary() { return binary_; }
-  ClBinaryHsa* clBinary() { return static_cast<ClBinaryHsa*>(device::Program::clBinary()); }
-  const ClBinaryHsa* clBinary() const {
-    return static_cast<const ClBinaryHsa*>(device::Program::clBinary());
   }
 
  private:
