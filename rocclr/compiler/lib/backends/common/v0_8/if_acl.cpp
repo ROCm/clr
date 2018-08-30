@@ -1501,6 +1501,14 @@ if_aclCompile(aclCompiler *cl,
   }
 #ifdef WITH_TARGET_HSAIL
   if (isHSAILTarget(bin->target)) {
+    if (from == ACL_TYPE_SPIR_TEXT || from == ACL_TYPE_SPIR_BINARY) {
+      std::string error_msg = "Error: HSAIL doesn't support OpenCL extension spir.";
+      if (compile_callback) {
+        compile_callback(error_msg.c_str(), error_msg.size());
+      }
+      appendLogToCL(cl, error_msg.c_str());
+      return ACL_INVALID_BINARY;
+    }
   } else
 #endif
   {
