@@ -162,13 +162,20 @@ bool NullDevice::init() {
 
       Pal::GfxIpLevel ipLevel = Pal::GfxIpLevel::_None;
       uint ipLevelMajor = round(pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_ / 100);
+      uint ipLevelMinor = round(pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_ / 10 % 10);
       switch (ipLevelMajor) {
       case 9:
           ipLevel = Pal::GfxIpLevel::GfxIp9;
           break;
       case 10:
+        switch (ipLevelMinor) {
+        case 0:
           ipLevel = Pal::GfxIpLevel::GfxIp10;
           break;
+        case 1:
+          ipLevel = Pal::GfxIpLevel::GfxIp10_1;
+          break;
+        }
       }
 
       Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
@@ -192,6 +199,9 @@ bool NullDevice::init() {
           revision = Pal::AsicRevision::Vega20;
           break;
       case 1000:
+          revision = Pal::AsicRevision::Navi10Lite;
+          break;
+      case 1010:
           revision = Pal::AsicRevision::Navi10;
           break;
       }

@@ -163,8 +163,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
                                 IF(IS_BRAHMA, "", "gfx904"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
     /* CAL_TARGET_VEGA20 */{ ED_ATI_CAL_MACHINE_VEGA20_ISA, IF(IS_BRAHMA, "", "gfx906"),
                                 IF(IS_BRAHMA, "", "gfx906"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
-   /*  CAL_TARGET_NAVI10 */{ ED_ATI_CAL_MACHINE_NAVI10_ISA, IF(IS_BRAHMA, "", "gfx1000"),
-                                IF(IS_BRAHMA, "", "gfx1000"), 4, 16, 1, 256, 64 * Ki, 32, 1000 },
+   /*  CAL_TARGET_NAVI10 */{ ED_ATI_CAL_MACHINE_NAVI10_ISA, IF(IS_BRAHMA, "", "gfx1010"),
+                                IF(IS_BRAHMA, "", "gfx1010"), 4, 16, 1, 256, 64 * Ki, 32, 1010 },
 
 };
 
@@ -184,8 +184,7 @@ enum gfx_handle {
   gfx905 = 905,
   gfx906 = 906,
   gfx907 = 907,
-  gfx1000 = 1000,
-  gfx1001 = 1001
+  gfx1010 = 1010
 };
 
 static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
@@ -202,8 +201,7 @@ static const char* Gfx904 = "AMD:AMDGPU:9:0:4";
 static const char* Gfx905 = "AMD:AMDGPU:9:0:5";
 static const char* Gfx906 = "AMD:AMDGPU:9:0:6";
 static const char* Gfx907 = "AMD:AMDGPU:9:0:7";
-static const char* Gfx1000 = "AMD:AMDGPU:10:0:0";
-static const char* Gfx1001 = "AMD:AMDGPU:10:0:1";
+static const char* Gfx1010 = "AMD:AMDGPU:10:1:0";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
