@@ -175,6 +175,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   switch (palProp.revision) {
     case Pal::AsicRevision::Unknown:
       switch (palProp.gfxLevel) {
+        case Pal::GfxIpLevel::GfxIp10_1:
         case Pal::GfxIpLevel::GfxIp10:
           gfx10Plus_ = true;
         case Pal::GfxIpLevel::GfxIp9:
@@ -185,6 +186,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           return false;
       }
     case Pal::AsicRevision::Navi10:
+    case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
     // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
@@ -445,6 +447,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
 #if defined(WITH_LIGHTNING_COMPILER)
   switch (palProp.gfxLevel) {
+    case Pal::GfxIpLevel::GfxIp10_1:
     case Pal::GfxIpLevel::GfxIp10:
     case Pal::GfxIpLevel::GfxIp9:
       singleFpDenorm_ = true;
