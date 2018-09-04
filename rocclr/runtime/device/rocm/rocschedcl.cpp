@@ -7,10 +7,10 @@ namespace roc {
 
 const char* SchedulerSourceCode = SCHEDULER_KERNEL(
 \n
-extern void __amd_scheduler(__global void*);
+extern void __amd_scheduler_rocm(__global void*);
 \n
 __kernel void scheduler(__global void* params) {
-  __amd_scheduler(params);
+  __amd_scheduler_rocm(params);
 }
 \n);
 
