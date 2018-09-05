@@ -1048,17 +1048,15 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
       C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_amdgcn, opencl_amdgcn_size);
     Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
     Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
-    Data* irif_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)irif_amdgcn, irif_amdgcn_size);
 
-    if (!opencl_bc || !ocml_bc || !ockl_bc || !irif_bc) {
+    if (!opencl_bc || !ocml_bc || !ockl_bc) {
       buildLog_ += "Error: Failed to open the bitcode library.\n";
       return false;
     }
 
     inputs.push_back(opencl_bc);  // depends on oclm & ockl
-    inputs.push_back(ockl_bc);    // depends on irif
-    inputs.push_back(ocml_bc);    // depends on irif
-    inputs.push_back(irif_bc);
+    inputs.push_back(ockl_bc);
+    inputs.push_back(ocml_bc);
 
     // open the control functions
     auto isa_version = get_oclc_isa_version(dev().deviceInfo().gfxipVersion_);
