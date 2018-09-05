@@ -322,7 +322,7 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
     std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
     if (f.is_open()) {
       f << "/* Compiler options:\n"
-           "-c -emit-llvm -target amdgcn-amd-amdhsa-opencl -x cl "
+           "-c -emit-llvm -target amdgcn-amd-amdhsa -x cl "
         << driverOptions << " -include opencl-c.h "
         << "\n*/\n\n"
         << sourceCode;

@@ -69,7 +69,7 @@ endforeach()
 
 # generating opencl*.inc files
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch
-  COMMAND clang -cc1 -x cl-header -triple amdgcn-amd-amdhsa-opencl -Werror -O3 -Dcl_khr_fp64 -Dcl_khr_fp16 -DNDEBUG -cl-std=CL1.2 -emit-pch -o ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch < ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h 
+  COMMAND clang -cc1 -x cl-header -triple amdgcn-amd-amdhsa -Werror -O3 -DNDEBUG -cl-std=CL1.2 -emit-pch -o ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch < ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h
   DEPENDS clang ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h
   COMMENT "Generating opencl1.2-c.amdgcn.pch"
 )
@@ -83,7 +83,7 @@ add_custom_target(opencl1.2-c.amdgcn.inc_target ALL DEPENDS ${CMAKE_CURRENT_BINA
 add_dependencies(oclrocm opencl1.2-c.amdgcn.inc_target)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch
-  COMMAND clang -cc1 -x cl-header -triple amdgcn-amd-amdhsa-opencl -Werror -O3 -Dcl_khr_fp64 -Dcl_khr_fp16 -DNDEBUG -cl-std=CL2.0 -emit-pch -o ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch < ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h 
+  COMMAND clang -cc1 -x cl-header -triple amdgcn-amd-amdhsa -Werror -O3 -DNDEBUG -cl-std=CL2.0 -emit-pch -o ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch < ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h
   DEPENDS clang ${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/lib/Headers/opencl-c.h
   COMMENT "Generating opencl2.0-c.amdgcn.pch"
 )

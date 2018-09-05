@@ -25,9 +25,7 @@
 
 #define QUOTE(s) #s
 #define STRING(s) QUOTE(s)
-#ifndef AMDGCN_TRIPLE
-#define AMDGCN_TRIPLE amdgcn-amd-amdhsa-opencl
-#endif
+#define AMDGCN_TRIPLE amdgcn-amd-amdhsa
 
 #if defined(WITH_LIGHTNING_COMPILER)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
