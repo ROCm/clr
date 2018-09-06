@@ -196,6 +196,9 @@ class HostQueue : public CommandQueue {
   //! Finish all queued commands
   void finish();
 
+  //! Check if hostQueue empty snapshot
+  bool isEmpty();
+
   //! Get virtual device for the current command queue
   device::VirtualDevice* vdev() const { return thread_.vdev(); }
 

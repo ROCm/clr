@@ -163,6 +163,12 @@ void HostQueue::append(Command& command) {
   queue_.enqueue(&command);
 }
 
+
+bool HostQueue::isEmpty() {
+  // Get a snapshot of queue size
+  return queue_.empty();
+}
+
 DeviceQueue::~DeviceQueue() {
   delete virtualDevice_;
   ScopedLock lock(context().lock());

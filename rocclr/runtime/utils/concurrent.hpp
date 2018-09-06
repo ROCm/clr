@@ -90,6 +90,9 @@ template <typename T, int N = 5> class ConcurrentLinkedQueue : public HeapObject
 
   //! \brief Dequeue an element from this queue.
   inline T dequeue();
+
+  //! \brief Check if queue is empty
+  inline bool empty();
 };
 
 /*@}*/
@@ -165,6 +168,22 @@ template <typename T, int N> inline T ConcurrentLinkedQueue<T, N>::dequeue() {
           return value;
         }
       }
+    }
+  }
+}
+
+template <typename T, int N> inline bool ConcurrentLinkedQueue<T, N>::empty() {
+  for (;;) {
+    typename Node::Ptr head = head_.load(std::memory_order_acquire);
+    typename Node::Ptr tail = tail_.load(std::memory_order_acquire);
+    typename Node::Ptr next = head->ptr()->next_.load(std::memory_order_acquire);
+    if (likely(head == head_.load(std::memory_order_acquire))) {
+      if (head->ptr() == tail->ptr()) {
+        if (next->ptr() == NULL) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 }
