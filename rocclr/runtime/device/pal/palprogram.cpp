@@ -572,7 +572,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
     // 1. if the program is created with binary and contains only hsail text
     case ACL_TYPE_HSAIL_TEXT: {
-      std::string curOptions = options->origOptionStr + hsailOptions(options);
+      std::string curOptions = options->origOptionStr + ProcessOptions(options);
       errorCode = aclCompile(dev().compiler(), binaryElf_, curOptions.c_str(), continueCompileFrom,
                              ACL_TYPE_CG, nullptr);
       buildLog_ += aclGetCompilerLog(dev().compiler());
@@ -594,7 +594,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
       return false;
   }
   if (finalize) {
-    std::string fin_options(options->origOptionStr + hsailOptions(options));
+    std::string fin_options(options->origOptionStr + ProcessOptions(options));
     // Append an option so that we can selectively enable a SCOption on CZ
     // whenever IOMMUv2 is enabled.
     if (dev().settings().svmFineGrainSystem_) {
@@ -669,7 +669,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
       std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
 
       HSAILKernel* aKernel =
-          new HSAILKernel(kernelName, this, options->origOptionStr + hsailOptions(options));
+          new HSAILKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
       kernels()[kernelName] = aKernel;
 
       amd::hsa::loader::Symbol* sym = executable_->GetSymbol(openclKernelName.c_str(), &agent);
@@ -703,92 +703,6 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
 }
 
 bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
-
-std::string HSAILProgram::hsailOptions(amd::option::Options* options) {
-  std::string hsailOptions;
-
-#ifndef WITH_LIGHTNING_COMPILER
-  hsailOptions.append(" -D__AMD__=1");
-
-  hsailOptions.append(" -D__").append(device().info().name_).append("__=1");
-  hsailOptions.append(" -D__").append(device().info().name_).append("=1");
-#endif
-
-  int major, minor;
-  ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
-
-#ifdef WITH_LIGHTNING_COMPILER
-  std::stringstream ss;
-  ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-  hsailOptions.append(ss.str());
-#endif
-
-  if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-    hsailOptions.append(" -D__IMAGE_SUPPORT__=1");
-  }
-
-#ifndef WITH_LIGHTNING_COMPILER
-  // Set options for the standard device specific options
-  // All our devices support these options now
-  if (dev().settings().reportFMAF_) {
-    hsailOptions.append(" -DFP_FAST_FMAF=1");
-  }
-  if (dev().settings().reportFMA_) {
-    hsailOptions.append(" -DFP_FAST_FMA=1");
-  }
-#endif
-
-  uint clcStd =
-      (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
-
-  if (clcStd >= 200) {
-    std::stringstream opts;
-    // Add only for CL2.0 and later
-    opts << " -D"
-         << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    hsailOptions.append(opts.str());
-  }
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-  if (!dev().settings().singleFpDenorm_) {
-    hsailOptions.append(" -cl-denorms-are-zero");
-  }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
-
-  // Check if the host is 64 bit or 32 bit
-  LP64_ONLY(hsailOptions.append(" -m64"));
-
-  // Tokenize the extensions string into a vector of strings
-  std::istringstream istrstr(device().info().extensions_);
-  std::istream_iterator<std::string> sit(istrstr), end;
-  std::vector<std::string> extensions(sit, end);
-
-#if defined(WITH_LIGHTNING_COMPILER)
-  // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-  // remove it from the command line. Should we fix opencl-c.h?
-  auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
-  if (found != extensions.end()) {
-    extensions.erase(found);
-  }
-
-  if (!extensions.empty()) {
-    std::ostringstream clext;
-
-    clext << " -Xclang -cl-ext=+";
-    std::copy(extensions.begin(), extensions.end() - 1,
-              std::ostream_iterator<std::string>(clext, ",+"));
-    clext << extensions.back();
-
-    hsailOptions.append(clext.str());
-  }
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  for (auto e : extensions) {
-    hsailOptions.append(" -D").append(e).append("=1");
-  }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
-
-  return hsailOptions;
-}
 
 bool HSAILProgram::allocKernelTable() {
   uint size = kernels().size() * sizeof(size_t);
@@ -1594,7 +1508,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   for (auto& kernelName : kernelNameList) {
     auto kernel =
-        new LightningKernel(kernelName, this, options->origOptionStr + hsailOptions(options));
+        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
 
     kernels()[kernelName] = kernel;
 

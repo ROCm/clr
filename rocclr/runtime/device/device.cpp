@@ -5,6 +5,7 @@
 #include "device/device.hpp"
 #include "thread/atomic.hpp"
 #include "thread/monitor.hpp"
+#include "utils/options.hpp"
 
 #if defined(WITH_HSA_DEVICE)
 #include "device/rocm/rocdevice.hpp"
@@ -951,6 +952,92 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
   }
 
   return buildError();
+}
+
+std::string Program::ProcessOptions(amd::option::Options* options) {
+  std::string optionsStr;
+
+#ifndef WITH_LIGHTNING_COMPILER
+  optionsStr.append(" -D__AMD__=1");
+
+  optionsStr.append(" -D__").append(device().info().name_).append("__=1");
+  optionsStr.append(" -D__").append(device().info().name_).append("=1");
+#endif
+
+#ifdef WITH_LIGHTNING_COMPILER
+  int major, minor;
+  ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
+
+  std::stringstream ss;
+  ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+  optionsStr.append(ss.str());
+#endif
+
+  if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
+    optionsStr.append(" -D__IMAGE_SUPPORT__=1");
+  }
+
+#ifndef WITH_LIGHTNING_COMPILER
+  // Set options for the standard device specific options
+  // All our devices support these options now
+  if (device().settings().reportFMAF_) {
+    optionsStr.append(" -DFP_FAST_FMAF=1");
+  }
+  if (device().settings().reportFMA_) {
+    optionsStr.append(" -DFP_FAST_FMA=1");
+  }
+#endif
+
+  uint clcStd =
+    (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
+
+  if (clcStd >= 200) {
+    std::stringstream opts;
+    // Add only for CL2.0 and later
+    opts << " -D"
+      << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
+    optionsStr.append(opts.str());
+  }
+
+#if !defined(WITH_LIGHTNING_COMPILER)
+  if (!device().settings().singleFpDenorm_) {
+    optionsStr.append(" -cl-denorms-are-zero");
+  }
+
+  // Check if the host is 64 bit or 32 bit
+  LP64_ONLY(optionsStr.append(" -m64"));
+#endif  // !defined(WITH_LIGHTNING_COMPILER)
+
+  // Tokenize the extensions string into a vector of strings
+  std::istringstream istrstr(device().info().extensions_);
+  std::istream_iterator<std::string> sit(istrstr), end;
+  std::vector<std::string> extensions(sit, end);
+
+  if (IS_LIGHTNING && !options->oVariables->Legacy) {
+    // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+    // remove it from the command line. Should we fix opencl-c.h?
+    auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
+    if (found != extensions.end()) {
+      extensions.erase(found);
+    }
+
+    if (!extensions.empty()) {
+      std::ostringstream clext;
+
+      clext << " -Xclang -cl-ext=+";
+      std::copy(extensions.begin(), extensions.end() - 1,
+        std::ostream_iterator<std::string>(clext, ",+"));
+      clext << extensions.back();
+
+      optionsStr.append(clext.str());
+    }
+  } else {
+    for (auto e : extensions) {
+      optionsStr.append(" -D").append(e).append("=1");
+    }
+  }
+
+  return optionsStr;
 }
 
 bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,

@@ -504,6 +504,7 @@ class Settings : public amd::HeapObject {
   uint64_t extensions_;  //!< Supported OCL extensions
   union {
     struct {
+      uint apuSystem_ : 1;            //!< Device is APU system with shared memory
       uint partialDispatch_ : 1;      //!< Enables partial dispatch
       uint supportRA_ : 1;            //!< Support RA channel order format
       uint waitCommand_ : 1;          //!< Enables a wait for every submitted command
@@ -511,7 +512,10 @@ class Settings : public amd::HeapObject {
                                       //  that replaces generic OS allocation routines
       uint supportDepthsRGB_ : 1;     //!< Support DEPTH and sRGB channel order format
       uint enableHwDebug_ : 1;        //!< Enable HW debug support
-      uint reserved_ : 26;
+      uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
+      uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
+      uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
+      uint reserved_ : 22;
     };
     uint value_;
   };
@@ -916,9 +920,11 @@ class Program : public amd::HeapObject {
 
   virtual bool isElf(const char* bin) const = 0;
 
+  //! Returns all the options to be appended while passing to the compiler library
+  std::string ProcessOptions(amd::option::Options* options);
+
   //! At linking time, get the set of compile options to be used from
-  //! the set of input program, warn if they have inconsisten compile
-  //! options.
+  //! the set of input program, warn if they have inconsisten compile options.
   bool getCompileOptionsAtLinking(const std::vector<Program*>& inputPrograms,
                                   const amd::option::Options* linkOptions);
 

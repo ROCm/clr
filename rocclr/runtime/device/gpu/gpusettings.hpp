@@ -45,8 +45,6 @@ class Settings : public device::Settings {
       uint disablePersistent_ : 1;       //!< Disables using persistent memory for staging
       uint imageSupport_ : 1;            //!< Report images support
       uint doublePrecision_ : 1;         //!< Enables double precision support
-      uint reportFMAF_ : 1;              //!< Report FP_FAST_FMAF define in CL program
-      uint reportFMA_ : 1;               //!< Report FP_FAST_FMA define in CL program
       uint use64BitPtr_ : 1;             //!< Use 64bit pointers on GPU
       uint force32BitOcl20_ : 1;         //!< Force 32bit apps to take CLANG/HSAIL path on GPU
       uint imageDMA_ : 1;                //!< Enable direct image DMA transfers
@@ -62,11 +60,9 @@ class Settings : public device::Settings {
       uint stagingWritePersistent_ : 1;  //!< Enables persistent writes
       uint svmAtomics_ : 1;              //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;      //!< SVM fine grain system support
-      uint apuSystem_ : 1;               //!< Device is APU system with shared memory
       uint asyncMemCopy_ : 1;            //!< Use async memory transfers
       uint useDeviceQueue_ : 1;          //!< Submit to separate device queue
-      uint singleFpDenorm_ : 1;          //!< Support Single FP Denorm
-      uint reserved_ : 5;
+      uint reserved_ : 9;
     };
     uint value_;
   };

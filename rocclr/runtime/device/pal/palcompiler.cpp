@@ -120,7 +120,7 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
 #endif
 
   // Compile source to IR
-  compileOptions_.append(hsailOptions(options));
+  compileOptions_.append(ProcessOptions(options));
   errorCode = aclCompile(dev().compiler(), binaryElf_, compileOptions_.c_str(), ACL_TYPE_OPENCL,
                          ACL_TYPE_LLVMIR_BINARY, nullptr);
   buildLog_ += aclGetCompilerLog(dev().compiler());
@@ -258,7 +258,7 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
   }
 
   driverOptions.append(options->llvmOptions);
-  driverOptions.append(hsailOptions(options));
+  driverOptions.append(ProcessOptions(options));
 
   // Set whole program mode
   driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
