@@ -275,98 +275,6 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 }
 
 #if defined(WITH_COMPILER_LIB)
-std::string HSAILProgram::codegenOptions(amd::option::Options* options) {
-  std::string optionsStr;
-
-  if (dev().deviceInfo().gfxipVersion_ < 900 || !dev().settings().singleFpDenorm_) {
-    optionsStr.append(" -cl-denorms-are-zero");
-  }
-
-  // check if the host is 64 bit or 32 bit
-  LP64_ONLY(optionsStr.append(" -m64"));
-
-  return optionsStr;
-}
-#endif // defined(WITH_COMPILER_LIB)
-
-std::string Program::preprocessorOptions(amd::option::Options* options) {
-  std::string optionsStr;
-
-  // Set options for the standard device specific options
-
-#ifndef WITH_LIGHTNING_COMPILER
-  optionsStr.append(" -D__AMD__=1");
-
-  optionsStr.append(" -D__").append(device().info().name_).append("__=1");
-  optionsStr.append(" -D__").append(device().info().name_).append("=1");
-#endif
-
-  int major, minor;
-  ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
-
-  std::stringstream ss;
-  ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-  optionsStr.append(ss.str());
-
-  if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-    optionsStr.append(" -D__IMAGE_SUPPORT__=1");
-  }
-
-#ifndef WITH_LIGHTNING_COMPILER
-  // This is just for legacy compiler code
-  // All our devices support these options now
-  if (options->oVariables->FastFMA) {
-    optionsStr.append(" -DFP_FAST_FMA=1");
-  }
-  if (options->oVariables->FastFMAF) {
-    optionsStr.append(" -DFP_FAST_FMAF=1");
-  }
-#endif
-
-  uint clcStd =
-      (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
-
-  if (clcStd >= 200) {
-    std::stringstream opts;
-    // Add only for CL2.0 and later
-    opts << " -D"
-         << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    optionsStr.append(opts.str());
-  }
-
-  // Tokenize the extensions string into a vector of strings
-  std::istringstream istrstr(device().info().extensions_);
-  std::istream_iterator<std::string> sit(istrstr), end;
-  std::vector<std::string> extensions(sit, end);
-
-  if (IS_LIGHTNING && !options->oVariables->Legacy) {
-    // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-    // remove it from the command line. Should we fix opencl-c.h?
-    auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
-    if (found != extensions.end()) {
-      extensions.erase(found);
-    }
-
-    if (!extensions.empty()) {
-      std::ostringstream clext;
-
-      clext << " -Xclang -cl-ext=+";
-      std::copy(extensions.begin(), extensions.end() - 1,
-                std::ostream_iterator<std::string>(clext, ",+"));
-      clext << extensions.back();
-
-      optionsStr.append(clext.str());
-    }
-  } else {
-    for (auto e : extensions) {
-      optionsStr.append(" -D").append(e).append("=1");
-    }
-  }
-
-  return optionsStr;
-}
-
-#if defined(WITH_COMPILER_LIB)
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
 }
 
@@ -613,7 +521,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     // 1. if the program is created with binary and contains only hsail text
     case ACL_TYPE_HSAIL_TEXT: {
       std::string curOptions =
-          options->origOptionStr + preprocessorOptions(options) + codegenOptions(options);
+          options->origOptionStr + ProcessOptions(options);
       errorCode = aclCompile(device().compiler(), binaryElf_, curOptions.c_str(),
                              continueCompileFrom, ACL_TYPE_CG, logFunction);
       buildLog_ += aclGetCompilerLog(device().compiler());

@@ -94,10 +94,6 @@ class Program : public device::Program {
   Program& operator=(const Program&) = delete;
 
 protected:
-  //! Returns all the options to be appended while passing to the
-  // compiler
-  std::string preprocessorOptions(amd::option::Options* options);
-
   // aclBinary and aclCompiler - for the compiler library
   aclBinary* binaryElf_;      //!< Binary for the new compiler library
   aclBinaryOptions binOpts_;  //!< Binary options to create aclBinary

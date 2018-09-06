@@ -129,17 +129,8 @@ bool HSAILProgram::compileImpl(const std::string& sourceCode,
     this->compileOptions_.append(tempFolder);
   }
 
-  // Add only for CL2.0 and later
-  if (options->oVariables->CLStd[2] >= '2') {
-    std::stringstream opts;
-    opts << " -D"
-         << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    compileOptions_.append(opts.str());
-  }
-
   // Compile source to IR
-  this->compileOptions_.append(preprocessorOptions(options));
-  this->compileOptions_.append(codegenOptions(options));
+  this->compileOptions_.append(ProcessOptions(options));
 
   errorCode = aclCompile(device().compiler(), binaryElf_,
                          //"-Wf,--support_all_extensions",
@@ -225,7 +216,7 @@ bool LightningProgram::compileImpl(const std::string& sourceCode,
   // Set whole program mode
   driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
 
-  driverOptions.append(preprocessorOptions(options));
+  driverOptions.append(ProcessOptions(options));
 
   // Find the temp folder for the OS
   std::string tempFolder = amd::Os::getEnvironment("TEMP");

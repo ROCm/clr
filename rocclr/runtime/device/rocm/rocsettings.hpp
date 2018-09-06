@@ -27,9 +27,7 @@ class Settings : public device::Settings {
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
       uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
-      uint singleFpDenorm_ : 1;         //!< Support Single FP Denorm
-      uint apuSystem_ : 1;              //!< APU system
-      uint reserved_ : 22;
+      uint reserved_ : 24;
     };
     uint value_;
   };

@@ -241,7 +241,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Hawaii:
       threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
       reportFMAF_ = false;
-      if (palProp.revision == Pal::AsicRevision::Hawaii) {
+      if ((palProp.revision == Pal::AsicRevision::Hawaii) || aiPlus_) {
         reportFMAF_ = true;
       }
       // Cache line size is 64 bytes
