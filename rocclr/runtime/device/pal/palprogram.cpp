@@ -28,13 +28,22 @@
 
 namespace pal {
 
-Segment::Segment() : gpuAccess_(nullptr), cpuAccess_(nullptr) {}
+Segment::Segment() : gpuAccess_(nullptr), cpuAccess_(nullptr), cpuMem_(nullptr) {}
 
 Segment::~Segment() {
   delete gpuAccess_;
+  DestroyCpuAccess();
+}
+
+void Segment::DestroyCpuAccess() {
   if (cpuAccess_ != nullptr) {
     cpuAccess_->unmap(nullptr);
     delete cpuAccess_;
+    cpuAccess_ = nullptr;
+  }
+  if (cpuMem_ != nullptr) {
+    delete[] cpuMem_;
+    cpuMem_ = nullptr;
   }
 }
 
@@ -48,13 +57,18 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
     return false;
   }
   if (segment == AMDGPU_HSA_SEGMENT_CODE_AGENT) {
+    void* ptr = nullptr;
     cpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
     if ((cpuAccess_ == nullptr) || !cpuAccess_->create(pal::Resource::Remote)) {
       delete cpuAccess_;
       cpuAccess_ = nullptr;
-      return false;
+      ptr = cpuMem_ = reinterpret_cast<address>(new char[amd::alignUp(size, align)]);
+      if (cpuMem_ == nullptr) {
+        return false;
+      }
+    } else {
+      ptr = cpuAccess_->map(nullptr, 0);
     }
-    void* ptr = cpuAccess_->map(nullptr, 0);
     if (zero) {
       memset(ptr, 0, size);
     }
@@ -75,7 +89,7 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
       prog.setGlobalVariableTotalSize(prog.globalVariableTotalSize() + size);
       break;
     case AMDGPU_HSA_SEGMENT_CODE_AGENT:
-      prog.setCodeObjects(gpuAccess_, cpuAccess_->data());
+      prog.setCodeObjects(this, gpuAccess_, reinterpret_cast<address>(cpuAddress(0)));
       break;
     default:
       break;
@@ -87,6 +101,9 @@ void Segment::copy(size_t offset, const void* src, size_t size) {
   if (cpuAccess_ != nullptr) {
     amd::Os::fastMemcpy(cpuAddress(offset), src, size);
   } else {
+    if (cpuMem_ != nullptr) {
+      amd::Os::fastMemcpy(cpuAddress(offset), src, size);
+    }
     amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
     Memory& xferBuf = gpu.xferWrite().Acquire(size);
@@ -124,7 +141,7 @@ HSAILProgram::HSAILProgram(Device& device)
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
-      codeSegCpu_(nullptr),
+      codeSegment_(nullptr),
       maxScratchRegs_(0),
       flags_(0),
       executable_(nullptr),
@@ -145,7 +162,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
-      codeSegCpu_(nullptr),
+      codeSegment_(nullptr),
       maxScratchRegs_(0),
       flags_(0),
       executable_(nullptr),
@@ -695,6 +712,9 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
       return false;
     }
   }
+
+  DestroySegmentCpuAccess();
+
   // Save the binary in the interface class
   saveBinaryAndSetType(TYPE_EXECUTABLE);
   buildLog_ += aclGetCompilerLog(dev().compiler());
@@ -1426,6 +1446,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   }
 
   size_t progvarsTotalSize = 0;
+  size_t dynamicSize = 0;
+  size_t progvarsWriteSize = 0;
 
   // Begin the Elf image from memory
   Elf* e = elf_memory((char*)binary, size, NULL);
@@ -1481,8 +1503,16 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
       }
     }
     // Accumulate the size of R & !X loadable segments
-    else if (pHdr.p_type == PT_LOAD && (pHdr.p_flags & PF_R) && !(pHdr.p_flags & PF_X)) {
-      progvarsTotalSize += pHdr.p_memsz;
+    else if (pHdr.p_type == PT_LOAD && !(pHdr.p_flags & PF_X)) {
+      if (pHdr.p_flags & PF_R) {
+        progvarsTotalSize += pHdr.p_memsz;
+      }
+      if (pHdr.p_flags & PF_W) {
+        progvarsWriteSize += pHdr.p_memsz;
+      }
+    }
+    else if (pHdr.p_type == PT_DYNAMIC) {
+      dynamicSize += pHdr.p_memsz;
     }
   }
 
@@ -1495,8 +1525,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  // note: The global variable size is updated in the context loader
-  // setGlobalVariableTotalSize(progvarsTotalSize);
+  progvarsTotalSize -= dynamicSize;
+  setGlobalVariableTotalSize(progvarsTotalSize);
 
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
@@ -1506,7 +1536,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  for (auto& kernelName : kernelNameList) {
+  for (const auto& kernelName : kernelNameList) {
     auto kernel =
         new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
 
@@ -1537,6 +1567,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   if (!isNull() && false /*dynamicParallelism*/ && !allocKernelTable()) {
     return false;
   }
+
+  DestroySegmentCpuAccess();
 
   // Save the binary and type
   clBinary()->saveBIFBinary((char*)binary, size);

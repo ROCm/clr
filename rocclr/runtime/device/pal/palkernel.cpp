@@ -29,13 +29,15 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
     return false;
   }
 
-  amd_kernel_code_t* akc =
-      reinterpret_cast<amd_kernel_code_t*>(prog().findHostKernelAddress(code_));
-  cpuAqlCode_ = akc;
   if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_SIZE,
-                    reinterpret_cast<void*>(&codeSize_))) {
+    reinterpret_cast<void*>(&codeSize_))) {
     return false;
   }
+
+  amd_kernel_code_t* akc = &akc_;
+  // Copy codeobject of this kernel from the program CPU segment
+  memcpy(akc, reinterpret_cast<void*>(prog().findHostKernelAddress(code_)), sizeof(amd_kernel_code_t));
+
   size_t akc_align = 0;
   if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_ALIGN,
                     reinterpret_cast<void*>(&akc_align))) {
@@ -74,7 +76,8 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       prog_(*prog),
       index_(0),
       code_(0),
-      codeSize_(0) {
+      codeSize_(0)
+ {
   flags_.hsa_ = true;
 }
 
@@ -359,7 +362,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->completion_signal.handle = 0;
   memcpy(aqlArgBuf + argsBufferSize(), hsaDisp, sizeof(hsa_kernel_dispatch_packet_t));
 
-  if (AMD_HSA_BITS_GET(cpuAqlCode_->kernel_code_properties,
+  if (AMD_HSA_BITS_GET(akc_.kernel_code_properties,
       AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
     gpu.addVmMemory(gpu.hsaQueueMem());
   }

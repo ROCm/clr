@@ -66,10 +66,10 @@ class HSAILKernel : public device::Kernel {
   const HSAILProgram& prog() const;
 
   //! Returns LDS size used in this kernel
-  uint32_t ldsSize() const { return cpuAqlCode_->workgroup_group_segment_byte_size; }
+  uint32_t ldsSize() const { return akc_.workgroup_group_segment_byte_size; }
 
   //! Returns pointer on CPU to AQL code info
-  const amd_kernel_code_t* cpuAqlCode() const { return cpuAqlCode_; }
+  const amd_kernel_code_t* cpuAqlCode() const { return &akc_; }
 
   //! Returns memory object with AQL code
   uint64_t gpuAqlCode() const { return code_; }
@@ -78,10 +78,10 @@ class HSAILKernel : public device::Kernel {
   size_t aqlCodeSize() const { return codeSize_; }
 
   //! Returns the size of argument buffer
-  size_t argsBufferSize() const { return cpuAqlCode_->kernarg_segment_byte_size; }
+  size_t argsBufferSize() const { return akc_.kernarg_segment_byte_size; }
 
   //! Returns spill reg size per workitem
-  int spillSegSize() const { return amd::alignUp(cpuAqlCode_->workitem_private_segment_byte_size, sizeof(uint32_t)); }
+  int spillSegSize() const { return amd::alignUp(akc_.workitem_private_segment_byte_size, sizeof(uint32_t)); }
 
   //! Returns AQL packet in CPU memory
   //! if the kernel arguments were successfully loaded, otherwise NULL
@@ -109,13 +109,13 @@ class HSAILKernel : public device::Kernel {
   //! Creates AQL kernel HW info
   bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
 
-  std::string compileOptions_;        //!< compile used for finalizing this kernel
-  amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
-  const HSAILProgram& prog_;          //!< Reference to the parent program
-  uint index_;                        //!< Kernel index in the program
+  std::string compileOptions_;    //!< compile used for finalizing this kernel
+  amd_kernel_code_t akc_;         //!< AQL kernel code on CPU
+  const HSAILProgram& prog_;      //!< Reference to the parent program
+  uint index_;                    //!< Kernel index in the program
 
-  uint64_t code_;    //!< GPU memory pointer to the kernel
-  size_t codeSize_;  //!< Size of ISA code
+  uint64_t code_;     //!< GPU memory pointer to the kernel
+  size_t codeSize_;   //!< Size of ISA code
 };
 
 #if defined(WITH_LIGHTNING_COMPILER)
