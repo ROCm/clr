@@ -275,13 +275,13 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
           }
           float fArg = *(reinterpret_cast<const float*>(argument));
           float fSign = copysign(1.0, fArg);
-          if (std::isinf(fArg) && !std::isnan(fArg)) {
+          if (isinf(fArg) && !isnan(fArg)) {
             if (fSign < 0) {
               amd::Os::printf(fmtF.data(), "-infinity");
             } else {
               amd::Os::printf(fmtF.data(), "infinity");
             }
-          } else if (std::isnan(fArg)) {
+          } else if (isnan(fArg)) {
             if (fSign < 0) {
               amd::Os::printf(fmtF.data(), "-nan");
             } else {

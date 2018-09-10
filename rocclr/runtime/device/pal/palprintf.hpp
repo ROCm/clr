@@ -11,13 +11,17 @@
 #ifndef isinf
 #ifdef _MSC_VER
 #define isinf(X) (!_finite(X) && !_isnan(X))
-#endif  //_MSC_VER
+#else   //!_MSC_VER
+#define isinf(X) (std::isinf(X))
+#endif  //!_MSC_VER
 #endif  // isinf
 
 #ifndef isnan
 #ifdef _MSC_VER
 #define isnan(X) (_isnan(X))
-#endif  //_MSC_VER
+#else   //!_MSC_VER
+#define isnan(X) (std::isnan(X))
+#endif  //!_MSC_VER
 #endif  // isnan
 
 #ifndef copysign
