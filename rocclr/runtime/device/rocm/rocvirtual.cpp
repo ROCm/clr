@@ -2059,23 +2059,28 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           break;
         }
         case amd::KernelParameterDescriptor::HiddenDefaultQueue: {
+          uint64_t vqVA = 0;
           amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(dev());
-
-          if (!createVirtualQueue(defQueue->size()) || !createSchedulerParam()) {
-            return false;
+          if (nullptr != defQueue) {
+            if (!createVirtualQueue(defQueue->size()) || !createSchedulerParam()) {
+              return false;
+            }
+            gpuKernel.setDynamicParallelFlag(true);
+            vqVA = getVQVirtualAddress();
           }
-          gpuKernel.setDynamicParallelFlag(true);
-          uint64_t vqVA = getVQVirtualAddress();
           WriteAqlArgAt(const_cast<address>(parameters), &vqVA, it.size_, it.offset_);
           break;
         }
         case amd::KernelParameterDescriptor::HiddenCompletionAction: {
-          Memory* schedulerMem = dev().getRocMemory(schedulerParam_);
-          AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(reinterpret_cast<uint64_t>(schedulerParam_->getHostMem()) + sizeof(SchedulerParam));
-          memset(wrap, 0, sizeof(AmdAqlWrap));
-          wrap->state = AQL_WRAP_DONE;
+          uint64_t spVA = 0;
+          if (nullptr != schedulerParam_) {
+            Memory* schedulerMem = dev().getRocMemory(schedulerParam_);
+            AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(reinterpret_cast<uint64_t>(schedulerParam_->getHostMem()) + sizeof(SchedulerParam));
+            memset(wrap, 0, sizeof(AmdAqlWrap));
+            wrap->state = AQL_WRAP_DONE;
 
-          uint64_t spVA = reinterpret_cast<uint64_t>(schedulerMem->getDeviceMemory()) + sizeof(SchedulerParam);
+            spVA = reinterpret_cast<uint64_t>(schedulerMem->getDeviceMemory()) + sizeof(SchedulerParam);
+          }
           WriteAqlArgAt(const_cast<address>(parameters), &spVA, it.size_, it.offset_);
           break;
         }
