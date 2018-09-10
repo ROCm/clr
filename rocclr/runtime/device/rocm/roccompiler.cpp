@@ -17,6 +17,7 @@
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 #include "utils/options.hpp"
 #include <cstdio>
+#include <iterator>
 
 #if defined(ATI_OS_LINUX)
 #include <dlfcn.h>
