@@ -24,6 +24,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iterator>
 
 namespace roc {
 

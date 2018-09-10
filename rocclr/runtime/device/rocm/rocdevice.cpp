@@ -438,7 +438,7 @@ bool Device::init() {
 
     if (!roc_device) {
       LogError("Error creating new instance of Device on then heap.");
-      return HSA_STATUS_ERROR_OUT_OF_RESOURCES;
+      return false;
     }
 
     uint32_t pci_id;
