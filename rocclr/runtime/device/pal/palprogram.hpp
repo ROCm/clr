@@ -54,11 +54,15 @@ class Segment : public amd::HeapObject {
   uint64_t gpuAddress(size_t offset) const { return gpuAccess_->vmAddress() + offset; }
 
   //! Returns address for CPU access in the segment
-  void* cpuAddress(size_t offset) const { return cpuAccess_->data() + offset; }
+  void* cpuAddress(size_t offset) const
+    { return ((cpuAccess_ != nullptr) ? cpuAccess_->data() : cpuMem_) + offset; }
+
+  void DestroyCpuAccess();
 
  private:
-  Memory* gpuAccess_;  //!< GPU memory for segment access
-  Memory* cpuAccess_;  //!< CPU memory for segment (backing store)
+  Memory* gpuAccess_;   //!< GPU memory for segment access
+  Memory* cpuAccess_;   //!< CPU memory for segment (backing store)
+  address cpuMem_;      //!< CPU memory for segment without GPU direct access (backing store)
 };
 
 class PALHSALoaderContext final : public Context {
@@ -135,9 +139,9 @@ class HSAILProgram : public device::Program {
 
   void addGlobalStore(Memory* mem) { globalStores_.push_back(mem); }
 
-  void setCodeObjects(Memory* codeGpu, address codeCpu) {
+  void setCodeObjects(Segment* seg, Memory* codeGpu, address codeCpu) {
     codeSegGpu_ = codeGpu;
-    codeSegCpu_ = codeCpu;
+    codeSegment_ = seg;
   }
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
@@ -168,9 +172,6 @@ class HSAILProgram : public device::Program {
 
   //! Returns code segement on GPU
   const Memory& codeSegGpu() const { return *codeSegGpu_; }
-
-  //! Returns code segement on CPU
-  address codeSegCpu() const { return codeSegCpu_; }
 
   //! Returns CPU address for a kernel
   uint64_t findHostKernelAddress(uint64_t devAddr) const {
@@ -219,8 +220,10 @@ class HSAILProgram : public device::Program {
 
   virtual bool isElf(const char* bin) const {
     return amd::isElfMagic(bin);
-    // return false;
   }
+
+  //! Destroys CPU allocations in the code segment   
+  void DestroySegmentCpuAccess() const { codeSegment_->DestroyCpuAccess(); }
 
  private:
   //! Disable default copy constructor
@@ -242,7 +245,7 @@ class HSAILProgram : public device::Program {
   std::vector<Memory*> globalStores_;  //!< Global memory for the program
   Memory* kernels_;                    //!< Table with kernel object pointers
   Memory* codeSegGpu_;                 //!< GPU memory with code objects
-  address codeSegCpu_;                 //!< CPU memory with code objects
+  Segment*  codeSegment_;              //!< Pointer to the code segment for this program
   uint
       maxScratchRegs_;  //!< Maximum number of scratch regs used in the program by individual kernel
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
