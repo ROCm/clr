@@ -127,6 +127,17 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     }                                                                                              \
   } while (false)
 
+#ifdef DEBUG
+#define LogGuarantee(cond, level, msg)                                                             \
+  do {                                                                                             \
+    if (LOG_LEVEL >= level) {                                                                      \
+      guarantee(cond);                                                                             \
+    }                                                                                              \
+  } while (false)
+#else  // !DEBUG
+#define LogGuarantee(cond, level, msg) (void)(0)
+#endif  // !DEBUG
+
 #define LogInfo(msg) Log(amd::LOG_INFO, msg)
 #define LogError(msg) Log(amd::LOG_ERROR, msg)
 #define LogWarning(msg) Log(amd::LOG_WARNING, msg)
@@ -139,5 +150,7 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define LogPrintfError(format, ...) Logf(amd::LOG_ERROR, format, __VA_ARGS__)
 #define LogPrintfWarning(format, ...) Logf(amd::LOG_WARNING, format, __VA_ARGS__)
 #define LogPrintfInfo(format, ...) Logf(amd::LOG_INFO, format, __VA_ARGS__)
+
+#define DebugInfoGuarantee(cond) LogGuarantee(cond, amd::LOG_INFO, "Warning")
 
 #endif /*DEBUG_HPP_*/
