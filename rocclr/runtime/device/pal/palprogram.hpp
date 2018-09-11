@@ -223,7 +223,8 @@ class HSAILProgram : public device::Program {
   }
 
   //! Destroys CPU allocations in the code segment   
-  void DestroySegmentCpuAccess() const { codeSegment_->DestroyCpuAccess(); }
+  void DestroySegmentCpuAccess() const
+    { if (!isNull()) { codeSegment_->DestroyCpuAccess(); } }
 
  private:
   //! Disable default copy constructor
