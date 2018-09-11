@@ -252,6 +252,8 @@ static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isH
     return amd::KernelParameterDescriptor::ImageObject;
   case ValueKind::Sampler:
     return amd::KernelParameterDescriptor::SamplerObject;
+  case ValueKind::Queue:
+    return amd::KernelParameterDescriptor::QueueObject;
   case ValueKind::HiddenGlobalOffsetX:
     *isHidden = true;
     return amd::KernelParameterDescriptor::HiddenGlobalOffsetX;
@@ -347,6 +349,8 @@ static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t si
       return T_POINTER;
     case ValueKind::Sampler:
       return T_SAMPLER;
+    case ValueKind::Queue:
+      return T_QUEUE;
     default:
       return T_VOID;
     }
