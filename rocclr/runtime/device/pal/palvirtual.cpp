@@ -3227,14 +3227,17 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     dev().srds().fillResourceList(*this);
   }
 
-  addVmMemory(&hsaKernel.prog().codeSegGpu());
-
+  const static bool IsReadOnly = false;
   for (const pal::Memory* mem : hsaKernel.prog().globalStores()) {
-    const static bool IsReadOnly = false;
     // Validate global store for a dependency in the queue
     memoryDependency().validate(*this, mem, IsReadOnly);
     addVmMemory(mem);
   }
+  if (hsaKernel.prog().GlobalVariables()) {
+    // Validate code object for a dependency in the queue
+    memoryDependency().validate(*this, &hsaKernel.prog().codeSegGpu(), IsReadOnly);
+  }
+  addVmMemory(&hsaKernel.prog().codeSegGpu());
 
   return true;
 }
