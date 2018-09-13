@@ -178,6 +178,9 @@ class HSAILProgram : public device::Program {
     return loader_->FindHostAddress(devAddr);
   }
 
+  //! Global variables are a part of the code segment
+  bool GlobalVariables() const { return globalVars_; }
+
  protected:
   //! pre-compile setup for GPU
   virtual bool initBuild(amd::option::Options* options);
@@ -252,8 +255,9 @@ class HSAILProgram : public device::Program {
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
   union {
     struct {
-      uint32_t isNull_ : 1;    //!< Null program no memory allocations
-      uint32_t internal_ : 1;  //!< Internal blit program
+      uint32_t isNull_ : 1;     //!< Null program no memory allocations
+      uint32_t internal_ : 1;   //!< Internal blit program
+      uint32_t globalVars_ : 1; //!< Code object contains global variables
     };
     uint32_t flags_;  //!< Program flags
   };

@@ -999,7 +999,36 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executabl
       return HSA_STATUS_ERROR;
     }
 
-    char* name = (char*)alloca(length + 1);
+    char* name = reinterpret_cast<char*>(alloca(length + 1));
+    if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME, name)) {
+      return HSA_STATUS_ERROR;
+    }
+    name[length] = '\0';
+
+    symbolNameList->push_back(std::string(name));
+  }
+  return HSA_STATUS_SUCCESS;
+}
+
+static hsa_status_t GetGlobalVarNamesCallback(
+  hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
+  void* data) {
+  auto symbol = Symbol::Object(hSymbol);
+  auto symbolNameList = reinterpret_cast<std::vector<std::string>*>(data);
+
+  hsa_symbol_kind_t type;
+  if (!symbol->GetInfo(HSA_CODE_SYMBOL_INFO_TYPE, &type)) {
+    return HSA_STATUS_ERROR;
+  }
+
+  if (type == HSA_SYMBOL_KIND_VARIABLE) {
+    // VariableSymbol* vsym = symbol; // Casting to the variable structure
+    uint32_t length;
+    if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &length)) {
+      return HSA_STATUS_ERROR;
+    }
+
+    char* name = reinterpret_cast<char*>(alloca(length + 1));
     if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME, name)) {
       return HSA_STATUS_ERROR;
     }
@@ -1530,7 +1559,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
-  status = executable_->IterateSymbols(GetKernelNamesCallback, (void*)&kernelNameList);
+  status = executable_->IterateSymbols(GetKernelNamesCallback, &kernelNameList);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: Failed to get kernel names\n";
     return false;
@@ -1567,6 +1596,15 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   if (!isNull() && false /*dynamicParallelism*/ && !allocKernelTable()) {
     return false;
   }
+
+  // Get the list of global variables
+  std::vector<std::string> glbVarNames;
+  status = executable_->IterateSymbols(GetGlobalVarNamesCallback, &glbVarNames);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Failed to get kernel names\n";
+    return false;
+  }
+  globalVars_ = (glbVarNames.size() != 0) ? true : false;
 
   DestroySegmentCpuAccess();
 
