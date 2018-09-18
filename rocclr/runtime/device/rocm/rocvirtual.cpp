@@ -374,7 +374,6 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
       if (!createVirtualQueue(queue->size()) || !createSchedulerParam()) {
          return false;
       }
-      hsaKernel.setDynamicParallelFlag(true);
       uint64_t vqVA = getVQVirtualAddress();
       WriteAqlArgAt(const_cast<address>(params), &vqVA, sizeof(vqVA), desc.offset_);
     }
@@ -2065,7 +2064,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
             if (!createVirtualQueue(defQueue->size()) || !createSchedulerParam()) {
               return false;
             }
-            gpuKernel.setDynamicParallelFlag(true);
             vqVA = getVQVirtualAddress();
           }
           WriteAqlArgAt(const_cast<address>(parameters), &vqVA, it.size_, it.offset_);
