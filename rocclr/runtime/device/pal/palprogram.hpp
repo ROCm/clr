@@ -181,6 +181,11 @@ class HSAILProgram : public device::Program {
   //! Global variables are a part of the code segment
   bool GlobalVariables() const { return globalVars_; }
 
+  //! Get symbol by name
+  amd::hsa::loader::Symbol* GetSymbol(const char* symbol_name, const hsa_agent_t *agent) const {
+    return executable_->GetSymbol(symbol_name, agent);
+  }
+
  protected:
   //! pre-compile setup for GPU
   virtual bool initBuild(amd::option::Options* options);

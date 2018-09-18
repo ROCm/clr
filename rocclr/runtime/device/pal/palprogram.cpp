@@ -1592,11 +1592,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
   }
 
-  // Allocate kernel table for device enqueuing
-  if (!isNull() && false /*dynamicParallelism*/ && !allocKernelTable()) {
-    return false;
-  }
-
   // Get the list of global variables
   std::vector<std::string> glbVarNames;
   status = executable_->IterateSymbols(GetGlobalVarNamesCallback, &glbVarNames);
