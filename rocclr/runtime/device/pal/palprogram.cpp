@@ -136,44 +136,26 @@ bool Segment::freeze(bool destroySysmem) {
 
 HSAILProgram::HSAILProgram(Device& device)
     : Program(device),
-      llvmBinary_(),
-      binaryElf_(nullptr),
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
       codeSegment_(nullptr),
       maxScratchRegs_(0),
-      flags_(0),
       executable_(nullptr),
       loaderContext_(this) {
-  memset(&binOpts_, 0, sizeof(binOpts_));
-  binOpts_.struct_size = sizeof(binOpts_);
-  binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
-  binOpts_.bitness = ELFDATA2LSB;
-  binOpts_.alloc = &::malloc;
-  binOpts_.dealloc = &::free;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
 HSAILProgram::HSAILProgram(NullDevice& device)
     : Program(device),
-      llvmBinary_(),
-      binaryElf_(nullptr),
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
       codeSegment_(nullptr),
       maxScratchRegs_(0),
-      flags_(0),
       executable_(nullptr),
       loaderContext_(this) {
-  memset(&binOpts_, 0, sizeof(binOpts_));
   isNull_ = true;
-  binOpts_.struct_size = sizeof(binOpts_);
-  binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
-  binOpts_.bitness = ELFDATA2LSB;
-  binOpts_.alloc = &::malloc;
-  binOpts_.dealloc = &::free;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
@@ -1599,7 +1581,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     buildLog_ += "Error: Failed to get kernel names\n";
     return false;
   }
-  globalVars_ = (glbVarNames.size() != 0) ? true : false;
+  hasGlobalStores_ = (glbVarNames.size() != 0) ? true : false;
 
   DestroySegmentCpuAccess();
 

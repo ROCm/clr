@@ -74,21 +74,9 @@ Program::~Program() {
   releaseClBinary();
 }
 
-Program::Program(roc::NullDevice& device) : device::Program(device), binaryElf_(nullptr) {
-  memset(&binOpts_, 0, sizeof(binOpts_));
-  binOpts_.struct_size = sizeof(binOpts_);
-  // binOpts_.elfclass = LP64_SWITCH( ELFCLASS32, ELFCLASS64 );
-  // Setting as 32 bit because hsail64 returns an invalid aclTargetInfo
-  // when aclGetTargetInfo is called - EPR# 377910
-  binOpts_.elfclass = ELFCLASS32;
-  binOpts_.bitness = ELFDATA2LSB;
-  binOpts_.alloc = &::malloc;
-  binOpts_.dealloc = &::free;
-
+Program::Program(roc::NullDevice& device) : device::Program(device) {
   hsaExecutable_.handle = 0;
   hsaCodeObjectReader_.handle = 0;
-
-  hasGlobalStores_ = false;
 }
 
 bool Program::initClBinary(char* binaryIn, size_t size) {
