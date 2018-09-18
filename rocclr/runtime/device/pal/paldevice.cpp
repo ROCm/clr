@@ -2179,15 +2179,24 @@ bool Device::createBlitProgram() {
   // Delayed compilation due to brig_loader memory allocation
   const char* scheduler = nullptr;
   const char* ocl20 = nullptr;
-#if !defined(WITH_LIGHTNING_COMPILER)
+
   std::string sch = SchedulerSourceCode;
   if (settings().oclVersion_ >= OpenCL20) {
     size_t loc = sch.find("%s");
     sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
+#if defined(WITH_LIGHTNING_COMPILER)
+    // For LC, replace "amd_scheduler" with "amd_scheduler_pal"
+    static const char AmdScheduler[] = "amd_scheduler";
+    static const char AmdSchedulerPal[] = "amd_scheduler_pal";
+    loc = sch.find(AmdScheduler);
+    sch.replace(loc, strlen(AmdScheduler), AmdSchedulerPal);
+    loc = sch.find(AmdScheduler, (loc + strlen(AmdSchedulerPal)));
+    sch.replace(loc, strlen(AmdScheduler), AmdSchedulerPal);
+#endif
     scheduler = sch.c_str();
     ocl20 = "-cl-std=CL2.0";
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
   if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler, ocl20)) {

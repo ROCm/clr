@@ -423,7 +423,7 @@ class VirtualGPU : public device::VirtualDevice {
   Memory* vQueue() const { return virtualQueue_; }
 
   //! Update virtual queue header
-  void writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable);
+  void writeVQueueHeader(VirtualGPU& hostQ, const Memory* kernelTable);
 
   //! Returns TRUE if virtual queue was successfully allocatted
   bool createVirtualQueue(uint deviceQueueSize  //!< Device queue size

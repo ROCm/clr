@@ -799,6 +799,11 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
 
     // Allocate the hidden arguments, but abstraction layer will skip them
     if (isHidden) {
+
+      if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::HiddenCompletionAction) {
+        setDynamicParallelFlag(true);
+      }
+
       offset = amd::alignUp(offset, alignment);
       desc.offset_ = offset;
       desc.size_ = size;

@@ -1894,18 +1894,10 @@ void VirtualGPU::PrintChildren(const HSAILKernel& hsaKernel, VirtualGPU* gpuDefQ
       print << wraps[i].aql.grid_size_y << ", ";
       print << wraps[i].aql.grid_size_z << "]\n";
 
-      uint64_t* kernels =
-        (uint64_t*)(const_cast<Memory*>(hsaKernel.prog().kernelTable())->map(this));
-      for (j = 0; j < hsaKernel.prog().kernels().size(); ++j) {
-        if (kernels[j] == wraps[i].aql.kernel_object) {
-          break;
-        }
-      }
-      const_cast<Memory*>(hsaKernel.prog().kernelTable())->unmap(this);
       HSAILKernel* child = nullptr;
       for (auto it = hsaKernel.prog().kernels().begin();
         it != hsaKernel.prog().kernels().end(); ++it) {
-        if (j == static_cast<HSAILKernel*>(it->second)->index()) {
+        if (wraps[i].aql.kernel_object == static_cast<HSAILKernel*>(it->second)->gpuAqlCode()) {
           child = static_cast<HSAILKernel*>(it->second);
         }
       }
@@ -1996,14 +1988,15 @@ bool VirtualGPU::PreDeviceEnqueue(
   }
   *vmDefQueue = (*gpuDefQueue)->virtualQueue_->vmAddress();
 
-  (*gpuDefQueue)->writeVQueueHeader(*this, hsaKernel.prog().kernelTable()->vmAddress());
+  (*gpuDefQueue)->writeVQueueHeader(*this, hsaKernel.prog().kernelTable());
+
   // Acquire USWC memory for the scheduler parameters
   (*gpuDefQueue)->schedParams_ = &xferWrite().Acquire(sizeof(SchedulerParam));
 
   // Add memory handles before the actual dispatch
   addVmMemory((*gpuDefQueue)->virtualQueue_);
   addVmMemory((*gpuDefQueue)->schedParams_);
-  addVmMemory(hsaKernel.prog().kernelTable());
+
   return true;
 }
 
@@ -3252,10 +3245,15 @@ amd::Memory* VirtualGPU::createBufferFromImage(amd::Memory& amdImage) {
   return mem;
 }
 
-void VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, uint64_t kernelTable) {
-  const static bool Wait = true;
-  vqHeader_->kernel_table = kernelTable;
-  virtualQueue_->writeRawData(hostQ, 0, sizeof(AmdVQueueHeader), vqHeader_, Wait);
+void VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, const Memory* kernelTable) {
+  if (nullptr == kernelTable) {
+    vqHeader_->kernel_table = 0;
+  } else {
+    vqHeader_->kernel_table = kernelTable->vmAddress();
+    addVmMemory(kernelTable);
+  }
+
+  virtualQueue_->writeRawData(hostQ, 0, sizeof(AmdVQueueHeader), vqHeader_, true);
 }
 
 void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispatch_packet_t* aqlPkt,
