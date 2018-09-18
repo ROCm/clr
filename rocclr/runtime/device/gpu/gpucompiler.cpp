@@ -303,10 +303,17 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   if (options->oVariables->BinBIF30) {
-    if (!createBIFBinary(bin)) {
+    acl_error err;
+    char* binaryIn = nullptr;
+    size_t size;
+    err = aclWriteToMem(bin, reinterpret_cast<void**>(&binaryIn), &size);
+    if (err != ACL_SUCCESS) {
+      LogWarning("aclWriteToMem failed");
       aclBinaryFini(bin);
       return CL_BUILD_PROGRAM_FAILURE;
     }
+    clBinary()->saveBIFBinary(binaryIn, size);
+    aclFreeMem(bin, binaryIn);
   }
 
   size_t len = 0;

@@ -134,9 +134,6 @@ class HSAILProgram : public device::Program {
   //! Default destructor
   virtual ~HSAILProgram();
 
-  //! Returns the aclBinary associated with the progrm
-  aclBinary* binaryElf() const { return static_cast<aclBinary*>(binaryElf_); }
-
   void addGlobalStore(Memory* mem) { globalStores_.push_back(mem); }
 
   void setCodeObjects(Segment* seg, Memory* codeGpu, address codeCpu) {
@@ -161,12 +158,6 @@ class HSAILProgram : public device::Program {
   //! Add internal static sampler
   void addSampler(Sampler* sampler) { staticSamplers_.push_back(sampler); }
 
-  //! Returns TRUE if the program just compiled
-  bool isNull() const { return isNull_; }
-
-  //! Returns TRUE if the program used internally by runtime
-  bool isInternal() const { return internal_; }
-
   //! Returns TRUE if the program contains static samplers
   bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
 
@@ -177,9 +168,6 @@ class HSAILProgram : public device::Program {
   uint64_t findHostKernelAddress(uint64_t devAddr) const {
     return loader_->FindHostAddress(devAddr);
   }
-
-  //! Global variables are a part of the code segment
-  bool GlobalVariables() const { return globalVars_; }
 
   //! Get symbol by name
   amd::hsa::loader::Symbol* GetSymbol(const char* symbol_name, const hsa_agent_t *agent) const {
@@ -245,12 +233,7 @@ class HSAILProgram : public device::Program {
   //! Allocate kernel table
   bool allocKernelTable();
 
-  std::string openCLSource_;           //!< Original OpenCL source
-  std::string HSAILProgram_;           //!< FSAIL program after compilation
-  std::string llvmBinary_;             //!< LLVM IR binary code
-  aclBinary* binaryElf_;               //!< Binary for the new compiler library
   void* rawBinary_;                    //!< Pointer to the raw binary
-  aclBinaryOptions binOpts_;           //!< Binary options to create aclBinary
   std::vector<Memory*> globalStores_;  //!< Global memory for the program
   Memory* kernels_;                    //!< Table with kernel object pointers
   Memory* codeSegGpu_;                 //!< GPU memory with code objects
@@ -258,14 +241,7 @@ class HSAILProgram : public device::Program {
   uint
       maxScratchRegs_;  //!< Maximum number of scratch regs used in the program by individual kernel
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
-  union {
-    struct {
-      uint32_t isNull_ : 1;     //!< Null program no memory allocations
-      uint32_t internal_ : 1;   //!< Internal blit program
-      uint32_t globalVars_ : 1; //!< Code object contains global variables
-    };
-    uint32_t flags_;  //!< Program flags
-  };
+
   amd::hsa::loader::Loader* loader_;          //!< Loader object
   amd::hsa::loader::Executable* executable_;  //!< Executable for HSA Loader
   PALHSALoaderContext loaderContext_;         //!< Context for HSA Loader

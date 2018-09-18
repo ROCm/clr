@@ -3226,7 +3226,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     memoryDependency().validate(*this, mem, IsReadOnly);
     addVmMemory(mem);
   }
-  if (hsaKernel.prog().GlobalVariables()) {
+  if (hsaKernel.prog().hasGlobalStores()) {
     // Validate code object for a dependency in the queue
     memoryDependency().validate(*this, &hsaKernel.prog().codeSegGpu(), IsReadOnly);
   }

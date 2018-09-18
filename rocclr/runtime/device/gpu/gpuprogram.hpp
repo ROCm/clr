@@ -452,9 +452,6 @@ class HSAILProgram : public device::Program {
   //! Default destructor
   ~HSAILProgram();
 
-  //! Returns the aclBinary associated with the progrm
-  aclBinary* binaryElf() const { return static_cast<aclBinary*>(binaryElf_); }
-
   void addGlobalStore(Memory* mem) { globalStores_.push_back(mem); }
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
@@ -473,9 +470,6 @@ class HSAILProgram : public device::Program {
 
   //! Add internal static sampler
   void addSampler(Sampler* sampler) { staticSamplers_.push_back(sampler); }
-
-  //! Returns TRUE if the program just compiled
-  bool isNull() const { return isNull_; }
 
   //! Returns TRUE if the program contains static samplers
   bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
@@ -539,18 +533,12 @@ class HSAILProgram : public device::Program {
   //! Allocate kernel table
   bool allocKernelTable();
 
-  std::string openCLSource_;           //!< Original OpenCL source
-  std::string HSAILProgram_;           //!< FSAIL program after compilation
-  std::string llvmBinary_;             //!< LLVM IR binary code
-  aclBinary* binaryElf_;               //!< Binary for the new compiler library
   void* rawBinary_;                    //!< Pointer to the raw binary
-  aclBinaryOptions binOpts_;           //!< Binary options to create aclBinary
   std::vector<Memory*> globalStores_;  //!< Global memory for the program
   Memory* kernels_;                    //!< Table with kernel object pointers
   uint
       maxScratchRegs_;  //!< Maximum number of scratch regs used in the program by individual kernel
   std::list<Sampler*> staticSamplers_;        //!< List od internal static samplers
-  bool isNull_;                               //!< Null program no memory allocations
   amd::hsa::loader::Loader* loader_;          //!< Loader object
   amd::hsa::loader::Executable* executable_;  //!< Executable for HSA Loader
   ORCAHSALoaderContext loaderContext_;        //!< Context for HSA Loader

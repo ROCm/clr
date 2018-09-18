@@ -1527,39 +1527,22 @@ bool Program::loadBinary(bool* hasRecompile) {
 
 HSAILProgram::HSAILProgram(Device& device)
     : Program(device),
-      llvmBinary_(),
-      binaryElf_(NULL),
       rawBinary_(NULL),
       kernels_(NULL),
       maxScratchRegs_(0),
-      isNull_(false),
       executable_(NULL),
       loaderContext_(this) {
-  memset(&binOpts_, 0, sizeof(binOpts_));
-  binOpts_.struct_size = sizeof(binOpts_);
-  binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
-  binOpts_.bitness = ELFDATA2LSB;
-  binOpts_.alloc = &::malloc;
-  binOpts_.dealloc = &::free;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
 HSAILProgram::HSAILProgram(NullDevice& device)
     : Program(device),
-      llvmBinary_(),
-      binaryElf_(NULL),
       rawBinary_(NULL),
       kernels_(NULL),
       maxScratchRegs_(0),
-      isNull_(true),
       executable_(NULL),
       loaderContext_(this) {
-  memset(&binOpts_, 0, sizeof(binOpts_));
-  binOpts_.struct_size = sizeof(binOpts_);
-  binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
-  binOpts_.bitness = ELFDATA2LSB;
-  binOpts_.alloc = &::malloc;
-  binOpts_.dealloc = &::free;
+  isNull_ = true;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 

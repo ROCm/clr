@@ -41,9 +41,6 @@ class Program : public device::Program {
   // Initialize Binary for GPU (used only for clCreateProgramWithBinary()).
   virtual bool initClBinary(char* binaryIn, size_t size);
 
-  //! Returns the aclBinary associated with the program
-  const aclBinary* binaryElf() const { return static_cast<const aclBinary*>(binaryElf_); }
-
   //! Return a typecasted GPU device
   const NullDevice& dev() const { return static_cast<const NullDevice&>(device()); }
 
@@ -51,8 +48,6 @@ class Program : public device::Program {
   hsa_agent_t hsaDevice() const { return dev().getBackendDevice(); }
 
   hsa_executable_t hsaExecutable() const { return hsaExecutable_; }
-
-  bool hasGlobalStores() const { return hasGlobalStores_; }
 
  protected:
   //! pre-compile setup for GPU
@@ -94,11 +89,6 @@ class Program : public device::Program {
   Program& operator=(const Program&) = delete;
 
 protected:
-  // aclBinary and aclCompiler - for the compiler library
-  aclBinary* binaryElf_;      //!< Binary for the new compiler library
-  aclBinaryOptions binOpts_;  //!< Binary options to create aclBinary
-  bool hasGlobalStores_;      //!< program has writable program scope variables
-
   /* HSA executable */
   hsa_executable_t hsaExecutable_;               //!< Handle to HSA executable
   hsa_code_object_reader_t hsaCodeObjectReader_; //!< Handle to HSA code reader
