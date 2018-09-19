@@ -68,6 +68,7 @@ class SvmUnmapMemoryCommand;
 class TransferBufferFileCommand;
 class HwDebugManager;
 class Device;
+class CacheCompilation;
 struct KernelParameterDescriptor;
 struct Coord3D;
 
@@ -1300,6 +1301,10 @@ class Device : public RuntimeObject {
   // P2P devices that are accessible from the current device
   std::vector<cl_device_id> p2pDevices_;
 
+#if defined(WITH_LIGHTNING_COMPILER)
+  amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
+#endif
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1310,6 +1315,10 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
+#if defined(WITH_LIGHTNING_COMPILER)
+                                  //! Compilation with cache support
+  std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
+#endif
 
  private:
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

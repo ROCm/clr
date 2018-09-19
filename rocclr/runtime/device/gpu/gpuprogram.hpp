@@ -265,6 +265,8 @@ class NullProgram : public device::Program {
 
   virtual const aclTargetInfo& info(const char* str = "");
 
+  virtual bool saveBinaryAndSetType(type_t type) { return true; }
+
  private:
   //! Disable default copy constructor
   NullProgram(const NullProgram&);

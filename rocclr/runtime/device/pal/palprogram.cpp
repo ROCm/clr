@@ -143,6 +143,13 @@ HSAILProgram::HSAILProgram(Device& device)
       maxScratchRegs_(0),
       executable_(nullptr),
       loaderContext_(this) {
+  xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+  if (dev().properties().revision == Pal::AsicRevision::Bristol) {
+    const static char* Carrizo = "Carrizo";
+    machineTarget_ = Carrizo;
+  } else {
+    machineTarget_ = dev().hwInfo()->targetName_;
+  }
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
@@ -156,6 +163,8 @@ HSAILProgram::HSAILProgram(NullDevice& device)
       executable_(nullptr),
       loaderContext_(this) {
   isNull_ = true;
+  xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+  machineTarget_ = dev().hwInfo()->targetName_;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
