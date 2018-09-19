@@ -19,6 +19,7 @@
 #include <list>
 #include <map>
 #include <unordered_map>
+#include <memory>
 
 namespace device {
 class Memory;
