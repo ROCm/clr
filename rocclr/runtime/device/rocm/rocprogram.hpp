@@ -101,12 +101,6 @@ class HSAILProgram : public roc::Program {
   virtual ~HSAILProgram();
 
  protected:
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           ) final;
-
   virtual bool linkImpl(amd::option::Options* options) final;
 
   virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
@@ -134,18 +128,14 @@ public:
   const CodeObjectMD* metadata() const { return metadata_; }
 
 protected:
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           ) final;
-
   virtual bool linkImpl(amd::option::Options* options) final;
 
   virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
                         amd::option::Options* options, bool createLibrary) final;
 
   virtual bool createBinary(amd::option::Options* options) final;
+
+  bool saveBinaryAndSetType(type_t type) { return true; }
 
 private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
@@ -156,8 +146,6 @@ private:
   bool setKernels(amd::option::Options* options, void* binary, size_t binSize);
 
   CodeObjectMD* metadata_;  //!< Runtime metadata
-  //! Return a new transient compiler instance.
-  static amd::opencl_driver::Compiler* newCompilerInstance();
 };
 #endif // defined(WITH_LIGHTNING_COMPILER)
 

@@ -181,16 +181,6 @@ class HSAILProgram : public device::Program {
   //! post-compile setup for GPU
   virtual bool finiBuild(bool isBuildGood);
 
-  /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
-  *
-  *  \return True if we successefully compiled a GPU program
-  */
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           );
-
   /* \brief Returns the next stage to compile from, based on sections in binary,
   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
   *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
@@ -251,9 +241,21 @@ class HSAILProgram : public device::Program {
 //! \class Lightning Compiler Program
 class LightningProgram : public HSAILProgram {
  public:
-  LightningProgram(NullDevice& device) : HSAILProgram(device), metadata_(nullptr) {}
+  LightningProgram(NullDevice& device)
+    : HSAILProgram(device)
+    , metadata_(nullptr) {
+      isLC_ = true;
+      xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+      machineTarget_ = dev().hwInfo()->machineTarget_;
+    }
 
-  LightningProgram(Device& device) : HSAILProgram(device), metadata_(nullptr) {}
+  LightningProgram(Device& device)
+    : HSAILProgram(device)
+    , metadata_(nullptr) {
+      isLC_ = true;
+      xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+      machineTarget_ = dev().hwInfo()->machineTarget_;
+    }
 
   const CodeObjectMD* metadata() const { return metadata_; }
 
@@ -272,12 +274,6 @@ class LightningProgram : public HSAILProgram {
   aclType getNextCompilationStageFromBinary(amd::option::Options* options);
 
  protected:
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           ) override;
-
   virtual bool linkImpl(amd::option::Options* options) override;
 
   //! Link the device programs.
@@ -287,9 +283,6 @@ class LightningProgram : public HSAILProgram {
   bool setKernels(amd::option::Options* options, void* binary, size_t size);
 
   virtual bool createBinary(amd::option::Options* options) override;
-
-  //! Return a new transient compiler instance.
-  static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 
  private:
   CodeObjectMD* metadata_;  //!< Runtime metadata

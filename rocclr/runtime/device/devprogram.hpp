@@ -10,13 +10,20 @@
 #include "devwavelimiter.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER)
+#include "driver/AmdCompiler.h"
+//#include "llvm/Support/AMDGPUMetadata.h"
+
 namespace llvm {
   namespace AMDGPU {
     namespace HSAMD {
       namespace Kernel {
         struct Metadata;
 }}}}
+
+//typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
+//typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
+
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
@@ -64,9 +71,8 @@ class Program : public amd::HeapObject {
   //! The device target for this binary.
   amd::SharedReference<amd::Device> device_;
 
-  kernels_t kernels_;  //!< The kernel entry points this binary.
-
-  type_t type_;  //!< type of this program
+  kernels_t kernels_; //!< The kernel entry points this binary.
+  type_t type_;       //!< type of this program
 
  protected:
    union {
@@ -75,6 +81,7 @@ class Program : public amd::HeapObject {
        uint32_t internal_ : 1;        //!< Internal blit program
        uint32_t isLC_ : 1;            //!< LC was used for the program compilation
        uint32_t hasGlobalStores_ : 1; //!< Program has writable program scope variables
+       uint32_t xnackEnabled_ : 1;    //!< Xnack was enabled during compilation
      };
      uint32_t flags_;  //!< Program flags
    };
@@ -86,15 +93,16 @@ class Program : public amd::HeapObject {
   std::string linkOptions_;                     //!< link options.
                                                 //!< the option arg passed in to clCompileProgram(), clLinkProgram(),
                                                 //! or clBuildProgram(), whichever is called last
-  aclBinaryOptions binOpts_;           //!< Binary options to create aclBinary
-  aclBinary* binaryElf_;               //!< Binary for the new compiler library
+  aclBinaryOptions binOpts_;        //!< Binary options to create aclBinary
+  aclBinary* binaryElf_;            //!< Binary for the new compiler library
 
   std::string lastBuildOptionsArg_;
-  std::string buildLog_;  //!< build log.
-  cl_int buildStatus_;    //!< build status.
-  cl_int buildError_;     //!< build error
-                          //! The info target for this binary.
-  aclTargetInfo info_;
+  std::string buildLog_;            //!< build log.
+  cl_int buildStatus_;              //!< build status.
+  cl_int buildError_;               //!< build error
+
+  const char* machineTarget_;       //!< Machine target for this program
+  aclTargetInfo info_;              //!< The info target for this binary.
   size_t globalVariableTotalSize_;
   amd::option::Options* programOptions_;
 
@@ -179,16 +187,32 @@ class Program : public amd::HeapObject {
   bool hasGlobalStores() const { return hasGlobalStores_; }
 
  protected:
+  //! Compile the device program with LC path
+  bool compileImplLC(const std::string& sourceCode,
+     const std::vector<const std::string*>& headers,
+     const char** headerIncludeNames, amd::option::Options* options);
+
+  //! Compile the device program with HSAIL path
+  bool compileImplHSAIL(const std::string& sourceCode,
+     const std::vector<const std::string*>& headers,
+     const char** headerIncludeNames, amd::option::Options* options);
+
   //! pre-compile setup
   virtual bool initBuild(amd::option::Options* options);
 
   //! post-compile cleanup
   virtual bool finiBuild(bool isBuildGood);
 
-  //! Compile the device program.
-  virtual bool compileImpl(const std::string& sourceCode,
+  /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
+  *
+  *  \return True if we successefully compiled a GPU program
+  */
+  virtual bool compileImpl(
+    const std::string& sourceCode,  //!< the program's source code
     const std::vector<const std::string*>& headers,
-    const char** headerIncludeNames, amd::option::Options* options) = 0;
+    const char** headerIncludeNames,
+    amd::option::Options* options   //!< compile options's object
+  );
 
   //! Link the device program.
   virtual bool linkImpl(amd::option::Options* options) = 0;
@@ -204,6 +228,8 @@ class Program : public amd::HeapObject {
 
   //! Initialize Binary
   virtual bool initClBinary();
+
+  virtual bool saveBinaryAndSetType(type_t type) = 0;
 
   //! Release the Binary
   void releaseClBinary();
@@ -222,6 +248,11 @@ class Program : public amd::HeapObject {
     const amd::option::Options* linkOptions);
 
   void setType(type_t newType) { type_ = newType; }
+
+#if defined(WITH_LIGHTNING_COMPILER)
+  //! Return a new transient compiler instance.
+  static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
  private:
   //! Disable default copy constructor

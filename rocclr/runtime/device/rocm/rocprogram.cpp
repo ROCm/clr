@@ -265,6 +265,8 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 
 #if defined(WITH_COMPILER_LIB)
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
+  xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
+  machineTarget_ = dev().deviceInfo().complibTarget_;
 }
 
 HSAILProgram::~HSAILProgram() {
@@ -715,7 +717,11 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
 #endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER)
-LightningProgram::LightningProgram(roc::NullDevice& device) : roc::Program(device) {
+LightningProgram::LightningProgram(roc::NullDevice& device)
+  : roc::Program(device) {
+  isLC_ = true;
+  xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
+  machineTarget_ = dev().deviceInfo().machineTarget_;
   metadata_ = nullptr;
 }
 

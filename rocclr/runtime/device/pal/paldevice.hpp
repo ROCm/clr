@@ -110,10 +110,6 @@ class NullDevice : public amd::Device {
   }
   virtual void svmFree(void* ptr) const { return; }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
-#endif
-
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
   void  Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
 
@@ -123,10 +119,6 @@ class NullDevice : public amd::Device {
   Pal::AsicRevision asicRevision_;  //!< ASIC revision
   Pal::GfxIpLevel ipLevel_;         //!< Device IP level
   const AMDDeviceInfo* hwInfo_;     //!< Device HW info structure
-
-#if defined(WITH_LIGHTNING_COMPILER)
-  std::unique_ptr<amd::CacheCompilation> cacheCompilation_;  //! Compilation with cache support
-#endif
 
   //! Fills OpenCL device info structure
   void fillDeviceInfo(const Pal::DeviceProperties& palProp,  //!< PAL device properties

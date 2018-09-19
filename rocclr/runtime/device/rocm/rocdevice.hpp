@@ -176,10 +176,6 @@ class NullDevice : public amd::Device {
     return false;
   }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
-#endif
-
  protected:
   //! Initialize compiler instance and handle
   static bool initCompiler(bool isOffline);
@@ -189,10 +185,7 @@ class NullDevice : public amd::Device {
   static Compiler* compilerHandle_;
   //! Device Id for an HsaDevice
   AMDDeviceInfo deviceInfo_;
-#if defined(WITH_LIGHTNING_COMPILER)
-  //! Compilation with cache support
-  std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
-#endif
+
  private:
   static const bool offlineDevice_;
 };
