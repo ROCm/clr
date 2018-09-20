@@ -652,7 +652,7 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
     }
 
     if (ACL_SUCCESS !=
-        aclInsertSection(nullDev().compiler(), bin, code.data(), code.size(), aclSOURCE)) {
+        aclInsertSection(nullDev().amdilCompiler(), bin, code.data(), code.size(), aclSOURCE)) {
       LogWarning("aclInsertSection failed");
       aclBinaryFini(bin);
       return false;
@@ -672,10 +672,10 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
     // pass kernel name to compiler
     Opts->setCurrKernelName(name().c_str());
 
-    err = aclCompile(nullDev().compiler(), bin, options->origOptionStr.c_str(), ACL_TYPE_AMDIL_TEXT,
+    err = aclCompile(nullDev().amdilCompiler(), bin, options->origOptionStr.c_str(), ACL_TYPE_AMDIL_TEXT,
                      ACL_TYPE_ISA, NULL);
 
-    buildLog_ += aclGetCompilerLog(nullDev().compiler());
+    buildLog_ += aclGetCompilerLog(nullDev().amdilCompiler());
 
     if (err != ACL_SUCCESS) {
       LogWarning("aclCompile failed");
@@ -688,7 +688,7 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
       return true;
     }
     size_t len;
-    const void* isa = aclExtractSection(nullDev().compiler(), bin, &len, aclTEXT, &err);
+    const void* isa = aclExtractSection(nullDev().amdilCompiler(), bin, &len, aclTEXT, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclExtractSection failed");
       aclBinaryFini(bin);

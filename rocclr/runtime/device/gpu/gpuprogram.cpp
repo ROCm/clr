@@ -538,7 +538,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
     } else {
       aclTypeUsed = aclLLVMIR;
     }
-    err = aclInsertSection(dev().compiler(), libs[i], llvmBinaries[i]->data(),
+    err = aclInsertSection(dev().amdilCompiler(), libs[i], llvmBinaries[i]->data(),
                            llvmBinaries[i]->size(), aclTypeUsed);
     if (err != ACL_SUCCESS) {
       LogWarning("aclInsertSection failed");
@@ -555,10 +555,10 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       unsigned int numLibs = libs.size() - 1;
 
       if (numLibs > 0) {
-        err = aclLink(dev().compiler(), libs[0], numLibs, &libs[1], ACL_TYPE_LLVMIR_BINARY,
+        err = aclLink(dev().amdilCompiler(), libs[0], numLibs, &libs[1], ACL_TYPE_LLVMIR_BINARY,
                       "-create-library", NULL);
 
-        buildLog_ += aclGetCompilerLog(dev().compiler());
+        buildLog_ += aclGetCompilerLog(dev().amdilCompiler());
 
         if (err != ACL_SUCCESS) {
           LogWarning("aclLink failed");
@@ -575,7 +575,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       } else {
         aclTypeUsed = aclLLVMIR;
       }
-      const void* llvmir = aclExtractSection(dev().compiler(), libs[0], &size, aclTypeUsed, &err);
+      const void* llvmir = aclExtractSection(dev().amdilCompiler(), libs[0], &size, aclTypeUsed, &err);
       if (err != ACL_SUCCESS) {
         LogWarning("aclExtractSection failed");
         break;
@@ -1532,6 +1532,7 @@ HSAILProgram::HSAILProgram(Device& device)
       maxScratchRegs_(0),
       executable_(NULL),
       loaderContext_(this) {
+  machineTarget_ = dev().hwInfo()->targetName_;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
@@ -1543,6 +1544,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
       executable_(NULL),
       loaderContext_(this) {
   isNull_ = true;
+  machineTarget_ = dev().hwInfo()->targetName_;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
