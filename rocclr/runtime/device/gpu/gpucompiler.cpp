@@ -114,7 +114,7 @@ bool NullProgram::compileImpl(const std::string& src,
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(dev().compiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
+      aclInsertSection(dev().amdilCompiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
     LogWarning("aclInsertSection failed");
     aclBinaryFini(bin);
     return false;
@@ -190,10 +190,10 @@ bool NullProgram::compileImpl(const std::string& src,
     pos = newOpt.find("-fno-bin-llvmir");
   }
 
-  err = aclCompile(dev().compiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
+  err = aclCompile(dev().amdilCompiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
                    NULL);
 
-  buildLog_ += aclGetCompilerLog(dev().compiler());
+  buildLog_ += aclGetCompilerLog(dev().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
@@ -202,7 +202,7 @@ bool NullProgram::compileImpl(const std::string& src,
   }
 
   size_t len = 0;
-  const void* ir = aclExtractSection(dev().compiler(), bin, &len, aclLLVMIR, &err);
+  const void* ir = aclExtractSection(dev().amdilCompiler(), bin, &len, aclLLVMIR, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
     aclBinaryFini(bin);
@@ -269,7 +269,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(dev().compiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
+      aclInsertSection(dev().amdilCompiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
     LogWarning("aclInsertSection failed");
     aclBinaryFini(bin);
     return CL_BUILD_PROGRAM_FAILURE;
@@ -293,8 +293,8 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
     type = ACL_TYPE_ISA;
   }
 
-  err = aclCompile(dev().compiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
-  buildLog_ += aclGetCompilerLog(dev().compiler());
+  err = aclCompile(dev().amdilCompiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
+  buildLog_ += aclGetCompilerLog(dev().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
@@ -317,7 +317,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   size_t len = 0;
-  const void* amdil = aclExtractSection(dev().compiler(), bin, &len, aclCODEGEN, &err);
+  const void* amdil = aclExtractSection(dev().amdilCompiler(), bin, &len, aclCODEGEN, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
     aclBinaryFini(bin);
@@ -328,119 +328,6 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   aclBinaryFini(bin);
 
   return CL_SUCCESS;
-}
-
-bool HSAILProgram::compileImpl(const std::string& sourceCode,
-                               const std::vector<const std::string*>& headers,
-                               const char** headerIncludeNames, amd::option::Options* options) {
-  acl_error errorCode;
-  aclTargetInfo target;
-
-  std::string arch = "hsail";
-  if (dev().settings().use64BitPtr_) {
-    arch += "64";
-  }
-  target = aclGetTargetInfo(arch.c_str(), dev().hwInfo()->targetName_, &errorCode);
-
-  // end if asic info is ready
-  // We dump the source code for each program (param: headers)
-  // into their filenames (headerIncludeNames) into the TEMP
-  // folder specific to the OS and add the include path while
-  // compiling
-
-  // Find the temp folder for the OS
-  std::string tempFolder = amd::Os::getTempPath();
-  std::string tempFileName = amd::Os::getTempFileName();
-
-  // Iterate through each source code and dump it into tmp
-  std::fstream f;
-  std::vector<std::string> headerFileNames(headers.size());
-  std::vector<std::string> newDirs;
-  for (size_t i = 0; i < headers.size(); ++i) {
-    std::string headerPath = tempFolder;
-    std::string headerIncludeName(headerIncludeNames[i]);
-    // replace / in path with current os's file separator
-    if (amd::Os::fileSeparator() != '/') {
-      for (auto& it : headerIncludeName) {
-        if (it == '/') it = amd::Os::fileSeparator();
-      }
-    }
-    size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
-    if (pos != std::string::npos) {
-      headerPath += amd::Os::fileSeparator();
-      headerPath += headerIncludeName.substr(0, pos);
-      headerIncludeName = headerIncludeName.substr(pos + 1);
-    }
-    if (!amd::Os::pathExists(headerPath)) {
-      bool ret = amd::Os::createPath(headerPath);
-      assert(ret && "failed creating path!");
-      newDirs.push_back(headerPath);
-    }
-    std::string headerFullName = headerPath + amd::Os::fileSeparator() + headerIncludeName;
-    headerFileNames[i] = headerFullName;
-    f.open(headerFullName.c_str(), std::fstream::out);
-    // Should we allow asserts
-    assert(!f.fail() && "failed creating header file!");
-    f.write(headers[i]->c_str(), headers[i]->length());
-    f.close();
-  }
-
-  // Create Binary
-  binaryElf_ = aclBinaryInit(sizeof(aclBinary), &target, &binOpts_, &errorCode);
-  if (errorCode != ACL_SUCCESS) {
-    buildLog_ += "Error: aclBinary init failure\n";
-    LogWarning("aclBinaryInit failed");
-    return false;
-  }
-
-  // Insert opencl into binary
-  errorCode = aclInsertSection(dev().hsaCompiler(), binaryElf_, sourceCode.c_str(),
-                               strlen(sourceCode.c_str()), aclSOURCE);
-  if (errorCode != ACL_SUCCESS) {
-    buildLog_ += "Error: Inserting openCl Source to binary\n";
-  }
-
-  // Set the options for the compiler
-  // Set the include path for the temp folder that contains the includes
-  if (!headers.empty()) {
-    compileOptions_.append(" -I");
-    compileOptions_.append(tempFolder);
-  }
-
-  // Add only for CL2.0 and above
-  if (options->oVariables->CLStd[2] >= '2') {
-    std::stringstream opts;
-    opts << " -D"
-         << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    compileOptions_.append(opts.str());
-  }
-
-#if !defined(_LP64) && defined(ATI_OS_LINUX)
-  if (options->origOptionStr.find("-cl-std=CL2.0") != std::string::npos &&
-      !dev().settings().force32BitOcl20_) {
-    errorCode = ACL_UNSUPPORTED;
-    LogWarning("aclCompile failed");
-    return false;
-  }
-#endif
-
-  // Compile source to IR
-  compileOptions_.append(hsailOptions());
-  errorCode = aclCompile(dev().hsaCompiler(), binaryElf_, compileOptions_.c_str(), ACL_TYPE_OPENCL,
-                         ACL_TYPE_LLVMIR_BINARY, NULL);
-  buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
-  if (errorCode != ACL_SUCCESS) {
-    LogWarning("aclCompile failed");
-    buildLog_ += "Error: Compiling CL to IR\n";
-    return false;
-  }
-
-  clBinary()->storeCompileOptions(compileOptions_);
-
-  // Save the binary in the interface class
-  saveBinaryAndSetType(TYPE_COMPILED);
-
-  return true;
 }
 
 }  // namespace gpu

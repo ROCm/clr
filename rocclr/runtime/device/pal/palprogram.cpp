@@ -134,6 +134,7 @@ bool Segment::freeze(bool destroySysmem) {
   return result;
 }
 
+const static char* Carrizo = "Carrizo";
 HSAILProgram::HSAILProgram(Device& device)
     : Program(device),
       rawBinary_(nullptr),
@@ -145,7 +146,6 @@ HSAILProgram::HSAILProgram(Device& device)
       loaderContext_(this) {
   xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
   if (dev().properties().revision == Pal::AsicRevision::Bristol) {
-    const static char* Carrizo = "Carrizo";
     machineTarget_ = Carrizo;
   } else {
     machineTarget_ = dev().hwInfo()->targetName_;
@@ -164,7 +164,11 @@ HSAILProgram::HSAILProgram(NullDevice& device)
       loaderContext_(this) {
   isNull_ = true;
   xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-  machineTarget_ = dev().hwInfo()->targetName_;
+  if (dev().properties().revision == Pal::AsicRevision::Bristol) {
+    machineTarget_ = Carrizo;
+  } else {
+    machineTarget_ = dev().hwInfo()->targetName_;
+  }
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 

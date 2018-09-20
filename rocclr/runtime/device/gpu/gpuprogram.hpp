@@ -483,16 +483,6 @@ class HSAILProgram : public device::Program {
   //! post-compile setup for GPU
   virtual bool finiBuild(bool isBuildGood);
 
-  /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
-  *
-  *  \return True if we successefully compiled a GPU program
-  */
-  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
-                           const std::vector<const std::string*>& headers,
-                           const char** headerIncludeNames,
-                           amd::option::Options* options  //!< compile options's object
-                           );
-
   /* \brief Returns the next stage to compile from, based on sections in binary,
   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
   *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
