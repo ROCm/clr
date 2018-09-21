@@ -125,7 +125,6 @@ int
 main(int argc, char** argv)
 {
     /* Error flag */
-    cl_int status = 0;
     cl_int err;
 
     //parse input
@@ -829,5 +828,5 @@ main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    return status;
+    return EXIT_SUCCESS;
 }
