@@ -120,6 +120,7 @@ jurisdiction and venue of these courts.
 
 bool verbose = false;
 
+/// Returns EXIT_SUCCESS on success, EXIT_FAILURE on failure.
 int
 main(int argc, char** argv)
 {
@@ -135,7 +136,7 @@ main(int argc, char** argv)
         } else if ((strcmp(argv[i], "-h") == 0) ||
                    (strcmp(argv[i], "--help") == 0)){
             std::cout << "Usage is: " << argv[0] << " [-v|--verbose]" << std::endl;
-            return 0;
+            return EXIT_FAILURE;
         }
     }
 
@@ -673,7 +674,7 @@ main(int argc, char** argv)
                 cl::Context context(device, cps, NULL, NULL, &err);
                 if (err != CL_SUCCESS) {
                     std::cerr << "Context::Context() failed (" << err << ")\n";
-                    return 1;
+                    return EXIT_FAILURE;
                 }
                 std::string kernelStr("__kernel void hello(){ size_t i =  get_global_id(0); size_t j =  get_global_id(1);}");
                 cl::Program::Sources sources(1, std::make_pair(kernelStr.data(), kernelStr.size()));
@@ -681,7 +682,7 @@ main(int argc, char** argv)
                 cl::Program program = cl::Program(context, sources, &err);
                 if (err != CL_SUCCESS) {
                     std::cerr << "Program::Program() failed (" << err << ")\n";
-                    return 1;
+                    return EXIT_FAILURE;
                 }
 
                 err = program.build(device);
@@ -698,13 +699,13 @@ main(int argc, char** argv)
                     }
 
                     std::cerr << "Program::build() failed (" << err << ")\n";
-                    return 1;
+                    return EXIT_FAILURE;
                 }
 
                 cl::Kernel kernel(program, "hello", &err);
                 if (err != CL_SUCCESS) {
                     std::cerr << "Kernel::Kernel() failed (" << err << ")\n";
-                    return 1;
+                    return EXIT_FAILURE;
                 }
 
                 std::cout << "  Kernel Preferred work group size multiple:\t "
@@ -825,6 +826,7 @@ main(int argc, char** argv)
             << err.err()
             << ")"
             << std::endl;
+        return EXIT_FAILURE;
     }
 
     return status;
