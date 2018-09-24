@@ -72,17 +72,6 @@ class Program : public device::Program {
   }
 
  protected:
-  /* \brief Returns the next stage to compile from, based on sections in binary,
-   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
-   *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
-   */
-  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                         bool& needOptionsCheck) = 0;
-
-  /* \brief Returns the next stage to compile from, based on sections and options in binary
-   */
-  aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-
   //! Disable default copy constructor
   Program(const Program&) = delete;
   //! Disable operator=
@@ -111,9 +100,6 @@ class HSAILProgram : public roc::Program {
 private:
   std::string codegenOptions(amd::option::Options* options);
 
-  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                                 bool& needOptionsCheck) final;
-
   bool saveBinaryAndSetType(type_t type);
 };
 #endif // defined(WITH_COMPILER_LIB)
@@ -139,9 +125,6 @@ protected:
 
 private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
-
-  virtual aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                                 bool& needOptionsCheck) final;
 
   bool setKernels(amd::option::Options* options, void* binary, size_t binSize);
 
