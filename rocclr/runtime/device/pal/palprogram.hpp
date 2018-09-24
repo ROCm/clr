@@ -181,17 +181,6 @@ class HSAILProgram : public device::Program {
   //! post-compile setup for GPU
   virtual bool finiBuild(bool isBuildGood);
 
-  /* \brief Returns the next stage to compile from, based on sections in binary,
-  *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
-  *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
-  */
-  aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                         bool& needOptionsCheck);
-
-  /* \brief Returns the next stage to compile from, based on sections and options in binary
-  */
-  aclType getNextCompilationStageFromBinary(amd::option::Options* options);
-
   bool saveBinaryAndSetType(type_t type);
 
   virtual bool linkImpl(amd::option::Options* options);
@@ -261,17 +250,6 @@ class LightningProgram : public HSAILProgram {
 
  private:
   virtual ~LightningProgram();
-
-  /* \brief Returns the next stage to compile from, based on sections in binary,
-  *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
-  *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
-  */
-  aclType getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
-                                         bool& needOptionsCheck);
-
-  /* \brief Returns the next stage to compile from, based on sections and options in binary
-  */
-  aclType getNextCompilationStageFromBinary(amd::option::Options* options);
 
  protected:
   virtual bool linkImpl(amd::option::Options* options) override;
