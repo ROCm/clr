@@ -506,6 +506,7 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu)
 
     sampleConfig.type = GpuUtil::GpaSampleType::Trace;
     sampleConfig.sqtt.gpuMemoryLimit = trace_gpu_mem_limit_;
+    sampleConfig.sqtt.seMask = 0xF;
     sampleConfig.sqtt.flags.enable = true;
     sampleConfig.sqtt.flags.supressInstructionTokens = (inst_tracing_enabled_ == false);
 
