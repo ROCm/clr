@@ -1092,7 +1092,6 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
   if (isLC()) {
 #if defined(WITH_LIGHTNING_COMPILER)
     completeStages.clear();
-    aclType from = ACL_TYPE_DEFAULT;
     needOptionsCheck = true;
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     // Checking llvmir in .llvmir section
@@ -1352,7 +1351,9 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
     if (recompile) {
       while (!completeStages.empty()) {
         continueCompileFrom = completeStages.back();
-        if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+        if (continueCompileFrom == ACL_TYPE_SPIRV_BINARY ||
+            continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
+            continueCompileFrom == ACL_TYPE_SPIR_BINARY ||
             continueCompileFrom == ACL_TYPE_DEFAULT) {
           break;
         }
