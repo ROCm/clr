@@ -1352,9 +1352,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
     if (recompile) {
       while (!completeStages.empty()) {
         continueCompileFrom = completeStages.back();
-        if (continueCompileFrom == ACL_TYPE_SPIRV_BINARY ||
-            continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
-            continueCompileFrom == ACL_TYPE_SPIR_BINARY ||
+        if (continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
             continueCompileFrom == ACL_TYPE_DEFAULT) {
           break;
         }
