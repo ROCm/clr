@@ -1119,7 +1119,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   hsa_agent_t agent;
   agent.handle = 1;
 
-  executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
+  executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
     buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
     return false;
@@ -1140,88 +1140,10 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  size_t progvarsTotalSize = 0;
-  size_t dynamicSize = 0;
-  size_t progvarsWriteSize = 0;
-
-  // Begin the Elf image from memory
-  Elf* e = elf_memory((char*)binary, size, NULL);
-  if (elf_kind(e) != ELF_K_ELF) {
-    buildLog_ += "Error while reading the ELF program binary\n";
+  // Find the size of global variables from the binary
+  if (!FindGlobalVarSize(binary, size)) {
     return false;
   }
-
-  size_t numpHdrs;
-  if (elf_getphdrnum(e, &numpHdrs) != 0) {
-    buildLog_ += "Error while reading the ELF program binary\n";
-    return false;
-  }
-
-  for (size_t i = 0; i < numpHdrs; ++i) {
-    GElf_Phdr pHdr;
-    if (gelf_getphdr(e, i, &pHdr) != &pHdr) {
-      continue;
-    }
-    // Look for the runtime metadata note
-    if (pHdr.p_type == PT_NOTE && pHdr.p_align >= sizeof(int)) {
-      // Iterate over the notes in this segment
-      address ptr = (address)binary + pHdr.p_offset;
-      address segmentEnd = ptr + pHdr.p_filesz;
-
-      while (ptr < segmentEnd) {
-        Elf_Note* note = (Elf_Note*)ptr;
-        address name = (address)&note[1];
-        address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
-
-        //! @todo: Use constants and enums defined in AMDGPUPTNote.h.
-        //! In order to switch to using constants and enums defined in
-        //! AMDGPUPTNote.h, we need to clean up internal header files.
-        if (note->n_type == 7 || note->n_type == 8) {
-          buildLog_ +=
-              "Error: object code with old metadata is not "
-              "supported\n";
-          return false;
-        } else if (note->n_type == 10 /*AMDGPU::ElfNote::NT_AMDGPU_HSA_CODE_OBJECT_METADATA*/
-                   && note->n_namesz == sizeof "AMD" && !memcmp(name, "AMD", note->n_namesz)) {
-          std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
-          metadata_ = new CodeObjectMD();
-          if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
-            buildLog_ += "Error: failed to process metadata\n";
-            return false;
-          }
-          // We've found and loaded the runtime metadata, exit the
-          // note record loop now.
-          break;
-        }
-        ptr += sizeof(*note) + amd::alignUp(note->n_namesz, sizeof(int)) +
-            amd::alignUp(note->n_descsz, sizeof(int));
-      }
-    }
-    // Accumulate the size of R & !X loadable segments
-    else if (pHdr.p_type == PT_LOAD && !(pHdr.p_flags & PF_X)) {
-      if (pHdr.p_flags & PF_R) {
-        progvarsTotalSize += pHdr.p_memsz;
-      }
-      if (pHdr.p_flags & PF_W) {
-        progvarsWriteSize += pHdr.p_memsz;
-      }
-    }
-    else if (pHdr.p_type == PT_DYNAMIC) {
-      dynamicSize += pHdr.p_memsz;
-    }
-  }
-
-  elf_end(e);
-
-  if (!metadata_) {
-    buildLog_ +=
-        "Error: runtime metadata section not present in "
-        "ELF program binary\n";
-    return false;
-  }
-
-  progvarsTotalSize -= dynamicSize;
-  setGlobalVariableTotalSize(progvarsTotalSize);
 
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
@@ -1275,8 +1197,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   return true;
 }
-
-LightningProgram::~LightningProgram() { delete metadata_; }
 
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 

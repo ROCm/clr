@@ -16,15 +16,20 @@
 namespace llvm {
   namespace AMDGPU {
     namespace HSAMD {
+      struct Metadata;
       namespace Kernel {
         struct Metadata;
 }}}}
 
-//typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
+#define LC_METADATA 1
+typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
 //typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-
 #endif  // defined(WITH_LIGHTNING_COMPILER)
+
+#ifndef LC_METADATA
+typedef char CodeObjectMD;
+#endif
 
 namespace amd {
   namespace hsa {
@@ -106,6 +111,8 @@ class Program : public amd::HeapObject {
   size_t globalVariableTotalSize_;
   amd::option::Options* programOptions_;
 
+  CodeObjectMD* metadata_;  //!< Runtime metadata
+
  public:
   //! Construct a section.
   Program(amd::Device& device);
@@ -186,6 +193,8 @@ class Program : public amd::HeapObject {
   //! Global variables are a part of the code segment
   bool hasGlobalStores() const { return hasGlobalStores_; }
 
+  const CodeObjectMD* metadata() const { return metadata_; }
+
  protected:
   //! Compile the device program with LC path
   bool compileImplLC(const std::string& sourceCode,
@@ -265,6 +274,9 @@ class Program : public amd::HeapObject {
   /* \brief Returns the next stage to compile from, based on sections and options in binary
   */
   aclType getNextCompilationStageFromBinary(amd::option::Options* options);
+
+  //! Finds the total size of all global variables in the program
+  bool FindGlobalVarSize(void* binary, size_t binSize);
 
  private:
   //! Disable default copy constructor
