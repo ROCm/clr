@@ -108,10 +108,7 @@ private:
 class LightningProgram : public roc::Program {
 public:
   LightningProgram(roc::NullDevice& device);
-  virtual ~LightningProgram();
-
-  //! Returns the program metadata.
-  const CodeObjectMD* metadata() const { return metadata_; }
+  virtual ~LightningProgram() {}
 
 protected:
   virtual bool linkImpl(amd::option::Options* options) final;
@@ -127,8 +124,6 @@ private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
 
   bool setKernels(amd::option::Options* options, void* binary, size_t binSize);
-
-  CodeObjectMD* metadata_;  //!< Runtime metadata
 };
 #endif // defined(WITH_LIGHTNING_COMPILER)
 

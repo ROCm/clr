@@ -56,7 +56,8 @@ Program::Program(amd::Device& device)
       buildError_(CL_SUCCESS),
       machineTarget_(nullptr),
       globalVariableTotalSize_(0),
-      programOptions_(nullptr)
+      programOptions_(nullptr),
+      metadata_(nullptr)
 {
   memset(&binOpts_, 0, sizeof(binOpts_));
   binOpts_.struct_size = sizeof(binOpts_);
@@ -67,7 +68,10 @@ Program::Program(amd::Device& device)
 }
 
 // ================================================================================================
-Program::~Program() { clear(); }
+Program::~Program() {
+  clear();
+  delete metadata_;
+}
 
 // ================================================================================================
 void Program::clear() {
@@ -1368,5 +1372,95 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
     }
   }
   return continueCompileFrom;
+}
+
+// ================================================================================================
+bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
+#if defined(WITH_LIGHTNING_COMPILER)
+  size_t progvarsTotalSize = 0;
+  size_t dynamicSize = 0;
+  size_t progvarsWriteSize = 0;
+
+  // Begin the Elf image from memory
+  Elf* e = elf_memory((char*)binary, binSize, nullptr);
+  if (elf_kind(e) != ELF_K_ELF) {
+    buildLog_ += "Error while reading the ELF program binary\n";
+    return false;
+  }
+
+  size_t numpHdrs;
+  if (elf_getphdrnum(e, &numpHdrs) != 0) {
+    buildLog_ += "Error while reading the ELF program binary\n";
+    return false;
+  }
+
+  for (size_t i = 0; i < numpHdrs; ++i) {
+    GElf_Phdr pHdr;
+    if (gelf_getphdr(e, i, &pHdr) != &pHdr) {
+      continue;
+    }
+    // Look for the runtime metadata note
+    if (pHdr.p_type == PT_NOTE && pHdr.p_align >= sizeof(int)) {
+      // Iterate over the notes in this segment
+      address ptr = (address)binary + pHdr.p_offset;
+      address segmentEnd = ptr + pHdr.p_filesz;
+
+      while (ptr < segmentEnd) {
+        Elf_Note* note = (Elf_Note*)ptr;
+        address name = (address)&note[1];
+        address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
+
+        if (note->n_type == 7 ||
+            note->n_type == 8) {
+          buildLog_ += "Error: object code with old metadata is not supported\n";
+          return false;
+        }
+        else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA */ &&
+          note->n_namesz == sizeof "AMD" &&
+          !memcmp(name, "AMD", note->n_namesz)) {
+          std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
+          metadata_ = new CodeObjectMD();
+          if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
+            buildLog_ += "Error: failed to process metadata\n";
+            return false;
+          }
+          // We've found and loaded the runtime metadata, exit the
+          // note record loop now.
+          break;
+        }
+        ptr += sizeof(*note) + amd::alignUp(note->n_namesz, sizeof(int)) +
+          amd::alignUp(note->n_descsz, sizeof(int));
+      }
+    }
+    // Accumulate the size of R & !X loadable segments
+    else if (pHdr.p_type == PT_LOAD && !(pHdr.p_flags & PF_X)) {
+      if (pHdr.p_flags & PF_R) {
+        progvarsTotalSize += pHdr.p_memsz;
+      }
+      if (pHdr.p_flags & PF_W) {
+        progvarsWriteSize += pHdr.p_memsz;
+      }
+    }
+    else if (pHdr.p_type == PT_DYNAMIC) {
+      dynamicSize += pHdr.p_memsz;
+    }
+  }
+
+  elf_end(e);
+
+  if (!metadata_) {
+    buildLog_ +=
+      "Error: runtime metadata section not present in ELF program binary\n";
+    return false;
+  }
+
+  progvarsTotalSize -= dynamicSize;
+  setGlobalVariableTotalSize(progvarsTotalSize);
+
+  if (progvarsWriteSize != dynamicSize) {
+    hasGlobalStores_ = true;
+  }
+#endif // defined(WITH_LIGHTNING_COMPILER)
+  return true;
 }
 }

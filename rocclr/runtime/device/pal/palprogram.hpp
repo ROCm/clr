@@ -231,25 +231,19 @@ class HSAILProgram : public device::Program {
 class LightningProgram : public HSAILProgram {
  public:
   LightningProgram(NullDevice& device)
-    : HSAILProgram(device)
-    , metadata_(nullptr) {
+    : HSAILProgram(device) {
       isLC_ = true;
       xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
       machineTarget_ = dev().hwInfo()->machineTarget_;
     }
 
   LightningProgram(Device& device)
-    : HSAILProgram(device)
-    , metadata_(nullptr) {
+    : HSAILProgram(device) {
       isLC_ = true;
       xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
       machineTarget_ = dev().hwInfo()->machineTarget_;
     }
-
-  const CodeObjectMD* metadata() const { return metadata_; }
-
- private:
-  virtual ~LightningProgram();
+  virtual ~LightningProgram() {}
 
  protected:
   virtual bool linkImpl(amd::option::Options* options) override;
@@ -261,9 +255,6 @@ class LightningProgram : public HSAILProgram {
   bool setKernels(amd::option::Options* options, void* binary, size_t size);
 
   virtual bool createBinary(amd::option::Options* options) override;
-
- private:
-  CodeObjectMD* metadata_;  //!< Runtime metadata
 };
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
