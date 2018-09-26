@@ -234,14 +234,14 @@ class LightningProgram : public HSAILProgram {
     : HSAILProgram(device) {
       isLC_ = true;
       xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-      machineTarget_ = dev().hwInfo()->machineTarget_;
+      machineTarget_ = dev().hwInfo()->machineTargetLC_;
     }
 
   LightningProgram(Device& device)
     : HSAILProgram(device) {
       isLC_ = true;
       xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-      machineTarget_ = dev().hwInfo()->machineTarget_;
+      machineTarget_ = dev().hwInfo()->machineTargetLC_;
     }
   virtual ~LightningProgram() {}
 

@@ -592,8 +592,11 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  uint32_t majorSrc = program_->dev().hwInfo()->gfxipVersion_ / 10;
-  uint32_t minorSrc = program_->dev().hwInfo()->gfxipVersion_ % 10;
+  uint32_t gfxipVersion = IS_LIGHTNING ?
+    program_->dev().hwInfo()->gfxipVersionLC_ :
+    program_->dev().hwInfo()->gfxipVersion_;
+  uint32_t majorSrc = gfxipVersion / 10;
+  uint32_t minorSrc = gfxipVersion % 10;
 
   uint32_t majorTrg = isa.handle / 10;
   uint32_t minorTrg = isa.handle % 10;
@@ -969,7 +972,7 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
   inputs.push_back(ocml_bc);
 
   // open the control functions
-  auto isa_version = get_oclc_isa_version(dev().hwInfo()->gfxipVersion_);
+  auto isa_version = get_oclc_isa_version(dev().hwInfo()->gfxipVersionLC_);
   if (!isa_version.first) {
     buildLog_ += "Error: Linking for this device is not supported\n";
     return false;
@@ -992,7 +995,7 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
 
   auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
                                   AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-                                  (dev().hwInfo()->gfxipVersion_ < 900 &&
+                                  (dev().hwInfo()->gfxipVersionLC_ < 900 &&
                                    AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
   Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
 
@@ -1057,7 +1060,7 @@ bool LightningProgram::linkImpl(amd::option::Options* options) {
 
   // Set the machine target
   std::ostringstream mCPU;
-  mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersion_;
+  mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersionLC_;
   codegenOptions.append(mCPU.str());
 
   // Set xnack option if needed
