@@ -106,7 +106,8 @@ class PerfCounterProfile : public amd::ReferenceCountedObject {
       return false;
     }
 
-    if (hsa_system_get_extension_table(HSA_EXTENSION_AMD_AQLPROFILE, 1, 0, &api_) != HSA_STATUS_SUCCESS) {
+    if (hsa_system_get_major_extension_table(HSA_EXTENSION_AMD_AQLPROFILE, 1,
+        sizeof(hsa_ven_amd_aqlprofile_1_00_pfn_t), &api_) != HSA_STATUS_SUCCESS) {
       return false;
     }
 
