@@ -117,7 +117,8 @@ bool NullDevice::init() {
         id < sizeof(Gfx9PlusSubDeviceInfo)/sizeof(AMDDeviceInfo); ++id) {
       bool foundActive = false;
       bool foundDuplicate = false;
-      uint gfxipVersion = pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
+      uint gfxipVersion = IS_LIGHTNING ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_ :
+        pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
       if (pal::Gfx9PlusSubDeviceInfo[id].targetName_[0] == '\0') {
           continue;
@@ -127,8 +128,10 @@ bool NullDevice::init() {
       for (uint i = 0; i < devices.size(); ++i) {
         driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
         if (driverVersion.find("PAL") != std::string::npos) {
-          if (static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersion_ ==
-                                                              gfxipVersion) {
+          uint gfxIpCurrent = IS_LIGHTNING ?
+            static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersionLC_ :
+            static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersion_;
+          if (gfxIpCurrent == gfxipVersion) {
               foundActive = true;
               break;
           }
@@ -161,8 +164,8 @@ bool NullDevice::init() {
       }
 
       Pal::GfxIpLevel ipLevel = Pal::GfxIpLevel::_None;
-      uint ipLevelMajor = round(pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_ / 100);
-      uint ipLevelMinor = round(pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_ / 10 % 10);
+      uint ipLevelMajor = round(gfxipVersion / 100);
+      uint ipLevelMinor = round(gfxipVersion / 10 % 10);
       switch (ipLevelMajor) {
       case 9:
           ipLevel = Pal::GfxIpLevel::GfxIp9;
@@ -181,7 +184,7 @@ bool NullDevice::init() {
       Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
       uint xNACKSupported = pal::Gfx9PlusSubDeviceInfo[id].xnackEnabled_ ? 1 : 0;
 
-      switch (pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_) {
+      switch (gfxipVersion) {
       case 901:
       case 900:
           revision = Pal::AsicRevision::Vega10;
@@ -271,9 +274,9 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
 #if defined(WITH_LIGHTNING_COMPILER)
   //  create compilation object with cache support
-  int gfxipMajor = hwInfo_->gfxipVersion_ / 100;
-  int gfxipMinor = hwInfo_->gfxipVersion_ / 10 % 10;
-  int gfxipStepping = hwInfo_->gfxipVersion_ % 10;
+  int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
+  int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
+  int gfxipStepping = hwInfo_->gfxipVersionLC_ % 10;
 
   // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
   // with dash as delimiter to be compatible with Windows directory name
@@ -594,7 +597,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipVersion_ = hwInfo()->gfxipVersion_;
+    info_.gfxipVersion_ = IS_LIGHTNING ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
 
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;
@@ -932,9 +935,9 @@ bool Device::create(Pal::IDevice* device) {
 
 #if defined(WITH_LIGHTNING_COMPILER)
   //  create compilation object with cache support
-  int gfxipMajor = hwInfo()->gfxipVersion_ / 100;
-  int gfxipMinor = hwInfo()->gfxipVersion_ / 10 % 10;
-  int gfxipStepping = hwInfo()->gfxipVersion_ % 10;
+  int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
+  int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
+  int gfxipStepping = hwInfo()->gfxipVersionLC_ % 10;
 
   // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
   // with dash as delimiter to be compatible with Windows directory name
