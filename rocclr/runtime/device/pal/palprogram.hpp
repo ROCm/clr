@@ -183,8 +183,6 @@ class HSAILProgram : public device::Program {
 
   bool saveBinaryAndSetType(type_t type);
 
-  virtual bool linkImpl(amd::option::Options* options);
-
   virtual bool createBinary(amd::option::Options* options);
 
   virtual const aclTargetInfo& info(const char* str = "");
@@ -192,6 +190,8 @@ class HSAILProgram : public device::Program {
   virtual bool isElf(const char* bin) const {
     return amd::isElfMagic(bin);
   }
+
+  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
   //! Destroys CPU allocations in the code segment   
   void DestroySegmentCpuAccess() const
@@ -242,9 +242,7 @@ class LightningProgram : public HSAILProgram {
   virtual ~LightningProgram() {}
 
  protected:
-  virtual bool linkImpl(amd::option::Options* options) override;
-
-  bool setKernels(amd::option::Options* options, void* binary, size_t size);
+  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
   virtual bool createBinary(amd::option::Options* options) override;
 };

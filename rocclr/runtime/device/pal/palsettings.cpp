@@ -457,6 +457,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 #endif  // WITH_LIGHTNING_COMPILER
 
+  gfx10Hsail_ = gfx10Plus_;
+
   // Override current device settings
   override();
 

@@ -214,7 +214,7 @@ class Program : public amd::HeapObject {
   );
 
   //! Link the device program.
-  virtual bool linkImpl(amd::option::Options* options) = 0;
+  virtual bool linkImpl(amd::option::Options* options);
 
   //! Link the device programs.
   virtual bool linkImpl(const std::vector<Program*>& inputPrograms, amd::option::Options* options,
@@ -237,6 +237,9 @@ class Program : public amd::HeapObject {
   virtual const aclTargetInfo& info(const char* str = "") = 0;
 
   virtual bool isElf(const char* bin) const = 0;
+
+  virtual bool setKernels(
+    amd::option::Options* options, void* binary, size_t binSize) { return true; }
 
   //! Returns all the options to be appended while passing to the compiler library
   std::string ProcessOptions(amd::option::Options* options);
@@ -269,23 +272,29 @@ class Program : public amd::HeapObject {
   bool FindGlobalVarSize(void* binary, size_t binSize);
 
  private:
-   //! Compile the device program with LC path
-   bool compileImplLC(const std::string& sourceCode,
-     const std::vector<const std::string*>& headers,
-     const char** headerIncludeNames, amd::option::Options* options);
+  //! Compile the device program with LC path
+  bool compileImplLC(const std::string& sourceCode,
+    const std::vector<const std::string*>& headers,
+    const char** headerIncludeNames, amd::option::Options* options);
 
-   //! Compile the device program with HSAIL path
-   bool compileImplHSAIL(const std::string& sourceCode,
-     const std::vector<const std::string*>& headers,
-     const char** headerIncludeNames, amd::option::Options* options);
+  //! Compile the device program with HSAIL path
+  bool compileImplHSAIL(const std::string& sourceCode,
+    const std::vector<const std::string*>& headers,
+    const char** headerIncludeNames, amd::option::Options* options);
 
-   //! Link the device programs with HSAIL path
-   bool linkImplHSAIL(const std::vector<Program*>& inputPrograms,
-     amd::option::Options* options, bool createLibrary);
+  //! Link the device programs with LC path
+  bool linkImplLC(const std::vector<Program*>& inputPrograms,
+    amd::option::Options* options, bool createLibrary);
 
-   //! Link the device programs with LC path
-   bool linkImplLC(const std::vector<Program*>& inputPrograms,
-     amd::option::Options* options, bool createLibrary);
+  //! Link the device programs with HSAIL path
+  bool linkImplHSAIL(const std::vector<Program*>& inputPrograms,
+    amd::option::Options* options, bool createLibrary);
+
+  //! Link the device program with LC path
+  bool linkImplLC(amd::option::Options* options);
+
+  //! Link the device program with HSAIL path
+  bool linkImplHSAIL(amd::option::Options* options);
 
   //! Disable default copy constructor
   Program(const Program&);
