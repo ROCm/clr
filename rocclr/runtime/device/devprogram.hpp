@@ -196,16 +196,6 @@ class Program : public amd::HeapObject {
   const CodeObjectMD* metadata() const { return metadata_; }
 
  protected:
-  //! Compile the device program with LC path
-  bool compileImplLC(const std::string& sourceCode,
-     const std::vector<const std::string*>& headers,
-     const char** headerIncludeNames, amd::option::Options* options);
-
-  //! Compile the device program with HSAIL path
-  bool compileImplHSAIL(const std::string& sourceCode,
-     const std::vector<const std::string*>& headers,
-     const char** headerIncludeNames, amd::option::Options* options);
-
   //! pre-compile setup
   virtual bool initBuild(amd::option::Options* options);
 
@@ -228,7 +218,7 @@ class Program : public amd::HeapObject {
 
   //! Link the device programs.
   virtual bool linkImpl(const std::vector<Program*>& inputPrograms, amd::option::Options* options,
-    bool createLibrary) = 0;
+    bool createLibrary);
 
   virtual bool createBinary(amd::option::Options* options) = 0;
 
@@ -279,6 +269,24 @@ class Program : public amd::HeapObject {
   bool FindGlobalVarSize(void* binary, size_t binSize);
 
  private:
+   //! Compile the device program with LC path
+   bool compileImplLC(const std::string& sourceCode,
+     const std::vector<const std::string*>& headers,
+     const char** headerIncludeNames, amd::option::Options* options);
+
+   //! Compile the device program with HSAIL path
+   bool compileImplHSAIL(const std::string& sourceCode,
+     const std::vector<const std::string*>& headers,
+     const char** headerIncludeNames, amd::option::Options* options);
+
+   //! Link the device programs with HSAIL path
+   bool linkImplHSAIL(const std::vector<Program*>& inputPrograms,
+     amd::option::Options* options, bool createLibrary);
+
+   //! Link the device programs with LC path
+   bool linkImplLC(const std::vector<Program*>& inputPrograms,
+     amd::option::Options* options, bool createLibrary);
+
   //! Disable default copy constructor
   Program(const Program&);
 

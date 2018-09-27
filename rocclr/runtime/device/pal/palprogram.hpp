@@ -185,10 +185,6 @@ class HSAILProgram : public device::Program {
 
   virtual bool linkImpl(amd::option::Options* options);
 
-  //! Link the device programs.
-  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
-                        amd::option::Options* options, bool createLibrary);
-
   virtual bool createBinary(amd::option::Options* options);
 
   virtual const aclTargetInfo& info(const char* str = "");
@@ -247,10 +243,6 @@ class LightningProgram : public HSAILProgram {
 
  protected:
   virtual bool linkImpl(amd::option::Options* options) override;
-
-  //! Link the device programs.
-  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
-                        amd::option::Options* options, bool createLibrary) override;
 
   bool setKernels(amd::option::Options* options, void* binary, size_t size);
 

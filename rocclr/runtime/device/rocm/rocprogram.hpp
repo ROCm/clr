@@ -92,9 +92,6 @@ class HSAILProgram : public roc::Program {
  protected:
   virtual bool linkImpl(amd::option::Options* options) final;
 
-  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
-                        amd::option::Options* options, bool createLibrary) final;
-
   virtual bool createBinary(amd::option::Options* options) final;
 
 private:
@@ -112,9 +109,6 @@ public:
 
 protected:
   virtual bool linkImpl(amd::option::Options* options) final;
-
-  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
-                        amd::option::Options* options, bool createLibrary) final;
 
   virtual bool createBinary(amd::option::Options* options) final;
 
