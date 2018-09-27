@@ -518,7 +518,8 @@ class Settings : public amd::HeapObject {
       uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
       uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
-      uint reserved_ : 22;
+      uint gfx10Hsail_ : 1 ;          //!< GFX10 HSAIL path
+      uint reserved_ : 21;
     };
     uint value_;
   };

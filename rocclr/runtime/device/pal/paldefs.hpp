@@ -128,26 +128,26 @@ struct AMDDeviceInfo {
 };
 
 static const AMDDeviceInfo DeviceInfo[] = {
-  /* Unknown */ {"", "unknown", "", 4, 16, 1, 256, 64 * Ki, 32, 0, false},
-  /* Tahiti */ {"", "tahiti", "", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
-  /* Pitcairn */ {"", "pitcairn", "", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
-  /* Capeverde */ {"", "bonaire", "", 4, 16, 1, 256, 64 * Ki, 32, 700, false},
-  /* Oland */ {"", "oland", "", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
-  /* Hainan */ {"", "hainan", "", 4, 16, 1, 256, 64 * Ki, 32, 600, false},
+  /* Unknown */ {"", "unknown", "", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
+  /* Tahiti */ {"", "tahiti", "", 4, 16, 1, 256, 64 * Ki, 32, 600, 600, false},
+  /* Pitcairn */ {"", "pitcairn", "", 4, 16, 1, 256, 64 * Ki, 32, 600, 600, false},
+  /* Capeverde */ {"", "bonaire", "", 4, 16, 1, 256, 64 * Ki, 32, 700, 700, false},
+  /* Oland */ {"", "oland", "", 4, 16, 1, 256, 64 * Ki, 32, 600, 600, false},
+  /* Hainan */ {"", "hainan", "", 4, 16, 1, 256, 64 * Ki, 32, 600, 600, false},
 
-  /* Bonaire */ {"Bonaire", "bonaire", "", 4, 16, 1, 256, 64 * Ki, 32, 700, false},
-  /* Hawaii */ {"Hawaii", "hawaii", "", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
-  /* Hawaii */ {"", "grenada", "", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
-  /* Hawaii */ {"", "maui", "", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
+  /* Bonaire */ {"Bonaire", "bonaire", "", 4, 16, 1, 256, 64 * Ki, 32, 700, 700, false},
+  /* Hawaii */ {"Hawaii", "hawaii", "", 4, 16, 1, 256, 64 * Ki, 32, 701, 701, false},
+  /* Hawaii */ {"", "grenada", "", 4, 16, 1, 256, 64 * Ki, 32, 701, 701, false},
+  /* Hawaii */ {"", "maui", "", 4, 16, 1, 256, 64 * Ki, 32, 701, 701, false},
 
-  /* Kalindi */ {"Kalindi", "kalindi", "", 4, 16, 1, 256, 64 * Ki, 32, 702, false},
-  /* Godavari */ {"Mullins", "mullins", "", 4, 16, 1, 256, 64 * Ki, 32, 702, false},
-  /* Spectre */ {"Spectre", "spectre", "", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
-  /* Spooky */ {"Spooky", "spooky", "", 4, 16, 1, 256, 64 * Ki, 32, 701, false},
+  /* Kalindi */ {"Kalindi", "kalindi", "", 4, 16, 1, 256, 64 * Ki, 32, 702, 702, false},
+  /* Godavari */ {"Mullins", "mullins", "", 4, 16, 1, 256, 64 * Ki, 32, 702, 702, false},
+  /* Spectre */ {"Spectre", "spectre", "", 4, 16, 1, 256, 64 * Ki, 32, 701, 701, false},
+  /* Spooky */ {"Spooky", "spooky", "", 4, 16, 1, 256, 64 * Ki, 32, 701, 701, false},
 
-  /* Carrizo */ {"Carrizo", "carrizo", "", 4, 16, 1, 256, 64 * Ki, 32, 801, false},
-  /* Bristol */ {"Bristol Ridge", "carrizo", "", 4, 16, 1, 256, 64 * Ki, 32, 801, false},
-  /* Stoney */ {"Stoney", "stoney", "", 4, 16, 1, 256, 64 * Ki, 32, 810, false},
+  /* Carrizo */ {"Carrizo", "carrizo", "", 4, 16, 1, 256, 64 * Ki, 32, 801, 801,false},
+  /* Bristol */ {"Bristol Ridge", "carrizo", "", 4, 16, 1, 256, 64 * Ki, 32, 801, 801, false},
+  /* Stoney */ {"Stoney", "stoney", "", 4, 16, 1, 256, 64 * Ki, 32, 810, 810, false},
 
   /* Iceland */ {"Iceland", "iceland", "gfx802", 4, 16, 1, 256, 64 * Ki, 32, 802, 800, false},
   /* Tonga */ {"Tonga", "tonga", "gfx802", 4, 16, 1, 256, 64 * Ki, 32, 802, 800, false},

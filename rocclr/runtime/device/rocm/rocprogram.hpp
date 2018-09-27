@@ -90,9 +90,9 @@ class HSAILProgram : public roc::Program {
   virtual ~HSAILProgram();
 
  protected:
-  virtual bool linkImpl(amd::option::Options* options) final;
-
   virtual bool createBinary(amd::option::Options* options) final;
+
+  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
 private:
   std::string codegenOptions(amd::option::Options* options);
@@ -108,8 +108,6 @@ public:
   virtual ~LightningProgram() {}
 
 protected:
-  virtual bool linkImpl(amd::option::Options* options) final;
-
   virtual bool createBinary(amd::option::Options* options) final;
 
   bool saveBinaryAndSetType(type_t type) { return true; }
@@ -117,7 +115,7 @@ protected:
 private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
 
-  bool setKernels(amd::option::Options* options, void* binary, size_t binSize);
+  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 };
 #endif // defined(WITH_LIGHTNING_COMPILER)
 

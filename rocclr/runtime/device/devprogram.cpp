@@ -13,9 +13,11 @@
 
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
+#include "libraries.amdgcn.inc"
 #include "opencl1.2-c.amdgcn.inc"
 #include "opencl2.0-c.amdgcn.inc"
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
+
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -493,97 +495,6 @@ bool Program::linkImpl(const std::vector<device::Program*>& inputPrograms,
 }
 
 // ================================================================================================
-bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
-  amd::option::Options* options, bool createLibrary) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
-  acl_error errorCode;
-
-  // For each program we need to extract the LLVMIR and create
-  // aclBinary for each
-  std::vector<aclBinary*> binaries_to_link;
-
-  for (auto program : inputPrograms) {
-    // Check if the program was created with clCreateProgramWIthBinary
-    binary_t binary = program->binary();
-    if ((binary.first != nullptr) && (binary.second > 0)) {
-      // Binary already exists -- we can also check if there is no
-      // opencl source code
-      // Need to check if LLVMIR exists in the binary
-      // If LLVMIR does not exist then is it valid
-      // We need to pull out all the compiled kernels
-      // We cannot do this at present because we need at least
-      // Hsail text to pull the kernels oout
-      void* mem = const_cast<void*>(binary.first);
-      binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
-      if (errorCode != ACL_SUCCESS) {
-        LogWarning("Error while linking : Could not read from raw binary");
-        return false;
-      }
-    }
-
-    // At this stage each Program contains a valid binary_elf
-    // Check if LLVMIR is in the binary
-    size_t boolSize = sizeof(bool);
-    bool containsLLLVMIR = false;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR,
-      nullptr, &containsLLLVMIR, &boolSize);
-
-    if (errorCode != ACL_SUCCESS || !containsLLLVMIR) {
-      bool spirv = false;
-      size_t boolSize = sizeof(bool);
-      errorCode = aclQueryInfo(
-        device().compiler(), binaryElf_, RT_CONTAINS_SPIRV, nullptr, &spirv, &boolSize);
-      if (errorCode != ACL_SUCCESS) {
-        spirv = false;
-      }
-      if (spirv) {
-        errorCode = aclCompile(
-          device().compiler(), binaryElf_, options->origOptionStr.c_str(),
-          ACL_TYPE_SPIRV_BINARY, ACL_TYPE_LLVMIR_BINARY, nullptr);
-        buildLog_ += aclGetCompilerLog(device().compiler());
-        if (errorCode != ACL_SUCCESS) {
-          buildLog_ += "Error while linking: Could not load SPIR-V";
-          return false;
-        }
-      }
-      else {
-        buildLog_ += "Error while linking : Invalid binary (Missing LLVMIR section)";
-        return false;
-      }
-    }
-    // Create a new aclBinary for each LLVMIR and save it in a list
-    aclBIFVersion ver = aclBinaryVersion(binaryElf_);
-    aclBinary* bin = aclCreateFromBinary(binaryElf_, ver);
-    binaries_to_link.push_back(bin);
-  }
-
-  errorCode = aclLink(device().compiler(), binaries_to_link[0], binaries_to_link.size() - 1,
-    binaries_to_link.size() > 1 ? &binaries_to_link[1] : nullptr,
-    ACL_TYPE_LLVMIR_BINARY, "-create-library", nullptr);
-  if (errorCode != ACL_SUCCESS) {
-    buildLog_ += aclGetCompilerLog(device().compiler());
-    buildLog_ += "Error while linking : aclLink failed";
-    return false;
-  }
-  // Store the newly linked aclBinary for this program.
-  binaryElf_ = binaries_to_link[0];
-  // Free all the other aclBinaries
-  for (size_t i = 1; i < binaries_to_link.size(); i++) {
-    aclBinaryFini(binaries_to_link[i]);
-  }
-  if (createLibrary) {
-    saveBinaryAndSetType(TYPE_LIBRARY);
-    buildLog_ += aclGetCompilerLog(device().compiler());
-    return true;
-  }
-  // Now call linkImpl with the new options
-  return linkImpl(options);
-#else
-  return false;
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
-}
-
-// ================================================================================================
 bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   amd::option::Options* options, bool createLibrary) {
 #if defined(WITH_LIGHTNING_COMPILER)
@@ -676,6 +587,440 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
 #else
   return false;
 #endif // defined(WITH_LIGHTNING_COMPILER)
+}
+
+// ================================================================================================
+bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
+  amd::option::Options* options, bool createLibrary) {
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+  acl_error errorCode;
+
+  // For each program we need to extract the LLVMIR and create
+  // aclBinary for each
+  std::vector<aclBinary*> binaries_to_link;
+
+  for (auto program : inputPrograms) {
+    // Check if the program was created with clCreateProgramWIthBinary
+    binary_t binary = program->binary();
+    if ((binary.first != nullptr) && (binary.second > 0)) {
+      // Binary already exists -- we can also check if there is no
+      // opencl source code
+      // Need to check if LLVMIR exists in the binary
+      // If LLVMIR does not exist then is it valid
+      // We need to pull out all the compiled kernels
+      // We cannot do this at present because we need at least
+      // Hsail text to pull the kernels oout
+      void* mem = const_cast<void*>(binary.first);
+      binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
+      if (errorCode != ACL_SUCCESS) {
+        LogWarning("Error while linking : Could not read from raw binary");
+        return false;
+      }
+    }
+
+    // At this stage each Program contains a valid binary_elf
+    // Check if LLVMIR is in the binary
+    size_t boolSize = sizeof(bool);
+    bool containsLLLVMIR = false;
+    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR,
+      nullptr, &containsLLLVMIR, &boolSize);
+
+    if (errorCode != ACL_SUCCESS || !containsLLLVMIR) {
+      bool spirv = false;
+      size_t boolSize = sizeof(bool);
+      errorCode = aclQueryInfo(
+        device().compiler(), binaryElf_, RT_CONTAINS_SPIRV, nullptr, &spirv, &boolSize);
+      if (errorCode != ACL_SUCCESS) {
+        spirv = false;
+      }
+      if (spirv) {
+        errorCode = aclCompile(
+          device().compiler(), binaryElf_, options->origOptionStr.c_str(),
+          ACL_TYPE_SPIRV_BINARY, ACL_TYPE_LLVMIR_BINARY, nullptr);
+        buildLog_ += aclGetCompilerLog(device().compiler());
+        if (errorCode != ACL_SUCCESS) {
+          buildLog_ += "Error while linking: Could not load SPIR-V";
+          return false;
+        }
+      }
+      else {
+        buildLog_ += "Error while linking : Invalid binary (Missing LLVMIR section)";
+        return false;
+      }
+    }
+    // Create a new aclBinary for each LLVMIR and save it in a list
+    aclBIFVersion ver = aclBinaryVersion(binaryElf_);
+    aclBinary* bin = aclCreateFromBinary(binaryElf_, ver);
+    binaries_to_link.push_back(bin);
+  }
+
+  errorCode = aclLink(device().compiler(), binaries_to_link[0], binaries_to_link.size() - 1,
+    binaries_to_link.size() > 1 ? &binaries_to_link[1] : nullptr,
+    ACL_TYPE_LLVMIR_BINARY, "-create-library", nullptr);
+  if (errorCode != ACL_SUCCESS) {
+    buildLog_ += aclGetCompilerLog(device().compiler());
+    buildLog_ += "Error while linking : aclLink failed";
+    return false;
+  }
+  // Store the newly linked aclBinary for this program.
+  binaryElf_ = binaries_to_link[0];
+  // Free all the other aclBinaries
+  for (size_t i = 1; i < binaries_to_link.size(); i++) {
+    aclBinaryFini(binaries_to_link[i]);
+  }
+  if (createLibrary) {
+    saveBinaryAndSetType(TYPE_LIBRARY);
+    buildLog_ += aclGetCompilerLog(device().compiler());
+    return true;
+  }
+
+  // Now call linkImpl with the new options
+  return linkImpl(options);
+#else
+  return false;
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+}
+
+// ================================================================================================
+bool Program::linkImpl(amd::option::Options* options) {
+  if (isLC()) {
+    return linkImplLC(options);
+  }
+  else {
+    return linkImplHSAIL(options);
+  }
+}
+
+// ================================================================================================
+bool Program::linkImplLC(amd::option::Options* options) {
+#if defined(WITH_LIGHTNING_COMPILER)
+  using namespace amd::opencl_driver;
+  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
+    true : false;
+  std::vector<Data*> inputs;
+  std::unique_ptr<Compiler> C(newCompilerInstance());
+  bool bLinkLLVMBitcode = true;
+  aclType continueCompileFrom = llvmBinary_.empty() ?
+    getNextCompilationStageFromBinary(options) : ACL_TYPE_LLVMIR_BINARY;
+
+  switch (continueCompileFrom) {
+  case ACL_TYPE_CG:
+  case ACL_TYPE_LLVMIR_BINARY: {
+    break;
+  }
+  case ACL_TYPE_ASM_TEXT: {
+    char* section;
+    size_t sz;
+    clBinary()->elfOut()->getSection(amd::OclElf::SOURCE, &section, &sz);
+    Data* input = C->NewBufferReference(DT_ASSEMBLY, section, sz);
+    if (!input) {
+      buildLog_ += "Error: Failed to open the assembler text.\n";
+      return false;
+    }
+    inputs.push_back(input);
+    bLinkLLVMBitcode = false;
+    break;
+  }
+                          break;
+  case ACL_TYPE_ISA: {
+    binary_t isaBinary = binary();
+    if ((isaBinary.first != nullptr) && (isaBinary.second > 0)) {
+      return setKernels(options, (void*)isaBinary.first, isaBinary.second);
+    }
+    else {
+      buildLog_ += "Error: code object is empty \n";
+      return false;
+    }
+    break;
+  }
+  default:
+    buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
+    return false;
+  }
+
+  // call LinkLLVMBitcode
+  if (bLinkLLVMBitcode) {
+    // open the input IR source
+    Data* input = C->NewBufferReference(DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
+
+    if (!input) {
+      buildLog_ += "Error: Failed to open the compiled program.\n";
+      return false;
+    }
+
+    inputs.push_back(input);  // must be the first input
+                              // open the bitcode libraries
+    Data* opencl_bc =
+      C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_amdgcn, opencl_amdgcn_size);
+    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
+    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
+
+    if (!opencl_bc || !ocml_bc || !ockl_bc) {
+      buildLog_ += "Error: Failed to open the bitcode library.\n";
+      return false;
+    }
+
+    inputs.push_back(opencl_bc);  // depends on oclm & ockl
+    inputs.push_back(ockl_bc);
+    inputs.push_back(ocml_bc);
+
+    // open the control functions
+    auto isa_version = get_oclc_isa_version(device().info().gfxipVersion_);
+    if (!isa_version.first) {
+      buildLog_ += "Error: Linking for this device is not supported\n";
+      return false;
+    }
+
+    Data* isa_version_bc =
+      C->NewBufferReference(DT_LLVM_BC, (const char*)isa_version.first, isa_version.second);
+
+    if (!isa_version_bc) {
+      buildLog_ += "Error: Failed to open the control functions.\n";
+      return false;
+    }
+
+    inputs.push_back(isa_version_bc);
+
+    auto correctly_rounded_sqrt =
+      get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
+    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
+      correctly_rounded_sqrt.second);
+
+    auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
+      AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
+      (device().info().gfxipVersion_ < 900 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
+    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
+
+    auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
+      options->oVariables->FastRelaxedMath);
+    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC, finite_only.first, finite_only.second);
+
+    auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
+      options->oVariables->FastRelaxedMath);
+    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
+
+    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+      buildLog_ += "Error: Failed to open the control functions.\n";
+      return false;
+    }
+
+    inputs.push_back(correctly_rounded_sqrt_bc);
+    inputs.push_back(daz_opt_bc);
+    inputs.push_back(finite_only_bc);
+    inputs.push_back(unsafe_math_bc);
+
+    // open the linked output
+    std::vector<std::string> linkOptions;
+    Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
+
+    if (!linked_bc) {
+      buildLog_ += "Error: Failed to open the linked program.\n";
+      return false;
+    }
+
+    // NOTE: The linkOptions parameter is also used to identy cached code object. This parameter
+    //       should not contain any dyanamically generated filename.
+    bool ret = device().cacheCompilation()->linkLLVMBitcode(
+      C.get(), inputs, linked_bc, linkOptions, buildLog_);
+    buildLog_ += C->Output();
+    if (!ret) {
+      buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
+      return false;
+    }
+
+    if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+      std::ofstream f(options->getDumpFileName("_linked.bc").c_str(),
+        std::ios::binary | std::ios::trunc);
+      if (f.is_open()) {
+        f.write(linked_bc->Buf().data(), linked_bc->Size());
+        f.close();
+      }
+      else {
+        buildLog_ += "Warning: opening the file to dump the linked IR failed.\n";
+      }
+    }
+
+    inputs.clear();
+    inputs.push_back(linked_bc);
+  }
+
+  Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
+  if (!out_exec) {
+    buildLog_ += "Error: Failed to create the linked executable.\n";
+    return false;
+  }
+
+  std::string codegenOptions(options->llvmOptions);
+
+  // Set the machine target
+  codegenOptions.append(" -mcpu=");
+  codegenOptions.append(machineTarget_);
+
+  // Set xnack option if needed
+  if (xnackEnabled_) {
+    codegenOptions.append(" -mxnack");
+  }
+
+  // Set the -O#
+  std::ostringstream optLevel;
+  optLevel << "-O" << options->oVariables->OptLevel;
+  codegenOptions.append(" ").append(optLevel.str());
+
+  // Pass clang options
+  std::ostringstream ostrstr;
+  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
+    std::ostream_iterator<std::string>(ostrstr, " "));
+  codegenOptions.append(" ").append(ostrstr.str());
+
+  // Set whole program mode
+  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
+
+  // Tokenize the options string into a vector of strings
+  std::istringstream strstr(codegenOptions);
+  std::istream_iterator<std::string> sit(strstr), end;
+  std::vector<std::string> params(sit, end);
+
+  // NOTE: The params is also used to identy cached code object. This parameter
+  //       should not contain any dyanamically generated filename.
+  bool ret = device().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
+    buildLog_);
+  buildLog_ += C->Output();
+  if (!ret) {
+    if (continueCompileFrom == ACL_TYPE_ASM_TEXT) {
+      buildLog_ += "Error: Creating the executable from ISA assembly text failed.\n";
+    }
+    else {
+      buildLog_ += "Error: Creating the executable from LLVM IRs failed.\n";
+    }
+    return false;
+  }
+
+  if (options->isDumpFlagSet(amd::option::DUMP_O)) {
+    std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::binary | std::ios::trunc);
+    if (f.is_open()) {
+      f.write(out_exec->Buf().data(), out_exec->Size());
+      f.close();
+    }
+    else {
+      buildLog_ += "Warning: opening the file to dump the code object failed.\n";
+    }
+  }
+
+  if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
+    std::string name = options->getDumpFileName(".s");
+    File* dump = C->NewFile(DT_INTERNAL, name);
+    if (!C->DumpExecutableAsText(out_exec, dump)) {
+      buildLog_ += "Warning: failed to dump code object.\n";
+    }
+  }
+
+  // Call the device layer to setup all available kernels on the actual device
+  if (!setKernels(options, out_exec->Buf().data(), out_exec->Size())) {
+      return false;
+  }
+
+  // Save the binary and type
+  clBinary()->saveBIFBinary(reinterpret_cast<const char*>(out_exec->Buf().data()), out_exec->Size());
+  setType(TYPE_EXECUTABLE);
+
+  return true;
+#else
+  return false;
+#endif // defined(WITH_LIGHTNING_COMPILER)
+}
+
+// ================================================================================================
+bool Program::linkImplHSAIL(amd::option::Options* options) {
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+  acl_error errorCode;
+  bool finalize = true;
+  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
+  // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
+  aclType continueCompileFrom = (!binaryElf_) ?
+    getNextCompilationStageFromBinary(options) : ACL_TYPE_LLVMIR_BINARY;
+
+  switch (continueCompileFrom) {
+  case ACL_TYPE_SPIRV_BINARY:
+  case ACL_TYPE_SPIR_BINARY:
+    // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
+    // 1. if the program is not created with binary;
+    // 2. if the program is created with binary and contains only .llvmir & .comment
+    // 3. if the program is created with binary, contains .llvmir, .comment, brig sections,
+    //    but the binary's compile & link options differ from current ones (recompilation);
+  case ACL_TYPE_LLVMIR_BINARY:
+    // Compilation from ACL_TYPE_HSAIL_BINARY to ACL_TYPE_CG in cases:
+    // 1. if the program is created with binary and contains only brig sections
+  case ACL_TYPE_HSAIL_BINARY:
+    // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
+    // 1. if the program is created with binary and contains only hsail text
+  case ACL_TYPE_HSAIL_TEXT: {
+    std::string curOptions =
+      options->origOptionStr + ProcessOptions(options);
+    errorCode = aclCompile(device().compiler(), binaryElf_, curOptions.c_str(),
+      continueCompileFrom, ACL_TYPE_CG, logFunction);
+    buildLog_ += aclGetCompilerLog(device().compiler());
+    if (errorCode != ACL_SUCCESS) {
+      buildLog_ += "Error while BRIG Codegen phase: compilation error \n";
+      return false;
+    }
+    break;
+  }
+  case ACL_TYPE_CG:
+    break;
+  case ACL_TYPE_ISA:
+    finalize = false;
+    break;
+  default:
+    buildLog_ += "Error while BRIG Codegen phase: the binary is incomplete \n";
+    return false;
+  }
+
+  if (finalize) {
+    std::string fin_options(options->origOptionStr + ProcessOptions(options));
+    // Append an option so that we can selectively enable a SCOption on CZ
+    // whenever IOMMUv2 is enabled.
+    if (device().isFineGrainedSystem(true)) {
+      fin_options.append(" -sc-xnack-iommu");
+    }
+    if (device().settings().gfx10Hsail_) {
+      if (GPU_FORCE_WAVE_SIZE_32) {
+        fin_options.append(" -force-wave-size-32");
+      }
+      if (xnackEnabled_) {
+        fin_options.append(" -xnack");
+      }
+    }
+
+    errorCode = aclCompile(device().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
+      ACL_TYPE_ISA, logFunction);
+    buildLog_ += aclGetCompilerLog(device().compiler());
+    if (errorCode != ACL_SUCCESS) {
+      buildLog_ += "Error: BRIG finalization to ISA failed.\n";
+      return false;
+    }
+  }
+
+  size_t binSize;
+  void* binary = const_cast<void*>(aclExtractSection(
+    device().compiler(), binaryElf_, &binSize, aclTEXT, &errorCode));
+  if (errorCode != ACL_SUCCESS) {
+    buildLog_ += "Error: cannot extract ISA from compiled binary.\n";
+    return false;
+  }
+
+  // Call the device layer to setup all available kernels on the actual device
+  if (!setKernels(options, binary, binSize)) {
+    return false;
+  }
+
+  // Save the binary in the interface class
+  saveBinaryAndSetType(TYPE_EXECUTABLE);
+  buildLog_ += aclGetCompilerLog(device().compiler());
+
+  return true;
+#else
+  return false;
+#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 }
 
 // ================================================================================================

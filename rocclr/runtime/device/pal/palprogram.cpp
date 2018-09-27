@@ -244,113 +244,37 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
   return vec;
 }
 
-bool HSAILProgram::linkImpl(amd::option::Options* options) {
+bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
 #if defined(WITH_LIGHTNING_COMPILER)
   assert(!"Should not reach here");
   return false;
 #else   // !defined(WITH_LIGHTNING_COMPILER)
-  acl_error errorCode;
-  aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
-  bool finalize = true;
-  bool hsaLoad = true;
-  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
-
-
-  // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
-  if (!binaryElf_) {
-    continueCompileFrom = getNextCompilationStageFromBinary(options);
-  }
-  switch (continueCompileFrom) {
-    case ACL_TYPE_SPIRV_BINARY:
-    case ACL_TYPE_SPIR_BINARY:
-    // Compilation from ACL_TYPE_LLVMIR_BINARY to ACL_TYPE_CG in cases:
-    // 1. if the program is not created with binary;
-    // 2. if the program is created with binary and contains only .llvmir & .comment
-    // 3. if the program is created with binary, contains .llvmir, .comment, brig sections,
-    //    but the binary's compile & link options differ from current ones (recompilation);
-    case ACL_TYPE_LLVMIR_BINARY:
-    // Compilation from ACL_TYPE_HSAIL_BINARY to ACL_TYPE_CG in cases:
-    // 1. if the program is created with binary and contains only brig sections
-    case ACL_TYPE_HSAIL_BINARY:
-    // Compilation from ACL_TYPE_HSAIL_TEXT to ACL_TYPE_CG in cases:
-    // 1. if the program is created with binary and contains only hsail text
-    case ACL_TYPE_HSAIL_TEXT: {
-      std::string curOptions = options->origOptionStr + ProcessOptions(options);
-      errorCode = aclCompile(dev().compiler(), binaryElf_, curOptions.c_str(), continueCompileFrom,
-                             ACL_TYPE_CG, nullptr);
-      buildLog_ += aclGetCompilerLog(dev().compiler());
-      if (errorCode != ACL_SUCCESS) {
-        buildLog_ += "Error: BRIG code generation failed.\n";
-        return false;
-      }
-      break;
-    }
-    case ACL_TYPE_CG:
-      break;
-    case ACL_TYPE_ISA:
-      finalize = false;
-      break;
-    default:
-      buildLog_ +=
-          "Error: The binary is incorrect or incomplete. Finalization to ISA couldn't be "
-          "performed.\n";
-      return false;
-  }
-  if (finalize) {
-    std::string fin_options(options->origOptionStr + ProcessOptions(options));
-    // Append an option so that we can selectively enable a SCOption on CZ
-    // whenever IOMMUv2 is enabled.
-    if (dev().settings().svmFineGrainSystem_) {
-      fin_options.append(" -sc-xnack-iommu");
-    }
-    if (dev().settings().gfx10Plus_) {
-      if (GPU_FORCE_WAVE_SIZE_32) {
-        fin_options.append(" -force-wave-size-32");
-      }
-      if (dev().hwInfo()->xnackEnabled_) {
-        fin_options.append(" -xnack");
-      }
-    }
-
-    errorCode = aclCompile(dev().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
-                           ACL_TYPE_ISA, nullptr);
-    buildLog_ += aclGetCompilerLog(dev().compiler());
-    if (errorCode != ACL_SUCCESS) {
-      buildLog_ += "Error: BRIG finalization to ISA failed.\n";
-      return false;
-    }
-  }
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
   agent.handle = 1;
-  if (hsaLoad) {
-    executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
-    if (executable_ == nullptr) {
-      buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
-      return false;
-    }
-    size_t size = 0;
-    hsa_code_object_t code_object;
-    code_object.handle = reinterpret_cast<uint64_t>(
-        aclExtractSection(dev().compiler(), binaryElf_, &size, aclTEXT, &errorCode));
-    if (errorCode != ACL_SUCCESS) {
-      buildLog_ += "Error: Extracting AMD HSA Code Object from binary failed.\n";
-      return false;
-    }
-    hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
-      return false;
-    }
-    status = executable_->Freeze(nullptr);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
-      return false;
-    }
+  executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
+  if (executable_ == nullptr) {
+    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
+    return false;
   }
+  size_t size = binSize;
+  hsa_code_object_t code_object;
+  code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
+    return false;
+  }
+  status = executable_->Freeze(nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
+    return false;
+  }
+
   size_t kernelNamesSize = 0;
-  errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, nullptr,
-                           &kernelNamesSize);
+  acl_error errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES,
+    nullptr, nullptr, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
     return false;
@@ -400,10 +324,6 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   }
 
   DestroySegmentCpuAccess();
-
-  // Save the binary in the interface class
-  saveBinaryAndSetType(TYPE_EXECUTABLE);
-  buildLog_ += aclGetCompilerLog(dev().compiler());
   return true;
 #endif  // !defined(WITH_LIGHTNING_COMPILER)
 }
@@ -736,205 +656,7 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
   return true;
 }
 
-bool LightningProgram::linkImpl(amd::option::Options* options) {
-  using namespace amd::opencl_driver;
-  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
-
-  aclType continueCompileFrom =
-      llvmBinary_.empty() ? getNextCompilationStageFromBinary(options) : ACL_TYPE_LLVMIR_BINARY;
-
-  if (continueCompileFrom == ACL_TYPE_ISA) {
-    binary_t isa = binary();
-    if ((isa.first != NULL) && (isa.second > 0)) {
-      return setKernels(options, (void*)isa.first, isa.second);
-    } else {
-      buildLog_ += "Error: code object is empty \n";
-      return false;
-    }
-    return true;
-  }
-  if (continueCompileFrom != ACL_TYPE_LLVMIR_BINARY) {
-    buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
-    return false;
-  }
-
-  std::unique_ptr<Compiler> C(newCompilerInstance());
-  // call LinkLLVMBitcode
-  std::vector<Data*> inputs;
-
-  // open the input IR source
-  Data* input = C->NewBufferReference(DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
-
-  if (!input) {
-    buildLog_ += "Error: Failed to open the compiled program.\n";
-    return false;
-  }
-
-  inputs.push_back(input);  //< must be the first input
-
-  // open the bitcode libraries
-  Data* opencl_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_amdgcn, opencl_amdgcn_size);
-  Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
-  Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
-
-  if (!opencl_bc || !ocml_bc || !ockl_bc) {
-    buildLog_ += "Error: Failed to open the bitcode library.\n";
-    return false;
-  }
-
-  inputs.push_back(opencl_bc);  // depends on oclm & ockl
-  inputs.push_back(ockl_bc);
-  inputs.push_back(ocml_bc);
-
-  // open the control functions
-  auto isa_version = get_oclc_isa_version(dev().hwInfo()->gfxipVersionLC_);
-  if (!isa_version.first) {
-    buildLog_ += "Error: Linking for this device is not supported\n";
-    return false;
-  }
-
-  Data* isa_version_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)isa_version.first, isa_version.second);
-
-  if (!isa_version_bc) {
-    buildLog_ += "Error: Failed to open the control functions.\n";
-    return false;
-  }
-
-  inputs.push_back(isa_version_bc);
-
-  auto correctly_rounded_sqrt =
-      get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
-  Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
-                                                          correctly_rounded_sqrt.second);
-
-  auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
-                                  AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-                                  (dev().hwInfo()->gfxipVersionLC_ < 900 &&
-                                   AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
-  Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
-
-  auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
-                                          options->oVariables->FastRelaxedMath);
-  Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC, finite_only.first, finite_only.second);
-
-  auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
-                                          options->oVariables->FastRelaxedMath);
-  Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
-
-  if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
-    buildLog_ += "Error: Failed to open the control functions.\n";
-    return false;
-  }
-
-  inputs.push_back(correctly_rounded_sqrt_bc);
-  inputs.push_back(daz_opt_bc);
-  inputs.push_back(finite_only_bc);
-  inputs.push_back(unsafe_math_bc);
-
-  // open the linked output
-  std::vector<std::string> linkOptions;
-  amd::opencl_driver::Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
-
-  if (!linked_bc) {
-    buildLog_ += "Error: Failed to open the linked program.\n";
-    return false;
-  }
-
-  // NOTE: The linkOptions parameter is also used to identy cached code object.  This parameter
-  //       should not contain any dyanamically generated filename.
-  bool ret =
-      dev().cacheCompilation()->linkLLVMBitcode(C.get(), inputs, linked_bc, linkOptions, buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
-    return false;
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
-    std::ofstream f(options->getDumpFileName("_linked.bc").c_str(),
-                    std::ios::binary | std::ios::trunc);
-    if (f.is_open()) {
-      f.write(linked_bc->Buf().data(), linked_bc->Size());
-      f.close();
-    } else {
-      buildLog_ += "Warning: opening the file to dump the linked IR failed.\n";
-    }
-  }
-
-  inputs.clear();
-  inputs.push_back(linked_bc);
-
-  amd::opencl_driver::Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
-  if (!out_exec) {
-    buildLog_ += "Error: Failed to create the linked executable.\n";
-    return false;
-  }
-
-  std::string codegenOptions(options->llvmOptions);
-
-  // Set the machine target
-  std::ostringstream mCPU;
-  mCPU << " -mcpu=gfx" << dev().hwInfo()->gfxipVersionLC_;
-  codegenOptions.append(mCPU.str());
-
-  // Set xnack option if needed
-  if (dev().hwInfo()->xnackEnabled_) {
-      codegenOptions.append(" -mxnack");
-  }
-
-  // Set the -O#
-  std::ostringstream optLevel;
-  optLevel << "-O" << options->oVariables->OptLevel;
-  codegenOptions.append(" ").append(optLevel.str());
-
-  // Pass clang options
-  std::ostringstream ostrstr;
-  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-            std::ostream_iterator<std::string>(ostrstr, " "));
-  codegenOptions.append(" ").append(ostrstr.str());
-
-  // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
-
-  // Tokenize the options string into a vector of strings
-  std::istringstream strstr(codegenOptions);
-  std::istream_iterator<std::string> sit(strstr), end;
-  std::vector<std::string> params(sit, end);
-
-  // NOTE: The params is also used to identy cached code object.  This parameter
-  //       should not contain any dyanamically generated filename.
-  ret = dev().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
-                                                           buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    buildLog_ += "Error: Creating the executable failed: Compiling LLVM IRs to exeutable\n";
-    return false;
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_O)) {
-    std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::binary | std::ios::trunc);
-    if (f.is_open()) {
-      f.write(out_exec->Buf().data(), out_exec->Size());
-      f.close();
-    } else {
-      buildLog_ += "Warning: opening the file to dump the code object failed.\n";
-    }
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
-    std::string name = options->getDumpFileName(".s");
-    File* dump = C->NewFile(DT_INTERNAL, name);
-    if (!C->DumpExecutableAsText(out_exec, dump)) {
-      buildLog_ += "Warning: failed to dump code object.\n";
-    }
-  }
-
-  return setKernels(options, out_exec->Buf().data(), out_exec->Size());
-}
-
-bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t size) {
+bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
   hsa_agent_t agent;
   agent.handle = 1;
 
@@ -960,7 +682,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   }
 
   // Find the size of global variables from the binary
-  if (!FindGlobalVarSize(binary, size)) {
+  if (!FindGlobalVarSize(binary, binSize)) {
     return false;
   }
 
@@ -1009,10 +731,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   hasGlobalStores_ = (glbVarNames.size() != 0) ? true : false;
 
   DestroySegmentCpuAccess();
-
-  // Save the binary and type
-  clBinary()->saveBIFBinary((char*)binary, size);
-  setType(TYPE_EXECUTABLE);
 
   return true;
 }
