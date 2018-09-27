@@ -487,10 +487,6 @@ class HSAILProgram : public device::Program {
 
   virtual bool linkImpl(amd::option::Options* options);
 
-  //! Link the device programs.
-  virtual bool linkImpl(const std::vector<device::Program*>& inputPrograms,
-                        amd::option::Options* options, bool createLibrary);
-
   virtual bool createBinary(amd::option::Options* options);
 
   virtual const aclTargetInfo& info(const char* str = "");
