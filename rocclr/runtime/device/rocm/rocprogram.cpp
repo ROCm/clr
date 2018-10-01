@@ -400,11 +400,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  //Load the stored copy of the ELF binary.
-  binary_t stored_binary = this->binary();
-  binary = const_cast<void*>(stored_binary.first);
-  binSize = stored_binary.second;
-
   hsa_agent_t agent = dev().getBackendDevice();
   hsa_status_t status;
 
