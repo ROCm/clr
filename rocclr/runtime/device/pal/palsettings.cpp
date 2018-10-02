@@ -143,6 +143,7 @@ Settings::Settings() {
     std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
 
   maxCmdBuffers_ = 12;
+  useLightning_ = GPU_ENABLE_LC;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,

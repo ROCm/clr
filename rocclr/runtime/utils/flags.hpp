@@ -203,6 +203,8 @@ release(uint, PAL_RGP_DISP_COUNT, 50,                                         \
         "The number of dispatches for RGP capture with SQTT")                 \
 release(bool, GPU_FORCE_WAVE_SIZE_32, false,                                  \
         "Forces WaveSize32 compilation in SC")                                \
+release(bool, GPU_ENABLE_LC, IS_LIGHTNING,                                    \
+        "Enables LC path")                                                    \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
 release(cstring, HIP_VISIBLE_DEVICES, "",                                             \

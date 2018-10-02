@@ -1,8 +1,6 @@
 //
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
-
-
 #ifndef WITHOUT_HSA_BACKEND
 
 #include "rocprogram.hpp"
@@ -14,8 +12,8 @@
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #endif  // defined(WITH_LIGHTNING_COMPILER)
-#include "utils/bif_section_labels.hpp"
 
+#include "utils/bif_section_labels.hpp"
 #include "amd_hsa_kernel_code.h"
 
 #include <string>
@@ -111,49 +109,6 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   clBinary()->setFlags(encryptCode);
 
   return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
-}
-
-
-bool Program::initBuild(amd::option::Options* options) {
-  compileOptions_ = options->origOptionStr;
-
-  if (!device::Program::initBuild(options)) {
-    return false;
-  }
-
-  const char* devName = dev().deviceInfo().machineTarget_;
-  options->setPerBuildInfo((devName && (devName[0] != '\0')) ? devName : "gpu",
-                           clBinary()->getEncryptCode(), true);
-
-  // Elf Binary setup
-  std::string outFileName;
-
-  // true means hsail required
-  clBinary()->init(options, true);
-  if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
-    outFileName = options->getDumpFileName(".bin");
-  }
-
-  bool useELF64 = getCompilerOptions()->oVariables->EnableGpuElf64;
-  if (!clBinary()->setElfOut(useELF64 ? ELFCLASS64 : ELFCLASS32,
-                             (outFileName.size() > 0) ? outFileName.c_str() : nullptr)) {
-    LogError("Setup elf out for gpu failed");
-    return false;
-  }
-  return true;
-}
-
-// ! post-compile setup for GPU
-bool Program::finiBuild(bool isBuildGood) {
-  clBinary()->resetElfOut();
-  clBinary()->resetElfIn();
-
-  if (!isBuildGood) {
-    // Prevent the encrypted binary form leaking out
-    clBinary()->setBinary(nullptr, 0);
-  }
-
-  return device::Program::finiBuild(isBuildGood);
 }
 
 #if defined(WITH_COMPILER_LIB)

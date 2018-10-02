@@ -69,6 +69,8 @@ Settings::Settings() {
   // Device enqueuing settings
   numDeviceEvents_ = 1024;
   numWaitEvents_ = 8;
+
+  useLightning_ = GPU_ENABLE_LC;
 }
 
 bool Settings::create(bool fullProfile, int gfxipVersion) {

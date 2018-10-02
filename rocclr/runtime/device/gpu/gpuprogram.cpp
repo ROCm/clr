@@ -23,48 +23,6 @@
 
 namespace gpu {
 
-bool NullProgram::initBuild(amd::option::Options* options) {
-  if (!device::Program::initBuild(options)) {
-    return false;
-  }
-
-  const char* devname = dev().hwInfo()->machineTarget_;
-  options->setPerBuildInfo((devname && (devname[0] != '\0')) ? devname : "gpu",
-                           clBinary()->getEncryptCode(),
-                           true  // FIXME: the dev ptr is used to query the wavefront size.
-                           );
-
-  // Elf Binary setup
-  std::string outFileName;
-
-  // Recompile from IL may happen (invoking Kernel::recompil()) to generate correct
-  // isa code for 7xx. Because of this, force saving AMDIL into the binary.
-  clBinary()->init(options, (dev().calTarget() <= CAL_TARGET_730));
-  if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
-    outFileName = options->getDumpFileName(".bin");
-  }
-
-  bool useELF64 = dev().settings().use64BitPtr_;
-  if (!clBinary()->setElfOut(useELF64 ? ELFCLASS64 : ELFCLASS32,
-                             (outFileName.size() > 0) ? outFileName.c_str() : NULL)) {
-    LogError("Setup elf out for gpu failed");
-    return false;
-  }
-  return true;
-}
-
-bool NullProgram::finiBuild(bool isBuildGood) {
-  clBinary()->resetElfOut();
-  clBinary()->resetElfIn();
-
-  if (!isBuildGood) {
-    // Prevent the encrypted binary form leaking out
-    clBinary()->setBinary(NULL, 0);
-  }
-
-  return device::Program::finiBuild(isBuildGood);
-}
-
 const aclTargetInfo& NullProgram::info(const char* str) {
   acl_error err;
   std::string arch = GPU_TARGET_INFO_ARCH;
@@ -1570,44 +1528,6 @@ HSAILProgram::~HSAILProgram() {
   }
   delete kernels_;
   amd::hsa::loader::Loader::Destroy(loader_);
-}
-
-bool HSAILProgram::initBuild(amd::option::Options* options) {
-  if (!device::Program::initBuild(options)) {
-    return false;
-  }
-
-  const char* devName = dev().hwInfo()->machineTarget_;
-  options->setPerBuildInfo((devName && (devName[0] != '\0')) ? devName : "gpu",
-                           clBinary()->getEncryptCode(), true);
-
-  // Elf Binary setup
-  std::string outFileName;
-
-  // true means fsail required
-  clBinary()->init(options, true);
-  if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
-    outFileName = options->getDumpFileName(".bin");
-  }
-
-  if (!clBinary()->setElfOut(LP64_SWITCH(ELFCLASS32, ELFCLASS64),
-                             (outFileName.size() > 0) ? outFileName.c_str() : NULL)) {
-    LogError("Setup elf out for gpu failed");
-    return false;
-  }
-  return true;
-}
-
-bool HSAILProgram::finiBuild(bool isBuildGood) {
-  clBinary()->resetElfOut();
-  clBinary()->resetElfIn();
-
-  if (!isBuildGood) {
-    // Prevent the encrypted binary form leaking out
-    clBinary()->setBinary(NULL, 0);
-  }
-
-  return device::Program::finiBuild(isBuildGood);
 }
 
 inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {

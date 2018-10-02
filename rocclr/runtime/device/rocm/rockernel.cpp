@@ -9,6 +9,14 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "driver/AmdCompiler.h"
+#include "llvm/Support/AMDGPUMetadata.h"
+
+typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
+typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
+#endif  // defined(WITH_LIGHTNING_COMPILER)
+
 namespace roc {
 
 Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,

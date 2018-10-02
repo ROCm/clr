@@ -119,12 +119,6 @@ class NullProgram : public device::Program {
   const std::vector<uint>& glbCb() const { return glbCb_; }
 
  protected:
-  //! pre-compile setup for GPU
-  virtual bool initBuild(amd::option::Options* options);
-
-  //! post-compile setup for GPU
-  virtual bool finiBuild(bool isBuildGood);
-
   /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
    *
    *  \return True if we successefully compiled a GPU program
@@ -260,8 +254,6 @@ class NullProgram : public device::Program {
  protected:
   std::vector<device::PrintfInfo> printf_;  //!< Format strings for GPU printf support
   std::vector<uint> glbCb_;         //!< Global constant buffers
-
-  virtual bool isElf(const char* bin) const { return amd::isElfMagic(bin); }
 
   virtual const aclTargetInfo& info(const char* str = "");
 
@@ -477,12 +469,6 @@ class HSAILProgram : public device::Program {
   bool isStaticSampler() const { return (staticSamplers_.size() != 0); }
 
  protected:
-  //! pre-compile setup for GPU
-  virtual bool initBuild(amd::option::Options* options);
-
-  //! post-compile setup for GPU
-  virtual bool finiBuild(bool isBuildGood);
-
   bool saveBinaryAndSetType(type_t type);
 
   virtual bool linkImpl(amd::option::Options* options);
@@ -490,11 +476,6 @@ class HSAILProgram : public device::Program {
   virtual bool createBinary(amd::option::Options* options);
 
   virtual const aclTargetInfo& info(const char* str = "");
-
-  virtual bool isElf(const char* bin) const {
-    return amd::isElfMagic(bin);
-    // return false;
-  }
 
  private:
   //! Disable default copy constructor

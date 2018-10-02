@@ -1044,6 +1044,7 @@ void Program::releaseClBinary() {
 
 // ================================================================================================
 bool Program::initBuild(amd::option::Options* options) {
+  compileOptions_ = options->origOptionStr;
   programOptions_ = options;
 
   if (options->oVariables->DumpFlags > 0) {
@@ -1054,11 +1055,41 @@ bool Program::initBuild(amd::option::Options* options) {
   if (!initClBinary()) {
     return false;
   }
+
+  const char* devName = machineTarget_;
+  options->setPerBuildInfo((devName && (devName[0] != '\0')) ? devName : "gpu",
+    clBinary()->getEncryptCode(), true);
+
+  // Elf Binary setup
+  std::string outFileName;
+
+  // true means hsail required
+  clBinary()->init(options, true);
+  if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
+    outFileName = options->getDumpFileName(".bin");
+  }
+
+  if (!clBinary()->setElfOut(LP64_SWITCH(ELFCLASS32, ELFCLASS64),
+    (outFileName.size() > 0) ? outFileName.c_str() : nullptr)) {
+    LogError("Setup elf out for gpu failed");
+    return false;
+  }
+
   return true;
 }
 
 // ================================================================================================
-bool Program::finiBuild(bool isBuildGood) { return true; }
+bool Program::finiBuild(bool isBuildGood) {
+  clBinary()->resetElfOut();
+  clBinary()->resetElfIn();
+
+  if (!isBuildGood) {
+    // Prevent the encrypted binary form leaking out
+    clBinary()->setBinary(nullptr, 0);
+  }
+
+  return true;
+}
 
 // ================================================================================================
 cl_int Program::compile(const std::string& sourceCode,

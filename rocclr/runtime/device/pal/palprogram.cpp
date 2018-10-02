@@ -198,43 +198,6 @@ HSAILProgram::~HSAILProgram() {
   amd::hsa::loader::Loader::Destroy(loader_);
 }
 
-bool HSAILProgram::initBuild(amd::option::Options* options) {
-  if (!device::Program::initBuild(options)) {
-    return false;
-  }
-
-  const char* devName = dev().hwInfo()->machineTarget_;
-  options->setPerBuildInfo((devName && (devName[0] != '\0')) ? devName : "gpu",
-                           clBinary()->getEncryptCode(), true);
-
-  // Elf Binary setup
-  std::string outFileName;
-
-  // true means fsail required
-  clBinary()->init(options, true);
-  if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
-    outFileName = options->getDumpFileName(".bin");
-  }
-
-  if (!clBinary()->setElfOut(LP64_SWITCH(ELFCLASS32, ELFCLASS64),
-                             (outFileName.size() > 0) ? outFileName.c_str() : nullptr)) {
-    LogError("Setup elf out for gpu failed");
-    return false;
-  }
-  return true;
-}
-
-bool HSAILProgram::finiBuild(bool isBuildGood) {
-  clBinary()->resetElfOut();
-  clBinary()->resetElfIn();
-
-  if (!isBuildGood) {
-    // Prevent the encrypted binary form leaking out
-    clBinary()->setBinary(nullptr, 0);
-  }
-
-  return device::Program::finiBuild(isBuildGood);
-}
 
 inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
   std::string s(str);
@@ -245,10 +208,7 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 }
 
 bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  assert(!"Should not reach here");
-  return false;
-#else   // !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
   agent.handle = 1;
@@ -324,8 +284,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   DestroySegmentCpuAccess();
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   return true;
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 }
 
 bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
@@ -354,9 +314,7 @@ void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const {
 }
 
 const aclTargetInfo& HSAILProgram::info(const char* str) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  assert(!"Should not reach here");
-#else   // !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   acl_error err;
   std::string arch = "hsail";
   if (dev().settings().use64BitPtr_) {
@@ -367,14 +325,12 @@ const aclTargetInfo& HSAILProgram::info(const char* str) {
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   return info_;
 }
 
 bool HSAILProgram::saveBinaryAndSetType(type_t type) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  assert(!"Should not reach here");
-#else   // !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   // Write binary to memory
   if (rawBinary_ != nullptr) {
     // Free memory containing rawBinary
@@ -389,7 +345,7 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   setBinary(static_cast<char*>(rawBinary_), size);
   // Set the type of binary
   setType(type);
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
@@ -647,16 +603,20 @@ static hsa_status_t GetGlobalVarNamesCallback(
   }
   return HSA_STATUS_SUCCESS;
 }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
+#if defined(WITH_LIGHTNING_COMPILER)
   if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
     LogError("Failed to create ELF binary image!");
     return false;
   }
+#endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
+#if defined(WITH_LIGHTNING_COMPILER)
   hsa_agent_t agent;
   agent.handle = 1;
 
@@ -731,10 +691,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   hasGlobalStores_ = (glbVarNames.size() != 0) ? true : false;
 
   DestroySegmentCpuAccess();
-
+#endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
-
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 }  // namespace pal

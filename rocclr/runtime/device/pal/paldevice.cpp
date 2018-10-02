@@ -74,7 +74,7 @@ bool NullDevice::init() {
 //       Comment out this section for SWDEV-146950 since Kalindi and Mullins
 //       does not works for LC offline compilation without knowing which GFXIP
 //       should be used for them.
-#ifndef WITH_LIGHTNING_COMPILER
+#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 
   // Loop through all supported devices and create each of them
   for (uint id = 0; id < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
@@ -110,7 +110,7 @@ bool NullDevice::init() {
       }
     }
   }
-#endif
+#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 
   // Loop through all supported devices and create each of them
   for (uint id = 0;
@@ -272,6 +272,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   info_.wavefrontWidth_ = (ipLevel >= Pal::GfxIpLevel::GfxIp10) ? 32 : 64;
 
+  if (settings().useLightning_) {
 #if defined(WITH_LIGHTNING_COMPILER)
   //  create compilation object with cache support
   int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
@@ -296,17 +297,37 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   cacheCompilation_.reset(compObj);
 #endif
+  } else {
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+    const char* library = getenv("HSA_COMPILER_LIBRARY");
+    aclCompilerOptions opts = { sizeof(aclCompilerOptions_0_8),
+      library,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      AMD_OCL_SC_LIB };
+    // Initialize the compiler handle
+    acl_error error;
+    compiler_ = aclCompilerInit(&opts, &error);
+    if (error != ACL_SUCCESS) {
+      LogError("Error initializing the compiler");
+      return false;
+    }
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+  }
 
   return true;
 }
 
 device::Program* NullDevice::createProgram(amd::option::Options* options) {
   device::Program* program;
-#if defined(WITH_LIGHTNING_COMPILER)
-  program = new LightningProgram(*this);
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  program = new HSAILProgram(*this);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+  if (settings().useLightning_) {
+    program = new LightningProgram(*this);
+  } else {
+    program = new HSAILProgram(*this);
+  }
 
   if (program == nullptr) {
     LogError("Memory allocation has failed!");
@@ -506,12 +527,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   }
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)",
-#if defined(WITH_LIGHTNING_COMPILER)
-             ",LC"
-#else   // ! defined(WITH_LIGHTNING_COMPILER)
-             ",HSAIL"
-#endif  // ! defined(WITH_LIGHTNING_COMPILER)
-             );
+        settings().useLightning_ ? ",LC" : ",HSAIL");
 
   info_.profile_ = "FULL_PROFILE";
   if (settings().oclVersion_ >= OpenCL20) {
@@ -922,6 +938,52 @@ bool Device::create(Pal::IDevice* device) {
     allocedMem[i] = 0;
   }
 
+  if (settings().useLightning_) {
+#if defined(WITH_LIGHTNING_COMPILER)
+    //  create compilation object with cache support
+    int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
+    int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
+    int gfxipStepping = hwInfo()->gfxipVersionLC_ % 10;
+
+    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+    // with dash as delimiter to be compatible with Windows directory name
+    std::ostringstream cacheTarget;
+    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+    if (isXNACKSupported) {
+      cacheTarget << "-xnack";
+    }
+
+    amd::CacheCompilation* compObj = new amd::CacheCompilation(
+      cacheTarget.str(), "_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
+    if (!compObj) {
+      LogError("Unable to create cache compilation object!");
+      return false;
+    }
+
+    cacheCompilation_.reset(compObj);
+#endif
+  }
+  else {
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+    const char* library = getenv("HSA_COMPILER_LIBRARY");
+    aclCompilerOptions opts = { sizeof(aclCompilerOptions_0_8),
+      library,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      nullptr,
+      AMD_OCL_SC_LIB };
+    // Initialize the compiler handle
+    acl_error error;
+    compiler_ = aclCompilerInit(&opts, &error);
+    if (error != ACL_SUCCESS) {
+      LogError("Error initializing the compiler");
+      return false;
+    }
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+  }
+
   // Allocate SRD manager
   srdManager_ = new SrdManager(*this, std::max(HsaImageObjectSize, HsaSamplerObjectSize), 64 * Ki);
   if (srdManager_ == nullptr) {
@@ -932,30 +994,6 @@ bool Device::create(Pal::IDevice* device) {
   if (settings().enableHwDebug_) {
     hwDebugMgr_ = new GpuDebugManager(this);
   }
-
-#if defined(WITH_LIGHTNING_COMPILER)
-  //  create compilation object with cache support
-  int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
-  int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
-  int gfxipStepping = hwInfo()->gfxipVersionLC_ % 10;
-
-  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-  // with dash as delimiter to be compatible with Windows directory name
-  std::ostringstream cacheTarget;
-  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-  if (isXNACKSupported) {
-    cacheTarget << "-xnack";
-  }
-
-  amd::CacheCompilation* compObj = new amd::CacheCompilation(
-      cacheTarget.str(), "_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-  if (!compObj) {
-    LogError("Unable to create cache compilation object!");
-    return false;
-  }
-
-  cacheCompilation_.reset(compObj);
-#endif
 
   return true;
 }
@@ -1090,11 +1128,12 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
 
 device::Program* Device::createProgram(amd::option::Options* options) {
   device::Program* program;
-#if defined(WITH_LIGHTNING_COMPILER)
-  program = new LightningProgram(*this);
-#else   // !defined(WITH_LIGHTNING_COMPILER)
-  program = new HSAILProgram(*this);
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+  if (settings().useLightning_) {
+    program = new LightningProgram(*this);
+  }
+  else {
+    program = new HSAILProgram(*this);
+  }
   if (program == nullptr) {
     LogError("We failed memory allocation for program!");
   }
@@ -1153,25 +1192,6 @@ bool Device::init() {
   uint32_t numDevices = 0;
   bool useDeviceList = false;
   requestedDevices_t requestedDevices;
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-  const char* library = getenv("HSA_COMPILER_LIBRARY");
-  aclCompilerOptions opts = {sizeof(aclCompilerOptions_0_8),
-                             library,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             nullptr,
-                             AMD_OCL_SC_LIB};
-  // Initialize the compiler handle
-  acl_error error;
-  compiler_ = aclCompilerInit(&opts, &error);
-  if (error != ACL_SUCCESS) {
-    LogError("Error initializing the compiler");
-    return false;
-  }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 
   size_t size = Pal::GetPlatformSize();
   platformObj_ = new char[size];
@@ -1242,12 +1262,12 @@ void Device::tearDown() {
     platform_ = nullptr;
   }
 
-#if !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   if (compiler_ != nullptr) {
     aclCompilerFini(compiler_);
     compiler_ = nullptr;
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
 }
 
 Memory* Device::getGpuMemory(amd::Memory* mem) const {
@@ -2187,15 +2207,15 @@ bool Device::createBlitProgram() {
   if (settings().oclVersion_ >= OpenCL20) {
     size_t loc = sch.find("%s");
     sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
-#if defined(WITH_LIGHTNING_COMPILER)
-    // For LC, replace "amd_scheduler" with "amd_scheduler_pal"
-    static const char AmdScheduler[] = "amd_scheduler";
-    static const char AmdSchedulerPal[] = "amd_scheduler_pal";
-    loc = sch.find(AmdScheduler);
-    sch.replace(loc, strlen(AmdScheduler), AmdSchedulerPal);
-    loc = sch.find(AmdScheduler, (loc + strlen(AmdSchedulerPal)));
-    sch.replace(loc, strlen(AmdScheduler), AmdSchedulerPal);
-#endif
+    if (settings().useLightning_) {
+      // For LC, replace "amd_scheduler" with "amd_scheduler_pal"
+      static const char AmdScheduler[] = "amd_scheduler";
+      static const char AmdSchedulerPal[] = "amd_scheduler_pal";
+      loc = sch.find(AmdScheduler);
+      sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
+      loc = sch.find(AmdScheduler, (loc + sizeof(AmdSchedulerPal) - 1));
+      sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
+    }
     scheduler = sch.c_str();
     ocl20 = "-cl-std=CL2.0";
   }

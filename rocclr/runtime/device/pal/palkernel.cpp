@@ -8,8 +8,13 @@
 #include "device/pal/palsched.hpp"
 #include "platform/commandqueue.hpp"
 #include "utils/options.hpp"
-
 #include "acl.h"
+
+#if defined(WITH_LIGHTNING_COMPILER)
+#include "llvm/Support/AMDGPUMetadata.h"
+
+typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 #include <string>
 #include <memory>
@@ -85,9 +90,7 @@ HSAILKernel::~HSAILKernel() {
 }
 
 bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  assert(!"Should not reach here");
-#else  // !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   acl_error error = ACL_SUCCESS;
   std::string openClKernelName = openclMangledName(name());
   flags_.internalKernel_ =
@@ -240,7 +243,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     delete[] VecTypeHint;
   }
 
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
@@ -370,12 +373,11 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   return hsaDisp;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER)
-
 const LightningProgram& LightningKernel::prog() const {
   return reinterpret_cast<const LightningProgram&>(prog_);
 }
 
+#if defined(WITH_LIGHTNING_COMPILER)
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
   for (const KernelMD& kernelMD : programMD->mKernels) {
     if (kernelMD.mName == name) {
@@ -384,8 +386,10 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
   }
   return nullptr;
 }
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
+#if defined(WITH_LIGHTNING_COMPILER)
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
 
@@ -462,10 +466,8 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
   waveLimiter_.enable();
   */
-
+#endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
 
 }  // namespace pal
