@@ -2138,7 +2138,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   if (rgpCaptureEna()) {
     size_t newLocalSize[3] = { 1, 1, 1 };
     for (uint i = 0; i < sizes.dimensions(); i++) {
-      newLocalSize[i] = sizes.local()[i];
+      if (sizes.local()[i] != 0) {
+        newLocalSize[i] = sizes.local()[i];
+      }
     }
     dev().rgpCaptureMgr()->PreDispatch(this, hsaKernel,
       // Report global size in workgroups, since that's the RGP trace semantics
