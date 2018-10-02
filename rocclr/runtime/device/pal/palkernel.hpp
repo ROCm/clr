@@ -16,13 +16,6 @@
 #include "device/devwavelimiter.hpp"
 #include "hsa.h"
 
-#if defined(WITH_LIGHTNING_COMPILER)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
 namespace amd {
 namespace hsa {
 namespace loader {
@@ -118,7 +111,6 @@ class HSAILKernel : public device::Kernel {
   size_t codeSize_;   //!< Size of ISA code
 };
 
-#if defined(WITH_LIGHTNING_COMPILER)
 class LightningKernel : public HSAILKernel {
  public:
   LightningKernel(const std::string& name, HSAILProgram* prog, const std::string& compileOptions)
@@ -130,6 +122,5 @@ class LightningKernel : public HSAILKernel {
   //! Initializes the metadata required for this kernel,
   bool init(amd::hsa::loader::Symbol* symbol);
 };
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 /*@}*/} // namespace pal

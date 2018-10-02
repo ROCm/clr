@@ -197,10 +197,10 @@ class Program : public amd::HeapObject {
 
  protected:
   //! pre-compile setup
-  virtual bool initBuild(amd::option::Options* options);
+  bool initBuild(amd::option::Options* options);
 
   //! post-compile cleanup
-  virtual bool finiBuild(bool isBuildGood);
+  bool finiBuild(bool isBuildGood);
 
   /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
   *
@@ -236,8 +236,6 @@ class Program : public amd::HeapObject {
   //! return target info
   virtual const aclTargetInfo& info(const char* str = "") = 0;
 
-  virtual bool isElf(const char* bin) const = 0;
-
   virtual bool setKernels(
     amd::option::Options* options, void* binary, size_t binSize) { return true; }
 
@@ -270,6 +268,8 @@ class Program : public amd::HeapObject {
 
   //! Finds the total size of all global variables in the program
   bool FindGlobalVarSize(void* binary, size_t binSize);
+
+  bool isElf(const char* bin) const { return amd::isElfMagic(bin); }
 
  private:
   //! Compile the device program with LC path

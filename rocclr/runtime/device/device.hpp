@@ -519,7 +519,8 @@ class Settings : public amd::HeapObject {
       uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
       uint gfx10Hsail_ : 1 ;          //!< GFX10 HSAIL path
-      uint reserved_ : 21;
+      uint useLightning_ : 1;         //!< Enable LC path for this device
+      uint reserved_ : 20;
     };
     uint value_;
   };

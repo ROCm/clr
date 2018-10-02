@@ -573,7 +573,7 @@ bool CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
 
 namespace device {
 
-Settings::Settings() {
+Settings::Settings() : value_(0) {
   assert((ClExtTotal < (8 * sizeof(extensions_))) && "Too many extensions!");
   extensions_ = 0;
   partialDispatch_ = false;

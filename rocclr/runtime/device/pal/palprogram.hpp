@@ -6,12 +6,6 @@
 #include "device/pal/palkernel.hpp"
 #include "amd_hsa_loader.hpp"
 
-#if defined(WITH_LIGHTNING_COMPILER)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
 namespace amd {
 namespace option {
 class Options;
@@ -175,21 +169,11 @@ class HSAILProgram : public device::Program {
   }
 
  protected:
-  //! pre-compile setup for GPU
-  virtual bool initBuild(amd::option::Options* options);
-
-  //! post-compile setup for GPU
-  virtual bool finiBuild(bool isBuildGood);
-
   bool saveBinaryAndSetType(type_t type);
 
   virtual bool createBinary(amd::option::Options* options);
 
   virtual const aclTargetInfo& info(const char* str = "");
-
-  virtual bool isElf(const char* bin) const {
-    return amd::isElfMagic(bin);
-  }
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
@@ -222,7 +206,6 @@ class HSAILProgram : public device::Program {
   PALHSALoaderContext loaderContext_;         //!< Context for HSA Loader
 };
 
-#if defined(WITH_LIGHTNING_COMPILER)
 //! \class Lightning Compiler Program
 class LightningProgram : public HSAILProgram {
  public:
@@ -246,6 +229,5 @@ class LightningProgram : public HSAILProgram {
 
   virtual bool createBinary(amd::option::Options* options) override;
 };
-#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 /*@}*/} // namespace pal

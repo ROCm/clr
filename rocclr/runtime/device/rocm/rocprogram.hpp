@@ -12,16 +12,6 @@
 #include <iostream>
 #include "rocdevice.hpp"
 
-#if defined(WITH_LIGHTNING_COMPILER)
-#include "driver/AmdCompiler.h"
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-
-#endif  // defined(WITH_LIGHTNING_COMPILER)
-
 //! \namespace roc HSA Device Implementation
 namespace roc {
 
@@ -50,12 +40,6 @@ class Program : public device::Program {
   hsa_executable_t hsaExecutable() const { return hsaExecutable_; }
 
  protected:
-  //! pre-compile setup for GPU
-  virtual bool initBuild(amd::option::Options* options);
-
-  //! post-compile setup for GPU
-  virtual bool finiBuild(bool isBuildGood);
-
   /*! \brief Compiles LLVM binary to HSAIL code (compiler backend: link+opt+codegen)
    *
    *  \return The build error code
@@ -65,11 +49,6 @@ class Program : public device::Program {
   virtual bool createBinary(amd::option::Options* options) = 0;
 
   virtual const aclTargetInfo& info(const char* str = "") { return info_; }
-
-  virtual bool isElf(const char* bin) const {
-    return amd::isElfMagic(bin);
-    // return false;
-  }
 
  protected:
   //! Disable default copy constructor
