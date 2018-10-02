@@ -104,23 +104,22 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
 
   // Enable KHR double precision extension
   enableExtension(ClKhrFp64);
-#if !defined(WITH_LIGHTNING_COMPILER)
-  // Also enable AMD double precision extension?
-  enableExtension(ClAmdFp64);
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
   enableExtension(ClKhrSubGroups);
   enableExtension(ClKhrDepthImages);
   enableExtension(ClAmdCopyBufferP2P);
   enableExtension(ClKhrFp16);
   supportDepthsRGB_ = true;
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  enableExtension(ClAmdAssemblyProgram);
-  // enable subnormals for gfx900 and later
-  if (gfxipVersion >= 900) {
+  if (useLightning_) {
+    enableExtension(ClAmdAssemblyProgram);
+    // enable subnormals for gfx900 and later
+    if (gfxipVersion >= 900) {
       singleFpDenorm_ = true;
+    }
+  } else {
+    // Also enable AMD double precision extension?
+    enableExtension(ClAmdFp64);
   }
-#endif  // WITH_LIGHTNING_COMPILER
 
   if (gfxipVersion == 902) {
     apuSystem_ = true;

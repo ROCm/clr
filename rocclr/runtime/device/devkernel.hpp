@@ -224,7 +224,7 @@ class Kernel : public amd::HeapObject {
   //! Initializes HSAIL Printf metadata and info for LC
   void InitPrintf(const std::vector<std::string>& printfInfoStrings);
 #endif
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   void InitParameters(
     const aclArgData* aclArg,   //!< List of ACL arguments
     uint32_t argBufferSize

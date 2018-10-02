@@ -119,13 +119,10 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   }
 
   // Build all kernels
-  std::string opt =
-      "-cl-internal-kernel "
-#if !defined(WITH_LIGHTNING_COMPILER)
-      "-Wf,--force_disable_spir -fno-lib-no-inline "
-      "-fno-sc-keep-calls "
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
-      ;
+  std::string opt = "-cl-internal-kernel ";
+  if (!device->settings().useLightning_) {
+    opt +=  "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
+  }
 
   if (extraOptions != nullptr) {
     opt += extraOptions;

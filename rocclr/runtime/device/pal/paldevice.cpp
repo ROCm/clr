@@ -74,7 +74,7 @@ bool NullDevice::init() {
 //       Comment out this section for SWDEV-146950 since Kalindi and Mullins
 //       does not works for LC offline compilation without knowing which GFXIP
 //       should be used for them.
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 
   // Loop through all supported devices and create each of them
   for (uint id = 0; id < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
@@ -110,7 +110,7 @@ bool NullDevice::init() {
       }
     }
   }
-#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_COMPILER_LIB)
 
   // Loop through all supported devices and create each of them
   for (uint id = 0;
@@ -274,31 +274,31 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   if (settings().useLightning_) {
 #if defined(WITH_LIGHTNING_COMPILER)
-  //  create compilation object with cache support
-  int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
-  int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
-  int gfxipStepping = hwInfo_->gfxipVersionLC_ % 10;
+    //  create compilation object with cache support
+    int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
+    int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
+    int gfxipStepping = hwInfo_->gfxipVersionLC_ % 10;
 
-  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-  // with dash as delimiter to be compatible with Windows directory name
-  std::ostringstream cacheTarget;
-  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-  if (hwInfo_->xnackEnabled_) {
-    cacheTarget << "-xnack";
-  }
+    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
+    // with dash as delimiter to be compatible with Windows directory name
+    std::ostringstream cacheTarget;
+    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
+    if (hwInfo_->xnackEnabled_) {
+      cacheTarget << "-xnack";
+    }
 
-  // Create CacheCompilation for the offline device
-  amd::CacheCompilation* compObj = new amd::CacheCompilation(
-      cacheTarget.str(), "_null_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-  if (!compObj) {
-    LogError("Unable to create cache compilation object!");
-    return false;
-  }
+    // Create CacheCompilation for the offline device
+    amd::CacheCompilation* compObj = new amd::CacheCompilation(
+        cacheTarget.str(), "_null_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
+    if (!compObj) {
+      LogError("Unable to create cache compilation object!");
+      return false;
+    }
 
-  cacheCompilation_.reset(compObj);
+    cacheCompilation_.reset(compObj);
 #endif
   } else {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
     const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = { sizeof(aclCompilerOptions_0_8),
       library,
@@ -315,7 +315,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
       LogError("Error initializing the compiler");
       return false;
     }
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   }
 
   return true;
@@ -964,7 +964,7 @@ bool Device::create(Pal::IDevice* device) {
 #endif
   }
   else {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
     const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = { sizeof(aclCompilerOptions_0_8),
       library,
@@ -981,7 +981,7 @@ bool Device::create(Pal::IDevice* device) {
       LogError("Error initializing the compiler");
       return false;
     }
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   }
 
   // Allocate SRD manager
@@ -1262,12 +1262,12 @@ void Device::tearDown() {
     platform_ = nullptr;
   }
 
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   if (compiler_ != nullptr) {
     aclCompilerFini(compiler_);
     compiler_ = nullptr;
   }
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
 }
 
 Memory* Device::getGpuMemory(amd::Memory* mem) const {

@@ -16,7 +16,7 @@
 #include "libraries.amdgcn.inc"
 #include "opencl1.2-c.amdgcn.inc"
 #include "opencl2.0-c.amdgcn.inc"
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 #include <cstdio>
 #include <fstream>
@@ -387,7 +387,7 @@ static void logFunction(const char* msg, size_t size) {
 bool Program::compileImplHSAIL(const std::string& sourceCode,
   const std::vector<const std::string*>& headers,
   const char** headerIncludeNames, amd::option::Options* options) {
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   acl_error errorCode;
   aclTargetInfo target;
 
@@ -479,7 +479,7 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
 
   // Save the binary in the interface class
   saveBinaryAndSetType(TYPE_COMPILED);
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
 
@@ -592,7 +592,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
 // ================================================================================================
 bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
   amd::option::Options* options, bool createLibrary) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create
@@ -678,7 +678,7 @@ bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
   return linkImpl(options);
 #else
   return false;
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
 }
 
 // ================================================================================================
@@ -931,7 +931,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
 // ================================================================================================
 bool Program::linkImplHSAIL(amd::option::Options* options) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   acl_error errorCode;
   bool finalize = true;
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
@@ -1020,7 +1020,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   return true;
 #else
   return false;
-#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_COMPILER_LIB)
 }
 
 // ================================================================================================
@@ -1420,14 +1420,14 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
     optionsStr.append(opts.str());
   }
 
-#if !defined(WITH_LIGHTNING_COMPILER)
-  if (!device().settings().singleFpDenorm_) {
-    optionsStr.append(" -cl-denorms-are-zero");
-  }
+  if (!device().settings().useLightning_) {
+    if (!device().settings().singleFpDenorm_) {
+      optionsStr.append(" -cl-denorms-are-zero");
+    }
 
-  // Check if the host is 64 bit or 32 bit
-  LP64_ONLY(optionsStr.append(" -m64"));
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+    // Check if the host is 64 bit or 32 bit
+    LP64_ONLY(optionsStr.append(" -m64"));
+  }
 
   // Tokenize the extensions string into a vector of strings
   std::istringstream istrstr(device().info().extensions_);
@@ -1519,6 +1519,15 @@ bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputProgr
 }
 
 // ================================================================================================
+bool isSPIRVMagicL(const void* Image, size_t Length) {
+  const unsigned SPRVMagicNumber = 0x07230203;
+  if (Image == nullptr || Length < sizeof(unsigned))
+    return false;
+  auto Magic = static_cast<const unsigned*>(Image);
+  return *Magic == SPRVMagicNumber;
+}
+
+// ================================================================================================
 bool Program::initClBinary(const char* binaryIn, size_t size) {
   if (!initClBinary()) {
     return false;
@@ -1533,10 +1542,18 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
   // unencrypted
   int encryptCode = 0;
   char* decryptedBin = nullptr;
+  bool isSPIRV = false;
+  bool isBc = false;
 
-#if !defined(WITH_LIGHTNING_COMPILER)
-  bool isSPIRV = isSPIRVMagic(binaryIn, size);
-  if (isSPIRV || isBcMagic(binaryIn)) {
+#if defined(WITH_COMPILER_LIB)
+  if (!device().settings().useLightning_) {
+    isSPIRV = isSPIRVMagicL(binaryIn, size);
+    isBc = isBcMagic(binaryIn);
+  }
+#endif  // defined(WITH_COMPILER_LIB)
+
+  if (isSPIRV || isBc) {
+#if defined(WITH_COMPILER_LIB)
     acl_error err = ACL_SUCCESS;
     aclBinaryOptions binOpts = {0};
     binOpts.struct_size = sizeof(binOpts);
@@ -1580,9 +1597,8 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
       aclBinaryFini(aclbin_v30);
       aclBinaryFini(aclbin_v21);
     }
-  } else
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
-  {
+#endif  // defined(WITH_COMPILER_LIB)
+  } else {
     size_t decryptedSize;
     if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
       return false;
@@ -1705,9 +1721,9 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     default:
       break;
     }
-#endif   // !defined(WITH_LIGHTNING_COMPILER)
+#endif   // defined(WITH_LIGHTNING_COMPILER)
   } else {
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
     acl_error errorCode;
     size_t secSize = 0;
     completeStages.clear();
@@ -1830,7 +1846,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     default:
       break;
     }
-#endif  // #if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // #if defined(WITH_COMPILER_LIB)
   }
   return from; 
 }
@@ -1841,7 +1857,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
   binary_t binary = this->binary();
   // If the binary already exists
   if ((binary.first != nullptr) && (binary.second > 0)) {
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
     if (aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
       acl_error errorCode;
       binaryElf_ = aclReadFromMem(binary.first, binary.second, &errorCode);
@@ -1850,7 +1866,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
         return continueCompileFrom;
       }
     }
-#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_COMPILER_LIB)
 
     // save the current options
     std::string sCurCompileOptions = compileOptions_;
@@ -1880,7 +1896,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
       if (compileOptions_.empty()) break;
 
       std::string sBinOptions;
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
       if (binaryElf_ != nullptr) {
         const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symOpenclCompilerOptions);
         assert(symbol && "symbol not found");
@@ -1898,7 +1914,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
         sBinOptions = std::string((char*)opts, symSize);
       }
       else
-#endif // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_COMPILER_LIB)
       {
         sBinOptions = sCurOptions;
       }
