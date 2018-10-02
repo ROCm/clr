@@ -118,9 +118,9 @@ RUNTIME_ENTRY(cl_int, clGetPlatformInfo,
           "cl_khr_dx9_media_sharing "
 #endif  //_WIN32
           "cl_amd_event_callback "
-#if !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
           "cl_amd_offline_devices "
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_COMPILER_LIB)
           ;
       break;
     case CL_PLATFORM_ICD_SUFFIX_KHR:
