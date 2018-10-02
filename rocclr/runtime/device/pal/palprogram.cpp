@@ -24,7 +24,7 @@
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace pal {
 
@@ -177,7 +177,7 @@ HSAILProgram::~HSAILProgram() {
   for (auto& it : staticSamplers_) {
     delete it;
   }
-#if !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   if (rawBinary_ != nullptr) {
     aclFreeMem(binaryElf_, rawBinary_);
   }
@@ -189,7 +189,7 @@ HSAILProgram::~HSAILProgram() {
       LogWarning("Error while destroying the acl binary \n");
     }
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   releaseClBinary();
   if (executable_ != nullptr) {
     loader_->DestroyExecutable(executable_);
@@ -208,7 +208,7 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 }
 
 bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
   agent.handle = 1;
@@ -284,7 +284,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   DestroySegmentCpuAccess();
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
 
@@ -314,7 +314,7 @@ void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const {
 }
 
 const aclTargetInfo& HSAILProgram::info(const char* str) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   acl_error err;
   std::string arch = "hsail";
   if (dev().settings().use64BitPtr_) {
@@ -325,12 +325,12 @@ const aclTargetInfo& HSAILProgram::info(const char* str) {
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return info_;
 }
 
 bool HSAILProgram::saveBinaryAndSetType(type_t type) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   // Write binary to memory
   if (rawBinary_ != nullptr) {
     // Free memory containing rawBinary
@@ -345,7 +345,7 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   setBinary(static_cast<char*>(rawBinary_), size);
   // Set the type of binary
   setType(type);
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
 

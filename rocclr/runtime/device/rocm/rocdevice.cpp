@@ -211,11 +211,9 @@ bool NullDevice::initCompiler(bool isOffline) {
       NULL, NULL, NULL, NULL, NULL, NULL
     };
     compilerHandle_ = aclCompilerInit(&opts, &error);
-    if (error != ACL_SUCCESS) {
-#if !defined(WITH_LIGHTNING_COMPILER)
+    if (!GPU_ENABLE_LC && error != ACL_SUCCESS) {
       LogError("Error initializing the compiler handle");
       return false;
-#endif // !defined(WITH_LIGHTNING_COMPILER)
     }
   }
 #endif // defined(WITH_COMPILER_LIB)
@@ -245,7 +243,7 @@ bool NullDevice::init() {
   // Return without initializing offline device list
   return true;
 
-#if !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
   // If there is an HSA enabled device online then skip any offline device
   std::vector<Device*> devices;
   devices = getDevices(CL_DEVICE_TYPE_GPU, false);
@@ -272,9 +270,10 @@ bool NullDevice::init() {
     }
     nullDevice->registerDevice();
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
+
 NullDevice::~NullDevice() {
   if (info_.extensions_) {
     delete[] info_.extensions_;
@@ -1181,14 +1180,14 @@ bool Device::populateOCLDeviceConstants() {
     if (agent_profile_ == HSA_PROFILE_FULL) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
-#if !defined(WITH_LIGHTNING_COMPILER)
-    // Report atomics capability based on GFX IP, control on Hawaii
-    // and Vega10.
-    if (info_.hostUnifiedMemory_ ||
-        ((deviceInfo_.gfxipVersion_ >= 800) && (deviceInfo_.gfxipVersion_ < 900))) {
-      info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
+    if (!settings().useLightning_) {
+      // Report atomics capability based on GFX IP, control on Hawaii
+      // and Vega10.
+      if (info_.hostUnifiedMemory_ ||
+          ((deviceInfo_.gfxipVersion_ >= 800) && (deviceInfo_.gfxipVersion_ < 900))) {
+        info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
+      }
     }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
   }
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {

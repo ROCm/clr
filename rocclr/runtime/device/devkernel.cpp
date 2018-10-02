@@ -280,7 +280,7 @@ static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isH
 }
 #endif
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* isHidden) {
   if (argInfo->argStr[0] == '_' && argInfo->argStr[1] == '.') {
     *isHidden = true;
@@ -414,7 +414,7 @@ static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t si
 }
 #endif
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t size = 0) {
   uint sizeType;
   uint numElements;
@@ -497,7 +497,7 @@ static inline size_t GetArgAlignmentOCL(const KernelArgMD& lcArg) { return lcArg
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
   switch (argInfo->type) {
   case ARG_TYPE_POINTER:
@@ -551,7 +551,7 @@ static inline size_t GetArgPointeeAlignmentOCL(const KernelArgMD& lcArg) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline size_t GetArgPointeeAlignmentOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
     return argInfo->arg.pointer.align;
@@ -578,7 +578,7 @@ static inline bool GetReadOnlyOCL(const KernelArgMD& lcArg) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline bool GetReadOnlyOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
     return (argInfo->arg.pointer.type == ACCESS_TYPE_RO) ? true : false;
@@ -596,7 +596,7 @@ static inline int GetArgSizeOCL(const KernelArgMD& lcArg) { return lcArg.mSize; 
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 inline static int GetArgSizeOCL(const aclArgData* argInfo) {
   switch (argInfo->type) {
   case ARG_TYPE_POINTER:
@@ -659,7 +659,7 @@ static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const KernelArgM
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
     switch (argInfo->arg.pointer.memory) {
@@ -708,7 +708,7 @@ static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const KernelArg
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_IMAGE) {
     switch (argInfo->arg.image.type) {
@@ -749,7 +749,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const KernelArgMD& 
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* argInfo) {
   cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
   if (argInfo->type == ARG_TYPE_POINTER) {
@@ -858,7 +858,7 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 void Kernel::InitParameters(const aclArgData* aclArg, uint32_t argBufferSize) {
   // Iterate through the arguments and insert into parameterList
   device::Kernel::parameters_t params;
@@ -1032,7 +1032,7 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 // ================================================================================================
-#if defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
 void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
   PrintfInfo info;
   uint index = 0;

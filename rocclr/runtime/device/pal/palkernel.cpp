@@ -90,7 +90,7 @@ HSAILKernel::~HSAILKernel() {
 }
 
 bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
-#if  defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#if  defined(WITH_COMPILER_LIB)
   acl_error error = ACL_SUCCESS;
   std::string openClKernelName = openclMangledName(name());
   flags_.internalKernel_ =
@@ -243,7 +243,7 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     delete[] VecTypeHint;
   }
 
-#endif  // defined(WITH_COMPILER_LIB) || !defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
 

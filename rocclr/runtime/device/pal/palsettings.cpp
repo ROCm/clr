@@ -340,16 +340,16 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   enableExtension(ClKhrImage2dFromBuffer);
   enableExtension(ClAmdMediaOps);
   enableExtension(ClAmdMediaOps2);
-#if !defined(WITH_LIGHTNING_COMPILER)
-  enableExtension(ClAmdPopcnt);
-  enableExtension(ClAmdVec3);
-  enableExtension(ClAmdPrintf);
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
+
+  if (!useLightning_) {
+    enableExtension(ClAmdPopcnt);
+    enableExtension(ClAmdVec3);
+    enableExtension(ClAmdPrintf);
+    enableExtension(ClKhrSpir);
+  }
   // Enable some platform extensions
   enableExtension(ClAmdDeviceAttributeQuery);
-#if !defined(WITH_LIGHTNING_COMPILER)
-  enableExtension(ClKhrSpir);
-#endif // !defined(WITH_LIGHTNING_COMPILER)
+
 
 #ifdef ATI_OS_LINUX
   if (palProp.gpuMemoryProperties.busAddressableMemSize > 0)
@@ -376,13 +376,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     enableExtension(ClKhrFp64);
   }
 
-#if !defined(WITH_LIGHTNING_COMPILER)
-  if (doublePrecision) {
+  if (!useLightning_ && doublePrecision) {
     // Enable AMD double precision extension
     doublePrecision_ = true;
     enableExtension(ClAmdFp64);
   }
-#endif  // !defined(WITH_LIGHTNING_COMPILER)
 
   if (palProp.gpuMemoryProperties.busAddressableMemSize > 0) {
     // Enable bus addressable memory extension
