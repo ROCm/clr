@@ -265,32 +265,7 @@ aclutUpdateMetadataWithHiddenKernargsNum(aclCompiler* cl, aclBinary* bin, uint32
 #endif
 
 // Returns the TargetMapping for the specific target device.
-inline const TargetMapping& getTargetMapping(const aclTargetInfo &target)
-{
-  switch (target.arch_id) {
-  default:
-    break;
-  case aclX64:
-    return X64TargetMapping[target.chip_id];
-    break;
-  case aclX86:
-    return X86TargetMapping[target.chip_id];
-    break;
-  case aclHSAIL:
-    return HSAILTargetMapping[target.chip_id];
-    break;
-  case aclHSAIL64:
-    return HSAIL64TargetMapping[target.chip_id];
-    break;
-  case aclAMDIL:
-    return AMDILTargetMapping[target.chip_id];
-    break;
-  case aclAMDIL64:
-    return AMDIL64TargetMapping[target.chip_id];
-    break;
-  };
-  return UnknownTarget;
-}
+const TargetMapping& getTargetMapping(const aclTargetInfo &target);
 
 inline bool is64BitTarget(const aclTargetInfo& target)
 {
@@ -327,17 +302,7 @@ inline bool isValidTarget(const aclTargetInfo& target)
   return (target.arch_id && target.chip_id);
 }
 
-inline bool isChipSupported(const aclTargetInfo& target)
-{
-  if (!isValidTarget(target)) {
-    return false;
-  }
-  const TargetMapping& Mapping = getTargetMapping(target);
-  if (Mapping.family_enum == FAMILY_UNKNOWN) {
-    return false;
-  }
-  return Mapping.supported;
-}
+bool isChipSupported(const aclTargetInfo& target);
 
 enum scId {
   SC_AMDIL = 0,
