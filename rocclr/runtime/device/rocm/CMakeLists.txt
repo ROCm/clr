@@ -13,13 +13,13 @@ add_library(oclrocm OBJECT
   rocprogram.cpp
   rocmemory.cpp
   rocdevice.cpp
-  roccompiler.cpp
   rocblit.cpp
   rockernel.cpp
   rocvirtual.cpp
   rocglinterop.cpp
   rocappprofile.cpp
   rocsettings.cpp
+  rocschedcl.cpp
 )
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

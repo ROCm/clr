@@ -39,6 +39,9 @@ add_library(oclruntime OBJECT
   device/hwdebug.cpp
   device/blitcl.cpp
   device/blit.cpp
+  device/devkernel.cpp
+  device/devwavelimiter.cpp
+  device/devprogram.cpp
   platform/kernel.cpp
   platform/context.cpp
   platform/command.cpp
