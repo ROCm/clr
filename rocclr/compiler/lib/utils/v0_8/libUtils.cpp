@@ -5,6 +5,7 @@
 #include "api/v0_8/aclValidation.h"
 #include "libUtils.h"
 #include "bif/bifbase.hpp"
+#include "utils/target_mappings.h"
 #include "utils/versions.hpp"
 #include "utils/options.hpp"
 #include <cstring>

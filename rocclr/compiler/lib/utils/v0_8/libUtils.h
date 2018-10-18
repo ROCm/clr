@@ -11,7 +11,6 @@
 #include <cassert>
 #include <cstring>
 #include "library.hpp"
-#include "utils/target_mappings.h"
 #include "utils/bif_section_labels.hpp"
 #include "utils/options.hpp"
 using namespace bif;
@@ -263,6 +262,9 @@ aclutUpdateMetadataWithHiddenKernargsNum(aclCompiler* cl, aclBinary* bin, uint32
   return error_code;
 }
 #endif
+
+struct _target_mappings_rec;
+typedef _target_mappings_rec TargetMapping;
 
 // Returns the TargetMapping for the specific target device.
 const TargetMapping& getTargetMapping(const aclTargetInfo &target);
