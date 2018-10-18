@@ -21,6 +21,7 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/include)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/backends/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/tools)
+include_directories(${CMAKE_BINARY_DIR}/runtime/device/rocm)
 
 add_definitions(-DBSD_LIBELF)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
@@ -63,3 +64,11 @@ add_library(oclruntime OBJECT
 )
 set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+set(AMDGCN_DEP_LIST)
+if(AMDGCN_TARGETS_LIB_DEPS)
+  set(${AMDGCN_TARGETS_LIB_DEPS} ${AMDGCN_DEP_LIST} PARENT_SCOPE)
+endif()
+
+foreach(AMDGCN_DEP_TARGET ${AMDGCN_DEP_TARGETS})
+  add_dependencies(oclruntime ${AMDGCN_DEP_TARGET})
+endforeach()

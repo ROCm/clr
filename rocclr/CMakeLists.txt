@@ -46,6 +46,7 @@ add_subdirectory(compiler/driver EXCLUDE_FROM_ALL)
 set(BUILD_HC_LIB OFF CACHE BOOL "")
 set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
 set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
+set(AMDGCN_TARGETS_LIB_DEPS "AMDGCN_DEP_TARGETS")
 set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-amdgizcl")
 add_subdirectory(library/amdgcn EXCLUDE_FROM_ALL)
 
