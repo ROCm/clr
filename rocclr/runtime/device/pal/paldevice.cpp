@@ -1008,12 +1008,29 @@ void PAL_STDCALL Device::PalDeveloperCallback(
   Device* device = static_cast<Device*>(pPrivateData);
   const auto& barrier = *static_cast<const Pal::Developer::BarrierData*>(pCbData);
 
+  const auto* pBarrierData = reinterpret_cast<const Pal::Developer::BarrierData*>(pCbData);
+
+  VirtualGPU* gpu = nullptr;
+  if (pBarrierData->pCmdBuffer != nullptr) {
+    // Find which queue the current command buffer belongs
+    for (const auto& it: device->vgpus()) {
+      if (it->isActiveCmd(pBarrierData->pCmdBuffer)) {
+        gpu = it;
+        break;
+      }
+    }
+  }
+
+  if (gpu == nullptr) {
+    return;
+  }
+
   switch (type) {
   case Pal::Developer::CallbackType::BarrierBegin:
-    device->rgpCaptureMgr()->WriteBarrierStartMarker(barrier);
+    device->rgpCaptureMgr()->WriteBarrierStartMarker(gpu, barrier);
   break;
   case Pal::Developer::CallbackType::BarrierEnd:
-    device->rgpCaptureMgr()->WriteBarrierEndMarker(barrier);
+    device->rgpCaptureMgr()->WriteBarrierEndMarker(gpu, barrier);
   break;
   case Pal::Developer::CallbackType::ImageBarrier:
     assert(false);
