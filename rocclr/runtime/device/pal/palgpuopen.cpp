@@ -253,8 +253,13 @@ void RgpCaptureMgr::PostDispatch(VirtualGPU* gpu)
       amd::ScopedLock traceLock(&trace_mutex_);
       trace_.sqtt_disp_count_++;
       if (trace_.sqtt_disp_count_ >= device_.settings().rgpSqttDispCount_) {
-        trace_.sqtt_disp_count_ = 0;
-        if (EndRGPHardwareTrace(gpu) != Pal::Result::Success) {
+        Pal::Result res = EndRGPHardwareTrace(gpu);
+        if (Pal::Result::ErrorIncompatibleQueue == res) {
+          // continue until we find the right queue...
+        }
+        else if (Pal::Result::Success == res) {
+          trace_.sqtt_disp_count_ = 0;
+        } else {
           FinishRGPTrace(gpu, true);
         }
       }
@@ -408,9 +413,9 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel,
           }
         }
       }
-      WriteUserEventMarker(RgpSqttMarkerUserEventObjectName, kernel.name());
+      WriteUserEventMarker(gpu, RgpSqttMarkerUserEventObjectName, kernel.name());
       // Write disaptch marker
-      WriteEventWithDimsMarker(apiEvent,
+      WriteEventWithDimsMarker(gpu, apiEvent,
         static_cast<uint32_t>(x), static_cast<uint32_t>(y), static_cast<uint32_t>(z));
     }
   }
@@ -711,31 +716,33 @@ void RgpCaptureMgr::PreDeviceDestroy()
 
 // ================================================================================================
 // Sets up an Event marker's basic data.
-RgpSqttMarkerEvent RgpCaptureMgr::BuildEventMarker(RgpSqttMarkerEventType api_type) const
+RgpSqttMarkerEvent RgpCaptureMgr::BuildEventMarker(
+  const VirtualGPU* gpu, RgpSqttMarkerEventType api_type) const
 {
   RgpSqttMarkerEvent marker = {};
 
   marker.identifier = RgpSqttMarkerIdentifierEvent;
   marker.apiType = static_cast<uint32_t>(api_type);
   marker.cmdID = trace_.current_event_id_++;
-  marker.cbID = trace_.begin_queue_->queue(MainEngine).cmdBufId();
+  marker.cbID = gpu->queue(MainEngine).cmdBufId();
 
   return marker;
 }
 
 // ================================================================================================
-void RgpCaptureMgr::WriteMarker(const void* data, size_t data_size) const
+void RgpCaptureMgr::WriteMarker(const VirtualGPU* gpu, const void* data, size_t data_size) const
 {
   assert((data_size % sizeof(uint32_t)) == 0);
   assert((data_size / sizeof(uint32_t)) > 0);
 
-  trace_.begin_queue_->queue(MainEngine).iCmd()->CmdInsertRgpTraceMarker(
+  gpu->queue(MainEngine).iCmd()->CmdInsertRgpTraceMarker(
     static_cast<uint32_t>(data_size / sizeof(uint32_t)), data);
 }
 
-// =====================================================================================================================
+// ================================================================================================
 // Inserts an RGP pre-dispatch marker
 void RgpCaptureMgr::WriteEventWithDimsMarker(
+  const VirtualGPU*      gpu,
   RgpSqttMarkerEventType apiType,
   uint32_t               x,
   uint32_t               y,
@@ -745,17 +752,18 @@ void RgpCaptureMgr::WriteEventWithDimsMarker(
 
   RgpSqttMarkerEventWithDims eventWithDims = {};
 
-  eventWithDims.event = BuildEventMarker(apiType);
+  eventWithDims.event = BuildEventMarker(gpu, apiType);
   eventWithDims.event.hasThreadDims = 1;
   eventWithDims.threadX = x;
   eventWithDims.threadY = y;
   eventWithDims.threadZ = z;
 
-  WriteMarker(&eventWithDims, sizeof(eventWithDims));
+  WriteMarker(gpu, &eventWithDims, sizeof(eventWithDims));
 }
 
-// =====================================================================================================================
-void RgpCaptureMgr::WriteBarrierStartMarker(const Pal::Developer::BarrierData& data) const
+// ================================================================================================
+void RgpCaptureMgr::WriteBarrierStartMarker(
+  const VirtualGPU* gpu, const Pal::Developer::BarrierData& data) const
 {
   if (rgp_server_->TracesEnabled() && (trace_.status_ == TraceStatus::Running)) {
     amd::ScopedLock traceLock(&trace_mutex_);
@@ -766,12 +774,13 @@ void RgpCaptureMgr::WriteBarrierStartMarker(const Pal::Developer::BarrierData& d
     marker.dword02    = 0xFFFFFFFF; //data.reason;
     marker.internal   = true;
 
-    WriteMarker(&marker, sizeof(marker));
+    WriteMarker(gpu, &marker, sizeof(marker));
   }
 }
 
-// =====================================================================================================================
-void RgpCaptureMgr::WriteBarrierEndMarker(const Pal::Developer::BarrierData& data) const
+// ================================================================================================
+void RgpCaptureMgr::WriteBarrierEndMarker(
+  const VirtualGPU* gpu, const Pal::Developer::BarrierData& data) const
 {
   if (rgp_server_->TracesEnabled() && (trace_.status_ == TraceStatus::Running)) {
     amd::ScopedLock traceLock(&trace_mutex_);
@@ -806,13 +815,14 @@ void RgpCaptureMgr::WriteBarrierEndMarker(const Pal::Developer::BarrierData& dat
 
     marker.numLayoutTransitions = 0;
 
-    WriteMarker(&marker, sizeof(marker));
+    WriteMarker(gpu, &marker, sizeof(marker));
   }
 }
 
-// =====================================================================================================================
+// ================================================================================================
 // Inserts a user event string marker
-void RgpCaptureMgr::WriteUserEventMarker(RgpSqttMarkerUserEventType eventType, const std::string& name) const
+void RgpCaptureMgr::WriteUserEventMarker(
+  const VirtualGPU* gpu, RgpSqttMarkerUserEventType eventType, const std::string& name) const
 {
   memset(user_event_, 0, sizeof(RgpSqttMarkerUserEventWithString));
 
@@ -836,7 +846,7 @@ void RgpCaptureMgr::WriteUserEventMarker(RgpSqttMarkerUserEventType eventType, c
     markerSize += sizeof(uint32_t) * ((strLength + sizeof(uint32_t) - 1) / sizeof(uint32_t));
   }
 
-  WriteMarker(user_event_, markerSize);
+  WriteMarker(gpu, user_event_, markerSize);
 }
 
 

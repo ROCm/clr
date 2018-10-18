@@ -437,6 +437,11 @@ class VirtualGPU : public device::VirtualDevice {
     return queue->iCmd();
   }
 
+  //! Returns true if the provided command buffer is the active one
+  bool isActiveCmd(Pal::ICmdBuffer* iCmd) const {
+    return (queues_[engineID_] != nullptr) && (iCmd == queues_[engineID_]->iCmd()) ? true : false;
+  }
+
   //! Returns queue, associated with VirtualGPU
   Queue& queue(EngineType id) const { return *queues_[id]; }
 

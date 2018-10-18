@@ -310,8 +310,10 @@ public:
 
   bool IsQueueTimingActive() const;
 
-  void WriteBarrierStartMarker(const Pal::Developer::BarrierData& data) const;
-  void WriteBarrierEndMarker(const Pal::Developer::BarrierData& data) const;
+  void WriteBarrierStartMarker(
+    const VirtualGPU* gpu, const Pal::Developer::BarrierData& data) const;
+  void WriteBarrierEndMarker(
+    const VirtualGPU* gpu, const Pal::Developer::BarrierData& data) const;
   bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const;
   Pal::Result TimedQueueSubmit(
     Pal::IQueue* queue, uint64_t cmdId, const Pal::SubmitInfo& submitInfo) const;
@@ -359,10 +361,12 @@ private:
   void DestroyRGPTracing();
   Pal::Result CheckForTraceResults();
   static bool GpuSupportsTracing(const Pal::DeviceProperties& props, const Settings& settings);
-  RgpSqttMarkerEvent BuildEventMarker(RgpSqttMarkerEventType api_type) const;
-  void WriteMarker(const void* data, size_t data_size) const;
-  void WriteEventWithDimsMarker(RgpSqttMarkerEventType apiType, uint32_t x, uint32_t y, uint32_t z) const;
-  void WriteUserEventMarker(RgpSqttMarkerUserEventType eventType, const std::string& name) const;
+  RgpSqttMarkerEvent BuildEventMarker(const VirtualGPU* gpu, RgpSqttMarkerEventType api_type) const;
+  void WriteMarker(const VirtualGPU* gpu, const void* data, size_t data_size) const;
+  void WriteEventWithDimsMarker(const VirtualGPU* gpu, RgpSqttMarkerEventType apiType,
+    uint32_t x, uint32_t y, uint32_t z) const;
+  void WriteUserEventMarker(const VirtualGPU* gpu, RgpSqttMarkerUserEventType eventType,
+    const std::string& name) const;
 
   const Device&               device_;
   DevDriver::DevDriverServer* dev_driver_server_;
