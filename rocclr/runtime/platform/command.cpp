@@ -213,6 +213,9 @@ void Command::enqueue() {
     Agent::postEventCreate(as_cl(static_cast<Event*>(this)), type_);
   }
 
+  if (IS_HIP) {
+    queue_->setLastQueuedCommand(this);
+  }
   queue_->append(*this);
   queue_->flush();
   if (queue_->device().settings().waitCommand_ && (type_ != 0)) {
