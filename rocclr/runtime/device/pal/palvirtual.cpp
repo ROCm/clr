@@ -443,7 +443,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (maxMemObjectsInQueue_ == 0) {
     // Flush cache
-    gpu.addBarrier();
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
     return;
   }
 
@@ -484,7 +484,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   if (flushL1Cache) {
     // Flush cache
     if (!gpu.profiling()) {
-      gpu.addBarrier();
+      gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
     }
     // Clear memory dependency state
     const static bool All = true;
@@ -2036,7 +2036,7 @@ void VirtualGPU::PostDeviceEnqueue(
     .runScheduler(*gpuDefQueue->virtualQueue_, *gpuDefQueue->schedParams_, 0,
       gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
   const static bool FlushL2 = true;
-  gpuDefQueue->addBarrier(FlushL2);
+  gpuDefQueue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue, FlushL2);
 
   // Get the address of PM4 template and add write it to params
   //! @note DMA flush must not occur between patch and the scheduler
@@ -2272,7 +2272,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // Note: This a workaround for incorrect results reported with release_mem packet,
     // when the packet can be processed later after this dispatch and including extra time
     if (profiling() || state_.profileEnabled_) {
-      addBarrier();
+      addBarrier(RgpSqqtBarrierReason::ProfilingControl);
       // Clear memory dependency to avoid the second L1 invalidation
       memoryDependency().clear();
     }
@@ -2583,7 +2583,7 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
 
     // Make sure GPU finished operation and data reached memory before the marker write
     static constexpr bool FlushL2 = true;
-    addBarrier(FlushL2);
+    addBarrier(RgpSqqtBarrierReason::SignalSubmit, FlushL2);
     // Workarounds: We had systems where an extra delay was necessary.
     {
         // Flush CB associated with the DGMA buffer
@@ -3029,7 +3029,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         if (!supportFineGrainedSystem) {
           return false;
         } else {
-          addBarrier();
+          addBarrier(RgpSqqtBarrierReason::MemDependency);
           // Clear memory dependency state
           const static bool All = true;
           memoryDependency().clear(!All);
@@ -3126,7 +3126,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         }
         //! This condition is for SVM fine-grain
         if ((gpuMem == nullptr) && dev().isFineGrainedSystem(true)) {
-          addBarrier();
+          addBarrier(RgpSqqtBarrierReason::MemDependency);
           // Clear memory dependency state
           const static bool All = true;
           memoryDependency().clear(!All);
