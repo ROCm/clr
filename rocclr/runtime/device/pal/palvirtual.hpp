@@ -10,6 +10,7 @@
 #include "device/pal/paltimestamp.hpp"
 #include "device/pal/palsched.hpp"
 #include "device/pal/paldebugger.hpp"
+#include "device/pal/palgpuopen.hpp"
 #include "platform/commandqueue.hpp"
 #include "device/blit.hpp"
 #include "palUtil.h"
@@ -445,7 +446,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns queue, associated with VirtualGPU
   Queue& queue(EngineType id) const { return *queues_[id]; }
 
-  void addBarrier(bool flushL2 = false) const {
+  void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::Unknown, bool flushL2 = false) const {
     Pal::BarrierInfo barrier = {};
     barrier.pipePointWaitCount = 1;
     Pal::HwPipePoint point = Pal::HwPipePostCs;
@@ -460,6 +461,7 @@ class VirtualGPU : public device::VirtualDevice {
                                      Pal::LayoutShaderRead}};
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
+    barrier.reason = static_cast<uint32_t>(reason);
     iCmd()->CmdBarrier(barrier);
     queues_[engineID_]->submit<true>(false);
   }

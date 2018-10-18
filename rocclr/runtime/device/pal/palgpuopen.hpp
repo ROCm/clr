@@ -114,6 +114,17 @@ enum class RgpSqttMarkerEventType : uint32_t
 };
 
 // ================================================================================================
+enum class RgpSqqtBarrierReason : uint32_t
+{
+  Invalid = 0,
+  MemDependency = 0xC0000000,
+  ProfilingControl = 0xC0000001,
+  SignalSubmit = 0xC0000002,
+  PostDeviceEnqueue = 0xC0000003,
+  Unknown = 0xffffffff
+};
+
+// ================================================================================================
 // RgpSqttMarkerEvent - "Event (Per-draw/dispatch)" RGP SQ thread-tracing marker.  
 // These are generated ahead of draws or dispatches for commands that trigger generation of waves
 //  i.e. draws/dispatches (Table 4).

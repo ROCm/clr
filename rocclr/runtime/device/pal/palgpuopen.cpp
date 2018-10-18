@@ -771,7 +771,7 @@ void RgpCaptureMgr::WriteBarrierStartMarker(
 
     marker.identifier = RgpSqttMarkerIdentifierBarrierStart;
     marker.cbId       = trace_.begin_queue_->queue(MainEngine).cmdBufId();
-    marker.dword02    = 0xFFFFFFFF; //data.reason;
+    marker.dword02    = data.reason;
     marker.internal   = true;
 
     WriteMarker(gpu, &marker, sizeof(marker));
