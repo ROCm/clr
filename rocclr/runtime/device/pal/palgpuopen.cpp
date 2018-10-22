@@ -359,7 +359,9 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel,
       if (trace_.prepared_disp_count_ >= num_prep_disp_) {
         Pal::Result result = BeginRGPTrace(gpu);
 
-        if (result != Pal::Result::Success) {
+        if (Pal::Result::ErrorIncompatibleQueue == result) {
+          // Let's wait until the app will reach the same queue
+        } else if (result != Pal::Result::Success) {
           FinishRGPTrace(gpu, true);
         }
       }
@@ -501,7 +503,7 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu)
     // Only allow trace to start if the queue family at prep-time matches the queue
     // family at begin time because the command buffer engine type must match
     if (trace_.prepare_queue_ != gpu) {
-        result = Pal::Result::ErrorIncompatibleQueue;
+      result = Pal::Result::ErrorIncompatibleQueue;
     }
   }
 
