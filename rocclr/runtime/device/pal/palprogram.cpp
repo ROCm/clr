@@ -575,34 +575,6 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executabl
   return HSA_STATUS_SUCCESS;
 }
 
-static hsa_status_t GetGlobalVarNamesCallback(
-  hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
-  void* data) {
-  auto symbol = Symbol::Object(hSymbol);
-  auto symbolNameList = reinterpret_cast<std::vector<std::string>*>(data);
-
-  hsa_symbol_kind_t type;
-  if (!symbol->GetInfo(HSA_CODE_SYMBOL_INFO_TYPE, &type)) {
-    return HSA_STATUS_ERROR;
-  }
-
-  if (type == HSA_SYMBOL_KIND_VARIABLE) {
-    // VariableSymbol* vsym = symbol; // Casting to the variable structure
-    uint32_t length;
-    if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &length)) {
-      return HSA_STATUS_ERROR;
-    }
-
-    char* name = reinterpret_cast<char*>(alloca(length + 1));
-    if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME, name)) {
-      return HSA_STATUS_ERROR;
-    }
-    name[length] = '\0';
-
-    symbolNameList->push_back(std::string(name));
-  }
-  return HSA_STATUS_SUCCESS;
-}
 #endif // defined(WITH_LIGHTNING_COMPILER)
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
@@ -680,15 +652,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     maxScratchRegs_ =
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
   }
-
-  // Get the list of global variables
-  std::vector<std::string> glbVarNames;
-  status = executable_->IterateSymbols(GetGlobalVarNamesCallback, &glbVarNames);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Failed to get kernel names\n";
-    return false;
-  }
-  hasGlobalStores_ = (glbVarNames.size() != 0) ? true : false;
 
   DestroySegmentCpuAccess();
 #endif // defined(WITH_LIGHTNING_COMPILER)
