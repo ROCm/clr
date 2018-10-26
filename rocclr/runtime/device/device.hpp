@@ -1124,6 +1124,7 @@ class Device : public RuntimeObject {
   };
 
   virtual Compiler* compiler() const = 0;
+  virtual Compiler* binCompiler() const { return compiler(); }
 
   Device();
   virtual ~Device();
