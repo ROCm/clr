@@ -89,7 +89,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     assert(symbol && "symbol not found");
     std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
     size_t symSize = 0;
-    const void* opts = aclExtractSymbol(device.compiler(), binary, &symSize, aclCOMMENT,
+    const void* opts = aclExtractSymbol(device.binCompiler(), binary, &symSize, aclCOMMENT,
                                         symName.c_str(), &errorCode);
     // if we have options from binary and input options was not specified
     if (opts != NULL && emptyOptions) {

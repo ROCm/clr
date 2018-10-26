@@ -42,6 +42,7 @@ class NullDevice : public amd::Device {
   aclCompiler* amdilCompiler() const { return compiler_; }
   aclCompiler* hsaCompiler() const { return hsaCompiler_; }
   aclCompiler* compiler() const { return hsaCompiler_; }
+  Compiler* binCompiler() const { return amdilCompiler(); }
 
   static bool init(void);
 
