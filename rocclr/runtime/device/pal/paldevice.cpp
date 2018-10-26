@@ -344,9 +344,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vendorId_ = palProp.vendorId;
 
   info_.maxWorkItemDimensions_ = 3;
-  info_.maxComputeUnits_ = palProp.gfxipProperties.shaderCore.numShaderEngines *
-      palProp.gfxipProperties.shaderCore.numShaderArrays *
-      palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
+  info_.maxComputeUnits_ = palProp.gfxipProperties.shaderCore.numAvailableCus;
   info_.numberOfShaderEngines = palProp.gfxipProperties.shaderCore.numShaderEngines;
 
   // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
