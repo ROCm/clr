@@ -1079,9 +1079,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   // Check if runtime can use async memory copy,
   // even if a caller didn't request async
-  if (dev().settings().asyncMemCopy_ &&
-      // Keep ASYNC if profiling is disabled or sdma profiling is possible
-      (!gpu.profiling() || dev().settings().sdmaProfiling_) &&
+  // Keep ASYNC if profiling is disabled or sdma profiling is possible
+  if ((!gpu.profiling() || dev().settings().sdmaProfiling_) &&
       (!cal()->cardMemory_ || !dstResource.cal()->cardMemory_)) {
     // Switch to SDMA engine
     gpu.engineID_ = SdmaEngine;

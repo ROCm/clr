@@ -70,8 +70,6 @@ release(cstring, AMD_OCL_SC_LIB, 0,                                           \
         "Set shader compiler shared library name or path")                    \
 debug(bool, AMD_OCL_ENABLE_MESSAGE_BOX, false,                                \
         "Enable the error dialog on Windows")                                 \
-release(cstring, GPU_PRE_RA_SCHED, "default",                                 \
-        "Allows setting of alternate pre-RA-sched")                           \
 release(size_t, GPU_PINNED_XFER_SIZE, 16,                                     \
         "The pinned buffer size for pinning in read/write transfers")         \
 release(size_t, GPU_PINNED_MIN_XFER_SIZE, 512,                                \
@@ -80,16 +78,12 @@ release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
 release(size_t, GPU_MAX_SUBALLOC_SIZE, 4096,                                  \
         "The maximum size accepted for suballocaitons in KB")                 \
-release(uint, GPU_ASYNC_MEM_COPY, 0,                                          \
-        "Enables async memory transfers with DRM engine")                     \
 release(bool, GPU_FORCE_64BIT_PTR, 0,                                         \
         "Forces 64 bit pointers on GPU")                                      \
 release(bool, GPU_FORCE_OCL20_32BIT, 0,                                       \
         "Forces 32 bit apps to take CLANG\HSAIL path")                        \
 release(bool, GPU_RAW_TIMESTAMP, 0,                                           \
         "Reports GPU raw timestamps in GPU timeline")                         \
-release(bool, GPU_PARTIAL_DISPATCH, true,                                     \
-        "Enables partial dispatch on GPU")                                    \
 release(size_t, GPU_NUM_MEM_DEPENDENCY, 256,                                  \
         "Number of memory objects for dependency tracking")                   \
 release(size_t, GPU_XFER_BUFFER_SIZE, 0,                                      \
@@ -102,26 +96,12 @@ release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
         "GPU number of compute rings. 0 - disabled, 1 , 2,.. - the number of compute rings") \
 release(int, GPU_SELECT_COMPUTE_RINGS_ID, -1,                                 \
         "GPU select the compute rings ID -1 - disabled, 0 , 1,.. - the forced compute rings ID for submission") \
-release_on_stg(bool, C1X_ATOMICS, !IS_MAINLINE,                               \
-        "Runtime will report c1x atomics support")                            \
 release(uint, GPU_WORKLOAD_SPLIT, 22,                                         \
         "Workload split size")                                                \
 release(bool, GPU_USE_SINGLE_SCRATCH, false,                                  \
         "Use single scratch buffer per device instead of per HW ring")        \
-release_on_stg(cstring, GPU_TARGET_INFO_ARCH, "amdil",                        \
-        "Select the GPU TargetInfo arch (amdil|hsail)")                       \
-release(bool, HSA_RUNTIME, 0,                                                 \
-        "1 = Enable HSA Runtime, any other value or absence disables it.")    \
 release(bool, AMD_OCL_WAIT_COMMAND, false,                                    \
         "1 = Enable a wait for every submitted command")                      \
-debug(bool, AMD_OCL_DEBUG_LINKER, false,                                      \
-        "Enable debug output in linker")                                      \
-debug(bool, GPU_SPLIT_LIB, true,                                              \
-        "Enable splitting GPU 32/64 bit library")                             \
-release(bool, GPU_STAGING_WRITE_PERSISTENT, false,                            \
-        "Enable Persistent writes")                                           \
-release(bool, DRMDMA_FOR_LNX_CF, false,                                       \
-        "Enable DRMDMA for Linux CrossFire")                                  \
 /* HSAIL is by default, except Linux 32bit, because of known Catalyst 32bit issue */  \
 release(bool, GPU_HSAIL_ENABLE, LP64_SWITCH(LINUX_SWITCH(false,true),true),   \
         "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
@@ -135,16 +115,10 @@ release(bool, AMD_THREAD_TRACE_ENABLE, true,                                  \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
         "Force GPU opencl verison")                                           \
-release(bool, ENVVAR_HSA_POLL_KERNEL_COMPLETION, false,                       \
-        "Determines if Hsa runtime should use polling scheme")                \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
         "Enable HSA device local memory usage")                               \
 release(uint, HSA_KERNARG_POOL_SIZE, 2 * 1024 * 1024,                         \
         "Kernarg pool size")                                                  \
-release(uint, HSA_SIGNAL_POOL_SIZE, 16,                                       \
-        "Signal object pool size")                                            \
-release(bool, HSA_ENABLE_ATOMICS_32B, false,                                  \
-        "1 = Enable SVM atomics in 32 bits (HSA backend-only). Any other value keeps then disabled.") \
 release(bool, HSA_ENABLE_COARSE_GRAIN_SVM, true,                              \
         "Enable device memory for coarse grain SVM allocations")              \
 release(bool, GPU_IFH_MODE, false,                                            \
@@ -179,14 +153,8 @@ release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
         "Assume the number of CU per SH for wave limiter")                    \
 release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
         "Set maximum waves per SIMD to try for wave limiter")                 \
-release_on_stg(uint, GPU_WAVE_LIMIT_WARMUP, 100,                              \
-        "Set warming up kernel execution count for wave limiter")             \
 release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 20,                                  \
         "Set running factor for wave limiter")                                \
-release_on_stg(uint, GPU_WAVE_LIMIT_ABANDON, 105,                             \
-        "Set abandon threshold for wave limiter")                             \
-release_on_stg(uint, GPU_WAVE_LIMIT_DSC_THRESH, 10,                           \
-        "Set threshold for rejecting discontinuous data")                     \
 release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
         "File path prefix for dumping wave limiter output")                   \
 release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \

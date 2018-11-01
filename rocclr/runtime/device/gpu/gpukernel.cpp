@@ -628,7 +628,7 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
 
   if ((binaryCode == NULL) && (binarySize == 0) && !code.empty()) {
     acl_error err;
-    std::string arch = GPU_TARGET_INFO_ARCH;
+    std::string arch = "amdil";
     if (nullDev().settings().use64BitPtr_) {
       arch += "64";
     }
@@ -1028,16 +1028,7 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
   if (workGroupInfo()->compileSize_[0] == 0) {
     // Find the default local workgroup size, if it wasn't specified
     if (lclWorkSize[0] == 0) {
-      bool b1DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE);
-      bool b2DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y);
-      bool b3DOverrideSet = !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
-          !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z);
-
-      bool overrideSet = ((workDim == 1) && b1DOverrideSet) || ((workDim == 2) && b2DOverrideSet) ||
-          ((workDim == 3) && b3DOverrideSet);
-      if (!overrideSet) {
+      if ((dev().settings().overrideLclSet & (1 << (workDim - 1))) == 0) {
         // Find threads per group
         size_t thrPerGrp = workGroupInfo()->size_;
 
@@ -1046,8 +1037,7 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
             // and thread group is a multiple value of wavefronts
             ((thrPerGrp % workGroupInfo()->wavefrontSize_) == 0) &&
             // and it's 2 or 3-dimensional workload
-            (workDim > 1) && ((dev().settings().partialDispatch_) ||
-                              (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)))) {
+            (workDim > 1) && ((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0)) {
           // Use 8x8 workgroup size if kernel has image writes
           if ((flags() & ImageWrite) || (thrPerGrp != nullDev().info().preferredWorkGroupSize_)) {
             lclWorkSize[0] = 8;
@@ -1072,12 +1062,10 @@ void Kernel::findLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
           // Assuming DWORD access
           const uint cacheLineMatch = dev().settings().cacheLineSize_ >> 2;
 
-          // Check if partial dispatch is enabled and
-          if (dev().settings().partialDispatch_ &&
-              // we couldn't find optimal workload
-              (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
+          // Check if we couldn't find optimal workload
+          if (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
                // or size is too small for the cache line
-               (lclWorkSize[0] < cacheLineMatch))) {
+               (lclWorkSize[0] < cacheLineMatch)) {
             size_t maxSize = 0;
             size_t maxDim = 0;
             for (uint d = 0; d < workDim; ++d) {
@@ -1196,17 +1184,15 @@ void Kernel::setupProgramGrid(VirtualGPU& gpu, size_t workDim, const amd::NDRang
       pGroupOffset[2] = groupOffset[2];
       pNDRangeGlobalOffset[2 + glbABIShift] = glbWorkOffsetOrg[2];
 
-      if (dev().settings().partialDispatch_) {
-        // Check if partial workgroup dispatch is required
-        progGrid->partialGridBlock.depth = gblWorkSize[2] % lclWorkSize[2];
-        if (progGrid->partialGridBlock.depth != 0) {
-          partialGrid = true;
-          // Increment the number of groups
-          progGrid->gridSize.depth++;
-          pNumGroups[2]++;
-        } else {
-          progGrid->partialGridBlock.depth = lclWorkSize[2];
-        }
+      // Check if partial workgroup dispatch is required
+      progGrid->partialGridBlock.depth = gblWorkSize[2] % lclWorkSize[2];
+      if (progGrid->partialGridBlock.depth != 0) {
+        partialGrid = true;
+        // Increment the number of groups
+        progGrid->gridSize.depth++;
+        pNumGroups[2]++;
+      } else {
+        progGrid->partialGridBlock.depth = lclWorkSize[2];
       }
     // Fall through to fill 2D and 1D dimensions...
     case 2:
@@ -1221,17 +1207,15 @@ void Kernel::setupProgramGrid(VirtualGPU& gpu, size_t workDim, const amd::NDRang
       pGroupOffset[1] = groupOffset[1];
       pNDRangeGlobalOffset[1 + glbABIShift] = glbWorkOffsetOrg[1];
 
-      if (dev().settings().partialDispatch_) {
-        // Check if partial workgroup dispatch is required
-        progGrid->partialGridBlock.height = gblWorkSize[1] % lclWorkSize[1];
-        if (progGrid->partialGridBlock.height != 0) {
-          partialGrid = true;
-          // Increment the number of groups
-          progGrid->gridSize.height++;
-          pNumGroups[1]++;
-        } else {
-          progGrid->partialGridBlock.height = lclWorkSize[1];
-        }
+      // Check if partial workgroup dispatch is required
+      progGrid->partialGridBlock.height = gblWorkSize[1] % lclWorkSize[1];
+      if (progGrid->partialGridBlock.height != 0) {
+        partialGrid = true;
+        // Increment the number of groups
+        progGrid->gridSize.height++;
+        pNumGroups[1]++;
+      } else {
+        progGrid->partialGridBlock.height = lclWorkSize[1];
       }
     // Fall through to fill 1D dimension...
     case 1:
@@ -1246,17 +1230,15 @@ void Kernel::setupProgramGrid(VirtualGPU& gpu, size_t workDim, const amd::NDRang
       pGroupOffset[0] = groupOffset[0];
       pNDRangeGlobalOffset[0 + glbABIShift] = glbWorkOffsetOrg[0];
 
-      if (dev().settings().partialDispatch_) {
-        // Check if partial workgroup dispatch is required
-        progGrid->partialGridBlock.width = gblWorkSize[0] % lclWorkSize[0];
-        if (progGrid->partialGridBlock.width != 0) {
-          partialGrid = true;
-          // Increment the number of groups
-          progGrid->gridSize.width++;
-          pNumGroups[0]++;
-        } else {
-          progGrid->partialGridBlock.width = lclWorkSize[0];
-        }
+      // Check if partial workgroup dispatch is required
+      progGrid->partialGridBlock.width = gblWorkSize[0] % lclWorkSize[0];
+      if (progGrid->partialGridBlock.width != 0) {
+        partialGrid = true;
+        // Increment the number of groups
+        progGrid->gridSize.width++;
+        pNumGroups[0]++;
+      } else {
+        progGrid->partialGridBlock.width = lclWorkSize[0];
       }
       break;
     default:

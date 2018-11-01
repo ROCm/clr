@@ -25,7 +25,7 @@ namespace gpu {
 
 const aclTargetInfo& NullProgram::info(const char* str) {
   acl_error err;
-  std::string arch = GPU_TARGET_INFO_ARCH;
+  std::string arch = "amdil";
   if (dev().settings().use64BitPtr_) {
     arch += "64";
   }

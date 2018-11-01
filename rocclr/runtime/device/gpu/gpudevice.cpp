@@ -1058,12 +1058,7 @@ bool Device::initializeHeapResources() {
     if (settings().stagedXferSize_ != 0) {
       // Initialize staged write buffers
       if (settings().stagedXferWrite_) {
-        Resource::MemoryType type;
-        if (settings().stagingWritePersistent_ && !settings().disablePersistent_) {
-          type = Resource::Persistent;
-        } else {
-          type = Resource::RemoteUSWC;
-        }
+        Resource::MemoryType type = Resource::RemoteUSWC;
         xferWrite_ = new XferBuffers(*this, type, amd::alignUp(settings().stagedXferSize_, 4 * Ki));
         if ((xferWrite_ == NULL) || !xferWrite_->create()) {
           LogError("Couldn't allocate transfer buffer objects for read");

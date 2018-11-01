@@ -573,7 +573,6 @@ namespace device {
 Settings::Settings() : value_(0) {
   assert((ClExtTotal < (8 * sizeof(extensions_))) && "Too many extensions!");
   extensions_ = 0;
-  partialDispatch_ = false;
   supportRA_ = true;
   customHostAllocator_ = false;
   waitCommand_ = AMD_OCL_WAIT_COMMAND;
@@ -581,6 +580,13 @@ Settings::Settings() : value_(0) {
   enableHwDebug_ = false;
   commandQueues_ = 200;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for default
+
+  overrideLclSet = (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE)) ? 1 : 0;
+  overrideLclSet |= (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
+    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y)) ? 2 : 0;
+  overrideLclSet |= (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
+    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
+    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z)) ? 4 : 0;
 }
 
 void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,

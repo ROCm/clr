@@ -507,8 +507,8 @@ class Settings : public amd::HeapObject {
   uint64_t extensions_;  //!< Supported OCL extensions
   union {
     struct {
+      uint overrideLclSet : 3;        //!< Bit mask to override the local size
       uint apuSystem_ : 1;            //!< Device is APU system with shared memory
-      uint partialDispatch_ : 1;      //!< Enables partial dispatch
       uint supportRA_ : 1;            //!< Support RA channel order format
       uint waitCommand_ : 1;          //!< Enables a wait for every submitted command
       uint customHostAllocator_ : 1;  //!< True if device has custom host allocator
@@ -520,7 +520,7 @@ class Settings : public amd::HeapObject {
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
       uint gfx10Hsail_ : 1 ;          //!< GFX10 HSAIL path
       uint useLightning_ : 1;         //!< Enable LC path for this device
-      uint reserved_ : 20;
+      uint reserved_ : 18;
     };
     uint value_;
   };

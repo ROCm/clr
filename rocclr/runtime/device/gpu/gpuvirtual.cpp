@@ -1429,11 +1429,9 @@ void VirtualGPU::findIterations(const amd::NDRangeContainer& sizes, const amd::N
 
     // Find the total amount of all groups
     groups = sizes.global() / local;
-    if (dev().settings().partialDispatch_) {
-      for (uint j = 0; j < dimensions; ++j) {
-        if ((sizes.global()[j] % local[j]) != 0) {
-          groups[j]++;
-        }
+    for (uint j = 0; j < dimensions; ++j) {
+      if ((sizes.global()[j] % local[j]) != 0) {
+        groups[j]++;
       }
     }
 
@@ -1481,12 +1479,10 @@ void VirtualGPU::setupIteration(uint iteration, const amd::NDRangeContainer& siz
   }
   global = groups * local;
 
-  if (dev().settings().partialDispatch_) {
-    for (uint j = 0; j < dimensions; ++j) {
-      size_t offset = groupOffset[j] * local[j];
-      if ((offset + global[j]) > sizes.global()[j]) {
-        global[j] = sizes.global()[j] - offset;
-      }
+  for (uint j = 0; j < dimensions; ++j) {
+    size_t offset = groupOffset[j] * local[j];
+    if ((offset + global[j]) > sizes.global()[j]) {
+      global[j] = sizes.global()[j] - offset;
     }
   }
 

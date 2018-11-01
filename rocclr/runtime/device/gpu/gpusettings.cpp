@@ -44,9 +44,6 @@ Settings::Settings() {
   // We will enable staged read/write if we use local memory
   disablePersistent_ = false;
 
-  // By Default persistent writes will be disabled.
-  stagingWritePersistent_ = GPU_STAGING_WRITE_PERSISTENT;
-
   maxRenames_ = 16;
   maxRenameSize_ = 4 * Mi;
 
@@ -76,9 +73,6 @@ Settings::Settings() {
   // Disable FP_FAST_FMA defines by default
   reportFMAF_ = false;
   reportFMA_ = false;
-
-  // Disable async memory transfers by default
-  asyncMemCopy_ = false;
 
   // GPU device by default
   apuSystem_ = false;
@@ -294,7 +288,6 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
       }
 
       supportRA_ = false;
-      partialDispatch_ = GPU_PARTIAL_DISPATCH;
       numMemDependencies_ = GPU_NUM_MEM_DEPENDENCY;
 
       enableExtension(ClKhrInt64BaseAtomics);
@@ -351,8 +344,6 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
   hostMemDirectAccess_ |= HostMemBuffer;
   // HW doesn't support untiled image writes
   // hostMemDirectAccess_ |= HostMemImage;
-
-  asyncMemCopy_ = true;
 
   // Make sure device actually supports double precision
   doublePrecision_ = (calAttr.doublePrecision) ? doublePrecision_ : false;
@@ -441,15 +432,6 @@ void Settings::override() {
   // Override blit engine type
   if (GPU_BLIT_ENGINE_TYPE != BlitEngineDefault) {
     blitEngine_ = GPU_BLIT_ENGINE_TYPE;
-  }
-
-  if (!flagIsDefault(DEBUG_GPU_FLAGS)) {
-    debugFlags_ = DEBUG_GPU_FLAGS;
-  }
-
-  // Check async memory transfer
-  if (!flagIsDefault(GPU_ASYNC_MEM_COPY)) {
-    asyncMemCopy_ = GPU_ASYNC_MEM_COPY;
   }
 
   if (!flagIsDefault(DEBUG_GPU_FLAGS)) {

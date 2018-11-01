@@ -17,7 +17,6 @@ Settings::Settings() {
 
   // Set this to true when we drop the flag
   doublePrecision_ = ::CL_KHR_FP64;
-  pollCompletion_ = ENVVAR_HSA_POLL_KERNEL_COMPLETION;
 
   enableLocalMemory_ = HSA_LOCAL_MEMORY_ENABLE;
   enableCoarseGrainSVM_ = HSA_ENABLE_COARSE_GRAIN_SVM;
@@ -32,7 +31,6 @@ Settings::Settings() {
   maxWorkGroupSize3DZ_ = 4;
 
   kernargPoolSize_ = HSA_KERNARG_POOL_SIZE;
-  signalPoolSize_ = HSA_SIGNAL_POOL_SIZE;
 
   // Determine if user is requesting Non-Coherent mode
   // for system memory. By default system memory is
@@ -43,7 +41,6 @@ Settings::Settings() {
   nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
   enableNCMode_ = (nonCoherentMode) ? true : false;
 
-  partialDispatch_ = GPU_PARTIAL_DISPATCH;
   commandQueues_ = 100;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for ROCm backend
 
@@ -156,10 +153,6 @@ void Settings::override() {
 
   if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
     commandQueues_ = GPU_MAX_COMMAND_QUEUES;
-  }
-
-  if (!flagIsDefault(GPU_IMAGE_DMA)) {
-    commandQueues_ = GPU_IMAGE_DMA;
   }
 
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
