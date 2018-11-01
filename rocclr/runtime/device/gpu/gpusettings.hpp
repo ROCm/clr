@@ -57,12 +57,10 @@ class Settings : public device::Settings {
       uint useSingleScratch_ : 1;        //!< Allocates single scratch per device
       uint sdmaProfiling_ : 1;           //!< Enables SDMA profiling
       uint hsail_ : 1;                   //!< Enables HSAIL compilation
-      uint stagingWritePersistent_ : 1;  //!< Enables persistent writes
       uint svmAtomics_ : 1;              //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;      //!< SVM fine grain system support
-      uint asyncMemCopy_ : 1;            //!< Use async memory transfers
       uint useDeviceQueue_ : 1;          //!< Submit to separate device queue
-      uint reserved_ : 9;
+      uint reserved_ : 11;
     };
     uint value_;
   };

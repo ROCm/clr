@@ -20,14 +20,13 @@ class Settings : public device::Settings {
   union {
     struct {
       uint doublePrecision_ : 1;        //!< Enables double precision support
-      uint pollCompletion_ : 1;         //!< Enables polling in HSA
       uint enableLocalMemory_ : 1;      //!< Enable GPUVM memory
       uint enableCoarseGrainSVM_ : 1;   //!< Enable device memory for coarse grain SVM allocations
       uint enableNCMode_ : 1;           //!< Enable Non Coherent mode for system memory
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
       uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
-      uint reserved_ : 24;
+      uint reserved_ : 25;
     };
     uint value_;
   };
@@ -48,7 +47,6 @@ class Settings : public device::Settings {
   int maxWorkGroupSize3DZ_;
 
   uint kernargPoolSize_;
-  uint signalPoolSize_;
   uint numDeviceEvents_;      //!< The number of device events
   uint numWaitEvents_;        //!< The number of wait events for device enqueue
 

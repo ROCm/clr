@@ -502,7 +502,7 @@ CALGSLDevice::SetupAdapter(int32 &asic_id)
 
     //Disable DRMDMA on CFX mode for linux on all GPUs.
 #ifdef ATI_OS_LINUX
-    if ((m_adp->getNumLinkedVPUs() > 1) && !DRMDMA_FOR_LNX_CF)
+    if (m_adp->getNumLinkedVPUs() > 1)
     {
         m_canDMA = ATIGL_FALSE;
     }

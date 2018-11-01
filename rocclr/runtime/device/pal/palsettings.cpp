@@ -34,7 +34,6 @@ Settings::Settings() {
   // Initialize the GPU device default settings
   oclVersion_ = OpenCL12;
   debugFlags_ = 0;
-  syncObject_ = GPU_USE_SYNC_OBJECTS;
   remoteAlloc_ = REMOTE_ALLOC;
 
   stagedXferRead_ = true;
@@ -43,9 +42,6 @@ Settings::Settings() {
 
   // We will enable staged read/write if we use local memory
   disablePersistent_ = false;
-
-  // By Default persistent writes will be disabled.
-  stagingWritePersistent_ = GPU_STAGING_WRITE_PERSISTENT;
 
   imageSupport_ = false;
   hwLDSSize_ = 0;
@@ -302,7 +298,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       }
 
       supportRA_ = false;
-      partialDispatch_ = GPU_PARTIAL_DISPATCH;
       numMemDependencies_ = GPU_NUM_MEM_DEPENDENCY;
       break;
     default:
@@ -479,16 +474,8 @@ void Settings::override() {
     debugFlags_ = DEBUG_GPU_FLAGS;
   }
 
-  if (!flagIsDefault(DEBUG_GPU_FLAGS)) {
-    debugFlags_ = DEBUG_GPU_FLAGS;
-  }
-
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
     xferBufSize_ = GPU_XFER_BUFFER_SIZE * Ki;
-  }
-
-  if (!flagIsDefault(GPU_USE_SYNC_OBJECTS)) {
-    syncObject_ = GPU_USE_SYNC_OBJECTS;
   }
 
   if (!flagIsDefault(GPU_NUM_COMPUTE_RINGS)) {
