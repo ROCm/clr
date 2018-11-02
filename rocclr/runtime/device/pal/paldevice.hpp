@@ -112,6 +112,7 @@ class NullDevice : public amd::Device {
 
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
   void  Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
 
  protected:
   static Util::GenericAllocator allocator_; //!< Generic memory allocator in PAL
@@ -347,6 +348,8 @@ class Device : public NullDevice {
   //! Validates kernel before execution
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
                               const device::VirtualDevice* vdev);
+
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   //! Retrieves information about free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;

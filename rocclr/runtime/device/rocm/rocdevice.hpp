@@ -176,6 +176,8 @@ class NullDevice : public amd::Device {
     return false;
   }
 
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
+
  protected:
   //! Initialize compiler instance and handle
   static bool initCompiler(bool isOffline);
@@ -335,6 +337,8 @@ class Device : public NullDevice {
                          cl_svm_mem_flags flags = CL_MEM_READ_WRITE, void* svmPtr = nullptr) const;
 
   virtual void svmFree(void* ptr) const;
+
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }

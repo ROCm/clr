@@ -22,7 +22,6 @@
 #include "acl.h"
 
 #include "amdocl/cl_common.hpp"
-//#include "CL/cl_gl.h"
 
 #ifdef _WIN32
 #include <d3d9.h>
@@ -2261,6 +2260,15 @@ cl_int Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorag
   }
 
   return status;
+}
+
+bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+  bool result = false;
+  Pal::SetClockModeInput setClockMode = {};
+  Pal::DeviceClockMode palClockMode = static_cast<Pal::DeviceClockMode>(setClockModeInput.clock_mode);
+  setClockMode.clockMode = palClockMode;
+  result = (Pal::Result::Success == (iDev()->SetClockMode(setClockMode, reinterpret_cast<Pal::SetClockModeOutput*>(pSetClockModeOutput))))? true : false;
+  return result;
 }
 
 }  // namespace pal
