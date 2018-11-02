@@ -574,6 +574,7 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       break;
     case 'S':
       CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clSetDeviceClockModeAMD);
       break;
     case 'U':
       CL_EXTENSION_ENTRYPOINT_CHECK(clUnloadPlatformAMD);

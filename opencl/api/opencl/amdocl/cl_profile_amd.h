@@ -114,6 +114,35 @@ enum PerfcounterInfo {
   CL_PERFCOUNTER_LAST
 };
 
+/*********************************
+* Set device clock mode data
+*********************************/
+enum cl_DeviceClockMode_AMD {
+  CL_DEVICE_CLOCK_MODE_DEFAULT_AMD = 0x0, /*Device clocks and other power settings are restored to default*/
+  CL_DEVICE_CLOCK_MODE_QUERY_AMD = 0x1, /*Queries the current device clock ratios. Leaves the clock mode of the device unchanged*/
+  CL_DEVICE_CLOCK_MODE_PROFILING_AMD = 0x2, /*Scale down from peak ratio*/
+  CL_DEVICE_CLOCK_MODE_MINIMUMMEMORY_AMD = 0x3, /* Memory clock is set to the lowest available level*/
+  CL_DEVICE_CLOCK_MODE_MINIMUMENGINE_AMD = 0x4, /*Engine clock is set to the lowest available level*/
+  CL_DEVICE_CLOCK_MODE_PEAK_AMD = 0x5, /*Clocks set to maximum when possible. Fan set to maximum.*/
+  CL_DEVICE_CLOCK_MODE_QUERYPROFILING_AMD = 0x6, /*Queries the profiling device clock ratios. Leaves the clock mode of the device unchanged*/
+  CL_DEVICE_CLOCK_MODE_QUERYPEAK_AMD = 0x7, /*Queries the peak device clock ratios.Leaves the clock mode of the device unchanged*/
+  CL_DEVICE_CLOCK_MODE_COUNT_AMD = 0x8, /*Maxmium count of device clock mode*/
+};
+
+typedef struct _cl_set_device_clock_mode_input_amd
+{
+  /* specify the clock mode for AMD GPU device*/
+  cl_DeviceClockMode_AMD clock_mode;
+} cl_set_device_clock_mode_input_amd;
+
+typedef struct _cl_set_device_clock_mode_output_amd
+{
+  /*Ratio of current mem clock to peak clock as obtained from DeviceProperties::maxGpuClock*/
+  cl_float memory_clock_ratio_to_peak;
+  /*Ratio of current gpu core clock to peak clock as obtained from DeviceProperties::maxGpuClock*/
+  cl_float engine_clock_ratio_to_peak;
+} cl_set_device_clock_mode_output_amd;
+
 /*! \brief Creates a new HW performance counter
  *   for the specified OpenCL context.
  *
@@ -218,6 +247,11 @@ extern CL_API_ENTRY cl_int CL_API_CALL clEnqueueEndPerfCounterAMD(
 extern CL_API_ENTRY cl_int CL_API_CALL clGetPerfCounterInfoAMD(
     cl_perfcounter_amd /* perf_counter */, cl_perfcounter_info /* param_name */,
     size_t /* param_value_size */, void* /* param_value */, size_t* /* param_value_size_ret */
+    ) CL_API_SUFFIX__VERSION_1_0;
+
+extern CL_API_ENTRY cl_int CL_API_CALL clSetDeviceClockModeAMD(
+    cl_device_id /* device*/, cl_set_device_clock_mode_input_amd /* Clock_Mode_Input */,
+    cl_set_device_clock_mode_output_amd* /* Clock_Mode_Output */
     ) CL_API_SUFFIX__VERSION_1_0;
 
 #ifdef __cplusplus
