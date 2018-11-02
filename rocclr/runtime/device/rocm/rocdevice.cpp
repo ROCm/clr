@@ -1603,5 +1603,9 @@ VirtualGPU* Device::xferQueue() const {
   xferQueue_->enableSyncBlit();
   return xferQueue_;
 }
+bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+  bool result = true;
+  return result;
+}
 }
 #endif  // WITHOUT_HSA_BACKEND

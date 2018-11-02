@@ -2247,4 +2247,9 @@ cl_int Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorag
   return status;
 }
 
+bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+  bool result = true;
+  return result;
+}
+
 }  // namespace gpu

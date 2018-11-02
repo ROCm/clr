@@ -17,6 +17,7 @@
 #include "appprofile.hpp"
 #include "devprogram.hpp"
 #include "devkernel.hpp"
+#include "amdocl/cl_profile_amd.h"
 
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "caching/cache.hpp"
@@ -1264,6 +1265,9 @@ class Device : public RuntimeObject {
     return true;
   };
 
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+    return true;
+  };
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
 
