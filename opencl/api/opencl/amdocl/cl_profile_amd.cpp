@@ -6,6 +6,7 @@
 #include "platform/context.hpp"
 #include "platform/command.hpp"
 #include "platform/perfctr.hpp"
+#include "device/device.hpp"
 #include <cstring>
 
 /*! \addtogroup API
@@ -344,6 +345,22 @@ RUNTIME_ENTRY(cl_int, clGetPerfCounterInfoAMD,
   }
 
   return CL_SUCCESS;
+}
+RUNTIME_EXIT
+
+RUNTIME_ENTRY(cl_int, clSetDeviceClockModeAMD,
+              (cl_device_id device, cl_set_device_clock_mode_input_amd set_clock_mode_input,
+               cl_set_device_clock_mode_output_amd* set_clock_mode_output)) {
+  // Make sure we have a valid device object
+  if (!is_valid(device)) {
+    return CL_INVALID_DEVICE;
+  }
+  if (set_clock_mode_input.clock_mode >= CL_DEVICE_CLOCK_MODE_COUNT_AMD) {
+    return CL_INVALID_VALUE;
+  }
+  amd::Device* amdDevice = as_amd(device);
+  bool ret = amdDevice->SetClockMode(set_clock_mode_input, set_clock_mode_output);
+  return (ret == true)? CL_SUCCESS : CL_INVALID_OPERATION;
 }
 RUNTIME_EXIT
 
