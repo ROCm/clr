@@ -318,7 +318,7 @@ LightningProgram::LightningProgram(roc::NullDevice& device)
   : roc::Program(device) {
   isLC_ = true;
   xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
-  machineTarget_ = dev().deviceInfo().machineTarget_;
+  machineTarget_ = dev().deviceInfo().machineTargetLC_;
 }
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
