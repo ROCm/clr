@@ -8,6 +8,9 @@
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
+#if defined(USE_COMGR_LIBRARY)
+#include "amd_comgr.h"
+#endif
 
 #if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
@@ -295,6 +298,43 @@ class Program : public amd::HeapObject {
 
   //! Link the device program with HSAIL path
   bool linkImplHSAIL(amd::option::Options* options);
+
+#if defined(USE_COMGR_LIBRARY)
+  //! Dump the code object data
+  void extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
+    const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
+    char* outBinary[] = nullptr, size_t* outSize = nullptr);
+
+  //! Set the OCL language and target triples with feature
+  void setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclver,
+                           std::string& targetIdent);
+
+  //! Create code object and add it into the data set
+  amd_comgr_status_t addCodeObjData(const char *source,
+    const size_t size, const amd_comgr_data_kind_t type,
+    const char* name, amd_comgr_data_set_t* dataSet);
+
+  //! Create action for the specified language, target and options
+  amd_comgr_status_t createAction(const amd_comgr_language_t oclvar,
+    const std::string& targetIdent, const std::string& options,
+    amd_comgr_action_info_t* action);
+
+  //! Create the bitcode of the linked input dataset
+  bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
+    const std::string& options, const bool requiredDump,
+    amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
+    char* binary[] = nullptr, size_t* binarySize = nullptr);
+
+  //! Create the bitcode of the compiled input dataset
+  bool compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
+    const std::string& options, amd::option::Options* amdOptions,
+    char* binary[], size_t* binarySize);
+
+  //! Compile and create the excutable of the input dataset
+  bool compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
+    const std::string& options, amd::option::Options* amdOptions,
+    char* executable[], size_t* executableSize);
+#endif
 
   //! Disable default copy constructor
   Program(const Program&);
