@@ -123,8 +123,8 @@ bool ThreadTrace::create() {
     // PAL requires ThreadTrace buffer aligned to 4KB
     sqttInfo.optionValues.bufferSize =
         amd::alignUp(dev().getGpuMemory(*itMemObj)->size(), (0x1 << 12));
-    sqttInfo.optionFlags.threadTraceTokenMask = 1;
-    sqttInfo.optionValues.threadTraceTokenMask = 0x0000ffff;
+    sqttInfo.optionFlags.threadTraceTokenConfig = 1;
+    sqttInfo.optionValues.threadTraceTokenConfig.tokenMask = 0x0000ffff;
 
     Pal::Result result = iPerf()->AddThreadTrace(sqttInfo);
     if (result != Pal::Result::Success) {
