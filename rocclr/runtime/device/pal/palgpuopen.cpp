@@ -39,11 +39,11 @@ RgpCaptureMgr::RgpCaptureMgr(Pal::IPlatform* platform, const Device& device)
   :
   device_(device),
   dev_driver_server_(platform->GetDevDriverServer()),
+  user_event_(nullptr),
   num_prep_disp_(0),
   max_sqtt_disp_(device_.settings().rgpSqttDispCount_),
   trace_gpu_mem_limit_(0),
   global_disp_count_(1),      // Must start from 1 according to RGP spec
-  user_event_(nullptr),
   trace_enabled_(false),
   inst_tracing_enabled_(false)
 {
