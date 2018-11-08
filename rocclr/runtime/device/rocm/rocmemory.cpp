@@ -121,10 +121,13 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
   }
 
   void* mappedMemory = nullptr;
+  void* hostMem = owner()->getHostMem();
 
   if (owner()->getSvmPtr() != nullptr) {
     owner()->commitSvmMemory();
     mappedMemory = owner()->getSvmPtr();
+  } else if (hostMem != nullptr) {    // Otherwise, check for host memory.
+    return (reinterpret_cast<address>(hostMem) + origin[0]);
   } else {
     mappedMemory = reinterpret_cast<address>(mapMemory_->getHostMem()) + origin[0];
   }
