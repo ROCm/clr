@@ -384,12 +384,15 @@ private:
   DevDriver::RGPProtocol::RGPServer* rgp_server_;
   mutable amd::Monitor        trace_mutex_;
   TraceState                  trace_;
-  uint32_t                    num_prep_disp_;
-  uint32_t                    trace_gpu_mem_limit_;
-  uint32_t                    global_disp_count_;
   RgpSqttMarkerUserEventWithString* user_event_;
-  bool                        trace_enabled_;         // True if tracing is currently enabled (master flag)
-  bool                        inst_tracing_enabled_;  // Enable instruction-level SQTT tokens
+
+  uint32_t  num_prep_disp_;
+  uint32_t  max_sqtt_disp_;       // Maximum number of the dispatches allowed in the trace
+  uint32_t  trace_gpu_mem_limit_;
+  uint32_t  global_disp_count_;
+
+  bool  trace_enabled_;         // True if tracing is currently enabled (master flag)
+  bool  inst_tracing_enabled_;  // Enable instruction-level SQTT tokens
 
   PAL_DISALLOW_DEFAULT_CTOR(RgpCaptureMgr);
   PAL_DISALLOW_COPY_AND_ASSIGN(RgpCaptureMgr);
