@@ -40,6 +40,7 @@ RgpCaptureMgr::RgpCaptureMgr(Pal::IPlatform* platform, const Device& device)
   device_(device),
   dev_driver_server_(platform->GetDevDriverServer()),
   num_prep_disp_(0),
+  max_sqtt_disp_(device_.settings().rgpSqttDispCount_),
   trace_gpu_mem_limit_(0),
   global_disp_count_(1),      // Must start from 1 according to RGP spec
   user_event_(nullptr),
@@ -252,7 +253,7 @@ void RgpCaptureMgr::PostDispatch(VirtualGPU* gpu)
     if (trace_.status_ == TraceStatus::Running) {
       amd::ScopedLock traceLock(&trace_mutex_);
       trace_.sqtt_disp_count_++;
-      if (trace_.sqtt_disp_count_ >= device_.settings().rgpSqttDispCount_) {
+      if (trace_.sqtt_disp_count_ >= max_sqtt_disp_) {
         Pal::Result res = EndRGPHardwareTrace(gpu);
         if (Pal::Result::ErrorIncompatibleQueue == res) {
           // continue until we find the right queue...
@@ -440,7 +441,13 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* gpu)
 
   const auto traceParameters = rgp_server_->QueryTraceParameters();
 
-  num_prep_disp_        = traceParameters.numPreparationFrames;
+  num_prep_disp_   = traceParameters.captureStartIndex;
+  uint32_t capture_disp = traceParameters.captureStopIndex - traceParameters.captureStartIndex;
+  // Validate if the captured dispatches are in the range
+  if ((capture_disp > 0) && (capture_disp < max_sqtt_disp_)) {
+    max_sqtt_disp_ = capture_disp;
+  }
+
   trace_gpu_mem_limit_  = traceParameters.gpuMemoryLimitInMb * 1024 * 1024;
   inst_tracing_enabled_ = traceParameters.flags.enableInstructionTokens;
 
