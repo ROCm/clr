@@ -982,14 +982,6 @@ VirtualGPU::~VirtualGPU() {
   //! The first queue is reserved for the transfers on device
   if (static_cast<int>(gpuDevice_.numOfVgpus_ - 1) <= 1) {
     gpuDevice_.destroyScratchBuffers();
-
-    // Restore the ClockMode back to Default.
-    // This will be removed once KMD/PPLIB supports restoring the ClockMode when KMD
-    // detects the OCL process is gone.
-    Pal::SetClockModeInput input = {};
-    Pal::SetClockModeOutput output = {};
-    input.clockMode = Pal::DeviceClockMode::Default;
-    dev().iDev()->SetClockMode(input, &output);
   }
 
   // Destroy BlitManager object
@@ -2401,11 +2393,7 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
       palPerf = counter->iPerf();
       // Find the state and sends the command to PAL
       if (vcmd.getState() == amd::PerfCounterCommand::Begin) {
-        Pal::SetClockModeInput input;
-        Pal::SetClockModeOutput output = {};
         state_.perfCounterEnabled_ = true;
-        input.clockMode = Pal::DeviceClockMode::Profiling;
-        dev().iDev()->SetClockMode(input, &output);
         GpuEvent event;
         eventBegin(MainEngine);
         iCmd()->CmdBeginPerfExperiment(palPerf);
