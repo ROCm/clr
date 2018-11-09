@@ -124,7 +124,7 @@ bool ThreadTrace::create() {
     sqttInfo.optionValues.bufferSize =
         amd::alignUp(dev().getGpuMemory(*itMemObj)->size(), (0x1 << 12));
     sqttInfo.optionFlags.threadTraceTokenConfig = 1;
-    sqttInfo.optionValues.threadTraceTokenConfig.tokenMask = 0x0000ffff;
+    sqttInfo.optionValues.threadTraceTokenConfig.tokenMask = Pal::ThreadTraceTokenTypeFlags::All;
 
     Pal::Result result = iPerf()->AddThreadTrace(sqttInfo);
     if (result != Pal::Result::Success) {
