@@ -747,7 +747,7 @@ static const FormatConvertion RejectedData[] = {
 static const FormatConvertion RejectedOrder[] = {
     {CL_A, CL_R},        {CL_RA, CL_RG},      {CL_LUMINANCE, CL_R}, {CL_INTENSITY, CL_R},
     {CL_RGB, CL_RGBA},   {CL_BGRA, CL_RGBA},  {CL_ARGB, CL_RGBA},   {CL_sRGB, CL_RGBA},
-    {CL_sRGBx, CL_RGBA}, {CL_sRGBA, CL_RGBA}, {CL_sBGRA, CL_RGBA}};
+    {CL_sRGBx, CL_RGBA}, {CL_sRGBA, CL_RGBA}, {CL_sBGRA, CL_RGBA},  {CL_DEPTH, CL_R}};
 
 const uint RejectedFormatDataTotal = sizeof(RejectedData) / sizeof(FormatConvertion);
 const uint RejectedFormatChannelTotal = sizeof(RejectedOrder) / sizeof(FormatConvertion);
