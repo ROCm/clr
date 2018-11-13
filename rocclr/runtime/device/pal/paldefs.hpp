@@ -390,10 +390,6 @@ static const MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X10Y10Z10W2_Unorm,
      {Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::One}},
-    {{CL_RGB, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     Pal::ChNumFormat::X8Y8Z8W8_Uint,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
-      Pal::ChannelSwizzle::One}},
 
     // RGBA
     {{CL_RGBA, CL_UNORM_INT8},
@@ -541,18 +537,10 @@ static const MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X8Y8Z8W8_Srgb,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
       Pal::ChannelSwizzle::W}},
-    {{CL_sRGBA, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     Pal::ChNumFormat::X8Y8Z8W8_Uint,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
-      Pal::ChannelSwizzle::W}},
 
     // sRBG
     {{CL_sRGB, CL_UNORM_INT8},
      Pal::ChNumFormat::X8Y8Z8W8_Srgb,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
-      Pal::ChannelSwizzle::One}},
-    {{CL_sRGB, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     Pal::ChNumFormat::X8Y8Z8W8_Uint,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
       Pal::ChannelSwizzle::One}},
 
@@ -561,18 +549,10 @@ static const MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X8Y8Z8W8_Srgb,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
       Pal::ChannelSwizzle::One}},
-    {{CL_sRGBx, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     Pal::ChNumFormat::X8Y8Z8W8_Uint,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
-      Pal::ChannelSwizzle::One}},
 
     // sBGRA
     {{CL_sBGRA, CL_UNORM_INT8},
      Pal::ChNumFormat::X8Y8Z8W8_Srgb,
-     {Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::X,
-      Pal::ChannelSwizzle::W}},
-    {{CL_sBGRA, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     Pal::ChNumFormat::X8Y8Z8W8_Uint,
      {Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::W}},
 
@@ -581,17 +561,9 @@ static const MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X32_Float,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::X}},
-    {{CL_DEPTH, CL_UNSIGNED_INT32},  // This is used only by blit kernel
-     Pal::ChNumFormat::X32_Uint,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X,
-      Pal::ChannelSwizzle::X}},
 
     {{CL_DEPTH, CL_UNORM_INT16},
      Pal::ChNumFormat::X16_Unorm,
-     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X,
-      Pal::ChannelSwizzle::X}},
-    {{CL_DEPTH, CL_UNSIGNED_INT16},  // This is used only by blit kernel
-     Pal::ChNumFormat::X16_Uint,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::X}},
 
