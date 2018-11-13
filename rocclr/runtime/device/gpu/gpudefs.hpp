@@ -287,8 +287,6 @@ static const MemoryFormat MemoryFormatMap[] = {
 
     // RGB
     {{CL_RGB, CL_UNORM_INT_101010}, {GSL_CHANNEL_ORDER_RGB, CM_SURF_FMT_BGR10_X2}},
-    {{CL_RGB, CL_UNSIGNED_INT8},  // This is used only by blit kernel
-     {GSL_CHANNEL_ORDER_RGBA, CM_SURF_FMT_RGBA8UI}},
 
     // RGBA
     {{CL_RGBA, CL_UNORM_INT8}, {GSL_CHANNEL_ORDER_RGBA, CM_SURF_FMT_RGBA8}},
