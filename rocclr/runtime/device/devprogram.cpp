@@ -1329,6 +1329,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
+  // Force object code v2.
+  codegenOptions.append(" -mno-code-object-v3");
 
   // NOTE: The params is also used to identy cached code object. This parameter
   //       should not contain any dyanamically generated filename.
@@ -1533,6 +1535,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
+  // Force object code v2.
+  codegenOptions.append(" -mno-code-object-v3");
 
   // Tokenize the options string into a vector of strings
   std::istringstream strstr(codegenOptions);
