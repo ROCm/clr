@@ -439,10 +439,15 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
     // Copy the kernel_object pointer to the runtime handle symbol GPU address
     const Memory& codeSegGpu = prog_.codeSegGpu();
     uint64_t offset = symbol_address - codeSegGpu.vmAddress();
-    uint64_t kernel_object = gpuAqlCode();
     VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
 
-    codeSegGpu.writeRawData(*gpu, offset, 8, &kernel_object, true);
+    const struct RuntimeHandle runtime_handle = {
+        gpuAqlCode(),
+        spillSegSize(),
+        ldsSize()
+    };
+
+    codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
   }
 
   // Copy wavefront size
