@@ -123,6 +123,9 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   if (!device->settings().useLightning_) {
     opt +=  "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
   }
+  else {
+    opt +=  "-Wf,-mno-code-object-v3 ";
+  }
 
   if (extraOptions != nullptr) {
     opt += extraOptions;
