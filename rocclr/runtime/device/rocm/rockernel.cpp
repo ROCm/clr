@@ -109,7 +109,13 @@ bool LightningKernel::init() {
       return false;
     }
 
-    status = hsa_memory_copy(reinterpret_cast<void*>(variable_address), &kernelCodeHandle_, variable_size);
+    const struct RuntimeHandle runtime_handle = {
+        kernelCodeHandle_,
+        workitemPrivateSegmentByteSize(),
+        WorkgroupGroupSegmentByteSize()
+    };
+
+    status = hsa_memory_copy(reinterpret_cast<void*>(variable_address), &runtime_handle, variable_size);
     if (status != HSA_STATUS_SUCCESS) {
       return false;
     }

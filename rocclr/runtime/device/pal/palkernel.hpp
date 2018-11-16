@@ -74,7 +74,7 @@ class HSAILKernel : public device::Kernel {
   size_t argsBufferSize() const { return akc_.kernarg_segment_byte_size; }
 
   //! Returns spill reg size per workitem
-  int spillSegSize() const { return amd::alignUp(akc_.workitem_private_segment_byte_size, sizeof(uint32_t)); }
+  uint32_t spillSegSize() const { return amd::alignUp(akc_.workitem_private_segment_byte_size, sizeof(uint32_t)); }
 
   //! Returns AQL packet in CPU memory
   //! if the kernel arguments were successfully loaded, otherwise NULL

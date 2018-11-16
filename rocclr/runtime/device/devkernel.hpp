@@ -17,6 +17,14 @@ namespace llvm {
         struct Metadata;
 }}}}
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
+
+//! Runtime handle structure for device enqueue
+struct RuntimeHandle {
+  uint64_t kernel_handle;             //!< Pointer to amd_kernel_code_s or kernel_descriptor_t
+  uint32_t private_segment_size;      //!< From PRIVATE_SEGMENT_FIXED_SIZE
+  uint32_t group_segment_size;        //!< From GROUP_SEGMENT_FIXED_SIZE
+};
+
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
