@@ -41,7 +41,7 @@ Settings::Settings() {
   nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
   enableNCMode_ = (nonCoherentMode) ? true : false;
 
-  commandQueues_ = 100;  //!< Field value set to maximum number
+  commandQueues_ = 200;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for ROCm backend
 
   // Disable image DMA by default (ROCM runtime doesn't support it)
