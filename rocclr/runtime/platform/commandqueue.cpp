@@ -184,6 +184,10 @@ void HostQueue::setLastQueuedCommand(Command* lastCommand) {
 Command* HostQueue::getLastQueuedCommand(bool retain) {
   // Get last submitted command
   ScopedLock sl(queueLock_);
+  if (lastEnqueueCommand_ == nullptr) {
+    return nullptr;
+  }
+
   if (retain) {
     lastEnqueueCommand_->retain();
   }
