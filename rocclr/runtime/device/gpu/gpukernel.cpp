@@ -3473,7 +3473,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
 
   // Initialize kernel ISA and execution buffer requirements
   hsaDisp->private_segment_size = spillSegSize();
-  hsaDisp->group_segment_size = ldsAddress - ldsSize();
+  hsaDisp->group_segment_size = ldsAddress;
   hsaDisp->kernel_object = gpuAqlCode()->vmAddress();
 
   ConstBuffer* cb = gpu.constBufs_[0];
