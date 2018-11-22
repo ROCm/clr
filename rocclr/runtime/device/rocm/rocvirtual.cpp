@@ -611,6 +611,19 @@ VirtualGPU::VirtualGPU(Device& device)
 }
 
 VirtualGPU::~VirtualGPU() {
+  delete blitMgr_;
+
+  // Release the resources of signal
+  releaseGpuMemoryFence();
+
+  hsa_status_t err = hsa_queue_destroy(gpu_queue_);
+
+  if (barrier_signal_.handle != 0) {
+    hsa_signal_destroy(barrier_signal_);
+  }
+
+  destroyPool();
+
   releasePinnedMem();
 
   if (timestamp_ != nullptr) {
@@ -708,25 +721,6 @@ bool VirtualGPU::create(bool profilingEna) {
     LogError("Could not create the array of memory objects!");
     return false;
   }
-
-  return true;
-}
-
-bool VirtualGPU::terminate() {
-  delete blitMgr_;
-
-  // Release the resources of signal
-  releaseGpuMemoryFence();
-  hsa_status_t err = hsa_queue_destroy(gpu_queue_);
-  if (err != HSA_STATUS_SUCCESS) {
-    return false;
-  }
-
-  if (barrier_signal_.handle != 0) {
-    hsa_signal_destroy(barrier_signal_);
-  }
-
-  destroyPool();
 
   return true;
 }

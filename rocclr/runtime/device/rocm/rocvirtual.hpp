@@ -148,7 +148,7 @@ class VirtualGPU : public device::VirtualDevice {
   ~VirtualGPU();
 
   bool create(bool profilingEna);
-  bool terminate();
+  bool terminate() { return true; }
   const Device& dev() const { return roc_device_; }
 
   void profilingBegin(amd::Command& command, bool drmProfiling = false);
