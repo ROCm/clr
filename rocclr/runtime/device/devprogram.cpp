@@ -1221,7 +1221,6 @@ bool Program::linkImpl(amd::option::Options* options) {
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
 bool Program::linkImplLC(amd::option::Options* options) {
-  acl_error errorCode;
   aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
 
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
@@ -1430,13 +1429,13 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
     // open the control functions
     auto isa_version = get_oclc_isa_version(device().info().gfxipVersion_);
-    if (!isa_version.first) {
+    if (!std::get<1>(isa_version)) {
       buildLog_ += "Error: Linking for this device is not supported\n";
       return false;
     }
 
     Data* isa_version_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)isa_version.first, isa_version.second);
+      C->NewBufferReference(DT_LLVM_BC, (const char*)std::get<1>(isa_version), std::get<2>(isa_version));
 
     if (!isa_version_bc) {
       buildLog_ += "Error: Failed to open the control functions.\n";
@@ -1447,21 +1446,25 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
     auto correctly_rounded_sqrt =
       get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
-    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC, correctly_rounded_sqrt.first,
-      correctly_rounded_sqrt.second);
+    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
+      reinterpret_cast<const char*>(std::get<1>(correctly_rounded_sqrt)),
+      std::get<2>(correctly_rounded_sqrt));
 
     auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
       AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
       (device().info().gfxipVersion_ < 900 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
-    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC, daz_opt.first, daz_opt.second);
+    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
+      reinterpret_cast<const char*>(std::get<1>(daz_opt)), std::get<2>(daz_opt));
 
     auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
       options->oVariables->FastRelaxedMath);
-    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC, finite_only.first, finite_only.second);
+    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
+      reinterpret_cast<const char*>(std::get<1>(finite_only)), std::get<2>(finite_only));
 
     auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
       options->oVariables->FastRelaxedMath);
-    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC, unsafe_math.first, unsafe_math.second);
+    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
+      reinterpret_cast<const char*>(std::get<1>(unsafe_math)), std::get<2>(unsafe_math));
 
     if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
       buildLog_ += "Error: Failed to open the control functions.\n";

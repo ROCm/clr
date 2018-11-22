@@ -846,7 +846,6 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
                                amd_comgr_metadata_node_t* kernelNode) {
   amd_comgr_status_t status;
   amd_comgr_metadata_node_t kernelsMD;
-  amd_comgr_metadata_kind_t kind;
   size_t size = 0;
 
   status = amd_comgr_metadata_lookup(programMD, "Kernels", &kernelsMD);
@@ -856,7 +855,6 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
 
   bool kernelFound = false;
   for (size_t i = 0; i < size && !kernelFound && status == AMD_COMGR_STATUS_SUCCESS; i++) {
-    size_t nameSize;
     std::string kernelName;
 
     amd_comgr_metadata_node_t nameMeta;
