@@ -25,6 +25,149 @@ struct RuntimeHandle {
   uint32_t group_segment_size;        //!< From GROUP_SEGMENT_FIXED_SIZE
 };
 
+#if defined(USE_COMGR_LIBRARY)
+#include "llvm/Support/AMDGPUMetadata.h"
+typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
+
+using llvm::AMDGPU::HSAMD::AccessQualifier;
+using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
+using llvm::AMDGPU::HSAMD::ValueKind;
+using llvm::AMDGPU::HSAMD::ValueType;
+
+enum class ArgField : uint8_t {
+  Name          = 0,
+  TypeName      = 1,
+  Size          = 2,
+  Align         = 3,
+  ValueKind     = 4,
+  ValueType     = 5,
+  PointeeAlign  = 6,
+  AddrSpaceQual = 7,
+  AccQual       = 8,
+  ActualAccQual = 9,
+  IsConst       = 10,
+  IsRestrict    = 11,
+  IsVolatile    = 12,
+  IsPipe        = 13
+};
+
+enum class AttrField : uint8_t {
+  ReqWorkGroupSize  = 0,
+  WorkGroupSizeHint = 1,
+  VecTypeHint       = 2,
+  RuntimeHandle     = 3
+};
+
+enum class CodePropField : uint8_t {
+  KernargSegmentSize      = 0,
+  GroupSegmentFixedSize   = 1,
+  PrivateSegmentFixedSize = 2,
+  KernargSegmentAlign     = 3,
+  WavefrontSize           = 4,
+  NumSGPRs                = 5,
+  NumVGPRs                = 6,
+  MaxFlatWorkGroupSize    = 7,
+  IsDynamicCallStack      = 8,
+  IsXNACKEnabled          = 9,
+  NumSpilledSGPRs         = 10,
+  NumSpilledVGPRs         = 11
+};
+
+
+static const std::map<std::string,ArgField> ArgFieldMap =
+{
+  {"Name",          ArgField::Name},
+  {"TypeName",      ArgField::TypeName},
+  {"Size",          ArgField::Size},
+  {"Align",         ArgField::Align},
+  {"ValueKind",     ArgField::ValueKind},
+  {"ValueType",     ArgField::ValueType},
+  {"PointeeAlign",  ArgField::PointeeAlign},
+  {"AddrSpaceQual", ArgField::AddrSpaceQual},
+  {"AccQual",       ArgField::AccQual},
+  {"ActualAccQual", ArgField::ActualAccQual},
+  {"IsConst",       ArgField::IsConst},
+  {"IsRestrict",    ArgField::IsRestrict},
+  {"IsVolatile",    ArgField::IsVolatile},
+  {"IsPipe",        ArgField::IsPipe}
+};
+
+static const std::map<std::string,ValueKind> ArgValueKind =
+{
+  {"ByValue",                 ValueKind::ByValue},
+  {"GlobalBuffer",            ValueKind::GlobalBuffer},
+  {"DynamicSharedPointer",    ValueKind::DynamicSharedPointer},
+  {"Sampler",                 ValueKind::Sampler},
+  {"Image",                   ValueKind::Image},
+  {"Pipe",                    ValueKind::Pipe},
+  {"Queue",                   ValueKind::Queue},
+  {"HiddenGlobalOffsetX",     ValueKind::HiddenGlobalOffsetX},
+  {"HiddenGlobalOffsetY",     ValueKind::HiddenGlobalOffsetY},
+  {"HiddenGlobalOffsetZ",     ValueKind::HiddenGlobalOffsetZ},
+  {"HiddenNone",              ValueKind::HiddenNone},
+  {"HiddenPrintfBuffer",      ValueKind::HiddenPrintfBuffer},
+  {"HiddenDefaultQueue",      ValueKind::HiddenDefaultQueue},
+  {"HiddenCompletionAction",  ValueKind::HiddenCompletionAction}
+};
+
+static const std::map<std::string,ValueType> ArgValueType =
+{
+  {"Struct",  ValueType::Struct},
+  {"I8",      ValueType::I8},
+  {"U8",      ValueType::U8},
+  {"I16",     ValueType::I16},
+  {"U16",     ValueType::U16},
+  {"F16",     ValueType::F16},
+  {"I32",     ValueType::I32},
+  {"U32",     ValueType::U32},
+  {"F32",     ValueType::F32},
+  {"I64",     ValueType::I64},
+  {"U64",     ValueType::U64},
+  {"F64",     ValueType::F64}
+};
+
+static const std::map<std::string,AccessQualifier> ArgAccQual =
+{
+  {"Default",   AccessQualifier::Default},
+  {"ReadOnly",  AccessQualifier::ReadOnly},
+  {"WriteOnly", AccessQualifier::WriteOnly},
+  {"ReadWrite", AccessQualifier::ReadWrite}
+};
+
+static const std::map<std::string,AddressSpaceQualifier> ArgAddrSpaceQual =
+{
+  {"Private",   AddressSpaceQualifier::Private},
+  {"Global",    AddressSpaceQualifier::Global},
+  {"Constant",  AddressSpaceQualifier::Constant},
+  {"Local",     AddressSpaceQualifier::Local},
+  {"Generic",   AddressSpaceQualifier::Generic},
+  {"Region",    AddressSpaceQualifier::Region}
+};
+
+static const std::map<std::string,AttrField> AttrFieldMap =
+{
+  {"ReqWorkGroupSize",    AttrField::ReqWorkGroupSize},
+  {"WorkGroupSizeHint",   AttrField::WorkGroupSizeHint},
+  {"VecTypeHint",         AttrField::VecTypeHint},
+  {"RuntimeHandle",       AttrField::RuntimeHandle}
+};
+
+static const std::map<std::string,CodePropField> CodePropFieldMap =
+{
+  {"KernargSegmentSize",      CodePropField::KernargSegmentSize},
+  {"GroupSegmentFixedSize",   CodePropField::GroupSegmentFixedSize},
+  {"PrivateSegmentFixedSize", CodePropField::PrivateSegmentFixedSize},
+  {"KernargSegmentAlign",     CodePropField::KernargSegmentAlign},
+  {"WavefrontSize",           CodePropField::WavefrontSize},
+  {"NumSGPRs",                CodePropField::NumSGPRs},
+  {"NumVGPRs",                CodePropField::NumVGPRs},
+  {"MaxFlatWorkGroupSize",    CodePropField::MaxFlatWorkGroupSize},
+  {"IsDynamicCallStack",      CodePropField::IsDynamicCallStack},
+  {"IsXNACKEnabled",          CodePropField::IsXNACKEnabled},
+  {"NumSpilledSGPRs",         CodePropField::NumSpilledSGPRs},
+  {"NumSpilledVGPRs",         CodePropField::NumSpilledVGPRs}
+};
+#endif  // defined(USE_COMGR_LIBRARY)
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace amd {
@@ -228,7 +371,28 @@ class Kernel : public amd::HeapObject {
  protected:
   //! Initializes the abstraction layer kernel parameters
 #if defined(WITH_LIGHTNING_COMPILER)
+#if defined(USE_COMGR_LIBRARY)
+  void InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t argBufferSize);
+
+  //! Get ther kernel metadata
+  bool GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
+                         const std::string& name,
+                         amd_comgr_metadata_node_t* kernelNode);
+
+  //! Retrieve kernel attribute and code properties metadata
+  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
+                               const uint32_t kernargSegmentByteSize,
+                               KernelMD* kernelMD);
+
+  //! Retrieve the available SGPRs and VGPRs
+  bool SetAvailableSgprVgpr(const std::string& targetIdent);
+
+  //! Retrieve the printf string metadata
+  bool GetPrintfStr(const amd_comgr_metadata_node_t programMD,
+                    std::vector<std::string>* printfStr);
+#else
   void InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize);
+#endif
   //! Initializes HSAIL Printf metadata and info for LC
   void InitPrintf(const std::vector<std::string>& printfInfoStrings);
 #endif
@@ -269,5 +433,278 @@ class Kernel : public amd::HeapObject {
 
   std::unordered_map<size_t, size_t> patchReferences_;  //!< Patch table for references
 };
+
+#if defined(USE_COMGR_LIBRARY)
+static amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
+                                     std::string* str) {
+  size_t size = 0;
+  amd_comgr_status_t status = amd_comgr_get_metadata_string(meta, &size, NULL);
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    str->resize(size-1);    // minus one to discount the null character
+    status = amd_comgr_get_metadata_string(meta, &size, &((*str)[0]));
+  }
+
+  return status;
+}
+
+static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
+                                       const amd_comgr_metadata_node_t value,
+                                       void *data) {
+  amd_comgr_status_t status;
+  amd_comgr_metadata_kind_t kind;
+  std::string buf;
+
+  // get the key of the argument field
+  size_t size = 0;
+  status = amd_comgr_get_metadata_kind(key, &kind);
+  if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(key, &buf);
+  }
+
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  auto itArgField = ArgFieldMap.find(buf);
+  if (itArgField == ArgFieldMap.end()) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  // get the value of the argument field
+  status = getMetaBuf(value, &buf);
+
+  KernelArgMD* lcArg = static_cast<KernelArgMD*>(data);
+
+  switch (itArgField->second) {
+    case ArgField::Name:
+      lcArg->mName = buf;
+      break;
+    case ArgField::TypeName:
+      lcArg->mTypeName = buf;
+      break;
+    case ArgField::Size:
+      lcArg->mSize = atoi(buf.c_str());
+      break;
+    case ArgField::Align:
+      lcArg->mAlign = atoi(buf.c_str());
+      break;
+    case ArgField::ValueKind:
+      {
+        auto itValueKind = ArgValueKind.find(buf);
+        if (itValueKind == ArgValueKind.end()) {
+          return AMD_COMGR_STATUS_ERROR;
+        }
+        lcArg->mValueKind = itValueKind->second;
+      }
+      break;
+    case ArgField::ValueType:
+      {
+        auto itValueType = ArgValueType.find(buf);
+        if (itValueType == ArgValueType.end()) {
+          return AMD_COMGR_STATUS_ERROR;
+       }
+       lcArg->mValueType = itValueType->second;
+      }
+      break;
+    case ArgField::PointeeAlign:
+      lcArg->mPointeeAlign = atoi(buf.c_str());
+      break;
+    case ArgField::AddrSpaceQual:
+      {
+        auto itAddrSpaceQual = ArgAddrSpaceQual.find(buf);
+        if (itAddrSpaceQual == ArgAddrSpaceQual.end()) {
+          return AMD_COMGR_STATUS_ERROR;
+        }
+        lcArg->mAddrSpaceQual = itAddrSpaceQual->second;
+      }
+      break;
+    case ArgField::AccQual:
+      {
+        auto itAccQual = ArgAccQual.find(buf);
+        if (itAccQual == ArgAccQual.end()) {
+          return AMD_COMGR_STATUS_ERROR;
+        }
+        lcArg->mAccQual = itAccQual->second;
+      }
+      break;
+    case ArgField::ActualAccQual:
+      {
+        auto itAccQual = ArgAccQual.find(buf);
+        if (itAccQual == ArgAccQual.end()) {
+            return AMD_COMGR_STATUS_ERROR;
+        }
+        lcArg->mActualAccQual = itAccQual->second;
+      }
+      break;
+    case ArgField::IsConst:
+      lcArg->mIsConst = (buf.compare("true") == 0);
+      break;
+    case ArgField::IsRestrict:
+      lcArg->mIsRestrict = (buf.compare("true") == 0);
+      break;
+    case ArgField::IsVolatile:
+      lcArg->mIsVolatile = (buf.compare("true") == 0);
+      break;
+    case ArgField::IsPipe:
+      lcArg->mIsPipe = (buf.compare("true") == 0);
+      break;
+    default:
+      return AMD_COMGR_STATUS_ERROR;
+  }
+  return AMD_COMGR_STATUS_SUCCESS;
+}
+
+static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
+                                        const amd_comgr_metadata_node_t value,
+                                        void *data) {
+  amd_comgr_status_t status;
+  amd_comgr_metadata_kind_t kind;
+  size_t size = 0;
+  std::string buf;
+
+  // get the key of the argument field
+  status = amd_comgr_get_metadata_kind(key, &kind);
+  if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(key, &buf);
+  }
+
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  auto itAttrField = AttrFieldMap.find(buf);
+  if (itAttrField == AttrFieldMap.end()) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  KernelMD* kernelMD = static_cast<KernelMD*>(data);
+  switch (itAttrField->second) {
+    case AttrField::ReqWorkGroupSize:
+      {
+        status = amd_comgr_get_metadata_list_size(value, &size);
+        if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
+          for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
+            amd_comgr_metadata_node_t workgroupSize;
+            status = amd_comgr_index_list_metadata(value, i, &workgroupSize);
+
+            if (status == AMD_COMGR_STATUS_SUCCESS &&
+                getMetaBuf(workgroupSize, &buf) == AMD_COMGR_STATUS_SUCCESS) {
+              kernelMD->mAttrs.mReqdWorkGroupSize.push_back(atoi(buf.c_str()));
+            }
+            amd_comgr_destroy_metadata(workgroupSize);
+          }
+        }
+      }
+      break;
+    case AttrField::WorkGroupSizeHint:
+      {
+        status = amd_comgr_get_metadata_list_size(value, &size);
+        if (status == AMD_COMGR_STATUS_SUCCESS && size == 3) {
+          for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
+            amd_comgr_metadata_node_t workgroupSizeHint;
+            status = amd_comgr_index_list_metadata(value, i, &workgroupSizeHint);
+
+            if (status == AMD_COMGR_STATUS_SUCCESS &&
+                getMetaBuf(workgroupSizeHint, &buf) == AMD_COMGR_STATUS_SUCCESS) {
+              kernelMD->mAttrs.mWorkGroupSizeHint.push_back(atoi(buf.c_str()));
+            }
+            amd_comgr_destroy_metadata(workgroupSizeHint);
+          }
+        }
+      }
+      break;
+    case AttrField::VecTypeHint:
+      {
+        if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
+          kernelMD->mAttrs.mVecTypeHint = buf;
+        }
+      }
+      break;
+    case AttrField::RuntimeHandle:
+      {
+        if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
+          kernelMD->mAttrs.mRuntimeHandle = buf;
+        }
+      }
+      break;
+    default:
+      return AMD_COMGR_STATUS_ERROR;
+  }
+
+  return status;
+}
+
+static amd_comgr_status_t populateCodeProps(const amd_comgr_metadata_node_t key,
+                                            const amd_comgr_metadata_node_t value,
+                                            void *data) {
+  amd_comgr_status_t status;
+  amd_comgr_metadata_kind_t kind;
+  std::string buf;
+
+  // get the key of the argument field
+  status = amd_comgr_get_metadata_kind(key, &kind);
+  if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(key, &buf);
+  }
+
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  auto itCodePropField = CodePropFieldMap.find(buf);
+  if (itCodePropField == CodePropFieldMap.end()) {
+    return AMD_COMGR_STATUS_ERROR;
+  }
+
+  // get the value of the argument field
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(value, &buf);
+  }
+
+  KernelMD*  kernelMD = static_cast<KernelMD*>(data);
+  switch (itCodePropField->second) {
+    case CodePropField::KernargSegmentSize:
+      kernelMD->mCodeProps.mKernargSegmentSize = atoi(buf.c_str());
+      break;
+    case CodePropField::GroupSegmentFixedSize:
+      kernelMD->mCodeProps.mKernargSegmentSize = atoi(buf.c_str());
+      break;
+    case CodePropField::PrivateSegmentFixedSize:
+      kernelMD->mCodeProps.mPrivateSegmentFixedSize = atoi(buf.c_str());
+      break;
+    case CodePropField::KernargSegmentAlign:
+      kernelMD->mCodeProps.mKernargSegmentAlign = atoi(buf.c_str());
+      break;
+    case CodePropField::WavefrontSize:
+      kernelMD->mCodeProps.mWavefrontSize = atoi(buf.c_str());
+      break;
+    case CodePropField::NumSGPRs:
+      kernelMD->mCodeProps.mNumSGPRs = atoi(buf.c_str());
+      break;
+    case CodePropField::NumVGPRs:
+      kernelMD->mCodeProps.mNumVGPRs = atoi(buf.c_str());
+      break;
+    case CodePropField::MaxFlatWorkGroupSize:
+      kernelMD->mCodeProps.mMaxFlatWorkGroupSize = atoi(buf.c_str());
+      break;
+    case CodePropField::IsDynamicCallStack:
+        kernelMD->mCodeProps.mIsDynamicCallStack = (buf.compare("true") == 0);
+      break;
+    case CodePropField::IsXNACKEnabled:
+      kernelMD->mCodeProps.mIsXNACKEnabled = (buf.compare("true") == 0);
+      break;
+    case CodePropField::NumSpilledSGPRs:
+      kernelMD->mCodeProps.mNumSpilledSGPRs = atoi(buf.c_str());
+      break;
+    case CodePropField::NumSpilledVGPRs:
+      kernelMD->mCodeProps.mNumSpilledVGPRs = atoi(buf.c_str());
+      break;
+    default:
+      return AMD_COMGR_STATUS_ERROR;
+  }
+  return AMD_COMGR_STATUS_SUCCESS;
+}
+#endif
 
 } // namespace device

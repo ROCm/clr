@@ -114,7 +114,12 @@ class Program : public amd::HeapObject {
   size_t globalVariableTotalSize_;
   amd::option::Options* programOptions_;
 
+
+#if defined(USE_COMGR_LIBRARY)
+  amd_comgr_metadata_node_t* metadata_;   //!< COMgr metadata
+#else
   CodeObjectMD* metadata_;  //!< Runtime metadata
+#endif
 
  public:
   //! Construct a section.
@@ -196,7 +201,14 @@ class Program : public amd::HeapObject {
   //! Global variables are a part of the code segment
   bool hasGlobalStores() const { return hasGlobalStores_; }
 
+#if defined(USE_COMGR_LIBRARY)
+  const amd_comgr_metadata_node_t* metadata() const { return metadata_; }
+#else
   const CodeObjectMD* metadata() const { return metadata_; }
+#endif
+
+  //! Get the machine target for the program
+  const char* machineTarget() const { return machineTarget_; }
 
  protected:
   //! pre-compile setup

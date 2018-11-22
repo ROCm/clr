@@ -32,6 +32,102 @@ Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle
       kernargSegmentAlignment_(kernargSegmentAlignment) {}
 
 #if defined(WITH_LIGHTNING_COMPILER)
+#if defined(USE_COMGR_LIBRARY)
+bool LightningKernel::init() {
+
+  hsa_agent_t hsaDevice = program_->hsaDevice();
+
+  const amd_comgr_metadata_node_t* programMD = static_cast<LightningProgram*>(program_)->metadata();
+  assert(programMD != nullptr);
+
+  KernelMD  kernelMD;
+  if (!GetAttrCodePropMetadata(*programMD, KernargSegmentByteSize(), &kernelMD)) {
+    return false;
+  }
+
+  // Set the workgroup information for the kernel
+  workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
+  assert(workGroupInfo_.availableLDSSize_ > 0);
+
+  // Get the available SGPRs and VGPRs
+  const std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program_->machineTarget();
+  if (!SetAvailableSgprVgpr(targetIdent)) {
+    return false;
+  }
+
+  if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
+    hsa_agent_t             agent = program_->hsaDevice();
+    hsa_executable_symbol_t kernelSymbol;
+    hsa_status_t            hsaStatus;
+    int                     variable_size;
+    uint64_t                variable_address;
+
+    // Only kernels that could be enqueued by another kernel has the RuntimeHandle metadata. The RuntimeHandle
+    // metadata is a string that represents a variable from which the library code can retrieve the kernel code
+    // object handle of such a kernel. The address of the variable and the kernel code object handle are known
+    // only after the hsa executable is loaded. The below code copies the kernel code object handle to the
+    // address of the variable.
+    hsaStatus = hsa_executable_get_symbol_by_name(program_->hsaExecutable(),
+                                                  kernelMD.mAttrs.mRuntimeHandle.c_str(),
+                                                  &agent, &kernelSymbol);
+    if (hsaStatus == HSA_STATUS_SUCCESS) {
+      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
+                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                                                 &variable_size);
+    }
+    if (hsaStatus == HSA_STATUS_SUCCESS) {
+      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
+                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                                                 &variable_size);
+    }
+    if (hsaStatus == HSA_STATUS_SUCCESS) {
+      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
+                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
+                                                 &variable_address);
+    }
+    if (hsaStatus == HSA_STATUS_SUCCESS) {
+      hsaStatus = hsa_memory_copy(reinterpret_cast<void*>(variable_address),
+                                  &kernelCodeHandle_, variable_size);
+    }
+
+    if (hsaStatus != HSA_STATUS_SUCCESS) {
+      return false;
+    }
+  }
+
+  uint32_t wavefront_size = 0;
+  if (hsa_agent_get_info(program_->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
+      HSA_STATUS_SUCCESS) {
+    return false;
+  }
+  assert(wavefront_size > 0);
+
+  workGroupInfo_.privateMemSize_ = workitemPrivateSegmentByteSize_;
+  workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
+  workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
+  workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
+  workGroupInfo_.usedSGPRs_ = kernelMD.mCodeProps.mNumSGPRs;
+  workGroupInfo_.usedVGPRs_ = kernelMD.mCodeProps.mNumVGPRs;
+  workGroupInfo_.usedStackSize_ = 0;
+  workGroupInfo_.wavefrontPerSIMD_ = program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;
+  workGroupInfo_.wavefrontSize_ = wavefront_size;
+  workGroupInfo_.size_ = kernelMD.mCodeProps.mMaxFlatWorkGroupSize;
+  if (workGroupInfo_.size_ == 0) {
+    return false;
+  }
+
+  // handle the printf metadata if any
+  std::vector<std::string> printfStr;
+  if (!GetPrintfStr(*programMD, &printfStr)) {
+    return false;
+  }
+
+  if (!printfStr.empty()) {
+    InitPrintf(printfStr);
+  }
+  return true;
+}
+#else
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
   for (const KernelMD& kernelMD : programMD->mKernels) {
     if (kernelMD.mName == name) {
@@ -154,6 +250,7 @@ bool LightningKernel::init() {
 
   return true;
 }
+#endif  // defined(USE_COMGR_LIBRARY)
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 #if defined(WITH_COMPILER_LIB)
