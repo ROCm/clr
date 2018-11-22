@@ -197,7 +197,7 @@ void Program::extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     status = amd_comgr_action_data_get_data(inDataSet, dataKind, 0, &binaryData);
   }
 
-  size_t binarySize;
+  size_t binarySize = 0;
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd_comgr_get_data(binaryData, &binarySize, NULL);
   }
@@ -1223,6 +1223,9 @@ bool Program::linkImpl(amd::option::Options* options) {
 bool Program::linkImplLC(amd::option::Options* options) {
   acl_error errorCode;
   aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
+
+  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
+    true : false;
 
   amd_comgr_data_set_t inputs;
   if (amd_comgr_create_data_set(&inputs) != AMD_COMGR_STATUS_SUCCESS) {
@@ -2672,6 +2675,28 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
         else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA */ &&
           note->n_namesz == sizeof "AMD" &&
           !memcmp(name, "AMD", note->n_namesz)) {
+#if defined(USE_COMGR_LIBRARY)
+          amd_comgr_status_t status;
+          amd_comgr_data_t binaryData;
+
+          status  = amd_comgr_create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &binaryData);
+          if (status == AMD_COMGR_STATUS_SUCCESS) {
+            status = amd_comgr_set_data(binaryData, binSize,
+                                        reinterpret_cast<const char*>(binary));
+          }
+
+          if (status == AMD_COMGR_STATUS_SUCCESS) {
+            metadata_ = new amd_comgr_metadata_node_t;
+            status = amd_comgr_get_data_metadata(binaryData, metadata_);
+          }
+
+          amd_comgr_release_data(binaryData);
+
+          if (status != AMD_COMGR_STATUS_SUCCESS) {
+            buildLog_ += "Error: COMGR fails to get the metadata.\n";
+            return false;
+          }
+#else
           std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
           metadata_ = new CodeObjectMD();
           if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
@@ -2680,6 +2705,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           }
           // We've found and loaded the runtime metadata, exit the
           // note record loop now.
+#endif
           break;
         }
         ptr += sizeof(*note) + amd::alignUp(note->n_namesz, sizeof(int)) +

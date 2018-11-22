@@ -395,6 +395,53 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
   aqlCreateHWInfo(symbol);
 
+#if defined(USE_COMGR_LIBRARY)
+  const amd_comgr_metadata_node_t* programMD = prog().metadata();
+  assert(programMD != nullptr);
+
+  KernelMD  kernelMD;
+  if (!GetAttrCodePropMetadata(*programMD, argsBufferSize(), &kernelMD)) {
+    return false;
+  }
+
+  if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
+    hsa_agent_t agent;
+    agent.handle = 1;
+    amd::hsa::loader::Symbol* rth_symbol;
+
+    // Get the runtime handle symbol GPU address
+    rth_symbol = prog_.GetSymbol(const_cast<char*>(kernelMD.mAttrs.mRuntimeHandle.c_str()),
+                                const_cast<hsa_agent_t*>(&agent));
+    uint64_t symbol_address;
+    rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
+
+    // Copy the kernel_object pointer to the runtime handle symbol GPU address
+    const Memory& codeSegGpu = prog_.codeSegGpu();
+    uint64_t offset = symbol_address - codeSegGpu.vmAddress();
+    uint64_t kernel_object = gpuAqlCode();
+    VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
+
+    codeSegGpu.writeRawData(*gpu, offset, 8, &kernel_object, true);
+  }
+
+  // Copy wavefront size
+  workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
+
+  workGroupInfo_.size_ = kernelMD.mCodeProps.mMaxFlatWorkGroupSize;
+  if (workGroupInfo_.size_ == 0) {
+    return false;
+  }
+
+  // handle the printf metadata if any
+  std::vector<std::string> printfStr;
+  if (!GetPrintfStr(*programMD, &printfStr)) {
+    return false;
+  }
+
+  if (!printfStr.empty()) {
+    InitPrintf(printfStr);
+  }
+#else
   const CodeObjectMD* programMD = prog().metadata();
   assert(programMD != nullptr);
 
@@ -471,6 +518,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
   waveLimiter_.enable();
   */
+#endif // defined(USE_COMGR_LIBRARY)
 #endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }

@@ -10,6 +10,7 @@
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
 
+#include <map>
 #include <string>
 #include <sstream>
 
@@ -19,6 +20,11 @@
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
+
+using llvm::AMDGPU::HSAMD::AccessQualifier;
+using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
+using llvm::AMDGPU::HSAMD::ValueKind;
+using llvm::AMDGPU::HSAMD::ValueType;
 #endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace device {
@@ -223,11 +229,6 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
 }
 // ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
-using llvm::AMDGPU::HSAMD::AccessQualifier;
-using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
-using llvm::AMDGPU::HSAMD::ValueKind;
-using llvm::AMDGPU::HSAMD::ValueType;
-
 static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isHidden) {
   switch (lcArg.mValueKind) {
   case ValueKind::GlobalBuffer:
@@ -769,6 +770,296 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 
 // ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER)
+#if defined(USE_COMGR_LIBRARY)
+bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
+                                     const uint32_t kernargSegmentByteSize,
+                                     KernelMD* kernelMD) {
+
+  amd_comgr_metadata_node_t kernelMeta = {0};
+
+  if (!GetKernelMetadata(programMD, name(), &kernelMeta)) {
+    if (kernelMeta.handle != 0) {
+      amd_comgr_destroy_metadata(kernelMeta);
+    }
+    return false;
+  }
+
+  InitParameters(kernelMeta, kernargSegmentByteSize);
+
+  // Set the workgroup information for the kernel
+  workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
+  assert(workGroupInfo_.availableLDSSize_ > 0);
+  workGroupInfo_.availableSGPRs_ = 104;
+  workGroupInfo_.availableVGPRs_ = 256;
+
+  // extract the attribute metadata if there is any
+  amd_comgr_metadata_node_t attrMeta;
+  amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
+  if (amd_comgr_metadata_lookup(kernelMeta, "Attrs", &attrMeta) == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_iterate_map_metadata(attrMeta, device::populateAttrs,
+                                            static_cast<void*>(kernelMD));
+    amd_comgr_destroy_metadata(attrMeta);
+  }
+
+  // extract the code properties metadata
+  amd_comgr_metadata_node_t codePropsMeta;
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_metadata_lookup(kernelMeta, "CodeProps", &codePropsMeta);
+  }
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_iterate_map_metadata(codePropsMeta, device::populateCodeProps,
+                                            static_cast<void*>(kernelMD));
+    amd_comgr_destroy_metadata(codePropsMeta);
+  }
+
+  amd_comgr_destroy_metadata(kernelMeta);
+
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  // Setup the workgroup info based on the attributes and code properties
+  if (!kernelMD->mAttrs.mReqdWorkGroupSize.empty()) {
+    const auto& requiredWorkgroupSize = kernelMD->mAttrs.mReqdWorkGroupSize;
+    workGroupInfo_.compileSize_[0] = requiredWorkgroupSize[0];
+    workGroupInfo_.compileSize_[1] = requiredWorkgroupSize[1];
+    workGroupInfo_.compileSize_[2] = requiredWorkgroupSize[2];
+  }
+
+  if (!kernelMD->mAttrs.mWorkGroupSizeHint.empty()) {
+    const auto& workgroupSizeHint = kernelMD->mAttrs.mWorkGroupSizeHint;
+    workGroupInfo_.compileSizeHint_[0] = workgroupSizeHint[0];
+    workGroupInfo_.compileSizeHint_[1] = workgroupSizeHint[1];
+    workGroupInfo_.compileSizeHint_[2] = workgroupSizeHint[2];
+  }
+
+  if (!kernelMD->mAttrs.mVecTypeHint.empty()) {
+    workGroupInfo_.compileVecTypeHint_ = kernelMD->mAttrs.mVecTypeHint.c_str();
+  }
+
+  return true;
+}
+
+bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
+                               const std::string& name,
+                               amd_comgr_metadata_node_t* kernelNode) {
+  amd_comgr_status_t status;
+  amd_comgr_metadata_node_t kernelsMD;
+  amd_comgr_metadata_kind_t kind;
+  size_t size = 0;
+
+  status = amd_comgr_metadata_lookup(programMD, "Kernels", &kernelsMD);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_get_metadata_list_size(kernelsMD, &size);
+  }
+
+  bool kernelFound = false;
+  for (size_t i = 0; i < size && !kernelFound && status == AMD_COMGR_STATUS_SUCCESS; i++) {
+    size_t nameSize;
+    std::string kernelName;
+
+    amd_comgr_metadata_node_t nameMeta;
+    status = amd_comgr_index_list_metadata(kernelsMD, i, kernelNode);
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status = amd_comgr_metadata_lookup(*kernelNode, "Name", &nameMeta);
+    }
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status  = getMetaBuf(nameMeta, &kernelName);
+    }
+
+    if ((status == AMD_COMGR_STATUS_SUCCESS) && (name.compare(kernelName) == 0)) {
+      kernelFound = true;
+    }
+    amd_comgr_destroy_metadata(nameMeta);
+  }
+
+  amd_comgr_destroy_metadata(kernelsMD);
+
+  return kernelFound;
+}
+
+bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
+  std::string buf;
+
+  amd_comgr_metadata_node_t isaMeta;
+  amd_comgr_metadata_node_t sgprMeta;
+  amd_comgr_metadata_node_t vgprMeta;
+
+  amd_comgr_status_t status = amd_comgr_get_isa_metadata(targetIdent.c_str(), &isaMeta);
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_metadata_lookup(isaMeta, "AddressableNumSGPRs", &sgprMeta);
+  }
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(sgprMeta, &buf);
+  }
+
+  workGroupInfo_.availableSGPRs_ = (status == AMD_COMGR_STATUS_SUCCESS) ? atoi(buf.c_str()) : 0;
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_metadata_lookup(isaMeta, "AddressableNumVGPRs", &vgprMeta);
+  }
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = getMetaBuf(vgprMeta, &buf);
+  }
+  workGroupInfo_.availableVGPRs_ = (status == AMD_COMGR_STATUS_SUCCESS) ? atoi(buf.c_str()) : 0;
+
+  amd_comgr_destroy_metadata(vgprMeta);
+  amd_comgr_destroy_metadata(sgprMeta);
+  amd_comgr_destroy_metadata(isaMeta);
+
+  return (status == AMD_COMGR_STATUS_SUCCESS);
+}
+
+bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
+                          std::vector<std::string>* printfStr) {
+
+  amd_comgr_metadata_node_t printfMeta;
+  amd_comgr_status_t status = amd_comgr_metadata_lookup(programMD, "Printf", &printfMeta);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return true;   // printf string metadata is not provided so just exit
+  }
+
+  // handle the printf string
+  size_t printfSize = 0;
+  status = amd_comgr_get_metadata_list_size(printfMeta, &printfSize);
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    std::string buf;
+    for (size_t i = 0; i < printfSize; ++i) {
+      amd_comgr_metadata_node_t str;
+      status = amd_comgr_index_list_metadata(printfMeta, i, &str);
+
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        status = getMetaBuf(str, &buf);
+        amd_comgr_destroy_metadata(str);
+      }
+
+      if (status != AMD_COMGR_STATUS_SUCCESS) {
+        return false;
+      }
+
+      printfStr->push_back(buf);
+    }
+  }
+
+  amd_comgr_destroy_metadata(printfMeta);
+  return (status == AMD_COMGR_STATUS_SUCCESS);
+}
+
+void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t argBufferSize) {
+  // Iterate through the arguments and insert into parameterList
+  device::Kernel::parameters_t params;
+  device::Kernel::parameters_t hiddenParams;
+  amd::KernelParameterDescriptor desc;
+  size_t offset = 0;
+  size_t offsetStruct = argBufferSize;
+
+  amd_comgr_metadata_node_t argsMeta;
+  size_t argsSize;
+
+  amd_comgr_status_t status =  amd_comgr_metadata_lookup(kernelMD, "Args", &argsMeta);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd_comgr_get_metadata_list_size(argsMeta, &argsSize);
+  }
+
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return;
+  }
+
+  for (size_t i = 0; i < argsSize; ++i) {
+    KernelArgMD  lcArg;
+
+    amd_comgr_metadata_node_t argsNode;
+    amd_comgr_metadata_kind_t kind;
+
+    status = amd_comgr_index_list_metadata(argsMeta, i, &argsNode);
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status = amd_comgr_get_metadata_kind(argsNode, &kind);
+    }
+    if (kind != AMD_COMGR_METADATA_KIND_MAP) {
+      status = AMD_COMGR_STATUS_ERROR;
+    }
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status = amd_comgr_iterate_map_metadata(argsNode, populateArgs, static_cast<void*>(&lcArg));
+    }
+
+    amd_comgr_destroy_metadata(argsNode);
+
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      amd_comgr_destroy_metadata(argsMeta);
+      return;
+    }
+
+    size_t size = GetArgSizeOCL(lcArg);
+    size_t alignment = GetArgAlignmentOCL(lcArg);
+    bool isHidden = false;
+    desc.info_.oclObject_ = GetOclArgumentTypeOCL(lcArg, &isHidden);
+
+    // Allocate the hidden arguments, but abstraction layer will skip them
+    if (isHidden) {
+      if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::HiddenCompletionAction) {
+        setDynamicParallelFlag(true);
+      }
+      offset = amd::alignUp(offset, alignment);
+      desc.offset_ = offset;
+      desc.size_ = size;
+      offset += size;
+      hiddenParams.push_back(desc);
+      continue;
+    }
+
+    desc.name_ = lcArg.mName.c_str();
+    desc.type_ = GetOclTypeOCL(lcArg, size);
+    desc.typeName_ = lcArg.mTypeName.c_str();
+
+    desc.addressQualifier_ = GetOclAddrQualOCL(lcArg);
+    desc.accessQualifier_ = GetOclAccessQualOCL(lcArg);
+    desc.typeQualifier_ = GetOclTypeQualOCL(lcArg);
+    desc.info_.arrayIndex_ = GetArgPointeeAlignmentOCL(lcArg);
+    desc.size_ = size;
+
+    // These objects have forced data size to uint64_t
+    if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+      (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+      (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+      offset = amd::alignUp(offset, sizeof(uint64_t));
+      desc.offset_ = offset;
+      offset += sizeof(uint64_t);
+    }
+    else {
+      offset = amd::alignUp(offset, alignment);
+      desc.offset_ = offset;
+      offset += size;
+    }
+
+    // Update read only flag
+    desc.info_.readOnly_ = GetReadOnlyOCL(lcArg);
+
+    params.push_back(desc);
+
+    if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) {
+      flags_.imageEna_ = true;
+      if (desc.accessQualifier_ != CL_KERNEL_ARG_ACCESS_READ_ONLY) {
+        flags_.imageWriteEna_ = true;
+      }
+    }
+  }
+
+  amd_comgr_destroy_metadata(argsMeta);
+
+  // Save the number of OCL arguments
+  uint32_t numParams = params.size();
+  // Append the hidden arguments to the OCL arguments
+  params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
+}
+#else // not define USE_COMGR_LIBRARY
 void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   // Iterate through the arguments and insert into parameterList
   device::Kernel::parameters_t params;
@@ -843,7 +1134,8 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
   createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
-#endif
+#endif  // defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
