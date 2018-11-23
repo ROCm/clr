@@ -541,6 +541,8 @@ bool Program::compileImplLC(const std::string& sourceCode,
   driverOptions.append(options->llvmOptions);
   driverOptions.append(ProcessOptions(options));
 
+  // Force object code v2.
+  driverOptions.append(" -mno-code-object-v3");
   // Set whole program mode
   driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
 
@@ -1329,10 +1331,10 @@ bool Program::linkImplLC(amd::option::Options* options) {
             std::ostream_iterator<std::string>(ostrstr, " "));
   codegenOptions.append(" ").append(ostrstr.str());
 
-  // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
   // Force object code v2.
   codegenOptions.append(" -mno-code-object-v3");
+  // Set whole program mode
+  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
   // NOTE: The params is also used to identy cached code object. This parameter
   //       should not contain any dyanamically generated filename.
@@ -1539,10 +1541,10 @@ bool Program::linkImplLC(amd::option::Options* options) {
     std::ostream_iterator<std::string>(ostrstr, " "));
   codegenOptions.append(" ").append(ostrstr.str());
 
-  // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
   // Force object code v2.
   codegenOptions.append(" -mno-code-object-v3");
+  // Set whole program mode
+  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
   // Tokenize the options string into a vector of strings
   std::istringstream strstr(codegenOptions);
