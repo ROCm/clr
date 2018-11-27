@@ -205,8 +205,7 @@ void RunCmdTemplateDispatch(
     uint    flags = kernelObj->kernel_code_properties;
     uint    privateSize = kernelObj->workitem_private_segment_byte_size;
 
-    uint ldsSize = aqlPkt->group_segment_size_bytes +
-        kernelObj->workgroup_group_segment_byte_size;
+    uint ldsSize = aqlPkt->group_segment_size_bytes;
 
     // Align up the LDS blocks 128 * 4(in DWORDs)
     uint ldsBlocks = (ldsSize + 511) >> 9;
