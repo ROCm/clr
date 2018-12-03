@@ -19,6 +19,24 @@
 
 namespace amd {
 
+static void remove_g_option(std::string &option)
+{
+  // Remove " -g " option from application.
+  // People can still add -g in AMD_OCL_BUILD_OPTIONS_APPEND, if it is so desired.
+  std::string g_str("-g");
+  std::size_t g_pos = 0;
+  while ((g_pos = option.find(g_str, g_pos)) != std::string::npos) {
+    if ((g_pos == 0 || option[g_pos - 1] == ' ') &&
+       (g_pos + 2 == option.size() || option[g_pos + 2] == ' ')) {
+       option.erase(g_pos, g_str.size());
+    } else {
+       g_pos += g_str.size();
+    }
+  }
+
+  return;
+}
+
 Program::~Program() {
   // Destroy all device programs
   for (const auto& it : devicePrograms_) {
@@ -185,6 +203,7 @@ cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
       cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
       optionChangable = false;
     }
+    remove_g_option(cppstr);
   }
   option::Options parsedOptions;
   if (!ParseAllOptions(cppstr, parsedOptions, optionChangable)) {
@@ -269,6 +288,7 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
       cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
       optionChangable = false;
     }
+    remove_g_option(cppstr);
   }
   option::Options parsedOptions;
   if (!ParseAllOptions(cppstr, parsedOptions, optionChangable, true)) {
@@ -460,6 +480,7 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
       cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
       optionChangable = false;
     }
+    remove_g_option(cppstr);
   }
   option::Options parsedOptions;
   if (!ParseAllOptions(cppstr, parsedOptions, optionChangable)) {
