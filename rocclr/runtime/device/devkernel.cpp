@@ -16,7 +16,7 @@
 
 #include "acl.h"
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
@@ -25,7 +25,7 @@ using llvm::AMDGPU::HSAMD::AccessQualifier;
 using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
 using llvm::AMDGPU::HSAMD::ValueKind;
 using llvm::AMDGPU::HSAMD::ValueType;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 namespace device {
 
@@ -228,7 +228,7 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
   }
 }
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isHidden) {
   switch (lcArg.mValueKind) {
   case ValueKind::GlobalBuffer:
@@ -324,7 +324,7 @@ static const clk_value_type_t ClkValueMapType[6][6] = {
 };
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t size = 0) {
   uint sizeType;
   uint numElements;
@@ -481,7 +481,7 @@ static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t s
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline size_t GetArgAlignmentOCL(const KernelArgMD& lcArg) { return lcArg.mAlign; }
 #endif
 
@@ -525,7 +525,7 @@ static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline size_t GetArgPointeeAlignmentOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
     uint32_t align = lcArg.mPointeeAlign;
@@ -550,7 +550,7 @@ static inline size_t GetArgPointeeAlignmentOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline bool GetReadOnlyOCL(const KernelArgMD& lcArg) {
   if ((lcArg.mValueKind == ValueKind::GlobalBuffer) || (lcArg.mValueKind == ValueKind::Image)) {
     switch (lcArg.mAccQual) {
@@ -580,7 +580,7 @@ static inline bool GetReadOnlyOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline int GetArgSizeOCL(const KernelArgMD& lcArg) { return lcArg.mSize; }
 #endif
 
@@ -623,7 +623,7 @@ inline static int GetArgSizeOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
     return CL_KERNEL_ARG_ADDRESS_LOCAL;
@@ -679,7 +679,7 @@ static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const KernelArgMD& lcArg) {
   if (lcArg.mValueKind == ValueKind::Image) {
     switch (lcArg.mAccQual) {
@@ -714,7 +714,7 @@ static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgDat
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const KernelArgMD& lcArg) {
   cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
   if (lcArg.mValueKind == ValueKind::GlobalBuffer ||
@@ -769,7 +769,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #if defined(USE_COMGR_LIBRARY)
 bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
                                      const uint32_t kernargSegmentByteSize,
@@ -1133,7 +1133,7 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
 }
 #endif  // defined(USE_COMGR_LIBRARY)
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
@@ -1217,7 +1217,7 @@ void Kernel::InitParameters(const aclArgData* aclArg, uint32_t argBufferSize) {
 #endif
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
   for (auto str : printfInfoStrings) {
     std::vector<std::string> tokens;
@@ -1307,7 +1307,7 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
     // ]
   }
 }
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)

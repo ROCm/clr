@@ -116,7 +116,7 @@ bool NullDevice::init() {
         id < sizeof(Gfx9PlusSubDeviceInfo)/sizeof(AMDDeviceInfo); ++id) {
       bool foundActive = false;
       bool foundDuplicate = false;
-      uint gfxipVersion = IS_LIGHTNING ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_ :
+      uint gfxipVersion = GPU_ENABLE_LC ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_ :
         pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
       if (pal::Gfx9PlusSubDeviceInfo[id].targetName_[0] == '\0') {
@@ -127,7 +127,7 @@ bool NullDevice::init() {
       for (uint i = 0; i < devices.size(); ++i) {
         driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
         if (driverVersion.find("PAL") != std::string::npos) {
-          uint gfxIpCurrent = IS_LIGHTNING ?
+          uint gfxIpCurrent = GPU_ENABLE_LC ?
             static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersionLC_ :
             static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersion_;
           if (gfxIpCurrent == gfxipVersion) {
@@ -272,7 +272,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   info_.wavefrontWidth_ = (ipLevel >= Pal::GfxIpLevel::GfxIp10) ? 32 : 64;
 
   if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
     //  create compilation object with cache support
     int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
     int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
@@ -516,7 +516,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     const static char* bristol = "Bristol Ridge";
     ::strcpy(info_.name_, bristol);
   } else {
-    if (IS_LIGHTNING && hwInfo()->xnackEnabled_) {
+    if (GPU_ENABLE_LC && hwInfo()->xnackEnabled_) {
       ::snprintf(info_.name_, sizeof(info_.name_) - 1, "%s-xnack", hwInfo()->targetName_);
     } else {
       ::strcpy(info_.name_, hwInfo()->targetName_);
@@ -610,7 +610,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipVersion_ = IS_LIGHTNING ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
+    info_.gfxipVersion_ = GPU_ENABLE_LC ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
 
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;
@@ -936,7 +936,7 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
     //  create compilation object with cache support
     int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
     int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
