@@ -10,11 +10,11 @@
 #include "utils/options.hpp"
 #include "acl.h"
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 #include <string>
 #include <memory>
@@ -377,7 +377,7 @@ const LightningProgram& LightningKernel::prog() const {
   return reinterpret_cast<const LightningProgram&>(prog_);
 }
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
   for (const KernelMD& kernelMD : programMD->mKernels) {
     if (kernelMD.mName == name) {
@@ -386,10 +386,10 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
   }
   return nullptr;
 }
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
 
@@ -519,7 +519,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
   waveLimiter_.enable();
   */
 #endif // defined(USE_COMGR_LIBRARY)
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
 
