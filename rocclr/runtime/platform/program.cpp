@@ -118,7 +118,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
         return CL_INVALID_COMPILER_OPTIONS;
       }
     }
-    options->oVariables->Legacy = !GPU_ENABLE_LC ?
+    options->oVariables->Legacy = !IS_LIGHTNING ?
                                      isAMDILTarget(*aclutGetTargetInfo(binary)) :
                                      isHSAILTarget(*aclutGetTargetInfo(binary));
     aclBinaryFini(binary);

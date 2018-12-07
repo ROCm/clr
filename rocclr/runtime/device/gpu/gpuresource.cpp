@@ -1,6 +1,5 @@
 // Copyright (c) 2008 Advanced Micro Devices, Inc. All rights reserved.
 //
-#include "device/device.hpp"
 
 #if defined(ATI_OS_WIN)
 #define WIN32_LEAN_AND_MEAN 1
@@ -9,7 +8,10 @@
 #include <GL/gl.h>
 #include "GL/glATIInternal.h"
 
+#include "platform/program.hpp"
+#include "platform/kernel.hpp"
 #include "os/os.hpp"
+#include "device/device.hpp"
 #include "utils/flags.hpp"
 #include "thread/monitor.hpp"
 #include "device/gpu/gpuresource.hpp"
