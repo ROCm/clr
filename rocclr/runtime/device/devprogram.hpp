@@ -12,7 +12,7 @@
 #include "amd_comgr.h"
 #endif
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
 #include "driver/AmdCompiler.h"
 //#include "llvm/Support/AMDGPUMetadata.h"
 
@@ -28,7 +28,7 @@ namespace llvm {
 typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
 //typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 #ifndef LC_METADATA
 typedef char CodeObjectMD;
@@ -264,10 +264,10 @@ class Program : public amd::HeapObject {
 
   void setType(type_t newType) { type_ = newType; }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
   //! Return a new transient compiler instance.
   static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
   /* \brief Returns the next stage to compile from, based on sections in binary,
   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,

@@ -19,12 +19,12 @@
 #include "hsa.h"
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
 #include "llvm/Support/AMDGPUMetadata.h"
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER)
 
 namespace pal {
 
@@ -375,7 +375,7 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  uint32_t gfxipVersion = GPU_ENABLE_LC ?
+  uint32_t gfxipVersion = IS_LIGHTNING ?
     program_->dev().hwInfo()->gfxipVersionLC_ :
     program_->dev().hwInfo()->gfxipVersion_;
   uint32_t majorSrc = gfxipVersion / 10;
@@ -546,7 +546,7 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
   return HSA_STATUS_SUCCESS;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
 
 static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
                                            void* data) {
@@ -575,20 +575,20 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executabl
   return HSA_STATUS_SUCCESS;
 }
 
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER)
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
   if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
     LogError("Failed to create ELF binary image!");
     return false;
   }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER)
   hsa_agent_t agent;
   agent.handle = 1;
 
@@ -654,7 +654,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   }
 
   DestroySegmentCpuAccess();
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER)
   return true;
 }
 
