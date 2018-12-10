@@ -870,6 +870,9 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
     if ((status == AMD_COMGR_STATUS_SUCCESS) && (name.compare(kernelName) == 0)) {
       kernelFound = true;
     }
+    else {
+      amd_comgr_destroy_metadata(*kernelNode);
+    }
     amd_comgr_destroy_metadata(nameMeta);
   }
 
