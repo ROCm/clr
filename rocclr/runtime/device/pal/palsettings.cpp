@@ -439,7 +439,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 #endif
   }
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   switch (palProp.gfxLevel) {
     case Pal::GfxIpLevel::GfxIp10_1:
     case Pal::GfxIpLevel::GfxIp10:

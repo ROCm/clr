@@ -118,7 +118,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
         return CL_INVALID_COMPILER_OPTIONS;
       }
     }
-    options->oVariables->Legacy = !IS_LIGHTNING ?
+    options->oVariables->Legacy = !device.settings().useLightning_ ?
                                      isAMDILTarget(*aclutGetTargetInfo(binary)) :
                                      isHSAILTarget(*aclutGetTargetInfo(binary));
     aclBinaryFini(binary);
