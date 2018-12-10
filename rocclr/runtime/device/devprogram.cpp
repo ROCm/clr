@@ -11,12 +11,12 @@
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
 #include "opencl1.2-c.amdgcn.inc"
 #include "opencl2.0-c.amdgcn.inc"
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 #include <cstdio>
 #include <fstream>
@@ -34,11 +34,11 @@
 #include "spirv/spirvUtils.h"
 #include "acl.h"
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 namespace device {
 
@@ -96,7 +96,7 @@ bool Program::compileImpl(const std::string& sourceCode,
 }
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 
 #if defined(ATI_OS_WIN)
@@ -173,10 +173,14 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
   }
 #endif  // defined(DEBUG)
 
+#if !defined(USE_COMGR_LIBRARY)
   return std::unique_ptr<amd::opencl_driver::Compiler>(
     amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
+#else 
+  return std::unique_ptr<amd::opencl_driver::Compiler>(nullptr);
+#endif // !defined(USE_COMGR_LIBRARY)
 }
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
 
@@ -606,7 +610,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
 bool Program::compileImplLC(const std::string& sourceCode,
   const std::vector<const std::string*>& headers,
   const char** headerIncludeNames, amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   const char* xLang = options->oVariables->XLang;
   if (xLang != nullptr) {
     if (strcmp(xLang, "asm") == 0) {
@@ -798,7 +802,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     // store the original compile options
     clBinary()->storeCompileOptions(compileOptions_);
   }
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
 #endif // defined(USE_COMGR_LIBRARY)
@@ -1025,7 +1029,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
 #else // not using COMgr
 bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   amd::option::Options* options, bool createLibrary) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   using namespace amd::opencl_driver;
   std::unique_ptr<Compiler> C(newCompilerInstance());
 
@@ -1114,7 +1118,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   return linkImpl(options);
 #else
   return false;
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 }
 #endif // defined(USE_COMGR_LIBRARY)
 
@@ -1365,7 +1369,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
 }
 #else // not using COMgr
 bool Program::linkImplLC(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   using namespace amd::opencl_driver;
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
     true : false;
@@ -1597,7 +1601,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   return true;
 #else
   return false;
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 }
 #endif // defined(USE_COMGR_LIBRARY)
 
@@ -2051,36 +2055,34 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
 std::string Program::ProcessOptions(amd::option::Options* options) {
   std::string optionsStr;
 
-#ifndef WITH_LIGHTNING_COMPILER
-  optionsStr.append(" -D__AMD__=1");
+  if (!isLC()) {
+    //optionsStr.append(" -D__AMD__=1");
 
-  optionsStr.append(" -D__").append(machineTarget_).append("__=1");
-  optionsStr.append(" -D__").append(machineTarget_).append("=1");
-#endif
+    //optionsStr.append(" -D__").append(machineTarget_).append("__=1");
+   // optionsStr.append(" -D__").append(machineTarget_).append("=1");
+  } else {
+    int major, minor;
+    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
-#ifdef WITH_LIGHTNING_COMPILER
-  int major, minor;
-  ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
-
-  std::stringstream ss;
-  ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-  optionsStr.append(ss.str());
-#endif
+    std::stringstream ss;
+    ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+    optionsStr.append(ss.str());
+  }
 
   if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
     optionsStr.append(" -D__IMAGE_SUPPORT__=1");
   }
 
-#ifndef WITH_LIGHTNING_COMPILER
-  // Set options for the standard device specific options
-  // All our devices support these options now
-  if (device().settings().reportFMAF_) {
-    optionsStr.append(" -DFP_FAST_FMAF=1");
+  if (!isLC()) {
+    // Set options for the standard device specific options
+    // All our devices support these options now
+    //if (device().settings().reportFMAF_) {
+    //  optionsStr.append(" -DFP_FAST_FMAF=1");
+    //}
+    //if (device().settings().reportFMA_) {
+    // optionsStr.append(" -DFP_FAST_FMA=1");
+    //}
   }
-  if (device().settings().reportFMA_) {
-    optionsStr.append(" -DFP_FAST_FMA=1");
-  }
-#endif
 
   uint clcStd =
     (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
@@ -2107,7 +2109,7 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
   std::istream_iterator<std::string> sit(istrstr), end;
   std::vector<std::string> extensions(sit, end);
 
-  if (IS_LIGHTNING && !options->oVariables->Legacy) {
+  if (isLC()) {
     // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
     // remove it from the command line. Should we fix opencl-c.h?
     auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
@@ -2356,7 +2358,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
   bool& needOptionsCheck) {
   aclType from = ACL_TYPE_DEFAULT;
   if (isLC()) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
     completeStages.clear();
     needOptionsCheck = true;
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
@@ -2394,7 +2396,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     default:
       break;
     }
-#endif   // defined(WITH_LIGHTNING_COMPILER)
+#endif   // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   } else {
 #if defined(WITH_COMPILER_LIB)
     acl_error errorCode;
@@ -2638,7 +2640,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 
 // ================================================================================================
 bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   size_t progvarsTotalSize = 0;
   size_t dynamicSize = 0;
   size_t progvarsWriteSize = 0;
@@ -2745,7 +2747,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   if (progvarsWriteSize != dynamicSize) {
     hasGlobalStores_ = true;
   }
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
 }
