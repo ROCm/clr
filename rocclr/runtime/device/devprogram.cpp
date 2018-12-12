@@ -2056,10 +2056,10 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
   std::string optionsStr;
 
   if (!isLC()) {
-    //optionsStr.append(" -D__AMD__=1");
+    optionsStr.append(" -D__AMD__=1");
 
-    //optionsStr.append(" -D__").append(machineTarget_).append("__=1");
-   // optionsStr.append(" -D__").append(machineTarget_).append("=1");
+    optionsStr.append(" -D__").append(machineTarget_).append("__=1");
+    optionsStr.append(" -D__").append(machineTarget_).append("=1");
   } else {
     int major, minor;
     ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
@@ -2076,12 +2076,12 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
   if (!isLC()) {
     // Set options for the standard device specific options
     // All our devices support these options now
-    //if (device().settings().reportFMAF_) {
-    //  optionsStr.append(" -DFP_FAST_FMAF=1");
-    //}
-    //if (device().settings().reportFMA_) {
-    // optionsStr.append(" -DFP_FAST_FMA=1");
-    //}
+    if (device().settings().reportFMAF_) {
+      optionsStr.append(" -DFP_FAST_FMAF=1");
+    }
+    if (device().settings().reportFMA_) {
+      optionsStr.append(" -DFP_FAST_FMA=1");
+    }
   }
 
   uint clcStd =
