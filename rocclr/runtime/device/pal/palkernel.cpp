@@ -421,7 +421,13 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
     uint64_t kernel_object = gpuAqlCode();
     VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
 
-    codeSegGpu.writeRawData(*gpu, offset, 8, &kernel_object, true);
+    const struct RuntimeHandle runtime_handle = {
+        gpuAqlCode(),
+        spillSegSize(),
+        ldsSize()
+    };
+
+    codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
   }
 
   // Copy wavefront size

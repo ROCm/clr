@@ -85,9 +85,15 @@ bool LightningKernel::init() {
                                                  HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
                                                  &variable_address);
     }
+
     if (hsaStatus == HSA_STATUS_SUCCESS) {
+      const struct RuntimeHandle runtime_handle = {
+        kernelCodeHandle_,
+        workitemPrivateSegmentByteSize(),
+        WorkgroupGroupSegmentByteSize()
+      };
       hsaStatus = hsa_memory_copy(reinterpret_cast<void*>(variable_address),
-                                  &kernelCodeHandle_, variable_size);
+                                  &runtime_handle, variable_size);
     }
 
     if (hsaStatus != HSA_STATUS_SUCCESS) {
