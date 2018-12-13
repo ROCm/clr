@@ -391,7 +391,7 @@ static const MemoryFormat MemoryFormatMap[] = {
     // RGB
     {{CL_RGB, CL_UNORM_INT_101010},
      Pal::ChNumFormat::X10Y10Z10W2_Unorm,
-     {Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::X,
+     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
       Pal::ChannelSwizzle::One}},
 
     // RGBA
