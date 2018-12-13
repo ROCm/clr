@@ -8,9 +8,7 @@
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
-#if defined(USE_COMGR_LIBRARY)
-#include "amd_comgr.h"
-#endif
+#include "comgrctx.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "driver/AmdCompiler.h"

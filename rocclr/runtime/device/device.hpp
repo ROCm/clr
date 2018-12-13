@@ -1312,6 +1312,9 @@ class Device : public RuntimeObject {
   amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
 #endif
 
+  //! Checks if OCL runtime can use code object manager for compilation
+  bool ValidateComgr();
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
