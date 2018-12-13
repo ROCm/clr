@@ -266,6 +266,11 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
     return false;
   }
 
+  if (!ValidateComgr()) {
+    LogError("Code object manager initialization failed!");
+    return false;
+  }
+
   // Fill the device info structure
   fillDeviceInfo(properties, heaps, 4096, 1, 0);
 
@@ -891,6 +896,12 @@ bool Device::create(Pal::IDevice* device) {
       !gpuSettings->create(properties(), heaps_, wscaps, appProfile_.reportAsOCL12Device())) {
     return false;
   }
+
+  if (!ValidateComgr()) {
+    LogError("Code object manager initialization failed!");
+    return false;
+  }
+
   numComputeEngines_ = std::min(numComputeEngines_, settings().numComputeRings_);
 
   amd::Context::Info info = {0};

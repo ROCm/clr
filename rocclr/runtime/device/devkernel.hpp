@@ -438,11 +438,11 @@ class Kernel : public amd::HeapObject {
 static amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
                                      std::string* str) {
   size_t size = 0;
-  amd_comgr_status_t status = amd_comgr_get_metadata_string(meta, &size, NULL);
+  amd_comgr_status_t status = amd::Comgr::get_metadata_string(meta, &size, NULL);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     str->resize(size-1);    // minus one to discount the null character
-    status = amd_comgr_get_metadata_string(meta, &size, &((*str)[0]));
+    status = amd::Comgr::get_metadata_string(meta, &size, &((*str)[0]));
   }
 
   return status;
@@ -457,7 +457,7 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
 
   // get the key of the argument field
   size_t size = 0;
-  status = amd_comgr_get_metadata_kind(key, &kind);
+  status = amd::Comgr::get_metadata_kind(key, &kind);
   if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
     status = getMetaBuf(key, &buf);
   }
@@ -564,7 +564,7 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
   std::string buf;
 
   // get the key of the argument field
-  status = amd_comgr_get_metadata_kind(key, &kind);
+  status = amd::Comgr::get_metadata_kind(key, &kind);
   if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
     status = getMetaBuf(key, &buf);
   }
@@ -582,34 +582,34 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
   switch (itAttrField->second) {
     case AttrField::ReqWorkGroupSize:
       {
-        status = amd_comgr_get_metadata_list_size(value, &size);
+        status = amd::Comgr::get_metadata_list_size(value, &size);
         if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
           for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
             amd_comgr_metadata_node_t workgroupSize;
-            status = amd_comgr_index_list_metadata(value, i, &workgroupSize);
+            status = amd::Comgr::index_list_metadata(value, i, &workgroupSize);
 
             if (status == AMD_COMGR_STATUS_SUCCESS &&
                 getMetaBuf(workgroupSize, &buf) == AMD_COMGR_STATUS_SUCCESS) {
               kernelMD->mAttrs.mReqdWorkGroupSize.push_back(atoi(buf.c_str()));
             }
-            amd_comgr_destroy_metadata(workgroupSize);
+            amd::Comgr::destroy_metadata(workgroupSize);
           }
         }
       }
       break;
     case AttrField::WorkGroupSizeHint:
       {
-        status = amd_comgr_get_metadata_list_size(value, &size);
+        status = amd::Comgr::get_metadata_list_size(value, &size);
         if (status == AMD_COMGR_STATUS_SUCCESS && size == 3) {
           for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
             amd_comgr_metadata_node_t workgroupSizeHint;
-            status = amd_comgr_index_list_metadata(value, i, &workgroupSizeHint);
+            status = amd::Comgr::index_list_metadata(value, i, &workgroupSizeHint);
 
             if (status == AMD_COMGR_STATUS_SUCCESS &&
                 getMetaBuf(workgroupSizeHint, &buf) == AMD_COMGR_STATUS_SUCCESS) {
               kernelMD->mAttrs.mWorkGroupSizeHint.push_back(atoi(buf.c_str()));
             }
-            amd_comgr_destroy_metadata(workgroupSizeHint);
+            amd::Comgr::destroy_metadata(workgroupSizeHint);
           }
         }
       }
@@ -643,7 +643,7 @@ static amd_comgr_status_t populateCodeProps(const amd_comgr_metadata_node_t key,
   std::string buf;
 
   // get the key of the argument field
-  status = amd_comgr_get_metadata_kind(key, &kind);
+  status = amd::Comgr::get_metadata_kind(key, &kind);
   if (kind == AMD_COMGR_METADATA_KIND_STRING && status == AMD_COMGR_STATUS_SUCCESS) {
     status = getMetaBuf(key, &buf);
   }

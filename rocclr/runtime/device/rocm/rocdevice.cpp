@@ -118,6 +118,12 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
     LogError("Error creating settings for nullptr HSA device");
     return false;
   }
+
+  if (!ValidateComgr()) {
+    LogError("Code object manager initialization failed!");
+    return false;
+  }
+
   // Report the device name
   ::strcpy(info_.name_, "AMD HSA Device");
   info_.extensions_ = getExtensionString();
@@ -596,6 +602,11 @@ bool Device::create() {
   roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
   if ((hsaSettings == nullptr) ||
       !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipVersion_)) {
+    return false;
+  }
+
+  if (!ValidateComgr()) {
+    LogError("Code object manager initialization failed!");
     return false;
   }
 

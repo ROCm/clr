@@ -779,7 +779,7 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
 
   if (!GetKernelMetadata(programMD, name(), &kernelMeta)) {
     if (kernelMeta.handle != 0) {
-      amd_comgr_destroy_metadata(kernelMeta);
+      amd::Comgr::destroy_metadata(kernelMeta);
     }
     return false;
   }
@@ -795,25 +795,25 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
   // extract the attribute metadata if there is any
   amd_comgr_metadata_node_t attrMeta;
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
-  if (amd_comgr_metadata_lookup(kernelMeta, "Attrs", &attrMeta) == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_iterate_map_metadata(attrMeta, device::populateAttrs,
+  if (amd::Comgr::metadata_lookup(kernelMeta, "Attrs", &attrMeta) == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::iterate_map_metadata(attrMeta, device::populateAttrs,
                                             static_cast<void*>(kernelMD));
-    amd_comgr_destroy_metadata(attrMeta);
+    amd::Comgr::destroy_metadata(attrMeta);
   }
 
   // extract the code properties metadata
   amd_comgr_metadata_node_t codePropsMeta;
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_metadata_lookup(kernelMeta, "CodeProps", &codePropsMeta);
+    status = amd::Comgr::metadata_lookup(kernelMeta, "CodeProps", &codePropsMeta);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_iterate_map_metadata(codePropsMeta, device::populateCodeProps,
+    status = amd::Comgr::iterate_map_metadata(codePropsMeta, device::populateCodeProps,
                                             static_cast<void*>(kernelMD));
-    amd_comgr_destroy_metadata(codePropsMeta);
+    amd::Comgr::destroy_metadata(codePropsMeta);
   }
 
-  amd_comgr_destroy_metadata(kernelMeta);
+  amd::Comgr::destroy_metadata(kernelMeta);
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return false;
@@ -848,9 +848,9 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
   amd_comgr_metadata_node_t kernelsMD;
   size_t size = 0;
 
-  status = amd_comgr_metadata_lookup(programMD, "Kernels", &kernelsMD);
+  status = amd::Comgr::metadata_lookup(programMD, "Kernels", &kernelsMD);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_get_metadata_list_size(kernelsMD, &size);
+    status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
   }
 
   bool kernelFound = false;
@@ -858,9 +858,9 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
     std::string kernelName;
 
     amd_comgr_metadata_node_t nameMeta;
-    status = amd_comgr_index_list_metadata(kernelsMD, i, kernelNode);
+    status = amd::Comgr::index_list_metadata(kernelsMD, i, kernelNode);
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd_comgr_metadata_lookup(*kernelNode, "Name", &nameMeta);
+      status = amd::Comgr::metadata_lookup(*kernelNode, "Name", &nameMeta);
     }
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -871,12 +871,12 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
       kernelFound = true;
     }
     else {
-      amd_comgr_destroy_metadata(*kernelNode);
+      amd::Comgr::destroy_metadata(*kernelNode);
     }
-    amd_comgr_destroy_metadata(nameMeta);
+    amd::Comgr::destroy_metadata(nameMeta);
   }
 
-  amd_comgr_destroy_metadata(kernelsMD);
+  amd::Comgr::destroy_metadata(kernelsMD);
 
   return kernelFound;
 }
@@ -888,10 +888,10 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   amd_comgr_metadata_node_t sgprMeta;
   amd_comgr_metadata_node_t vgprMeta;
 
-  amd_comgr_status_t status = amd_comgr_get_isa_metadata(targetIdent.c_str(), &isaMeta);
+  amd_comgr_status_t status = amd::Comgr::get_isa_metadata(targetIdent.c_str(), &isaMeta);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_metadata_lookup(isaMeta, "AddressableNumSGPRs", &sgprMeta);
+    status = amd::Comgr::metadata_lookup(isaMeta, "AddressableNumSGPRs", &sgprMeta);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -901,7 +901,7 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   workGroupInfo_.availableSGPRs_ = (status == AMD_COMGR_STATUS_SUCCESS) ? atoi(buf.c_str()) : 0;
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_metadata_lookup(isaMeta, "AddressableNumVGPRs", &vgprMeta);
+    status = amd::Comgr::metadata_lookup(isaMeta, "AddressableNumVGPRs", &vgprMeta);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -909,9 +909,9 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   }
   workGroupInfo_.availableVGPRs_ = (status == AMD_COMGR_STATUS_SUCCESS) ? atoi(buf.c_str()) : 0;
 
-  amd_comgr_destroy_metadata(vgprMeta);
-  amd_comgr_destroy_metadata(sgprMeta);
-  amd_comgr_destroy_metadata(isaMeta);
+  amd::Comgr::destroy_metadata(vgprMeta);
+  amd::Comgr::destroy_metadata(sgprMeta);
+  amd::Comgr::destroy_metadata(isaMeta);
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
@@ -920,24 +920,24 @@ bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
                           std::vector<std::string>* printfStr) {
 
   amd_comgr_metadata_node_t printfMeta;
-  amd_comgr_status_t status = amd_comgr_metadata_lookup(programMD, "Printf", &printfMeta);
+  amd_comgr_status_t status = amd::Comgr::metadata_lookup(programMD, "Printf", &printfMeta);
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return true;   // printf string metadata is not provided so just exit
   }
 
   // handle the printf string
   size_t printfSize = 0;
-  status = amd_comgr_get_metadata_list_size(printfMeta, &printfSize);
+  status = amd::Comgr::get_metadata_list_size(printfMeta, &printfSize);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     std::string buf;
     for (size_t i = 0; i < printfSize; ++i) {
       amd_comgr_metadata_node_t str;
-      status = amd_comgr_index_list_metadata(printfMeta, i, &str);
+      status = amd::Comgr::index_list_metadata(printfMeta, i, &str);
 
       if (status == AMD_COMGR_STATUS_SUCCESS) {
         status = getMetaBuf(str, &buf);
-        amd_comgr_destroy_metadata(str);
+        amd::Comgr::destroy_metadata(str);
       }
 
       if (status != AMD_COMGR_STATUS_SUCCESS) {
@@ -948,7 +948,7 @@ bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
     }
   }
 
-  amd_comgr_destroy_metadata(printfMeta);
+  amd::Comgr::destroy_metadata(printfMeta);
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
 
@@ -963,9 +963,9 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
   amd_comgr_metadata_node_t argsMeta;
   size_t argsSize;
 
-  amd_comgr_status_t status =  amd_comgr_metadata_lookup(kernelMD, "Args", &argsMeta);
+  amd_comgr_status_t status =  amd::Comgr::metadata_lookup(kernelMD, "Args", &argsMeta);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd_comgr_get_metadata_list_size(argsMeta, &argsSize);
+    status = amd::Comgr::get_metadata_list_size(argsMeta, &argsSize);
   }
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
@@ -978,22 +978,22 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
     amd_comgr_metadata_node_t argsNode;
     amd_comgr_metadata_kind_t kind;
 
-    status = amd_comgr_index_list_metadata(argsMeta, i, &argsNode);
+    status = amd::Comgr::index_list_metadata(argsMeta, i, &argsNode);
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd_comgr_get_metadata_kind(argsNode, &kind);
+      status = amd::Comgr::get_metadata_kind(argsNode, &kind);
     }
     if (kind != AMD_COMGR_METADATA_KIND_MAP) {
       status = AMD_COMGR_STATUS_ERROR;
     }
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd_comgr_iterate_map_metadata(argsNode, populateArgs, static_cast<void*>(&lcArg));
+      status = amd::Comgr::iterate_map_metadata(argsNode, populateArgs, static_cast<void*>(&lcArg));
     }
 
-    amd_comgr_destroy_metadata(argsNode);
+    amd::Comgr::destroy_metadata(argsNode);
 
     if (status != AMD_COMGR_STATUS_SUCCESS) {
-      amd_comgr_destroy_metadata(argsMeta);
+      amd::Comgr::destroy_metadata(argsMeta);
       return;
     }
 
@@ -1052,7 +1052,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
     }
   }
 
-  amd_comgr_destroy_metadata(argsMeta);
+  amd::Comgr::destroy_metadata(argsMeta);
 
   // Save the number of OCL arguments
   uint32_t numParams = params.size();

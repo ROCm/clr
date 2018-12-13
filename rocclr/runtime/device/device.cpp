@@ -222,6 +222,19 @@ Device::~Device() {
   }
 }
 
+bool Device::ValidateComgr() {
+#if defined(USE_COMGR_LIBRARY)
+  // Check if Lightning compiler was requested
+  if (settings_->useLightning_) {
+    std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib);
+    // Use Lightning only if it's available
+    settings_->useLightning_ = amd::Comgr::IsReady();
+    return settings_->useLightning_;
+  }
+#endif
+  return true;
+}
+
 bool Device::create() {
   vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
   if (nullptr == vaCacheAccess_) {
