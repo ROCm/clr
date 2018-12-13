@@ -46,6 +46,7 @@ const HsaDeviceId HSA_VEGA12_ID = 12;
 const HsaDeviceId HSA_VEGA20_ID = 13;
 const HsaDeviceId HSA_ARIEL_ID = 14;
 const HsaDeviceId HSA_NAVI10_ID = 15;
+const HsaDeviceId HSA_MI100_ID = 16;
 const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static const AMDDeviceInfo DeviceInfo[] = {
@@ -71,7 +72,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET VEGA12 */ {HSA_VEGA12_ID, "", "gfx904", "gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
     /* TARGET VEGA20 */ {HSA_VEGA20_ID, "", "gfx906", "gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
     /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false}};
+    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
+    /* TARGET MI100 */ {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false}};
 }
 
 const uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
