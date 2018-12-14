@@ -611,7 +611,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
-    info_.wavefrontWidth_ = palProp.gfxipProperties.shaderCore.wavefrontSize;
+    info_.wavefrontWidth_ = ((settings().gfx10Hsail_ && GPU_FORCE_WAVE_SIZE_32) ||
+                            (settings().useLightning_ && ipLevel_ >= Pal::GfxIpLevel::GfxIp10_1)) ?
+                            32 :palProp.gfxipProperties.shaderCore.wavefrontSize;
     info_.availableSGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableSgprs;
 
     info_.globalMemChannelBanks_ = 4;
