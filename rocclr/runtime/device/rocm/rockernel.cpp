@@ -50,7 +50,11 @@ bool LightningKernel::init() {
   assert(workGroupInfo_.availableLDSSize_ > 0);
 
   // Get the available SGPRs and VGPRs
-  const std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program_->machineTarget();
+  std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program_->machineTarget();
+  if (program_->xnackEnable()) {
+    targetIdent.append("+xnack");
+  }
+
   if (!SetAvailableSgprVgpr(targetIdent)) {
     return false;
   }
