@@ -776,11 +776,7 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
                                      KernelMD* kernelMD) {
 
   amd_comgr_metadata_node_t kernelMeta = {0};
-
   if (!GetKernelMetadata(programMD, name(), &kernelMeta)) {
-    if (kernelMeta.handle != 0) {
-      amd::Comgr::destroy_metadata(kernelMeta);
-    }
     return false;
   }
 
@@ -846,10 +842,12 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
                                amd_comgr_metadata_node_t* kernelNode) {
   amd_comgr_status_t status;
   amd_comgr_metadata_node_t kernelsMD;
+  bool hasKernelMD = false;
   size_t size = 0;
 
   status = amd::Comgr::metadata_lookup(programMD, "Kernels", &kernelsMD);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasKernelMD = true;
     status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
   }
 
@@ -858,12 +856,18 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
     std::string kernelName;
 
     amd_comgr_metadata_node_t nameMeta;
+    bool hasNameMeta = false;
+    bool hasKernelNode = false;
+
     status = amd::Comgr::index_list_metadata(kernelsMD, i, kernelNode);
+
     if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hasKernelNode = true;
       status = amd::Comgr::metadata_lookup(*kernelNode, "Name", &nameMeta);
     }
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hasNameMeta = true;
       status  = getMetaBuf(nameMeta, &kernelName);
     }
 
@@ -871,12 +875,19 @@ bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
       kernelFound = true;
     }
     else {
-      amd::Comgr::destroy_metadata(*kernelNode);
+      if (hasKernelNode) {
+        amd::Comgr::destroy_metadata(*kernelNode);
+      }
     }
-    amd::Comgr::destroy_metadata(nameMeta);
+
+    if (hasNameMeta) {
+      amd::Comgr::destroy_metadata(nameMeta);
+    }
   }
 
-  amd::Comgr::destroy_metadata(kernelsMD);
+  if (hasKernelMD) {
+    amd::Comgr::destroy_metadata(kernelsMD);
+  }
 
   return kernelFound;
 }
@@ -887,14 +898,19 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   amd_comgr_metadata_node_t isaMeta;
   amd_comgr_metadata_node_t sgprMeta;
   amd_comgr_metadata_node_t vgprMeta;
+  bool hasIsaMeta = false;
+  bool hasSgprMeta = false;
+  bool hasVgprMeta = false;
 
   amd_comgr_status_t status = amd::Comgr::get_isa_metadata(targetIdent.c_str(), &isaMeta);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasIsaMeta = true;
     status = amd::Comgr::metadata_lookup(isaMeta, "AddressableNumSGPRs", &sgprMeta);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasSgprMeta = true;
     status = getMetaBuf(sgprMeta, &buf);
   }
 
@@ -905,13 +921,22 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasVgprMeta = true;
     status = getMetaBuf(vgprMeta, &buf);
   }
   workGroupInfo_.availableVGPRs_ = (status == AMD_COMGR_STATUS_SUCCESS) ? atoi(buf.c_str()) : 0;
 
-  amd::Comgr::destroy_metadata(vgprMeta);
-  amd::Comgr::destroy_metadata(sgprMeta);
-  amd::Comgr::destroy_metadata(isaMeta);
+  if (hasVgprMeta) {
+    amd::Comgr::destroy_metadata(vgprMeta);
+  }
+
+  if (hasSgprMeta) {
+    amd::Comgr::destroy_metadata(sgprMeta);
+  }
+
+  if (hasIsaMeta) {
+    amd::Comgr::destroy_metadata(isaMeta);
+  }
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
@@ -920,6 +945,7 @@ bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
                           std::vector<std::string>* printfStr) {
 
   amd_comgr_metadata_node_t printfMeta;
+
   amd_comgr_status_t status = amd::Comgr::metadata_lookup(programMD, "Printf", &printfMeta);
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return true;   // printf string metadata is not provided so just exit
@@ -941,6 +967,7 @@ bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
       }
 
       if (status != AMD_COMGR_STATUS_SUCCESS) {
+        amd::Comgr::destroy_metadata(printfMeta);
         return false;
       }
 
@@ -961,10 +988,12 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
   size_t offsetStruct = argBufferSize;
 
   amd_comgr_metadata_node_t argsMeta;
+  bool hsaArgsMeta = false;
   size_t argsSize;
 
   amd_comgr_status_t status =  amd::Comgr::metadata_lookup(kernelMD, "Args", &argsMeta);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hsaArgsMeta = true;
     status = amd::Comgr::get_metadata_list_size(argsMeta, &argsSize);
   }
 
@@ -977,10 +1006,12 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
 
     amd_comgr_metadata_node_t argsNode;
     amd_comgr_metadata_kind_t kind;
+    bool hsaArgsNode = false;
 
     status = amd::Comgr::index_list_metadata(argsMeta, i, &argsNode);
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hsaArgsNode = true;
       status = amd::Comgr::get_metadata_kind(argsNode, &kind);
     }
     if (kind != AMD_COMGR_METADATA_KIND_MAP) {
@@ -990,10 +1021,14 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
       status = amd::Comgr::iterate_map_metadata(argsNode, populateArgs, static_cast<void*>(&lcArg));
     }
 
-    amd::Comgr::destroy_metadata(argsNode);
+    if (hsaArgsNode) {
+      amd::Comgr::destroy_metadata(argsNode);
+    }
 
     if (status != AMD_COMGR_STATUS_SUCCESS) {
-      amd::Comgr::destroy_metadata(argsMeta);
+      if (hsaArgsMeta) {
+        amd::Comgr::destroy_metadata(argsMeta);
+      }
       return;
     }
 
@@ -1052,7 +1087,9 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD, uint32_t a
     }
   }
 
-  amd::Comgr::destroy_metadata(argsMeta);
+  if (hsaArgsMeta) {
+    amd::Comgr::destroy_metadata(argsMeta);
+  }
 
   // Save the number of OCL arguments
   uint32_t numParams = params.size();

@@ -176,7 +176,7 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 #if !defined(USE_COMGR_LIBRARY)
   return std::unique_ptr<amd::opencl_driver::Compiler>(
     amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
-#else 
+#else
   return std::unique_ptr<amd::opencl_driver::Compiler>(nullptr);
 #endif // !defined(USE_COMGR_LIBRARY)
 }
@@ -307,12 +307,17 @@ void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclve
 amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
                                          const std::string& targetIdent,
                                          const std::string& options,
-                                         amd_comgr_action_info_t* action) {
+                                         amd_comgr_action_info_t* action,
+                                         bool* hasAction) {
 
+  *hasAction = false;
   amd_comgr_status_t status = amd::Comgr::create_action_info(action);
 
-  if ((oclver != AMD_COMGR_LANGUAGE_NONE) && (status == AMD_COMGR_STATUS_SUCCESS)) {
-    status = amd::Comgr::action_info_set_language(*action, oclver);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    *hasAction = true;
+    if (oclver != AMD_COMGR_LANGUAGE_NONE) {
+      status = amd::Comgr::action_info_set_language(*action, oclver);
+    }
   }
 
   if (!targetIdent.empty() && (status == AMD_COMGR_STATUS_SUCCESS)) {
@@ -342,14 +347,17 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   //  Create the action for linking
   amd_comgr_action_info_t action;
   amd_comgr_data_set_t dataSetDevLibs;
+  bool hasAction = false;
+  bool hasDataSetDevLibs = false;
 
-  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action);
+  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&dataSetDevLibs);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasDataSetDevLibs = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
                                  dataSetDevLibs);
   }
@@ -367,8 +375,13 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData, binarySize);
   }
 
-  amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(dataSetDevLibs);
+  if (hasAction) {
+    amd::Comgr::destroy_action_info(action);
+  }
+
+  if (hasDataSetDevLibs) {
+    amd::Comgr::destroy_data_set(dataSetDevLibs);
+  }
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
@@ -389,8 +402,11 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
   amd_comgr_action_info_t action;
   amd_comgr_data_set_t output;
   amd_comgr_data_set_t dataSetPCH;
+  bool hasAction = false;
+  bool hsaOutput = false;
+  bool hsaDataSetPCH = false;
 
-  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action);
+  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
@@ -398,12 +414,14 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   //  Adding Precompiled Headers
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hsaOutput = true;
     status = amd::Comgr::create_data_set(&dataSetPCH);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hsaDataSetPCH = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
-                                 action, inputs, dataSetPCH);
+                                   action, inputs, dataSetPCH);
   }
 
   //  Compiling the source codes with precompiled headers
@@ -420,9 +438,17 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
     extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, outFileName, binaryData, binarySize);
   }
 
-  amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(dataSetPCH);
-  amd::Comgr::destroy_data_set(output);
+  if (hasAction) {
+    amd::Comgr::destroy_action_info(action);
+  }
+
+  if (hsaDataSetPCH) {
+    amd::Comgr::destroy_data_set(dataSetPCH);
+  }
+
+  if (hsaOutput) {
+    amd::Comgr::destroy_data_set(output);
+  }
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
@@ -442,28 +468,42 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   amd_comgr_action_info_t action;
   amd_comgr_data_set_t output;
   amd_comgr_data_set_t relocatableData;
+  bool hasAction = false;
+  bool hsaOutput = false;
+  bool hsaRelocatableData = false;
 
-  amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options, &action);
+  amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options,
+                                           &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
   }
 
-  if ((amdOptions->isDumpFlagSet(amd::option::DUMP_ISA)) && (status == AMD_COMGR_STATUS_SUCCESS)) {
-    //  create the assembly data set
-    amd_comgr_data_set_t assemblyData;
-    status = amd::Comgr::create_data_set(&assemblyData);
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY,
-                                   action, inputs, assemblyData);
-    }
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hsaOutput = true;
 
-    // dump the ISA
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      std::string dumpIsaName = amdOptions->getDumpFileName(".s");
-      extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
+    if (amdOptions->isDumpFlagSet(amd::option::DUMP_ISA)){
+      //  create the assembly data set
+      amd_comgr_data_set_t assemblyData;
+      bool hsaAssemblyData = false;
+
+      status = amd::Comgr::create_data_set(&assemblyData);
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        hsaAssemblyData = true;
+        status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY,
+                                       action, inputs, assemblyData);
+      }
+
+      // dump the ISA
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        std::string dumpIsaName = amdOptions->getDumpFileName(".s");
+        extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
+      }
+
+      if (hsaAssemblyData) {
+        amd::Comgr::destroy_data_set(assemblyData);
+      }
     }
-    amd::Comgr::destroy_data_set(assemblyData);
   }
 
   //  Create the relocatiable data set
@@ -472,6 +512,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hsaRelocatableData = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
                                  action, inputs, relocatableData);
   }
@@ -493,9 +534,17 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
                           executableSize);
   }
 
-  amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(relocatableData);
-  amd::Comgr::destroy_data_set(output);
+  if (hasAction) {
+    amd::Comgr::destroy_action_info(action);
+  }
+
+  if (hsaRelocatableData) {
+    amd::Comgr::destroy_data_set(relocatableData);
+  }
+
+  if (hsaOutput) {
+    amd::Comgr::destroy_data_set(output);
+  }
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
@@ -553,7 +602,6 @@ bool Program::compileImplLC(const std::string& sourceCode,
   // Iterate through each source code and dump it into tmp
   std::fstream f;
   std::vector<std::string> headerFileNames(headers.size());
-  std::vector<std::string> newDirs;
 
   if (!headers.empty()) {
     for (size_t i = 0; i < headers.size(); ++i) {
@@ -1302,19 +1350,24 @@ bool Program::linkImplLC(amd::option::Options* options) {
                                                "LLVM Binary", &inputs);
 
     amd_comgr_data_set_t linked_bc;
+    bool hasLinkedBC = false;
+
     if (status == AMD_COMGR_STATUS_SUCCESS) {
       status = amd::Comgr::create_data_set(&linked_bc);
     }
 
     bool ret = (status == AMD_COMGR_STATUS_SUCCESS);
     if (ret) {
+      hasLinkedBC = true;
       ret = linkLLVMBitcode(inputs, linkOptions, true, options, &linked_bc);
     }
 
     amd::Comgr::destroy_data_set(inputs);
 
     if (!ret) {
-      amd::Comgr::destroy_data_set(linked_bc);
+      if (hasLinkedBC) {
+        amd::Comgr::destroy_data_set(linked_bc);
+      }
       buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
       return false;
     }
@@ -2689,7 +2742,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           status  = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &binaryData);
           if (status == AMD_COMGR_STATUS_SUCCESS) {
             status = amd::Comgr::set_data(binaryData, binSize,
-                                        reinterpret_cast<const char*>(binary));
+                                          reinterpret_cast<const char*>(binary));
           }
 
           if (status == AMD_COMGR_STATUS_SUCCESS) {

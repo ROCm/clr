@@ -208,6 +208,9 @@ class Program : public amd::HeapObject {
   //! Get the machine target for the program
   const char* machineTarget() const { return machineTarget_; }
 
+  //! Check if xnack is enable
+  const bool xnackEnable() const { return (xnackEnabled_ == 1); }
+
  protected:
   //! pre-compile setup
   bool initBuild(amd::option::Options* options);
@@ -327,7 +330,7 @@ class Program : public amd::HeapObject {
   //! Create action for the specified language, target and options
   amd_comgr_status_t createAction(const amd_comgr_language_t oclvar,
     const std::string& targetIdent, const std::string& options,
-    amd_comgr_action_info_t* action);
+    amd_comgr_action_info_t* action, bool* hasAction);
 
   //! Create the bitcode of the linked input dataset
   bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
