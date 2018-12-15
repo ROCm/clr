@@ -840,7 +840,7 @@ bool Device::populateOCLDeviceConstants() {
 
   std::ostringstream oss;
   oss << "gfx" << gfxipMajor << gfxipMinor << gfxipStepping;
-  if (IS_LIGHTNING && deviceInfo_.xnackEnabled_) {
+  if (settings().useLightning_ && deviceInfo_.xnackEnabled_) {
     oss << "-xnack";
   }
 
@@ -1059,8 +1059,7 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
   std::stringstream ss;
-  ss << AMD_BUILD_STRING " (HSA" << major << "." << minor << "," IF(IS_LIGHTNING, "LC", "HSAIL");
-  if (IS_LIGHTNING && compilerHandle_) ss << "*,HSAIL";
+  ss << AMD_BUILD_STRING " (HSA" << major << "." << minor << "," << (settings().useLightning_ ? "LC" : "HSAIL");
   ss <<  ")";
 
   strcpy(info_.driverVersion_, ss.str().c_str());
