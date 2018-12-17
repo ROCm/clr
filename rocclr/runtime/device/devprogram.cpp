@@ -605,9 +605,15 @@ bool Program::compileImplLC(const std::string& sourceCode,
 
   if (!headers.empty()) {
     for (size_t i = 0; i < headers.size(); ++i) {
-      std::string headerName="Header" + std::to_string(i);
+      std::string headerIncludeName(headerIncludeNames[i]);
+      // replace / in path with current os's file separator
+      if (amd::Os::fileSeparator() != '/') {
+        for (auto& it : headerIncludeName) {
+          if (it == '/') it = amd::Os::fileSeparator();
+        }
+      }
       if (addCodeObjData(headers[i]->c_str(), headers[i]->length(), AMD_COMGR_DATA_KIND_INCLUDE,
-                         headerName.c_str(), &inputs) != AMD_COMGR_STATUS_SUCCESS) {
+                         headerIncludeName.c_str(), &inputs) != AMD_COMGR_STATUS_SUCCESS) {
         buildLog_ += "Error: COMGR fails to add headers into inputs.\n";
         amd::Comgr::destroy_data_set(inputs);
         return false;
