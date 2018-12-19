@@ -744,33 +744,22 @@ bool Device::create() {
 }
 
 device::Program* NullDevice::createProgram(amd::option::Options* options) {
-  device::Program* program;
-  if (settings().useLightning_) {
-    program = new LightningProgram(*this);
-  }
-  else {
-    program = new HSAILProgram(*this);
-  }
-  if (program == nullptr) {
-    LogError("We failed memory allocation for program!");
-  }
-
-  return program;
+#if defined(WITH_COMPILER_LIB)
+  return new roc::HSAILProgram(*this);
+#else // !defined(WITH_COMPILER_LIB)
+  return NULL;
+#endif // !defined(WITH_COMPILER_LIB)
 }
 
 device::Program* Device::createProgram(amd::option::Options* options) {
-  device::Program* program;
-  if (settings().useLightning_) {
-    program = new LightningProgram(*this);
+#if defined(WITH_LIGHTNING_COMPILER)
+  if (!compilerHandle_ || !options->oVariables->Legacy) {
+    return new roc::LightningProgram(*this);
   }
-  else {
-    program = new HSAILProgram(*this);
-  }
-  if (program == nullptr) {
-    LogError("We failed memory allocation for program!");
-  }
-
-  return program;
+#endif // defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_COMPILER_LIB)
+  return new roc::HSAILProgram(*this);
+#endif // defined(WITH_COMPILER_LIB)
 }
 
 hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {
