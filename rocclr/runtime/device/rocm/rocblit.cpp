@@ -353,7 +353,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
        dstMemory.isHostMemDirectAccess())) {
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire);
   } else {
-    return false;
+
     void* src = gpuMem(srcMemory).getDeviceMemory();
     void* dst = gpuMem(dstMemory).getDeviceMemory();
 
@@ -363,33 +363,90 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     const hsa_agent_t dstAgent =
         (dstMemory.isHostMemDirectAccess()) ? dev().getCpuAgent() : dev().getBackendDevice();
 
-    const hsa_signal_value_t kInitVal = size[2] * size[1];
-    hsa_signal_store_relaxed(completion_signal_, kInitVal);
+    bool isSubwindowRectCopy = true;
+    hsa_amd_copy_direction_t direction = hsaHostToHost;
 
-    for (size_t z = 0; z < size[2]; ++z) {
-      for (size_t y = 0; y < size[1]; ++y) {
-        size_t srcOffset = srcRect.offset(0, y, z);
-        size_t dstOffset = dstRect.offset(0, y, z);
+    hsa_agent_t agent = dev().getBackendDevice();
+    //Determine copy direction
+    if (srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess()) {
+      direction = hsaHostToDevice;
+    } else if (!srcMemory.isHostMemDirectAccess() && dstMemory.isHostMemDirectAccess()) {
+      direction = hsaDeviceToHost;
+    } else if (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess()) {
+      direction = hsaDeviceToDevice;
+    }
 
-        // Copy memory line by line
-        hsa_status_t status =
-            hsa_amd_memory_async_copy((reinterpret_cast<address>(dst) + dstOffset), dstAgent,
-                                      (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
-                                      size[0], 0, nullptr, completion_signal_);
-        if (status != HSA_STATUS_SUCCESS) {
-          LogPrintfError("DMA buffer failed with code %d", status);
-          return false;
+    hsa_pitched_ptr_t srcMem = { (reinterpret_cast<address>(src) + srcRect.offset(0, 0, 0)),
+                                srcRect.rowPitch_,
+                                srcRect.slicePitch_ };
+
+    hsa_pitched_ptr_t dstMem = { (reinterpret_cast<address>(dst) + dstRect.offset(0, 0, 0)),
+                                dstRect.rowPitch_,
+                                dstRect.slicePitch_ };
+
+    hsa_dim3_t dim = { static_cast<uint32_t>(size[0]),
+                      static_cast<uint32_t>(size[1]),
+                      static_cast<uint32_t>(size[2]) };
+    hsa_dim3_t offset = { 0, 0 ,0 };
+
+
+    if ((srcRect.rowPitch_ % 4 != 0)     ||
+        (srcRect.slicePitch_ % 4 != 0)    ||
+        (dstRect.rowPitch_ % 4 != 0)     ||
+        (dstRect.slicePitch_ % 4 != 0)) {
+      isSubwindowRectCopy = false;
+    }
+
+    if (isSubwindowRectCopy ) {
+      const hsa_signal_value_t kInitVal = 1;
+      hsa_signal_store_relaxed(completion_signal_, kInitVal);
+
+      // Copy memory line by line
+      hsa_status_t status =
+          hsa_amd_memory_async_copy_rect(&srcMem, &offset, &dstMem, &offset, &dim, agent,
+                                    direction, 0, nullptr, completion_signal_);
+      if (status != HSA_STATUS_SUCCESS) {
+        LogPrintfError("DMA buffer failed with code %d", status);
+        return false;
+      }
+
+
+      hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+                                                      uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
+      if (val != 0) {
+        LogError("Async copy failed");
+        return false;
+      }
+    } else {
+      // Fall to line by line copies
+      const hsa_signal_value_t kInitVal = size[2] * size[1];
+      hsa_signal_store_relaxed(completion_signal_, kInitVal);
+
+      for (size_t z = 0; z < size[2]; ++z) {
+        for (size_t y = 0; y < size[1]; ++y) {
+          size_t srcOffset = srcRect.offset(0, y, z);
+          size_t dstOffset = dstRect.offset(0, y, z);
+
+          // Copy memory line by line
+          hsa_status_t status =
+              hsa_amd_memory_async_copy((reinterpret_cast<address>(dst) + dstOffset), dstAgent,
+                                        (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
+                                        size[0], 0, nullptr, completion_signal_);
+          if (status != HSA_STATUS_SUCCESS) {
+            LogPrintfError("DMA buffer failed with code %d", status);
+            return false;
+          }
         }
+      }
+
+      hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+                                                      uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
+      if (val != 0) {
+        LogError("Async copy failed");
+        return false;
       }
     }
 
-    hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                                     uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
-
-    if (val != 0) {
-      LogError("Async copy failed");
-      return false;
-    }
   }
   return true;
 }
