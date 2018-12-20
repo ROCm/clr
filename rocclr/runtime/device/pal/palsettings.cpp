@@ -439,17 +439,17 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 #endif
   }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-  switch (palProp.gfxLevel) {
-    case Pal::GfxIpLevel::GfxIp10_1:
-    case Pal::GfxIpLevel::GfxIp10:
-    case Pal::GfxIpLevel::GfxIp9:
-      singleFpDenorm_ = true;
-      break;
-    default:
-      break;
+  if (useLightning_) {
+    switch (palProp.gfxLevel) {
+      case Pal::GfxIpLevel::GfxIp10_1:
+      case Pal::GfxIpLevel::GfxIp10:
+      case Pal::GfxIpLevel::GfxIp9:
+        singleFpDenorm_ = true;
+        break;
+      default:
+        break;
+    }
   }
-#endif  // WITH_LIGHTNING_COMPILER
 
   gfx10Hsail_ = gfx10Plus_;
 
