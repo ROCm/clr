@@ -31,7 +31,7 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   get_target_property(lib_file_path ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_DIRECTORY)
   set(bclib "${lib_file_path}/${lib_file_name}.amdgcn.bc")
   set(header "${lib_file_name}.${INC_SUFFIX}")
-  set(symbol "${lib_file_name}_amdgcn")
+  set(symbol "${lib_file_name}_lib")
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${header}
     COMMAND bc2h ${bclib} ${CMAKE_CURRENT_BINARY_DIR}/${header} ${symbol}
     DEPENDS bc2h ${AMDGCN_LIB_TARGET}
@@ -53,8 +53,8 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
   if (${AMDGCN_LIB_TARGET} MATCHES "^oclc_isa_version_[0-9]+_lib$")
     string(REGEX REPLACE "^oclc_isa_version_([0-9]+)_lib$" "\\1" gfxip ${AMDGCN_LIB_TARGET})
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
-      "case ${gfxip}: return std::make_tuple( \"oclc_isa_version_${gfxip}_amdgcn.bc\","
-                "  oclc_isa_version_${gfxip}_amdgcn, oclc_isa_version_${gfxip}_amdgcn_size); break;\n")
+      "case ${gfxip}: return std::make_tuple( \"oclc_isa_version_${gfxip}_lib.bc\","
+                "  oclc_isa_version_${gfxip}_lib, oclc_isa_version_${gfxip}_lib_size); break;\n")
   endif()
 endforeach()
 file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
@@ -66,8 +66,8 @@ foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
     file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc
       "static inline std::tuple<const char*,const void*,size_t>  get_oclc_${function}(bool on)"
                 " { return std::make_tuple(  on ? \"oclc_${function}_on_lib.bc\" : \"oclc_${function}_off_lib.bc\","
-                "  (const void*)(on ? oclc_${function}_on_amdgcn : oclc_${function}_off_amdgcn),"
-                " on ? oclc_${function}_on_amdgcn_size : oclc_${function}_off_amdgcn_size);  }\n")
+                "  (const void*)(on ? oclc_${function}_on_lib : oclc_${function}_off_lib),"
+                " on ? oclc_${function}_on_lib_size : oclc_${function}_off_lib_size);  }\n")
   endif()
 endforeach()
 
@@ -78,7 +78,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch
   COMMENT "Generating opencl1.2-c.amdgcn.pch"
 )
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc
-  COMMAND bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc opencl1_2_c_amdgcn
+  COMMAND bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.inc opencl1_2_c
   DEPENDS bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl1.2-c.amdgcn.pch
   COMMENT "Generating opencl1.2-c.amdgcn.inc"
 )
@@ -92,7 +92,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch
   COMMENT "Generating opencl2.0-c.amdgcn.pch"
 )
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc
-  COMMAND bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc opencl2_0_c_amdgcn
+  COMMAND bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.inc opencl2_0_c
   DEPENDS bc2h ${CMAKE_CURRENT_BINARY_DIR}/opencl2.0-c.amdgcn.pch
   COMMENT "Generating opencl2.0-c.amdgcn.inc"
 )

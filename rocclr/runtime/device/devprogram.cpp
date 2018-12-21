@@ -798,10 +798,10 @@ bool Program::compileImplLC(const std::string& sourceCode,
   case 100:
   case 110:
   case 120:
-    hdr = { opencl1_2_c_amdgcn, opencl1_2_c_amdgcn_size };
+    hdr = { opencl1_2_c, opencl1_2_c_size };
     break;
   case 200:
-    hdr = { opencl2_0_c_amdgcn, opencl2_0_c_amdgcn_size };
+    hdr = { opencl2_0_c, opencl2_0_c_size };
     break;
   default:
     buildLog_ += "Unsupported requested OpenCL C version (-cl-std).\n";
@@ -1479,9 +1479,9 @@ bool Program::linkImplLC(amd::option::Options* options) {
     inputs.push_back(input);  // must be the first input
                               // open the bitcode libraries
     Data* opencl_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_amdgcn, opencl_amdgcn_size);
-    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_amdgcn, ocml_amdgcn_size);
-    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_amdgcn, ockl_amdgcn_size);
+      C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_lib, opencl_lib_size);
+    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_lib, ocml_lib_size);
+    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_lib, ockl_lib_size);
 
     if (!opencl_bc || !ocml_bc || !ockl_bc) {
       buildLog_ += "Error: Failed to open the bitcode library.\n";
