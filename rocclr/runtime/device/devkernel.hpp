@@ -52,7 +52,7 @@ enum class ArgField : uint8_t {
 };
 
 enum class AttrField : uint8_t {
-  ReqWorkGroupSize  = 0,
+  ReqdWorkGroupSize  = 0,
   WorkGroupSizeHint = 1,
   VecTypeHint       = 2,
   RuntimeHandle     = 3
@@ -146,7 +146,7 @@ static const std::map<std::string,AddressSpaceQualifier> ArgAddrSpaceQual =
 
 static const std::map<std::string,AttrField> AttrFieldMap =
 {
-  {"ReqWorkGroupSize",    AttrField::ReqWorkGroupSize},
+  {"ReqdWorkGroupSize",   AttrField::ReqdWorkGroupSize},
   {"WorkGroupSizeHint",   AttrField::WorkGroupSizeHint},
   {"VecTypeHint",         AttrField::VecTypeHint},
   {"RuntimeHandle",       AttrField::RuntimeHandle}
@@ -580,7 +580,7 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
 
   KernelMD* kernelMD = static_cast<KernelMD*>(data);
   switch (itAttrField->second) {
-    case AttrField::ReqWorkGroupSize:
+    case AttrField::ReqdWorkGroupSize:
       {
         status = amd::Comgr::get_metadata_list_size(value, &size);
         if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
