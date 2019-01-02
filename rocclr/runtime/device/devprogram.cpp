@@ -1014,8 +1014,9 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
     }
 
     if (result) {
+      std::string llvmName = "LLVM Binary " + std::to_string(idx);
       result = (addCodeObjData(program->llvmBinary_.data(), program->llvmBinary_.size(),
-                               AMD_COMGR_DATA_KIND_BC, "LLVM Binary " + idx, &inputs) ==
+                               AMD_COMGR_DATA_KIND_BC, llvmName.c_str(), &inputs) ==
                                AMD_COMGR_STATUS_SUCCESS);
     }
 
