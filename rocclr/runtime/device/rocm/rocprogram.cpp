@@ -7,11 +7,11 @@
 
 #include "utils/options.hpp"
 #include "rockernel.hpp"
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include <gelf.h>
 #include "driver/AmdCompiler.h"
 #include "libraries.amdgcn.inc"
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 #include "utils/bif_section_labels.hpp"
 #include "amd_hsa_kernel_code.h"
@@ -313,7 +313,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 }
 #endif // defined(WITH_COMPILER_LIB)
 
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 LightningProgram::LightningProgram(roc::NullDevice& device)
   : roc::Program(device) {
   isLC_ = true;
@@ -491,7 +491,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   return true;
 }
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 }  // namespace roc
 

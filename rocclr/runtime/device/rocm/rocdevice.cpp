@@ -19,9 +19,9 @@
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "driver/AmdCompiler.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #ifdef WITH_AMDGPU_PRO
@@ -644,10 +644,11 @@ bool Device::create() {
 
   const char* scheduler = nullptr;
 
-#if defined(WITH_LIGHTNING_COMPILER)
-  std::string sch = SchedulerSourceCode;
-  scheduler = sch.c_str();
-
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+  if (settings().useLightning_) {
+    std::string sch = SchedulerSourceCode;
+    scheduler = sch.c_str();
+  }
   //  create compilation object with cache support
   int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
   int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
@@ -744,22 +745,33 @@ bool Device::create() {
 }
 
 device::Program* NullDevice::createProgram(amd::option::Options* options) {
-#if defined(WITH_COMPILER_LIB)
-  return new roc::HSAILProgram(*this);
-#else // !defined(WITH_COMPILER_LIB)
-  return NULL;
-#endif // !defined(WITH_COMPILER_LIB)
+  device::Program* program;
+  if (settings().useLightning_) {
+    program = new LightningProgram(*this);
+  } else {
+    program = new HSAILProgram(*this);
+  }
+
+  if (program == nullptr) {
+    LogError("Memory allocation has failed!");
+  }
+
+  return program;
 }
 
 device::Program* Device::createProgram(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER)
-  if (!compilerHandle_ || !options->oVariables->Legacy) {
-    return new roc::LightningProgram(*this);
+  device::Program* program;
+  if (settings().useLightning_) {
+    program = new LightningProgram(*this);
+  } else {
+    program = new HSAILProgram(*this);
   }
-#endif // defined(WITH_LIGHTNING_COMPILER)
-#if defined(WITH_COMPILER_LIB)
-  return new roc::HSAILProgram(*this);
-#endif // defined(WITH_COMPILER_LIB)
+
+  if (program == nullptr) {
+    LogError("Memory allocation has failed!");
+  }
+
+  return program;
 }
 
 hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {

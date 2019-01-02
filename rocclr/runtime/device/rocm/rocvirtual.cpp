@@ -347,9 +347,9 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
                  "Unsupported address qualifier");
 
           const bool readOnly =
-#if defined(WITH_LIGHTNING_COMPILER)
+#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
           desc.typeQualifier_ == CL_KERNEL_ARG_TYPE_CONST ||
-#endif // defined(WITH_LIGHTNING_COMPILER)
+#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
             (mem->getMemFlags() & CL_MEM_READ_ONLY) != 0;
 
           if (!readOnly) {
