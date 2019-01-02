@@ -314,13 +314,6 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 #endif // defined(WITH_COMPILER_LIB)
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-LightningProgram::LightningProgram(roc::NullDevice& device)
-  : roc::Program(device) {
-  isLC_ = true;
-  xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
-  machineTarget_ = dev().deviceInfo().machineTargetLC_;
-}
-
 bool LightningProgram::createBinary(amd::option::Options* options) {
   if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
     LogError("Failed to create ELF binary image!");

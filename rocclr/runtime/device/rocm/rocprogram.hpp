@@ -80,7 +80,12 @@ private:
 
 class LightningProgram : public roc::Program {
 public:
-  LightningProgram(roc::NullDevice& device);
+  LightningProgram(roc::NullDevice& device)
+    : roc::Program(device) {
+    isLC_ = true;
+    xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
+    machineTarget_ = dev().deviceInfo().machineTargetLC_;
+  }
   virtual ~LightningProgram() {}
 
 protected:
