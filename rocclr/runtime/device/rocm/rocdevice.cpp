@@ -645,8 +645,8 @@ bool Device::create() {
   const char* scheduler = nullptr;
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+  std::string sch = SchedulerSourceCode;
   if (settings().useLightning_) {
-    std::string sch = SchedulerSourceCode;
     scheduler = sch.c_str();
   }
   //  create compilation object with cache support
