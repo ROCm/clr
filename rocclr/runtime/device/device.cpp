@@ -148,17 +148,19 @@ bool Device::init() {
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-  // Return value of roc::Device::init()
-  // If returned false, error initializing HSA stack.
-  // If returned true, either HSA not installed or HSA stack
-  //                   successfully initialized.
-  if (!roc::Device::init()) {
-    // abort() commentted because this is the only indication
-    // that KFD is not installed.
-    // Ignore the failure and assume KFD is not installed.
-    // abort();
+  if (GPU_ENABLE_PAL != 1) {
+    // Return value of roc::Device::init()
+    // If returned false, error initializing HSA stack.
+    // If returned true, either HSA not installed or HSA stack
+    //                   successfully initialized.
+    if (!roc::Device::init()) {
+      // abort() commentted because this is the only indication
+      // that KFD is not installed.
+      // Ignore the failure and assume KFD is not installed.
+      // abort();
+    }
+    ret |= roc::NullDevice::init();
   }
-  ret |= roc::NullDevice::init();
 #endif  // WITH_HSA_DEVICE
 #if defined(WITH_GPU_DEVICE)
   if (GPU_ENABLE_PAL != 1) {
