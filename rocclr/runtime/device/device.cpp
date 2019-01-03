@@ -148,7 +148,8 @@ bool Device::init() {
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-  if (GPU_ENABLE_PAL != 1) {
+  // @todo remove IS_LIGHTNING check when PAL-LC builds will be deprecated 
+  if ((GPU_ENABLE_PAL != 1) || IS_LIGHTNING) {
     // Return value of roc::Device::init()
     // If returned false, error initializing HSA stack.
     // If returned true, either HSA not installed or HSA stack
