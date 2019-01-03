@@ -68,7 +68,7 @@ class HSAILProgram : public roc::Program {
   virtual ~HSAILProgram();
 
  protected:
-  virtual bool createBinary(amd::option::Options* options) final;
+  virtual bool createBinary(amd::option::Options* options) { return true; }
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
@@ -80,12 +80,7 @@ private:
 
 class LightningProgram : public roc::Program {
 public:
-  LightningProgram(roc::NullDevice& device)
-    : roc::Program(device) {
-    isLC_ = true;
-    xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
-    machineTarget_ = dev().deviceInfo().machineTargetLC_;
-  }
+  LightningProgram(roc::NullDevice& device);
   virtual ~LightningProgram() {}
 
 protected:
