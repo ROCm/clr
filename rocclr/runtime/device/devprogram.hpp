@@ -115,6 +115,7 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t* metadata_;   //!< COMgr metadata
+  std::map<std::string,amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
 #else
   CodeObjectMD* metadata_;  //!< Runtime metadata
 #endif
@@ -201,6 +202,12 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   const amd_comgr_metadata_node_t* metadata() const { return metadata_; }
+
+  //! Get the kernel metadata
+  const amd_comgr_metadata_node_t* getKernelMetadata(const std::string name) const {
+    auto it = kernelMetadataMap_.find(name);
+    return (it == kernelMetadataMap_.end()) ? nullptr : &(it->second);
+  }
 #else
   const CodeObjectMD* metadata() const { return metadata_; }
 #endif
@@ -347,6 +354,9 @@ class Program : public amd::HeapObject {
   bool compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
     const std::string& options, amd::option::Options* amdOptions,
     char* executable[], size_t* executableSize);
+
+  //! Create the map for the kernel name and its metadata for fast access
+  bool createKernelMetadataMap();
 #endif
 
   //! Disable default copy constructor
