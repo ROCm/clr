@@ -72,6 +72,11 @@ Program::Program(amd::Device& device)
 // ================================================================================================
 Program::~Program() {
   clear();
+#if defined(USE_COMGR_LIBRARY)
+  for (auto const& kernelMeta : kernelMetadataMap_) {
+    amd::Comgr::destroy_metadata(kernelMeta.second);
+  }
+#endif
   delete metadata_;
 }
 
@@ -2699,6 +2704,66 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 }
 
 // ================================================================================================
+#if defined(USE_COMGR_LIBRARY)
+bool Program::createKernelMetadataMap() {
+
+  amd_comgr_status_t status;
+  amd_comgr_metadata_node_t kernelsMD;
+  bool hasKernelMD = false;
+  size_t size = 0;
+
+  status = amd::Comgr::metadata_lookup(*metadata_, "Kernels", &kernelsMD);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    hasKernelMD = true;
+    status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
+  }
+
+  for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
+    amd_comgr_metadata_node_t nameMeta;
+    bool hasNameMeta = false;
+    bool hasKernelNode = false;
+
+    amd_comgr_metadata_node_t kernelNode;
+
+    std::string kernelName;
+    status = amd::Comgr::index_list_metadata(kernelsMD, i, &kernelNode);
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hasKernelNode = true;
+      status = amd::Comgr::metadata_lookup(kernelNode, "Name", &nameMeta);
+    }
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hasNameMeta = true;
+      status  = getMetaBuf(nameMeta, &kernelName);
+    }
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      kernelMetadataMap_[kernelName] = kernelNode;
+    }
+    else {
+      if (hasKernelNode) {
+        amd::Comgr::destroy_metadata(kernelNode);
+      }
+      for (auto const& kernelMeta : kernelMetadataMap_) {
+        amd::Comgr::destroy_metadata(kernelMeta.second);
+      }
+      kernelMetadataMap_.clear();
+    }
+
+    if (hasNameMeta) {
+      amd::Comgr::destroy_metadata(nameMeta);
+    }
+  }
+
+  if (hasKernelMD) {
+    amd::Comgr::destroy_metadata(kernelsMD);
+  }
+
+  return (status == AMD_COMGR_STATUS_SUCCESS);
+}
+#endif
+
 bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   size_t progvarsTotalSize = 0;
@@ -2800,6 +2865,14 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
       "Error: runtime metadata section not present in ELF program binary\n";
     return false;
   }
+
+#if defined(USE_COMGR_LIBRARY)
+  if (!createKernelMetadataMap()) {
+    buildLog_ +=
+      "Error: create kernel metadata map using COMgr\n";
+    return false;
+  }
+#endif
 
   progvarsTotalSize -= dynamicSize;
   setGlobalVariableTotalSize(progvarsTotalSize);

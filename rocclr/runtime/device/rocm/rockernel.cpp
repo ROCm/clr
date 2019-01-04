@@ -37,11 +37,14 @@ bool LightningKernel::init() {
 
   hsa_agent_t hsaDevice = program_->hsaDevice();
 
-  const amd_comgr_metadata_node_t* programMD = static_cast<LightningProgram*>(program_)->metadata();
-  assert(programMD != nullptr);
+  const amd_comgr_metadata_node_t* kernelMetaNode =
+              static_cast<LightningProgram*>(program_)->getKernelMetadata(name());
+  if (kernelMetaNode == nullptr) {
+    return false;
+  }
 
   KernelMD  kernelMD;
-  if (!GetAttrCodePropMetadata(*programMD, KernargSegmentByteSize(), &kernelMD)) {
+  if (!GetAttrCodePropMetadata(*kernelMetaNode, KernargSegmentByteSize(), &kernelMD)) {
     return false;
   }
 
@@ -127,6 +130,9 @@ bool LightningKernel::init() {
   }
 
   // handle the printf metadata if any
+  const amd_comgr_metadata_node_t* programMD = static_cast<LightningProgram*>(program_)->metadata();
+  assert(programMD != nullptr);
+
   std::vector<std::string> printfStr;
   if (!GetPrintfStr(*programMD, &printfStr)) {
     return false;

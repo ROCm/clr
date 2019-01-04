@@ -771,16 +771,11 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 // ================================================================================================
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #if defined(USE_COMGR_LIBRARY)
-bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
+bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode,
                                      const uint32_t kernargSegmentByteSize,
                                      KernelMD* kernelMD) {
 
-  amd_comgr_metadata_node_t kernelMeta = {0};
-  if (!GetKernelMetadata(programMD, name(), &kernelMeta)) {
-    return false;
-  }
-
-  InitParameters(kernelMeta, kernargSegmentByteSize);
+  InitParameters(kernelMetaNode, kernargSegmentByteSize);
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
@@ -791,7 +786,7 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
   // extract the attribute metadata if there is any
   amd_comgr_metadata_node_t attrMeta;
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
-  if (amd::Comgr::metadata_lookup(kernelMeta, "Attrs", &attrMeta) == AMD_COMGR_STATUS_SUCCESS) {
+  if (amd::Comgr::metadata_lookup(kernelMetaNode, "Attrs", &attrMeta) == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::iterate_map_metadata(attrMeta, device::populateAttrs,
                                             static_cast<void*>(kernelMD));
     amd::Comgr::destroy_metadata(attrMeta);
@@ -800,7 +795,7 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
   // extract the code properties metadata
   amd_comgr_metadata_node_t codePropsMeta;
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::metadata_lookup(kernelMeta, "CodeProps", &codePropsMeta);
+    status = amd::Comgr::metadata_lookup(kernelMetaNode, "CodeProps", &codePropsMeta);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -808,8 +803,6 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
                                             static_cast<void*>(kernelMD));
     amd::Comgr::destroy_metadata(codePropsMeta);
   }
-
-  amd::Comgr::destroy_metadata(kernelMeta);
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return false;
@@ -835,61 +828,6 @@ bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
   }
 
   return true;
-}
-
-bool Kernel::GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
-                               const std::string& name,
-                               amd_comgr_metadata_node_t* kernelNode) {
-  amd_comgr_status_t status;
-  amd_comgr_metadata_node_t kernelsMD;
-  bool hasKernelMD = false;
-  size_t size = 0;
-
-  status = amd::Comgr::metadata_lookup(programMD, "Kernels", &kernelsMD);
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hasKernelMD = true;
-    status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
-  }
-
-  bool kernelFound = false;
-  for (size_t i = 0; i < size && !kernelFound && status == AMD_COMGR_STATUS_SUCCESS; i++) {
-    std::string kernelName;
-
-    amd_comgr_metadata_node_t nameMeta;
-    bool hasNameMeta = false;
-    bool hasKernelNode = false;
-
-    status = amd::Comgr::index_list_metadata(kernelsMD, i, kernelNode);
-
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      hasKernelNode = true;
-      status = amd::Comgr::metadata_lookup(*kernelNode, "Name", &nameMeta);
-    }
-
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      hasNameMeta = true;
-      status  = getMetaBuf(nameMeta, &kernelName);
-    }
-
-    if ((status == AMD_COMGR_STATUS_SUCCESS) && (name.compare(kernelName) == 0)) {
-      kernelFound = true;
-    }
-    else {
-      if (hasKernelNode) {
-        amd::Comgr::destroy_metadata(*kernelNode);
-      }
-    }
-
-    if (hasNameMeta) {
-      amd::Comgr::destroy_metadata(nameMeta);
-    }
-  }
-
-  if (hasKernelMD) {
-    amd::Comgr::destroy_metadata(kernelsMD);
-  }
-
-  return kernelFound;
 }
 
 bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {

@@ -396,11 +396,13 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
   aqlCreateHWInfo(symbol);
 
 #if defined(USE_COMGR_LIBRARY)
-  const amd_comgr_metadata_node_t* programMD = prog().metadata();
-  assert(programMD != nullptr);
+  const amd_comgr_metadata_node_t* kernelMetaNode = prog().getKernelMetadata(name());
+  if (kernelMetaNode == nullptr) {
+    return false;
+  }
 
   KernelMD  kernelMD;
-  if (!GetAttrCodePropMetadata(*programMD, argsBufferSize(), &kernelMD)) {
+  if (!GetAttrCodePropMetadata(*kernelMetaNode, argsBufferSize(), &kernelMD)) {
     return false;
   }
 
@@ -439,6 +441,9 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
   }
 
   // handle the printf metadata if any
+  const amd_comgr_metadata_node_t* programMD = prog().metadata();
+  assert(programMD != nullptr);
+
   std::vector<std::string> printfStr;
   if (!GetPrintfStr(*programMD, &printfStr)) {
     return false;

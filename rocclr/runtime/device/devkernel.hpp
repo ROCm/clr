@@ -380,7 +380,7 @@ class Kernel : public amd::HeapObject {
                          amd_comgr_metadata_node_t* kernelNode);
 
   //! Retrieve kernel attribute and code properties metadata
-  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t programMD,
+  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode,
                                const uint32_t kernargSegmentByteSize,
                                KernelMD* kernelMD);
 
