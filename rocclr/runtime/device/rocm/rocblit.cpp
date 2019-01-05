@@ -403,7 +403,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
 
       // Copy memory line by line
       hsa_status_t status =
-          hsa_amd_memory_async_copy_rect(&srcMem, &offset, &dstMem, &offset, &dim, agent,
+          hsa_amd_memory_async_copy_rect(&dstMem, &offset, &srcMem, &offset, &dim, agent,
                                     direction, 0, nullptr, completion_signal_);
       if (status != HSA_STATUS_SUCCESS) {
         LogPrintfError("DMA buffer failed with code %d", status);
