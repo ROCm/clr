@@ -140,6 +140,10 @@ Settings::Settings() {
 
   maxCmdBuffers_ = 12;
   useLightning_ = GPU_ENABLE_LC;
+  enableWgpMode_ = false;
+  enableWave32Mode_ = false;
+  hsailExplicitXnack_ = false;
+  lcWavefrontSize64_ = false;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -185,7 +189,15 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
-    // Fall through to AI (gfx9) ...
+      hsailExplicitXnack_ = static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled
+        || palProp.gpuMemoryProperties.flags.iommuv2Support);
+      enableWgpMode_ = GPU_ENABLE_WGP_MODE || !useLightning_;
+      enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
+      if (palProp.revision == Pal::AsicRevision::Navi10Lite && useLightning_) {
+        enableWave32Mode_ = false;
+      }
+      lcWavefrontSize64_ = !enableWave32Mode_;
+      // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
     case Pal::AsicRevision::Vega12:
     case Pal::AsicRevision::Vega10:
@@ -450,8 +462,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         break;
     }
   }
-
-  gfx10Hsail_ = gfx10Plus_;
 
   // Override current device settings
   override();
