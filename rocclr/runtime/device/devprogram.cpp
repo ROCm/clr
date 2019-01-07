@@ -604,6 +604,14 @@ bool Program::compileImplLC(const std::string& sourceCode,
   // Set whole program mode
   driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
 
+  if (!device().settings().enableWgpMode_) {
+    driverOptions.append(" -mcumode");
+  }
+
+  if (device().settings().lcWavefrontSize64_) {
+    driverOptions.append(" -mwavefrontsize64");
+  }
+
   // Iterate through each source code and dump it into tmp
   std::fstream f;
   std::vector<std::string> headerFileNames(headers.size());
@@ -1405,6 +1413,14 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
+  if (!device().settings().enableWgpMode_) {
+    codegenOptions.append(" -mcumode");
+  }
+
+  if (device().settings().lcWavefrontSize64_) {
+    codegenOptions.append(" -mwavefrontsize64");
+  }
+
   // NOTE: The params is also used to identy cached code object. This parameter
   //       should not contain any dyanamically generated filename.
   char* executable = nullptr;
@@ -1615,6 +1631,14 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
+  if (!device().settings().enableWgpMode_) {
+    codegenOptions.append(" -mcumode");
+  }
+
+  if (device().settings().lcWavefrontSize64_) {
+    codegenOptions.append(" -mwavefrontsize64");
+  }
+
   // Tokenize the options string into a vector of strings
   std::istringstream strstr(codegenOptions);
   std::istream_iterator<std::string> sit(strstr), end;
@@ -1724,14 +1748,14 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
     if (device().isFineGrainedSystem(true)) {
       fin_options.append(" -sc-xnack-iommu");
     }
-    if (device().settings().gfx10Hsail_) {
-      if (GPU_FORCE_WAVE_SIZE_32) {
-        fin_options.append(" -force-wave-size-32");
-      }
-      if (xnackEnabled_) {
-        fin_options.append(" -xnack");
-      }
-    }
+
+  if (device().settings().enableWave32Mode_) {
+    fin_options.append(" -force-wave-size-32");
+  }
+
+  if (device().settings().hsailExplicitXnack_) {
+    fin_options.append(" -xnack");
+  }
 
     errorCode = aclCompile(device().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
       ACL_TYPE_ISA, logFunction);

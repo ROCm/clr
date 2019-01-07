@@ -169,8 +169,8 @@ release_on_stg(bool, PAL_DISABLE_SDMA, false,                                 \
         "1 = Disable SDMA for PAL")                                           \
 release(uint, PAL_RGP_DISP_COUNT, 50,                                         \
         "The number of dispatches for RGP capture with SQTT")                 \
-release(bool, GPU_FORCE_WAVE_SIZE_32, false,                                  \
-        "Forces WaveSize32 compilation in SC")                                \
+release(bool, GPU_ENABLE_WAVE32_MODE, true,                                   \
+        "Enables Wave32 compilation in HW if available")                                         \
 release(bool, GPU_ENABLE_LC, IS_LIGHTNING,                                    \
         "Enables LC path")                                                    \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
@@ -179,6 +179,8 @@ release(cstring, HIP_VISIBLE_DEVICES, "",                                       
         "Only devices whose index is present in the sequence are visible to HIP")    \
 release(cstring, CUDA_VISIBLE_DEVICES, "",                                            \
         "Only devices whose index is present in the sequence are visible to HIP")    \
+release(bool, GPU_ENABLE_WGP_MODE, true,                                  \
+        "Enables WGP Mode in HW if available")                                      \
 
 namespace amd {
 
