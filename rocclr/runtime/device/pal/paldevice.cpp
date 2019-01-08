@@ -469,7 +469,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   if (settings().use64BitPtr_) {
     info_.addressBits_ = 64;
   } else {
-    info_.addressBits_ = 32;
+    info_.addressBits_ = (settings().useLightning_) ? 64 : 32;
     // Limit total size with 3GB for 32 bit
     info_.globalMemSize_ = std::min(info_.globalMemSize_, cl_ulong(3 * Gi));
   }
