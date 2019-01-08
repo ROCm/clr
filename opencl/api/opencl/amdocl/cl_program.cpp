@@ -1562,8 +1562,10 @@ RUNTIME_ENTRY(cl_int, clSetKernelArg,
     }
   }
   if ((!is_local && (arg_size != desc.size_)) || (is_local && (arg_size == 0))) {
-    as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
-    return CL_INVALID_ARG_SIZE;
+    if (LP64_ONLY(true ||) (desc.type_ != T_POINTER) || (arg_size != sizeof(void*))) {
+      as_amd(kernel)->parameters().reset(static_cast<size_t>(arg_index));
+      return CL_INVALID_ARG_SIZE;
+    }
   }
 
   as_amd(kernel)->parameters().set(static_cast<size_t>(arg_index), arg_size, arg_value);
