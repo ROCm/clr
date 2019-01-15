@@ -926,7 +926,30 @@ bool Device::populateOCLDeviceConstants() {
 
   assert(group_segment_.handle != 0);
 
+  bool pcie_gen3_atomics_supported = false;
+
   for (auto agent: gpu_agents_) {
+    hsa_amd_memory_pool_link_info_t link_info={0};
+    hsa_amd_memory_pool_access_t access;
+
+    if (HSA_STATUS_SUCCESS != hsa_amd_agent_memory_pool_get_info(agent,
+                                                                 system_segment_,
+                                                                 HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO,
+                                                                 &link_info)) {
+      continue;
+    }
+
+    if (HSA_STATUS_SUCCESS != hsa_amd_agent_memory_pool_get_info(agent,
+                                                                 system_segment_,
+                                                                 HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
+                                                                 &access)) {
+      continue;
+    }
+
+    if (link_info.atomic_support_64bit && link_info.atomic_support_32bit && (access > 0)) {
+      pcie_gen3_atomics_supported = true;
+    }
+
     if (agent.handle != _bkendDevice.handle) {
       hsa_status_t err;
       // Can current GPU have access to another GPU memory pool
@@ -1076,11 +1099,8 @@ bool Device::populateOCLDeviceConstants() {
 
   strcpy(info_.driverVersion_, ss.str().c_str());
 
-  // Allow testing OpenCL 2.1 features with the OPENCL_VERSION variable. We don't accept OPENCL_VERSION
-  // values other than 210, since the default value of OPENCL_VERSION is 200. Accepting 200 would report
-  // 'OpenCL 2.0' by default.
-  if (OPENCL_VERSION == 210) {
-    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.1" " ";
+  if (pcie_gen3_atomics_supported) {
+    info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
   } else {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
   }
