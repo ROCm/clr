@@ -1007,6 +1007,10 @@ CALGSLDevice::resAllocView(gslMemObject res, gslResource3D size, size_t offset, 
     {
         return 0; //offset doesn't match alignment requirements.
     }
+    if (attribs.bytePitch == (uint64)-1)
+    {
+        attribs.bytePitch = resPitch * elementSize;
+    }
 
     // alias has same location as the base resource.
     attribs.type         = res->getAttribs().type;
