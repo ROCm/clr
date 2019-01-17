@@ -66,10 +66,8 @@ struct SchedulerParam {
   uint64_t        vqueue_header;
   uint32_t        signal;                   //!< Signal to stop the child queue
   uint32_t        eng_clk;                  //!< Engine clock in Mhz
-  uint32_t        releaseHostCP;            //!< Releases CP on the host queue
   uint64_t        parentAQL;                //!< Host parent AmdAqlWrap packet
-  uint32_t        dedicatedQueue;           //!< Scheduler uses a dedicated queue
-  uint32_t        reserved[2];              //!< Processed mask groups by one thread
+  uint64_t        write_index;              //!< Write Index to the child queue
 };
 
 }
