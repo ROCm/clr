@@ -2214,6 +2214,9 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   sp->parentAQL = sp->kernarg_address + sizeof(SchedulerParam);
   sp->eng_clk = (1000 * 1024) / dev().info().maxEngineClockFrequency_;
 
+  // Use a device side global atomics to workaround the reliance of PCIe 3 atomics
+  sp->write_index = hsa_queue_load_write_index_relaxed(schedulerQueue);
+
   cl_mem mem = as_cl<amd::Memory>(schedulerParam);
   setArgument(kernels_[Scheduler], 0, sizeof(cl_mem), &mem);
 
