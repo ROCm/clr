@@ -393,6 +393,13 @@ static const MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X10Y10Z10W2_Unorm,
      {Pal::ChannelSwizzle::Z, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::One}},
+    // RGBA
+    // Note: special case for GL interops, OCL spec doesn't support 101010 format
+    // for GL interop and GL uses real RGB channel order
+    {{CL_RGBA, CL_UNORM_INT_101010},
+     Pal::ChNumFormat::X10Y10Z10W2_Unorm,
+     {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Z,
+      Pal::ChannelSwizzle::One}},
 
     // RGBA
     {{CL_RGBA, CL_UNORM_INT8},
