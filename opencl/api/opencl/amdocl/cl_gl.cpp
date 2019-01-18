@@ -995,7 +995,7 @@ bool getCLFormatFromGL(const Context& amdContext, GLint gliInternalFormat,
   switch (gliInternalFormat) {
     case GL_RGB10_EXT:
     case GL_RGB10_A2:
-      pclImageFormat->image_channel_order = CL_RGB;
+      pclImageFormat->image_channel_order = CL_RGBA;
       pclImageFormat->image_channel_data_type = CL_UNORM_INT_101010;
       *piBytesPerPixel = 4;
       bRetVal = true;
