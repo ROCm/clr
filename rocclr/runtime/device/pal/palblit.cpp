@@ -1569,10 +1569,18 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
 
   // Program source origin
   cl_int srcOrg[4] = {(cl_int)srcOrigin[0], (cl_int)srcOrigin[1], (cl_int)srcOrigin[2], 0};
+  if ((gpuMem(srcMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
+    dev().settings().gfx10Plus_) {
+    srcOrg[3] = 1;
+  }
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
   // Program destinaiton origin
   cl_int dstOrg[4] = {(cl_int)dstOrigin[0], (cl_int)dstOrigin[1], (cl_int)dstOrigin[2], 0};
+  if ((gpuMem(dstMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
+    dev().settings().gfx10Plus_) {
+    dstOrg[3] = 1;
+  }
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
 
   cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
