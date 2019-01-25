@@ -1,5 +1,5 @@
 include(bc2h)
-
+1;95;0c
 set(INC_SUFFIX "amdgcn.inc")
 
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
@@ -27,9 +27,10 @@ set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/libraries.amdgcn.inc "// Automatically generated file; DO NOT EDIT.\n")
 
 foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
+  get_target_property(lib_file ${AMDGCN_LIB_TARGET} OUTPUT_NAME)
   get_target_property(lib_file_name ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_NAME)
   get_target_property(lib_file_path ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_DIRECTORY)
-  set(bclib "${lib_file_path}/${lib_file_name}.amdgcn.bc")
+  set(bclib "${lib_file}")
   set(header "${lib_file_name}.${INC_SUFFIX}")
   set(symbol "${lib_file_name}_lib")
   add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${header}
