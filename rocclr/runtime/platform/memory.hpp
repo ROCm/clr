@@ -253,6 +253,10 @@ class Memory : public amd::RuntimeObject {
                        bool forceCopy = false  //!< Force system memory allocation
                        );
 
+  virtual void IpcCreate (size_t offset, size_t* mem_size, void* handle) const {
+    ShouldNotReachHere();
+  }
+
   // Accessors
   Memory* parent() const { return parent_; }
   bool isParent() const { return isParent_; }

@@ -91,6 +91,8 @@ class Memory : public device::Memory {
 
   void* PersistentHostPtr() const { return persistent_host_ptr_; }
 
+  virtual void IpcCreate (size_t offset, size_t* mem_size, void* handle) const;
+
  protected:
   bool allocateMapMemory(size_t allocationSize);
 
