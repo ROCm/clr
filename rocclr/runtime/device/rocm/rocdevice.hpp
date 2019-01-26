@@ -381,6 +381,9 @@ class Device : public NullDevice {
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
 
+  virtual amd::Memory* IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const;
+  virtual void IpcDetach (amd::Memory& memory) const;
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 

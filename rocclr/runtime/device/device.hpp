@@ -728,6 +728,10 @@ class Memory : public amd::HeapObject {
 
   virtual uint64_t virtualAddress() const { return 0; }
 
+  virtual void IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
+    ShouldNotReachHere();
+  }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -1317,6 +1321,15 @@ class Device : public RuntimeObject {
 
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
+
+  virtual amd::Memory *IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+
+  virtual void IpcDetach(amd::Memory& memory) const {
+    ShouldNotReachHere();
+  }
 
  protected:
   //! Enable the specified extension
