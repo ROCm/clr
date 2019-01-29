@@ -1226,6 +1226,14 @@ bool Device::populateOCLDeviceConstants() {
         hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.vramBusBitWidth_)) {
       return false;
     }
+
+    uint32_t max_waves_per_cu;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU, &max_waves_per_cu)) {
+      return false;
+    }
+
+    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * max_waves_per_cu;
     uint32_t cache_sizes[4];
     /* FIXIT [skudchad] -  Seems like hardcoded in HSA backend so 0*/
     if (HSA_STATUS_SUCCESS !=
