@@ -585,6 +585,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
     info_.pcieDeviceId_ = calAttr.pcieDeviceID;
     info_.pcieRevisionId_ = calAttr.pcieRevisionID;
+    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * hwInfo()->simdPerCU_ * 10;
   }
 }
 

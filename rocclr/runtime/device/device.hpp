@@ -500,6 +500,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t pcieDeviceId_;
   //! Revision ID
   uint32_t pcieRevisionId_;
+
+  //! Max numbers of threads per CU
+  cl_uint maxThreadsPerCU_;
 };
 
 //! Device settings

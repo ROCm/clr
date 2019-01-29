@@ -356,7 +356,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     palProp.gfxipProperties.shaderCore.numAvailableCus / 2 :
     palProp.gfxipProperties.shaderCore.numAvailableCus;
 
-
   info_.numberOfShaderEngines = palProp.gfxipProperties.shaderCore.numShaderEngines;
 
   // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.
@@ -636,6 +635,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
     info_.pcieDeviceId_ = palProp.deviceId;
     info_.pcieRevisionId_ = palProp.revisionId;
+    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * hwInfo()->simdPerCU_ *
+                             palProp.gfxipProperties.shaderCore.numWavefrontsPerSimd;
   }
 }
 
