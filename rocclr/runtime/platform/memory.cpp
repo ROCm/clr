@@ -1044,6 +1044,8 @@ cl_uint Image::getSupportedFormats(const Context& context, cl_mem_object_type im
 
 bool Image::Format::isSupported(const Context& context, cl_mem_object_type image_type,
                                 cl_mem_flags flags) const {
+  const cl_image_format RGBA10 = {CL_RGBA, CL_UNORM_INT_101010};
+
   uint numFormats = numSupportedFormats(context, image_type, flags);
 
   std::vector<cl_image_format> image_formats(numFormats);
@@ -1054,6 +1056,9 @@ bool Image::Format::isSupported(const Context& context, cl_mem_object_type image
     if (*this == image_formats[i]) {
       return true;
     }
+  }
+  if (*this == RGBA10) {
+      return true;
   }
 
   return false;
