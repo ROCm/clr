@@ -187,21 +187,21 @@ enum gfx_handle {
   gfx1010 = 1010
 };
 
-static const char* Gfx700 = "AMD:AMDGPU:7:0:0";
-static const char* Gfx701 = "AMD:AMDGPU:7:0:1";
-static const char* Gfx800 = "AMD:AMDGPU:8:0:0";
-static const char* Gfx801 = "AMD:AMDGPU:8:0:1";
-static const char* Gfx804 = "AMD:AMDGPU:8:0:4";
-static const char* Gfx810 = "AMD:AMDGPU:8:1:0";
-static const char* Gfx900 = "AMD:AMDGPU:9:0:0";
-static const char* Gfx901 = "AMD:AMDGPU:9:0:1";
-static const char* Gfx902 = "AMD:AMDGPU:9:0:2";
-static const char* Gfx903 = "AMD:AMDGPU:9:0:3";
-static const char* Gfx904 = "AMD:AMDGPU:9:0:4";
-static const char* Gfx905 = "AMD:AMDGPU:9:0:5";
-static const char* Gfx906 = "AMD:AMDGPU:9:0:6";
-static const char* Gfx907 = "AMD:AMDGPU:9:0:7";
-static const char* Gfx1010 = "AMD:AMDGPU:10:1:0";
+static const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
+static const char* Gfx701 = "amdgcn-amd-amdhsa--gfx701";
+static const char* Gfx800 = "amdgcn-amd-amdhsa--gfx800";
+static const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801";
+static const char* Gfx804 = "amdgcn-amd-amdhsa--gfx804";
+static const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810";
+static const char* Gfx900 = "amdgcn-amd-amdhsa--gfx900";
+static const char* Gfx901 = "amdgcn-amd-amdhsa--gfx901";
+static const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902";
+static const char* Gfx903 = "amdgcn-amd-amdhsa--gfx902";  // NOTE: gfx903 is gfx902 with xnack
+static const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
+static const char* Gfx905 = "amdgcn-amd-amdhsa--gfx905";
+static const char* Gfx906 = "amdgcn-amd-amdhsa--gfx906";
+static const char* Gfx907 = "amdgcn-amd-amdhsa--gfx907";
+static const char* Gfx1010 = "amdgcn-amd-amdhsa--gfx1010";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
