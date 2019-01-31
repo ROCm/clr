@@ -111,7 +111,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
   switch (reason) {
     case DLL_PROCESS_ATTACH:
 #ifdef DEBUG
-      if (!AMD_OCL_ENABLE_MESSAGE_BOX) {
+      if (!::getenv("AMD_OCL_ENABLE_MESSAGE_BOX")) {
         _CrtSetReportHook(reportHook);
         _set_error_mode(_OUT_TO_STDERR);
       }

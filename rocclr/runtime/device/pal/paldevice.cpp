@@ -1213,16 +1213,6 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
   }
 }
 
-#if defined(_WIN32) && defined(DEBUG)
-#include <cstdio>
-#include <crtdbg.h>
-static int reportHook(int reportType, char* message, int* returnValue) {
-  fprintf(stderr, "%s", message);
-  ::exit(3);
-  return 1;
-}
-#endif  // _WIN32 & DEBUG
-
 bool Device::init() {
   uint32_t numDevices = 0;
   bool useDeviceList = false;

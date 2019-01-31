@@ -1188,16 +1188,6 @@ static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
   }
 }
 
-#if defined(_WIN32) && defined(DEBUG)
-#include <cstdio>
-#include <crtdbg.h>
-static int reportHook(int reportType, char* message, int* returnValue) {
-  fprintf(stderr, "%s", message);
-  ::exit(3);
-  return 1;
-}
-#endif  // _WIN32 & DEBUG
-
 bool Device::init() {
   CALuint numDevices = 0;
   bool useDeviceList = false;
@@ -1216,13 +1206,6 @@ bool Device::init() {
 #if defined(_WIN32)
 // osAssertSetStyle(OSASSERT_STYLE_LOGANDEXIT);
 #endif  // WIN32
-
-#if defined(_WIN32) && defined(DEBUG)
-  if (::getenv("AMD_OCL_SUPPRESS_MESSAGE_BOX")) {
-    _CrtSetReportHook(reportHook);
-    _set_error_mode(_OUT_TO_STDERR);
-  }
-#endif  // _WIN32 & DEBUG
 
   gslInit();
 
