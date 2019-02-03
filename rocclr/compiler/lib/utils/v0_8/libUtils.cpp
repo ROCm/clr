@@ -413,12 +413,7 @@ aclutInsertKernelStatistics(aclCompiler *cl, aclBinary *bin)
     if (family >= FAMILY_R600 &&
 	    family <= FAMILY_CZ) {
 	  aclKernelStats kstats = {0};
-      if (family < FAMILY_SI) {
-        aclGetKstatsR800(isa, kstats, chipName);
-      }
-      else {
-        aclGetKstatsSI(isa, kstats);
-      }
+      aclGetKstatsSI(isa, kstats);
 	  kstats.wavefrontsize = 64; // FIXME: Hardcoded for now.
 	  const oclBIFSymbolStruct* symbol = findBIF30SymStruct(symKernelStats);
 	  assert(symbol && "symbol not found");
