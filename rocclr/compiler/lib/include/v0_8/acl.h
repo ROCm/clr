@@ -282,8 +282,6 @@ void aclDumpBinary(const aclBinary *bin);
 //!--------------------------------------------------------------------------!//
 // Functions that deal with kenel statistics.
 //!--------------------------------------------------------------------------!//
-void aclGetKstatsR800(const void* shader,
-       aclKernelStats &kstats, const char* chip_id);
 void aclGetKstatsSI(const void* shader,
        aclKernelStats &kstats);
 acl_error ACL_API_ENTRY
