@@ -1078,7 +1078,7 @@ bool Device::populateOCLDeviceConstants() {
 
   // Enable OpenCL 2.0 for Vega10+
   if (deviceInfo_.gfxipVersion_ >= 900) {
-    info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
+    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.0" " ";
   } else {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
   }
