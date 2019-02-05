@@ -77,10 +77,12 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
     pinnedXferSize_ = 0;
     stagedXferSize_ = 0;
     xferBufSize_ = 0;
+    apuSystem_ = true;
   } else {
     pinnedXferSize_ = std::max(pinnedXferSize_, pinnedMinXferSize_);
     stagedXferSize_ = std::max(stagedXferSize_, pinnedMinXferSize_ + 4 * Ki);
   }
+  enableXNACK_ = apuSystem_ ? 1 : 0 ;   // enable xnack for APU system
 
   // Enable extensions
   enableExtension(ClKhrByteAddressableStore);
@@ -116,10 +118,6 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   } else {
     // Also enable AMD double precision extension?
     enableExtension(ClAmdFp64);
-  }
-
-  if (gfxipVersion == 902) {
-    apuSystem_ = true;
   }
 
   // Override current device settings

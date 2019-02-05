@@ -26,7 +26,6 @@ struct AMDDeviceInfo {
   uint localMemBanks_;         //!< Number of banks of local memory
   uint gfxipVersion_;          //!< The core engine GFXIP version
   uint pciDeviceId_;           //!< PCIe device id
-  bool xnackEnabled_;          //!< Enable XNACK feature
 };
 
 // The device ID must match with the device's index into DeviceInfo
@@ -52,28 +51,28 @@ const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 static const AMDDeviceInfo DeviceInfo[] = {
     //  targetName  machineTarget
     /* TARGET_KAVERI_SPECTRE */ {HSA_SPECTRE_ID, "", "kaveri", "", "Spectre", 4, 16, 1, 256, 64 * Ki,
-                                 32, 0, 0, false},
+                                 32, 0, 0},
     /* TARGET_KAVERI_SPOOKY */ {HSA_SPOOKY_ID, "", "kaveri", "", "Spooky", 4, 16, 1, 256, 64 * Ki, 32,
-                                0, 0, false},
-    /* TARGET_TONGA */ {HSA_TONGA_ID, "", "tonga", "gfx802", "Tonga", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
+                                0, 0},
+    /* TARGET_TONGA */ {HSA_TONGA_ID, "", "tonga", "gfx802", "Tonga", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET_CARRIZO */ {HSA_CARRIZO_ID, "", "carrizo", "gfx801", "Carrizo", 4, 16, 1, 256, 64 * Ki, 32, 0,
-                          0, true},
+                          0},
     /* TARGET_ICELAND */ {HSA_ICELAND_ID, "", "iceland", "gfx802", "Iceland", 4, 16, 1, 256, 64 * Ki, 32, 0,
-                          0, false},
-    /* TARGET_FIJI */ {HSA_FIJI_ID, "", "fiji", "gfx803", "Fiji", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET HAWAII */ {HSA_HAWAII_ID, "", "hawaii", "gfx701", "Hawaii", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
+                          0},
+    /* TARGET_FIJI */ {HSA_FIJI_ID, "", "fiji", "gfx803", "Fiji", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET HAWAII */ {HSA_HAWAII_ID, "", "hawaii", "gfx701", "Hawaii", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET ELLESMERE */ {HSA_ELLESMERE_ID, "", "polaris10", "gfx803", "Ellesmere", 4, 16, 1, 256, 64 * Ki,
-                            32, 0, 0, false},
+                            32, 0, 0},
     /* TARGET BAFFIN */ {HSA_BAFFIN_ID, "", "polaris11", "gfx803", "Baffin", 4, 16, 1, 256, 64 * Ki, 32, 0,
-                         0, false},
-    /* TARGET VEGA10 */ {HSA_VEGA10_ID, "", "gfx900", "gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET VEGA10_HBCC */ {HSA_VEGA10_HBCC_ID, "", "gfx901", "gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET RAVEN */ {HSA_RAVEN_ID, "", "gfx902", "gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, true},
-    /* TARGET VEGA12 */ {HSA_VEGA12_ID, "", "gfx904", "gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET VEGA20 */ {HSA_VEGA20_ID, "", "gfx906", "gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false},
-    /* TARGET MI100 */ {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 0, 0, false}};
+                         0},
+    /* TARGET VEGA10 */ {HSA_VEGA10_ID, "", "gfx900", "gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET VEGA10_HBCC */ {HSA_VEGA10_HBCC_ID, "", "gfx901", "gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET RAVEN */ {HSA_RAVEN_ID, "", "gfx902", "gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET VEGA12 */ {HSA_VEGA12_ID, "", "gfx904", "gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET VEGA20 */ {HSA_VEGA20_ID, "", "gfx906", "gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET MI100 */ {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 0, 0}};
 }
 
 const uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
