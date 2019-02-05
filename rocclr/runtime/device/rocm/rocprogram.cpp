@@ -112,7 +112,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
 }
 
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
-  xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
+  xnackEnabled_ = dev().settings().enableXNACK_;
   machineTarget_ = dev().deviceInfo().complibTarget_;
 }
 
@@ -318,7 +318,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 LightningProgram::LightningProgram(roc::NullDevice& device)
   : roc::Program(device) {
   isLC_ = true;
-  xnackEnabled_ = dev().deviceInfo().xnackEnabled_;
+  xnackEnabled_ = dev().settings().enableXNACK_;
   machineTarget_ = dev().deviceInfo().machineTargetLC_;
 }
 

@@ -527,7 +527,8 @@ class Settings : public amd::HeapObject {
       uint enableWgpMode_ : 1;        //!< Enable WGP mode for this device
       uint enableWave32Mode_ : 1;     //!< Enable Wave32 mode for this device
       uint lcWavefrontSize64_ : 1;    //!< Enable Wave64 mode for this device
-      uint reserved_ : 15;
+      uint enableXNACK_ : 1;          //!< Enable XNACK feature
+      uint reserved_ : 14;
     };
     uint value_;
   };

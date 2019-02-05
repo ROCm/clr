@@ -658,7 +658,7 @@ bool Device::create() {
   // with dash as delimiter to be compatible with Windows directory name
   std::ostringstream cacheTarget;
   cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-  if (deviceInfo_.xnackEnabled_) {
+  if (settings().enableXNACK_) {
     cacheTarget << "-xnack";
   }
 
@@ -852,7 +852,7 @@ bool Device::populateOCLDeviceConstants() {
 
   std::ostringstream oss;
   oss << "gfx" << gfxipMajor << gfxipMinor << gfxipStepping;
-  if (settings().useLightning_ && deviceInfo_.xnackEnabled_) {
+  if (settings().useLightning_ && hsa_settings->enableXNACK_) {
     oss << "-xnack";
   }
 
