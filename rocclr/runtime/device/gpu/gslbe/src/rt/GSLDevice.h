@@ -6,6 +6,7 @@
 #include "gsl_types.h"
 #include "gsl_config.h"
 #include "thread/monitor.hpp"
+#include "gsl_types_internal.h"
 
 #ifdef ATI_OS_LINUX
 typedef unsigned int IDirect3DDevice9;
@@ -140,6 +141,7 @@ public:
     gslEngineID getFirstAvailableComputeEngineID() const { return static_cast<gslEngineID>(
                                                            m_adp->findFirstAvailableComputeEngineID()); }
 
+    virtual bool gslSetClockMode(GSLClockModeInfo * clockModeInfo);
 protected:
     //
     /// channel order enumerants

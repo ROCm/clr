@@ -1623,3 +1623,15 @@ CALGSLDevice::fillSamplerHwState(bool unnorm, uint32 min, uint32 mag, uint32 add
 
     m_textureSampler->getSamplerSrd(m_cs, hwState, hwStateSize);
 }
+bool
+CALGSLDevice::gslSetClockMode(GSLClockModeInfo * clockModeInfo)
+{
+    bool result = false;
+    const void* requestClockInfo = reinterpret_cast<const void*>(clockModeInfo);
+    uint32 uReturn = m_adp->requestClockModeInfo((void*)requestClockInfo);
+    if(uReturn == GSL_SETCLOCK_SUCCESS || uReturn == GSL_SETCLOCK_QUERY_ONLY)
+    {
+        result = true;
+    }
+    return result;
+}
