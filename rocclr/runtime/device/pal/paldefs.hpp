@@ -182,6 +182,13 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Navi10 XNACK */{"gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true},
     /* Navi10Lite       */{"gfx1000", "gfx1000","gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000, 1000, false},
     /* Navi10Lite XNACK */{"gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000, 1000, true},
+    /* Navi12       */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
+    /* Navi12 XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
+    /* Navi12Lite   */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
+    /* Navi12Lite XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
+    /* Navi14       */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
+    /* Navi14 XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
+
 };
 
 // Supported OpenCL versions
