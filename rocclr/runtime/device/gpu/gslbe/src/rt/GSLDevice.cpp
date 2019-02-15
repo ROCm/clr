@@ -1627,11 +1627,15 @@ bool
 CALGSLDevice::gslSetClockMode(GSLClockModeInfo * clockModeInfo)
 {
     bool result = false;
+#ifdef _WIN32
     const void* requestClockInfo = reinterpret_cast<const void*>(clockModeInfo);
     uint32 uReturn = m_adp->requestClockModeInfo((void*)requestClockInfo);
     if(uReturn == GSL_SETCLOCK_SUCCESS || uReturn == GSL_SETCLOCK_QUERY_ONLY)
     {
         result = true;
     }
+#else
+    result = true;
+#endif
     return result;
 }
