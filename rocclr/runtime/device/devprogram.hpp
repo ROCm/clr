@@ -321,7 +321,7 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   //! Dump the code object data
-  void extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
+  amd_comgr_status_t extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
     char* outBinary[] = nullptr, size_t* outSize = nullptr);
 
