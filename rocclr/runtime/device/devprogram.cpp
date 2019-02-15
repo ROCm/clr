@@ -194,10 +194,10 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 //  file if the file name is provided. If buffer pointer, outBinary, is provided, the
 //  binary will be passed back to the caller.
 //
-void Program::extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
-                                    const amd_comgr_data_kind_t dataKind,
-                                    const std::string& outFileName,
-                                    char* outBinary[], size_t* outSize) {
+amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
+                                                  const amd_comgr_data_kind_t dataKind,
+                                                  const std::string& outFileName,
+                                                  char* outBinary[], size_t* outSize) {
   amd_comgr_data_t  binaryData;
 
   amd_comgr_status_t status = amd::Comgr::create_data(dataKind, &binaryData);
@@ -211,31 +211,60 @@ void Program::extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     status = amd::Comgr::get_data(binaryData, &binarySize, NULL);
   }
 
-  char* binary = static_cast<char *>(malloc(binarySize));
+  size_t bufSize = (dataKind == AMD_COMGR_DATA_KIND_LOG) ? binarySize + 1 : binarySize;
+
+  char* binary = static_cast<char *>(malloc(bufSize));
   if (binary == nullptr) {
     amd::Comgr::release_data(binaryData);
-    return;
+    return AMD_COMGR_STATUS_ERROR;
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::get_data(binaryData, &binarySize, binary);
   }
 
+  if (dataKind == AMD_COMGR_DATA_KIND_LOG) {
+    binary[binarySize] = '\0';
+  }
+
   amd::Comgr::release_data(binaryData);
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     free(binary);
-    return;
+    return status;
   }
 
   // save the binary to the file as output file name is specified
+  // For log dataset, outputs are directed to stdout and stderr if
+  // the file name is "stdout" and "stderr", respectively.
   if (!outFileName.empty()) {
-    std::ofstream f(outFileName.c_str(), std::ios::trunc);
-    if (f.is_open()) {
-      f.write(binary, binarySize);
-      f.close();
-    } else {
-      buildLog_ += "Warning: opening the file to dump the code failed.\n";
+    std::ios_base::openmode mode = std::ios::trunc;
+
+    bool done = false;
+    // handle the log outputs
+    if (dataKind == AMD_COMGR_DATA_KIND_LOG) {
+      if (binarySize == 0) {  // nothing to output
+        done = true;
+      } else if (outFileName.compare("stdout") == 0) {
+        std::cout << binary << std::endl;
+        done = true;
+      } else if (outFileName.compare("stderr") == 0) {
+        std::cerr << binary << std::endl;
+        done = true;
+      } else {
+        mode = std::ios::app;   // use append mode for the log outputs
+      }
+    }
+
+    // output to file
+    if (!done) {
+      std::ofstream f(outFileName.c_str(), mode);
+      if (f.is_open()) {
+        f.write(binary, binarySize);
+        f.close();
+      } else {
+        buildLog_ += "Warning: opening the file to dump the code failed.\n";
+      }
     }
   }
 
@@ -247,6 +276,7 @@ void Program::extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
   else {
     free(binary);
   }
+  return AMD_COMGR_STATUS_SUCCESS;
 }
 
 amd_comgr_status_t Program::addCodeObjData(const char *source,
@@ -357,6 +387,11 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
+  const char* buildLog = amdOptions->oVariables->BuildLog;
+  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
+    status = amd::Comgr::action_info_set_logging(action, true);
+  }
+
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&dataSetDevLibs);
   }
@@ -364,7 +399,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hasDataSetDevLibs = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
-                                 dataSetDevLibs);
+                                   dataSetDevLibs);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -377,7 +412,18 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
         amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
       dumpFileName = amdOptions->getDumpFileName("_linked.bc");
     }
-    extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData, binarySize);
+    status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData,
+                                   binarySize);
+  }
+
+  if (buildLog != nullptr) {
+    size_t count;
+    status = amd::Comgr::action_data_count(*output, AMD_COMGR_DATA_KIND_LOG, &count);
+
+    if (count > 0) {
+      const std::string logName(buildLog);
+      status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_LOG, logName);
+    }
   }
 
   if (hasAction) {
@@ -413,6 +459,11 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
+  const char* buildLog = amdOptions->oVariables->BuildLog;
+  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
+    status = amd::Comgr::action_info_set_logging(action, true);
+  }
+
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
   }
@@ -440,7 +491,18 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
     if (amdOptions->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
        outFileName = amdOptions->getDumpFileName("_original.bc");
     }
-    extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, outFileName, binaryData, binarySize);
+    status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, outFileName, binaryData,
+                                   binarySize);
+  }
+
+  if (buildLog != nullptr) {
+    size_t count;
+    status = amd::Comgr::action_data_count(output, AMD_COMGR_DATA_KIND_LOG, &count);
+
+    if (count > 0) {
+      const std::string logName(buildLog);
+      status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_LOG, logName);
+    }
   }
 
   if (hasAction) {
@@ -480,6 +542,11 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options,
                                            &action, &hasAction);
 
+  const char* buildLog = amdOptions->oVariables->BuildLog;
+  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
+    status = amd::Comgr::action_info_set_logging(action, true);
+  }
+
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
   }
@@ -502,7 +569,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
       // dump the ISA
       if (status == AMD_COMGR_STATUS_SUCCESS) {
         std::string dumpIsaName = amdOptions->getDumpFileName(".s");
-        extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
+        status = extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
       }
 
       if (hsaAssemblyData) {
@@ -535,8 +602,18 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
     if (amdOptions->isDumpFlagSet(amd::option::DUMP_O)) {
       outFileName = amdOptions->getDumpFileName(".so");
     }
-    extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_EXECUTABLE, outFileName, executable,
-                          executableSize);
+    status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_EXECUTABLE, outFileName, executable,
+                                   executableSize);
+  }
+
+  if (buildLog != nullptr) {
+    size_t count;
+    status = amd::Comgr::action_data_count(output, AMD_COMGR_DATA_KIND_LOG, &count);
+
+    if (count > 0) {
+      const std::string logName(buildLog);
+      status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_LOG, logName);
+    }
   }
 
   if (hasAction) {
@@ -2828,7 +2905,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           buildLog_ += "Error: object code with old metadata is not supported\n";
           return false;
         }
-        else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA */ &&
+        else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA V2 */ &&
           note->n_namesz == sizeof "AMD" &&
           !memcmp(name, "AMD", note->n_namesz)) {
 #if defined(USE_COMGR_LIBRARY)
