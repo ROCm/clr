@@ -190,12 +190,12 @@ enum gfx_handle {
 static const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
 static const char* Gfx701 = "amdgcn-amd-amdhsa--gfx701";
 static const char* Gfx800 = "amdgcn-amd-amdhsa--gfx800";
-static const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801";
+static const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801+xnack";
 static const char* Gfx804 = "amdgcn-amd-amdhsa--gfx804";
-static const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810";
+static const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810+xnack";
 static const char* Gfx900 = "amdgcn-amd-amdhsa--gfx900";
 static const char* Gfx901 = "amdgcn-amd-amdhsa--gfx901";
-static const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902";
+static const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902+xnack";
 static const char* Gfx903 = "amdgcn-amd-amdhsa--gfx902";  // NOTE: gfx903 is gfx902 with xnack
 static const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
 static const char* Gfx905 = "amdgcn-amd-amdhsa--gfx905";
