@@ -226,8 +226,8 @@ void Command::enqueue() {
 const Context& Command::context() const { return queue_->context(); }
 
 NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                                           Kernel& kernel, const NDRangeContainer& sizes)
-    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList), kernel_(kernel), sizes_(sizes) {
+                                           Kernel& kernel, const NDRangeContainer& sizes, uint32_t sharedMemBytes)
+    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList), kernel_(kernel), sizes_(sizes), sharedMemBytes_(sharedMemBytes) {
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   profilingInfo_.setCallback(devKernel->getProfilingCallback(

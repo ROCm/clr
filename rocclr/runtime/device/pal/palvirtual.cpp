@@ -2100,7 +2100,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   profilingBegin(vcmd);
 
   // Submit kernel to HW
-  if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false, &vcmd.event())) {
+  if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false, &vcmd.event(), vcmd.sharedMemBytes())) {
     vcmd.setStatus(CL_INVALID_OPERATION);
   }
 
@@ -2110,7 +2110,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 // ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
                                       const_address parameters, bool nativeMem,
-                                      amd::Event* enqueueEvent)
+                                      amd::Event* enqueueEvent, uint32_t sharedMemBytes)
 {
   size_t newOffset[3] = { 0, 0, 0 };
   size_t newGlobalSize[3] = { 0, 0, 0 };
@@ -2232,7 +2232,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     uint64_t vmParentWrap = 0;
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-      *this, kernel, tmpSizes, parameters, ldsSize, vmDefQueue, &vmParentWrap);
+      *this, kernel, tmpSizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap);
     if (nullptr == aqlPkt) {
       LogError("Couldn't load kernel arguments");
       return false;

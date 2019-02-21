@@ -752,11 +752,12 @@ class NDRangeKernelCommand : public Command {
   Kernel& kernel_;
   NDRangeContainer sizes_;
   address parameters_;
+  uint32_t sharedMemBytes_;
 
  public:
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,
-                       const NDRangeContainer& sizes);
+                       const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0);
 
   virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
 
@@ -771,6 +772,9 @@ class NDRangeKernelCommand : public Command {
 
   //! Return the kernel NDRange.
   const NDRangeContainer& sizes() const { return sizes_; }
+
+  //! Return the shared memory size
+  uint32_t sharedMemBytes() const { return sharedMemBytes_; }
 
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
