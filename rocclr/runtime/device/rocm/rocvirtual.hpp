@@ -166,7 +166,8 @@ class VirtualGPU : public device::VirtualDevice {
   bool submitKernelInternal(const amd::NDRangeContainer& sizes,  //!< Workload sizes
                             const amd::Kernel& kernel,           //!< Kernel for execution
                             const_address parameters,            //!< Parameters for the kernel
-                            void* event_handle  //!< Handle to OCL event for debugging
+                            void* event_handle,  //!< Handle to OCL event for debugging
+                            uint32_t sharedMemBytes = 0 //!< Shared memory size
                             );
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);

@@ -1938,7 +1938,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 }
 
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
-                                      const_address parameters, void* eventHandle) {
+                                      const_address parameters, void* eventHandle, uint32_t sharedMemBytes) {
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
@@ -2113,7 +2113,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchPacket.workgroup_size_z = sizes.dimensions() > 2 ? local[2] : 1;
 
     dispatchPacket.kernarg_address = argBuffer;
-    dispatchPacket.group_segment_size = ldsUsage;
+    dispatchPacket.group_segment_size = ldsUsage + sharedMemBytes;
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
     // Dispatch the packet
@@ -2154,7 +2154,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
   // Submit kernel to HW
   if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-                            static_cast<void*>(as_cl(&vcmd.event())))) {
+                            static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes())) {
     LogError("AQL dispatch failed!");
     vcmd.setStatus(CL_INVALID_OPERATION);
   }
