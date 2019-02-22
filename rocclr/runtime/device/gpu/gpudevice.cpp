@@ -168,7 +168,6 @@ bool NullDevice::create(CALtarget target) {
     case CAL_TARGET_POLARIS22:
     case CAL_TARGET_VEGA12:
     case CAL_TARGET_VEGA20:
-    case CAL_TARGET_NAVI10:
       calAttr.doublePrecision = CAL_TRUE;
       calAttr.isOpenCL200Device = CAL_TRUE;
       break;

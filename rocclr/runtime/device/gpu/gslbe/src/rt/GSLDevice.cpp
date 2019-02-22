@@ -371,6 +371,12 @@ CALGSLDevice::open(uint32 gpuIndex, OpenParams& openData)
         return false;
     }
 
+     // Disable gfx10+ ASICs in GSL
+    if (asic_id >= GSL_ATIASIC_ID_NAVI10)
+    {
+        return false;
+    }
+
     if (!SetupContext(asic_id))
     {
         return false;
@@ -671,19 +677,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
       m_target = CAL_TARGET_VEGA20;
       m_elfmachine = ED_ATI_CAL_MACHINE_VEGA20_ISA;
       break;
-  case GSL_ATIASIC_ID_NAVI10:
-      m_target = CAL_TARGET_NAVI10;
-      m_elfmachine = ED_ATI_CAL_MACHINE_NAVI10_ISA;
-      break;
-  case GSL_ATIASIC_ID_NAVI14:
-    m_target = CAL_TARGET_NAVI10;
-    m_elfmachine = ED_ATI_CAL_MACHINE_NAVI10_ISA;
-    break;
-  case GSL_ATIASIC_ID_NAVI12:
-    m_target = CAL_TARGET_NAVI10;
-    m_elfmachine = ED_ATI_CAL_MACHINE_NAVI10_ISA;
-    break;
-
   default:
         // 6XX is not supported
         m_adp->deleteContext(temp_cs);

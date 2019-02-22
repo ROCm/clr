@@ -161,7 +161,6 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
     case CAL_TARGET_GREENLAND:
     case CAL_TARGET_VEGA12:
     case CAL_TARGET_VEGA20:
-    case CAL_TARGET_NAVI10:
       // TODO: specific codes for AI
       aiPlus_ = true;
     // Fall through to VI ...
