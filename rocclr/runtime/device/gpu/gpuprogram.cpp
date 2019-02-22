@@ -1835,10 +1835,6 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
       isa.handle = gfx907;
       return isa;
   }
-  if (!strcmp(Gfx1010, name)) {
-      isa.handle = gfx1010;
-      return isa;
-  }
 
   return isa;
 }
@@ -1895,14 +1891,6 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
           assert(0);
           return false;
       }
-    case gfx1010:
-      switch (program_->dev().hwInfo()->machine_) {
-        case ED_ATI_CAL_MACHINE_NAVI10_ISA:
-            return isa.handle == gfx1010;
-        default:
-            assert(0);
-            return false;
-        }
   }
 }
 

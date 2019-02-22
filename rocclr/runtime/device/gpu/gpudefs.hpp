@@ -163,9 +163,6 @@ static const AMDDeviceInfo DeviceInfo[] = {
                                 IF(IS_BRAHMA, "", "gfx904"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
     /* CAL_TARGET_VEGA20 */{ ED_ATI_CAL_MACHINE_VEGA20_ISA, IF(IS_BRAHMA, "", "gfx906"),
                                 IF(IS_BRAHMA, "", "gfx906"), 4, 16, 1, 256, 64 * Ki, 32, 900 },
-   /*  CAL_TARGET_NAVI10 */{ ED_ATI_CAL_MACHINE_NAVI10_ISA, IF(IS_BRAHMA, "", "gfx1010"),
-                                IF(IS_BRAHMA, "", "gfx1010"), 4, 16, 1, 256, 64 * Ki, 32, 1010 },
-
 };
 
 enum gfx_handle {
@@ -183,8 +180,7 @@ enum gfx_handle {
   gfx904 = 904,
   gfx905 = 905,
   gfx906 = 906,
-  gfx907 = 907,
-  gfx1010 = 1010
+  gfx907 = 907
 };
 
 static const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
@@ -201,7 +197,6 @@ static const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
 static const char* Gfx905 = "amdgcn-amd-amdhsa--gfx905";
 static const char* Gfx906 = "amdgcn-amd-amdhsa--gfx906";
 static const char* Gfx907 = "amdgcn-amd-amdhsa--gfx907";
-static const char* Gfx1010 = "amdgcn-amd-amdhsa--gfx1010";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
