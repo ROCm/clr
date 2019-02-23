@@ -78,6 +78,8 @@ class Memory : public device::Memory {
 
   virtual uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
 
+  virtual const address cpuSrd() const override { return reinterpret_cast<const address>(getDeviceMemory()); }
+
   // Accessors for indirect map memory object
   amd::Memory* mapMemory() const { return mapMemory_; }
 

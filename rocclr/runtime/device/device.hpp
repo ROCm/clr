@@ -732,6 +732,9 @@ class Memory : public amd::HeapObject {
 
   virtual uint64_t virtualAddress() const { return 0; }
 
+  //! Returns CPU pointer to HW state
+  virtual const address cpuSrd() const { return nullptr; }
+
   virtual void IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
     ShouldNotReachHere();
   }
@@ -778,7 +781,7 @@ class Memory : public amd::HeapObject {
 class Sampler : public amd::HeapObject {
  public:
   //! Constructor
-  Sampler() : hwSrd_(0) {}
+  Sampler() : hwSrd_(0), hwState_(nullptr) {}
 
   //! Default destructor for the device memory object
   virtual ~Sampler(){};
@@ -786,8 +789,12 @@ class Sampler : public amd::HeapObject {
   //! Returns device specific HW state for the sampler
   uint64_t hwSrd() const { return hwSrd_; }
 
+  //! Returns CPU pointer to HW state
+  const address hwState() const { return hwState_; }
+
  protected:
   uint64_t hwSrd_;  //!< Device specific HW state for the sampler
+  address hwState_;   //!< CPU pointer to HW state
 
  private:
   //! Disable default copy constructor
