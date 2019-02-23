@@ -119,6 +119,8 @@ class Memory : public device::Memory, public Resource {
 
   virtual uint64_t virtualAddress() const override { return vmAddress(); }
 
+  virtual const address cpuSrd() const { return reinterpret_cast<const address>(const_cast<void*>(hwState())); }
+
   //! Allocates host memory for synchronization with MGPU context
   void mgpuCacheWriteBack();
 

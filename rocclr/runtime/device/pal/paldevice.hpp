@@ -169,8 +169,6 @@ class Sampler : public device::Sampler {
   bool create(const amd::Sampler& owner  //!< AMD sampler object
               );
 
-  const void* hwState() const { return hwState_; }
-
  private:
   //! Disable default copy constructor
   Sampler& operator=(const Sampler&);
@@ -179,7 +177,6 @@ class Sampler : public device::Sampler {
   Sampler(const Sampler&);
 
   const Device& dev_;  //!< Device object associated with the sampler
-  address hwState_;    //!< GPU HW state (\todo legacy path)
 };
 
 //! A GPU device ordinal (physical GPU device)
