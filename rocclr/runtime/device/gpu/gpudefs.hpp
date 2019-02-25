@@ -174,13 +174,10 @@ enum gfx_handle {
   gfx804 = 804,
   gfx810 = 810,
   gfx900 = 900,
-  gfx901 = 901,
   gfx902 = 902,
   gfx903 = 903,
   gfx904 = 904,
-  gfx905 = 905,
-  gfx906 = 906,
-  gfx907 = 907
+  gfx906 = 906
 };
 
 static const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
@@ -190,13 +187,10 @@ static const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801+xnack";
 static const char* Gfx804 = "amdgcn-amd-amdhsa--gfx804";
 static const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810+xnack";
 static const char* Gfx900 = "amdgcn-amd-amdhsa--gfx900";
-static const char* Gfx901 = "amdgcn-amd-amdhsa--gfx901";
 static const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902+xnack";
 static const char* Gfx903 = "amdgcn-amd-amdhsa--gfx902";  // NOTE: gfx903 is gfx902 with xnack
 static const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
-static const char* Gfx905 = "amdgcn-amd-amdhsa--gfx905";
 static const char* Gfx906 = "amdgcn-amd-amdhsa--gfx906";
-static const char* Gfx907 = "amdgcn-amd-amdhsa--gfx907";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
