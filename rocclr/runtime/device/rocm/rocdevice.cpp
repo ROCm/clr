@@ -1076,9 +1076,11 @@ bool Device::populateOCLDeviceConstants() {
 
   strcpy(info_.driverVersion_, ss.str().c_str());
 
-  // Enable OpenCL 2.0 for Vega10+
-  if (deviceInfo_.gfxipVersion_ >= 900) {
-    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.0" " ";
+  // Allow testing OpenCL 2.1 features with the OPENCL_VERSION variable. We don't accept OPENCL_VERSION
+  // values other than 210, since the default value of OPENCL_VERSION is 200. Accepting 200 would report
+  // 'OpenCL 2.0' by default.
+  if (OPENCL_VERSION == 210) {
+    info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.1" " ";
   } else {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
   }
