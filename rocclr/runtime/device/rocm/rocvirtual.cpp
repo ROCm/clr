@@ -186,35 +186,6 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
   }
 }
 
-static void fillSampleDescriptor(hsa_ext_sampler_descriptor_t& samplerDescriptor,
-                                 const amd::Sampler& sampler) {
-  samplerDescriptor.filter_mode = sampler.filterMode() == CL_FILTER_NEAREST
-      ? HSA_EXT_SAMPLER_FILTER_MODE_NEAREST
-      : HSA_EXT_SAMPLER_FILTER_MODE_LINEAR;
-  samplerDescriptor.coordinate_mode = sampler.normalizedCoords()
-      ? HSA_EXT_SAMPLER_COORDINATE_MODE_NORMALIZED
-      : HSA_EXT_SAMPLER_COORDINATE_MODE_UNNORMALIZED;
-  switch (sampler.addressingMode()) {
-    case CL_ADDRESS_CLAMP_TO_EDGE:
-      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE;
-      break;
-    case CL_ADDRESS_REPEAT:
-      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT;
-      break;
-    case CL_ADDRESS_CLAMP:
-      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER;
-      break;
-    case CL_ADDRESS_MIRRORED_REPEAT:
-      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT;
-      break;
-    case CL_ADDRESS_NONE:
-      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED;
-      break;
-    default:
-      return;
-  }
-}
-
 bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address params, size_t& ldsAddress) {
   Kernel& hsaKernel = const_cast<Kernel&>(static_cast<const Kernel&>(*(kernel.getDeviceKernel(dev()))));
   const amd::KernelSignature& signature = kernel.signature();
@@ -395,36 +366,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
       const amd::Sampler* sampler = reinterpret_cast<amd::Sampler* const*>(params +
         kernelParams.samplerObjOffset())[index];
 
-      hsa_ext_sampler_descriptor_t samplerDescriptor;
-      fillSampleDescriptor(samplerDescriptor, *sampler);
+      device::Sampler* devSampler = sampler->getDeviceSampler(dev());
 
-      hsa_ext_sampler_t hsa_sampler;
-      hsa_status_t status =
-        hsa_ext_sampler_create(dev().getBackendDevice(), &samplerDescriptor, &hsa_sampler);
-
-      if (status != HSA_STATUS_SUCCESS) {
-        // Wait on a kernel if one is outstanding
-        releaseGpuMemoryFence();
-        // Release the sampler handles allocated for the various
-        // on one or more kernel submissions
-        for (const auto& it: samplerList_) {
-          if (hsa_ext_sampler_destroy(gpu_device_, it) != HSA_STATUS_SUCCESS) {
-              LogWarning("Error destroying device sampler object!");
-          }
-        }
-
-        samplerList_.clear();
-        status = hsa_ext_sampler_create(dev().getBackendDevice(), &samplerDescriptor, &hsa_sampler);
-        if (status != HSA_STATUS_SUCCESS) {
-          LogError("Error creating device sampler object!");
-          return false;
-        }
-      }
-
-      uint64_t sampler_srd = hsa_sampler.handle;
+      uint64_t sampler_srd = devSampler->hwSrd();
       WriteAqlArgAt(const_cast<address>(params), &sampler_srd, sizeof(sampler_srd), desc.offset_);
-      samplerList_.push_back(hsa_sampler);
-      // TODO: destroy sampler.
     }
   }
 
@@ -896,17 +841,6 @@ void VirtualGPU::updateCommandsState(amd::Command* list) {
     current->release();
     current = next;
   }
-
-  // Release the sampler handles allocated for the various
-  // on one or more kernel submissions
-  for (const auto& it: samplerList_) {
-    if (hsa_ext_sampler_destroy(gpu_device_, it) != HSA_STATUS_SUCCESS) {
-      LogWarning("Error destroying device sampler object!");
-    }
-  }
-  samplerList_.clear();
-
-  return;
 }
 
 void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {

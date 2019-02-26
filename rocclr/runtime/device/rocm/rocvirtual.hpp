@@ -292,12 +292,6 @@ class VirtualGPU : public device::VirtualDevice {
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
   /**
-   * @brief Maintains the list of sampler allocated for one or more kernel
-   * submissions.
-   */
-  std::vector<hsa_ext_sampler_t> samplerList_;
-
-  /**
    * @brief Indicates if a kernel dispatch is outstanding. This flag is
    * used to synchronized on kernel outputs.
    */

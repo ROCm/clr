@@ -59,6 +59,31 @@ class VirtualDevice;
 class PrintfDbg;
 class IProDevice;
 
+class Sampler : public device::Sampler {
+ public:
+  //! Constructor
+    Sampler(const Device& dev) : dev_(dev) {}
+
+  //! Default destructor for the device memory object
+  virtual ~Sampler();
+
+  //! Creates a device sampler from the OCL sampler state
+  bool create(const amd::Sampler& owner  //!< AMD sampler object
+              );
+
+ private:
+  void fillSampleDescriptor(hsa_ext_sampler_descriptor_t& samplerDescriptor,
+                            const amd::Sampler& sampler) const;
+  Sampler& operator=(const Sampler&);
+
+  //! Disable operator=
+  Sampler(const Sampler&);
+
+  const Device& dev_;  //!< Device object associated with the sampler
+
+  hsa_ext_sampler_t hsa_sampler;
+};
+
 // A NULL Device type used only for offline compilation
 // Only functions that are used for compilation will be in this device
 class NullDevice : public amd::Device {
@@ -283,16 +308,7 @@ class Device : public NullDevice {
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                              device::Sampler** sampler   //!< device sampler object
-                             ) const {
-    //! \todo HSA team has to implement sampler allocation.
-    //! Currently allocate the base device class
-    *sampler = new device::Sampler();
-    if (*sampler == nullptr) {
-      return false;
-    }
-    return true;
-  }
-
+                             ) const;
 
   //! Just returns nullptr for the dummy device
   virtual device::Memory* createView(
