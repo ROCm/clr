@@ -27,6 +27,7 @@
 #ifdef WITH_AMDGPU_PRO
 #include "pro/prodriver.hpp"
 #endif
+#include "platform/sampler.hpp"
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -839,6 +840,66 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   }
 
   return HSA_STATUS_SUCCESS;
+}
+
+bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) const {
+  *sampler = nullptr;
+  Sampler* gpuSampler = new Sampler(*this);
+  if ((nullptr == gpuSampler) || !gpuSampler->create(owner)) {
+    delete gpuSampler;
+    return false;
+  }
+  *sampler = gpuSampler;
+  return true;
+}
+
+void Sampler::fillSampleDescriptor(hsa_ext_sampler_descriptor_t& samplerDescriptor,
+                                   const amd::Sampler& sampler) const {
+  samplerDescriptor.filter_mode = sampler.filterMode() == CL_FILTER_NEAREST
+      ? HSA_EXT_SAMPLER_FILTER_MODE_NEAREST
+      : HSA_EXT_SAMPLER_FILTER_MODE_LINEAR;
+  samplerDescriptor.coordinate_mode = sampler.normalizedCoords()
+      ? HSA_EXT_SAMPLER_COORDINATE_MODE_NORMALIZED
+      : HSA_EXT_SAMPLER_COORDINATE_MODE_UNNORMALIZED;
+  switch (sampler.addressingMode()) {
+    case CL_ADDRESS_CLAMP_TO_EDGE:
+      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE;
+      break;
+    case CL_ADDRESS_REPEAT:
+      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT;
+      break;
+    case CL_ADDRESS_CLAMP:
+      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER;
+      break;
+    case CL_ADDRESS_MIRRORED_REPEAT:
+      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT;
+      break;
+    case CL_ADDRESS_NONE:
+      samplerDescriptor.address_mode = HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED;
+      break;
+    default:
+      return;
+  }
+}
+
+bool Sampler::create(const amd::Sampler& owner) {
+  hsa_ext_sampler_descriptor_t samplerDescriptor;
+  fillSampleDescriptor(samplerDescriptor, owner);
+
+  hsa_status_t status = hsa_ext_sampler_create(dev_.getBackendDevice(), &samplerDescriptor, &hsa_sampler);
+
+  if (HSA_STATUS_SUCCESS != status) {
+    return false;
+  }
+
+  hwSrd_ = reinterpret_cast<uint64_t>(hsa_sampler.handle);
+  hwState_ = reinterpret_cast<address>(hsa_sampler.handle);
+
+  return true;
+}
+
+Sampler::~Sampler() {
+  hsa_ext_sampler_destroy(dev_.getBackendDevice(), hsa_sampler);
 }
 
 bool Device::populateOCLDeviceConstants() {
