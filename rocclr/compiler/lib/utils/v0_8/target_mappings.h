@@ -219,6 +219,8 @@ static const char* calTargetMapping[] = {
       IF(IS_BRAHMA,"","gfx907"),
       IF(IS_BRAHMA,"","gfx1000"),
       IF(IS_BRAHMA,"","gfx1010"),
+      IF(IS_BRAHMA,"","gfx1011"),
+      IF(IS_BRAHMA,"","gfx1012"),
 };
 
 #include "utils/v0_8/target_mappings_amdil.h"
