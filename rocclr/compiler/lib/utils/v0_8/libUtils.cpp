@@ -32,6 +32,8 @@ static const std::string sgfx906 = "AMD:AMDGPU:9:0:6";
 static const std::string sgfx907 = "AMD:AMDGPU:9:0:7";
 static const std::string sgfx1000 = "AMD:AMDGPU:10:0:0";
 static const std::string sgfx1010 = "AMD:AMDGPU:10:1:0";
+static const std::string sgfx1011 = "AMD:AMDGPU:10:1:1";
+static const std::string sgfx1012 = "AMD:AMDGPU:10:1:2";
 
 static const std::string legacyLibName = LINUX_ONLY("lib") "amdocl12cl" LP64_SWITCH(LINUX_SWITCH("32", ""), "64") LINUX_SWITCH(".so", ".dll");
 
@@ -547,6 +549,8 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 907: return sgfx907;
   case 1000: return sgfx1000;
   case 1010: return sgfx1010;
+  case 1011: return sgfx1011;
+  case 1012: return sgfx1012;
   }
 }
 
@@ -623,6 +627,8 @@ int getIsaType(const aclTargetInfo *target)
         default: return 1000;
         case NV_NAVI10_LITE_P_A0:    return 1000;
         case NV_NAVI10_P_A0:         return 1010;
+        case NV_NAVI12_P_A0:         return 1011;
+        case NV_NAVI14_M_A0:         return 1012;
       }
     }
 }
