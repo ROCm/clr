@@ -276,7 +276,7 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
-  bool create();
+  bool create(bool sramEccEnabled);
 
   //! Construct a new physical HSA device
   Device(hsa_agent_t bkendDevice);

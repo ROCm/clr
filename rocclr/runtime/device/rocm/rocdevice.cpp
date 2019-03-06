@@ -542,7 +542,8 @@ bool Device::init() {
 
     roc_device->deviceInfo_.gfxipVersion_ = gfxipVersionNum;
 
-    if (!roc_device->create()) {
+    bool sramEccEnabled = (str.find("+sram-ecc") != std::string::npos);
+    if (!roc_device->create(sramEccEnabled)) {
       LogError("Error creating new instance of Device.");
       continue;
     }
@@ -592,7 +593,7 @@ void Device::tearDown() {
   hsa_shut_down();
 }
 
-bool Device::create() {
+bool Device::create(bool sramEccEnabled) {
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
     return false;
@@ -625,6 +626,7 @@ bool Device::create() {
   info_.deviceTopology_.pcie.bus = (hsa_bdf_id & (0xFF << 8)) >> 8;
   info_.deviceTopology_.pcie.device = (hsa_bdf_id & (0x1F << 3)) >> 3;
   info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
+  info_.sramEccEnabled_ = sramEccEnabled;
 
 #ifdef WITH_AMDGPU_PRO
   // Create amdgpu-pro device interface for SSG support
@@ -660,7 +662,10 @@ bool Device::create() {
   std::ostringstream cacheTarget;
   cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
   if (settings().enableXNACK_) {
-    cacheTarget << "-xnack";
+    cacheTarget << "+xnack";
+  }
+  if (info_.sramEccEnabled_) {
+    cacheTarget << "+sram-ecc";
   }
 
   amd::CacheCompilation* compObj = new amd::CacheCompilation(
@@ -914,9 +919,11 @@ bool Device::populateOCLDeviceConstants() {
   std::ostringstream oss;
   oss << "gfx" << gfxipMajor << gfxipMinor << gfxipStepping;
   if (settings().useLightning_ && hsa_settings->enableXNACK_) {
-    oss << "-xnack";
+    oss << "+xnack";
   }
-
+  if (info_.sramEccEnabled_) {
+    oss << "+sram-ecc";
+  }
   ::strcpy(info_.name_, oss.str().c_str());
 
   char device_name[64] = {0};

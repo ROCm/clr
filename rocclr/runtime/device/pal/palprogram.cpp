@@ -145,6 +145,7 @@ HSAILProgram::HSAILProgram(Device& device)
       executable_(nullptr),
       loaderContext_(this) {
   xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+  sramEccEnabled_ = dev().info().sramEccEnabled_;
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {
@@ -164,6 +165,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
       loaderContext_(this) {
   isNull_ = true;
   xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+  sramEccEnabled_ = dev().info().sramEccEnabled_;
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {

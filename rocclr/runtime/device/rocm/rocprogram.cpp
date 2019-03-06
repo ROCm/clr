@@ -113,6 +113,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
 
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
   xnackEnabled_ = dev().settings().enableXNACK_;
+  sramEccEnabled_ = dev().info().sramEccEnabled_;
   machineTarget_ = dev().deviceInfo().complibTarget_;
 }
 
@@ -319,6 +320,7 @@ LightningProgram::LightningProgram(roc::NullDevice& device)
   : roc::Program(device) {
   isLC_ = true;
   xnackEnabled_ = dev().settings().enableXNACK_;
+  sramEccEnabled_ = dev().info().sramEccEnabled_;
   machineTarget_ = dev().deviceInfo().machineTargetLC_;
 }
 

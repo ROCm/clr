@@ -459,6 +459,8 @@ struct Info : public amd::EmbeddedObject {
   cl_uint numRTCUs_;
   //! Thread trace enable
   cl_bool threadTraceEnable_;
+  //! ECC protected GPRs support (only available Vega20+)
+  cl_bool sramEccEnabled_;
 
   //! Image pitch alignment for image2d_from_buffer
   cl_uint imagePitchAlignment_;
