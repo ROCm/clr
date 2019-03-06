@@ -291,7 +291,10 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
     std::ostringstream cacheTarget;
     cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
     if (hwInfo_->xnackEnabled_) {
-      cacheTarget << "-xnack";
+      cacheTarget << "+xnack";
+    }
+    if (info_.sramEccEnabled_) {
+      cacheTarget << "+sram-ecc";
     }
 
     // Create CacheCompilation for the offline device
@@ -484,6 +487,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.maxConstantBufferSize_ = info_.maxMemAllocSize_;
   info_.maxConstantArgs_ = MaxConstArguments;
 
+  info_.sramEccEnabled_ = palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs;
+
   // Image support fields
   if (settings().imageSupport_) {
     info_.imageSupport_ = CL_TRUE;
@@ -528,12 +533,17 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     const static char* bristol = "Bristol Ridge";
     ::strcpy(info_.name_, bristol);
   } else {
-    if (settings().useLightning_ && hwInfo()->xnackEnabled_) {
-      ::snprintf(info_.name_, sizeof(info_.name_) - 1, "%s-xnack", hwInfo()->targetName_);
-    } else {
-      ::strcpy(info_.name_, hwInfo()->targetName_);
+    ::strcpy(info_.name_, hwInfo()->targetName_);
+    if (settings().useLightning_) {
+      if (hwInfo()->xnackEnabled_) {
+        ::strcat(info_.name_, "+xnack");
+      }
+      if (info_.sramEccEnabled_) {
+        ::strcat(info_.name_, "+sram-ecc");
+      }
     }
   }
+
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)",
         settings().useLightning_ ? ",LC" : ",HSAIL");
@@ -968,7 +978,10 @@ bool Device::create(Pal::IDevice* device) {
     std::ostringstream cacheTarget;
     cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
     if (isXNACKSupported) {
-      cacheTarget << "-xnack";
+      cacheTarget << "+xnack";
+    }
+    if (info_.sramEccEnabled_) {
+      cacheTarget << "+sram-ecc";
     }
 
     amd::CacheCompilation* compObj = new amd::CacheCompilation(

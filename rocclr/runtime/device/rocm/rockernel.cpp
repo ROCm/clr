@@ -57,6 +57,9 @@ bool LightningKernel::init() {
   if (program_->xnackEnable()) {
     targetIdent.append("+xnack");
   }
+  if (program_->sramEccEnable()) {
+    targetIdent.append("+sram-ecc");
+  }
 
   if (!SetAvailableSgprVgpr(targetIdent)) {
     return false;

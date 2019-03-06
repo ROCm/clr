@@ -336,6 +336,9 @@ void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclve
   if (xnackEnabled_) {
     targetIdent.append("+xnack");
   }
+  if (sramEccEnabled_) {
+    targetIdent.append("+sram-ecc");
+  }
 }
 
 
@@ -808,6 +811,14 @@ bool Program::compileImplLC(const std::string& sourceCode,
   // Set xnack option if needed
   if (xnackEnabled_) {
     driverOptions.append(" -mxnack");
+  }
+
+  // Set SRAM ECC option if needed
+  if (sramEccEnabled_) {
+    driverOptions.append(" -msram-ecc");
+  }
+  else {
+    driverOptions.append(" -mno-sram-ecc");
   }
 
   driverOptions.append(options->llvmOptions);
@@ -1690,6 +1701,14 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Set xnack option if needed
   if (xnackEnabled_) {
     codegenOptions.append(" -mxnack");
+  }
+
+  // Set SRAM ECC option if needed
+  if (sramEccEnabled_) {
+    codegenOptions.append(" -msram-ecc");
+  }
+  else {
+    codegenOptions.append(" -mno-sram-ecc");
   }
 
   // Set the -O#
