@@ -12,7 +12,7 @@ debug(int, LOG_LEVEL, 0,                                                      \
         "The default log level")                                              \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \
-release(uint, GPU_MAX_COMMAND_QUEUES, IF(IS_HIP, 300, 70),                    \
+release(uint, GPU_MAX_COMMAND_QUEUES, 300,                                    \
         "The maximum number of concurrent Virtual GPUs")                      \
 release(size_t, CQ_THREAD_STACK_SIZE, 256*Ki, /* @todo: that much! */         \
         "The default command queue thread stack size")                        \
@@ -131,7 +131,7 @@ release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
-release(uint, OCL_SET_SVM_SIZE, IF(IS_HIP, 4*16384, 4096),                      \
+release(uint, OCL_SET_SVM_SIZE, 4*16384,                                      \
         "set SVM space size for discrete GPU")                                \
 debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
         "Use flag to change the minimum requirement of system memory not to downgrade")        \
@@ -183,6 +183,8 @@ release(bool, GPU_ENABLE_WGP_MODE, true,                                  \
         "Enables WGP Mode in HW if available")                                      \
 
 namespace amd {
+
+extern bool IS_HIP;
 
 //! \addtogroup Utils
 //  @{
