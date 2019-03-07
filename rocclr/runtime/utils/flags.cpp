@@ -65,6 +65,7 @@ namespace amd {
 #include <crt_externs.h>
 #endif  // __APPLE__
 
+bool IS_HIP = false;
 // static
 char* Flag::envstr_;
 

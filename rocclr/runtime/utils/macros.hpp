@@ -107,10 +107,6 @@
 #define NOT_LIGHTNING(x) x
 #endif /* !WITH_LIGHTNING_COMPILER */
 
-#ifdef BUILD_HIP
-#define IS_HIP true
-#endif
-
 #ifndef IS_LINUX
 #define IS_LINUX false
 #endif
@@ -122,9 +118,6 @@
 #endif
 #ifndef IS_LIGHTNING
 #define IS_LIGHTNING false
-#endif
-#ifndef IS_HIP
-#define IS_HIP false
 #endif
 
 #define IF_LEFT_true(x) x

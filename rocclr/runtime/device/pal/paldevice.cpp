@@ -1258,7 +1258,7 @@ bool Device::init() {
 
   uint ordinal = 0;
   const char* selectDeviceByName = nullptr;
-  const char* requestedDeviceList = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+  const char* requestedDeviceList = amd::IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
                                     HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
                                     : GPU_DEVICE_ORDINAL;
 
