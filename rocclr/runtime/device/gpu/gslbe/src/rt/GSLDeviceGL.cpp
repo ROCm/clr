@@ -51,7 +51,7 @@ static const   cmFormatXlateParams cmFormatXlateTable [] = {
     {CM_SURF_FMT_RGBX4,                 (cmSurfFmt)500,         GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_RGB5_X1,               CM_SURF_FMT_BGR5_X1,    GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_RGBX8,                 CM_SURF_FMT_RGBA8,      GSL_CHANNEL_ORDER_RGBA},
-    {CM_SURF_FMT_RGB10_X2,              CM_SURF_FMT_BGR10_X2,   GSL_CHANNEL_ORDER_RGBA},
+    {CM_SURF_FMT_RGB10_X2,              CM_SURF_FMT_RGB10_X2,   GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_RGBX16,                CM_SURF_FMT_RGBA16,     GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_RGBX16F,               CM_SURF_FMT_RGBA16F,    GSL_CHANNEL_ORDER_RGBA},
     {CM_SURF_FMT_RGBX32F,               CM_SURF_FMT_RGBA32F,    GSL_CHANNEL_ORDER_RGBA},
