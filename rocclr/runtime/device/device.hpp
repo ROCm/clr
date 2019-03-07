@@ -19,10 +19,10 @@
 #include "devkernel.hpp"
 #include "amdocl/cl_profile_amd.h"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "caching/cache.hpp"
 #include "driver/AmdCompiler.h"
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "acl.h"
 
 #include "hwdebug.hpp"
@@ -69,7 +69,9 @@ class SvmUnmapMemoryCommand;
 class TransferBufferFileCommand;
 class HwDebugManager;
 class Device;
+#ifndef USE_COMGR_LIBRARY
 class CacheCompilation;
+#endif
 struct KernelParameterDescriptor;
 struct Coord3D;
 
@@ -1328,7 +1330,7 @@ class Device : public RuntimeObject {
   // P2P devices that are accessible from the current device
   std::vector<cl_device_id> p2pDevices_;
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
   amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
 #endif
 
@@ -1354,7 +1356,7 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
                                   //! Compilation with cache support
   std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
 #endif
@@ -1372,7 +1374,7 @@ class Device : public RuntimeObject {
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
 };
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 //! Compilation process with cache support.
 class CacheCompilation : public amd::HeapObject {
  public:

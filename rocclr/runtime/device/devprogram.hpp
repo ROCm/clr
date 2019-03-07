@@ -11,7 +11,9 @@
 #include "comgrctx.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#ifndef USE_COMGR_LIBRARY
 #include "driver/AmdCompiler.h"
+#endif
 //#include "llvm/Support/AMDGPUMetadata.h"
 
 namespace llvm {
@@ -276,7 +278,7 @@ class Program : public amd::HeapObject {
 
   void setType(type_t newType) { type_ = newType; }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
   //! Return a new transient compiler instance.
   static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
 #endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)

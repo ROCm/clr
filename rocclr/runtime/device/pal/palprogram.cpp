@@ -20,8 +20,10 @@
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-#include "llvm/Support/AMDGPUMetadata.h"
+#ifndef USE_COMGR_LIBRARY
 #include "driver/AmdCompiler.h"
+#endif
+#include "llvm/Support/AMDGPUMetadata.h"
 #include "libraries.amdgcn.inc"
 #include "gelf.h"
 #endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)

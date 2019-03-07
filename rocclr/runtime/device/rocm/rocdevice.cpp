@@ -19,9 +19,9 @@
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "driver/AmdCompiler.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #ifdef WITH_AMDGPU_PRO
@@ -652,6 +652,7 @@ bool Device::create(bool sramEccEnabled) {
   if (settings().useLightning_) {
     scheduler = sch.c_str();
   }
+#ifndef USE_COMGR_LIBRARY
   //  create compilation object with cache support
   int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
   int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
@@ -676,6 +677,7 @@ bool Device::create(bool sramEccEnabled) {
   }
 
   cacheCompilation_.reset(compObj);
+#endif  // USE_COMGR_LIBRARY
 #endif
 
   amd::Context::Info info = {0};

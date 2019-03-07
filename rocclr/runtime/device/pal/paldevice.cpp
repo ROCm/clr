@@ -280,7 +280,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   info_.wavefrontWidth_ = settings().enableWave32Mode_ ? 32 : 64;
 
   if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
     //  create compilation object with cache support
     int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
     int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
@@ -967,7 +967,7 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
     //  create compilation object with cache support
     int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
     int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
