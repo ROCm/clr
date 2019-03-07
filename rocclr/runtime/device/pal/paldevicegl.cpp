@@ -349,7 +349,7 @@ static const   cmFormatXlateParams cmFormatXlateTable[] = {
     { CM_SURF_FMT_RGBX4,                 500,                    CL_RGB       },
     { CM_SURF_FMT_RGB5_X1,               CL_UNORM_INT16,         CL_BGRA      },
     { CM_SURF_FMT_RGBX8,                 CL_UNORM_INT8,          CL_RGBA      },
-    { CM_SURF_FMT_RGB10_X2,              CL_UNORM_INT_101010,    CL_RGB       },
+    { CM_SURF_FMT_RGB10_X2,              CL_UNORM_INT_101010,    CL_RGBA      },
     { CM_SURF_FMT_RGBX16,                CL_UNORM_INT16,         CL_RGBA      },
     { CM_SURF_FMT_RGBX16F,               CL_HALF_FLOAT,          CL_RGBA      },
     { CM_SURF_FMT_RGBX32F,               CL_FLOAT,               CL_RGBA      },
