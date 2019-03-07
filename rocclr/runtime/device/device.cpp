@@ -148,7 +148,7 @@ bool Device::init() {
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-  // @todo remove IS_LIGHTNING check when PAL-LC builds will be deprecated 
+  // @todo remove IS_LIGHTNING check when PAL-LC builds will be deprecated
   if ((GPU_ENABLE_PAL != 1) || IS_LIGHTNING) {
     // Return value of roc::Device::init()
     // If returned false, error initializing HSA stack.
@@ -229,6 +229,7 @@ bool Device::ValidateComgr() {
 #if defined(USE_COMGR_LIBRARY)
   // Check if Lightning compiler was requested
   if (settings_->useLightning_) {
+    LogInfo("Loading COMGR library.");
     std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib);
     // Use Lightning only if it's available
     settings_->useLightning_ = amd::Comgr::IsReady();
@@ -413,7 +414,7 @@ char* Device::getExtensionString() {
   return result;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 CacheCompilation::CacheCompilation(std::string targetStr, std::string postfix, bool enableCache,
                                    bool resetCache)
     : codeCache_(targetStr, 0, AMD_PLATFORM_BUILD_NUMBER, postfix),
@@ -498,13 +499,11 @@ bool CacheCompilation::compileToLLVMBitcode(amd::opencl_driver::Compiler* C,
         StringCache::CachedData cachedData = {bc->Ptr(), bc->Size()};
         bcSet.push_back(cachedData);
       } else if (input->Type() == DT_CL_HEADER) {
-#if !defined(USE_COMGR_LIBRARY)
         FileReference* bcFile = reinterpret_cast<FileReference*>(input);
         std::string bc;
         bcFile->ReadToString(bc);
         StringCache::CachedData cachedData = {bc.c_str(), bc.size()};
         bcSet.push_back(cachedData);
-#endif // !defined(USE_COMGR_LIBRARY)
       } else {
         buildLog += "Error: unsupported bitcode type for checking cache.\n";
         checkCache = false;
@@ -582,7 +581,7 @@ bool CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
 
   return true;
 }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 
 }  // namespace amd
 

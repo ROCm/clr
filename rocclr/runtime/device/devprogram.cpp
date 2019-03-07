@@ -12,7 +12,9 @@
 #include "utils/libUtils.h"
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#ifndef USE_COMGR_LIBRARY
 #include "driver/AmdCompiler.h"
+#endif
 #include "libraries.amdgcn.inc"
 #include "opencl1.2-c.amdgcn.inc"
 #include "opencl2.0-c.amdgcn.inc"
@@ -161,6 +163,7 @@ static void checkLLVM_BIN() {
 }
 #endif  // defined(ATI_OS_LINUX)
 
+#if !defined(USE_COMGR_LIBRARY)
 std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 #if defined(ATI_OS_WIN)
   static INIT_ONCE initOnce;
@@ -178,13 +181,10 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
   }
 #endif  // defined(DEBUG)
 
-#if !defined(USE_COMGR_LIBRARY)
   return std::unique_ptr<amd::opencl_driver::Compiler>(
     amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
-#else
-  return std::unique_ptr<amd::opencl_driver::Compiler>(nullptr);
-#endif // !defined(USE_COMGR_LIBRARY)
 }
+#endif // !defined(USE_COMGR_LIBRARY)
 #endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
@@ -1082,8 +1082,6 @@ bool Program::linkImpl(const std::vector<device::Program*>& inputPrograms,
 #if defined(USE_COMGR_LIBRARY)
 bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
                          amd::option::Options* options, bool createLibrary) {
-  using namespace amd::opencl_driver;
-  std::unique_ptr<Compiler> C(newCompilerInstance());
 
   amd_comgr_data_set_t inputs;
 
