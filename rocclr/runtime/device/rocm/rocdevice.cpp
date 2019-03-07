@@ -414,7 +414,7 @@ bool Device::init() {
   std::unordered_map<int, bool> selectedDevices;
   bool useDeviceList = false;
 
-  std::string ordinals = IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
+  std::string ordinals = amd::IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
                          HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
                          : GPU_DEVICE_ORDINAL;
   if (ordinals[0] != '\0') {
