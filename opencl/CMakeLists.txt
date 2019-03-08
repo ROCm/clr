@@ -5,6 +5,20 @@ if (POLICY CMP0048)
   set(PROJ_VERSION VERSION 1.5.0)
 endif()
 
+# Build ROCm-OpenCL with ccache if the package is present.
+set(ROCM_OPENCL_CCACHE_BUILD OFF CACHE BOOL "Set to ON for a ccache enabled build")
+if(ROCM_OPENCL_CCACHE_BUILD)
+  find_program(CCACHE_PROGRAM ccache)
+  if(CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
+  else()
+    message(FATAL_ERROR "Unable to find the program ccache. Set ROCM_OPENCL_CCACHE_BUILD to OFF")
+  endif()
+  set(LLVM_CCACHE_BUILD ON CACHE BOOL "")
+  set(ROCM_DEVICE_LIBS_CCACHE_BUILD ON CACHE BOOL "")
+  set(ROCM_OPENCL_DRIVER_CCACHE_BUILD ON CACHE BOOL "")
+endif()
+
 project(OpenCL-ROCm)
 
 # Add path for custom modules
