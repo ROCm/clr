@@ -238,7 +238,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
   // For log dataset, outputs are directed to stdout and stderr if
   // the file name is "stdout" and "stderr", respectively.
   if (!outFileName.empty()) {
-    std::ios_base::openmode mode = std::ios::trunc;
+    std::ios_base::openmode mode = std::ios::trunc | std::ios::binary;
 
     bool done = false;
     // handle the log outputs
