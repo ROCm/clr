@@ -190,6 +190,24 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 // ================================================================================================
 
 #if defined(USE_COMGR_LIBRARY)
+// If buildLog is not null, and dataSet contains a log object, extract the
+// first log data object from dataSet and process it with
+// extractByteCodeBinary.
+amd_comgr_status_t Program::extractBuildLog(const char* buildLog,
+                                            amd_comgr_data_set_t dataSet) {
+  amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
+  if (buildLog != nullptr) {
+    size_t count;
+    status = amd::Comgr::action_data_count(dataSet, AMD_COMGR_DATA_KIND_LOG, &count);
+
+    if (count > 0) {
+      const std::string logName(buildLog);
+      status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, logName);
+    }
+  }
+  return status;
+}
+
 //  Extract the byte code binary from the data set.  The binary will be saved to an output
 //  file if the file name is provided. If buffer pointer, outBinary, is provided, the
 //  binary will be passed back to the caller.
@@ -405,6 +423,8 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                                    dataSetDevLibs);
   }
 
+  status = extractBuildLog(buildLog, dataSetDevLibs);
+
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, dataSetDevLibs, *output);
   }
@@ -419,15 +439,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                                    binarySize);
   }
 
-  if (buildLog != nullptr) {
-    size_t count;
-    status = amd::Comgr::action_data_count(*output, AMD_COMGR_DATA_KIND_LOG, &count);
-
-    if (count > 0) {
-      const std::string logName(buildLog);
-      status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_LOG, logName);
-    }
-  }
+  status = extractBuildLog(buildLog, *output);
 
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
@@ -483,6 +495,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
                                    action, inputs, dataSetPCH);
   }
 
+  status = extractBuildLog(buildLog, dataSetPCH);
+
   //  Compiling the source codes with precompiled headers
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
@@ -498,15 +512,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
                                    binarySize);
   }
 
-  if (buildLog != nullptr) {
-    size_t count;
-    status = amd::Comgr::action_data_count(output, AMD_COMGR_DATA_KIND_LOG, &count);
-
-    if (count > 0) {
-      const std::string logName(buildLog);
-      status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_LOG, logName);
-    }
-  }
+  status = extractBuildLog(buildLog, output);
 
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
@@ -575,6 +581,8 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
         status = extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
       }
 
+      status = extractBuildLog(buildLog, assemblyData);
+
       if (hsaAssemblyData) {
         amd::Comgr::destroy_data_set(assemblyData);
       }
@@ -591,6 +599,8 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
                                  action, inputs, relocatableData);
   }
+
+  status = extractBuildLog(buildLog, relocatableData);
 
   // Create executable from the relocatable data set
   amd::Comgr::action_info_set_options(action, "");
@@ -609,15 +619,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
                                    executableSize);
   }
 
-  if (buildLog != nullptr) {
-    size_t count;
-    status = amd::Comgr::action_data_count(output, AMD_COMGR_DATA_KIND_LOG, &count);
-
-    if (count > 0) {
-      const std::string logName(buildLog);
-      status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_LOG, logName);
-    }
-  }
+  status = extractBuildLog(buildLog, output);
 
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
