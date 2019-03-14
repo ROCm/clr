@@ -466,6 +466,8 @@ bool Resource::CreateImage(CreateParams* params)
   Pal::GpuMemoryRequirements req = {};
   imgCreateInfo.imageType = Pal::ImageType::Tex2d;
   viewInfo.viewType = Pal::ImageViewType::Tex2d;
+  viewInfo.possibleLayouts.engines = Pal::LayoutComputeEngine | Pal::LayoutDmaEngine;
+  viewInfo.possibleLayouts.usages = Pal::LayoutShaderWrite;
   imgCreateInfo.extent.width = desc_.width_;
   imgCreateInfo.extent.height = desc_.height_;
   imgCreateInfo.extent.depth = desc_.depth_;
@@ -806,6 +808,8 @@ bool Resource::CreateInterop(CreateParams* params)
       viewInfo.swizzledFormat.format = format;
       viewInfo.swizzledFormat.swizzle = channels;
       viewInfo.subresRange = ImgSubresRange;
+      viewInfo.possibleLayouts.engines = Pal::LayoutComputeEngine | Pal::LayoutDmaEngine;
+      viewInfo.possibleLayouts.usages = Pal::LayoutShaderWrite;
       dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
 
       hwState_[8] = GetHSAILImageFormatType(desc().format_);
@@ -854,6 +858,8 @@ bool Resource::CreateInterop(CreateParams* params)
       return false;
     }
     Pal::ImageViewInfo viewInfo = {};
+    viewInfo.possibleLayouts.engines = Pal::LayoutComputeEngine | Pal::LayoutDmaEngine;
+    viewInfo.possibleLayouts.usages = Pal::LayoutShaderWrite;
     viewInfo.viewType = Pal::ImageViewType::Tex2d;
     switch (imgCreateInfo.imageType) {
     case Pal::ImageType::Tex3d:
