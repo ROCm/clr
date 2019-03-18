@@ -113,6 +113,66 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
 }
 
+bool Program::findGlobalSymbols(void** device_pptr, size_t* bytes, const char* global_name) const {
+  hsa_status_t status = HSA_STATUS_SUCCESS;
+  hsa_agent_t hsa_device;
+  hsa_symbol_kind_t sym_type;
+  hsa_executable_symbol_t global_symbol;
+
+  hsa_device= dev().getBackendDevice();
+
+  /* Find HSA Symbol by name */
+  status = hsa_executable_get_symbol_by_name(hsaExecutable_, global_name, &hsa_device,
+                                             &global_symbol);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Failed to find the Symbol by Name: ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Find HSA Symbol Type */
+  status = hsa_executable_symbol_get_info(global_symbol, HSA_EXECUTABLE_SYMBOL_INFO_TYPE,
+                                          &sym_type);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Failed to find the Symbol Type : ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Make sure symbol type is VARIABLE */
+  if (sym_type != HSA_SYMBOL_KIND_VARIABLE) {
+    buildLog_ += "Error: Symbol is not of type VARIABLE : ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the size of the variable */
+  status = hsa_executable_symbol_get_info(global_symbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                                          bytes);
+
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Failed to retrieve the Symbol Size : ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Find HSA Symbol Address */
+  status = hsa_executable_symbol_get_info(global_symbol,
+                                          HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, device_pptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Failed to find the Symbol Address : ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+    return false;
+  }
+
+  return true;
+}
+
 HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
   xnackEnabled_ = dev().settings().enableXNACK_;
   sramEccEnabled_ = dev().info().sramEccEnabled_;
