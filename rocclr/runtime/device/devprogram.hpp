@@ -106,7 +106,7 @@ class Program : public amd::HeapObject {
   aclBinary* binaryElf_;            //!< Binary for the new compiler library
 
   std::string lastBuildOptionsArg_;
-  std::string buildLog_;            //!< build log.
+  mutable std::string buildLog_;    //!< build log.
   cl_int buildStatus_;              //!< build status.
   cl_int buildError_;               //!< build error
 
@@ -223,6 +223,10 @@ class Program : public amd::HeapObject {
 
   //! Check if SRAM ECC is enable
   const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
+
+  virtual bool findGlobalSymbols(void** dptr, size_t* bytes, const char* globalName) const {
+    ShouldNotReachHere();
+  }
 
  protected:
   //! pre-compile setup
