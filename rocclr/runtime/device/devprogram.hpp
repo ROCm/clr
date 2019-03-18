@@ -226,6 +226,7 @@ class Program : public amd::HeapObject {
 
   virtual bool findGlobalSymbols(void** dptr, size_t* bytes, const char* globalName) const {
     ShouldNotReachHere();
+    return false;
   }
 
  protected:
