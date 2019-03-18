@@ -1234,6 +1234,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Force wave size 32 for compute shader compilation")
 
+// -force-wgp-mode
+OPTION(OT_BOOL, \
+       OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_NORMAL, \
+       "force-wgp-mode", NULL, \
+       SCForceWgpMode, \
+       false, 0, 0, NULL, \
+       "Force wgp mode for compute shader compilation")
+
 // -xnack
 OPTION(OT_BOOL, \
        OA_RUNTIME|OVIS_SUPPORT|OVA_DISALLOWED|OFA_NORMAL, \
