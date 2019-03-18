@@ -1496,6 +1496,14 @@ bool Program::linkImplLC(amd::option::Options* options) {
             std::ostream_iterator<std::string>(ostrstr, " "));
   codegenOptions.append(" ").append(ostrstr.str());
 
+  // Set SRAM ECC option if needed
+  if (sramEccEnabled_) {
+    codegenOptions.append(" -msram-ecc");
+  }
+  else {
+    codegenOptions.append(" -mno-sram-ecc");
+  }
+
   // Force object code v2.
   codegenOptions.append(" -mno-code-object-v3");
   // Set whole program mode
