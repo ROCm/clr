@@ -193,15 +193,15 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       gfx10Plus_ = true;
       hsailExplicitXnack_ = static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled
         || palProp.gpuMemoryProperties.flags.iommuv2Support);
-      enableWgpMode_ = GPU_ENABLE_WGP_MODE || !useLightning_;
+      enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
       }
-      if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
-        enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
-      }
       if (palProp.revision == Pal::AsicRevision::Navi10Lite && useLightning_) {
         enableWave32Mode_ = false;
+      }
+      if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
+        enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
       }
       lcWavefrontSize64_ = !enableWave32Mode_;
       // Fall through to AI (gfx9) ...

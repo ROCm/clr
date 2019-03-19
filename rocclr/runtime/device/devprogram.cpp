@@ -1857,6 +1857,10 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
     fin_options.append(" -force-wave-size-32");
   }
 
+  if (device().settings().enableWgpMode_) {
+    fin_options.append(" -force-wgp-mode");
+  }
+
   if (device().settings().hsailExplicitXnack_) {
     fin_options.append(" -xnack");
   }
