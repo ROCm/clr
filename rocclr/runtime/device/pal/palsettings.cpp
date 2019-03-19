@@ -143,7 +143,7 @@ Settings::Settings() {
   enableWgpMode_ = false;
   enableWave32Mode_ = false;
   hsailExplicitXnack_ = false;
-  lcWavefrontSize64_ = false;
+  lcWavefrontSize64_ = true;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
