@@ -187,11 +187,22 @@ void khrIcdVendorAdd(const char *libraryName)
         // add this vendor to the list of vendors at the tail
         {
             KHRicdVendor **prevNextPointer = NULL;
-            for (prevNextPointer = &khrIcdVendors; *prevNextPointer; prevNextPointer = &( (*prevNextPointer)->next) );
-            *prevNextPointer = vendor;
+            for (prevNextPointer = &khrIcdVendors; *prevNextPointer; prevNextPointer = &( (*prevNextPointer)->next) )
+            {
+                if (!strcmp(vendor->suffix, (*prevNextPointer)->suffix)) {
+                    free(suffix);
+                    free(vendor);
+                    vendor = NULL;
+                    KHR_ICD_TRACE("already loaded vendor with suffix %s, nothing to do here\n", suffix);
+                    break;
+                }
+            }
+            if (vendor)
+            {
+                *prevNextPointer = vendor;
+                KHR_ICD_TRACE("successfully added vendor %s with suffix %s\n", libraryName, suffix);
+            }
         }
-
-        KHR_ICD_TRACE("successfully added vendor %s with suffix %s\n", libraryName, suffix);
 
     }
 
