@@ -1294,6 +1294,7 @@ cl_image_format D3D11Object::getCLFormatFromDXGI(DXGI_FORMAT dxgiFmt, cl_uint pl
 
     case DXGI_FORMAT_R10G10B10A2_UNORM:
       fmt.image_channel_order = CL_RGBA;
+      fmt.image_channel_data_type = CL_UNORM_INT_101010;
       break;
 
     case DXGI_FORMAT_R10G10B10A2_UINT:
