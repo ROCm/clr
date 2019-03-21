@@ -182,12 +182,16 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Navi10 XNACK */{"gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true},
     /* Navi10Lite       */{"gfx1000", "gfx1000","gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000, 1000, false},
     /* Navi10Lite XNACK */{"gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000, 1000, true},
-    /* Navi12       */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
-    /* Navi12 XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
-    /* Navi12Lite   */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
-    /* Navi12Lite XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
-    /* Navi14       */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
-    /* Navi14 XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
+    /* Navi12       */{ "gfx1011", "gfx1011", "gfx1011", 4, 16, 1, 256, 64 * Ki, 32, 1011, 1011, false },
+    /* Navi12 XNACK */{ "gfx1011", "gfx1011", "gfx1011", 4, 16, 1, 256, 64 * Ki, 32, 1011, 1011, true },
+    /* Navi12Lite   */{ "gfx1011", "gfx1011", "gfx1011", 4, 16, 1, 256, 64 * Ki, 32, 1011, 1011, false },
+    /* Navi12Lite XNACK */{ "gfx1011", "gfx1011", "gfx1011", 4, 16, 1, 256, 64 * Ki, 32, 1011, 1011, true },
+    /* Navi14       */{ "gfx1012", "gfx1012", "gfx1012", 4, 16, 1, 256, 64 * Ki, 32, 1012, 1012, false },
+    /* Navi14 XNACK */{ "gfx1012", "gfx1012", "gfx1012", 4, 16, 1, 256, 64 * Ki, 32, 1012, 1012, true },
+    /* UnknownDevice3       */{ "gfx1030", "gfx1030", "gfx1030", 4, 16, 1, 256, 64 * Ki, 32, 1030, 1030, false },
+    /* UnknownDevice3 XNACK */{ "gfx1030", "gfx1030", "gfx1030", 4, 16, 1, 256, 64 * Ki, 32, 1030, 1030, true },
+    /* UnknownDevice2   */{ "gfx1030", "gfx1030", "gfx1030", 4, 16, 1, 256, 64 * Ki, 32, 1030, 1030, false },
+    /* UnknownDevice2 XNACK */{ "gfx1030", "gfx1030", "gfx1030", 4, 16, 1, 256, 64 * Ki, 32, 1030, 1030, true },
 
 };
 
