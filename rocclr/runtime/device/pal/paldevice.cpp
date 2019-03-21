@@ -180,6 +180,12 @@ bool NullDevice::init() {
         case 1:
           ipLevel = Pal::GfxIpLevel::GfxIp10_1;
           break;
+        case 2:
+          ipLevel = Pal::GfxIpLevel::GfxIp10_2;
+          break;
+        case 3:
+          ipLevel = Pal::GfxIpLevel::GfxIp10_3;
+          break;
         }
       }
 
@@ -208,6 +214,15 @@ bool NullDevice::init() {
           break;
       case 1010:
           revision = Pal::AsicRevision::Navi10;
+          break;
+      case 1011:
+          revision = Pal::AsicRevision::Navi12;
+          break;
+      case 1012:
+          revision = Pal::AsicRevision::Navi14;
+          break;
+      case 1030:
+          ShouldNotReachHere();
           break;
       }
 
