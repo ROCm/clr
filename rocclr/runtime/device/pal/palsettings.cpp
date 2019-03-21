@@ -372,7 +372,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     enableExtension(ClAMDLiquidFlash);
   }
 
-  hwLDSSize_ = IS_LINUX ? 64 * Ki : 32 * Ki;
+  hwLDSSize_ = (IS_LINUX || gfx10Plus_) ? 64 * Ki : 32 * Ki;
 
   imageSupport_ = true;
 
