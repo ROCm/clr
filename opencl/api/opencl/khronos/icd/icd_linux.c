@@ -160,6 +160,16 @@ Cleanup:
     {
         closedir(dir);
     }
+
+    KHRicdVendor *vendorIterator;
+    for (vendorIterator = khrIcdVendors; vendorIterator; vendorIterator = vendorIterator->next)
+    {
+        if (vendorIterator->libName != NULL)
+        {
+            free(vendorIterator->libName);
+            vendorIterator->libName = NULL;
+        }
+    }
 }
 
 // go through the list of vendors only once

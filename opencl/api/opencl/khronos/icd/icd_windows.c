@@ -130,7 +130,17 @@ BOOL CALLBACK khrIcdOsVendorsEnumerate(PINIT_ONCE InitOnce, PVOID Parameter, PVO
     {
         KHR_ICD_TRACE("Failed to close platforms key %s, ignoring\n", platformsName);
     }
-	
+
+    KHRicdVendor *vendorIterator;
+    for (vendorIterator = khrIcdVendors; vendorIterator; vendorIterator = vendorIterator->next)
+    {
+        if (vendorIterator->libName != NULL)
+        {
+            free(vendorIterator->libName);
+            vendorIterator->libName = NULL;
+        }
+    }
+
     return TRUE;
 }
 
