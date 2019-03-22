@@ -88,6 +88,9 @@ struct KHRicdVendorRec
     // the loaded library object (true type varies on Linux versus Windows)
     void *library;
 
+    // the file name of the library
+    char *libName;
+
     // the extension suffix for this platform
     char *suffix;
 
