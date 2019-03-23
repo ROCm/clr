@@ -332,8 +332,7 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   //! Dump the log data object to the build log, if both are present
-  amd_comgr_status_t extractBuildLog(const char* buildLog,
-                                     amd_comgr_data_set_t dataSet);
+  void extractBuildLog(const char* buildLog, amd_comgr_data_set_t dataSet);
   //! Dump the code object data
   amd_comgr_status_t extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,

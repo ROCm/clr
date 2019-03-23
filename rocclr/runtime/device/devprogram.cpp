@@ -193,19 +193,20 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 // If buildLog is not null, and dataSet contains a log object, extract the
 // first log data object from dataSet and process it with
 // extractByteCodeBinary.
-amd_comgr_status_t Program::extractBuildLog(const char* buildLog,
-                                            amd_comgr_data_set_t dataSet) {
+void Program::extractBuildLog(const char* buildLog, amd_comgr_data_set_t dataSet) {
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
   if (buildLog != nullptr) {
     size_t count;
     status = amd::Comgr::action_data_count(dataSet, AMD_COMGR_DATA_KIND_LOG, &count);
 
-    if (count > 0) {
+    if (status == AMD_COMGR_STATUS_SUCCESS && count > 0) {
       const std::string logName(buildLog);
       status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, logName);
     }
   }
-  return status;
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "Warning: extracting build log failed.\n";
+  }
 }
 
 //  Extract the byte code binary from the data set.  The binary will be saved to an output
@@ -421,12 +422,12 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     hasDataSetDevLibs = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
                                    dataSetDevLibs);
+    extractBuildLog(buildLog, dataSetDevLibs);
   }
-
-  status = extractBuildLog(buildLog, dataSetDevLibs);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, dataSetDevLibs, *output);
+    extractBuildLog(buildLog, *output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -438,8 +439,6 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData,
                                    binarySize);
   }
-
-  status = extractBuildLog(buildLog, *output);
 
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
@@ -469,8 +468,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
   amd_comgr_data_set_t output;
   amd_comgr_data_set_t dataSetPCH;
   bool hasAction = false;
-  bool hsaOutput = false;
-  bool hsaDataSetPCH = false;
+  bool hasOutput = false;
+  bool hasDataSetPCH = false;
 
   amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
@@ -485,22 +484,53 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   //  Adding Precompiled Headers
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hsaOutput = true;
+    hasOutput = true;
     status = amd::Comgr::create_data_set(&dataSetPCH);
   }
 
+  // Preprocess the source
+  // FIXME: This must happen before the precompiled headers are added, as they
+  // do not embed the source text of the header, and so reference paths in the
+  // filesystem which do not exist at runtime.
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hsaDataSetPCH = true;
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
-                                   action, inputs, dataSetPCH);
+    hasDataSetPCH = true;
+
+    if (amdOptions->isDumpFlagSet(amd::option::DUMP_I)){
+      amd_comgr_data_set_t dataSetPreprocessor;
+      bool hasDataSetPreprocessor = false;
+
+      status = amd::Comgr::create_data_set(&dataSetPreprocessor);
+
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        hasDataSetPreprocessor = true;
+        status = amd::Comgr::do_action(AMD_COMGR_ACTION_SOURCE_TO_PREPROCESSOR,
+                                       action, inputs, dataSetPreprocessor);
+        extractBuildLog(buildLog, dataSetPreprocessor);
+      }
+
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        std::string outFileName = amdOptions->getDumpFileName(".i");
+        status = extractByteCodeBinary(dataSetPreprocessor,
+                                       AMD_COMGR_DATA_KIND_SOURCE, outFileName);
+      }
+
+      if (hasDataSetPreprocessor) {
+        amd::Comgr::destroy_data_set(dataSetPreprocessor);
+      }
+    }
   }
 
-  status = extractBuildLog(buildLog, dataSetPCH);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
+                                   action, inputs, dataSetPCH);
+    extractBuildLog(buildLog, dataSetPCH);
+  }
 
   //  Compiling the source codes with precompiled headers
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
                                  action, dataSetPCH, output);
+    extractBuildLog(buildLog, output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -512,17 +542,15 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
                                    binarySize);
   }
 
-  status = extractBuildLog(buildLog, output);
-
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
   }
 
-  if (hsaDataSetPCH) {
+  if (hasDataSetPCH) {
     amd::Comgr::destroy_data_set(dataSetPCH);
   }
 
-  if (hsaOutput) {
+  if (hasOutput) {
     amd::Comgr::destroy_data_set(output);
   }
 
@@ -545,8 +573,8 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   amd_comgr_data_set_t output;
   amd_comgr_data_set_t relocatableData;
   bool hasAction = false;
-  bool hsaOutput = false;
-  bool hsaRelocatableData = false;
+  bool hasOutput = false;
+  bool hasRelocatableData = false;
 
   amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options,
                                            &action, &hasAction);
@@ -561,18 +589,19 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hsaOutput = true;
+    hasOutput = true;
 
     if (amdOptions->isDumpFlagSet(amd::option::DUMP_ISA)){
       //  create the assembly data set
       amd_comgr_data_set_t assemblyData;
-      bool hsaAssemblyData = false;
+      bool hasAssemblyData = false;
 
       status = amd::Comgr::create_data_set(&assemblyData);
       if (status == AMD_COMGR_STATUS_SUCCESS) {
-        hsaAssemblyData = true;
+        hasAssemblyData = true;
         status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY,
                                        action, inputs, assemblyData);
+        extractBuildLog(buildLog, assemblyData);
       }
 
       // dump the ISA
@@ -581,9 +610,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
         status = extractByteCodeBinary(assemblyData, AMD_COMGR_DATA_KIND_SOURCE, dumpIsaName);
       }
 
-      status = extractBuildLog(buildLog, assemblyData);
-
-      if (hsaAssemblyData) {
+      if (hasAssemblyData) {
         amd::Comgr::destroy_data_set(assemblyData);
       }
     }
@@ -595,18 +622,18 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hsaRelocatableData = true;
+    hasRelocatableData = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
                                  action, inputs, relocatableData);
+    extractBuildLog(buildLog, relocatableData);
   }
-
-  status = extractBuildLog(buildLog, relocatableData);
 
   // Create executable from the relocatable data set
   amd::Comgr::action_info_set_options(action, "");
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
                                  action, relocatableData, output);
+    extractBuildLog(buildLog, output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -619,17 +646,15 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
                                    executableSize);
   }
 
-  status = extractBuildLog(buildLog, output);
-
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
   }
 
-  if (hsaRelocatableData) {
+  if (hasRelocatableData) {
     amd::Comgr::destroy_data_set(relocatableData);
   }
 
-  if (hsaOutput) {
+  if (hasOutput) {
     amd::Comgr::destroy_data_set(output);
   }
 
