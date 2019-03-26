@@ -542,7 +542,9 @@ bool Device::init() {
 
     roc_device->deviceInfo_.gfxipVersion_ = gfxipVersionNum;
 
-    bool sramEccEnabled = (str.find("+sram-ecc") != std::string::npos);
+    // TODO: set sramEccEnabled flag based on target string suffix
+    //       when ROCr resumes reporting sram-ecc support
+    bool sramEccEnabled = (gfxipVersionNum == 906 || gfxipVersionNum == 908) ? true : false;
     if (!roc_device->create(sramEccEnabled)) {
       LogError("Error creating new instance of Device.");
       continue;
