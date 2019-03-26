@@ -178,6 +178,8 @@ static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Renoir       */{"gfx902", "gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 902, 902, false},
     /* Renoir XNACK */{ LIGHTNING_SWITCH("gfx902","gfx903"), "gfx903", "gfx902",
                         4, 16, 1, 256, 64 * Ki, 32, 902, 903, true},
+    /* Navi10_A0       */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false },
+    /* Navi10_A0 XNACK */{ "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true },
     /* Navi10       */{"gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, false},
     /* Navi10 XNACK */{"gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 1010, 1010, true},
     /* Navi10Lite       */{"gfx1000", "gfx1000","gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 1000, 1000, false},

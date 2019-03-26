@@ -189,6 +189,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi10:
+    case Pal::AsicRevision::Navi10_A0:
     case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
       hsailExplicitXnack_ = static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled
