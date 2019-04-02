@@ -1677,7 +1677,12 @@ bool Program::linkImplLC(amd::option::Options* options) {
     Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
       reinterpret_cast<const char*>(std::get<1>(unsafe_math)), std::get<2>(unsafe_math));
 
-    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc) {
+    auto wavefrontsize64 = get_oclc_wavefrontsize64(device().settings().lcWavefrontSize64_);
+    Data* wavefrontsize64_bc = C->NewBufferReference(DT_LLVM_BC,
+      reinterpret_cast<const char*>(std::get<1>(wavefrontsize64)), std::get<2>(wavefrontsize64));
+
+    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc ||
+        !wavefrontsize64_bc) {
       buildLog_ += "Error: Failed to open the control functions.\n";
       return false;
     }
@@ -1686,6 +1691,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
     inputs.push_back(daz_opt_bc);
     inputs.push_back(finite_only_bc);
     inputs.push_back(unsafe_math_bc);
+    inputs.push_back(wavefrontsize64_bc);
 
     // open the linked output
     std::vector<std::string> linkOptions;
