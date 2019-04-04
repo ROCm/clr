@@ -107,6 +107,11 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
   if (parent.getHostMem() != nullptr) {
     setHostMem(reinterpret_cast<address>(parent.getHostMem()) + origin);
   }
+
+  if (parent.getSvmPtr() != nullptr) {
+    setSvmPtr(reinterpret_cast<address>(parent.getSvmPtr()) + origin);
+  }
+
   // Inherit memory flags from the parent
   if ((flags_ & (CL_MEM_READ_WRITE | CL_MEM_READ_ONLY | CL_MEM_WRITE_ONLY)) == 0) {
     flags_ |= parent_->getMemFlags() & (CL_MEM_READ_WRITE | CL_MEM_READ_ONLY | CL_MEM_WRITE_ONLY);

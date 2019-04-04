@@ -49,15 +49,36 @@ void Segment::DestroyCpuAccess() {
   }
 }
 
+bool Segment::gpuAddressOffset(uint64_t offAddr, size_t* offset) {
+  uint64_t baseAddr = gpuAccess_->vmAddress();
+  if (baseAddr > offAddr) {
+    return false;
+  }
+  *offset = (offAddr - baseAddr);
+  return true;
+}
+
 bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t size, size_t align,
                     bool zero) {
   align = amd::alignUp(align, sizeof(uint32_t));
-  gpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
-  if ((gpuAccess_ == nullptr) || !gpuAccess_->create(pal::Resource::Shader)) {
-    delete gpuAccess_;
-    gpuAccess_ = nullptr;
+
+  amd::Memory *amd_mem_obj = new (prog.dev().context())
+                             amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
+                                         reinterpret_cast<void*>(1));
+
+  if (amd_mem_obj == nullptr) {
+    LogError("[OCL] failed to create a mem object!");
     return false;
   }
+
+  if (!amd_mem_obj->create(nullptr)) {
+    LogError("[OCL] failed to create a svm hidden buffer!");
+    amd_mem_obj->release();
+    return false;
+  }
+
+  gpuAccess_ = static_cast<pal::Memory*>(amd_mem_obj->getDeviceMemory(prog.dev(), false));
+
   if (segment == AMDGPU_HSA_SEGMENT_CODE_AGENT) {
     void* ptr = nullptr;
     cpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
@@ -350,6 +371,110 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   // Set the type of binary
   setType(type);
 #endif  // defined(WITH_COMPILER_LIB)
+  return true;
+}
+
+bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
+                                      size_t* bytes, const char* global_name) const {
+  uint32_t length = 0;
+  size_t offset = 0;
+  uint32_t flags = 0;
+  amd::Memory* parent = nullptr;
+  hsa_agent_t agent;
+  hsa_symbol_kind_t type;
+  hsa_status_t status = HSA_STATUS_SUCCESS;
+  amd::hsa::loader::Symbol* symbol = nullptr;
+
+  if (amd_mem_obj == nullptr) {
+    buildLog_ += "amd_mem_obj is null";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the Symbol obj from global name*/
+  agent.handle = 1;
+  symbol = executable_->GetSymbol(global_name, &agent);
+  if (!symbol) {
+    buildLog_ += "Error: Getting Global Var Symbol";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the symbol type */
+  if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_TYPE, &type)) {
+    buildLog_ += "Error: Getting Global Var Symbol Type";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Make sure the symbol is of type VARIABLE */
+  if (type != HSA_SYMBOL_KIND_VARIABLE) {
+    buildLog_ += "Error: Retrieve Symbol type is not Variable ";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the symbol Name Length */
+  if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME_LENGTH, &length)) {
+    buildLog_ += "Error: Getting Global Var Symbol length";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the symbol name */
+  char* name = reinterpret_cast<char*>(alloca(length + 1));
+  if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_NAME, name)) {
+    buildLog_ += "Error: Getting Global Var Symbol name";
+    buildLog_ += "\n";
+    return false;
+  }
+  name[length] = '\0';
+
+  /* Make sure the name matches with the global name */
+  if (std::string(name) != std::string(global_name)) {
+    buildLog_ += "Error: Global Var Name mismatch";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the Symbol address */
+  if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, device_pptr)) {
+    buildLog_ += "Error: Getting Global Var Symbol Address";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the Symbol size */
+  if (!symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE, bytes)) {
+    buildLog_ += "Error: Getting Global Var Symbol size";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Retrieve the Offset from global pal::Memory created @ segment::alloc */
+  if(!codeSegment_->gpuAddressOffset(reinterpret_cast<uint64_t>(*device_pptr), &offset)) {
+    buildLog_ += "Error: Cannot Retrieve the Address Offset";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  /* Create a View from the global pal::Memory */
+  parent = codeSegGpu_->owner();
+  *amd_mem_obj = new (parent->getContext()) amd::Buffer(*parent, flags, offset, *bytes);
+
+  if (*amd_mem_obj == nullptr) {
+    buildLog_ += "[OCL] Failed to create a mem object!";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  if (!((*amd_mem_obj)->create(nullptr))) {
+    buildLog_ += "[OCL] failed to create a svm hidden buffer!";
+    buildLog_ += "\n";
+    (*amd_mem_obj)->release();
+    return false;
+  }
+
   return true;
 }
 

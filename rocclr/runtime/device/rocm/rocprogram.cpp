@@ -113,11 +113,19 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
 }
 
-bool Program::findGlobalSymbols(void** device_pptr, size_t* bytes, const char* global_name) const {
+bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
+                                 size_t* bytes, const char* global_name) const {
   hsa_status_t status = HSA_STATUS_SUCCESS;
+  const roc::Device* roc_device = nullptr;
   hsa_agent_t hsa_device;
   hsa_symbol_kind_t sym_type;
   hsa_executable_symbol_t global_symbol;
+
+  if (amd_mem_obj == nullptr) {
+    buildLog_ += "amd_mem_obj is null";
+    buildLog_ += "\n";
+    return false;
+  }
 
   hsa_device= dev().getBackendDevice();
 
@@ -167,6 +175,22 @@ bool Program::findGlobalSymbols(void** device_pptr, size_t* bytes, const char* g
     buildLog_ += "Error: Failed to find the Symbol Address : ";
     buildLog_ += hsa_strerror(status);
     buildLog_ += "\n";
+    return false;
+  }
+
+  roc_device = static_cast<const roc::Device*>(&dev());
+  *amd_mem_obj = new(roc_device->context()) amd::Buffer(roc_device->context(), 0, *bytes, *device_pptr);
+
+  if (*amd_mem_obj == nullptr) {
+    buildLog_ += "[OCL] Failed to create a mem object!";
+    buildLog_ += "\n";
+    return false;
+  }
+
+  if (!((*amd_mem_obj)->create(nullptr))) {
+    buildLog_ += "[OCL] failed to create a svm hidden buffer!";
+    buildLog_ += "\n";
+    (*amd_mem_obj)->release();
     return false;
   }
 
