@@ -397,9 +397,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       isSubwindowRectCopy = false;
     }
 
-    // FIXME: Temporarily disable subwindow copy for ROCm
-    // if (isSubwindowRectCopy ) {
-    if (0) {
+    if (isSubwindowRectCopy ) {
       const hsa_signal_value_t kInitVal = 1;
       hsa_signal_store_relaxed(completion_signal_, kInitVal);
 
