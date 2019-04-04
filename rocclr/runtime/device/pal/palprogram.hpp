@@ -47,6 +47,8 @@ class Segment : public amd::HeapObject {
   //! Returns address for GPU access in the segment
   uint64_t gpuAddress(size_t offset) const { return gpuAccess_->vmAddress() + offset; }
 
+  bool gpuAddressOffset(uint64_t offAddr, size_t* offset);
+
   //! Returns address for CPU access in the segment
   void* cpuAddress(size_t offset) const
     { return ((cpuAccess_ != nullptr) ? cpuAccess_->data() : cpuMem_) + offset; }
@@ -177,9 +179,12 @@ class HSAILProgram : public device::Program {
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
-  //! Destroys CPU allocations in the code segment   
+  //! Destroys CPU allocations in the code segment
   void DestroySegmentCpuAccess() const
     { if (codeSegment_ != nullptr) { codeSegment_->DestroyCpuAccess(); } }
+
+  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
+                                  size_t* bytes, const char* globalName) const;
 
  private:
   //! Disable default copy constructor

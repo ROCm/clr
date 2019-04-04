@@ -39,7 +39,8 @@ class Program : public device::Program {
 
   hsa_executable_t hsaExecutable() const { return hsaExecutable_; }
 
-  virtual bool findGlobalSymbols(void** dptr, size_t* bytes, const char* globalName) const;
+  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
+                                  size_t* bytes, const char* globalName) const;
 
  protected:
   /*! \brief Compiles LLVM binary to HSAIL code (compiler backend: link+opt+codegen)
