@@ -192,6 +192,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10_A0:
     case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
+      useLightning_ = (!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : true;
       hsailExplicitXnack_ = static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled
         || palProp.gpuMemoryProperties.flags.iommuv2Support);
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
