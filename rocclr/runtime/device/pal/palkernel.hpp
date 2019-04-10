@@ -59,7 +59,7 @@ class HSAILKernel : public device::Kernel {
   const HSAILProgram& prog() const;
 
   //! Returns LDS size used in this kernel
-  uint32_t ldsSize() const { return akc_.workgroup_group_segment_byte_size; }
+  uint32_t ldsSize() const { return workgroupGroupSegmentByteSize_; }
 
   //! Returns pointer on CPU to AQL code info
   const amd_kernel_code_t* cpuAqlCode() const { return &akc_; }
@@ -71,10 +71,10 @@ class HSAILKernel : public device::Kernel {
   size_t aqlCodeSize() const { return codeSize_; }
 
   //! Returns the size of argument buffer
-  size_t argsBufferSize() const { return akc_.kernarg_segment_byte_size; }
+  size_t argsBufferSize() const { return kernargSegmentByteSize_; }
 
   //! Returns spill reg size per workitem
-  uint32_t spillSegSize() const { return amd::alignUp(akc_.workitem_private_segment_byte_size, sizeof(uint32_t)); }
+  uint32_t spillSegSize() const { return spillSegmentByteSize_; }
 
   //! Returns AQL packet in CPU memory
   //! if the kernel arguments were successfully loaded, otherwise NULL
@@ -102,13 +102,25 @@ class HSAILKernel : public device::Kernel {
   //! Creates AQL kernel HW info
   bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
 
+  //! Get the kernel code and copy the code object from the program CPU segment
+  bool setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc);
+
+  //! Set up the workgroup info based on the kernel metadata
+  void setWorkGroupInfo(const uint32_t privateSegmentSize,
+                        const uint32_t groupSegmentSize,
+                        const uint16_t numSGPRs,
+                        const uint16_t numVGPRs);
+
   std::string compileOptions_;    //!< compile used for finalizing this kernel
   amd_kernel_code_t akc_;         //!< AQL kernel code on CPU
-  const HSAILProgram& prog_;      //!< Reference to the parent program
   uint index_;                    //!< Kernel index in the program
 
   uint64_t code_;     //!< GPU memory pointer to the kernel
   size_t codeSize_;   //!< Size of ISA code
+
+  uint32_t workgroupGroupSegmentByteSize_;    //!< LDS size used in the kernel
+  uint32_t kernargSegmentByteSize_;           //!< Size of kernel argument buffer
+  uint32_t spillSegmentByteSize_;             //!< Spill reg size per workitem
 };
 
 class LightningKernel : public HSAILKernel {
@@ -121,6 +133,11 @@ class LightningKernel : public HSAILKernel {
 
   //! Initializes the metadata required for this kernel,
   bool init(amd::hsa::loader::Symbol* symbol);
+
+#if defined(USE_COMGR_LIBRARY)
+  //! Initializes the metadata required for this kernel,
+  bool init();
+#endif
 };
 
 /*@}*/} // namespace pal

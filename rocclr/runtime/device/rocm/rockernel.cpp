@@ -25,41 +25,58 @@ Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
                const uint32_t kernargSegmentAlignment)
-    : device::Kernel(prog->dev(), name),
-      program_(prog),
+    : device::Kernel(prog->dev(), name, *prog),
       kernelCodeHandle_(kernelCodeHandle),
       workgroupGroupSegmentByteSize_(workgroupGroupSegmentByteSize),
       workitemPrivateSegmentByteSize_(workitemPrivateSegmentByteSize),
       kernargSegmentByteSize_(kernargSegmentByteSize),
       kernargSegmentAlignment_(kernargSegmentAlignment) {}
 
+Kernel::Kernel(std::string name, Program* prog)
+    : device::Kernel(prog->dev(), name, *prog),
+      kernelCodeHandle_(0),
+      workgroupGroupSegmentByteSize_(0),
+      workitemPrivateSegmentByteSize_(0),
+      kernargSegmentByteSize_(0),
+      kernargSegmentAlignment_(0) {}
+
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
 
-  hsa_agent_t hsaDevice = program_->hsaDevice();
+  hsa_agent_t hsaDevice = program()->hsaDevice();
 
   const amd_comgr_metadata_node_t* kernelMetaNode =
-              static_cast<LightningProgram*>(program_)->getKernelMetadata(name());
+              static_cast<const LightningProgram*>(program())->getKernelMetadata(name());
   if (kernelMetaNode == nullptr) {
     return false;
   }
 
   KernelMD  kernelMD;
-  if (!GetAttrCodePropMetadata(*kernelMetaNode, KernargSegmentByteSize(), &kernelMD)) {
+  if (!GetAttrCodePropMetadata(*kernelMetaNode, &kernelMD)) {
     return false;
   }
+
+  // Set the kernel symbol name and size/alignment based on the kernel metadata
+  // NOTE: kernel name is used to get the kernel code handle in V2,
+  //       but kernel symbol name is used in V3
+  symbolName_ = (codeObjectVer() == 2) ? name() : kernelMD.mSymbolName;
+  workgroupGroupSegmentByteSize_ = kernelMD.mCodeProps.mGroupSegmentFixedSize;
+  workitemPrivateSegmentByteSize_ = kernelMD.mCodeProps.mPrivateSegmentFixedSize;
+  kernargSegmentByteSize_ = kernelMD.mCodeProps.mKernargSegmentSize;
+  kernargSegmentAlignment_ = amd::alignUp(std::max(kernelMD.mCodeProps.mKernargSegmentAlign, 128u),
+                                          dev().info().globalMemCacheLineSize_);
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
 
   // Get the available SGPRs and VGPRs
-  std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program_->machineTarget();
-  if (program_->xnackEnable()) {
+  std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program()->machineTarget();
+  if (program()->xnackEnable()) {
     targetIdent.append("+xnack");
   }
-  if (program_->sramEccEnable()) {
+  if (program()->sramEccEnable()) {
     targetIdent.append("+sram-ecc");
   }
 
@@ -67,10 +84,23 @@ bool LightningKernel::init() {
     return false;
   }
 
+  // Get the kernel code handle
+  hsa_status_t hsaStatus;
+  hsa_executable_symbol_t symbol;
+  hsa_agent_t agent = program()->hsaDevice();
+  hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
+                                                symbolName().c_str(),
+                                                &agent, &symbol);
+  if (hsaStatus == HSA_STATUS_SUCCESS) {
+    hsaStatus = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
+                                               &kernelCodeHandle_);
+  }
+  if (hsaStatus != HSA_STATUS_SUCCESS) {
+    return false;
+  }
+
   if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
-    hsa_agent_t             agent = program_->hsaDevice();
     hsa_executable_symbol_t kernelSymbol;
-    hsa_status_t            hsaStatus;
     int                     variable_size;
     uint64_t                variable_address;
 
@@ -79,14 +109,9 @@ bool LightningKernel::init() {
     // object handle of such a kernel. The address of the variable and the kernel code object handle are known
     // only after the hsa executable is loaded. The below code copies the kernel code object handle to the
     // address of the variable.
-    hsaStatus = hsa_executable_get_symbol_by_name(program_->hsaExecutable(),
+    hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
                                                   kernelMD.mAttrs.mRuntimeHandle.c_str(),
                                                   &agent, &kernelSymbol);
-    if (hsaStatus == HSA_STATUS_SUCCESS) {
-      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
-                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
-                                                 &variable_size);
-    }
     if (hsaStatus == HSA_STATUS_SUCCESS) {
       hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
                                                  HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
@@ -114,7 +139,7 @@ bool LightningKernel::init() {
   }
 
   uint32_t wavefront_size = 0;
-  if (hsa_agent_get_info(program_->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
+  if (hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
       HSA_STATUS_SUCCESS) {
     return false;
   }
@@ -127,7 +152,7 @@ bool LightningKernel::init() {
   workGroupInfo_.usedSGPRs_ = kernelMD.mCodeProps.mNumSGPRs;
   workGroupInfo_.usedVGPRs_ = kernelMD.mCodeProps.mNumVGPRs;
   workGroupInfo_.usedStackSize_ = 0;
-  workGroupInfo_.wavefrontPerSIMD_ = program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;
+  workGroupInfo_.wavefrontPerSIMD_ = program()->dev().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
   workGroupInfo_.size_ = kernelMD.mCodeProps.mMaxFlatWorkGroupSize;
   if (workGroupInfo_.size_ == 0) {
@@ -135,7 +160,7 @@ bool LightningKernel::init() {
   }
 
   // handle the printf metadata if any
-  const amd_comgr_metadata_node_t* programMD = static_cast<LightningProgram*>(program_)->metadata();
+  const amd_comgr_metadata_node_t* programMD = static_cast<const LightningProgram*>(program())->metadata();
   assert(programMD != nullptr);
 
   std::vector<std::string> printfStr;
@@ -159,10 +184,10 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
 }
 
 bool LightningKernel::init() {
-  hsa_agent_t hsaDevice = program_->hsaDevice();
+  hsa_agent_t hsaDevice = program()->hsaDevice();
 
   // Pull out metadata from the ELF
-  const CodeObjectMD* programMD = static_cast<LightningProgram*>(program_)->metadata();
+  const CodeObjectMD* programMD = static_cast<const LightningProgram*>(program())->metadata();
   assert(programMD != nullptr);
 
   const KernelMD* kernelMD = FindKernelMetadata(programMD, name());
@@ -172,7 +197,7 @@ bool LightningKernel::init() {
   InitParameters(*kernelMD, KernargSegmentByteSize());
 
   // Set the workgroup information for the kernel
-  workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
+  workGroupInfo_.availableLDSSize_ = program()->dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
   workGroupInfo_.availableSGPRs_ = 104;
   workGroupInfo_.availableVGPRs_ = 256;
@@ -196,7 +221,7 @@ bool LightningKernel::init() {
   }
 
   if (!kernelMD->mAttrs.mRuntimeHandle.empty()) {
-    hsa_agent_t             agent = program_->hsaDevice();
+    hsa_agent_t             agent = program()->hsaDevice();
     hsa_executable_symbol_t kernelSymbol;
     hsa_status_t            status;
     int                     variable_size;
@@ -208,7 +233,7 @@ bool LightningKernel::init() {
     // only after the hsa executable is loaded. The below code copies the kernel code object handle to the
     // address of the variable.
 
-    status = hsa_executable_get_symbol_by_name(program_->hsaExecutable(), kernelMD->mAttrs.mRuntimeHandle.c_str(),
+    status = hsa_executable_get_symbol_by_name(program()->hsaExecutable(), kernelMD->mAttrs.mRuntimeHandle.c_str(),
                                                &agent, &kernelSymbol);
     if (status != HSA_STATUS_SUCCESS) {
       return false;
@@ -239,7 +264,7 @@ bool LightningKernel::init() {
   }
 
   uint32_t wavefront_size = 0;
-  if (hsa_agent_get_info(program_->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
+  if (hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
       HSA_STATUS_SUCCESS) {
     return false;
   }
@@ -258,7 +283,7 @@ bool LightningKernel::init() {
 
   workGroupInfo_.usedStackSize_ = 0;
 
-  workGroupInfo_.wavefrontPerSIMD_ = program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;
+  workGroupInfo_.wavefrontPerSIMD_ = program()->dev().info().maxWorkItemSizes_[0] / wavefront_size;
 
   workGroupInfo_.wavefrontSize_ = wavefront_size;
 
@@ -278,18 +303,18 @@ bool LightningKernel::init() {
 bool HSAILKernel::init() {
   acl_error errorCode;
   // compile kernel down to ISA
-  hsa_agent_t hsaDevice = program_->hsaDevice();
+  hsa_agent_t hsaDevice = program()->hsaDevice();
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
-  aclCompiler* compileHandle = program_->dev().compiler();
+  aclCompiler* compileHandle = program()->dev().compiler();
   std::string openClKernelName("&__OpenCL_" + name() + "_kernel");
-  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
     return false;
   }
   std::unique_ptr<char[]> argList(new char[sizeOfArgList]);
-  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_ARGUMENT_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), argList.get(), &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
     return false;
@@ -300,17 +325,17 @@ bool HSAILKernel::init() {
 
   // Set the workgroup information for the kernel
   memset(&workGroupInfo_, 0, sizeof(workGroupInfo_));
-  workGroupInfo_.availableLDSSize_ = program_->dev().info().localMemSizePerCU_;
+  workGroupInfo_.availableLDSSize_ = program()->dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
   workGroupInfo_.availableSGPRs_ = 104;
   workGroupInfo_.availableVGPRs_ = 256;
   size_t sizeOfWorkGroupSize;
-  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
+  errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
     return false;
   }
-  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_WORK_GROUP_SIZE,
+  errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), workGroupInfo_.compileSize_,
                                          &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
@@ -319,7 +344,7 @@ bool HSAILKernel::init() {
 
   uint32_t wavefront_size = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(program_->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size)) {
+      hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size)) {
     return false;
   }
   assert(wavefront_size > 0);
@@ -344,18 +369,18 @@ bool HSAILKernel::init() {
   }
 
   workGroupInfo_.usedStackSize_ = 0;
-  workGroupInfo_.wavefrontPerSIMD_ = program_->dev().info().maxWorkItemSizes_[0] / wavefront_size;
+  workGroupInfo_.wavefrontPerSIMD_ = program()->dev().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
   if (workGroupInfo_.compileSize_[0] != 0) {
     workGroupInfo_.size_ = workGroupInfo_.compileSize_[0] * workGroupInfo_.compileSize_[1] *
         workGroupInfo_.compileSize_[2];
   } else {
-    workGroupInfo_.size_ = program_->dev().info().preferredWorkGroupSize_;
+    workGroupInfo_.size_ = program()->dev().info().preferredWorkGroupSize_;
   }
 
   // Pull out printf metadata from the ELF
   size_t sizeOfPrintfList;
-  errorCode = aclQueryInfo(compileHandle, program_->binaryElf(), RT_GPU_PRINTF_ARRAY,
+  errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_GPU_PRINTF_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
   if (errorCode != ACL_SUCCESS) {
     return false;
@@ -367,7 +392,7 @@ bool HSAILKernel::init() {
     if (!aclPrintfList) {
       return false;
     }
-    errorCode = aclQueryInfo(compileHandle, program_->binaryElf(),
+    errorCode = aclQueryInfo(compileHandle, program()->binaryElf(),
                                            RT_GPU_PRINTF_ARRAY, openClKernelName.c_str(),
                                            aclPrintfList.get(), &sizeOfPrintfList);
     if (errorCode != ACL_SUCCESS) {

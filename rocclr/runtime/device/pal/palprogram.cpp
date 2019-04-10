@@ -747,6 +747,25 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
+#if defined(USE_COMGR_LIBRARY)
+  for (const auto &kernelMeta : kernelMetadataMap_) {
+    auto kernelName = kernelMeta.first;
+    auto kernel = new LightningKernel(kernelName, this,
+                                      options->origOptionStr + ProcessOptions(options));
+    kernels()[kernelName] = kernel;
+
+    if (!kernel->init()) {
+      return false;
+    }
+
+    kernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+
+    // Find max scratch regs used in the program. It's used for scratch buffer preallocation
+    // with dynamic parallelism, since runtime doesn't know which child kernel will be called
+    maxScratchRegs_ =
+        std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
+  }
+#else
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
   status = executable_->IterateSymbols(GetKernelNamesCallback, &kernelNameList);
@@ -781,7 +800,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     maxScratchRegs_ =
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
   }
-
+#endif // defined(USE_COMGR_LIBRARY)
   DestroySegmentCpuAccess();
 #endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;

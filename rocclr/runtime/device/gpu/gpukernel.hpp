@@ -406,7 +406,7 @@ class NullKernel : public device::Kernel {
   const NullDevice& nullDev() const { return gpuDev_; }
 
   //! Returns GPU device object, associated with this kernel
-  const NullProgram& nullProg() const { return prog_; }
+  const NullProgram& nullProg() const { return reinterpret_cast<const NullProgram&>(prog_); }
 
   //! Returns the kernel's build error
   const cl_int buildError() const { return buildError_; }
@@ -455,7 +455,6 @@ class NullKernel : public device::Kernel {
   std::string ilSource_;  //!< IL source code of this kernel
 
   const NullDevice& gpuDev_;  //!< GPU device object
-  const NullProgram& prog_;   //!< Reference to the parent program
 
   CalImageReference* calRef_;  //!< CAL image reference for this kernel
   bool internal_;              //!< Runtime internal ker
@@ -847,7 +846,6 @@ class HSAILKernel : public device::Kernel {
   std::vector<Argument*> arguments_;  //!< Vector list of HSAIL Arguments
   std::string compileOptions_;        //!< compile used for finalizing this kernel
   amd_kernel_code_t* cpuAqlCode_;     //!< AQL kernel code on CPU
-  const HSAILProgram& prog_;          //!< Reference to the parent program
   uint index_;                        //!< Kernel index in the program
 
   gpu::Memory* code_;  //!< Memory object with ISA code

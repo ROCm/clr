@@ -166,7 +166,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   // Update GPU specific settings and info structure if we have any
+#if defined(_WIN32)
+  ModifyMaxWorkload modifyMaxWorkload = {0, 1, VER_EQUAL};
+#else
   ModifyMaxWorkload modifyMaxWorkload = {0};
+#endif
 
   // APU systems
   if (palProp.gpuType == Pal::GpuType::Integrated) {
@@ -326,18 +330,22 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       return false;
   }
 
-#if defined(_WIN32)
-  if (modifyMaxWorkload.time > 0) {
-    OSVERSIONINFOEX versionInfo = {0};
-    versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    versionInfo.dwMajorVersion = 6;
-    versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
+  splitSizeForWin7_ = false;
 
-    DWORDLONG conditionMask = 0;
-    VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, modifyMaxWorkload.comparisonOps);
-    VER_SET_CONDITION(conditionMask, VER_MINORVERSION, modifyMaxWorkload.comparisonOps);
-    if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
-      maxWorkloadTime_ = modifyMaxWorkload.time;
+#if defined(_WIN32)
+  OSVERSIONINFOEX versionInfo = {0};
+  versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+  versionInfo.dwMajorVersion = 6;
+  versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
+
+  DWORDLONG conditionMask = 0;
+  VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, modifyMaxWorkload.comparisonOps);
+  VER_SET_CONDITION(conditionMask, VER_MINORVERSION, modifyMaxWorkload.comparisonOps);
+
+  if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
+    splitSizeForWin7_ = true;  // Update flag of DMA flush split size for Win 7
+    if (modifyMaxWorkload.time > 0) {
+      maxWorkloadTime_ = modifyMaxWorkload.time; // Update max workload time
     }
   }
 #endif  // defined(_WIN32)

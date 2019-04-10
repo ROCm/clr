@@ -515,10 +515,9 @@ clk_value_type_t KernelArg::type() const {
 
 NullKernel::NullKernel(const std::string& name, const NullDevice& gpuNullDev,
                        const NullProgram& nullprog)
-    : device::Kernel(gpuNullDev, name),
+    : device::Kernel(gpuNullDev, name, nullprog),
       buildError_(CL_BUILD_PROGRAM_FAILURE),
       gpuDev_(gpuNullDev),
-      prog_(nullprog),
       calRef_(NULL),
       internal_(false),
       flags_(0),
@@ -3027,9 +3026,8 @@ void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {
 
 HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions,
                          uint extraArgsNum)
-    : device::Kernel(prog->dev(), name),
+    : device::Kernel(prog->dev(), name, *prog),
       compileOptions_(compileOptions),
-      prog_(*prog),
       index_(0),
       code_(NULL),
       codeSize_(0),
