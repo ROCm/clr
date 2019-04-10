@@ -33,7 +33,9 @@ namespace pal {
 Segment::Segment() : gpuAccess_(nullptr), cpuAccess_(nullptr), cpuMem_(nullptr) {}
 
 Segment::~Segment() {
-  delete gpuAccess_;
+  if (gpuAccess_ != nullptr) {
+    gpuAccess_->owner()->release();
+  }
   DestroyCpuAccess();
 }
 
@@ -62,7 +64,7 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
                     bool zero) {
   align = amd::alignUp(align, sizeof(uint32_t));
 
-  amd::Memory *amd_mem_obj = new (prog.dev().context())
+  amd::Memory* amd_mem_obj = new (prog.dev().context())
                              amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
                                          reinterpret_cast<void*>(1));
 
