@@ -60,7 +60,8 @@ class Settings : public device::Settings {
       uint sdamPageFaultWar_ : 1;        //!< SDMA page fault workaround
       uint rgpSqttWaitIdle_: 1;          //!< Wait for idle after SQTT trace
       uint rgpSqttForceDisable_: 1;      //!< Disables SQTT
-      uint reserved_ : 12;
+      uint splitSizeForWin7_: 1;         //!< DMA flush split size for Win 7
+      uint reserved_ : 11;
     };
     uint value_;
   };

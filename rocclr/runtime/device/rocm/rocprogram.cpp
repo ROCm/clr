@@ -488,6 +488,19 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
+#if defined(USE_COMGR_LIBRARY)
+  for (const auto &kernelMeta : kernelMetadataMap_) {
+    const std::string kernelName = kernelMeta.first;
+    Kernel* aKernel = new roc::LightningKernel(kernelName, this);
+    if (!aKernel->init()) {
+      return false;
+    }
+    aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
+    aKernel->setInternalKernelFlag(compileOptions_.find("-cl-internal-kernel") !=
+                                   std::string::npos);
+    kernels()[kernelName] = aKernel;
+  }
+#else
   // Get the list of kernels
   std::vector<std::string> kernelNameList;
   status = hsa_executable_iterate_agent_symbols(hsaExecutable_, agent, GetKernelNamesCallback,
@@ -582,6 +595,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
                                    std::string::npos);
     kernels()[kernelName] = aKernel;
   }
+#endif // defined(USE_COMGR_LIBRARY)
 #endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }

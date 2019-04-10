@@ -118,6 +118,7 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t* metadata_;   //!< COMgr metadata
+  uint32_t codeObjectVer_;                //!< version of code object
   std::map<std::string,amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
 #else
   CodeObjectMD* metadata_;  //!< Runtime metadata
@@ -211,6 +212,8 @@ class Program : public amd::HeapObject {
     auto it = kernelMetadataMap_.find(name);
     return (it == kernelMetadataMap_.end()) ? nullptr : &(it->second);
   }
+
+  const uint32_t codeObjectVer() const { return codeObjectVer_; }
 #else
   const CodeObjectMD* metadata() const { return metadata_; }
 #endif

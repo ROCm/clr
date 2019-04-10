@@ -706,8 +706,6 @@ bool Program::compileImplLC(const std::string& sourceCode,
   driverOptions.append(options->llvmOptions);
   driverOptions.append(ProcessOptions(options));
 
-  // Force object code v2.
-  driverOptions.append(" -mno-code-object-v3");
   // Set whole program mode
   driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
 
@@ -1532,8 +1530,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
     codegenOptions.append(" -mno-sram-ecc");
   }
 
-  // Force object code v2.
-  codegenOptions.append(" -mno-code-object-v3");
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
@@ -1764,8 +1760,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
     std::ostream_iterator<std::string>(ostrstr, " "));
   codegenOptions.append(" ").append(ostrstr.str());
 
-  // Force object code v2.
-  codegenOptions.append(" -mno-code-object-v3");
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
@@ -2880,8 +2874,19 @@ bool Program::createKernelMetadataMap() {
 
   status = amd::Comgr::metadata_lookup(*metadata_, "Kernels", &kernelsMD);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
+    LogInfo("Using Code Object V2.");
     hasKernelMD = true;
-    status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
+    codeObjectVer_ = 2;
+  }
+  else {
+    status = amd::Comgr::metadata_lookup(*metadata_, "amdhsa.kernels", &kernelsMD);
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      LogInfo("Using Code Object V3.");
+      hasKernelMD = true;
+      codeObjectVer_ = 3;
+      status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
+    }
   }
 
   for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
@@ -2896,7 +2901,9 @@ bool Program::createKernelMetadataMap() {
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
       hasKernelNode = true;
-      status = amd::Comgr::metadata_lookup(kernelNode, "Name", &nameMeta);
+      status = amd::Comgr::metadata_lookup(kernelNode,
+                                           (codeObjectVer() == 2) ? "Name" : ".name",
+                                           &nameMeta);
     }
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -2970,9 +2977,10 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           buildLog_ += "Error: object code with old metadata is not supported\n";
           return false;
         }
-        else if (note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA V2 */ &&
-          note->n_namesz == sizeof "AMD" &&
-          !memcmp(name, "AMD", note->n_namesz)) {
+        else if ((note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA V2 */ &&
+                  note->n_namesz == sizeof "AMD" && !memcmp(name, "AMD", note->n_namesz)) ||
+                (note->n_type == 32 /* NT_AMD_AMDGPU_HSA_METADATA V3 */ &&
+                  note->n_namesz == sizeof "AMDGPU" && !memcmp(name, "AMDGPU", note->n_namesz))) {
 #if defined(USE_COMGR_LIBRARY)
           amd_comgr_status_t status;
           amd_comgr_data_t binaryData;

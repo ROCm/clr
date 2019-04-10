@@ -553,6 +553,11 @@ void VirtualGPU::DmaFlushMgmt::resetCbWorkload(const Device& dev) {
 
 void VirtualGPU::DmaFlushMgmt::findSplitSize(const Device& dev, uint64_t threads,
                                              uint instructions) {
+  if (!dev.settings().splitSizeForWin7_) {
+    dispatchSplitSize_ = 0;
+    return;
+  }
+
   uint64_t workload = threads * instructions;
   if (maxDispatchWorkload_ < workload) {
     dispatchSplitSize_ = static_cast<uint>(maxDispatchWorkload_ / instructions);
@@ -2258,6 +2263,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchParam.wavesPerSh = (enqueueEvent != nullptr) ?
       enqueueEvent->profilingInfo().waves_ : 0;
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
+    dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
+    dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);
