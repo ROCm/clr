@@ -2887,8 +2887,11 @@ bool Program::createKernelMetadataMap() {
       LogInfo("Using Code Object V3.");
       hasKernelMD = true;
       codeObjectVer_ = 3;
-      status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
     }
+  }
+
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
   }
 
   for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
