@@ -1760,6 +1760,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
     std::ostream_iterator<std::string>(ostrstr, " "));
   codegenOptions.append(" ").append(ostrstr.str());
 
+  // Force object code v2.
+  codegenOptions.append(" -mno-code-object-v3");
   // Set whole program mode
   codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
 
