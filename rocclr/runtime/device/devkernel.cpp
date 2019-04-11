@@ -1386,7 +1386,8 @@ bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
 
   amd_comgr_metadata_node_t printfMeta;
 
-  amd_comgr_status_t status = amd::Comgr::metadata_lookup(programMD, "Printf", &printfMeta);
+  amd_comgr_status_t status = amd::Comgr::metadata_lookup(programMD,
+                                codeObjectVer() == 2 ? "Printf" : "amdhsa.printf", &printfMeta);
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return true;   // printf string metadata is not provided so just exit
   }
