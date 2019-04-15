@@ -641,7 +641,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
     info_.wavefrontWidth_ = settings().enableWave32Mode_ ? 32:
-                            palProp.gfxipProperties.shaderCore.wavefrontSize;
+                            palProp.gfxipProperties.shaderCore.nativeWavefrontSize;
     info_.availableSGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableSgprs;
 
     info_.globalMemChannelBanks_ = 4;
