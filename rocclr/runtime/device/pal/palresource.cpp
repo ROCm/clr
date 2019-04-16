@@ -366,7 +366,9 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   createInfo->heapCount = 1;
   switch (memoryType()) {
     case Persistent:
+      createInfo->heapCount = 2;
       createInfo->heaps[0] = Pal::GpuHeapLocal;
+      createInfo->heaps[1] = Pal:: GpuHeapGartUswc;
 #ifdef ATI_OS_LINUX
       // Note: SSG in Linux requires DGMA heap
       if (dev().properties().gpuMemoryProperties.busAddressableMemSize > 0) {
@@ -387,9 +389,10 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
     case Shader:
     // Fall through to process the memory allocation ...
     case Local:
-      createInfo->heapCount = 2;
+      createInfo->heapCount = 3;
       createInfo->heaps[0] = Pal::GpuHeapInvisible;
       createInfo->heaps[1] = Pal::GpuHeapLocal;
+      createInfo->heaps[2] = Pal::GpuHeapGartUswc;
       break;
     default:
       createInfo->heaps[0] = Pal::GpuHeapLocal;
