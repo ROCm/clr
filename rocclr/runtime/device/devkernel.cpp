@@ -378,16 +378,16 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
       }
       break;
     case ArgField::IsConst:
-      lcArg->mIsConst = (buf.compare("true") == 0);
+      lcArg->mIsConst = (buf.compare("1") == 0);
       break;
     case ArgField::IsRestrict:
-      lcArg->mIsRestrict = (buf.compare("true") == 0);
+      lcArg->mIsRestrict = (buf.compare("1") == 0);
       break;
     case ArgField::IsVolatile:
-      lcArg->mIsVolatile = (buf.compare("true") == 0);
+      lcArg->mIsVolatile = (buf.compare("1") == 0);
       break;
     case ArgField::IsPipe:
-      lcArg->mIsPipe = (buf.compare("true") == 0);
+      lcArg->mIsPipe = (buf.compare("1") == 0);
       break;
     default:
       return AMD_COMGR_STATUS_ERROR;
