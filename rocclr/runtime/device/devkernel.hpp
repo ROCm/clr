@@ -196,7 +196,7 @@ static const std::map<std::string,ArgField> ArgFieldMapV3 =
   {".size",           ArgField::Size},
   {".offset",         ArgField::Offset},
   {".value_kind",     ArgField::ValueKind},
-  {".vaule_type",     ArgField::ValueType},
+  {".value_type",     ArgField::ValueType},
   {".pointee_align",  ArgField::PointeeAlign},
   {".address_space",  ArgField::AddrSpaceQual},
   {".access",         ArgField::AccQual},
