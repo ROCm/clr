@@ -1429,19 +1429,16 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
 
   amd_comgr_metadata_node_t argsMeta;
   bool hsaArgsMeta = false;
-  size_t argsSize;
+  size_t argsSize = 0;
 
   amd_comgr_status_t status =  amd::Comgr::metadata_lookup(
                                           kernelMD,
                                           (codeObjectVer() == 2) ? "Args" : ".args",
                                           &argsMeta);
+  // Assume no arguments if lookup fails.
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hsaArgsMeta = true;
     status = amd::Comgr::get_metadata_list_size(argsMeta, &argsSize);
-  }
-
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
-    return;
   }
 
   for (size_t i = 0; i < argsSize; ++i) {
