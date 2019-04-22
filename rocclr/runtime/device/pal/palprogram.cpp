@@ -65,8 +65,10 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
   align = amd::alignUp(align, sizeof(uint32_t));
 
   amd::Memory* amd_mem_obj = new (prog.dev().context())
-                             amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
-                                         reinterpret_cast<void*>(1));
+    amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
+    // HIP requires SVM allocation for segment code due to possible global variable access and
+    // global variables are a part of code segment with the latest loader
+    amd::IS_HIP ? reinterpret_cast<void*>(1) : nullptr);
 
   if (amd_mem_obj == nullptr) {
     LogError("[OCL] failed to create a mem object!");
