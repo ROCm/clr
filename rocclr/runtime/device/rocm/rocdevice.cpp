@@ -560,11 +560,8 @@ bool Device::init() {
       }
     }
 
-    if (!useDeviceList && (flagIsDefault(GPU_DEVICE_NAME) || GPU_DEVICE_NAME == 0
-        || GPU_DEVICE_NAME[0] == '\0' || !strcmp(GPU_DEVICE_NAME, roc_device->info_.name_))) {
-        roc_device.release()->registerDevice();
-    } else if (useDeviceList && selectedDevices[ordinal++]) {
-        roc_device.release()->registerDevice();
+    if (!useDeviceList || selectedDevices[ordinal++]) {
+      roc_device.release()->registerDevice();
     }
   }
 

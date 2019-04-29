@@ -1310,8 +1310,6 @@ bool Device::init() {
   // Count up all the devices in the system.
   platform_->EnumerateDevices(&gNumDevices, &gDeviceList[0]);
 
-  uint ordinal = 0;
-  const char* selectDeviceByName = nullptr;
   const char* requestedDeviceList = amd::IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
                                     HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
                                     : GPU_DEVICE_ORDINAL;
@@ -1319,14 +1317,12 @@ bool Device::init() {
   if (requestedDeviceList[0] != '\0') {
     useDeviceList = true;
     parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices);
-  } else if (GPU_DEVICE_NAME[0] != '\0') {
-    selectDeviceByName = GPU_DEVICE_NAME;
   }
 
   bool foundDevice = false;
 
   // Loop through all active devices and initialize the device info structure
-  for (; ordinal < gNumDevices; ++ordinal) {
+  for (uint ordinal = 0; ordinal < gNumDevices; ++ordinal) {
     bool result = true;
     if (useDeviceList) {
       result = (requestedDevices.find(ordinal) != requestedDevices.end());
@@ -1335,8 +1331,7 @@ bool Device::init() {
     Device* d = new Device();
     result = result && (nullptr != d) && d->create(gDeviceList[ordinal]);
 
-    if (result && ((nullptr == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
-                   (strstr(selectDeviceByName, d->info().name_) != nullptr))) {
+    if (result) {
       foundDevice = true;
       d->registerDevice();
     } else {

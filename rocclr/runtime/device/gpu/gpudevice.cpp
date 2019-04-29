@@ -1216,25 +1216,21 @@ bool Device::init() {
   // Count up all the devices in the system.
   numDevices = gsAdaptor::enumerateAdaptors();
 
-  CALuint ordinal = 0;
   const char* selectDeviceByName = NULL;
   if (!flagIsDefault(GPU_DEVICE_ORDINAL)) {
     useDeviceList = true;
     parseRequestedDeviceList(requestedDevices);
-  } else if (!flagIsDefault(GPU_DEVICE_NAME)) {
-    selectDeviceByName = GPU_DEVICE_NAME;
   }
 
   // Loop through all active devices and initialize the device info structure
-  for (; ordinal < numDevices; ++ordinal) {
+  for (CALuint ordinal = 0; ordinal < numDevices; ++ordinal) {
     // Create the GPU device object
     Device* d = new Device();
     bool result = (NULL != d) && d->create(ordinal, numDevices);
     if (useDeviceList) {
       result &= (requestedDevices.find(ordinal) != requestedDevices.end());
     }
-    if (result && ((NULL == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
-                   (strstr(selectDeviceByName, d->info().name_) != NULL))) {
+    if (result) {
       d->registerDevice();
     } else {
       delete d;
