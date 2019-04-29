@@ -552,6 +552,16 @@ bool CopyMemoryP2PCommand::validateMemory() {
     LogPrintfError("Can't allocate memory size - 0x%08X bytes!", memory2_->getSize());
     return false;
   }
+  if (devices[0]->P2PStage() != nullptr) {
+    amd::ScopedLock lock(devices[0]->P2PStageOps());
+    // Make sure runtime allocates memory on every device
+    for (uint d = 0; d < devices[0]->GlbCtx().devices().size(); ++d) {
+      device::Memory* mem = devices[0]->P2PStage()->getDeviceMemory(*devices[0]->GlbCtx().devices()[d]);
+      if (nullptr == mem) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 

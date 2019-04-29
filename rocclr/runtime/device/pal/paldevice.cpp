@@ -797,6 +797,16 @@ Device::~Device() {
   delete hwDebugMgr_;
   hwDebugMgr_ = nullptr;
 
+  if (p2p_stage_ != nullptr) {
+    p2p_stage_->release();
+    p2p_stage_ = nullptr;
+  }
+
+  if (glb_ctx_ != nullptr) {
+      glb_ctx_->release();
+      glb_ctx_ = nullptr;
+  }
+
   delete srdManager_;
 
   for (uint s = 0; s < scratch_.size(); ++s) {
@@ -845,6 +855,9 @@ Device::~Device() {
 }
 
 extern const char* SchedulerSourceCode;
+Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
+uint32_t gStartDevice = 0;
+uint32_t gNumDevices = 0;
 
 bool Device::create(Pal::IDevice* device) {
   if (!amd::Device::create()) {
@@ -1039,6 +1052,33 @@ bool Device::create(Pal::IDevice* device) {
   // create the HW debug manager if needed
   if (settings().enableHwDebug_) {
     hwDebugMgr_ = new GpuDebugManager(this);
+  }
+
+  if ((glb_ctx_ == nullptr) && (gNumDevices > 1) && (device == gDeviceList[gNumDevices - 1])) {
+    std::vector<amd::Device*> devices;
+    uint32_t numDevices =  amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+    // Add all PAL devices
+    for (uint32_t i = gStartDevice; i < numDevices; ++i) {
+      devices.push_back(amd::Device::devices()[i]);
+    }
+    // Add current
+    devices.push_back(this);
+
+    if (devices.size() > 1) {
+      // Create a dummy context
+      glb_ctx_ = new amd::Context(devices, info);
+      if (glb_ctx_ == nullptr) {
+        return false;
+      }
+      amd::Buffer* buf = 
+        new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
+      if ((buf != nullptr) && buf->create()) {
+        p2p_stage_ = buf;
+      } else {
+        delete buf;
+        return false;
+      }
+    }
   }
 
   return true;
@@ -1242,7 +1282,7 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
 }
 
 bool Device::init() {
-  uint32_t numDevices = 0;
+  gStartDevice = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
   bool useDeviceList = false;
   requestedDevices_t requestedDevices;
 
@@ -1268,8 +1308,7 @@ bool Device::init() {
 
   // Get the total number of active devices
   // Count up all the devices in the system.
-  Pal::IDevice* deviceList[Pal::MaxDevices] = {};
-  platform_->EnumerateDevices(&numDevices, &deviceList[0]);
+  platform_->EnumerateDevices(&gNumDevices, &gDeviceList[0]);
 
   uint ordinal = 0;
   const char* selectDeviceByName = nullptr;
@@ -1279,7 +1318,7 @@ bool Device::init() {
 
   if (requestedDeviceList[0] != '\0') {
     useDeviceList = true;
-    parseRequestedDeviceList(requestedDeviceList, requestedDevices, numDevices);
+    parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices);
   } else if (GPU_DEVICE_NAME[0] != '\0') {
     selectDeviceByName = GPU_DEVICE_NAME;
   }
@@ -1287,13 +1326,15 @@ bool Device::init() {
   bool foundDevice = false;
 
   // Loop through all active devices and initialize the device info structure
-  for (; ordinal < numDevices; ++ordinal) {
+  for (; ordinal < gNumDevices; ++ordinal) {
+    bool result = true;
+    if (useDeviceList) {
+      result = (requestedDevices.find(ordinal) != requestedDevices.end());
+    }
     // Create the GPU device object
     Device* d = new Device();
-    bool result = (nullptr != d) && d->create(deviceList[ordinal]);
-    if (useDeviceList) {
-      result &= (requestedDevices.find(ordinal) != requestedDevices.end());
-    }
+    result = result && (nullptr != d) && d->create(gDeviceList[ordinal]);
+
     if (result && ((nullptr == selectDeviceByName) || ('\0' == selectDeviceByName[0]) ||
                    (strstr(selectDeviceByName, d->info().name_) != nullptr))) {
       foundDevice = true;
