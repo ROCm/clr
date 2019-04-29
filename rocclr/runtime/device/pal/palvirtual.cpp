@@ -1693,6 +1693,94 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
+void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+
+  profilingBegin(cmd);
+
+  Memory* srcDevMem = static_cast<pal::Memory*>(
+    cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
+  Memory* dstDevMem = static_cast<pal::Memory*>(
+    cmd.destination().getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+
+  bool p2pAllowed = false;
+#if 0
+  // Loop through all available P2P devices for the destination buffer
+  for (auto agent: dstDevMem->dev().p2pAgents()) {
+    // Find the device, which is matching the current
+    if (agent.handle == dev().getBackendDevice().handle) {
+      p2pAllowed = true;
+      break;
+    }
+  }
+#endif
+
+  // Synchronize source and destination memory
+  device::Memory::SyncFlags syncFlags;
+  syncFlags.skipEntire_ = cmd.isEntireMemory();
+  amd::Coord3D size = cmd.size();
+
+  bool result = false;
+  switch (cmd.type()) {
+    case CL_COMMAND_COPY_BUFFER: {
+      amd::Coord3D srcOrigin(cmd.srcOrigin()[0]);
+      amd::Coord3D dstOrigin(cmd.dstOrigin()[0]);
+
+      if (p2pAllowed) {
+        result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin,
+                                      size, cmd.isEntireMemory());
+      }
+      else {
+        amd::ScopedLock lock(dev().P2PStageOps());
+        Memory* dstStgMem = static_cast<pal::Memory*>(
+          dev().P2PStage()->getDeviceMemory(*cmd.source().getContext().devices()[0]));
+        Memory* srcStgMem = static_cast<pal::Memory*>(
+          dev().P2PStage()->getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+          
+        size_t copy_size = Device::kP2PStagingSize;
+        size_t left_size = size[0];
+        amd::Coord3D stageOffset(0);
+        result = true;
+        do {
+          if (left_size <= copy_size) {
+            copy_size = left_size;
+          }
+          left_size -= copy_size;
+          amd::Coord3D cpSize(copy_size);
+
+          // Perform 2 step transfer with staging buffer
+          result &= dev().xferMgr().copyBuffer(
+            *srcDevMem, *dstStgMem, srcOrigin, stageOffset, cpSize);
+          srcOrigin.c[0] += copy_size;
+          result &= dstDevMem->dev().xferMgr().copyBuffer(
+            *srcStgMem, *dstDevMem, stageOffset, dstOrigin, cpSize);
+          dstOrigin.c[0] += copy_size;
+        } while (left_size > 0);
+      }
+      break;
+    }
+    case CL_COMMAND_COPY_BUFFER_RECT:
+    case CL_COMMAND_COPY_IMAGE:
+    case CL_COMMAND_COPY_IMAGE_TO_BUFFER:
+    case CL_COMMAND_COPY_BUFFER_TO_IMAGE:
+      LogError("Unsupported P2P type!");
+      break;
+    default:
+      ShouldNotReachHere();
+      break;
+  }
+
+  if (!result) {
+    LogError("submitCopyMemoryP2P failed!");
+    cmd.setStatus(CL_OUT_OF_RESOURCES);
+  }
+
+  cmd.destination().signalWrite(&dstDevMem->dev());
+
+  profilingEnd(cmd);
+}
+
 void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());

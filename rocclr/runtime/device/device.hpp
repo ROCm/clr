@@ -1130,6 +1130,7 @@ class Device : public RuntimeObject {
   typedef aclCompiler Compiler;
 
  public:
+  static constexpr size_t kP2PStagingSize = 4 * Mi;
   typedef std::list<CommandQueue*> CommandQueues;
 
   struct BlitProgram : public amd::HeapObject {
@@ -1346,6 +1347,15 @@ class Device : public RuntimeObject {
     ShouldNotReachHere();
   }
 
+  //! Return private global device context for P2P allocations
+  amd::Context& GlbCtx() const { return *glb_ctx_; }
+
+  //! Lock protect P2P staging operations
+  Monitor& P2PStageOps() const { return p2p_stage_ops_; }
+
+  //! Staging buffer for P2P transfer
+  Memory* P2PStage() const { return p2p_stage_; }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1360,6 +1370,10 @@ class Device : public RuntimeObject {
                                   //! Compilation with cache support
   std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
 #endif
+
+  static amd::Context* glb_ctx_;        //!< Global context with all devices
+  static amd::Monitor p2p_stage_ops_;   //!< Lock to serialise cache for the P2P resources
+  static Memory* p2p_stage_;            //!< Staging resources
 
  private:
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

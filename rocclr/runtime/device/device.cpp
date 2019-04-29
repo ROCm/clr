@@ -59,6 +59,10 @@ namespace amd {
 std::vector<Device*>* Device::devices_ = nullptr;
 AppProfile Device::appProfile_;
 
+Context* Device::glb_ctx_ = nullptr;
+Monitor Device::p2p_stage_ops_("P2P Staging Lock", true);
+Memory* Device::p2p_stage_ = nullptr;
+
 amd::Monitor MemObjMap::AllocatedLock_("Guards SVM allocation list");
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_;
 
@@ -148,8 +152,7 @@ bool Device::init() {
 // GPU stack. The order of initialization is signiicant and if changed
 // amd::Device::registerDevice() must be accordingly modified.
 #if defined(WITH_HSA_DEVICE)
-  // @todo remove IS_LIGHTNING check when PAL-LC builds will be deprecated
-  if ((GPU_ENABLE_PAL != 1) || IS_LIGHTNING) {
+  if ((GPU_ENABLE_PAL != 1) || flagIsDefault(GPU_ENABLE_PAL)) {
     // Return value of roc::Device::init()
     // If returned false, error initializing HSA stack.
     // If returned true, either HSA not installed or HSA stack

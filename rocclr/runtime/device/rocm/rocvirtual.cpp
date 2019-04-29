@@ -1253,6 +1253,12 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
                                         size, cmd.isEntireMemory());
       }
       else {
+          amd::ScopedLock lock(dev().P2PStageOps());
+          Memory* dstStgMem = static_cast<Memory*>(
+              dev().P2PStage()->getDeviceMemory(*cmd.source().getContext().devices()[0]));
+          Memory* srcStgMem = static_cast<Memory*>(
+              dev().P2PStage()->getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+
           size_t copy_size = Device::kP2PStagingSize;
           size_t left_size = size[0];
           result = true;
@@ -1265,14 +1271,11 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
             amd::Coord3D cpSize(copy_size);
 
             // Perform 2 step transfer with staging buffer
-            // todo: optimization can be done with double buffering if events tracking
-            // will be propagated outside of the device transfers object
-            result &= dev().xferMgr().copyBuffer(*srcDevMem, *(dev().P2PStages()[0]), srcOrigin,
-                                                 stageOffset, cpSize, cmd.isEntireMemory());
+            result &= dev().xferMgr().copyBuffer(
+              *srcDevMem, *dstStgMem, srcOrigin, stageOffset, cpSize);
             srcOrigin.c[0] += copy_size;
-            result &= dstDevMem->dev().xferMgr().copyBuffer(*dstDevMem->dev().P2PStages()[0],
-                                                            *dstDevMem, stageOffset, dstOrigin,
-                                                            copy_size, cmd.isEntireMemory());
+            result &= dstDevMem->dev().xferMgr().copyBuffer(
+              *srcStgMem, *dstDevMem, stageOffset, dstOrigin, cpSize);
             dstOrigin.c[0] += copy_size;
           } while (left_size > 0);
       }

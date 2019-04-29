@@ -364,6 +364,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   enableExtension(ClKhrImage2dFromBuffer);
   enableExtension(ClAmdMediaOps);
   enableExtension(ClAmdMediaOps2);
+  enableExtension(ClAmdCopyBufferP2P);
 
   if (!useLightning_) {
     enableExtension(ClAmdPopcnt);
