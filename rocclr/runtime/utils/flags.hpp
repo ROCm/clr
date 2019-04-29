@@ -38,8 +38,6 @@ debug(size_t, PARAMETERS_MIN_ALIGNMENT, 16,                                   \
         "Minimum alignment required for the abstract parameters stack")       \
 debug(size_t, MEMOBJ_BASE_ADDR_ALIGN, 4*Ki,                                   \
         "Alignment of the base address of any allocate memory object")        \
-release(cstring, GPU_DEVICE_NAME, "",                                         \
-        "Select the device ordinal (will only report a single device)")       \
 release(cstring, GPU_DEVICE_ORDINAL, "",                                      \
         "Select the device ordinal (comma seperated list of available devices)") \
 release(bool, REMOTE_ALLOC, false,                                            \
