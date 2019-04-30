@@ -130,7 +130,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
         break;
       case Resource::Remote:
       case Resource::RemoteUSWC:
-        if (!desc().tiled_) {
+          if ((!desc().tiled_) && (desc().dimSize_ != 3)) {
           // Marks memory object for direct GPU access to the host memory
           flags_ |= HostMemoryDirectAccess;
         }
