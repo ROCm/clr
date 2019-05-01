@@ -590,7 +590,6 @@ amdcl::OCLLinker::link(llvm::Module* input, std::vector<std::unique_ptr<llvm::Mo
                 || chip == "gfx905"
                 || chip == "gfx906"
                 || chip == "gfx907"
-                || chip == "gfx908"
                 || chip == "gfx1000"
                 || chip == "gfx1010"
                 || chip == "gfx1011"

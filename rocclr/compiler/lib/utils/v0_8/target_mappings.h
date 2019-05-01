@@ -217,7 +217,6 @@ static const char* calTargetMapping[] = {
       IF(IS_BRAHMA,"","gfx905"),
       IF(IS_BRAHMA,"","gfx906"),
       IF(IS_BRAHMA,"","gfx907"),
-      IF(IS_BRAHMA,"","gfx908"),
       IF(IS_BRAHMA,"","gfx1000"),
       IF(IS_BRAHMA,"","gfx1010"),
       IF(IS_BRAHMA,"","gfx1011"),
