@@ -70,8 +70,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET RAVEN */ {HSA_RAVEN_ID, "", "gfx902", "gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET VEGA12 */ {HSA_VEGA12_ID, "", "gfx904", "gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET VEGA20 */ {HSA_VEGA20_ID, "", "gfx906", "gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
-    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
-    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET ARIEL */ {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000", 2, 32, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 2, 32, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET MI100 */ {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 0, 0}};
 }
 
