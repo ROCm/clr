@@ -190,7 +190,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           assert(0 && "Unknown GfxIP type!");
           return false;
       }
-        case Pal::AsicRevision::Navi12:
+        case Pal::AsicRevision::Navi12Lite:
+    case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
