@@ -65,10 +65,10 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
   align = amd::alignUp(align, sizeof(uint32_t));
 
   amd::Memory* amd_mem_obj = new (prog.dev().context())
-    amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
-    // HIP requires SVM allocation for segment code due to possible global variable access and
-    // global variables are a part of code segment with the latest loader
-    amd::IS_HIP ? reinterpret_cast<void*>(1) : nullptr);
+      amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
+                  // HIP requires SVM allocation for segment code due to possible global variable
+                  // access and global variables are a part of code segment with the latest loader
+                  amd::IS_HIP ? reinterpret_cast<void*>(1) : nullptr);
 
   if (amd_mem_obj == nullptr) {
     LogError("[OCL] failed to create a mem object!");
@@ -103,9 +103,9 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
 
   if (zero && !prog.isInternal()) {
     uint64_t pattern = 0;
-    size_t   patternSize = ((size % sizeof(pattern)) == 0) ? sizeof(pattern) : 1;
-    prog.dev().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize,
-        amd::Coord3D(0), amd::Coord3D(size));
+    size_t patternSize = ((size % sizeof(pattern)) == 0) ? sizeof(pattern) : 1;
+    prog.dev().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize, amd::Coord3D(0),
+                                    amd::Coord3D(size));
   }
 
   switch (segment) {
@@ -237,7 +237,7 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 }
 
 bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if  defined(WITH_COMPILER_LIB)
+#if defined(WITH_COMPILER_LIB)
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
   agent.handle = 1;
@@ -262,8 +262,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   size_t kernelNamesSize = 0;
-  acl_error errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES,
-    nullptr, nullptr, &kernelNamesSize);
+  acl_error errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
+                                     nullptr, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
     return false;
@@ -274,11 +274,11 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
                              &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
-      delete [] kernelNames;
+      delete[] kernelNames;
       return false;
     }
     std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
-    delete [] kernelNames;
+    delete[] kernelNames;
     bool dynamicParallelism = false;
     for (const auto& it : vKernels) {
       std::string kernelName(it);
@@ -338,12 +338,10 @@ bool HSAILProgram::allocKernelTable() {
   return true;
 }
 
-void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const {
-  gpu.addVmMemory(&codeSegGpu());
-}
+void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const { gpu.addVmMemory(&codeSegGpu()); }
 
 const aclTargetInfo& HSAILProgram::info(const char* str) {
-#if  defined(WITH_COMPILER_LIB)
+#if defined(WITH_COMPILER_LIB)
   acl_error err;
   std::string arch = "hsail";
   if (dev().settings().use64BitPtr_) {
@@ -359,7 +357,7 @@ const aclTargetInfo& HSAILProgram::info(const char* str) {
 }
 
 bool HSAILProgram::saveBinaryAndSetType(type_t type) {
-#if  defined(WITH_COMPILER_LIB)
+#if defined(WITH_COMPILER_LIB)
   // Write binary to memory
   if (rawBinary_ != nullptr) {
     // Free memory containing rawBinary
@@ -378,8 +376,8 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   return true;
 }
 
-bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
-                                      size_t* bytes, const char* global_name) const {
+bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr, size_t* bytes,
+                                      const char* global_name) const {
   uint32_t length = 0;
   size_t offset = 0;
   uint32_t flags = 0;
@@ -456,7 +454,7 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
   }
 
   /* Retrieve the Offset from global pal::Memory created @ segment::alloc */
-  if(!codeSegment_->gpuAddressOffset(reinterpret_cast<uint64_t>(*device_pptr), &offset)) {
+  if (!codeSegment_->gpuAddressOffset(reinterpret_cast<uint64_t>(*device_pptr), &offset)) {
     buildLog_ += "Error: Cannot Retrieve the Address Offset";
     buildLog_ += "\n";
     return false;
@@ -484,13 +482,12 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
 
 hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
   hsa_isa_t isa = {0};
-  uint32_t gfxip  = 0;
+  uint32_t gfxip = 0;
   std::string gfx_target(name);
   if (gfx_target.find("amdgcn-") == 0) {
     std::string gfxip_version_str = gfx_target.substr(gfx_target.find("gfx") + 3);
     gfxip = std::atoi(gfxip_version_str.c_str());
-  }
-  else {
+  } else {
     // FIXME: Old way. To be remove.
     uint32_t shift = 1;
     size_t last = gfx_target.length();
@@ -508,9 +505,9 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  uint32_t gfxipVersion = program_->dev().settings().useLightning_ ?
-    program_->dev().hwInfo()->gfxipVersionLC_ :
-    program_->dev().hwInfo()->gfxipVersion_;
+  uint32_t gfxipVersion = program_->dev().settings().useLightning_
+      ? program_->dev().hwInfo()->gfxipVersionLC_
+      : program_->dev().hwInfo()->gfxipVersion_;
   uint32_t majorSrc = gfxipVersion / 10;
   uint32_t minorSrc = gfxipVersion % 10;
 
@@ -519,11 +516,9 @@ bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) 
 
   if (majorSrc != majorTrg) {
     return false;
-  }
-  else if (minorTrg == minorSrc) {
+  } else if (minorTrg == minorSrc) {
     return true;
-  }
-  else if (minorTrg < minorSrc) {
+  } else if (minorTrg < minorSrc) {
     LogWarning("ISA downgrade for execution!");
     return true;
   }
@@ -708,7 +703,7 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executabl
   return HSA_STATUS_SUCCESS;
 }
 
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
@@ -716,7 +711,7 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
     LogError("Failed to create ELF binary image!");
     return false;
   }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
 
@@ -752,10 +747,10 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   }
 
 #if defined(USE_COMGR_LIBRARY)
-  for (const auto &kernelMeta : kernelMetadataMap_) {
+  for (const auto& kernelMeta : kernelMetadataMap_) {
     auto kernelName = kernelMeta.first;
-    auto kernel = new LightningKernel(kernelName, this,
-                                      options->origOptionStr + ProcessOptions(options));
+    auto kernel =
+        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
     kernels()[kernelName] = kernel;
 
     if (!kernel->init()) {
@@ -804,9 +799,9 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     maxScratchRegs_ =
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
   }
-#endif // defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
   DestroySegmentCpuAccess();
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
 

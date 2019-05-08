@@ -49,7 +49,7 @@ class NullDevice : public amd::Device {
   bool create(Pal::AsicRevision asicRevision,  //!< GPU ASIC revision
               Pal::GfxIpLevel ipLevel,         //!< GPU ip level
               uint xNACKSupported = 0          //!< GPU xNACKSupported
-             );
+  );
 
   //! Instantiate a new virtual device
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = NULL) {
@@ -111,11 +111,14 @@ class NullDevice : public amd::Device {
   virtual void svmFree(void* ptr) const { return; }
 
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
-  void  Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
-  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
+  void Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+                            cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+    return true;
+  }
 
  protected:
-  static Util::GenericAllocator allocator_; //!< Generic memory allocator in PAL
+  static Util::GenericAllocator allocator_;  //!< Generic memory allocator in PAL
 
   Pal::AsicRevision asicRevision_;  //!< ASIC revision
   Pal::GfxIpLevel ipLevel_;         //!< Device IP level
@@ -127,7 +130,7 @@ class NullDevice : public amd::Device {
                       size_t maxTextureSize,         //!< Maximum texture size supported in HW
                       uint numComputeRings,          //!< Number of compute rings
                       uint numExclusiveComputeRings  //!< Number of exclusive compute rings
-                      );
+  );
 };
 
 //! Forward declarations
@@ -148,26 +151,22 @@ class ThreadTrace;
 #ifndef CL_FILTER_NONE
 #define CL_FILTER_NONE 0x1142
 #endif
-enum class ExclusiveQueueType : uint32_t {
-  RealTime0 = 0,
-  RealTime1,
-  Medium
-};
+enum class ExclusiveQueueType : uint32_t { RealTime0 = 0, RealTime1, Medium };
 class Sampler : public device::Sampler {
  public:
   //! Constructor
-    Sampler(const Device& dev) : dev_(dev) {}
+  Sampler(const Device& dev) : dev_(dev) {}
 
   //! Default destructor for the device memory object
   virtual ~Sampler();
 
   //! Creates a device sampler from the OCL sampler state
   bool create(uint32_t oclSamplerState  //!< OCL sampler state
-              );
+  );
 
   //! Creates a device sampler from the OCL sampler state
   bool create(const amd::Sampler& owner  //!< AMD sampler object
-              );
+  );
 
  private:
   //! Disable default copy constructor
@@ -216,7 +215,7 @@ class Device : public NullDevice {
     //! Releases transfer buffer
     void release(VirtualGPU& gpu,  //!< Virual GPU object used with the buffer
                  Memory& buffer    //!< Transfer buffer for release
-                 );
+    );
 
     //! Returns the buffer's size for transfer
     size_t bufSize() const { return bufSize_; }
@@ -308,7 +307,7 @@ class Device : public NullDevice {
   //! Initialise a device (i.e. all parts of the constructor that could
   //! potentially fail)
   bool create(Pal::IDevice* device  //!< PAL device interface object
-              );
+  );
 
   //! Destructor for the physical GPU device
   virtual ~Device();
@@ -346,7 +345,8 @@ class Device : public NullDevice {
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
                               const device::VirtualDevice* vdev);
 
-  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+                            cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   //! Retrieves information about free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;
@@ -398,9 +398,10 @@ class Device : public NullDevice {
   //! Returns the number of available compute rings
   uint numExclusiveComputeEngines() const { return exclusiveComputeEnginesId_.size(); }
 
-  //! Returns the map of available exclusive compute rings with the engine index 
-  const std::map<ExclusiveQueueType, uint32_t>& exclusiveComputeEnginesId() const
-    { return exclusiveComputeEnginesId_; }
+  //! Returns the map of available exclusive compute rings with the engine index
+  const std::map<ExclusiveQueueType, uint32_t>& exclusiveComputeEnginesId() const {
+    return exclusiveComputeEnginesId_;
+  }
 
   //! Returns the number of available DMA engines
   uint numDMAEngines() const { return numDmaEngines_; }
@@ -526,11 +527,8 @@ class Device : public NullDevice {
   }
 
  private:
-  static void PAL_STDCALL PalDeveloperCallback(
-    void*                        pPrivateData,
-    const Pal::uint32            deviceIndex,
-    Pal::Developer::CallbackType type,
-    void*                        pCbData);
+  static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
+                                               Pal::Developer::CallbackType type, void* pCbData);
 
   //! Disable copy constructor
   Device(const Device&);
@@ -554,36 +552,37 @@ class Device : public NullDevice {
   //! Allocates/reallocates the scratch buffer, according to the usage
   bool allocScratch(uint regNum,            //!< Number of the scratch registers
                     const VirtualGPU* vgpu  //!< Virtual GPU for the allocation
-                    );
+  );
 
   //! Interop for D3D devices
   bool associateD3D11Device(void* d3d11Device  //!< void* is of type ID3D11Device*
-                            );
+  );
   bool associateD3D10Device(void* d3d10Device  //!< void* is of type ID3D10Device*
-                            );
+  );
   bool associateD3D9Device(void* d3d9Device  //!< void* is of type IDirect3DDevice9*
-                           );
+  );
   //! Interop for GL device
   bool glAssociate(void* GLplatformContext, void* GLdeviceContext) const;
   bool glDissociate(void* GLplatformContext, void* GLdeviceContext) const;
 
-  static char* platformObj_;          //!< Memory allocated for PAL platform object
-  static Pal::IPlatform*  platform_;  //!< Pointer to the PAL platform object
+  static char* platformObj_;         //!< Memory allocated for PAL platform object
+  static Pal::IPlatform* platform_;  //!< Pointer to the PAL platform object
 
-  amd::Context* context_;       //!< A dummy context for internal allocations
-  mutable amd::Monitor lockAsyncOps_;    //!< Lock to serialise all async ops on this device
+  amd::Context* context_;              //!< A dummy context for internal allocations
+  mutable amd::Monitor lockAsyncOps_;  //!< Lock to serialise all async ops on this device
   //! Lock to serialise all async ops on initialization heap operation
-  mutable amd::Monitor lockForInitHeap_;        
-  mutable amd::Monitor lockPAL_;         //!< Lock to serialise PAL access
-  mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
-  mutable amd::Monitor scratchAlloc_;    //!< Lock to serialise scratch allocation
-  mutable amd::Monitor mapCacheOps_;     //!< Lock to serialise cache for the map resources
-  mutable amd::Monitor lockResourceOps_; //!< Lock to serialise resource access
-  XferBuffers* xferRead_;                //!< Transfer buffers read
-  std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure
-  ResourceCache* resourceCache_;         //!< Resource cache
-  uint numComputeEngines_;               //!< The number of available compute engines
-  std::map<ExclusiveQueueType, uint32_t> exclusiveComputeEnginesId_;//!< The number of available compute engines
+  mutable amd::Monitor lockForInitHeap_;
+  mutable amd::Monitor lockPAL_;          //!< Lock to serialise PAL access
+  mutable amd::Monitor vgpusAccess_;      //!< Lock to serialise virtual gpu list access
+  mutable amd::Monitor scratchAlloc_;     //!< Lock to serialise scratch allocation
+  mutable amd::Monitor mapCacheOps_;      //!< Lock to serialise cache for the map resources
+  mutable amd::Monitor lockResourceOps_;  //!< Lock to serialise resource access
+  XferBuffers* xferRead_;                 //!< Transfer buffers read
+  std::vector<amd::Memory*>* mapCache_;   //!< Map cache info structure
+  ResourceCache* resourceCache_;          //!< Resource cache
+  uint numComputeEngines_;                //!< The number of available compute engines
+  std::map<ExclusiveQueueType, uint32_t>
+      exclusiveComputeEnginesId_;        //!< The number of available compute engines
   uint numDmaEngines_;                   //!< The number of available compute engines
   bool heapInitComplete_;                //!< Keep track of initialization status of heap resources
   VirtualGPU* xferQueue_;                //!< Transfer queue
@@ -594,10 +593,13 @@ class Device : public NullDevice {
   mutable bool freeCPUMem_;              //!< flag to mark GPU free SVM CPU mem
   Pal::DeviceProperties properties_;     //!< PAL device properties
   Pal::IDevice* device_;                 //!< PAL device object
-  mutable std::atomic<Pal::gpusize> allocedMem[Pal::GpuHeap::GpuHeapCount];  //!< Free memory counter
-  std::unordered_set<Resource*>* resourceList_;   //!< Active resource list
-  RgpCaptureMgr*   rgpCaptureMgr_;       //!< RGP capture manager
-  Pal::GpuMemoryHeapProperties heaps_[Pal::GpuHeapCount]; //!< Information about heaps, returned from PAL
+  mutable std::atomic<Pal::gpusize>
+      allocedMem[Pal::GpuHeap::GpuHeapCount];    //!< Free memory counter
+  std::unordered_set<Resource*>* resourceList_;  //!< Active resource list
+  RgpCaptureMgr* rgpCaptureMgr_;                 //!< RGP capture manager
+  Pal::GpuMemoryHeapProperties
+      heaps_[Pal::GpuHeapCount];  //!< Information about heaps, returned from PAL
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

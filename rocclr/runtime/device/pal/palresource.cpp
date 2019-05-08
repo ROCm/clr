@@ -41,8 +41,8 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   if (memRef != nullptr) {
     result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
     if ((result != Pal::Result::Success) &&
-         // Free cache if PAL failed allocation
-         dev.resourceCache().free()) {
+        // Free cache if PAL failed allocation
+        dev.resourceCache().free()) {
       // If cache was freed, then try to allocate again
       result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
     }
@@ -154,8 +154,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
 
 // ================================================================================================
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
-  : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr)
-{}
+    : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr) {}
 
 // ================================================================================================
 GpuMemoryReference::~GpuMemoryReference() {
@@ -181,8 +180,7 @@ GpuMemoryReference::~GpuMemoryReference() {
     iMem()->Unmap();
   }
   if (0 != iMem()) {
-    if (!(iMem()->Desc().flags.isShared ||
-          iMem()->Desc().flags.isExternal ||
+    if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
           iMem()->Desc().flags.isExternPhys)) {
       // Update free memory size counters
       device_.updateAllocedMemory(iMem()->Desc().preferredHeap, iMem()->Desc().size, true);
@@ -368,7 +366,7 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
     case Persistent:
       createInfo->heapCount = 2;
       createInfo->heaps[0] = Pal::GpuHeapLocal;
-      createInfo->heaps[1] = Pal:: GpuHeapGartUswc;
+      createInfo->heaps[1] = Pal::GpuHeapGartUswc;
 #ifdef ATI_OS_LINUX
       // Note: SSG in Linux requires DGMA heap
       if (dev().properties().gpuMemoryProperties.busAddressableMemSize > 0) {
@@ -401,11 +399,10 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
 }
 
 // ================================================================================================
-bool Resource::CreateImage(CreateParams* params)
-{
+bool Resource::CreateImage(CreateParams* params) {
   Pal::Result result;
-  Pal::SubresId ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
-  Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
+  Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
+  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
 
@@ -417,8 +414,7 @@ bool Resource::CreateImage(CreateParams* params)
       memRef_->retain();
       desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
       offset_ += viewOwner_->offset_;
-    }
-    else {
+    } else {
       Pal::GpuMemoryCreateInfo createInfo = {};
       createInfo.size = desc().width_ * elementSize();
       createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
@@ -427,8 +423,8 @@ bool Resource::CreateImage(CreateParams* params)
       createInfo.priority = Pal::GpuMemPriority::Normal;
       memTypeToHeap(&createInfo);
       // createInfo.priority;
-      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-        createInfo.alignment, nullptr, &subOffset_);
+      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
+                                                    nullptr, &subOffset_);
       if (nullptr == memRef_) {
         memRef_ = GpuMemoryReference::Create(dev(), createInfo);
         if (nullptr == memRef_) {
@@ -477,16 +473,16 @@ bool Resource::CreateImage(CreateParams* params)
   imgCreateInfo.arraySize = 1;
 
   switch (desc_.topology_) {
-  case CL_MEM_OBJECT_IMAGE3D:
-    imgCreateInfo.imageType = Pal::ImageType::Tex3d;
-    viewInfo.viewType = Pal::ImageViewType::Tex3d;
-    break;
-  case CL_MEM_OBJECT_IMAGE1D:
-  case CL_MEM_OBJECT_IMAGE1D_ARRAY:
-  case CL_MEM_OBJECT_IMAGE1D_BUFFER:
-    imgCreateInfo.imageType = Pal::ImageType::Tex1d;
-    viewInfo.viewType = Pal::ImageViewType::Tex1d;
-    break;
+    case CL_MEM_OBJECT_IMAGE3D:
+      imgCreateInfo.imageType = Pal::ImageType::Tex3d;
+      viewInfo.viewType = Pal::ImageViewType::Tex3d;
+      break;
+    case CL_MEM_OBJECT_IMAGE1D:
+    case CL_MEM_OBJECT_IMAGE1D_ARRAY:
+    case CL_MEM_OBJECT_IMAGE1D_BUFFER:
+      imgCreateInfo.imageType = Pal::ImageType::Tex1d;
+      viewInfo.viewType = Pal::ImageViewType::Tex1d;
+      break;
   }
   if (desc_.topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
     ImgSubresRange.numSlices = imgCreateInfo.arraySize = desc_.height_;
@@ -504,8 +500,7 @@ bool Resource::CreateImage(CreateParams* params)
     ImgSubresRange.startSubres.arraySlice = imageView->layer_;
     viewOwner_ = imageView->resource_;
     image_ = viewOwner_->image_;
-  }
-  else if (memoryType() == ImageBuffer) {
+  } else if (memoryType() == ImageBuffer) {
     ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
     viewOwner_ = imageBuffer->resource_;
   }
@@ -515,11 +510,11 @@ bool Resource::CreateImage(CreateParams* params)
   ImgSubresRange.numMips = desc().mipLevels_;
 
   if ((memoryType() != ImageView) ||
-    //! @todo PAL doesn't allow an SRD view creation with different pixel size
-    (elementSize() != viewOwner_->elementSize())) {
+      //! @todo PAL doesn't allow an SRD view creation with different pixel size
+      (elementSize() != viewOwner_->elementSize())) {
     imgCreateInfo.usageFlags.shaderRead = true;
     imgCreateInfo.usageFlags.shaderWrite =
-      (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
+        (format == Pal::ChNumFormat::X8Y8Z8W8_Srgb) ? false : true;
     imgCreateInfo.swizzledFormat.format = format;
     imgCreateInfo.swizzledFormat.swizzle = channels;
     imgCreateInfo.mipLevels = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
@@ -529,10 +524,9 @@ bool Resource::CreateImage(CreateParams* params)
     uint32_t rowPitch = 0;
 
     if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
-      (memoryType() == ImageBuffer)) {
+        (memoryType() == ImageBuffer)) {
       tiling = Pal::ImageTiling::Linear;
-    }
-    else if (memoryType() == ImageView) {
+    } else if (memoryType() == ImageView) {
       tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
       // Find the new pitch in pixels for the new format
       rowPitch = viewOwner_->desc().pitch_ * viewOwner_->elementSize() / elementSize();
@@ -540,10 +534,9 @@ bool Resource::CreateImage(CreateParams* params)
 
     if (memoryType() == ImageBuffer) {
       if ((params->owner_ != NULL) && params->owner_->asImage() &&
-        (params->owner_->asImage()->getRowPitch() != 0)) {
+          (params->owner_->asImage()->getRowPitch() != 0)) {
         rowPitch = params->owner_->asImage()->getRowPitch() / elementSize();
-      }
-      else {
+      } else {
         rowPitch = desc().width_;
       }
     }
@@ -579,8 +572,8 @@ bool Resource::CreateImage(CreateParams* params)
     createInfo.priority = Pal::GpuMemPriority::Normal;
     memTypeToHeap(&createInfo);
 
-    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-      createInfo.alignment, nullptr, &subOffset_);
+    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
+                                                  nullptr, &subOffset_);
     if (nullptr == memRef_) {
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
       if (nullptr == memRef_) {
@@ -589,8 +582,7 @@ bool Resource::CreateImage(CreateParams* params)
       }
     }
     offset_ += static_cast<size_t>(subOffset_);
-  }
-  else {
+  } else {
     memRef_ = viewOwner_->memRef_;
     memRef_->retain();
     desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
@@ -627,11 +619,10 @@ bool Resource::CreateImage(CreateParams* params)
 }
 
 // ================================================================================================
-bool Resource::CreateInterop(CreateParams* params)
-{
+bool Resource::CreateInterop(CreateParams* params) {
   Pal::Result result;
-  Pal::SubresId ImgSubresId = { Pal::ImageAspect::Color, 0, 0 };
-  Pal::SubresRange ImgSubresRange = { ImgSubresId, 1, 1 };
+  Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
+  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
   Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
@@ -645,21 +636,21 @@ bool Resource::CreateInterop(CreateParams* params)
     OGLInteropParams* oglRes = reinterpret_cast<OGLInteropParams*>(params);
     assert(oglRes->glPlatformContext_ && "We don't have OGL context!");
     switch (oglRes->type_) {
-    case InteropVertexBuffer:
-      glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
-      break;
-    case InteropRenderBuffer:
-      glType_ = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
-      break;
-    case InteropTexture:
-    case InteropTextureViewLevel:
-    case InteropTextureViewCube:
-      glType_ = GL_RESOURCE_ATTACH_TEXTURE_AMD;
-      break;
-    default:
-      LogError("Unknown OGL interop type!");
-      return false;
-      break;
+      case InteropVertexBuffer:
+        glType_ = GL_RESOURCE_ATTACH_VERTEXBUFFER_AMD;
+        break;
+      case InteropRenderBuffer:
+        glType_ = GL_RESOURCE_ATTACH_RENDERBUFFER_AMD;
+        break;
+      case InteropTexture:
+      case InteropTextureViewLevel:
+      case InteropTextureViewCube:
+        glType_ = GL_RESOURCE_ATTACH_TEXTURE_AMD;
+        break;
+      default:
+        LogError("Unknown OGL interop type!");
+        return false;
+        break;
     }
     glPlatformContext_ = oglRes->glPlatformContext_;
     layer = oglRes->layer_;
@@ -667,17 +658,18 @@ bool Resource::CreateInterop(CreateParams* params)
     mipLevel = oglRes->mipLevel_;
 
     if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
-      &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
+                              &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
 #ifdef ATI_OS_WIN
-      , openInfo.doppDesktopInfo
+                              ,
+                              openInfo.doppDesktopInfo
 #endif
-    )) {
+                              )) {
       return false;
     }
     desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
     format = dev().getPalFormat(desc().format_, &channels);
   }
-#ifdef ATI_OS_WIN	
+#ifdef ATI_OS_WIN
   else {
     D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
     openInfo.hExternalResource = d3dRes->handle_;
@@ -713,8 +705,8 @@ bool Resource::CreateInterop(CreateParams* params)
       size_t gpuMemSize;
 
       if (Pal::Result::Success !=
-        dev().iDev()->GetExternalSharedImageSizes(imgOpenInfo, &imageSize, &gpuMemSize,
-          &imgCreateInfo)) {
+          dev().iDev()->GetExternalSharedImageSizes(imgOpenInfo, &imageSize, &gpuMemSize,
+                                                    &imgCreateInfo)) {
         return false;
       }
 
@@ -736,51 +728,51 @@ bool Resource::CreateInterop(CreateParams* params)
       imgCreateInfo.depthPitch = desc().height_ * imgCreateInfo.rowPitch;
 
       switch (misc) {
-      case 1:  // NV12 or P010 formats
-        switch (layer) {
-        case -1:
-        case 0:
+        case 1:  // NV12 or P010 formats
+          switch (layer) {
+            case -1:
+            case 0:
+              break;
+            case 1:
+              // Y - plane size to the offset
+              // NV12 format. UV is 2 times smaller plane Y
+              viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
+              imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+              break;
+            default:
+              LogError("Unknown Interop View Type");
+              return false;
+          }
           break;
-        case 1:
-          // Y - plane size to the offset
-          // NV12 format. UV is 2 times smaller plane Y
-          viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
+        case 2:  // YV12 format
+          switch (layer) {
+            case -1:
+            case 0:
+              break;
+            case 1:
+              // Y - plane size to the offset
+              // YV12 format. U is 4 times smaller plane than Y
+              viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
+              imgCreateInfo.rowPitch >>= 1;
+              break;
+            case 2:
+              // Y + U plane sizes to the offest.
+              // U plane is 4 times smaller than Y and U == V
+              viewOffset = 5 * imgCreateInfo.rowPitch * desc().height_ / 2;
+              imgCreateInfo.rowPitch >>= 1;
+              break;
+            default:
+              LogError("Unknown Interop View Type");
+              return false;
+          }
+          imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
+          break;
+        case 3:  // YUY2 format
           imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
           break;
         default:
           LogError("Unknown Interop View Type");
           return false;
-        }
-        break;
-      case 2:  // YV12 format
-        switch (layer) {
-        case -1:
-        case 0:
-          break;
-        case 1:
-          // Y - plane size to the offset
-          // YV12 format. U is 4 times smaller plane than Y
-          viewOffset = 2 * imgCreateInfo.rowPitch * desc().height_;
-          imgCreateInfo.rowPitch >>= 1;
-          break;
-        case 2:
-          // Y + U plane sizes to the offest.
-          // U plane is 4 times smaller than Y and U == V
-          viewOffset = 5 * imgCreateInfo.rowPitch * desc().height_ / 2;
-          imgCreateInfo.rowPitch >>= 1;
-          break;
-        default:
-          LogError("Unknown Interop View Type");
-          return false;
-        }
-        imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-        break;
-      case 3:  // YUY2 format
-        imgCreateInfo.depthPitch = imgCreateInfo.rowPitch * desc().height_;
-        break;
-      default:
-        LogError("Unknown Interop View Type");
-        return false;
       }
 
       imageSize = dev().iDev()->GetImageSize(imgCreateInfo, &result);
@@ -820,8 +812,7 @@ bool Resource::CreateInterop(CreateParams* params)
       hwState_[10] = static_cast<uint32_t>(desc().width_);
       hwState_[11] = 0;  // one extra reserved field in the argument
     }
-  }
-  else if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
+  } else if (desc().topology_ == CL_MEM_OBJECT_IMAGE1D_BUFFER) {
     memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
     if (nullptr == memRef_) {
       return false;
@@ -842,8 +833,7 @@ bool Resource::CreateInterop(CreateParams* params)
     hwState_[9] = GetHSAILImageOrderType(desc().format_);
     hwState_[10] = static_cast<uint32_t>(desc().width_);
     hwState_[11] = 0;  // one extra reserved field in the argument
-  }
-  else {
+  } else {
     Pal::ExternalImageOpenInfo imgOpenInfo = {};
     Pal::ImageCreateInfo imgCreateInfo = {};
     imgOpenInfo.resourceInfo = openInfo;
@@ -865,14 +855,14 @@ bool Resource::CreateInterop(CreateParams* params)
     viewInfo.possibleLayouts.usages = Pal::LayoutShaderWrite;
     viewInfo.viewType = Pal::ImageViewType::Tex2d;
     switch (imgCreateInfo.imageType) {
-    case Pal::ImageType::Tex3d:
-      viewInfo.viewType = Pal::ImageViewType::Tex3d;
-      break;
-    case Pal::ImageType::Tex1d:
-      viewInfo.viewType = Pal::ImageViewType::Tex1d;
-      break;
-    default:
-      break;
+      case Pal::ImageType::Tex3d:
+        viewInfo.viewType = Pal::ImageViewType::Tex3d;
+        break;
+      case Pal::ImageType::Tex1d:
+        viewInfo.viewType = Pal::ImageViewType::Tex1d;
+        break;
+      default:
+        break;
     }
     viewInfo.pImage = image_;
     viewInfo.swizzledFormat.format = format;
@@ -897,14 +887,13 @@ bool Resource::CreateInterop(CreateParams* params)
     //! It's a workaround for D24S8 format, since PAL doesn't support this format
     //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
     if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
-      (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
-        if (dev().settings().gfx10Plus_) {
-          hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
-        }
-        else {
-          hwState_[1] &= ~0x3c000000;
-          hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
-        }
+        (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
+      if (dev().settings().gfx10Plus_) {
+        hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
+      } else {
+        hwState_[1] &= ~0x3c000000;
+        hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
+      }
     }
     hwState_[8] = GetHSAILImageFormatType(desc().format_);
     hwState_[9] = GetHSAILImageOrderType(desc().format_);
@@ -915,8 +904,7 @@ bool Resource::CreateInterop(CreateParams* params)
 }
 
 // ================================================================================================
-bool Resource::CreatePinned(CreateParams* params)
-{
+bool Resource::CreatePinned(CreateParams* params) {
   PinnedParams* pinned = reinterpret_cast<PinnedParams*>(params);
   size_t allocSize = pinned->size_;
   const amd::HostMemoryReference* hostMemRef = pinned->hostMemRef_;
@@ -926,7 +914,7 @@ bool Resource::CreatePinned(CreateParams* params)
   if (desc().topology_ == CL_MEM_OBJECT_BUFFER) {
     // Allign offset to 4K boundary (Vista/Win7 limitation)
     char* tmpHost = const_cast<char*>(
-      amd::alignDown(reinterpret_cast<const char*>(address_), PinnedMemoryAlignment));
+        amd::alignDown(reinterpret_cast<const char*>(address_), PinnedMemoryAlignment));
 
     // Find the partial size for unaligned copy
     hostMemOffset = static_cast<uint>(reinterpret_cast<const char*>(address_) - tmpHost);
@@ -940,18 +928,16 @@ bool Resource::CreatePinned(CreateParams* params)
     }
     allocSize = amd::alignUp(allocSize, PinnedMemoryAlignment);
     //            hostMemOffset &= ~(0xff);
-  }
-  else if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D) {
+  } else if (desc().topology_ == CL_MEM_OBJECT_IMAGE2D) {
     //! @todo: Width has to be aligned for 3D.
     //! Need to be replaced with a compute copy
     // Width aligned by 8 texels
     if (((desc().width_ % 0x8) != 0) ||
-      // Pitch aligned by 64 bytes
-      (((desc().width_ * elementSize()) % 0x40) != 0)) {
+        // Pitch aligned by 64 bytes
+        (((desc().width_ * elementSize()) % 0x40) != 0)) {
       return false;
     }
-  }
-  else {
+  } else {
     //! @todo GSL doesn't support pinning with resAlloc_
     return false;
   }
@@ -978,8 +964,7 @@ bool Resource::CreatePinned(CreateParams* params)
 }
 
 // ================================================================================================
-bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
-{
+bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
   const bool isFineGrain = (memoryType() == RemoteUSWC) || (memoryType() == Remote);
   size_t allocSize = amd::alignUp(desc().width_ * elementSize_,
                                   dev().properties().gpuMemoryProperties.fragmentSize);
@@ -991,20 +976,18 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
     if (svmPtr != 0) {
       createInfo.flags.useReservedGpuVa = true;
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
-    }
-    else {
+    } else {
       createInfo.flags.useReservedGpuVa = false;
       createInfo.pReservedGpuVaOwner = nullptr;
     }
     if (!dev().settings().svmFineGrainSystem_) {
-      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-        createInfo.alignment, createInfo.pReservedGpuVaOwner, &subOffset_);
+      memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
+                                                    createInfo.pReservedGpuVaOwner, &subOffset_);
     }
     if (memRef_ == nullptr) {
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     }
-  }
-  else {
+  } else {
     Pal::GpuMemoryCreateInfo createInfo = {};
     createInfo.size = allocSize;
     createInfo.alignment = MaxGpuAlignment;
@@ -1015,8 +998,8 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
     }
     memTypeToHeap(&createInfo);
-    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-      createInfo.alignment, createInfo.pReservedGpuVaOwner, &subOffset_);
+    memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
+                                                  createInfo.pReservedGpuVaOwner, &subOffset_);
     if (memRef_ == nullptr) {
       createInfo.alignment = dev().properties().gpuMemoryProperties.fragmentSize;
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
@@ -1028,9 +1011,9 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr)
   }
   desc_.cardMemory_ = false;
   if ((nullptr != params) && (nullptr != params->owner_) &&
-    (nullptr != params->owner_->getSvmPtr())) {
+      (nullptr != params->owner_->getSvmPtr())) {
     params->owner_->setSvmPtr(
-      reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr + subOffset_));
+        reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr + subOffset_));
     offset_ += static_cast<size_t>(subOffset_);
   }
   return true;
@@ -1126,18 +1109,18 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   Pal::gpusize svmPtr = 0;
   if ((nullptr != params) && (nullptr != params->owner_) &&
       (nullptr != params->owner_->getSvmPtr())) {
-      svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
-      desc_.SVMRes_ = true;
-      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
+    svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+    desc_.SVMRes_ = true;
+    svmPtr = (svmPtr == 1) ? 0 : svmPtr;
   }
   if (desc_.SVMRes_) {
-      return CreateSvm(params, svmPtr);
+    return CreateSvm(params, svmPtr);
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = desc().width_ * elementSize_;
   createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-  createInfo.alignment = desc().scratch_ ? 64*Ki : MaxGpuAlignment;
+  createInfo.alignment = desc().scratch_ ? 64 * Ki : MaxGpuAlignment;
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
 
@@ -1152,8 +1135,8 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 
   memTypeToHeap(&createInfo);
   // createInfo.priority;
-  memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size,
-    createInfo.alignment, nullptr, &subOffset_);
+  memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
+                                                nullptr, &subOffset_);
   if (nullptr == memRef_) {
     memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     if (nullptr == memRef_) {
@@ -1172,14 +1155,13 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
 }
 
 // ================================================================================================
-void Resource::free()
-{
+void Resource::free() {
   if (memRef_ == nullptr) {
     return;
   }
 
   const bool wait =
-    (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
+      (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
 
   // OCL has to wait, even if resource is placed in the cache, since reallocation can occur
   // and resource can be reused on another async queue without a wait on a busy operation
@@ -1190,8 +1172,7 @@ void Resource::free()
       for (uint idx = 1; idx < dev().vgpus().size(); ++idx) {
         dev().vgpus()[idx]->waitForEvent(&events_[idx]);
       }
-    }
-    else {
+    } else {
       amd::ScopedLock l(memRef_->gpu_->execution());
       memRef_->gpu_->waitForEvent(&events_[memRef_->gpu_->index()]);
     }
@@ -1232,8 +1213,7 @@ void Resource::free()
 
 // ================================================================================================
 void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const void* data,
-                            bool waitForEvent) const
-{
+                            bool waitForEvent) const {
   GpuEvent event;
 
   // Write data size bytes to surface
@@ -1242,7 +1222,7 @@ void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const v
   gpu.eventBegin(MainEngine);
   gpu.queue(MainEngine).addCmdMemRef(memRef());
   gpu.iCmd()->CmdUpdateMemory(*iMem(), offset_ + offset, size,
-    reinterpret_cast<const uint32_t*>(data));
+                              reinterpret_cast<const uint32_t*>(data));
   gpu.eventEnd(MainEngine, event);
 
   if (waitForEvent) {
@@ -1259,8 +1239,7 @@ void Resource::writeRawData(VirtualGPU& gpu, size_t offset, size_t size, const v
 }
 
 // ================================================================================================
-static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement)
-{
+static const Pal::ChNumFormat ChannelFmt(uint bytesPerElement) {
   if (bytesPerElement == 16) {
     return Pal::ChNumFormat::X32Y32Z32W32_Uint;
   } else if (bytesPerElement == 8) {
@@ -1292,8 +1271,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   if (desc().buffer_ && !dstResource.desc().buffer_) {
     imageOffsetx = dstOrigin[0] % dstResource.elementSize();
     gpuMemoryOffset = srcOrigin[0] + offset();
-    gpuMemoryRowPitch =
-        (srcOrigin[1]) ? srcOrigin[1] : size[0] * dstResource.elementSize();
+    gpuMemoryRowPitch = (srcOrigin[1]) ? srcOrigin[1] : size[0] * dstResource.elementSize();
     img1Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY);
     img2Darray = (dstResource.desc().topology_ == CL_MEM_OBJECT_IMAGE2D_ARRAY);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
@@ -1374,7 +1352,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     }
     copyRegion.gpuMemoryOffset = gpuMemoryOffset;
     copyRegion.gpuMemoryRowPitch = gpuMemoryRowPitch;
-    copyRegion.gpuMemoryDepthPitch = (dstOrigin[2]) ? dstOrigin[2]
+    copyRegion.gpuMemoryDepthPitch = (dstOrigin[2])
+        ? dstOrigin[2]
         : copyRegion.gpuMemoryRowPitch * copyRegion.imageExtent.height;
     gpu.iCmd()->CmdCopyImageToMemory(*image_, imgLayout, *dstResource.iMem(), 1, &copyRegion);
   } else {
@@ -1819,17 +1798,14 @@ void Resource::unmap(VirtualGPU* gpu) {
 }
 
 // ================================================================================================
-void Resource::unmapLayers(VirtualGPU* gpu) {
-  Unimplemented();
-}
+void Resource::unmapLayers(VirtualGPU* gpu) { Unimplemented(); }
 
 // ================================================================================================
 bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {
-  MemBuddyAllocator* allocator = new MemBuddyAllocator(
-    device_, device_->settings().subAllocationChunkSize_,
-    device_->settings().subAllocationMinSize_);
-  if (!((allocator != nullptr) &&
-        (allocator->Init() == Pal::Result::Success) &&
+  MemBuddyAllocator* allocator =
+      new MemBuddyAllocator(device_, device_->settings().subAllocationChunkSize_,
+                            device_->settings().subAllocationMinSize_);
+  if (!((allocator != nullptr) && (allocator->Init() == Pal::Result::Success) &&
         heaps_.insert({mem_ref, allocator}).second)) {
     mem_ref->release();
     delete allocator;
@@ -1890,8 +1866,7 @@ bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
 }
 
 // ================================================================================================
-MemorySubAllocator::~MemorySubAllocator()
-{
+MemorySubAllocator::~MemorySubAllocator() {
   // Release memory heap for suballocations
   for (const auto& it : heaps_) {
     it.first->release();
@@ -1901,8 +1876,8 @@ MemorySubAllocator::~MemorySubAllocator()
 
 // ================================================================================================
 GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize alignment,
-  const Pal::IGpuMemory* reserved_va, Pal::gpusize* offset)
-{
+                                                 const Pal::IGpuMemory* reserved_va,
+                                                 Pal::gpusize* offset) {
   GpuMemoryReference* mem_ref = nullptr;
   MemBuddyAllocator* allocator = nullptr;
   // Check if the resource size and alignment are allowed for suballocation
@@ -1927,7 +1902,7 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
       }
       // We didn't find a valid chunk, so create a new one
       if (!CreateChunk(reserved_va)) {
-          return nullptr;
+        return nullptr;
       }
       i++;
     } while (i < 2);
@@ -1936,8 +1911,7 @@ GpuMemoryReference* MemorySubAllocator::Allocate(Pal::gpusize size, Pal::gpusize
 }
 
 // ================================================================================================
-bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset)
-{
+bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pal::gpusize offset) {
   bool release_mem = false;
   {
     amd::ScopedLock l(monitor);
@@ -1966,9 +1940,8 @@ ResourceCache::~ResourceCache() { free(); }
 
 // ================================================================================================
 //! \note the cache works in FILO mode
-bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
-  GpuMemoryReference* ref, Pal::gpusize offset)
-{
+bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference* ref,
+                                 Pal::gpusize offset) {
   bool result = false;
   size_t size = ref->iMem()->Desc().size;
 
@@ -2017,7 +1990,9 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc,
 
 // ================================================================================================
 GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal::gpusize size,
-  Pal::gpusize alignment, const Pal::IGpuMemory* reserved_va, Pal::gpusize* offset) {
+                                                 Pal::gpusize alignment,
+                                                 const Pal::IGpuMemory* reserved_va,
+                                                 Pal::gpusize* offset) {
   amd::ScopedLock l(&lockCacheOps_);
   GpuMemoryReference* ref = nullptr;
 
@@ -2051,7 +2026,7 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
       ref = it.second;
       cacheSize_ -= sizeRes;
       if (entry->type_ == Resource::Local) {
-          lclCacheSize_ -= sizeRes;
+        lclCacheSize_ -= sizeRes;
       }
       delete it.first;
       // Remove the found etry from the cache
@@ -2078,8 +2053,7 @@ bool ResourceCache::free(size_t minCacheEntries) {
 }
 
 // ================================================================================================
-void ResourceCache::removeLast()
-{
+void ResourceCache::removeLast() {
   std::pair<Resource::Descriptor*, GpuMemoryReference*> entry;
   {
     // Protect access to the global data

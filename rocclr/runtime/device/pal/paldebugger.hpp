@@ -98,10 +98,10 @@ struct HwDebugWaveAddr {
 };
 
 /*! \brief Kernel code information
-*
-*   This structure contains the pointer of mapped kernel code for host access
-*   and its size (in bytes)
-*/
+ *
+ *   This structure contains the pointer of mapped kernel code for host access
+ *   and its size (in bytes)
+ */
 struct AqlCodeInfo {
   amd_kernel_code_t* aqlCode_;  //! pointer of AQL code to allow host access
   uint32_t aqlCodeSize_;        //! size of AQL code

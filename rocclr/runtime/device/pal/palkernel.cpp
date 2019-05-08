@@ -27,11 +27,9 @@ typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
 namespace pal {
 
 void HSAILKernel::setWorkGroupInfo(const uint32_t privateSegmentSize,
-                                   const uint32_t groupSegmentSize,
-                                   const uint16_t numSGPRs,
+                                   const uint32_t groupSegmentSize, const uint16_t numSGPRs,
                                    const uint16_t numVGPRs) {
-  workGroupInfo_.scratchRegs_ =
-      amd::alignUp(privateSegmentSize, 16) / sizeof(uint);
+  workGroupInfo_.scratchRegs_ = amd::alignUp(privateSegmentSize, 16) / sizeof(uint);
   workGroupInfo_.privateMemSize_ = privateSegmentSize;
   workGroupInfo_.localMemSize_ = workGroupInfo_.usedLDSSize_ = groupSegmentSize;
   workGroupInfo_.usedSGPRs_ = numSGPRs;
@@ -63,13 +61,13 @@ bool HSAILKernel::setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t
   }
 
   // Copy code object of this kernel from the program CPU segment
-  memcpy(akc, reinterpret_cast<void*>(prog().findHostKernelAddress(code_)), sizeof(amd_kernel_code_t));
+  memcpy(akc, reinterpret_cast<void*>(prog().findHostKernelAddress(code_)),
+         sizeof(amd_kernel_code_t));
 
   return true;
 }
 
 bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
-
   amd_kernel_code_t* akc = &akc_;
 
   if (!setKernelCode(sym, akc)) {
@@ -77,18 +75,16 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
   }
 
   if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_SIZE,
-    reinterpret_cast<void*>(&codeSize_))) {
+                    reinterpret_cast<void*>(&codeSize_))) {
     return false;
   }
 
-    // Setup the the workgroup info
-  setWorkGroupInfo(akc->workitem_private_segment_byte_size,
-                   akc->workgroup_group_segment_byte_size,
-                   akc->wavefront_sgpr_count,
-                   akc->workitem_vgpr_count);
+  // Setup the the workgroup info
+  setWorkGroupInfo(akc->workitem_private_segment_byte_size, akc->workgroup_group_segment_byte_size,
+                   akc->wavefront_sgpr_count, akc->workitem_vgpr_count);
 
   workgroupGroupSegmentByteSize_ = workGroupInfo_.usedLDSSize_;
-  kernargSegmentByteSize_ =  akc->kernarg_segment_byte_size;
+  kernargSegmentByteSize_ = akc->kernarg_segment_byte_size;
   spillSegmentByteSize_ = amd::alignUp(workGroupInfo_.privateMemSize_, sizeof(uint32_t));
 
   return true;
@@ -102,16 +98,14 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       codeSize_(0),
       workgroupGroupSegmentByteSize_(0),
       kernargSegmentByteSize_(0),
-      spillSegmentByteSize_(0)
- {
+      spillSegmentByteSize_(0) {
   flags_.hsa_ = true;
 }
 
-HSAILKernel::~HSAILKernel() {
-}
+HSAILKernel::~HSAILKernel() {}
 
 bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
-#if  defined(WITH_COMPILER_LIB)
+#if defined(WITH_COMPILER_LIB)
   acl_error error = ACL_SUCCESS;
   std::string openClKernelName = openclMangledName(name());
   flags_.internalKernel_ =
@@ -274,12 +268,14 @@ const HSAILProgram& HSAILKernel::prog() const {
   return reinterpret_cast<const HSAILProgram&>(prog_);
 }
 
-hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
-    VirtualGPU& gpu, const amd::Kernel& kernel, const amd::NDRangeContainer& sizes,
-    const_address parameters, size_t ldsAddress, uint64_t vmDefQueue, uint64_t* vmParentWrap) const {
+hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const amd::Kernel& kernel,
+                                                         const amd::NDRangeContainer& sizes,
+                                                         const_address parameters,
+                                                         size_t ldsAddress, uint64_t vmDefQueue,
+                                                         uint64_t* vmParentWrap) const {
   uint64_t argList;
   address aqlArgBuf = gpu.managedBuffer().reserve(
-    argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t), &argList);
+      argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t), &argList);
   gpu.addVmMemory(gpu.managedBuffer().activeMemory());
 
   if (dynamicParallelism()) {
@@ -307,8 +303,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
         if (sizes.dimensions() >= 2) {
-            offset = sizes.offset()[1];
-            WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+          offset = sizes.offset()[1];
+          WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
@@ -322,8 +318,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
             // and printf buffer was allocated
             (gpu.printfDbgHSA().dbgBuffer() != nullptr)) {
           // and set the fourth argument as the printf_buffer pointer
-          size_t bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().
-            dbgBuffer()->vmAddress());
+          size_t bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
           gpu.addVmMemory(gpu.printfDbgHSA().dbgBuffer());
           WriteAqlArgAt(const_cast<address>(parameters), &bufferPtr, it.size_, it.offset_);
         }
@@ -346,11 +341,11 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   // Note: In a case of structs the size won't match,
   // since HSAIL compiler expects a reference...
   assert(argsBufferSize() <= signature.paramsSize() &&
-    "A mismatch of sizes of arguments between compiler and runtime!");
+         "A mismatch of sizes of arguments between compiler and runtime!");
 
-  //hsa_kernel_dispatch_packet_t disp;
-  hsa_kernel_dispatch_packet_t* hsaDisp = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(
-    gpu.cb(0)->SysMemCopy());
+  // hsa_kernel_dispatch_packet_t disp;
+  hsa_kernel_dispatch_packet_t* hsaDisp =
+      reinterpret_cast<hsa_kernel_dispatch_packet_t*>(gpu.cb(0)->SysMemCopy());
 
   amd::NDRange local(sizes.local());
   const amd::NDRange& global = sizes.global();
@@ -359,10 +354,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
   constexpr uint16_t kDispatchPacketHeader =
-    (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
-    (1 << HSA_PACKET_HEADER_BARRIER) |
-    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+      (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+      (1 << HSA_PACKET_HEADER_BARRIER) |
+      (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+      (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
   hsaDisp->header = kDispatchPacketHeader;
   hsaDisp->setup = sizes.dimensions();
@@ -387,7 +382,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   memcpy(aqlArgBuf + argsBufferSize(), hsaDisp, sizeof(hsa_kernel_dispatch_packet_t));
 
   if (AMD_HSA_BITS_GET(akc_.kernel_code_properties,
-      AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
+                       AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
     gpu.addVmMemory(gpu.hsaQueueMem());
   }
 
@@ -407,7 +402,7 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
   }
   return nullptr;
 }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
@@ -419,7 +414,7 @@ bool LightningKernel::init() {
     return false;
   }
 
-  KernelMD  kernelMD;
+  KernelMD kernelMD;
   if (!GetAttrCodePropMetadata(*kernelMetaNode, &kernelMD)) {
     return false;
   }
@@ -427,8 +422,8 @@ bool LightningKernel::init() {
   symbolName_ = (codeObjectVer() == 2) ? name() : kernelMD.mSymbolName;
 
   workgroupGroupSegmentByteSize_ = kernelMD.mCodeProps.mGroupSegmentFixedSize;
-  spillSegmentByteSize_ = amd::alignUp(kernelMD.mCodeProps.mPrivateSegmentFixedSize,
-                                       sizeof(uint32_t));
+  spillSegmentByteSize_ =
+      amd::alignUp(kernelMD.mCodeProps.mPrivateSegmentFixedSize, sizeof(uint32_t));
   kernargSegmentByteSize_ = kernelMD.mCodeProps.mKernargSegmentSize;
 
   // Copy codeobject of this kernel from the program CPU segment
@@ -451,7 +446,7 @@ bool LightningKernel::init() {
 
     // Get the runtime handle symbol GPU address
     rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD.mAttrs.mRuntimeHandle.c_str()),
-                                const_cast<hsa_agent_t*>(&agent));
+                                  const_cast<hsa_agent_t*>(&agent));
     uint64_t symbol_address;
     rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
 
@@ -461,19 +456,14 @@ bool LightningKernel::init() {
     uint64_t kernel_object = gpuAqlCode();
     VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
 
-    const struct RuntimeHandle runtime_handle = {
-        gpuAqlCode(),
-        spillSegSize(),
-        ldsSize()
-    };
+    const struct RuntimeHandle runtime_handle = {gpuAqlCode(), spillSegSize(), ldsSize()};
 
     codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
   }
 
   // Setup the the workgroup info
   setWorkGroupInfo(kernelMD.mCodeProps.mPrivateSegmentFixedSize,
-                   kernelMD.mCodeProps.mGroupSegmentFixedSize,
-                   kernelMD.mCodeProps.mNumSGPRs,
+                   kernelMD.mCodeProps.mGroupSegmentFixedSize, kernelMD.mCodeProps.mNumSGPRs,
                    kernelMD.mCodeProps.mNumVGPRs);
 
   // Copy wavefront size
@@ -499,10 +489,10 @@ bool LightningKernel::init() {
 
   return true;
 }
-#endif // defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
 
@@ -545,7 +535,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
     // Get the runtime handle symbol GPU address
     rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD->mAttrs.mRuntimeHandle.c_str()),
-                                const_cast<hsa_agent_t*>(&agent));
+                                  const_cast<hsa_agent_t*>(&agent));
     uint64_t symbol_address;
     rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
 
@@ -554,11 +544,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
     uint64_t offset = symbol_address - codeSegGpu.vmAddress();
     VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
 
-    const struct RuntimeHandle runtime_handle = {
-        gpuAqlCode(),
-        spillSegSize(),
-        ldsSize()
-    };
+    const struct RuntimeHandle runtime_handle = {gpuAqlCode(), spillSegSize(), ldsSize()};
 
     codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
   }
@@ -584,7 +570,7 @@ bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
 
   waveLimiter_.enable();
   */
-#endif // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
   return true;
 }
 

@@ -20,4 +20,4 @@ class AppProfile : public amd::AppProfile {
   bool enableHighPerformanceState_;
   bool reportAsOCL12Device_;
 };
-}
+}  // namespace pal

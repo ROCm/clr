@@ -40,7 +40,7 @@ class TimeStamp : public amd::HeapObject {
             Pal::IGpuMemory* iMem,  //!< Buffer with the timer values
             uint memOffset,         //!< Offset in the buffer for the current TS
             address cpuAddr         //!< CPU pointer for the values in memory
-            );
+  );
 
   //! Default destructor
   ~TimeStamp();
@@ -114,4 +114,5 @@ class TimeStampCache : public amd::HeapObject {
   uint tsOffset_;                    //!< Active offset in the current mem object
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

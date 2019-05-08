@@ -32,12 +32,12 @@ class Memory : public device::Memory, public Resource {
   Memory(const Device& gpuDev,  //!< GPU device object
          amd::Memory& owner,    //!< Abstraction layer memory object
          size_t size            //!< Memory size for allocation
-         );
+  );
 
   //! Constructor (nonfat version for local scratch mem use without heap block)
   Memory(const Device& gpuDev,  //!< GPU device object
          size_t size            //!< Memory size for allocation
-         );
+  );
 
   //! Constructor memory for images (without global heap allocation)
   Memory(const Device& gpuDev,          //!< GPU device object
@@ -48,7 +48,7 @@ class Memory : public device::Memory, public Resource {
          cl_image_format format,        //!< Memory format
          cl_mem_object_type imageType,  //!< CL image type
          uint mipLevels                 //!< The number of mip levels
-         );
+  );
 
   //! Constructor memory for images (without global heap allocation)
   Memory(const Device& gpuDev,          //!< GPU device object
@@ -59,7 +59,7 @@ class Memory : public device::Memory, public Resource {
          cl_image_format format,        //!< Memory format
          cl_mem_object_type imageType,  //!< CL image type
          uint mipLevels                 //!< The number of mip levels
-         );
+  );
 
   //! Default destructor
   ~Memory();
@@ -70,7 +70,7 @@ class Memory : public device::Memory, public Resource {
   //! Overloads the resource create method
   virtual bool create(Resource::MemoryType memType,          //!< Memory type
                       Resource::CreateParams* params = NULL  //!< Prameters for create
-                      );
+  );
 
   //! Allocate memory for API-level maps
   virtual void* allocMapTarget(const amd::Coord3D& origin,  //!< The map location in memory
@@ -78,12 +78,12 @@ class Memory : public device::Memory, public Resource {
                                uint mapFlags,               //!< Map flags
                                size_t* rowPitch = NULL,     //!< Row pitch for the mapped memory
                                size_t* slicePitch = NULL    //!< Slice for the mapped memory
-                               );
+  );
 
   //! Pins system memory associated with this memory object
   virtual bool pinSystemMemory(void* hostPtr,  //!< System memory address
                                size_t size     //!< Size of allocated system memory
-                               );
+  );
 
   //! Releases indirect map surface
   virtual void releaseIndirectMap() { decIndMapCount(); }
@@ -96,15 +96,15 @@ class Memory : public device::Memory, public Resource {
                        uint numLayers = 0,        //!< End layer for multilayer map
                        size_t* rowPitch = NULL,   //!< Row pitch for the device memory
                        size_t* slicePitch = NULL  //!< Slice pitch for the device memory
-                       );
+  );
 
   //! Unmap the device memory
   virtual void cpuUnmap(device::VirtualDevice& vDev  //!< Virtual device for unmap operaiton
-                        );
+  );
 
   //! Updates device memory from the owner's host allocation
   void syncCacheFromHost(VirtualGPU& gpu,  //!< Virtual GPU device object
-                         //! Synchronization flags
+                                           //! Synchronization flags
                          device::Memory::SyncFlags syncFlags = device::Memory::SyncFlags());
 
   //! Updates the owner's host allocation from device memory
@@ -115,11 +115,13 @@ class Memory : public device::Memory, public Resource {
   //! Creates a view from current resource
   virtual Memory* createBufferView(
       amd::Memory& subBufferOwner  //!< The abstraction layer subbuf owner
-      );
+  );
 
   virtual uint64_t virtualAddress() const override { return vmAddress(); }
 
-  virtual const address cpuSrd() const { return reinterpret_cast<const address>(const_cast<void*>(hwState())); }
+  virtual const address cpuSrd() const {
+    return reinterpret_cast<const address>(const_cast<void*>(hwState()));
+  }
 
   //! Allocates host memory for synchronization with MGPU context
   void mgpuCacheWriteBack();
@@ -161,8 +163,8 @@ class Memory : public device::Memory, public Resource {
   //! Disable operator=
   Memory& operator=(const Memory&);
 
-  Memory* pinnedMemory_;     //!< Memory used as pinned system memory
-  const Memory* parent_;     //!< Parent memory object
+  Memory* pinnedMemory_;  //!< Memory used as pinned system memory
+  const Memory* parent_;  //!< Parent memory object
 };
 
 class Buffer : public pal::Memory {
@@ -219,7 +221,7 @@ class Image : public pal::Memory {
                                uint mapFlags,               //!< Map flags
                                size_t* rowPitch = NULL,     //!< Row pitch for the mapped memory
                                size_t* slicePitch = NULL    //!< Slice for the mapped memory
-                               );
+  );
 
   virtual uint64_t virtualAddress() const override { return hwSrd(); }
 

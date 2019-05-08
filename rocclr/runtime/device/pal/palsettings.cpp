@@ -136,7 +136,7 @@ Settings::Settings() {
   subAllocationMinSize_ = 4 * Ki;
   subAllocationChunkSize_ = 64 * Mi;
   subAllocationMaxSize_ =
-    std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
+      std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
 
   maxCmdBuffers_ = 12;
   useLightning_ = GPU_ENABLE_LC;
@@ -148,8 +148,7 @@ Settings::Settings() {
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
                       const Pal::GpuMemoryHeapProperties* heaps, const Pal::WorkStationCaps& wscaps,
-                      bool reportAsOCL12Device)
-{
+                      bool reportAsOCL12Device) {
   uint32_t osVer = 0x0;
 
   // Disable thread trace by default for all devices
@@ -198,8 +197,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
       useLightning_ = (!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : true;
-      hsailExplicitXnack_ = static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled
-        || palProp.gpuMemoryProperties.flags.iommuv2Support);
+      hsailExplicitXnack_ =
+          static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled ||
+                            palProp.gpuMemoryProperties.flags.iommuv2Support);
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
@@ -346,7 +346,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
     splitSizeForWin7_ = true;  // Update flag of DMA flush split size for Win 7
     if (modifyMaxWorkload.time > 0) {
-      maxWorkloadTime_ = modifyMaxWorkload.time; // Update max workload time
+      maxWorkloadTime_ = modifyMaxWorkload.time;  // Update max workload time
     }
   }
 #endif  // defined(_WIN32)

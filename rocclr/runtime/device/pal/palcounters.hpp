@@ -84,8 +84,7 @@ class PerfCounter : public device::PerfCounter {
               cl_uint blockIndex,           //!< HW block index
               cl_uint counterIndex,         //!< Counter index within the block
               cl_uint eventIndex)           //!< Event index for profiling
-      : gpuDevice_(device),
-        palRef_(palRef) {
+      : gpuDevice_(device), palRef_(palRef) {
     info_.blockIndex_ = blockIndex;
     info_.counterIndex_ = counterIndex;
     info_.eventIndex_ = eventIndex;
