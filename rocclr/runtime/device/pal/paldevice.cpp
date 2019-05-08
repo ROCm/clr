@@ -1056,7 +1056,7 @@ bool Device::create(Pal::IDevice* device) {
 
   if ((glb_ctx_ == nullptr) && (gNumDevices > 1) && (device == gDeviceList[gNumDevices - 1])) {
     std::vector<amd::Device*> devices;
-    uint32_t numDevices =  amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+    uint32_t numDevices =  amd::Device::numDevices(CL_DEVICE_TYPE_GPU, true);
     // Add all PAL devices
     for (uint32_t i = gStartDevice; i < numDevices; ++i) {
       devices.push_back(amd::Device::devices()[i]);
@@ -1282,7 +1282,7 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
 }
 
 bool Device::init() {
-  gStartDevice = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+  gStartDevice = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, true);
   bool useDeviceList = false;
   requestedDevices_t requestedDevices;
 
