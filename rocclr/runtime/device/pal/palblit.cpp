@@ -280,8 +280,8 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     amd::Coord3D copySize(tmpSize, 0, 0);
 
     // Copy data into the temporary buffer, using CPU
-    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset,
-        src, copySize, flags)) {
+    if (!xferBuf.hostWrite(&gpu(), reinterpret_cast<const char*>(srcHost) + offset, src, copySize,
+                           flags)) {
       return false;
     }
 
@@ -296,7 +296,7 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
     srcOffset += tmpSize;
     if ((srcOffset + tmpSize) > gpu().xferWrite().MaxSize()) {
       srcOffset = 0;
-      flags =  0;
+      flags = 0;
     } else {
       flags = Resource::NoWait;
     }
@@ -310,7 +310,7 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBuffer_ ||
       (gpuMem(dstMemory).isHostMemDirectAccess() &&
-      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
+       (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
@@ -335,7 +335,7 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
       // Copy memory, using pinning
       while (dstSize > 0) {
         size_t tmpSize;
-          // If it's the first iterarion, then readjust the copy size
+        // If it's the first iterarion, then readjust the copy size
         // to include alignment
         if (first) {
           pinAllocSize = amd::alignUp(pinSize + partial, PinnedMemoryAlignment);
@@ -398,7 +398,7 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBufferRect_ ||
       (dstMemory.isHostMemDirectAccess() &&
-      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
+       (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
   } else {
@@ -586,8 +586,8 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
                                                 entire, rowPitch, slicePitch);
   } else {
     // Use PAL path for a transfer
-    result = gpuMem(srcMemory).partialMemCopyTo(gpu(), srcOrigin, dstOrigin,
-        size, gpuMem(dstMemory));
+    result =
+        gpuMem(srcMemory).partialMemCopyTo(gpu(), srcOrigin, dstOrigin, size, gpuMem(dstMemory));
 
     // Check if a HostBlit transfer is required
     if (completeOperation_ && !result) {
@@ -947,8 +947,8 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
 
   void* param = kernel->parameters().values() + desc.offset_;
   assert((desc.type_ == T_POINTER || value != NULL ||
-    (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL)) &&
-    "not a valid local mem arg");
+          (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL)) &&
+         "not a valid local mem arg");
 
   uint32_t uint32_value = 0;
   uint64_t uint64_value = 0;
@@ -957,14 +957,15 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
   if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
     if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
       reinterpret_cast<Memory**>(kernel->parameters().values() +
-        kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
+                                 kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
+          nullptr;
     } else {
       // convert cl_mem to amd::Memory*, return false if invalid.
-      LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>((
-        *static_cast<Memory* const*>(value))->virtualAddress());
+      LP64_SWITCH(uint32_value, uint64_value) =
+          static_cast<uintptr_t>((*static_cast<Memory* const*>(value))->virtualAddress());
       reinterpret_cast<Memory**>(kernel->parameters().values() +
-        kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
-        *static_cast<Memory* const*>(value);
+                                 kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
+          *static_cast<Memory* const*>(value);
       // Note: Special case for image SRD, which is 64 bit always
       if (LP64_SWITCH(true, false) &&
           (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject)) {
@@ -1018,8 +1019,8 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   bool releaseView = false;
   bool result = false;
   amd::Image::Format newFormat(gpuMem(dstMemory).desc().format_);
-  bool swapLayer = (dstView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-       dev().settings().gfx10Plus_;
+  bool swapLayer =
+      (dstView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1078,10 +1079,10 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
     // Swap the Y and Z components, apparently gfx10 HW expects
     // layer in Z
     if (swapLayer) {
-        globalWorkSize[2] = globalWorkSize[1];
-        globalWorkSize[1] = 1;
-        localWorkSize[2] = localWorkSize[1];
-        localWorkSize[1] = 1;
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
     }
   } else {
     globalWorkSize[0] = amd::alignUp(size[0], 8);
@@ -1114,10 +1115,10 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
 
   if (swapLayer) {
-      dstOrg[2] = dstOrg[1];
-      dstOrg[1] = 0;
-      copySize[2] = copySize[1];
-      copySize[1] = 1;
+    dstOrg[2] = dstOrg[1];
+    dstOrg[1] = 0;
+    copySize[2] = copySize[1];
+    copySize[1] = 1;
   }
 
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
@@ -1338,8 +1339,8 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   bool releaseView = false;
   bool result = false;
   amd::Image::Format newFormat(gpuMem(srcMemory).desc().format_);
-  bool swapLayer = (srcView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-       dev().settings().gfx10Plus_;
+  bool swapLayer =
+      (srcView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1398,10 +1399,10 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
     // Swap the Y and Z components, apparently gfx10 HW expects
     // layer in Z
     if (swapLayer) {
-        globalWorkSize[2] = globalWorkSize[1];
-        globalWorkSize[1] = 1;
-        localWorkSize[2] = localWorkSize[1];
-        localWorkSize[1] = 1;
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
     }
   } else {
     globalWorkSize[0] = amd::alignUp(size[0], 8);
@@ -1426,10 +1427,10 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   cl_int srcOrg[4] = {(cl_int)srcOrigin[0], (cl_int)srcOrigin[1], (cl_int)srcOrigin[2], 0};
   cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
   if (swapLayer) {
-      srcOrg[2] = srcOrg[1];
-      srcOrg[1] = 0;
-      copySize[2] = copySize[1];
-      copySize[1] = 1;
+    srcOrg[2] = srcOrg[1];
+    srcOrg[1] = 0;
+    copySize[2] = copySize[1];
+    copySize[1] = 1;
   }
   setArgument(kernels_[blitType], 4, sizeof(srcOrg), srcOrg);
   uint32_t memFmtSize = gpuMem(srcMemory).elementSize();
@@ -1570,7 +1571,7 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   // Program source origin
   cl_int srcOrg[4] = {(cl_int)srcOrigin[0], (cl_int)srcOrigin[1], (cl_int)srcOrigin[2], 0};
   if ((gpuMem(srcMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-    dev().settings().gfx10Plus_) {
+      dev().settings().gfx10Plus_) {
     srcOrg[3] = 1;
   }
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
@@ -1578,7 +1579,7 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   // Program destinaiton origin
   cl_int dstOrg[4] = {(cl_int)dstOrigin[0], (cl_int)dstOrigin[1], (cl_int)dstOrigin[2], 0};
   if ((gpuMem(dstMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-    dev().settings().gfx10Plus_) {
+      dev().settings().gfx10Plus_) {
     dstOrg[3] = 1;
   }
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
@@ -1700,16 +1701,15 @@ bool KernelBlitManager::writeImage(const void* srcHost, device::Memory& dstMemor
       amdMemory = pinHostMemory(srcHost, pinSize, partial);
       if (amdMemory == nullptr) {
         // Force SW copy
-        result = HostBlitManager::writeImage(srcHost, dstMemory,
-                    origin, size, rowPitch, slicePitch, entire);
+        result = HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch,
+                                             entire);
         synchronize();
         return result;
       }
       // Get device memory for this virtual device
       srcMemory = dev().getGpuMemory(amdMemory);
       pinned = true;
-    }
-    else {
+    } else {
       srcMemory = &gpu().xferWrite().Acquire(pinSize);
       srcMemory->hostWrite(&gpu(), srcHost, 0, pinSize, Resource::NoWait);
       pinned = false;
@@ -1951,7 +1951,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBuffer_ ||
       (gpuMem(dstMemory).isHostMemDirectAccess() &&
-      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
+       (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       (gpuMem(dstMemory).memoryType() == Resource::Persistent)) {
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
     synchronize();
@@ -2002,7 +2002,7 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBufferRect_ ||
       (gpuMem(dstMemory).isHostMemDirectAccess() &&
-      (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
+       (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
     synchronize();
@@ -2206,8 +2206,8 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   size_t localWorkSize[3];
   Memory* memView = &gpuMem(memory);
   amd::Image::Format newFormat(gpuMem(memory).owner()->asImage()->getImageFormat());
-  bool swapLayer = (memView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-       dev().settings().gfx10Plus_;
+  bool swapLayer =
+      (memView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
 
   // Program the kernels workload depending on the fill dimensions
   fillType = FillImage;
@@ -2274,10 +2274,10 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
     // Swap the Y and Z components, apparently gfx10 HW expects
     // layer in Z
     if (swapLayer) {
-        globalWorkSize[2] = globalWorkSize[1];
-        globalWorkSize[1] = 1;
-        localWorkSize[2] = localWorkSize[1];
-        localWorkSize[1] = 1;
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
     }
   } else {
     globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 8);
@@ -2297,10 +2297,10 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   cl_int fillOrigin[4] = {(cl_int)origin[0], (cl_int)origin[1], (cl_int)origin[2], 0};
   cl_int fillSize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
   if (swapLayer) {
-      fillOrigin[2] = fillOrigin[1];
-      fillOrigin[1] = 0;
-      fillSize[2] = fillSize[1];
-      fillSize[1] = 1;
+    fillOrigin[2] = fillOrigin[1];
+    fillOrigin[1] = 0;
+    fillSize[2] = fillSize[1];
+    fillSize[1] = 1;
   }
   setArgument(kernels_[fillType], 4, sizeof(fillOrigin), fillOrigin);
   setArgument(kernels_[fillType], 5, sizeof(fillSize), fillSize);

@@ -41,11 +41,11 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   //! Get PAL memory object
   Pal::IGpuMemory* iMem() const { return gpuMem_; }
 
-  Pal::IGpuMemory* gpuMem_;   //!< PAL GPU memory object
-  void* cpuAddress_;          //!< CPU address of this memory
-  const Device& device_;      //!< GPU device
+  Pal::IGpuMemory* gpuMem_;  //!< PAL GPU memory object
+  void* cpuAddress_;         //!< CPU address of this memory
+  const Device& device_;     //!< GPU device
   //! @note: This field is necessary for the thread safe release only
-  VirtualGPU* gpu_;           //!< Resource will be used only on this queue
+  VirtualGPU* gpu_;  //!< Resource will be used only on this queue
 
  protected:
   //! Default destructor
@@ -186,7 +186,7 @@ class Resource : public amd::HeapObject {
   //! Constructor of 1D Resource object
   Resource(const Device& gpuDev,  //!< GPU device object
            size_t size            //!< Resource size
-           );
+  );
 
   //! Constructor of Image Resource object
   Resource(const Device& gpuDev,          //!< GPU device object
@@ -196,7 +196,7 @@ class Resource : public amd::HeapObject {
            cl_image_format format,        //!< resource format
            cl_mem_object_type imageType,  //!< CL image type
            uint mipLevels = 1             //!< Number of mip levels
-           );
+  );
 
   //! Destructor of the resource
   virtual ~Resource();
@@ -207,7 +207,7 @@ class Resource : public amd::HeapObject {
    */
   virtual bool create(MemoryType memType,       //!< memory type
                       CreateParams* params = 0  //!< special parameters for resource allocation
-                      );
+  );
 
   /*! \brief Copies a subregion of memory from one resource to another
    *
@@ -253,14 +253,13 @@ class Resource : public amd::HeapObject {
   Pal::IGpuMemory* iMem() const { return memRef_->iMem(); }
 
   //! Returns a pointer to the memory reference
-  GpuMemoryReference* memRef() const {return memRef_; }
+  GpuMemoryReference* memRef() const { return memRef_; }
 
   //! Returns global memory offset
   uint64_t vmAddress() const { return iMem()->Desc().gpuVirtAddr + offset_; }
 
   //! Returns global memory offset
-  uint64_t vmSize() const
-    { return desc_.width_ * desc_.height_ * desc_.depth_ * elementSize(); }
+  uint64_t vmSize() const { return desc_.width_ * desc_.height_ * desc_.depth_ * elementSize(); }
 
   //! Returns global memory offset
   bool mipMapped() const { return (desc().mipLevels_ > 1) ? true : false; }
@@ -279,11 +278,11 @@ class Resource : public amd::HeapObject {
             // Optimization for multilayer map/unmap
             uint startLayer = 0,  //!< Start layer for multilayer map
             uint numLayers = 0    //!< End layer for multilayer map
-            );
+  );
 
   //! Unlocks the resource if it was locked
   void unmap(VirtualGPU* gpu  //!< Virtual GPU device object
-             );
+  );
 
   //! Marks the resource as busy
   void setBusy(VirtualGPU& gpu,   //!< Virtual GPU device object
@@ -303,7 +302,7 @@ class Resource : public amd::HeapObject {
                  uint flags = 0,              //!< Map flags
                  size_t rowPitch = 0,         //!< Raw data row pitch
                  size_t slicePitch = 0        //!< Raw data slice pitch
-                 );
+  );
 
   //! Performs host read from the resource GPU memory
   bool hostRead(VirtualGPU* gpu,             //!< Virtual GPU device object
@@ -312,7 +311,7 @@ class Resource : public amd::HeapObject {
                 const amd::Coord3D& size,    //!< The number of bytes to write
                 size_t rowPitch = 0,         //!< Raw data row pitch
                 size_t slicePitch = 0        //!< Raw data slice pitch
-                );
+  );
 
   //! Gets the resource element size
   uint elementSize() const { return elementSize_; }
@@ -377,7 +376,7 @@ class Resource : public amd::HeapObject {
       memRef_ = viewOwner_->memRef_;
       memRef_->retain();
       desc_.width_ = amd::alignUp(size, Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint)) /
-        Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint);
+          Pal::Formats::BytesPerPixel(Pal::ChNumFormat::X32_Uint);
       setBusy(*memRef()->gpu_, GpuEvent::InvalidID);
     }
   }
@@ -390,33 +389,32 @@ class Resource : public amd::HeapObject {
 
  protected:
   /*! \brief Creates a PAL iamge object, associated with the resource
-  *
-  *  \return True if we succesfully created a PAL resource
-  */
-  bool CreateImage(CreateParams* params //!< special parameters for resource allocation
-                   );
+   *
+   *  \return True if we succesfully created a PAL resource
+   */
+  bool CreateImage(CreateParams* params  //!< special parameters for resource allocation
+  );
 
   /*! \brief Creates a PAL interop object, associated with the resource
-  *
-  *  \return True if we succesfully created a PAL interop resource
-  */
-  bool CreateInterop(CreateParams* params //!< special parameters for resource allocation
-                     );
+   *
+   *  \return True if we succesfully created a PAL interop resource
+   */
+  bool CreateInterop(CreateParams* params  //!< special parameters for resource allocation
+  );
 
   /*! \brief Creates a PAL pinned object, associated with the resource
-  *
-  *  \return True if we succesfully created a PAL pinned resource
-  */
-  bool CreatePinned(CreateParams* params //!< special parameters for resource allocation
-                    );
+   *
+   *  \return True if we succesfully created a PAL pinned resource
+   */
+  bool CreatePinned(CreateParams* params  //!< special parameters for resource allocation
+  );
 
   /*! \brief Creates a PAL SVM object, associated with the resource
-  *
-  *  \return True if we succesfully created a PAL SVM resource
-  */
+   *
+   *  \return True if we succesfully created a PAL SVM resource
+   */
   bool CreateSvm(CreateParams* params,  //!< special parameters for resource allocation
-                 Pal::gpusize svmPtr
-                 );
+                 Pal::gpusize svmPtr);
 
   uint elementSize_;  //!< Size of a single element in bytes
 
@@ -433,11 +431,11 @@ class Resource : public amd::HeapObject {
    */
   void* mapLayers(VirtualGPU* gpu,  //!< Virtual GPU device object
                   uint flags = 0    //!< flags for the map operation
-                  );
+  );
 
   //! Unlocks the resource with layers if it was locked
   void unmapLayers(VirtualGPU* gpu  //!< Virtual GPU device object
-                   );
+  );
 
   //! Calls PAL to map a resource
   void* gpuMemoryMap(size_t* pitch,             //!< Pitch value for the image
@@ -454,7 +452,7 @@ class Resource : public amd::HeapObject {
 
   //! Converts Resource memory type to the PAL heaps
   void memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo  //!< Memory create info
-                     );
+  );
 
   const Device& gpuDevice_;     //!< GPU device
   Descriptor desc_;             //!< Descriptor for this resource
@@ -462,7 +460,7 @@ class Resource : public amd::HeapObject {
   void* address_;               //!< Physical address of this resource
   size_t offset_;               //!< Resource offset
   GpuMemoryReference* memRef_;  //!< PAL resource reference
-  Pal::gpusize  subOffset_;     //!< GPU memory offset in the oririnal resource
+  Pal::gpusize subOffset_;      //!< GPU memory offset in the oririnal resource
   const Resource* viewOwner_;   //!< GPU resource, which owns this view
   void* glInteropMbRes_;        //!< Mb Res handle
   uint32_t glType_;             //!< GL interop type
@@ -485,41 +483,35 @@ class Resource : public amd::HeapObject {
 typedef Util::BuddyAllocator<Device> MemBuddyAllocator;
 
 class MemorySubAllocator : public amd::HeapObject {
-public:
+ public:
   MemorySubAllocator(Device* device) : device_(device) {}
 
   ~MemorySubAllocator();
 
   //! Create suballocation
-  GpuMemoryReference* Allocate(Pal::gpusize size,
-                               Pal::gpusize alignment,
-                               const Pal::IGpuMemory* reserved_va,
-                               Pal::gpusize* offset
-                               );
+  GpuMemoryReference* Allocate(Pal::gpusize size, Pal::gpusize alignment,
+                               const Pal::IGpuMemory* reserved_va, Pal::gpusize* offset);
   //! Free suballocation
-  bool Free(amd::Monitor* monitor,
-            GpuMemoryReference* mem_ref,
-            Pal::gpusize offset
-            );
+  bool Free(amd::Monitor* monitor, GpuMemoryReference* mem_ref, Pal::gpusize offset);
 
-protected:
+ protected:
   //! Allocate new chunk of memory
   virtual bool CreateChunk(const Pal::IGpuMemory* reserved_va);
   bool InitAllocator(GpuMemoryReference* mem_ref);
 
   Device* device_;
-  std::unordered_map<GpuMemoryReference*, MemBuddyAllocator*>  heaps_;
+  std::unordered_map<GpuMemoryReference*, MemBuddyAllocator*> heaps_;
 };
 
 class CoarseMemorySubAllocator : public MemorySubAllocator {
-public:
+ public:
   CoarseMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
 
   bool CreateChunk(const Pal::IGpuMemory* reservedVa) override;
 };
 
 class FineMemorySubAllocator : public MemorySubAllocator {
-public:
+ public:
   FineMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
 
   bool CreateChunk(const Pal::IGpuMemory* reserved_va) override;
@@ -529,29 +521,28 @@ class ResourceCache : public amd::HeapObject {
  public:
   //! Default constructor
   ResourceCache(Device* device, size_t cacheSizeLimit)
-      : lockCacheOps_("PAL resource cache", true)
-      , cacheSize_(0)
-      , lclCacheSize_(0)
-      , cacheSizeLimit_(cacheSizeLimit)
-      , mem_sub_alloc_local_(device)
-      , mem_sub_alloc_coarse_ (device)
-      , mem_sub_alloc_fine_ (device) {}
+      : lockCacheOps_("PAL resource cache", true),
+        cacheSize_(0),
+        lclCacheSize_(0),
+        cacheSizeLimit_(cacheSizeLimit),
+        mem_sub_alloc_local_(device),
+        mem_sub_alloc_coarse_(device),
+        mem_sub_alloc_fine_(device) {}
 
   //! Default destructor
   ~ResourceCache();
 
   //! Adds a PAL resource to the cache
-  bool addGpuMemory(Resource::Descriptor* desc,   //!< Resource descriptor - cache key
-                    GpuMemoryReference*   ref,    //!< Resource reference
-                    Pal::gpusize          offset  //!< Original resource offset
-                    );
+  bool addGpuMemory(Resource::Descriptor* desc,  //!< Resource descriptor - cache key
+                    GpuMemoryReference* ref,     //!< Resource reference
+                    Pal::gpusize offset          //!< Original resource offset
+  );
 
   //! Finds a PAL resource from the cache
   GpuMemoryReference* findGpuMemory(
       Resource::Descriptor* desc,  //!< Resource descriptor - cache key
-      Pal::gpusize size,
-      Pal::gpusize alignment,
-      const Pal::IGpuMemory* reserved_va, //!< Reserved VA for SVM suballocations
+      Pal::gpusize size, Pal::gpusize alignment,
+      const Pal::IGpuMemory* reserved_va,  //!< Reserved VA for SVM suballocations
       Pal::gpusize* offset);
 
   //! Destroys cache
@@ -576,16 +567,17 @@ class ResourceCache : public amd::HeapObject {
 
   amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
-  size_t cacheSize_;            //!< Current cache size in bytes
-  size_t lclCacheSize_;         //!< Local memory stored in the cache
-  const size_t cacheSizeLimit_; //!< Cache size limit in bytes
+  size_t cacheSize_;             //!< Current cache size in bytes
+  size_t lclCacheSize_;          //!< Local memory stored in the cache
+  const size_t cacheSizeLimit_;  //!< Cache size limit in bytes
 
   //! PAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;
 
-  MemorySubAllocator  mem_sub_alloc_local_;  //!< Allocator for suballocations in Local
-  CoarseMemorySubAllocator mem_sub_alloc_coarse_; //!< Allocator for suballocations in Coarse SVM
-  FineMemorySubAllocator mem_sub_alloc_fine_; //!< Allocator for suballocations in Fine SVM
+  MemorySubAllocator mem_sub_alloc_local_;         //!< Allocator for suballocations in Local
+  CoarseMemorySubAllocator mem_sub_alloc_coarse_;  //!< Allocator for suballocations in Coarse SVM
+  FineMemorySubAllocator mem_sub_alloc_fine_;      //!< Allocator for suballocations in Fine SVM
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

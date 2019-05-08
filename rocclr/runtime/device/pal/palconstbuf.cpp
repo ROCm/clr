@@ -11,12 +11,12 @@ namespace pal {
 
 // ================================================================================================
 ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
-  : gpu_(gpu)
-  , pool_(MaxNumberOfBuffers)
-  , activeBuffer_(0)
-  , size_(size)
-  , wrtOffset_(0)
-  , wrtAddress_(nullptr) {}
+    : gpu_(gpu),
+      pool_(MaxNumberOfBuffers),
+      activeBuffer_(0),
+      size_(size),
+      wrtOffset_(0),
+      wrtAddress_(nullptr) {}
 
 // ================================================================================================
 void ManagedBuffer::release() {
@@ -40,8 +40,8 @@ bool ManagedBuffer::create(Resource::MemoryType type) {
     pool_[i].buf->memRef()->gpu_ = &gpu_;
     void* wrtAddress = pool_[i].buf->map(&gpu_);
     if (wrtAddress == nullptr) {
-        LogPrintfError("We couldn't map HW constant buffer, size(%d)!", size_);
-        return false;
+      LogPrintfError("We couldn't map HW constant buffer, size(%d)!", size_);
+      return false;
     }
     // Make sure OCL touches every buffer in the queue to avoid delays on the first submit
     uint dummy = 0;
@@ -94,15 +94,10 @@ void ManagedBuffer::pinGpuEvent() {
 
 // ================================================================================================
 ConstantBuffer::ConstantBuffer(ManagedBuffer& mbuf, uint32_t size)
-  : mbuf_(mbuf)
-  , sys_mem_copy_(nullptr)
-  , size_(size)
-{}
+    : mbuf_(mbuf), sys_mem_copy_(nullptr), size_(size) {}
 
 // ================================================================================================
-ConstantBuffer::~ConstantBuffer() {
-  amd::AlignedMemory::deallocate(sys_mem_copy_);
-}
+ConstantBuffer::~ConstantBuffer() { amd::AlignedMemory::deallocate(sys_mem_copy_); }
 
 // ================================================================================================
 bool ConstantBuffer::Create() {
@@ -118,8 +113,8 @@ bool ConstantBuffer::Create() {
 
 // ================================================================================================
 uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const {
-  uint64_t  vm_address;
-  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  uint64_t vm_address;
+  address cpu_address = mbuf_.reserve(size, &vm_address);
   // Update memory with new CB data
   memcpy(cpu_address, sys_mem_copy_, size);
   return vm_address;
@@ -127,8 +122,8 @@ uint64_t ConstantBuffer::UploadDataToHw(uint32_t size) const {
 
 // ================================================================================================
 uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const {
-  uint64_t  vm_address;
-  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  uint64_t vm_address;
+  address cpu_address = mbuf_.reserve(size, &vm_address);
   // Update memory with new CB data
   memcpy(cpu_address, sysmem, size);
   return vm_address;
@@ -136,9 +131,7 @@ uint64_t ConstantBuffer::UploadDataToHw(const void* sysmem, uint32_t size) const
 
 // ================================================================================================
 XferBuffer::XferBuffer(const Device& device, ManagedBuffer& mbuf, uint32_t size)
-  : buffer_view_(device, size)
-  , mbuf_(mbuf)
-  , size_(size) {
+    : buffer_view_(device, size), mbuf_(mbuf), size_(size) {
   // Create a view for access
   Resource::ViewParams params = {};
   params.gpu_ = &mbuf_.gpu();
@@ -151,9 +144,9 @@ XferBuffer::XferBuffer(const Device& device, ManagedBuffer& mbuf, uint32_t size)
 
 // ================================================================================================
 Memory& XferBuffer::Acquire(uint32_t size) {
-  uint64_t  vm_address;
+  uint64_t vm_address;
   // Reserve space in the managed buffer
-  address   cpu_address = mbuf_.reserve(size, &vm_address);
+  address cpu_address = mbuf_.reserve(size, &vm_address);
   // Update a view for access
   buffer_view_.updateView(mbuf_.activeMemory(), vm_address - mbuf_.vmAddress(), size);
   return buffer_view_;

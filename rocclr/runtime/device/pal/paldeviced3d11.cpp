@@ -3,19 +3,19 @@
 #if defined(ATI_OS_LINUX)
 namespace pal {
 bool Device::associateD3D11Device(void* d3d11Device) { return false; }
-}
+}  // namespace pal
 #else  // !ATI_OS_LINUX
 
 #include <D3D11.h>
 
 /**************************************************************************************************************
-* Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch.
-* This means OCL client spec will need to change to include headers directly from the DXX perforce
-*tree.
-* However, OCL only cares about the DXX OpenCL extension interface class. The spec cannot change
-* without notification. So it is safe to use a local copy of the relevant DXX extension interface
-*classes.
-**************************************************************************************************************/
+ * Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch.
+ * This means OCL client spec will need to change to include headers directly from the DXX perforce
+ *tree.
+ * However, OCL only cares about the DXX OpenCL extension interface class. The spec cannot change
+ * without notification. So it is safe to use a local copy of the relevant DXX extension interface
+ *classes.
+ **************************************************************************************************************/
 #include "DxxOpenCLInteropExt.h"
 
 namespace pal {
@@ -128,6 +128,6 @@ bool Device::associateD3D11Device(void* d3d11Device) {
   return canInteroperate;
 }
 
-}  // pal
+}  // namespace pal
 
 #endif  // !ATI_OS_LINUX

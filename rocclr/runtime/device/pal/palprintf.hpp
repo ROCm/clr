@@ -11,7 +11,7 @@
 #ifndef isinf
 #ifdef _MSC_VER
 #define isinf(X) (!_finite(X) && !_isnan(X))
-#else   //!_MSC_VER
+#else  //!_MSC_VER
 #define isinf(X) (std::isinf(X))
 #endif  //!_MSC_VER
 #endif  // isinf
@@ -19,7 +19,7 @@
 #ifndef isnan
 #ifdef _MSC_VER
 #define isnan(X) (_isnan(X))
-#else   //!_MSC_VER
+#else  //!_MSC_VER
 #define isnan(X) (std::isnan(X))
 #endif  //!_MSC_VER
 #endif  // isnan
@@ -55,14 +55,14 @@ class PrintfDbg : public amd::HeapObject {
   bool init(VirtualGPU& gpu,          //!< Virtual GPU object
             bool printfEnabled,       //!< checks for printf
             const amd::NDRange& size  //!< Kernel's workload
-            );
+  );
 
   //! Prints the kernel's debug informaiton from the buffer
-  bool output(VirtualGPU& gpu,                           //!< Virtual GPU object
-              bool printfEnabled,                        //!< checks for printf
-              const amd::NDRange& size,                  //!< Kernel's workload
+  bool output(VirtualGPU& gpu,                                   //!< Virtual GPU object
+              bool printfEnabled,                                //!< checks for printf
+              const amd::NDRange& size,                          //!< Kernel's workload
               const std::vector<device::PrintfInfo>& printfInfo  //!< printf info
-              );
+  );
 
   //! Debug buffer size per workitem
   size_t wiDbgSize() const { return wiDbgSize_; }
@@ -81,7 +81,7 @@ class PrintfDbg : public amd::HeapObject {
 
   //! Allocates the debug buffer
   bool allocate(bool realloc = false  //!< If TRUE then reallocate the debug memory
-                );
+  );
 
   //! Returns TRUE if a float value has to be printed
   bool checkFloat(const std::string& fmt  //!< Format string
@@ -105,9 +105,9 @@ class PrintfDbg : public amd::HeapObject {
                         ) const;
 
   //! Displays the PrintfDbg
-  void outputDbgBuffer(const device::PrintfInfo& info,//!< printf info
-                       const uint32_t* workitemData,  //!< The PrintfDbg dump buffer
-                       size_t& i                      //!< index to the data in the buffer
+  void outputDbgBuffer(const device::PrintfInfo& info,  //!< printf info
+                       const uint32_t* workitemData,    //!< The PrintfDbg dump buffer
+                       size_t& i                        //!< index to the data in the buffer
                        ) const;
 
  private:
@@ -127,7 +127,7 @@ class PrintfDbg : public amd::HeapObject {
   uint32_t* mapWorkitem(VirtualGPU& gpu,  //!< Virtual GPU object
                         size_t idx,       //!< Workitem global index
                         bool* realloc     //!< Returns TRUE if workitem reached the buffer limit
-                        );
+  );
 
   //! Unamp the staged buffer
   void unmapWorkitem(VirtualGPU& gpu,              //!< Virtual GPU object
@@ -145,13 +145,13 @@ class PrintfDbgHSA : public PrintfDbg {
   //! Initializes the debug buffer before kernel's execution
   bool init(VirtualGPU& gpu,    //!< Virtual GPU object
             bool printfEnabled  //!< checks for printf
-            );
+  );
 
   //! Prints the kernel's debug informaiton from the buffer
-  bool output(VirtualGPU& gpu,                           //!< Virtual GPU object
-              bool printfEnabled,                        //!< checks for printf
+  bool output(VirtualGPU& gpu,                                   //!< Virtual GPU object
+              bool printfEnabled,                                //!< checks for printf
               const std::vector<device::PrintfInfo>& printfInfo  //!< printf info
-              );
+  );
 
  private:
   //! Disable copy constructor
@@ -161,4 +161,5 @@ class PrintfDbgHSA : public PrintfDbg {
   PrintfDbgHSA& operator=(const PrintfDbgHSA&);
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

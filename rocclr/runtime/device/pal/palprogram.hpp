@@ -9,15 +9,15 @@
 namespace amd {
 namespace option {
 class Options;
-}  // option
+}  // namespace option
 namespace hsa {
 namespace loader {
 class Loader;
 class Executable;
 class Context;
-}  // loader
-}  // hsa
-}  // amd
+}  // namespace loader
+}  // namespace hsa
+}  // namespace amd
 
 //! \namespace pal PAL Device Implementation
 namespace pal {
@@ -50,15 +50,16 @@ class Segment : public amd::HeapObject {
   bool gpuAddressOffset(uint64_t offAddr, size_t* offset);
 
   //! Returns address for CPU access in the segment
-  void* cpuAddress(size_t offset) const
-    { return ((cpuAccess_ != nullptr) ? cpuAccess_->data() : cpuMem_) + offset; }
+  void* cpuAddress(size_t offset) const {
+    return ((cpuAccess_ != nullptr) ? cpuAccess_->data() : cpuMem_) + offset;
+  }
 
   void DestroyCpuAccess();
 
  private:
-  Memory* gpuAccess_;   //!< GPU memory for segment access
-  Memory* cpuAccess_;   //!< CPU memory for segment (backing store)
-  address cpuMem_;      //!< CPU memory for segment without GPU direct access (backing store)
+  Memory* gpuAccess_;  //!< GPU memory for segment access
+  Memory* cpuAccess_;  //!< CPU memory for segment (backing store)
+  address cpuMem_;     //!< CPU memory for segment without GPU direct access (backing store)
 };
 
 class PALHSALoaderContext final : public Context {
@@ -166,7 +167,7 @@ class HSAILProgram : public device::Program {
   }
 
   //! Get symbol by name
-  amd::hsa::loader::Symbol* GetSymbol(const char* symbol_name, const hsa_agent_t *agent) const {
+  amd::hsa::loader::Symbol* GetSymbol(const char* symbol_name, const hsa_agent_t* agent) const {
     return executable_->GetSymbol(symbol_name, agent);
   }
 
@@ -180,11 +181,14 @@ class HSAILProgram : public device::Program {
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
   //! Destroys CPU allocations in the code segment
-  void DestroySegmentCpuAccess() const
-    { if (codeSegment_ != nullptr) { codeSegment_->DestroyCpuAccess(); } }
+  void DestroySegmentCpuAccess() const {
+    if (codeSegment_ != nullptr) {
+      codeSegment_->DestroyCpuAccess();
+    }
+  }
 
-  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
-                                  size_t* bytes, const char* globalName) const;
+  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr, size_t* bytes,
+                                  const char* globalName) const;
 
  private:
   //! Disable default copy constructor
@@ -201,7 +205,7 @@ class HSAILProgram : public device::Program {
   std::vector<Memory*> globalStores_;  //!< Global memory for the program
   Memory* kernels_;                    //!< Table with kernel object pointers
   Memory* codeSegGpu_;                 //!< GPU memory with code objects
-  Segment*  codeSegment_;              //!< Pointer to the code segment for this program
+  Segment* codeSegment_;               //!< Pointer to the code segment for this program
   uint
       maxScratchRegs_;  //!< Maximum number of scratch regs used in the program by individual kernel
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
@@ -214,19 +218,17 @@ class HSAILProgram : public device::Program {
 //! \class Lightning Compiler Program
 class LightningProgram : public HSAILProgram {
  public:
-  LightningProgram(NullDevice& device)
-    : HSAILProgram(device) {
-      isLC_ = true;
-      xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-      machineTarget_ = dev().hwInfo()->machineTargetLC_;
-    }
+  LightningProgram(NullDevice& device) : HSAILProgram(device) {
+    isLC_ = true;
+    xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+    machineTarget_ = dev().hwInfo()->machineTargetLC_;
+  }
 
-  LightningProgram(Device& device)
-    : HSAILProgram(device) {
-      isLC_ = true;
-      xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-      machineTarget_ = dev().hwInfo()->machineTargetLC_;
-    }
+  LightningProgram(Device& device) : HSAILProgram(device) {
+    isLC_ = true;
+    xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
+    machineTarget_ = dev().hwInfo()->machineTargetLC_;
+  }
   virtual ~LightningProgram() {}
 
  protected:
@@ -235,4 +237,5 @@ class LightningProgram : public HSAILProgram {
   virtual bool createBinary(amd::option::Options* options) override;
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

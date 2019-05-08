@@ -23,27 +23,21 @@
 namespace pal {
 
 Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t size)
-  : device::Memory(owner), Resource(gpuDev, size)
-  , pinnedMemory_(nullptr)
-  , parent_(nullptr) {
-
+    : device::Memory(owner), Resource(gpuDev, size), pinnedMemory_(nullptr), parent_(nullptr) {
   if (owner.parent() != nullptr) {
     flags_ |= SubMemoryObject;
   }
 }
 
 Memory::Memory(const Device& gpuDev, size_t size)
-  : device::Memory(size), Resource(gpuDev, size)
-  , pinnedMemory_(nullptr)
-  , parent_(nullptr) {
-}
+    : device::Memory(size), Resource(gpuDev, size), pinnedMemory_(nullptr), parent_(nullptr) {}
 
 Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t width, size_t height, size_t depth,
                cl_image_format format, cl_mem_object_type imageType, uint mipLevels)
-    : device::Memory(owner), Resource(gpuDev, width, height, depth, format, imageType, mipLevels)
-    , pinnedMemory_(nullptr)
-    , parent_(nullptr) {
-
+    : device::Memory(owner),
+      Resource(gpuDev, width, height, depth, format, imageType, mipLevels),
+      pinnedMemory_(nullptr),
+      parent_(nullptr) {
   if (owner.parent() != nullptr) {
     flags_ |= SubMemoryObject;
   }
@@ -51,10 +45,10 @@ Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t width, size_t he
 
 Memory::Memory(const Device& gpuDev, size_t size, size_t width, size_t height, size_t depth,
                cl_image_format format, cl_mem_object_type imageType, uint mipLevels)
-  : device::Memory(size), Resource(gpuDev, width, height, depth, format, imageType, mipLevels)
-  , pinnedMemory_(nullptr)
-  , parent_(nullptr) {
-}
+    : device::Memory(size),
+      Resource(gpuDev, width, height, depth, format, imageType, mipLevels),
+      pinnedMemory_(nullptr),
+      parent_(nullptr) {}
 
 #ifdef _WIN32
 static HANDLE getSharedHandle(IUnknown* pIface) {
@@ -130,7 +124,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
         break;
       case Resource::Remote:
       case Resource::RemoteUSWC:
-          if ((!desc().tiled_) && (desc().dimSize_ != 3)) {
+        if ((!desc().tiled_) && (desc().dimSize_ != 3)) {
           // Marks memory object for direct GPU access to the host memory
           flags_ |= HostMemoryDirectAccess;
         }
@@ -402,7 +396,7 @@ Memory::~Memory() {
       (memoryType() != Resource::ExternalPhysical)) {
     // Unmap memory if direct access was requested
     // Note: runtime will perform unmap on the actual resource destruction
-    //unmap(nullptr);
+    // unmap(nullptr);
   }
 }
 

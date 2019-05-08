@@ -51,17 +51,18 @@ class VirtualGPU : public device::VirtualDevice {
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
 
-    static Queue* Create(const VirtualGPU& gpu,                //!< OCL virtual GPU object
-                         Pal::QueueType queueType,             //!< PAL queue type
-                         uint engineIdx,                       //!< Select particular engine index
-                         Pal::ICmdAllocator* cmdAlloc,         //!< PAL CMD buffer allocator
-                         uint rtCU,                            //!< The number of reserved CUs
-                         amd::CommandQueue::Priority priority, //!< Queue priority
-                         uint64_t residency_limit,             //!< Enables residency limit
-                         uint max_command_buffers              //!< Number of allocated command buffers
-                         );
+    static Queue* Create(const VirtualGPU& gpu,                 //!< OCL virtual GPU object
+                         Pal::QueueType queueType,              //!< PAL queue type
+                         uint engineIdx,                        //!< Select particular engine index
+                         Pal::ICmdAllocator* cmdAlloc,          //!< PAL CMD buffer allocator
+                         uint rtCU,                             //!< The number of reserved CUs
+                         amd::CommandQueue::Priority priority,  //!< Queue priority
+                         uint64_t residency_limit,              //!< Enables residency limit
+                         uint max_command_buffers  //!< Number of allocated command buffers
+    );
 
-    Queue(const VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit, uint max_command_buffers)
+    Queue(const VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit,
+          uint max_command_buffers)
         : iQueue_(nullptr),
           iCmdBuffs_(max_command_buffers, nullptr),
           iCmdFences_(max_command_buffers, nullptr),
@@ -75,8 +76,7 @@ class VirtualGPU : public device::VirtualDevice {
           vlAlloc_(64 * Ki),
           residency_size_(0),
           residency_limit_(residency_limit),
-          max_command_buffers_(max_command_buffers)
-    {
+          max_command_buffers_(max_command_buffers) {
       vlAlloc_.Init();
     }
 
@@ -100,8 +100,7 @@ class VirtualGPU : public device::VirtualDevice {
     Pal::Result UpdateAppPowerProfile();
 
     // ibReuse forces event wait without polling, to make sure event occured
-    template <bool ibReuse>
-    bool waifForFence(uint cbId) const {
+    template <bool ibReuse> bool waifForFence(uint cbId) const {
       Pal::Result result = Pal::Result::Success;
       uint64_t start;
       uint64_t end;
@@ -138,8 +137,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Flushes the current command buffer to HW
     //! Returns ID associated with the submission
-    template <bool avoidBarrierSubmit = false>
-    uint submit(bool forceFlush);
+    template <bool avoidBarrierSubmit = false> uint submit(bool forceFlush);
 
     bool flush();
 
@@ -151,28 +149,28 @@ class VirtualGPU : public device::VirtualDevice {
 
     uint cmdBufId() const { return cmdBufIdCurrent_; }
 
-    Pal::IQueue* iQueue_;                        //!< PAL queue object
-    std::vector<Pal::ICmdBuffer*> iCmdBuffs_;    //!< PAL command buffers
-    std::vector<Pal::IFence*> iCmdFences_;       //!< PAL fences, associated with CMD
-    const amd::Kernel* last_kernel_;             //!< Last submitted kernel
+    Pal::IQueue* iQueue_;                      //!< PAL queue object
+    std::vector<Pal::ICmdBuffer*> iCmdBuffs_;  //!< PAL command buffers
+    std::vector<Pal::IFence*> iCmdFences_;     //!< PAL fences, associated with CMD
+    const amd::Kernel* last_kernel_;           //!< Last submitted kernel
 
-  private:
+   private:
     void DumpMemoryReferences() const;
-    const VirtualGPU& gpu_; //!< OCL virtual GPU object
-    Pal::IDevice* iDev_;    //!< PAL device
-    uint cmdBufIdSlot_;     //!< Command buffer ID slot for submissions
-    uint cmdBufIdCurrent_;  //!< Current global command buffer ID
-    uint cmbBufIdRetired_;  //!< The last retired command buffer ID
-    uint cmdCnt_;           //!< Counter of commands
+    const VirtualGPU& gpu_;  //!< OCL virtual GPU object
+    Pal::IDevice* iDev_;     //!< PAL device
+    uint cmdBufIdSlot_;      //!< Command buffer ID slot for submissions
+    uint cmdBufIdCurrent_;   //!< Current global command buffer ID
+    uint cmbBufIdRetired_;   //!< The last retired command buffer ID
+    uint cmdCnt_;            //!< Counter of commands
     std::unordered_map<GpuMemoryReference*, uint> memReferences_;
-    Util::VirtualLinearAllocator    vlAlloc_;
-    std::vector<Pal::GpuMemoryRef>  palMemRefs_;
-    std::vector<Pal::IGpuMemory*>   palMems_;
-    std::vector<Pal::DoppRef>       palDoppRefs_;
-    std::set<Pal::IGpuMemory*>      sdiReferences_;
-    std::vector<const Pal::IGpuMemory*>   palSdiRefs_;
-    uint64_t  residency_size_;  //!< Resource residency size
-    uint64_t  residency_limit_; //!< Enables residency limit
+    Util::VirtualLinearAllocator vlAlloc_;
+    std::vector<Pal::GpuMemoryRef> palMemRefs_;
+    std::vector<Pal::IGpuMemory*> palMems_;
+    std::vector<Pal::DoppRef> palDoppRefs_;
+    std::set<Pal::IGpuMemory*> sdiReferences_;
+    std::vector<const Pal::IGpuMemory*> palSdiRefs_;
+    uint64_t residency_size_;   //!< Resource residency size
+    uint64_t residency_limit_;  //!< Enables residency limit
     uint max_command_buffers_;
   };
 
@@ -185,14 +183,14 @@ class VirtualGPU : public device::VirtualDevice {
     CommandBatch(amd::Command* head,      //!< Command batch head
                  const GpuEvent* events,  //!< HW events on all engines
                  TimeStamp* lastTS        //!< Last TS in command batch
-                 ) {
+    ) {
       init(head, events, lastTS);
     }
 
     void init(amd::Command* head,      //!< Command batch head
               const GpuEvent* events,  //!< HW events on all engines
               TimeStamp* lastTS        //!< Last TS in command batch
-              ) {
+    ) {
       head_ = head;
       lastTS_ = lastTS;
       memcpy(&events_, events, AllEngines * sizeof(GpuEvent));
@@ -202,11 +200,11 @@ class VirtualGPU : public device::VirtualDevice {
   //! The virtual GPU states
   union State {
     struct {
-      uint profiling_          : 1;     //!< Profiling is enabled
-      uint forceWait_          : 1;     //!< Forces wait in flush()
-      uint profileEnabled_     : 1;     //!< Profiling is enabled for WaveLimiter
-      uint perfCounterEnabled_ : 1;     //!< PerfCounter is enabled
-      uint rgpCaptureEnabled_  : 1;     //!< RGP capture is enabled in the runtime
+      uint profiling_ : 1;           //!< Profiling is enabled
+      uint forceWait_ : 1;           //!< Forces wait in flush()
+      uint profileEnabled_ : 1;      //!< Profiling is enabled for WaveLimiter
+      uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
+      uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
     };
     uint value_;
     State() : value_(0) {}
@@ -259,13 +257,13 @@ class VirtualGPU : public device::VirtualDevice {
     void findSplitSize(const Device& dev,  //!< GPU device object
                        uint64_t threads,   //!< Total number of execution threads
                        uint instructions   //!< Number of ALU instructions
-                       );
+    );
 
     // Returns TRUE if DMA command buffer is ready for a flush
     bool isCbReady(VirtualGPU& gpu,   //!< Virtual GPU object
                    uint64_t threads,  //!< Total number of execution threads
                    uint instructions  //!< Number of ALU instructions
-                   );
+    );
 
     // Returns dispatch split size
     uint dispatchSplitSize() const { return dispatchSplitSize_; }
@@ -301,7 +299,7 @@ class VirtualGPU : public device::VirtualDevice {
       bool nativeMem = true,               //!< Native memory objects
       amd::Event* enqueueEvent = nullptr,  //!< Event provided in the enqueue kernel command
       uint32_t sharedMemBytes = 0          //!< Shared memory size
-      );
+  );
   void submitNativeFn(amd::NativeFnCommand& vcmd);
   void submitFillMemory(amd::FillMemoryCommand& vcmd);
   void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
@@ -331,20 +329,20 @@ class VirtualGPU : public device::VirtualDevice {
   //! Set the last known GPU event
   void setGpuEvent(GpuEvent gpuEvent,  //!< GPU event for tracking
                    bool flush = false  //!< TRUE if flush is required
-                   );
+  );
 
   //! Flush DMA buffer on the specified engine
   void flushDMA(uint engineID  //!< Engine ID for DMA flush
-                );
+  );
 
   //! Wait for all engines on this Virtual GPU
   //! Returns TRUE if CPU didn't wait for GPU
   bool waitAllEngines(CommandBatch* cb = nullptr  //!< Command batch
-                      );
+  );
 
   //! Waits for the latest GPU event with a lock to prevent multiple entries
   void waitEventLock(CommandBatch* cb  //!< Command batch
-                     );
+  );
 
   //! Returns a resource associated with the constant buffer
   const ConstantBuffer* cb(uint idx) const { return constBufs_[idx]; }
@@ -355,7 +353,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Start the command profiling
   void profilingBegin(amd::Command& command,     //!< Command queue object
                       bool drmProfiling = false  //!< Measure DRM time
-                      );
+  );
 
   //! End the command profiling
   void profilingEnd(amd::Command& command);
@@ -363,11 +361,11 @@ class VirtualGPU : public device::VirtualDevice {
   //! Collect the profiling results
   bool profilingCollectResults(CommandBatch* cb,               //!< Command batch
                                const amd::Event* waitingEvent  //!< Waiting event
-                               );
+  );
 
   //! Adds a memory handle into the GSL memory array for Virtual Heap
   inline void addVmMemory(const Memory* memory  //!< GPU memory object
-                          );
+  );
 
   //! Adds the last submitted kernel to the queue for tracking a possible hang
   inline void AddKernel(const amd::Kernel& kernel  //!< AMD kernel object
@@ -377,7 +375,7 @@ class VirtualGPU : public device::VirtualDevice {
   void addDoppRef(const Memory* memory,  //!< GPU memory object
                   bool lastDoopCmd,      //!< is the last submission for the pre-present primary
                   bool pfpaDoppCmd       //!< is a submission for the pre-present primary
-                  );
+  );
 
   //! Return xfer buffer for staging operations
   XferBuffer& xferWrite() { return writeBuffer_; }
@@ -429,7 +427,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns TRUE if virtual queue was successfully allocatted
   bool createVirtualQueue(uint deviceQueueSize  //!< Device queue size
-                          );
+  );
 
   EngineType engineID_;  //!< Engine ID for this VirtualGPU
 
@@ -447,7 +445,8 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns queue, associated with VirtualGPU
   Queue& queue(EngineType id) const { return *queues_[id]; }
 
-  void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::Unknown, bool flushL2 = false) const {
+  void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::Unknown,
+                  bool flushL2 = false) const {
     Pal::BarrierInfo barrier = {};
     barrier.pipePointWaitCount = 1;
     Pal::HwPipePoint point = Pal::HwPipePostCs;
@@ -508,7 +507,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns TRUE if SDMA requires overlap synchronizaiton
   bool validateSdmaOverlap(const Resource& src,  //!< Source resource for SDMA transfer
                            const Resource& dst   //!< Destination resource for SDMA transfer
-                           );
+  );
 
   //! Checks if RGP capture is enabled
   bool rgpCaptureEna() const { return state_.rgpCaptureEnabled_; }
@@ -519,7 +518,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Creates buffer object from image
   amd::Memory* createBufferFromImage(
       amd::Memory& amdImage  //! The parent image object(untiled images only)
-      );
+  );
 
  private:
   struct MemoryRange {
@@ -537,14 +536,14 @@ class VirtualGPU : public device::VirtualDevice {
   //! Awaits a command batch with a waiting event
   bool awaitCompletion(CommandBatch* cb,                         //!< Command batch for to wait
                        const amd::Event* waitingEvent = nullptr  //!< A waiting event
-                       );
+  );
 
   //! Detects memory dependency for HSAIL kernels and flushes caches
   bool processMemObjectsHSA(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                             const_address params,       //!< Pointer to the param's store
                             bool nativeMem,             //!< Native memory objects
-                            size_t& ldsAddess         //!< Returns LDS size, used in the kernel
-                            );
+                            size_t& ldsAddess           //!< Returns LDS size, used in the kernel
+  );
 
   //! Common function for fill memory used by both svm Fill and non-svm fill
   bool fillMemory(cl_command_type type,        //!< the command type
@@ -553,7 +552,7 @@ class VirtualGPU : public device::VirtualDevice {
                   size_t patternSize,          //!< pattern size
                   const amd::Coord3D& origin,  //!< memory origin
                   const amd::Coord3D& size     //!< memory size for filling
-                  );
+  );
 
   bool copyMemory(cl_command_type type,            //!< the command type
                   amd::Memory& srcMem,             //!< source memory object
@@ -564,35 +563,36 @@ class VirtualGPU : public device::VirtualDevice {
                   const amd::Coord3D& size,        //!< copy size
                   const amd::BufferRect& srcRect,  //!< region of source for copy
                   const amd::BufferRect& dstRect   //!< region of destination for copy
-                  );
+  );
 
   void buildKernelInfo(const HSAILKernel& hsaKernel,          //!< hsa kernel
                        hsa_kernel_dispatch_packet_t* aqlPkt,  //!< aql packet for dispatch
                        HwDbgKernelInfo& kernelInfo,           //!< kernel info for the dispatch
                        amd::Event* enqueueEvent  //!< Event provided in the enqueue kernel command
-                       );
+  );
 
   void assignDebugTrapHandler(const DebugToolInfo& dbgSetting,  //!< debug settings
                               HwDbgKernelInfo& kernelInfo       //!< kernel info for the dispatch
-                              );
+  );
 
   void PrintChildren(const HSAILKernel& hsaKernel,  //!< The parent HSAIL kernel
                      VirtualGPU* gpuDefQueue        //!< Device queue for children execution
-                     );
+  );
 
-  bool PreDeviceEnqueue(const amd::Kernel& kernel,    //!< Parent amd kernel object
-                        const HSAILKernel& hsaKernel, //!< Parent HSAIL object
-                        VirtualGPU** gpuDefQueue,     //!< [Return] GPU default queue
-                        uint64_t* vmDefQueue          //!< [Return] VM handle to the virtual queue
-                        );
+  bool PreDeviceEnqueue(const amd::Kernel& kernel,     //!< Parent amd kernel object
+                        const HSAILKernel& hsaKernel,  //!< Parent HSAIL object
+                        VirtualGPU** gpuDefQueue,      //!< [Return] GPU default queue
+                        uint64_t* vmDefQueue           //!< [Return] VM handle to the virtual queue
+  );
 
-  void PostDeviceEnqueue(const amd::Kernel& kernel,    //!< Parent amd kernel object
-                         const HSAILKernel& hsaKernel, //!< Parent HSAIL object
-                         VirtualGPU* gpuDefQueue,      //!< GPU default queue
-                         uint64_t vmDefQueue,          //!< VM handle to the virtual queue
-                         uint64_t vmParentWrap,        //!< VM handle to the wrapped AQL packet location
-                         GpuEvent* gpuEvent            //!< [Return] GPU event associated with the device enqueue
-                         );
+  void PostDeviceEnqueue(
+      const amd::Kernel& kernel,     //!< Parent amd kernel object
+      const HSAILKernel& hsaKernel,  //!< Parent HSAIL object
+      VirtualGPU* gpuDefQueue,       //!< GPU default queue
+      uint64_t vmDefQueue,           //!< VM handle to the virtual queue
+      uint64_t vmParentWrap,         //!< VM handle to the wrapped AQL packet location
+      GpuEvent* gpuEvent             //!< [Return] GPU event associated with the device enqueue
+  );
 
   Device& gpuDevice_;       //!< physical GPU device
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects
@@ -605,11 +605,11 @@ class VirtualGPU : public device::VirtualDevice {
 
   DmaFlushMgmt dmaFlushMgmt_;  //!< DMA flush management
 
-  std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
+  std::vector<amd::Memory*> pinnedMems_;  //!< Pinned memory list
 
-  ManagedBuffer managedBuffer_; //!< Managed write buffer
-  constbufs_t   constBufs_;     //!< constant buffers
-  XferBuffer    writeBuffer_;   //!< Transfer/staging buffer for uploads
+  ManagedBuffer managedBuffer_;  //!< Managed write buffer
+  constbufs_t constBufs_;        //!< constant buffers
+  XferBuffer writeBuffer_;       //!< Transfer/staging buffer for uploads
 
   typedef std::queue<CommandBatch*> CommandBatchQueue;
   CommandBatchQueue cbQueue_;      //!< Queue of command batches
@@ -617,12 +617,12 @@ class VirtualGPU : public device::VirtualDevice {
 
   uint hwRing_;  //!< HW ring used on this virtual device
 
-  State state_;          //!< virtual GPU current state
+  State state_;                  //!< virtual GPU current state
   GpuEvent events_[AllEngines];  //!< Last known GPU events
 
-  uint64_t readjustTimeGPU_;   //!< Readjust time between GPU and CPU timestamps
-  TimeStamp* lastTS_;          //!< Last timestamp executed on Virtual GPU
-  TimeStamp* profileTs_;       //!< current profiling timestamp for command
+  uint64_t readjustTimeGPU_;  //!< Readjust time between GPU and CPU timestamps
+  TimeStamp* lastTS_;         //!< Last timestamp executed on Virtual GPU
+  TimeStamp* profileTs_;      //!< current profiling timestamp for command
 
   AmdVQueueHeader* vqHeader_;  //!< Sysmem copy for virtual queue header
   Memory* virtualQueue_;       //!< Virtual device queue
@@ -645,8 +645,7 @@ inline void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
   queues_[MainEngine]->last_kernel_ = &kernel;
 }
 
-template <bool avoidBarrierSubmit>
-uint VirtualGPU::Queue::submit(bool forceFlush) {
+template <bool avoidBarrierSubmit> uint VirtualGPU::Queue::submit(bool forceFlush) {
   cmdCnt_++;
   uint id = cmdBufIdCurrent_;
   bool flushCmd = ((cmdCnt_ > MaxCommands) || forceFlush) && !avoidBarrierSubmit;
@@ -659,32 +658,30 @@ uint VirtualGPU::Queue::submit(bool forceFlush) {
 }
 
 template <typename T>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const T* src,         //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
+inline void WriteAqlArgAt(unsigned char* dst,  //!< The write pointer to the buffer
+                          const T* src,        //!< The source pointer
+                          uint size,           //!< The size in bytes to copy
+                          size_t offset  //!< The alignment to follow while writing to the buffer
 ) {
   memcpy(dst + offset, src, size);
 }
 
 template <>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const uint32_t* src,  //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
+inline void WriteAqlArgAt(unsigned char* dst,   //!< The write pointer to the buffer
+                          const uint32_t* src,  //!< The source pointer
+                          uint size,            //!< The size in bytes to copy
+                          size_t offset  //!< The alignment to follow while writing to the buffer
 ) {
   *(reinterpret_cast<uint32_t*>(dst + offset)) = *src;
 }
 
 template <>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const uint64_t* src,  //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
+inline void WriteAqlArgAt(unsigned char* dst,   //!< The write pointer to the buffer
+                          const uint64_t* src,  //!< The source pointer
+                          uint size,            //!< The size in bytes to copy
+                          size_t offset  //!< The alignment to follow while writing to the buffer
 ) {
   *(reinterpret_cast<uint64_t*>(dst + offset)) = *src;
 }
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

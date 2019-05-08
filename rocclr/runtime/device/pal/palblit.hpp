@@ -27,7 +27,7 @@ class DmaBlitManager : public device::HostBlitManager {
   //! Constructor
   DmaBlitManager(VirtualGPU& gpu,       //!< Virtual GPU to be used for blits
                  Setup setup = Setup()  //!< Specifies HW accelerated blits
-                 );
+  );
 
   //! Destructor
   virtual ~DmaBlitManager() {}
@@ -211,7 +211,7 @@ class KernelBlitManager : public DmaBlitManager {
   //! Constructor
   KernelBlitManager(VirtualGPU& gpu,       //!< Virtual GPU to be used for blits
                     Setup setup = Setup()  //!< Specifies HW accelerated blits
-                    );
+  );
 
   //! Destructor
   virtual ~KernelBlitManager();
@@ -382,7 +382,7 @@ class KernelBlitManager : public DmaBlitManager {
 
   //! Creates a program for all blit operations
   bool createProgram(Device& device  //!< Device object
-                     );
+  );
 
   //! Creates a view memory object
   Memory* createView(const Memory& parent,         //!< Parent memory object
@@ -409,4 +409,5 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "fillImage",         "scheduler",
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal

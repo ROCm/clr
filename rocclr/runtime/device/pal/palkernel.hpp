@@ -20,14 +20,14 @@ namespace amd {
 namespace hsa {
 namespace loader {
 class Symbol;
-}  // loader
+}  // namespace loader
 namespace code {
 namespace Kernel {
 class Metadata;
-}  // Kernel
-}  // code
-}  // hsa
-}  // amd
+}  // namespace Kernel
+}  // namespace code
+}  // namespace hsa
+}  // namespace amd
 
 //! \namespace pal PAL Device Implementation
 namespace pal {
@@ -43,7 +43,6 @@ class LightningProgram;
  */
 class HSAILKernel : public device::Kernel {
  public:
-
   HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions);
 
   virtual ~HSAILKernel();
@@ -106,21 +105,19 @@ class HSAILKernel : public device::Kernel {
   bool setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc);
 
   //! Set up the workgroup info based on the kernel metadata
-  void setWorkGroupInfo(const uint32_t privateSegmentSize,
-                        const uint32_t groupSegmentSize,
-                        const uint16_t numSGPRs,
-                        const uint16_t numVGPRs);
+  void setWorkGroupInfo(const uint32_t privateSegmentSize, const uint32_t groupSegmentSize,
+                        const uint16_t numSGPRs, const uint16_t numVGPRs);
 
-  std::string compileOptions_;    //!< compile used for finalizing this kernel
-  amd_kernel_code_t akc_;         //!< AQL kernel code on CPU
-  uint index_;                    //!< Kernel index in the program
+  std::string compileOptions_;  //!< compile used for finalizing this kernel
+  amd_kernel_code_t akc_;       //!< AQL kernel code on CPU
+  uint index_;                  //!< Kernel index in the program
 
-  uint64_t code_;     //!< GPU memory pointer to the kernel
-  size_t codeSize_;   //!< Size of ISA code
+  uint64_t code_;    //!< GPU memory pointer to the kernel
+  size_t codeSize_;  //!< Size of ISA code
 
-  uint32_t workgroupGroupSegmentByteSize_;    //!< LDS size used in the kernel
-  uint32_t kernargSegmentByteSize_;           //!< Size of kernel argument buffer
-  uint32_t spillSegmentByteSize_;             //!< Spill reg size per workitem
+  uint32_t workgroupGroupSegmentByteSize_;  //!< LDS size used in the kernel
+  uint32_t kernargSegmentByteSize_;         //!< Size of kernel argument buffer
+  uint32_t spillSegmentByteSize_;           //!< Spill reg size per workitem
 };
 
 class LightningKernel : public HSAILKernel {
@@ -140,4 +137,5 @@ class LightningKernel : public HSAILKernel {
 #endif
 };
 
-/*@}*/} // namespace pal
+/*@}*/  // namespace pal
+}  // namespace pal
