@@ -29,7 +29,6 @@ struct ModifyMaxWorkload {
 #endif
 };
 
-
 Settings::Settings() {
   // Initialize the GPU device default settings
   oclVersion_ = OpenCL12;
@@ -144,6 +143,7 @@ Settings::Settings() {
   enableWave32Mode_ = false;
   hsailExplicitXnack_ = false;
   lcWavefrontSize64_ = true;
+  enableHwP2P_ = false;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -213,6 +213,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       lcWavefrontSize64_ = !enableWave32Mode_;
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
+      // Enable HW P2P path for Vega20+. Runtime still relies on KMD/PAL for support
+      enableHwP2P_ = true;
     case Pal::AsicRevision::Vega12:
     case Pal::AsicRevision::Vega10:
     case Pal::AsicRevision::Raven:
@@ -513,6 +515,10 @@ void Settings::override() {
 
   if (!flagIsDefault(GPU_RESOURCE_CACHE_SIZE)) {
     resourceCacheSize_ = GPU_RESOURCE_CACHE_SIZE * Mi;
+  }
+
+  if (!flagIsDefault(GPU_ENABLE_HW_P2P)) {
+    enableHwP2P_ = GPU_ENABLE_HW_P2P;
   }
 
   if (!flagIsDefault(AMD_GPU_FORCE_SINGLE_FP_DENORM)) {

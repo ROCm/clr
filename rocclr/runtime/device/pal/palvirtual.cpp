@@ -821,13 +821,12 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     // Check if device has SDMA engines
     if (dev().numDMAEngines() != 0 && !PAL_DISABLE_SDMA) {
       uint sdma;
-      // If only 1 DMA engine is available then use that one
-      if ((dev().numDMAEngines() < 2) || ((idx & 0x1) && !dev().settings().svmFineGrainSystem_)) {
+      // If only 1 SDMA engine is available then use that one, otherwise it's a round-robin manner
+      if ((dev().numDMAEngines() < 2) || ((idx + 1) & 0x1)) {
         sdma = 0;
       } else {
         sdma = 1;
       }
-
       queues_[SdmaEngine] = Queue::Create(
           *this, Pal::QueueTypeDma, sdma, cmdAllocator_, amd::CommandQueue::RealTimeDisabled,
           amd::CommandQueue::Priority::Normal, residency_limit, max_cmd_buffers);
@@ -843,7 +842,8 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
       }
     }
   } else {
-    Unimplemented();
+    LogError("Runtme couldn't find compute queues!");
+    return false;
   }
 
   if (!managedBuffer_.create(Resource::RemoteUSWC)) {
@@ -1695,22 +1695,22 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
 
   profilingBegin(cmd);
 
-  Memory* srcDevMem = static_cast<pal::Memory*>(
-      cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
-  Memory* dstDevMem = static_cast<pal::Memory*>(
-      cmd.destination().getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+  // Get the device memory objects for the current device
+  Memory* srcDevMem = dev().getGpuMemory(&cmd.source());
+  Memory* dstDevMem = dev().getGpuMemory(&cmd.destination());
 
-  bool p2pAllowed = false;
-#if 0
-  // Loop through all available P2P devices for the destination buffer
-  for (auto agent: dstDevMem->dev().p2pAgents()) {
-    // Find the device, which is matching the current
-    if (agent.handle == dev().getBackendDevice().handle) {
-      p2pAllowed = true;
-      break;
-    }
+  bool p2pAllowed = true;
+
+  // If any device object is null, then no HW P2P and runtime has to use staging
+  if (srcDevMem == nullptr) {
+    srcDevMem = static_cast<pal::Memory*>(
+        cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
+    p2pAllowed = false;
+  } else if (dstDevMem == nullptr) {
+    dstDevMem = static_cast<pal::Memory*>(
+        cmd.destination().getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+    p2pAllowed = false;
   }
-#endif
 
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;

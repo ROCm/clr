@@ -24,7 +24,7 @@
 namespace device {
 class Memory;
 class VirtualDevice;
-}
+}  // namespace device
 
 namespace amd {
 
@@ -42,7 +42,7 @@ struct BufferRect : public amd::EmbeddedObject {
               const size_t* region,        //!< Copy region
               size_t bufferRowPitch,       //!< Provided buffer's row pitch
               size_t bufferSlicePitch      //!< Provided buffer's slice pitch
-              );
+  );
 
   //! Returns the plain offset for the (X, Y, Z) location
   size_t offset(size_t x,  //!< Coordinate in X dimension
@@ -120,6 +120,9 @@ class Memory : public amd::RuntimeObject {
   typedef cl_mem_flags Flags;
   typedef DeviceMap<const Device*, device::Memory*> DeviceMemory;
 
+  //! Returns the number of devices this memory object is associated, including P2P access
+  uint32_t NumDevicesWithP2P();
+
   size_t numDevices_;  //!< Number of devices
 
   //! The device memory objects included in this memory
@@ -141,13 +144,19 @@ class Memory : public amd::RuntimeObject {
   size_t version_;               //!< Update count, used for coherency
   const Device* lastWriter_;     //!< Which device wrote most recently (NULL if host)
   InteropObject* interopObj_;    //!< Interop object
-  bool isParent_;                //!< This object is a parent
   device::VirtualDevice* vDev_;  //!< Memory object belongs to a virtual device only
-  bool forceSysMemAlloc_;        //!< Forces system memory allocation
   std::atomic_uint mapCount_;    //!< Keep track of number of mappings for a memory object
   void* svmHostAddress_;         //!< svm host address;
-  bool svmPtrCommited_;          //!< svm host address committed flag;
-  bool canBeCached_;             //!< flag to if the object can be cached;
+  union {
+    struct {
+      uint32_t isParent_ : 1;          //!< This object is a parent
+      uint32_t forceSysMemAlloc_ : 1;  //!< Forces system memory allocation
+      uint32_t svmPtrCommited_ : 1;    //!< svm host address committed flag
+      uint32_t canBeCached_ : 1;       //!< flag to if the object can be cached
+      uint32_t p2pAccess_ : 1;         //!< Memory object allows P2P access
+    };
+    uint32_t flagsEx_;
+  };
 
  private:
   //! Disable default assignment operator
@@ -168,20 +177,20 @@ class Memory : public amd::RuntimeObject {
          Flags flags,         //!< Object's flags
          size_t size,         //!< Memory size
          void* svmPtr = NULL  //!< svm host memory address, NULL if no SVM mem object
-         );
+  );
   Memory(Memory& parent,  //!< Context object
          Flags flags,     //!< Object's flags
          size_t offset,   //!< Memory offset
          size_t size,     //!< Memory size
          Type type = 0    //!< Memory type
-         );
+  );
 
   //! Memory object destructor
   virtual ~Memory();
 
   //! Copies initialization data to the backing store
   virtual void copyToBackingStore(void* initFrom  //!< Pointer to the initialization memory
-                                  );
+  );
 
   //! Initializes the device memory array
   virtual void initDeviceMemory();
@@ -193,14 +202,14 @@ class Memory : public amd::RuntimeObject {
   //! Placement new operator.
   void* operator new(size_t size,            //!< Original allocation size
                      const Context& context  //!< Context this memory object is allocated in.
-                     );
+  );
   // Provide a "matching" placement delete operator.
   void operator delete(void*,                  //!< Pointer to deallocate
                        const Context& context  //!< Context this memory object is allocated in.
-                       );
+  );
   // and a regular delete operator to satisfy synthesized methods.
   void operator delete(void*  //!< Pointer to deallocate
-                       );
+  );
 
   //! Returns the memory lock object
   amd::Monitor& lockMemoryOps() { return lockMemoryOps_; }
@@ -228,32 +237,32 @@ class Memory : public amd::RuntimeObject {
   virtual Pipe* asPipe() { return NULL; }
 
   //! Creates and initializes device (cache) memory for all devices
-  virtual bool create(void* initFrom = NULL,    //!< Pointer to the initialization data
-                      bool sysMemAlloc = false, //!< Allocate device memory in system memory
-                      bool skipAlloc = false    //!< Skip device memory allocation
-                      );
+  virtual bool create(void* initFrom = NULL,     //!< Pointer to the initialization data
+                      bool sysMemAlloc = false,  //!< Allocate device memory in system memory
+                      bool skipAlloc = false     //!< Skip device memory allocation
+  );
 
   //! Allocates device (cache) memory for a specific device
   bool addDeviceMemory(const Device* dev  //!< Device object
-                       );
+  );
 
   //! Replaces device (cache) memory for a specific device
   void replaceDeviceMemory(const Device* dev,  //!< Device object
                            device::Memory* dm  //!< New device memory object for replacement
-                           );
+  );
 
   //! Find the section for the given device. Return NULL if not found.
   device::Memory* getDeviceMemory(const Device& dev,  //!< Device object
                                   bool alloc = true   //!< Allocates memory
-                                  );
+  );
 
   //! Allocate host memory (as required)
   bool allocHostMemory(void* initFrom,         //!< Host memory provided by the application
                        bool allocHostMem,      //!< Force system memory allocation
                        bool forceCopy = false  //!< Force system memory allocation
-                       );
+  );
 
-  virtual void IpcCreate (size_t offset, size_t* mem_size, void* handle) const {
+  virtual void IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
     ShouldNotReachHere();
   }
 
@@ -314,8 +323,14 @@ class Memory : public amd::RuntimeObject {
   void uncommitSvmMemory();
   void setCacheStatus(bool canBeCached) {
     canBeCached_ = canBeCached;
-  }                                                     //!< set the memobject cached status;
-  bool canBeCached() const { return canBeCached_; }     //!< get the memobject cached status;
+  }                                                  //!< set the memobject cached status
+  bool canBeCached() const { return canBeCached_; }  //!< get the memobject cached status
+
+  //! Check if this objects allows P2P access
+  bool P2PAccess() const { return p2pAccess_; }
+
+  //! Returns the base device memory object for possible P2P access
+  device::Memory* BaseP2PMemory() const { return deviceMemories_[0].value_; }
   device::Memory* svmBase() const { return svmBase_; }  //!< Returns SVM base for MGPU case
 };
 
@@ -339,10 +354,10 @@ class Buffer : public Memory {
   Buffer(Memory& parent, Flags flags, size_t origin, size_t size)
       : Memory(parent, flags, origin, size) {}
 
-  bool create(void* initFrom = NULL,    //!< Pointer to the initialization data
-              bool sysMemAlloc = false, //!< Allocate device memory in system memory
-              bool skipAlloc = false    //!< Skip device memory allocation
-              );
+  bool create(void* initFrom = NULL,     //!< Pointer to the initialization data
+              bool sysMemAlloc = false,  //!< Allocate device memory in system memory
+              bool skipAlloc = false     //!< Skip device memory allocation
+  );
 
   //! static_cast to Buffer with sanity check
   virtual Buffer* asBuffer() { return this; }
@@ -463,7 +478,7 @@ class Image : public Memory {
 
   //! Copies initialization data to the backing store
   virtual void copyToBackingStore(void* initFrom  //!< Pointer to the initialization memory
-                                  );
+  );
 
   void initDimension();
 
@@ -482,7 +497,7 @@ class Image : public Memory {
       size_t height,                             //!< Image height
       size_t depth,                              //!< Image depth
       size_t arraySize                           //!< Image array size
-      );
+  );
 
   const Format& getImageFormat() const { return impl_.format_; }
 
@@ -512,7 +527,7 @@ class Image : public Memory {
                             device::VirtualDevice* vDev,  //!< Virtual device object
                             uint baseMipLevel = 0,        //!< Base mip level for a view
                             cl_mem_flags flags = 0        //!< Memory allocation flags
-                            );
+  );
 
   //! Returns the impl for this image.
   Impl& getImpl() { return impl_; }
@@ -554,7 +569,7 @@ class Image : public Memory {
 
   //! Creates and initializes device (cache) memory for all devices
   bool create(void* initFrom = NULL  //!< Pointer to the initialization data
-              );
+  );
 };
 
 //! SVM-related functionality.

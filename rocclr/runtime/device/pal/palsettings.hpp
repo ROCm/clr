@@ -61,7 +61,8 @@ class Settings : public device::Settings {
       uint rgpSqttWaitIdle_ : 1;        //!< Wait for idle after SQTT trace
       uint rgpSqttForceDisable_ : 1;    //!< Disables SQTT
       uint splitSizeForWin7_ : 1;       //!< DMA flush split size for Win 7
-      uint reserved_ : 11;
+      uint enableHwP2P_ : 1;            //!< Forces HW P2P path for testing
+      uint reserved_ : 10;
     };
     uint value_;
   };

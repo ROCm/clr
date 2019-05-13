@@ -119,6 +119,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     switch (memoryType()) {
       case Resource::Pinned:
       case Resource::ExternalPhysical:
+      case Resource::P2PAccess:
         // Marks memory object for direct GPU access to the host memory
         flags_ |= HostMemoryDirectAccess;
         break;
@@ -903,7 +904,7 @@ void Memory::mgpuCacheWriteBack() {
   amd::ScopedLock lock(owner()->lockMemoryOps());
 
   // Attempt to allocate a staging buffer if don't have any
-  if (owner()->getHostMem() == nullptr) {
+  if (!owner()->P2PAccess() && (owner()->getHostMem() == nullptr)) {
     if (nullptr != owner()->getSvmPtr()) {
       owner()->commitSvmMemory();
       owner()->setHostMem(owner()->getSvmPtr());
