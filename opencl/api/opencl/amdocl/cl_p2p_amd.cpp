@@ -30,7 +30,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferP2PAMD,
   }
   amd::HostQueue& hostQueue = *queue;
 
-  if (hostQueue.context() != srcBuffer->getContext()) {
+  if ((hostQueue.context() != srcBuffer->getContext()) &&
+      (hostQueue.context() != dstBuffer->getContext())) {
     return CL_INVALID_CONTEXT;
   }
 
@@ -42,29 +43,30 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferP2PAMD,
     return CL_INVALID_VALUE;
   }
 
-  if (srcBuffer == dstBuffer && ((src_offset <= dst_offset && dst_offset < src_offset + cb) ||
-                                 (dst_offset <= src_offset && src_offset < dst_offset + cb))) {
+  if (srcBuffer == dstBuffer &&
+      ((src_offset <= dst_offset && dst_offset < src_offset + cb) ||
+       (dst_offset <= src_offset && src_offset < dst_offset + cb))) {
     return CL_MEM_COPY_OVERLAP;
   }
 
   amd::Command::EventWaitList eventWaitList;
-  if ((num_events_in_wait_list == 0 && event_wait_list != NULL)
-          || (num_events_in_wait_list != 0 && event_wait_list == NULL)) {
-      return CL_INVALID_EVENT_WAIT_LIST;
+  if ((num_events_in_wait_list == 0 && event_wait_list != NULL) ||
+      (num_events_in_wait_list != 0 && event_wait_list == NULL)) {
+    return CL_INVALID_EVENT_WAIT_LIST;
   }
 
   while (num_events_in_wait_list-- > 0) {
-      cl_event event = *event_wait_list++;
-      amd::Event* amdEvent = as_amd(event);
-      if (!is_valid(event)) {
-          return CL_INVALID_EVENT_WAIT_LIST;
-      }
-      eventWaitList.push_back(amdEvent);
+    cl_event event = *event_wait_list++;
+    amd::Event* amdEvent = as_amd(event);
+    if (!is_valid(event)) {
+      return CL_INVALID_EVENT_WAIT_LIST;
+    }
+    eventWaitList.push_back(amdEvent);
   }
 
   amd::CopyMemoryP2PCommand* command =
       new amd::CopyMemoryP2PCommand(hostQueue, CL_COMMAND_COPY_BUFFER, eventWaitList, *srcBuffer,
-                                 *dstBuffer, srcOffset, dstOffset, size);
+                                    *dstBuffer, srcOffset, dstOffset, size);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -85,4 +87,3 @@ RUNTIME_ENTRY(cl_int, clEnqueueCopyBufferP2PAMD,
   return CL_SUCCESS;
 }
 RUNTIME_EXIT
-
