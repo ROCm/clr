@@ -1013,7 +1013,7 @@ bool Device::populateOCLDeviceConstants() {
   for (auto agent: gpu_agents_) {
     if (agent.handle != _bkendDevice.handle) {
       hsa_status_t err;
-      // Can current GPU have access to another GPU memory pool
+      // Can another GPU (agent) have access to the current GPU memory pool (gpuvm_segment_)?
       hsa_amd_memory_pool_access_t access;
       err = hsa_amd_agent_memory_pool_get_info(agent, gpuvm_segment_, HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS, &access);
       if (err != HSA_STATUS_SUCCESS) {
@@ -1023,6 +1023,7 @@ bool Device::populateOCLDeviceConstants() {
       // Find accessible p2p agents - i.e != HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED
       if (HSA_AMD_MEMORY_POOL_ACCESS_ALLOWED_BY_DEFAULT == access ||
           HSA_AMD_MEMORY_POOL_ACCESS_DISALLOWED_BY_DEFAULT == access) {
+        // Agent can have access to the current gpuvm_segment_
         p2p_agents_.push_back(agent);
       }
     }

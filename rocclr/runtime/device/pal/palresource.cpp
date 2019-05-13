@@ -153,6 +153,26 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
 }
 
 // ================================================================================================
+GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
+                                               const Pal::PeerGpuMemoryOpenInfo& openInfo) {
+  Pal::Result result;
+  size_t gpuMemSize = dev.iDev()->GetPeerGpuMemorySize(openInfo, &result);
+  if (result != Pal::Result::Success) {
+    return nullptr;
+  }
+
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
+  if (memRef != nullptr) {
+    result = dev.iDev()->OpenPeerGpuMemory(openInfo, &memRef[1], &memRef->gpuMem_);
+    if (result != Pal::Result::Success) {
+      memRef->release();
+      return nullptr;
+    }
+  }
+  return memRef;
+}
+
+// ================================================================================================
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
     : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr) {}
 
@@ -367,6 +387,7 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
       createInfo->heapCount = 2;
       createInfo->heaps[0] = Pal::GpuHeapLocal;
       createInfo->heaps[1] = Pal::GpuHeapGartUswc;
+      createInfo->flags.peerWritable = dev().P2PAccessAllowed();
 #ifdef ATI_OS_LINUX
       // Note: SSG in Linux requires DGMA heap
       if (dev().properties().gpuMemoryProperties.busAddressableMemSize > 0) {
@@ -391,6 +412,7 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
       createInfo->heaps[0] = Pal::GpuHeapInvisible;
       createInfo->heaps[1] = Pal::GpuHeapLocal;
       createInfo->heaps[2] = Pal::GpuHeapGartUswc;
+      createInfo->flags.peerWritable = dev().P2PAccessAllowed();
       break;
     default:
       createInfo->heaps[0] = Pal::GpuHeapLocal;
@@ -904,6 +926,20 @@ bool Resource::CreateInterop(CreateParams* params) {
 }
 
 // ================================================================================================
+bool Resource::CreateP2PAccess(CreateParams* params) {
+  Pal::PeerGpuMemoryOpenInfo openInfo = {};
+  openInfo.pOriginalMem = params->svmBase_->iMem();
+
+  memRef_ = GpuMemoryReference::Create(dev(), openInfo);
+  if (nullptr == memRef_) {
+    return false;
+  }
+  desc_.cardMemory_ = false;
+  offset_ = params->svmBase_->offset();
+  return true;
+}
+
+// ================================================================================================
 bool Resource::CreatePinned(CreateParams* params) {
   PinnedParams* pinned = reinterpret_cast<PinnedParams*>(params);
   size_t allocSize = pinned->size_;
@@ -1070,40 +1106,43 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   if (dev().settings().disablePersistent_ && (memoryType() == Persistent)) {
     desc_.type_ = RemoteUSWC;
   }
+  switch (memoryType()) {
+    case OGLInterop:
+    case D3D9Interop:
+    case D3D10Interop:
+    case D3D11Interop:
+      return CreateInterop(params);
+    case P2PAccess:
+      return CreateP2PAccess(params);
+    case Pinned:
+      return CreatePinned(params);
+    case View: {
+      // Save the offset in the global heap
+      ViewParams* view = reinterpret_cast<ViewParams*>(params);
+      offset_ = view->offset_;
 
-  if ((memoryType() == OGLInterop) || (memoryType() == D3D9Interop) ||
-      (memoryType() == D3D10Interop) || (memoryType() == D3D11Interop)) {
-    return CreateInterop(params);
+      // Make sure parent was provided
+      if (nullptr != view->resource_) {
+        viewOwner_ = view->resource_;
+        offset_ += viewOwner_->offset();
+        if (viewOwner_->data() != nullptr) {
+          address_ = viewOwner_->data() + view->offset_;
+          mapCount_++;
+        }
+        memRef_ = viewOwner_->memRef_;
+        memRef_->retain();
+        desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
+      } else {
+        desc_.type_ = Empty;
+      }
+      return true;
+    }
+    default:
+      break;
   }
 
   if (!desc_.buffer_) {
     return CreateImage(params);
-  }
-
-  if (memoryType() == Pinned) {
-    return CreatePinned(params);
-  }
-
-  if (memoryType() == View) {
-    // Save the offset in the global heap
-    ViewParams* view = reinterpret_cast<ViewParams*>(params);
-    offset_ = view->offset_;
-
-    // Make sure parent was provided
-    if (nullptr != view->resource_) {
-      viewOwner_ = view->resource_;
-      offset_ += viewOwner_->offset();
-      if (viewOwner_->data() != nullptr) {
-        address_ = viewOwner_->data() + view->offset_;
-        mapCount_++;
-      }
-      memRef_ = viewOwner_->memRef_;
-      memRef_->retain();
-      desc_.cardMemory_ = viewOwner_->desc().cardMemory_;
-    } else {
-      desc_.type_ = Empty;
-    }
-    return true;
   }
 
   Pal::gpusize svmPtr = 0;
@@ -1823,6 +1862,7 @@ bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.priority = Pal::GpuMemPriority::Normal;
   createInfo.heapCount = 1;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
+  createInfo.flags.peerWritable = device_->P2PAccessAllowed();
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     return InitAllocator(mem_ref);

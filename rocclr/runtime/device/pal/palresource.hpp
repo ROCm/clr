@@ -35,6 +35,8 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   static GpuMemoryReference* Create(const Device& dev, const Pal::ExternalImageOpenInfo& openInfo,
                                     Pal::ImageCreateInfo* imgCreateInfo, Pal::IImage** image);
 
+  static GpuMemoryReference* Create(const Device& dev, const Pal::PeerGpuMemoryOpenInfo& openInfo);
+
   //! Default constructor
   GpuMemoryReference(const Device& dev);
 
@@ -53,10 +55,10 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
 
  private:
   //! Disable copy constructor
-  GpuMemoryReference(const GpuMemoryReference&);
+  GpuMemoryReference(const GpuMemoryReference&) = delete;
 
   //! Disable operator=
-  GpuMemoryReference& operator=(const GpuMemoryReference&);
+  GpuMemoryReference& operator=(const GpuMemoryReference&) = delete;
 };
 
 static constexpr Pal::gpusize MaxGpuAlignment = 4 * Ki;
@@ -144,6 +146,7 @@ class Resource : public amd::HeapObject {
     D3D9Interop,       //!< resource is a D3D9 memory object
     Scratch,           //!< resource is scratch memory
     Shader,            //!< resource is a shader
+    P2PAccess          //!< resource is a shared resource for P2P access
   };
 
   //! Resource map flags
@@ -416,6 +419,13 @@ class Resource : public amd::HeapObject {
   bool CreateSvm(CreateParams* params,  //!< special parameters for resource allocation
                  Pal::gpusize svmPtr);
 
+  /*! \brief Creates a PAL P2P object, associated with the resource
+   *
+   *  \return True if we succesfully created a PAL P2P resource
+   */
+  bool CreateP2PAccess(CreateParams* params //!< special parameters for resource allocation
+                      );
+
   uint elementSize_;  //!< Size of a single element in bytes
 
  private:
@@ -567,9 +577,9 @@ class ResourceCache : public amd::HeapObject {
 
   amd::Monitor lockCacheOps_;  //!< Lock to serialise cache access
 
-  size_t cacheSize_;             //!< Current cache size in bytes
-  size_t lclCacheSize_;          //!< Local memory stored in the cache
-  const size_t cacheSizeLimit_;  //!< Cache size limit in bytes
+  size_t cacheSize_;            //!< Current cache size in bytes
+  size_t lclCacheSize_;         //!< Local memory stored in the cache
+  const size_t cacheSizeLimit_; //!< Cache size limit in bytes
 
   //! PAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;

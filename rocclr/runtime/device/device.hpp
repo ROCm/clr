@@ -19,10 +19,10 @@
 #include "devkernel.hpp"
 #include "amdocl/cl_profile_amd.h"
 
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
 #include "caching/cache.hpp"
 #include "driver/AmdCompiler.h"
-#endif // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "acl.h"
 
 #include "hwdebug.hpp"
@@ -77,9 +77,9 @@ struct Coord3D;
 
 namespace option {
 class Options;
-}  // option
+}  // namespace option
 
-}
+}  // namespace amd
 
 enum OclExtensions {
   ClKhrFp64 = 0,
@@ -645,13 +645,13 @@ class Memory : public amd::HeapObject {
                                uint mapFlags,               //!< Map flags
                                size_t* rowPitch = NULL,     //!< Row pitch for the mapped memory
                                size_t* slicePitch = NULL    //!< Slice for the mapped memory
-                               ) {
+  ) {
     return NULL;
   }
 
   virtual bool pinSystemMemory(void* hostPtr,  //!< System memory address
                                size_t size     //!< Size of allocated system memory
-                               ) {
+  ) {
     return true;
   }
 
@@ -669,7 +669,7 @@ class Memory : public amd::HeapObject {
                        uint numLayers = 0,        //!< End layer for multilayer map
                        size_t* rowPitch = NULL,   //!< Row pitch for the device memory
                        size_t* slicePitch = NULL  //!< Slice pitch for the device memory
-                       ) {
+  ) {
     amd::Image* image = owner()->asImage();
     if (image != NULL) {
       *rowPitch = image->getRowPitch();
@@ -681,7 +681,7 @@ class Memory : public amd::HeapObject {
 
   //! Unmap the device memory
   virtual void cpuUnmap(VirtualDevice& vDev  //!< Virtual device for unmap operaiton
-                        ) {}
+  ) {}
 
   //! Saves map info for this object
   //! @note: It's not a thread safe operation, the app must implement
@@ -692,7 +692,7 @@ class Memory : public amd::HeapObject {
                    uint mapFlags,                 //!< Map flags
                    bool entire,                   //!< True if the enitre memory was mapped
                    amd::Image* baseMip = nullptr  //!< The base mip level for map
-                   );
+  );
 
   const WriteMapInfo* writeMapInfo(const void* mapAddress) const {
     // Unmap must be serialized.
@@ -762,9 +762,10 @@ class Memory : public amd::HeapObject {
   //! NB, the map data below is for an API-level map (from clEnqueueMapBuffer),
   //! not a physical map. When a memory object does not use USE_HOST_PTR we
   //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
-  amd::Memory* mapMemory_;                                      //!< Memory used as map target buffer
-  volatile size_t indirectMapCount_;                            //!< Number of maps
-  std::unordered_map<const void*, WriteMapInfo> writeMapInfo_;  //!< Saved write map info for partial unmap
+  amd::Memory* mapMemory_;            //!< Memory used as map target buffer
+  volatile size_t indirectMapCount_;  //!< Number of maps
+  std::unordered_map<const void*, WriteMapInfo>
+      writeMapInfo_;  //!< Saved write map info for partial unmap
 
   //! Increment map count
   void incIndMapCount() { ++indirectMapCount_; }
@@ -772,7 +773,7 @@ class Memory : public amd::HeapObject {
   //! Decrement map count
   virtual void decIndMapCount() {}
 
-  size_t size_;   //!< Memory size
+  size_t size_;  //!< Memory size
 
  private:
   //! Disable default copy constructor
@@ -797,8 +798,8 @@ class Sampler : public amd::HeapObject {
   const address hwState() const { return hwState_; }
 
  protected:
-  uint64_t hwSrd_;  //!< Device specific HW state for the sampler
-  address hwState_;   //!< CPU pointer to HW state
+  uint64_t hwSrd_;   //!< Device specific HW state for the sampler
+  address hwState_;  //!< CPU pointer to HW state
 
  private:
   //! Disable default copy constructor
@@ -873,11 +874,11 @@ class ClBinary : public amd::HeapObject {
 
   //! Store compile options into OCL binary file
   void storeCompileOptions(const std::string& compileOptions  //!< the compile options to be stored
-                           );
+  );
 
   //! Store link options into OCL binary file
   void storeLinkOptions(const std::string& linkOptions  //!< the link options to be stored
-                        );
+  );
 
   //! Check if the binary is recompilable
   bool isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatform thePlatform);
@@ -967,11 +968,11 @@ class ClBinary : public amd::HeapObject {
   void release();
 
   const char* binary_;  //!< binary data
-  size_t size_;   //!< binary size
-  uint flags_;    //!< CL binary object flags
+  size_t size_;         //!< binary size
+  uint flags_;          //!< CL binary object flags
 
   const char* origBinary_;  //!< original binary data
-  size_t origSize_;   //!< original binary size
+  size_t origSize_;         //!< original binary size
 
   int encryptCode_;  //!< Encryption Code for input binary (0 for not encrypted)
 
@@ -1110,21 +1111,22 @@ class MemObjMap : public AllStatic {
  public:
   static size_t size();  //!< obtain the size of the container
   static void AddMemObj(const void* k,
-                           amd::Memory* v);    //!< add the host mem pointer and buffer in the container
+                        amd::Memory* v);  //!< add the host mem pointer and buffer in the container
   static void RemoveMemObj(const void* k);  //!< Remove an entry of mem object from the container
   static amd::Memory* FindMemObj(
       const void* k);  //!< find the mem object based on the input pointer
  private:
-  static std::map<uintptr_t, amd::Memory*> MemObjMap_;  //!< the mem object<->hostptr information container
-  static amd::Monitor AllocatedLock_;                      //!< amd monitor locker
+  static std::map<uintptr_t, amd::Memory*>
+      MemObjMap_;                      //!< the mem object<->hostptr information container
+  static amd::Monitor AllocatedLock_;  //!< amd monitor locker
 };
 
 /*! \addtogroup Runtime
-*  @{
-*
-*  \addtogroup Device Device Abstraction
-*  @{
-*/
+ *  @{
+ *
+ *  \addtogroup Device Device Abstraction
+ *  @{
+ */
 class Device : public RuntimeObject {
  protected:
   typedef aclCompiler Compiler;
@@ -1144,7 +1146,7 @@ class Device : public RuntimeObject {
     bool create(Device* device,                  //!< Device object
                 const char* extraKernel = NULL,  //!< Extra kernels from the device layer
                 const char* extraOptions = NULL  //!< Extra compilation options
-                );
+    );
   };
 
   virtual Compiler* compiler() const = 0;
@@ -1179,18 +1181,18 @@ class Device : public RuntimeObject {
 
   static std::vector<Device*> getDevices(cl_device_type type,  //!< Device type
                                          bool offlineDevices   //!< Enable offline devices
-                                         );
+  );
 
   static size_t numDevices(cl_device_type type,  //!< Device type
                            bool offlineDevices   //!< Enable offline devices
-                           );
+  );
 
   static bool getDeviceIDs(cl_device_type deviceType,  //!< Device type
                            cl_uint numEntries,         //!< Number of entries in the array
                            cl_device_id* devices,      //!< Array of the device ID(s)
                            cl_uint* numDevices,        //!< Number of available devices
                            bool offlineDevices         //!< Report offline devices
-                           );
+  );
 
   const device::Info& info() const { return info_; }
 
@@ -1288,7 +1290,8 @@ class Device : public RuntimeObject {
     return true;
   };
 
-  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+                            cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
     return true;
   };
   //! Returns TRUE if the device is available for computations
@@ -1331,21 +1334,24 @@ class Device : public RuntimeObject {
   // P2P devices that are accessible from the current device
   std::vector<cl_device_id> p2pDevices_;
 
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+  // P2P devices for memory allocation. This list contains devices that can have access to the
+  // current device
+  std::vector<Device*> p2p_access_devices_;
+
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
   amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
 #endif
 
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
 
-  virtual amd::Memory *IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const {
+  virtual amd::Memory* IpcAttach(const void* handle, size_t mem_size, unsigned int flags,
+                                 void** dev_ptr) const {
     ShouldNotReachHere();
     return nullptr;
   }
 
-  virtual void IpcDetach(amd::Memory& memory) const {
-    ShouldNotReachHere();
-  }
+  virtual void IpcDetach(amd::Memory& memory) const { ShouldNotReachHere(); }
 
   //! Return private global device context for P2P allocations
   amd::Context& GlbCtx() const { return *glb_ctx_; }
@@ -1355,6 +1361,12 @@ class Device : public RuntimeObject {
 
   //! Staging buffer for P2P transfer
   Memory* P2PStage() const { return p2p_stage_; }
+
+  //! Does this device allow P2P access?
+  bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
+
+  //! Returns the list of devices that can have access to the current
+  const std::vector<Device*>& P2PAccessDevices() const { return p2p_access_devices_; }
 
  protected:
   //! Enable the specified extension
@@ -1366,14 +1378,14 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
-                                  //! Compilation with cache support
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
+                                //! Compilation with cache support
   std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
 #endif
 
-  static amd::Context* glb_ctx_;        //!< Global context with all devices
-  static amd::Monitor p2p_stage_ops_;   //!< Lock to serialise cache for the P2P resources
-  static Memory* p2p_stage_;            //!< Staging resources
+  static amd::Context* glb_ctx_;       //!< Global context with all devices
+  static amd::Monitor p2p_stage_ops_;  //!< Lock to serialise cache for the P2P resources
+  static Memory* p2p_stage_;           //!< Staging resources
 
  private:
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);
@@ -1388,7 +1400,7 @@ class Device : public RuntimeObject {
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
 };
 
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
 //! Compilation process with cache support.
 class CacheCompilation : public amd::HeapObject {
  public:
@@ -1425,7 +1437,7 @@ class CacheCompilation : public amd::HeapObject {
   StringCache codeCache_;          //! Cached codes
   const bool isCodeCacheEnabled_;  //! Code cache enable
 };
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 /*! @}
  *  @}

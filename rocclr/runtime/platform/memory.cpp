@@ -70,14 +70,14 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       version_(0),
       lastWriter_(NULL),
       interopObj_(NULL),
-      isParent_(false),
       vDev_(NULL),
-      forceSysMemAlloc_(false),
       mapCount_(0),
       svmHostAddress_(svmPtr),
-      svmPtrCommited_(flags & CL_MEM_SVM_FINE_GRAIN_BUFFER ? true : false),
-      canBeCached_(true),
-      lockMemoryOps_("Memory Ops Lock", true) {}
+      flagsEx_(0),
+      lockMemoryOps_("Memory Ops Lock", true) {
+  svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
+  canBeCached_ = true;
+}
 
 Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type type)
     : numDevices_(0),
@@ -93,14 +93,13 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       version_(parent.getVersion()),
       lastWriter_(parent.getLastWriter()),
       interopObj_(parent.getInteropObj()),
-      isParent_(false),
       vDev_(NULL),
-      forceSysMemAlloc_(false),
       mapCount_(0),
       svmHostAddress_(parent.getSvmPtr()),
-      svmPtrCommited_(parent.isSvmPtrCommited()),
-      canBeCached_(true),
+      flagsEx_(0),
       lockMemoryOps_("Memory Ops Lock", true) {
+  svmPtrCommited_ = parent.isSvmPtrCommited();
+  canBeCached_ = true;
   parent_->retain();
   parent_->isParent_ = true;
 
@@ -126,13 +125,31 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
   }
 }
 
+uint32_t Memory::NumDevicesWithP2P() {
+  uint32_t devices = context_().devices().size();
+  if (devices == 1) {
+    // Add p2p devices for allocation
+    devices = context_().devices().size() + context_().devices()[0]->P2PAccessDevices().size();
+    if (devices > 1) {
+      p2pAccess_ = true;
+    }
+  }
+  return devices;
+}
+
 void Memory::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Memory));
-  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
+  memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
 
 void* Memory::operator new(size_t size, const Context& context) {
-  return RuntimeObject::operator new(size + context.devices().size() * sizeof(DeviceMemory));
+  uint32_t devices = context.devices().size();
+  if (devices == 1) {
+    // Add p2p devices for allocation
+    devices = context.devices().size() + context.devices()[0]->P2PAccessDevices().size();
+  }
+
+  return RuntimeObject::operator new(size + devices * sizeof(DeviceMemory));
 }
 
 void Memory::operator delete(void* p) { RuntimeObject::operator delete(p); }
@@ -259,7 +276,14 @@ bool Memory::addDeviceMemory(const Device* dev) {
   bool result = false;
   AllocState create = AllocCreate;
   AllocState init = AllocInit;
+
   if (make_atomic(deviceAlloced_[dev]).compareAndSet(init, create)) {
+    // Check if runtime already allocated all available slots for device memory
+    if (numDevices() == NumDevicesWithP2P()) {
+      // Mark the allocation as an empty
+      deviceAlloced_[dev] = AllocInit;
+      return false;
+    }
     device::Memory* dm = dev->createMemory(*this);
 
     // Add the new memory allocation to the device map
@@ -267,7 +291,7 @@ bool Memory::addDeviceMemory(const Device* dev) {
       deviceMemories_[numDevices_].ref_ = dev;
       deviceMemories_[numDevices_].value_ = dm;
       numDevices_++;
-      assert((numDevices() <= context_().devices().size()) && "Too many device objects");
+      assert((numDevices() <= NumDevicesWithP2P()) && "Too many device objects");
 
       // Mark the allocation with the complete flag
       deviceAlloced_[dev] = AllocComplete;
@@ -275,6 +299,7 @@ bool Memory::addDeviceMemory(const Device* dev) {
         svmBase_ = dm;
       }
     } else {
+      LogError("Video memory allocation failed!");
       // Mark the allocation as an empty
       deviceAlloced_[dev] = AllocInit;
     }
@@ -322,7 +347,6 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
 
   if ((NULL == dm) && alloc) {
     if (!addDeviceMemory(&dev)) {
-      LogError("Video memory allocation failed!");
       return NULL;
     }
     dm = deviceMemories_[numDevices() - 1].value_;
@@ -446,7 +470,7 @@ void Memory::uncommitSvmMemory() {
 
 void Buffer::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Buffer));
-  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
+  memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
 
 bool Buffer::create(void* initFrom, bool sysMemAlloc, bool skipAlloc) {
@@ -472,7 +496,7 @@ bool Buffer::validateRegion(const Coord3D& origin, const Coord3D& region) const 
 
 void Pipe::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Pipe));
-  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
+  memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
 
 #define GETMIPDIM(dim, mip) (((dim >> mip) > 0) ? (dim >> mip) : 1)
@@ -631,7 +655,7 @@ void Image::initDimension() {
 
 void Image::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Image));
-  memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
+  memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
 bool Image::create(void* initFrom) { return Memory::create(initFrom); }
 

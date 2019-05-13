@@ -1082,7 +1082,7 @@ bool Device::create(Pal::IDevice* device) {
   return true;
 }
 
-// =====================================================================================================================
+// ================================================================================================
 // Master function that handles developer callbacks from PAL.
 void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                               Pal::Developer::CallbackType type, void* pCbData) {
@@ -1333,6 +1333,29 @@ bool Device::init() {
   }
   if (!foundDevice) {
     Device::tearDown();
+  } else {
+    // Loop through all available devices
+    uint32_t all_devices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+    for (uint32_t device0 = gStartDevice; device0 < all_devices; ++device0) {
+      // Find all device that can have access to the current device
+      for (uint32_t device1 = gStartDevice; device1 < all_devices; ++device1) {
+        // If it's not the same device, then validate P2P settings
+        if ((devices()[device0] != devices()[device1]) &&
+            static_cast<Device*>(devices()[device1])->settings().enableHwP2P_) {
+          Pal::GpuCompatibilityInfo comp_info = {};
+          // Can device 0 have access to device1?
+          static_cast<Device*>(devices()[device0])
+              ->iDev()
+              ->GetMultiGpuCompatibility(*static_cast<Device*>(devices()[device1])->iDev(),
+                                         &comp_info);
+          // Check P2P capability
+          if (comp_info.flags.peerTransfer) {
+            devices()[device0]->p2pDevices_.push_back(as_cl(devices()[device1]));
+            devices()[device1]->p2p_access_devices_.push_back(devices()[device0]);
+          }
+        }
+      }
+    }
   }
   return true;
 }
@@ -1516,6 +1539,12 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
     params.owner_ = &owner;
     params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
     params.svmBase_ = static_cast<Memory*>(owner.svmBase());
+    if (owner.P2PAccess()) {
+      params.svmBase_ = static_cast<Memory*>(owner.BaseP2PMemory());
+      if (params.svmBase_ != nullptr) {
+        type = Resource::P2PAccess;
+      }
+    }
 
     // Create memory object
     result = gpuMemory->create(type, &params);
@@ -1531,7 +1560,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
                                                                       pipeInit);
       }
       // If memory has direct access from host, then get CPU address
-      if (gpuMemory->isHostMemDirectAccess() && (type != Resource::ExternalPhysical)) {
+      if (gpuMemory->isHostMemDirectAccess() && (type != Resource::ExternalPhysical) &&
+          (type != Resource::P2PAccess)) {
         void* address = gpuMemory->map(nullptr);
         if (address != nullptr) {
           // Copy saved memory
