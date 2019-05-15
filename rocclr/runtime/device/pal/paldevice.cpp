@@ -1294,6 +1294,15 @@ bool Device::init() {
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
 
+  if (IS_LINUX) {
+    //! @note: Linux may have a deadlock if runtime will attempt to reserve
+    //! VA range, which is much bigger than sysmem size
+    size_t maxVirtualReserve = amd::Os::getPhysicalMemSize() << 1;
+    if (info.maxSvmSize > maxVirtualReserve) {
+      info.maxSvmSize = maxVirtualReserve;
+    }
+  }
+
   // PAL init
   if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
     return false;
