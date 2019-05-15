@@ -129,7 +129,7 @@ release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
-release(uint, OCL_SET_SVM_SIZE, 16384,                                      \
+release(uint, OCL_SET_SVM_SIZE, 4*16384,                                      \
         "set SVM space size for discrete GPU")                                \
 debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
         "Use flag to change the minimum requirement of system memory not to downgrade")        \
