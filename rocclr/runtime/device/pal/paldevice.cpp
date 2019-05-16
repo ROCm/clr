@@ -1302,6 +1302,7 @@ bool Device::init() {
       info.maxSvmSize = maxVirtualReserve;
     }
   }
+  info.maxSvmSize = amd::nextPowerOfTwo(info.maxSvmSize - 1);
 
   // PAL init
   if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
