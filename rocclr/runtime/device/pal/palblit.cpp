@@ -952,7 +952,7 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
 
   uint32_t uint32_value = 0;
   uint64_t uint64_value = 0;
-  size_t argSize = desc.size_;
+  size_t argSize = size;
 
   if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
     if ((value == NULL) || (static_cast<const cl_mem*>(value) == NULL)) {
