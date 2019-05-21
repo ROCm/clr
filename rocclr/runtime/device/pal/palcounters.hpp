@@ -11,10 +11,11 @@
 namespace pal {
 
 enum class PCIndexSelect : uint {
-  None = 0,                 ///< no index
-  Instance,                 ///< index by block instance
-  ShaderEngine,             ///< index by shader engine
-  ShaderEngineAndInstance,  ///< index by shader and instance
+  None = 0,                        ///< no index
+  Instance,                        ///< index by block instance -- (1 to 1 mapping with PAL)
+  ShaderEngine,                    ///< index by shader engine (sum = 1 value for all PAL Instances)
+  ShaderArray,                     ///< index by shader array (sum = 1 value for each shader array)
+  ComputeUnit,                     ///< index by compute unit
 };
 
 class VirtualGPU;
