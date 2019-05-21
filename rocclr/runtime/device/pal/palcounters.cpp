@@ -138,35 +138,56 @@ bool PalCounterReference::finalize() {
   }
 }
 
-static const std::array<PCIndexSelect, 0x20> blockIdToIndexSelect = {{
+static const std::array<PCIndexSelect, 46> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // CPF
     PCIndexSelect::ShaderEngine,             // IA
     PCIndexSelect::ShaderEngine,             // VGT
-    PCIndexSelect::ShaderEngine,             // PA
-    PCIndexSelect::ShaderEngine,             // SC
+    PCIndexSelect::ShaderArray,              // PA
+    PCIndexSelect::ShaderArray,              // SC
     PCIndexSelect::ShaderEngine,             // SPI
     PCIndexSelect::ShaderEngine,             // SQ
-    PCIndexSelect::ShaderEngine,             // SX
-    PCIndexSelect::ShaderEngineAndInstance,  // TA
-    PCIndexSelect::ShaderEngineAndInstance,  // TD
-    PCIndexSelect::ShaderEngineAndInstance,  // TCP
+    PCIndexSelect::ShaderArray,              // SX
+    PCIndexSelect::ComputeUnit,              // TA
+    PCIndexSelect::ComputeUnit,              // TD
+    PCIndexSelect::ComputeUnit,              // TCP
     PCIndexSelect::Instance,                 // TCC
     PCIndexSelect::Instance,                 // TCA
-    PCIndexSelect::ShaderEngineAndInstance,  // DB
-    PCIndexSelect::ShaderEngineAndInstance,  // CB
+    PCIndexSelect::ShaderArray,              // DB
+    PCIndexSelect::ShaderArray,              // CB
     PCIndexSelect::None,                     // GDS
     PCIndexSelect::None,                     // SRBM
     PCIndexSelect::None,                     // GRBM
-    PCIndexSelect::None,                     // GRBMSE
+    PCIndexSelect::ShaderEngine,             // GRBMSE
     PCIndexSelect::None,                     // RLC
-    PCIndexSelect::None,                     // DMA
+    PCIndexSelect::Instance,                 // DMA
     PCIndexSelect::None,                     // MC
     PCIndexSelect::None,                     // CPG
     PCIndexSelect::None,                     // CPC
     PCIndexSelect::None,                     // WD
     PCIndexSelect::None,                     // TCS
-    PCIndexSelect::None,                     // UTC12
+    PCIndexSelect::None,                     // ATC
+    PCIndexSelect::None,                     // ATCL2
+    PCIndexSelect::None,                     // MCVML2
+    PCIndexSelect::Instance,                 // EA
+    PCIndexSelect::None,                     // RPB
+    PCIndexSelect::ShaderArray,              // RMI
+    PCIndexSelect::Instance,                 // UMCCH
+    PCIndexSelect::Instance,                 // GE
+    PCIndexSelect::ShaderArray,              // GL1A
+    PCIndexSelect::ShaderArray,              // GL1C
+    PCIndexSelect::ShaderArray,              // GL1CG
+    PCIndexSelect::Instance,                 // GL2A
+    PCIndexSelect::Instance,                 // GL2C
+    PCIndexSelect::None,                     // CHA
+    PCIndexSelect::Instance,                 // CHC
+    PCIndexSelect::None,                     // CHCG
+    PCIndexSelect::None,                     // GUS
+    PCIndexSelect::None,                     // GCR
+    PCIndexSelect::None,                     // PH
+    PCIndexSelect::ShaderArray,              // UTCL1
 }};
+
+static_assert(blockIdToIndexSelect.size() ==  static_cast<size_t>(Pal::GpuBlock::Count), "size of blockIdToIndexSelect does not match GpuBlock::Count");
 
 // Converting from ORCA cmndefs.h to PAL palPerfExperiment.h
 static const std::array<std::pair<int, int>, 83> ciBlockIdOrcaToPal = {{
@@ -484,171 +505,148 @@ static const std::array<std::pair<int, int>, 123> gfx9BlockIdPal = {{
     {0x1F, 7},     // RMI7      - 122
 }};
 
-static const std::array<std::pair<int, int>, 164> gfx10BlockIdPal = {{
+static const std::array<std::pair<int, int>, 151> gfx10BlockIdPal = {{
     {0x0E, 0},     // CB0       - 0
     {0x0E, 1},     // CB1       - 1
     {0x0E, 2},     // CB2       - 2
     {0x0E, 3},     // CB3       - 3
-    {0x0E, 4},     // CB4       - 4
-    {0x0E, 5},     // CB5       - 5
-    {0x0E, 6},     // CB6       - 6
-    {0x0E, 7},     // CB7       - 7
-    {0x00, 0},     // CPF       - 8
-    {0x0D, 0},     // DB0       - 9
-    {0x0D, 1},     // DB1       - 10
-    {0x0D, 2},     // DB2       - 11
-    {0x0D, 3},     // DB3       - 12
-    {0x0D, 4},     // DB4       - 13
-    {0x0D, 5},     // DB5       - 14
-    {0x0D, 6},     // DB6       - 15
-    {0x0D, 7},     // DB7       - 16
-    {0x11, 0},     // GRBM      - 17
-    {0x12, 0},     // GRBMSE    - 18
-    {0x03, 0},     // PA_SU0    - 19
-    {0x03, 1},     // PA_SU1    - 20
-    {0x04, 0},     // PA_SC0    - 21
-    {0x04, 1},     // PA_SC1    - 22
-    {0x04, 2},     // PA_SC2    - 23
-    {0x04, 3},     // PA_SC3    - 24
-    {0x05, 0},     // SPI       - 25
-    {0x06, 0},     // SQ        - 26
-    {0x06, 0},     // SQ_ES     - 27
-    {0x06, 0},     // SQ_GS     - 28
-    {0x06, 0},     // SQ_VS     - 29
-    {0x06, 0},     // SQ_PS     - 30
-    {0x06, 0},     // SQ_LS     - 31
-    {0x06, 0},     // SQ_HS     - 32
-    {0x06, 0},     // SQ_CS     - 33
-    {0x07, 0},     // SX        - 34
-    {0x08, 0},     // TA0       - 35
-    {0x08, 1},     // TA1       - 36
-    {0x08, 2},     // TA2       - 37
-    {0x08, 3},     // TA3       - 38
-    {0x08, 4},     // TA4       - 39
-    {0x08, 5},     // TA5       - 40
-    {0x08, 6},     // TA6       - 41
-    {0x08, 7},     // TA7       - 42
-    {0x08, 8},     // TA8       - 43
-    {0x08, 9},     // TA9       - 44
-    {0x08, 0x0a},  // TA10      - 45
-    {0x08, 0x0b},  // TA11      - 46
-    {0x08, 0x0c},  // TA12      - 47
-    {0x08, 0x0d},  // TA13      - 48
-    {0x08, 0x0e},  // TA14      - 49
-    {0x08, 0x0f},  // TA15      - 50
-    {0x08, 0x10},  // TA16      - 51
-    {0x08, 0x11},  // TA17      - 52
-    {0x08, 0x12},  // TA18      - 53
-    {0x08, 0x13},  // TA19      - 54
-    {0x09, 0},     // TD0       - 55
-    {0x09, 1},     // TD1       - 56
-    {0x09, 2},     // TD2       - 57
-    {0x09, 3},     // TD3       - 58
-    {0x09, 4},     // TD4       - 59
-    {0x09, 5},     // TD5       - 60
-    {0x09, 6},     // TD6       - 61
-    {0x09, 7},     // TD7       - 62
-    {0x09, 8},     // TD8       - 63
-    {0x09, 9},     // TD9       - 64
-    {0x09, 0x0a},  // TD10      - 65
-    {0x09, 0x0b},  // TD11      - 66
-    {0x09, 0x0c},  // TD12      - 67
-    {0x09, 0x0d},  // TD13      - 68
-    {0x09, 0x0e},  // TD14      - 69
-    {0x09, 0x0f},  // TD15      - 70
-    {0x09, 0x10},  // TD16      - 71
-    {0x09, 0x11},  // TD17      - 72
-    {0x09, 0x12},  // TD18      - 73
-    {0x09, 0x13},  // TD19      - 74
-    {0x0A, 0},     // TCP0      - 75
-    {0x0A, 1},     // TCP1      - 76
-    {0x0A, 2},     // TCP2      - 77
-    {0x0A, 3},     // TCP3      - 78
-    {0x0A, 4},     // TCP4      - 79
-    {0x0A, 5},     // TCP5      - 80
-    {0x0A, 6},     // TCP6      - 81
-    {0x0A, 7},     // TCP7      - 82
-    {0x0A, 8},     // TCP8      - 83
-    {0x0A, 9},     // TCP9      - 84
-    {0x0A, 0x0a},  // TCP10     - 85
-    {0x0A, 0x0b},  // TCP11     - 86
-    {0x0A, 0x0c},  // TCP12     - 87
-    {0x0A, 0x0d},  // TCP13     - 88
-    {0x0A, 0x0e},  // TCP14     - 89
-    {0x0A, 0x0f},  // TCP15     - 90
-    {0x0A, 0x10},  // TCP16     - 91
-    {0x0A, 0x11},  // TCP17     - 92
-    {0x0A, 0x12},  // TCP18     - 93
-    {0x0A, 0x13},  // TCP19     - 94
-    {0x0F, 0},     // GDS       - 95
-    {0x16, 0},     // CPG       - 96
-    {0x17, 0},     // CPC       - 97
-    {0x1A, 0},     // ATC       - 98
-    {0x1B, 0},     // ATCL2     - 99
-    {0x1C, 0},     // MCVML2    - 100
-    {0x1D, 0},     // EA0       - 101
-    {0x1D, 1},     // EA1       - 102
-    {0x1D, 2},     // EA2       - 103
-    {0x1D, 3},     // EA3       - 104
-    {0x1D, 4},     // EA4       - 105
-    {0x1D, 5},     // EA5       - 106
-    {0x1D, 6},     // EA6       - 107
-    {0x1D, 7},     // EA7       - 108
-    {0x1D, 8},     // EA8       - 109
-    {0x1D, 9},     // EA9       - 110
-    {0x1D, 0x0a},  // EA10      - 111
-    {0x1D, 0x0b},  // EA11      - 112
-    {0x1D, 0x0c},  // EA12      - 113
-    {0x1D, 0x0d},  // EA13      - 114
-    {0x1D, 0x0e},  // EA14      - 115
-    {0x1D, 0x0f},  // EA15      - 116
-    {0x1E, 0},     // RPB       - 117
-    {0x1F, 0},     // RMI0      - 118
-    {0x1F, 1},     // RMI1      - 119
-    {0x1F, 2},     // RMI2      - 120
-    {0x1F, 3},     // RMI3      - 121
-    {0x21, 0},     // GE        - 122
-    {0x22, 0},     // GL1A0     - 123
-    {0x22, 1},     // GL1A1     - 124
-    {0x23, 0},     // GL1C0     - 125
-    {0x23, 1},     // GL1C1     - 126
-    {0x24, 0},     // GL1CG0    - 127
-    {0x24, 1},     // GL1CG1    - 128
-    {0x24, 2},     // GL1CG2    - 129
-    {0x24, 3},     // GL1CG3    - 130
-    {0x24, 4},     // GL1CG4    - 131
-    {0x24, 5},     // GL1CG5    - 132
-    {0x24, 6},     // GL1CG6    - 133
-    {0x24, 7},     // GL1CG7    - 134
-    {0x25, 0},     // GL2A0     - 135
-    {0x25, 1},     // GL2A1     - 136
-    {0x25, 2},     // GL2A2     - 137
-    {0x25, 3},     // GL2A3     - 138
-    {0x26, 0},     // GL2C0     - 139
-    {0x26, 1},     // GL2C1     - 140
-    {0x26, 2},     // GL2C2     - 141
-    {0x26, 3},     // GL2C3     - 142
-    {0x26, 4},     // GL2C4     - 143
-    {0x26, 5},     // GL2C5     - 144
-    {0x26, 6},     // GL2C6     - 145
-    {0x26, 7},     // GL2C7     - 146
-    {0x26, 8},     // GL2C8     - 147
-    {0x26, 9},     // GL2C9     - 148
-    {0x26, 0x0a},  // GL2C10    - 149
-    {0x26, 0x0b},  // GL2C11    - 150
-    {0x26, 0x0c},  // GL2C12    - 151
-    {0x26, 0x0d},  // GL2C13    - 152
-    {0x26, 0x0e},  // GL2C14    - 153
-    {0x26, 0x0f},  // GL2C15    - 154
-    {0x27, 0},     // CHA       - 155
-    {0x28, 0},     // CHC0      - 156
-    {0x28, 1},     // CHC1      - 157
-    {0x28, 2},     // CHC2      - 158
-    {0x28, 3},     // CHC3      - 159
-    {0x29, 0},     // CHCG      - 160
-    {0x2A, 0},     // GUS       - 161
-    {0x2B, 0},     // GCR       - 162
-    {0x2C, 0},     // PH        - 163
+    {0x00, 0},     // CPF       - 4
+    {0x0D, 0},     // DB0       - 5
+    {0x0D, 1},     // DB1       - 6
+    {0x0D, 2},     // DB2       - 7
+    {0x0D, 3},     // DB3       - 8
+    {0x11, 0},     // GRBM      - 9
+    {0x12, 0},     // GRBMSE    - 10
+    {0x03, 0},     // PA_SU     - 11
+    {0x04, 0},     // PA_SC0    - 12
+    {0x04, 1},     // PA_SC1    - 13
+    {0x05, 0},     // SPI       - 14
+    {0x06, 0},     // SQ        - 15
+    {0x06, 0},     // SQ_ES     - 16
+    {0x06, 0},     // SQ_GS     - 17
+    {0x06, 0},     // SQ_VS     - 18
+    {0x06, 0},     // SQ_PS     - 19
+    {0x06, 0},     // SQ_LS     - 20
+    {0x06, 0},     // SQ_HS     - 21
+    {0x06, 0},     // SQ_CS     - 22
+    {0x07, 0},     // SX        - 23
+    {0x08, 0},     // TA0       - 24
+    {0x08, 1},     // TA1       - 25
+    {0x08, 2},     // TA2       - 26
+    {0x08, 3},     // TA3       - 27
+    {0x08, 4},     // TA4       - 28
+    {0x08, 5},     // TA5       - 29
+    {0x08, 6},     // TA6       - 30
+    {0x08, 7},     // TA7       - 31
+    {0x08, 8},     // TA8       - 32
+    {0x08, 9},     // TA9       - 33
+    {0x08, 0x0a},  // TA10      - 34
+    {0x08, 0x0b},  // TA11      - 35
+    {0x08, 0x0c},  // TA12      - 36
+    {0x08, 0x0d},  // TA13      - 37
+    {0x08, 0x0e},  // TA14      - 38
+    {0x08, 0x0f},  // TA15      - 39
+    {0x09, 0},     // TD0       - 40
+    {0x09, 1},     // TD1       - 41
+    {0x09, 2},     // TD2       - 42
+    {0x09, 3},     // TD3       - 43
+    {0x09, 4},     // TD4       - 44
+    {0x09, 5},     // TD5       - 45
+    {0x09, 6},     // TD6       - 46
+    {0x09, 7},     // TD7       - 47
+    {0x09, 8},     // TD8       - 48
+    {0x09, 9},     // TD9       - 49
+    {0x09, 0x0a},  // TD10      - 60
+    {0x09, 0x0b},  // TD11      - 61
+    {0x09, 0x0c},  // TD12      - 62
+    {0x09, 0x0d},  // TD13      - 63
+    {0x09, 0x0e},  // TD14      - 64
+    {0x09, 0x0f},  // TD15      - 65
+    {0x0A, 0},     // TCP0      - 66
+    {0x0A, 1},     // TCP1      - 67
+    {0x0A, 2},     // TCP2      - 68
+    {0x0A, 3},     // TCP3      - 69
+    {0x0A, 4},     // TCP4      - 70
+    {0x0A, 5},     // TCP5      - 71
+    {0x0A, 6},     // TCP6      - 72
+    {0x0A, 7},     // TCP7      - 73
+    {0x0A, 8},     // TCP8      - 74
+    {0x0A, 9},     // TCP9      - 75
+    {0x0A, 0x0a},  // TCP10     - 76
+    {0x0A, 0x0b},  // TCP11     - 77
+    {0x0A, 0x0c},  // TCP12     - 78
+    {0x0A, 0x0d},  // TCP13     - 79
+    {0x0A, 0x0e},  // TCP14     - 80
+    {0x0A, 0x0f},  // TCP15     - 81
+    {0x0F, 0},     // GDS       - 82
+    {0x16, 0},     // CPG       - 83
+    {0x17, 0},     // CPC       - 84
+    {0x1A, 0},     // ATC       - 85
+    {0x1B, 0},     // ATCL2     - 86
+    {0x1C, 0},     // MCVML2    - 87
+    {0x1D, 0},     // EA0       - 88
+    {0x1D, 1},     // EA1       - 89
+    {0x1D, 2},     // EA2       - 90
+    {0x1D, 3},     // EA3       - 91
+    {0x1D, 4},     // EA4       - 92
+    {0x1D, 5},     // EA5       - 93
+    {0x1D, 6},     // EA6       - 94
+    {0x1D, 7},     // EA7       - 95
+    {0x1D, 8},     // EA8       - 96
+    {0x1D, 9},     // EA9       - 97
+    {0x1D, 0x0a},  // EA10      - 98
+    {0x1D, 0x0b},  // EA11      - 99
+    {0x1D, 0x0c},  // EA12      - 100
+    {0x1D, 0x0d},  // EA13      - 101
+    {0x1D, 0x0e},  // EA14      - 102
+    {0x1D, 0x0f},  // EA15      - 103
+    {0x1E, 0},     // RPB       - 104
+    {0x1F, 0},     // RMI0      - 105
+    {0x1F, 1},     // RMI1      - 106
+    {0x21, 0},     // GE        - 107
+    {0x22, 0},     // GL1A      - 108
+    {0x23, 0},     // GL1C      - 109
+    {0x24, 0},     // GL1CG0    - 110
+    {0x24, 1},     // GL1CG1    - 111
+    {0x24, 2},     // GL1CG2    - 112
+    {0x24, 3},     // GL1CG3    - 113
+    {0x25, 0},     // GL2A0     - 114
+    {0x25, 1},     // GL2A1     - 115
+    {0x25, 2},     // GL2A2     - 116
+    {0x25, 3},     // GL2A3     - 117
+    {0x26, 0},     // GL2C0     - 118
+    {0x26, 1},     // GL2C1     - 119
+    {0x26, 2},     // GL2C2     - 120
+    {0x26, 3},     // GL2C3     - 121
+    {0x26, 4},     // GL2C4     - 122
+    {0x26, 5},     // GL2C5     - 123
+    {0x26, 6},     // GL2C6     - 124
+    {0x26, 7},     // GL2C7     - 125
+    {0x26, 8},     // GL2C8     - 126
+    {0x26, 9},     // GL2C9     - 127
+    {0x26, 0x0a},  // GL2C10    - 128
+    {0x26, 0x0b},  // GL2C11    - 129
+    {0x26, 0x0c},  // GL2C12    - 130
+    {0x26, 0x0d},  // GL2C13    - 131
+    {0x26, 0x0e},  // GL2C14    - 132
+    {0x26, 0x0f},  // GL2C15    - 133
+    {0x26, 0x10},  // GL2C16    - 134
+    {0x26, 0x11},  // GL2C17    - 135
+    {0x26, 0x12},  // GL2C18    - 136
+    {0x26, 0x13},  // GL2C19    - 137
+    {0x26, 0x14},  // GL2C20    - 138
+    {0x26, 0x15},  // GL2C21    - 139
+    {0x26, 0x16},  // GL2C22    - 140
+    {0x26, 0x17},  // GL2C23    - 141
+    {0x27, 0},     // CHA       - 142
+    {0x28, 0},     // CHC0      - 143
+    {0x28, 1},     // CHC1      - 144
+    {0x28, 2},     // CHC2      - 145
+    {0x28, 3},     // CHC3      - 146
+    {0x29, 0},     // CHCG      - 147
+    {0x2A, 0},     // GUS       - 148
+    {0x2B, 0},     // GCR       - 149
+    {0x2C, 0},     // PH        - 150
 }};
 
 void PerfCounter::convertInfo() {
@@ -726,7 +724,16 @@ bool PerfCounter::create() {
       counter_step = 1;
       break;
 
-    case PCIndexSelect::ShaderEngineAndInstance:
+    case PCIndexSelect::ShaderArray:
+      if (info_.counterIndex_ >=
+          (dev().properties().gfxipProperties.shaderCore.numShaderArrays * dev().properties().gfxipProperties.shaderCore.numShaderEngines)) {
+        return true;
+      }
+      counter_start = info_.counterIndex_;
+      counter_step = dev().properties().gfxipProperties.shaderCore.numShaderArrays * dev().properties().gfxipProperties.shaderCore.numShaderEngines;
+      break;
+
+      case PCIndexSelect::ComputeUnit:
       if (info_.counterIndex_ >=
           dev().properties().gfxipProperties.shaderCore.maxCusPerShaderArray) {
         return true;
