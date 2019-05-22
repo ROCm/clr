@@ -429,7 +429,7 @@ void Os::yield() { ::sched_yield(); }
 
 uint64_t Os::timeNanos() {
   struct timespec tp;
-  ::clock_gettime(CLOCK_MONOTONIC, &tp);
+  ::clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
   return (uint64_t)tp.tv_sec * (1000ULL * 1000ULL * 1000ULL) + (uint64_t)tp.tv_nsec;
 }
 
@@ -437,7 +437,7 @@ uint64_t Os::timerResolutionNanos() {
   static uint64_t resolution = 0;
   if (resolution == 0) {
     struct timespec tp;
-    ::clock_getres(CLOCK_MONOTONIC, &tp);
+    ::clock_getres(CLOCK_MONOTONIC_RAW, &tp);
     resolution = (uint64_t)tp.tv_sec * (1000ULL * 1000ULL * 1000ULL) + (uint64_t)tp.tv_nsec;
   }
   return resolution;
