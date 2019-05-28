@@ -181,6 +181,8 @@ release(cstring, CUDA_VISIBLE_DEVICES, "",                                    \
         "Only devices whose index is present in the sequence are visible to HIP")    \
 release(bool, GPU_ENABLE_WGP_MODE, true,                                      \
         "Enables WGP Mode in HW if available")                                \
+release(bool, OCL_DUMP_CODE_OBJECT, false,                                    \
+        "Enable dump code object")                                    \
 
 namespace amd {
 

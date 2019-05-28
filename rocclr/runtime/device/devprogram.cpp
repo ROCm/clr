@@ -1403,6 +1403,17 @@ bool Program::linkImpl(amd::option::Options* options) {
   }
 }
 
+static void dumpCodeObject(const std::string& image) {
+    char fname[30];
+    static std::atomic<int> index;
+    sprintf(fname, "_code_object%04d.o", index++);
+    LogPrintfInfo("Code object saved in %s\n", fname);
+    std::ofstream ofs;
+    ofs.open(fname, std::ios::binary);
+    ofs << image;
+    ofs.close();
+}
+
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
 bool Program::linkImplLC(amd::option::Options* options) {
@@ -1445,6 +1456,9 @@ bool Program::linkImplLC(amd::option::Options* options) {
     case ACL_TYPE_ISA: {
       amd::Comgr::destroy_data_set(inputs);
       binary_t isaBinary = binary();
+      if (OCL_DUMP_CODE_OBJECT) {
+        dumpCodeObject(std::string{(const char*)isaBinary.first, isaBinary.second});
+      }
       return setKernels(options, const_cast<void *>(isaBinary.first), isaBinary.second);
       break;
     }
