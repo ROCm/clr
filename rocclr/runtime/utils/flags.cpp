@@ -66,6 +66,13 @@ namespace amd {
 #endif  // __APPLE__
 
 bool IS_HIP = false;
+
+#if defined(WITH_GPU_DEVICE)
+bool IS_LEGACY = true;
+#else
+bool IS_LEGACY = false;
+#endif
+
 // static
 char* Flag::envstr_;
 

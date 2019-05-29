@@ -188,6 +188,8 @@ namespace amd {
 
 extern bool IS_HIP;
 
+extern bool IS_LEGACY;
+
 //! \addtogroup Utils
 //  @{
 
