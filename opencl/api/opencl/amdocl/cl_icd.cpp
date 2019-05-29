@@ -12,6 +12,8 @@
 
 #include <icd/icd_dispatch.h>
 
+#include <mutex>
+
 amd::PlatformIDS amd::PlatformID::Platform =  //{ NULL };
     {amd::ICDDispatchedObject::icdVendorDispatch_};
 
@@ -189,13 +191,55 @@ static bool ShouldLoadPlatform() {
   return false;
 }
 
-static BOOL CALLBACK ShouldLoadPlatformInit(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* lpContex) {
-  *reinterpret_cast<bool*>(Parameter) = ShouldLoadPlatform();
-  return TRUE;
+#else
+
+#include <dlfcn.h>
+
+// If there is only one platform, load it.
+// If there is more than one platform, only load platforms that have visible devices
+// If all platforms have no devices available, only load the PAL platform
+static bool ShouldLoadPlatform() {
+  bool shouldLoad = true;
+
+  if (!amd::Runtime::initialized()) {
+    amd::Runtime::init();
+  }
+  const int numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+
+  void *otherPlatform = nullptr;
+  if (amd::IS_LEGACY) {
+    otherPlatform = dlopen("libamdocl64.so", RTLD_LAZY);
+    if (otherPlatform != nullptr) { // Present platform exists
+      shouldLoad = numDevices > 0;
+    }
+  } else {
+    otherPlatform = dlopen("libamdocl-orca64.so", RTLD_LAZY);
+    if (otherPlatform != nullptr) { // Legacy platform exists
+      // gcc4.8 doesn't support casting void* to a function pointer
+      // Work around this by creating a typedef untill we upgrade the compiler
+      typedef void*(*clGetFunctionAddress_t)(const char *);
+      typedef cl_int(*clIcdGetPlatformIDs_t)(cl_uint, cl_platform_id *, cl_uint *);
+
+      clGetFunctionAddress_t legacyGetFunctionAddress =
+        reinterpret_cast<clGetFunctionAddress_t>(dlsym(otherPlatform, "clGetExtensionFunctionAddress"));
+      clIcdGetPlatformIDs_t legacyGetPlatformIDs =
+        reinterpret_cast<clIcdGetPlatformIDs_t>(legacyGetFunctionAddress("clIcdGetPlatformIDsKHR"));
+
+      cl_uint numLegacyPlatforms = 0;
+      legacyGetPlatformIDs(0, nullptr, &numLegacyPlatforms);
+
+      shouldLoad = (numDevices > 0) || (numLegacyPlatforms == 0);
+    }
+  }
+
+  if (otherPlatform != nullptr) {
+    dlclose(otherPlatform);
+  }
+
+  return shouldLoad;
 }
 
-
-#endif  // defined(ATI_OS_WIN)
+#endif // defined(ATI_OS_WIN)
 
 CL_API_ENTRY cl_int CL_API_CALL clIcdGetPlatformIDsKHR(cl_uint num_entries,
                                                        cl_platform_id* platforms,
@@ -205,28 +249,21 @@ CL_API_ENTRY cl_int CL_API_CALL clIcdGetPlatformIDsKHR(cl_uint num_entries,
     return CL_INVALID_VALUE;
   }
 
-#if defined(ATI_OS_WIN)
   static bool shouldLoad = true;
 
-  static INIT_ONCE initOnce;
-  InitOnceExecuteOnce(&initOnce, ShouldLoadPlatformInit, &shouldLoad, NULL);
+  static std::once_flag initOnce;
+  std::call_once(initOnce, [](){ shouldLoad = ShouldLoadPlatform(); });
 
   if (!shouldLoad) {
     *not_null(num_platforms) = 0;
     return CL_SUCCESS;
   }
-#endif  // defined(ATI_OS_WIN)
 
   if (!amd::Runtime::initialized()) {
     amd::Runtime::init();
   }
 
   if (num_platforms != NULL && platforms == NULL) {
-    int numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
-    if (numDevices == 0) {
-      *num_platforms = 0;
-      return CL_INVALID_PLATFORM;
-    }
     *num_platforms = 1;
     return CL_SUCCESS;
   }
