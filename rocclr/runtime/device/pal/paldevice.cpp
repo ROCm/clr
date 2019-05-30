@@ -1511,7 +1511,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
         (settings().remoteAlloc_)) {
       // Allocate remote memory if AHP allocation and context has just 1 device
       if ((owner.getMemFlags() & CL_MEM_ALLOC_HOST_PTR) &&
-          (owner.getContext().devices().size() == 1)) {
+          (owner.getContext().devices().size() == 1) &&
+          (owner.getSize() < static_cast<size_t>(GPU_MAX_USWC_ALLOC_SIZE) * Mi)) {
         if (owner.getMemFlags() &
             (CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY | CL_MEM_HOST_NO_ACCESS)) {
           // GPU will be reading from this host memory buffer,
