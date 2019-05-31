@@ -42,6 +42,12 @@
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 #endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
+#ifdef EARLY_INLINE
+#define AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-early-inline-all"
+#else
+#define AMDGPU_EARLY_INLINE_ALL_OPTION
+#endif
+
 namespace device {
 
 // ================================================================================================
@@ -687,7 +693,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
   driverOptions.append(ProcessOptions(options));
 
   // Set whole program mode
-  driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
+  driverOptions.append(AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-prelink");
 
   if (!device().settings().enableWgpMode_) {
     driverOptions.append(" -mcumode");
@@ -830,7 +836,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
   driverOptions.append(ProcessOptions(options));
 
   // Set whole program mode
-  driverOptions.append(" -mllvm -amdgpu-early-inline-all -mllvm -amdgpu-prelink");
+  driverOptions.append(AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-prelink");
 
   // Find the temp folder for the OS
   std::string tempFolder = amd::Os::getTempPath();
@@ -1525,7 +1531,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   }
 
   // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
+  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols" AMDGPU_EARLY_INLINE_ALL_OPTION);
 
   if (!device().settings().enableWgpMode_) {
     codegenOptions.append(" -mcumode");
@@ -1757,7 +1763,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Force object code v2.
   codegenOptions.append(" -mno-code-object-v3");
   // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols -mllvm -amdgpu-early-inline-all");
+  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols" AMDGPU_EARLY_INLINE_ALL_OPTION);
 
   if (!device().settings().enableWgpMode_) {
     codegenOptions.append(" -mcumode");
