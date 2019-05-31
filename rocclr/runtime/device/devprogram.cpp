@@ -200,8 +200,11 @@ void Program::extractBuildLog(const char* buildLog, amd_comgr_data_set_t dataSet
     status = amd::Comgr::action_data_count(dataSet, AMD_COMGR_DATA_KIND_LOG, &count);
 
     if (status == AMD_COMGR_STATUS_SUCCESS && count > 0) {
-      const std::string logName(buildLog);
-      status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, logName);
+      char* logData = nullptr;
+      size_t logSize;
+      status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, "", &logData, &logSize);
+      buildLog_ += logData;
+      free(logData);
     }
   }
   if (status != AMD_COMGR_STATUS_SUCCESS) {
@@ -254,36 +257,13 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
   }
 
   // save the binary to the file as output file name is specified
-  // For log dataset, outputs are directed to stdout and stderr if
-  // the file name is "stdout" and "stderr", respectively.
   if (!outFileName.empty()) {
-    std::ios_base::openmode mode = std::ios::trunc | std::ios::binary;
-
-    bool done = false;
-    // handle the log outputs
-    if (dataKind == AMD_COMGR_DATA_KIND_LOG) {
-      if (binarySize == 0) {  // nothing to output
-        done = true;
-      } else if (outFileName.compare("stdout") == 0) {
-        std::cout << binary << std::endl;
-        done = true;
-      } else if (outFileName.compare("stderr") == 0) {
-        std::cerr << binary << std::endl;
-        done = true;
-      } else {
-        mode = std::ios::app;   // use append mode for the log outputs
-      }
-    }
-
-    // output to file
-    if (!done) {
-      std::ofstream f(outFileName.c_str(), mode);
-      if (f.is_open()) {
-        f.write(binary, binarySize);
-        f.close();
-      } else {
-        buildLog_ += "Warning: opening the file to dump the code failed.\n";
-      }
+    std::ofstream f(outFileName.c_str(), std::ios::trunc);
+    if (f.is_open()) {
+      f.write(binary, binarySize);
+      f.close();
+    } else {
+      buildLog_ += "Warning: opening the file to dump the code failed.\n";
     }
   }
 
