@@ -771,7 +771,7 @@ void RgpCaptureMgr::WriteBarrierEndMarker(const VirtualGPU* gpu,
     marker.identifier = RgpSqttMarkerIdentifierBarrierEnd;
     marker.cbId = trace_.begin_queue_->queue(MainEngine).cmdBufId();
 
-    marker.waitOnEopTs = operations.pipelineStalls.waitOnEopTsBottomOfPipe;
+    marker.waitOnEopTs = operations.pipelineStalls.eopTsBottomOfPipe;
     marker.vsPartialFlush = operations.pipelineStalls.vsPartialFlush;
     marker.psPartialFlush = operations.pipelineStalls.psPartialFlush;
     marker.csPartialFlush = operations.pipelineStalls.csPartialFlush;
