@@ -239,7 +239,8 @@ class Memory : public amd::RuntimeObject {
   //! Creates and initializes device (cache) memory for all devices
   virtual bool create(void* initFrom = NULL,     //!< Pointer to the initialization data
                       bool sysMemAlloc = false,  //!< Allocate device memory in system memory
-                      bool skipAlloc = false     //!< Skip device memory allocation
+                      bool skipAlloc = false,    //!< Skip device memory allocation
+                      bool forceAlloc = false    //!< Force device memory allocation
   );
 
   //! Allocates device (cache) memory for a specific device

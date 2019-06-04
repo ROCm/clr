@@ -227,8 +227,11 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
   return true;
 }
 
-bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc) {
+bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool forceAlloc) {
   static const bool forceAllocHostMem = false;
+
+  // Sanity checks (can't defer and force allocations at the same time)
+  assert(!(skipAlloc && forceAlloc));
 
   initDeviceMemory();
 
@@ -260,7 +263,9 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc) {
     deviceMemories_[i].ref_ = devices[i];
     deviceMemories_[i].value_ = NULL;
 
-    if (!skipAlloc && ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC)) {
+    if (forceAlloc ||
+        (!skipAlloc &&
+         ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC))) {
       device::Memory* mem = getDeviceMemory(*devices[i]);
       if (NULL == mem) {
         LogPrintfError("Can't allocate memory size - 0x%08X bytes!", getSize());
