@@ -1,5 +1,5 @@
 include(bc2h)
-1;95;0c
+
 set(INC_SUFFIX "amdgcn.inc")
 
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
