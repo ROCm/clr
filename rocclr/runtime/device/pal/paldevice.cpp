@@ -2003,7 +2003,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
         if (scratchBuf->regNum_ > 0) {
           scratchBuf->destroyMemory();
           // Calculate the size of the scratch buffer for a queue
-          uint32_t numTotalCUs = info().maxComputeUnits_;
+          uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
           uint32_t numMaxWaves = settings().numScratchWavesPerCu_ * numTotalCUs;
           scratchBuf->size_ = static_cast<uint64_t>(info().wavefrontWidth_) * scratchBuf->regNum_ *
               numMaxWaves * sizeof(uint32_t);

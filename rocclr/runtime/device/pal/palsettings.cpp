@@ -211,6 +211,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
       }
       lcWavefrontSize64_ = !enableWave32Mode_;
+      if (enableWave32Mode_) {
+        numScratchWavesPerCu_ *= 2;
+      }
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
       // Enable HW P2P path for Vega20+. Runtime still relies on KMD/PAL for support
