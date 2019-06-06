@@ -10,6 +10,7 @@
 #include "utils/options.hpp"
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
+#include "comgrctx.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #ifndef USE_COMGR_LIBRARY
