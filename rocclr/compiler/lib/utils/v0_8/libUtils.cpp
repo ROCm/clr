@@ -30,6 +30,7 @@ static const std::string sgfx904 = "AMD:AMDGPU:9:0:4";
 static const std::string sgfx905 = "AMD:AMDGPU:9:0:5";
 static const std::string sgfx906 = "AMD:AMDGPU:9:0:6";
 static const std::string sgfx907 = "AMD:AMDGPU:9:0:7";
+static const std::string sgfx908 = "AMD:AMDGPU:9:0:8";
 static const std::string sgfx1000 = "AMD:AMDGPU:10:0:0";
 static const std::string sgfx1010 = "AMD:AMDGPU:10:1:0";
 static const std::string sgfx1011 = "AMD:AMDGPU:10:1:1";
@@ -547,6 +548,7 @@ const std::string &getIsaTypeName(const aclTargetInfo *target)
   case 905: return sgfx905;
   case 906: return sgfx906;
   case 907: return sgfx907;
+  case 908: return sgfx908;
   case 1000: return sgfx1000;
   case 1010: return sgfx1010;
   case 1011: return sgfx1011;
@@ -616,6 +618,7 @@ int getIsaType(const aclTargetInfo *target)
         case AI_GREENLAND_P_A1: return Mapping.xnack_supported ? 901 : 900;
         case AI_VEGA12_P_A0:    return Mapping.xnack_supported ? 905 : 904;
         case AI_VEGA20_P_A0:    return Mapping.xnack_supported ? 907 : 906;
+        case AI_MI100_P_A0:     return 908;
       }
     case FAMILY_RV:
       switch (Mapping.chip_enum) {
