@@ -3,6 +3,7 @@
 //
 #if defined(USE_COMGR_LIBRARY)
 #include "os/os.hpp"
+#include "utils/flags.hpp"
 #include "comgrctx.hpp"
 
 namespace amd {
@@ -12,6 +13,7 @@ bool Comgr::is_ready_ = false;
 
 bool Comgr::LoadLib() {
 #if defined(COMGR_DYN_DLL)
+  LogInfo("Loading COMGR library.");
   static const char* ComgrLibName =
     LP64_SWITCH(WINDOWS_SWITCH("amdcomgr.dll", "libamdcomgr32.so"),
                 WINDOWS_SWITCH("amdcomgr64.dll", "libamdcomgr64.so"));

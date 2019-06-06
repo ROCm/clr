@@ -8,11 +8,12 @@
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
-#include "comgrctx.hpp"
 
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #ifndef USE_COMGR_LIBRARY
 #include "driver/AmdCompiler.h"
+#else
+#include "amd_comgr.h"
 #endif
 //#include "llvm/Support/AMDGPUMetadata.h"
 

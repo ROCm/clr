@@ -6,6 +6,7 @@
 #include "thread/atomic.hpp"
 #include "thread/monitor.hpp"
 #include "utils/options.hpp"
+#include "comgrctx.hpp"
 
 #if defined(WITH_HSA_DEVICE)
 #include "device/rocm/rocdevice.hpp"
@@ -232,7 +233,6 @@ bool Device::ValidateComgr() {
 #if defined(USE_COMGR_LIBRARY)
   // Check if Lightning compiler was requested
   if (settings_->useLightning_) {
-    LogInfo("Loading COMGR library.");
     std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib);
     // Use Lightning only if it's available
     settings_->useLightning_ = amd::Comgr::IsReady();

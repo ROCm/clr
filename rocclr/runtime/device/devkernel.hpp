@@ -26,6 +26,7 @@ struct RuntimeHandle {
 };
 
 #if defined(USE_COMGR_LIBRARY)
+#include "amd_comgr.h"
 #include "llvm/Support/AMDGPUMetadata.h"
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 
@@ -383,6 +384,7 @@ class Kernel : public amd::HeapObject {
     std::string compileVecTypeHint_;  //!< kernel compiled vector type hint
     bool uniformWorkGroupSize_;       //!< uniform work group size option
     size_t wavesPerSimdHint_;         //!< waves per simd hit
+    int maxOccupancyPerCu_;           //!< Max occupancy per compute unit in threads
   };
 
   //! Default constructor
@@ -560,17 +562,6 @@ class Kernel : public amd::HeapObject {
 };
 
 #if defined(USE_COMGR_LIBRARY)
-static amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
-                                     std::string* str) {
-  size_t size = 0;
-  amd_comgr_status_t status = amd::Comgr::get_metadata_string(meta, &size, NULL);
-
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    str->resize(size-1);    // minus one to discount the null character
-    status = amd::Comgr::get_metadata_string(meta, &size, &((*str)[0]));
-  }
-
-  return status;
-}
+amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta, std::string* str);
 #endif // defined(USE_COMGR_LIBRARY)
 } // namespace device
