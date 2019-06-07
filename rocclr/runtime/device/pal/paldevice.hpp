@@ -239,13 +239,12 @@ class Device : public NullDevice {
   };
 
   struct ScratchBuffer : public amd::HeapObject {
-    uint regNum_;      //!< The number of used scratch registers
     Memory* memObj_;   //!< Memory objects for scratch buffers
     uint64_t offset_;  //!< Offset from the global scratch store
     uint64_t size_;    //!< Scratch buffer size on this queue
 
     //! Default constructor
-    ScratchBuffer() : regNum_(0), memObj_(NULL), offset_(0), size_(0) {}
+    ScratchBuffer() : memObj_(NULL), offset_(0), size_(0) {}
 
     //! Default constructor
     ~ScratchBuffer();
@@ -551,7 +550,8 @@ class Device : public NullDevice {
 
   //! Allocates/reallocates the scratch buffer, according to the usage
   bool allocScratch(uint regNum,            //!< Number of the scratch registers
-                    const VirtualGPU* vgpu  //!< Virtual GPU for the allocation
+                    const VirtualGPU* vgpu, //!< Virtual GPU for the allocation
+                    uint vgprs              //!< Used VGPRs in the kernel
   );
 
   //! Interop for D3D devices

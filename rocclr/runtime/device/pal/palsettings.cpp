@@ -112,7 +112,7 @@ Settings::Settings() {
   numDeviceEvents_ = 1024;
   numWaitEvents_ = 8;
 
-  numScratchWavesPerCu_ = 16;
+  numScratchWavesPerCu_ = 32;
 
   // Don't support platform atomics by default.
   svmAtomics_ = false;
