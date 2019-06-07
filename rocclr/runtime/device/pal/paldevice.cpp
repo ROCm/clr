@@ -1977,7 +1977,7 @@ void Device::ScratchBuffer::destroyMemory() {
   memObj_ = nullptr;
 }
 
-bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
+bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
   if (regNum > 0) {
     // Serialize the scratch buffer allocation code
     amd::ScopedLock lk(scratchAlloc_);
@@ -1988,29 +1988,36 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
       LogError("Requested private memory is bigger than HW supports!");
       regNum = threadSizeLimit;
     }
+
+    // Calculate the size of the scratch buffer for a queue
+    uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
+    // Find max waves based on VGPR per SIMD
+    uint32_t numMaxWaves = properties().gfxipProperties.shaderCore.numAvailableVgprs / vgprs;
+    // Find max waves per CU
+    numMaxWaves *= properties().gfxipProperties.shaderCore.numSimdsPerCu;
+    // Find max waves per device
+    numMaxWaves = std::min(settings().numScratchWavesPerCu_, numMaxWaves) * numTotalCUs;
+    uint64_t newSize =
+        static_cast<uint64_t>(info().wavefrontWidth_) * regNum * numMaxWaves * sizeof(uint32_t);
+
     // Check if the current buffer isn't big enough
-    if (regNum > scratch_[sb]->regNum_) {
+    if (newSize > scratch_[sb]->size_) {
       // Stall all command queues, since runtime will reallocate memory
       ScopedLockVgpus lock(*this);
 
-      scratch_[sb]->regNum_ = regNum;
+      scratch_[sb]->size_ = newSize;
       uint64_t size = 0;
       uint64_t offset = 0;
 
       // Destroy all views
       for (uint s = 0; s < scratch_.size(); ++s) {
         ScratchBuffer* scratchBuf = scratch_[s];
-        if (scratchBuf->regNum_ > 0) {
+        if (scratchBuf->size_ > 0) {
           scratchBuf->destroyMemory();
-          // Calculate the size of the scratch buffer for a queue
-          uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
-          uint32_t numMaxWaves = settings().numScratchWavesPerCu_ * numTotalCUs;
-          scratchBuf->size_ = static_cast<uint64_t>(info().wavefrontWidth_) * scratchBuf->regNum_ *
-              numMaxWaves * sizeof(uint32_t);
-          scratchBuf->size_ = std::min(scratchBuf->size_, info().maxMemAllocSize_);
-          scratchBuf->size_ = std::min(scratchBuf->size_, uint64_t(3 * Gi));
+          scratchBuf->size_ = std::min(newSize, info().maxMemAllocSize_);
+          scratchBuf->size_ = std::min(newSize, uint64_t(3 * Gi));
           // Note: Generic address space setup in HW requires 64KB alignment for scratch
-          scratchBuf->size_ = amd::alignUp(scratchBuf->size_, 64 * Ki);
+          scratchBuf->size_ = amd::alignUp(newSize, 64 * Ki);
           scratchBuf->offset_ = offset;
           size += scratchBuf->size_;
           offset += scratchBuf->size_;
@@ -2024,14 +2031,14 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
       if ((globalScratchBuf_ == nullptr) || !globalScratchBuf_->create(Resource::Scratch)) {
         LogError("Couldn't allocate scratch memory");
         for (uint s = 0; s < scratch_.size(); ++s) {
-          scratch_[s]->regNum_ = 0;
+          scratch_[s]->size_ = 0;
         }
         return false;
       }
 
       for (uint s = 0; s < scratch_.size(); ++s) {
         // Loop through all memory objects and reallocate them
-        if (scratch_[s]->regNum_ > 0) {
+        if (scratch_[s]->size_ > 0) {
           // Allocate new buffer
           scratch_[s]->memObj_ = new pal::Memory(*this, scratch_[s]->size_);
           Resource::ViewParams view;
@@ -2042,7 +2049,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
               !scratch_[s]->memObj_->create(Resource::View, &view)) {
             LogError("Couldn't allocate a scratch view");
             delete scratch_[s]->memObj_;
-            scratch_[s]->regNum_ = 0;
+            scratch_[s]->size_ = 0;
             return false;
           }
         }
@@ -2058,7 +2065,7 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
   uint regNum = static_cast<uint>(devKernel->workGroupInfo()->scratchRegs_);
   const VirtualGPU* vgpu = static_cast<const VirtualGPU*>(vdev);
 
-  if (!allocScratch(regNum, vgpu)) {
+  if (!allocScratch(regNum, vgpu, devKernel->workGroupInfo()->usedVGPRs_)) {
     return false;
   }
 
@@ -2068,7 +2075,8 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
       amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(*this);
       if (defQueue != nullptr) {
         vgpu = static_cast<VirtualGPU*>(defQueue->vDev());
-        if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu)) {
+        if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu,
+                          devKernel->workGroupInfo()->usedVGPRs_)) {
           return false;
         }
       } else {
@@ -2084,7 +2092,7 @@ void Device::destroyScratchBuffers() {
   if (globalScratchBuf_ != nullptr) {
     for (uint s = 0; s < scratch_.size(); ++s) {
       scratch_[s]->destroyMemory();
-      scratch_[s]->regNum_ = 0;
+      scratch_[s]->size_ = 0;
     }
     delete globalScratchBuf_;
     globalScratchBuf_ = nullptr;
