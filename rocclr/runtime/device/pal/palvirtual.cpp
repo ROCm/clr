@@ -533,7 +533,8 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
 }
 
 VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev) : cbWorkload_(0), dispatchSplitSize_(0) {
-  aluCnt_ = dev.info().simdPerCU_ * dev.info().simdWidth_ * dev.info().maxComputeUnits_;
+  aluCnt_ = dev.properties().gfxipProperties.shaderCore.numSimdsPerCu *
+    dev.info().simdWidth_ * dev.info().maxComputeUnits_;
   maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
       // find time in us
       dev.settings().maxWorkloadTime_ * aluCnt_;

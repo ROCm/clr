@@ -633,17 +633,17 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
     info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
 
-    info_.simdPerCU_ = hwInfo()->simdPerCU_;
+    info_.simdPerCU_ = palProp.gfxipProperties.shaderCore.numSimdsPerCu;
     info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
     info_.simdWidth_ = hwInfo()->simdWidth_;
-    info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
+    info_.simdInstructionWidth_ = 1;
     info_.wavefrontWidth_ =
         settings().enableWave32Mode_ ? 32 : palProp.gfxipProperties.shaderCore.nativeWavefrontSize;
     info_.availableSGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableSgprs;
 
     info_.globalMemChannelBanks_ = 4;
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
-    info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
+    info_.localMemSizePerCU_ = palProp.gfxipProperties.shaderCore.ldsSizePerCu;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
     info_.gfxipVersion_ =
         settings().useLightning_ ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
@@ -658,7 +658,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
     info_.pcieDeviceId_ = palProp.deviceId;
     info_.pcieRevisionId_ = palProp.revisionId;
-    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * hwInfo()->simdPerCU_ *
+    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * info_.simdPerCU_ *
         palProp.gfxipProperties.shaderCore.numWavefrontsPerSimd;
   }
 }
