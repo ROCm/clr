@@ -138,7 +138,7 @@ Settings::Settings() {
       std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
 
   maxCmdBuffers_ = 12;
-  useLightning_ = GPU_ENABLE_LC;
+  useLightning_ = amd::IS_HIP ? true : GPU_ENABLE_LC;
   enableWgpMode_ = false;
   enableWave32Mode_ = false;
   hsailExplicitXnack_ = false;
