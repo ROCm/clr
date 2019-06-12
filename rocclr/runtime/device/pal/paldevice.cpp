@@ -660,6 +660,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.pcieRevisionId_ = palProp.revisionId;
     info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * info_.simdPerCU_ *
         palProp.gfxipProperties.shaderCore.numWavefrontsPerSimd;
+    info_.cooperativeGroups_ = GPU_ENABLE_COOP_GROUPS;
+    info_.cooperativeMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
   }
 }
 
@@ -852,6 +854,7 @@ Device::~Device() {
 }
 
 extern const char* SchedulerSourceCode;
+extern const char* GwsInitSourceCode;
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
 uint32_t gNumDevices = 0;
@@ -2059,7 +2062,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
   return true;
 }
 
-bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* vdev) {
+bool Device::validateKernel(
+    const amd::Kernel& kernel, const device::VirtualDevice* vdev, bool coop_groups) {
   // Find the number of scratch registers used in the kernel
   const device::Kernel* devKernel = kernel.getDeviceKernel(*this);
   uint regNum = static_cast<uint>(devKernel->workGroupInfo()->scratchRegs_);
@@ -2067,6 +2071,14 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
 
   if (!allocScratch(regNum, vgpu, devKernel->workGroupInfo()->usedVGPRs_)) {
     return false;
+  }
+  // Runtime plans to launch cooperative groups on the device queue, thus
+  // validate the scratch buffer on that queue
+  if (coop_groups) {
+    vgpu = xferQueue();
+    if (!allocScratch(regNum, vgpu, devKernel->workGroupInfo()->usedVGPRs_)) {
+      return false;
+    }
   }
 
   if (devKernel->hsa()) {
@@ -2224,6 +2236,35 @@ void Device::svmFree(void* ptr) const {
   }
 }
 
+bool Device::AcquireExclusiveGpuAccess() {
+    // Lock the virtual GPU list
+    vgpusAccess().lock();
+
+    // Find all available virtual GPUs and lock them
+    // from the execution of commands
+    for (uint idx = 0; idx < vgpus().size(); ++idx) {
+        vgpus()[idx]->execution().lock();
+        // Make sure a wait is done
+        vgpus()[idx]->WaitForIdleCompute();
+    }
+//    if (!hsa_exclusive_gpu_access_) {
+        // @todo call rocr
+//        hsa_exclusive_gpu_access_ = true;
+//    }
+    return true;
+}
+
+void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
+    vgpu.WaitForIdleCompute();
+    // Find all available virtual GPUs and unlock them
+    // for the execution of commands
+    for (uint idx = 0; idx < vgpus().size(); ++idx) {
+        vgpus()[idx]->execution().unlock();
+    }
+
+    // Unock the virtual GPU list
+    vgpusAccess().unlock();
+}
 
 Device::SrdManager::~SrdManager() {
   for (uint i = 0; i < pool_.size(); ++i) {
@@ -2333,7 +2374,7 @@ bool Device::createBlitProgram() {
   bool result = true;
 
   // Delayed compilation due to brig_loader memory allocation
-  const char* scheduler = nullptr;
+  const char* blits = nullptr;
   const char* ocl20 = nullptr;
 
   std::string sch = SchedulerSourceCode;
@@ -2348,14 +2389,17 @@ bool Device::createBlitProgram() {
       sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
       loc = sch.find(AmdScheduler, (loc + sizeof(AmdSchedulerPal) - 1));
       sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
+      if (info().cooperativeGroups_) {
+        sch.append(GwsInitSourceCode);
+      }
     }
-    scheduler = sch.c_str();
+    blits = sch.c_str();
     ocl20 = "-cl-std=CL2.0";
   }
 
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler, ocl20)) {
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, blits, ocl20)) {
     delete blitProgram_;
     blitProgram_ = nullptr;
     LogError("Couldn't create blit kernels!");

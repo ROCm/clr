@@ -298,7 +298,8 @@ class VirtualGPU : public device::VirtualDevice {
       const_address parameters,            //!< Parameters for the kernel
       bool nativeMem = true,               //!< Native memory objects
       amd::Event* enqueueEvent = nullptr,  //!< Event provided in the enqueue kernel command
-      uint32_t sharedMemBytes = 0          //!< Shared memory size
+      uint32_t sharedMemBytes = 0,         //!< Shared memory size
+      bool cooperativeGroups = false       //!< TRUE if cooperative groups mode is required
   );
   void submitNativeFn(amd::NativeFnCommand& vcmd);
   void submitFillMemory(amd::FillMemoryCommand& vcmd);
@@ -511,6 +512,14 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Checks if RGP capture is enabled
   bool rgpCaptureEna() const { return state_.rgpCaptureEnabled_; }
+
+  //! Waits for idle on compute engine
+  void WaitForIdleCompute() {
+    if (events_[MainEngine].isValid()) {
+      queues_[events_[MainEngine].engineId_]->waitForEvent(events_[MainEngine].id_);
+      events_[MainEngine].invalidate();
+    }
+  }
 
  protected:
   void profileEvent(EngineType engine, bool type) const;

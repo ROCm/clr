@@ -410,7 +410,8 @@ class Device : public NullDevice, public CALGSLDevice {
 
   //! Validates kernel before execution
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
-                              const device::VirtualDevice* vdev);
+                              const device::VirtualDevice* vdev,
+                              bool coop_groups = false);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 

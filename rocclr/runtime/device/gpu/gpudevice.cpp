@@ -1955,7 +1955,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu) {
   return true;
 }
 
-bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* vdev) {
+bool Device::validateKernel(
+    const amd::Kernel& kernel, const device::VirtualDevice* vdev, bool coop_groups) {
   // Find the number of scratch registers used in the kernel
   const device::Kernel* devKernel = kernel.getDeviceKernel(*this);
   uint regNum = static_cast<uint>(devKernel->workGroupInfo()->scratchRegs_);

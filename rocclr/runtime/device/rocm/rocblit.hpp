@@ -234,6 +234,7 @@ class KernelBlitManager : public DmaBlitManager {
     FillBuffer,
     FillImage,
     Scheduler,
+    GwsInit,
     BlitTotal
   };
 
@@ -374,6 +375,10 @@ class KernelBlitManager : public DmaBlitManager {
                     hsa_signal_t& schedulerSignal,
                     uint threads);
 
+  //! Runs a blit kernel for GWS init
+  bool RunGwsInit(uint32_t value             //!< Initial value for GWS resource
+                  ) const;
+
  private:
   static const size_t MaxXferBuffers = 2;
   static const uint TransferSplitSize = 1;
@@ -434,7 +439,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "copyImage",         "copyImage1DA",      "copyImageToBuffer",
     "copyBufferToImage", "copyBufferRect",    "copyBufferRectAligned",
     "copyBuffer",        "copyBufferAligned", "fillBuffer",
-    "fillImage",         "scheduler",
+    "fillImage",         "scheduler",         "gwsInit"
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) const {

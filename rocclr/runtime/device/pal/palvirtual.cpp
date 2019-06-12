@@ -2166,24 +2166,62 @@ void VirtualGPU::PostDeviceEnqueue(const amd::Kernel& kernel, const HSAILKernel&
 
 // ================================================================================================
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
-  // Make sure VirtualGPU has an exclusive access to the resources
-  amd::ScopedLock lock(execution());
+  if (vcmd.cooperativeGroups()) {
+    uint32_t workgroups = 0;
+    for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
+        if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
+        workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
+      }
+    }
+    uint32_t counter = workgroups *
+      amd::alignUp(vcmd.sizes().local().product(), dev().info().wavefrontWidth_) /
+      dev().info().wavefrontWidth_;
 
-  profilingBegin(vcmd);
+    bool test = true;
+    VirtualGPU* queue = (test) ? this : dev().xferQueue();
 
-  // Submit kernel to HW
-  if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false, &vcmd.event(),
-                            vcmd.sharedMemBytes())) {
-    vcmd.setStatus(CL_INVALID_OPERATION);
+    // Wait for the execution on the current queue, since the coop groups will use the device queue
+    waitAllEngines();
+
+    amd::ScopedLock lock(queue->blitMgr().lockXfer());
+
+    queue->profilingBegin(vcmd);
+
+    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(counter);
+    queue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue);
+
+    // Submit kernel to HW
+    if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
+                                     false, &vcmd.event(), vcmd.sharedMemBytes(),
+                                     vcmd.cooperativeGroups())) {
+      vcmd.setStatus(CL_INVALID_OPERATION);
+    }
+
+    queue->profilingEnd(vcmd);
+
+    // Wait for the execution on the device queue. Keep the current queue in-order
+    queue->waitAllEngines();
+  } else {
+    // Make sure VirtualGPU has an exclusive access to the resources
+    amd::ScopedLock lock(execution());
+
+    profilingBegin(vcmd);
+
+    // Submit kernel to HW
+    if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false, &vcmd.event(),
+                              vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+      vcmd.setStatus(CL_INVALID_OPERATION);
+    }
+
+    profilingEnd(vcmd);
   }
-
-  profilingEnd(vcmd);
 }
 
 // ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
                                       const_address parameters, bool nativeMem,
-                                      amd::Event* enqueueEvent, uint32_t sharedMemBytes) {
+                                      amd::Event* enqueueEvent, uint32_t sharedMemBytes,
+                                      bool cooperativeGroup) {
   size_t newOffset[3] = {0, 0, 0};
   size_t newGlobalSize[3] = {0, 0, 0};
 
@@ -2239,6 +2277,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     LogError("Wrong memory objects!");
     return false;
   }
+
   bool needFlush = false;
   // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd
   // are in the same cmdBuffer
@@ -2358,6 +2397,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
   }
+
   // Perform post dispatch logic for RGP traces
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->PostDispatch(this);

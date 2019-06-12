@@ -2235,4 +2235,28 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   return true;
 }
 
+bool KernelBlitManager::RunGwsInit(
+  uint32_t value) const {
+  amd::ScopedLock k(lockXferOps_);
+
+  size_t globalWorkOffset[1] = { 0 };
+  size_t globalWorkSize[1] = { 1 };
+  size_t localWorkSize[1] = { 1 };
+
+  // Program kernels arguments
+  setArgument(kernels_[GwsInit], 0, sizeof(uint32_t), &value);
+
+  // Create ND range object for the kernel's execution
+  amd::NDRangeContainer ndrange(1, globalWorkOffset, globalWorkSize, localWorkSize);
+
+  // Execute the blit
+  address parameters = captureArguments(kernels_[GwsInit]);
+
+  bool result = gpu().submitKernelInternal(ndrange, *kernels_[GwsInit], parameters, nullptr);
+
+  releaseArguments(parameters);
+
+  return result;
+}
+
 }  // namespace pal

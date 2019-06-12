@@ -173,6 +173,8 @@ release(bool, GPU_ENABLE_LC, IS_LIGHTNING,                                    \
         "Enables LC path")                                                    \
 release(bool, GPU_ENABLE_HW_P2P, false,                                       \
         "Enables HW P2P path")                                                \
+release(bool, GPU_ENABLE_COOP_GROUPS, false,                                  \
+         "Enables cooperative group launch")                                  \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
 release(cstring, HIP_VISIBLE_DEVICES, "",                                     \

@@ -226,8 +226,13 @@ void Command::enqueue() {
 const Context& Command::context() const { return queue_->context(); }
 
 NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                                           Kernel& kernel, const NDRangeContainer& sizes, uint32_t sharedMemBytes)
-    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList), kernel_(kernel), sizes_(sizes), sharedMemBytes_(sharedMemBytes) {
+                                           Kernel& kernel, const NDRangeContainer& sizes,
+                                           uint32_t sharedMemBytes, uint32_t extraParam)
+    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList)
+    , kernel_(kernel)
+    , sizes_(sizes)
+    , sharedMemBytes_(sharedMemBytes)
+    , extraParam_(extraParam) {
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   profilingInfo_.setCallback(devKernel->getProfilingCallback(
@@ -393,7 +398,7 @@ bool MigrateMemObjectsCommand::validateMemory() {
 cl_int NDRangeKernelCommand::captureAndValidate() {
   const amd::Device& device = queue()->device();
   // Validate the kernel before submission
-  if (!queue()->device().validateKernel(kernel(), queue()->vdev())) {
+  if (!queue()->device().validateKernel(kernel(), queue()->vdev(), cooperativeGroups())) {
     return CL_OUT_OF_RESOURCES;
   }
 
