@@ -1443,6 +1443,9 @@ bool Kernel::run(VirtualGPU& gpu, GpuEvent* calEvent, bool lastRun, bool lastDop
   gpu.rs()->Dispatch(gpu.cs(), &dispatch->gridBlock, &dispatch->partialGridBlock,
                      &dispatch->gridSize, dispatch->localSize, gpu.vmMems(), dispatch->memCount_,
                      lastDoppCmd, pfpaDoppCmd);
+
+  gpu.flushCUCaches();
+
   gpu.eventEnd(MainEngine, *calEvent);
 
   // Unbind all resources
