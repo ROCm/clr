@@ -342,7 +342,8 @@ class Device : public NullDevice {
 
   //! Validates kernel before execution
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
-                              const device::VirtualDevice* vdev);
+                              const device::VirtualDevice* vdev,
+                              bool coop_group = false);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
@@ -524,6 +525,9 @@ class Device : public NullDevice {
       it->eraseGpuEvents(index);
     }
   }
+
+  bool AcquireExclusiveGpuAccess();
+  void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;
 
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,

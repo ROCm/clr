@@ -205,6 +205,7 @@ class KernelBlitManager : public DmaBlitManager {
     FillBuffer,
     FillImage,
     Scheduler,
+    GwsInit,
     BlitTotal
   };
 
@@ -352,6 +353,10 @@ class KernelBlitManager : public DmaBlitManager {
                     const void* data         //!< Raw data pointer
                     ) const;
 
+  //! Runs a blit kernel for GWS init
+  bool RunGwsInit(uint32_t value             //!< Initial value for GWS resource
+                  ) const;
+
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
  private:
@@ -406,7 +411,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "copyImage",         "copyImage1DA",      "copyImageToBuffer",
     "copyBufferToImage", "copyBufferRect",    "copyBufferRectAligned",
     "copyBuffer",        "copyBufferAligned", "fillBuffer",
-    "fillImage",         "scheduler",
+    "fillImage",         "scheduler",         "gwsInit"
 };
 
 /*@}*/  // namespace pal

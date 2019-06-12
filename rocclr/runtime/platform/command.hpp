@@ -753,11 +753,18 @@ class NDRangeKernelCommand : public Command {
   NDRangeContainer sizes_;
   address parameters_;
   uint32_t sharedMemBytes_;
+  uint32_t extraParam_;
 
  public:
+  enum {
+    CooperativeGroups = 0x01,
+    CooperativeMultiDeviceGroups = 0x02,
+  };
+
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,
-                       const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0);
+                       const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0,
+                       uint32_t extraParam = 0);
 
   virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
 
@@ -775,6 +782,13 @@ class NDRangeKernelCommand : public Command {
 
   //! Return the shared memory size
   uint32_t sharedMemBytes() const { return sharedMemBytes_; }
+
+  //! Return the cooperative groups mode
+  bool cooperativeGroups() const { return (extraParam_ & CooperativeGroups) ? true : false; }
+
+  //! Return the cooperative multi device groups mode
+  bool cooperativeMultiDeviceGroups() const {
+    return (extraParam_ & CooperativeMultiDeviceGroups) ? true : false; }
 
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }

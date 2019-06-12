@@ -167,7 +167,8 @@ class VirtualGPU : public device::VirtualDevice {
                             const amd::Kernel& kernel,           //!< Kernel for execution
                             const_address parameters,            //!< Parameters for the kernel
                             void* event_handle,  //!< Handle to OCL event for debugging
-                            uint32_t sharedMemBytes = 0 //!< Shared memory size
+                            uint32_t sharedMemBytes = 0, //!< Shared memory size
+                            bool cooperativeGroups = false //!< TRUE if cooperative groups mode is required
                             );
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);
@@ -220,7 +221,8 @@ class VirtualGPU : public device::VirtualDevice {
   //! Detects memory dependency for HSAIL kernels and uses appropriate AQL header
   bool processMemObjects(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                          const_address params,       //!< Pointer to the param's store
-                         size_t& ldsAddress          //!< LDS usage
+                         size_t& ldsAddress,         //!< LDS usage
+                         bool cooperativeGroups      //!< Dispatch with cooperative groups
                          );
   // Retun the virtual gpu unique index
   uint index() const { return index_; }
@@ -241,6 +243,9 @@ class VirtualGPU : public device::VirtualDevice {
   amd::Memory* findPinnedMem(void* addr, size_t size);
 
   void enableSyncBlit() const;
+
+    //! Returns the monitor object for execution access by VirtualGPU
+  amd::Monitor& execution() { return execution_; }
 
   // } roc OpenCL integration
  private:
@@ -296,6 +301,7 @@ class VirtualGPU : public device::VirtualDevice {
    * used to synchronized on kernel outputs.
    */
   bool hasPendingDispatch_;
+  amd::Monitor execution_;  //!< Lock to serialise access to all device objects
   Timestamp* timestamp_;
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
@@ -321,7 +327,7 @@ class VirtualGPU : public device::VirtualDevice {
   uint kernarg_pool_cur_offset_;
 
   std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
-  const uint index_;                          //!< Virtual gpu unique index
+  uint index_;                                //!< Virtual gpu unique index
   friend class Timestamp;
 
   //  PM4 packet for gfx8 performance counter

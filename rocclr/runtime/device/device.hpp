@@ -507,6 +507,11 @@ struct Info : public amd::EmbeddedObject {
 
   //! Max numbers of threads per CU
   cl_uint maxThreadsPerCU_;
+
+  //! GPU device supports a launch of cooperative groups
+  cl_bool cooperativeGroups_;
+  //! GPU device supports a launch of cooperative groups on multiple devices
+  cl_bool cooperativeMultiDeviceGroups_;
 };
 
 //! Device settings
@@ -1286,7 +1291,9 @@ class Device : public RuntimeObject {
   virtual void svmFree(void* ptr) const = 0;
 
   //! Validate kernel
-  virtual bool validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* vdev) {
+  virtual bool validateKernel(const amd::Kernel& kernel,
+                              const device::VirtualDevice* vdev,
+                              bool coop_groups = false) {
     return true;
   };
 
