@@ -1266,7 +1266,15 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
       p2pAllowed = true;
       break;
     }
+
+    for (auto agent: srcDevMem->dev().p2pAgents()) {
+      if (agent.handle == dev().getBackendDevice().handle) {
+        p2pAllowed = true;
+        break;
+      }
+    }
   }
+
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;
   syncFlags.skipEntire_ = cmd.isEntireMemory();
