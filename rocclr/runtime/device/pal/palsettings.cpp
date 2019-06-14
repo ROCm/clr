@@ -223,8 +223,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Raven:
     case Pal::AsicRevision::Raven2:
       aiPlus_ = true;
-      enableCoopGroups_ = true;
-      enableCoopMultiDeviceGroups_ = true;
+      enableCoopGroups_ = IS_LINUX;
+      enableCoopMultiDeviceGroups_ = IS_LINUX;
     // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Bristol:
