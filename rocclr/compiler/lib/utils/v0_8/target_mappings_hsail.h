@@ -70,6 +70,7 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,
+  UnknownTarget,
 #endif
   InvalidTarget
 };
