@@ -223,6 +223,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Raven:
     case Pal::AsicRevision::Raven2:
       aiPlus_ = true;
+      enableCoopGroups_ = true;
+      enableCoopMultiDeviceGroups_ = true;
     // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Bristol:
@@ -539,6 +541,11 @@ void Settings::override() {
 
   if (!flagIsDefault(GPU_MAX_COMMAND_BUFFERS)) {
     maxCmdBuffers_ = GPU_MAX_COMMAND_BUFFERS;
+  }
+
+  if (!flagIsDefault(GPU_ENABLE_COOP_GROUPS)) {
+    enableCoopGroups_ = GPU_ENABLE_COOP_GROUPS;
+    enableCoopMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
   }
 }
 
