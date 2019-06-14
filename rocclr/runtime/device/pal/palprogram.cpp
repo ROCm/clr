@@ -285,7 +285,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
       std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
 
       HSAILKernel* aKernel =
-          new HSAILKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
+          new HSAILKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
       kernels()[kernelName] = aKernel;
 
       amd::hsa::loader::Symbol* sym = executable_->GetSymbol(openclKernelName.c_str(), &agent);
@@ -750,7 +750,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   for (const auto& kernelMeta : kernelMetadataMap_) {
     auto kernelName = kernelMeta.first;
     auto kernel =
-        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
+        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
     kernels()[kernelName] = kernel;
 
     if (!kernel->init()) {
@@ -775,7 +775,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   for (const auto& kernelName : kernelNameList) {
     auto kernel =
-        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptions(options));
+        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
 
     kernels()[kernelName] = kernel;
 
