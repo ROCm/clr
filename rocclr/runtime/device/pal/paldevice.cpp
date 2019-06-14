@@ -660,8 +660,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.pcieRevisionId_ = palProp.revisionId;
     info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * info_.simdPerCU_ *
         palProp.gfxipProperties.shaderCore.numWavefrontsPerSimd;
-    info_.cooperativeGroups_ = GPU_ENABLE_COOP_GROUPS;
-    info_.cooperativeMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
+
+    info_.cooperativeGroups_ = settings().enableCoopGroups_;
+    info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
   }
 }
 

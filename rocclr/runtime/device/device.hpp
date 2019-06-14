@@ -537,7 +537,9 @@ class Settings : public amd::HeapObject {
       uint enableWave32Mode_ : 1;     //!< Enable Wave32 mode for this device
       uint lcWavefrontSize64_ : 1;    //!< Enable Wave64 mode for this device
       uint enableXNACK_ : 1;          //!< Enable XNACK feature
-      uint reserved_ : 14;
+      uint enableCoopGroups_ : 1;     //!< Enable cooperative groups feature
+      uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
+      uint reserved_ : 12;
     };
     uint value_;
   };

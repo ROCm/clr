@@ -1376,8 +1376,8 @@ bool Device::populateOCLDeviceConstants() {
     //TODO: set to true once thread trace support is available
     info_.threadTraceEnable_ = false;
     info_.pcieDeviceId_ = deviceInfo_.pciDeviceId_;
-    info_.cooperativeGroups_ = GPU_ENABLE_COOP_GROUPS;
-    info_.cooperativeMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
+    info_.cooperativeGroups_ = settings().enableCoopGroups_;
+    info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
   }
 
   info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
