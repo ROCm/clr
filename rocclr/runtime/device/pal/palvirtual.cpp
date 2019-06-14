@@ -1746,8 +1746,8 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
           amd::Coord3D cpSize(copy_size);
 
           // Perform 2 step transfer with staging buffer
-          result &=
-              dev().xferMgr().copyBuffer(*srcDevMem, *dstStgMem, srcOrigin, stageOffset, cpSize);
+          result &= srcDevMem->dev().xferMgr().copyBuffer(*srcDevMem, *dstStgMem, srcOrigin,
+                                                          stageOffset, cpSize);
           srcOrigin.c[0] += copy_size;
           result &= dstDevMem->dev().xferMgr().copyBuffer(*srcStgMem, *dstDevMem, stageOffset,
                                                           dstOrigin, cpSize);
