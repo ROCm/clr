@@ -38,6 +38,9 @@ typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_language)(amd_comgr_act
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_language)(amd_comgr_action_info_t action_info, amd_comgr_language_t *language);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_options)(amd_comgr_action_info_t action_info, const char *options);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_options)(amd_comgr_action_info_t action_info, size_t *size, char *options);
+typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_option_list)(amd_comgr_action_info_t action_info, const char *options[], size_t count);
+typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_option_list_count)(amd_comgr_action_info_t action_info, size_t *count);
+typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_option_list_item)(amd_comgr_action_info_t action_info, size_t index, size_t *size, char *option);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_working_directory_path)(amd_comgr_action_info_t action_info, const char *path);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_working_directory_path)(amd_comgr_action_info_t action_info, size_t *size, char *path);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_logging)(amd_comgr_action_info_t action_info, bool logging);
@@ -85,6 +88,9 @@ struct ComgrEntryPoints {
   t_amd_comgr_action_info_get_language  amd_comgr_action_info_get_language;
   t_amd_comgr_action_info_set_options   amd_comgr_action_info_set_options;
   t_amd_comgr_action_info_get_options   amd_comgr_action_info_get_options;
+  t_amd_comgr_action_info_set_option_list   amd_comgr_action_info_set_option_list;
+  t_amd_comgr_action_info_get_option_list_count   amd_comgr_action_info_get_option_list_count;
+  t_amd_comgr_action_info_get_option_list_item   amd_comgr_action_info_get_option_list_item;
   t_amd_comgr_action_info_set_working_directory_path  amd_comgr_action_info_set_working_directory_path;
   t_amd_comgr_action_info_get_working_directory_path  amd_comgr_action_info_get_working_directory_path;
   t_amd_comgr_action_info_set_logging   amd_comgr_action_info_set_logging;
@@ -206,6 +212,15 @@ public:
   }
   static amd_comgr_status_t action_info_get_options(amd_comgr_action_info_t action_info, size_t *size, char *options) {
     return DYN(amd_comgr_action_info_get_options)(action_info, size, options);
+  }
+  static amd_comgr_status_t action_info_set_option_list(amd_comgr_action_info_t action_info, const char *options[], size_t count) {
+    return DYN(amd_comgr_action_info_set_option_list)(action_info, options, count);
+  }
+  static amd_comgr_status_t action_info_get_option_list_count(amd_comgr_action_info_t action_info, size_t *count) {
+    return DYN(amd_comgr_action_info_get_option_list_count)(action_info, count);
+  }
+  static amd_comgr_status_t action_info_get_option_list_item(amd_comgr_action_info_t action_info, size_t index, size_t *size, char *option) {
+    return DYN(amd_comgr_action_info_get_option_list_item)(action_info, index, size, option);
   }
   static amd_comgr_status_t action_info_set_working_directory_path(amd_comgr_action_info_t action_info, const char *path) {
     return DYN(amd_comgr_action_info_set_working_directory_path)(action_info, path);

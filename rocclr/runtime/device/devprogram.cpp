@@ -350,7 +350,7 @@ void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclve
 
 amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
                                          const std::string& targetIdent,
-                                         const std::string& options,
+                                         const std::vector<std::string>& options,
                                          amd_comgr_action_info_t* action,
                                          bool* hasAction) {
 
@@ -368,15 +368,20 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
     status = amd::Comgr::action_info_set_isa_name(*action, targetIdent.c_str());
   }
 
-  if (!options.empty() && (status == AMD_COMGR_STATUS_SUCCESS)) {
-    status = amd::Comgr::action_info_set_options(*action, options.c_str());
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    std::vector<const char *> optionsArgv;
+    optionsArgv.reserve(options.size());
+    for (auto &option : options) {
+      optionsArgv.push_back(option.c_str());
+    }
+    status = amd::Comgr::action_info_set_option_list(*action, optionsArgv.data(), optionsArgv.size());
   }
 
   return status;
 }
 
 bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
-                              const std::string& options, const bool requiredDump,
+                              const std::vector<std::string>& options, const bool requiredDump,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
                               char* binaryData[], size_t* binarySize) {
 
@@ -439,7 +444,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 }
 
 bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
-                                   const std::string& options, amd::option::Options* amdOptions,
+                                   const std::vector<std::string>& options, amd::option::Options* amdOptions,
                                    char* binaryData[], size_t* binarySize) {
 
   //  get the lanuage and target name
@@ -548,7 +553,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
 //  the input data set is converted to relocatable code, then executable binary.
 //  If assembly code is required, the input data set is converted to assembly.
 bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
-                                       const std::string& options, amd::option::Options* amdOptions,
+                                       const std::vector<std::string>& options, amd::option::Options* amdOptions,
                                        char* executable[], size_t* executableSize) {
 
   //  get the language and target name
@@ -677,31 +682,34 @@ bool Program::compileImplLC(const std::string& sourceCode,
     return false;
   }
 
-  // Set the options for the compiler
-  // Some options are set in Clang AMDGPUToolChain (like -m64)
-  std::ostringstream ostrstr;
-  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-            std::ostream_iterator<std::string>(ostrstr, " "));
-
-  std::string driverOptions(ostrstr.str());
+  std::vector<std::string> driverOptions(options->clangOptions);
 
   // Set the -O#
   std::ostringstream optLevel;
-  optLevel << " -O" << options->oVariables->OptLevel;
-  driverOptions.append(optLevel.str());
+  optLevel << "-O" << options->oVariables->OptLevel;
+  driverOptions.push_back(optLevel.str());
 
-  driverOptions.append(options->llvmOptions);
-  driverOptions.append(ProcessOptions(options));
+  for (int i = 0; i < options->getLLVMArgc(); ++i) {
+    driverOptions.push_back(options->getLLVMArgv()[i]);
+  }
+
+  std::vector<std::string> processedOptions = ProcessOptions(options);
+  driverOptions.insert(driverOptions.end(), processedOptions.begin(), processedOptions.end());
 
   // Set whole program mode
-  driverOptions.append(AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-prelink");
+#ifdef EARLY_INLINE
+  driverOptions.push_back("-mllvm");
+  driverOptions.push_back("-amdgpu-early-inline-all");
+#endif
+  driverOptions.push_back("-mllvm");
+  driverOptions.push_back("-amdgpu-prelink");
 
   if (!device().settings().enableWgpMode_) {
-    driverOptions.append(" -mcumode");
+    driverOptions.push_back("-mcumode");
   }
 
   if (device().settings().lcWavefrontSize64_) {
-    driverOptions.append(" -mwavefrontsize64");
+    driverOptions.push_back("-mwavefrontsize64");
   }
 
   // Iterate through each source code and dump it into tmp
@@ -727,11 +735,15 @@ bool Program::compileImplLC(const std::string& sourceCode,
   }
 
   if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
+    std::ostringstream driverOptionsOStrStr;
+    std::copy(driverOptions.begin(), driverOptions.end(),
+      std::ostream_iterator<std::string>(driverOptionsOStrStr, " "));
+
     std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
     if (f.is_open()) {
       f << "/* Compiler options:\n"
            "-c -emit-llvm -target amdgcn-amd-amdhsa -x cl "
-        << driverOptions << " -include opencl-c.h "
+        << driverOptionsOStrStr.str() << " -include opencl-c.h "
         << "\n*/\n\n"
         << sourceCode;
       f.close();
@@ -834,7 +846,8 @@ bool Program::compileImplLC(const std::string& sourceCode,
   }
 
   driverOptions.append(options->llvmOptions);
-  driverOptions.append(ProcessOptions(options));
+
+  driverOptions.append(ProcessOptionsFlattened(options));
 
   // Set whole program mode
   driverOptions.append(AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-prelink");
@@ -1061,7 +1074,7 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
 #endif
 
   // Compile source to IR
-  compileOptions_.append(ProcessOptions(options));
+  compileOptions_.append(ProcessOptionsFlattened(options));
   errorCode = aclCompile(device().compiler(), binaryElf_, compileOptions_.c_str(), ACL_TYPE_OPENCL,
     ACL_TYPE_LLVMIR_BINARY, nullptr /* logFunction */);
   buildLog_ += aclGetCompilerLog(device().compiler());
@@ -1155,7 +1168,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   //       This parameter should not contain any dyanamically generated filename.
   char* binaryData = nullptr;
   size_t binarySize = 0;
-  std::string linkOptions;
+  std::vector<std::string> linkOptions;
   bool ret = linkLLVMBitcode(inputs, linkOptions, false, options, &output, &binaryData,
                              &binarySize);
 
@@ -1458,26 +1471,23 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // call LinkLLVMBitcode
   if (bLinkLLVMBitcode) {
     // open the bitcode libraries
-    std::string linkOptions;
+    std::vector<std::string> linkOptions;
 
     if (options->oVariables->FP32RoundDivideSqrt) {
-        linkOptions += "correctly_rounded_sqrt,";
+        linkOptions.push_back("correctly_rounded_sqrt");
     }
     if (options->oVariables->DenormsAreZero || AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
         (device().info().gfxipVersion_ < 900 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0)) {
-        linkOptions += "daz_opt,";
+        linkOptions.push_back("daz_opt");
     }
     if (options->oVariables->FiniteMathOnly || options->oVariables->FastRelaxedMath) {
-        linkOptions += "finite_only,";
+        linkOptions.push_back("finite_only");
     }
     if (options->oVariables->UnsafeMathOpt || options->oVariables->FastRelaxedMath) {
-        linkOptions += "unsafe_math,";
+        linkOptions.push_back("unsafe_math");
     }
     if (device().settings().lcWavefrontSize64_) {
-        linkOptions += "wavefrontsize64,";
-    }
-    if (!linkOptions.empty()) {
-        linkOptions.pop_back();     // remove the last comma
+        linkOptions.push_back("wavefrontsize64");
     }
 
     amd_comgr_status_t status = addCodeObjData(llvmBinary_.data(), llvmBinary_.size(),
@@ -1510,36 +1520,43 @@ bool Program::linkImplLC(amd::option::Options* options) {
     inputs = linked_bc;
   }
 
-  std::string codegenOptions(options->llvmOptions);
+  std::vector<std::string> codegenOptions;
+
+  for (int i = 0; i < options->getLLVMArgc(); ++i) {
+    codegenOptions.push_back(options->getLLVMArgv()[i]);
+  }
 
   // Set the -O#
   std::ostringstream optLevel;
   optLevel << "-O" << options->oVariables->OptLevel;
-  codegenOptions.append(" ").append(optLevel.str());
+  codegenOptions.push_back(optLevel.str());
 
   // Pass clang options
-  std::ostringstream ostrstr;
-  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-            std::ostream_iterator<std::string>(ostrstr, " "));
-  codegenOptions.append(" ").append(ostrstr.str());
+  codegenOptions.insert(codegenOptions.end(),
+      options->clangOptions.begin(), options->clangOptions.end());
 
   // Set SRAM ECC option if needed
   if (sramEccEnabled_) {
-    codegenOptions.append(" -msram-ecc");
+    codegenOptions.push_back("-msram-ecc");
   }
   else {
-    codegenOptions.append(" -mno-sram-ecc");
+    codegenOptions.push_back("-mno-sram-ecc");
   }
 
   // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols" AMDGPU_EARLY_INLINE_ALL_OPTION);
+  codegenOptions.push_back("-mllvm");
+  codegenOptions.push_back("-amdgpu-internalize-symbols");
+#ifdef EARLY_INLINE
+  codegenOptions.push_back("-mllvm");
+  codegenOptions.push_back("-amdgpu-early-inline-all");
+#endif
 
   if (!device().settings().enableWgpMode_) {
-    codegenOptions.append(" -mcumode");
+    codegenOptions.push_back("-mcumode");
   }
 
   if (device().settings().lcWavefrontSize64_) {
-    codegenOptions.append(" -mwavefrontsize64");
+    codegenOptions.push_back("-mwavefrontsize64");
   }
 
   // NOTE: The params is also used to identy cached code object. This parameter
@@ -1856,7 +1873,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
     // 1. if the program is created with binary and contains only hsail text
   case ACL_TYPE_HSAIL_TEXT: {
     std::string curOptions =
-      options->origOptionStr + ProcessOptions(options);
+      options->origOptionStr + ProcessOptionsFlattened(options);
     errorCode = aclCompile(device().compiler(), binaryElf_, curOptions.c_str(),
       continueCompileFrom, ACL_TYPE_CG, logFunction);
     buildLog_ += aclGetCompilerLog(device().compiler());
@@ -1877,7 +1894,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   }
 
   if (finalize) {
-    std::string fin_options(options->origOptionStr + ProcessOptions(options));
+    std::string fin_options(options->origOptionStr + ProcessOptionsFlattened(options));
     // Append an option so that we can selectively enable a SCOption on CZ
     // whenever IOMMUv2 is enabled.
     if (device().isFineGrainedSystem(true)) {
@@ -2280,35 +2297,39 @@ cl_int Program::build(const std::string& sourceCode, const char* origOptions,
 }
 
 // ================================================================================================
-std::string Program::ProcessOptions(amd::option::Options* options) {
-  std::string optionsStr;
+std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) {
+  std::string scratchStr;
+  std::vector<std::string> optionsVec;
 
   if (!isLC()) {
-    optionsStr.append(" -D__AMD__=1");
+    optionsVec.push_back("-D__AMD__=1");
 
-    optionsStr.append(" -D__").append(machineTarget_).append("__=1");
-    optionsStr.append(" -D__").append(machineTarget_).append("=1");
+    scratchStr.clear();
+    optionsVec.push_back(scratchStr.append("-D__").append(machineTarget_).append("__=1"));
+
+    scratchStr.clear();
+    optionsVec.push_back(scratchStr.append("-D__").append(machineTarget_).append("=1"));
   } else {
     int major, minor;
     ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
     std::stringstream ss;
-    ss << " -D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-    optionsStr.append(ss.str());
+    ss << "-D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+    optionsVec.push_back(ss.str());
   }
 
   if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-    optionsStr.append(" -D__IMAGE_SUPPORT__=1");
+    optionsVec.push_back("-D__IMAGE_SUPPORT__=1");
   }
 
   if (!isLC()) {
     // Set options for the standard device specific options
     // All our devices support these options now
     if (device().settings().reportFMAF_) {
-      optionsStr.append(" -DFP_FAST_FMAF=1");
+      optionsVec.push_back("-DFP_FAST_FMAF=1");
     }
     if (device().settings().reportFMA_) {
-      optionsStr.append(" -DFP_FAST_FMA=1");
+      optionsVec.push_back("-DFP_FAST_FMA=1");
     }
   }
 
@@ -2318,18 +2339,18 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
   if (clcStd >= 200) {
     std::stringstream opts;
     // Add only for CL2.0 and later
-    opts << " -D"
+    opts << "-D"
       << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    optionsStr.append(opts.str());
+    optionsVec.push_back(opts.str());
   }
 
   if (!device().settings().useLightning_) {
     if (!device().settings().singleFpDenorm_) {
-      optionsStr.append(" -cl-denorms-are-zero");
+      optionsVec.push_back("-cl-denorms-are-zero");
     }
 
     // Check if the host is 64 bit or 32 bit
-    LP64_ONLY(optionsStr.append(" -m64"));
+    LP64_ONLY(optionsVec.push_back("-m64"));
   }
 
   // Tokenize the extensions string into a vector of strings
@@ -2348,20 +2369,31 @@ std::string Program::ProcessOptions(amd::option::Options* options) {
     if (!extensions.empty()) {
       std::ostringstream clext;
 
-      clext << " -Xclang -cl-ext=+";
+      clext << "-cl-ext=+";
       std::copy(extensions.begin(), extensions.end() - 1,
         std::ostream_iterator<std::string>(clext, ",+"));
       clext << extensions.back();
 
-      optionsStr.append(clext.str());
+      optionsVec.push_back("-Xclang");
+      optionsVec.push_back(clext.str());
     }
   } else {
     for (auto e : extensions) {
-      optionsStr.append(" -D").append(e).append("=1");
+      scratchStr.clear();
+      optionsVec.push_back(scratchStr.append("-D").append(e).append("=1"));
     }
   }
 
-  return optionsStr;
+  return optionsVec;
+}
+
+std::string Program::ProcessOptionsFlattened(amd::option::Options* options) {
+  std::vector<std::string> processOptions = ProcessOptions(options);
+  std::ostringstream processOptionsOStrStr;
+  processOptionsOStrStr << " ";
+  std::copy(processOptions.begin(), processOptions.end(),
+    std::ostream_iterator<std::string>(processOptionsOStrStr, " "));
+  return processOptionsOStrStr.str();
 }
 
 // ================================================================================================

@@ -279,7 +279,11 @@ class Program : public amd::HeapObject {
     amd::option::Options* options, void* binary, size_t binSize) { return true; }
 
   //! Returns all the options to be appended while passing to the compiler library
-  std::string ProcessOptions(amd::option::Options* options);
+  std::vector<std::string> ProcessOptions(amd::option::Options* options);
+
+  //! Returns all the options to be appended while passing to the compiler library,
+  //! flattened into one string.
+  std::string ProcessOptionsFlattened(amd::option::Options* options);
 
   //! At linking time, get the set of compile options to be used from
   //! the set of input program, warn if they have inconsisten compile options.
@@ -354,23 +358,23 @@ class Program : public amd::HeapObject {
 
   //! Create action for the specified language, target and options
   amd_comgr_status_t createAction(const amd_comgr_language_t oclvar,
-    const std::string& targetIdent, const std::string& options,
+    const std::string& targetIdent, const std::vector<std::string>& options,
     amd_comgr_action_info_t* action, bool* hasAction);
 
   //! Create the bitcode of the linked input dataset
   bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
-    const std::string& options, const bool requiredDump,
+    const std::vector<std::string>& options, const bool requiredDump,
     amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
     char* binary[] = nullptr, size_t* binarySize = nullptr);
 
   //! Create the bitcode of the compiled input dataset
   bool compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
-    const std::string& options, amd::option::Options* amdOptions,
+    const std::vector<std::string>& options, amd::option::Options* amdOptions,
     char* binary[], size_t* binarySize);
 
   //! Compile and create the excutable of the input dataset
   bool compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
-    const std::string& options, amd::option::Options* amdOptions,
+    const std::vector<std::string>& options, amd::option::Options* amdOptions,
     char* executable[], size_t* executableSize);
 
   //! Create the map for the kernel name and its metadata for fast access
