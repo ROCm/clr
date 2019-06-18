@@ -493,12 +493,12 @@ RUNTIME_ENTRY(cl_int, clBuildProgram,
   }
 
   std::vector<amd::Device*> devices(num_devices);
-  while (num_devices--) {
-    amd::Device* device = as_amd(*device_list++);
+  for (cl_uint i = 0; i < num_devices; ++i) {
+    amd::Device* device = as_amd(device_list[i]);
     if (!amdProgram->context().containsDevice(device)) {
       return CL_INVALID_DEVICE;
     }
-    devices[num_devices] = device;
+    devices[i] = device;
   }
   return amdProgram->build(devices, options, pfn_notify, user_data);
 }
@@ -627,12 +627,12 @@ RUNTIME_ENTRY(cl_int, clCompileProgram,
 
   std::vector<amd::Device*> devices(num_devices);
 
-  while (num_devices--) {
-    amd::Device* device = as_amd(*device_list++);
+  for (cl_uint i = 0; i < num_devices; ++i) {
+    amd::Device* device = as_amd(device_list[i]);
     if (!amdProgram->context().containsDevice(device)) {
       return CL_INVALID_DEVICE;
     }
-    devices[num_devices] = device;
+    devices[i] = device;
   }
 
   return amdProgram->compile(devices, num_input_headers, headerPrograms, header_include_names,
@@ -781,14 +781,14 @@ RUNTIME_ENTRY_RET(cl_program, clLinkProgram,
   } else {
     std::vector<amd::Device*> devices(num_devices);
 
-    while (num_devices--) {
-      amd::Device* device = as_amd(*device_list++);
+    for (cl_uint i = 0; i < num_devices; ++i) {
+      amd::Device* device = as_amd(device_list[i]);
       if (!as_amd(context)->containsDevice(device)) {
         program->release();
         *not_null(errcode_ret) = CL_INVALID_DEVICE;
         return (cl_program)0;
       }
-      devices[num_devices] = device;
+      devices[i] = device;
     }
 
     status =
