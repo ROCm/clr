@@ -576,6 +576,7 @@ bool Device::init() {
           if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
             // Device2 can have access to device1
             device2->p2pDevices_.push_back(as_cl(device1));
+            device1->p2p_access_devices_.push_back(device2);
           }
         }
       }
