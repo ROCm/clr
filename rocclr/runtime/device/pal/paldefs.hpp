@@ -116,7 +116,7 @@ const static uint HsaSamplerObjectAlignment = 16;
 const static uint DeviceQueueMaskSize = 32;
 
 struct AMDDeviceInfo {
-  const char* targetName_;       //!< Target name
+  const char* machineTarget_;    //!< Machine target
   const char* machineTargetLC_;  //!< Machine target for LC
   uint simdWidth_;               //!< Number of workitems processed per SIMD
   uint memChannelBankWidth_;     //!< Memory channel bank width

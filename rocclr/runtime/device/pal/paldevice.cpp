@@ -79,7 +79,7 @@ bool NullDevice::init() {
     bool foundActive = false;
     Pal::AsicRevision revision = static_cast<Pal::AsicRevision>(id);
 
-    if (pal::DeviceInfo[id].targetName_[0] == '\0') {
+    if (pal::DeviceInfo[id].machineTarget_[0] == '\0') {
       continue;
     }
 
@@ -117,7 +117,7 @@ bool NullDevice::init() {
     uint gfxipVersion = IS_LIGHTNING ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_
                                      : pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
-    if (pal::Gfx9PlusSubDeviceInfo[id].targetName_[0] == '\0') {
+    if (pal::Gfx9PlusSubDeviceInfo[id].machineTarget_[0] == '\0') {
       continue;
     }
 
@@ -148,11 +148,11 @@ bool NullDevice::init() {
     // was listed previously in the Gfx9PlusSubDeviceInfo, if so, then it
     // means the current entry already has been added in the offline device list
     for (uint j = 0; j < id; ++j) {
-      if (pal::Gfx9PlusSubDeviceInfo[j].targetName_[0] == '\0') {
+      if (pal::Gfx9PlusSubDeviceInfo[j].machineTarget_[0] == '\0') {
         continue;
       }
-      if (strcmp(pal::Gfx9PlusSubDeviceInfo[j].targetName_,
-                 pal::Gfx9PlusSubDeviceInfo[id].targetName_) == 0) {
+      if (strcmp(pal::Gfx9PlusSubDeviceInfo[j].machineTarget_,
+                 pal::Gfx9PlusSubDeviceInfo[id].machineTarget_) == 0) {
         foundDuplicate = true;
         break;
       }
@@ -554,7 +554,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
         ::strcat(info_.name_, "+sram-ecc");
       }
     } else {
-      ::strcpy(info_.name_, hwInfo()->targetName_);
+      ::strcpy(info_.name_, hwInfo()->machineTarget_);
     }
   }
 

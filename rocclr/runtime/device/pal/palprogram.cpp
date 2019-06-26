@@ -176,7 +176,7 @@ HSAILProgram::HSAILProgram(Device& device)
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {
-    machineTarget_ = dev().hwInfo()->targetName_;
+    machineTarget_ = dev().hwInfo()->machineTarget_;
   }
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
@@ -196,7 +196,7 @@ HSAILProgram::HSAILProgram(NullDevice& device)
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {
-    machineTarget_ = dev().hwInfo()->targetName_;
+    machineTarget_ = dev().hwInfo()->machineTarget_;
   }
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
@@ -348,7 +348,7 @@ const aclTargetInfo& HSAILProgram::info(const char* str) {
     arch = "hsail64";
   }
   info_ = aclGetTargetInfo(arch.c_str(),
-                           (str && str[0] == '\0' ? dev().hwInfo()->targetName_ : str), &err);
+                           (str && str[0] == '\0' ? dev().hwInfo()->machineTarget_ : str), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
