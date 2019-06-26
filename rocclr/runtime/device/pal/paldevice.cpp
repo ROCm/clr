@@ -545,14 +545,16 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     const static char* bristol = "Bristol Ridge";
     ::strcpy(info_.name_, bristol);
   } else {
-    ::strcpy(info_.name_, hwInfo()->targetName_);
     if (settings().useLightning_) {
+      ::strcpy(info_.name_, hwInfo()->machineTargetLC_);
       if (hwInfo()->xnackEnabled_) {
         ::strcat(info_.name_, "+xnack");
       }
       if (info_.sramEccEnabled_) {
         ::strcat(info_.name_, "+sram-ecc");
       }
+    } else {
+      ::strcpy(info_.name_, hwInfo()->targetName_);
     }
   }
 
