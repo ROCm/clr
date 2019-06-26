@@ -117,7 +117,6 @@ const static uint DeviceQueueMaskSize = 32;
 
 struct AMDDeviceInfo {
   const char* targetName_;       //!< Target name
-  const char* machineTarget_;    //!< Machine target
   const char* machineTargetLC_;  //!< Machine target for LC
   uint simdWidth_;               //!< Number of workitems processed per SIMD
   uint memChannelBankWidth_;     //!< Memory channel bank width
@@ -128,72 +127,66 @@ struct AMDDeviceInfo {
 };
 
 static const AMDDeviceInfo DeviceInfo[] = {
-    /* Unknown */   {"", "unknown", "", 16, 256, 32, 0, 0, false},
-    /* Tahiti */    {"", "tahiti", "", 16, 256, 32, 600, 600, false},
-    /* Pitcairn */  {"", "pitcairn", "", 16, 256, 32, 600, 600, false},
-    /* Capeverde */ {"", "bonaire", "", 16, 256, 32, 700, 700, false},
-    /* Oland */     {"", "oland", "", 16, 256, 32, 600, 600, false},
-    /* Hainan */    {"", "hainan", "", 16, 256, 32, 600, 600, false},
+    /* Unknown */   {"", "", 16, 256, 32, 0, 0, false},
+    /* Tahiti */    {"", "", 16, 256, 32, 600, 600, false},
+    /* Pitcairn */  {"", "", 16, 256, 32, 600, 600, false},
+    /* Capeverde */ {"", "", 16, 256, 32, 700, 700, false},
+    /* Oland */     {"", "", 16, 256, 32, 600, 600, false},
+    /* Hainan */    {"", "", 16, 256, 32, 600, 600, false},
 
-    /* Bonaire */   {"Bonaire", "bonaire", "", 16, 256, 32, 700, 700, false},
-    /* Hawaii */    {"Hawaii", "hawaii", "", 16, 256, 32, 701, 701, false},
-    /* Hawaii */    {"", "grenada", "", 16, 256, 32, 701, 701, false},
-    /* Hawaii */    {"", "maui", "", 16, 256, 32, 701, 701, false},
+    /* Bonaire */   {"Bonaire", "", 16, 256, 32, 700, 700, false},
+    /* Hawaii */    {"Hawaii", "", 16, 256, 32, 701, 701, false},
+    /* Hawaii */    {"", "", 16, 256, 32, 701, 701, false},
+    /* Hawaii */    {"", "", 16, 256, 32, 701, 701, false},
 
-    /* Kalindi */   {"Kalindi", "kalindi", "", 16, 256, 32, 702, 702, false},
-    /* Godavari */  {"Mullins", "mullins", "", 16, 256, 32, 702, 702, false},
-    /* Spectre */   {"Spectre", "spectre", "", 16, 256, 32, 701, 701, false},
-    /* Spooky */    {"Spooky", "spooky", "", 16, 256, 32, 701, 701, false},
+    /* Kalindi */   {"Kalindi", "", 16, 256, 32, 702, 702, false},
+    /* Godavari */  {"Mullins", "", 16, 256, 32, 702, 702, false},
+    /* Spectre */   {"Spectre", "", 16, 256, 32, 701, 701, false},
+    /* Spooky */    {"Spooky", "", 16, 256, 32, 701, 701, false},
 
-    /* Carrizo */   {"Carrizo", "carrizo", "", 16, 256, 32, 801, 801, false},
-    /* Bristol */   {"Bristol Ridge", "carrizo", "", 16, 256, 32, 801, 801, false},
-    /* Stoney */    {"Stoney", "stoney", "", 16, 256, 32, 810, 810, false},
+    /* Carrizo */   {"Carrizo", "", 16, 256, 32, 801, 801, false},
+    /* Bristol */   {"Bristol Ridge", "", 16, 256, 32, 801, 801, false},
+    /* Stoney */    {"Stoney", "", 16, 256, 32, 810, 810, false},
 
-    /* Iceland */   {"Iceland", "iceland", "gfx802", 16, 256, 32, 802, 800, false},
-    /* Tonga */     {"Tonga", "tonga", "gfx802", 16, 256, 32, 802, 800, false},
-    /* Fiji */      {"Fiji", "fiji", "gfx803", 16, 256, 32, 803, 804, false},
-    /* Ellesmere */ {"Ellesmere", "ellesmere", "gfx803", 16, 256, 32, 803, 804, false},
-    /* Baffin */    {"Baffin", "baffin", "gfx803", 16, 256, 32, 803, 804, false},
-    /* Lexa */      {"gfx804", "gfx804", "gfx803", 16, 256, 32, 803, 804, false},
+    /* Iceland */   {"Iceland", "gfx802", 16, 256, 32, 802, 800, false},
+    /* Tonga */     {"Tonga", "gfx802", 16, 256, 32, 802, 800, false},
+    /* Fiji */      {"Fiji", "gfx803", 16, 256, 32, 803, 804, false},
+    /* Ellesmere */ {"Ellesmere", "gfx803", 16, 256, 32, 803, 804, false},
+    /* Baffin */    {"Baffin", "gfx803", 16, 256, 32, 803, 804, false},
+    /* Lexa */      {"gfx804", "gfx803", 16, 256, 32, 803, 804, false},
 };
 
 // Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
 // http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names
 static const AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
-    /* Vega10       */ {"gfx900", "gfx900", "gfx900", 16, 256, 32, 900, 900, false},
-    /* Vega10 XNACK */
-    {LIGHTNING_SWITCH("gfx900", "gfx901"), "gfx901", "gfx900", 16, 256, 32, 900, 901, true},
-    /* Vega12       */ {"gfx904", "gfx904", "gfx904", 16, 256, 32, 904, 904, false},
-    /* Vega12 XNACK */
-    {LIGHTNING_SWITCH("gfx904", "gfx905"), "gfx905", "gfx904", 16, 256, 32, 904, 905, true},
-    /* Vega20       */ {"gfx906", "gfx906", "gfx906", 16, 256, 32, 906, 906, false},
-    /* Vega20 XNACK */
-    {LIGHTNING_SWITCH("gfx906", "gfx907"), "gfx907", "gfx906", 16, 256, 32, 906, 907, true},
-    /* Raven        */ {"gfx902", "gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /* Raven XNACK  */
-    {LIGHTNING_SWITCH("gfx902", "gfx903"), "gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* Raven2       */ {"gfx902", "gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /* Raven2 XNACK */
-    {LIGHTNING_SWITCH("gfx902", "gfx903"), "gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* Renoir       */ {"gfx902", "gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /* Renoir XNACK */
-    {LIGHTNING_SWITCH("gfx902", "gfx903"), "gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* Navi10_A0       */ {"gfx1010", "gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
-    /* Navi10_A0 XNACK */ {"gfx1010", "gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
-    /* Navi10       */    {"gfx1010", "gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
-    /* Navi10 XNACK */    {"gfx1010", "gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
-    /* Navi10Lite      */ {"gfx1000", "gfx1000", "gfx1000", 32, 256, 32, 1000, 1000, false},
-    /* Navi10LiteXNACK */ {"gfx1000", "gfx1000", "gfx1000", 32, 256, 32, 1000, 1000, true},
-    /* Navi12       */    {"gfx1011", "gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
-    /* Navi12 XNACK */    {"gfx1011", "gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true},
-    /* Navi12Lite   */    {"gfx1011", "gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
-    /* Navi12LiteXNACK */ {"gfx1011", "gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true},
-    /* Navi14       */    {"gfx1012", "gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false},
-    /* Navi14 XNACK */    {"gfx1012", "gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true},
-    /* UnknownDevice3       */    {"gfx1030", "gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false},
-    /* UnknownDevice3 XNACK */    {"gfx1030", "gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, true},
-    /* UnknownDevice2   */    {"gfx1030", "gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false},
-    /* UnknownDevice2XNACK */ {"gfx1030", "gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, true},
+    /* Vega10       */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false},
+    /* Vega10 XNACK */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true},
+    /* Vega12       */ {"gfx904", "gfx904", 16, 256, 32, 904, 904, false},
+    /* Vega12 XNACK */ {"gfx905", "gfx904", 16, 256, 32, 904, 905, true},
+    /* Vega20       */ {"gfx906", "gfx906", 16, 256, 32, 906, 906, false},
+    /* Vega20 XNACK */ {"gfx907", "gfx906", 16, 256, 32, 906, 907, true},
+    /* Raven        */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
+    /* Raven XNACK  */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
+    /* Raven2       */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
+    /* Raven2 XNACK */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
+    /* Renoir       */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
+    /* Renoir XNACK */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
+    /* Navi10_A0       */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
+    /* Navi10_A0 XNACK */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
+    /* Navi10       */    {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
+    /* Navi10 XNACK */    {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
+    /* Navi10Lite      */ {"gfx1000", "gfx1000", 32, 256, 32, 1000, 1000, false},
+    /* Navi10LiteXNACK */ {"gfx1000", "gfx1000", 32, 256, 32, 1000, 1000, true},
+    /* Navi12       */    {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
+    /* Navi12 XNACK */    {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true},
+    /* Navi12Lite   */    {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
+    /* Navi12LiteXNACK */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true},
+    /* Navi14       */    {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false},
+    /* Navi14 XNACK */    {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true},
+    /* UnknownDevice3       */    UnknownDevice,
+    /* UnknownDevice3 XNACK */    {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, true},
+    /* UnknownDevice2   */    UnknownDevice,
+    /* UnknownDevice2XNACK */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, true},
 };
 
 // Supported OpenCL versions
