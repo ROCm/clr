@@ -114,8 +114,7 @@ bool NullDevice::init() {
   for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
     bool foundActive = false;
     bool foundDuplicate = false;
-    uint gfxipVersion = IS_LIGHTNING ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_
-                                     : pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
+    uint gfxipVersion = pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
 
     if (pal::Gfx9PlusSubDeviceInfo[id].machineTarget_[0] == '\0') {
       continue;

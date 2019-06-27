@@ -123,7 +123,7 @@ release(bool, GPU_IFH_MODE, false,                                            \
         "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
-release(uint, GPU_ENABLE_PAL, IF(IS_LIGHTNING,1,2),                           \
+release(uint, GPU_ENABLE_PAL, 2,                                              \
         "Enables PAL backend. 0 - GSL(default), 1 - PAL, 2 - GSL and PAL")    \
 release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
@@ -169,7 +169,7 @@ release(uint, PAL_RGP_DISP_COUNT, 50,                                         \
         "The number of dispatches for RGP capture with SQTT")                 \
 release(bool, GPU_ENABLE_WAVE32_MODE, true,                                   \
         "Enables Wave32 compilation in HW if available")                      \
-release(bool, GPU_ENABLE_LC, IS_LIGHTNING,                                    \
+release(bool, GPU_ENABLE_LC, true,                                            \
         "Enables LC path")                                                    \
 release(bool, GPU_ENABLE_HW_P2P, false,                                       \
         "Enables HW P2P path")                                                \

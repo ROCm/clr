@@ -138,7 +138,7 @@ Settings::Settings() {
       std::min(static_cast<uint64_t>(GPU_MAX_SUBALLOC_SIZE) * Ki, subAllocationChunkSize_);
 
   maxCmdBuffers_ = 12;
-  useLightning_ = amd::IS_HIP ? true : GPU_ENABLE_LC;
+  useLightning_ = amd::IS_HIP ? true : ((!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : false);
   enableWgpMode_ = false;
   enableWave32Mode_ = false;
   hsailExplicitXnack_ = false;
@@ -196,7 +196,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10_A0:
     case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
-      useLightning_ = (!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : true;
+      useLightning_ = GPU_ENABLE_LC;
       hsailExplicitXnack_ =
           static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled ||
                             palProp.gpuMemoryProperties.flags.iommuv2Support);
