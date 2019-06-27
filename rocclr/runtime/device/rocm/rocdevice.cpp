@@ -215,8 +215,7 @@ bool NullDevice::initCompiler(bool isOffline) {
   acl_error error;
   if (!compilerHandle_) {
     aclCompilerOptions opts = {
-      sizeof(aclCompilerOptions_0_8),
-      IF(IS_LIGHTNING, "libamdoclcl64.so", NULL),
+      sizeof(aclCompilerOptions_0_8), "libamdoclcl64.so",
       NULL, NULL, NULL, NULL, NULL, NULL
     };
     compilerHandle_ = aclCompilerInit(&opts, &error);

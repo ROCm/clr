@@ -67,7 +67,7 @@ Settings::Settings() {
   numDeviceEvents_ = 1024;
   numWaitEvents_ = 8;
 
-  useLightning_ = GPU_ENABLE_LC;
+  useLightning_ = (!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : true;
 
   lcWavefrontSize64_ = true;
 }
