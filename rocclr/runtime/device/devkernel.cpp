@@ -1271,7 +1271,6 @@ bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMeta
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
-  assert(workGroupInfo_.availableLDSSize_ > 0);
   workGroupInfo_.availableSGPRs_ = 104;
   workGroupInfo_.availableVGPRs_ = 256;
 
