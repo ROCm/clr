@@ -441,29 +441,31 @@ bool LightningKernel::init() {
     return false;
   }
 
-  codeSize_ = prog().codeSegGpu().owner()->getSize();
+  if (!prog().isNull()) {
+    codeSize_ = prog().codeSegGpu().owner()->getSize();
 
-  // handle device enqueue
-  if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
-    hsa_agent_t agent;
-    agent.handle = 1;
-    amd::hsa::loader::Symbol* rth_symbol;
+    // handle device enqueue
+    if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
+      hsa_agent_t agent;
+      agent.handle = 1;
+      amd::hsa::loader::Symbol* rth_symbol;
 
-    // Get the runtime handle symbol GPU address
-    rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD.mAttrs.mRuntimeHandle.c_str()),
-                                  const_cast<hsa_agent_t*>(&agent));
-    uint64_t symbol_address;
-    rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
+      // Get the runtime handle symbol GPU address
+      rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD.mAttrs.mRuntimeHandle.c_str()),
+                                    const_cast<hsa_agent_t*>(&agent));
+      uint64_t symbol_address;
+      rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
 
-    // Copy the kernel_object pointer to the runtime handle symbol GPU address
-    const Memory& codeSegGpu = prog().codeSegGpu();
-    uint64_t offset = symbol_address - codeSegGpu.vmAddress();
-    uint64_t kernel_object = gpuAqlCode();
-    VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
+      // Copy the kernel_object pointer to the runtime handle symbol GPU address
+      const Memory& codeSegGpu = prog().codeSegGpu();
+      uint64_t offset = symbol_address - codeSegGpu.vmAddress();
+      uint64_t kernel_object = gpuAqlCode();
+      VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
 
-    const struct RuntimeHandle runtime_handle = {gpuAqlCode(), spillSegSize(), ldsSize()};
+      const struct RuntimeHandle runtime_handle = {gpuAqlCode(), spillSegSize(), ldsSize()};
 
-    codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
+      codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
+    }
   }
 
   // Setup the the workgroup info
