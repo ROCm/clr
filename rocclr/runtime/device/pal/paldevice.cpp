@@ -181,7 +181,7 @@ bool NullDevice::init() {
             ShouldNotReachHere();
             break;
           case 3:
-            ipLevel = Pal::GfxIpLevel::GfxIp10_3;
+            ShouldNotReachHere();
             break;
         }
     }

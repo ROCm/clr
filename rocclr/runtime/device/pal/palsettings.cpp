@@ -471,7 +471,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   if (useLightning_) {
-    switch (palProp.gfxLevel) {:
+    switch (palProp.gfxLevel) {
       case Pal::GfxIpLevel::GfxIp10_1:
       case Pal::GfxIpLevel::GfxIp9:
         singleFpDenorm_ = true;
