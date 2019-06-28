@@ -98,6 +98,8 @@
 #define NOT_WIN64(x) x
 #endif /*!_WIN64*/
 
+#define IS_MAINLINE true
+
 #ifndef IS_LINUX
 #define IS_LINUX false
 #endif
@@ -120,8 +122,6 @@
 #define LINUX_SWITCH(x, other) LINUX_ONLY(x) NOT_LINUX(other)
 #define MACOS_SWITCH(x, other) MACOS_ONLY(x) NOT_MACOS(other)
 #define WINDOWS_SWITCH(x, other) WINDOWS_ONLY(x) NOT_WINDOWS(other)
-
-#define IS_MAINLINE true
 
 #ifdef OPTIMIZED
 #define OPTIMIZED_ONLY(x) x

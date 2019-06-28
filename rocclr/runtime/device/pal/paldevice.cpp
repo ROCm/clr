@@ -172,13 +172,13 @@ bool NullDevice::init() {
       case 10:
         switch (ipLevelMinor) {
           case 0:
-            ipLevel = Pal::GfxIpLevel::GfxIp10;
+            ShouldNotReachHere();
             break;
           case 1:
             ipLevel = Pal::GfxIpLevel::GfxIp10_1;
             break;
           case 2:
-            ipLevel = Pal::GfxIpLevel::GfxIp10_2;
+            ShouldNotReachHere();
             break;
           case 3:
             ipLevel = Pal::GfxIpLevel::GfxIp10_3;
@@ -207,16 +207,19 @@ bool NullDevice::init() {
         revision = Pal::AsicRevision::Vega20;
         break;
       case 1000:
-        revision = Pal::AsicRevision::Navi10Lite;
+        ShouldNotReachHere();
         break;
       case 1010:
         revision = Pal::AsicRevision::Navi10;
         break;
       case 1011:
-        revision = Pal::AsicRevision::Navi12;
+        ShouldNotReachHere();
         break;
       case 1012:
         revision = Pal::AsicRevision::Navi14;
+        break;
+      case 1020:
+        ShouldNotReachHere();
         break;
       case 1030:
         ShouldNotReachHere();

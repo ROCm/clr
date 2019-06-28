@@ -180,7 +180,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Unknown:
       switch (palProp.gfxLevel) {
         case Pal::GfxIpLevel::GfxIp10_1:
-        case Pal::GfxIpLevel::GfxIp10:
           gfx10Plus_ = true;
         case Pal::GfxIpLevel::GfxIp9:
           aiPlus_ = true;
@@ -189,12 +188,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           assert(0 && "Unknown GfxIP type!");
           return false;
       }
-        case Pal::AsicRevision::Navi12Lite:
-    case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
-    case Pal::AsicRevision::Navi10Lite:
       gfx10Plus_ = true;
       useLightning_ = GPU_ENABLE_LC;
       hsailExplicitXnack_ =
@@ -203,9 +199,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
-      }
-      if (palProp.revision == Pal::AsicRevision::Navi10Lite && useLightning_) {
-        enableWave32Mode_ = false;
       }
       if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
         enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
@@ -478,9 +471,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   if (useLightning_) {
-    switch (palProp.gfxLevel) {
+    switch (palProp.gfxLevel) {:
       case Pal::GfxIpLevel::GfxIp10_1:
-      case Pal::GfxIpLevel::GfxIp10:
       case Pal::GfxIpLevel::GfxIp9:
         singleFpDenorm_ = true;
         break;
