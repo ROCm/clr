@@ -200,19 +200,17 @@ std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
 // If buildLog is not null, and dataSet contains a log object, extract the
 // first log data object from dataSet and process it with
 // extractByteCodeBinary.
-void Program::extractBuildLog(const char* buildLog, amd_comgr_data_set_t dataSet) {
+void Program::extractBuildLog(amd_comgr_data_set_t dataSet) {
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
-  if (buildLog != nullptr) {
-    size_t count;
-    status = amd::Comgr::action_data_count(dataSet, AMD_COMGR_DATA_KIND_LOG, &count);
+  size_t count;
+  status = amd::Comgr::action_data_count(dataSet, AMD_COMGR_DATA_KIND_LOG, &count);
 
-    if (status == AMD_COMGR_STATUS_SUCCESS && count > 0) {
-      char* logData = nullptr;
-      size_t logSize;
-      status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, "", &logData, &logSize);
-      buildLog_ += logData;
-      free(logData);
-    }
+  if (status == AMD_COMGR_STATUS_SUCCESS && count > 0) {
+    char* logData = nullptr;
+    size_t logSize;
+    status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, "", &logData, &logSize);
+    buildLog_ += logData;
+    free(logData);
   }
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     buildLog_ += "Warning: extracting build log failed.\n";
@@ -377,6 +375,10 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
     status = amd::Comgr::action_info_set_option_list(*action, optionsArgv.data(), optionsArgv.size());
   }
 
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::action_info_set_logging(*action, true);
+  }
+
   return status;
 }
 
@@ -401,11 +403,6 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
-  const char* buildLog = amdOptions->oVariables->BuildLog;
-  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
-    status = amd::Comgr::action_info_set_logging(action, true);
-  }
-
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&dataSetDevLibs);
   }
@@ -414,12 +411,12 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     hasDataSetDevLibs = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
                                    dataSetDevLibs);
-    extractBuildLog(buildLog, dataSetDevLibs);
+    extractBuildLog(dataSetDevLibs);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, dataSetDevLibs, *output);
-    extractBuildLog(buildLog, *output);
+    extractBuildLog(*output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -465,11 +462,6 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
 
-  const char* buildLog = amdOptions->oVariables->BuildLog;
-  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
-    status = amd::Comgr::action_info_set_logging(action, true);
-  }
-
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
   }
@@ -497,7 +489,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
         hasDataSetPreprocessor = true;
         status = amd::Comgr::do_action(AMD_COMGR_ACTION_SOURCE_TO_PREPROCESSOR,
                                        action, inputs, dataSetPreprocessor);
-        extractBuildLog(buildLog, dataSetPreprocessor);
+        extractBuildLog(dataSetPreprocessor);
       }
 
       if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -515,14 +507,14 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
                                    action, inputs, dataSetPCH);
-    extractBuildLog(buildLog, dataSetPCH);
+    extractBuildLog(dataSetPCH);
   }
 
   //  Compiling the source codes with precompiled headers
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
                                  action, dataSetPCH, output);
-    extractBuildLog(buildLog, output);
+    extractBuildLog(output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -571,11 +563,6 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options,
                                            &action, &hasAction);
 
-  const char* buildLog = amdOptions->oVariables->BuildLog;
-  if (status == AMD_COMGR_STATUS_SUCCESS && buildLog != nullptr) {
-    status = amd::Comgr::action_info_set_logging(action, true);
-  }
-
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
   }
@@ -593,7 +580,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
         hasAssemblyData = true;
         status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY,
                                        action, inputs, assemblyData);
-        extractBuildLog(buildLog, assemblyData);
+        extractBuildLog(assemblyData);
       }
 
       // dump the ISA
@@ -617,7 +604,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
     hasRelocatableData = true;
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
                                  action, inputs, relocatableData);
-    extractBuildLog(buildLog, relocatableData);
+    extractBuildLog(relocatableData);
   }
 
   // Create executable from the relocatable data set
@@ -625,7 +612,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
                                  action, relocatableData, output);
-    extractBuildLog(buildLog, output);
+    extractBuildLog(output);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
