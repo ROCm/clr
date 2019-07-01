@@ -340,8 +340,8 @@ class Program : public amd::HeapObject {
   bool linkImplHSAIL(amd::option::Options* options);
 
 #if defined(USE_COMGR_LIBRARY)
-  //! Dump the log data object to the build log, if both are present
-  void extractBuildLog(const char* buildLog, amd_comgr_data_set_t dataSet);
+  //! Dump the log data object to the build log, if a log data object is present
+  void extractBuildLog(amd_comgr_data_set_t dataSet);
   //! Dump the code object data
   amd_comgr_status_t extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
