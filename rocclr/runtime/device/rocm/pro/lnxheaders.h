@@ -13,7 +13,6 @@ extern "C"
 
 #include <amdgpu.h>
 #include <amdgpu_drm.h>
-#include <amdgpu_shared.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
