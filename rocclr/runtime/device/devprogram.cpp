@@ -51,6 +51,19 @@ typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
 
 namespace device {
 
+// TODO: Can this be unified with the copies in:
+// runtime/device/pal/palprogram.cpp, runtime/device/gpu/gpuprogram.cpp,
+// compiler/lib/utils/v0_8/libUtils.h, compiler/lib/backends/gpu/hsail_be.cpp,
+// compiler/legacy-lib/utils/v0_8/libUtils.h,
+// and compiler/legacy-lib/backends/gpu/hsail_be.cpp ?
+inline static std::vector<std::string> splitSpaceSeparatedString(const char *str) {
+  std::string s(str);
+  std::stringstream ss(s);
+  std::istream_iterator<std::string> beg(ss), end;
+  std::vector<std::string> vec(beg, end);
+  return vec;
+}
+
 // ================================================================================================
 Program::Program(amd::Device& device)
     : device_(device),
@@ -676,9 +689,10 @@ bool Program::compileImplLC(const std::string& sourceCode,
   optLevel << "-O" << options->oVariables->OptLevel;
   driverOptions.push_back(optLevel.str());
 
-  for (int i = 0; i < options->getLLVMArgc(); ++i) {
-    driverOptions.push_back(options->getLLVMArgv()[i]);
-  }
+  // TODO: Can this be fixed at the source? options->llvmOptions is a flat
+  // string, but should really be a vector of strings.
+  std::vector<std::string> splitLlvmOptions = splitSpaceSeparatedString(options->llvmOptions.c_str());
+  driverOptions.insert(driverOptions.end(), splitLlvmOptions.begin(), splitLlvmOptions.end());
 
   std::vector<std::string> processedOptions = ProcessOptions(options);
   driverOptions.insert(driverOptions.end(), processedOptions.begin(), processedOptions.end());
@@ -1509,9 +1523,10 @@ bool Program::linkImplLC(amd::option::Options* options) {
 
   std::vector<std::string> codegenOptions;
 
-  for (int i = 0; i < options->getLLVMArgc(); ++i) {
-    codegenOptions.push_back(options->getLLVMArgv()[i]);
-  }
+  // TODO: Can this be fixed at the source? options->llvmOptions is a flat
+  // string, but should really be a vector of strings.
+  std::vector<std::string> splitLlvmOptions = splitSpaceSeparatedString(options->llvmOptions.c_str());
+  codegenOptions.insert(codegenOptions.end(), splitLlvmOptions.begin(), splitLlvmOptions.end());
 
   // Set the -O#
   std::ostringstream optLevel;
