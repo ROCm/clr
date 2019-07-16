@@ -177,6 +177,8 @@ release(bool, GPU_ENABLE_COOP_GROUPS, false,                                  \
          "Enables cooperative group launch")                                  \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
+release(bool, GPU_IMAGE_BUFFER_WAR, true,                                     \
+        "Enables image buffer workaround")                                    \
 release(cstring, HIP_VISIBLE_DEVICES, "",                                     \
         "Only devices whose index is present in the sequence are visible to HIP")  \
 release(cstring, CUDA_VISIBLE_DEVICES, "",                                    \

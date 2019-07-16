@@ -79,6 +79,10 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
   uint allocAttempt = 0;
   // Reset the flag in case we reallocate the heap in local/remote
   flags_ &= ~HostMemoryDirectAccess;
+  
+  if (!ValidateMemory(memType)) {
+    return false;
+  }
 
   do {
     // Create a resource in CAL
@@ -1087,6 +1091,20 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   }
 
   return mapAddress + offset;
+}
+
+bool Image::ValidateMemory(Resource::MemoryType memType) {
+  if (dev().settings().imageBufferWar_ && (memType == ImageBuffer) && (owner() != nullptr) &&
+      ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
+       owner()->asImage()->getRowPitch())) {
+    // Create a native image without pitch as a backing store
+    copyImageBuffer_ = new pal::Image(dev(), size(), desc().width_, desc().height_, desc().depth_,
+                                      desc().format_, desc().topology_, 0);
+    if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create(Resource::Local)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace pal

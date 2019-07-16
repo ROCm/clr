@@ -62,7 +62,8 @@ class Settings : public device::Settings {
       uint rgpSqttForceDisable_ : 1;    //!< Disables SQTT
       uint splitSizeForWin7_ : 1;       //!< DMA flush split size for Win 7
       uint enableHwP2P_ : 1;            //!< Forces HW P2P path for testing
-      uint reserved_ : 10;
+      uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
+      uint reserved_ : 9;
     };
     uint value_;
   };

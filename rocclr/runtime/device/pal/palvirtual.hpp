@@ -205,6 +205,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint profileEnabled_ : 1;      //!< Profiling is enabled for WaveLimiter
       uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
       uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
+      uint imageBufferWrtBack_: 1;   //!< Enable image buffer write back
     };
     uint value_;
     State() : value_(0) {}
@@ -643,6 +644,7 @@ class VirtualGPU : public device::VirtualDevice {
   Pal::ICmdAllocator* cmdAllocator_;  //!< Command buffer allocator
   Queue* queues_[AllEngines];         //!< HW queues for all engines
   MemoryRange sdmaRange_;             //!< SDMA memory range for write access
+  std::vector<Image*> wrtBackImageBuffer_;  //!< Array of images for write back 
 };
 
 inline void VirtualGPU::addVmMemory(const Memory* memory) {

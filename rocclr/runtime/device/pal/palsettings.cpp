@@ -144,6 +144,7 @@ Settings::Settings() {
   hsailExplicitXnack_ = false;
   lcWavefrontSize64_ = true;
   enableHwP2P_ = false;
+  imageBufferWar_ = false;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -329,6 +330,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     default:
       assert(0 && "Unknown ASIC type!");
       return false;
+  }
+
+  if (gfx10Plus_) {
+    // GFX10 HW doesn't support custom pitch. Enable double copy workaround
+    imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
   }
 
   splitSizeForWin7_ = false;
