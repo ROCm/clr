@@ -1105,6 +1105,13 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
       }
     } break;
     case CL_COMMAND_READ_IMAGE:
+      if (memory->memoryType() == Resource::ImageBuffer) {
+        Image* imageBuffer = static_cast<Image*>(memory);
+        // Check if synchronization has to be performed
+        if (imageBuffer->CopyImageBuffer() != nullptr) {
+          memory = imageBuffer->CopyImageBuffer();
+        }
+      }
       if (hostMemory != nullptr) {
         // Accelerated image to buffer transfer without pinning
         amd::Coord3D dstOrigin(offset);
@@ -2398,6 +2405,25 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
   }
 
+  // Check if image buffer write back is required
+  if (state_.imageBufferWrtBack_) {
+    // Avoid recursive write back
+    state_.imageBufferWrtBack_ = false;
+    // Make sure the original kernel execution is done
+    addBarrier(RgpSqqtBarrierReason::MemDependency);
+    for (const auto imageBuffer : wrtBackImageBuffer_) {
+      Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
+      amd::Image* image = imageBuffer->owner()->asImage();
+      amd::Coord3D offs(0);
+      // Copy memory from the the backing store image into original buffer
+      bool result = blitMgr().copyImageToBuffer(
+        *imageBuffer->CopyImageBuffer(), *buffer, offs, offs,
+        image->getRegion(), true,
+        image->getRowPitch(), image->getSlicePitch());
+    }
+    wrtBackImageBuffer_.clear();
+  }
+
   // Perform post dispatch logic for RGP traces
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->PostDispatch(this);
@@ -3256,6 +3282,32 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
             mem->signalWrite(&dev());
           }
           if (info.oclObject_ == amd::KernelParameterDescriptor::ImageObject) {
+            if (gpuMem->memoryType() == Resource::ImageBuffer) {
+              Image* imageBuffer = static_cast<Image*>(gpuMem);
+              // Check if synchronization has to be performed
+              if (imageBuffer->CopyImageBuffer() != nullptr) {
+                Memory* buffer = dev().getGpuMemory(mem->parent());
+                amd::Image* image = mem->asImage();
+                amd::Coord3D offs(0);
+                // Copy memory from the original image buffer into the backing store image
+                bool result = blitMgr().copyBufferToImage(
+                  *buffer, *imageBuffer->CopyImageBuffer(), offs, offs,
+                  image->getRegion(), true, image->getRowPitch(), image->getSlicePitch());
+                // Make sure the copy operation is done
+                addBarrier(RgpSqqtBarrierReason::MemDependency);
+                // Use backing store SRD as the replacment
+                uint64_t srd = imageBuffer->CopyImageBuffer()->hwSrd();
+                WriteAqlArgAt(const_cast<address>(params), &srd, sizeof(srd), desc.offset_);
+                // Add backing store image to the list of memory handles
+                addVmMemory(imageBuffer->CopyImageBuffer());
+                // If it's not a read only resource, then runtime has to write back
+                if (!info.readOnly_) {
+                  wrtBackImageBuffer_.push_back(imageBuffer);
+                  state_.imageBufferWrtBack_ = true;
+                }
+              }
+            }
+
             //! \note Special case for the image views.
             //! Copy SRD to CB1, so blit manager will be able to release
             //! this view without a wait for SRD resource.

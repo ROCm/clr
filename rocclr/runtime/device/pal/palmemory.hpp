@@ -62,7 +62,7 @@ class Memory : public device::Memory, public Resource {
   );
 
   //! Default destructor
-  ~Memory();
+  virtual ~Memory();
 
   //! Creates the interop memory
   bool createInterop();
@@ -156,6 +156,9 @@ class Memory : public device::Memory, public Resource {
   //! Decrement map count
   void decIndMapCount();
 
+  //! Validates allocated memory for possible workarounds
+  virtual bool ValidateMemory(Resource::MemoryType memType) { return true; }
+
  private:
   //! Disable copy constructor
   Memory(const Memory&);
@@ -201,7 +204,8 @@ class Image : public pal::Memory {
         cl_mem_object_type imageType,  //!< CL image type
         uint mipLevels                 //!< The number of mip levels
         )
-      : pal::Memory(gpuDev, owner, width, height, depth, format, imageType, mipLevels) {}
+      : pal::Memory(gpuDev, owner, width, height, depth, format, imageType, mipLevels),
+        copyImageBuffer_(nullptr) {}
 
   //! Image constructor
   Image(const Device& gpuDev,          //!< GPU device object
@@ -213,7 +217,10 @@ class Image : public pal::Memory {
         cl_mem_object_type imageType,  //!< CL image type
         uint mipLevels                 //!< The number of mip levels
         )
-      : pal::Memory(gpuDev, size, width, height, depth, format, imageType, mipLevels) {}
+      : pal::Memory(gpuDev, size, width, height, depth, format, imageType, mipLevels),
+        copyImageBuffer_(nullptr) {}
+
+  virtual ~Image() { delete copyImageBuffer_; }
 
   //! Allocate memory for API-level maps
   virtual void* allocMapTarget(const amd::Coord3D& origin,  //!< The map location in memory
@@ -225,12 +232,19 @@ class Image : public pal::Memory {
 
   virtual uint64_t virtualAddress() const override { return hwSrd(); }
 
+  Image* CopyImageBuffer() const { return copyImageBuffer_; }
+
+  //! Validates allocated memory for possible workarounds
+  bool ValidateMemory(Resource::MemoryType memType) final;
+
  private:
   //! Disable copy constructor
   Image(const Image&);
 
   //! Disable operator=
   Image& operator=(const Image&);
+
+  Image* copyImageBuffer_;
 };
 
 }  // namespace pal
