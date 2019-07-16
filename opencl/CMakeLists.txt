@@ -61,7 +61,7 @@ set(BUILD_HC_LIB OFF CACHE BOOL "")
 set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
 set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
 set(AMDGCN_TARGETS_LIB_DEPS "AMDGCN_DEP_TARGETS")
-set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa-amdgizcl")
+set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa")
 add_subdirectory(library/amdgcn EXCLUDE_FROM_ALL)
 
 add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
