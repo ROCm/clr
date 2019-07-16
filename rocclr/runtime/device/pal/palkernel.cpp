@@ -90,7 +90,6 @@ bool HSAILKernel::aqlCreateHWInfo(amd::hsa::loader::Symbol* sym) {
 
   workgroupGroupSegmentByteSize_ = workGroupInfo_.usedLDSSize_;
   kernargSegmentByteSize_ = akc->kernarg_segment_byte_size;
-  spillSegmentByteSize_ = amd::alignUp(workGroupInfo_.privateMemSize_, sizeof(uint32_t));
 
   return true;
 }
@@ -102,8 +101,7 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       code_(0),
       codeSize_(0),
       workgroupGroupSegmentByteSize_(0),
-      kernargSegmentByteSize_(0),
-      spillSegmentByteSize_(0) {
+      kernargSegmentByteSize_(0) {
   flags_.hsa_ = true;
 }
 
@@ -427,8 +425,6 @@ bool LightningKernel::init() {
   symbolName_ = (codeObjectVer() == 2) ? name() : kernelMD.mSymbolName;
 
   workgroupGroupSegmentByteSize_ = kernelMD.mCodeProps.mGroupSegmentFixedSize;
-  spillSegmentByteSize_ =
-      amd::alignUp(kernelMD.mCodeProps.mPrivateSegmentFixedSize, sizeof(uint32_t));
   kernargSegmentByteSize_ = kernelMD.mCodeProps.mKernargSegmentSize;
 
   // Copy codeobject of this kernel from the program CPU segment

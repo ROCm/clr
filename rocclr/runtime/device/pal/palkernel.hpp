@@ -73,7 +73,7 @@ class HSAILKernel : public device::Kernel {
   size_t argsBufferSize() const { return kernargSegmentByteSize_; }
 
   //! Returns spill reg size per workitem
-  uint32_t spillSegSize() const { return spillSegmentByteSize_; }
+  uint32_t spillSegSize() const { return workGroupInfo_.privateMemSize_; }
 
   //! Returns AQL packet in CPU memory
   //! if the kernel arguments were successfully loaded, otherwise NULL
@@ -117,7 +117,6 @@ class HSAILKernel : public device::Kernel {
 
   uint32_t workgroupGroupSegmentByteSize_;  //!< LDS size used in the kernel
   uint32_t kernargSegmentByteSize_;         //!< Size of kernel argument buffer
-  uint32_t spillSegmentByteSize_;           //!< Spill reg size per workitem
 };
 
 class LightningKernel : public HSAILKernel {
