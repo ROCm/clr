@@ -662,6 +662,7 @@ typedef struct _cl_icd_dispatch_table {
   clEnqueueReleaseGLObjects_fn EnqueueReleaseGLObjects;
   clGetGLContextInfoKHR_fn GetGLContextInfoKHR;
   void* _reservedForD3D10KHR[6];
+
   /* OpenCL 1.1 */
   clSetEventCallback_fn SetEventCallback;
   clCreateSubBuffer_fn CreateSubBuffer;
@@ -694,10 +695,10 @@ typedef struct _cl_icd_dispatch_table {
   clCreateFromGLTexture_fn CreateFromGLTexture;
 
   /* cl_khr_d3d11_sharing, cl_khr_dx9_media_sharing */
-  void* _reservedD3DExtensions[10];
+  void* _reservedForD3DExtensions[10];
 
   /* cl_khr_egl_image, cl_khr_egl_event */
-  void* _reservedEGLExtensions[4];
+  void* _reservedForEGLExtensions[4];
 
   /* OpenCL 2.0 */
   clCreateCommandQueueWithProperties_fn CreateCommandQueueWithProperties;
@@ -713,22 +714,21 @@ typedef struct _cl_icd_dispatch_table {
   clCreateSamplerWithProperties_fn CreateSamplerWithProperties;
   clSetKernelArgSVMPointer_fn SetKernelArgSVMPointer;
   clSetKernelExecInfo_fn SetKernelExecInfo;
-
   /* cl_khr_sub_groups */
-  clGetKernelSubGroupInfoKHR_fn clGetKernelSubGroupInfoKHR;
+  clGetKernelSubGroupInfoKHR_fn GetKernelSubGroupInfoKHR;
 
   /* OpenCL 2.1 */
-  clCloneKernel_fn clCloneKernel;
-  clCreateProgramWithILKHR_fn clCreateProgramWithIL;
-  clEnqueueSVMMigrateMem_fn clEnqueueSVMMigrateMem;
-  clGetDeviceAndHostTimer_fn  clGetDeviceAndHostTimer;
-  clGetHostTimer_fn clGetHostTimer;
-  clGetKernelSubGroupInfoKHR_fn clGetKernelSubGroupInfo;
-  clSetDefaultDeviceCommandQueue_fn clSetDefaultDeviceCommandQueue;
+  clCloneKernel_fn CloneKernel;
+  clCreateProgramWithILKHR_fn CreateProgramWithILKHR;
+  clEnqueueSVMMigrateMem_fn EnqueueSVMMigrateMem;
+  clGetDeviceAndHostTimer_fn  GetDeviceAndHostTimer;
+  clGetHostTimer_fn GetHostTimer;
+  clGetKernelSubGroupInfoKHR_fn GetKernelSubGroupInfo;
+  clSetDefaultDeviceCommandQueue_fn SetDefaultDeviceCommandQueue;
 
   /* OpenCL 2.2 */
-  clSetProgramReleaseCallback_fn clSetProgramReleaseCallback;
-  clSetProgramSpecializationConstant_fn clSetProgramSpecializationConstant;
+  clSetProgramReleaseCallback_fn SetProgramReleaseCallback;
+  clSetProgramSpecializationConstant_fn SetProgramSpecializationConstant;
 
 } cl_icd_dispatch_table;
 
