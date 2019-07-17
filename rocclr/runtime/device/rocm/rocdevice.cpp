@@ -148,6 +148,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , pro_device_(nullptr)
     , pro_ena_(false)
     , freeMem_(0)
+    , vgpusAccess_("Virtual GPU List Ops Lock", true)
     , hsa_exclusive_gpu_access_(false)
     , numOfVgpus_(0) {
   group_segment_.handle = 0;
