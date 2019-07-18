@@ -152,6 +152,11 @@ class Memory : public device::Memory, public Resource {
     Resource::updateView(view, offset, size);
   }
 
+  //! Check if memory object requires cache coherency sync
+  bool isChacheCoherencySync() const {
+    return (!isHostMemDirectAccess() && (memoryType() != P2PAccess));
+  }
+
  protected:
   //! Decrement map count
   void decIndMapCount();

@@ -123,7 +123,6 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     switch (memoryType()) {
       case Resource::Pinned:
       case Resource::ExternalPhysical:
-      case Resource::P2PAccess:
         // Marks memory object for direct GPU access to the host memory
         flags_ |= HostMemoryDirectAccess;
         break;
@@ -407,13 +406,13 @@ Memory::~Memory() {
 
 void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags) {
   // If the last writer was another GPU, then make a writeback
-  if (!isHostMemDirectAccess() && (owner()->getLastWriter() != nullptr) &&
+  if (isChacheCoherencySync() && (owner()->getLastWriter() != nullptr) &&
       (&dev() != owner()->getLastWriter())) {
     mgpuCacheWriteBack();
   }
 
   // If host memory doesn't have direct access, then we have to synchronize
-  if (!isHostMemDirectAccess() && (nullptr != owner()->getHostMem())) {
+  if (isChacheCoherencySync() && (nullptr != owner()->getHostMem())) {
     bool hasUpdates = true;
 
     // Make sure the parent of subbuffer is up to date
@@ -526,7 +525,7 @@ void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
   assert(owner() != nullptr);
 
   // If host memory doesn't have direct access, then we have to synchronize
-  if (!isHostMemDirectAccess()) {
+  if (isChacheCoherencySync()) {
     bool hasUpdates = true;
 
     // Make sure the parent of subbuffer is up to date
