@@ -377,7 +377,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     enableExtension(ClAmdPopcnt);
     enableExtension(ClAmdVec3);
     enableExtension(ClAmdPrintf);
-    enableExtension(ClKhrSpir);
   }
   // Enable some platform extensions
   enableExtension(ClAmdDeviceAttributeQuery);
