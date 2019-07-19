@@ -190,6 +190,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           return false;
       }
     case Pal::AsicRevision::Navi14:
+    case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
       gfx10Plus_ = true;

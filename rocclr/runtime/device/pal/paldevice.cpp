@@ -213,7 +213,7 @@ bool NullDevice::init() {
         revision = Pal::AsicRevision::Navi10;
         break;
       case 1011:
-        ShouldNotReachHere();
+        revision = Pal::AsicRevision::Navi12;
         break;
       case 1012:
         revision = Pal::AsicRevision::Navi14;
