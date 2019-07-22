@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+
+do_ldconfig() {
+  echo /opt/rocm/opencl/lib/x86_64 > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
+  mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)
+}
+
+case "$1" in
+  abort-deconfigure|abort-remove|abort-upgrade)
+    echo "$1"
+  ;;
+  configure)
+    do_ldconfig
+  ;;
+  *)
+    exit 0
+  ;;
+esac

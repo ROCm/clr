@@ -1,0 +1,2 @@
+echo /opt/rocm/opencl/lib/x86_64 > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
+mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)
