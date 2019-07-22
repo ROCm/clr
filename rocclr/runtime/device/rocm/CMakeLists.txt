@@ -7,6 +7,12 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${ROCM_OCL_INCLUDES})
 
+if(${USE_COMGR_LIBRARY} MATCHES "yes")
+  add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
+  find_package(amd_comgr REQUIRED CONFIG)
+  include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
+endif()
+
 add_library(oclrocm OBJECT
   roccounters.cpp
   rocprintf.cpp
