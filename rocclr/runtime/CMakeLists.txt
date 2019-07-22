@@ -7,7 +7,7 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
-include_directories(${ROCR_INCLUDE_DIRS})
+include_directories(${ROCR_INCLUDES})
 
 include_directories(${CMAKE_SOURCE_DIR}/runtime)
 include_directories(${CMAKE_SOURCE_DIR}/api/opencl)
@@ -28,6 +28,13 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
 
 add_subdirectory(device/rocm)
+
+if(${USE_COMGR_LIBRARY} MATCHES "yes")
+  add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
+  find_package(amd_comgr REQUIRED CONFIG)
+  include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
+  set(COMGR_CPP device/comgrctx.cpp)
+endif()
 
 add_library(oclruntime OBJECT
   thread/thread.cpp
@@ -61,6 +68,7 @@ add_library(oclruntime OBJECT
   ${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/elf.cpp
   ${CMAKE_SOURCE_DIR}/compiler/lib/loaders/elf/elf_utils.cpp
   ${CMAKE_SOURCE_DIR}/compiler/tools/caching/cache.cpp
+  ${COMGR_CPP}
 )
 set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

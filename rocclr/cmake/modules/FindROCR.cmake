@@ -1,23 +1,16 @@
-# - Try to find the ROCm Runtime.
-# Once done this will define
-#  ROCR_FOUND - System has the ROCR installed
-#  ROCR_INCLUDE_DIRS - The ROCR include directories
-#  ROCR_LIBRARIES - The libraries needed to use the ROCR
-
-find_path(ROCR_INCLUDE_DIR hsa.h
-          HINTS /opt/rocm/include /opt/rocm/hsa/include
-          PATH_SUFFIXES hsa)
-
-find_library(ROCR_LIBRARY hsa-runtime64
-             HINTS /opt/rocm/lib  /opt/rocm/hsa/lib)
+# Try to find ROCR (Radeon Open Compute Runtime)
+#
+# Once found, this will define:
+#   - ROCR_FOUND     - ROCR status (found or not found)
+#   - ROCR_INCLUDES  - Required ROCR include directories
+#   - ROCR_LIBRARIES - Required ROCR libraries
+find_path(FIND_ROCR_INCLUDES hsa.h HINTS /opt/rocm/include /opt/rocm/hsa/include PATH_SUFFIXES hsa)
+find_library(FIND_ROCR_LIBRARIES hsa-runtime64 HINTS /opt/rocm/lib /opt/rocm/hsa/lib)
 
 include(FindPackageHandleStandardArgs)
-# handle the QUIETLY and REQUIRED arguments and set ROCR_FOUND to TRUE
-# if all listed variables are TRUE
-find_package_handle_standard_args(ROCR  DEFAULT_MSG
-                                  ROCR_LIBRARY ROCR_INCLUDE_DIR)
+find_package_handle_standard_args(ROCR DEFAULT_MSG
+                                  FIND_ROCR_INCLUDES FIND_ROCR_LIBRARIES)
+mark_as_advanced(FIND_ROCR_INCLUDES FIND_ROCR_LIBRARIES)
 
-mark_as_advanced(ROCR_INCLUDE_DIR ROCR_LIBRARY)
-
-set(ROCR_LIBRARIES ${ROCR_LIBRARY})
-set(ROCR_INCLUDE_DIRS ${ROCR_INCLUDE_DIR})
+set(ROCR_INCLUDES ${FIND_ROCR_INCLUDES})
+set(ROCR_LIBRARIES ${FIND_ROCR_LIBRARIES})
