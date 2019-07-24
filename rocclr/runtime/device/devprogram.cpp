@@ -3097,4 +3097,67 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
 #endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
   return true;
 }
+
+amd_comgr_status_t getSymbolFromModule(amd_comgr_symbol_t symbol, void* userData) {
+  size_t nlen;
+  amd_comgr_status_t status;
+  amd_comgr_symbol_type_t type;
+  std::vector<std::string>* var_names = reinterpret_cast<std::vector<std::string>*>(userData);
+
+  /* Retrieve the symbol info */
+  status = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME_LENGTH, &nlen);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return status;
+  }
+
+  /* Retrieve the symbol name */
+  char* name = new char[nlen + 1];
+  status = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME, name);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return status;
+  }
+
+  /* Retrieve the symbol type*/
+  status = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_TYPE, &type);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return status;
+  }
+
+  /* If symbol type is object(Variable) add it to vector */
+  if (type == AMD_COMGR_SYMBOL_TYPE_OBJECT) {
+    var_names->push_back(std::string(name));
+  }
+
+  delete[] name;
+  return status;
+}
+
+bool Program::getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) const {
+  amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
+  amd_comgr_data_t dataObject;
+
+  /* Create comgr data */
+  status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "COMGR:  Cannot create comgr data \n";
+    return false;
+  }
+
+  /* Set the binary as a dataObject */
+  status = amd::Comgr::set_data(dataObject,static_cast<size_t>(clBinary_->data().second),
+                                reinterpret_cast<const char*>(clBinary_->data().first));
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "COMGR:  Cannot set comgr data \n";
+    return false;
+  }
+
+  /* Iterate through list of symbols */
+  status = amd::Comgr::iterate_symbols(dataObject, getSymbolFromModule, var_names);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "COMGR:  Cannot iterate comgr symbols \n";
+    return false;
+  }
+
+  return true;
+}
 }

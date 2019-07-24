@@ -228,6 +228,8 @@ class Program : public amd::HeapObject {
   //! Check if SRAM ECC is enable
   const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
 
+  virtual bool getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) const;
+
   virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
                                   size_t* bytes, const char* globalName) const {
     ShouldNotReachHere();
