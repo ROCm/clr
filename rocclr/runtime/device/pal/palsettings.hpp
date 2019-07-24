@@ -63,7 +63,8 @@ class Settings : public device::Settings {
       uint splitSizeForWin7_ : 1;       //!< DMA flush split size for Win 7
       uint enableHwP2P_ : 1;            //!< Forces HW P2P path for testing
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
-      uint reserved_ : 9;
+      uint disableSdma_ : 1;            //!< Disable SDMA support
+      uint reserved_ : 8;
     };
     uint value_;
   };

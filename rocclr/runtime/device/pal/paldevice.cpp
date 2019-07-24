@@ -934,11 +934,8 @@ bool Device::create(Pal::IDevice* device) {
   palSettings->cmdBufBatchedSubmitChainLimit = 0;
   palSettings->disableResourceProcessingManager = true;
   palSettings->numScratchWavesPerCu = settings().numScratchWavesPerCu_;
-
-  if (PAL_DISABLE_SDMA) {
-    // Make sure CP DMA is used only, since compute path won't work in PAL with OCL
-    palSettings->cpDmaCmdCopyMemoryMaxBytes = 0xFFFFFFFF;
-  }
+  // Make sure CP DMA can be used for all possible transfers
+  palSettings->cpDmaCmdCopyMemoryMaxBytes = 0xFFFFFFFF;
 
   // Commit the new settings for the device
   result = iDev()->CommitSettingsAndInit();
