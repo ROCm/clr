@@ -824,7 +824,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     }
 
     // Check if device has SDMA engines
-    if (dev().numDMAEngines() != 0 && !PAL_DISABLE_SDMA) {
+    if (dev().numDMAEngines() != 0 && !dev().settings().disableSdma_) {
       uint sdma;
       // If only 1 SDMA engine is available then use that one, otherwise it's a round-robin manner
       if ((dev().numDMAEngines() < 2) || ((idx + 1) & 0x1)) {

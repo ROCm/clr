@@ -145,6 +145,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   enableHwP2P_ = false;
   imageBufferWar_ = false;
+  disableSdma_ = PAL_DISABLE_SDMA;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -337,6 +338,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     // GFX10 HW doesn't support custom pitch. Enable double copy workaround
     imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
   }
+
+  // Image DMA must be disabled if SDMA is disabled
+  imageDMA_ &= !disableSdma_;
 
   splitSizeForWin7_ = false;
 

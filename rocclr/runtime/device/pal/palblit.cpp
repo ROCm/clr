@@ -1746,9 +1746,10 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   // Fall into the PAL path for rejected transfers
   if (setup_.disableCopyBufferRect_ || gpuMem(srcMemory).isHostMemDirectAccess() ||
       gpuMem(dstMemory).isHostMemDirectAccess()) {
-    result =
+    if (!dev().settings().disableSdma_) {
+      result =
         DmaBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire);
-
+    }
     if (result) {
       synchronize();
       return result;
