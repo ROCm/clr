@@ -3098,6 +3098,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   return true;
 }
 
+#if defined(USE_COMGR_LIBRARY)
 amd_comgr_status_t getSymbolFromModule(amd_comgr_symbol_t symbol, void* userData) {
   size_t nlen;
   amd_comgr_status_t status;
@@ -3131,8 +3132,10 @@ amd_comgr_status_t getSymbolFromModule(amd_comgr_symbol_t symbol, void* userData
   delete[] name;
   return status;
 }
+#endif /* USE_COMGR_LIBRARY */
 
 bool Program::getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) const {
+#if defined(USE_COMGR_LIBRARY)
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
   amd_comgr_data_t dataObject;
 
@@ -3157,6 +3160,7 @@ bool Program::getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) c
     buildLog_ += "COMGR:  Cannot iterate comgr symbols \n";
     return false;
   }
+#endif /* USE_COMGR_LIBRARY */
 
   return true;
 }
