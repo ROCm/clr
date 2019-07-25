@@ -29,7 +29,6 @@ class TimeStamp : public amd::HeapObject {
     struct {
       uint32_t beginIssued_ : 1;
       uint32_t endIssued_ : 1;
-      uint32_t sdma_ : 1;
     };
     uint32_t value_;
     Flags() : value_(0) {}
@@ -46,10 +45,10 @@ class TimeStamp : public amd::HeapObject {
   ~TimeStamp();
 
   //! Starts the timestamp
-  void begin(bool sdma = false);
+  void begin();
 
   //! Ends the timestamp
-  void end(bool sdma = false);
+  void end();
 
   //! Returns the timestamp result in nano seconds
   void value(uint64_t* startTime, uint64_t* endTime);

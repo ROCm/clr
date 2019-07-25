@@ -1332,7 +1332,12 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     }
   }
 
-  gpu.engineID_ = SdmaEngine;
+  if (dev().settings().disableSdma_) {
+    // Make sure compute is done before CP DMA start
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+  } else {
+    gpu.engineID_ = SdmaEngine;
+  }
 
   // Wait for the resources, since runtime may use async transfers
   wait(gpu, waitOnBusyEngine);
@@ -1421,6 +1426,11 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
       copyRegion.copySize = size[0];
       gpu.iCmd()->CmdCopyMemory(*iMem(), *dstResource.iMem(), 1, &copyRegion);
     }
+  }
+
+  if (dev().settings().disableSdma_) {
+    // Make sure CP dma is done
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
   }
 
   gpu.eventEnd(gpu.engineID_, event);

@@ -17,7 +17,7 @@ TimeStamp::TimeStamp(const VirtualGPU& gpu, Pal::IGpuMemory* iMem, uint memOffse
 
 TimeStamp::~TimeStamp() {}
 
-void TimeStamp::begin(bool sdma) {
+void TimeStamp::begin() {
   if (!flags_.beginIssued_) {
     gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
                                     memOffset_ + CommandStartTime * sizeof(uint64_t));
@@ -25,12 +25,11 @@ void TimeStamp::begin(bool sdma) {
   }
 }
 
-void TimeStamp::end(bool sdma) {
+void TimeStamp::end() {
   CondLog(!flags_.beginIssued_, "We didn't issue a begin operation!");
   gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
                                   memOffset_ + CommandEndTime * sizeof(uint64_t));
   flags_.endIssued_ = true;
-  flags_.sdma_ = sdma;
 }
 
 inline void SetValue(uint64_t* time, uint64_t val, double nanos) {
@@ -57,7 +56,9 @@ TimeStampCache::~TimeStampCache() {
   for (uint i = 0; i < tsBuf_.size(); ++i) {
     tsBuf_[i]->unmap(&gpu_);
     gpu_.queue(MainEngine).removeMemRef(tsBuf_[i]->iMem());
-    gpu_.queue(SdmaEngine).removeMemRef(tsBuf_[i]->iMem());
+    if (!gpu_.dev().settings().disableSdma_) {
+      gpu_.queue(SdmaEngine).removeMemRef(tsBuf_[i]->iMem());
+    }
     delete tsBuf_[i];
   }
   tsBuf_.clear();
@@ -77,7 +78,9 @@ TimeStamp* TimeStampCache::allocTimeStamp() {
         return nullptr;
       }
       gpu_.queue(MainEngine).addMemRef(buf->iMem());
-      gpu_.queue(SdmaEngine).addMemRef(buf->iMem());
+      if (!gpu_.dev().settings().disableSdma_) {
+        gpu_.queue(SdmaEngine).addMemRef(buf->iMem());
+      }
       tsBufCpu_ = reinterpret_cast<address>(buf->map(&gpu_));
       memset(tsBufCpu_, 0, TimerBufSize);
       tsOffset_ = 0;

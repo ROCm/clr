@@ -838,13 +838,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
       if (nullptr == queues_[SdmaEngine]) {
         return false;
       }
-    } else {
-      queues_[SdmaEngine] =
-          Queue::Create(*this, Pal::QueueTypeCompute, idx, cmdAllocator_, rtCUs,
-                        amd::CommandQueue::Priority::Normal, residency_limit, max_cmd_buffers);
-      if (nullptr == queues_[SdmaEngine]) {
-        return false;
-      }
     }
   } else {
     LogError("Runtme couldn't find compute queues!");
@@ -2484,7 +2477,9 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
 
 void VirtualGPU::releaseMemory(GpuMemoryReference* mem) {
   queues_[MainEngine]->removeCmdMemRef(mem);
-  queues_[SdmaEngine]->removeCmdMemRef(mem);
+  if (!dev().settings().disableSdma_) {
+    queues_[SdmaEngine]->removeCmdMemRef(mem);
+  }
 }
 
 void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
@@ -3128,9 +3123,9 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
     return;
   }
   if (type) {
-    profileTs_->begin((engine == SdmaEngine) ? true : false);
+    profileTs_->begin();
   } else {
-    profileTs_->end((engine == SdmaEngine) ? true : false);
+    profileTs_->end();
   }
 }
 

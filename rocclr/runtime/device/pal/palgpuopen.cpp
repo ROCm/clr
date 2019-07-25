@@ -582,10 +582,11 @@ Pal::Result RgpCaptureMgr::EndRGPTrace(VirtualGPU* gpu) {
   // end the session itself
   if (result == Pal::Result::Success) {
     assert(trace_.gpa_session_ != nullptr);
+    EngineType engine = (gpu->dev().settings().disableSdma_) ? MainEngine : SdmaEngine;
     // Initiate SDMA copy
-    gpu->eventBegin(SdmaEngine);
-    result = trace_.gpa_session_->End(gpu->queue(SdmaEngine).iCmd());
-    gpu->eventEnd(SdmaEngine, trace_.end_event_);
+    gpu->eventBegin(engine);
+    result = trace_.gpa_session_->End(gpu->queue(engine).iCmd());
+    gpu->eventEnd(engine, trace_.end_event_);
   }
 
   // Submit the trace-end command buffer
