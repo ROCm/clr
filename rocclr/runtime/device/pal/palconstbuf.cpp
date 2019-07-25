@@ -69,8 +69,10 @@ address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
     // Get the next buffer in the list
     ++activeBuffer_;
     activeBuffer_ %= MaxNumberOfBuffers;
-    // Make sure the buffer isn't busy
-    gpu().waitForEvent(&pool_[activeBuffer_].events[SdmaEngine]);
+    if (!gpu().dev().settings().disableSdma_) {
+      // Make sure the buffer isn't busy
+      gpu().waitForEvent(&pool_[activeBuffer_].events[SdmaEngine]);
+    }
     gpu().waitForEvent(&pool_[activeBuffer_].events[MainEngine]);
     wrtAddress_ = pool_[activeBuffer_].buf->data();
     wrtOffset_ = 0;
