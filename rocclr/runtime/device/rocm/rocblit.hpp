@@ -430,7 +430,6 @@ class KernelBlitManager : public DmaBlitManager {
   amd::Program* program_;                     //!< GPU program obejct
   amd::Kernel* kernels_[BlitTotal];           //!< GPU kernels for blit
   amd::Memory* constantBuffer_;               //!< An internal CB for blits
-  amd::Memory* xferBuffers_[MaxXferBuffers];  //!< Transfer buffers for images
   size_t xferBufferSize_;                     //!< Transfer buffer size
   amd::Monitor* lockXferOps_;                 //!< Lock transfer operation
 };

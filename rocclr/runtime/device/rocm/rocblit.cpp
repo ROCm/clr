@@ -695,10 +695,6 @@ KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
     kernels_[i] = nullptr;
   }
 
-  for (uint i = 0; i < MaxXferBuffers; ++i) {
-    xferBuffers_[i] = nullptr;
-  }
-
   completeOperation_ = false;
 }
 
@@ -719,12 +715,6 @@ KernelBlitManager::~KernelBlitManager() {
 
   if (nullptr != constantBuffer_) {
     constantBuffer_->release();
-  }
-
-  for (uint i = 0; i < MaxXferBuffers; ++i) {
-    if (nullptr != xferBuffers_[i]) {
-      xferBuffers_[i]->release();
-    }
   }
 
   delete lockXferOps_;
@@ -786,34 +776,6 @@ bool KernelBlitManager::createProgram(Device& device) {
     return false;
   } else if (constantBuffer_ == nullptr) {
     return false;
-  }
-
-  if (dev().settings().xferBufSize_ > 0) {
-    xferBufferSize_ = dev().settings().xferBufSize_;
-    for (uint i = 0; i < MaxXferBuffers; ++i) {
-      // Create internal xfer buffers for image copy optimization
-      xferBuffers_[i] = new (*context_) amd::Buffer(*context_, 0, xferBufferSize_);
-
-      // Assign the xfer buffer to the current virtual GPU
-      xferBuffers_[i]->setVirtualDevice(&gpu());
-
-      if ((xferBuffers_[i] != nullptr) && !xferBuffers_[i]->create(nullptr)) {
-        xferBuffers_[i]->release();
-        xferBuffers_[i] = nullptr;
-        return false;
-      } else if (xferBuffers_[i] == nullptr) {
-        return false;
-      }
-
-      //! @note Workaround for conformance allocation test.
-      //! Force GPU mem alloc.
-      //! Unaligned images require xfer optimization,
-      //! but deferred memory allocation can cause
-      //! virtual heap fragmentation for big allocations and
-      //! then fail the following test with 32 bit ISA, because
-      //! runtime runs out of 4GB space.
-      dev().getRocMemory(xferBuffers_[i]);
-    }
   }
 
   lockXferOps_ = new amd::Monitor("Transfer Ops Lock", true);
