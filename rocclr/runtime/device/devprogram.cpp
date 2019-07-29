@@ -126,26 +126,6 @@ bool Program::compileImpl(const std::string& sourceCode,
 #if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 
-#if defined(ATI_OS_WIN)
-static BOOL CALLBACK checkLLVM_BIN(PINIT_ONCE InitOnce, PVOID Parameter, PVOID* lpContex) {
-  if (llvmBin_.empty()) {
-    HMODULE hm = nullptr;
-    if (GetModuleHandleExA(
-      GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-      (LPCSTR)&amd::Device::init, &hm)) {
-      char path[1024];
-      GetModuleFileNameA(hm, path, sizeof(path));
-      llvmBin_ = path;
-      size_t pos = llvmBin_.rfind('\\');
-      if (pos != std::string::npos) {
-        llvmBin_.resize(pos);
-      }
-    }
-  }
-  return TRUE;
-}
-#endif  // defined (ATI_OS_WINDOWS)
-
 #if defined(ATI_OS_LINUX)
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 
@@ -185,10 +165,6 @@ static void checkLLVM_BIN() {
 
 #if !defined(USE_COMGR_LIBRARY)
 std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
-#if defined(ATI_OS_WIN)
-  static INIT_ONCE initOnce;
-  InitOnceExecuteOnce(&initOnce, checkLLVM_BIN, nullptr, nullptr);
-#endif  // defined(ATI_OS_WIN)
 #if defined(ATI_OS_LINUX)
   pthread_once(&once, checkLLVM_BIN);
 #endif  // defined(ATI_OS_LINUX)
