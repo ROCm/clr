@@ -10,7 +10,7 @@
 #include "cl_d3d11_amd.hpp"
 #endif  //_WIN32
 
-#include <icd/icd_dispatch.h>
+#include <icd/loader/icd_dispatch.h>
 
 #include <mutex>
 

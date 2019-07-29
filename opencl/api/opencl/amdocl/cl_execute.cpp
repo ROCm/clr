@@ -10,7 +10,7 @@
 #include "platform/program.hpp"
 #include "os/os.hpp"
 
-#include <icd/icd_dispatch.h>
+#include <icd/loader/icd_dispatch.h>
 
 /*! \addtogroup API
  *  @{
