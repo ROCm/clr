@@ -249,9 +249,9 @@ class VirtualGPU : public device::VirtualDevice {
 
   // } roc OpenCL integration
  private:
-  bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, bool blocking = true);
-  bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, bool blocking = true);
-  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size_t size = 1);
+  bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest, bool blocking = true);
+  bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header, uint16_t rest, bool blocking = true);
+  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size = 1);
   void dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet);
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion, bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet, amd::NDRangeContainer& sizes);

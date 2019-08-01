@@ -1411,10 +1411,6 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
     return nullptr;
   }
 
-  if (profiling) {
-    hsa_amd_profiling_set_profiler_enabled(virtualDevice->gpu_queue(), 1);
-  }
-
   return virtualDevice;
 }
 
