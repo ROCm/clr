@@ -8,13 +8,21 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
 endif()
 
 include_directories(${ROCR_INCLUDES})
+if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
+  include_directories(${LLVM_INCLUDES})
+endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
 
 include_directories(${CMAKE_SOURCE_DIR}/runtime)
 include_directories(${CMAKE_SOURCE_DIR}/api/opencl)
 include_directories(${CMAKE_SOURCE_DIR}/api/opencl/khronos)
 include_directories(${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers)
 include_directories(${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2)
-include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/include)
+
+# FIXME: Remove following if block after enabling COMGR by default
+if (${USE_COMGR_LIBRARY} STREQUAL "no")
+  include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/include)
+endif() # if (${USE_COMGR_LIBRARY} STREQUAL "no")
+
 include_directories(${CMAKE_SOURCE_DIR}/compiler/driver/src)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib)
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/include)
