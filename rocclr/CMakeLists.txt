@@ -28,6 +28,8 @@ endif()
 
 project(OpenCL-ROCm)
 
+set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2" CACHE PATH "")
+
 # Add path for custom modules
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
