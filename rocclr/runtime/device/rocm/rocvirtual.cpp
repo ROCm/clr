@@ -48,6 +48,9 @@ namespace roc {
 // (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE) invalidates L1, L2 and flushes
 // L2
 
+static const uint16_t kInvalidAql =
+    (HSA_PACKET_TYPE_INVALID << HSA_PACKET_HEADER_TYPE);
+
 static const uint16_t kDispatchPacketHeaderNoSync =
     (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
@@ -387,13 +390,18 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
   return true;
 }
 
+static inline void packet_store_release(uint32_t* packet, uint16_t header, uint16_t rest) {
+  __atomic_store_n(packet, header | (rest << 16), __ATOMIC_RELEASE);
+}
+
 template <typename AqlPacket>
-bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size_t size) {
+bool VirtualGPU::dispatchGenericAqlPacket(
+  AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
 
   // Check for queue full and wait if needed.
-  uint64_t index = hsa_queue_load_write_index_relaxed(gpu_queue_);
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, size);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
   hsa_signal_t signal;
 
@@ -412,7 +420,11 @@ bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size
     timestamp_->setAgent(gpu_device_);
   }
 
-  if (blocking || (index - read) == queueMask) {
+  // Make sure the slot is free for usage
+  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
+
+  // Add blocking command if the original value of read index was behind of the queue size
+  if (blocking || (index - read) >= queueMask) {
     if (packet->completion_signal.handle == 0) {
       packet->completion_signal = barrier_signal_;
     }
@@ -426,10 +438,14 @@ bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size
   // NOTE: need multiple packets to dispatch the performance counter
   //       packet blob of the legacy devices (gfx8)
   for (uint i = 0; i < size; i++, index++, packet++) {
-    ((AqlPacket*)(gpu_queue_->base_address))[index & queueMask] = *packet;
+    AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask]; 
+    *aql_loc = *packet;
+    if (header != 0) {
+      packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
+    }
   }
-  hsa_queue_store_write_index_release(gpu_queue_, index);
-  hsa_signal_store_relaxed(gpu_queue_->doorbell_signal, index-1);
+  //hsa_queue_store_write_index_release(gpu_queue_, index);
+  hsa_signal_store_release(gpu_queue_->doorbell_signal, index - 1);
 
   // Wait on signal ?
   if (blocking) {
@@ -446,12 +462,14 @@ bool VirtualGPU::dispatchGenericAqlPacket(AqlPacket* packet, bool blocking, size
   return true;
 }
 
-bool VirtualGPU::dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, bool blocking) {
-  return dispatchGenericAqlPacket(packet, blocking);
+bool VirtualGPU::dispatchAqlPacket(
+  hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest, bool blocking) {
+  return dispatchGenericAqlPacket(packet, header, rest, blocking);
 }
 
-bool VirtualGPU::dispatchAqlPacket(hsa_barrier_and_packet_t* packet, bool blocking) {
-  return dispatchGenericAqlPacket(packet, blocking);
+bool VirtualGPU::dispatchAqlPacket(
+  hsa_barrier_and_packet_t* packet, uint16_t header, uint16_t rest, bool blocking) {
+  return dispatchGenericAqlPacket(packet, header, rest, blocking);
 }
 
 bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
@@ -467,13 +485,13 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
       { // Create legacy devices PM4 data
         hsa_ext_amd_aql_pm4_packet_t pm4Packet[SLOT_PM4_SIZE_AQLP];
         extApi->hsa_ven_amd_aqlprofile_legacy_get_pm4(packet, static_cast<void*>(&pm4Packet[0]));
-        return dispatchGenericAqlPacket(&pm4Packet[0], blocking, SLOT_PM4_SIZE_AQLP);
+        return dispatchGenericAqlPacket(&pm4Packet[0], 0, 0, blocking, SLOT_PM4_SIZE_AQLP);
       }
       break;
     case PerfCounter::ROC_GFX9:
       {
         packet->header = HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE;
-        return dispatchGenericAqlPacket(packet, blocking);
+        return dispatchGenericAqlPacket(packet, 0, 0, blocking);
       }
       break;
   }
@@ -485,13 +503,16 @@ void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
   assert(packet->completion_signal.handle != 0);
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
+  uint32_t header = kBarrierPacketHeader;
 
-  uint64_t index = hsa_queue_load_write_index_relaxed(gpu_queue_);
-  ((hsa_barrier_and_packet_t*)(gpu_queue_->base_address))[index & queueMask] = *packet;
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
+  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
+  hsa_barrier_and_packet_t* aql_loc =
+    &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
+  *aql_loc = *packet;
+ __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), kBarrierPacketHeader, __ATOMIC_RELEASE);
 
-  hsa_queue_store_write_index_relaxed(gpu_queue_, index + 1);
-
-  hsa_signal_store_relaxed(gpu_queue_->doorbell_signal, index);
+ hsa_signal_store_release(gpu_queue_->doorbell_signal, index);
 }
 
 /**
@@ -569,8 +590,6 @@ VirtualGPU::~VirtualGPU() {
   // Release the resources of signal
   releaseGpuMemoryFence();
 
-  hsa_status_t err = hsa_queue_destroy(gpu_queue_);
-
   if (barrier_signal_.handle != 0) {
     hsa_signal_destroy(barrier_signal_);
   }
@@ -613,6 +632,13 @@ VirtualGPU::~VirtualGPU() {
   for (uint idx = index(); idx < roc_device_.vgpus().size(); ++idx) {
     roc_device_.vgpus()[idx]->index_--;
   }
+  // Decrement the counter
+  roc_device_.QueuePool()[gpu_queue_]--;
+  // Release the queue if the counter is 0
+  if (roc_device_.QueuePool()[gpu_queue_] == 0) {
+    hsa_status_t err = hsa_queue_destroy(gpu_queue_);
+    roc_device_.QueuePool().erase(gpu_queue_);
+  }
 }
 
 bool VirtualGPU::create(bool profilingEna) {
@@ -630,13 +656,28 @@ bool VirtualGPU::create(bool profilingEna) {
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
   queue_size = (queue_max_packets < queue_size) ? queue_max_packets : queue_size;
-  while (hsa_queue_create(gpu_device_, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
+  if (roc_device_.QueuePool().size() < GPU_MAX_HW_QUEUES) {
+    while (hsa_queue_create(gpu_device_, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
                           std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
                           &gpu_queue_) != HSA_STATUS_SUCCESS) {
-    queue_size >>= 1;
-    if (queue_size < 64) {
-      return false;
+      queue_size >>= 1;
+      if (queue_size < 64) {
+        return false;
+      }
     }
+    hsa_amd_profiling_set_profiler_enabled(gpu_queue(), 1);
+    roc_device_.QueuePool().insert({gpu_queue_, 1});
+  } else {
+    int usage = std::numeric_limits<int>::max();
+    // Loop through all allocated queues and find the lowest usage
+    for (const auto it : roc_device_.QueuePool()) {
+      if (it.second < usage) {
+        gpu_queue_ = it.first;
+        usage = it.second;
+      }
+    }
+    // Increment the usage of the current queue
+    roc_device_.QueuePool()[gpu_queue_]++;
   }
 
   if (!initPool(dev().settings().kernargPoolSize_, (profilingEna) ? queue_size : 0)) {
@@ -660,7 +701,7 @@ bool VirtualGPU::create(bool profilingEna) {
 
   // Initialize barrier packet.
   memset(&barrier_packet_, 0, sizeof(barrier_packet_));
-  barrier_packet_.header = kBarrierPacketHeader;
+  barrier_packet_.header = kInvalidAql;
   barrier_packet_.completion_signal = barrier_signal_;
 
   // Create a object of PrintfDbg
@@ -2100,10 +2141,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     hsa_kernel_dispatch_packet_t dispatchPacket;
     memset(&dispatchPacket, 0, sizeof(dispatchPacket));
 
+    dispatchPacket.header = kInvalidAql;
     dispatchPacket.kernel_object = gpuKernel.KernelCodeHandle();
 
-    dispatchPacket.header = aqlHeader_;
-    dispatchPacket.setup |= sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
+   // dispatchPacket.header = aqlHeader_;
+    // dispatchPacket.setup |= sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     dispatchPacket.grid_size_x = sizes.dimensions() > 0 ? newGlobalSize[0] : 1;
     dispatchPacket.grid_size_y = sizes.dimensions() > 1 ? newGlobalSize[1] : 1;
     dispatchPacket.grid_size_z = sizes.dimensions() > 2 ? newGlobalSize[2] : 1;
@@ -2119,7 +2161,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
     // Dispatch the packet
-    if (!dispatchAqlPacket(&dispatchPacket, GPU_FLUSH_ON_EXECUTION)) {
+    if (!dispatchAqlPacket(
+            &dispatchPacket, aqlHeader_,
+            (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
+            GPU_FLUSH_ON_EXECUTION)) {
       return false;
     }
   }
@@ -2219,7 +2264,7 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
   auto fence = kBarrierAcquirePacket;
-  dispatchAqlPacket(&fence, false);
+  dispatchAqlPacket(&fence, 0, 0, false);
   profilingEnd(vcmd);
 }
 
@@ -2228,7 +2273,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
   auto fence = kBarrierReleasePacket;
-  dispatchAqlPacket(&fence, false);
+  dispatchAqlPacket(&fence, 0, 0, false);
   profilingEnd(vcmd);
 }
 

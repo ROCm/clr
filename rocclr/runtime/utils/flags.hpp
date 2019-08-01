@@ -115,7 +115,7 @@ release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
         "Force GPU opencl verison")                                           \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
         "Enable HSA device local memory usage")                               \
-release(uint, HSA_KERNARG_POOL_SIZE, 2 * 1024 * 1024,                         \
+release(uint, HSA_KERNARG_POOL_SIZE, 512 * 1024,                              \
         "Kernarg pool size")                                                  \
 release(bool, HSA_ENABLE_COARSE_GRAIN_SVM, true,                              \
         "Enable device memory for coarse grain SVM allocations")              \
@@ -177,6 +177,8 @@ release(bool, GPU_ENABLE_COOP_GROUPS, false,                                  \
          "Enables cooperative group launch")                                  \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
+release(uint, GPU_MAX_HW_QUEUES, 4,                                           \
+         "The maximum number of HW queues allocated per device")              \
 release(bool, GPU_IMAGE_BUFFER_WAR, true,                                     \
         "Enables image buffer workaround")                                    \
 release(cstring, HIP_VISIBLE_DEVICES, "",                                     \
