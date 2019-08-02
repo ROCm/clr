@@ -1766,7 +1766,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   }
 
   if (device().settings().lcWavefrontSize64_) {
-    codegenOptions.push_back("-mwavefrontsize64");
+    codegenOptions.append("-mwavefrontsize64");
   }
 
   // Tokenize the options string into a vector of strings
