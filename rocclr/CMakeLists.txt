@@ -28,14 +28,11 @@ endif()
 
 project(OpenCL-ROCm)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2" CACHE PATH "")
 
-# Add path for custom modules
-set(CMAKE_MODULE_PATH
-  ${CMAKE_MODULE_PATH}
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake"
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules"
-  )
+find_package(ROCT REQUIRED)
+find_package(ROCR REQUIRED)
 
 # FIXME: Remove following if block after enabling COMGR by default
 if (${USE_COMGR_LIBRARY} STREQUAL "no")
@@ -96,20 +93,13 @@ if(${USE_COMGR_LIBRARY} MATCHES "yes")
   endif()
 endif()
 
-add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
-
-find_package(ROCT REQUIRED)
-find_package(ROCR REQUIRED)
-add_subdirectory(runtime)
-
-set(OPENCL_INCLUDE_DIRS
-  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers
-  ${CMAKE_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2)
-
 add_subdirectory(api/opencl/amdocl)
-add_subdirectory(api/opencl/khronos/icd)
-
+add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
+add_subdirectory(runtime)
 add_subdirectory(tools/clinfo)
+
+set(BUILD_SHARED_LIBS "Build shared libs" ON)
+add_subdirectory(api/opencl/khronos/icd)
 
 ###--- Packaging ------------------------------------------------------------###
 
