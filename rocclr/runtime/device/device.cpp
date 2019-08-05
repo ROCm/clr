@@ -607,6 +607,10 @@ Settings::Settings() : value_(0) {
   overrideLclSet |= (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
     !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
     !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z)) ? 4 : 0;
+
+  if (amd::IS_HIP) {
+    GPU_SINGLE_ALLOC_PERCENT = 100;
+  }
 }
 
 void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
