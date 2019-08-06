@@ -677,6 +677,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
       m_target = CAL_TARGET_VEGA20;
       m_elfmachine = ED_ATI_CAL_MACHINE_VEGA20_ISA;
       break;
+  case GSL_ATIASIC_ID_RENOIR:
+      m_target = CAL_TARGET_RENOIR;
+      m_elfmachine = ED_ATI_CAL_MACHINE_RENOIR_ISA;
+      break;
   default:
         // 6XX is not supported
         m_adp->deleteContext(temp_cs);

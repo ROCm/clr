@@ -1867,6 +1867,7 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
         case ED_ATI_CAL_MACHINE_GREENLAND_ISA:
           return isa.handle == gfx900;
         case ED_ATI_CAL_MACHINE_RAVEN_ISA:
+        case ED_ATI_CAL_MACHINE_RENOIR_ISA:
             return isa.handle == gfx902 || isa.handle == gfx903;
         case ED_ATI_CAL_MACHINE_VEGA12_ISA:
             return isa.handle == gfx904;
