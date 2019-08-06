@@ -46,7 +46,9 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   { "AI", "gfx901",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A0, F_AI_BASE, true, false,  FAMILY_AI ,true },
   { "AI", "gfx901",    "GFX9", amd::GPU_Library_HSAIL, AI_GREENLAND_P_A1, F_AI_BASE, true, true,  FAMILY_AI ,true },
   { "RV", "gfx902",    "GFX9",  amd::GPU_Library_HSAIL, RAVEN_A0,           F_AI_BASE, true, true,  FAMILY_RV, false },
+  { "RV", "gfx902",    "GFX9",  amd::GPU_Library_HSAIL, RENOIR_A0,          F_AI_BASE, true, true,  FAMILY_RV, false },
   { "RV", "gfx903",    "GFX9",  amd::GPU_Library_HSAIL, RAVEN_A0,           F_AI_BASE, true, true,  FAMILY_RV, true },
+  { "RV", "gfx903",    "GFX9",  amd::GPU_Library_HSAIL, RENOIR_A0,          F_AI_BASE, true, true,  FAMILY_RV, true },
   { "AI", "gfx904",    "GFX9",  amd::GPU_Library_HSAIL, AI_VEGA12_P_A0,     F_AI_BASE, true, true,  FAMILY_AI, false },
   { "AI", "gfx905",    "GFX9",  amd::GPU_Library_HSAIL, AI_VEGA12_P_A0,     F_AI_BASE, true, true,  FAMILY_AI, true },
   { "AI", "gfx906",    "GFX9",  amd::GPU_Library_HSAIL, AI_VEGA20_P_A0,     F_AI_BASE, true, true,  FAMILY_AI, false },
@@ -58,6 +60,8 @@ static const TargetMapping HSAILTargetMapping_0_8[] = {
   { "NV", "gfx1012",   "GFX10", amd::GPU_Library_HSAIL, NV_NAVI14_M_A0,     F_AI_BASE, true, true,  FAMILY_NV, false },
 
 #else
+  UnknownTarget,
+  UnknownTarget,
   UnknownTarget,
   UnknownTarget,
   UnknownTarget,

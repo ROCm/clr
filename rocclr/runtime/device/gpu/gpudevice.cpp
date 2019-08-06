@@ -165,6 +165,7 @@ bool NullDevice::create(CALtarget target) {
     case CAL_TARGET_LEXA:
     case CAL_TARGET_RAVEN:
     case CAL_TARGET_RAVEN2:
+    case CAL_TARGET_RENOIR:
     case CAL_TARGET_POLARIS22:
     case CAL_TARGET_VEGA12:
     case CAL_TARGET_VEGA20:
@@ -867,7 +868,8 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
 
 #if defined(BRAHMA)
   if (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-      calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_POLARIS22) {
+      calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_POLARIS22 ||
+      calTarget_ == CAL_TARGET_RENOIR) {
     return false;
   }
 #endif

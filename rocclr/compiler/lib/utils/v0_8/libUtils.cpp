@@ -623,7 +623,8 @@ int getIsaType(const aclTargetInfo *target)
     case FAMILY_RV:
       switch (Mapping.chip_enum) {
         default: return 902;
-        case RAVEN_A0:          return Mapping.xnack_supported ? 903 : 902;
+        case RAVEN_A0:
+        case RENOIR_A0:          return Mapping.xnack_supported ? 903 : 902;
       }
     case FAMILY_NV:
       switch (Mapping.chip_enum) {
