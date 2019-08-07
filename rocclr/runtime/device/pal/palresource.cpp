@@ -421,7 +421,7 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
 }
 
 // ================================================================================================
-bool Resource::CreateImage(CreateParams* params) {
+bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
   Pal::Result result;
   Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
   Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
@@ -542,7 +542,7 @@ bool Resource::CreateImage(CreateParams* params) {
     imgCreateInfo.mipLevels = (desc_.mipLevels_) ? desc_.mipLevels_ : 1;
     imgCreateInfo.samples = 1;
     imgCreateInfo.fragments = 1;
-    Pal::ImageTiling tiling = Pal::ImageTiling::Optimal;
+    Pal::ImageTiling tiling = forceLinear ? Pal::ImageTiling::Linear : Pal::ImageTiling::Optimal;
     uint32_t rowPitch = 0;
 
     if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
@@ -1056,7 +1056,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
 }
 
 // ================================================================================================
-bool Resource::create(MemoryType memType, CreateParams* params) {
+bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear) {
   bool imageCreateView = false;
   bool foundCalRef = false;
   bool viewDefined = false;
@@ -1142,7 +1142,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
   }
 
   if (!desc_.buffer_) {
-    return CreateImage(params);
+    return CreateImage(params, forceLinear);
   }
 
   Pal::gpusize svmPtr = 0;
