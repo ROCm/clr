@@ -209,7 +209,8 @@ class Resource : public amd::HeapObject {
    *  \return True if we succesfully created a PAL resource
    */
   virtual bool create(MemoryType memType,       //!< memory type
-                      CreateParams* params = 0  //!< special parameters for resource allocation
+                      CreateParams* params = 0, //!< special parameters for resource allocation
+                      bool forceLinear = false  //!< Forces linear tiling for images
   );
 
   /*! \brief Copies a subregion of memory from one resource to another
@@ -395,7 +396,8 @@ class Resource : public amd::HeapObject {
    *
    *  \return True if we succesfully created a PAL resource
    */
-  bool CreateImage(CreateParams* params  //!< special parameters for resource allocation
+  bool CreateImage(CreateParams* params,  //!< special parameters for resource allocation
+                   bool          forceLinear = false  //!< forces linear tiling for images
   );
 
   /*! \brief Creates a PAL interop object, associated with the resource
@@ -427,6 +429,9 @@ class Resource : public amd::HeapObject {
                       );
 
   uint elementSize_;  //!< Size of a single element in bytes
+
+  //! Returns PAL image object
+  Pal::IImage* image() const { return image_; }
 
  private:
   //! Disable copy constructor

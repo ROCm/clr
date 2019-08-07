@@ -74,19 +74,19 @@ static HANDLE getSharedHandle(IUnknown* pIface) {
 }
 #endif  //_WIN32
 
-bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params) {
+bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params, bool forceLinear) {
   bool result;
   uint allocAttempt = 0;
   // Reset the flag in case we reallocate the heap in local/remote
   flags_ &= ~HostMemoryDirectAccess;
-  
+
   if (!ValidateMemory(memType)) {
     return false;
   }
 
   do {
-    // Create a resource in CAL
-    result = Resource::create(memType, params);
+    // Create a resource in PAL
+    result = Resource::create(memType, params, forceLinear);
     if (!result) {
       size_t freeMemory[2];
       // if requested memory is greater than available then exit the loop
@@ -1096,11 +1096,28 @@ bool Image::ValidateMemory(Resource::MemoryType memType) {
   if (dev().settings().imageBufferWar_ && (memType == ImageBuffer) && (owner() != nullptr) &&
       ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
        owner()->asImage()->getRowPitch())) {
-    // Create a native image without pitch as a backing store
+    constexpr bool ForceLinear = true;
+    // Create a native image without pitch for validation
     copyImageBuffer_ = new pal::Image(dev(), size(), desc().width_, desc().height_, desc().depth_,
                                       desc().format_, desc().topology_, 0);
-    if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create(Resource::Local)) {
+    if ((copyImageBuffer_ == nullptr) ||
+        !copyImageBuffer_->create(Resource::Local, nullptr, ForceLinear)) {
       return false;
+    }
+    constexpr Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
+    Pal::SubresLayout layout;
+    copyImageBuffer_->image()->GetSubresourceLayout(ImgSubresId, &layout);
+    // Destroy temporary linear image, since it was allocated for the pitch validation only
+    delete copyImageBuffer_;
+    copyImageBuffer_ = nullptr;
+    // If pitch doesn't match HW expectation, then create a backing store
+    if (owner()->asImage()->getRowPitch() != layout.rowPitch) {
+      // Create a native image without pitch as a backing store
+      copyImageBuffer_ = new pal::Image(dev(), size(), desc().width_, desc().height_, desc().depth_,
+                                        desc().format_, desc().topology_, 0);
+      if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create(Resource::Local)) {
+        return false;
+      }
     }
   }
   return true;

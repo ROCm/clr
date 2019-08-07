@@ -68,8 +68,9 @@ class Memory : public device::Memory, public Resource {
   bool createInterop();
 
   //! Overloads the resource create method
-  virtual bool create(Resource::MemoryType memType,          //!< Memory type
-                      Resource::CreateParams* params = NULL  //!< Prameters for create
+  virtual bool create(Resource::MemoryType memType,             //!< Memory type
+                      Resource::CreateParams* params = nullptr, //!< Prameters for create
+                      bool forceLinear = false                  //!< Forces linear tiling for images
   );
 
   //! Allocate memory for API-level maps
