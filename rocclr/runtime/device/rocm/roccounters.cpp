@@ -229,9 +229,7 @@ static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 125
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CPG - 93
     {HSA_VEN_AMD_AQLPROFILE_BLOCK_NAME_CPC, 0},     // CPC - 94
 // blocks that are not defined in GSL
-    {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // UNUSED - 95
-    {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // UNUSED - 96
-    {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // UNUSED - 97
+    {HSA_VEN_AMD_AQLPROFILE_BLOCK_NAME_ATC, 0},     // ATC - 97
     {HSA_VEN_AMD_AQLPROFILE_BLOCK_NAME_ATCL2, 0},   // ATCL2  - 98
     {HSA_VEN_AMD_AQLPROFILE_BLOCK_NAME_MCVML2, 0},  // MCVML2 - 99
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // EA - 100
