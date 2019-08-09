@@ -2370,12 +2370,15 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
       dispatchParam.scratchSize = scratch->size_;
       dispatchParam.scratchOffset = scratch->offset_;
+      // Use maximum available slots for all dispatches to allow async on the same queue
+      // HW value loaded into SGPR is an offset value calculated as
+      // wave_slot * COMPUTE_TMPRING_SIZE.WAVESIZE
+      dispatchParam.workitemPrivateSegmentSize = scratch->privateMemSize_;
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
     dispatchParam.wavesPerSh = (enqueueEvent != nullptr) ? enqueueEvent->profilingInfo().waves_ : 0;
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
-    dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
