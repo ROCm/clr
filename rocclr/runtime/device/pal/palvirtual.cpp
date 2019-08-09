@@ -801,23 +801,18 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
-  const uint firstQueue = (dev().numComputeEngines() > 2) ? 1 : 0;
-  uint idx = index() % (dev().numComputeEngines() - firstQueue);
+  uint idx = index() % dev().numComputeEngines();
   uint64_t residency_limit = dev().properties().gpuMemoryProperties.flags.supportPerSubmitMemRefs
       ? 0
       : (dev().properties().gpuMemoryProperties.maxLocalMemSize >> 2);
   uint max_cmd_buffers = dev().settings().maxCmdBuffers_;
 
   if (dev().numComputeEngines()) {
-    //! @todo There is a hang with a mix of user and non user queues.
-    //! Currently there is no simple way to detect which queue is what.
-    //! Disable first for now.
-
     // hwRing_ should be set 0 if forced to have single scratch buffer
     hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
 
     queues_[MainEngine] =
-        Queue::Create(*this, Pal::QueueTypeCompute, idx + firstQueue, cmdAllocator_, rtCUs,
+        Queue::Create(*this, Pal::QueueTypeCompute, idx, cmdAllocator_, rtCUs,
                       priority, residency_limit, max_cmd_buffers);
     if (nullptr == queues_[MainEngine]) {
       return false;
