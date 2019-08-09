@@ -2011,6 +2011,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
       ScopedLockVgpus lock(*this);
 
       scratch_[sb]->size_ = newSize;
+      scratch_[sb]->privateMemSize_ = regNum * sizeof(uint32_t);
+
       uint64_t size = 0;
       uint64_t offset = 0;
 
@@ -2064,8 +2066,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
   return true;
 }
 
-bool Device::validateKernel(
-    const amd::Kernel& kernel, const device::VirtualDevice* vdev, bool coop_groups) {
+bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevice* vdev,
+                            bool coop_groups) {
   // Find the number of scratch registers used in the kernel
   const device::Kernel* devKernel = kernel.getDeviceKernel(*this);
   uint regNum = static_cast<uint>(devKernel->workGroupInfo()->scratchRegs_);
@@ -2239,33 +2241,30 @@ void Device::svmFree(void* ptr) const {
 }
 
 bool Device::AcquireExclusiveGpuAccess() {
-    // Lock the virtual GPU list
-    vgpusAccess().lock();
+  // Lock the virtual GPU list
+  vgpusAccess().lock();
 
-    // Find all available virtual GPUs and lock them
-    // from the execution of commands
-    for (uint idx = 0; idx < vgpus().size(); ++idx) {
-        vgpus()[idx]->execution().lock();
-        // Make sure a wait is done
-        vgpus()[idx]->WaitForIdleCompute();
-    }
-//    if (!hsa_exclusive_gpu_access_) {
-        // @todo call rocr
-//        hsa_exclusive_gpu_access_ = true;
-//    }
-    return true;
+  // Find all available virtual GPUs and lock them
+  // from the execution of commands
+  for (uint idx = 0; idx < vgpus().size(); ++idx) {
+    vgpus()[idx]->execution().lock();
+    // Make sure a wait is done
+    vgpus()[idx]->WaitForIdleCompute();
+  }
+
+  return true;
 }
 
 void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
-    vgpu.WaitForIdleCompute();
-    // Find all available virtual GPUs and unlock them
-    // for the execution of commands
-    for (uint idx = 0; idx < vgpus().size(); ++idx) {
-        vgpus()[idx]->execution().unlock();
-    }
+  vgpu.WaitForIdleCompute();
+  // Find all available virtual GPUs and unlock them
+  // for the execution of commands
+  for (uint idx = 0; idx < vgpus().size(); ++idx) {
+    vgpus()[idx]->execution().unlock();
+  }
 
-    // Unock the virtual GPU list
-    vgpusAccess().unlock();
+  // Unock the virtual GPU list
+  vgpusAccess().unlock();
 }
 
 Device::SrdManager::~SrdManager() {
