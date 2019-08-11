@@ -126,8 +126,8 @@ class HSAILProgram : public device::Program {
 
  public:
   //! Default constructor
-  HSAILProgram(Device& device);
-  HSAILProgram(NullDevice& device);
+  HSAILProgram(Device& device, amd::Program& owner);
+  HSAILProgram(NullDevice& device, amd::Program& owner);
   //! Default destructor
   virtual ~HSAILProgram();
 
@@ -187,6 +187,7 @@ class HSAILProgram : public device::Program {
     }
   }
 
+  virtual bool defineGlobalVar(const char* name, void* dptr);
   virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr, size_t* bytes,
                                   const char* globalName) const;
 
@@ -218,13 +219,13 @@ class HSAILProgram : public device::Program {
 //! \class Lightning Compiler Program
 class LightningProgram : public HSAILProgram {
  public:
-  LightningProgram(NullDevice& device) : HSAILProgram(device) {
+  LightningProgram(NullDevice& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
     xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
     machineTarget_ = dev().hwInfo()->machineTargetLC_;
   }
 
-  LightningProgram(Device& device) : HSAILProgram(device) {
+  LightningProgram(Device& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
     xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
     machineTarget_ = dev().hwInfo()->machineTargetLC_;

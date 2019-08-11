@@ -162,8 +162,8 @@ bool Segment::freeze(bool destroySysmem) {
 }
 
 const static char* Carrizo = "Carrizo";
-HSAILProgram::HSAILProgram(Device& device)
-    : Program(device),
+HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
+    : Program(device, owner),
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
@@ -181,8 +181,8 @@ HSAILProgram::HSAILProgram(Device& device)
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
-HSAILProgram::HSAILProgram(NullDevice& device)
-    : Program(device),
+HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
+    : Program(device, owner),
       rawBinary_(nullptr),
       kernels_(nullptr),
       codeSegGpu_(nullptr),
@@ -249,6 +249,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   size_t size = binSize;
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+  defineUndefinedVars();
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
@@ -374,6 +376,20 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   setType(type);
 #endif  // defined(WITH_COMPILER_LIB)
   return true;
+}
+
+bool HSAILProgram::defineGlobalVar(const char* name, void* dptr) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_agent_t agent;
+
+  agent.handle = 1;
+  hsa_status = executable_->DefineAgentExternalVariable(name, agent, HSA_VARIABLE_SEGMENT_GLOBAL, dptr);
+  if(HSA_STATUS_SUCCESS != hsa_status) {
+    buildLog_ += "Could not define Program External Variable";
+    buildLog_ += "\n";
+  }
+
+  return (hsa_status == HSA_STATUS_SUCCESS);
 }
 
 bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr, size_t* bytes,
@@ -728,6 +744,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+  defineUndefinedVars();
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {

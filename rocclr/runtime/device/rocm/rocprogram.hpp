@@ -24,7 +24,7 @@ class Program : public device::Program {
 
  public:
   //! Default constructor
-  Program(roc::NullDevice& device);
+  Program(roc::NullDevice& device, amd::Program& owner);
   //! Default destructor
   ~Program();
 
@@ -59,6 +59,7 @@ class Program : public device::Program {
   //! Disable operator=
   Program& operator=(const Program&) = delete;
 
+  virtual bool defineGlobalVar(const char* name, void* dptr);
 protected:
   /* HSA executable */
   hsa_executable_t hsaExecutable_;               //!< Handle to HSA executable
@@ -67,7 +68,7 @@ protected:
 
 class HSAILProgram : public roc::Program {
  public:
-  HSAILProgram(roc::NullDevice& device);
+  HSAILProgram(roc::NullDevice& device, amd::Program& owner);
   virtual ~HSAILProgram();
 
  protected:
@@ -83,7 +84,7 @@ private:
 
 class LightningProgram : public roc::Program {
 public:
-  LightningProgram(roc::NullDevice& device);
+  LightningProgram(roc::NullDevice& device, amd::Program& owner);
   virtual ~LightningProgram() {}
 
 protected:

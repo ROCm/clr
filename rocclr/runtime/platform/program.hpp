@@ -75,6 +75,10 @@ class Program : public RuntimeObject {
     SPIRV,
     Assembly
   };
+
+  typedef bool(CL_CALLBACK* VarInfoCallback)(cl_program, std::string, void**, size_t*);
+  VarInfoCallback varcallback;
+
  private:
   //! Replaces the compiled program with the new version from HD
   void StubProgramSource(const std::string& app_name);
@@ -179,6 +183,10 @@ class Program : public RuntimeObject {
 
   static bool ParseAllOptions(const std::string& options, option::Options& parsedOptions,
                               bool optionChangable = true, bool linkOptsOnly = false);
+
+  void setVarInfoCallBack(VarInfoCallback callback) {
+    varcallback = callback;
+  }
 };
 
 /*! @}

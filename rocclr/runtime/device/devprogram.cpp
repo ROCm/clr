@@ -65,8 +65,9 @@ inline static std::vector<std::string> splitSpaceSeparatedString(const char *str
 }
 
 // ================================================================================================
-Program::Program(amd::Device& device)
+Program::Program(amd::Device& device, amd::Program& owner)
     : device_(device),
+      owner_(owner),
       type_(TYPE_NONE),
       flags_(0),
       clBinary_(nullptr),
@@ -94,6 +95,12 @@ Program::Program(amd::Device& device)
 // ================================================================================================
 Program::~Program() {
   clear();
+
+  /* Delete the undefined memory object */
+  for (auto it = undef_mem_obj_.begin(); it != undef_mem_obj_.end(); ++it) {
+    (*it)->release();
+  }
+
 #if defined(USE_COMGR_LIBRARY)
   for (auto const& kernelMeta : kernelMetadataMap_) {
     amd::Comgr::destroy_metadata(kernelMeta.second);
@@ -3076,10 +3083,18 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
 
 #if defined(USE_COMGR_LIBRARY)
 amd_comgr_status_t getSymbolFromModule(amd_comgr_symbol_t symbol, void* userData) {
-  size_t nlen;
+  size_t nlen = 0;
+  size_t* userDataInfo = nullptr;
   amd_comgr_status_t status;
   amd_comgr_symbol_type_t type;
-  std::vector<std::string>* var_names = reinterpret_cast<std::vector<std::string>*>(userData);
+  std::vector<std::string>* var_names = nullptr;
+
+  /* Unpack the user data */
+  SymbolInfo* sym_info = reinterpret_cast<SymbolInfo*>(userData);
+
+  if (!sym_info) {
+    return AMD_COMGR_STATUS_ERROR_INVALID_ARGUMENT;
+  }
 
   /* Retrieve the symbol info */
   status = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME_LENGTH, &nlen);
@@ -3101,43 +3116,127 @@ amd_comgr_status_t getSymbolFromModule(amd_comgr_symbol_t symbol, void* userData
   }
 
   /* If symbol type is object(Variable) add it to vector */
-  if (type == AMD_COMGR_SYMBOL_TYPE_OBJECT) {
-    var_names->push_back(std::string(name));
+  if ((std::strcmp(name, "") != 0) && (type == sym_info->sym_type)) {
+    sym_info->var_names->push_back(std::string(name));
   }
 
   delete[] name;
   return status;
 }
-#endif /* USE_COMGR_LIBRARY */
 
-bool Program::getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) const {
-#if defined(USE_COMGR_LIBRARY)
+bool Program::getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_comgr_symbol_type_t sym_type) const {
   amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
   amd_comgr_data_t dataObject;
+  SymbolInfo sym_info;
+  bool ret_val = true;
 
-  /* Create comgr data */
-  status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
-    buildLog_ += "COMGR:  Cannot create comgr data \n";
-    return false;
-  }
+  do {
+    /* Create comgr data */
+    status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      buildLog_ += "COMGR:  Cannot create comgr data \n";
+      ret_val = false;
+      break;
+    }
 
-  /* Set the binary as a dataObject */
-  status = amd::Comgr::set_data(dataObject,static_cast<size_t>(clBinary_->data().second),
-                                reinterpret_cast<const char*>(clBinary_->data().first));
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
-    buildLog_ += "COMGR:  Cannot set comgr data \n";
-    return false;
-  }
+    /* Set the binary as a dataObject */
+    status = amd::Comgr::set_data(dataObject,static_cast<size_t>(clBinary_->data().second),
+                                  reinterpret_cast<const char*>(clBinary_->data().first));
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      buildLog_ += "COMGR:  Cannot set comgr data \n";
+      ret_val = false;
+      break;
+    }
+
+    /* Pack the user data */
+    sym_info.sym_type = sym_type;
+    sym_info.var_names = var_names;
 
   /* Iterate through list of symbols */
-  status = amd::Comgr::iterate_symbols(dataObject, getSymbolFromModule, var_names);
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
-    buildLog_ += "COMGR:  Cannot iterate comgr symbols \n";
+    status = amd::Comgr::iterate_symbols(dataObject, getSymbolFromModule, &sym_info);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      buildLog_ += "COMGR:  Cannot iterate comgr symbols \n";
+      ret_val = false;
+      break;
+    }
+  } while (0);
+
+  return ret_val;
+}
+#endif /* USE_COMGR_LIBRARY */
+
+bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const {
+#if defined(USE_COMGR_LIBRARY)
+  return getSymbolsFromCodeObj(var_names, AMD_COMGR_SYMBOL_TYPE_OBJECT);
+#else
+  return true;
+#endif
+}
+
+bool Program::getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const {
+#if defined(USE_COMGR_LIBRARY)
+  return getSymbolsFromCodeObj(var_names, AMD_COMGR_SYMBOL_TYPE_NOTYPE);
+#else
+  return true;
+#endif
+}
+
+bool Program::getUndefinedVarInfo(std::string var_name, void** var_addr, size_t* var_size) {
+  return owner()->varcallback(as_cl(owner()), var_name.c_str(), var_addr, var_size);
+}
+
+bool Program::defineUndefinedVars() {
+  size_t address = 0;
+  size_t hsize = 0;
+  void* dptr = nullptr;
+  void* hptr = nullptr;
+  device::Memory* dev_mem = nullptr;
+  amd::Memory* amd_mem_obj = nullptr;
+  std::vector<std::string> var_names;
+
+  if (!getUndefinedVarFromCodeObj(&var_names)) {
     return false;
   }
-#endif /* USE_COMGR_LIBRARY */
+
+  for (auto it = var_names.begin(); it != var_names.end(); ++it) {
+    if (!getUndefinedVarInfo(*it, &hptr, &hsize)) {
+      continue;
+    }
+
+    amd_mem_obj = new (device().GlbCtx()) amd::Buffer(device().GlbCtx(),
+                                                      CL_MEM_USE_HOST_PTR, hsize);
+    if (amd_mem_obj == nullptr) {
+      LogError("[OCL] failed to create a mem object!");
+      return false;
+    }
+
+    if (!amd_mem_obj->create(hptr)) {
+      LogError("[OCL] failed to create a svm hidden buffer!");
+      amd_mem_obj->release();
+      return false;
+    }
+
+    undef_mem_obj_.push_back(amd_mem_obj);
+
+    dev_mem = amd_mem_obj->getDeviceMemory(device());
+    if (dev_mem == nullptr) {
+      LogError("[OCL] failed to create a mem object!");
+      return false;
+    }
+
+    dptr = reinterpret_cast<void*>(dev_mem->virtualAddress());
+    if (dev_mem == nullptr) {
+      LogError("[OCL] failed to create a mem object!");
+      return false;
+    }
+
+    if(!defineGlobalVar(it->c_str(), dptr)) {
+      LogError("[OCL] failed to define global var");
+      return false;
+    }
+  }
 
   return true;
 }
-}
+
+} /* namespace device*/

@@ -1225,7 +1225,7 @@ class Device : public RuntimeObject {
   virtual device::VirtualDevice* createVirtualDevice(CommandQueue* queue = NULL) = 0;
 
   //! Create a program for device.
-  virtual device::Program* createProgram(option::Options* options = NULL) = 0;
+  virtual device::Program* createProgram(amd::Program& owner, option::Options* options = NULL) = 0;
 
   //! Allocate a chunk of device memory as a cache for a CL memory object
   virtual device::Memory* createMemory(Memory& owner) const = 0;

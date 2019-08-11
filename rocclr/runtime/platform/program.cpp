@@ -125,7 +125,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
   }
 #endif // defined(WITH_COMPILER_LIB)
   options->oVariables->BinaryIsSpirv = language_ == SPIRV;
-  device::Program* program = rootDev.createProgram(options);
+  device::Program* program = rootDev.createProgram(*this, options);
   if (program == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
   }

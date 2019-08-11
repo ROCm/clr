@@ -772,12 +772,12 @@ bool Device::create(bool sramEccEnabled) {
   return true;
 }
 
-device::Program* NullDevice::createProgram(amd::option::Options* options) {
+device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
-    program = new LightningProgram(*this);
+    program = new LightningProgram(*this, owner);
   } else {
-    program = new HSAILProgram(*this);
+    program = new HSAILProgram(*this, owner);
   }
 
   if (program == nullptr) {
@@ -819,12 +819,12 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
   vgpusAccess().unlock();
 }
 
-device::Program* Device::createProgram(amd::option::Options* options) {
+device::Program* Device::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
-    program = new LightningProgram(*this);
+    program = new LightningProgram(*this, owner);
   } else {
-    program = new HSAILProgram(*this);
+    program = new HSAILProgram(*this, owner);
   }
 
   if (program == nullptr) {

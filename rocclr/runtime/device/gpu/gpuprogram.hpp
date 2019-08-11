@@ -107,7 +107,8 @@ class NullProgram : public device::Program {
 
  public:
   //! Default constructor
-  NullProgram(NullDevice& nullDev) : device::Program(nullDev), patch_(0) {}
+  NullProgram(NullDevice& nullDev, amd::Program& owner)
+    : device::Program(nullDev, owner), patch_(0) {}
 
   //! Default destructor
   ~NullProgram();
@@ -286,7 +287,7 @@ class NullProgram : public device::Program {
 class Program : public NullProgram {
  public:
   //! GPU program constructor
-  Program(Device& gpuDev) : NullProgram(gpuDev), glbData_(NULL) {}
+  Program(Device& gpuDev, amd::Program& owner) : NullProgram(gpuDev, owner), glbData_(NULL) {}
 
   //! GPU program destructor
   ~Program();
@@ -441,8 +442,8 @@ class HSAILProgram : public device::Program {
 
  public:
   //! Default constructor
-  HSAILProgram(Device& device);
-  HSAILProgram(NullDevice& device);
+  HSAILProgram(Device& device, amd::Program& owner);
+  HSAILProgram(NullDevice& device, amd::Program& owner);
   //! Default destructor
   ~HSAILProgram();
 

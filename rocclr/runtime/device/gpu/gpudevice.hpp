@@ -59,7 +59,7 @@ class NullDevice : public amd::Device {
   }
 
   //! Create the device program.
-  virtual device::Program* createProgram(amd::option::Options* options = NULL);
+  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = NULL);
 
   //! Just returns NULL for the dummy device
   virtual device::Memory* createMemory(amd::Memory& owner) const { return NULL; }
@@ -398,7 +398,7 @@ class Device : public NullDevice, public CALGSLDevice {
       ) const;
 
   //! Create the device program.
-  virtual device::Program* createProgram(amd::option::Options* options = NULL);
+  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = NULL);
 
   //! Attempt to bind with external graphics API's device/context
   virtual bool bindExternalDevice(uint flags, void* const pDevice[], void* pContext,

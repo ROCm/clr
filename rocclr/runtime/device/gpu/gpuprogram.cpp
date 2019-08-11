@@ -1483,8 +1483,8 @@ bool Program::loadBinary(bool* hasRecompile) {
   return false;
 }
 
-HSAILProgram::HSAILProgram(Device& device)
-    : Program(device),
+HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
+    : Program(device, owner),
       rawBinary_(NULL),
       kernels_(NULL),
       maxScratchRegs_(0),
@@ -1494,8 +1494,8 @@ HSAILProgram::HSAILProgram(Device& device)
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
-HSAILProgram::HSAILProgram(NullDevice& device)
-    : Program(device),
+HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
+    : Program(device, owner),
       rawBinary_(NULL),
       kernels_(NULL),
       maxScratchRegs_(0),
