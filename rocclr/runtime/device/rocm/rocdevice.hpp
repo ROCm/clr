@@ -107,7 +107,7 @@ class NullDevice : public amd::Device {
   const Settings& settings() const { return reinterpret_cast<Settings&>(*settings_); }
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
-  virtual device::Program* createProgram(amd::option::Options* options = nullptr);
+  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
   const AMDDeviceInfo& deviceInfo() const { return deviceInfo_; }
   //! Gets the backend device for the Null device type
   virtual hsa_agent_t getBackendDevice() const {
@@ -300,7 +300,7 @@ class Device : public NullDevice {
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr);
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
-  virtual device::Program* createProgram(amd::option::Options* options = nullptr);
+  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
 
   virtual device::Memory* createMemory(amd::Memory& owner) const;
 

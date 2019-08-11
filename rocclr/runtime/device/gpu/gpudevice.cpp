@@ -296,11 +296,11 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
   return true;
 }
 
-device::Program* NullDevice::createProgram(amd::option::Options* options) {
+device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Options* options) {
   if (isHsailProgram(options)) {
-    return new HSAILProgram(*this);
+    return new HSAILProgram(*this, owner);
   }
-  return new NullProgram(*this);
+  return new NullProgram(*this, owner);
 }
 
 void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInfo& memInfo,
@@ -1148,11 +1148,11 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   }
 }
 
-device::Program* Device::createProgram(amd::option::Options* options) {
+device::Program* Device::createProgram(amd::Program& owner, amd::option::Options* options) {
   if (isHsailProgram(options)) {
-    return new HSAILProgram(*this);
+    return new HSAILProgram(*this, owner);
   }
-  return new Program(*this);
+  return new Program(*this, owner);
 }
 
 //! Requested devices list as configured by the GPU_DEVICE_ORDINAL

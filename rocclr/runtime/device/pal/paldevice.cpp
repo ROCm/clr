@@ -344,12 +344,12 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   return true;
 }
 
-device::Program* NullDevice::createProgram(amd::option::Options* options) {
+device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
-    program = new LightningProgram(*this);
+    program = new LightningProgram(*this, owner);
   } else {
-    program = new HSAILProgram(*this);
+    program = new HSAILProgram(*this, owner);
   }
 
   if (program == nullptr) {
@@ -1236,12 +1236,12 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   }
 }
 
-device::Program* Device::createProgram(amd::option::Options* options) {
+device::Program* Device::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
-    program = new LightningProgram(*this);
+    program = new LightningProgram(*this, owner);
   } else {
-    program = new HSAILProgram(*this);
+    program = new HSAILProgram(*this, owner);
   }
   if (program == nullptr) {
     LogError("We failed memory allocation for program!");

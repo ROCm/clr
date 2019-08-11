@@ -74,7 +74,7 @@ Program::~Program() {
   releaseClBinary();
 }
 
-Program::Program(roc::NullDevice& device) : device::Program(device) {
+Program::Program(roc::NullDevice& device, amd::Program& owner) : device::Program(device, owner) {
   hsaExecutable_.handle = 0;
   hsaCodeObjectReader_.handle = 0;
 }
@@ -111,6 +111,21 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   clBinary()->setFlags(encryptCode);
 
   return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
+}
+
+
+bool Program::defineGlobalVar(const char* name, void* dptr) {
+  hsa_status_t status = HSA_STATUS_SUCCESS;
+  hsa_agent_t hsa_device = dev().getBackendDevice();
+
+  status = hsa_executable_agent_global_variable_define(hsaExecutable_, hsa_device, name, dptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: Could not define global variable : ";
+    buildLog_ += hsa_strerror(status);
+    buildLog_ += "\n";
+  }
+
+  return (status == HSA_STATUS_SUCCESS);
 }
 
 bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
@@ -197,7 +212,7 @@ bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
   return true;
 }
 
-HSAILProgram::HSAILProgram(roc::NullDevice& device) : roc::Program(device) {
+HSAILProgram::HSAILProgram(roc::NullDevice& device, amd::Program& owner) : roc::Program(device, owner) {
   xnackEnabled_ = dev().settings().enableXNACK_;
   sramEccEnabled_ = dev().info().sramEccEnabled_;
   machineTarget_ = dev().deviceInfo().complibTarget_;
@@ -257,6 +272,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
     buildLog_ += "\n";
     return false;
   }
+
+  defineUndefinedVars();
 
   // Load the code object.
   hsa_code_object_reader_t codeObjectReader;
@@ -402,8 +419,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 }
 
 
-LightningProgram::LightningProgram(roc::NullDevice& device)
-  : roc::Program(device) {
+LightningProgram::LightningProgram(roc::NullDevice& device, amd::Program& owner)
+  : roc::Program(device, owner) {
   isLC_ = true;
   xnackEnabled_ = dev().settings().enableXNACK_;
   sramEccEnabled_ = dev().info().sramEccEnabled_;
@@ -460,6 +477,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     buildLog_ += "\n";
     return false;
   }
+
+  defineUndefinedVars();
 
   // Load the code object.
   status = hsa_code_object_reader_create_from_memory(binary, binSize, &hsaCodeObjectReader_);

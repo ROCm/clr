@@ -62,6 +62,11 @@ namespace device {
 class ClBinary;
 class Kernel;
 
+struct SymbolInfo {
+  size_t sym_type;
+  std::vector<std::string>* var_names;
+};
+
 //! A program object for a specific device.
 class Program : public amd::HeapObject {
  public:
@@ -79,6 +84,7 @@ class Program : public amd::HeapObject {
  private:
   //! The device target for this binary.
   amd::SharedReference<amd::Device> device_;
+  amd::Program& owner_; //!< owner of this program
 
   kernels_t kernels_; //!< The kernel entry points this binary.
   type_t type_;       //!< type of this program
@@ -125,15 +131,19 @@ class Program : public amd::HeapObject {
   CodeObjectMD* metadata_;  //!< Runtime metadata
 #endif
 
+  std::vector<amd::Memory*> undef_mem_obj_;
+
  public:
   //! Construct a section.
-  Program(amd::Device& device);
+  Program(amd::Device& device, amd::Program& owner);
 
   //! Destroy this binary image.
   virtual ~Program();
 
   //! Destroy all the kernels
   void clear();
+
+  amd::Program* owner() const { return &owner_; }
 
   //! Return the compiler options passed to build this program
   amd::option::Options* getCompilerOptions() const { return programOptions_; }
@@ -228,7 +238,8 @@ class Program : public amd::HeapObject {
   //! Check if SRAM ECC is enable
   const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
 
-  virtual bool getGlobalSymbolsFromCodeObj(std::vector<std::string>* var_names) const;
+  bool getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const;
+  bool getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const;
 
   virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
                                   size_t* bytes, const char* globalName) const {
@@ -315,6 +326,17 @@ class Program : public amd::HeapObject {
   bool FindGlobalVarSize(void* binary, size_t binSize);
 
   bool isElf(const char* bin) const { return amd::isElfMagic(bin); }
+
+  virtual bool defineGlobalVar(const char* name, void* dptr) {
+    ShouldNotReachHere();
+    return false;
+  }
+
+#if defined(USE_COMGR_LIBRARY)
+  bool getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_comgr_symbol_type_t sym_type) const;
+#endif
+  bool getUndefinedVarInfo(std::string var_name, void** var_addr, size_t* var_size);
+  bool defineUndefinedVars();
 
  private:
   //! Compile the device program with LC path
