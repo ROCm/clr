@@ -63,7 +63,8 @@ class VirtualGPU : public device::VirtualDevice {
 
     Queue(const VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit,
           uint max_command_buffers)
-        : iQueue_(nullptr),
+        : lock_(nullptr),
+          iQueue_(nullptr),
           iCmdBuffs_(max_command_buffers, nullptr),
           iCmdFences_(max_command_buffers, nullptr),
           last_kernel_(nullptr),
@@ -149,6 +150,9 @@ class VirtualGPU : public device::VirtualDevice {
 
     uint cmdBufId() const { return cmdBufIdCurrent_; }
 
+    static uint32_t AllocedQueues(const VirtualGPU& gpu, Pal::EngineType type);
+
+    amd::Monitor* lock_;                       //!< Lock PAL queue for access
     Pal::IQueue* iQueue_;                      //!< PAL queue object
     std::vector<Pal::ICmdBuffer*> iCmdBuffs_;  //!< PAL command buffers
     std::vector<Pal::IFence*> iCmdFences_;     //!< PAL fences, associated with CMD
@@ -205,7 +209,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint profileEnabled_ : 1;      //!< Profiling is enabled for WaveLimiter
       uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
       uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
-      uint imageBufferWrtBack_: 1;   //!< Enable image buffer write back
+      uint imageBufferWrtBack_ : 1;  //!< Enable image buffer write back
     };
     uint value_;
     State() : value_(0) {}
@@ -640,11 +644,11 @@ class VirtualGPU : public device::VirtualDevice {
   uint deviceQueueSize_;       //!< Device queue size
   uint maskGroups_;  //!< The number of mask groups processed in the scheduler by one thread
 
-  Memory* hsaQueueMem_;               //!< Memory for the amd_queue_t object
-  Pal::ICmdAllocator* cmdAllocator_;  //!< Command buffer allocator
-  Queue* queues_[AllEngines];         //!< HW queues for all engines
-  MemoryRange sdmaRange_;             //!< SDMA memory range for write access
-  std::vector<Image*> wrtBackImageBuffer_;  //!< Array of images for write back 
+  Memory* hsaQueueMem_;                     //!< Memory for the amd_queue_t object
+  Pal::ICmdAllocator* cmdAllocator_;        //!< Command buffer allocator
+  Queue* queues_[AllEngines];               //!< HW queues for all engines
+  MemoryRange sdmaRange_;                   //!< SDMA memory range for write access
+  std::vector<Image*> wrtBackImageBuffer_;  //!< Array of images for write back
 };
 
 inline void VirtualGPU::addVmMemory(const Memory* memory) {

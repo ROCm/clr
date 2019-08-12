@@ -181,6 +181,14 @@ class Sampler : public device::Sampler {
 //! A GPU device ordinal (physical GPU device)
 class Device : public NullDevice {
  public:
+  struct QueueRecycleInfo : public amd::HeapObject {
+    int counter_;                 //!< Lock usage counter
+    Pal::EngineType engineType_;  //!< Engine type
+    uint32_t index_;              //!< HW queue index for scratch buffer access
+    amd::Monitor queue_lock_;     //!< Queue lock for access
+    QueueRecycleInfo() : counter_(1), engineType_(Pal::EngineTypeCompute), index_(0) {}
+  };
+
   //! Locks any access to the virtual GPUs
   class ScopedLockVgpus : public amd::StackObject {
    public:
@@ -239,10 +247,10 @@ class Device : public NullDevice {
   };
 
   struct ScratchBuffer : public amd::HeapObject {
-    Memory* memObj_;   //!< Memory objects for scratch buffers
-    uint64_t offset_;  //!< Offset from the global scratch store
-    uint64_t size_;    //!< Scratch buffer size on this queue
-    uint64_t privateMemSize_; //!< Private memory size per thread, allowed by the current scratch
+    Memory* memObj_;           //!< Memory objects for scratch buffers
+    uint64_t offset_;          //!< Offset from the global scratch store
+    uint64_t size_;            //!< Scratch buffer size on this queue
+    uint64_t privateMemSize_;  //!< Private memory size per thread, allowed by the current scratch
 
     //! Default constructor
     ScratchBuffer() : memObj_(nullptr), offset_(0), size_(0), privateMemSize_(0) {}
@@ -343,8 +351,7 @@ class Device : public NullDevice {
 
   //! Validates kernel before execution
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
-                              const device::VirtualDevice* vdev,
-                              bool coop_group = false);
+                              const device::VirtualDevice* vdev, bool coop_group = false);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
@@ -530,6 +537,10 @@ class Device : public NullDevice {
   bool AcquireExclusiveGpuAccess();
   void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;
 
+  //! Returns PAL Queue pool for recycling
+  std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() { return queue_pool_; }
+  const std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() const { return queue_pool_; }
+
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);
@@ -554,9 +565,9 @@ class Device : public NullDevice {
                            ) const;
 
   //! Allocates/reallocates the scratch buffer, according to the usage
-  bool allocScratch(uint regNum,            //!< Number of the scratch registers
-                    const VirtualGPU* vgpu, //!< Virtual GPU for the allocation
-                    uint vgprs              //!< Used VGPRs in the kernel
+  bool allocScratch(uint regNum,             //!< Number of the scratch registers
+                    const VirtualGPU* vgpu,  //!< Virtual GPU for the allocation
+                    uint vgprs               //!< Used VGPRs in the kernel
   );
 
   //! Interop for D3D devices
@@ -603,7 +614,8 @@ class Device : public NullDevice {
   std::unordered_set<Resource*>* resourceList_;  //!< Active resource list
   RgpCaptureMgr* rgpCaptureMgr_;                 //!< RGP capture manager
   Pal::GpuMemoryHeapProperties
-      heaps_[Pal::GpuHeapCount];  //!< Information about heaps, returned from PAL
+      heaps_[Pal::GpuHeapCount];         //!< Information about heaps, returned from PAL
+  std::map<Pal::IQueue*, QueueRecycleInfo*> queue_pool_;  //!< Pool of PAL queues for recycling
 };
 
 /*@}*/  // namespace pal

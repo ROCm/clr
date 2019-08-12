@@ -34,6 +34,14 @@
 
 namespace pal {
 
+uint32_t VirtualGPU::Queue::AllocedQueues(const VirtualGPU& gpu, Pal::EngineType type) {
+  uint32_t allocedQueues = 0;
+  for (const auto& queue : gpu.dev().QueuePool()) {
+    allocedQueues += (queue.second->engineType_ == type) ? 1 : 0;
+  }
+  return allocedQueues;
+}
+
 VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueType queueType,
                                              uint engineIdx, Pal::ICmdAllocator* cmdAllocator,
                                              uint rtCU, amd::CommandQueue::Priority priority,
@@ -102,9 +110,49 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
   VirtualGPU::Queue* queue =
       new (allocSize) VirtualGPU::Queue(gpu, palDev, residency_limit, max_command_buffers);
   if (queue != nullptr) {
-    address addrQ = reinterpret_cast<address>(&queue[1]);
-    // Create PAL queue object
-    result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
+    address addrQ = nullptr;
+    if ((qCreateInfo.engineType == Pal::EngineTypeCompute) ||
+        (qCreateInfo.engineType == Pal::EngineTypeDma)) {
+      uint32_t index = AllocedQueues(gpu, qCreateInfo.engineType);
+      // Create PAL queue object
+      if (index < GPU_MAX_HW_QUEUES) {
+        Device::QueueRecycleInfo* info = new (qSize) Device::QueueRecycleInfo();
+        addrQ = reinterpret_cast<address>(&info[1]);
+        result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
+        if (result == Pal::Result::Success) {
+          const_cast<Device&>(gpu.dev()).QueuePool().insert({queue->iQueue_, info});
+          info->engineType_ = qCreateInfo.engineType;
+          // Save uniqueue index for scratch buffer access
+          info->index_ = index;
+        }
+      } else {
+        int usage = std::numeric_limits<int>::max();
+        uint indexBase = std::numeric_limits<uint32_t>::max();
+        // Loop through all allocated queues and find the lowest usage
+        for (const auto& it : gpu.dev().QueuePool()) {
+          if ((qCreateInfo.engineType == it.second->engineType_) &&
+              (it.second->counter_ <= usage)) {
+            if ((it.second->counter_ < usage) || 
+                // Preserve the order of allocations, because SDMA engines
+                // should be used in round-robin manner
+                ((it.second->counter_ == usage) && (it.second->index_ < indexBase))) {
+              queue->iQueue_ = it.first;
+              usage = it.second->counter_;
+              indexBase = it.second->index_;
+            }
+          }
+        }
+        // Increment the usage of the current queue
+        gpu.dev().QueuePool().find(queue->iQueue_)->second->counter_++;
+      }
+      Device::QueueRecycleInfo* info = gpu.dev().QueuePool().find(queue->iQueue_)->second;
+      queue->lock_ = &info->queue_lock_;
+      addrQ = reinterpret_cast<address>(&queue[1]);
+    } else {
+      // Exclusive compute path
+      addrQ = reinterpret_cast<address>(&queue[1]);
+      result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
+    }
     if (result != Pal::Result::Success) {
       delete queue;
       return nullptr;
@@ -141,6 +189,13 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
 }
 
 VirtualGPU::Queue::~Queue() {
+  if (nullptr != iQueue_) {
+    // Make sure the queues are idle
+    // It's unclear why PAL could still have a busy queue
+    amd::ScopedLock l(lock_);
+    iQueue_->WaitIdle();
+  }
+
   // Remove all memory references
   std::vector<Pal::IGpuMemory*> memRef;
   for (auto it : memReferences_) {
@@ -161,7 +216,25 @@ VirtualGPU::Queue::~Queue() {
   }
 
   if (nullptr != iQueue_) {
-    iQueue_->Destroy();
+    // Find if this queue was used in recycling
+    if (lock_ != nullptr) {
+      // Release the queue if the counter is 0
+      if (--gpu_.dev().QueuePool().find(iQueue_)->second->counter_ == 0) {
+        iQueue_->Destroy();
+        const auto& info = gpu_.dev().QueuePool().find(iQueue_);
+        // Readjust HW queue index for scratch buffer access
+        for (auto& queue : gpu_.dev().QueuePool()) {
+          if ((queue.second->engineType_ == info->second->engineType_) &&
+              (queue.second->index_ > info->second->index_)) {
+            queue.second->index_--;
+          }
+        }
+        delete gpu_.dev().QueuePool().find(iQueue_)->second;
+        const_cast<Device&>(gpu_.dev()).QueuePool().erase(iQueue_);
+      }
+    } else {
+      iQueue_->Destroy();
+    }
   }
 }
 
@@ -269,8 +342,10 @@ bool VirtualGPU::Queue::flush() {
   // Submit command buffer to OS
   Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
+    amd::ScopedLock l(lock_);
     result = gpu_.dev().rgpCaptureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
   } else {
+    amd::ScopedLock l(lock_);
     result = iQueue_->Submit(submitInfo);
   }
   if (Pal::Result::Success != result) {
@@ -536,8 +611,8 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
 }
 
 VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev) : cbWorkload_(0), dispatchSplitSize_(0) {
-  aluCnt_ = dev.properties().gfxipProperties.shaderCore.numSimdsPerCu *
-    dev.info().simdWidth_ * dev.info().maxComputeUnits_;
+  aluCnt_ = dev.properties().gfxipProperties.shaderCore.numSimdsPerCu * dev.info().simdWidth_ *
+      dev.info().maxComputeUnits_;
   maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
       // find time in us
       dev.settings().maxWorkloadTime_ * aluCnt_;
@@ -779,9 +854,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.flags.autoMemoryReuse = false;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
-    VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
+      VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
-    dev().settings().maxCmdBuffers_ * createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize;
+      dev().settings().maxCmdBuffers_ * createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize;
 
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::EmbeddedDataAlloc].allocSize = 256 * Ki;
@@ -808,15 +883,15 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   uint max_cmd_buffers = dev().settings().maxCmdBuffers_;
 
   if (dev().numComputeEngines()) {
-    // hwRing_ should be set 0 if forced to have single scratch buffer
-    hwRing_ = (dev().settings().useSingleScratch_) ? 0 : idx;
-
-    queues_[MainEngine] =
-        Queue::Create(*this, Pal::QueueTypeCompute, idx, cmdAllocator_, rtCUs,
-                      priority, residency_limit, max_cmd_buffers);
+    queues_[MainEngine] = Queue::Create(*this, Pal::QueueTypeCompute, idx, cmdAllocator_, rtCUs,
+                                        priority, residency_limit, max_cmd_buffers);
     if (nullptr == queues_[MainEngine]) {
       return false;
     }
+    const auto& info = dev().QueuePool().find(queues_[MainEngine]->iQueue_);
+    hwRing_ = (info != dev().QueuePool().end())
+        ? info->second->index_
+        : (index() % dev().numExclusiveComputeEngines()) + GPU_MAX_HW_QUEUES;
 
     // Check if device has SDMA engines
     if (dev().numDMAEngines() != 0 && !dev().settings().disableSdma_) {
@@ -984,14 +1059,10 @@ VirtualGPU::~VirtualGPU() {
   {
     // Destroy queues
     if (nullptr != queues_[MainEngine]) {
-      // Make sure the queues are idle
-      // It's unclear why PAL could still have a busy queue
-      queues_[MainEngine]->iQueue_->WaitIdle();
       delete queues_[MainEngine];
     }
 
     if (nullptr != queues_[SdmaEngine]) {
-      queues_[SdmaEngine]->iQueue_->WaitIdle();
       delete queues_[SdmaEngine];
     }
 
@@ -1107,9 +1178,9 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
             amd::Image* image = imageBuffer->owner()->asImage();
             amd::Coord3D offs(0);
             // Copy memory from the original image buffer into the backing store image
-            result = blitMgr().copyBufferToImage(*buffer, *imageBuffer->CopyImageBuffer(),
-                                                 offs, offs, image->getRegion(), true,
-                                                 image->getRowPitch(), image->getSlicePitch());         
+            result = blitMgr().copyBufferToImage(*buffer, *imageBuffer->CopyImageBuffer(), offs,
+                                                 offs, image->getRegion(), true,
+                                                 image->getRowPitch(), image->getSlicePitch());
           }
         }
       }
@@ -2177,13 +2248,13 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   if (vcmd.cooperativeGroups()) {
     uint32_t workgroups = 0;
     for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
-        if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
+      if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
         workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
       }
     }
     uint32_t counter = workgroups *
-      amd::alignUp(vcmd.sizes().local().product(), dev().info().wavefrontWidth_) /
-      dev().info().wavefrontWidth_;
+        amd::alignUp(vcmd.sizes().local().product(), dev().info().wavefrontWidth_) /
+        dev().info().wavefrontWidth_;
 
     bool test = true;
     VirtualGPU* queue = (test) ? this : dev().xferQueue();
@@ -2199,8 +2270,8 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     queue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue);
 
     // Submit kernel to HW
-    if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-                                     false, &vcmd.event(), vcmd.sharedMemBytes(),
+    if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
+                                     &vcmd.event(), vcmd.sharedMemBytes(),
                                      vcmd.cooperativeGroups())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
@@ -2420,10 +2491,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       amd::Image* image = imageBuffer->owner()->asImage();
       amd::Coord3D offs(0);
       // Copy memory from the the backing store image into original buffer
-      bool result = blitMgr().copyImageToBuffer(
-        *imageBuffer->CopyImageBuffer(), *buffer, offs, offs,
-        image->getRegion(), true,
-        image->getRowPitch(), image->getSlicePitch());
+      bool result = blitMgr().copyImageToBuffer(*imageBuffer->CopyImageBuffer(), *buffer, offs,
+                                                offs, image->getRegion(), true,
+                                                image->getRowPitch(), image->getSlicePitch());
     }
     wrtBackImageBuffer_.clear();
   }
@@ -2761,7 +2831,11 @@ void VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand& vcmd
 
   dev().iDev()->AddGpuMemoryReferences(numObjects, pGpuMemRef, queues_[MainEngine]->iQueue_,
                                        Pal::GpuMemoryRefCantTrim);
-  dev().iDev()->InitBusAddressableGpuMemory(queues_[MainEngine]->iQueue_, numObjects, pGpuMems);
+  {
+    amd::ScopedLock l(queues_[MainEngine]->lock_);
+    dev().iDev()->InitBusAddressableGpuMemory(queues_[MainEngine]->iQueue_, numObjects, pGpuMems);
+  }
+
   if (numObjects != 0) {
     dev().iDev()->RemoveGpuMemoryReferences(numObjects, &pGpuMems[0], queues_[MainEngine]->iQueue_);
   }
@@ -3297,8 +3371,8 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
                 amd::Coord3D offs(0);
                 // Copy memory from the original image buffer into the backing store image
                 bool result = blitMgr().copyBufferToImage(
-                  *buffer, *imageBuffer->CopyImageBuffer(), offs, offs,
-                  image->getRegion(), true, image->getRowPitch(), image->getSlicePitch());
+                    *buffer, *imageBuffer->CopyImageBuffer(), offs, offs, image->getRegion(), true,
+                    image->getRowPitch(), image->getSlicePitch());
                 // Make sure the copy operation is done
                 addBarrier(RgpSqqtBarrierReason::MemDependency);
                 // Use backing store SRD as the replacment
