@@ -2011,7 +2011,6 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
       ScopedLockVgpus lock(*this);
 
       scratch_[sb]->size_ = newSize;
-      scratch_[sb]->privateMemSize_ = regNum * sizeof(uint32_t);
 
       uint64_t size = 0;
       uint64_t offset = 0;
@@ -2025,6 +2024,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
           scratchBuf->size_ = std::min(newSize, uint64_t(3 * Gi));
           // Note: Generic address space setup in HW requires 64KB alignment for scratch
           scratchBuf->size_ = amd::alignUp(newSize, 64 * Ki);
+          scratchBuf->privateMemSize_ = regNum * sizeof(uint32_t);
           scratchBuf->offset_ = offset;
           size += scratchBuf->size_;
           offset += scratchBuf->size_;
