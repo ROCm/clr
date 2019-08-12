@@ -1155,8 +1155,7 @@ bool Device::initializeHeapResources() {
 
     heapInitComplete_ = true;
 
-    scratch_.resize(
-        (settings().useSingleScratch_) ? 1 : (numComputeEngines() ? numComputeEngines() : 1));
+    scratch_.resize(GPU_MAX_HW_QUEUES + numExclusiveComputeEngines());
 
     // Initialize the number of mem object for the scratch buffer
     for (uint s = 0; s < scratch_.size(); ++s) {
