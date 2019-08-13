@@ -250,7 +250,7 @@ class Device : public NullDevice {
     Memory* memObj_;           //!< Memory objects for scratch buffers
     uint64_t offset_;          //!< Offset from the global scratch store
     uint64_t size_;            //!< Scratch buffer size on this queue
-    uint64_t privateMemSize_;  //!< Private memory size per thread, allowed by the current scratch
+    uint32_t privateMemSize_;  //!< Private memory size per thread, allowed by the current scratch
 
     //! Default constructor
     ScratchBuffer() : memObj_(nullptr), offset_(0), size_(0), privateMemSize_(0) {}
