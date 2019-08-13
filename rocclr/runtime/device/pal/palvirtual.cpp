@@ -2444,7 +2444,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       // Use maximum available slots for all dispatches to allow async on the same queue
       // HW value loaded into SGPR is an offset value calculated as
       // wave_slot * COMPUTE_TMPRING_SIZE.WAVESIZE
-      dispatchParam.workitemPrivateSegmentSize = scratch->privateMemSize_;
+      dispatchParam.workitemPrivateSegmentSize = std::max(hsaKernel.spillSegSize(), scratch->privateMemSize_);
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();

@@ -1996,7 +1996,9 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
     // Calculate the size of the scratch buffer for a queue
     uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
     // Find max waves based on VGPR per SIMD
-    uint32_t numMaxWaves = properties().gfxipProperties.shaderCore.numAvailableVgprs / vgprs;
+    // note: Select maximum to allow possible kernel async execution,
+    // but optimal is (numAvailableVgprs / vgprs)
+    uint32_t numMaxWaves = properties().gfxipProperties.shaderCore.numWavefrontsPerSimd;
     // Find max waves per CU
     numMaxWaves *= properties().gfxipProperties.shaderCore.numSimdsPerCu;
     // Find max waves per device
@@ -2019,11 +2021,14 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
         ScratchBuffer* scratchBuf = scratch_[s];
         if (scratchBuf->size_ > 0) {
           scratchBuf->destroyMemory();
-          scratchBuf->size_ = std::min(newSize, info().maxMemAllocSize_);
-          scratchBuf->size_ = std::min(newSize, uint64_t(3 * Gi));
-          // Note: Generic address space setup in HW requires 64KB alignment for scratch
-          scratchBuf->size_ = amd::alignUp(newSize, 64 * Ki);
-          scratchBuf->privateMemSize_ = regNum * sizeof(uint32_t);
+          // Adjust the size for the current queue only
+          if (s == sb) {
+            scratchBuf->size_ = std::min(newSize, info().maxMemAllocSize_);
+            scratchBuf->size_ = std::min(newSize, uint64_t(3 * Gi));
+            // Note: Generic address space setup in HW requires 64KB alignment for scratch
+            scratchBuf->size_ = amd::alignUp(newSize, 64 * Ki);
+            scratchBuf->privateMemSize_ = regNum * sizeof(uint32_t);
+          }
           scratchBuf->offset_ = offset;
           size += scratchBuf->size_;
           offset += scratchBuf->size_;
