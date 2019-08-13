@@ -250,7 +250,9 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
 
-  defineUndefinedVars();
+  if (amd::IS_HIP) {
+    defineUndefinedVars();
+  }
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
@@ -745,7 +747,9 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
 
-  defineUndefinedVars();
+  if (amd::IS_HIP) {
+    defineUndefinedVars();
+  }
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
