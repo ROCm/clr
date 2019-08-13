@@ -187,8 +187,8 @@ release(cstring, CUDA_VISIBLE_DEVICES, "",                                    \
         "Only devices whose index is present in the sequence are visible to HIP")    \
 release(bool, GPU_ENABLE_WGP_MODE, true,                                      \
         "Enables WGP Mode in HW if available")                                \
-release(bool, OCL_DUMP_CODE_OBJECT, false,                                    \
-        "Enable dump code object")                                    \
+release(bool, GPU_DUMP_CODE_OBJECT, false,                                    \
+        "Enable dump code object")                                            \
 release(uint, GPU_MAX_USWC_ALLOC_SIZE, 2048,                                  \
         "Set a limit in Mb on the maximum USWC allocation size"               \
         "-1 = No limit")
