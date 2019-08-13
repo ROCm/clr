@@ -273,7 +273,9 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
     return false;
   }
 
-  defineUndefinedVars();
+  if (amd::IS_HIP) {
+    defineUndefinedVars();
+  }
 
   // Load the code object.
   hsa_code_object_reader_t codeObjectReader;
@@ -478,7 +480,9 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  defineUndefinedVars();
+  if (amd::IS_HIP) {
+    defineUndefinedVars();
+  }
 
   // Load the code object.
   status = hsa_code_object_reader_create_from_memory(binary, binSize, &hsaCodeObjectReader_);

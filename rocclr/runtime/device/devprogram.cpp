@@ -3182,7 +3182,12 @@ bool Program::getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) co
 }
 
 bool Program::getUndefinedVarInfo(std::string var_name, void** var_addr, size_t* var_size) {
-  return owner()->varcallback(as_cl(owner()), var_name.c_str(), var_addr, var_size);
+  if (owner()->varcallback != nullptr) {
+    return owner()->varcallback(as_cl(owner()), var_name.c_str(), var_addr, var_size);
+  } else {
+    buildLog_ += "SVAR HIP Call back is not set \n";
+    return false;
+  }
 }
 
 bool Program::defineUndefinedVars() {
