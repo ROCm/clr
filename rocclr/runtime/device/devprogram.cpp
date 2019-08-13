@@ -1440,7 +1440,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
     case ACL_TYPE_ISA: {
       amd::Comgr::destroy_data_set(inputs);
       binary_t isaBinary = binary();
-      if (OCL_DUMP_CODE_OBJECT) {
+      if (GPU_DUMP_CODE_OBJECT) {
         dumpCodeObject(std::string{(const char*)isaBinary.first, isaBinary.second});
       }
       return setKernels(options, const_cast<void *>(isaBinary.first), isaBinary.second);
