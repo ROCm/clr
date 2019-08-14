@@ -259,7 +259,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
 
   // save the binary to the file as output file name is specified
   if (!outFileName.empty()) {
-    std::ofstream f(outFileName.c_str(), std::ios::trunc);
+    std::ofstream f(outFileName.c_str(), std::ios::trunc | std::ios::binary);
     if (f.is_open()) {
       f.write(binary, binarySize);
       f.close();
