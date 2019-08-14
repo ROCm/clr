@@ -1368,7 +1368,7 @@ bool Device::init() {
               ->GetMultiGpuCompatibility(*static_cast<Device*>(devices()[device1])->iDev(),
                                          &comp_info);
           // Check P2P capability
-          if (comp_info.flags.peerTransfer) {
+          if (comp_info.flags.peerTransferRead || comp_info.flags.peerTransferWrite) {
             devices()[device0]->p2pDevices_.push_back(as_cl(devices()[device1]));
             devices()[device1]->p2p_access_devices_.push_back(devices()[device0]);
           }
