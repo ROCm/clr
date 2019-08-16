@@ -1513,8 +1513,20 @@ static std::string getValidDumpBaseName(const std::string &path, const std::stri
 void
 Options::setDumpFileName(const char* val)
 {
+    std::string dumpPrefix = oVariables->DumpPrefix;
+    const size_t pidPos = dumpPrefix.find("%pid%");
+    if (pidPos != std::string::npos) {
+#ifdef _WIN32
+        const std::int32_t pid = _getpid();
+#endif
+#ifdef __linux__
+        const std::int32_t pid = getpid();
+#endif
+        dumpPrefix.replace(pidPos, 5, std::to_string(pid));
+    }
+
     std::stringstream prefix;
-    prefix << oVariables->DumpPrefix << "_" << buildNo << "_" << val;
+    prefix << dumpPrefix << "_" << buildNo << "_" << val;
     dumpFileRoot = prefix.str();
 
     // Check whether the length of path meets the system limits
