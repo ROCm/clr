@@ -91,8 +91,8 @@ class Event : public RuntimeObject {
     uint64_t submitted_;
     uint64_t start_;
     uint64_t end_;
-    bool enabled_;      //!< Profiling enabled for the wave limiter
-    uint32_t waves_;    //!< The number of waves used in a dispatch
+    bool enabled_;    //!< Profiling enabled for the wave limiter
+    uint32_t waves_;  //!< The number of waves used in a dispatch
     ProfilingCallback* callback_;
     void clear() {
       queued_ = 0ULL;
@@ -202,9 +202,13 @@ class Command : public Event {
   //! The Events that need to complete before this command is submitted.
   EventWaitList eventWaitList_;
 
+  //! Force await completion of previous command
+  //! 0x1 - wait before enqueue, 0x2 - wait after, 0x3 - wait both.
+  uint32_t commandWaitBits_;
+
   //! Construct a new command of the given OpenCL type.
-  Command(HostQueue& queue, cl_command_type type,
-          const EventWaitList& eventWaitList = nullWaitList);
+  Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList = nullWaitList,
+          uint32_t commandWaitBits = 0);
 
   //! Construct a new command of the given OpenCL type.
   Command(cl_command_type type)
@@ -214,7 +218,8 @@ class Command : public Event {
         type_(type),
         exception_(0),
         data_(NULL),
-        eventWaitList_(nullWaitList) {}
+        eventWaitList_(nullWaitList),
+        commandWaitBits_(0) {}
 
   bool terminate() {
     if (Agent::shouldPostEventEvents() && type() != 0) {
@@ -271,6 +276,9 @@ class Command : public Event {
 
   //! Return the context for this event.
   virtual const Context& context() const;
+
+  //! Get command wait bits
+  uint32_t getWaitBits() const { return commandWaitBits_; }
 };
 
 class UserEvent : public Command {
@@ -319,7 +327,7 @@ class OneMemoryArgCommand : public Command {
  public:
   OneMemoryArgCommand(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList,
                       Memory& memory)
-      : Command(queue, type, eventWaitList), memory_(&memory) {
+      : Command(queue, type, eventWaitList, AMD_SERIALIZE_COPY), memory_(&memory) {
     memory_->retain();
   }
 
@@ -342,7 +350,9 @@ class TwoMemoryArgsCommand : public Command {
  public:
   TwoMemoryArgsCommand(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList,
                        Memory& memory1, Memory& memory2)
-      : Command(queue, type, eventWaitList), memory1_(&memory1), memory2_(&memory2) {
+      : Command(queue, type, eventWaitList, AMD_SERIALIZE_COPY),
+        memory1_(&memory1),
+        memory2_(&memory2) {
     memory1_->retain();
     memory2_->retain();
   }
@@ -788,7 +798,8 @@ class NDRangeKernelCommand : public Command {
 
   //! Return the cooperative multi device groups mode
   bool cooperativeMultiDeviceGroups() const {
-    return (extraParam_ & CooperativeMultiDeviceGroups) ? true : false; }
+    return (extraParam_ & CooperativeMultiDeviceGroups) ? true : false;
+  }
 
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
@@ -995,7 +1006,7 @@ class ThreadTraceMemObjectsCommand : public Command {
  private:
   std::vector<amd::Memory*> memObjects_;  //!< The list of memory objects,bound to the thread trace
   size_t sizeMemObjects_;     //!< The size of each memory object from memObjects_ list (all memory
-                              //!objects have the smae size)
+                              //! objects have the smae size)
   ThreadTrace& threadTrace_;  //!< The Thread Trace object
 };
 
@@ -1196,7 +1207,7 @@ class SvmMapMemoryCommand : public Command {
   Memory* svmMem_;  //!< the pointer to the amd::Memory object corresponding the svm pointer mapped
   Coord3D size_;    //!< the map size
   Coord3D origin_;  //!< the origin of the mapped svm pointer shift from the beginning of svm space
-                    //!allocated
+                    //! allocated
   cl_map_flags flags_;  //!< map flags
   void* svmPtr_;
 
@@ -1315,12 +1326,11 @@ class TransferBufferFileCommand : public OneMemoryArgCommand {
 
 class CopyMemoryP2PCommand : public CopyMemoryCommand {
  public:
-  CopyMemoryP2PCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
-                    Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
-                    Coord3D size)
-      : CopyMemoryCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory, srcOrigin, dstOrigin, size)
-  {
-  }
+  CopyMemoryP2PCommand(HostQueue& queue, cl_command_type cmdType,
+                       const EventWaitList& eventWaitList, Memory& srcMemory, Memory& dstMemory,
+                       Coord3D srcOrigin, Coord3D dstOrigin, Coord3D size)
+      : CopyMemoryCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory, srcOrigin, dstOrigin,
+                          size) {}
 
   virtual void submit(device::VirtualDevice& device) { device.submitCopyMemoryP2P(*this); }
 
