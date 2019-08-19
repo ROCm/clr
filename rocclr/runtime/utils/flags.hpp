@@ -191,7 +191,13 @@ release(bool, GPU_DUMP_CODE_OBJECT, false,                                    \
         "Enable dump code object")                                            \
 release(uint, GPU_MAX_USWC_ALLOC_SIZE, 2048,                                  \
         "Set a limit in Mb on the maximum USWC allocation size"               \
-        "-1 = No limit")
+        "-1 = No limit")                                                      \
+release(uint, AMD_SERIALIZE_KERNEL, 0,                                        \
+        "Serialize kernel enqueue, 0x1 = Wait for completion before enqueue"  \
+        "0x2 = Wait for completion after enqueue 0x3 = both")                 \
+release(uint, AMD_SERIALIZE_COPY, 0,                                          \
+        "Serialize copies, 0x1 = Wait for completion before enqueue"          \
+        "0x2 = Wait for completion after enqueue 0x3 = both")
 
 namespace amd {
 

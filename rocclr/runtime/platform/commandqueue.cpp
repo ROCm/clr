@@ -35,7 +35,8 @@ bool HostQueue::terminate() {
     Command* marker = nullptr;
 
     // Send a finish if the queue is still accepting commands.
-    { ScopedLock sl(queueLock_);
+    {
+      ScopedLock sl(queueLock_);
       if (thread_.acceptingCommands_) {
         marker = new Marker(*this, false);
         if (marker != nullptr) {
@@ -50,7 +51,8 @@ bool HostQueue::terminate() {
     }
 
     // Wake-up the command loop, so it can exit
-    { ScopedLock sl(queueLock_);
+    {
+      ScopedLock sl(queueLock_);
       thread_.acceptingCommands_ = false;
       queueLock_.notify();
     }
@@ -159,6 +161,9 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
 void HostQueue::append(Command& command) {
   // We retain the command here. It will be released when its status
   // changes to CL_COMPLETE
+  if ((command.getWaitBits() & 0x1) != 0) {
+    finish();
+  }
   command.retain();
   command.setStatus(CL_QUEUED);
   queue_.enqueue(&command);
@@ -214,4 +219,4 @@ bool DeviceQueue::create() {
   return result;
 }
 
-}  // namespace amd {
+}  // namespace amd

@@ -187,14 +187,16 @@ bool Event::notifyCmdQueue() {
 
 const Event::EventWaitList Event::nullWaitList(0);
 
-Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList)
+Command::Command(HostQueue& queue, cl_command_type type,
+                 const EventWaitList& eventWaitList, uint32_t commandWaitBits)
     : Event(queue),
       queue_(&queue),
       next_(NULL),
       type_(type),
       exception_(0),
       data_(NULL),
-      eventWaitList_(eventWaitList) {
+      eventWaitList_(eventWaitList),
+      commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.
   std::for_each(eventWaitList.begin(), eventWaitList.end(), std::mem_fun(&Command::retain));
 }
@@ -218,7 +220,8 @@ void Command::enqueue() {
   }
   queue_->append(*this);
   queue_->flush();
-  if (queue_->device().settings().waitCommand_ && (type_ != 0)) {
+  if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||
+      ((commandWaitBits_ & 0x2) != 0)) {
     awaitCompletion();
   }
 }
@@ -228,7 +231,7 @@ const Context& Command::context() const { return queue_->context(); }
 NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                                            Kernel& kernel, const NDRangeContainer& sizes,
                                            uint32_t sharedMemBytes, uint32_t extraParam)
-    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList)
+    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL)
     , kernel_(kernel)
     , sizes_(sizes)
     , sharedMemBytes_(sharedMemBytes)
