@@ -178,6 +178,9 @@ GpuMemoryReference::GpuMemoryReference(const Device& dev)
 
 // ================================================================================================
 GpuMemoryReference::~GpuMemoryReference() {
+  if (nullptr == iMem()) {
+    return;
+  }
   if (gpu_ == nullptr) {
     Device::ScopedLockVgpus lock(device_);
     // Release all memory objects on all virtual GPUs
@@ -199,15 +202,13 @@ GpuMemoryReference::~GpuMemoryReference() {
   if (cpuAddress_ != nullptr) {
     iMem()->Unmap();
   }
-  if (0 != iMem()) {
-    if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
-          iMem()->Desc().flags.isExternPhys)) {
-      // Update free memory size counters
-      device_.updateAllocedMemory(iMem()->Desc().preferredHeap, iMem()->Desc().size, true);
-    }
-    iMem()->Destroy();
-    gpuMem_ = nullptr;
+  if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
+        iMem()->Desc().flags.isExternPhys)) {
+    // Update free memory size counters
+    device_.updateAllocedMemory(iMem()->Desc().preferredHeap, iMem()->Desc().size, true);
   }
+  iMem()->Destroy();
+  gpuMem_ = nullptr;
 }
 
 // ================================================================================================
