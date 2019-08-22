@@ -365,7 +365,6 @@ VirtualGPU::VirtualGPU(Device& device)
       engineID_(MainEngine),
       activeKernelDesc_(NULL),
       gpuDevice_(static_cast<Device&>(device)),
-      execution_("Virtual GPU execution lock", true),
       printfDbg_(NULL),
       printfDbgHSA_(NULL),
       tsCache_(NULL),

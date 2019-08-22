@@ -225,8 +225,6 @@ class VirtualGPU : public device::VirtualDevice {
                          size_t& ldsAddress,         //!< LDS usage
                          bool cooperativeGroups      //!< Dispatch with cooperative groups
                          );
-  // Retun the virtual gpu unique index
-  uint index() const { return index_; }
 
   //! Adds a stage write buffer into a list
   void addXferWrite(Memory& memory);
@@ -245,8 +243,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   void enableSyncBlit() const;
 
-    //! Returns the monitor object for execution access by VirtualGPU
-  amd::Monitor& execution() { return execution_; }
 
   // } roc OpenCL integration
  private:
@@ -302,7 +298,6 @@ class VirtualGPU : public device::VirtualDevice {
    * used to synchronized on kernel outputs.
    */
   bool hasPendingDispatch_;
-  amd::Monitor execution_;  //!< Lock to serialise access to all device objects
   Timestamp* timestamp_;
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
@@ -328,7 +323,6 @@ class VirtualGPU : public device::VirtualDevice {
   uint kernarg_pool_cur_offset_;
 
   std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
-  uint index_;                                //!< Virtual gpu unique index
   friend class Timestamp;
 
   //  PM4 packet for gfx8 performance counter

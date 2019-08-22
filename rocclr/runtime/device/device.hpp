@@ -1052,7 +1052,11 @@ class ThreadTrace : public amd::HeapObject {
 class VirtualDevice : public amd::HeapObject {
  public:
   //! Construct a new virtual device for the given physical device.
-  VirtualDevice(amd::Device& device) : device_(device), blitMgr_(NULL) {}
+  VirtualDevice(amd::Device& device)
+    : device_(device)
+    , blitMgr_(NULL)
+    , execution_("Virtual device execution lock", true)
+    , index_(0) {}
 
   //! Destroy this virtual device.
   virtual ~VirtualDevice() {}
@@ -1095,6 +1099,12 @@ class VirtualDevice : public amd::HeapObject {
   //! Get the blit manager object
   device::BlitManager& blitMgr() const { return *blitMgr_; }
 
+  //! Returns the monitor object for execution access by VirtualGPU
+  amd::Monitor& execution() { return execution_; }
+
+  //! Returns the virtual device unique index
+  uint index() const { return index_; }
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
@@ -1107,6 +1117,9 @@ class VirtualDevice : public amd::HeapObject {
 
  protected:
   device::BlitManager* blitMgr_;  //!< Blit manager
+
+  amd::Monitor execution_;  //!< Lock to serialise access to all device objects
+  uint index_;              //!< The virtual device unique index
 };
 
 }  // namespace device
@@ -1377,6 +1390,9 @@ class Device : public RuntimeObject {
   //! Returns the list of devices that can have access to the current
   const std::vector<Device*>& P2PAccessDevices() const { return p2p_access_devices_; }
 
+  //! Returns index of current device
+  uint32_t index() const { return index_; }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1407,6 +1423,7 @@ class Device : public RuntimeObject {
 
   Monitor* vaCacheAccess_;                            //!< Lock to serialize VA caching access
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
+  uint32_t index_;  //!< Unique device index
 };
 
 #if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)

@@ -555,7 +555,6 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
 VirtualGPU::VirtualGPU(Device& device)
     : device::VirtualDevice(device),
-      execution_("Virtual GPU execution lock", true),
       roc_device_(device),
       virtualQueue_(nullptr),
       deviceQueueSize_(0),
@@ -563,9 +562,9 @@ VirtualGPU::VirtualGPU(Device& device)
       schedulerThreads_(0),
       schedulerParam_(nullptr),
       schedulerQueue_(nullptr),
-      schedulerSignal_({0}),
-      index_(device.numOfVgpus_++)  // Virtual gpu unique index incrementing
+      schedulerSignal_({0})
 {
+  index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();
   printfdbg_ = nullptr;
 
