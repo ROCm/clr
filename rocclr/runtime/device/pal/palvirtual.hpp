@@ -398,12 +398,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Finds if pinned memory is cached
   amd::Memory* findPinnedMem(void* addr, size_t size);
 
-  //! Returns the monitor object for execution access by VirtualGPU
-  amd::Monitor& execution() { return execution_; }
-
-  //! Returns the virtual gpu unique index
-  uint index() const { return index_; }
-
   //! Get the PrintfDbgHSA object
   PrintfDbgHSA& printfDbgHSA() const { return *printfDbgHSA_; }
 
@@ -609,8 +603,6 @@ class VirtualGPU : public device::VirtualDevice {
   );
 
   Device& gpuDevice_;       //!< physical GPU device
-  amd::Monitor execution_;  //!< Lock to serialise access to all device objects
-  uint index_;              //!< The virtual device unique index
 
   PrintfDbgHSA* printfDbgHSA_;  //!< HSAIL printf implemenation
 

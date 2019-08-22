@@ -100,6 +100,7 @@ bool Event::setStatus(cl_int status, uint64_t timeStamp) {
     // status, we release all the resources associated with this instance.
     releaseResources();
 
+    activity_.ReportEventTimestamps(*this);
     // Broadcast all the waiters.
     if (referenceCount() > 1) {
       signal();
@@ -199,6 +200,7 @@ Command::Command(HostQueue& queue, cl_command_type type,
       commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.
   std::for_each(eventWaitList.begin(), eventWaitList.end(), std::mem_fun(&Command::retain));
+  activity_.Initialize(type, queue.vdev()->index(), queue.device().index());
 }
 
 void Command::releaseResources() {

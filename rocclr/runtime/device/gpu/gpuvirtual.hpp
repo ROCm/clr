@@ -318,12 +318,6 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   //! Returns gsl memory object for VM
   const gslMemObject* vmMems() const { return vmMems_; }
 
-  //! Returns the monitor object for execution access by VirtualGPU
-  amd::Monitor& execution() { return execution_; }
-
-  //! Returns the virtual gpu unique index
-  uint index() const { return index_; }
-
   //! Get the PrintfDbg object
   PrintfDbg& printfDbg() const { return *printfDbg_; }
 
@@ -476,8 +470,6 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   GpuEvents gpuEvents_;              //!< GPU events
 
   Device& gpuDevice_;       //!< physical GPU device
-  amd::Monitor execution_;  //!< Lock to serialise access to all device objects
-  uint index_;              //!< The virtual device unique index
 
   PrintfDbg* printfDbg_;        //!< GPU printf implemenation
   PrintfDbgHSA* printfDbgHSA_;  //!< HSAIL printf implemenation

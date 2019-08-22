@@ -25,6 +25,7 @@
 #include "platform/memory.hpp"
 #include "platform/perfctr.hpp"
 #include "platform/threadtrace.hpp"
+#include "platform/activity.hpp"
 
 #include "CL/cl_ext.h"
 
@@ -111,6 +112,8 @@ class Event : public RuntimeObject {
     }
 
   } profilingInfo_;
+
+  activity_prof::ActivityProf activity_;  //!< Activity profiling
 
   //! Construct a new event.
   Event();

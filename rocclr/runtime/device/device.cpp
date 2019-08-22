@@ -126,7 +126,7 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   // Build all kernels
   std::string opt = "-cl-internal-kernel ";
   if (!device->settings().useLightning_) {
-    opt +=  "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
+    opt += "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
   }
 
   if (extraOptions != nullptr) {
@@ -135,7 +135,8 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   if (!GPU_DUMP_BLIT_KERNELS) {
     opt += " -fno-enable-dump";
   }
-  if (CL_SUCCESS != program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS)) {
+  if (CL_SUCCESS !=
+      program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS)) {
     return false;
   }
 
@@ -209,7 +210,8 @@ Device::Device()
       blitProgram_(nullptr),
       hwDebugMgr_(nullptr),
       vaCacheAccess_(nullptr),
-      vaCacheMap_(nullptr) {
+      vaCacheMap_(nullptr),
+      index_(0) {
   memset(&info_, '\0', sizeof(info_));
 }
 
@@ -267,6 +269,13 @@ void Device::registerDevice() {
     if (!defaultIsAssigned && online_) {
       defaultIsAssigned = true;
       info_.type_ |= CL_DEVICE_TYPE_DEFAULT;
+    }
+  }
+  if (isOnline()) {
+    for (const auto& dev : devices()) {
+      if (dev->isOnline()) {
+        index_++;
+      }
     }
   }
   devices_->push_back(this);
@@ -417,7 +426,7 @@ char* Device::getExtensionString() {
   return result;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
 CacheCompilation::CacheCompilation(std::string targetStr, std::string postfix, bool enableCache,
                                    bool resetCache)
     : codeCache_(targetStr, 0, AMD_PLATFORM_BUILD_NUMBER, postfix),
@@ -584,7 +593,7 @@ bool CacheCompilation::compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
 
   return true;
 }
-#endif // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
+#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 
 }  // namespace amd
 
@@ -602,11 +611,15 @@ Settings::Settings() : value_(0) {
                          //!< concurrent Virtual GPUs for default
 
   overrideLclSet = (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE)) ? 1 : 0;
-  overrideLclSet |= (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) ||
-    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y)) ? 2 : 0;
-  overrideLclSet |= (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) ||
-    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
-    !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z)) ? 4 : 0;
+  overrideLclSet |=
+      (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) || !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y))
+      ? 2
+      : 0;
+  overrideLclSet |=
+      (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) || !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
+       !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z))
+      ? 4
+      : 0;
 
   if (amd::IS_HIP) {
     GPU_SINGLE_ALLOC_PERCENT = 100;
@@ -614,8 +627,8 @@ Settings::Settings() : value_(0) {
 }
 
 void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
-  const amd::Coord3D region, uint mapFlags, bool entire,
-  amd::Image* baseMip) {
+                         const amd::Coord3D region, uint mapFlags, bool entire,
+                         amd::Image* baseMip) {
   // Map/Unmap must be serialized.
   amd::ScopedLock lock(owner()->lockMemoryOps());
 
@@ -640,7 +653,7 @@ void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
 
   // Insert into the map if it's the first region
   if (++pInfo->count_ == 1) {
-    writeMapInfo_.insert({ mapAddress, info });
+    writeMapInfo_.insert({mapAddress, info});
   }
 }
 
