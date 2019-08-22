@@ -3208,8 +3208,8 @@ bool Program::defineUndefinedVars() {
       continue;
     }
 
-    amd_mem_obj = new (device().GlbCtx()) amd::Buffer(device().GlbCtx(),
-                                                      CL_MEM_USE_HOST_PTR, hsize);
+    amd_mem_obj = new (owner()->context()) amd::Buffer(const_cast<amd::Context&>(owner()->context()),
+                                                       CL_MEM_USE_HOST_PTR, hsize);
     if (amd_mem_obj == nullptr) {
       LogError("[OCL] failed to create a mem object!");
       return false;
