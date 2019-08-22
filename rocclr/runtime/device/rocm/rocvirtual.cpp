@@ -576,7 +576,7 @@ VirtualGPU::VirtualGPU(Device& device)
   kernarg_pool_base_ = nullptr;
   kernarg_pool_size_ = 0;
   kernarg_pool_cur_offset_ = 0;
-  aqlHeader_ = kDispatchPacketHeaderNoSync;
+  aqlHeader_ = kDispatchPacketHeader;
   barrier_signal_.handle = 0;
 
   // Note: Virtual GPU device creation must be a thread safe operation
@@ -1981,13 +1981,13 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 }
 
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
-  const_address parameters, void* eventHandle, uint32_t sharedMemBytes, bool cooperativeGroups) {
+  const_address parameters, void* eventHandle, uint32_t sharedMemBytes, bool cooperativeGroups, bool isSvm) {
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
 
   // Check memory dependency and SVM objects
-  if (!processMemObjects(kernel, parameters, ldsUsage, cooperativeGroups)) {
+  if (!isSvm && !processMemObjects(kernel, parameters, ldsUsage, cooperativeGroups)) {
     LogError("Wrong memory objects!");
     return false;
   }
@@ -2113,7 +2113,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
             AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(reinterpret_cast<uint64_t>(schedulerParam_->getHostMem()) + sizeof(SchedulerParam));
             memset(wrap, 0, sizeof(AmdAqlWrap));
             wrap->state = AQL_WRAP_DONE;
-
             spVA = reinterpret_cast<uint64_t>(schedulerMem->getDeviceMemory()) + sizeof(SchedulerParam);
           }
           WriteAqlArgAt(const_cast<address>(parameters), &spVA, it.size_, it.offset_);
@@ -2225,7 +2224,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), vcmd.cooperativeGroups()), vcmd.isSvm()) {
       LogError("AQL dispatch failed!");
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
