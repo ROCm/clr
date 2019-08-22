@@ -58,6 +58,7 @@ add_library(oclruntime OBJECT
   device/devkernel.cpp
   device/devwavelimiter.cpp
   device/devprogram.cpp
+  platform/activity.cpp
   platform/kernel.cpp
   platform/context.cpp
   platform/command.cpp
