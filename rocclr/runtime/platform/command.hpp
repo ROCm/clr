@@ -767,7 +767,6 @@ class NDRangeKernelCommand : public Command {
   address parameters_;
   uint32_t sharedMemBytes_;
   uint32_t extraParam_;
-  bool svm_;
 
  public:
   enum {
@@ -778,7 +777,7 @@ class NDRangeKernelCommand : public Command {
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,
                        const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0,
-                       uint32_t extraParam = 0, bool svm = false);
+                       uint32_t extraParam = 0);
 
   virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
 
@@ -809,9 +808,6 @@ class NDRangeKernelCommand : public Command {
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
 
   cl_int captureAndValidate();
-
-  //! Return if NDRange is svm or not
-  bool isSvm() const { return svm_; }
 };
 
 class NativeFnCommand : public Command {

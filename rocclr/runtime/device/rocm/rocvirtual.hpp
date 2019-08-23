@@ -168,8 +168,7 @@ class VirtualGPU : public device::VirtualDevice {
                             const_address parameters,            //!< Parameters for the kernel
                             void* event_handle,  //!< Handle to OCL event for debugging
                             uint32_t sharedMemBytes = 0, //!< Shared memory size
-                            bool cooperativeGroups = false, //!< TRUE if cooperative groups mode is required
-                            bool isSvm = false //!< TRUE if all params are SVM
+                            bool cooperativeGroups = false //!< TRUE if cooperative groups mode is required
                             );
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);
