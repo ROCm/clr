@@ -384,6 +384,22 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL * clCreateProgramWithAssemblyAMD_fn
     const size_t*       /* lengths */,
     cl_int*             /* errcode_ret */) CL_EXT_SUFFIX__VERSION_1_2;
 
+#ifdef CL_VERSION_2_0
+/********************************
+* cl_amd_planar_yuv *
+********************************/
+
+/* cl_mem flag - bitfield */
+#define CL_YUV_IMAGE_Y_PLANE_AMD    0x0
+#define CL_YUV_IMAGE_UV_PLANE_AMD   0x1
+
+typedef CL_API_ENTRY cl_mem
+(CL_API_CALL * clGetPlaneFromImageAMD_fn)(cl_context /*context*/,
+                                          cl_mem     /*mem*/,
+                                          cl_uint    /*plane*/,
+                                          cl_int *   /*errcode_ret*/) CL_EXT_SUFFIX__VERSION_2_0;
+#endif
+
 // <amd_internal>
 /***************************
 * cl_amd_command_intercept *
