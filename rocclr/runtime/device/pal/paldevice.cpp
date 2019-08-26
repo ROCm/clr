@@ -2010,7 +2010,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
     // Current private mem size
     uint32_t privateMemSize = regNum * sizeof(uint32_t);
     // Max between the allocation and current
-    privateMemSize = std::max(privateMemSize, scratch_[sb]->numMaxWaves_);
+    privateMemSize = std::max(privateMemSize, scratch_[sb]->privateMemSize_);
     uint64_t newSize =
         static_cast<uint64_t>(info().wavefrontWidth_) * privateMemSize * numMaxWaves * numTotalCUs;
 
