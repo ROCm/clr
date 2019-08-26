@@ -885,8 +885,9 @@ bool Device::create(Pal::IDevice* device) {
 
   // XNACK flag should be set for  PageMigration | IOMMUv2 Support
   uint isXNACKSupported =
-      static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled ||
-                        properties_.gpuMemoryProperties.flags.iommuv2Support);
+      (ipLevel_ < Pal::GfxIpLevel::GfxIp10_1) &&
+      (static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled ||
+                         properties_.gpuMemoryProperties.flags.iommuv2Support));
   uint subtarget = isXNACKSupported;
 
   // Update HW info for the device
