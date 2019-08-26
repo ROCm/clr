@@ -179,7 +179,7 @@ static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Navi10 XNACK    */ UnknownDevice,
     /* Navi10Lite      */ UnknownDevice,
     /* Navi10LiteXNACK */ UnknownDevice,
-    /* Navi12          */ AMDDeviceInfo{"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
+    /* Navi12          */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
     /* Navi12 XNACK    */ UnknownDevice,
     /* Navi12Lite      */ UnknownDevice,
     /* Navi12LiteXNACK */ UnknownDevice,
