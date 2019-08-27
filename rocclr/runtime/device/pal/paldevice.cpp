@@ -1994,8 +1994,9 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
       regNum = threadSizeLimit;
     }
 
-    // The algorithm below attempts to keep max possible size to allow concurrent execution,
-    // where the scratch offset will be kept constant - wave_slot * COMPUTE_TMPRING_SIZE.WAVESIZE
+    // The algorithm below finds the most optimal size for the current execution.
+    // PAL reprograms COMPUTE_TMPRING_SIZE.WAVESIZE and COMPUTE_TMPRING_SIZE.WAVES on
+    // every dispatch and sync mode is enabled in runtime
 
     // Calculate the size of the scratch buffer for a queue
     uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
@@ -2005,12 +2006,8 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
     numMaxWaves *= properties().gfxipProperties.shaderCore.numSimdsPerCu;
     // Find max waves per device
     numMaxWaves = std::min(settings().numScratchWavesPerCu_, numMaxWaves);
-    // Find max between current alloc and the new limit
-    numMaxWaves = std::max(numMaxWaves, scratch_[sb]->numMaxWaves_);
     // Current private mem size
     uint32_t privateMemSize = regNum * sizeof(uint32_t);
-    // Max between the allocation and current
-    privateMemSize = std::max(privateMemSize, scratch_[sb]->privateMemSize_);
     uint64_t newSize =
         static_cast<uint64_t>(info().wavefrontWidth_) * privateMemSize * numMaxWaves * numTotalCUs;
 
@@ -2035,8 +2032,6 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
             scratchBuf->size_ = std::min(newSize, uint64_t(3 * Gi));
             // Note: Generic address space setup in HW requires 64KB alignment for scratch
             scratchBuf->size_ = amd::alignUp(newSize, 64 * Ki);
-            scratchBuf->privateMemSize_ = privateMemSize;
-            scratchBuf->numMaxWaves_ = numMaxWaves;
           }
           scratchBuf->offset_ = offset;
           size += scratchBuf->size_;
