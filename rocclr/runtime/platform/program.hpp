@@ -181,8 +181,8 @@ class Program : public RuntimeObject {
 
   static int GetOclCVersion(const char* clVer);
 
-  static bool ParseAllOptions(const std::string& options, option::Options& parsedOptions,
-                              bool optionChangable = true, bool linkOptsOnly = false);
+  bool static ParseAllOptions(const std::string& options, option::Options& parsedOptions,
+                              bool optionChangable = true, bool linkOptsOnly = false, bool isLC = false);
 
   void setVarInfoCallBack(VarInfoCallback callback) {
     varcallback = callback;

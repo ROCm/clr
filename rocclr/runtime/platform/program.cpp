@@ -112,7 +112,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     // if we have options from binary and input options was not specified
     if (opts != NULL && emptyOptions) {
       std::string sBinOptions = std::string((char*)opts, symSize);
-      if (!amd::option::parseAllOptions(sBinOptions, *options)) {
+      if (!amd::option::parseAllOptions(sBinOptions, *options, false, false)) {
         programLog_ = options->optionsLog();
         LogError("Parsing compilation options from binary failed.");
         return CL_INVALID_COMPILER_OPTIONS;
@@ -155,7 +155,7 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
     // load the compiler options from the binary if it is not provided
     std::string sBinOptions = program->compileOptions();
     if (!sBinOptions.empty() && emptyOptions) {
-      if (!amd::option::parseAllOptions(sBinOptions, *options)) {
+      if (!amd::option::parseAllOptions(sBinOptions, *options, false, isLC())) {
         programLog_ = options->optionsLog();
         LogError("Parsing compilation options from binary failed.");
         return CL_INVALID_COMPILER_OPTIONS;
@@ -595,7 +595,7 @@ int Program::GetOclCVersion(const char* clVer) {
 }
 
 bool Program::ParseAllOptions(const std::string& options, option::Options& parsedOptions,
-                              bool optionChangable, bool linkOptsOnly) {
+                              bool optionChangable, bool linkOptsOnly, bool isLC) {
   std::string allOpts = options;
   if (optionChangable) {
     if (linkOptsOnly) {
@@ -622,7 +622,7 @@ bool Program::ParseAllOptions(const std::string& options, option::Options& parse
       }
     }
   }
-  return amd::option::parseAllOptions(allOpts, parsedOptions, linkOptsOnly);
+  return amd::option::parseAllOptions(allOpts, parsedOptions, linkOptsOnly, isLC);
 }
 
 bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func) {
