@@ -70,6 +70,10 @@ ifdef ATI_OS_LINUX
     GCPPFLAGS += $(DEFSWITCH) __STDC_CONSTANT_MACROS
 
     GCXXOPTS += -fno-rtti -Wno-sign-compare
+
+    ifneq ($(filter gcc/gcc-7.4%,$(DK_C)),)
+        GCXXOPTS += -Wno-deprecated-declarations
+    endif
 endif    
 
 ifeq ($(OPENCL_USE_ONE_SC),1)
