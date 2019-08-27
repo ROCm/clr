@@ -2103,7 +2103,7 @@ cl_int Program::link(const std::vector<Program*>& inputPrograms, const char* ori
       buildLog_ += "Internal error: Get compile options failed.";
     }
   } else {
-    if (!amd::option::parseAllOptions(compileOptions_, options)) {
+    if (!amd::option::parseAllOptions(compileOptions_, options, false, isLC())) {
       buildStatus_ = CL_BUILD_ERROR;
       buildLog_ += options.optionsLog();
       LogError("Parsing compile options failed.");
@@ -2392,7 +2392,7 @@ bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputProgr
 
     amd::option::Options compileOptions2;
     amd::option::Options* thisCompileOptions = i == 0 ? &compileOptions : &compileOptions2;
-    if (!amd::option::parseAllOptions(program->compileOptions_, *thisCompileOptions)) {
+    if (!amd::option::parseAllOptions(program->compileOptions_, *thisCompileOptions, false, isLC())) {
       buildLog_ += thisCompileOptions->optionsLog();
       LogError("Parsing compile options failed.");
       return false;
@@ -2409,7 +2409,7 @@ bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputProgr
         linkOptsCanOverwrite = true;
       } else {
         amd::option::Options thisLinkOptions;
-        if (!amd::option::parseLinkOptions(program->linkOptions_, thisLinkOptions)) {
+        if (!amd::option::parseLinkOptions(program->linkOptions_, thisLinkOptions, isLC())) {
           buildLog_ += thisLinkOptions.optionsLog();
           LogError("Parsing link options failed.");
           return false;
@@ -2622,7 +2622,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     std::string sCurOptions = compileOptions_ + linkOptions_;
     amd::option::Options curOptions;
-    if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+    if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
       buildLog_ += curOptions.optionsLog();
       LogError("Parsing compile options failed.");
       return ACL_TYPE_DEFAULT;
@@ -2733,7 +2733,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     std::string sCurOptions = compileOptions_ + linkOptions_;
     amd::option::Options curOptions;
-    if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+    if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
       buildLog_ += curOptions.optionsLog();
       LogError("Parsing compile options failed.");
       return ACL_TYPE_DEFAULT;
@@ -2843,12 +2843,12 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
       linkOptions_ = sCurLinkOptions;
 
       amd::option::Options curOptions, binOptions;
-      if (!amd::option::parseAllOptions(sBinOptions, binOptions)) {
+      if (!amd::option::parseAllOptions(sBinOptions, binOptions, false, isLC())) {
         buildLog_ += binOptions.optionsLog();
         LogError("Parsing compile options from binary failed.");
         return ACL_TYPE_DEFAULT;
       }
-      if (!amd::option::parseAllOptions(sCurOptions, curOptions)) {
+      if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
         buildLog_ += curOptions.optionsLog();
         LogError("Parsing compile options failed.");
         return ACL_TYPE_DEFAULT;

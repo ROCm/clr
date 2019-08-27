@@ -330,9 +330,9 @@ OptionDescriptor* getOptDescTable();
 bool init();
 bool teardown();
 bool parseAllOptions(std::string& options, Options& Opts,
-                     bool linkOptsOnly=false);
-inline bool parseLinkOptions(std::string& options, Options& Opts) {
-    return parseAllOptions(options, Opts, true/*linkOptsOnly*/);
+                     bool linkOptsOnly, bool isLC);
+inline bool parseLinkOptions(std::string& options, Options& Opts, bool isLC) {
+    return parseAllOptions(options, Opts, true/*linkOptsOnly*/, isLC);
 }
 
 

@@ -827,7 +827,7 @@ cloneOclElfNoBIF(const aclBinary *src) {
     amd::option::Options *sOpts = reinterpret_cast<amd::option::Options*>(
         sptr->options);
     if (sOpts) {
-      parseAllOptions(sOpts->origOptionStr, *Opts);
+      parseAllOptions(sOpts->origOptionStr, *Opts, false, false);
     }
     dptr->options = reinterpret_cast<aclOptions*>(Opts);
     dptr->bin = NULL;
@@ -857,7 +857,7 @@ cloneOclElfNoBIF(const aclBinary *src) {
     amd::option::Options *sOpts = reinterpret_cast<amd::option::Options*>(
         sptr->options);
     if (sOpts) {
-      parseAllOptions(sOpts->origOptionStr, *Opts);
+      parseAllOptions(sOpts->origOptionStr, *Opts, false, false);
     }
     dptr->options = reinterpret_cast<aclOptions*>(Opts);
     dptr->bin = NULL;
