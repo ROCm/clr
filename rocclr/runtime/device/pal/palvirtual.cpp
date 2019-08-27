@@ -2426,24 +2426,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    const Device::ScratchBuffer* scratch = nullptr;
-    // Check if the device allocated more registers than the old setup
-    if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
-      scratch = dev().scratch(hwRing());
-      addVmMemory(scratch->memObj_);
-    }
-
     // Set up the dispatch information
     Pal::DispatchAqlParams dispatchParam = {};
     dispatchParam.pAqlPacket = aqlPkt;
-    if (nullptr != scratch) {
+    if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
+      const Device::ScratchBuffer* scratch = nullptr;
+      scratch = dev().scratch(hwRing());
       dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
       dispatchParam.scratchSize = scratch->size_;
       dispatchParam.scratchOffset = scratch->offset_;
-      // Use maximum available slots for all dispatches to allow async on the same queue
-      // HW value loaded into SGPR is an offset value calculated as
-      // wave_slot * COMPUTE_TMPRING_SIZE.WAVESIZE
-      dispatchParam.workitemPrivateSegmentSize = std::max(hsaKernel.spillSegSize(), scratch->privateMemSize_);
+      dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
@@ -3461,6 +3453,14 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     memoryDependency().validate(*this, &hsaKernel.prog().codeSegGpu(), IsReadOnly);
   }
   addVmMemory(&hsaKernel.prog().codeSegGpu());
+
+  if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
+    const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
+    // Validate scratch buffer to force sync mode, because
+    // the current scratch logic is optimized for size and performance
+    memoryDependency().validate(*this, scratch->memObj_, IsReadOnly);
+    addVmMemory(scratch->memObj_);
+  }
 
   return true;
 }
