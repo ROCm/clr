@@ -252,7 +252,10 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
     isInputOptions = true;
   }
   amd::option::Options parsedOptions;
-  if (!amd::Program::ParseAllOptions("", parsedOptions)) {
+  constexpr bool OptionChangable = true;
+  constexpr bool LinkOptsOnly = false;
+  constexpr bool IsLC = false;
+  if (!amd::Program::ParseAllOptions("", parsedOptions, OptionChangable, LinkOptsOnly, IsLC)) {
     return NULL;
   }
   optvec.push_back(&parsedOptions);
