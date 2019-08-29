@@ -61,9 +61,14 @@ Settings::Settings() {
 
   // By default use host blit
   blitEngine_ = BlitEngineHost;
-  const static size_t MaxPinnedXferSize = 32;
+  constexpr size_t MaxPinnedXferSize = 64;
   pinnedXferSize_ = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
-  pinnedMinXferSize_ = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
+
+  constexpr size_t PinnedMinXferSize = 4 * Mi;
+  pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
+      ? PinnedMinXferSize
+      : GPU_PINNED_MIN_XFER_SIZE * Ki;
+  pinnedMinXferSize_ = std::min(pinnedMinXferSize_, pinnedXferSize_);
 
   // Disable FP_FAST_FMA defines by default
   reportFMAF_ = false;

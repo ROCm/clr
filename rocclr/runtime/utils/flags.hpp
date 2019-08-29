@@ -44,7 +44,7 @@ release(bool, REMOTE_ALLOC, false,                                            \
         "Use remote memory for the global heap allocation")                   \
 release(uint, GPU_MAX_HEAP_SIZE, 100,                                         \
         "Set maximum size of the GPU heap to % of board memory")              \
-release(uint, GPU_STAGING_BUFFER_SIZE, 512,                                   \
+release(uint, GPU_STAGING_BUFFER_SIZE, 1024,                                  \
         "Size of the GPU staging buffer in KiB")                              \
 release(bool, GPU_DUMP_BLIT_KERNELS, false,                                   \
         "Dump the kernels for blit manager")                                  \
@@ -68,9 +68,9 @@ release(cstring, AMD_OCL_SC_LIB, 0,                                           \
         "Set shader compiler shared library name or path")                    \
 debug(bool, AMD_OCL_ENABLE_MESSAGE_BOX, false,                                \
         "Enable the error dialog on Windows")                                 \
-release(size_t, GPU_PINNED_XFER_SIZE, 16,                                     \
+release(size_t, GPU_PINNED_XFER_SIZE, 32,                                     \
         "The pinned buffer size for pinning in read/write transfers")         \
-release(size_t, GPU_PINNED_MIN_XFER_SIZE, 512,                                \
+release(size_t, GPU_PINNED_MIN_XFER_SIZE, 1024,                               \
         "The minimal buffer size for pinned read/write transfers in KBytes")  \
 release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
