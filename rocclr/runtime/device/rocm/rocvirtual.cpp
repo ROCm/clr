@@ -727,7 +727,7 @@ bool VirtualGPU::create(bool profilingEna) {
 
 bool VirtualGPU::initPool(size_t kernarg_pool_size, uint signal_pool_count) {
   kernarg_pool_size_ = kernarg_pool_size;
-  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, 1, true));
+  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, 1));
   if (kernarg_pool_base_ == nullptr) {
     return false;
   }
