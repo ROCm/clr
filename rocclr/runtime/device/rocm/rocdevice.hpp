@@ -408,6 +408,10 @@ class Device : public NullDevice {
 
   std::map<hsa_queue_t*, int>& QueuePool() { return queue_pool_; }
 
+  hsa_amd_memory_pool_t SystemSegment() const { return system_segment_; }
+
+  hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
