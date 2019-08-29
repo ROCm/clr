@@ -831,8 +831,9 @@ bool Buffer::create() {
 
   if (owner()->getSvmPtr() != owner()->getHostMem()) {
     if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-      hsa_status_t status = hsa_amd_memory_lock(owner()->getHostMem(), owner()->getSize(), nullptr,
-                                                0, &deviceMemory_);
+      hsa_amd_memory_pool_t pool = (memFlags & CL_MEM_SVM_ATOMICS)? dev().SystemSegment() : dev().SystemCoarseSegment();
+      hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(), owner()->getSize(), nullptr,
+                                                0, pool, 0, &deviceMemory_);
       if (status != HSA_STATUS_SUCCESS) {
         deviceMemory_ = nullptr;
       }
