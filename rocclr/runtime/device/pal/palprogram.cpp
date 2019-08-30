@@ -8,7 +8,6 @@
 #include "utils/bif_section_labels.hpp"
 #include "device/pal/palprogram.hpp"
 #include "device/pal/palblit.hpp"
-#include "MDParser/AMDILMDInterface.h"
 #include <fstream>
 #include <sstream>
 #include <cstdio>
