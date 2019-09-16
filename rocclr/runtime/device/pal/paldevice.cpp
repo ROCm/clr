@@ -656,7 +656,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.numAsyncQueues_ = numComputeRings;
 
     info_.numRTQueues_ = numExclusiveComputeRings;
-    info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu;
+    info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu;
 
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
 
@@ -787,7 +787,6 @@ Device::Device()
       xferRead_(nullptr),
       mapCache_(nullptr),
       resourceCache_(nullptr),
-      numComputeEngines_(0),
       numDmaEngines_(0),
       heapInitComplete_(false),
       xferQueue_(nullptr),
@@ -904,22 +903,28 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   // Find the number of available engines
-  numComputeEngines_ = properties().engineProperties[Pal::EngineTypeCompute].engineCount;
-  if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].maxNumDedicatedCu > 0) {
-    for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineCount;
+  if (properties().engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu > 0) {
+    for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeCompute].engineCount;
          ++i) {
-      if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
-          Pal::EngineSubType::RtCuHighCompute) {
-        if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
+      if (properties().engineProperties[Pal::EngineTypeCompute].capabilities[i].flags.exclusive) {
+        if (properties()
+                .engineProperties[Pal::EngineTypeCompute]
+                .capabilities[i]
+                .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) {
+          if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
             exclusiveComputeEnginesId_.end()) {
-          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
-        } else {
-          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
+            exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
+          } else {
+            exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
+          }
+        } else if (properties()
+                      .engineProperties[Pal::EngineTypeCompute]
+                      .capabilities[i]
+                      .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
+          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
         }
-      }
-      if (properties().engineProperties[Pal::EngineTypeExclusiveCompute].engineSubType[i] ==
-          Pal::EngineSubType::RtCuMedCompute) {
-        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
+      } else {
+        computeEnginesId_.push_back(i);
       }
     }
   }
@@ -957,7 +962,7 @@ bool Device::create(Pal::IDevice* device) {
     return false;
   }
 
-  numComputeEngines_ = std::min(numComputeEngines_, settings().numComputeRings_);
+  computeEnginesId_.resize(std::min(numComputeEngines(), settings().numComputeRings_));
 
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;
@@ -1140,11 +1145,14 @@ bool Device::initializeHeapResources() {
     Pal::DeviceFinalizeInfo finalizeInfo = {};
 
     // Request all compute engines
-    finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines =
-        ((1 << numComputeEngines_) - 1);
+    for (const auto& it : computeEnginesId_) {
+      // Request real time compute engines
+      finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines |= (1 << it);
+    }
+
     for (const auto& it : exclusiveComputeEnginesId_) {
       // Request real time compute engines
-      finalizeInfo.requestedEngineCounts[Pal::EngineTypeExclusiveCompute].engines |=
+      finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines |=
           (1 << it.second);
     }
     // Request all SDMA engines
