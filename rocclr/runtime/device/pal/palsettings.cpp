@@ -212,6 +212,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
       }
       lcWavefrontSize64_ = !enableWave32Mode_;
+      if (palProp.gfxLevel == Pal::GfxIpLevel::GfxIp10_1) {
+        // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
+        imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
+      }
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
       // Enable HW P2P path for Vega20+. Runtime still relies on KMD/PAL for support
@@ -335,11 +339,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     default:
       assert(0 && "Unknown ASIC type!");
       return false;
-  }
-
-  if (gfx10Plus_) {
-    // GFX10 HW doesn't support custom pitch. Enable double copy workaround
-    imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
   }
 
   // Image DMA must be disabled if SDMA is disabled
