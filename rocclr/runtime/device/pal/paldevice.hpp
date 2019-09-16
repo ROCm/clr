@@ -400,7 +400,12 @@ class Device : public NullDevice {
   ResourceCache& resourceCache() const { return *resourceCache_; }
 
   //! Returns the number of available compute rings
-  uint numComputeEngines() const { return numComputeEngines_; }
+  uint numComputeEngines() const { return computeEnginesId_.size(); }
+
+  //! Returns the vector of available compute rings with the engine index
+  const std::vector<uint32_t>& computeEnginesId() const {
+    return computeEnginesId_;
+  }
 
   //! Returns the number of available compute rings
   uint numExclusiveComputeEngines() const { return exclusiveComputeEnginesId_.size(); }
@@ -595,9 +600,9 @@ class Device : public NullDevice {
   XferBuffers* xferRead_;                 //!< Transfer buffers read
   std::vector<amd::Memory*>* mapCache_;   //!< Map cache info structure
   ResourceCache* resourceCache_;          //!< Resource cache
-  uint numComputeEngines_;                //!< The number of available compute engines
   std::map<ExclusiveQueueType, uint32_t>
       exclusiveComputeEnginesId_;        //!< The number of available compute engines
+  std::vector<uint32_t> computeEnginesId_;  //!< PAL index for compute engine
   uint numDmaEngines_;                   //!< The number of available compute engines
   bool heapInitComplete_;                //!< Keep track of initialization status of heap resources
   VirtualGPU* xferQueue_;                //!< Transfer queue
