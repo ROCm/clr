@@ -183,6 +183,7 @@ static uint32_t GetHSAILImageFormatType(cmSurfFmt format) {
       formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_INT16;
       break;
     case CM_SURF_FMT_BGR10_X2:
+    case CM_SURF_FMT_RGB10_X2:
       formatType = HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_SHORT_101010;
       break;
     case CM_SURF_FMT_sR8I:
