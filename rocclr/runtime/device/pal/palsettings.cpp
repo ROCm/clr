@@ -151,6 +151,7 @@ Settings::Settings() {
   enableHwP2P_ = false;
   imageBufferWar_ = false;
   disableSdma_ = PAL_DISABLE_SDMA;
+  mallPolicy_ = 0;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -550,6 +551,10 @@ void Settings::override() {
   if (!flagIsDefault(GPU_ENABLE_COOP_GROUPS)) {
     enableCoopGroups_ = GPU_ENABLE_COOP_GROUPS;
     enableCoopMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
+  }
+
+  if (!flagIsDefault(PAL_MALL_POLICY)) {
+    mallPolicy_ = PAL_MALL_POLICY;
   }
 }
 

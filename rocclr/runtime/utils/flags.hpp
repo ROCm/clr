@@ -167,6 +167,11 @@ release_on_stg(bool, PAL_DISABLE_SDMA, false,                                 \
         "1 = Disable SDMA for PAL")                                           \
 release(uint, PAL_RGP_DISP_COUNT, 50,                                         \
         "The number of dispatches for RGP capture with SQTT")                 \
+release(uint, PAL_MALL_POLICY, 0,                                             \
+        "Controls the behaviour of allocations with respect to the MALL"      \
+        "0 = MALL policy is decided by KMD"                                   \
+        "1 = Allocations are never put through the MALL"                      \
+        "2 = Allocations will always be put through the MALL")                \
 release(bool, GPU_ENABLE_WAVE32_MODE, true,                                   \
         "Enables Wave32 compilation in HW if available")                      \
 release(bool, GPU_ENABLE_LC, true,                                            \

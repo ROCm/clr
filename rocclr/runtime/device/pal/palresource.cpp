@@ -419,6 +419,19 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
       createInfo->heaps[0] = Pal::GpuHeapLocal;
       break;
   }
+
+#if !IS_MAINLINE
+  // Pick the appropriate mall policy based on the mem type
+  switch (memoryType()) {
+    case Local:
+    case Scratch:
+      createInfo->mallPolicy = static_cast<Pal::GpuMemMallPolicy>(dev().settings().mallPolicy_);
+      break;
+    default:
+      createInfo->mallPolicy = Pal::GpuMemMallPolicy::Never;
+      break;
+  }
+#endif
 }
 
 // ================================================================================================
@@ -1873,7 +1886,7 @@ bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.priority = Pal::GpuMemPriority::Normal;
   createInfo.heapCount = 1;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
-  createInfo.flags.peerWritable = device_->P2PAccessAllowed();
+  createInfo.flags.peerWritable = device_->P2PAccessAllowed();.mallPolicy_);)
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     return InitAllocator(mem_ref);
@@ -1892,7 +1905,7 @@ bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.pReservedGpuVaOwner = reserved_va;
   createInfo.heapCount = 2;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
-  createInfo.heaps[1] = Pal::GpuHeapLocal;
+  createInfo.heaps[1] = Pal::GpuHeapLocal;.mallPolicy_);)
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     return InitAllocator(mem_ref);
