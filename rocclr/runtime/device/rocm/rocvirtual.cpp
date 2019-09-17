@@ -195,7 +195,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
 
-  if (!cooperativeGroups) {
+  if (!cooperativeGroups && memoryDependency().maxMemObjectsInQueue() != 0) {
     // AQL packets
     setAqlHeader(kDispatchPacketHeaderNoSync);
   }
@@ -575,7 +575,7 @@ VirtualGPU::VirtualGPU(Device& device)
   kernarg_pool_base_ = nullptr;
   kernarg_pool_size_ = 0;
   kernarg_pool_cur_offset_ = 0;
-  aqlHeader_ = kDispatchPacketHeaderNoSync;
+  aqlHeader_ = kDispatchPacketHeader;
   barrier_signal_.handle = 0;
 
   // Note: Virtual GPU device creation must be a thread safe operation
@@ -2052,7 +2052,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    LogPrintfInfo("!\tShaderName : %s\n", gpuKernel.name().c_str());
+    LogPrintfInfo("[%zx]!\tShaderName : %s\n", std::this_thread::get_id(), gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
