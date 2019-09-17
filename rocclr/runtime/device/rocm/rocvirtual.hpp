@@ -131,6 +131,9 @@ class VirtualGPU : public device::VirtualDevice {
     //! Clear memory dependency
     void clear(bool all = true);
 
+    //! Max number of mem objects in the queue
+    size_t maxMemObjectsInQueue() const { return maxMemObjectsInQueue_; }
+
    private:
     struct MemoryState {
       uint64_t start_;  //! Busy memory start address
