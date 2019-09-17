@@ -94,6 +94,7 @@ class Settings : public device::Settings {
   uint64_t maxAllocSize_;        //!< Maximum single allocation size
   uint rgpSqttDispCount_;        //!< The number of dispatches captured in SQTT
   uint maxCmdBuffers_;           //!< Maximum number of command buffers allocated per queue
+  uint mallPolicy_;              //!< 0 - default, 1 - always bypass, 2 - always put
 
   uint64_t subAllocationMinSize_;    //!< Minimum size allowed for suballocations
   uint64_t subAllocationMaxSize_;    //!< Maximum size allowed with suballocations
