@@ -909,29 +909,27 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   // Find the number of available engines
-  if (properties().engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu > 0) {
-    for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeCompute].engineCount;
-         ++i) {
-      if (properties().engineProperties[Pal::EngineTypeCompute].capabilities[i].flags.exclusive) {
-        if (properties()
-                .engineProperties[Pal::EngineTypeCompute]
-                .capabilities[i]
-                .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) {
-          if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
+  for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeCompute].engineCount; ++i) {
+    if (properties().engineProperties[Pal::EngineTypeCompute].capabilities[i].flags.exclusive) {
+      if ((properties()
+              .engineProperties[Pal::EngineTypeCompute]
+              .capabilities[i]
+              .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) && 
+          (properties().engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu > 0)) {
+        if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
             exclusiveComputeEnginesId_.end()) {
-            exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
-          } else {
-            exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
-          }
-        } else if (properties()
-                      .engineProperties[Pal::EngineTypeCompute]
-                      .capabilities[i]
-                      .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
-          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
+          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
+        } else {
+          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
         }
-      } else {
-        computeEnginesId_.push_back(i);
+      } else if (properties()
+                    .engineProperties[Pal::EngineTypeCompute]
+                    .capabilities[i]
+                    .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
+        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
       }
+    } else {
+      computeEnginesId_.push_back(i);
     }
   }
   numDmaEngines_ = properties().engineProperties[Pal::EngineTypeDma].engineCount;
