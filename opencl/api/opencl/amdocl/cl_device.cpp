@@ -417,9 +417,11 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       case CL_DEVICE_P2P_DEVICES_AMD: {
         uint valueSize = as_amd(device)->p2pDevices_.size() * sizeof(cl_device_id);
         if (param_value != NULL) {
-          if (param_value_size < valueSize) {
+          if ((param_value_size < valueSize) || (param_value_size == 0)) {
             return CL_INVALID_VALUE;
           }
+        } else {
+          return CL_INVALID_VALUE;
         }
         memcpy(param_value, as_amd(device)->p2pDevices_.data(), valueSize);
         *not_null(param_value_size_ret) = valueSize;
