@@ -224,7 +224,7 @@ void RgpCaptureMgr::WaitForDriverResume() {
 
   assert(pDriverControlServer != nullptr);
 
-  pDriverControlServer->WaitForDriverResume();
+  pDriverControlServer->DriverTick();
 }
 
 // ================================================================================================
@@ -682,7 +682,7 @@ void RgpCaptureMgr::PostDeviceCreate() {
   // whether or not the debug vmid has been acquired. External tools use this information to
   // decide when it's reasonable to make certain requests of the driver through protocol functions.
   if (pDriverControlServer->IsDriverInitialized() == false) {
-    pDriverControlServer->FinishDriverInitialization();
+    pDriverControlServer->FinishDeviceInit();
   }
 }
 
