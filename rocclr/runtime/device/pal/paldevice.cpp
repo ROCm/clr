@@ -889,8 +889,7 @@ bool Device::create(Pal::IDevice* device) {
   asicRevision_ = properties().revision;
 
   // XNACK flag should be set for  PageMigration | IOMMUv2 Support
-  uint isXNACKSupported =
-      (ipLevel_ < Pal::GfxIpLevel::GfxIp10_1) &&
+  uint isXNACKSupported = (ipLevel_ < Pal::GfxIpLevel::GfxIp10_1) &&
       (static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties_.gpuMemoryProperties.flags.iommuv2Support));
   uint subtarget = isXNACKSupported;
@@ -912,9 +911,9 @@ bool Device::create(Pal::IDevice* device) {
   for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeCompute].engineCount; ++i) {
     if (properties().engineProperties[Pal::EngineTypeCompute].capabilities[i].flags.exclusive) {
       if ((properties()
-              .engineProperties[Pal::EngineTypeCompute]
-              .capabilities[i]
-              .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) && 
+               .engineProperties[Pal::EngineTypeCompute]
+               .capabilities[i]
+               .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) &&
           (properties().engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu > 0)) {
         if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
             exclusiveComputeEnginesId_.end()) {
@@ -923,9 +922,9 @@ bool Device::create(Pal::IDevice* device) {
           exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
         }
       } else if (properties()
-                    .engineProperties[Pal::EngineTypeCompute]
-                    .capabilities[i]
-                    .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
+                     .engineProperties[Pal::EngineTypeCompute]
+                     .capabilities[i]
+                     .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
         exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
       }
     } else {
@@ -1106,18 +1105,21 @@ bool Device::create(Pal::IDevice* device) {
 // Master function that handles developer callbacks from PAL.
 void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                               Pal::Developer::CallbackType type, void* pCbData) {
+  VirtualGPU* gpu = nullptr;
   Device* device = static_cast<Device*>(pPrivateData);
   const auto& barrier = *static_cast<const Pal::Developer::BarrierData*>(pCbData);
 
-  const auto* pBarrierData = reinterpret_cast<const Pal::Developer::BarrierData*>(pCbData);
+  if ((type == Pal::Developer::CallbackType::BarrierBegin) ||
+      (type == Pal::Developer::CallbackType::BarrierEnd)) {
+    const auto* pBarrierData = reinterpret_cast<const Pal::Developer::BarrierData*>(pCbData);
 
-  VirtualGPU* gpu = nullptr;
-  if (pBarrierData->pCmdBuffer != nullptr) {
-    // Find which queue the current command buffer belongs
-    for (const auto& it : device->vgpus()) {
-      if (it->isActiveCmd(pBarrierData->pCmdBuffer)) {
-        gpu = it;
-        break;
+    if (pBarrierData->pCmdBuffer != nullptr) {
+      // Find which queue the current command buffer belongs
+      for (const auto& it : device->vgpus()) {
+        if (it->isActiveCmd(pBarrierData->pCmdBuffer)) {
+          gpu = it;
+          break;
+        }
       }
     }
   }
@@ -1156,8 +1158,7 @@ bool Device::initializeHeapResources() {
 
     for (const auto& it : exclusiveComputeEnginesId_) {
       // Request real time compute engines
-      finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines |=
-          (1 << it.second);
+      finalizeInfo.requestedEngineCounts[Pal::EngineTypeCompute].engines |= (1 << it.second);
     }
     // Request all SDMA engines
     finalizeInfo.requestedEngineCounts[Pal::EngineTypeDma].engines = (1 << numDmaEngines_) - 1;
