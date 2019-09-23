@@ -197,13 +197,7 @@ void RgpCaptureMgr::Finalize() {
   // picked as the target of an eventual VkDevice, this check is imperfect.
   // In mixed-GPU situations where an unsupported GPU is picked for tracing,
   // trace capture will fail with an error.
-  bool hw_support_tracing = false;
-
-  if ((rgp_server_->EnableTraces() == DevDriver::Result::Success)) {
-    if (GpuSupportsTracing(device_.properties(), device_.settings())) {
-      hw_support_tracing = true;
-    }
-  }
+  bool hw_support_tracing = GpuSupportsTracing(device_.properties(), device_.settings());
 
   if (hw_support_tracing == false) {
     rgp_server_->DisableTraces();

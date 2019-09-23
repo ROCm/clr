@@ -1314,6 +1314,7 @@ bool Device::init() {
   info.flags.enableSvmMode = true;
 #endif
 #endif
+  info.flags.supportRgpTraces = true;
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
 
