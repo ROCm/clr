@@ -63,7 +63,7 @@ class ClBinary;
 class Kernel;
 
 struct SymbolInfo {
-  size_t sym_type;
+  int sym_type;
   std::vector<std::string>* var_names;
 };
 
