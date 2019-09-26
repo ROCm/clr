@@ -73,7 +73,8 @@ class Program : public RuntimeObject {
     Binary = 0,
     OpenCL_C,
     SPIRV,
-    Assembly
+    Assembly,
+    HIP
   };
 
   typedef bool(CL_CALLBACK* VarInfoCallback)(cl_program, std::string, void**, size_t*);
@@ -138,6 +139,9 @@ class Program : public RuntimeObject {
 
   //! Return the program source code.
   const std::string& sourceCode() const { return sourceCode_; }
+
+  //! Append to source code.
+  void appendToSource(const char* newCode) { sourceCode_.append(newCode); }
 
   //! Return the program log.
   const std::string& programLog() const { return programLog_; }
