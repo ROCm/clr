@@ -2203,9 +2203,6 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
         workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
       }
     }
-    uint32_t counter = workgroups *
-      amd::alignUp(vcmd.sizes().local().product(), dev().info().wavefrontWidth_) /
-      dev().info().wavefrontWidth_;
 
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
@@ -2217,7 +2214,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     amd::ScopedLock lock(queue->blitMgr().lockXfer());
     queue->profilingBegin(vcmd);
 
-    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(counter);
+    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups);
 
     // Sync AQL packets
     queue->setAqlHeader(kDispatchPacketHeader);
