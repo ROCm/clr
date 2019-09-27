@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2017 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 #ifndef __CL_P2P_AMD_H
 #define __CL_P2P_AMD_H
 
