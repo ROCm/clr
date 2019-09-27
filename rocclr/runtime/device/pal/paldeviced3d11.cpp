@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 #include "paldevice.hpp"
 
 #if defined(ATI_OS_LINUX)
