@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 #ifndef __CL_LQDFLASH_AMD_H
 #define __CL_LQDFLASH_AMD_H
 

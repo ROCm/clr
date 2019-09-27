@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2012 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 #include "cl_common.hpp"
 #include "cl_sdi_amd.h"
 #include "platform/context.hpp"

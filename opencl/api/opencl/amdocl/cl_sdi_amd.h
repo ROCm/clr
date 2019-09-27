@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2012 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 #ifndef __CL_SDI_AMD_H
 #define __CL_SDI_AMD_H
 
