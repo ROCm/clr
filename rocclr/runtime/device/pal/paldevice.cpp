@@ -1659,9 +1659,8 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
   // Create resource
   if (nullptr != gpuImage) {
     const bool imageBuffer =
-        ((owner.getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER) ||
-         ((owner.getType() == CL_MEM_OBJECT_IMAGE2D) && (owner.parent() != nullptr) &&
-          (owner.parent()->asBuffer() != nullptr)));
+        ((owner.parent() != nullptr) &&
+         (owner.parent()->asBuffer() != nullptr));
     bool result = false;
 
     // Check if owner is interop memory
