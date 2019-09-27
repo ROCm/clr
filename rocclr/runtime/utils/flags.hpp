@@ -202,7 +202,9 @@ release(uint, AMD_SERIALIZE_KERNEL, 0,                                        \
         "0x2 = Wait for completion after enqueue 0x3 = both")                 \
 release(uint, AMD_SERIALIZE_COPY, 0,                                          \
         "Serialize copies, 0x1 = Wait for completion before enqueue"          \
-        "0x2 = Wait for completion after enqueue 0x3 = both")
+        "0x2 = Wait for completion after enqueue 0x3 = both")                 \
+release(bool, PAL_ALWAYS_RESIDENT, false,                                     \
+        "Force memory resources to become resident at allocation time")
 
 namespace amd {
 

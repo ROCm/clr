@@ -254,6 +254,9 @@ Pal::Result VirtualGPU::Queue::UpdateAppPowerProfile() {
 }
 
 void VirtualGPU::Queue::addCmdMemRef(GpuMemoryReference* mem) {
+  if (gpu_.dev().settings().alwaysResident_) {
+    return;
+  }
   Pal::IGpuMemory* iMem = mem->iMem();
   auto it = memReferences_.find(mem);
   if (it != memReferences_.end()) {

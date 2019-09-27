@@ -29,6 +29,17 @@
 namespace pal {
 
 // ================================================================================================
+Pal::Result GpuMemoryReference::MakeResident() const {
+  Pal::Result result = Pal::Result::Success;
+  if (device_.settings().alwaysResident_) {
+    Pal::GpuMemoryRef memRef = {};
+    memRef.pGpuMemory = gpuMem_;
+    result = device_.iDev()->AddGpuMemoryReferences(1, &memRef, nullptr, Pal::GpuMemoryRefCantTrim);
+  }
+  return result;
+}
+
+// ================================================================================================
 GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
                                                const Pal::GpuMemoryCreateInfo& createInfo) {
   Pal::Result result;
@@ -45,6 +56,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
         dev.resourceCache().free()) {
       // If cache was freed, then try to allocate again
       result = dev.iDev()->CreateGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
+    }
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
     }
     if (result != Pal::Result::Success) {
       memRef->release();
@@ -71,6 +85,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   Pal::VaRange vaRange = Pal::VaRange::Default;
   if (memRef != nullptr) {
     result = dev.iDev()->CreatePinnedGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
       return nullptr;
@@ -93,6 +110,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->CreateSvmGpuMemory(createInfo, &memRef[1], &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
       return nullptr;
@@ -117,6 +137,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   if (memRef != nullptr) {
     result = dev.iDev()->OpenExternalSharedGpuMemory(openInfo, &memRef[1], &createInfo,
                                                      &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
       return nullptr;
@@ -144,6 +167,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   if (memRef != nullptr) {
     result = dev.iDev()->OpenExternalSharedImage(openInfo, imgMem, &memRef[1], &createInfo, image,
                                                  &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
       return nullptr;
@@ -164,6 +190,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->OpenPeerGpuMemory(openInfo, &memRef[1], &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
     if (result != Pal::Result::Success) {
       memRef->release();
       return nullptr;
