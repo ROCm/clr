@@ -64,7 +64,8 @@ class Settings : public device::Settings {
       uint enableHwP2P_ : 1;            //!< Forces HW P2P path for testing
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint disableSdma_ : 1;            //!< Disable SDMA support
-      uint reserved_ : 8;
+      uint alwaysResident_ : 1;         //!< Make resources resident at allocation time
+      uint reserved_ : 7;
     };
     uint value_;
   };
