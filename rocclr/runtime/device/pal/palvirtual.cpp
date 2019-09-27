@@ -2295,9 +2295,6 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
         workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
       }
     }
-    uint32_t counter = workgroups *
-        amd::alignUp(vcmd.sizes().local().product(), dev().info().wavefrontWidth_) /
-        dev().info().wavefrontWidth_;
 
     bool test = true;
     VirtualGPU* queue = (test) ? this : dev().xferQueue();
@@ -2309,7 +2306,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     queue->profilingBegin(vcmd);
 
-    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(counter);
+    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups);
     queue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue);
 
     // Submit kernel to HW
