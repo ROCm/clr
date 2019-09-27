@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 //! Implementation of GPU device memory management
 
 #include "top.hpp"

@@ -1,3 +1,7 @@
+//
+// Copyright (c) 2015 Advanced Micro Devices, Inc. All rights reserved.
+//
+
 /*******************************************************************************
  *    The source of the runtime trap handler, "runtimetraphandler.sp3".
  *    The binary is created by the SP3 tool with the following command:
