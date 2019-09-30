@@ -152,7 +152,7 @@ Settings::Settings() {
   imageBufferWar_ = false;
   disableSdma_ = PAL_DISABLE_SDMA;
   mallPolicy_ = 0;
-  alwaysResident_ = amd::IS_HIP ? true : ((!flagIsDefault(PAL_ALWAYS_RESIDENT)) ? PAL_ALWAYS_RESIDENT : false);
+  alwaysResident_ = amd::IS_HIP ? true : false;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -556,6 +556,10 @@ void Settings::override() {
 
   if (!flagIsDefault(PAL_MALL_POLICY)) {
     mallPolicy_ = PAL_MALL_POLICY;
+  }
+
+  if (!flagIsDefault(PAL_ALWAYS_RESIDENT)) {
+    alwaysResident_ = PAL_ALWAYS_RESIDENT;
   }
 }
 
