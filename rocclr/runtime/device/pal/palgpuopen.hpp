@@ -30,6 +30,25 @@
 #include "palQueue.h"
 #include "palUtil.h"
 
+namespace pal {
+class Settings;
+class Device;
+class VirtualGPU;
+class HSAILKernel;
+
+// ================================================================================================
+enum class RgpSqqtBarrierReason : uint32_t {
+  Invalid = 0,
+  MemDependency = 0xC0000000,
+  ProfilingControl = 0xC0000001,
+  SignalSubmit = 0xC0000002,
+  PostDeviceEnqueue = 0xC0000003,
+  Unknown = 0xffffffff
+};
+
+}
+
+#ifdef PAL_GPUOPEN_OCL
 // gpuopen headers
 #include "gpuopen.h"
 
@@ -64,11 +83,6 @@ class HandlerServer;
 }  // namespace DevDriver
 
 namespace pal {
-class Settings;
-class Device;
-class VirtualGPU;
-class HSAILKernel;
-
 // ================================================================================================
 // RgpSqttMarkerIdentifier - Identifiers for RGP SQ thread-tracing markers (Table 1)
 enum RgpSqttMarkerIdentifier : uint32_t {
@@ -103,16 +117,6 @@ enum class RgpSqttMarkerEventType : uint32_t {
   CmdPipelineBarrier = 8,
   InternalUnknown = 26,
   Invalid = 0xffffffff
-};
-
-// ================================================================================================
-enum class RgpSqqtBarrierReason : uint32_t {
-  Invalid = 0,
-  MemDependency = 0xC0000000,
-  ProfilingControl = 0xC0000001,
-  SignalSubmit = 0xC0000002,
-  PostDeviceEnqueue = 0xC0000003,
-  Unknown = 0xffffffff
 };
 
 // ================================================================================================
@@ -377,4 +381,18 @@ inline bool RgpCaptureMgr::IsQueueTimingActive() const {
           (trace_.status_ == TraceStatus::Running || trace_.status_ == TraceStatus::Preparing ||
            trace_.status_ == TraceStatus::WaitingForSqtt));
 }
-};  // namespace pal
+}  // namespace pal
+#else // PAL_GPUOPEN_OCL
+namespace pal {
+class RgpCaptureMgr {
+ public:
+  static RgpCaptureMgr* Create(Pal::IPlatform* platform, const Device& device) { return nullptr; }
+  Pal::Result TimedQueueSubmit(Pal::IQueue* queue, uint64_t cmdId,
+                               const Pal::SubmitInfo& submitInfo) const {}
+  void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size_t x, size_t y, size_t z) {}
+  void PostDispatch(VirtualGPU* gpu) {}
+  void FinishRGPTrace(VirtualGPU* gpu, bool aborted) {}
+  bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const { return true; }
+};
+}  // namespace pal
+#endif // PAL_GPUOPEN_OCL
