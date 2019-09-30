@@ -22,6 +22,7 @@
 #include "palFence.h"
 #include "palQueueSemaphore.h"
 
+#ifdef PAL_GPUOPEN_OCL
 // gpuutil headers
 #include "gpuUtil/palGpaSession.h"
 
@@ -819,5 +820,6 @@ void RgpCaptureMgr::WriteUserEventMarker(const VirtualGPU* gpu,
   WriteMarker(gpu, user_event_, markerSize);
 }
 
+}  // namespace pal
 
-};  // namespace pal
+#endif // PAL_GPUOPEN_OCL

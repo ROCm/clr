@@ -1105,6 +1105,7 @@ bool Device::create(Pal::IDevice* device) {
 // Master function that handles developer callbacks from PAL.
 void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                               Pal::Developer::CallbackType type, void* pCbData) {
+#ifdef PAL_GPUOPEN_OCL
   VirtualGPU* gpu = nullptr;
   Device* device = static_cast<Device*>(pPrivateData);
   const auto& barrier = *static_cast<const Pal::Developer::BarrierData*>(pCbData);
@@ -1143,6 +1144,7 @@ void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uin
     default:
       break;
   }
+#endif // PAL_GPUOPEN_OCL
 }
 
 bool Device::initializeHeapResources() {
