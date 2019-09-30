@@ -215,6 +215,8 @@ class Program : public amd::HeapObject {
   //! Global variables are a part of the code segment
   bool hasGlobalStores() const { return hasGlobalStores_; }
 
+  std::vector<amd::Memory*> getUndefMemObj() const { return undef_mem_obj_; }
+
 #if defined(USE_COMGR_LIBRARY)
   const amd_comgr_metadata_node_t* metadata() const { return metadata_; }
 
