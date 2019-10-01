@@ -186,17 +186,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   switch (palProp.revision) {
-    case Pal::AsicRevision::Unknown:
-      switch (palProp.gfxLevel) {
-        case Pal::GfxIpLevel::GfxIp10_1:
-          gfx10Plus_ = true;
-        case Pal::GfxIpLevel::GfxIp9:
-          aiPlus_ = true;
-          break;
-        default:
-          assert(0 && "Unknown GfxIP type!");
-          return false;
-      }
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
