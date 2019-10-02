@@ -262,7 +262,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
   } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
-    subtarget = (static_cast<uint>(asicRevision_) % static_cast<uint>(Pal::AsicRevision::Vega10))
+    subtarget = (static_cast<uint>(asicRevision_) - static_cast<uint>(Pal::AsicRevision::Vega10))
             << 1 |
         xNACKSupported;
     hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
