@@ -334,7 +334,8 @@ public:
     const char*      getErrMsg() { return _err.getOclElfError(); }
     unsigned char  getELFClass() { return _eclass; }
 
-    bool isHsaCo() const { return (elf64_getehdr(_e)->e_machine == EM_AMDGPU); }
+    bool isHsaCo() const { return (_eclass == ELFCLASS32) ?
+      (elf32_getehdr(_e)->e_machine == EM_AMDGPU) : (elf64_getehdr(_e)->e_machine == EM_AMDGPU); }
 
 private:
 
