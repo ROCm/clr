@@ -2574,8 +2574,7 @@ bool Program::setBinary(const char* binaryIn, size_t size) {
     case ET_DYN: {
       char* sect = nullptr;
       size_t sz = 0;
-      // FIXME: we should look for the e_machine to detect an HSACO.
-      if (clBinary()->elfIn()->getSection(amd::OclElf::TEXT, &sect, &sz) && sect && sz > 0) {
+      if (clBinary()->elfIn()->isHsaCo()) {
         setType(TYPE_EXECUTABLE);
       } else {
         setType(TYPE_LIBRARY);
@@ -2910,6 +2909,9 @@ bool Program::createKernelMetadataMap() {
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::get_metadata_list_size(kernelsMD, &size);
+  } else if (amd::IS_HIP) {
+    // Assume an empty binary. HIP may have binaries with just global variables
+    return true;
   }
 
   for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
