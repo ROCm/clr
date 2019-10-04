@@ -204,7 +204,10 @@ release(uint, AMD_SERIALIZE_COPY, 0,                                          \
         "Serialize copies, 0x1 = Wait for completion before enqueue"          \
         "0x2 = Wait for completion after enqueue 0x3 = both")                 \
 release(bool, PAL_ALWAYS_RESIDENT, false,                                     \
-        "Force memory resources to become resident at allocation time")
+        "Force memory resources to become resident at allocation time")       \
+release(uint, HIP_HOST_COHERENT, 0,                                           \
+        "Coherent memory in hipHostMalloc, 0x1 = memory is coherent with host"\
+        "0x0 = memory is not coherent between host and GPU")
 
 namespace amd {
 
