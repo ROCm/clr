@@ -1325,7 +1325,13 @@ bool Device::populateOCLDeviceConstants() {
     if (agent_profile_ == HSA_PROFILE_FULL) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
-    if (!settings().useLightning_) {
+    if (amd::IS_HIP) {
+      // Report atomics capability based on GFX IP, control on Hawaii
+      if (info_.hostUnifiedMemory_ || deviceInfo_.gfxipVersion_ >= 800) {
+        info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
+      }
+    }
+    else if (!settings().useLightning_) {
       // Report atomics capability based on GFX IP, control on Hawaii
       // and Vega10.
       if (info_.hostUnifiedMemory_ ||

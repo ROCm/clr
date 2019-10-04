@@ -183,6 +183,7 @@ class Resource : public amd::HeapObject {
         uint scratch_ : 1;         //!< Scratch buffer
         uint isAllocExecute_ : 1;  //!< SVM resource allocation attribute for shader\cmdbuf
         uint isDoppTexture_ : 1;   //!< PAL resource is for a DOPP desktop texture
+        uint gl2CacheDisabled_ : 1;//!< PAL resource is allocated with GPU L2 cache disabled.
       };
       uint state_;
     };
@@ -534,6 +535,12 @@ class FineMemorySubAllocator : public MemorySubAllocator {
   bool CreateChunk(const Pal::IGpuMemory* reserved_va) override;
 };
 
+class FineUncachedMemorySubAllocator : public MemorySubAllocator {
+ public:
+  FineUncachedMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
+  bool CreateChunk(const Pal::IGpuMemory* reserved_va) override;
+};
+
 class ResourceCache : public amd::HeapObject {
  public:
   //! Default constructor
@@ -544,7 +551,8 @@ class ResourceCache : public amd::HeapObject {
         cacheSizeLimit_(cacheSizeLimit),
         mem_sub_alloc_local_(device),
         mem_sub_alloc_coarse_(device),
-        mem_sub_alloc_fine_(device) {}
+        mem_sub_alloc_fine_(device),
+        mem_sub_alloc_fine_uncached_(device){}
 
   //! Default destructor
   ~ResourceCache();
@@ -591,9 +599,10 @@ class ResourceCache : public amd::HeapObject {
   //! PAL resource cache
   std::list<std::pair<Resource::Descriptor*, GpuMemoryReference*> > resCache_;
 
-  MemorySubAllocator mem_sub_alloc_local_;         //!< Allocator for suballocations in Local
-  CoarseMemorySubAllocator mem_sub_alloc_coarse_;  //!< Allocator for suballocations in Coarse SVM
-  FineMemorySubAllocator mem_sub_alloc_fine_;      //!< Allocator for suballocations in Fine SVM
+  MemorySubAllocator mem_sub_alloc_local_;                     //!< Allocator for suballocations in Local
+  CoarseMemorySubAllocator mem_sub_alloc_coarse_;              //!< Allocator for suballocations in Coarse SVM
+  FineMemorySubAllocator mem_sub_alloc_fine_;                  //!< Allocator for suballocations in Fine SVM
+  FineUncachedMemorySubAllocator mem_sub_alloc_fine_uncached_; //!< Allocator for suballocations in Fine uncached SVM
 };
 
 /*@}*/  // namespace pal

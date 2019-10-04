@@ -697,7 +697,12 @@ bool Buffer::create() {
 
     if (owner()->getSvmPtr() == reinterpret_cast<void*>(1)) {
       if (isFineGrain) {
-        deviceMemory_ = dev().hostAlloc(size(), 1, false);
+        if (memFlags & CL_MEM_SVM_ATOMICS) {
+          deviceMemory_ = dev().hostAlloc(size(), 1, true);
+        }
+        else {
+          deviceMemory_ = dev().hostAlloc(size(), 1, false);
+        }
         flags_ |= HostMemoryDirectAccess;
       } else {
         deviceMemory_ = dev().deviceLocalAlloc(size());

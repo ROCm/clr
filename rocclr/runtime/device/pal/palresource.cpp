@@ -275,6 +275,7 @@ Resource::Resource(const Device& gpuDev, size_t size)
   desc_.scratch_ = false;
   desc_.isAllocExecute_ = false;
   desc_.baseLevel_ = 0;
+  desc_.gl2CacheDisabled_ = false;
   gpuDev.addResource(this);
 }
 
@@ -311,7 +312,7 @@ Resource::Resource(const Device& gpuDev, size_t width, size_t height, size_t dep
   desc_.scratch_ = false;
   desc_.isAllocExecute_ = false;
   desc_.baseLevel_ = 0;
-
+  desc_.gl2CacheDisabled_ = false;
   switch (imageType) {
     case CL_MEM_OBJECT_IMAGE2D:
       desc_.dimSize_ = 2;
@@ -1194,6 +1195,9 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
     desc_.SVMRes_ = true;
     svmPtr = (svmPtr == 1) ? 0 : svmPtr;
+    if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
+      desc_.gl2CacheDisabled_ = true;
+    }
   }
   if (desc_.SVMRes_) {
     return CreateSvm(params, svmPtr);
@@ -1959,6 +1963,23 @@ bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
 }
 
 // ================================================================================================
+bool FineUncachedMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
+  Pal::SvmGpuMemoryCreateInfo createInfo = {};
+  createInfo.isUsedForKernel = false;
+  createInfo.size = device_->settings().subAllocationChunkSize_;
+  createInfo.alignment = MaxGpuAlignment;
+  createInfo.flags.useReservedGpuVa = (reserved_va != nullptr);
+  createInfo.pReservedGpuVaOwner = reserved_va;
+  createInfo.flags.gl2Uncached = true;
+  GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
+  if ((mem_ref != nullptr) && InitAllocator(mem_ref)) {
+    mem_ref->iMem()->Map(&mem_ref->cpuAddress_);
+    return mem_ref->cpuAddress_ != nullptr;
+  }
+  return false;
+}
+
+// ================================================================================================
 MemorySubAllocator::~MemorySubAllocator() {
   // Release memory heap for suballocations
   for (const auto& it : heaps_) {
@@ -2044,7 +2065,11 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
     result = mem_sub_alloc_coarse_.Free(&lockCacheOps_, ref, offset);
   } else if (desc->SVMRes_) {
-    result = mem_sub_alloc_fine_.Free(&lockCacheOps_, ref, offset);
+    if (desc->gl2CacheDisabled_) {
+      result = mem_sub_alloc_fine_uncached_.Free(&lockCacheOps_, ref, offset);
+    } else {
+      result = mem_sub_alloc_fine_.Free(&lockCacheOps_, ref, offset);
+    }
   }
 
   // If a resource was a suballocation, don't try to cache it
@@ -2095,7 +2120,11 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
     ref = mem_sub_alloc_coarse_.Allocate(size, alignment, reserved_va, offset);
   } else if (desc->SVMRes_) {
-    ref = mem_sub_alloc_fine_.Allocate(size, alignment, reserved_va, offset);
+    if (desc->gl2CacheDisabled_) {
+      ref = mem_sub_alloc_fine_uncached_.Allocate(size, alignment, reserved_va, offset);
+    } else {
+      ref = mem_sub_alloc_fine_.Allocate(size, alignment, reserved_va, offset);
+    }
   }
 
   if (ref != nullptr) {
