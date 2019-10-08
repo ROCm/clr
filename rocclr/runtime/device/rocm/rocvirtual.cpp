@@ -555,6 +555,7 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
 VirtualGPU::VirtualGPU(Device& device)
     : device::VirtualDevice(device),
+      gpu_queue_(nullptr),
       roc_device_(device),
       virtualQueue_(nullptr),
       deviceQueueSize_(0),
@@ -631,12 +632,9 @@ VirtualGPU::~VirtualGPU() {
   for (uint idx = index(); idx < roc_device_.vgpus().size(); ++idx) {
     roc_device_.vgpus()[idx]->index_--;
   }
-  // Decrement the counter
-  roc_device_.QueuePool()[gpu_queue_]--;
-  // Release the queue if the counter is 0
-  if (roc_device_.QueuePool()[gpu_queue_] == 0) {
-    hsa_status_t err = hsa_queue_destroy(gpu_queue_);
-    roc_device_.QueuePool().erase(gpu_queue_);
+
+  if (gpu_queue_) {
+    roc_device_.releaseQueue(gpu_queue_);
   }
 }
 
@@ -646,38 +644,10 @@ bool VirtualGPU::create(bool profilingEna) {
     return false;
   }
 
-  uint32_t queue_max_packets = 0;
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(gpu_device_, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_max_packets)) {
-    return false;
-  }
-
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
-  queue_size = (queue_max_packets < queue_size) ? queue_max_packets : queue_size;
-  if (roc_device_.QueuePool().size() < GPU_MAX_HW_QUEUES) {
-    while (hsa_queue_create(gpu_device_, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
-                          std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
-                          &gpu_queue_) != HSA_STATUS_SUCCESS) {
-      queue_size >>= 1;
-      if (queue_size < 64) {
-        return false;
-      }
-    }
-    hsa_amd_profiling_set_profiler_enabled(gpu_queue(), 1);
-    roc_device_.QueuePool().insert({gpu_queue_, 1});
-  } else {
-    int usage = std::numeric_limits<int>::max();
-    // Loop through all allocated queues and find the lowest usage
-    for (const auto it : roc_device_.QueuePool()) {
-      if (it.second < usage) {
-        gpu_queue_ = it.first;
-        usage = it.second;
-      }
-    }
-    // Increment the usage of the current queue
-    roc_device_.QueuePool()[gpu_queue_]++;
-  }
+  gpu_queue_ = roc_device_.acquireQueue(queue_size);
+  if (!gpu_queue_) return false;
 
   if (!initPool(dev().settings().kernargPoolSize_, (profilingEna) ? queue_size : 0)) {
     LogError("Couldn't allocate arguments/signals for the queue");
