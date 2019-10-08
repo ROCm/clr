@@ -138,7 +138,11 @@ bool PalCounterReference::finalize() {
   }
 }
 
+#if !IS_MAINLINE && (PAL_CLIENT_INTERFACE_MAJOR_VERSION >= 543)
+static const std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
+#else
 static const std::array<PCIndexSelect, 46> blockIdToIndexSelect = {{
+#endif
     PCIndexSelect::None,                     // CPF
     PCIndexSelect::ShaderEngine,             // IA
     PCIndexSelect::ShaderEngine,             // VGT
@@ -185,6 +189,11 @@ static const std::array<PCIndexSelect, 46> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // GCR
     PCIndexSelect::None,                     // PH
     PCIndexSelect::ShaderArray,              // UTCL1
+#if !IS_MAINLINE && PAL_CLIENT_INTERFACE_MAJOR_VERSION >= 543
+    PCIndexSelect::None,                     // GeDist
+    PCIndexSelect::ShaderEngine,             // GeSe
+    PCIndexSelect::None,                     // Df
+#endif
 }};
 
 static_assert(blockIdToIndexSelect.size() ==  static_cast<size_t>(Pal::GpuBlock::Count), "size of blockIdToIndexSelect does not match GpuBlock::Count");
