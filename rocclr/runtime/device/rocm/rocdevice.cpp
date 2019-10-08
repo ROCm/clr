@@ -1821,5 +1821,69 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
   bool result = true;
   return result;
 }
+
+hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
+  assert(queuePool_.size() <= GPU_MAX_HW_QUEUES);
+  LogPrintfInfo("number of allocated hardware queues: %d, maximum: %d",
+                queuePool_.size(), GPU_MAX_HW_QUEUES);
+
+  // If we have reached the max number of queues, reuse an existing queue,
+  // choosing the one with the least number of users.
+  if (queuePool_.size() == GPU_MAX_HW_QUEUES) {
+    typedef decltype(queuePool_)::const_reference PoolRef;
+    auto lowest = std::min_element(queuePool_.begin(), queuePool_.end(),
+                                   [] (PoolRef A, PoolRef B) {
+                                     return A.second.refCount < B.second.refCount;
+                                   });
+    LogPrintfInfo("selected queue with least refCount: %p (%d)",
+                  lowest->first, lowest->second.refCount);
+    lowest->second.refCount++;
+    return lowest->first;
+  }
+
+  // Else create a new queue. This also includes the initial state where there
+  // is no queue.
+  uint32_t queue_max_packets = 0;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_max_packets)) {
+    return nullptr;
+  }
+  auto queue_size = (queue_max_packets < queue_size_hint) ? queue_max_packets : queue_size_hint;
+
+  hsa_queue_t *queue;
+  while (hsa_queue_create(_bkendDevice, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
+                          std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
+                          &queue) != HSA_STATUS_SUCCESS) {
+    queue_size >>= 1;
+    if (queue_size < 64) {
+      return nullptr;
+    }
+  }
+  LogPrintfInfo("created hardware queue %p with size %d",
+                queue, queue_size);
+  hsa_amd_profiling_set_profiler_enabled(queue, 1);
+  auto result = queuePool_.emplace(std::make_pair(queue, QueueInfo()));
+  assert(result.second && "QueueInfo already exists");
+  auto &qInfo = result.first->second;
+  qInfo.refCount = 1;
+  return queue;
 }
+
+void Device::releaseQueue(hsa_queue_t* queue) {
+  auto qIter = queuePool_.find(queue);
+  assert(qIter != queuePool_.end());
+
+  auto &qInfo = qIter->second;
+  assert(qInfo.refCount > 0);
+  qInfo.refCount--;
+  if (qInfo.refCount != 0) {
+      return;
+  }
+  LogPrintfInfo("deleting hardware queue %p with refCount 0", queue);
+
+  hsa_queue_destroy(queue);
+  queuePool_.erase(qIter);
+}
+
+} // namespace roc
 #endif  // WITHOUT_HSA_BACKEND

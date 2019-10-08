@@ -406,8 +406,6 @@ class Device : public NullDevice {
 
   VirtualGPU* xferQueue() const;
 
-  std::map<hsa_queue_t*, int>& QueuePool() { return queue_pool_; }
-
   hsa_amd_memory_pool_t SystemSegment() const { return system_segment_; }
 
   hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
@@ -442,10 +440,17 @@ class Device : public NullDevice {
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode
-  std::map<hsa_queue_t*, int> queue_pool_;  //!< Pool of HSA queues for recycling
+
+  struct QueueInfo {
+    int refCount;
+  };
+  std::map<hsa_queue_t*, QueueInfo> queuePool_;  //!< Pool of HSA queues for recycling
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
+
+  hsa_queue_t *acquireQueue(uint32_t queue_size_hint);
+  void releaseQueue(hsa_queue_t*);
 };                                // class roc::Device
 }  // namespace roc
 
