@@ -207,8 +207,10 @@ release(bool, PAL_ALWAYS_RESIDENT, false,                                     \
         "Force memory resources to become resident at allocation time")       \
 release(uint, HIP_HOST_COHERENT, 0,                                           \
         "Coherent memory in hipHostMalloc, 0x1 = memory is coherent with host"\
-        "0x0 = memory is not coherent between host and GPU")
-
+        "0x0 = memory is not coherent between host and GPU")                  \
+release(uint, AMD_OPT_FLUSH, 0,                                               \
+        "Kernel flush option , 0x0 = Use system-scope fence operations."      \
+        "0x1 = Use device-scope fence operations when possible.")
 namespace amd {
 
 extern bool IS_HIP;

@@ -624,6 +624,8 @@ Settings::Settings() : value_(0) {
   if (amd::IS_HIP) {
     GPU_SINGLE_ALLOC_PERCENT = 100;
   }
+
+  fenceScopeAgent_ = AMD_OPT_FLUSH;
 }
 
 void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
