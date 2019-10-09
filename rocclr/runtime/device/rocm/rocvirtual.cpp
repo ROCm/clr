@@ -51,16 +51,6 @@ namespace roc {
 static const uint16_t kInvalidAql =
     (HSA_PACKET_TYPE_INVALID << HSA_PACKET_HEADER_TYPE);
 
-static const uint16_t kDispatchPacketHeaderNoSync =
-    (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
-    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
-
-static const uint16_t kDispatchPacketHeader =
-    (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
-    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
-
 static const uint16_t kBarrierPacketHeader =
     (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
@@ -103,7 +93,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (maxMemObjectsInQueue_ == 0) {
     // Sync AQL packets
-    gpu.setAqlHeader(kDispatchPacketHeader);
+    gpu.setAqlHeader(gpu.dispatchPacketHeader_);
     return;
   }
 
@@ -138,7 +128,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (flushL1Cache) {
     // Sync AQL packets
-    gpu.setAqlHeader(kDispatchPacketHeader);
+    gpu.setAqlHeader(gpu.dispatchPacketHeader_);
 
     // Clear memory dependency state
     const static bool All = true;
@@ -197,7 +187,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
   if (!cooperativeGroups && memoryDependency().maxMemObjectsInQueue() != 0) {
     // AQL packets
-    setAqlHeader(kDispatchPacketHeaderNoSync);
+    setAqlHeader(dispatchPacketHeaderNoSync_);
   }
 
   // Mark the tracker with a new kernel,
@@ -236,7 +226,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         return false;
       } else if (sync) {
         // Sync AQL packets
-        setAqlHeader(kDispatchPacketHeader);
+        setAqlHeader(dispatchPacketHeader_);
         // Clear memory dependency state
         const static bool All = true;
         memoryDependency().clear(!All);
@@ -295,7 +285,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
           //! This condition is for SVM fine-grain
           if (dev().isFineGrainedSystem(true)) {
             // Sync AQL packets
-            setAqlHeader(kDispatchPacketHeader);
+            setAqlHeader(dispatchPacketHeader_);
             // Clear memory dependency state
             const static bool All = true;
             memoryDependency().clear(!All);
@@ -381,7 +371,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
   if (hsaKernel.program()->hasGlobalStores()) {
     // Sync AQL packets
-    setAqlHeader(kDispatchPacketHeader);
+    setAqlHeader(dispatchPacketHeader_);
     // Clear memory dependency state
     const static bool All = true;
     memoryDependency().clear(!All);
@@ -576,7 +566,28 @@ VirtualGPU::VirtualGPU(Device& device)
   kernarg_pool_base_ = nullptr;
   kernarg_pool_size_ = 0;
   kernarg_pool_cur_offset_ = 0;
-  aqlHeader_ = kDispatchPacketHeader;
+
+  if (device.settings().fenceScopeAgent_) {
+    dispatchPacketHeaderNoSync_ =
+      (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+      (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+    dispatchPacketHeader_=
+      (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
+      (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+  } else {
+    dispatchPacketHeaderNoSync_ =
+      (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+      (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+    dispatchPacketHeader_=
+      (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
+      (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+  }
+
+  aqlHeader_ = dispatchPacketHeader_;
   barrier_signal_.handle = 0;
 
   // Note: Virtual GPU device creation must be a thread safe operation
@@ -2187,7 +2198,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups);
 
     // Sync AQL packets
-    queue->setAqlHeader(kDispatchPacketHeader);
+    queue->setAqlHeader(dispatchPacketHeader_);
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),

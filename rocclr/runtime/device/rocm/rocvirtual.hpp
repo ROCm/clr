@@ -333,6 +333,8 @@ class VirtualGPU : public device::VirtualDevice {
     SLOT_PM4_SIZE_AQLP = HSA_VEN_AMD_AQLPROFILE_LEGACY_PM4_PACKET_SIZE/ 64
   };
 
+  uint16_t dispatchPacketHeaderNoSync_;
+  uint16_t dispatchPacketHeader_;
 };
 
 template <typename T>

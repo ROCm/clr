@@ -539,7 +539,8 @@ class Settings : public amd::HeapObject {
       uint enableXNACK_ : 1;          //!< Enable XNACK feature
       uint enableCoopGroups_ : 1;     //!< Enable cooperative groups feature
       uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
-      uint reserved_ : 12;
+      uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
+      uint reserved_ : 11;
     };
     uint value_;
   };
