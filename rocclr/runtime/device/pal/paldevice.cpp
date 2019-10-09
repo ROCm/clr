@@ -2032,7 +2032,7 @@ bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
     // Calculate the size of the scratch buffer for a queue
     uint32_t numTotalCUs = properties().gfxipProperties.shaderCore.numAvailableCus;
     // Find max waves based on VGPR per SIMD
-    uint32_t numMaxWaves = properties().gfxipProperties.shaderCore.numAvailableVgprs / vgprs;
+    uint32_t numMaxWaves = properties().gfxipProperties.shaderCore.vgprsPerSimd / vgprs;
     // Find max waves per CU
     numMaxWaves *= properties().gfxipProperties.shaderCore.numSimdsPerCu;
     // Find max waves per device
