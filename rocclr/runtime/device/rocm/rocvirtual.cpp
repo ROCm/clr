@@ -1961,13 +1961,14 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 }
 
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
-  const_address parameters, void* eventHandle, uint32_t sharedMemBytes, bool cooperativeGroups) {
+  const_address parameters, void* eventHandle, uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd) {
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
 
   // Check memory dependency and SVM objects
-  if (!processMemObjects(kernel, parameters, ldsUsage, cooperativeGroups)) {
+  bool coopGroups = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
+  if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups)) {
     LogError("Wrong memory objects!");
     return false;
   }
@@ -2099,6 +2100,27 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           WriteAqlArgAt(const_cast<address>(parameters), &spVA, it.size_, it.offset_);
           break;
         }
+        case amd::KernelParameterDescriptor::HiddenMultiGridSync: {
+          uint64_t gridSync = coopGroups ? 1 : 0;
+          bool multiGrid = (vcmd != nullptr) ? vcmd->cooperativeMultiDeviceGroups() : false;
+          if (multiGrid) {
+            // Find CPU pointer to the right sync info structure. It should be after MGSyncData
+            Device::MGSyncInfo* syncInfo = reinterpret_cast<Device::MGSyncInfo*>(
+                dev().MGSync() + Device::kMGInfoSizePerDevice * dev().index() + Device::kMGSyncDataSize);
+            // Update sync data address. Use the offset adjustment to the right location
+            syncInfo->mgs = reinterpret_cast<Device::MGSyncData*>(dev().MGSync() +
+              Device::kMGInfoSizePerDevice * vcmd->firstDevice());
+            // Fill all sync info fields
+            syncInfo->grid_id = vcmd->gridId();
+            syncInfo->num_grids = vcmd->numGrids();
+            syncInfo->prev_sum = vcmd->prevGridSum();
+            syncInfo->all_sum = vcmd->allGridSum();
+            // Update GPU address for grid sync info. Use the offset adjustment for the right location
+            gridSync = reinterpret_cast<uint64_t>(syncInfo);
+          }
+          WriteAqlArgAt(const_cast<address>(parameters), &gridSync, it.size_, it.offset_);
+          break;
+        }
       }
     }
 
@@ -2177,32 +2199,36 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
  * the list of kernel parameters.
  */
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
-  if (vcmd.cooperativeGroups()) {
-    uint32_t workgroups = 0;
-    for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
-      if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
-        workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
-      }
-    }
-
+  if (vcmd.cooperativeGroups() || vcmd.cooperativeMultiDeviceGroups()) {
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
+
+    // Lock the queue, using the blit manager lock
+    amd::ScopedLock lock(queue->blitMgr().lockXfer());
 
     // Wait for the execution on the current queue, since the coop groups will use the device queue
     releaseGpuMemoryFence();
 
-    // Lock the queue, using the blit manager lock
-    amd::ScopedLock lock(queue->blitMgr().lockXfer());
     queue->profilingBegin(vcmd);
 
-    static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups);
+    if (vcmd.cooperativeGroups()) {
+      // Initialize GWS if it's cooperative groups launch
+      uint32_t workgroups = 0;
+      for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
+        if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
+          workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
+        }
+      }
+
+      static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups - 1);
+    }
 
     // Sync AQL packets
     queue->setAqlHeader(dispatchPacketHeader_);
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), &vcmd)) {
       LogError("AQL dispatch failed!");
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
@@ -2218,7 +2244,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes())) {
       LogError("AQL dispatch failed!");
       vcmd.setStatus(CL_INVALID_OPERATION);
     }

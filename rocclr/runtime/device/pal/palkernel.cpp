@@ -336,6 +336,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
           WriteAqlArgAt(const_cast<address>(parameters), vmParentWrap, it.size_, it.offset_);
         }
         break;
+      case amd::KernelParameterDescriptor::HiddenMultiGridSync:
+        break;
     }
   }
 

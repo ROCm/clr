@@ -51,7 +51,7 @@ hsa_agent_t roc::Device::cpu_agent_ = {0};
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 const bool roc::Device::offlineDevice_ = false;
 const bool roc::NullDevice::offlineDevice_ = true;
-
+address Device::mg_sync_ = nullptr;
 
 static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
   if (HSA_STATUS_SUCCESS !=
@@ -174,6 +174,10 @@ Device::~Device() {
   if (nullptr != p2p_stage_) {
     p2p_stage_->release();
     p2p_stage_ = nullptr;
+  }
+  if (nullptr != mg_sync_) {
+    amd::SvmBuffer::free(GlbCtx(), mg_sync_);
+    mg_sync_ = nullptr;
   }
   if (glb_ctx_ != nullptr) {
       glb_ctx_->release();
@@ -715,33 +719,39 @@ bool Device::create(bool sramEccEnabled) {
   // Use just 1 entry by default for the map cache
   mapCache_->push_back(nullptr);
 
-  if ((p2p_agents_.size() == 0) &&
-      (glb_ctx_ == nullptr) && (gpu_agents_.size() > 1) &&
+  if ((glb_ctx_ == nullptr) && (gpu_agents_.size() >= 1) &&
       // Allow creation for the last device in the list.
       (gpu_agents_[gpu_agents_.size() - 1].handle == _bkendDevice.handle)) {
-
     std::vector<amd::Device*> devices;
     uint32_t numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
     // Add all PAL devices
     for (uint32_t i = 0; i < numDevices; ++i) {
-        devices.push_back(amd::Device::devices()[i]);
+      devices.push_back(amd::Device::devices()[i]);
     }
     // Add current
     devices.push_back(this);
+    // Create a dummy context
+    glb_ctx_ = new amd::Context(devices, info);
+    if (glb_ctx_ == nullptr) {
+      return false;
+    }
 
-    if (devices.size() > 1) {
-      // Create a dummy context
-      glb_ctx_ = new amd::Context(devices, info);
-      if (glb_ctx_ == nullptr) {
-        return false;
-      }
-      amd::Buffer* buf =
-        new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
+    if ((p2p_agents_.size() == 0) && (devices.size() > 1)) {
+      amd::Buffer* buf = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
       if ((buf != nullptr) && buf->create()) {
         p2p_stage_ = buf;
       }
       else {
         delete buf;
+        return false;
+      }
+    }
+    // Check if sync buffer wasn't allocated yet
+    if (amd::IS_HIP && mg_sync_ == nullptr) {
+      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
+          GlbCtx(), (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
+          kMGInfoSizePerDevice * GlbCtx().devices().size(), kMGInfoSizePerDevice));
+      if (mg_sync_ == nullptr) {
         return false;
       }
     }
@@ -1817,6 +1827,7 @@ VirtualGPU* Device::xferQueue() const {
   xferQueue_->enableSyncBlit();
   return xferQueue_;
 }
+
 bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
   bool result = true;
   return result;

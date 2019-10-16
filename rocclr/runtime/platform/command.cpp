@@ -232,12 +232,19 @@ const Context& Command::context() const { return queue_->context(); }
 
 NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                                            Kernel& kernel, const NDRangeContainer& sizes,
-                                           uint32_t sharedMemBytes, uint32_t extraParam)
-    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL)
-    , kernel_(kernel)
-    , sizes_(sizes)
-    , sharedMemBytes_(sharedMemBytes)
-    , extraParam_(extraParam) {
+                                           uint32_t sharedMemBytes, uint32_t extraParam,
+                                           uint32_t gridId, uint32_t numGrids,
+                                           uint64_t prevGridSum, uint64_t allGridSum, uint32_t firstDevice) :
+    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL),
+    kernel_(kernel),
+    sizes_(sizes),
+    sharedMemBytes_(sharedMemBytes),
+    extraParam_(extraParam),
+    gridId_(gridId),
+    numGrids_(numGrids),
+    prevGridSum_(prevGridSum),
+    allGridSum_(allGridSum),
+    firstDevice_(firstDevice) {
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   profilingInfo_.setCallback(devKernel->getProfilingCallback(

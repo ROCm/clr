@@ -764,9 +764,15 @@ class NDRangeKernelCommand : public Command {
  private:
   Kernel& kernel_;
   NDRangeContainer sizes_;
-  address parameters_;
-  uint32_t sharedMemBytes_;
-  uint32_t extraParam_;
+  address parameters_;      //!< Pointer to the kernel argumets
+  // The below fields are specific to the HIP functionality
+  uint32_t sharedMemBytes_; //!< Size of reserved shared memory
+  uint32_t extraParam_;     //!< Extra flags for the kernel launch
+  uint32_t gridId_;         //!< Grid ID in the multi GPU kernel launch
+  uint32_t numGrids_;       //!< Total number of grids in multi GPU launch
+  uint64_t prevGridSum_;    //!< A sum of previous grids to the current launch
+  uint64_t allGridSum_;     //!< A sum of all grids in multi GPU launch
+  uint32_t firstDevice_;    //!< Device index of the first device in the grid
 
  public:
   enum {
@@ -777,7 +783,8 @@ class NDRangeKernelCommand : public Command {
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,
                        const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0,
-                       uint32_t extraParam = 0);
+                       uint32_t extraParam = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
+                       uint64_t prevGridSum = 0, uint64_t allGridSum = 0, uint32_t firstDevice = 0);
 
   virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
 
@@ -803,6 +810,21 @@ class NDRangeKernelCommand : public Command {
   bool cooperativeMultiDeviceGroups() const {
     return (extraParam_ & CooperativeMultiDeviceGroups) ? true : false;
   }
+
+  //! Return the current grid ID for multidevice launch
+  uint32_t gridId() const { return gridId_; }
+
+  //! Return the number of launched grids
+  uint32_t numGrids() const { return numGrids_; }
+
+  //! Return the total workload size for up to the current
+  uint64_t prevGridSum() const { return prevGridSum_; }
+
+  //! Return the total workload size for all GPUs
+  uint64_t allGridSum() const { return allGridSum_; }
+
+  //! Return the index of the first device in multi GPU launch
+  uint64_t firstDevice() const { return firstDevice_; }
 
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
