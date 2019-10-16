@@ -110,7 +110,8 @@ static const std::map<std::string,ValueKind> ArgValueKind =
   {"HiddenNone",              ValueKind::HiddenNone},
   {"HiddenPrintfBuffer",      ValueKind::HiddenPrintfBuffer},
   {"HiddenDefaultQueue",      ValueKind::HiddenDefaultQueue},
-  {"HiddenCompletionAction",  ValueKind::HiddenCompletionAction}
+  {"HiddenCompletionAction",  ValueKind::HiddenCompletionAction},
+  {"HiddenMultigridSyncArg",  ValueKind::HiddenMultiGridSyncArg}
 };
 
 static const std::map<std::string,ValueType> ArgValueType =
@@ -223,7 +224,8 @@ static const std::map<std::string,ValueKind> ArgValueKindV3 =
   {"hidden_none",               ValueKind::HiddenNone},
   {"hidden_printf_buffer",      ValueKind::HiddenPrintfBuffer},
   {"hidden_default_queue",      ValueKind::HiddenDefaultQueue},
-  {"hidden_completion_action",  ValueKind::HiddenCompletionAction}
+  {"hidden_completion_action",  ValueKind::HiddenCompletionAction},
+  {"hidden_multigrid_sync_arg", ValueKind::HiddenMultiGridSyncArg}
 };
 
 static const std::map<std::string,ValueType> ArgValueTypeV3 =
@@ -317,19 +319,20 @@ struct KernelParameterDescriptor {
     ValueObject = 10,
     ImageObject = 11,
     SamplerObject = 12,
-    QueueObject = 13
+    QueueObject = 13,
+    HiddenMultiGridSync = 14
   };
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
   size_t size_;            //!< Its size in bytes
   union InfoData {
     struct {
-      uint32_t oclObject_ : 4;   //!< OCL object type
+      uint32_t oclObject_ : 4;  //!< OCL object type
       uint32_t readOnly_ : 1;   //!< OCL object is read only, applied to memory only
-      uint32_t rawPointer_ : 1;   //!< Arguments have a raw GPU VA
-      uint32_t defined_ : 1;   //!< The argument was defined by the app
+      uint32_t rawPointer_ : 1; //!< Arguments have a raw GPU VA
+      uint32_t defined_ : 1;    //!< The argument was defined by the app
       uint32_t reserved_ : 1;   //!< reserved
-      uint32_t arrayIndex_ : 24;  //!< Index in the objects array or LDS alignment
+      uint32_t arrayIndex_ : 24;//!< Index in the objects array or LDS alignment
     };
     uint32_t allValues_;
     InfoData() : allValues_(0) {}

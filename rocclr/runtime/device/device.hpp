@@ -1153,7 +1153,24 @@ class Device : public RuntimeObject {
   typedef aclCompiler Compiler;
 
  public:
+  // The structures below for MGPU launch match the device library format
+  struct MGSyncData {
+    uint32_t w0;
+    uint32_t w1;
+  };
+
+  struct MGSyncInfo {
+    struct MGSyncData* mgs;
+    uint32_t grid_id;
+    uint32_t num_grids;
+    uint64_t prev_sum;
+    uint64_t all_sum;
+  };
+
   static constexpr size_t kP2PStagingSize = 4 * Mi;
+  static constexpr size_t kMGSyncDataSize = sizeof(MGSyncData);
+  static constexpr size_t kMGInfoSizePerDevice = kMGSyncDataSize + sizeof(MGSyncInfo);
+
   typedef std::list<CommandQueue*> CommandQueues;
 
   struct BlitProgram : public amd::HeapObject {
@@ -1409,9 +1426,9 @@ class Device : public RuntimeObject {
   std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
 #endif
 
-  static amd::Context* glb_ctx_;       //!< Global context with all devices
-  static amd::Monitor p2p_stage_ops_;  //!< Lock to serialise cache for the P2P resources
-  static Memory* p2p_stage_;           //!< Staging resources
+  static amd::Context* glb_ctx_;      //!< Global context with all devices
+  static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
+  static Memory* p2p_stage_;          //!< Staging resources
 
  private:
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

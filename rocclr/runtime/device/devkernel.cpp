@@ -752,6 +752,9 @@ static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isH
   case ValueKind::HiddenCompletionAction:
     *isHidden = true;
     return amd::KernelParameterDescriptor::HiddenCompletionAction;
+  case ValueKind::HiddenMultiGridSyncArg:
+    *isHidden = true;
+    return amd::KernelParameterDescriptor::HiddenMultiGridSync;
   case ValueKind::HiddenNone:
   default:
     *isHidden = true;

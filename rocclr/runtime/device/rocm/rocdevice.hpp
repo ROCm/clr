@@ -410,6 +410,16 @@ class Device : public NullDevice {
 
   hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
 
+  //! Acquire HSA queue. This method can create a new HSA queue or
+  //! share previously created
+  hsa_queue_t* acquireQueue(uint32_t queue_size_hint);
+
+  //! Release HSA queue
+  void releaseQueue(hsa_queue_t*);
+
+  //! Return multi GPU grid launch sync buffer
+  address MGSync() const { return mg_sync_; }
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -440,6 +450,7 @@ class Device : public NullDevice {
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode
+  static address mg_sync_;  //!< MGPU grid launch sync memory (SVM location)
 
   struct QueueInfo {
     int refCount;
@@ -448,9 +459,6 @@ class Device : public NullDevice {
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
-
-  hsa_queue_t *acquireQueue(uint32_t queue_size_hint);
-  void releaseQueue(hsa_queue_t*);
 };                                // class roc::Device
 }  // namespace roc
 
