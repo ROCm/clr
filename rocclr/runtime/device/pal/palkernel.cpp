@@ -273,9 +273,10 @@ const HSAILProgram& HSAILKernel::prog() const {
 
 hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const amd::Kernel& kernel,
                                                          const amd::NDRangeContainer& sizes,
-                                                         const_address parameters,
+                                                         const_address params,
                                                          size_t ldsAddress, uint64_t vmDefQueue,
                                                          uint64_t* vmParentWrap) const {
+  const_address parameters = params;
   uint64_t argList;
   address aqlArgBuf = gpu.managedBuffer().reserve(
       argsBufferSize() + sizeof(hsa_kernel_dispatch_packet_t), &argList);
@@ -289,7 +290,18 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
     gpu.addVmMemory(gpu.cb(1)->ActiveMemory());
   }
 
-  const amd::KernelSignature& signature = kernel.signature();
+  // The check below handles a special case of single context with multiple devices
+  // when the devices use different compilers(HSAIL and LC) and have different signatures
+  const amd::KernelSignature& signature =
+    (this->signature().version() == kernel.signature().version()) ?
+    kernel.signature() : this->signature();
+
+  // If signatures don't match, then patch the parameters
+  if (signature.version() != kernel.signature().version()) {
+    WriteAqlArgAt(aqlArgBuf, parameters, signature.paramsSize() - signature.at(0).offset_,
+                  signature.at(0).offset_);
+    parameters = aqlArgBuf;
+  }
 
   // Check if runtime has to setup hidden arguments
   for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
@@ -342,7 +354,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
   }
 
   // Load all kernel arguments
-  WriteAqlArgAt(aqlArgBuf, parameters, argsBufferSize(), 0);
+  if (signature.version() == kernel.signature().version()) {
+    WriteAqlArgAt(aqlArgBuf, parameters, argsBufferSize(), 0);
+  }
+
   // Note: In a case of structs the size won't match,
   // since HSAIL compiler expects a reference...
   assert(argsBufferSize() <= signature.paramsSize() &&

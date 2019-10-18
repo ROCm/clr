@@ -48,7 +48,8 @@ class KernelSignature : public HeapObject {
  public:
   enum {
     ABIVersion_0 = 0,   //! ABI constructed based on the OCL semantics
-    ABIVersion_1 = 1    //! ABI constructed based on the HW ABI returned from the compiler
+    ABIVersion_1 = 1,   //! ABI constructed based on the HW ABI returned from HSAIL
+    ABIVersion_2 = 2    //! ABI constructed based on the HW ABI returned from LC
   };
 
   //! Default constructor
@@ -110,12 +111,12 @@ class KernelParameters : protected HeapObject {
   std::vector<void*> execSvmPtr_;       //!< The non argument svm pointers for kernel
   FGSStatus svmSystemPointersSupport_;  //!< The flag for the status of the kernel
                                         //   support of fine-grain system sharing.
-  uint32_t  memoryObjOffset_;       //!< The offset of execInfo
-  uint32_t  samplerObjOffset_;      //!< The offset of execInfo
-  uint32_t  queueObjOffset_;        //!< The offset of execInfo
-  amd::Memory** memoryObjects_;     //!< The non argument svm pointers for kernel
-  amd::Sampler** samplerObjects_;   //!< The non argument svm pointers for kernel
-  amd::DeviceQueue** queueObjects_; //!< The non argument svm pointers for kernel
+  uint32_t  memoryObjOffset_;       //!< The number of memory objects
+  uint32_t  samplerObjOffset_;      //!< The number of sampler objects
+  uint32_t  queueObjOffset_;        //!< The number of queue objects
+  amd::Memory** memoryObjects_;     //!< Memory objects, associated with the kernel
+  amd::Sampler** samplerObjects_;   //!< Sampler objects, associated with the kernel
+  amd::DeviceQueue** queueObjects_; //!< Queue objects, associated with the kernel
 
   uint32_t  totalSize_;             //!< The total size of all captured parameters
 

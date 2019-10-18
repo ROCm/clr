@@ -635,7 +635,8 @@ bool Program::ParseAllOptions(const std::string& options, option::Options& parse
 
 bool Symbol::setDeviceKernel(const Device& device, const device::Kernel* func) {
   if (deviceKernels_.size() == 0 ||
-      (func->signature().version() > KernelSignature::ABIVersion_0)) {
+      // Always pick the most recent version in MGPU case
+      (func->signature().version() > signature_.version())) {
     signature_ = func->signature();
   }
   deviceKernels_[&device] = func;
