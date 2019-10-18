@@ -401,14 +401,6 @@ typedef CL_API_ENTRY cl_mem
 #endif
 
 // <amd_internal>
-/***************************
-* cl_amd_command_intercept *
-***************************/
-#define CL_CONTEXT_COMMAND_INTERCEPT_CALLBACK_AMD   0x403D
-#define CL_QUEUE_COMMAND_INTERCEPT_ENABLE_AMD       (1ull << 63)
-
-typedef cl_int (CL_CALLBACK * intercept_callback_fn)(cl_event, cl_int *);
-
 /**************************
 * cl_amd_command_queue_info *
 **************************/
