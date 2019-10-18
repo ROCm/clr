@@ -1557,7 +1557,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
   uint32_t numParams = params.size();
   // Append the hidden arguments to the OCL arguments
   params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
-  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_2);
 }
 #else // not define USE_COMGR_LIBRARY
 void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
@@ -1632,7 +1632,7 @@ void Kernel::InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize) {
   uint32_t numParams = params.size();
   // Append the hidden arguments to the OCL arguments
   params.insert(params.end(), hiddenParams.begin(), hiddenParams.end());
-  createSignature(params, numParams, amd::KernelSignature::ABIVersion_1);
+  createSignature(params, numParams, amd::KernelSignature::ABIVersion_2);
 }
 #endif  // defined(USE_COMGR_LIBRARY)
 #endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)

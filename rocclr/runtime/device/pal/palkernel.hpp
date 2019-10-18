@@ -81,7 +81,7 @@ class HSAILKernel : public device::Kernel {
       VirtualGPU& gpu,                     //!< Running GPU context
       const amd::Kernel& kernel,           //!< AMD kernel object
       const amd::NDRangeContainer& sizes,  //!< NDrange container
-      const_address parameters,            //!< Application arguments for the kernel
+      const_address params,                //!< Application arguments for the kernel
       size_t ldsAddress,                   //!< LDS address that includes all arguments.
       uint64_t vmDefQueue,                 //!< GPU VM default queue pointer
       uint64_t* vmParentWrap               //!< GPU VM parent aql wrap object
