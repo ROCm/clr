@@ -33,7 +33,7 @@ class Context : public RuntimeObject {
     GLDeviceKhrIdx = 0,   //!< GL
     D3D10DeviceKhrIdx,    //!< D3D10
     OfflineDevicesIdx,    //!< Offline devices
-    CommandInterceptIdx,  //!< Command intercept
+    CommandInterceptIdx,  //!< (Deprecated) Command intercept
     D3D11DeviceKhrIdx,    //!< D3D11
     InteropUserSyncIdx,   //!< Interop user sync enabled
     D3D9DeviceKhrIdx,     //!< d3d9 device
@@ -47,7 +47,6 @@ class Context : public RuntimeObject {
     GLDeviceKhr = 1 << GLDeviceKhrIdx,            //!< GL
     D3D10DeviceKhr = 1 << D3D10DeviceKhrIdx,      //!< D3D10
     OfflineDevices = 1 << OfflineDevicesIdx,      //!< Offline devices
-    CommandIntercept = 1 << CommandInterceptIdx,  //!< Command intercept
     D3D11DeviceKhr = 1 << D3D11DeviceKhrIdx,      //!< D3D11
     InteropUserSync = 1 << InteropUserSyncIdx,    //!< Interop user sync enabled
     D3D9DeviceKhr = 1 << D3D9DeviceKhrIdx,        //!< d3d9 device
@@ -62,7 +61,6 @@ class Context : public RuntimeObject {
     void* hDev_[LastDeviceFlagIdx];  //!< Device object reference
     void* hCtx_;                     //!< Context object reference
     size_t propertiesSize_;          //!< Size of the original properties in bytes
-    cl_int(CL_CALLBACK* commandIntercept_)(cl_event, cl_int*);
   };
 
   struct DeviceQueueInfo {

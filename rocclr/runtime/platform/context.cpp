@@ -184,11 +184,6 @@ int Context::checkProperties(const cl_context_properties* properties, Context::I
         // Set the offline device flag
         info->flags_ |= OfflineDevices;
         break;
-      case CL_CONTEXT_COMMAND_INTERCEPT_CALLBACK_AMD:
-        // Set the command intercept flag
-        info->commandIntercept_ = (cl_int(CL_CALLBACK*)(cl_event, cl_int*))p->ptr;
-        info->flags_ |= CommandIntercept;
-        break;
       default:
         return CL_INVALID_VALUE;
     }
