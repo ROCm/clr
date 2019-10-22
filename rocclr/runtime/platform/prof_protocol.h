@@ -23,15 +23,26 @@ THE SOFTWARE.
 #ifndef INC_EXT_PROF_PROTOCOL_H_
 #define INC_EXT_PROF_PROTOCOL_H_
 
+#include <stdint.h>
+
 // Traced API domains
 typedef enum {
-  ACTIVITY_DOMAIN_HSA_API = 0,                    // HSA domain
+  ACTIVITY_DOMAIN_HSA_API = 0,                    // HSA API domain
   ACTIVITY_DOMAIN_HSA_OPS = 1,                    // HSA async activity domain
   ACTIVITY_DOMAIN_HCC_OPS = 2,                    // HCC async activity domain
-  ACTIVITY_DOMAIN_HIP_API = 3,                    // HIP domain
-  ACTIVITY_DOMAIN_HIP_VDI = 4,                    // VDI domain
-  ACTIVITY_DOMAIN_NUMBER = 5
+  ACTIVITY_DOMAIN_HIP_API = 3,                    // HIP API domain
+  ACTIVITY_DOMAIN_HIP_VDI = ACTIVITY_DOMAIN_HCC_OPS, // HIP VDI domain
+  ACTIVITY_DOMAIN_KFD_API = 4,                    // KFD API domain
+  ACTIVITY_DOMAIN_EXT_API = 5,                    // External ID domain
+  ACTIVITY_DOMAIN_ROCTX   = 6,                    // ROCTX domain
+  ACTIVITY_DOMAIN_NUMBER
 } activity_domain_t;
+
+// Extension API opcodes
+typedef enum {
+  ACTIVITY_EXT_OP_MARK = 0,
+  ACTIVITY_EXT_OP_EXTERN_ID = 1
+} activity_ext_op_t;
 
 // API calback type
 typedef void (*activity_rtapi_callback_t)(uint32_t domain, uint32_t cid, const void* data, void* arg);
@@ -65,12 +76,15 @@ struct activity_record_t {
         uint32_t process_id;                       // device id
         uint32_t thread_id;                        // thread id
       };
+      struct {
+        activity_correlation_id_t external_id;     // external correlatino id
+      };
     };
     size_t bytes;                                  // data size bytes
 };
 
 // Activity sync calback type
-typedef activity_record_t* (*activity_sync_callback_t)(uint32_t cid, activity_record_t* record, const void* data, void* arg);
+typedef void* (*activity_sync_callback_t)(uint32_t cid, activity_record_t* record, const void* data, void* arg);
 // Activity async calback type
 typedef void (*activity_id_callback_t)(activity_correlation_id_t id);
 typedef void (*activity_async_callback_t)(uint32_t op, void* record, void* arg);
