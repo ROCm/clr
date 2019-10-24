@@ -1814,14 +1814,14 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
-  PrintfInfo info;
   uint index = 0;
   for (; aclPrintf->struct_size != 0; aclPrintf++) {
     index = aclPrintf->ID;
     if (printf_.size() <= index) {
       printf_.resize(index + 1);
     }
-    std::string pfmt = aclPrintf->fmtStr;
+    PrintfInfo& info = printf_[index];
+    const std::string& pfmt = aclPrintf->fmtStr;
     bool need_nl = true;
     for (size_t pos = 0; pos < pfmt.size(); ++pos) {
       char symbol = pfmt[pos];
@@ -1872,8 +1872,6 @@ void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
     for (uint i = 0; i < aclPrintf->numSizes; i++, tmp_ptr++) {
       info.arguments_.push_back(*tmp_ptr);
     }
-    printf_[index] = info;
-    info.arguments_.clear();
   }
 }
 #endif // defined(WITH_COMPILER_LIB)
