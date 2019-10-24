@@ -206,7 +206,7 @@ void Program::extractBuildLog(amd_comgr_data_set_t dataSet) {
     size_t logSize;
     status = extractByteCodeBinary(dataSet, AMD_COMGR_DATA_KIND_LOG, "", &logData, &logSize);
     buildLog_ += logData;
-    free(logData);
+    delete[] logData;
   }
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     buildLog_ += "Warning: extracting build log failed.\n";
@@ -236,7 +236,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
 
   size_t bufSize = (dataKind == AMD_COMGR_DATA_KIND_LOG) ? binarySize + 1 : binarySize;
 
-  char* binary = static_cast<char *>(malloc(bufSize));
+  char* binary = new char[bufSize];
   if (binary == nullptr) {
     amd::Comgr::release_data(binaryData);
     return AMD_COMGR_STATUS_ERROR;
@@ -253,7 +253,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
   amd::Comgr::release_data(binaryData);
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
-    free(binary);
+    delete[] binary;
     return status;
   }
 
@@ -274,7 +274,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
     *outSize = binarySize;
   }
   else {
-    free(binary);
+    delete[] binary;
   }
   return AMD_COMGR_STATUS_SUCCESS;
 }
@@ -742,6 +742,9 @@ bool Program::compileImplLC(const std::string& sourceCode,
   bool ret = compileToLLVMBitcode(inputs, driverOptions, options, &binaryData, &binarySize);
   if (ret) {
     llvmBinary_.assign(binaryData, binarySize);
+    // Destroy the original LLVM binary, received after compilation
+    delete[] binaryData;
+
     elfSectionType_ = amd::OclElf::LLVMIR;
 
     if (clBinary()->saveSOURCE()) {
@@ -1165,6 +1168,10 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   }
 
   llvmBinary_.assign(binaryData, binarySize);
+
+  // Destroy llvm binary, received after compilation
+  delete[] binaryData;
+
   elfSectionType_ = amd::OclElf::LLVMIR;
 
   if (clBinary()->saveLLVMIR()) {
@@ -1566,7 +1573,11 @@ bool Program::linkImplLC(amd::option::Options* options) {
   }
 
   // Save the binary and type
-  clBinary()->saveBIFBinary(reinterpret_cast<const char*>(executable), executableSize);
+  clBinary()->saveBIFBinary(executable, executableSize);
+
+  // Destroy original memory with executable after compilation
+  delete[] executable;
+
   setType(TYPE_EXECUTABLE);
 
   return true;
