@@ -278,8 +278,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   // Load the code object.
-  hsa_code_object_reader_t codeObjectReader;
-  status = hsa_code_object_reader_create_from_memory(data, secSize, &codeObjectReader);
+  status = hsa_code_object_reader_create_from_memory(data, secSize, &hsaCodeObjectReader_);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
     buildLog_ += hsa_strerror(status);
@@ -288,7 +287,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   hsa_agent_t hsaDevice = dev().getBackendDevice();
-  status = hsa_executable_load_agent_code_object(hsaExecutable_, hsaDevice, codeObjectReader,
+  status = hsa_executable_load_agent_code_object(hsaExecutable_, hsaDevice, hsaCodeObjectReader_,
                                                  nullptr, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object loading failed: ";
@@ -296,8 +295,6 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
     buildLog_ += "\n";
     return false;
   }
-
-  hsa_code_object_reader_destroy(codeObjectReader);
 
   // Freeze the executable.
   status = hsa_executable_freeze(hsaExecutable_, nullptr);
