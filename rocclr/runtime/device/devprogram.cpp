@@ -223,11 +223,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
                                                   char* outBinary[], size_t* outSize) {
   amd_comgr_data_t  binaryData;
 
-  amd_comgr_status_t status = amd::Comgr::create_data(dataKind, &binaryData);
-
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::action_data_get_data(inDataSet, dataKind, 0, &binaryData);
-  }
+  amd_comgr_status_t status = amd::Comgr::action_data_get_data(inDataSet, dataKind, 0, &binaryData);
 
   size_t binarySize = 0;
   if (status == AMD_COMGR_STATUS_SUCCESS) {
