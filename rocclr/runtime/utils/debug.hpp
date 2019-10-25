@@ -87,38 +87,26 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define Untested(msg) (void)(0)
 #endif /*NDEBUG*/
 
-#ifdef DEBUG
 #define Log(level, msg)                                                                            \
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
       amd::log_entry(level, __FILE__, __LINE__, msg);                                              \
     }                                                                                              \
   } while (false)
-#else  // !DEBUG
-#define Log(level, msg) (void)(0)
-#endif  // !DEBUG
 
-#ifdef DEBUG
 #define LogTS(level, msg)                                                                          \
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
       amd::log_timestamped(level, __FILE__, __LINE__, msg);                                        \
     }                                                                                              \
   } while (false)
-#else  // !DEBUG
-#define Log(level, msg) (void)(0)
-#endif  // !DEBUG
 
-#ifdef DEBUG
 #define Logf(level, format, ...)                                                                   \
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
       amd::log_printf(level, __FILE__, __LINE__, format, __VA_ARGS__);                             \
     }                                                                                              \
   } while (false)
-#else  // !DEBUG
-#define Logf(level, format, ...) (void)(0)
-#endif  // !DEBUG
 
 #define CondLog(cond, msg)                                                                         \
   do {                                                                                             \
@@ -127,16 +115,12 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     }                                                                                              \
   } while (false)
 
-#ifdef DEBUG
 #define LogGuarantee(cond, level, msg)                                                             \
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
       guarantee(cond);                                                                             \
     }                                                                                              \
   } while (false)
-#else  // !DEBUG
-#define LogGuarantee(cond, level, msg) (void)(0)
-#endif  // !DEBUG
 
 #define LogInfo(msg) Log(amd::LOG_INFO, msg)
 #define LogError(msg) Log(amd::LOG_ERROR, msg)
