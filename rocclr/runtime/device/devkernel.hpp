@@ -506,8 +506,7 @@ class Kernel : public amd::HeapObject {
   bool SetAvailableSgprVgpr(const std::string& targetIdent);
 
   //! Retrieve the printf string metadata
-  bool GetPrintfStr(const amd_comgr_metadata_node_t programMD,
-                    std::vector<std::string>* printfStr);
+  bool GetPrintfStr(std::vector<std::string>* printfStr);
 
   //! Returns the kernel symbol name
   const std::string& symbolName() const { return symbolName_; }
