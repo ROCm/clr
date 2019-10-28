@@ -495,11 +495,8 @@ bool LightningKernel::init() {
   }
 
   // handle the printf metadata if any
-  const amd_comgr_metadata_node_t* programMD = prog().metadata();
-  assert(programMD != nullptr);
-
   std::vector<std::string> printfStr;
-  if (!GetPrintfStr(*programMD, &printfStr)) {
+  if (!GetPrintfStr(&printfStr)) {
     return false;
   }
 

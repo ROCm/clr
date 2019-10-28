@@ -1397,9 +1397,8 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
 
-bool Kernel::GetPrintfStr(const amd_comgr_metadata_node_t programMD,
-                          std::vector<std::string>* printfStr) {
-
+bool Kernel::GetPrintfStr(std::vector<std::string>* printfStr) {
+  const amd_comgr_metadata_node_t programMD = prog().metadata();
   amd_comgr_metadata_node_t printfMeta;
 
   amd_comgr_status_t status = amd::Comgr::metadata_lookup(programMD,

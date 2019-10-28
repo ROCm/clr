@@ -82,7 +82,7 @@ Program::Program(amd::Device& device, amd::Program& owner)
       machineTarget_(nullptr),
       globalVariableTotalSize_(0),
       programOptions_(nullptr),
-      metadata_(nullptr)
+      metadata_{0}
 {
   memset(&binOpts_, 0, sizeof(binOpts_));
   binOpts_.struct_size = sizeof(binOpts_);
@@ -101,12 +101,16 @@ Program::~Program() {
     (*it)->release();
   }
 
+  if (isLC()) {
 #if defined(USE_COMGR_LIBRARY)
-  for (auto const& kernelMeta : kernelMetadataMap_) {
-    amd::Comgr::destroy_metadata(kernelMeta.second);
-  }
+    for (auto const& kernelMeta : kernelMetadataMap_) {
+      amd::Comgr::destroy_metadata(kernelMeta.second);
+    }
+    amd::Comgr::destroy_metadata(metadata_);
+#else
+    delete metadata_;
 #endif
-  delete metadata_;
+  }
 }
 
 // ================================================================================================
@@ -2898,14 +2902,14 @@ bool Program::createKernelMetadataMap() {
   bool hasKernelMD = false;
   size_t size = 0;
 
-  status = amd::Comgr::metadata_lookup(*metadata_, "Kernels", &kernelsMD);
+  status = amd::Comgr::metadata_lookup(metadata_, "Kernels", &kernelsMD);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     LogInfo("Using Code Object V2.");
     hasKernelMD = true;
     codeObjectVer_ = 2;
   }
   else {
-    status = amd::Comgr::metadata_lookup(*metadata_, "amdhsa.kernels", &kernelsMD);
+    status = amd::Comgr::metadata_lookup(metadata_, "amdhsa.kernels", &kernelsMD);
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
       LogInfo("Using Code Object V3.");
@@ -2987,7 +2991,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
     buildLog_ += "Error while reading the ELF program binary\n";
     return false;
   }
-
+  bool metadata_found = false;
   for (size_t i = 0; i < numpHdrs; ++i) {
     GElf_Phdr pHdr;
     if (gelf_getphdr(e, i, &pHdr) != &pHdr) {
@@ -3024,8 +3028,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           }
 
           if (status == AMD_COMGR_STATUS_SUCCESS) {
-            metadata_ = new amd_comgr_metadata_node_t;
-            status = amd::Comgr::get_data_metadata(binaryData, metadata_);
+            status = amd::Comgr::get_data_metadata(binaryData, &metadata_);
           }
 
           amd::Comgr::release_data(binaryData);
@@ -3044,6 +3047,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
           // We've found and loaded the runtime metadata, exit the
           // note record loop now.
 #endif
+          metadata_found = true;
           break;
         }
         ptr += sizeof(*note) + amd::alignUp(note->n_namesz, sizeof(int)) +
@@ -3066,9 +3070,8 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
 
   elf_end(e);
 
-  if (!metadata_) {
-    buildLog_ +=
-      "Error: runtime metadata section not present in ELF program binary\n";
+  if (!metadata_found) {
+    buildLog_ += "Error: runtime metadata section not present in ELF program binary\n";
     return false;
   }
 

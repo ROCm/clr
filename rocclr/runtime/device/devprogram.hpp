@@ -124,9 +124,9 @@ class Program : public amd::HeapObject {
 
 
 #if defined(USE_COMGR_LIBRARY)
-  amd_comgr_metadata_node_t* metadata_;   //!< COMgr metadata
+  amd_comgr_metadata_node_t metadata_;    //!< COMgr metadata
   uint32_t codeObjectVer_;                //!< version of code object
-  std::map<std::string,amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
+  std::map<std::string, amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
 #else
   CodeObjectMD* metadata_;  //!< Runtime metadata
 #endif
@@ -218,7 +218,7 @@ class Program : public amd::HeapObject {
   std::vector<amd::Memory*> getUndefMemObj() const { return undef_mem_obj_; }
 
 #if defined(USE_COMGR_LIBRARY)
-  const amd_comgr_metadata_node_t* metadata() const { return metadata_; }
+  amd_comgr_metadata_node_t metadata() const { return metadata_; }
 
   //! Get the kernel metadata
   const amd_comgr_metadata_node_t* getKernelMetadata(const std::string name) const {
