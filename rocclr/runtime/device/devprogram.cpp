@@ -1568,15 +1568,16 @@ bool Program::linkImplLC(amd::option::Options* options) {
     return false;
   }
 
-  if (!setKernels(options, executable, executableSize)) {
-    return false;
-  }
-
   // Save the binary and type
   clBinary()->saveBIFBinary(executable, executableSize);
 
   // Destroy original memory with executable after compilation
   delete[] executable;
+
+  if (!setKernels(options,  const_cast<void*>(clBinary()->data().first),
+                  clBinary()->data().second)) {
+    return false;
+  }
 
   setType(TYPE_EXECUTABLE);
 
