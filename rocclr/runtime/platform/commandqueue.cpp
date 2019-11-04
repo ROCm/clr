@@ -75,10 +75,11 @@ void HostQueue::finish() {
   if (command == NULL) {
     return;
   }
-
+  ClPrint(LOG_DEBUG, LOG_CMD, "marker is queued");
   command->enqueue();
   command->awaitCompletion();
   command->release();
+  ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 
 void HostQueue::loop(device::VirtualDevice* virtualDevice) {
@@ -132,6 +133,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
       continue;
     }
 
+    ClPrint(LOG_DEBUG, LOG_CMD, "command is submitted: %p", command);
     command->setStatus(CL_SUBMITTED);
     // Submit to the device queue.
     command->submit(*virtualDevice);

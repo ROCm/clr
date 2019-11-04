@@ -396,7 +396,7 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
 }
 
 bool Device::init() {
-  LogInfo("Initializing HSA stack.");
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
 
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {
@@ -469,7 +469,7 @@ bool Device::init() {
     }
     // If the AmdDeviceInfo for the HsaDevice Id could not be found return false
     if (id == HSA_INVALID_DEVICE_ID) {
-      LogPrintfWarning("Could not find a DeviceInfo entry for %d", deviceId);
+      ClPrint(amd::LOG_WARNING, amd::LOG_INIT, "Could not find a DeviceInfo entry for %d", deviceId);
       continue;
     }
     roc_device->deviceInfo_ = DeviceInfo[id];
@@ -1835,8 +1835,8 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 
 hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
   assert(queuePool_.size() <= GPU_MAX_HW_QUEUES);
-  LogPrintfInfo("number of allocated hardware queues: %d, maximum: %d",
-                queuePool_.size(), GPU_MAX_HW_QUEUES);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "number of allocated hardware queues: %d, maximum: %d",
+          queuePool_.size(), GPU_MAX_HW_QUEUES);
 
   // If we have reached the max number of queues, reuse an existing queue,
   // choosing the one with the least number of users.
@@ -1846,7 +1846,7 @@ hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
                                    [] (PoolRef A, PoolRef B) {
                                      return A.second.refCount < B.second.refCount;
                                    });
-    LogPrintfInfo("selected queue with least refCount: %p (%d)",
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue with least refCount: %p (%d)",
                   lowest->first, lowest->second.refCount);
     lowest->second.refCount++;
     return lowest->first;
@@ -1870,7 +1870,7 @@ hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
       return nullptr;
     }
   }
-  LogPrintfInfo("created hardware queue %p with size %d",
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d",
                 queue, queue_size);
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
   auto result = queuePool_.emplace(std::make_pair(queue, QueueInfo()));
@@ -1890,7 +1890,7 @@ void Device::releaseQueue(hsa_queue_t* queue) {
   if (qInfo.refCount != 0) {
       return;
   }
-  LogPrintfInfo("deleting hardware queue %p with refCount 0", queue);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
 
   hsa_queue_destroy(queue);
   queuePool_.erase(qIter);

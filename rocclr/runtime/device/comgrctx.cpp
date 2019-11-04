@@ -13,7 +13,7 @@ bool Comgr::is_ready_ = false;
 
 bool Comgr::LoadLib() {
 #if defined(COMGR_DYN_DLL)
-  LogInfo("Loading COMGR library.");
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Loading COMGR library.");
   static const char* ComgrLibName =
     LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so"),
                 WINDOWS_SWITCH("amd_comgr.dll", "libamd_comgr.so"));
