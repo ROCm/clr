@@ -74,7 +74,7 @@ static bool validateMapFlags(cl_map_flags flags) {
  *  \param size is the size in bytes of the SVM buffer to be allocated.
  *
  *  \param alignment is the minimum alignment in bytes that is required for the
- *  newly created buffer’s memory region. It must be a power of two up to the
+ *  newly created buffer?s memory region. It must be a power of two up to the
  *  largest data type supported by the OpenCL device. For the full profile, the
  *  largest data type is long16. For the embedded profile, it is long16 if the
  *  device supports 64-bit integers; otherwise it is int16. If alignment is 0, a
@@ -169,7 +169,7 @@ RUNTIME_ENTRY_RET_NOERRCODE(void*, clSVMAlloc, (cl_context context, cl_svm_mem_f
   // if alignment not specified, use largest data type alignment supported
   if (alignment == 0) {
     alignment = minContextAlignment;
-    LogPrintfInfo("Assumed alignment %d\n", alignment);
+    ClPrint(amd::LOG_INFO, amd::LOG_API, "Assumed alignment %d\n", alignment);
   }
 
   amd::Context& amdContext = *as_amd(context);
@@ -876,7 +876,7 @@ RUNTIME_EXIT
  *  (clEnqueueNDRangeKernel) until the argument value is changed by a call to
  *  clSetKernelArgSVMPointer for \a kernel. The SVM pointer can only be used for
  *  arguments that are declared to be a pointer to global or constant memory.
- *  The SVM pointer value must be aligned according to the argument�s type. For
+ *  The SVM pointer value must be aligned according to the argument?s type. For
  *  example, if the argument is declared to be global float4 *p, the SVM pointer
  *  value passed for p must be at a minimum aligned to a float4. The SVM pointer
  *  value specified as the argument value can be the pointer returned by
