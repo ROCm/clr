@@ -96,6 +96,8 @@ bool Event::setStatus(cl_int status, uint64_t timeStamp) {
   }
 
   if (status <= CL_COMPLETE) {
+    ClPrint(LOG_DEBUG, LOG_CMD, "command %p complete", &command());
+
     // Before we notify the waiters that this event reached the CL_COMPLETE
     // status, we release all the resources associated with this instance.
     releaseResources();
@@ -160,12 +162,16 @@ bool Event::awaitCompletion() {
       return false;
     }
 
+    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status_);
+
     ScopedLock lock(lock_);
 
     // Wait until the status becomes CL_COMPLETE or negative.
     while (status_ > CL_COMPLETE) {
       lock_.wait();
     }
+
+    ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
   }
 
   return status_ == CL_COMPLETE;
@@ -180,6 +186,7 @@ bool Event::notifyCmdQueue() {
       notified_.clear();
       return false;
     }
+    ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
     command->enqueue();
     command->release();
   }
@@ -220,6 +227,7 @@ void Command::enqueue() {
   if (IS_HIP) {
     queue_->setLastQueuedCommand(this);
   }
+  ClPrint(LOG_DEBUG, LOG_CMD, "command is enqueued: %p", this);
   queue_->append(*this);
   queue_->flush();
   if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||

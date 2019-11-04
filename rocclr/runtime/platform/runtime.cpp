@@ -58,10 +58,12 @@ bool Runtime::init() {
   if (!Flag::init() || !option::init() || !Device::init()
       // Agent initializes last
       || !Agent::init()) {
+    ClPrint(LOG_ERROR, LOG_INIT, "Runtime initilization failed");
     return false;
   }
 
   initialized_ = true;
+  ClTrace(LOG_DEBUG, LOG_INIT);
   return true;
 }
 
@@ -69,6 +71,7 @@ void Runtime::tearDown() {
   if (!initialized_) {
     return;
   }
+  ClTrace(LOG_DEBUG, LOG_INIT);
 
   Agent::tearDown();
   Device::tearDown();

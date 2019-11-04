@@ -300,7 +300,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             gpuMem->syncCacheFromHost(*this);
           }
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
-          LogPrintfInfo("!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
+          ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
             desc.typeName_.c_str(), desc.name_.c_str(),
             globalAddress, gpuMem->getDeviceMemory(),
             reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize(),
@@ -2034,7 +2034,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    LogPrintfInfo("[%zx]!\tShaderName : %s\n", std::this_thread::get_id(), gpuKernel.name().c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s\n", std::this_thread::get_id(), gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {

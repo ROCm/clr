@@ -1398,7 +1398,7 @@ static void dumpCodeObject(const std::string& image) {
     char fname[30];
     static std::atomic<int> index;
     sprintf(fname, "_code_object%04d.o", index++);
-    LogPrintfInfo("Code object saved in %s\n", fname);
+    ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Code object saved in %s\n", fname);
     std::ofstream ofs;
     ofs.open(fname, std::ios::binary);
     ofs << image;
@@ -2905,7 +2905,7 @@ bool Program::createKernelMetadataMap() {
 
   status = amd::Comgr::metadata_lookup(metadata_, "Kernels", &kernelsMD);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    LogInfo("Using Code Object V2.");
+    ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V2.");
     hasKernelMD = true;
     codeObjectVer_ = 2;
   }
@@ -2913,7 +2913,7 @@ bool Program::createKernelMetadataMap() {
     status = amd::Comgr::metadata_lookup(metadata_, "amdhsa.kernels", &kernelsMD);
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      LogInfo("Using Code Object V3.");
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V3.");
       hasKernelMD = true;
       codeObjectVer_ = 3;
     }
