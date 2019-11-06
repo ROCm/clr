@@ -1161,7 +1161,7 @@ void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uin
     default:
       break;
   }
-#endif // PAL_GPUOPEN_OCL
+#endif  // PAL_GPUOPEN_OCL
 }
 
 bool Device::initializeHeapResources() {
@@ -1388,7 +1388,7 @@ bool Device::init() {
     Device::tearDown();
   } else {
     // Loop through all available devices
-    uint32_t all_devices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
+    uint32_t all_devices = devices().size();
     for (uint32_t device0 = gStartDevice; device0 < all_devices; ++device0) {
       // Find all device that can have access to the current device
       for (uint32_t device1 = gStartDevice; device1 < all_devices; ++device1) {
@@ -1678,8 +1678,7 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
   // Create resource
   if (nullptr != gpuImage) {
     const bool imageBuffer =
-        ((owner.parent() != nullptr) &&
-         (owner.parent()->asBuffer() != nullptr));
+        ((owner.parent() != nullptr) && (owner.parent()->asBuffer() != nullptr));
     bool result = false;
 
     // Check if owner is interop memory
