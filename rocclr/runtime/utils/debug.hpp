@@ -157,10 +157,9 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 
 #define DebugInfoGuarantee(cond) LogGuarantee(cond, amd::LOG_INFO, "Warning")
 
-#ifndef NDEBUG
-#define CL_LOG
-#endif
 // You may define CL_LOG to enable following log functions even for release build
+#define CL_LOG
+
 #ifdef CL_LOG
 #define ClPrint(level, mask, format, ...)                                                          \
   do {                                                                                             \
