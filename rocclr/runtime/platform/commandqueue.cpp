@@ -135,10 +135,10 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
 
     ClPrint(LOG_DEBUG, LOG_CMD, "command is submitted: %p", command);
 
+    command->setStatus(CL_SUBMITTED);
+
     // Submit to the device queue.
     command->submit(*virtualDevice);
-
-    command->setStatus(CL_SUBMITTED);
 
     // if this is a user invisible marker command, then flush
     if (0 == command->type()) {
