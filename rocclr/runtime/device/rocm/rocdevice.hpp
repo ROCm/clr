@@ -344,7 +344,7 @@ class Device : public NullDevice {
 
   virtual void hostFree(void* ptr, size_t size = 0) const;
 
-  void* deviceLocalAlloc(size_t size) const;
+  void* deviceLocalAlloc(size_t size, bool atomics = false) const;
 
   void memFree(void* ptr, size_t size) const;
 
@@ -437,6 +437,7 @@ class Device : public NullDevice {
   hsa_amd_memory_pool_t system_segment_;
   hsa_amd_memory_pool_t system_coarse_segment_;
   hsa_amd_memory_pool_t gpuvm_segment_;
+  hsa_amd_memory_pool_t gpu_fine_grained_segment_;
   size_t gpuvm_segment_max_alloc_;
   size_t alloc_granularity_;
   static const bool offlineDevice_;

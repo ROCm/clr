@@ -155,6 +155,7 @@ Device::Device(hsa_agent_t bkendDevice)
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
+  gpu_fine_grained_segment_.handle = 0;
 }
 
 Device::~Device() {
@@ -861,7 +862,18 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   switch (segment_type) {
     case HSA_REGION_SEGMENT_GLOBAL: {
       if (dev->settings().enableLocalMemory_) {
-        dev->gpuvm_segment_ = pool;
+        uint32_t global_flag = 0;
+        hsa_status_t stat =
+            hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS, &global_flag);
+        if (stat != HSA_STATUS_SUCCESS) {
+          return stat;
+        }
+
+        if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
+          dev->gpu_fine_grained_segment_ = pool;
+        } else {
+          dev->gpuvm_segment_ = pool;
+        }
       }
       break;
     }
@@ -1677,13 +1689,15 @@ void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
 
 void Device::hostFree(void* ptr, size_t size) const { memFree(ptr, size); }
 
-void* Device::deviceLocalAlloc(size_t size) const {
-  if (gpuvm_segment_.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
+void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
+  const hsa_amd_memory_pool_t& pool = (atomics)? gpu_fine_grained_segment_ : gpuvm_segment_;
+
+  if (pool.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
     return nullptr;
   }
 
   void* ptr = nullptr;
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(gpuvm_segment_, size, 0, &ptr);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation local memory");
     return nullptr;
@@ -1692,7 +1706,7 @@ void* Device::deviceLocalAlloc(size_t size) const {
   if (p2pAgents().size() > 0) {
     stat = hsa_amd_agents_allow_access(p2pAgents().size(), p2pAgents().data(), nullptr, ptr);
     if (stat != HSA_STATUS_SUCCESS) {
-      LogError("Allow p2p acces for memory allocation");
+      LogError("Allow p2p access for memory allocation");
       memFree(ptr, size);
       return nullptr;
     }
