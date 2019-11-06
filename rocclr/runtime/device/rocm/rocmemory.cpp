@@ -705,7 +705,7 @@ bool Buffer::create() {
         }
         flags_ |= HostMemoryDirectAccess;
       } else {
-        deviceMemory_ = dev().deviceLocalAlloc(size());
+        deviceMemory_ = dev().deviceLocalAlloc(size(), (memFlags & CL_MEM_SVM_ATOMICS) != 0);
       }
       owner()->setSvmPtr(deviceMemory_);
     } else {
