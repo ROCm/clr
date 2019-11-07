@@ -142,17 +142,20 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     }                                                                                              \
   } while (false)
 
+#define LogInfo(msg) Log(amd::LOG_INFO, msg)
+#define LogError(msg) Log(amd::LOG_ERROR, msg)
+#define LogWarning(msg) Log(amd::LOG_WARNING, msg)
 
 #define LogTSInfo(msg) LogTS(amd::LOG_INFO, msg)
 #define LogTSError(msg) LogTS(amd::LOG_ERROR, msg)
 #define LogTSWarning(msg) LogTS(amd::LOG_WARNING, msg)
 
-#define DebugInfoGuarantee(cond) LogGuarantee(cond, amd::LOG_INFO, "Warning")
+#define LogPrintfDebug(format, ...) Logf(amd::LOG_DEBUG, format, __VA_ARGS__)
+#define LogPrintfError(format, ...) Logf(amd::LOG_ERROR, format, __VA_ARGS__)
+#define LogPrintfWarning(format, ...) Logf(amd::LOG_WARNING, format, __VA_ARGS__)
+#define LogPrintfInfo(format, ...) Logf(amd::LOG_INFO, format, __VA_ARGS__)
 
-/* backend and compiler use LOG_LEVEL macro from makefile. Define GPU_LOG_MASK for them. */
-#if defined(LOG_LEVEL)
-#define GPU_LOG_MASK 0x7FFFFFFF
-#endif
+#define DebugInfoGuarantee(cond) LogGuarantee(cond, amd::LOG_INFO, "Warning")
 
 // You may define CL_LOG to enable following log functions even for release build
 #define CL_LOG
@@ -176,20 +179,12 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     }                                                                                              \
   } while (false)
 
+#define ClTrace(level, mask) ClPrint(level, mask, "%s", __func__)
+
 #else /*CL_LOG*/
 #define ClPrint(level, mask, format, ...) (void)(0)
 #define ClCondPrint(level, mask, condition, format, ...) (void)(0)
+#define ClTrace(level, mask) (void)(0)
 #endif /*CL_LOG*/
-
-#define ClTrace(level, mask) ClPrint(level, mask, "%s", __func__)
-
-#define LogInfo(msg) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, msg)
-#define LogError(msg) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, msg)
-#define LogWarning(msg) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, msg)
-
-#define LogPrintfDebug(format, ...) ClPrint(amd::LOG_DEBUG, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfError(format, ...) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfWarning(format, ...) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfInfo(format, ...) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, format, __VA_ARGS__)
 
 #endif /*DEBUG_HPP_*/
