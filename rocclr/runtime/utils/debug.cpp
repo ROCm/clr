@@ -68,8 +68,8 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   va_list ap;
 
   va_start(ap, format);
-  char message[1024];
-  vsprintf(message, format, ap);
+  char message[4096];
+  vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
 
   fprintf(stderr, ":%d:%s:%d: %s\n", level, file, line, message);
