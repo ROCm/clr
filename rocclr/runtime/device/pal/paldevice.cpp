@@ -1022,7 +1022,7 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   message << std::endl;
-  LogInfo(message.str().c_str());
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, message.str().c_str());
 #endif  // DEBUG
 
   for (uint i = 0; i < Pal::GpuHeap::GpuHeapCount; ++i) {
