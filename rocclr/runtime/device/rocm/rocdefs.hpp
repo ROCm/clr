@@ -48,7 +48,6 @@ const HsaDeviceId HSA_NAVI10_ID = 15;
 const HsaDeviceId HSA_MI100_ID = 16;
 const HsaDeviceId HSA_NAVI12_ID = 17;
 const HsaDeviceId HSA_NAVI14_ID = 18;
-const HsaDeviceId HSA_NAVI21_ID = 19;
 const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static const AMDDeviceInfo DeviceInfo[] = {
