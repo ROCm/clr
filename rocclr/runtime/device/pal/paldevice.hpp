@@ -545,6 +545,13 @@ class Device : public NullDevice {
   std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() { return queue_pool_; }
   const std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() const { return queue_pool_; }
 
+  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
+                                       uint32_t* hop_count) {
+    /* Not Supported in PAL yet */
+    ShouldNotReachHere();
+    return false;
+  }
+
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);

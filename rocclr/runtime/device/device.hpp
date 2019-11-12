@@ -1411,6 +1411,12 @@ class Device : public RuntimeObject {
   //! Returns index of current device
   uint32_t index() const { return index_; }
 
+  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
+                                       uint32_t* hop_count) {
+    ShouldNotReachHere();
+    return false;
+  }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
