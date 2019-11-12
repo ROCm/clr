@@ -875,7 +875,11 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
 
         if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
           dev->gpu_fine_grained_segment_ = pool;
-        } else {
+        } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0) {
+          dev->gpuvm_segment_ = pool;
+        }
+
+        if (dev->gpuvm_segment_.handle == 0) {
           dev->gpuvm_segment_ = pool;
         }
       }
@@ -1912,6 +1916,29 @@ void Device::releaseQueue(hsa_queue_t* queue) {
 
   hsa_queue_destroy(queue);
   queuePool_.erase(qIter);
+}
+
+bool Device::findLinkTypeAndHopCount(amd::Device* other_device,
+                                     uint32_t* link_type, uint32_t* hop_count) {
+  hsa_amd_memory_pool_link_info_t link_info;
+  hsa_amd_memory_pool_t pool = (static_cast<roc::Device*>(other_device))->gpuvm_segment_;
+
+  if (pool.handle != 0) {
+    if (HSA_STATUS_SUCCESS
+        != hsa_amd_agent_memory_pool_get_info(this->getBackendDevice(), pool,
+                                              HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO,
+                                              &link_info)) {
+      return false;
+    }
+
+    *link_type = link_info.link_type;
+    if (link_info.numa_distance < 30) {
+      *hop_count = 1;
+    } else {
+      *hop_count = 2;
+    }
+  }
+  return true;
 }
 
 } // namespace roc

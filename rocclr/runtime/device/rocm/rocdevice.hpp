@@ -420,6 +420,9 @@ class Device : public NullDevice {
   //! Return multi GPU grid launch sync buffer
   address MGSync() const { return mg_sync_; }
 
+  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
+                                       uint32_t* hop_count);
+
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
