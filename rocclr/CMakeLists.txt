@@ -26,7 +26,7 @@ if(ROCM_OPENCL_CCACHE_BUILD)
   endif() # if (${USE_COMGR_LIBRARY} STREQUAL "no")
 endif()
 
-project(OpenCL-ROCm)
+project(rocm-opencl)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2" CACHE PATH "")
@@ -103,6 +103,10 @@ add_subdirectory(api/opencl/khronos/icd)
 
 ###--- Packaging ------------------------------------------------------------###
 
+find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
+include(ROCMSetupVersion)
+rocm_setup_version( VERSION "2.0.0" )
+
 # MAIN package
 install(PROGRAMS $<TARGET_FILE:clinfo>
         DESTINATION bin/x86_64
@@ -137,30 +141,28 @@ set(CPACK_PACKAGE_CONTACT "Advanced Micro Devices Inc.")
 set(CPACK_PACKAGE_VENDOR "AMD")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl")
 
-set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "2")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 
 # Debian CPACK variables
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 
-set(CPACK_DEBIAN_MAIN_FILE_NAME "rocm-opencl-1.2.0.deb")
+set(CPACK_DEBIAN_MAIN_FILE_NAME "rocm-opencl-${PROJECT_VERSION}-Linux.deb")
 set(CPACK_DEBIAN_MAIN_PACKAGE_NAME "rocm-opencl")
 set(CPACK_DEBIAN_MAIN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/DEB/postinst;${CMAKE_CURRENT_SOURCE_DIR}/DEB/prerm")
 
-set(CPACK_DEBIAN_DEV_FILE_NAME "rocm-opencl-dev-1.2.0.deb")
-set(CPACK_DEBIAN_DEV_PACKAGE_NAME "rocm-opencl-dev")
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "rocm-opencl")
+set(CPACK_DEBIAN_FILE_NAME "rocm-opencl-dev-${PROJECT_VERSION}-Linux.deb")
+set(CPACK_DEBIAN_PACKAGE_NAME "rocm-opencl-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "rocm-opencl")
 
 # RPM CPACK variables
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
-set(CPACK_RPM_MAIN_FILE_NAME "rocm-opencl-1.2.0.rpm")
+set(CPACK_RPM_MAIN_FILE_NAME "rocm-opencl-${PROJECT_VERSION}-Linux.rpm")
 set(CPACK_RPM_MAIN_PACKAGE_NAME "rocm-opencl")
 set(CPACK_RPM_MAIN_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/RPM/rpm_post")
 set(CPACK_RPM_MAIN_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/RPM/rpm_postun")
 
-set(CPACK_RPM_DEV_FILE_NAME "rocm-opencl-devel-1.2.0.rpm")
+set(CPACK_RPM_DEV_FILE_NAME "rocm-opencl-devel-${PROJECT_VERSION}-Linux.rpm")
 set(CPACK_RPM_DEV_PACKAGE_NAME "rocm-opencl-devel")
 set(CPACK_RPM_DEV_PACKAGE_DEPENDS "rocm-opencl")
 
