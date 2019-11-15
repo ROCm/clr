@@ -150,7 +150,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   enableHwP2P_ = false;
   imageBufferWar_ = false;
-  disableSdma_ = PAL_DISABLE_SDMA;
+  disableSdma_ = false;
   mallPolicy_ = 0;
   alwaysResident_ = amd::IS_HIP ? true : false;
 }
@@ -206,6 +206,12 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       if (palProp.gfxLevel == Pal::GfxIpLevel::GfxIp10_1) {
         // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
         imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
+      }
+      if (false) {
+        // UnknownDevice0 HW doesn't have SDMA engine
+        disableSdma_ = true;
+        // And LDS is limited to 32KB
+        hwLDSSize_ = 32 * Ki;
       }
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
@@ -387,7 +393,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     enableExtension(ClAMDLiquidFlash);
   }
 
-  hwLDSSize_ = (IS_LINUX || gfx10Plus_) ? 64 * Ki : 32 * Ki;
+  if (hwLDSSize_ == 0) {
+    // Use hardcoded values for now, since PAL properties aren't available with offline devices
+    hwLDSSize_ = (IS_LINUX || gfx10Plus_) ? 64 * Ki: 32 * Ki;
+  }
 
   imageSupport_ = true;
 
@@ -415,14 +424,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     // Enable bus addressable memory extension
     enableExtension(ClAMDBusAddressableMemory);
   }
-  //! @todo
-  /*
-      if (calAttr.longIdleDetect) {
-          // KMD is unable to detect if we map the visible memory for CPU access, so
-          // accessing persistent staged buffer may fail if LongIdleDetct is enabled.
-          disablePersistent_ = true;
-      }
-  */
 
   svmFineGrainSystem_ = palProp.gpuMemoryProperties.flags.iommuv2Support;
   svmAtomics_ = svmFineGrainSystem_;
@@ -549,6 +550,10 @@ void Settings::override() {
 
   if (!flagIsDefault(PAL_ALWAYS_RESIDENT)) {
     alwaysResident_ = PAL_ALWAYS_RESIDENT;
+  }
+
+  if (!flagIsDefault(PAL_DISABLE_SDMA)) {
+    disableSdma_ = PAL_DISABLE_SDMA;
   }
 }
 
