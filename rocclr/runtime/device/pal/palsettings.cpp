@@ -150,7 +150,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   enableHwP2P_ = false;
   imageBufferWar_ = false;
-  disableSdma_ = false;
+  disableSdma_ = PAL_DISABLE_SDMA;
   mallPolicy_ = 0;
   alwaysResident_ = amd::IS_HIP ? true : false;
 }
@@ -550,10 +550,6 @@ void Settings::override() {
 
   if (!flagIsDefault(PAL_ALWAYS_RESIDENT)) {
     alwaysResident_ = PAL_ALWAYS_RESIDENT;
-  }
-
-  if (!flagIsDefault(PAL_DISABLE_SDMA)) {
-    disableSdma_ = PAL_DISABLE_SDMA;
   }
 }
 
