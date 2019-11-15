@@ -1471,7 +1471,22 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
       copyRegion.srcOffset = srcOrigin[0] + offset();
       copyRegion.dstOffset = dstOrigin[0] + dstResource.offset();
       copyRegion.copySize = size[0];
-      gpu.iCmd()->CmdCopyMemory(*iMem(), *dstResource.iMem(), 1, &copyRegion);
+      constexpr size_t CpCopySizeLimit = (1 << 26) - sizeof(uint64_t);
+      if (dev().settings().disableSdma_ && (size[0] > CpCopySizeLimit)) {
+        size_t orgSize = size[0];
+        copyRegion.copySize = CpCopySizeLimit;
+        do {
+          gpu.iCmd()->CmdCopyMemory(*iMem(), *dstResource.iMem(), 1, &copyRegion);
+          copyRegion.srcOffset += CpCopySizeLimit;
+          copyRegion.dstOffset += CpCopySizeLimit;
+          orgSize -= (orgSize > CpCopySizeLimit) ? CpCopySizeLimit : orgSize;
+          if (orgSize < CpCopySizeLimit) {
+            copyRegion.copySize = orgSize;
+          }
+        } while (orgSize > 0);
+      } else {
+        gpu.iCmd()->CmdCopyMemory(*iMem(), *dstResource.iMem(), 1, &copyRegion);
+      }
     }
   }
 
