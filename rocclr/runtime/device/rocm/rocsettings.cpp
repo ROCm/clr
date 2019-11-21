@@ -126,8 +126,14 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   }
 
   if (gfxipVersion >= 1000) {
-    lcWavefrontSize64_ = false;
+     enableWave32Mode_ = true;
+     enableWgpMode_ = GPU_ENABLE_WGP_MODE;
   }
+  if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
+    enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
+  }
+
+  lcWavefrontSize64_ = !enableWave32Mode_;
 
   // Override current device settings
   override();

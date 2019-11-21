@@ -1024,6 +1024,10 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(info_.maxComputeUnits_ > 0);
 
+  info_.maxComputeUnits_ = settings().enableWgpMode_
+      ? info_.maxComputeUnits_ / 2
+      : info_.maxComputeUnits_;
+
   if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CACHELINE_SIZE,
                                                &info_.globalMemCacheLineSize_)) {
@@ -1406,10 +1410,8 @@ bool Device::populateOCLDeviceConstants() {
     info_.gfxipVersion_ = deviceInfo_.gfxipVersion_;
     info_.numAsyncQueues_ = kMaxAsyncQueues;
     info_.numRTQueues_ = info_.numAsyncQueues_;
-    if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT, &info_.numRTCUs_)) {
-      return false;
-    }
+    info_.numRTCUs_ = info_.maxComputeUnits_;
+
     //TODO: set to true once thread trace support is available
     info_.threadTraceEnable_ = false;
     info_.pcieDeviceId_ = deviceInfo_.pciDeviceId_;
