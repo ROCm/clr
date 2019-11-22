@@ -2379,9 +2379,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     return false;
   }
 
-  // Add ISA memory object to the resource tracking list
-  AddKernel(kernel);
-
   uint64_t vmDefQueue = 0;
   VirtualGPU* gpuDefQueue = nullptr;
   if (hsaKernel.dynamicParallelism()) {
@@ -2399,6 +2396,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     LogError("Wrong memory objects!");
     return false;
   }
+
+  // Add ISA memory object to the resource tracking list
+  AddKernel(kernel);
 
   bool needFlush = false;
   // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd
@@ -3507,7 +3507,11 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
     // Validate scratch buffer to force sync mode, because
     // the current scratch logic is optimized for size and performance
-    memoryDependency().validate(*this, scratch->memObj_, IsReadOnly);
+    // Note: runtime can skip sync if the same kernel is used,
+    // since the number of scratch regs remains the same
+    if (!IsSameKernel(kernel)) {
+       memoryDependency().validate(*this, scratch->memObj_, IsReadOnly);
+    }
     addVmMemory(scratch->memObj_);
   }
 
