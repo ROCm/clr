@@ -377,6 +377,10 @@ class VirtualGPU : public device::VirtualDevice {
   inline void AddKernel(const amd::Kernel& kernel  //!< AMD kernel object
                         ) const;
 
+  //! Checks if runtime dispatches the same kernel as previously
+  inline bool IsSameKernel(const amd::Kernel& kernel  //!< AMD kernel object
+                           ) const;
+
   //! Adds a dopp desktop texture reference
   void addDoppRef(const Memory* memory,  //!< GPU memory object
                   bool lastDoopCmd,      //!< is the last submission for the pre-present primary
@@ -650,6 +654,10 @@ inline void VirtualGPU::addVmMemory(const Memory* memory) {
 
 inline void VirtualGPU::AddKernel(const amd::Kernel& kernel) const {
   queues_[MainEngine]->last_kernel_ = &kernel;
+}
+
+inline bool VirtualGPU::IsSameKernel(const amd::Kernel& kernel) const {
+  return (queues_[MainEngine]->last_kernel_ == &kernel) ? true : false;
 }
 
 template <bool avoidBarrierSubmit> uint VirtualGPU::Queue::submit(bool forceFlush) {
