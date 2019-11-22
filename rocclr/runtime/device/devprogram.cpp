@@ -3178,14 +3178,6 @@ bool Program::getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_com
 }
 #endif /* USE_COMGR_LIBRARY */
 
-bool Program::getFuncsFromCodeObj(std::vector<std::string>* func_names) const {
-#if defined(USE_COMGR_LIBRARY)
-  return getSymbolsFromCodeObj(func_names, AMD_COMGR_SYMBOL_TYPE_FUNC);
-#else
-  return true;
-#endif
-}
-
 bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const {
 #if defined(USE_COMGR_LIBRARY)
   return getSymbolsFromCodeObj(var_names, AMD_COMGR_SYMBOL_TYPE_OBJECT);

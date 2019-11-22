@@ -240,7 +240,6 @@ class Program : public amd::HeapObject {
   //! Check if SRAM ECC is enable
   const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
 
-  bool getFuncsFromCodeObj(std::vector<std::string>* func_names) const;
   bool getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const;
   bool getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const;
 
