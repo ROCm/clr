@@ -98,6 +98,7 @@ class Program : public amd::HeapObject {
        uint32_t hasGlobalStores_ : 1; //!< Program has writable program scope variables
        uint32_t xnackEnabled_ : 1;    //!< Xnack was enabled during compilation
        uint32_t sramEccEnabled_ : 1;  //!< SRAM ECC was enabled during compilation
+       uint32_t isHIP_          : 1;  //!< Determine if the program is for HIP
      };
      uint32_t flags_;  //!< Program flags
    };
@@ -239,6 +240,9 @@ class Program : public amd::HeapObject {
 
   //! Check if SRAM ECC is enable
   const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
+
+  //! Check if program is HIP based
+  const bool isHIP() const { return (isHIP_ == 1); }
 
   bool getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const;
   bool getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const;

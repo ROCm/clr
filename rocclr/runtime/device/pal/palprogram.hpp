@@ -221,12 +221,14 @@ class LightningProgram : public HSAILProgram {
  public:
   LightningProgram(NullDevice& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
+    isHIP_ = (owner.language() == amd::Program::HIP);
     xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
     machineTarget_ = dev().hwInfo()->machineTargetLC_;
   }
 
   LightningProgram(Device& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
+    isHIP_ = (owner.language() == amd::Program::HIP);
     xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
     machineTarget_ = dev().hwInfo()->machineTargetLC_;
   }
