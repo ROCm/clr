@@ -308,30 +308,34 @@ amd_comgr_status_t Program::addCodeObjData(const char *source,
   return status;
 }
 
-void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclver,
+void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* langver,
                                   std::string& targetIdent) {
 
-  uint clcStd = (clStd[2] - '0') * 100 + (clStd[4] - '0') * 10;
+  if (isHIP()) {
+    if (langver != nullptr) {
+      *langver = AMD_COMGR_LANGUAGE_HIP;
+    }
+  } else {
+    uint clcStd = (clStd[2] - '0') * 100 + (clStd[4] - '0') * 10;
 
-  if (oclver != nullptr) {
-    switch (clcStd) {
-      case 100:
-      case 110:
-      case 120:
-        *oclver = AMD_COMGR_LANGUAGE_OPENCL_1_2;
-        break;
-      case 200:
-        *oclver = AMD_COMGR_LANGUAGE_OPENCL_2_0;
-        break;
-      default:
-        *oclver = AMD_COMGR_LANGUAGE_NONE;
-        break;
+    if (langver != nullptr) {
+      switch (clcStd) {
+        case 100:
+        case 110:
+        case 120:
+          *langver = AMD_COMGR_LANGUAGE_OPENCL_1_2;
+          break;
+        case 200:
+          *langver = AMD_COMGR_LANGUAGE_OPENCL_2_0;
+          break;
+        default:
+          *langver = AMD_COMGR_LANGUAGE_NONE;
+          break;
+      }
     }
   }
-
   // Set target triple and CPU
   targetIdent = std::string("amdgcn-amd-amdhsa--") + machineTarget_;
-
   // Set xnack option if needed
   if (xnackEnabled_) {
     targetIdent.append("+xnack");
@@ -385,9 +389,9 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   // get the language and target name
   std::string targetIdent;
-  amd_comgr_language_t oclver;
-  setLangAndTargetStr(amdOptions->oVariables->CLStd, &oclver, targetIdent);
-  if (oclver == AMD_COMGR_LANGUAGE_NONE) {
+  amd_comgr_language_t langver;
+  setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
+  if (langver == AMD_COMGR_LANGUAGE_NONE) {
     return false;
   }
 
@@ -397,7 +401,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   bool hasAction = false;
   bool hasDataSetDevLibs = false;
 
-  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
+  amd_comgr_status_t status = createAction(langver, targetIdent, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&dataSetDevLibs);
@@ -436,15 +440,15 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
 
-bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
+bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
                                    const std::vector<std::string>& options, amd::option::Options* amdOptions,
                                    char* binaryData[], size_t* binarySize) {
 
   //  get the lanuage and target name
   std::string targetIdent;
-  amd_comgr_language_t oclver;
-  setLangAndTargetStr(amdOptions->oVariables->CLStd, &oclver, targetIdent);
-  if (oclver == AMD_COMGR_LANGUAGE_NONE) {
+  amd_comgr_language_t langver;
+  setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
+  if (langver == AMD_COMGR_LANGUAGE_NONE) {
     return false;
   }
 
@@ -452,11 +456,13 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
   amd_comgr_action_info_t action;
   amd_comgr_data_set_t output;
   amd_comgr_data_set_t dataSetPCH;
+  amd_comgr_data_set_t input = compileInputs ;
+
   bool hasAction = false;
   bool hasOutput = false;
   bool hasDataSetPCH = false;
 
-  amd_comgr_status_t status = createAction(oclver, targetIdent, options, &action, &hasAction);
+  amd_comgr_status_t status = createAction(langver, targetIdent, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
@@ -484,7 +490,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
       if (status == AMD_COMGR_STATUS_SUCCESS) {
         hasDataSetPreprocessor = true;
         status = amd::Comgr::do_action(AMD_COMGR_ACTION_SOURCE_TO_PREPROCESSOR,
-                                       action, inputs, dataSetPreprocessor);
+                                       action, input, dataSetPreprocessor);
         extractBuildLog(dataSetPreprocessor);
       }
 
@@ -500,16 +506,21 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
     }
   }
 
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
-                                   action, inputs, dataSetPCH);
-    extractBuildLog(dataSetPCH);
+  if (!isHIP()) {
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_PRECOMPILED_HEADERS,
+                                     action, input, dataSetPCH);
+      extractBuildLog(dataSetPCH);
+    }
+
+    // Set input for the next stage
+    input = dataSetPCH;
   }
 
-  //  Compiling the source codes with precompiled headers
+  //  Compiling the source codes with precompiled headers or directly compileInputs
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
-                                 action, dataSetPCH, output);
+                                 action, input, output);
     extractBuildLog(output);
   }
 
@@ -659,23 +670,25 @@ bool Program::compileImplLC(const std::string& sourceCode,
   }
 
   if (addCodeObjData(sourceCode.c_str(), sourceCode.length(), AMD_COMGR_DATA_KIND_SOURCE,
-                     "CompileCLSource", &inputs) != AMD_COMGR_STATUS_SUCCESS) {
-    buildLog_ += "Error: COMGR fails to create data from CL source.\n";
+                     "CompileSource", &inputs) != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "Error: COMGR fails to create data from source.\n";
     amd::Comgr::destroy_data_set(inputs);
     return false;
   }
 
-  std::vector<std::string> driverOptions(options->clangOptions);
-
+  std::vector<std::string> driverOptions;
   // Set the -O#
   std::ostringstream optLevel;
   optLevel << "-O" << options->oVariables->OptLevel;
   driverOptions.push_back(optLevel.str());
 
-  // TODO: Can this be fixed at the source? options->llvmOptions is a flat
-  // string, but should really be a vector of strings.
-  std::vector<std::string> splitLlvmOptions = splitSpaceSeparatedString(options->llvmOptions.c_str());
-  driverOptions.insert(driverOptions.end(), splitLlvmOptions.begin(), splitLlvmOptions.end());
+  if(!isHIP()) {
+    driverOptions.insert(driverOptions.end(), options->clangOptions.begin(), options->clangOptions.end());
+    // TODO: Can this be fixed at the source? options->llvmOptions is a flat
+    // string, but should really be a vector of strings.
+    std::vector<std::string> splitLlvmOptions = splitSpaceSeparatedString(options->llvmOptions.c_str());
+    driverOptions.insert(driverOptions.end(), splitLlvmOptions.begin(), splitLlvmOptions.end());
+  }
 
   std::vector<std::string> processedOptions = ProcessOptions(options);
   driverOptions.insert(driverOptions.end(), processedOptions.begin(), processedOptions.end());
@@ -718,7 +731,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     }
   }
 
-  if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
+  if (!isHIP() && options->isDumpFlagSet(amd::option::DUMP_CL)) {
     std::ostringstream driverOptionsOStrStr;
     std::copy(driverOptions.begin(), driverOptions.end(),
       std::ostream_iterator<std::string>(driverOptionsOStrStr, " "));
@@ -758,7 +771,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     }
   }
   else {
-    buildLog_ += "Error: Failed to compile opencl source (from CL to LLVM IR).\n";
+    buildLog_ += "Error: Failed to compile opencl source (from CL or HIP source to LLVM IR).\n";
   }
 
   amd::Comgr::destroy_data_set(inputs);
@@ -2306,20 +2319,7 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
 
     scratchStr.clear();
     optionsVec.push_back(scratchStr.append("-D__").append(machineTarget_).append("=1"));
-  } else {
-    int major, minor;
-    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
-    std::stringstream ss;
-    ss << "-D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
-    optionsVec.push_back(ss.str());
-  }
-
-  if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
-    optionsVec.push_back("-D__IMAGE_SUPPORT__=1");
-  }
-
-  if (!isLC()) {
     // Set options for the standard device specific options
     // All our devices support these options now
     if (device().settings().reportFMAF_) {
@@ -2328,56 +2328,82 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
     if (device().settings().reportFMA_) {
       optionsVec.push_back("-DFP_FAST_FMA=1");
     }
-  }
-
-  uint clcStd =
-    (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
-
-  if (clcStd >= 200) {
-    std::stringstream opts;
-    // Add only for CL2.0 and later
-    opts << "-D"
-      << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
-    optionsVec.push_back(opts.str());
-  }
-
-  if (!device().settings().useLightning_) {
-    if (!device().settings().singleFpDenorm_) {
-      optionsVec.push_back("-cl-denorms-are-zero");
-    }
-
-    // Check if the host is 64 bit or 32 bit
-    LP64_ONLY(optionsVec.push_back("-m64"));
-  }
-
-  // Tokenize the extensions string into a vector of strings
-  std::istringstream istrstr(device().info().extensions_);
-  std::istream_iterator<std::string> sit(istrstr), end;
-  std::vector<std::string> extensions(sit, end);
-
-  if (isLC()) {
-    // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-    // remove it from the command line. Should we fix opencl-c.h?
-    auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
-    if (found != extensions.end()) {
-      extensions.erase(found);
-    }
-
-    if (!extensions.empty()) {
-      std::ostringstream clext;
-
-      clext << "-cl-ext=+";
-      std::copy(extensions.begin(), extensions.end() - 1,
-        std::ostream_iterator<std::string>(clext, ",+"));
-      clext << extensions.back();
-
-      optionsVec.push_back("-Xclang");
-      optionsVec.push_back(clext.str());
-    }
   } else {
-    for (auto e : extensions) {
+    int major, minor;
+    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
+
+    // FIXME: HIP MINOR/MANJOR needs to be defined
+    if (isHIP()) {
       scratchStr.clear();
-      optionsVec.push_back(scratchStr.append("-D").append(e).append("=1"));
+      optionsVec.push_back(scratchStr.append("-DHIP_VERSION_MAJOR=").append(std::to_string(major * 100)));
+      scratchStr.clear();
+      optionsVec.push_back(scratchStr.append("-DHIP_VERSION_MINOR=").append(std::to_string(minor * 10)));
+      optionsVec.push_back("-DHIP_VERSION_PATCH=19245");
+      scratchStr.clear();
+      std::string target(machineTarget_);
+      std::transform(target.begin(), target.end(), target.begin(), ::toupper);
+      optionsVec.push_back(scratchStr.append("-D__HIP_ARCH_").append(target).append("__=1"));
+    } else {
+      std::stringstream ss;
+      ss << "-D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
+      optionsVec.push_back(ss.str());
+    }
+  }
+
+  if (!isHIP()) {
+    if (device().info().imageSupport_ && options->oVariables->ImageSupport) {
+      optionsVec.push_back("-D__IMAGE_SUPPORT__=1");
+    }
+
+      uint clcStd =
+        (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
+
+      if (clcStd >= 200) {
+        std::stringstream opts;
+        // Add only for CL2.0 and later
+        opts << "-D"
+          << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
+        optionsVec.push_back(opts.str());
+      }
+
+    if (!device().settings().useLightning_) {
+      if (!device().settings().singleFpDenorm_) {
+        optionsVec.push_back("-cl-denorms-are-zero");
+      }
+
+      // Check if the host is 64 bit or 32 bit
+      LP64_ONLY(optionsVec.push_back("-m64"));
+    }
+
+    // Tokenize the extensions string into a vector of strings
+    std::istringstream istrstr(device().info().extensions_);
+    std::istream_iterator<std::string> sit(istrstr), end;
+    std::vector<std::string> extensions(sit, end);
+
+    if (isLC()) {
+      // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
+      // remove it from the command line. Should we fix opencl-c.h?
+      auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
+      if (found != extensions.end()) {
+        extensions.erase(found);
+      }
+
+      if (!extensions.empty()) {
+        std::ostringstream clext;
+
+        clext << "-cl-ext=+";
+        std::copy(extensions.begin(), extensions.end() - 1,
+          std::ostream_iterator<std::string>(clext, ",+"));
+        clext << extensions.back();
+
+        optionsVec.push_back("-Xclang");
+        optionsVec.push_back(clext.str());
+      }
+    } else {
+      for (auto e : extensions) {
+        scratchStr.clear();
+        optionsVec.push_back(scratchStr.append("-D").append(e).append("=1"));
+      }
     }
   }
 

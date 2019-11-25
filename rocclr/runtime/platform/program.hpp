@@ -140,6 +140,9 @@ class Program : public RuntimeObject {
   //! Return the program source code.
   const std::string& sourceCode() const { return sourceCode_; }
 
+  //! Return the program language.
+  const Language language() const { return language_; }
+
   //! Append to source code.
   void appendToSource(const char* newCode) { sourceCode_.append(newCode); }
 

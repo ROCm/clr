@@ -421,6 +421,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 LightningProgram::LightningProgram(roc::NullDevice& device, amd::Program& owner)
   : roc::Program(device, owner) {
   isLC_ = true;
+  isHIP_ = (owner.language() == amd::Program::HIP);
   xnackEnabled_ = dev().settings().enableXNACK_;
   sramEccEnabled_ = dev().info().sramEccEnabled_;
   machineTarget_ = dev().deviceInfo().machineTargetLC_;

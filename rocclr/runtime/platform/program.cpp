@@ -492,7 +492,7 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
   for (const auto& it : devices) {
     option::Options parsedOptions;
     constexpr bool LinkOptsOnly = false;
-    if (!ParseAllOptions(cppstr, parsedOptions, optionChangable, LinkOptsOnly,
+    if ((language_ != HIP) && !ParseAllOptions(cppstr, parsedOptions, optionChangable, LinkOptsOnly,
                          it->settings().useLightning_)) {
       programLog_ = parsedOptions.optionsLog();
       LogError("Parsing compile options failed.");
@@ -518,6 +518,14 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
     if (language_ == Assembly) {
       constexpr char asmLang[] = "asm";
       parsedOptions.oVariables->XLang = asmLang;
+    }
+
+    if (language_ == HIP) {
+      constexpr char hipLang[] = "HIP";
+      parsedOptions.oVariables->CLStd = hipLang;
+      parsedOptions.origOptionStr = options;
+      parsedOptions.oVariables->DumpPrefix = "_hip_";
+      parsedOptions.oVariables->OptLevel = '3';
     }
 
     // We only build a Device-Program once
