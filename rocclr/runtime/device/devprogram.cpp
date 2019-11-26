@@ -21,6 +21,7 @@
 #endif
 #endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
