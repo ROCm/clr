@@ -28,6 +28,8 @@
 #include "pro/prodriver.hpp"
 #endif
 #include "platform/sampler.hpp"
+#include "rochostcall.hpp"
+
 #include <cstring>
 #include <fstream>
 #include <sstream>
@@ -1916,8 +1918,50 @@ void Device::releaseQueue(hsa_queue_t* queue) {
   }
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
 
+  if (qInfo.hostcallBuffer_) {
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
+            qInfo.hostcallBuffer_, queue);
+    disableHostcalls(qInfo.hostcallBuffer_, queue);
+    context().svmFree(qInfo.hostcallBuffer_);
+  }
+
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
   hsa_queue_destroy(queue);
   queuePool_.erase(qIter);
+}
+
+void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
+  auto qIter = queuePool_.find(queue);
+  assert(qIter != queuePool_.end());
+
+  auto& qInfo = qIter->second;
+  if (qInfo.hostcallBuffer_) {
+    return qInfo.hostcallBuffer_;
+  }
+
+  // The number of packets required in each buffer is at least equal to the
+  // maximum number of waves supported by the device.
+  auto wavesPerCu = info().maxThreadsPerCU_ / info().wavefrontWidth_;
+  auto numPackets = info().maxComputeUnits_ * wavesPerCu;
+
+  auto size = getHostcallBufferSize(numPackets);
+  auto align = getHostcallBufferAlignment();
+
+  void* buffer = context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
+  if (!buffer) {
+    ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
+            "Failed to create hostcall buffer for hardware queue %p", queue);
+    return nullptr;
+  }
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hostcall buffer %p for hardware queue %p", buffer,
+          queue);
+  qInfo.hostcallBuffer_ = buffer;
+  if (!enableHostcalls(buffer, numPackets, queue)) {
+    ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
+            buffer);
+    return nullptr;
+  }
+  return buffer;
 }
 
 bool Device::findLinkTypeAndHopCount(amd::Device* other_device,

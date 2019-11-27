@@ -111,7 +111,8 @@ static const std::map<std::string,ValueKind> ArgValueKind =
   {"HiddenPrintfBuffer",      ValueKind::HiddenPrintfBuffer},
   {"HiddenDefaultQueue",      ValueKind::HiddenDefaultQueue},
   {"HiddenCompletionAction",  ValueKind::HiddenCompletionAction},
-  {"HiddenMultigridSyncArg",  ValueKind::HiddenMultiGridSyncArg}
+  {"HiddenMultigridSyncArg",  ValueKind::HiddenMultiGridSyncArg},
+  {"HiddenHostcallBuffer",    ValueKind::HiddenHostcallBuffer},
 };
 
 static const std::map<std::string,ValueType> ArgValueType =
@@ -225,7 +226,8 @@ static const std::map<std::string,ValueKind> ArgValueKindV3 =
   {"hidden_printf_buffer",      ValueKind::HiddenPrintfBuffer},
   {"hidden_default_queue",      ValueKind::HiddenDefaultQueue},
   {"hidden_completion_action",  ValueKind::HiddenCompletionAction},
-  {"hidden_multigrid_sync_arg", ValueKind::HiddenMultiGridSyncArg}
+  {"hidden_multigrid_sync_arg", ValueKind::HiddenMultiGridSyncArg},
+  {"hidden_hostcall_buffer",    ValueKind::HiddenHostcallBuffer},
 };
 
 static const std::map<std::string,ValueType> ArgValueTypeV3 =
@@ -320,7 +322,8 @@ struct KernelParameterDescriptor {
     ImageObject = 11,
     SamplerObject = 12,
     QueueObject = 13,
-    HiddenMultiGridSync = 14
+    HiddenMultiGridSync = 14,
+    HiddenHostcallBuffer = 15,
   };
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
