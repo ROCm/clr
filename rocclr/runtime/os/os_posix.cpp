@@ -42,6 +42,7 @@
 #include <limits.h>
 #include <memory>
 #include <algorithm>
+#include <mutex>
 
 
 namespace amd {
