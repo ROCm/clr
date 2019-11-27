@@ -13,6 +13,7 @@
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
+#include "rochostcall.hpp"
 #include "utils/debug.hpp"
 #include "os/os.hpp"
 #include "amd_hsa_kernel_code.h"
@@ -2072,6 +2073,19 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
             (bufferPtr != nullptr)) {
             assert(it.size_ == sizeof(bufferPtr) && "check the sizes");
             WriteAqlArgAt(const_cast<address>(parameters), &bufferPtr, it.size_, it.offset_);
+          }
+          break;
+        }
+        case amd::KernelParameterDescriptor::HiddenHostcallBuffer: {
+          if (amd::IS_HIP) {
+            auto buffer = roc_device_.getOrCreateHostcallBuffer(gpu_queue_);
+            if (!buffer) {
+              ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
+                      "Kernel expects a hostcall buffer, but none found");
+              return false;
+            }
+            assert(it.size_ == sizeof(buffer) && "check the sizes");
+            WriteAqlArgAt(const_cast<address>(parameters), &buffer, it.size_, it.offset_);
           }
           break;
         }

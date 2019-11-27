@@ -417,6 +417,10 @@ class Device : public NullDevice {
   //! Release HSA queue
   void releaseQueue(hsa_queue_t*);
 
+  //! For the given HSA queue, return an existing hostcall buffer or create a
+  //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
+  void* getOrCreateHostcallBuffer(hsa_queue_t* queue);
+
   //! Return multi GPU grid launch sync buffer
   address MGSync() const { return mg_sync_; }
 
@@ -458,6 +462,7 @@ class Device : public NullDevice {
 
   struct QueueInfo {
     int refCount;
+    void* hostcallBuffer_;
   };
   std::map<hsa_queue_t*, QueueInfo> queuePool_;  //!< Pool of HSA queues for recycling
 

@@ -746,6 +746,9 @@ static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isH
   case ValueKind::HiddenPrintfBuffer:
     *isHidden = true;
     return amd::KernelParameterDescriptor::HiddenPrintfBuffer;
+  case ValueKind::HiddenHostcallBuffer:
+    *isHidden = true;
+    return amd::KernelParameterDescriptor::HiddenHostcallBuffer;
   case ValueKind::HiddenDefaultQueue:
     *isHidden = true;
     return amd::KernelParameterDescriptor::HiddenDefaultQueue;
@@ -778,6 +781,9 @@ static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* is
     }
     else if (strcmp(&argInfo->argStr[2], "printf_buffer") == 0) {
       return amd::KernelParameterDescriptor::HiddenPrintfBuffer;
+    }
+    else if (strcmp(&argInfo->argStr[2], "hostcall_buffer") == 0) {
+      return amd::KernelParameterDescriptor::HiddenHostcallBuffer;
     }
     else if (strcmp(&argInfo->argStr[2], "vqueue_pointer") == 0) {
       return amd::KernelParameterDescriptor::HiddenDefaultQueue;
