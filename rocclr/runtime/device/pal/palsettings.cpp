@@ -186,7 +186,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   switch (palProp.revision) {
-    case Pal::AsicRevision::Navi14:
+        case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
@@ -476,6 +476,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   if (useLightning_) {
     switch (palProp.gfxLevel) {
+      case Pal::GfxIpLevel::GfxIp10_3:
       case Pal::GfxIpLevel::GfxIp10_1:
       case Pal::GfxIpLevel::GfxIp9:
         singleFpDenorm_ = true;
