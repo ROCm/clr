@@ -665,6 +665,10 @@ CALGSLDevice::SetupContext(int32 &asic_id)
       m_target = CAL_TARGET_RAVEN2;
       m_elfmachine = ED_ATI_CAL_MACHINE_RAVEN2_ISA;
       break;
+  case GSL_ATIASIC_ID_RENOIR:
+      m_target = CAL_TARGET_RENOIR;
+      m_elfmachine = ED_ATI_CAL_MACHINE_RENOIR_ISA;
+      break;
   case GSL_ATIASIC_ID_POLARIS22:
       m_target = CAL_TARGET_POLARIS22;
       m_elfmachine = ED_ATI_CAL_MACHINE_POLARIS22_ISA;
@@ -676,10 +680,6 @@ CALGSLDevice::SetupContext(int32 &asic_id)
   case GSL_ATIASIC_ID_VEGA20:
       m_target = CAL_TARGET_VEGA20;
       m_elfmachine = ED_ATI_CAL_MACHINE_VEGA20_ISA;
-      break;
-  case GSL_ATIASIC_ID_RENOIR:
-      m_target = CAL_TARGET_RENOIR;
-      m_elfmachine = ED_ATI_CAL_MACHINE_RENOIR_ISA;
       break;
   default:
         // 6XX is not supported

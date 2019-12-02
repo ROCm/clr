@@ -116,7 +116,8 @@ class NullDevice : public amd::Device {
  protected:
   bool usePal() const {
     return (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-            calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ >= CAL_TARGET_VEGA12);
+            calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_RENOIR ||
+            calTarget_ >= CAL_TARGET_VEGA12);
   }
 
   //! Answer the question: "Should HSAIL Program be created?",
