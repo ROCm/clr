@@ -67,6 +67,11 @@ struct SymbolInfo {
   std::vector<std::string>* var_names;
 };
 
+struct SymbolLoweredName {
+  const char* name_expression;
+  std::string* loweredName;
+};
+
 //! A program object for a specific device.
 class Program : public amd::HeapObject {
  public:
@@ -243,6 +248,9 @@ class Program : public amd::HeapObject {
 
   //! Check if program is HIP based
   const bool isHIP() const { return (isHIP_ == 1); }
+
+  //! Get mangled name of a name expresion
+  const bool getLoweredNames(std::vector<std::string>* mangledNames) const;
 
   bool getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const;
   bool getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const;
