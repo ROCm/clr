@@ -29,7 +29,6 @@
 #include <sstream>
 #include <cstdio>
 
-
 #if defined(ATI_OS_LINUX)
 #include <dlfcn.h>
 #include <libgen.h>
@@ -3205,6 +3204,25 @@ bool Program::getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_com
 }
 #endif /* USE_COMGR_LIBRARY */
 
+const bool Program::getLoweredNames(std::vector<std::string>* mangledNames) const {
+#if defined (USE_COMGR_LIBRARY)
+  /* Iterate thru kernel names first */
+  for (auto const& kernelMeta : kernelMetadataMap_) {
+    mangledNames->emplace_back(kernelMeta.first);
+  }
+
+  /* Itrate thru global vars */
+  if (!getSymbolsFromCodeObj(mangledNames, AMD_COMGR_SYMBOL_TYPE_OBJECT)) {
+    return false;
+  }
+
+  return true;
+
+#else
+  assert("No COMGR loaded");
+  return false;
+#endif
+}
 bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const {
 #if defined(USE_COMGR_LIBRARY)
   return getSymbolsFromCodeObj(var_names, AMD_COMGR_SYMBOL_TYPE_OBJECT);
