@@ -48,6 +48,7 @@ const HsaDeviceId HSA_NAVI10_ID = 15;
 const HsaDeviceId HSA_MI100_ID = 16;
 const HsaDeviceId HSA_NAVI12_ID = 17;
 const HsaDeviceId HSA_NAVI14_ID = 18;
+const HsaDeviceId HSA_MI200_ID = 19;
 const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static const AMDDeviceInfo DeviceInfo[] = {
@@ -76,7 +77,8 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* TARGET NAVI10 */ {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010", 2, 32, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET MI100 */ {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 0, 0},
     /* TARGET NAVI12 */ {HSA_NAVI12_ID, "", "gfx1011", "gfx1011", "gfx1011", 2, 32, 1, 256, 64 * Ki, 32, 0, 0},
-    /* TARGET NAVI14 */ {HSA_NAVI14_ID, "", "gfx1012", "gfx1012", "gfx1012", 2, 32, 1, 256, 64 * Ki, 32, 0, 0}
+    /* TARGET NAVI14 */ {HSA_NAVI14_ID, "", "gfx1012", "gfx1012", "gfx1012", 2, 32, 1, 256, 64 * Ki, 32, 0, 0},
+    /* TARGET MI200 */ {HSA_MI200_ID, "", "gfx909", "gfx909", "gfx909", 4, 16, 1, 256, 64 * Ki, 32, 0, 0}
 };
 }
 
