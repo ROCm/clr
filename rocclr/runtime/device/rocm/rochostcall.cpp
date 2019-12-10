@@ -2,15 +2,14 @@
 // Copyright (c) 2019 Advanced Micro Devices, Inc. All rights reserved.
 //
 
-#include "runtime/utils/debug.hpp"
-#include "runtime/top.hpp"
-#include "runtime/utils/flags.hpp"
-
-#include "rochostcall.hpp"
-
+#include "top.hpp"
 #include "os/os.hpp"
 #include "thread/monitor.hpp"
 #include "utils/util.hpp"
+#include "utils/debug.hpp"
+#include "utils/flags.hpp"
+
+#include "rochostcall.hpp"
 
 #include <hsa.h>
 
