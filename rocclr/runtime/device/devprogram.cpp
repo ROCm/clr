@@ -869,10 +869,9 @@ bool Program::linkImpl(const std::vector<device::Program*>& inputPrograms,
 }
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
 bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
                          amd::option::Options* options, bool createLibrary) {
-
+#if defined(USE_COMGR_LIBRARY)
   amd_comgr_data_set_t inputs;
 
   if (amd::Comgr::create_data_set(&inputs) != AMD_COMGR_STATUS_SUCCESS) {
@@ -972,8 +971,10 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   }
 
   return linkImpl(options);
+#else   // defined(USE_COMGR_LIBRARY)
+  return false;
+#endif  // defined(USE_COMGR_LIBRARY)
 }
-#endif // defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
 bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
@@ -1089,8 +1090,8 @@ static void dumpCodeObject(const std::string& image) {
 }
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
 bool Program::linkImplLC(amd::option::Options* options) {
+#if defined(USE_COMGR_LIBRARY)
   aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
 
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
@@ -1265,8 +1266,10 @@ bool Program::linkImplLC(amd::option::Options* options) {
   setType(TYPE_EXECUTABLE);
 
   return true;
+#else   // defined(USE_COMGR_LIBRARY)
+  return false;
+#endif  // defined(USE_COMGR_LIBRARY)
 }
-#endif // defined(USE_COMGR_LIBRARY)
 
 
 // ================================================================================================
