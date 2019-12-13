@@ -7,13 +7,9 @@
 
 #include "utils/options.hpp"
 #include "rockernel.hpp"
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 #include <gelf.h>
-#ifndef USE_COMGR_LIBRARY
-#include "driver/AmdCompiler.h"
-#include "libraries.amdgcn.inc"
-#endif
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 #include "utils/bif_section_labels.hpp"
 #include "amd_hsa_kernel_code.h"
@@ -428,17 +424,17 @@ LightningProgram::LightningProgram(roc::NullDevice& device, amd::Program& owner)
 }
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
     LogError("Failed to create ELF binary image!");
     return false;
   }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(USE_COMGR_LIBRARY)
   return true;
 }
 
 bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t size) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   // Write binary to memory
   if (type == TYPE_EXECUTABLE) {  // handle code object binary
     assert(rawBinary != nullptr && size != 0 && "must pass in the binary");
@@ -455,12 +451,12 @@ bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t
 
   // Set the type of binary
   setType(type);
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(USE_COMGR_LIBRARY)
   return true;
 }
 
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
     return false;
@@ -509,7 +505,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-#if defined(USE_COMGR_LIBRARY)
   for (const auto &kernelMeta : kernelMetadataMap_) {
     const std::string kernelName = kernelMeta.first;
     Kernel* aKernel = new roc::LightningKernel(kernelName, this);
@@ -521,103 +516,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
                                    std::string::npos);
     kernels()[kernelName] = aKernel;
   }
-#else
-  // Get the list of kernels
-  std::vector<std::string> kernelNameList;
-  status = hsa_executable_iterate_agent_symbols(hsaExecutable_, agent, GetKernelNamesCallback,
-                                                (void*)&kernelNameList);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Failed to get kernel names: ";
-    buildLog_ += hsa_strerror(status);
-    buildLog_ += "\n";
-    return false;
-  }
-
-  for (auto& kernelName : kernelNameList) {
-    hsa_executable_symbol_t kernelSymbol;
-
-    status = hsa_executable_get_symbol_by_name(hsaExecutable_, kernelName.c_str(), &agent,
-                                               &kernelSymbol);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get the symbol: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    uint64_t kernelCodeHandle;
-    status = hsa_executable_symbol_get_info(kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
-                                            &kernelCodeHandle);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get the kernel code: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    uint32_t workgroupGroupSegmentByteSize;
-    status = hsa_executable_symbol_get_info(kernelSymbol,
-                                            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_GROUP_SEGMENT_SIZE,
-                                            &workgroupGroupSegmentByteSize);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get group segment size info: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    uint32_t workitemPrivateSegmentByteSize;
-    status = hsa_executable_symbol_get_info(kernelSymbol,
-                                            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_PRIVATE_SEGMENT_SIZE,
-                                            &workitemPrivateSegmentByteSize);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get private segment size info: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    uint32_t kernargSegmentByteSize;
-    status = hsa_executable_symbol_get_info(kernelSymbol,
-                                            HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_SIZE,
-                                            &kernargSegmentByteSize);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get kernarg segment size info: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    uint32_t kernargSegmentAlignment;
-    status = hsa_executable_symbol_get_info(
-        kernelSymbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_KERNARG_SEGMENT_ALIGNMENT,
-        &kernargSegmentAlignment);
-    if (status != HSA_STATUS_SUCCESS) {
-      buildLog_ += "Error: Failed to get kernarg segment alignment info: ";
-      buildLog_ += hsa_strerror(status);
-      buildLog_ += "\n";
-      return false;
-    }
-
-    // FIME_lmoriche: the compiler should set the kernarg alignment based
-    // on the alignment requirement of the parameters. For now, bump it to
-    // the worse case: 128byte aligned.
-    kernargSegmentAlignment = std::max(kernargSegmentAlignment, 128u);
-
-    Kernel* aKernel = new roc::LightningKernel(
-        kernelName, this, kernelCodeHandle, workgroupGroupSegmentByteSize,
-        workitemPrivateSegmentByteSize, kernargSegmentByteSize,
-        amd::alignUp(kernargSegmentAlignment, device().info().globalMemCacheLineSize_));
-    if (!aKernel->init()) {
-      return false;
-    }
-    aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-    aKernel->setInternalKernelFlag(compileOptions_.find("-cl-internal-kernel") !=
-                                   std::string::npos);
-    kernels()[kernelName] = aKernel;
-  }
-#endif // defined(USE_COMGR_LIBRARY)
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
   return true;
 }
 

@@ -9,13 +9,8 @@
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-#ifndef USE_COMGR_LIBRARY
-#include "driver/AmdCompiler.h"
-#else
+#if defined(USE_COMGR_LIBRARY)
 #include "amd_comgr.h"
-#endif
-//#include "llvm/Support/AMDGPUMetadata.h"
 
 namespace llvm {
   namespace AMDGPU {
@@ -28,8 +23,7 @@ namespace llvm {
 #define LC_METADATA 1
 typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-//typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 #ifndef LC_METADATA
 typedef char CodeObjectMD;
@@ -318,11 +312,6 @@ class Program : public amd::HeapObject {
     const amd::option::Options* linkOptions);
 
   void setType(type_t newType) { type_ = newType; }
-
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-  //! Return a new transient compiler instance.
-  static std::unique_ptr<amd::opencl_driver::Compiler> newCompilerInstance();
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
   /* \brief Returns the next stage to compile from, based on sections in binary,
   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,

@@ -173,6 +173,9 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     if ((params != nullptr) && (memoryType() == Pinned)) {
       memRef()->gpu_ = params->gpu_;
     }
+    if (memRef() != nullptr) {
+//      printf("VM:%llx\n", iMem()->Desc().gpuVirtAddr);
+    }
   }
 
   return result;

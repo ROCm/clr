@@ -150,19 +150,6 @@ cl_int Program::addDeviceProgram(Device& device, const void* image, size_t lengt
       delete program;
       return CL_INVALID_BINARY;
     }
-
-#if 0 && defined(WITH_LIGHTNING_COMPILER)
-    // load the compiler options from the binary if it is not provided
-    std::string sBinOptions = program->compileOptions();
-    if (!sBinOptions.empty() && emptyOptions) {
-      if (!amd::option::parseAllOptions(sBinOptions, *options, false,
-          device.settings().useLightning_)) {
-        programLog_ = options->optionsLog();
-        LogError("Parsing compilation options from binary failed.");
-        return CL_INVALID_COMPILER_OPTIONS;
-      }
-    }
-#endif // defined(WITH_LIGHTNING_COMPILER)
   }
 
   devicePrograms_[&rootDev] = program;

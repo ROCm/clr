@@ -17,14 +17,10 @@
 #include "hsa.h"
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-#ifndef USE_COMGR_LIBRARY
-#include "driver/AmdCompiler.h"
-#include "libraries.amdgcn.inc"
-#endif
+#if defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 #include "gelf.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 namespace pal {
 
@@ -691,7 +687,7 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
   return HSA_STATUS_SUCCESS;
 }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 
 static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
                                            void* data) {
@@ -720,20 +716,20 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executabl
   return HSA_STATUS_SUCCESS;
 }
 
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 bool LightningProgram::createBinary(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   if (!clBinary()->createElfBinary(options->oVariables->BinEncrypt, type())) {
     LogError("Failed to create ELF binary image!");
     return false;
   }
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
   return true;
 }
 
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   hsa_agent_t agent;
   agent.handle = 1;
 
@@ -767,7 +763,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-#if defined(USE_COMGR_LIBRARY)
   for (const auto& kernelMeta : kernelMetadataMap_) {
     auto kernelName = kernelMeta.first;
     auto kernel =
@@ -785,44 +780,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     maxScratchRegs_ =
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
   }
-#else
-  // Get the list of kernels
-  std::vector<std::string> kernelNameList;
-  status = executable_->IterateSymbols(GetKernelNamesCallback, &kernelNameList);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Failed to get kernel names\n";
-    return false;
-  }
-
-  for (const auto& kernelName : kernelNameList) {
-    auto kernel =
-        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
-
-    kernels()[kernelName] = kernel;
-
-    auto symbol = executable_->GetSymbol(kernelName.c_str(), &agent);
-    if (!symbol) {
-      buildLog_ += "Error: Getting kernel symbol '" + kernelName +
-          "' from AMD HSA Code Object failed. "
-          "Kernel initialization failed.\n";
-      return false;
-    }
-    if (!kernel->init(symbol)) {
-      buildLog_ += "Error: Kernel '" + kernelName + "' initialization failed.\n";
-      return false;
-    }
-    buildLog_ += kernel->buildLog();
-
-    kernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-
-    // Find max scratch regs used in the program. It's used for scratch buffer preallocation
-    // with dynamic parallelism, since runtime doesn't know which child kernel will be called
-    maxScratchRegs_ =
-        std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
-  }
-#endif  // defined(USE_COMGR_LIBRARY)
   DestroySegmentCpuAccess();
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
   return true;
 }
 
