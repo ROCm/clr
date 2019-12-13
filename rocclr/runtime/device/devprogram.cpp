@@ -619,10 +619,12 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
+#endif  // defined(USE_COMGR_LIBRARY)
 
 bool Program::compileImplLC(const std::string& sourceCode,
                             const std::vector<const std::string*>& headers,
                             const char** headerIncludeNames, amd::option::Options* options) {
+#if  defined(USE_COMGR_LIBRARY)
   const char* xLang = options->oVariables->XLang;
   if (xLang != nullptr) {
     if (strcmp(xLang,"asm") == 0) {
@@ -749,8 +751,11 @@ bool Program::compileImplLC(const std::string& sourceCode,
 
   amd::Comgr::destroy_data_set(inputs);
   return ret;
+#else   // defined(USE_COMGR_LIBRARY)
+  return false;
+#endif  // defined(USE_COMGR_LIBRARY)
 }
-#endif // defined(USE_COMGR_LIBRARY)
+
 
 // ================================================================================================
 static void logFunction(const char* msg, size_t size) {
