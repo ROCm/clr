@@ -12,15 +12,6 @@
 #include "utils/libUtils.h"
 #include "comgrctx.hpp"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-#ifndef USE_COMGR_LIBRARY
-#include "driver/AmdCompiler.h"
-#include "libraries.amdgcn.inc"
-#include "opencl1.2-c.amdgcn.inc"
-#include "opencl2.0-c.amdgcn.inc"
-#endif
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-
 #include <algorithm>
 #include <cstdio>
 #include <fstream>
@@ -37,11 +28,11 @@
 #include "spirv/spirvUtils.h"
 #include "acl.h"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 #ifdef EARLY_INLINE
 #define AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-early-inline-all"
@@ -134,7 +125,7 @@ bool Program::compileImpl(const std::string& sourceCode,
 }
 
 // ================================================================================================
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
 
 #if defined(ATI_OS_LINUX)
@@ -174,25 +165,7 @@ static void checkLLVM_BIN() {
 }
 #endif  // defined(ATI_OS_LINUX)
 
-#if !defined(USE_COMGR_LIBRARY)
-std::unique_ptr<amd::opencl_driver::Compiler> Program::newCompilerInstance() {
-#if defined(ATI_OS_LINUX)
-  pthread_once(&once, checkLLVM_BIN);
-#endif  // defined(ATI_OS_LINUX)
-#if defined(DEBUG)
-  std::string clangExe(llvmBin_ + LINUX_SWITCH("/clang", "\\clang.exe"));
-  struct stat buf;
-  if (stat(clangExe.c_str(), &buf)) {
-    std::string msg("Could not find the Clang binary in " + llvmBin_);
-    LogWarning(msg.c_str());
-  }
-#endif  // defined(DEBUG)
-
-  return std::unique_ptr<amd::opencl_driver::Compiler>(
-    amd::opencl_driver::CompilerFactory().CreateAMDGPUCompiler(llvmBin_));
-}
-#endif // !defined(USE_COMGR_LIBRARY)
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
 
@@ -777,214 +750,6 @@ bool Program::compileImplLC(const std::string& sourceCode,
   amd::Comgr::destroy_data_set(inputs);
   return ret;
 }
-#else // not using COMgr
-bool Program::compileImplLC(const std::string& sourceCode,
-  const std::vector<const std::string*>& headers,
-  const char** headerIncludeNames, amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-  const char* xLang = options->oVariables->XLang;
-  if (xLang != nullptr) {
-    if (strcmp(xLang, "asm") == 0) {
-      clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
-      return true;
-    }
-    else if (!strcmp(xLang, "cl")) {
-      buildLog_ += "Unsupported language: \"" + std::string(xLang) + "\".\n";
-      return false;
-    }
-  }
-
-  using namespace amd::opencl_driver;
-  std::unique_ptr<Compiler> C(newCompilerInstance());
-  std::vector<Data*> inputs;
-
-  Data* input = C->NewBufferReference(DT_CL, sourceCode.c_str(), sourceCode.length());
-  if (input == nullptr) {
-    buildLog_ += "Error while creating data from source code";
-    return false;
-  }
-
-  inputs.push_back(input);
-
-  amd::opencl_driver::Buffer* output = C->NewBuffer(DT_LLVM_BC);
-  if (output == nullptr) {
-    buildLog_ += "Error while creating buffer for the LLVM bitcode";
-    return false;
-  }
-
-  // Set the options for the compiler
-  // Some options are set in Clang AMDGPUToolChain (like -m64)
-  std::ostringstream ostrstr;
-  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-    std::ostream_iterator<std::string>(ostrstr, " "));
-
-  std::string driverOptions(ostrstr.str());
-
-  // Setting the language
-  driverOptions.append(" -cl-std=").append(options->oVariables->CLStd);
-
-  // Set the -O#
-  std::ostringstream optLevel;
-  optLevel << " -O" << options->oVariables->OptLevel;
-  driverOptions.append(optLevel.str());
-
-  // Set the machine target
-  driverOptions.append(" -mcpu=");
-  driverOptions.append(machineTarget_);
-
-  // Set xnack option if needed
-  if (xnackEnabled_) {
-    driverOptions.append(" -mxnack");
-  }
-
-  // Set SRAM ECC option if needed
-  if (sramEccEnabled_) {
-    driverOptions.append(" -msram-ecc");
-  }
-  else {
-    driverOptions.append(" -mno-sram-ecc");
-  }
-
-  driverOptions.append(options->llvmOptions);
-
-  driverOptions.append(ProcessOptionsFlattened(options));
-
-  // Set whole program mode
-  driverOptions.append(AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-prelink");
-
-  // Find the temp folder for the OS
-  std::string tempFolder = amd::Os::getTempPath();
-
-  // Iterate through each source code and dump it into tmp
-  std::fstream f;
-  std::vector<std::string> headerFileNames(headers.size());
-  std::vector<std::string> newDirs;
-  for (size_t i = 0; i < headers.size(); ++i) {
-    std::string headerPath = tempFolder;
-    std::string headerIncludeName(headerIncludeNames[i]);
-    // replace / in path with current os's file separator
-    if (amd::Os::fileSeparator() != '/') {
-      for (auto& it : headerIncludeName) {
-        if (it == '/') it = amd::Os::fileSeparator();
-      }
-    }
-    size_t pos = headerIncludeName.rfind(amd::Os::fileSeparator());
-    if (pos != std::string::npos) {
-      headerPath += amd::Os::fileSeparator();
-      headerPath += headerIncludeName.substr(0, pos);
-      headerIncludeName = headerIncludeName.substr(pos + 1);
-    }
-    if (!amd::Os::pathExists(headerPath)) {
-      bool ret = amd::Os::createPath(headerPath);
-      assert(ret && "failed creating path!");
-      newDirs.push_back(headerPath);
-    }
-    std::string headerFullName = headerPath + amd::Os::fileSeparator() + headerIncludeName;
-    headerFileNames[i] = headerFullName;
-    f.open(headerFullName.c_str(), std::fstream::out);
-    // Should we allow asserts
-    assert(!f.fail() && "failed creating header file!");
-    f.write(headers[i]->c_str(), headers[i]->length());
-    f.close();
-
-    Data* inc = C->NewFileReference(DT_CL_HEADER, headerFileNames[i]);
-    if (inc == nullptr) {
-      buildLog_ += "Error while creating data from headers";
-      return false;
-    }
-    inputs.push_back(inc);
-  }
-
-  // Set the include path for the temp folder that contains the includes
-  if (!headers.empty()) {
-    driverOptions.append(" -I");
-    driverOptions.append(tempFolder);
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_CL)) {
-    std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
-    if (f.is_open()) {
-      f << "/* Compiler options:\n"
-        "-c -emit-llvm -target amdgcn-amd-amdhsa -x cl "
-        << driverOptions << " -include opencl-c.h "
-        << "\n*/\n\n"
-        << sourceCode;
-      f.close();
-    }
-    else {
-      buildLog_ += "Warning: opening the file to dump the OpenCL source failed.\n";
-    }
-  }
-
-  uint clcStd =
-    (options->oVariables->CLStd[2] - '0') * 100 + (options->oVariables->CLStd[4] - '0') * 10;
-
-  std::pair<const void*, size_t> hdr;
-  switch (clcStd) {
-  case 100:
-  case 110:
-  case 120:
-    hdr = { opencl1_2_c, opencl1_2_c_size };
-    break;
-  case 200:
-    hdr = { opencl2_0_c, opencl2_0_c_size };
-    break;
-  default:
-    buildLog_ += "Unsupported requested OpenCL C version (-cl-std).\n";
-    return false;
-  }
-
-  File* pch = C->NewTempFile(DT_CL_HEADER);
-  if (pch == nullptr || !pch->WriteData((const char*)hdr.first, hdr.second)) {
-    buildLog_ += "Error while opening the opencl-c header ";
-    return false;
-  }
-
-  driverOptions.append(" -include-pch " + pch->Name());
-  driverOptions.append(" -Xclang -fno-validate-pch");
-  driverOptions.append(" -Xclang -target-feature -Xclang -code-object-v3");
-
-  // Tokenize the options string into a vector of strings
-  std::istringstream istrstr(driverOptions);
-  std::istream_iterator<std::string> sit(istrstr), end;
-  std::vector<std::string> params(sit, end);
-
-  // Compile source to IR
-  bool ret =
-    device().cacheCompilation()->compileToLLVMBitcode(C.get(), inputs, output, params, buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    buildLog_ += "Error: Failed to compile opencl source (from CL to LLVM IR).\n";
-    return false;
-  }
-
-  llvmBinary_.assign(output->Buf().data(), output->Size());
-  elfSectionType_ = amd::OclElf::LLVMIR;
-
-  if (options->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
-    std::ofstream f(options->getDumpFileName("_original.bc").c_str(),
-      std::ios::binary | std::ios::trunc);
-    if (f.is_open()) {
-      f.write(llvmBinary_.data(), llvmBinary_.size());
-      f.close();
-    }
-    else {
-      buildLog_ += "Warning: opening the file to dump the compiled IR failed.\n";
-    }
-  }
-
-  if (clBinary()->saveSOURCE()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
-  }
-  if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-      false);
-    // store the original compile options
-    clBinary()->storeCompileOptions(compileOptions_);
-  }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-  return true;
-}
 #endif // defined(USE_COMGR_LIBRARY)
 
 // ================================================================================================
@@ -1207,101 +972,6 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   }
 
   return linkImpl(options);
-}
-
-#else // not using COMgr
-bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
-  amd::option::Options* options, bool createLibrary) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-  using namespace amd::opencl_driver;
-  std::unique_ptr<Compiler> C(newCompilerInstance());
-
-  std::vector<Data*> inputs;
-  for (auto program : inputPrograms) {
-    if (program->llvmBinary_.empty()) {
-      if (program->clBinary() == NULL) {
-        buildLog_ += "Internal error: Input program not compiled!\n";
-        return false;
-      }
-
-      // We are using CL binary directly.
-      // Setup elfIn() and try to load llvmIR from binary
-      // This elfIn() will be released at the end of build by finiBuild().
-      if (!program->clBinary()->setElfIn()) {
-        buildLog_ += "Internal error: Setting input OCL binary failed!\n";
-        return false;
-      }
-      if (!program->clBinary()->loadLlvmBinary(program->llvmBinary_, program->elfSectionType_)) {
-        buildLog_ += "Internal error: Failed loading compiled binary!\n";
-        return false;
-      }
-    }
-
-    if (program->elfSectionType_ != amd::OclElf::LLVMIR) {
-      buildLog_ += "Error: Input binary format is not supported\n.";
-      return false;
-    }
-
-    Data* input = C->NewBufferReference(DT_LLVM_BC, (const char*)program->llvmBinary_.data(),
-      program->llvmBinary_.size());
-
-    if (!input) {
-      buildLog_ += "Internal error: Failed to open the compiled programs.\n";
-      return false;
-    }
-
-    // release elfIn() for the program
-    program->clBinary()->resetElfIn();
-
-    inputs.push_back(input);
-  }
-
-  // open the linked output
-  amd::opencl_driver::Buffer* output = C->NewBuffer(DT_LLVM_BC);
-
-  if (!output) {
-    buildLog_ += "Error: Failed to open the linked program.\n";
-    return false;
-  }
-
-  std::vector<std::string> linkOptions;
-
-  // NOTE: The params is also used to identy cached code object.  This parameter
-  //       should not contain any dyanamically generated filename.
-  bool ret = device().cacheCompilation()->linkLLVMBitcode(
-    C.get(), inputs, output, linkOptions, buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
-    return false;
-  }
-
-  llvmBinary_.assign(output->Buf().data(), output->Size());
-  elfSectionType_ = amd::OclElf::LLVMIR;
-
-  if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-      false);
-    // store the original link options
-    clBinary()->storeLinkOptions(linkOptions_);
-    // store the original compile options
-    clBinary()->storeCompileOptions(compileOptions_);
-  }
-
-  // skip the rest if we are building an opencl library
-  if (createLibrary) {
-    setType(TYPE_LIBRARY);
-    if (!createBinary(options)) {
-      buildLog_ += "Internal error: creating OpenCL binary failed\n";
-      return false;
-    }
-    return true;
-  }
-
-  return linkImpl(options);
-#else
-  return false;
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 }
 #endif // defined(USE_COMGR_LIBRARY)
 
@@ -1595,264 +1265,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
   setType(TYPE_EXECUTABLE);
 
   return true;
-}
-#else // not using COMgr
-bool Program::linkImplLC(amd::option::Options* options) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
-  using namespace amd::opencl_driver;
-  internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
-    true : false;
-  std::vector<Data*> inputs;
-  std::unique_ptr<Compiler> C(newCompilerInstance());
-  bool bLinkLLVMBitcode = true;
-  aclType continueCompileFrom = llvmBinary_.empty() ?
-    getNextCompilationStageFromBinary(options) : ACL_TYPE_LLVMIR_BINARY;
-
-  switch (continueCompileFrom) {
-  case ACL_TYPE_CG:
-  case ACL_TYPE_LLVMIR_BINARY: {
-    break;
-  }
-  case ACL_TYPE_ASM_TEXT: {
-    char* section;
-    size_t sz;
-    clBinary()->elfOut()->getSection(amd::OclElf::SOURCE, &section, &sz);
-    Data* input = C->NewBufferReference(DT_ASSEMBLY, section, sz);
-    if (!input) {
-      buildLog_ += "Error: Failed to open the assembler text.\n";
-      return false;
-    }
-    inputs.push_back(input);
-    bLinkLLVMBitcode = false;
-    break;
-  }
-  case ACL_TYPE_ISA: {
-    binary_t isaBinary = binary();
-    return setKernels(options, (void*)isaBinary.first, isaBinary.second);
-    break;
-  }
-  default:
-    buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
-    return false;
-  }
-
-  // call LinkLLVMBitcode
-  if (bLinkLLVMBitcode) {
-    // open the input IR source
-    Data* input = C->NewBufferReference(DT_LLVM_BC, llvmBinary_.data(), llvmBinary_.size());
-
-    if (!input) {
-      buildLog_ += "Error: Failed to open the compiled program.\n";
-      return false;
-    }
-
-    inputs.push_back(input);  // must be the first input
-                              // open the bitcode libraries
-    Data* opencl_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)opencl_lib, opencl_lib_size);
-    Data* ocml_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ocml_lib, ocml_lib_size);
-    Data* ockl_bc = C->NewBufferReference(DT_LLVM_BC, (const char*)ockl_lib, ockl_lib_size);
-
-    if (!opencl_bc || !ocml_bc || !ockl_bc) {
-      buildLog_ += "Error: Failed to open the bitcode library.\n";
-      return false;
-    }
-
-    inputs.push_back(opencl_bc);  // depends on oclm & ockl
-    inputs.push_back(ockl_bc);
-    inputs.push_back(ocml_bc);
-
-    // open the control functions
-    auto isa_version = get_oclc_isa_version(device().info().gfxipVersion_);
-    if (!std::get<1>(isa_version)) {
-      buildLog_ += "Error: Linking for this device is not supported\n";
-      return false;
-    }
-
-    Data* isa_version_bc =
-      C->NewBufferReference(DT_LLVM_BC, (const char*)std::get<1>(isa_version), std::get<2>(isa_version));
-
-    if (!isa_version_bc) {
-      buildLog_ += "Error: Failed to open the control functions.\n";
-      return false;
-    }
-
-    inputs.push_back(isa_version_bc);
-
-    auto correctly_rounded_sqrt =
-      get_oclc_correctly_rounded_sqrt(options->oVariables->FP32RoundDivideSqrt);
-    Data* correctly_rounded_sqrt_bc = C->NewBufferReference(DT_LLVM_BC,
-      reinterpret_cast<const char*>(std::get<1>(correctly_rounded_sqrt)),
-      std::get<2>(correctly_rounded_sqrt));
-
-    auto daz_opt = get_oclc_daz_opt(options->oVariables->DenormsAreZero ||
-      AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-      (device().info().gfxipVersion_ < 900 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0));
-    Data* daz_opt_bc = C->NewBufferReference(DT_LLVM_BC,
-      reinterpret_cast<const char*>(std::get<1>(daz_opt)), std::get<2>(daz_opt));
-
-    auto finite_only = get_oclc_finite_only(options->oVariables->FiniteMathOnly ||
-      options->oVariables->FastRelaxedMath);
-    Data* finite_only_bc = C->NewBufferReference(DT_LLVM_BC,
-      reinterpret_cast<const char*>(std::get<1>(finite_only)), std::get<2>(finite_only));
-
-    auto unsafe_math = get_oclc_unsafe_math(options->oVariables->UnsafeMathOpt ||
-      options->oVariables->FastRelaxedMath);
-    Data* unsafe_math_bc = C->NewBufferReference(DT_LLVM_BC,
-      reinterpret_cast<const char*>(std::get<1>(unsafe_math)), std::get<2>(unsafe_math));
-
-    auto wavefrontsize64 = get_oclc_wavefrontsize64(device().settings().lcWavefrontSize64_);
-    Data* wavefrontsize64_bc = C->NewBufferReference(DT_LLVM_BC,
-      reinterpret_cast<const char*>(std::get<1>(wavefrontsize64)), std::get<2>(wavefrontsize64));
-
-    if (!correctly_rounded_sqrt_bc || !daz_opt_bc || !finite_only_bc || !unsafe_math_bc ||
-        !wavefrontsize64_bc) {
-      buildLog_ += "Error: Failed to open the control functions.\n";
-      return false;
-    }
-
-    inputs.push_back(correctly_rounded_sqrt_bc);
-    inputs.push_back(daz_opt_bc);
-    inputs.push_back(finite_only_bc);
-    inputs.push_back(unsafe_math_bc);
-    inputs.push_back(wavefrontsize64_bc);
-
-    // open the linked output
-    std::vector<std::string> linkOptions;
-    Buffer* linked_bc = C->NewBuffer(DT_LLVM_BC);
-
-    if (!linked_bc) {
-      buildLog_ += "Error: Failed to open the linked program.\n";
-      return false;
-    }
-
-    // NOTE: The linkOptions parameter is also used to identy cached code object. This parameter
-    //       should not contain any dyanamically generated filename.
-    bool ret = device().cacheCompilation()->linkLLVMBitcode(
-      C.get(), inputs, linked_bc, linkOptions, buildLog_);
-    buildLog_ += C->Output();
-    if (!ret) {
-      buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
-      return false;
-    }
-
-    if (options->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
-      std::ofstream f(options->getDumpFileName("_linked.bc").c_str(),
-        std::ios::binary | std::ios::trunc);
-      if (f.is_open()) {
-        f.write(linked_bc->Buf().data(), linked_bc->Size());
-        f.close();
-      }
-      else {
-        buildLog_ += "Warning: opening the file to dump the linked IR failed.\n";
-      }
-    }
-
-    inputs.clear();
-    inputs.push_back(linked_bc);
-  }
-
-  Buffer* out_exec = C->NewBuffer(DT_EXECUTABLE);
-  if (!out_exec) {
-    buildLog_ += "Error: Failed to create the linked executable.\n";
-    return false;
-  }
-
-  std::string codegenOptions(options->llvmOptions);
-
-  // Set the machine target
-  codegenOptions.append(" -mcpu=");
-  codegenOptions.append(machineTarget_);
-
-  // Set xnack option if needed
-  if (xnackEnabled_) {
-    codegenOptions.append(" -mxnack");
-  }
-
-  // Set SRAM ECC option if needed
-  if (sramEccEnabled_) {
-    codegenOptions.append(" -msram-ecc");
-  }
-  else {
-    codegenOptions.append(" -mno-sram-ecc");
-  }
-
-  // Set the -O#
-  std::ostringstream optLevel;
-  optLevel << "-O" << options->oVariables->OptLevel;
-  codegenOptions.append(" ").append(optLevel.str());
-
-  // Pass clang options
-  std::ostringstream ostrstr;
-  std::copy(options->clangOptions.begin(), options->clangOptions.end(),
-    std::ostream_iterator<std::string>(ostrstr, " "));
-  codegenOptions.append(" ").append(ostrstr.str());
-
-  // Force object code v2.
-  codegenOptions.append(" -mno-code-object-v3");
-  // Set whole program mode
-  codegenOptions.append(" -mllvm -amdgpu-internalize-symbols" AMDGPU_EARLY_INLINE_ALL_OPTION);
-
-  if (!device().settings().enableWgpMode_) {
-    codegenOptions.append(" -mcumode");
-  }
-
-  if (device().settings().lcWavefrontSize64_) {
-    codegenOptions.append(" -mwavefrontsize64");
-  }
-
-  // Tokenize the options string into a vector of strings
-  std::istringstream strstr(codegenOptions);
-  std::istream_iterator<std::string> sit(strstr), end;
-  std::vector<std::string> params(sit, end);
-
-  // NOTE: The params is also used to identy cached code object. This parameter
-  //       should not contain any dyanamically generated filename.
-  bool ret = device().cacheCompilation()->compileAndLinkExecutable(C.get(), inputs, out_exec, params,
-    buildLog_);
-  buildLog_ += C->Output();
-  if (!ret) {
-    if (continueCompileFrom == ACL_TYPE_ASM_TEXT) {
-      buildLog_ += "Error: Creating the executable from ISA assembly text failed.\n";
-    }
-    else {
-      buildLog_ += "Error: Creating the executable from LLVM IRs failed.\n";
-    }
-    return false;
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_O)) {
-    std::ofstream f(options->getDumpFileName(".so").c_str(), std::ios::binary | std::ios::trunc);
-    if (f.is_open()) {
-      f.write(out_exec->Buf().data(), out_exec->Size());
-      f.close();
-    }
-    else {
-      buildLog_ += "Warning: opening the file to dump the code object failed.\n";
-    }
-  }
-
-  if (options->isDumpFlagSet(amd::option::DUMP_ISA)) {
-    std::string name = options->getDumpFileName(".s");
-    File* dump = C->NewFile(DT_INTERNAL, name);
-    if (!C->DumpExecutableAsText(out_exec, dump)) {
-      buildLog_ += "Warning: failed to dump code object.\n";
-    }
-  }
-
-  // Call the device layer to setup all available kernels on the actual device
-  if (!setKernels(options, out_exec->Buf().data(), out_exec->Size())) {
-      return false;
-  }
-
-  // Save the binary and type
-  clBinary()->saveBIFBinary(reinterpret_cast<const char*>(out_exec->Buf().data()), out_exec->Size());
-  setType(TYPE_EXECUTABLE);
-
-  return true;
-#else
-  return false;
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 }
 #endif // defined(USE_COMGR_LIBRARY)
 
@@ -2640,7 +2052,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
   bool& needOptionsCheck) {
   aclType from = ACL_TYPE_DEFAULT;
   if (isLC()) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
     completeStages.clear();
     needOptionsCheck = true;
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
@@ -2678,7 +2090,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     default:
       break;
     }
-#endif   // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif   // defined(USE_COMGR_LIBRARY)
   } else {
 #if defined(WITH_COMPILER_LIB)
     acl_error errorCode;
@@ -3001,7 +2413,7 @@ bool Program::createKernelMetadataMap() {
 #endif
 
 bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   size_t progvarsTotalSize = 0;
   size_t dynamicSize = 0;
   size_t progvarsWriteSize = 0;
@@ -3044,7 +2456,6 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
                   note->n_namesz == sizeof "AMD" && !memcmp(name, "AMD", note->n_namesz)) ||
                 (note->n_type == 32 /* NT_AMD_AMDGPU_HSA_METADATA V3 */ &&
                   note->n_namesz == sizeof "AMDGPU" && !memcmp(name, "AMDGPU", note->n_namesz))) {
-#if defined(USE_COMGR_LIBRARY)
           amd_comgr_status_t status;
           amd_comgr_data_t binaryData;
 
@@ -3064,16 +2475,6 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
             buildLog_ += "Error: COMGR fails to get the metadata.\n";
             return false;
           }
-#else
-          std::string metadataStr((const char*)desc, (size_t)note->n_descsz);
-          metadata_ = new CodeObjectMD();
-          if (llvm::AMDGPU::HSAMD::fromString(metadataStr, *metadata_)) {
-            buildLog_ += "Error: failed to process metadata\n";
-            return false;
-          }
-          // We've found and loaded the runtime metadata, exit the
-          // note record loop now.
-#endif
           metadata_found = true;
           break;
         }
@@ -3102,13 +2503,11 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
     return false;
   }
 
-#if defined(USE_COMGR_LIBRARY)
   if (!createKernelMetadataMap()) {
     buildLog_ +=
       "Error: create kernel metadata map using COMgr\n";
     return false;
   }
-#endif
 
   progvarsTotalSize -= dynamicSize;
   setGlobalVariableTotalSize(progvarsTotalSize);
@@ -3116,7 +2515,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   if (progvarsWriteSize != dynamicSize) {
     hasGlobalStores_ = true;
   }
-#endif // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif // defined(USE_COMGR_LIBRARY)
   return true;
 }
 

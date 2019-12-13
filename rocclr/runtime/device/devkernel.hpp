@@ -9,7 +9,7 @@
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 namespace llvm {
   namespace AMDGPU {
     namespace HSAMD {
@@ -25,7 +25,6 @@ struct RuntimeHandle {
   uint32_t group_segment_size;        //!< From GROUP_SEGMENT_FIXED_SIZE
 };
 
-#if defined(USE_COMGR_LIBRARY)
 #include "amd_comgr.h"
 #include "llvm/Support/AMDGPUMetadata.h"
 typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
@@ -285,7 +284,6 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
 
 
 #endif  // defined(USE_COMGR_LIBRARY)
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 namespace amd {
   namespace hsa {
@@ -492,7 +490,6 @@ class Kernel : public amd::HeapObject {
 
  protected:
   //! Initializes the abstraction layer kernel parameters
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 #if defined(USE_COMGR_LIBRARY)
   void InitParameters(const amd_comgr_metadata_node_t kernelMD);
 
@@ -516,9 +513,6 @@ class Kernel : public amd::HeapObject {
 
   //! Returns the kernel code object version
   const uint32_t codeObjectVer() const { return prog().codeObjectVer(); }
-#else
-  void InitParameters(const KernelMD& kernelMD, uint32_t argBufferSize);
-#endif
   //! Initializes HSAIL Printf metadata and info for LC
   void InitPrintf(const std::vector<std::string>& printfInfoStrings);
 #endif

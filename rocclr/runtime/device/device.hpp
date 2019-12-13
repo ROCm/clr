@@ -18,13 +18,7 @@
 #include "devprogram.hpp"
 #include "devkernel.hpp"
 #include "amdocl/cl_profile_amd.h"
-
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-#include "caching/cache.hpp"
-#include "driver/AmdCompiler.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "acl.h"
-
 #include "hwdebug.hpp"
 
 #include <cstdio>
@@ -69,9 +63,6 @@ class SvmUnmapMemoryCommand;
 class TransferBufferFileCommand;
 class HwDebugManager;
 class Device;
-#ifndef USE_COMGR_LIBRARY
-class CacheCompilation;
-#endif
 struct KernelParameterDescriptor;
 struct Coord3D;
 
@@ -1378,10 +1369,6 @@ class Device : public RuntimeObject {
   // current device
   std::vector<Device*> p2p_access_devices_;
 
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-  amd::CacheCompilation* cacheCompilation() const { return cacheCompilation_.get(); }
-#endif
-
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
 
@@ -1427,10 +1414,6 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-                                //! Compilation with cache support
-  std::unique_ptr<amd::CacheCompilation> cacheCompilation_;
-#endif
 
   static amd::Context* glb_ctx_;      //!< Global context with all devices
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
@@ -1449,45 +1432,6 @@ class Device : public RuntimeObject {
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
   uint32_t index_;  //!< Unique device index
 };
-
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-//! Compilation process with cache support.
-class CacheCompilation : public amd::HeapObject {
- public:
-  enum COMPILER_OPERATION { LINK_LLVM_BITCODES = 0, COMPILE_TO_LLVM, COMPILE_AND_LINK_EXEC };
-
-  //! Constructor
-  CacheCompilation(std::string targetStr, std::string postfix, bool enableCache, bool resetCache);
-
-  //! NB, the cacheOpt argument is used for specifying the operation
-  //!     condition, normally would be the same as the options argument.
-  //!     However, the cacheOpt argument should not include any option
-  //!     that would be modified each time but not affect the operation,
-  //!     e.g.  output file name.
-
-  //! Link LLVM bitcode
-  bool linkLLVMBitcode(amd::opencl_driver::Compiler* C,
-                       std::vector<amd::opencl_driver::Data*>& inputs,
-                       amd::opencl_driver::Buffer* output, std::vector<std::string>& options,
-                       std::string& buildLog);
-
-  //! Compile to LLVM bitcode
-  bool compileToLLVMBitcode(amd::opencl_driver::Compiler* C,
-                            std::vector<amd::opencl_driver::Data*>& inputs,
-                            amd::opencl_driver::Buffer* output, std::vector<std::string>& options,
-                            std::string& buildLog);
-
-  //! Compile and link executable
-  bool compileAndLinkExecutable(amd::opencl_driver::Compiler* C,
-                                std::vector<amd::opencl_driver::Data*>& inputs,
-                                amd::opencl_driver::Buffer* output,
-                                std::vector<std::string>& options, std::string& buildLog);
-
- private:
-  StringCache codeCache_;          //! Cached codes
-  const bool isCodeCacheEnabled_;  //! Code cache enable
-};
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
 /*! @}
  *  @}

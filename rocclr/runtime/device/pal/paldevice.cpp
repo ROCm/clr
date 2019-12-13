@@ -307,35 +307,7 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
 
   info_.wavefrontWidth_ = settings().enableWave32Mode_ ? 32 : 64;
 
-  if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-    //  create compilation object with cache support
-    int gfxipMajor = hwInfo_->gfxipVersionLC_ / 100;
-    int gfxipMinor = hwInfo_->gfxipVersionLC_ / 10 % 10;
-    int gfxipStepping = hwInfo_->gfxipVersionLC_ % 10;
-
-    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-    // with dash as delimiter to be compatible with Windows directory name
-    std::ostringstream cacheTarget;
-    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-    if (hwInfo_->xnackEnabled_) {
-      cacheTarget << "+xnack";
-    }
-    if (info_.sramEccEnabled_) {
-      cacheTarget << "+sram-ecc";
-    }
-
-    // Create CacheCompilation for the offline device
-    amd::CacheCompilation* compObj = new amd::CacheCompilation(
-        cacheTarget.str(), "_null_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-    if (!compObj) {
-      LogError("Unable to create cache compilation object!");
-      return false;
-    }
-
-    cacheCompilation_.reset(compObj);
-#endif
-  } else {
+  if (!settings().useLightning_) {
 #if defined(WITH_COMPILER_LIB)
     const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = {sizeof(aclCompilerOptions_0_8),
@@ -1029,34 +1001,7 @@ bool Device::create(Pal::IDevice* device) {
     allocedMem[i] = 0;
   }
 
-  if (settings().useLightning_) {
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-    //  create compilation object with cache support
-    int gfxipMajor = hwInfo()->gfxipVersionLC_ / 100;
-    int gfxipMinor = hwInfo()->gfxipVersionLC_ / 10 % 10;
-    int gfxipStepping = hwInfo()->gfxipVersionLC_ % 10;
-
-    // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-    // with dash as delimiter to be compatible with Windows directory name
-    std::ostringstream cacheTarget;
-    cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-    if (isXNACKSupported) {
-      cacheTarget << "+xnack";
-    }
-    if (info_.sramEccEnabled_) {
-      cacheTarget << "+sram-ecc";
-    }
-
-    amd::CacheCompilation* compObj = new amd::CacheCompilation(
-        cacheTarget.str(), "_pal", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-    if (!compObj) {
-      LogError("Unable to create cache compilation object!");
-      return false;
-    }
-
-    cacheCompilation_.reset(compObj);
-#endif
-  } else {
+  if (!settings().useLightning_) {
 #if defined(WITH_COMPILER_LIB)
     const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = {sizeof(aclCompilerOptions_0_8),

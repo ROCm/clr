@@ -19,9 +19,6 @@
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
-#if defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
-#include "driver/AmdCompiler.h"
-#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #ifdef WITH_AMDGPU_PRO
@@ -659,7 +656,7 @@ bool Device::create(bool sramEccEnabled) {
 
   const char* scheduler = nullptr;
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
   std::string sch = SchedulerSourceCode;
   if (settings().useLightning_) {
     if (info().cooperativeGroups_) {
@@ -667,33 +664,7 @@ bool Device::create(bool sramEccEnabled) {
     }
     scheduler = sch.c_str();
   }
-#ifndef USE_COMGR_LIBRARY
-  //  create compilation object with cache support
-  int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
-  int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
-  int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
-
-  // Use compute capability as target (AMD:AMDGPU:major:minor:stepping)
-  // with dash as delimiter to be compatible with Windows directory name
-  std::ostringstream cacheTarget;
-  cacheTarget << "AMD-AMDGPU-" << gfxipMajor << "-" << gfxipMinor << "-" << gfxipStepping;
-  if (settings().enableXNACK_) {
-    cacheTarget << "+xnack";
-  }
-  if (info_.sramEccEnabled_) {
-    cacheTarget << "+sram-ecc";
-  }
-
-  amd::CacheCompilation* compObj = new amd::CacheCompilation(
-      cacheTarget.str(), "_rocm", OCL_CODE_CACHE_ENABLE, OCL_CODE_CACHE_RESET);
-  if (!compObj) {
-    LogError("Unable to create cache compilation object!");
-    return false;
-  }
-
-  cacheCompilation_.reset(compObj);
 #endif  // USE_COMGR_LIBRARY
-#endif
 
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;

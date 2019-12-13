@@ -10,11 +10,11 @@
 #include "utils/options.hpp"
 #include "acl.h"
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 #include "llvm/Support/AMDGPUMetadata.h"
 
 typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#endif  // defined(USE_COMGR_LIBRARY)
 
 #include <string>
 #include <memory>
@@ -413,7 +413,7 @@ const LightningProgram& LightningKernel::prog() const {
   return reinterpret_cast<const LightningProgram&>(prog_);
 }
 
-#if defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
+#if defined(USE_COMGR_LIBRARY)
 static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
   for (const KernelMD& kernelMD : programMD->mKernels) {
     if (kernelMD.mName == name) {
@@ -422,9 +422,7 @@ static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const s
   }
   return nullptr;
 }
-#endif  // defined(WITH_LIGHTNING_COMPILER) || defined(USE_COMGR_LIBRARY)
 
-#if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
@@ -507,88 +505,5 @@ bool LightningKernel::init() {
   return true;
 }
 #endif  // defined(USE_COMGR_LIBRARY)
-
-bool LightningKernel::init(amd::hsa::loader::Symbol* symbol) {
-#if defined(WITH_LIGHTNING_COMPILER) && !defined(USE_COMGR_LIBRARY)
-  flags_.internalKernel_ =
-      (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
-
-  aqlCreateHWInfo(symbol);
-
-  const CodeObjectMD* programMD = prog().metadata();
-  assert(programMD != nullptr);
-
-  const KernelMD* kernelMD = FindKernelMetadata(programMD, name());
-
-  if (kernelMD == nullptr) {
-    return false;
-  }
-
-  // Set the argList
-  InitParameters(*kernelMD, argsBufferSize());
-
-  if (!kernelMD->mAttrs.mReqdWorkGroupSize.empty()) {
-    const auto& requiredWorkgroupSize = kernelMD->mAttrs.mReqdWorkGroupSize;
-    workGroupInfo_.compileSize_[0] = requiredWorkgroupSize[0];
-    workGroupInfo_.compileSize_[1] = requiredWorkgroupSize[1];
-    workGroupInfo_.compileSize_[2] = requiredWorkgroupSize[2];
-  }
-
-  if (!kernelMD->mAttrs.mWorkGroupSizeHint.empty()) {
-    const auto& workgroupSizeHint = kernelMD->mAttrs.mWorkGroupSizeHint;
-    workGroupInfo_.compileSizeHint_[0] = workgroupSizeHint[0];
-    workGroupInfo_.compileSizeHint_[1] = workgroupSizeHint[1];
-    workGroupInfo_.compileSizeHint_[2] = workgroupSizeHint[2];
-  }
-
-  if (!kernelMD->mAttrs.mVecTypeHint.empty()) {
-    workGroupInfo_.compileVecTypeHint_ = kernelMD->mAttrs.mVecTypeHint.c_str();
-  }
-
-  if (!kernelMD->mAttrs.mRuntimeHandle.empty()) {
-    hsa_agent_t agent;
-    agent.handle = 1;
-    amd::hsa::loader::Symbol* rth_symbol;
-
-    // Get the runtime handle symbol GPU address
-    rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD->mAttrs.mRuntimeHandle.c_str()),
-                                  const_cast<hsa_agent_t*>(&agent));
-    uint64_t symbol_address;
-    rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
-
-    // Copy the kernel_object pointer to the runtime handle symbol GPU address
-    const Memory& codeSegGpu = prog().codeSegGpu();
-    uint64_t offset = symbol_address - codeSegGpu.vmAddress();
-    VirtualGPU* gpu = codeSegGpu.dev().xferQueue();
-
-    const struct RuntimeHandle runtime_handle = {gpuAqlCode(), spillSegSize(), ldsSize()};
-
-    codeSegGpu.writeRawData(*gpu, offset, sizeof(runtime_handle), &runtime_handle, true);
-  }
-
-  // Copy wavefront size
-  workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
-
-  workGroupInfo_.size_ = kernelMD->mCodeProps.mMaxFlatWorkGroupSize;
-  if (workGroupInfo_.size_ == 0) {
-    return false;
-  }
-
-  InitPrintf(programMD->mPrintf);
-
-  /*FIXME_lmoriche:
-  size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);
-  error = aclQueryInfo(dev().compiler(), prog().binaryElf(),
-      RT_WAVES_PER_SIMD_HINT, openClKernelName.c_str(),
-      &workGroupInfo_.wavesPerSimdHint_, &sizeOfWavesPerSimdHint);
-  if (error != ACL_SUCCESS) {
-      return false;
-  }
-
-  waveLimiter_.enable();
-  */
-#endif  // defined(WITH_LIGHTNING_COMPILER) && ! defined(USE_COMGR_LIBRARY)
-  return true;
-}
 
 }  // namespace pal
