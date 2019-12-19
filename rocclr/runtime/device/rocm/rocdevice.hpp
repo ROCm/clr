@@ -439,6 +439,7 @@ class Device : public NullDevice {
   static std::vector<hsa_agent_t> gpu_agents_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   hsa_agent_t _bkendDevice;
+  hsa_agent_t* p2p_agents_list_;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;
   hsa_amd_memory_pool_t system_segment_;
