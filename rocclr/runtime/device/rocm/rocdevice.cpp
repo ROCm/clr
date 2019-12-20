@@ -656,18 +656,6 @@ bool Device::create(bool sramEccEnabled) {
     return false;
   }
 
-  const char* scheduler = nullptr;
-
-#if defined(USE_COMGR_LIBRARY)
-  std::string sch = SchedulerSourceCode;
-  if (settings().useLightning_) {
-    if (info().cooperativeGroups_) {
-      sch.append(GwsInitSourceCode);
-    }
-    scheduler = sch.c_str();
-  }
-#endif  // USE_COMGR_LIBRARY
-
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;
   devices.push_back(this);
@@ -675,15 +663,6 @@ bool Device::create(bool sramEccEnabled) {
   // Create a dummy context
   context_ = new amd::Context(devices, info);
   if (context_ == nullptr) {
-    return false;
-  }
-
-  blitProgram_ = new BlitProgram(context_);
-  // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler)) {
-    delete blitProgram_;
-    blitProgram_ = nullptr;
-    LogError("Couldn't create blit kernels!");
     return false;
   }
 
@@ -757,8 +736,6 @@ bool Device::create(bool sramEccEnabled) {
     }
   }
 
-  xferQueue();
-
   return true;
 }
 
@@ -807,6 +784,32 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
 
   // Unock the virtual GPU list
   vgpusAccess().unlock();
+}
+
+bool Device::createBlitProgram() {
+  bool result = true;
+  const char* scheduler = nullptr;
+
+#if defined(USE_COMGR_LIBRARY)
+  std::string sch = SchedulerSourceCode;
+  if (settings().useLightning_) {
+    if (info().cooperativeGroups_) {
+      sch.append(GwsInitSourceCode);
+    }
+    scheduler = sch.c_str();
+  }
+#endif  // USE_COMGR_LIBRARY
+
+  blitProgram_ = new BlitProgram(context_);
+  // Create blit programs
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler)) {
+    delete blitProgram_;
+    blitProgram_ = nullptr;
+    LogError("Couldn't create blit kernels!");
+    return false;
+  }
+
+  return result;
 }
 
 device::Program* Device::createProgram(amd::Program& owner, amd::option::Options* options) {

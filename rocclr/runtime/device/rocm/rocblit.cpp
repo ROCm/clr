@@ -733,7 +733,9 @@ bool KernelBlitManager::create(amd::Device& device) {
 
 bool KernelBlitManager::createProgram(Device& device) {
   if (device.blitProgram() == nullptr) {
-    return false;
+    if (!device.createBlitProgram()) {
+      return false;
+    }
   }
 
   std::vector<amd::Device*> devices;

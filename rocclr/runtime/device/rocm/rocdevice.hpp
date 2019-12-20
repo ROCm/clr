@@ -380,6 +380,9 @@ class Device : public NullDevice {
 
   amd::Context& context() const { return *context_; }
 
+  //! Create internal blit program
+  bool createBlitProgram();
+
   // Returns AMD GPU Pro interfaces
   const IProDevice& iPro() const { return *pro_device_; }
   bool ProEna() const  { return pro_ena_; }
