@@ -1367,8 +1367,8 @@ bool D3D10Object::copyOrigToShared() {
   // Flush D3D queues and make sure D3D stuff is finished
   d3dDev->Flush();
   pQuery_->End();
-  BOOL data;
-  while (S_OK != pQuery_->GetData(&data, sizeof(BOOL), 0) && data != TRUE) {
+  BOOL data = FALSE;
+  while ((S_OK != pQuery_->GetData(&data, sizeof(BOOL), 0)) || (data != TRUE)) {
   }
 
   d3dDev->Release();

@@ -916,9 +916,8 @@ bool D3D11Object::copyOrigToShared() {
     pImmediateContext->Flush();
     pImmediateContext->End(pQuery_);
     BOOL data = FALSE;
-    while (S_OK != pImmediateContext->GetData(pQuery_, &data, sizeof(BOOL), 0))
-      ;
-    {}
+    while (S_OK != pImmediateContext->GetData(pQuery_, &data, sizeof(BOOL), 0)) {
+    }
   }
 
   pImmediateContext->Release();
@@ -1032,8 +1031,8 @@ void SyncD3D11Objects(std::vector<amd::Memory*>& memObjects) {
   {
     ScopedLock sl(d3dObj->getResLock());
     pImmediateContext->End(query);
-    BOOL data;
-    while (S_OK != pImmediateContext->GetData(query, &data, sizeof(BOOL), 0) && data != TRUE) {
+    BOOL data = FALSE;
+    while ((S_OK != pImmediateContext->GetData(query, &data, sizeof(BOOL), 0)) || (data != TRUE)) {
     }
   }
 
