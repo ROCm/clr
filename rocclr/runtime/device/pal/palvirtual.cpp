@@ -314,12 +314,6 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
 }
 
 bool VirtualGPU::Queue::flush() {
-  // Stop commands building
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
-    LogError("PAL failed to finalize a command buffer!");
-    return false;
-  }
-
   if (palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
@@ -328,6 +322,12 @@ bool VirtualGPU::Queue::flush() {
       return false;
     }
     palMemRefs_.clear();
+  }
+
+  // Stop commands building
+  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
+    LogError("PAL failed to finalize a command buffer!");
+    return false;
   }
 
   // Reset the fence. PAL will reset OS event
@@ -430,6 +430,11 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
     return true;
   }
 
+  if (id == cmdBufIdCurrent_) {
+    // There is an error in the flush() and wait is bogus
+    return false;
+  }
+
   uint slotId = id % max_command_buffers_;
   constexpr bool IbReuse = true;
   bool result = waifForFence<!IbReuse>(slotId);
@@ -444,7 +449,10 @@ bool VirtualGPU::Queue::isDone(uint id) {
 
   if (id == cmdBufIdCurrent_) {
     // Flush the current command buffer
-    flush();
+    if (!flush()) {
+      // If flush failed, then exit earlier...
+      return false;
+    }
   }
 
   if (Pal::Result::Success != iCmdFences_[id % max_command_buffers_]->GetStatus()) {
