@@ -20,7 +20,8 @@ class PerfCounter : public device::PerfCounter {
   enum {
     ROC_UNSUPPORTED = 0,
     ROC_GFX8,
-    ROC_GFX9
+    ROC_GFX9,
+    ROC_GFX10
   };
 
   //! The performance counter info

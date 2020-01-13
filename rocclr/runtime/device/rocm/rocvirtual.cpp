@@ -480,6 +480,7 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
       }
       break;
     case PerfCounter::ROC_GFX9:
+    case PerfCounter::ROC_GFX10:
       {
         packet->header = HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE;
         return dispatchGenericAqlPacket(packet, 0, 0, blocking);
