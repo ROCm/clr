@@ -205,7 +205,7 @@ struct Coord3D {
   bool operator==(const Coord3D& rhs) const {
     return c[0] == rhs.c[0] && c[1] == rhs.c[1] && c[2] == rhs.c[2];
   }
-  operator size_t*() {
+  explicit operator size_t*() {
     return &c[0];
   }
 };
