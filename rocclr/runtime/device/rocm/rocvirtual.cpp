@@ -330,6 +330,30 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             const uint64_t image_srd = image->getHsaImageObject().handle;
             assert(amd::isMultipleOf(image_srd, sizeof(image_srd)));
             WriteAqlArgAt(const_cast<address>(params), &image_srd, sizeof(image_srd), desc.offset_);
+
+              // Check if synchronization has to be performed
+            if (image->CopyImageBuffer() != nullptr) {
+              Memory* devBuf = dev().getGpuMemory(mem->parent());
+              amd::Coord3D offs(0);
+              Image* devCpImg = static_cast<Image*>(dev().getGpuMemory(image->CopyImageBuffer()));
+              amd::Image* img = mem->asImage();
+
+              // Copy memory from the original image buffer into the backing store image
+              bool result = blitMgr().copyBufferToImage(
+                  *devBuf, *devCpImg, offs, offs, img->getRegion(), true,
+                  img->getRowPitch(), img->getSlicePitch());
+              // Make sure the copy operation is done
+              setAqlHeader(dispatchPacketHeader_);
+              // Use backing store SRD as the replacment
+              const uint64_t srd = devCpImg->getHsaImageObject().handle;
+              WriteAqlArgAt(const_cast<address>(params), &srd, sizeof(srd), desc.offset_);
+
+              // If it's not a read only resource, then runtime has to write back
+              if (!desc.info_.readOnly_) {
+                wrtBackImageBuffer_.push_back(devCpImg);
+                imageBufferWrtBack_ = true;
+              }
+            }
           }
         }
       }
@@ -947,6 +971,23 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
       break;
     }
     case CL_COMMAND_READ_IMAGE: {
+      if ((cmd.source().parent() != nullptr) && (cmd.source().parent()->getType() == CL_MEM_OBJECT_BUFFER)) {
+        Image* imageBuffer = static_cast<Image*>(devMem);
+        // Check if synchronization has to be performed
+        if (nullptr != imageBuffer->CopyImageBuffer()) {
+          amd::Memory* memory = imageBuffer->CopyImageBuffer();
+          devMem = dev().getGpuMemory(memory);
+          if (nullptr == imageBuffer->owner()->getLastWriter()) {
+            Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
+            amd::Image* image = imageBuffer->owner()->asImage();
+            amd::Coord3D offs(0);
+            // Copy memory from the original image buffer into the backing store image
+            result = blitMgr().copyBufferToImage(*buffer, *devMem, offs,
+                                                 offs, image->getRegion(), true,
+                                                 image->getRowPitch(), image->getSlicePitch());
+          }
+        }
+      }
       if (hostMemory != nullptr) {
         // Accelerated image to buffer transfer without pinning
         amd::Coord3D dstOrigin(offset);
@@ -2202,6 +2243,25 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       getVQVirtualAddress(), schedulerParam_, schedulerQueue_, schedulerSignal_, schedulerThreads_);
   }
 
+  // Check if image buffer write back is required
+  if (imageBufferWrtBack_) {
+    // Avoid recursive write back
+    imageBufferWrtBack_ = false;
+    // Make sure the original kernel execution is done
+    releaseGpuMemoryFence();
+    for (const auto imageBuffer : wrtBackImageBuffer_) {
+      Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
+      amd::Image* image = imageBuffer->owner()->asImage();
+      Image* devImage = static_cast<Image*>(dev().getGpuMemory(imageBuffer->owner()));
+      Memory* cpyImage = dev().getGpuMemory(devImage->CopyImageBuffer());
+      amd::Coord3D offs(0);
+      // Copy memory from the the backing store image into original buffer
+      bool result = blitMgr().copyImageToBuffer(*cpyImage, *buffer, offs,
+                                                offs, image->getRegion(), true,
+                                                image->getRowPitch(), image->getSlicePitch());
+    }
+    wrtBackImageBuffer_.clear();
+  }
   return true;
 }
 /**

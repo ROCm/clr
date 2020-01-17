@@ -26,7 +26,8 @@ class Settings : public device::Settings {
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
       uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
-      uint reserved_ : 25;
+      uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
+      uint reserved_ : 24;
     };
     uint value_;
   };

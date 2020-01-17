@@ -1022,7 +1022,10 @@ bool Image::createInteropImage() {
 }
 
 bool Image::create() {
-  if (owner()->parent()) {
+  if (owner()->parent() != nullptr) {
+    if (!ValidateMemory()) {
+      return false;
+    }
     // Image view creation
     roc::Memory* parent = static_cast<roc::Memory*>(owner()->parent()->getDeviceMemory(dev_));
 
@@ -1219,6 +1222,8 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
 Image::~Image() { destroy(); }
 
 void Image::destroy() {
+  delete copyImageBuffer_;
+
   if (hsaImageObject_.handle != 0) {
     hsa_status_t status = hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
     assert(status == HSA_STATUS_SUCCESS);
@@ -1241,5 +1246,31 @@ void Image::destroy() {
     const_cast<Device&>(dev()).updateFreeMemory(size(), true);
   }
 }
+
+bool Image::ValidateMemory() {
+  // Detect image view from buffer to distinguish linear paths from tiled.
+  amd::Memory* ancestor = owner()->parent();
+  while ((ancestor->asBuffer() == nullptr) && (ancestor->parent() != nullptr)) {
+    ancestor = ancestor->parent();
+  }
+  bool linearLayout = (ancestor->asBuffer() != nullptr);
+
+  if (dev().settings().imageBufferWar_ && linearLayout && (owner() != nullptr) &&
+      ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
+       owner()->asImage()->getRowPitch())) {
+    constexpr bool ForceLinear = true;
+    amd::Image* img = owner()->asImage();
+    // Create a native image without pitch for validation 
+    copyImageBuffer_ =
+        new (dev().context()) amd::Image(dev().context(), CL_MEM_OBJECT_IMAGE2D, img->getMemFlags(),
+        img->getImageFormat(), img->getWidth(), img->getHeight(), 1, 0, 0);
+
+    if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }
 #endif  // WITHOUT_HSA_BACKEND

@@ -969,6 +969,10 @@ Sampler::~Sampler() {
   hsa_ext_sampler_destroy(dev_.getBackendDevice(), hsa_sampler);
 }
 
+Memory* Device::getGpuMemory(amd::Memory* mem) const {
+  return static_cast<roc::Memory*>(mem->getDeviceMemory(*this));
+}
+
 bool Device::populateOCLDeviceConstants() {
   info_.available_ = true;
 
