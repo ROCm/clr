@@ -430,6 +430,9 @@ class Device : public NullDevice {
   virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
                                        uint32_t* hop_count);
 
+  //! Returns a GPU memory object from AMD memory object
+  roc::Memory* getGpuMemory(amd::Memory* mem  //!< Pointer to AMD memory object
+                            ) const;
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 

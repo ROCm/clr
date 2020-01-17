@@ -70,6 +70,7 @@ Settings::Settings() {
   useLightning_ = (!flagIsDefault(GPU_ENABLE_LC)) ? GPU_ENABLE_LC : true;
 
   lcWavefrontSize64_ = true;
+  imageBufferWar_ = false;
 }
 
 bool Settings::create(bool fullProfile, int gfxipVersion) {
@@ -128,6 +129,10 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
   if (gfxipVersion >= 1000) {
      enableWave32Mode_ = true;
      enableWgpMode_ = GPU_ENABLE_WGP_MODE;
+     if (gfxipVersion == 1001) {
+       // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
+       imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
+     }
   }
   if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;

@@ -300,6 +300,10 @@ class VirtualGPU : public device::VirtualDevice {
    * used to synchronized on kernel outputs.
    */
   bool hasPendingDispatch_;
+
+  bool imageBufferWrtBack_;  //!< Enable image buffer write back
+  std::vector<device::Memory*> wrtBackImageBuffer_;  //!< Array of images for write back
+
   Timestamp* timestamp_;
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu

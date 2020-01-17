@@ -93,6 +93,9 @@ class Memory : public device::Memory {
 
   virtual void IpcCreate (size_t offset, size_t* mem_size, void* handle) const;
 
+  //! Validates allocated memory for possible workarounds
+  virtual bool ValidateMemory() { return true; }
+
  protected:
   bool allocateMapMemory(size_t allocationSize);
 
@@ -179,6 +182,11 @@ class Image : public roc::Memory {
 
   virtual const address cpuSrd() const { return reinterpret_cast<const address>(getHsaImageObject().handle); }
 
+  //! Validates allocated memory for possible workarounds
+  bool ValidateMemory() final;
+
+  amd::Image* CopyImageBuffer() const { return copyImageBuffer_; }
+
  private:
   //! Disable copy constructor
   Image(const Buffer&);
@@ -200,6 +208,7 @@ class Image : public roc::Memory {
   hsa_ext_image_t hsaImageObject_;
 
   void* originalDeviceMemory_;
+  amd::Image* copyImageBuffer_ = nullptr;
 };
 }
 #endif
