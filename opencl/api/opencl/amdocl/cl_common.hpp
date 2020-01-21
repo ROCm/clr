@@ -6,102 +6,7 @@
 #define CL_COMMON_HPP_
 
 #include "top.hpp"
-#include "platform/runtime.hpp"
-#include "platform/command.hpp"
-#include "platform/memory.hpp"
-#include "thread/thread.hpp"
-#include "platform/commandqueue.hpp"
-
-#include <vector>
-#include <utility>
-
-//! \cond ignore
-namespace amd {
-
-template <typename T>
-class NotNullWrapper
-{
-private:
-    T* const ptrOrNull_;
-
-protected:
-    explicit NotNullWrapper(T* ptrOrNull)
-        : ptrOrNull_(ptrOrNull)
-    { }
-
-public:
-    void operator = (T value) const
-    {
-        if (ptrOrNull_ != NULL) {
-            *ptrOrNull_ = value;
-        }
-    }
-};
-
-template <typename T>
-class NotNullReference : protected NotNullWrapper<T>
-{
-public:
-    explicit NotNullReference(T* ptrOrNull)
-        : NotNullWrapper<T>(ptrOrNull)
-    { }
-
-    const NotNullWrapper<T>& operator * () const { return *this; }
-};
-
-} // namespace amd
-
-template <typename T>
-inline amd::NotNullReference<T>
-not_null(T* ptrOrNull)
-{
-    return amd::NotNullReference<T>(ptrOrNull);
-}
-
-#define CL_CHECK_THREAD(thread)                                              \
-    (thread != NULL || ((thread = new amd::HostThread()) != NULL             \
-            && thread == amd::Thread::current()))
-
-#define RUNTIME_ENTRY_RET(ret, func, args)                                   \
-CL_API_ENTRY ret CL_API_CALL                                                 \
-func args                                                                    \
-{                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!CL_CHECK_THREAD(thread)) {                                          \
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;                      \
-        return (ret) 0;                                                      \
-    }
-
-#define RUNTIME_ENTRY_RET_NOERRCODE(ret, func, args)                         \
-CL_API_ENTRY ret CL_API_CALL                                                 \
-func args                                                                    \
-{                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!CL_CHECK_THREAD(thread)) {                                          \
-        return (ret) 0;                                                      \
-    }
-
-#define RUNTIME_ENTRY(ret, func, args)                                       \
-CL_API_ENTRY ret CL_API_CALL                                                 \
-func args                                                                    \
-{                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!CL_CHECK_THREAD(thread)) {                                          \
-        return CL_OUT_OF_HOST_MEMORY;                                        \
-    }
-
-#define RUNTIME_ENTRY_VOID(ret, func, args)                                  \
-CL_API_ENTRY ret CL_API_CALL                                                 \
-func args                                                                    \
-{                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!CL_CHECK_THREAD(thread)) {                                          \
-        return;                                                              \
-    }
-
-#define RUNTIME_EXIT                                                         \
-    /* FIXME_lmoriche: we should check to thread->lastError here! */         \
-}
+#include "vdi_common.hpp"
 
 //! Helper function to check "properties" parameter in various functions
 int checkContextProperties(
@@ -109,34 +14,6 @@ int checkContextProperties(
     bool*   offlineDevices);
 
 namespace amd {
-
-namespace detail {
-
-template <typename T>
-struct ParamInfo
-{
-    static inline std::pair<const void*, size_t> get(const T& param) {
-        return std::pair<const void*, size_t>(&param, sizeof(T));
-    }
-};
-
-template <>
-struct ParamInfo<const char*>
-{
-    static inline std::pair<const void*, size_t> get(const char* param) {
-        return std::pair<const void*, size_t>(param, strlen(param) + 1);
-    }
-};
-
-template <int N>
-struct ParamInfo<char[N]>
-{
-    static inline std::pair<const void*, size_t> get(const char* param) {
-        return std::pair<const void*, size_t>(param, strlen(param) + 1);
-    }
-};
-
-} // namespace detail
 
 template <typename T>
 static inline cl_int
@@ -160,7 +37,7 @@ clGetInfo(
                 typename std::remove_pointer<T>::type>::type, char>()) {
             return CL_INVALID_VALUE;
         }
-	// For char* and char[] params, we will at least fill up to
+        // For char* and char[] params, we will at least fill up to
         // param_value_size, then return an error.
         valueSize = param_value_size;
         static_cast<char*>(param_value)[--valueSize] = '\0';
@@ -216,15 +93,6 @@ cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue,
     cl_uint num_objects, const cl_mem* mem_objects,
     cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
     cl_event* event, cl_command_type cmd_type);
-
-// This may need moving somewhere tidier...
-
-struct PlatformIDS { const struct KHRicdVendorDispatchRec* dispatch_; };
-class PlatformID {
-public:
-    static PlatformIDS Platform;
-};
-#define AMD_PLATFORM (reinterpret_cast<cl_platform_id>(&amd::PlatformID::Platform))
 
 } // namespace amd
 

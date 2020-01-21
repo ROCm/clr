@@ -3,6 +3,7 @@
 //
 
 #include "cl_common.hpp"
+#include "vdi_common.hpp"
 
 #include "platform/kernel.hpp"
 #include "platform/ndrange.hpp"
