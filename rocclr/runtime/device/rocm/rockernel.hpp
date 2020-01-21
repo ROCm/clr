@@ -24,31 +24,12 @@ class Kernel : public device::Kernel {
 
   Kernel(std::string name, Program* prog);
 
-  const uint64_t& KernelCodeHandle() { return kernelCodeHandle_; }
-
-  const uint32_t WorkgroupGroupSegmentByteSize() const { return workgroupGroupSegmentByteSize_; }
-
-  const uint32_t workitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
-
-  const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
-
-  const uint8_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
-
   ~Kernel() {}
 
   //! Initializes the metadata required for this kernel
   virtual bool init() = 0;
 
   const Program* program() const { return static_cast<const Program*>(&prog_); }
-
- protected:
-//  Program* program_;                      //!< The roc::Program context
-  uint64_t kernelCodeHandle_;             //!< Kernel code handle (aka amd_kernel_code_t)
-  uint32_t workgroupGroupSegmentByteSize_;
-  uint32_t workitemPrivateSegmentByteSize_;
-  uint32_t kernargSegmentByteSize_;
-  uint32_t kernargSegmentAlignment_;
-  size_t kernelDirectiveOffset_;
 };
 
 class HSAILKernel : public roc::Kernel {

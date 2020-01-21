@@ -58,7 +58,7 @@ class HSAILKernel : public device::Kernel {
   const HSAILProgram& prog() const;
 
   //! Returns LDS size used in this kernel
-  uint32_t ldsSize() const { return workgroupGroupSegmentByteSize_; }
+  uint32_t ldsSize() const { return WorkgroupGroupSegmentByteSize(); }
 
   //! Returns pointer on CPU to AQL code info
   const amd_kernel_code_t* cpuAqlCode() const { return &akc_; }
@@ -114,10 +114,7 @@ class HSAILKernel : public device::Kernel {
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
   size_t codeSize_;  //!< Size of ISA code
-
-  uint32_t workgroupGroupSegmentByteSize_;  //!< LDS size used in the kernel
-  uint32_t kernargSegmentByteSize_;         //!< Size of kernel argument buffer
-};
+ };
 
 class LightningKernel : public HSAILKernel {
  public:

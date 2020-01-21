@@ -66,8 +66,7 @@ Program::Program(amd::Device& device, amd::Program& owner)
       buildError_(CL_SUCCESS),
       machineTarget_(nullptr),
       globalVariableTotalSize_(0),
-      programOptions_(nullptr),
-      metadata_{0}
+      programOptions_(nullptr)
 {
   memset(&binOpts_, 0, sizeof(binOpts_));
   binOpts_.struct_size = sizeof(binOpts_);
@@ -92,8 +91,6 @@ Program::~Program() {
       amd::Comgr::destroy_metadata(kernelMeta.second);
     }
     amd::Comgr::destroy_metadata(metadata_);
-#else
-    delete metadata_;
 #endif
   }
 }

@@ -215,21 +215,25 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  KernelMD* kernelMD = static_cast<KernelMD*>(data);
+  device::Kernel* kernel = static_cast<device::Kernel*>(data);
   switch (itAttrField->second) {
     case AttrField::ReqdWorkGroupSize:
       {
         status = amd::Comgr::get_metadata_list_size(value, &size);
         if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
+          std::vector<size_t> wrkSize;
           for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
             amd_comgr_metadata_node_t workgroupSize;
             status = amd::Comgr::index_list_metadata(value, i, &workgroupSize);
 
             if (status == AMD_COMGR_STATUS_SUCCESS &&
                 getMetaBuf(workgroupSize, &buf) == AMD_COMGR_STATUS_SUCCESS) {
-              kernelMD->mAttrs.mReqdWorkGroupSize.push_back(atoi(buf.c_str()));
+              wrkSize.push_back(atoi(buf.c_str()));
             }
             amd::Comgr::destroy_metadata(workgroupSize);
+          }
+          if (!wrkSize.empty()) {
+            kernel->setReqdWorkGroupSize(wrkSize[0], wrkSize[1], wrkSize[2]);
           }
         }
       }
@@ -238,31 +242,31 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
       {
         status = amd::Comgr::get_metadata_list_size(value, &size);
         if (status == AMD_COMGR_STATUS_SUCCESS && size == 3) {
+          std::vector<size_t> hintSize;
           for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
             amd_comgr_metadata_node_t workgroupSizeHint;
             status = amd::Comgr::index_list_metadata(value, i, &workgroupSizeHint);
 
             if (status == AMD_COMGR_STATUS_SUCCESS &&
                 getMetaBuf(workgroupSizeHint, &buf) == AMD_COMGR_STATUS_SUCCESS) {
-              kernelMD->mAttrs.mWorkGroupSizeHint.push_back(atoi(buf.c_str()));
+              hintSize.push_back(atoi(buf.c_str()));
             }
             amd::Comgr::destroy_metadata(workgroupSizeHint);
+          }
+          if (!hintSize.empty()) {
+            kernel->setWorkGroupSizeHint(hintSize[0], hintSize[1], hintSize[2]);
           }
         }
       }
       break;
     case AttrField::VecTypeHint:
-      {
-        if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
-          kernelMD->mAttrs.mVecTypeHint = buf;
-        }
+      if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
+        kernel->setVecTypeHint(buf);
       }
       break;
     case AttrField::RuntimeHandle:
-      {
-        if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
-          kernelMD->mAttrs.mRuntimeHandle = buf;
-        }
+      if (getMetaBuf(value,&buf) == AMD_COMGR_STATUS_SUCCESS) {
+        kernel->setRuntimeHandle(buf);
       }
       break;
     default:
@@ -299,43 +303,47 @@ static amd_comgr_status_t populateCodeProps(const amd_comgr_metadata_node_t key,
     status = getMetaBuf(value, &buf);
   }
 
-  KernelMD*  kernelMD = static_cast<KernelMD*>(data);
+  device::Kernel*  kernel = static_cast<device::Kernel*>(data);
   switch (itCodePropField->second) {
     case CodePropField::KernargSegmentSize:
-      kernelMD->mCodeProps.mKernargSegmentSize = atoi(buf.c_str());
+      kernel->SetKernargSegmentByteSize(atoi(buf.c_str()));
       break;
     case CodePropField::GroupSegmentFixedSize:
-      kernelMD->mCodeProps.mGroupSegmentFixedSize = atoi(buf.c_str());
+      kernel->SetWorkgroupGroupSegmentByteSize(atoi(buf.c_str()));
       break;
     case CodePropField::PrivateSegmentFixedSize:
-      kernelMD->mCodeProps.mPrivateSegmentFixedSize = atoi(buf.c_str());
+      kernel->SetWorkitemPrivateSegmentByteSize(atoi(buf.c_str()));
       break;
     case CodePropField::KernargSegmentAlign:
-      kernelMD->mCodeProps.mKernargSegmentAlign = atoi(buf.c_str());
+      kernel->SetKernargSegmentAlignment(atoi(buf.c_str()));
       break;
     case CodePropField::WavefrontSize:
-      kernelMD->mCodeProps.mWavefrontSize = atoi(buf.c_str());
+      kernel->workGroupInfo()->wavefrontSize_ = atoi(buf.c_str());
       break;
     case CodePropField::NumSGPRs:
-      kernelMD->mCodeProps.mNumSGPRs = atoi(buf.c_str());
+      kernel->workGroupInfo()->usedSGPRs_ = atoi(buf.c_str());
       break;
     case CodePropField::NumVGPRs:
-      kernelMD->mCodeProps.mNumVGPRs = atoi(buf.c_str());
+      kernel->workGroupInfo()->usedVGPRs_ = atoi(buf.c_str());
       break;
     case CodePropField::MaxFlatWorkGroupSize:
-      kernelMD->mCodeProps.mMaxFlatWorkGroupSize = atoi(buf.c_str());
+      kernel->workGroupInfo()->size_ = atoi(buf.c_str());
       break;
-    case CodePropField::IsDynamicCallStack:
-        kernelMD->mCodeProps.mIsDynamicCallStack = (buf.compare("true") == 0);
+    case CodePropField::IsDynamicCallStack: {
+      size_t mIsDynamicCallStack = (buf.compare("true") == 0);
+      }
       break;
-    case CodePropField::IsXNACKEnabled:
-      kernelMD->mCodeProps.mIsXNACKEnabled = (buf.compare("true") == 0);
+    case CodePropField::IsXNACKEnabled: {
+      size_t mIsXNACKEnabled = (buf.compare("true") == 0);
+      }
       break;
-    case CodePropField::NumSpilledSGPRs:
-      kernelMD->mCodeProps.mNumSpilledSGPRs = atoi(buf.c_str());
+    case CodePropField::NumSpilledSGPRs: {
+      size_t mNumSpilledSGPRs = atoi(buf.c_str());
+      }
       break;
-    case CodePropField::NumSpilledVGPRs:
-      kernelMD->mCodeProps.mNumSpilledVGPRs = atoi(buf.c_str());
+    case CodePropField::NumSpilledVGPRs: {
+      size_t mNumSpilledVGPRs = atoi(buf.c_str());
+      }
       break;
     default:
       return AMD_COMGR_STATUS_ERROR;
@@ -501,76 +509,86 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  KernelMD* kernelMD = static_cast<KernelMD*>(data);
+  device::Kernel* kernel = static_cast<device::Kernel*>(data);
   switch (itKernelField->second) {
     case KernelField::ReqdWorkGroupSize:
       status = amd::Comgr::get_metadata_list_size(value, &size);
       if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
+        std::vector<size_t> wrkSize;
         for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
           amd_comgr_metadata_node_t workgroupSize;
           status = amd::Comgr::index_list_metadata(value, i, &workgroupSize);
 
           if (status == AMD_COMGR_STATUS_SUCCESS &&
               getMetaBuf(workgroupSize, &buf) == AMD_COMGR_STATUS_SUCCESS) {
-            kernelMD->mAttrs.mReqdWorkGroupSize.push_back(atoi(buf.c_str()));
+            wrkSize.push_back(atoi(buf.c_str()));
           }
           amd::Comgr::destroy_metadata(workgroupSize);
+        }
+        if (!wrkSize.empty()) {
+          kernel->setReqdWorkGroupSize(wrkSize[0], wrkSize[1], wrkSize[2]);
         }
       }
       break;
     case KernelField::WorkGroupSizeHint:
       status = amd::Comgr::get_metadata_list_size(value, &size);
       if (status == AMD_COMGR_STATUS_SUCCESS && size == 3) {
+        std::vector<size_t> hintSize;
         for (size_t i = 0; i < size && status == AMD_COMGR_STATUS_SUCCESS; i++) {
           amd_comgr_metadata_node_t workgroupSizeHint;
           status = amd::Comgr::index_list_metadata(value, i, &workgroupSizeHint);
 
           if (status == AMD_COMGR_STATUS_SUCCESS &&
               getMetaBuf(workgroupSizeHint, &buf) == AMD_COMGR_STATUS_SUCCESS) {
-            kernelMD->mAttrs.mWorkGroupSizeHint.push_back(atoi(buf.c_str()));
+            hintSize.push_back(atoi(buf.c_str()));
           }
           amd::Comgr::destroy_metadata(workgroupSizeHint);
+        }
+        if (!hintSize.empty()) {
+          kernel->setWorkGroupSizeHint(hintSize[0], hintSize[1], hintSize[2]);
         }
       }
       break;
     case KernelField::VecTypeHint:
-      kernelMD->mAttrs.mVecTypeHint = buf;
+      kernel->setVecTypeHint(buf);
       break;
     case KernelField::DeviceEnqueueSymbol:
-      kernelMD->mAttrs.mRuntimeHandle = buf;
+      kernel->setRuntimeHandle(buf);
       break;
     case KernelField::KernargSegmentSize:
-      kernelMD->mCodeProps.mKernargSegmentSize = atoi(buf.c_str());
+      kernel->SetKernargSegmentByteSize(atoi(buf.c_str()));
       break;
     case KernelField::GroupSegmentFixedSize:
-      kernelMD->mCodeProps.mGroupSegmentFixedSize = atoi(buf.c_str());
+      kernel->SetWorkgroupGroupSegmentByteSize(atoi(buf.c_str()));
       break;
     case KernelField::PrivateSegmentFixedSize:
-      kernelMD->mCodeProps.mPrivateSegmentFixedSize = atoi(buf.c_str());
+      kernel->SetWorkitemPrivateSegmentByteSize(atoi(buf.c_str()));
       break;
     case KernelField::KernargSegmentAlign:
-      kernelMD->mCodeProps.mKernargSegmentAlign = atoi(buf.c_str());
+      kernel->SetKernargSegmentAlignment(atoi(buf.c_str()));
       break;
     case KernelField::WavefrontSize:
-      kernelMD->mCodeProps.mWavefrontSize = atoi(buf.c_str());
+      kernel->workGroupInfo()->wavefrontSize_ = atoi(buf.c_str());
       break;
     case KernelField::NumSGPRs:
-      kernelMD->mCodeProps.mNumSGPRs = atoi(buf.c_str());
+      kernel->workGroupInfo()->usedSGPRs_ = atoi(buf.c_str());
       break;
     case KernelField::NumVGPRs:
-      kernelMD->mCodeProps.mNumVGPRs = atoi(buf.c_str());
+      kernel->workGroupInfo()->usedVGPRs_ = atoi(buf.c_str());
       break;
     case KernelField::MaxFlatWorkGroupSize:
-      kernelMD->mCodeProps.mMaxFlatWorkGroupSize = atoi(buf.c_str());
+      kernel->workGroupInfo()->size_ = atoi(buf.c_str());
       break;
-    case KernelField::NumSpilledSGPRs:
-      kernelMD->mCodeProps.mNumSpilledSGPRs = atoi(buf.c_str());
+    case KernelField::NumSpilledSGPRs: {
+      size_t mNumSpilledSGPRs = atoi(buf.c_str());
+      }
       break;
-    case KernelField::NumSpilledVGPRs:
-      kernelMD->mCodeProps.mNumSpilledVGPRs = atoi(buf.c_str());
+    case KernelField::NumSpilledVGPRs: {
+      size_t mNumSpilledVGPRs = atoi(buf.c_str());
+      }
       break;
     case KernelField::SymbolName:
-      kernelMD->mSymbolName = buf;
+      kernel->SetSymbolName(buf);
       break;
     default:
       return AMD_COMGR_STATUS_ERROR;
@@ -1087,8 +1105,7 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
-bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMetaNode,
-                                      KernelMD* kernelMD) {
+bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode) {
 
   InitParameters(kernelMetaNode);
 
@@ -1105,8 +1122,10 @@ bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMeta
         amd_comgr_metadata_node_t symbolName;
         status = amd::Comgr::metadata_lookup(kernelMetaNode, "SymbolName", &symbolName);
         if (status == AMD_COMGR_STATUS_SUCCESS) {
-          status = getMetaBuf(symbolName, &(kernelMD->mSymbolName));
+          std::string name;
+          status = getMetaBuf(symbolName, &name);
           amd::Comgr::destroy_metadata(symbolName);
+          SetSymbolName(name);
         }
 
         amd_comgr_metadata_node_t attrMeta;
@@ -1114,7 +1133,7 @@ bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMeta
           if (amd::Comgr::metadata_lookup(kernelMetaNode, "Attrs", &attrMeta) ==
               AMD_COMGR_STATUS_SUCCESS) {
             status = amd::Comgr::iterate_map_metadata(attrMeta, populateAttrs,
-                                                      static_cast<void*>(kernelMD));
+                                                      static_cast<void*>(this));
             amd::Comgr::destroy_metadata(attrMeta);
           }
         }
@@ -1127,14 +1146,14 @@ bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMeta
 
         if (status == AMD_COMGR_STATUS_SUCCESS) {
           status = amd::Comgr::iterate_map_metadata(codePropsMeta, populateCodeProps,
-                                                    static_cast<void*>(kernelMD));
+                                                    static_cast<void*>(this));
           amd::Comgr::destroy_metadata(codePropsMeta);
         }
       }
       break;
     case 3: {
         status = amd::Comgr::iterate_map_metadata(kernelMetaNode, populateKernelMetaV3,
-                                                  static_cast<void*>(kernelMD));
+                                                  static_cast<void*>(this));
       }
       break;
     default:
@@ -1144,25 +1163,6 @@ bool Kernel::GetAttrCodePropMetadata( const amd_comgr_metadata_node_t kernelMeta
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return false;
-  }
-
-  // Setup the workgroup info based on the attributes and code properties
-  if (!kernelMD->mAttrs.mReqdWorkGroupSize.empty()) {
-    const auto& requiredWorkgroupSize = kernelMD->mAttrs.mReqdWorkGroupSize;
-    workGroupInfo_.compileSize_[0] = requiredWorkgroupSize[0];
-    workGroupInfo_.compileSize_[1] = requiredWorkgroupSize[1];
-    workGroupInfo_.compileSize_[2] = requiredWorkgroupSize[2];
-  }
-
-  if (!kernelMD->mAttrs.mWorkGroupSizeHint.empty()) {
-    const auto& workgroupSizeHint = kernelMD->mAttrs.mWorkGroupSizeHint;
-    workGroupInfo_.compileSizeHint_[0] = workgroupSizeHint[0];
-    workGroupInfo_.compileSizeHint_[1] = workgroupSizeHint[1];
-    workGroupInfo_.compileSizeHint_[2] = workgroupSizeHint[2];
-  }
-
-  if (!kernelMD->mAttrs.mVecTypeHint.empty()) {
-    workGroupInfo_.compileVecTypeHint_ = kernelMD->mAttrs.mVecTypeHint.c_str();
   }
 
   return true;
