@@ -9,6 +9,60 @@
 #include "platform/memory.hpp"
 #include "devwavelimiter.hpp"
 
+namespace amd {
+class Device;
+class KernelSignature;
+class NDRange;
+
+struct KernelParameterDescriptor {
+  enum {
+    Value = 0,
+    HiddenNone = 1,
+    HiddenGlobalOffsetX = 2,
+    HiddenGlobalOffsetY = 3,
+    HiddenGlobalOffsetZ = 4,
+    HiddenPrintfBuffer = 5,
+    HiddenDefaultQueue = 6,
+    HiddenCompletionAction = 7,
+    MemoryObject = 8,
+    ReferenceObject = 9,
+    ValueObject = 10,
+    ImageObject = 11,
+    SamplerObject = 12,
+    QueueObject = 13,
+    HiddenMultiGridSync = 14,
+    HiddenHostcallBuffer = 15,
+  };
+  clk_value_type_t type_;  //!< The parameter's type
+  size_t offset_;          //!< Its offset in the parameter's stack
+  size_t size_;            //!< Its size in bytes
+  union InfoData {
+    struct {
+      uint32_t oclObject_ : 4;    //!< OCL object type
+      uint32_t readOnly_ : 1;     //!< OCL object is read only, applied to memory only
+      uint32_t rawPointer_ : 1;   //!< Arguments have a raw GPU VA
+      uint32_t defined_ : 1;      //!< The argument was defined by the app
+      uint32_t hidden_ : 1;       //!< It's a hidden argument
+      uint32_t shared_ : 1;       //!< Dynamic shared memory
+      uint32_t reserved_ : 3;     //!< Reserved       
+      uint32_t arrayIndex_ : 20;  //!< Index in the objects array or LDS alignment
+    };
+    uint32_t allValues_;
+    InfoData() : allValues_(0) {}
+  } info_;
+
+  cl_kernel_arg_address_qualifier addressQualifier_ =
+      CL_KERNEL_ARG_ADDRESS_PRIVATE;                  //!< Argument's address qualifier
+  cl_kernel_arg_access_qualifier accessQualifier_ =
+      CL_KERNEL_ARG_ACCESS_NONE;                      //!< Argument's access qualifier
+  cl_kernel_arg_type_qualifier typeQualifier_;        //!< Argument's type qualifier
+
+  std::string name_;      //!< The parameter's name in the source
+  std::string typeName_;  //!< Argument's type name
+  uint32_t alignment_;    //!< Argument's alignment
+};
+}
+
 #if defined(USE_COMGR_LIBRARY)
 namespace llvm {
   namespace AMDGPU {
@@ -27,12 +81,6 @@ struct RuntimeHandle {
 
 #include "amd_comgr.h"
 #include "llvm/Support/AMDGPUMetadata.h"
-typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-
-using llvm::AMDGPU::HSAMD::AccessQualifier;
-using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
-using llvm::AMDGPU::HSAMD::ValueKind;
-using llvm::AMDGPU::HSAMD::ValueType;
 
 //  for Code Object V3
 enum class ArgField : uint8_t {
@@ -76,7 +124,7 @@ enum class CodePropField : uint8_t {
 };
 
 
-static const std::map<std::string,ArgField> ArgFieldMap =
+static const std::map<std::string, ArgField> ArgFieldMap =
 {
   {"Name",          ArgField::Name},
   {"TypeName",      ArgField::TypeName},
@@ -94,58 +142,54 @@ static const std::map<std::string,ArgField> ArgFieldMap =
   {"IsPipe",        ArgField::IsPipe}
 };
 
-static const std::map<std::string,ValueKind> ArgValueKind =
-{
-  {"ByValue",                 ValueKind::ByValue},
-  {"GlobalBuffer",            ValueKind::GlobalBuffer},
-  {"DynamicSharedPointer",    ValueKind::DynamicSharedPointer},
-  {"Sampler",                 ValueKind::Sampler},
-  {"Image",                   ValueKind::Image},
-  {"Pipe",                    ValueKind::Pipe},
-  {"Queue",                   ValueKind::Queue},
-  {"HiddenGlobalOffsetX",     ValueKind::HiddenGlobalOffsetX},
-  {"HiddenGlobalOffsetY",     ValueKind::HiddenGlobalOffsetY},
-  {"HiddenGlobalOffsetZ",     ValueKind::HiddenGlobalOffsetZ},
-  {"HiddenNone",              ValueKind::HiddenNone},
-  {"HiddenPrintfBuffer",      ValueKind::HiddenPrintfBuffer},
-  {"HiddenDefaultQueue",      ValueKind::HiddenDefaultQueue},
-  {"HiddenCompletionAction",  ValueKind::HiddenCompletionAction},
-  {"HiddenMultigridSyncArg",  ValueKind::HiddenMultiGridSyncArg},
-  {"HiddenHostcallBuffer",    ValueKind::HiddenHostcallBuffer},
+static const std::map<std::string, uint32_t> ArgValueKind = {
+  {"ByValue",                 amd::KernelParameterDescriptor::ValueObject},
+  {"GlobalBuffer",            amd::KernelParameterDescriptor::MemoryObject},
+  {"DynamicSharedPointer",    amd::KernelParameterDescriptor::MemoryObject},
+  {"Sampler",                 amd::KernelParameterDescriptor::SamplerObject},
+  {"Image",                   amd::KernelParameterDescriptor::ImageObject },
+  {"Pipe",                    amd::KernelParameterDescriptor::MemoryObject},
+  {"Queue",                   amd::KernelParameterDescriptor::QueueObject},
+  {"HiddenGlobalOffsetX",     amd::KernelParameterDescriptor::HiddenGlobalOffsetX},
+  {"HiddenGlobalOffsetY",     amd::KernelParameterDescriptor::HiddenGlobalOffsetY},
+  {"HiddenGlobalOffsetZ",     amd::KernelParameterDescriptor::HiddenGlobalOffsetZ},
+  {"HiddenNone",              amd::KernelParameterDescriptor::HiddenNone},
+  {"HiddenPrintfBuffer",      amd::KernelParameterDescriptor::HiddenPrintfBuffer},
+  {"HiddenDefaultQueue",      amd::KernelParameterDescriptor::HiddenDefaultQueue},
+  {"HiddenCompletionAction",  amd::KernelParameterDescriptor::HiddenCompletionAction},
+  {"HiddenMultigridSyncArg",  amd::KernelParameterDescriptor::HiddenMultiGridSync},
+  {"HiddenHostcallBuffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer}
 };
 
-static const std::map<std::string,ValueType> ArgValueType =
-{
-  {"Struct",  ValueType::Struct},
-  {"I8",      ValueType::I8},
-  {"U8",      ValueType::U8},
-  {"I16",     ValueType::I16},
-  {"U16",     ValueType::U16},
-  {"F16",     ValueType::F16},
-  {"I32",     ValueType::I32},
-  {"U32",     ValueType::U32},
-  {"F32",     ValueType::F32},
-  {"I64",     ValueType::I64},
-  {"U64",     ValueType::U64},
-  {"F64",     ValueType::F64}
+static const std::map<std::string, std::pair<uint32_t, uint32_t>> ArgValueType = {
+  {"Struct",  {0, 0}},
+  {"I8",      {0, 1}},
+  {"U8",      {0, 1}},
+  {"I16",     {1, 2}},
+  {"U16",     {1, 2}},
+  {"F16",     {4, 2}},
+  {"I32",     {2, 4}},
+  {"U32",     {2, 4}},
+  {"F32",     {4, 4}},
+  {"I64",     {3, 8}},
+  {"U64",     {3, 8}},
+  {"F64",     {5, 8}}
 };
 
-static const std::map<std::string,AccessQualifier> ArgAccQual =
-{
-  {"Default",   AccessQualifier::Default},
-  {"ReadOnly",  AccessQualifier::ReadOnly},
-  {"WriteOnly", AccessQualifier::WriteOnly},
-  {"ReadWrite", AccessQualifier::ReadWrite}
+static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQual = {
+  {"Default",   CL_KERNEL_ARG_ACCESS_NONE},
+  {"ReadOnly",  CL_KERNEL_ARG_ACCESS_READ_ONLY},
+  {"WriteOnly", CL_KERNEL_ARG_ACCESS_WRITE_ONLY},
+  {"ReadWrite", CL_KERNEL_ARG_ACCESS_READ_WRITE}
 };
 
-static const std::map<std::string,AddressSpaceQualifier> ArgAddrSpaceQual =
-{
-  {"Private",   AddressSpaceQualifier::Private},
-  {"Global",    AddressSpaceQualifier::Global},
-  {"Constant",  AddressSpaceQualifier::Constant},
-  {"Local",     AddressSpaceQualifier::Local},
-  {"Generic",   AddressSpaceQualifier::Generic},
-  {"Region",    AddressSpaceQualifier::Region}
+static const std::map<std::string, cl_kernel_arg_address_qualifier> ArgAddrSpaceQual = {
+  {"Private",   CL_KERNEL_ARG_ADDRESS_PRIVATE},
+  {"Global",    CL_KERNEL_ARG_ADDRESS_GLOBAL},
+  {"Constant",  CL_KERNEL_ARG_ADDRESS_CONSTANT},
+  {"Local",     CL_KERNEL_ARG_ADDRESS_LOCAL},
+  {"Generic",   CL_KERNEL_ARG_ADDRESS_GLOBAL},
+  {"Region",    CL_KERNEL_ARG_ADDRESS_PRIVATE}
 };
 
 static const std::map<std::string,AttrField> AttrFieldMap =
@@ -209,58 +253,54 @@ static const std::map<std::string,ArgField> ArgFieldMapV3 =
   {".is_pipe",        ArgField::IsPipe}
 };
 
-static const std::map<std::string,ValueKind> ArgValueKindV3 =
-{
-  {"by_value",                  ValueKind::ByValue},
-  {"global_buffer",             ValueKind::GlobalBuffer},
-  {"dynamic_shared_pointer",    ValueKind::DynamicSharedPointer},
-  {"sampler",                   ValueKind::Sampler},
-  {"image",                     ValueKind::Image},
-  {"pipe",                      ValueKind::Pipe},
-  {"queue",                     ValueKind::Queue},
-  {"hidden_global_offset_x",    ValueKind::HiddenGlobalOffsetX},
-  {"hidden_global_offset_y",    ValueKind::HiddenGlobalOffsetY},
-  {"hidden_global_offset_z",    ValueKind::HiddenGlobalOffsetZ},
-  {"hidden_none",               ValueKind::HiddenNone},
-  {"hidden_printf_buffer",      ValueKind::HiddenPrintfBuffer},
-  {"hidden_default_queue",      ValueKind::HiddenDefaultQueue},
-  {"hidden_completion_action",  ValueKind::HiddenCompletionAction},
-  {"hidden_multigrid_sync_arg", ValueKind::HiddenMultiGridSyncArg},
-  {"hidden_hostcall_buffer",    ValueKind::HiddenHostcallBuffer},
+static const std::map<std::string, uint32_t> ArgValueKindV3 = {
+  {"by_value",                  amd::KernelParameterDescriptor::ValueObject},
+  {"global_buffer",             amd::KernelParameterDescriptor::MemoryObject},
+  {"dynamic_shared_pointer",    amd::KernelParameterDescriptor::MemoryObject},
+  {"sampler",                   amd::KernelParameterDescriptor::SamplerObject},
+  {"image",                     amd::KernelParameterDescriptor::ImageObject },
+  {"pipe",                      amd::KernelParameterDescriptor::MemoryObject},
+  {"queue",                     amd::KernelParameterDescriptor::QueueObject},
+  {"hidden_global_offset_x",    amd::KernelParameterDescriptor::HiddenGlobalOffsetX},
+  {"hidden_global_offset_y",    amd::KernelParameterDescriptor::HiddenGlobalOffsetY},
+  {"hidden_global_offset_z",    amd::KernelParameterDescriptor::HiddenGlobalOffsetZ},
+  {"hidden_none",               amd::KernelParameterDescriptor::HiddenNone},
+  {"hidden_printf_buffer",      amd::KernelParameterDescriptor::HiddenPrintfBuffer},
+  {"hidden_default_queue",      amd::KernelParameterDescriptor::HiddenDefaultQueue},
+  {"hidden_completion_action",  amd::KernelParameterDescriptor::HiddenCompletionAction},
+  {"hidden_multigrid_sync_arg", amd::KernelParameterDescriptor::HiddenMultiGridSync},
+  {"hidden_hostcall_buffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer}
 };
 
-static const std::map<std::string,ValueType> ArgValueTypeV3 =
-{
-  {"struct",  ValueType::Struct},
-  {"i8",      ValueType::I8},
-  {"u8",      ValueType::U8},
-  {"i16",     ValueType::I16},
-  {"u16",     ValueType::U16},
-  {"f16",     ValueType::F16},
-  {"i32",     ValueType::I32},
-  {"u32",     ValueType::U32},
-  {"f32",     ValueType::F32},
-  {"i64",     ValueType::I64},
-  {"u64",     ValueType::U64},
-  {"f64",     ValueType::F64}
+static const std::map<std::string, std::pair<uint32_t, uint32_t>> ArgValueTypeV3 = {
+  {"struct",  {0, 0}},
+  {"i8",      {0, 1}},
+  {"u8",      {0, 1}},
+  {"i16",     {1, 2}},
+  {"u16",     {1, 2}},
+  {"f16",     {4, 2}},
+  {"i32",     {2, 4}},
+  {"u32",     {2, 4}},
+  {"f32",     {4, 4}},
+  {"i64",     {3, 8}},
+  {"u64",     {3, 8}},
+  {"f64",     {5, 8}}
 };
 
-static const std::map<std::string,AccessQualifier> ArgAccQualV3 =
-{
-  {"default",    AccessQualifier::Default},
-  {"read_only",  AccessQualifier::ReadOnly},
-  {"write_only", AccessQualifier::WriteOnly},
-  {"read_write", AccessQualifier::ReadWrite}
+static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQualV3 = {
+  {"default",    CL_KERNEL_ARG_ACCESS_NONE},
+  {"read_only",  CL_KERNEL_ARG_ACCESS_READ_ONLY},
+  {"write_only", CL_KERNEL_ARG_ACCESS_WRITE_ONLY},
+  {"read_write", CL_KERNEL_ARG_ACCESS_READ_WRITE}
 };
 
-static const std::map<std::string,AddressSpaceQualifier> ArgAddrSpaceQualV3 =
-{
-  {"private",   AddressSpaceQualifier::Private},
-  {"global",    AddressSpaceQualifier::Global},
-  {"constant",  AddressSpaceQualifier::Constant},
-  {"local",     AddressSpaceQualifier::Local},
-  {"generic",   AddressSpaceQualifier::Generic},
-  {"region",    AddressSpaceQualifier::Region}
+static const std::map<std::string, cl_kernel_arg_address_qualifier> ArgAddrSpaceQualV3 = {
+  {"private",   CL_KERNEL_ARG_ADDRESS_PRIVATE},
+  {"global",    CL_KERNEL_ARG_ADDRESS_GLOBAL},
+  {"constant",  CL_KERNEL_ARG_ADDRESS_CONSTANT},
+  {"local",     CL_KERNEL_ARG_ADDRESS_LOCAL},
+  {"generic",   CL_KERNEL_ARG_ADDRESS_GLOBAL},
+  {"region",    CL_KERNEL_ARG_ADDRESS_PRIVATE}
 };
 
 static const std::map<std::string,KernelField> KernelFieldMapV3 =
@@ -282,7 +322,6 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
   {".vgpr_spill_count",           KernelField::NumSpilledVGPRs}
 };
 
-
 #endif  // defined(USE_COMGR_LIBRARY)
 
 namespace amd {
@@ -297,57 +336,6 @@ namespace amd {
     }  // code
   }  // hsa
 }  // amd
-
-namespace amd {
-
-class Device;
-class KernelSignature;
-class NDRange;
-
-struct KernelParameterDescriptor {
-  enum {
-    Value = 0,
-    HiddenNone = 1,
-    HiddenGlobalOffsetX = 2,
-    HiddenGlobalOffsetY = 3,
-    HiddenGlobalOffsetZ = 4,
-    HiddenPrintfBuffer = 5,
-    HiddenDefaultQueue = 6,
-    HiddenCompletionAction = 7,
-    MemoryObject = 8,
-    ReferenceObject = 9,
-    ValueObject = 10,
-    ImageObject = 11,
-    SamplerObject = 12,
-    QueueObject = 13,
-    HiddenMultiGridSync = 14,
-    HiddenHostcallBuffer = 15,
-  };
-  clk_value_type_t type_;  //!< The parameter's type
-  size_t offset_;          //!< Its offset in the parameter's stack
-  size_t size_;            //!< Its size in bytes
-  union InfoData {
-    struct {
-      uint32_t oclObject_ : 4;  //!< OCL object type
-      uint32_t readOnly_ : 1;   //!< OCL object is read only, applied to memory only
-      uint32_t rawPointer_ : 1; //!< Arguments have a raw GPU VA
-      uint32_t defined_ : 1;    //!< The argument was defined by the app
-      uint32_t reserved_ : 1;   //!< reserved
-      uint32_t arrayIndex_ : 24;//!< Index in the objects array or LDS alignment
-    };
-    uint32_t allValues_;
-    InfoData() : allValues_(0) {}
-  } info_;
-
-  cl_kernel_arg_address_qualifier addressQualifier_;  //!< Argument's address qualifier
-  cl_kernel_arg_access_qualifier accessQualifier_;    //!< Argument's access qualifier
-  cl_kernel_arg_type_qualifier typeQualifier_;        //!< Argument's type qualifier
-
-  std::string name_;      //!< The parameter's name in the source
-  std::string typeName_;  //!< Argument's type name
-};
-
-}
 
 namespace device {
 
