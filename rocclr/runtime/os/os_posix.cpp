@@ -154,95 +154,6 @@ static void __exit() { Os::tearDown(); }
 
 void Os::tearDown() { Thread::tearDown(); }
 
-bool Os::iterateSymbols(void* handle, Os::SymbolCallback callback, void* data) {
-  const char magic[] = "__OpenCL_";
-  const size_t len = sizeof(magic) - 1;
-
-  struct link_map* link_map = NULL;
-  if (::dlinfo(handle, RTLD_DI_LINKMAP, &link_map) != 0) {
-    return false;
-  }
-
-  assert(link_map != NULL && "just checking");
-  const ElfW(Dyn)* dyn = (ElfW(Dyn)*)(link_map->l_ld);
-
-  const Elf32_Word* gnuhash = NULL;
-  const Elf_Symndx* hash = NULL;
-  const ElfW(Sym)* symbols = NULL;
-  const char* stringTable = NULL;
-  size_t tableSize = 0;
-
-  // Search for the string table address and size.
-  while (dyn->d_tag != DT_NULL) {
-    switch (dyn->d_tag) {
-      case DT_HASH:
-        hash = (Elf_Symndx*)dyn->d_un.d_ptr;
-        break;
-      case DT_GNU_HASH:
-        gnuhash = (Elf32_Word*)dyn->d_un.d_ptr;
-        break;
-      case DT_SYMTAB:
-        symbols = (ElfW(Sym)*)dyn->d_un.d_ptr;
-        break;
-      case DT_STRTAB:
-        stringTable = (const char*)dyn->d_un.d_ptr;
-        break;
-      case DT_STRSZ:
-        tableSize = dyn->d_un.d_val;
-        break;
-      default:
-        break;
-    }
-    ++dyn;
-  }
-  if (stringTable == NULL || tableSize == 0 || symbols == NULL ||
-      (hash == NULL && gnuhash == NULL)) {
-    // Could not find the string table
-    return false;
-  }
-
-  if (gnuhash == NULL) {
-    // Read the defined symbols out of the classic SYSV hashtable.
-
-    Elf_Symndx nbuckets = hash[1];
-    for (Elf_Symndx i = 0; i < nbuckets; ++i) {
-      if (symbols[i].st_shndx == SHN_UNDEF && symbols[i].st_value == 0) {
-        continue;
-      }
-
-      const char* name = &stringTable[symbols[i].st_name];
-      if (::strncmp(name, magic, len) == 0) {
-        callback(name, (const void*)(link_map->l_addr + symbols[i].st_value), data);
-      }
-    }
-    return true;
-  }
-
-  // Read the defined symbols out of the GNU hashtable.
-
-  Elf_Symndx nbuckets = gnuhash[0];
-  Elf32_Word bias = gnuhash[1];
-  Elf32_Word nwords = gnuhash[2];
-  const Elf32_Word* buckets = &gnuhash[4 + __ELF_NATIVE_CLASS / 32 * nwords];
-  const Elf32_Word* chain0 = &buckets[nbuckets] - bias;
-
-  for (Elf_Symndx i = 0; i < nbuckets; ++i) {
-    size_t index = buckets[i];
-    const Elf32_Word* hasharr = &chain0[index];
-    do {
-      if (symbols[index].st_shndx != SHN_UNDEF || symbols[index].st_value != 0) {
-        const char* name = &stringTable[symbols[index].st_name];
-        if (::strncmp(name, magic, len) == 0) {
-          callback(name, (const void*)(link_map->l_addr + symbols[index].st_value), data);
-        }
-      }
-      ++index;
-    } while ((*hasharr++ & 1) == 0);
-  }
-
-  return true;
-}
-
 void* Os::loadLibrary_(const char* filename) {
   return (*filename == '\0') ? NULL : ::dlopen(filename, RTLD_LAZY);
 }
@@ -354,7 +265,7 @@ void Os::alignedFree(void* mem) { ::free(mem); }
 void Os::currentStackInfo(address* base, size_t* size) {
   // There could be some issue trying to get the pthread_attr of
   // the primordial thread if the pthread library is not present
-  // at load time (a binary loads the OpenCL app/runtime dynamically.
+  // at load time (a binary loads the OpenCL/HIP app/runtime dynamically.
   // We should look into this... -laurent
 
   pthread_t self = ::pthread_self();

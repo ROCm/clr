@@ -8,20 +8,20 @@
 #include "top.hpp"
 #include "thread/monitor.hpp"
 
-#include "amdocl/cl_agent_amd.h"
+#include "vdi_agent_amd.h"
 
 namespace amd {
 
-class Agent : public _cl_agent {
+class Agent : public _vdi_agent {
  private:
   //! Linked list of agent instances
   static Agent* list_;
   //! Agent API entry points
-  static cl_agent entryPoints_;
+  static vdi_agent entryPoints_;
   //! Capabilities supported by this Agent implementation
-  static cl_agent_capabilities potentialCapabilities_;
+  static vdi_agent_capabilities potentialCapabilities_;
   //! Union of all agent's enabled capabilities
-  static cl_agent_capabilities enabledCapabilities_;
+  static vdi_agent_capabilities enabledCapabilities_;
   //! Monitor to protect the global capabilities
   static Monitor capabilitiesLock_;
 
@@ -31,7 +31,7 @@ class Agent : public _cl_agent {
   //! Teardown the agent.
   static void tearDown();
   //! Return the capabilities supported by this agent.
-  static cl_agent_capabilities potentialCapabilities() { return potentialCapabilities_; }
+  static vdi_agent_capabilities potentialCapabilities() { return potentialCapabilities_; }
 
 #define AGENT_FLAG(name)                                                                           \
   inline static bool shouldPost##name() { return enabledCapabilities_.canGenerate##name != 0; }
@@ -97,9 +97,9 @@ class Agent : public _cl_agent {
   bool ready_;     //!< Is this instance ready?
 
   //! Callbacks vector.
-  cl_agent_callbacks callbacks_;
+  vdi_agent_callbacks callbacks_;
   //! Capabilities for this agent.
-  cl_agent_capabilities capabilities_;
+  vdi_agent_capabilities capabilities_;
 
 #define AGENT_FLAG(name)                                                                           \
   inline bool canGenerate##name() { return capabilities_.canGenerate##name != 0; }
@@ -124,15 +124,15 @@ class Agent : public _cl_agent {
   bool isReady() const { return ready_; }
 
   //! Set the callback vector for this agent
-  cl_int setCallbacks(const cl_agent_callbacks* callbacks, size_t size);
+  cl_int setCallbacks(const vdi_agent_callbacks* callbacks, size_t size);
 
   //! Return the current capabilities.
-  cl_int getCapabilities(cl_agent_capabilities* caps);
+  cl_int getCapabilities(vdi_agent_capabilities* caps);
   //! Set the current capabilities.
-  cl_int setCapabilities(const cl_agent_capabilities* caps, bool install);
+  cl_int setCapabilities(const vdi_agent_capabilities* caps, bool install);
 
   //! Return the Agent instance from the given cl_agent
-  inline static Agent* get(cl_agent* agent) {
+  inline static Agent* get(vdi_agent* agent) {
     return const_cast<Agent*>(static_cast<const Agent*>(agent));
   }
 };

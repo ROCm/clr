@@ -14,7 +14,7 @@
 #include "thread/monitor.hpp"
 #include "CL/cl_ext.h"
 
-#include "amdocl/cl_common.hpp"
+#include "vdi_common.hpp"
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"

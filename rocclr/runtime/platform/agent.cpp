@@ -5,7 +5,8 @@
 #include "platform/agent.hpp"
 #include "platform/object.hpp"
 #include "os/os.hpp"
-#include "amdocl/cl_common.hpp"
+#include "vdi_agent_amd.h"
+#include "vdi_common.hpp"
 
 #include <cstdlib>
 #include <cstring>
@@ -15,8 +16,8 @@
 namespace amd {
 
 
-typedef cl_int(CL_CALLBACK* clAgent_OnLoad_fn)(cl_agent* agent);
-typedef void(CL_CALLBACK* clAgent_OnUnload_fn)(cl_agent* agent);
+typedef cl_int(CL_CALLBACK* vdiAgent_OnLoad_fn)(vdi_agent* agent);
+typedef void(CL_CALLBACK* vdiAgent_OnUnload_fn)(vdi_agent* agent);
 
 Agent::Agent(const char* moduleName) : ready_(false) {
   ::memset(&callbacks_, '\0', sizeof(callbacks_));
@@ -27,13 +28,13 @@ Agent::Agent(const char* moduleName) : ready_(false) {
     return;
   }
 
-  clAgent_OnLoad_fn onLoad =
-      reinterpret_cast<clAgent_OnLoad_fn>(Os::getSymbol(library_, "clAgent_OnLoad"));
+  vdiAgent_OnLoad_fn onLoad =
+      reinterpret_cast<vdiAgent_OnLoad_fn>(Os::getSymbol(library_, "vdiAgent_OnLoad"));
   if (onLoad == NULL) {
     return;
   }
 
-  _cl_agent* agent = static_cast<_cl_agent*>(this);
+  _vdi_agent* agent = static_cast<_vdi_agent*>(this);
   ::memcpy(agent, &entryPoints_, sizeof(entryPoints_));
 
   // Register in the agents linked-list.
@@ -50,24 +51,24 @@ Agent::Agent(const char* moduleName) : ready_(false) {
 
 Agent::~Agent() {
   if (library_ != NULL) {
-    clAgent_OnUnload_fn onUnload =
-        reinterpret_cast<clAgent_OnUnload_fn>(Os::getSymbol(library_, "clAgent_OnUnload"));
+    vdiAgent_OnUnload_fn onUnload =
+        reinterpret_cast<vdiAgent_OnUnload_fn>(Os::getSymbol(library_, "vdiAgent_OnUnload"));
 
     if (onUnload != NULL) {
-      onUnload(static_cast<cl_agent*>(this));
+      onUnload(static_cast<vdi_agent*>(this));
     }
 
     Os::unloadLibrary(library_);
   }
 }
 
-cl_int Agent::setCallbacks(const cl_agent_callbacks* callbacks, size_t size) {
+cl_int Agent::setCallbacks(const vdi_agent_callbacks* callbacks, size_t size) {
   // FIXME_lmoriche: check size
   memcpy(&callbacks_, callbacks, size);
   return CL_SUCCESS;
 }
 
-cl_int Agent::getCapabilities(cl_agent_capabilities* caps) {
+cl_int Agent::getCapabilities(vdi_agent_capabilities* caps) {
   if (caps == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -75,50 +76,50 @@ cl_int Agent::getCapabilities(cl_agent_capabilities* caps) {
   return CL_SUCCESS;
 }
 
-static inline cl_agent_capabilities operator~(const cl_agent_capabilities& src) {
-  cl_agent_capabilities result;
+static inline vdi_agent_capabilities operator~(const vdi_agent_capabilities& src) {
+  vdi_agent_capabilities result;
 
   const char* a = reinterpret_cast<const char*>(&src);
   char* b = reinterpret_cast<char*>(&result);
-  for (size_t i = 0; i < sizeof(cl_agent_capabilities); ++i) {
+  for (size_t i = 0; i < sizeof(vdi_agent_capabilities); ++i) {
     *b++ = ~*a++;
   }
 
   return result;
 }
 
-static inline cl_agent_capabilities operator|(const cl_agent_capabilities& lhs,
-                                              const cl_agent_capabilities& rhs) {
-  cl_agent_capabilities result;
+static inline vdi_agent_capabilities operator|(const vdi_agent_capabilities& lhs,
+                                              const vdi_agent_capabilities& rhs) {
+  vdi_agent_capabilities result;
 
   const char* a = reinterpret_cast<const char*>(&lhs);
   const char* b = reinterpret_cast<const char*>(&rhs);
   char* c = reinterpret_cast<char*>(&result);
-  for (size_t i = 0; i < sizeof(cl_agent_capabilities); ++i) {
+  for (size_t i = 0; i < sizeof(vdi_agent_capabilities); ++i) {
     *c++ = *a++ | *b++;
   }
 
   return result;
 }
 
-static inline cl_agent_capabilities operator&(const cl_agent_capabilities& lhs,
-                                              const cl_agent_capabilities& rhs) {
-  cl_agent_capabilities result;
+static inline vdi_agent_capabilities operator&(const vdi_agent_capabilities& lhs,
+                                              const vdi_agent_capabilities& rhs) {
+  vdi_agent_capabilities result;
 
   const char* a = reinterpret_cast<const char*>(&lhs);
   const char* b = reinterpret_cast<const char*>(&rhs);
   char* c = reinterpret_cast<char*>(&result);
-  for (size_t i = 0; i < sizeof(cl_agent_capabilities); ++i) {
+  for (size_t i = 0; i < sizeof(vdi_agent_capabilities); ++i) {
     *c++ = *a++ & *b++;
   }
 
   return result;
 }
 
-static inline bool operator==(const cl_agent_capabilities& lhs, const cl_agent_capabilities& rhs) {
+static inline bool operator==(const vdi_agent_capabilities& lhs, const vdi_agent_capabilities& rhs) {
   const char* a = reinterpret_cast<const char*>(&lhs);
   const char* b = reinterpret_cast<const char*>(&rhs);
-  for (size_t i = 0; i < sizeof(cl_agent_capabilities); ++i) {
+  for (size_t i = 0; i < sizeof(vdi_agent_capabilities); ++i) {
     if (*a++ != *b++) {
       return false;
     }
@@ -127,11 +128,11 @@ static inline bool operator==(const cl_agent_capabilities& lhs, const cl_agent_c
   return true;
 }
 
-static inline bool operator!=(const cl_agent_capabilities& lhs, const cl_agent_capabilities& rhs) {
+static inline bool operator!=(const vdi_agent_capabilities& lhs, const vdi_agent_capabilities& rhs) {
   return !(lhs == rhs);
 }
 
-cl_int Agent::setCapabilities(const cl_agent_capabilities* caps, bool install) {
+cl_int Agent::setCapabilities(const vdi_agent_capabilities* caps, bool install) {
   ScopedLock sl(capabilitiesLock_);
 
   if (caps == NULL || *caps != (*caps & potentialCapabilities_)) {
@@ -162,7 +163,7 @@ bool Agent::init() {
   //    potentialCapabilities_.canGenerateProgramEvents      = 1;
   //    potentialCapabilities_.canGenerateKernelEvents       = 1;
 
-  const char* envVar = ::getenv("CL_AGENT");
+  const char* envVar = ::getenv("VDI_AGENT");
   if (envVar == NULL) {
     return true;
   }
@@ -194,15 +195,15 @@ void Agent::tearDown() {
 
 namespace agent {
 
-static cl_int CL_API_CALL GetVersionNumber(cl_agent* agent, cl_int* version_ret) {
+static cl_int CL_API_CALL GetVersionNumber(vdi_agent* agent, cl_int* version_ret) {
   if (version_ret == NULL) {
     return CL_INVALID_VALUE;
   }
-  *version_ret = CL_AGENT_VERSION_1_0;
+  *version_ret = VDI_AGENT_VERSION_1_0;
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetPlatform(cl_agent* agent, cl_platform_id* platform_id_ret) {
+static cl_int CL_API_CALL GetPlatform(vdi_agent* agent, cl_platform_id* platform_id_ret) {
   if (platform_id_ret == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -210,7 +211,7 @@ static cl_int CL_API_CALL GetPlatform(cl_agent* agent, cl_platform_id* platform_
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetTime(cl_agent* agent, cl_long* time_nanos) {
+static cl_int CL_API_CALL GetTime(vdi_agent* agent, cl_long* time_nanos) {
   if (time_nanos == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -218,13 +219,13 @@ static cl_int CL_API_CALL GetTime(cl_agent* agent, cl_long* time_nanos) {
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL SetCallbacks(cl_agent* agent, const cl_agent_callbacks* callbacks,
+static cl_int CL_API_CALL SetCallbacks(vdi_agent* agent, const vdi_agent_callbacks* callbacks,
                                        size_t size) {
   return Agent::get(agent)->setCallbacks(callbacks, size);
 }
 
-static cl_int CL_API_CALL GetPotentialCapabilities(cl_agent* agent,
-                                                   cl_agent_capabilities* capabilities) {
+static cl_int CL_API_CALL GetPotentialCapabilities(vdi_agent* agent,
+                                                   vdi_agent_capabilities* capabilities) {
   if (capabilities == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -233,24 +234,24 @@ static cl_int CL_API_CALL GetPotentialCapabilities(cl_agent* agent,
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetCapabilities(cl_agent* agent, cl_agent_capabilities* capabilities) {
+static cl_int CL_API_CALL GetCapabilities(vdi_agent* agent, vdi_agent_capabilities* capabilities) {
   return Agent::get(agent)->getCapabilities(capabilities);
 }
 
-static cl_int CL_API_CALL SetCapabilities(cl_agent* agent,
-                                          const cl_agent_capabilities* capabilities,
-                                          cl_agent_capability_action action) {
-  return Agent::get(agent)->setCapabilities(capabilities, action == CL_AGENT_ADD_CAPABILITIES);
+static cl_int CL_API_CALL SetCapabilities(vdi_agent* agent,
+                                          const vdi_agent_capabilities* capabilities,
+                                          vdi_agent_capability_action action) {
+  return Agent::get(agent)->setCapabilities(capabilities, action == VDI_AGENT_ADD_CAPABILITIES);
 }
 
-static cl_int CL_API_CALL GetICDDispatchTable(cl_agent* agent, cl_icd_dispatch_table* table,
+static cl_int CL_API_CALL GetICDDispatchTable(vdi_agent* agent, cl_icd_dispatch_table* table,
                                               size_t size) {
   // FIXME_lmoriche: check size
   memcpy(table, amd::ICDDispatchedObject::icdVendorDispatch_, size);
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL SetICDDispatchTable(cl_agent* agent, const cl_icd_dispatch_table* table,
+static cl_int CL_API_CALL SetICDDispatchTable(vdi_agent* agent, const cl_icd_dispatch_table* table,
                                               size_t size) {
   // FIXME_lmoriche: check size
   memcpy(amd::ICDDispatchedObject::icdVendorDispatch_, table, size);
@@ -259,7 +260,7 @@ static cl_int CL_API_CALL SetICDDispatchTable(cl_agent* agent, const cl_icd_disp
 
 }  // namespace agent
 
-cl_agent Agent::entryPoints_ = {agent::GetVersionNumber,
+vdi_agent Agent::entryPoints_ = {agent::GetVersionNumber,
                                 agent::GetPlatform,
                                 agent::GetTime,
                                 agent::SetCallbacks,
@@ -433,7 +434,7 @@ void Agent::postKernelSetArg(cl_kernel kernel, cl_int index, size_t size, const 
 
 Agent* Agent::list_ = NULL;
 Monitor Agent::capabilitiesLock_;
-cl_agent_capabilities Agent::enabledCapabilities_ = {0};
-cl_agent_capabilities Agent::potentialCapabilities_ = {0};
+vdi_agent_capabilities Agent::enabledCapabilities_ = {0};
+vdi_agent_capabilities Agent::potentialCapabilities_ = {0};
 
 }  // namespace amd
