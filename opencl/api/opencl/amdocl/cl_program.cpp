@@ -3,7 +3,7 @@
 //
 
 #include "cl_common.hpp"
-
+#include "vdi_common.hpp"
 #include "platform/context.hpp"
 #include "platform/program.hpp"
 #include "platform/kernel.hpp"

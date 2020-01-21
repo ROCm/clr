@@ -2,6 +2,7 @@
 // Copyright (c) 2010 Advanced Micro Devices, Inc. All rights reserved.
 //
 #include "cl_common.hpp"
+#include "vdi_common.hpp"
 #include "cl_platform_amd.h"
 #include <cstring>
 

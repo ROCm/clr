@@ -3,7 +3,7 @@
 //
 
 #include "cl_common.hpp"
-
+#include "vdi_common.hpp"
 #include "device/device.hpp"
 #include "platform/runtime.hpp"
 #include "utils/versions.hpp"

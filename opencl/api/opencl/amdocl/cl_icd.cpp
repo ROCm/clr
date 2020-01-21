@@ -3,6 +3,7 @@
 //
 
 #include "cl_common.hpp"
+#include "vdi_common.hpp"
 #ifdef _WIN32
 #include <d3d10_1.h>
 #include "cl_d3d9_amd.hpp"
