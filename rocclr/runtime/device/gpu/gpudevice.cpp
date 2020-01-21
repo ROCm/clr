@@ -21,7 +21,7 @@
 
 #include "acl.h"
 
-#include "amdocl/cl_common.hpp"
+#include "vdi_common.hpp"
 #include "CL/cl_gl.h"
 
 #ifdef _WIN32

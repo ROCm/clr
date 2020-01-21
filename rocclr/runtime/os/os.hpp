@@ -227,8 +227,6 @@ class Os : AllStatic {
   static void unloadLibrary(void* handle);
   //! Return the address of the function identified by \a name.
   static void* getSymbol(void* handle, const char* name);
-  //! Get all the __kernel functions in the given shared library.
-  static bool iterateSymbols(void* handle, SymbolCallback func, void* data);
 
   // Time routines:
   //

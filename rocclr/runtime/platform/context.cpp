@@ -4,7 +4,7 @@
 
 #include "platform/context.hpp"
 #include "amdocl/cl_gl_amd.hpp"
-#include "amdocl/cl_common.hpp"
+#include "vdi_common.hpp"
 #include "platform/commandqueue.hpp"
 
 #include <algorithm>

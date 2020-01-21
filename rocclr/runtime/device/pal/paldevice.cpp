@@ -21,7 +21,7 @@
 #include "cz_id.h"
 #include "acl.h"
 
-#include "amdocl/cl_common.hpp"
+#include "vdi_common.hpp"
 
 #ifdef _WIN32
 #include <d3d9.h>
