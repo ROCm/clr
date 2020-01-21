@@ -17,20 +17,20 @@
 
 #include "acl.h"
 
-#if defined(USE_COMGR_LIBRARY)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-
-using llvm::AMDGPU::HSAMD::AccessQualifier;
-using llvm::AMDGPU::HSAMD::AddressSpaceQualifier;
-using llvm::AMDGPU::HSAMD::ValueKind;
-using llvm::AMDGPU::HSAMD::ValueType;
-#endif  // defined(USE_COMGR_LIBRARY)
-
 namespace device {
 
+// ================================================================================================
+static const clk_value_type_t ClkValueMapType[6][6] = {
+    {T_CHAR, T_CHAR2, T_CHAR3, T_CHAR4, T_CHAR8, T_CHAR16},
+    {T_SHORT, T_SHORT2, T_SHORT3, T_SHORT4, T_SHORT8, T_SHORT16},
+    {T_INT, T_INT2, T_INT3, T_INT4, T_INT8, T_INT16},
+    {T_LONG, T_LONG2, T_LONG3, T_LONG4, T_LONG8, T_LONG16},
+    {T_FLOAT, T_FLOAT2, T_FLOAT3, T_FLOAT4, T_FLOAT8, T_FLOAT16},
+    {T_DOUBLE, T_DOUBLE2, T_DOUBLE3, T_DOUBLE4, T_DOUBLE8, T_DOUBLE16},
+};
+
 #if defined(USE_COMGR_LIBRARY)
+// ================================================================================================
 amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
                    std::string* str) {
   size_t size = 0;
@@ -44,6 +44,27 @@ amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
   return status;
 }
 
+// ================================================================================================
+inline static clk_value_type_t UpdateArgType(uint sizeType, uint numElements) {
+  switch (numElements) {
+    case 1:
+      return ClkValueMapType[sizeType][0];
+    case 2:
+      return ClkValueMapType[sizeType][1];
+    case 3:
+      return ClkValueMapType[sizeType][2];
+    case 4:
+      return ClkValueMapType[sizeType][3];
+    case 8:
+      return ClkValueMapType[sizeType][4];
+    case 16:
+      return ClkValueMapType[sizeType][5];
+    default:
+      return T_VOID;
+  }
+}
+
+// ================================================================================================
 static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
                                        const amd_comgr_metadata_node_t value,
                                        void *data) {
@@ -70,20 +91,20 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
   // get the value of the argument field
   status = getMetaBuf(value, &buf);
 
-  KernelArgMD* lcArg = static_cast<KernelArgMD*>(data);
+  amd::KernelParameterDescriptor* lcArg = static_cast<amd::KernelParameterDescriptor*>(data);
 
   switch (itArgField->second) {
     case ArgField::Name:
-      lcArg->mName = buf;
+      lcArg->name_ = buf;
       break;
     case ArgField::TypeName:
-      lcArg->mTypeName = buf;
+      lcArg->typeName_ = buf;
       break;
     case ArgField::Size:
-      lcArg->mSize = atoi(buf.c_str());
+      lcArg->size_= atoi(buf.c_str());
       break;
     case ArgField::Align:
-      lcArg->mAlign = atoi(buf.c_str());
+      lcArg->alignment_ = atoi(buf.c_str());
       break;
     case ArgField::ValueKind:
       {
@@ -91,7 +112,25 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
         if (itValueKind == ArgValueKind.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mValueKind = itValueKind->second;
+        lcArg->info_.oclObject_ = itValueKind->second;
+        switch (lcArg->info_.oclObject_) {
+          case amd::KernelParameterDescriptor::MemoryObject:
+            if (itValueKind->first.compare("DynamicSharedPointer") == 0) {
+              lcArg->info_.shared_ = true;
+            }
+            break;
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
+          case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
+          case amd::KernelParameterDescriptor::HiddenHostcallBuffer:
+          case amd::KernelParameterDescriptor::HiddenDefaultQueue:
+          case amd::KernelParameterDescriptor::HiddenCompletionAction:
+          case amd::KernelParameterDescriptor::HiddenMultiGridSync:
+          case amd::KernelParameterDescriptor::HiddenNone:
+            lcArg->info_.hidden_ = true;
+            break;
+        }
       }
       break;
     case ArgField::ValueType:
@@ -99,12 +138,12 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
         auto itValueType = ArgValueType.find(buf);
         if (itValueType == ArgValueType.end()) {
           return AMD_COMGR_STATUS_ERROR;
-       }
-       lcArg->mValueType = itValueType->second;
+        }
+        lcArg->type_ = UpdateArgType(itValueType->second.first, itValueType->second.second);
       }
       break;
     case ArgField::PointeeAlign:
-      lcArg->mPointeeAlign = atoi(buf.c_str());
+      lcArg->info_.arrayIndex_ = atoi(buf.c_str());
       break;
     case ArgField::AddrSpaceQual:
       {
@@ -112,7 +151,7 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
         if (itAddrSpaceQual == ArgAddrSpaceQual.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mAddrSpaceQual = itAddrSpaceQual->second;
+        lcArg->addressQualifier_ = itAddrSpaceQual->second;
       }
       break;
     case ArgField::AccQual:
@@ -121,7 +160,9 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
         if (itAccQual == ArgAccQual.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mAccQual = itAccQual->second;
+        lcArg->accessQualifier_ = itAccQual->second;
+        lcArg->info_.readOnly_ =
+            (lcArg->accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
       }
       break;
     case ArgField::ActualAccQual:
@@ -130,20 +171,20 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
         if (itAccQual == ArgAccQual.end()) {
             return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mActualAccQual = itAccQual->second;
+        // lcArg->mActualAccQual = itAccQual->second;
       }
       break;
     case ArgField::IsConst:
-      lcArg->mIsConst = (buf.compare("true") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("true") == 0) ? CL_KERNEL_ARG_TYPE_CONST : 0;
       break;
     case ArgField::IsRestrict:
-      lcArg->mIsRestrict = (buf.compare("true") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("true") == 0) ? CL_KERNEL_ARG_TYPE_RESTRICT : 0;
       break;
     case ArgField::IsVolatile:
-      lcArg->mIsVolatile = (buf.compare("true") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("true") == 0) ? CL_KERNEL_ARG_TYPE_VOLATILE : 0;
       break;
     case ArgField::IsPipe:
-      lcArg->mIsPipe = (buf.compare("true") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("true") == 0) ? CL_KERNEL_ARG_TYPE_PIPE : 0;
       break;
     default:
       return AMD_COMGR_STATUS_ERROR;
@@ -328,20 +369,20 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
   // get the value of the argument field
   status = getMetaBuf(value, &buf);
 
-  KernelArgMD* lcArg = static_cast<KernelArgMD*>(data);
+  amd::KernelParameterDescriptor* lcArg = static_cast<amd::KernelParameterDescriptor*>(data);
 
   switch (itArgField->second) {
     case ArgField::Name:
-      lcArg->mName = buf;
+      lcArg->name_ = buf;
       break;
     case ArgField::TypeName:
-      lcArg->mTypeName = buf;
+      lcArg->typeName_ = buf;
       break;
     case ArgField::Size:
-      lcArg->mSize = atoi(buf.c_str());
+      lcArg->size_ = atoi(buf.c_str());
       break;
     case ArgField::Offset:
-      lcArg->mOffset = atoi(buf.c_str());
+      lcArg->offset_ = atoi(buf.c_str());
       break;
     case ArgField::ValueKind:
       {
@@ -349,7 +390,25 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         if (itValueKind == ArgValueKindV3.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mValueKind = itValueKind->second;
+        lcArg->info_.oclObject_ = itValueKind->second;
+        switch (lcArg->info_.oclObject_) {
+          case amd::KernelParameterDescriptor::MemoryObject:
+            if (itValueKind->first.compare("dynamic_shared_pointer") == 0) {
+              lcArg->info_.shared_ = true;
+            }
+            break;
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
+          case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
+          case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
+          case amd::KernelParameterDescriptor::HiddenHostcallBuffer:
+          case amd::KernelParameterDescriptor::HiddenDefaultQueue:
+          case amd::KernelParameterDescriptor::HiddenCompletionAction:
+          case amd::KernelParameterDescriptor::HiddenMultiGridSync:
+          case amd::KernelParameterDescriptor::HiddenNone:
+            lcArg->info_.hidden_ = true;
+          break;
+        }
       }
       break;
     case ArgField::ValueType:
@@ -357,12 +416,12 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         auto itValueType = ArgValueTypeV3.find(buf);
         if (itValueType == ArgValueTypeV3.end()) {
           return AMD_COMGR_STATUS_ERROR;
-       }
-       lcArg->mValueType = itValueType->second;
+        }
+        lcArg->type_ = UpdateArgType(itValueType->second.first, itValueType->second.second);
       }
       break;
     case ArgField::PointeeAlign:
-      lcArg->mPointeeAlign = atoi(buf.c_str());
+      lcArg->info_.arrayIndex_ = atoi(buf.c_str());
       break;
     case ArgField::AddrSpaceQual:
       {
@@ -370,7 +429,7 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         if (itAddrSpaceQual == ArgAddrSpaceQualV3.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mAddrSpaceQual = itAddrSpaceQual->second;
+        lcArg->addressQualifier_ = itAddrSpaceQual->second;
       }
       break;
     case ArgField::AccQual:
@@ -379,7 +438,9 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         if (itAccQual == ArgAccQualV3.end()) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mAccQual = itAccQual->second;
+        lcArg->accessQualifier_ = itAccQual->second;
+        lcArg->info_.readOnly_ =
+            (lcArg->accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
       }
       break;
     case ArgField::ActualAccQual:
@@ -388,20 +449,20 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         if (itAccQual == ArgAccQualV3.end()) {
             return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->mActualAccQual = itAccQual->second;
+        //lcArg->mActualAccQual = itAccQual->second;
       }
       break;
     case ArgField::IsConst:
-      lcArg->mIsConst = (buf.compare("1") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("1") == 0) ? CL_KERNEL_ARG_TYPE_CONST : 0;
       break;
     case ArgField::IsRestrict:
-      lcArg->mIsRestrict = (buf.compare("1") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("1") == 0) ? CL_KERNEL_ARG_TYPE_RESTRICT : 0;
       break;
     case ArgField::IsVolatile:
-      lcArg->mIsVolatile = (buf.compare("1") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("1") == 0) ? CL_KERNEL_ARG_TYPE_VOLATILE : 0;
       break;
     case ArgField::IsPipe:
-      lcArg->mIsPipe = (buf.compare("1") == 0);
+      lcArg->typeQualifier_ |= (buf.compare("1") == 0) ? CL_KERNEL_ARG_TYPE_PIPE : 0;
       break;
     default:
       return AMD_COMGR_STATUS_ERROR;
@@ -718,53 +779,7 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
     }
   }
 }
-// ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline uint32_t GetOclArgumentTypeOCL(const KernelArgMD& lcArg, bool* isHidden) {
-  switch (lcArg.mValueKind) {
-  case ValueKind::GlobalBuffer:
-  case ValueKind::DynamicSharedPointer:
-  case ValueKind::Pipe:
-    return amd::KernelParameterDescriptor::MemoryObject;
-  case ValueKind::ByValue:
-    return amd::KernelParameterDescriptor::ValueObject;
-  case ValueKind::Image:
-    return amd::KernelParameterDescriptor::ImageObject;
-  case ValueKind::Sampler:
-    return amd::KernelParameterDescriptor::SamplerObject;
-  case ValueKind::Queue:
-    return amd::KernelParameterDescriptor::QueueObject;
-  case ValueKind::HiddenGlobalOffsetX:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenGlobalOffsetX;
-  case ValueKind::HiddenGlobalOffsetY:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenGlobalOffsetY;
-  case ValueKind::HiddenGlobalOffsetZ:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenGlobalOffsetZ;
-  case ValueKind::HiddenPrintfBuffer:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenPrintfBuffer;
-  case ValueKind::HiddenHostcallBuffer:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenHostcallBuffer;
-  case ValueKind::HiddenDefaultQueue:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenDefaultQueue;
-  case ValueKind::HiddenCompletionAction:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenCompletionAction;
-  case ValueKind::HiddenMultiGridSyncArg:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenMultiGridSync;
-  case ValueKind::HiddenNone:
-  default:
-    *isHidden = true;
-    return amd::KernelParameterDescriptor::HiddenNone;
-  }
-}
-#endif
+
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* isHidden) {
@@ -813,95 +828,6 @@ static inline uint32_t GetOclArgumentTypeOCL(const aclArgData* argInfo, bool* is
 }
 #endif
 
-// ================================================================================================
-static const clk_value_type_t ClkValueMapType[6][6] = {
-  { T_CHAR, T_CHAR2, T_CHAR3, T_CHAR4, T_CHAR8, T_CHAR16 },
-  { T_SHORT, T_SHORT2, T_SHORT3, T_SHORT4, T_SHORT8, T_SHORT16 },
-  { T_INT, T_INT2, T_INT3, T_INT4, T_INT8, T_INT16 },
-  { T_LONG, T_LONG2, T_LONG3, T_LONG4, T_LONG8, T_LONG16 },
-  { T_FLOAT, T_FLOAT2, T_FLOAT3, T_FLOAT4, T_FLOAT8, T_FLOAT16 },
-  { T_DOUBLE, T_DOUBLE2, T_DOUBLE3, T_DOUBLE4, T_DOUBLE8, T_DOUBLE16 },
-};
-
-// ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline clk_value_type_t GetOclTypeOCL(const KernelArgMD& lcArg, size_t size = 0) {
-  uint sizeType;
-  uint numElements;
-
-  if (lcArg.mValueKind != ValueKind::ByValue) {
-    switch (lcArg.mValueKind) {
-    case ValueKind::GlobalBuffer:
-    case ValueKind::DynamicSharedPointer:
-    case ValueKind::Pipe:
-    case ValueKind::Image:
-      return T_POINTER;
-    case ValueKind::Sampler:
-      return T_SAMPLER;
-    case ValueKind::Queue:
-      return T_QUEUE;
-    default:
-      return T_VOID;
-    }
-  }
-  else {
-    switch (lcArg.mValueType) {
-    case ValueType::I8:
-    case ValueType::U8:
-      sizeType = 0;
-      numElements = size;
-      break;
-    case ValueType::I16:
-    case ValueType::U16:
-      sizeType = 1;
-      numElements = size / 2;
-      break;
-    case ValueType::I32:
-    case ValueType::U32:
-      sizeType = 2;
-      numElements = size / 4;
-      break;
-    case ValueType::I64:
-    case ValueType::U64:
-      sizeType = 3;
-      numElements = size / 8;
-      break;
-    case ValueType::F16:
-      sizeType = 4;
-      numElements = size / 2;
-      break;
-    case ValueType::F32:
-      sizeType = 4;
-      numElements = size / 4;
-      break;
-    case ValueType::F64:
-      sizeType = 5;
-      numElements = size / 8;
-      break;
-    case ValueType::Struct:
-    default:
-      return T_VOID;
-    }
-    switch (numElements) {
-    case 1:
-      return ClkValueMapType[sizeType][0];
-    case 2:
-      return ClkValueMapType[sizeType][1];
-    case 3:
-      return ClkValueMapType[sizeType][2];
-    case 4:
-      return ClkValueMapType[sizeType][3];
-    case 8:
-      return ClkValueMapType[sizeType][4];
-    case 16:
-      return ClkValueMapType[sizeType][5];
-    default:
-      return T_VOID;
-    }
-  }
-  return T_VOID;
-}
-#endif
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t size = 0) {
@@ -981,13 +907,6 @@ static inline clk_value_type_t GetOclTypeOCL(const aclArgData* argInfo, size_t s
 #endif
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline size_t GetArgOffsetOCL(const KernelArgMD& lcArg) { return lcArg.mOffset; }
-
-static inline size_t GetArgAlignmentOCL(const KernelArgMD& lcArg) { return lcArg.mAlign; }
-#endif
-
-// ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
   switch (argInfo->type) {
@@ -1027,44 +946,12 @@ static inline size_t GetArgAlignmentOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline size_t GetArgPointeeAlignmentOCL(const KernelArgMD& lcArg) {
-  if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
-    uint32_t align = lcArg.mPointeeAlign;
-    if (align == 0) {
-      LogWarning("Missing DynamicSharedPointer alignment");
-      align = 128; /* worst case alignment */
-    }
-    return align;
-  }
-  return 1;
-}
-#endif
-
-// ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline size_t GetArgPointeeAlignmentOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
     return argInfo->arg.pointer.align;
   }
   return 1;
-}
-#endif
-
-// ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline bool GetReadOnlyOCL(const KernelArgMD& lcArg) {
-  if ((lcArg.mValueKind == ValueKind::GlobalBuffer) || (lcArg.mValueKind == ValueKind::Image)) {
-    switch (lcArg.mAccQual) {
-    case AccessQualifier::ReadOnly:
-      return true;
-    case AccessQualifier::WriteOnly:
-    case AccessQualifier::ReadWrite:
-    default:
-      return false;
-    }
-  }
-  return false;
 }
 #endif
 
@@ -1079,11 +966,6 @@ static inline bool GetReadOnlyOCL(const aclArgData* argInfo) {
   }
   return false;
 }
-#endif
-
-// ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline int GetArgSizeOCL(const KernelArgMD& lcArg) { return lcArg.mSize; }
 #endif
 
 // ================================================================================================
@@ -1125,31 +1007,6 @@ inline static int GetArgSizeOCL(const aclArgData* argInfo) {
 #endif
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const KernelArgMD& lcArg) {
-  if (lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
-    return CL_KERNEL_ARG_ADDRESS_LOCAL;
-  }
-  else if (lcArg.mValueKind == ValueKind::GlobalBuffer) {
-    if (lcArg.mAddrSpaceQual == AddressSpaceQualifier::Global ||
-        lcArg.mAddrSpaceQual == AddressSpaceQualifier::Generic) {
-      return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-    }
-    else if (lcArg.mAddrSpaceQual == AddressSpaceQualifier::Constant) {
-      return CL_KERNEL_ARG_ADDRESS_CONSTANT;
-    }
-    LogError("Unsupported address type");
-    return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-  }
-  else if (lcArg.mValueKind == ValueKind::Image || lcArg.mValueKind == ValueKind::Pipe) {
-    return CL_KERNEL_ARG_ADDRESS_GLOBAL;
-  }
-  // default for all other cases
-  return CL_KERNEL_ARG_ADDRESS_PRIVATE;
-}
-#endif
-
-// ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_POINTER) {
@@ -1181,24 +1038,6 @@ static inline cl_kernel_arg_address_qualifier GetOclAddrQualOCL(const aclArgData
 #endif
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const KernelArgMD& lcArg) {
-  if (lcArg.mValueKind == ValueKind::Image) {
-    switch (lcArg.mAccQual) {
-    case AccessQualifier::ReadOnly:
-      return CL_KERNEL_ARG_ACCESS_READ_ONLY;
-    case AccessQualifier::WriteOnly:
-      return CL_KERNEL_ARG_ACCESS_WRITE_ONLY;
-    case AccessQualifier::ReadWrite:
-    default:
-      return CL_KERNEL_ARG_ACCESS_READ_WRITE;
-    }
-  }
-  return CL_KERNEL_ARG_ACCESS_NONE;
-}
-#endif
-
-// ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgData* argInfo) {
   if (argInfo->type == ARG_TYPE_IMAGE) {
@@ -1212,30 +1051,6 @@ static inline cl_kernel_arg_access_qualifier GetOclAccessQualOCL(const aclArgDat
     }
   }
   return CL_KERNEL_ARG_ACCESS_NONE;
-}
-#endif
-
-// ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const KernelArgMD& lcArg) {
-  cl_kernel_arg_type_qualifier rv = CL_KERNEL_ARG_TYPE_NONE;
-  if (lcArg.mValueKind == ValueKind::GlobalBuffer ||
-    lcArg.mValueKind == ValueKind::DynamicSharedPointer) {
-    if (lcArg.mIsVolatile) {
-      rv |= CL_KERNEL_ARG_TYPE_VOLATILE;
-    }
-    if (lcArg.mIsRestrict) {
-      rv |= CL_KERNEL_ARG_TYPE_RESTRICT;
-    }
-    if (lcArg.mIsConst) {
-      rv |= CL_KERNEL_ARG_TYPE_CONST;
-    }
-  }
-  else if (lcArg.mIsPipe) {
-    assert(lcArg.mValueKind == ValueKind::Pipe);
-    rv |= CL_KERNEL_ARG_TYPE_PIPE;
-  }
-  return rv;
 }
 #endif
 
@@ -1444,7 +1259,6 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
   // Iterate through the arguments and insert into parameterList
   device::Kernel::parameters_t params;
   device::Kernel::parameters_t hiddenParams;
-  amd::KernelParameterDescriptor desc;
   size_t offset = 0;
 
   amd_comgr_metadata_node_t argsMeta;
@@ -1462,7 +1276,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
   }
 
   for (size_t i = 0; i < argsSize; ++i) {
-    KernelArgMD lcArg;
+    amd::KernelParameterDescriptor desc = {};
 
     amd_comgr_metadata_node_t argsNode;
     amd_comgr_metadata_kind_t kind;
@@ -1478,7 +1292,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       status = AMD_COMGR_STATUS_ERROR;
     }
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      void *data = static_cast<void*>(&lcArg);
+      void *data = static_cast<void*>(&desc);
       if (codeObjectVer() == 2) {
         status = amd::Comgr::iterate_map_metadata(argsNode, populateArgs, data);
       }
@@ -1498,50 +1312,72 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       return;
     }
 
-    size_t size = GetArgSizeOCL(lcArg);
-    size_t alignment = (codeObjectVer() == 2) ? GetArgAlignmentOCL(lcArg) : 0;
-    bool isHidden = false;
-    desc.info_.oclObject_ = GetOclArgumentTypeOCL(lcArg, &isHidden);
+    // COMGR has unclear/undefined order of the fields filling. 
+    // Correct the types for the abstraciton layer after all fields are available
+    if (desc.info_.oclObject_ != amd::KernelParameterDescriptor::ValueObject) {
+      switch (desc.info_.oclObject_) {
+        case amd::KernelParameterDescriptor::MemoryObject:
+        case amd::KernelParameterDescriptor::ImageObject:
+          desc.type_ = T_POINTER;
+          if (desc.info_.shared_) {
+            if (desc.info_.arrayIndex_ == 0) {
+              LogWarning("Missing DynamicSharedPointer alignment");
+              desc.info_.arrayIndex_ = 128; /* worst case alignment */
+            }
+          } else {
+            desc.info_.arrayIndex_ = 1;
+          }
+          break;
+        case amd::KernelParameterDescriptor::SamplerObject:
+          desc.type_ = T_SAMPLER;
+          desc.addressQualifier_ = CL_KERNEL_ARG_ADDRESS_PRIVATE;
+          break;
+        case amd::KernelParameterDescriptor::QueueObject:
+          desc.type_ = T_QUEUE;
+          break;
+        default:
+          desc.type_ = T_VOID;
+          break;
+      }
+    }
+
+    // LC doesn't report correct address qualifier for images and pipes,
+    // hence overwrite it
+    if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+        (desc.typeQualifier_  & CL_KERNEL_ARG_TYPE_PIPE)) {
+      desc.addressQualifier_ = CL_KERNEL_ARG_ADDRESS_GLOBAL;
+
+    }
+    size_t size = desc.size_;
 
     // Allocate the hidden arguments, but abstraction layer will skip them
-    if (isHidden) {
+    if (desc.info_.hidden_) {
       if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::HiddenCompletionAction) {
         setDynamicParallelFlag(true);
       }
-      offset = (codeObjectVer() == 2) ? amd::alignUp(offset, alignment) : GetArgOffsetOCL(lcArg);
-      desc.offset_ = offset;
-      desc.size_ = size;
-      offset += size;
+      if (codeObjectVer() == 2) {
+        desc.offset_ = amd::alignUp(offset, desc.alignment_);
+        offset += size;
+      }
       hiddenParams.push_back(desc);
       continue;
     }
-
-    desc.name_ = lcArg.mName.c_str();
-    desc.type_ = GetOclTypeOCL(lcArg, size);
-    desc.typeName_ = lcArg.mTypeName.c_str();
-
-    desc.addressQualifier_ = GetOclAddrQualOCL(lcArg);
-    desc.accessQualifier_ = GetOclAccessQualOCL(lcArg);
-    desc.typeQualifier_ = GetOclTypeQualOCL(lcArg);
-    desc.info_.arrayIndex_ = GetArgPointeeAlignmentOCL(lcArg);
-    desc.size_ = size;
-
+ 
     // These objects have forced data size to uint64_t
-    if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
-      (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
-      (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
-      offset = amd::alignUp(offset, sizeof(uint64_t));
-      desc.offset_ = offset;
-      offset += sizeof(uint64_t);
+    if (codeObjectVer() == 2) {
+      if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::SamplerObject) ||
+        (desc.info_.oclObject_ == amd::KernelParameterDescriptor::QueueObject)) {
+        offset = amd::alignUp(offset, sizeof(uint64_t));
+        desc.offset_ = offset;
+        offset += sizeof(uint64_t);
+      }
+      else {
+        offset = amd::alignUp(offset, desc.alignment_);
+        desc.offset_ = offset;
+        offset += size;
+      }
     }
-    else {
-      offset = (codeObjectVer() == 2) ? amd::alignUp(offset, alignment) : GetArgOffsetOCL(lcArg);
-      desc.offset_ = offset;
-      offset += size;
-    }
-
-    // Update read only flag
-    desc.info_.readOnly_ = GetReadOnlyOCL(lcArg);
 
     params.push_back(desc);
 

@@ -28,12 +28,6 @@
 #include "spirv/spirvUtils.h"
 #include "acl.h"
 
-#if defined(USE_COMGR_LIBRARY)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Kernel::Arg::Metadata KernelArgMD;
-#endif  // defined(USE_COMGR_LIBRARY)
-
 #ifdef EARLY_INLINE
 #define AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-early-inline-all"
 #else
