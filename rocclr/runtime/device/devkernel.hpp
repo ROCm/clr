@@ -64,14 +64,6 @@ struct KernelParameterDescriptor {
 }
 
 #if defined(USE_COMGR_LIBRARY)
-namespace llvm {
-  namespace AMDGPU {
-    namespace HSAMD {
-      namespace Kernel {
-        struct Metadata;
-}}}}
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-
 //! Runtime handle structure for device enqueue
 struct RuntimeHandle {
   uint64_t kernel_handle;             //!< Pointer to amd_kernel_code_s or kernel_descriptor_t
@@ -80,7 +72,6 @@ struct RuntimeHandle {
 };
 
 #include "amd_comgr.h"
-#include "llvm/Support/AMDGPUMetadata.h"
 
 //  for Code Object V3
 enum class ArgField : uint8_t {
@@ -387,6 +378,8 @@ class Kernel : public amd::HeapObject {
 
   //! Returns the kernel info structure
   const WorkGroupInfo* workGroupInfo() const { return &workGroupInfo_; }
+  //! Returns the kernel info structure for filling in
+  WorkGroupInfo* workGroupInfo() { return &workGroupInfo_; }
 
   //! Returns the kernel signature
   const amd::KernelSignature& signature() const { return *signature_; }
@@ -438,6 +431,9 @@ class Kernel : public amd::HeapObject {
 
   void setPreferredSizeMultiple(size_t size) { workGroupInfo_.preferredSizeMultiple_ = size; }
 
+  const std::string& RuntimeHandle() const { return runtimeHandle_; }
+  void setRuntimeHandle(const std::string& handle) { runtimeHandle_ = handle; }
+
   //! Return the build log
   const std::string& buildLog() const { return buildLog_; }
 
@@ -476,19 +472,29 @@ class Kernel : public amd::HeapObject {
     amd::NDRange& lclWorkSize         //!< Calculated local work size
   ) const;
 
+  const uint64_t KernelCodeHandle() const { return kernelCodeHandle_; }
+
+  const uint32_t WorkgroupGroupSegmentByteSize() const { return workgroupGroupSegmentByteSize_; }
+  void SetWorkgroupGroupSegmentByteSize(uint32_t size) { workgroupGroupSegmentByteSize_ = size; }
+
+  const uint32_t WorkitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
+  void SetWorkitemPrivateSegmentByteSize(uint32_t size) { workitemPrivateSegmentByteSize_ = size; }
+  
+  const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
+  void SetKernargSegmentByteSize(uint32_t size) { kernargSegmentByteSize_ = size; }
+
+  const uint8_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  void SetKernargSegmentAlignment(uint32_t align) { kernargSegmentAlignment_ = align; }
+
+  void SetSymbolName(const std::string& name) { symbolName_ = name; }
+
  protected:
   //! Initializes the abstraction layer kernel parameters
 #if defined(USE_COMGR_LIBRARY)
   void InitParameters(const amd_comgr_metadata_node_t kernelMD);
 
-  //! Get ther kernel metadata
-  bool GetKernelMetadata(const amd_comgr_metadata_node_t programMD,
-                         const std::string& name,
-                         amd_comgr_metadata_node_t* kernelNode);
-
   //! Retrieve kernel attribute and code properties metadata
-  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode,
-                               KernelMD* kernelMD);
+  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode);
 
   //! Retrieve the available SGPRs and VGPRs
   bool SetAvailableSgprVgpr(const std::string& targetIdent);
@@ -524,6 +530,13 @@ class Kernel : public amd::HeapObject {
   std::string buildLog_;            //!< build log
   std::vector<PrintfInfo> printf_;  //!< Format strings for GPU printf support
   WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
+  std::string runtimeHandle_;       //!< Runtime handle for context loader
+
+  uint64_t kernelCodeHandle_ = 0;   //!< Kernel code handle (aka amd_kernel_code_t)
+  uint32_t workgroupGroupSegmentByteSize_ = 0;
+  uint32_t workitemPrivateSegmentByteSize_ = 0;
+  uint32_t kernargSegmentByteSize_ = 0;   //!< Size of kernel argument buffer
+  uint32_t kernargSegmentAlignment_ = 0;
 
   union Flags {
     struct {

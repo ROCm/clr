@@ -11,23 +11,7 @@
 
 #if defined(USE_COMGR_LIBRARY)
 #include "amd_comgr.h"
-
-namespace llvm {
-  namespace AMDGPU {
-    namespace HSAMD {
-      struct Metadata;
-      namespace Kernel {
-        struct Metadata;
-}}}}
-
-#define LC_METADATA 1
-typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
 #endif  // defined(USE_COMGR_LIBRARY)
-
-#ifndef LC_METADATA
-typedef char CodeObjectMD;
-#endif
 
 namespace amd {
   namespace hsa {
@@ -124,11 +108,9 @@ class Program : public amd::HeapObject {
 
 
 #if defined(USE_COMGR_LIBRARY)
-  amd_comgr_metadata_node_t metadata_;    //!< COMgr metadata
-  uint32_t codeObjectVer_;                //!< version of code object
+  amd_comgr_metadata_node_t metadata_ = {}; //!< COMgr metadata
+  uint32_t codeObjectVer_;                  //!< version of code object
   std::map<std::string, amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
-#else
-  CodeObjectMD* metadata_;  //!< Runtime metadata
 #endif
 
   std::vector<amd::Memory*> undef_mem_obj_;
@@ -227,8 +209,6 @@ class Program : public amd::HeapObject {
   }
 
   const uint32_t codeObjectVer() const { return codeObjectVer_; }
-#else
-  const CodeObjectMD* metadata() const { return metadata_; }
 #endif
 
   //! Get the machine target for the program

@@ -9,33 +9,23 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#if defined(USE_COMGR_LIBRARY)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Metadata CodeObjectMD;
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-#endif  // defined(USE_COMGR_LIBRARY)
-
 namespace roc {
 
 Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
                const uint32_t workgroupGroupSegmentByteSize,
                const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
                const uint32_t kernargSegmentAlignment)
-    : device::Kernel(prog->dev(), name, *prog),
-      kernelCodeHandle_(kernelCodeHandle),
-      workgroupGroupSegmentByteSize_(workgroupGroupSegmentByteSize),
-      workitemPrivateSegmentByteSize_(workitemPrivateSegmentByteSize),
-      kernargSegmentByteSize_(kernargSegmentByteSize),
-      kernargSegmentAlignment_(kernargSegmentAlignment) {}
+    : device::Kernel(prog->dev(), name, *prog) {
+  kernelCodeHandle_ = kernelCodeHandle;
+  workgroupGroupSegmentByteSize_ = workgroupGroupSegmentByteSize;
+  workitemPrivateSegmentByteSize_ = workitemPrivateSegmentByteSize;
+  kernargSegmentByteSize_ = kernargSegmentByteSize;
+  kernargSegmentAlignment_ = kernargSegmentAlignment;
+}
 
 Kernel::Kernel(std::string name, Program* prog)
-    : device::Kernel(prog->dev(), name, *prog),
-      kernelCodeHandle_(0),
-      workgroupGroupSegmentByteSize_(0),
-      workitemPrivateSegmentByteSize_(0),
-      kernargSegmentByteSize_(0),
-      kernargSegmentAlignment_(0) {}
+    : device::Kernel(prog->dev(), name, *prog) {
+}
 
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
@@ -48,20 +38,18 @@ bool LightningKernel::init() {
     return false;
   }
 
-  KernelMD  kernelMD;
-  if (!GetAttrCodePropMetadata(*kernelMetaNode, &kernelMD)) {
+  if (!GetAttrCodePropMetadata(*kernelMetaNode)) {
     return false;
   }
 
   // Set the kernel symbol name and size/alignment based on the kernel metadata
   // NOTE: kernel name is used to get the kernel code handle in V2,
   //       but kernel symbol name is used in V3
-  symbolName_ = (codeObjectVer() == 2) ? name() : kernelMD.mSymbolName;
-  workgroupGroupSegmentByteSize_ = kernelMD.mCodeProps.mGroupSegmentFixedSize;
-  workitemPrivateSegmentByteSize_ = kernelMD.mCodeProps.mPrivateSegmentFixedSize;
-  kernargSegmentByteSize_ = kernelMD.mCodeProps.mKernargSegmentSize;
-  kernargSegmentAlignment_ = amd::alignUp(std::max(kernelMD.mCodeProps.mKernargSegmentAlign, 128u),
-                                          dev().info().globalMemCacheLineSize_);
+  if (codeObjectVer() == 2) {
+    symbolName_ = name();
+  }
+  kernargSegmentAlignment_ =
+      amd::alignUp(std::max(kernargSegmentAlignment_, 128u), dev().info().globalMemCacheLineSize_);
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
@@ -95,7 +83,7 @@ bool LightningKernel::init() {
     return false;
   }
 
-  if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
+  if (!RuntimeHandle().empty()) {
     hsa_executable_symbol_t kernelSymbol;
     int                     variable_size;
     uint64_t                variable_address;
@@ -106,7 +94,7 @@ bool LightningKernel::init() {
     // only after the hsa executable is loaded. The below code copies the kernel code object handle to the
     // address of the variable.
     hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
-                                                  kernelMD.mAttrs.mRuntimeHandle.c_str(),
+                                                  RuntimeHandle().c_str(),
                                                   &agent, &kernelSymbol);
     if (hsaStatus == HSA_STATUS_SUCCESS) {
       hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
@@ -122,7 +110,7 @@ bool LightningKernel::init() {
     if (hsaStatus == HSA_STATUS_SUCCESS) {
       const struct RuntimeHandle runtime_handle = {
         kernelCodeHandle_,
-        workitemPrivateSegmentByteSize(),
+        WorkitemPrivateSegmentByteSize(),
         WorkgroupGroupSegmentByteSize()
       };
       hsaStatus = hsa_memory_copy(reinterpret_cast<void*>(variable_address),
@@ -145,12 +133,9 @@ bool LightningKernel::init() {
   workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
-  workGroupInfo_.usedSGPRs_ = kernelMD.mCodeProps.mNumSGPRs;
-  workGroupInfo_.usedVGPRs_ = kernelMD.mCodeProps.mNumVGPRs;
   workGroupInfo_.usedStackSize_ = 0;
   workGroupInfo_.wavefrontPerSIMD_ = program()->dev().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
-  workGroupInfo_.size_ = kernelMD.mCodeProps.mMaxFlatWorkGroupSize;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }

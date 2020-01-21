@@ -9,13 +9,6 @@
 #include "platform/commandqueue.hpp"
 #include "utils/options.hpp"
 #include "acl.h"
-
-#if defined(USE_COMGR_LIBRARY)
-#include "llvm/Support/AMDGPUMetadata.h"
-
-typedef llvm::AMDGPU::HSAMD::Kernel::Metadata KernelMD;
-#endif  // defined(USE_COMGR_LIBRARY)
-
 #include <string>
 #include <memory>
 #include <fstream>
@@ -99,9 +92,7 @@ HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compi
       compileOptions_(compileOptions),
       index_(0),
       code_(0),
-      codeSize_(0),
-      workgroupGroupSegmentByteSize_(0),
-      kernargSegmentByteSize_(0) {
+      codeSize_(0) {
   flags_.hsa_ = true;
 }
 
@@ -414,15 +405,6 @@ const LightningProgram& LightningKernel::prog() const {
 }
 
 #if defined(USE_COMGR_LIBRARY)
-static const KernelMD* FindKernelMetadata(const CodeObjectMD* programMD, const std::string& name) {
-  for (const KernelMD& kernelMD : programMD->mKernels) {
-    if (kernelMD.mName == name) {
-      return &kernelMD;
-    }
-  }
-  return nullptr;
-}
-
 bool LightningKernel::init() {
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
@@ -432,15 +414,13 @@ bool LightningKernel::init() {
     return false;
   }
 
-  KernelMD kernelMD;
-  if (!GetAttrCodePropMetadata(*kernelMetaNode, &kernelMD)) {
+  if (!GetAttrCodePropMetadata(*kernelMetaNode)) {
     return false;
   }
 
-  symbolName_ = (codeObjectVer() == 2) ? name() : kernelMD.mSymbolName;
-
-  workgroupGroupSegmentByteSize_ = kernelMD.mCodeProps.mGroupSegmentFixedSize;
-  kernargSegmentByteSize_ = kernelMD.mCodeProps.mKernargSegmentSize;
+  if (codeObjectVer() == 2) {
+    symbolName_ =  name();
+  }
 
   // Copy codeobject of this kernel from the program CPU segment
   hsa_agent_t agent;
@@ -456,13 +436,13 @@ bool LightningKernel::init() {
     codeSize_ = prog().codeSegGpu().owner()->getSize();
 
     // handle device enqueue
-    if (!kernelMD.mAttrs.mRuntimeHandle.empty()) {
+    if (!RuntimeHandle().empty()) {
       hsa_agent_t agent;
       agent.handle = 1;
       amd::hsa::loader::Symbol* rth_symbol;
 
       // Get the runtime handle symbol GPU address
-      rth_symbol = prog().GetSymbol(const_cast<char*>(kernelMD.mAttrs.mRuntimeHandle.c_str()),
+      rth_symbol = prog().GetSymbol(const_cast<char*>(RuntimeHandle().c_str()),
                                     const_cast<hsa_agent_t*>(&agent));
       uint64_t symbol_address;
       rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
@@ -480,14 +460,12 @@ bool LightningKernel::init() {
   }
 
   // Setup the the workgroup info
-  setWorkGroupInfo(kernelMD.mCodeProps.mPrivateSegmentFixedSize,
-                   kernelMD.mCodeProps.mGroupSegmentFixedSize, kernelMD.mCodeProps.mNumSGPRs,
-                   kernelMD.mCodeProps.mNumVGPRs);
+  setWorkGroupInfo(WorkitemPrivateSegmentByteSize(), WorkgroupGroupSegmentByteSize(),
+                   workGroupInfo()->usedSGPRs_, workGroupInfo()->usedVGPRs_);
 
   // Copy wavefront size
   workGroupInfo_.wavefrontSize_ = dev().info().wavefrontWidth_;
 
-  workGroupInfo_.size_ = kernelMD.mCodeProps.mMaxFlatWorkGroupSize;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }
