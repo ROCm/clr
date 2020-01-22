@@ -68,6 +68,7 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
     return HSA_INVALID_DEVICE_ID;
   }
 
+
   uint gfxipVersion = atoi(&agent_name[3]);
   if (gfxipVersion < 900 && GPU_VEGA10_ONLY) {
     return  HSA_INVALID_DEVICE_ID;
