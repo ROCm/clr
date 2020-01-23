@@ -110,6 +110,7 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
       {
         auto itValueKind = ArgValueKind.find(buf);
         if (itValueKind == ArgValueKind.end()) {
+          lcArg->info_.hidden_ = true;
           return AMD_COMGR_STATUS_ERROR;
         }
         lcArg->info_.oclObject_ = itValueKind->second;
