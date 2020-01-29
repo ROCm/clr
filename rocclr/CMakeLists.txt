@@ -1,170 +1,199 @@
-cmake_minimum_required(VERSION 3.4.3)
+project(vdi)
+cmake_minimum_required(VERSION 3.5)
+#example command:
+#cmake -DUSE_COMGR_LIBRARY=yes -DOPENCL_DIR=/home/pghafari/git-ocl -DCMAKE_PREFIX_PATH="/home/pghafari/rocmgitvdi/support/lib/comgr;/home/pghafari/rocmgitvdi/support/lib/comgr/build;home/pghafari/rocmgitvdi/hsa-runtime/opensrc/hsa-runtime/build;/home/pghafari/rocmgitvdi/hsa-runtime/opensrc" -DLLVM_INCLUDES=/home/pghafari/rocmgit/llvm-project/llvm/include .. 
 
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-  set(PROJ_VERSION VERSION 1.5.0)
-endif()
-
-# FIXME: Remove following line after enabling COMGR by default
-set(USE_COMGR_LIBRARY "no" CACHE STRING "Do not enable COMGR by default")
-
-# Build ROCm-OpenCL with ccache if the package is present.
-set(ROCM_OPENCL_CCACHE_BUILD OFF CACHE BOOL "Set to ON for a ccache enabled build")
-if(ROCM_OPENCL_CCACHE_BUILD)
-  find_program(CCACHE_PROGRAM ccache)
-  if(CCACHE_PROGRAM)
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE_PROGRAM})
-  else()
-    message(FATAL_ERROR "Unable to find the program ccache. Set ROCM_OPENCL_CCACHE_BUILD to OFF")
-  endif()
-
-  # FIXME: Remove following if block after enabling COMGR by default
-  if (${USE_COMGR_LIBRARY} STREQUAL "no")
-    set(LLVM_CCACHE_BUILD ON CACHE BOOL "")
-    set(ROCM_DEVICE_LIBS_CCACHE_BUILD ON CACHE BOOL "")
-    set(ROCM_OPENCL_DRIVER_CCACHE_BUILD ON CACHE BOOL "")
-  endif() # if (${USE_COMGR_LIBRARY} STREQUAL "no")
-endif()
-
-project(rocm-opencl)
+#cmake  -DLLVM_INCLUDES=/home/ixt-rack-79/payam/include -DOPENCL_DIR=/home/ixt-rack-79/payam/ocl4/opencl .. 
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
-set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2" CACHE PATH "")
+set(USE_COMGR_LIBRARY "yes")
+add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
+add_definitions(-DBSD_LIBELF)
 
+find_package(amd_comgr REQUIRED CONFIG
+   PATHS
+     /opt/rocm/
+   PATH_SUFFIXES
+     cmake/amd_comgr
+     lib/cmake/amd_comgr
+)
+MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
+
+find_path(COMGR_INCLUDE
+   NAMES amd_comgr.h
+   PATH_SUFFIXES include
+   PATHS /opt/rocm
+)
+
+find_library( OpenCL REQUIRED CONFIG
+   PATHS
+      /opt/rocm
+)
+
+find_path(OPENCL_INCLUDE_DIR
+  NAMES OpenCL/cl.h CL/cl.h
+  PATH_SUFFIXES include opencl/include inc include/x86_64 include/x64
+  PATHS /opt/rocm 
+  DOC "OpenCL include header OpenCL/cl.h or CL/cl.h"
+)
+
+MESSAGE(STATUS "Opencl fund at ${OPENCL_INCLUDE_DIR}.")
+set(OPENCL_ICD_LOADER_HEADERS_DIR "${OPENCL_INCLUDE_DIR}") 
+
+#/khronos/headers/opencl2.2" CACHE PATH "")
 find_package(ROCT REQUIRED)
 find_package(ROCR REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
-# FIXME: Remove following if block after enabling COMGR by default
-if (${USE_COMGR_LIBRARY} STREQUAL "no")
-  set(LLVM_INCLUDE_TESTS OFF CACHE BOOL "")
-  set(LLVM_BUILD_TOOLS OFF CACHE BOOL "")
-  set(LLVM_INSTALL_TOOLCHAIN_ONLY ON CACHE BOOL "")
-  set(LLVM_TARGETS_TO_BUILD "AMDGPU" CACHE STRING "")
-  set(CLANG_ENABLE_ARCMT OFF CACHE BOOL "")
-  set(CLANG_ENABLE_STATIC_ANALYZER OFF CACHE BOOL "")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
-  # override default option value in library and driver
-  set(GENERIC_IS_ZERO ON CACHE BOOL ON FORCE)
+add_definitions(-DLINUX -D__x86_64__ -D__AMD64__ -DUNIX_OS -DqLittleEndian -DOPENCL_MAJOR=2 -DOPENCL_MINOR=1 -DWITH_AQL -DWITH_ONLINE_COMPILER -DATI_OS_LINUX -DATI_ARCH_X86 -DLITTLEENDIAN_CPU -DATI_BITS_64 -DATI_COMP_GCC -DWITH_HSA_DEVICE -DWITH_TARGET_AMDGCN -DOPENCL_EXPORTS -DCL_USE_DEPRECATED_OPENCL_1_0_APIS -DCL_USE_DEPRECATED_OPENCL_1_1_APIS -DCL_USE_DEPRECATED_OPENCL_1_2_APIS -DCL_USE_DEPRECATED_OPENCL_2_0_APIS -DVEGA10_ONLY=false -DWITH_LIGHTNING_COMPILER)
+add_definitions(-DOPENCL_C_MAJOR=2 -DOPENCL_C_MINOR=0)
 
-  add_subdirectory(compiler/llvm EXCLUDE_FROM_ALL)
+set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic -Wl,--unresolved-symbols=report-all")
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
-  find_package(LLVM REQUIRED CONFIG PATHS ${CMAKE_BINARY_DIR}/compiler/llvm NO_DEFAULT_PATH)
-
-  list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-  include(AddLLVM)
-
-  add_definitions(${LLVM_DEFINITIONS})
-  # TODO: add find_package for Clang and lld, and also use LLVM/Clang variables got from their config
-  include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/tools/clang/include)
-  include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/tools/clang/include)
-  include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/tools/lld/include)
-
-  # TODO: move AMDGPU.h header to include folder
-  include_directories(${CMAKE_SOURCE_DIR}/compiler/llvm/lib/Target/AMDGPU)
-  include_directories(${CMAKE_BINARY_DIR}/compiler/llvm/lib/Target/AMDGPU)
-
-  set(BUILD_HC_LIB OFF CACHE BOOL "")
-  set(ROCM_DEVICELIB_INCLUDE_TESTS OFF CACHE BOOL "")
-  set(AMDGCN_TARGETS_LIB_LIST "AMDGCN_LIB_TARGETS")
-  set(AMDGCN_TARGETS_LIB_DEPS "AMDGCN_DEP_TARGETS")
-  set(AMDGPU_TARGET_TRIPLE "amdgcn-amd-amdhsa")
-  add_subdirectory(library/amdgcn EXCLUDE_FROM_ALL)
-  add_subdirectory(compiler/driver EXCLUDE_FROM_ALL)
-
-  install(PROGRAMS $<TARGET_FILE:clang> $<TARGET_FILE:lld>
-          DESTINATION bin/x86_64
-          COMPONENT DEV)
-
-  foreach(AMDGCN_LIB_TARGET ${AMDGCN_LIB_TARGETS})
-    get_target_property(lib_file_name ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_NAME)
-    get_target_property(lib_file_path ${AMDGCN_LIB_TARGET} ARCHIVE_OUTPUT_DIRECTORY)
-    install(FILES ${lib_file_path}/${lib_file_name}.amdgcn.bc
-          DESTINATION lib/x86_64/bitcode
-          COMPONENT DEV)
-  endforeach()
-endif() # if (${USE_COMGR_LIBRARY} STREQUAL "no")
-
-if(${USE_COMGR_LIBRARY} MATCHES "yes")
-  set(COMGR_DYN_DLL "yes")
-  add_definitions(-DCOMGR_DYN_DLL)
-  add_definitions(-DUSE_COMGR_LIBRARY)
-  if( ${BUILD_HIP} MATCHES "yes")
-    add_subdirectory(api/hip)
-  endif()
+if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
+  add_definitions(-DDEBUG)
 endif()
 
-add_subdirectory(api/opencl/amdocl)
-add_subdirectory(compiler/lib/loaders/elf/utils/libelf)
-add_subdirectory(runtime)
-add_subdirectory(tools/clinfo)
+include_directories(${ROCR_INCLUDES})
+if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
+  include_directories(${LLVM_INCLUDES})
+endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
 
-set(BUILD_SHARED_LIBS "Build shared libs" ON)
-add_subdirectory(api/opencl/khronos/icd)
+include_directories(${CMAKE_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/device/rocm)
+include_directories(${OPENCL_DIR})
+include_directories(${OPENCL_DIR}/amdocl)
+include_directories(${OPENCL_DIR}/khronos)
+include_directories(${OPENCL_DIR}/khronos/headers)
+include_directories(${OPENCL_DIR}/khronos/headers/opencl2.2)
+include_directories(${OPENCL_INCLUDE_DIR})
+include_directories(${COMGR_INCLUDE})
+#message (${OPENCL_DIR}/opencl/khronos/headers/opencl2.2)
 
-###--- Packaging ------------------------------------------------------------###
 
-find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
-include(ROCMSetupVersion)
-rocm_setup_version( VERSION "2.0.0" )
+include_directories(${CMAKE_SOURCE_DIR}/compiler/lib)
+include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/include)
+include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/backends/common)
 
-# MAIN package
-install(PROGRAMS $<TARGET_FILE:clinfo>
-        DESTINATION bin/x86_64
-        COMPONENT MAIN)
-install(PROGRAMS $<TARGET_FILE:amdocl64>
-        DESTINATION lib/x86_64
-        COMPONENT MAIN)
-install(PROGRAMS $<TARGET_FILE:OpenCL>
-        DESTINATION lib/x86_64
-        COMPONENT MAIN)
-install(PROGRAMS $<TARGET_SONAME_FILE:OpenCL>
-        DESTINATION lib/x86_64
-        COMPONENT MAIN)
+include_directories(${CMAKE_SOURCE_DIR}/elf/utils/common)
+include_directories(${CMAKE_SOURCE_DIR}/elf/utils/libelf)
 
-# DEV package
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/api/opencl/khronos/headers/opencl2.2/CL"
-        DESTINATION include
-        COMPONENT DEV
-        USE_SOURCE_PERMISSIONS
-        PATTERN cl_d3d10.h EXCLUDE
-        PATTERN cl_d3d11.h EXCLUDE
-        PATTERN cl_dx9_media_sharing.h EXCLUDE
-        PATTERN cl_egl.h EXCLUDE)
-install(PROGRAMS $<TARGET_LINKER_FILE:OpenCL>
-        DESTINATION lib/x86_64
-        COMPONENT DEV)
+add_subdirectory(device/rocm)
 
-# Generic CPACK variables
-set(CPACK_GENERATOR "DEB;RPM" CACHE STRING "Default packaging generators")
 
-set(CPACK_PACKAGE_CONTACT "Advanced Micro Devices Inc.")
-set(CPACK_PACKAGE_VENDOR "AMD")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl")
 
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 
-# Debian CPACK variables
-set(CPACK_DEB_COMPONENT_INSTALL ON)
+#find_package(amd_comgr REQUIRED CONFIG)
+include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
+set(COMGR_CPP device/comgrctx.cpp)
 
-set(CPACK_DEBIAN_MAIN_FILE_NAME "rocm-opencl-${PROJECT_VERSION}-Linux.deb")
-set(CPACK_DEBIAN_MAIN_PACKAGE_NAME "rocm-opencl")
-set(CPACK_DEBIAN_MAIN_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_SOURCE_DIR}/DEB/postinst;${CMAKE_CURRENT_SOURCE_DIR}/DEB/prerm")
+add_subdirectory( elf/utils/libelf "${CMAKE_CURRENT_BINARY_DIR}/libelf" )
+add_library(oclruntime OBJECT
+  thread/thread.cpp
+  thread/monitor.cpp
+  thread/semaphore.cpp
+  utils/flags.cpp
+  utils/debug.cpp
+  device/appprofile.cpp
+  device/device.cpp
+  device/hwdebug.cpp
+  device/blitcl.cpp
+  device/blit.cpp
+  device/devkernel.cpp
+  device/devwavelimiter.cpp
+  device/devprogram.cpp
+  platform/activity.cpp
+  platform/kernel.cpp
+  platform/context.cpp
+  platform/command.cpp
+  platform/ndrange.cpp
+  platform/runtime.cpp
+  platform/object.cpp
+  platform/memory.cpp
+  platform/program.cpp
+  platform/commandqueue.cpp
+  platform/agent.cpp
+  os/os_win32.cpp
+  os/alloc.cpp
+  os/os.cpp
+  os/os_posix.cpp
+  compiler/lib/utils/options.cpp
+  elf/elf.cpp
+  elf/elf_utils.cpp
+  #${CMAKE_SOURCE_DIR}/compiler/tools/caching/cache.cpp
+  ${COMGR_CPP}
+)
 
-set(CPACK_DEBIAN_FILE_NAME "rocm-opencl-dev-${PROJECT_VERSION}-Linux.deb")
-set(CPACK_DEBIAN_PACKAGE_NAME "rocm-opencl-dev")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "rocm-opencl")
+set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# RPM CPACK variables
-set(CPACK_RPM_COMPONENT_INSTALL ON)
+add_library(amdvdi_static STATIC 
+  	   $<TARGET_OBJECTS:oclruntime>
+  	   $<TARGET_OBJECTS:oclrocm>
+  	   $<TARGET_OBJECTS:oclelf_obj>
+  	   )
+set_target_properties(amdvdi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+#add_library(oclelf STATIC IMPORTED)
+#set_target_properties(oclelf PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/libelf/liboclelf.a")
+#target_link_libraries(oclruntime_static PRIVATE oclelf)
+target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
+target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
 
-set(CPACK_RPM_MAIN_FILE_NAME "rocm-opencl-${PROJECT_VERSION}-Linux.rpm")
-set(CPACK_RPM_MAIN_PACKAGE_NAME "rocm-opencl")
-set(CPACK_RPM_MAIN_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/RPM/rpm_post")
-set(CPACK_RPM_MAIN_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_SOURCE_DIR}/RPM/rpm_postun")
+if (UNIX)
+    set(VDI_DEFAULT_INSTALL_PREFIX "/opt/rocm/vdi")
+endif()
+#comment out as it's not available in cmake 3.5
+#if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+if(NOT CMAKE_INSTALL_PREFIX)
+    if(CMAKE_BUILD_TYPE MATCHES Debug)
+        set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Installation path for vdi" FORCE)
+    #elseif(CMAKE_BUILD_TYPE MATCHES Release)
+    else()
+        set(CMAKE_INSTALL_PREFIX ${VDI_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for vdi" FORCE)
+   #    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE specified. Valid values are Debug and Release")
+   endif()
+#endif()
+endif()
+message("cmake install path  ${CMAKE_INSTALL_PREFIX}")
 
-set(CPACK_RPM_DEV_FILE_NAME "rocm-opencl-devel-${PROJECT_VERSION}-Linux.rpm")
-set(CPACK_RPM_DEV_PACKAGE_NAME "rocm-opencl-devel")
-set(CPACK_RPM_DEV_PACKAGE_DEPENDS "rocm-opencl")
+install( TARGETS amdvdi_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
+FILE(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
+INSTALL (
+    FILES ${headerfiles}
+    DESTINATION include)
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/compiler"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/platform"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/thread"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/os"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/device"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+   #set(AMDGCN_DEP_LIST)
+   #if(AMDGCN_TARGETS_LIB_DEPS)
+   #set(${AMDGCN_TARGETS_LIB_DEPS} ${AMDGCN_DEP_LIST} PARENT_SCOPE)
+   #endif()
 
-set(CPACK_COMPONENTS_ALL MAIN DEV)
-include(CPack)
+   #foreach(AMDGCN_DEP_TARGET ${AMDGCN_DEP_TARGETS})
+   #add_dependencies(oclruntime ${AMDGCN_DEP_TARGET})
+   #endforeach()
