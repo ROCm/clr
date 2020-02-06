@@ -1,0 +1,3 @@
+# PAL interface versions
+PAL_MAJOR_VERSION = 563
+GPUOPEN_MAJOR_VERSION = 41
