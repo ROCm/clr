@@ -9,6 +9,10 @@ set(USE_COMGR_LIBRARY "yes")
 add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
 add_definitions(-DBSD_LIBELF)
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options("-Wno-ignored-attributes")
+endif()
+
 find_package(amd_comgr REQUIRED CONFIG
    PATHS
      /opt/rocm/
@@ -32,7 +36,7 @@ find_library( OpenCL REQUIRED CONFIG
 find_path(OPENCL_INCLUDE_DIR
   NAMES OpenCL/cl.h CL/cl.h
   PATH_SUFFIXES include opencl/include inc include/x86_64 include/x64
-  PATHS /opt/rocm 
+  PATHS /opt/rocm
   DOC "OpenCL include header OpenCL/cl.h or CL/cl.h"
 )
 
@@ -86,10 +90,15 @@ include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/backends/common)
 include_directories(${CMAKE_SOURCE_DIR}/elf/utils/common)
 include_directories(${CMAKE_SOURCE_DIR}/elf/utils/libelf)
 
+option(BUILD_PAL "Build PAL backend" OFF)
+if (BUILD_PAL)
+  add_definitions(-DWITH_PAL_DEVICE)
+  add_subdirectory(device/pal)
+
+  add_definitions(-DAMD_LIBELF)
+  add_subdirectory(compiler/sc/HSAIL)
+endif()
 add_subdirectory(device/rocm)
-
-
-
 
 #find_package(amd_comgr REQUIRED CONFIG)
 include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
@@ -134,17 +143,32 @@ add_library(oclruntime OBJECT
 
 set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-add_library(amdvdi_static STATIC 
+add_library(amdvdi_static STATIC
   	   $<TARGET_OBJECTS:oclruntime>
   	   $<TARGET_OBJECTS:oclrocm>
   	   $<TARGET_OBJECTS:oclelf_obj>
   	   )
+
 set_target_properties(amdvdi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
+target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
+
+if (BUILD_PAL)
+  target_link_libraries(amdvdi_static PRIVATE vdipal)
+  target_link_libraries(amdvdi_static PRIVATE amdhsaloader)
+  export(TARGETS amdvdi_static vdipal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
+  )
+else()
+  export(TARGETS amdvdi_static
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
+  )
+endif()
+
 #add_library(oclelf STATIC IMPORTED)
 #set_target_properties(oclelf PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/libelf/liboclelf.a")
 #target_link_libraries(oclruntime_static PRIVATE oclelf)
-target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
-target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
 
 if (UNIX)
     set(VDI_DEFAULT_INSTALL_PREFIX "/opt/rocm/vdi")

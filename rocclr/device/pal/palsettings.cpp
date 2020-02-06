@@ -203,7 +203,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   switch (palProp.revision) {
-        case Pal::AsicRevision::Navi14:
+    case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:

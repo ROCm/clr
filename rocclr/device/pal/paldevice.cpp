@@ -35,7 +35,6 @@
 #include "palLib.h"
 #include "palPlatform.h"
 #include "palDevice.h"
-#include "cz_id.h"
 #include "acl.h"
 
 #include "vdi_common.hpp"
@@ -546,22 +545,16 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   info_.platform_ = AMD_PLATFORM;
 
-  if (false && (asicRevision() == Pal::AsicRevision::Carrizo) &&
-      ASICREV_IS_CARRIZO_BRISTOL(palProp.revisionId)) {
-    const static char* bristol = "Bristol Ridge";
-    ::strcpy(info_.name_, bristol);
-  } else {
-    if (settings().useLightning_) {
-      ::strcpy(info_.name_, hwInfo()->machineTargetLC_);
-      if (hwInfo()->xnackEnabled_) {
-        ::strcat(info_.name_, "+xnack");
-      }
-      if (info_.sramEccEnabled_) {
-        ::strcat(info_.name_, "+sram-ecc");
-      }
-    } else {
-      ::strcpy(info_.name_, hwInfo()->machineTarget_);
+  if (settings().useLightning_) {
+    ::strcpy(info_.name_, hwInfo()->machineTargetLC_);
+    if (hwInfo()->xnackEnabled_) {
+      ::strcat(info_.name_, "+xnack");
     }
+    if (info_.sramEccEnabled_) {
+      ::strcat(info_.name_, "+sram-ecc");
+    }
+  } else {
+    ::strcpy(info_.name_, hwInfo()->machineTarget_);
   }
 
   ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
