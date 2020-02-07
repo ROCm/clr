@@ -1,9 +1,8 @@
 project(vdi)
 cmake_minimum_required(VERSION 3.5)
 #example command:
-#cmake -DUSE_COMGR_LIBRARY=yes -DOPENCL_DIR=/home/pghafari/git-ocl -DCMAKE_PREFIX_PATH="/home/pghafari/rocmgitvdi/support/lib/comgr;/home/pghafari/rocmgitvdi/support/lib/comgr/build;home/pghafari/rocmgitvdi/hsa-runtime/opensrc/hsa-runtime/build;/home/pghafari/rocmgitvdi/hsa-runtime/opensrc" -DLLVM_INCLUDES=/home/pghafari/rocmgit/llvm-project/llvm/include .. 
 
-#cmake  -DLLVM_INCLUDES=/home/ixt-rack-79/payam/include -DOPENCL_DIR=/home/ixt-rack-79/payam/ocl4/opencl .. 
+#cmake   -DOPENCL_DIR=/path to/opencl ..
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 set(USE_COMGR_LIBRARY "yes")
@@ -37,10 +36,15 @@ find_path(OPENCL_INCLUDE_DIR
   DOC "OpenCL include header OpenCL/cl.h or CL/cl.h"
 )
 
-MESSAGE(STATUS "Opencl fund at ${OPENCL_INCLUDE_DIR}.")
-set(OPENCL_ICD_LOADER_HEADERS_DIR "${OPENCL_INCLUDE_DIR}") 
+if( NOT OPENCL_INCLUDE_DIR )
+   unset(OPENCL_INCLUDE_DIR CACHE)
+   set(OPENCL_INCLUDE_DIR "" CACHE PATH "" FORCE )
+else()
+   set(OPENCL_ICD_LOADER_HEADERS_DIR "${OPENCL_INCLUDE_DIR}")
+endif()
+   MESSAGE(STATUS "Opencl found at ${OPENCL_INCLUDE_DIR}.")
 
-#/khronos/headers/opencl2.2" CACHE PATH "")
+
 find_package(ROCT REQUIRED)
 find_package(ROCR REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -73,7 +77,6 @@ include_directories(${OPENCL_DIR}/khronos/headers)
 include_directories(${OPENCL_DIR}/khronos/headers/opencl2.2)
 include_directories(${OPENCL_INCLUDE_DIR})
 include_directories(${COMGR_INCLUDE})
-#message (${OPENCL_DIR}/opencl/khronos/headers/opencl2.2)
 
 
 include_directories(${CMAKE_SOURCE_DIR}/compiler/lib)
