@@ -34,7 +34,15 @@ include_directories(${CMAKE_SOURCE_DIR}/khronos/headers)
 include_directories(${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2)
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
   add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
-  find_package(amd_comgr REQUIRED CONFIG)
+  find_package(amd_comgr REQUIRED CONFIG
+     PATHS
+       /opt/rocm/
+     PATH_SUFFIXES
+      cmake/amd_comgr
+      lib/cmake/amd_comgr
+   )
+   MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
+
   include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
 else()
 	#  include_directories(${CMAKE_SOURCE_DIR}/compiler/driver/src)
