@@ -364,9 +364,9 @@ class Kernel : public amd::HeapObject {
   struct WorkGroupInfo : public amd::EmbeddedObject {
     size_t size_;                     //!< kernel workgroup size
     size_t compileSize_[3];           //!< kernel compiled workgroup size
-    cl_ulong localMemSize_;           //!< amount of used local memory
+    uint64_t localMemSize_;           //!< amount of used local memory
     size_t preferredSizeMultiple_;    //!< preferred multiple for launch
-    cl_ulong privateMemSize_;         //!< amount of used private memory
+    uint64_t privateMemSize_;         //!< amount of used private memory
     size_t scratchRegs_;              //!< amount of used scratch registers
     size_t wavefrontPerSIMD_;         //!< number of wavefronts per SIMD
     size_t wavefrontSize_;            //!< number of threads per wavefront

@@ -32,7 +32,7 @@
 namespace amd {
 
 
-typedef cl_int(CL_CALLBACK* vdiAgent_OnLoad_fn)(vdi_agent* agent);
+typedef int32_t(CL_CALLBACK* vdiAgent_OnLoad_fn)(vdi_agent* agent);
 typedef void(CL_CALLBACK* vdiAgent_OnUnload_fn)(vdi_agent* agent);
 
 Agent::Agent(const char* moduleName) : ready_(false) {
@@ -78,13 +78,13 @@ Agent::~Agent() {
   }
 }
 
-cl_int Agent::setCallbacks(const vdi_agent_callbacks* callbacks, size_t size) {
+int32_t Agent::setCallbacks(const vdi_agent_callbacks* callbacks, size_t size) {
   // FIXME_lmoriche: check size
   memcpy(&callbacks_, callbacks, size);
   return CL_SUCCESS;
 }
 
-cl_int Agent::getCapabilities(vdi_agent_capabilities* caps) {
+int32_t Agent::getCapabilities(vdi_agent_capabilities* caps) {
   if (caps == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -148,7 +148,7 @@ static inline bool operator!=(const vdi_agent_capabilities& lhs, const vdi_agent
   return !(lhs == rhs);
 }
 
-cl_int Agent::setCapabilities(const vdi_agent_capabilities* caps, bool install) {
+int32_t Agent::setCapabilities(const vdi_agent_capabilities* caps, bool install) {
   ScopedLock sl(capabilitiesLock_);
 
   if (caps == NULL || *caps != (*caps & potentialCapabilities_)) {
@@ -211,7 +211,7 @@ void Agent::tearDown() {
 
 namespace agent {
 
-static cl_int CL_API_CALL GetVersionNumber(vdi_agent* agent, cl_int* version_ret) {
+static int32_t CL_API_CALL GetVersionNumber(vdi_agent* agent, int32_t* version_ret) {
   if (version_ret == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -219,7 +219,7 @@ static cl_int CL_API_CALL GetVersionNumber(vdi_agent* agent, cl_int* version_ret
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetPlatform(vdi_agent* agent, cl_platform_id* platform_id_ret) {
+static int32_t CL_API_CALL GetPlatform(vdi_agent* agent, cl_platform_id* platform_id_ret) {
   if (platform_id_ret == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -227,7 +227,7 @@ static cl_int CL_API_CALL GetPlatform(vdi_agent* agent, cl_platform_id* platform
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetTime(vdi_agent* agent, cl_long* time_nanos) {
+static int32_t CL_API_CALL GetTime(vdi_agent* agent, int64_t* time_nanos) {
   if (time_nanos == NULL) {
     return CL_INVALID_VALUE;
   }
@@ -235,12 +235,12 @@ static cl_int CL_API_CALL GetTime(vdi_agent* agent, cl_long* time_nanos) {
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL SetCallbacks(vdi_agent* agent, const vdi_agent_callbacks* callbacks,
+static int32_t CL_API_CALL SetCallbacks(vdi_agent* agent, const vdi_agent_callbacks* callbacks,
                                        size_t size) {
   return Agent::get(agent)->setCallbacks(callbacks, size);
 }
 
-static cl_int CL_API_CALL GetPotentialCapabilities(vdi_agent* agent,
+static int32_t CL_API_CALL GetPotentialCapabilities(vdi_agent* agent,
                                                    vdi_agent_capabilities* capabilities) {
   if (capabilities == NULL) {
     return CL_INVALID_VALUE;
@@ -250,24 +250,24 @@ static cl_int CL_API_CALL GetPotentialCapabilities(vdi_agent* agent,
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL GetCapabilities(vdi_agent* agent, vdi_agent_capabilities* capabilities) {
+static int32_t CL_API_CALL GetCapabilities(vdi_agent* agent, vdi_agent_capabilities* capabilities) {
   return Agent::get(agent)->getCapabilities(capabilities);
 }
 
-static cl_int CL_API_CALL SetCapabilities(vdi_agent* agent,
+static int32_t CL_API_CALL SetCapabilities(vdi_agent* agent,
                                           const vdi_agent_capabilities* capabilities,
                                           vdi_agent_capability_action action) {
   return Agent::get(agent)->setCapabilities(capabilities, action == VDI_AGENT_ADD_CAPABILITIES);
 }
 
-static cl_int CL_API_CALL GetICDDispatchTable(vdi_agent* agent, cl_icd_dispatch_table* table,
+static int32_t CL_API_CALL GetICDDispatchTable(vdi_agent* agent, cl_icd_dispatch_table* table,
                                               size_t size) {
   // FIXME_lmoriche: check size
   memcpy(table, amd::ICDDispatchedObject::icdVendorDispatch_, size);
   return CL_SUCCESS;
 }
 
-static cl_int CL_API_CALL SetICDDispatchTable(vdi_agent* agent, const cl_icd_dispatch_table* table,
+static int32_t CL_API_CALL SetICDDispatchTable(vdi_agent* agent, const cl_icd_dispatch_table* table,
                                               size_t size) {
   // FIXME_lmoriche: check size
   memcpy(amd::ICDDispatchedObject::icdVendorDispatch_, table, size);
@@ -340,7 +340,7 @@ void Agent::postEventFree(cl_event event) {
   }
 }
 
-void Agent::postEventStatusChanged(cl_event event, cl_int status, cl_long ts) {
+void Agent::postEventStatusChanged(cl_event event, int32_t status, int64_t ts) {
   for (Agent* agent = list_; agent != NULL; agent = agent->next_) {
     acEventStatusChanged_fn callback = agent->callbacks_.EventStatusChanged;
     if (callback != NULL && agent->canGenerateEventEvents()) {
@@ -367,7 +367,7 @@ void Agent::postMemObjectFree(cl_mem memobj) {
   }
 }
 
-void Agent::postMemObjectAcquired(cl_mem memobj, cl_device_id device, cl_long elapsed) {
+void Agent::postMemObjectAcquired(cl_mem memobj, cl_device_id device, int64_t elapsed) {
   for (Agent* agent = list_; agent != NULL; agent = agent->next_) {
     acMemObjectAcquired_fn callback = agent->callbacks_.MemObjectAcquired;
     if (callback != NULL && agent->canGenerateMemObjectEvents()) {
@@ -439,7 +439,7 @@ void Agent::postKernelFree(cl_kernel kernel) {
   }
 }
 
-void Agent::postKernelSetArg(cl_kernel kernel, cl_int index, size_t size, const void* value_ptr) {
+void Agent::postKernelSetArg(cl_kernel kernel, int32_t index, size_t size, const void* value_ptr) {
   for (Agent* agent = list_; agent != NULL; agent = agent->next_) {
     acKernelSetArg_fn callback = agent->callbacks_.KernelSetArg;
     if (callback != NULL && agent->canGenerateKernelEvents()) {

@@ -121,7 +121,7 @@ void GpuDebugManager::mapKernelCode(void* aqlCodeInfo) const {
   codeInfo->aqlCodeSize_ = aqlCodeSize_;
 }
 
-cl_int GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorage) {
+int32_t GpuDebugManager::registerDebugger(amd::Context* context, uintptr_t messageStorage) {
   if (!device()->settings().enableHwDebug_) {
     LogError("debugmanager: Register debugger error - HW DEBUG is not enable");
     return CL_DEBUGGER_REGISTER_FAILURE_AMD;
@@ -234,7 +234,7 @@ DebugEvent GpuDebugManager::createDebugEvent(const bool autoReset) {
   return 0;
 }
 
-cl_int GpuDebugManager::waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const {
+int32_t GpuDebugManager::waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const {
   Unimplemented();
   /*
       if (osEventTimedWait(pEvent, timeOut)) {
@@ -307,7 +307,7 @@ void GpuDebugManager::setGlobalMemory(amd::Memory* memObj, uint32_t offset, void
   globalMem->unmap(nullptr);
 }
 
-cl_int GpuDebugManager::createRuntimeTrapHandler() {
+int32_t GpuDebugManager::createRuntimeTrapHandler() {
   size_t codeSize = 0;
   const uint32_t* rtTrapCode = nullptr;
 

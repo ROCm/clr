@@ -180,13 +180,13 @@ class HwDebugManager {
   virtual DebugEvent createDebugEvent(const bool autoReset) = 0;
 
   //!  Wait for the debug event
-  virtual cl_int waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const = 0;
+  virtual int32_t waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const = 0;
 
   //!  Destroy the debug event
   virtual void destroyDebugEvent(DebugEvent* pEvent) = 0;
 
   //!  Register the debugger
-  virtual cl_int registerDebugger(amd::Context* context, uintptr_t pMessageStorage) = 0;
+  virtual int32_t registerDebugger(amd::Context* context, uintptr_t pMessageStorage) = 0;
 
   //!  Unregister the debugger
   virtual void unregisterDebugger() = 0;

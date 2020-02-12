@@ -223,7 +223,7 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
   if (!llvmBinary_.empty()) {
     // Compile llvm binary to the IL source code
     // This is link/OPT/Codegen part of compiler.
-    cl_int iErr = compileBinaryToIL(options);
+    int32_t iErr = compileBinaryToIL(options);
     if (iErr != CL_SUCCESS) {
       buildLog_ += "Error: Compilation from LLVMIR binary to IL text failed!";
       LogError(buildLog_.c_str());
@@ -588,7 +588,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
   // Compile llvm binary to the IL source code
   // This is link/OPT/Codegen part of compiler.
-  cl_int iErr = compileBinaryToIL(options);
+  int32_t iErr = compileBinaryToIL(options);
   if (iErr != CL_SUCCESS) {
     buildLog_ += "Error: Compilation from LLVMIR binary to IL text failed!";
     LogError(buildLog_.c_str());

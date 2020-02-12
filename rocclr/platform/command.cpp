@@ -60,7 +60,7 @@ Event::~Event() {
   }
 }
 
-uint64_t Event::recordProfilingInfo(cl_int status, uint64_t timeStamp) {
+uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
   if (timeStamp == 0) {
     timeStamp = Os::timeNanos();
   }
@@ -85,10 +85,10 @@ uint64_t Event::recordProfilingInfo(cl_int status, uint64_t timeStamp) {
   return timeStamp;
 }
 
-bool Event::setStatus(cl_int status, uint64_t timeStamp) {
+bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   assert(status <= CL_QUEUED && "invalid status");
 
-  cl_int currentStatus = status_;
+  int32_t currentStatus = status_;
   if (currentStatus <= CL_COMPLETE || currentStatus <= status) {
     // We can only move forward in the execution status.
     return false;
@@ -130,7 +130,7 @@ bool Event::setStatus(cl_int status, uint64_t timeStamp) {
 }
 
 
-bool Event::setCallback(cl_int status, Event::CallBackFunction callback, void* data) {
+bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* data) {
   assert(status >= CL_COMPLETE && status <= CL_QUEUED && "invalid status");
 
   CallBackEntry* entry = new CallBackEntry(status, callback, data);
@@ -153,9 +153,9 @@ bool Event::setCallback(cl_int status, Event::CallBackFunction callback, void* d
 }
 
 
-void Event::processCallbacks(cl_int status) const {
+void Event::processCallbacks(int32_t status) const {
   cl_event event = const_cast<cl_event>(as_cl(this));
-  const cl_int mask = (status > CL_COMPLETE) ? status : CL_COMPLETE;
+  const int32_t mask = (status > CL_COMPLETE) ? status : CL_COMPLETE;
 
   // For_each callback:
   CallBackEntry* entry;
@@ -307,7 +307,7 @@ NativeFnCommand::NativeFnCommand(HostQueue& queue, const EventWaitList& eventWai
   }
 }
 
-cl_int NativeFnCommand::invoke() {
+int32_t NativeFnCommand::invoke() {
   size_t numMemObjs = memObjects_.size();
   for (size_t i = 0; i < numMemObjs; ++i) {
     void* hostMemPtr = memObjects_[i]->getHostMem();
@@ -431,15 +431,15 @@ bool MigrateMemObjectsCommand::validateMemory() {
   return true;
 }
 
-cl_int NDRangeKernelCommand::captureAndValidate() {
+int32_t NDRangeKernelCommand::captureAndValidate() {
   const amd::Device& device = queue()->device();
   // Validate the kernel before submission
   if (!queue()->device().validateKernel(kernel(), queue()->vdev(), cooperativeGroups())) {
     return CL_OUT_OF_RESOURCES;
   }
 
-  cl_int error;
-  cl_ulong lclMemSize = kernel().getDeviceKernel(device)->workGroupInfo()->localMemSize_;
+  int32_t error;
+  uint64_t lclMemSize = kernel().getDeviceKernel(device)->workGroupInfo()->localMemSize_;
   parameters_ = kernel().parameters().capture(device, lclMemSize, &error);
   return error;
 }

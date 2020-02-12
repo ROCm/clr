@@ -81,7 +81,7 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
   return (it == symbolTable_->cend()) ? NULL : &it->second;
 }
 
-cl_int Program::addDeviceProgram(Device& device, const void* image, size_t length,
+int32_t Program::addDeviceProgram(Device& device, const void* image, size_t length,
                                  amd::option::Options* options) {
   if (image != NULL &&  !amd::isElfMagic((const char*)image)) {
     if (device.settings().useLightning_) {
@@ -185,14 +185,14 @@ device::Program* Program::getDeviceProgram(const Device& device) const {
 
 Monitor Program::buildLock_("OCL build program", true);
 
-cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
+int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
                         const std::vector<const Program*>& headerPrograms,
                         const char** headerIncludeNames, const char* options,
                         void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                         bool optionChangable) {
   ScopedLock sl(buildLock_);
 
-  cl_int retval = CL_SUCCESS;
+  int32_t retval = CL_SUCCESS;
 
   // Clear the program object
   clear();
@@ -247,7 +247,7 @@ cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
     if (sourceCode_.empty()) {
       return CL_INVALID_OPERATION;
     }
-    cl_int result =
+    int32_t result =
         devProgram->compile(sourceCode_, headers, headerIncludeNames, options, &parsedOptions);
 
     // Check if the previous device failed a build
@@ -267,12 +267,12 @@ cl_int Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
   return retval;
 }
 
-cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
+int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
                      const std::vector<Program*>& inputPrograms, const char* options,
                      void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                      bool optionChangable) {
   ScopedLock sl(buildLock_);
-  cl_int retval = CL_SUCCESS;
+  int32_t retval = CL_SUCCESS;
 
   if (symbolTable_ == NULL) {
     symbolTable_ = new symbols_t;
@@ -369,7 +369,7 @@ cl_int Program::link(const std::vector<Device*>& devices, size_t numInputs,
     if (devProgram->buildStatus() != CL_BUILD_NONE) {
       continue;
     }
-    cl_int result = devProgram->link(inputDevPrograms, options, &parsedOptions);
+    int32_t result = devProgram->link(inputDevPrograms, options, &parsedOptions);
 
     // Check if the previous device failed a build
     if ((result != CL_SUCCESS) && (retval != CL_SUCCESS)) {
@@ -457,11 +457,11 @@ void Program::StubProgramSource(const std::string& app_name) {
   program_counter++;
 }
 
-cl_int Program::build(const std::vector<Device*>& devices, const char* options,
+int32_t Program::build(const std::vector<Device*>& devices, const char* options,
                       void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                       bool optionChangable) {
   ScopedLock sl(buildLock_);
-  cl_int retval = CL_SUCCESS;
+  int32_t retval = CL_SUCCESS;
 
   if (symbolTable_ == NULL) {
     symbolTable_ = new symbols_t;
@@ -536,7 +536,7 @@ cl_int Program::build(const std::vector<Device*>& devices, const char* options,
     if (devProgram->buildStatus() != CL_BUILD_NONE) {
       continue;
     }
-    cl_int result = devProgram->build(sourceCode_, options, &parsedOptions);
+    int32_t result = devProgram->build(sourceCode_, options, &parsedOptions);
 
     // Check if the previous device failed a build
     if ((result != CL_SUCCESS) && (retval != CL_SUCCESS)) {

@@ -400,7 +400,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vramBusBitWidth_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth;
   info_.l2CacheSize_ = palProp.gfxipProperties.shaderCore.tccSizeInBytes;
   info_.maxParameterSize_ = 1024;
-  info_.minDataTypeAlignSize_ = sizeof(cl_long16);
+  info_.minDataTypeAlignSize_ = sizeof(int64_t16);
   info_.singleFPConfig_ =
       CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 
@@ -432,49 +432,49 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
         heaps[Pal::GpuHeapLocal].physicalHeapSize + heaps[Pal::GpuHeapInvisible].physicalHeapSize;
   }
 
-  info_.globalMemSize_ = (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-                          static_cast<cl_ulong>(localRAM) / 100u);
+  info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                          static_cast<uint64_t>(localRAM) / 100u);
 
   uint uswcPercentAvailable =
-      ((static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) / Mi) > 1536 && IS_WINDOWS)
+      ((static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) / Mi) > 1536 && IS_WINDOWS)
       ? 75
       : 50;
   if (settings().apuSystem_) {
     info_.globalMemSize_ +=
-        (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100;
+        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100;
   }
 
   // Find the largest heap form FB memory
   if (GPU_ADD_HBCC_SIZE) {
-    info_.maxMemAllocSize_ = std::max(cl_ulong(heaps[Pal::GpuHeapLocal].heapSize),
-                                      cl_ulong(heaps[Pal::GpuHeapInvisible].heapSize));
+    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].heapSize),
+                                      uint64_t(heaps[Pal::GpuHeapInvisible].heapSize));
   } else {
-    info_.maxMemAllocSize_ = std::max(cl_ulong(heaps[Pal::GpuHeapLocal].physicalHeapSize),
-                                      cl_ulong(heaps[Pal::GpuHeapInvisible].physicalHeapSize));
+    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].physicalHeapSize),
+                                      uint64_t(heaps[Pal::GpuHeapInvisible].physicalHeapSize));
   }
 
 #if defined(ATI_OS_WIN)
   if (settings().apuSystem_) {
     info_.maxMemAllocSize_ = std::max(
-        (static_cast<cl_ulong>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100,
+        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100,
         info_.maxMemAllocSize_);
   }
 #endif
   info_.maxMemAllocSize_ =
-      cl_ulong(info_.maxMemAllocSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+      uint64_t(info_.maxMemAllocSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
   //! \note Force max single allocation size.
   //! 4GB limit for the blit kernels and 64 bit optimizations.
   info_.maxMemAllocSize_ =
-      std::min(info_.maxMemAllocSize_, static_cast<cl_ulong>(settings().maxAllocSize_));
+      std::min(info_.maxMemAllocSize_, static_cast<uint64_t>(settings().maxAllocSize_));
 
-  if (info_.maxMemAllocSize_ < cl_ulong(128 * Mi)) {
+  if (info_.maxMemAllocSize_ < uint64_t(128 * Mi)) {
     LogError(
         "We are unable to get a heap large enough to support the OpenCL minimum "
         "requirement for FULL_PROFILE");
   }
 
-  info_.maxMemAllocSize_ = std::max(cl_ulong(128 * Mi), info_.maxMemAllocSize_);
+  info_.maxMemAllocSize_ = std::max(uint64_t(128 * Mi), info_.maxMemAllocSize_);
 
   // Clamp max single alloc size to the globalMemSize since it's
   // reduced by default
@@ -490,7 +490,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   } else {
     info_.addressBits_ = (settings().useLightning_) ? 64 : 32;
     // Limit total size with 3GB for 32 bit
-    info_.globalMemSize_ = std::min(info_.globalMemSize_, cl_ulong(3 * Gi));
+    info_.globalMemSize_ = std::min(info_.globalMemSize_, uint64_t(3 * Gi));
   }
 
   // Alignment in BITS of the base address of any allocated memory object
@@ -2409,8 +2409,8 @@ void Device::SrdManager::fillResourceList(VirtualGPU& gpu) {
   }
 }
 
-cl_int Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
-  cl_int status = hwDebugMgr_->registerDebugger(context, messageStorage);
+int32_t Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
+  int32_t status = hwDebugMgr_->registerDebugger(context, messageStorage);
 
   if (CL_SUCCESS != status) {
     delete hwDebugMgr_;

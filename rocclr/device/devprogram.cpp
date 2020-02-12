@@ -1452,7 +1452,7 @@ bool Program::finiBuild(bool isBuildGood) {
 }
 
 // ================================================================================================
-cl_int Program::compile(const std::string& sourceCode,
+int32_t Program::compile(const std::string& sourceCode,
                         const std::vector<const std::string*>& headers,
                         const char** headerIncludeNames, const char* origOptions,
                         amd::option::Options* options) {
@@ -1540,7 +1540,7 @@ cl_int Program::compile(const std::string& sourceCode,
 }
 
 // ================================================================================================
-cl_int Program::link(const std::vector<Program*>& inputPrograms, const char* origLinkOptions,
+int32_t Program::link(const std::vector<Program*>& inputPrograms, const char* origLinkOptions,
                      amd::option::Options* linkOptions) {
   lastBuildOptionsArg_ = origLinkOptions ? origLinkOptions : "";
   if (linkOptions) {
@@ -1643,7 +1643,7 @@ cl_int Program::link(const std::vector<Program*>& inputPrograms, const char* ori
 }
 
 // ================================================================================================
-cl_int Program::build(const std::string& sourceCode, const char* origOptions,
+int32_t Program::build(const std::string& sourceCode, const char* origOptions,
                       amd::option::Options* options) {
   uint64_t start_time = 0;
   if (options->oVariables->EnableBuildTiming) {

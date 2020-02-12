@@ -66,13 +66,13 @@ class GpuDebugManager : public amd::HwDebugManager {
   DebugEvent createDebugEvent(const bool autoReset);
 
   //!  Wait for the debug event
-  cl_int waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const;
+  int32_t waitDebugEvent(DebugEvent pEvent, uint32_t timeOut) const;
 
   //!  Destroy the debug event
   void destroyDebugEvent(DebugEvent* pEvent);
 
   //!  Register the debugger
-  cl_int registerDebugger(amd::Context* context, uintptr_t messageStorage);
+  int32_t registerDebugger(amd::Context* context, uintptr_t messageStorage);
 
   //!  Unregister the debugger
   void unregisterDebugger();
@@ -105,7 +105,7 @@ class GpuDebugManager : public amd::HwDebugManager {
   void setupTrapInformation(DebugToolInfo* toolInfo);
 
   //!  Create runtime trap handler
-  cl_int createRuntimeTrapHandler();
+  int32_t createRuntimeTrapHandler();
 
  protected:
   const VirtualGPU* vGpu() const { return vGpu_; }

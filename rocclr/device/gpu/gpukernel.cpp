@@ -399,9 +399,9 @@ size_t KernelArg::size(bool gpuLayer) const {
     case PointerHwPrivate:
       return (gpuLayer) ? sizeof(uint32_t) * size_ : 0;
     case Float:
-      return sizeof(cl_float) * amd::nextPowerOfTwo(size_);
+      return sizeof(float) * amd::nextPowerOfTwo(size_);
     case Double:
-      return sizeof(cl_double) * amd::nextPowerOfTwo(size_);
+      return sizeof(double) * amd::nextPowerOfTwo(size_);
     case Char:
     case UChar:
       return sizeof(cl_char) * amd::nextPowerOfTwo(size_);
@@ -410,10 +410,10 @@ size_t KernelArg::size(bool gpuLayer) const {
       return sizeof(cl_short) * amd::nextPowerOfTwo(size_);
     case Int:
     case UInt:
-      return sizeof(cl_uint) * amd::nextPowerOfTwo(size_);
+      return sizeof(uint32_t) * amd::nextPowerOfTwo(size_);
     case Long:
     case ULong:
-      return sizeof(cl_ulong) * amd::nextPowerOfTwo(size_);
+      return sizeof(uint64_t) * amd::nextPowerOfTwo(size_);
     case Struct:
     case Union:
       return (gpuLayer) ? amd::alignUp(size_, 16) : size_;

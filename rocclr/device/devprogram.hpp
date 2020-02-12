@@ -115,8 +115,8 @@ class Program : public amd::HeapObject {
 
   std::string lastBuildOptionsArg_;
   mutable std::string buildLog_;    //!< build log.
-  cl_int buildStatus_;              //!< build status.
-  cl_int buildError_;               //!< build error
+  int32_t buildStatus_;              //!< build status.
+  int32_t buildError_;               //!< build error
 
   const char* machineTarget_;       //!< Machine target for this program
   aclTargetInfo info_;              //!< The info target for this binary.
@@ -148,16 +148,16 @@ class Program : public amd::HeapObject {
   amd::option::Options* getCompilerOptions() const { return programOptions_; }
 
   //! Compile the device program.
-  cl_int compile(const std::string& sourceCode, const std::vector<const std::string*>& headers,
+  int32_t compile(const std::string& sourceCode, const std::vector<const std::string*>& headers,
     const char** headerIncludeNames, const char* origOptions,
     amd::option::Options* options);
 
   //! Builds the device program.
-  cl_int link(const std::vector<Program*>& inputPrograms, const char* origOptions,
+  int32_t link(const std::vector<Program*>& inputPrograms, const char* origOptions,
     amd::option::Options* options);
 
   //! Builds the device program.
-  cl_int build(const std::string& sourceCode, const char* origOptions,
+  int32_t build(const std::string& sourceCode, const char* origOptions,
     amd::option::Options* options);
 
   //! Returns the device object, associated with this program.
@@ -177,7 +177,7 @@ class Program : public amd::HeapObject {
   cl_build_status buildStatus() const { return buildStatus_; }
 
   //! Return the build error.
-  cl_int buildError() const { return buildError_; }
+  int32_t buildError() const { return buildError_; }
 
   //! Return the symbols vector.
   const kernels_t& kernels() const { return kernels_; }

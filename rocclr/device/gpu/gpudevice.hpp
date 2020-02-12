@@ -538,7 +538,7 @@ class Device : public NullDevice, public CALGSLDevice {
   SrdManager& srds() const { return *srdManager_; }
 
   //! Initial the Hardware Debug Manager
-  cl_int hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage);
+  int32_t hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage);
 
  private:
   //! Disable copy constructor

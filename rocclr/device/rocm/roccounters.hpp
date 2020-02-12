@@ -50,9 +50,9 @@ class PerfCounter : public device::PerfCounter {
 
   //! Constructor for the ROC PerfCounter object
   PerfCounter(const Device& device,     //!< A ROC device object
-              cl_uint blockIndex,       //!< HW block index
-              cl_uint counterIndex,     //!< Counter index (Counter register) within the block
-              cl_uint eventIndex);      //!< Event index (Counter selection) for profiling
+              uint32_t blockIndex,       //!< HW block index
+              uint32_t counterIndex,     //!< Counter index (Counter register) within the block
+              uint32_t eventIndex);      //!< Event index (Counter selection) for profiling
 
   //! Destructor for the ROCM PerfCounter object
   virtual ~PerfCounter();
