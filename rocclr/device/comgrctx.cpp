@@ -66,8 +66,6 @@ bool Comgr::LoadLib() {
   GET_COMGR_SYMBOL(amd_comgr_action_info_get_isa_name)
   GET_COMGR_SYMBOL(amd_comgr_action_info_set_language)
   GET_COMGR_SYMBOL(amd_comgr_action_info_get_language)
-  GET_COMGR_SYMBOL(amd_comgr_action_info_set_options)
-  GET_COMGR_SYMBOL(amd_comgr_action_info_get_options)
   GET_COMGR_SYMBOL(amd_comgr_action_info_set_option_list)
   GET_COMGR_SYMBOL(amd_comgr_action_info_get_option_list_count)
   GET_COMGR_SYMBOL(amd_comgr_action_info_get_option_list_item)

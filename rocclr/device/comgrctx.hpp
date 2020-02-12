@@ -53,8 +53,6 @@ typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_isa_name)(amd_comgr_act
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_isa_name)(amd_comgr_action_info_t action_info, size_t *size, char *isa_name);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_language)(amd_comgr_action_info_t action_info, amd_comgr_language_t language);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_language)(amd_comgr_action_info_t action_info, amd_comgr_language_t *language);
-typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_options)(amd_comgr_action_info_t action_info, const char *options);
-typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_options)(amd_comgr_action_info_t action_info, size_t *size, char *options);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_option_list)(amd_comgr_action_info_t action_info, const char *options[], size_t count);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_option_list_count)(amd_comgr_action_info_t action_info, size_t *count);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_get_option_list_item)(amd_comgr_action_info_t action_info, size_t index, size_t *size, char *option);
@@ -103,8 +101,6 @@ struct ComgrEntryPoints {
   t_amd_comgr_action_info_get_isa_name  amd_comgr_action_info_get_isa_name;
   t_amd_comgr_action_info_set_language  amd_comgr_action_info_set_language;
   t_amd_comgr_action_info_get_language  amd_comgr_action_info_get_language;
-  t_amd_comgr_action_info_set_options   amd_comgr_action_info_set_options;
-  t_amd_comgr_action_info_get_options   amd_comgr_action_info_get_options;
   t_amd_comgr_action_info_set_option_list   amd_comgr_action_info_set_option_list;
   t_amd_comgr_action_info_get_option_list_count   amd_comgr_action_info_get_option_list_count;
   t_amd_comgr_action_info_get_option_list_item   amd_comgr_action_info_get_option_list_item;
@@ -223,12 +219,6 @@ public:
   }
   static amd_comgr_status_t action_info_get_language(amd_comgr_action_info_t action_info, amd_comgr_language_t *language) {
     return DYN(amd_comgr_action_info_get_language)(action_info, language);
-  }
-  static amd_comgr_status_t action_info_set_options(amd_comgr_action_info_t action_info, const char *options) {
-    return DYN(amd_comgr_action_info_set_options)(action_info, options);
-  }
-  static amd_comgr_status_t action_info_get_options(amd_comgr_action_info_t action_info, size_t *size, char *options) {
-    return DYN(amd_comgr_action_info_get_options)(action_info, size, options);
   }
   static amd_comgr_status_t action_info_set_option_list(amd_comgr_action_info_t action_info, const char *options[], size_t count) {
     return DYN(amd_comgr_action_info_set_option_list)(action_info, options, count);

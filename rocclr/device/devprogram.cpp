@@ -596,7 +596,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   }
 
   // Create executable from the relocatable data set
-  amd::Comgr::action_info_set_options(action, "");
+  amd::Comgr::action_info_set_option_list(action, nullptr, 0);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
                                  action, relocatableData, output);
