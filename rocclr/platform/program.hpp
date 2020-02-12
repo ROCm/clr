@@ -166,7 +166,7 @@ class Program : public RuntimeObject {
   const std::string& programLog() const { return programLog_; }
 
   //! Add a new device program with or without binary image and options.
-  cl_int addDeviceProgram(Device&, const void* image = NULL, size_t len = 0,
+  int32_t addDeviceProgram(Device&, const void* image = NULL, size_t len = 0,
                           amd::option::Options* options = NULL);
 
   //! Find the section for the given device. Return NULL if not found.
@@ -182,20 +182,20 @@ class Program : public RuntimeObject {
   const std::string& kernelNames() const { return kernelNames_; }
 
   //! Compile the program for the given devices.
-  cl_int compile(const std::vector<Device*>& devices, size_t numHeaders,
+  int32_t compile(const std::vector<Device*>& devices, size_t numHeaders,
                  const std::vector<const Program*>& headerPrograms, const char** headerIncludeNames,
                  const char* options = NULL,
                  void(CL_CALLBACK* notifyFptr)(cl_program, void*) = NULL, void* data = NULL,
                  bool optionChangable = true);
 
   //! Link the programs for the given devices.
-  cl_int link(const std::vector<Device*>& devices, size_t numInputs,
+  int32_t link(const std::vector<Device*>& devices, size_t numInputs,
               const std::vector<Program*>& inputPrograms, const char* options = NULL,
               void(CL_CALLBACK* notifyFptr)(cl_program, void*) = NULL, void* data = NULL,
               bool optionChangable = true);
 
   //! Build the program for the given devices.
-  cl_int build(const std::vector<Device*>& devices, const char* options = NULL,
+  int32_t build(const std::vector<Device*>& devices, const char* options = NULL,
                void(CL_CALLBACK* notifyFptr)(cl_program, void*) = NULL, void* data = NULL,
                bool optionChangable = true);
 

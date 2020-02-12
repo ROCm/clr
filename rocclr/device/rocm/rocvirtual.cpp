@@ -1137,7 +1137,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
   const std::vector<void*>& svmPointers = cmd.svmPointers();
   if (cmd.pfnFreeFunc() == nullptr) {
     // pointers allocated using clSVMAlloc
-    for (cl_uint i = 0; i < svmPointers.size(); i++) {
+    for (uint32_t i = 0; i < svmPointers.size(); i++) {
       amd::SvmBuffer::free(cmd.context(), svmPointers[i]);
     }
   } else {

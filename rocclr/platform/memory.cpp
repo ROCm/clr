@@ -932,12 +932,12 @@ cl_image_format Image::supportedFormats[] = {
     {CL_DEPTH, CL_FLOAT},
 };
 
-const cl_uint NUM_CHANNEL_ORDER_OF_RGB = 1;  // The number of channel orders of RGB at the end of
+const uint32_t NUM_CHANNEL_ORDER_OF_RGB = 1;  // The number of channel orders of RGB at the end of
                                              // the table supportedFormats above and before sRGB and
                                              // depth.
-const cl_uint NUM_CHANNEL_ORDER_OF_sRGB = 1;  // The number of channel orders of sRGB at the end of
+const uint32_t NUM_CHANNEL_ORDER_OF_sRGB = 1;  // The number of channel orders of sRGB at the end of
                                               // the table supportedFormats above and before depth.
-const cl_uint NUM_CHANNEL_ORDER_OF_DEPTH =
+const uint32_t NUM_CHANNEL_ORDER_OF_DEPTH =
     2;  // The number of channel orders of DEPTH at the end of the table supportedFormats above.
 
 // definition of list of supported RA formats
@@ -953,7 +953,7 @@ cl_image_format Image::supportedDepthStencilFormats[] = {
     {CL_DEPTH_STENCIL, CL_FLOAT},
     {CL_DEPTH_STENCIL, CL_UNORM_INT24}};
 
-cl_uint Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type,
+uint32_t Image::numSupportedFormats(const Context& context, cl_mem_object_type image_type,
                                    cl_mem_flags flags) {
   const std::vector<amd::Device*>& devices = context.devices();
   uint numFormats = sizeof(supportedFormats) / sizeof(cl_image_format);
@@ -1007,8 +1007,8 @@ cl_uint Image::numSupportedFormats(const Context& context, cl_mem_object_type im
   return numFormats;
 }
 
-cl_uint Image::getSupportedFormats(const Context& context, cl_mem_object_type image_type,
-                                   const cl_uint num_entries, cl_image_format* image_formats,
+uint32_t Image::getSupportedFormats(const Context& context, cl_mem_object_type image_type,
+                                   const uint32_t num_entries, cl_image_format* image_formats,
                                    cl_mem_flags flags) {
   const std::vector<amd::Device*>& devices = context.devices();
   uint numFormats = 0;
@@ -1203,9 +1203,9 @@ static int round_to_even(float v) {
 static uint16_t float2half_rtz(float f) {
   union {
     float f;
-    cl_uint u;
+    uint32_t u;
   } u = {f};
-  cl_uint sign = (u.u >> 16) & 0x8000;
+  uint32_t sign = (u.u >> 16) & 0x8000;
   float x = fabsf(f);
 
   // Nan

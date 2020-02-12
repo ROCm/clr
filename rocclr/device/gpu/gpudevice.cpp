@@ -351,7 +351,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   info_.vramBusBitWidth_ = calAttr.memBusWidth;
   info_.l2CacheSize_ = 0;
   info_.maxParameterSize_ = 1024;
-  info_.minDataTypeAlignSize_ = sizeof(cl_long16);
+  info_.minDataTypeAlignSize_ = sizeof(int64_t16);
   info_.singleFPConfig_ =
       CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 
@@ -377,20 +377,20 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
 #if defined(ATI_OS_LINUX)
   info_.globalMemSize_ =
-      (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+      (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
        // globalMemSize is the actual available size for app on Linux
        // Because Linux base driver doesn't support paging
-       static_cast<cl_ulong>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) /
+       static_cast<uint64_t>(memInfo.cardMemAvailableBytes + memInfo.cardExtMemAvailableBytes) /
        100u);
 #else
-  info_.globalMemSize_ = (static_cast<cl_ulong>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
-                          static_cast<cl_ulong>(calAttr.localRAM) / 100u) *
+  info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                          static_cast<uint64_t>(calAttr.localRAM) / 100u) *
       Mi;
 #endif
   int uswcPercentAvailable = (calAttr.uncachedRemoteRAM > 1536 && IS_WINDOWS) ? 75 : 50;
   if (settings().apuSystem_) {
     info_.globalMemSize_ +=
-        (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable) / 100;
+        (static_cast<uint64_t>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable) / 100;
   }
 
 // We try to calculate the largest available memory size from
@@ -400,32 +400,32 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 // application progresses.
 #if defined(BRAHMA) && defined(ATI_BITS_64)
   info_.maxMemAllocSize_ =
-      std::max(cl_ulong(memInfo.cardMemAvailableBytes), cl_ulong(memInfo.cardExtMemAvailableBytes));
+      std::max(uint64_t(memInfo.cardMemAvailableBytes), uint64_t(memInfo.cardExtMemAvailableBytes));
 #else
-  info_.maxMemAllocSize_ = std::max(cl_ulong(memInfo.cardLargestFreeBlockBytes),
-                                    cl_ulong(memInfo.cardExtLargestFreeBlockBytes));
+  info_.maxMemAllocSize_ = std::max(uint64_t(memInfo.cardLargestFreeBlockBytes),
+                                    uint64_t(memInfo.cardExtLargestFreeBlockBytes));
 #endif
 
   if (settings().apuSystem_) {
     info_.maxMemAllocSize_ = std::max(
-        (static_cast<cl_ulong>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable) / 100,
+        (static_cast<uint64_t>(calAttr.uncachedRemoteRAM) * Mi * uswcPercentAvailable) / 100,
         info_.maxMemAllocSize_);
   }
   info_.maxMemAllocSize_ =
-      cl_ulong(info_.maxMemAllocSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+      uint64_t(info_.maxMemAllocSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
   //! \note Force max single allocation size.
   //! 4GB limit for the blit kernels and 64 bit optimizations.
   info_.maxMemAllocSize_ =
-      std::min(info_.maxMemAllocSize_, static_cast<cl_ulong>(settings().maxAllocSize_));
+      std::min(info_.maxMemAllocSize_, static_cast<uint64_t>(settings().maxAllocSize_));
 
-  if (info_.maxMemAllocSize_ < cl_ulong(128 * Mi)) {
+  if (info_.maxMemAllocSize_ < uint64_t(128 * Mi)) {
     LogError(
         "We are unable to get a heap large enough to support the OpenCL minimum "
         "requirement for FULL_PROFILE");
   }
 
-  info_.maxMemAllocSize_ = std::max(cl_ulong(128 * Mi), info_.maxMemAllocSize_);
+  info_.maxMemAllocSize_ = std::max(uint64_t(128 * Mi), info_.maxMemAllocSize_);
 
   // Clamp max single alloc size to the globalMemSize since it's
   // reduced by default
@@ -441,7 +441,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   } else {
     info_.addressBits_ = 32;
     // Limit total size with 3GB for 32 bit
-    info_.globalMemSize_ = std::min(info_.globalMemSize_, cl_ulong(3 * Gi));
+    info_.globalMemSize_ = std::min(info_.globalMemSize_, uint64_t(3 * Gi));
   }
 
   // Alignment in BITS of the base address of any allocated memory object
@@ -2237,8 +2237,8 @@ void Device::SrdManager::fillResourceList(std::vector<const Memory*>& memList) {
   }
 }
 
-cl_int Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
-  cl_int status = hwDebugMgr_->registerDebugger(context, messageStorage);
+int32_t Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
+  int32_t status = hwDebugMgr_->registerDebugger(context, messageStorage);
 
   if (CL_SUCCESS != status) {
     delete hwDebugMgr_;

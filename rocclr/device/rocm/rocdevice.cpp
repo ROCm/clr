@@ -1129,13 +1129,13 @@ bool Device::populateOCLDeviceConstants() {
     }
 
     assert(global_segment_size > 0);
-    info_.globalMemSize_ = static_cast<cl_ulong>(global_segment_size);
+    info_.globalMemSize_ = static_cast<uint64_t>(global_segment_size);
 
     gpuvm_segment_max_alloc_ =
-        cl_ulong(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+        uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
     assert(gpuvm_segment_max_alloc_ > 0);
 
-    info_.maxMemAllocSize_ = static_cast<cl_ulong>(gpuvm_segment_max_alloc_);
+    info_.maxMemAllocSize_ = static_cast<uint64_t>(gpuvm_segment_max_alloc_);
 
     if (HSA_STATUS_SUCCESS !=
         hsa_amd_memory_pool_get_info(gpuvm_segment_, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE,
@@ -1147,10 +1147,10 @@ bool Device::populateOCLDeviceConstants() {
   } else {
     // We suppose half of physical memory can be used by GPU in APU system
     info_.globalMemSize_ =
-        cl_ulong(sysconf(_SC_PAGESIZE)) * cl_ulong(sysconf(_SC_PHYS_PAGES)) / 2;
-    info_.globalMemSize_ = std::max(info_.globalMemSize_, cl_ulong(1 * Gi));
+        uint64_t(sysconf(_SC_PAGESIZE)) * uint64_t(sysconf(_SC_PHYS_PAGES)) / 2;
+    info_.globalMemSize_ = std::max(info_.globalMemSize_, uint64_t(1 * Gi));
     info_.maxMemAllocSize_ =
-        cl_ulong(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
+        uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
     if (HSA_STATUS_SUCCESS !=
         hsa_amd_memory_pool_get_info(
@@ -1203,8 +1203,8 @@ bool Device::populateOCLDeviceConstants() {
     info_.hostUnifiedMemory_ = CL_TRUE;
   }
   info_.memBaseAddrAlign_ =
-      8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(cl_long16) : MEMOBJ_BASE_ADDR_ALIGN);
-  info_.minDataTypeAlignSize_ = sizeof(cl_long16);
+      8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
+  info_.minDataTypeAlignSize_ = sizeof(int64_t[16]);
 
   info_.maxConstantArgs_ = 8;
   info_.preferredConstantBufferSize_ = 16 * Ki;

@@ -153,7 +153,7 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
   desc.info_.defined_ = true;
 }
 
-address KernelParameters::capture(const Device& device, cl_ulong lclMemSize, cl_int* error) {
+address KernelParameters::capture(const Device& device, uint64_t lclMemSize, int32_t* error) {
   *error = CL_SUCCESS;
   //! Information about which arguments are SVM pointers is stored after
   // the actual parameters, but only if the device has any SVM capability

@@ -426,10 +426,10 @@ class Image : public Memory {
   static cl_image_format supportedFormats[];
   static cl_image_format supportedFormatsRA[];
   static cl_image_format supportedDepthStencilFormats[];
-  static cl_uint numSupportedFormats(const Context& context, cl_mem_object_type image_type,
+  static uint32_t numSupportedFormats(const Context& context, cl_mem_object_type image_type,
                                      cl_mem_flags flags = 0);
-  static cl_uint getSupportedFormats(const Context& context, cl_mem_object_type image_type,
-                                     const cl_uint num_entries, cl_image_format* image_formats,
+  static uint32_t getSupportedFormats(const Context& context, cl_mem_object_type image_type,
+                                     const uint32_t num_entries, cl_image_format* image_formats,
                                      cl_mem_flags flags = 0);
 
   //! Helper struct to manipulate image formats.

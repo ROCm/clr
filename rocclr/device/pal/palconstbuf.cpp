@@ -72,7 +72,7 @@ bool ManagedBuffer::create(Resource::MemoryType type) {
 // ================================================================================================
 address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
   // Align to the maximum data size available in OpenCL
-  static constexpr uint32_t MemAlignment = sizeof(cl_double16);
+  static constexpr uint32_t MemAlignment = sizeof(double16);
 
   // Align reserve size on the vector's boundary
   uint32_t count = amd::alignUp(size, MemAlignment);

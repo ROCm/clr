@@ -69,7 +69,7 @@ class HostQueue;
  *  in a Context.
  */
 class Event : public RuntimeObject {
-  typedef void(CL_CALLBACK* CallBackFunction)(cl_event event, cl_int command_exec_status,
+  typedef void(CL_CALLBACK* CallBackFunction)(cl_event event, int32_t command_exec_status,
                                               void* user_data);
 
   struct CallBackEntry : public HeapObject {
@@ -77,9 +77,9 @@ class Event : public RuntimeObject {
 
     std::atomic<CallBackFunction> callback_;  //!< callback function pointer.
     void* data_;                              //!< user data passed to the callback function.
-    cl_int status_;                           //!< execution status triggering the callback.
+    int32_t status_;                           //!< execution status triggering the callback.
 
-    CallBackEntry(cl_int status, CallBackFunction callback, void* data)
+    CallBackEntry(int32_t status, CallBackFunction callback, void* data)
         : callback_(callback), data_(data), status_(status) {}
   };
 
@@ -90,7 +90,7 @@ class Event : public RuntimeObject {
   Monitor lock_;
 
   std::atomic<CallBackEntry*> callbacks_;  //!< linked list of callback entries.
-  volatile cl_int status_;                 //!< current execution status.
+  volatile int32_t status_;                 //!< current execution status.
   std::atomic_flag notified_;              //!< Command queue was notified
 
  protected:
@@ -146,10 +146,10 @@ class Event : public RuntimeObject {
   //! Record the profiling info for the given change of \a status.
   //  If the given \a timeStamp is 0 and profiling is enabled,
   //  use the current host clock time instead.
-  uint64_t recordProfilingInfo(cl_int status, uint64_t timeStamp = 0);
+  uint64_t recordProfilingInfo(int32_t status, uint64_t timeStamp = 0);
 
   //! Process the callbacks for the given \a status change.
-  void processCallbacks(cl_int status) const;
+  void processCallbacks(int32_t status) const;
 
  public:
   //! Return the context for this event.
@@ -163,10 +163,10 @@ class Event : public RuntimeObject {
   const ProfilingInfo& profilingInfo() const { return profilingInfo_; }
 
   //! Return this command's execution status.
-  cl_int status() const { return status_; }
+  int32_t status() const { return status_; }
 
   //! Insert the given \a callback into the callback stack.
-  bool setCallback(cl_int status, CallBackFunction callback, void* data);
+  bool setCallback(int32_t status, CallBackFunction callback, void* data);
 
   /*! \brief Set the event status.
    *
@@ -176,7 +176,7 @@ class Event : public RuntimeObject {
    *
    *  \see amd::Event::awaitCompletion
    */
-  bool setStatus(cl_int status, uint64_t timeStamp = 0);
+  bool setStatus(int32_t status, uint64_t timeStamp = 0);
 
   //! Signal all threads waiting on this event.
   void signal() {
@@ -214,7 +214,7 @@ class Command : public Event {
   Command* next_;
 
   const cl_command_type type_;  //!< This command's OpenCL type.
-  volatile cl_int exception_;   //!< The first raised exception.
+  volatile int32_t exception_;   //!< The first raised exception.
   void* data_;
 
  protected:
@@ -265,10 +265,10 @@ class Command : public Event {
   cl_command_type type() const { return type_; }
 
   //! Return the first raised exception or 0 if none.
-  cl_int exception() const { return exception_; }
+  int32_t exception() const { return exception_; }
 
   //! Set the exception for this command.
-  void setException(cl_int exception) { exception_ = exception; }
+  void setException(int32_t exception) { exception_ = exception; }
 
   //! Return the opaque, device specific data for this command.
   void* data() const { return data_; }
@@ -551,7 +551,7 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
 
 class FillMemoryCommand : public OneMemoryArgCommand {
  public:
-  const static size_t MaxFillPatterSize = sizeof(cl_double16);
+  const static size_t MaxFillPatterSize = sizeof(double[16]);
 
  private:
   Coord3D origin_;                   //!< Origin of the region to write to.
@@ -768,7 +768,7 @@ class MigrateMemObjectsCommand : public Command {
   //! Returns the migration flags
   cl_mem_migration_flags migrationFlags() const { return migrationFlags_; }
   //! Returns the number of memory objects in the command
-  cl_uint numMemObjects() const { return (cl_uint)memObjects_.size(); }
+  uint32_t numMemObjects() const { return (uint32_t)memObjects_.size(); }
   //! Returns a pointer to the memory objects
   const std::vector<amd::Memory*>& memObjects() const { return memObjects_; }
 
@@ -845,7 +845,7 @@ class NDRangeKernelCommand : public Command {
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
 
-  cl_int captureAndValidate();
+  int32_t captureAndValidate();
 };
 
 class NativeFnCommand : public Command {
@@ -872,7 +872,7 @@ class NativeFnCommand : public Command {
 
   virtual void submit(device::VirtualDevice& device) { device.submitNativeFn(*this); }
 
-  cl_int invoke();
+  int32_t invoke();
 };
 
 class Marker : public Command {
@@ -902,7 +902,7 @@ class ExtObjectsCommand : public Command {
 
  public:
   //! Construct a new AcquireExtObjectsCommand
-  ExtObjectsCommand(HostQueue& queue, const EventWaitList& eventWaitList, cl_uint num_objects,
+  ExtObjectsCommand(HostQueue& queue, const EventWaitList& eventWaitList, uint32_t num_objects,
                     const std::vector<amd::Memory*>& memoryObjects, cl_command_type type)
       : Command(queue, type, eventWaitList) {
     for (const auto& it : memoryObjects) {
@@ -920,7 +920,7 @@ class ExtObjectsCommand : public Command {
   }
 
   //! Get number of GL objects
-  cl_uint getNumObjects() { return (cl_uint)memObjects_.size(); }
+  uint32_t getNumObjects() { return (uint32_t)memObjects_.size(); }
   //! Get pointer to GL object list
   const std::vector<amd::Memory*>& getMemList() const { return memObjects_; }
   bool validateMemory();
@@ -931,7 +931,7 @@ class AcquireExtObjectsCommand : public ExtObjectsCommand {
  public:
   //! Construct a new AcquireExtObjectsCommand
   AcquireExtObjectsCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                           cl_uint num_objects, const std::vector<amd::Memory*>& memoryObjects,
+                           uint32_t num_objects, const std::vector<amd::Memory*>& memoryObjects,
                            cl_command_type type)
       : ExtObjectsCommand(queue, eventWaitList, num_objects, memoryObjects, type) {}
 
@@ -944,7 +944,7 @@ class ReleaseExtObjectsCommand : public ExtObjectsCommand {
  public:
   //! Construct a new ReleaseExtObjectsCommand
   ReleaseExtObjectsCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                           cl_uint num_objects, const std::vector<amd::Memory*>& memoryObjects,
+                           uint32_t num_objects, const std::vector<amd::Memory*>& memoryObjects,
                            cl_command_type type)
       : ExtObjectsCommand(queue, eventWaitList, num_objects, memoryObjects, type) {}
 
@@ -1027,7 +1027,7 @@ class ThreadTraceMemObjectsCommand : public Command {
   }
 
   //! Get number of CL memory objects
-  cl_uint getNumObjects() { return (cl_uint)memObjects_.size(); }
+  uint32_t getNumObjects() { return (uint32_t)memObjects_.size(); }
 
   //! Get pointer to CL memory object list
   const std::vector<amd::Memory*>& getMemList() const { return memObjects_; }
@@ -1104,21 +1104,21 @@ class ThreadTraceCommand : public Command {
 
 class SignalCommand : public OneMemoryArgCommand {
  private:
-  cl_uint markerValue_;
-  cl_ulong markerOffset_;
+  uint32_t markerValue_;
+  uint64_t markerOffset_;
 
  public:
   SignalCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
-                Memory& memory, cl_uint value, cl_ulong offset = 0)
+                Memory& memory, uint32_t value, uint64_t offset = 0)
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         markerValue_(value),
         markerOffset_(offset) {}
 
   virtual void submit(device::VirtualDevice& device) { device.submitSignal(*this); }
 
-  const cl_uint markerValue() { return markerValue_; }
+  const uint32_t markerValue() { return markerValue_; }
   Memory& memory() { return *memory_; }
-  const cl_ulong markerOffset() { return markerOffset_; }
+  const uint64_t markerOffset() { return markerOffset_; }
 };
 
 class MakeBuffersResidentCommand : public Command {
@@ -1155,7 +1155,7 @@ class MakeBuffersResidentCommand : public Command {
 //! A deallocation command used to free SVM or system pointers.
 class SvmFreeMemoryCommand : public Command {
  public:
-  typedef void(CL_CALLBACK* freeCallBack)(cl_command_queue, cl_uint, void**, void*);
+  typedef void(CL_CALLBACK* freeCallBack)(cl_command_queue, uint32_t, void**, void*);
 
  private:
   std::vector<void*> svmPointers_;  //!< List of pointers to deallocate
@@ -1163,7 +1163,7 @@ class SvmFreeMemoryCommand : public Command {
   void* userData_;                  //!< Data passed to user-defined callback
 
  public:
-  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList, cl_uint numSvmPointers,
+  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList, uint32_t numSvmPointers,
                        void** svmPointers, freeCallBack pfnFreeFunc, void* userData)
       : Command(queue, CL_COMMAND_SVM_FREE, eventWaitList),
         //! We copy svmPointers since it can be reused/deallocated after

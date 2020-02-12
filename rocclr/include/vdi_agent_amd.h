@@ -56,8 +56,8 @@ typedef void(CL_CALLBACK* acEventCreate_fn)(vdi_agent* /* agent */, cl_event /* 
 typedef void(CL_CALLBACK* acEventFree_fn)(vdi_agent* /* agent */, cl_event /* event */);
 
 typedef void(CL_CALLBACK* acEventStatusChanged_fn)(vdi_agent* /* agent */, cl_event /* event */,
-                                                   cl_int /* execution_status */,
-                                                   cl_long /* epoch_time_stamp */);
+                                                   int32_t /* execution_status */,
+                                                   int64_t /* epoch_time_stamp */);
 
 /* Memory Object Callbacks */
 
@@ -67,7 +67,7 @@ typedef void(CL_CALLBACK* acMemObjectFree_fn)(vdi_agent* /* agent */, cl_mem /* 
 
 typedef void(CL_CALLBACK* acMemObjectAcquired_fn)(vdi_agent* /* agent */, cl_mem /* memobj */,
                                                   cl_device_id /* device */,
-                                                  cl_long /* elapsed_time */);
+                                                  int64_t /* elapsed_time */);
 
 /* Sampler Callbacks */
 
@@ -90,7 +90,7 @@ typedef void(CL_CALLBACK* acKernelCreate_fn)(vdi_agent* /* agent */, cl_kernel /
 typedef void(CL_CALLBACK* acKernelFree_fn)(vdi_agent* /* agent */, cl_kernel /* kernel */);
 
 typedef void(CL_CALLBACK* acKernelSetArg_fn)(vdi_agent* /* agent */, cl_kernel /* kernel */,
-                                             cl_int /* arg_index */, size_t /* size */,
+                                             int32_t /* arg_index */, size_t /* size */,
                                              const void* /* value_ptr */);
 
 typedef struct _vdi_agent_callbacks {
@@ -128,55 +128,55 @@ typedef struct _vdi_agent_callbacks {
 
 } vdi_agent_callbacks;
 
-typedef cl_uint vdi_agent_capability_action;
+typedef uint32_t vdi_agent_capability_action;
 
 #define VDI_AGENT_ADD_CAPABILITIES 0x0
 #define VDI_AGENT_RELINQUISH_CAPABILITIES 0x1
 
 typedef struct _vdi_agent_capabilities {
-  cl_bitfield canGenerateContextEvents : 1;
-  cl_bitfield canGenerateCommandQueueEvents : 1;
-  cl_bitfield canGenerateEventEvents : 1;
-  cl_bitfield canGenerateMemObjectEvents : 1;
-  cl_bitfield canGenerateSamplerEvents : 1;
-  cl_bitfield canGenerateProgramEvents : 1;
-  cl_bitfield canGenerateKernelEvents : 1;
+  uint64_t canGenerateContextEvents : 1;
+  uint64_t canGenerateCommandQueueEvents : 1;
+  uint64_t canGenerateEventEvents : 1;
+  uint64_t canGenerateMemObjectEvents : 1;
+  uint64_t canGenerateSamplerEvents : 1;
+  uint64_t canGenerateProgramEvents : 1;
+  uint64_t canGenerateKernelEvents : 1;
 
 } vdi_agent_capabilities;
 
 struct _vdi_agent {
-  cl_int(CL_API_CALL* GetVersionNumber)(vdi_agent* /* agent */, cl_int* /* version_ret */);
+  int32_t(CL_API_CALL* GetVersionNumber)(vdi_agent* /* agent */, int32_t* /* version_ret */);
 
-  cl_int(CL_API_CALL* GetPlatform)(vdi_agent* /* agent */, cl_platform_id* /* platform_id_ret */);
+  int32_t(CL_API_CALL* GetPlatform)(vdi_agent* /* agent */, cl_platform_id* /* platform_id_ret */);
 
-  cl_int(CL_API_CALL* GetTime)(vdi_agent* /* agent */, cl_long* /* time_nanos */);
+  int32_t(CL_API_CALL* GetTime)(vdi_agent* /* agent */, int64_t* /* time_nanos */);
 
-  cl_int(CL_API_CALL* SetCallbacks)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* SetCallbacks)(vdi_agent* /* agent */,
                                     const vdi_agent_callbacks* /* callbacks */, size_t /* size */);
 
 
-  cl_int(CL_API_CALL* GetPotentialCapabilities)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* GetPotentialCapabilities)(vdi_agent* /* agent */,
                                                 vdi_agent_capabilities* /* capabilities */);
 
-  cl_int(CL_API_CALL* GetCapabilities)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* GetCapabilities)(vdi_agent* /* agent */,
                                        vdi_agent_capabilities* /* capabilities */);
 
-  cl_int(CL_API_CALL* SetCapabilities)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* SetCapabilities)(vdi_agent* /* agent */,
                                        const vdi_agent_capabilities* /* capabilities */,
                                        vdi_agent_capability_action /* action */);
 
 
-  cl_int(CL_API_CALL* GetICDDispatchTable)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* GetICDDispatchTable)(vdi_agent* /* agent */,
                                            cl_icd_dispatch_table* /* table */, size_t /* size */);
 
-  cl_int(CL_API_CALL* SetICDDispatchTable)(vdi_agent* /* agent */,
+  int32_t(CL_API_CALL* SetICDDispatchTable)(vdi_agent* /* agent */,
                                            const cl_icd_dispatch_table* /* table */,
                                            size_t /* size */);
 
   /* add Kernel/Program helper functions, etc... */
 };
 
-extern cl_int CL_CALLBACK vdiAgent_OnLoad(vdi_agent* /* agent */);
+extern int32_t CL_CALLBACK vdiAgent_OnLoad(vdi_agent* /* agent */);
 
 extern void CL_CALLBACK vdiAgent_OnUnload(vdi_agent* /* agent */);
 

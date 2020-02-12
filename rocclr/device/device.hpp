@@ -194,14 +194,14 @@ struct Info : public amd::EmbeddedObject {
   cl_device_type type_;
 
   //! A unique device vendor identifier.
-  cl_uint vendorId_;
+  uint32_t vendorId_;
 
   //! The number of parallel compute cores on the compute device.
-  cl_uint maxComputeUnits_;
+  uint32_t maxComputeUnits_;
 
   //! Maximum dimensions that specify the global and local work-item IDs
   //  used by the data-parallel execution model.
-  cl_uint maxWorkItemDimensions_;
+  uint32_t maxWorkItemDimensions_;
 
   //! Maximum number of work-items that can be specified in each dimension
   //  to clEnqueueNDRangeKernel.
@@ -218,58 +218,58 @@ struct Info : public amd::EmbeddedObject {
   //! Number of shader engines in physical GPU
   size_t numberOfShaderEngines;
 
-  //! cl_uint Preferred native vector width size for built-in scalar types
+  //! uint32_t Preferred native vector width size for built-in scalar types
   //  that can be put into vectors.
-  cl_uint preferredVectorWidthChar_;
-  cl_uint preferredVectorWidthShort_;
-  cl_uint preferredVectorWidthInt_;
-  cl_uint preferredVectorWidthLong_;
-  cl_uint preferredVectorWidthFloat_;
-  cl_uint preferredVectorWidthDouble_;
-  cl_uint preferredVectorWidthHalf_;
+  uint32_t preferredVectorWidthChar_;
+  uint32_t preferredVectorWidthShort_;
+  uint32_t preferredVectorWidthInt_;
+  uint32_t preferredVectorWidthLong_;
+  uint32_t preferredVectorWidthFloat_;
+  uint32_t preferredVectorWidthDouble_;
+  uint32_t preferredVectorWidthHalf_;
 
   //! Returns the native ISA vector width. The vector width is defined as the
   //  number of scalar elements that can be stored in the vector.
-  cl_uint nativeVectorWidthChar_;
-  cl_uint nativeVectorWidthShort_;
-  cl_uint nativeVectorWidthInt_;
-  cl_uint nativeVectorWidthLong_;
-  cl_uint nativeVectorWidthFloat_;
-  cl_uint nativeVectorWidthDouble_;
-  cl_uint nativeVectorWidthHalf_;
+  uint32_t nativeVectorWidthChar_;
+  uint32_t nativeVectorWidthShort_;
+  uint32_t nativeVectorWidthInt_;
+  uint32_t nativeVectorWidthLong_;
+  uint32_t nativeVectorWidthFloat_;
+  uint32_t nativeVectorWidthDouble_;
+  uint32_t nativeVectorWidthHalf_;
 
   //! Maximum configured engine clock frequency of the device in MHz.
-  cl_uint maxEngineClockFrequency_;
+  uint32_t maxEngineClockFrequency_;
 
   //! Maximum configured memory clock frequency of the device in MHz.
-  cl_uint maxMemoryClockFrequency_;
+  uint32_t maxMemoryClockFrequency_;
 
   //! Memory bus width in bits.
-  cl_uint vramBusBitWidth_;
+  uint32_t vramBusBitWidth_;
 
   //! Size of L2 Cache in bytes.
-  cl_uint l2CacheSize_;
+  uint32_t l2CacheSize_;
 
   //! Timestamp frequency in Hz.
-  cl_uint timeStampFrequency_;
+  uint32_t timeStampFrequency_;
 
   //! Describes the address spaces supported  by the device.
-  cl_uint addressBits_;
+  uint32_t addressBits_;
 
   //! Max number of simultaneous image objects that can be read by a
   //  kernel.
-  cl_uint maxReadImageArgs_;
+  uint32_t maxReadImageArgs_;
 
   //! Max number of simultaneous image objects that can be written to
   //  by a kernel.
-  cl_uint maxWriteImageArgs_;
+  uint32_t maxWriteImageArgs_;
 
   //! Max number of simultaneous image objects that can be read/written to
   //  by a kernel.
-  cl_uint maxReadWriteImageArgs_;
+  uint32_t maxReadWriteImageArgs_;
 
   //! Max size of memory object allocation in bytes.
-  cl_ulong maxMemAllocSize_;
+  uint64_t maxMemAllocSize_;
 
   //! Max width of 2D image in pixels.
   size_t image2DMaxWidth_;
@@ -287,20 +287,20 @@ struct Info : public amd::EmbeddedObject {
   size_t image3DMaxDepth_;
 
   //! Describes whether images are supported
-  cl_bool imageSupport_;
+  bool imageSupport_;
 
   //! Max size in bytes of the arguments that can be passed to a kernel.
   size_t maxParameterSize_;
 
   //! Maximum number of samplers that can be used in a kernel.
-  cl_uint maxSamplers_;
+  uint32_t maxSamplers_;
 
   //! Describes the alignment in bits of the base address of any
   //  allocated memory object.
-  cl_uint memBaseAddrAlign_;
+  uint32_t memBaseAddrAlign_;
 
   //! The smallest alignment in bytes which can be used for any data type.
-  cl_uint minDataTypeAlignSize_;
+  uint32_t minDataTypeAlignSize_;
 
   //! Describes single precision floating point capability of the device.
   cl_device_fp_config halfFPConfig_;
@@ -311,53 +311,53 @@ struct Info : public amd::EmbeddedObject {
   cl_device_mem_cache_type globalMemCacheType_;
 
   //! Size of global memory cache line in bytes.
-  cl_uint globalMemCacheLineSize_;
+  uint32_t globalMemCacheLineSize_;
 
   //! Size of global memory cache in bytes.
-  cl_ulong globalMemCacheSize_;
+  uint64_t globalMemCacheSize_;
 
   //! Size of global device memory in bytes.
-  cl_ulong globalMemSize_;
+  uint64_t globalMemSize_;
 
   //! Max size in bytes of a constant buffer allocation.
-  cl_ulong maxConstantBufferSize_;
+  uint64_t maxConstantBufferSize_;
 
   //! Preferred size in bytes of a constant buffer allocation.
-  cl_ulong preferredConstantBufferSize_;
+  uint64_t preferredConstantBufferSize_;
 
   //! Max number of arguments declared
-  cl_uint maxConstantArgs_;
+  uint32_t maxConstantArgs_;
 
   //! This is used to determine the type of local memory that is available
   cl_device_local_mem_type localMemType_;
 
   //! Size of local memory arena in bytes.
-  cl_ulong localMemSize_;
+  uint64_t localMemSize_;
 
   //! If enabled, implies that all the memories, caches, registers etc. in
   //  the device implement error correction.
-  cl_bool errorCorrectionSupport_;
+  bool errorCorrectionSupport_;
 
   //! CL_TRUE if the device and the host have a unified memory subsystem and
   //  is CL_FALSE otherwise.
-  cl_bool hostUnifiedMemory_;
+  bool hostUnifiedMemory_;
 
   //! Describes the resolution of device timer.
   size_t profilingTimerResolution_;
 
   //! Timer starting point offset to Epoch.
-  cl_ulong profilingTimerOffset_;
+  uint64_t profilingTimerOffset_;
 
   //! CL_TRUE if device is a little endian device.
-  cl_bool littleEndian_;
+  bool littleEndian_;
 
   //! If enabled, implies that commands can be submitted to command-queues
   //  created on this device.
-  cl_bool available_;
+  bool available_;
 
   //! if the implementation does not have a compiler available to compile
   //  the program source.
-  cl_bool compilerAvailable_;
+  bool compilerAvailable_;
 
   //! Describes the execution capabilities of the device.
   cl_device_exec_capabilities executionCapabilities_;
@@ -366,13 +366,13 @@ struct Info : public amd::EmbeddedObject {
   cl_device_svm_capabilities svmCapabilities_;
 
   //! Preferred alignment for OpenCL fine-grained SVM atomic types.
-  cl_uint preferredPlatformAtomicAlignment_;
+  uint32_t preferredPlatformAtomicAlignment_;
 
   //! Preferred alignment for OpenCL global atomic types.
-  cl_uint preferredGlobalAtomicAlignment_;
+  uint32_t preferredGlobalAtomicAlignment_;
 
   //! Preferred alignment for OpenCL local atomic types.
-  cl_uint preferredLocalAtomicAlignment_;
+  uint32_t preferredLocalAtomicAlignment_;
 
   //! Describes the command-queue properties supported of the host queue.
   cl_command_queue_properties queueProperties_;
@@ -402,7 +402,7 @@ struct Info : public amd::EmbeddedObject {
   const char* extensions_;
 
   //! Returns if device linker is available
-  cl_bool linkerAvailable_;
+  bool linkerAvailable_;
 
   //! Returns the list of built-in kernels, supported by the device
   const char* builtInKernels_;
@@ -415,21 +415,21 @@ struct Info : public amd::EmbeddedObject {
 
   //! Returns CL_TRUE if the devices preference is for the user to be
   //! responsible for synchronization
-  cl_bool preferredInteropUserSync_;
+  bool preferredInteropUserSync_;
 
   //! Returns maximum size of the internal buffer that holds the output
   //! of printf calls from a kernel
   size_t printfBufferSize_;
 
   //! Indicates maximum number of supported global atomic counters
-  cl_uint maxAtomicCounters_;
+  uint32_t maxAtomicCounters_;
 
   //! Returns the topology for the device
   cl_device_topology_amd deviceTopology_;
 
   //! Semaphore information
-  cl_uint maxSemaphores_;
-  cl_uint maxSemaphoreSize_;
+  uint32_t maxSemaphores_;
+  uint32_t maxSemaphoreSize_;
 
   //! Returns the SKU board name for the device
   char boardName_[128];
@@ -437,47 +437,47 @@ struct Info : public amd::EmbeddedObject {
   //! Number of SIMD (Single Instruction Multiple Data) units per compute unit
   //! that execute in parallel. All work items from the same work group must be
   //! executed by SIMDs in the same compute unit.
-  cl_uint simdPerCU_;
-  cl_uint cuPerShaderArray_;  //!< Number of CUs per shader array
+  uint32_t simdPerCU_;
+  uint32_t cuPerShaderArray_;  //!< Number of CUs per shader array
   //! The maximum number of work items from the same work group that can be
   //! executed by a SIMD in parallel
-  cl_uint simdWidth_;
+  uint32_t simdWidth_;
   //! The number of instructions that a SIMD can execute in parallel
-  cl_uint simdInstructionWidth_;
+  uint32_t simdInstructionWidth_;
   //! The number of workitems per wavefront
-  cl_uint wavefrontWidth_;
+  uint32_t wavefrontWidth_;
   //! Available number of SGPRs
-  cl_uint availableSGPRs_;
+  uint32_t availableSGPRs_;
   //! Number of global memory channels
-  cl_uint globalMemChannels_;
+  uint32_t globalMemChannels_;
   //! Number of banks in each global memory channel
-  cl_uint globalMemChannelBanks_;
+  uint32_t globalMemChannelBanks_;
   //! Width in bytes of each of global memory bank
-  cl_uint globalMemChannelBankWidth_;
+  uint32_t globalMemChannelBankWidth_;
   //! Local memory size per CU
-  cl_uint localMemSizePerCU_;
+  uint32_t localMemSizePerCU_;
   //! Number of banks of local memory
-  cl_uint localMemBanks_;
+  uint32_t localMemBanks_;
   //! The core engine GFXIP version
-  cl_uint gfxipVersion_;
+  uint32_t gfxipVersion_;
   //! Number of available async queues
-  cl_uint numAsyncQueues_;
+  uint32_t numAsyncQueues_;
   //! Number of available real time queues
-  cl_uint numRTQueues_;
+  uint32_t numRTQueues_;
   //! Number of available real time compute units
-  cl_uint numRTCUs_;
+  uint32_t numRTCUs_;
   //! Thread trace enable
-  cl_bool threadTraceEnable_;
+  bool threadTraceEnable_;
   //! ECC protected GPRs support (only available Vega20+)
-  cl_bool sramEccEnabled_;
+  bool sramEccEnabled_;
 
   //! Image pitch alignment for image2d_from_buffer
-  cl_uint imagePitchAlignment_;
+  uint32_t imagePitchAlignment_;
   //! Image base address alignment for image2d_from_buffer
-  cl_uint imageBaseAddressAlignment_;
+  uint32_t imageBaseAddressAlignment_;
 
   //! Describes whether buffers from images are supported
-  cl_bool bufferFromImageSupport_;
+  bool bufferFromImageSupport_;
 
   //! Returns the supported SPIR versions for the device
   const char* spirVersions_;
@@ -485,22 +485,22 @@ struct Info : public amd::EmbeddedObject {
   //! OpenCL20 device info fields:
 
   //! The max number of pipe objects that can be passed as arguments to a kernel
-  cl_uint maxPipeArgs_;
+  uint32_t maxPipeArgs_;
   //! The max number of reservations that can be active for a pipe per work-item in a kernel
-  cl_uint maxPipeActiveReservations_;
+  uint32_t maxPipeActiveReservations_;
   //! The max size of pipe packet in bytes
-  cl_uint maxPipePacketSize_;
+  uint32_t maxPipePacketSize_;
 
   //! The command-queue properties supported of the device queue.
   cl_command_queue_properties queueOnDeviceProperties_;
   //! The preferred size of the device queue in bytes
-  cl_uint queueOnDevicePreferredSize_;
+  uint32_t queueOnDevicePreferredSize_;
   //! The max size of the device queue in bytes
-  cl_uint queueOnDeviceMaxSize_;
+  uint32_t queueOnDeviceMaxSize_;
   //! The maximum number of device queues
-  cl_uint maxOnDeviceQueues_;
+  uint32_t maxOnDeviceQueues_;
   //! The maximum number of events in use on a device queue
-  cl_uint maxOnDeviceEvents_;
+  uint32_t maxOnDeviceEvents_;
 
   //! The maximum size of global scope variables
   size_t maxGlobalVariableSize_;
@@ -513,12 +513,12 @@ struct Info : public amd::EmbeddedObject {
   uint32_t pcieRevisionId_;
 
   //! Max numbers of threads per CU
-  cl_uint maxThreadsPerCU_;
+  uint32_t maxThreadsPerCU_;
 
   //! GPU device supports a launch of cooperative groups
-  cl_bool cooperativeGroups_;
+  bool cooperativeGroups_;
   //! GPU device supports a launch of cooperative groups on multiple devices
-  cl_bool cooperativeMultiDeviceGroups_;
+  bool cooperativeMultiDeviceGroups_;
 };
 
 //! Device settings
@@ -1233,9 +1233,9 @@ class Device : public RuntimeObject {
   );
 
   static bool getDeviceIDs(cl_device_type deviceType,  //!< Device type
-                           cl_uint numEntries,         //!< Number of entries in the array
+                           uint32_t numEntries,         //!< Number of entries in the array
                            cl_device_id* devices,      //!< Array of the device ID(s)
-                           cl_uint* numDevices,        //!< Number of available devices
+                           uint32_t* numDevices,        //!< Number of available devices
                            bool offlineDevices         //!< Report offline devices
   );
 
@@ -1360,7 +1360,7 @@ class Device : public RuntimeObject {
   HwDebugManager* hwDebugMgr() const { return hwDebugMgr_; }
 
   //! Initialize the Hardware Debug Manager
-  virtual cl_int hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
+  virtual int32_t hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
     return CL_SUCCESS;
   }
 

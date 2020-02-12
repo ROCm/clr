@@ -1424,7 +1424,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   std::vector<void*>& svmPointers = vcmd.svmPointers();
   if (vcmd.pfnFreeFunc() == NULL) {
     // pointers allocated using clSVMAlloc
-    for (cl_uint i = 0; i < svmPointers.size(); ++i) {
+    for (uint32_t i = 0; i < svmPointers.size(); ++i) {
       dev().svmFree(svmPointers[i]);
     }
   } else {
@@ -2418,10 +2418,10 @@ void VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand& vcmd
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
   std::vector<amd::Memory*> memObjects = vcmd.memObjects();
-  cl_uint numObjects = memObjects.size();
+  uint32_t numObjects = memObjects.size();
   gslMemObject* pGSLMemObjects = new gslMemObject[numObjects];
 
-  for (cl_uint i = 0; i < numObjects; ++i) {
+  for (uint32_t i = 0; i < numObjects; ++i) {
     gpu::Memory* gpuMemory = dev().getGpuMemory(memObjects[i]);
     pGSLMemObjects[i] = gpuMemory->gslResource();
     gpuMemory->syncCacheFromHost(*this);
@@ -2436,7 +2436,7 @@ void VirtualGPU::submitMakeBuffersResident(amd::MakeBuffersResidentCommand& vcmd
     vcmd.setStatus(CL_INVALID_OPERATION);
   } else {
     cl_bus_address_amd* busAddr = vcmd.busAddress();
-    for (cl_uint i = 0; i < numObjects; ++i) {
+    for (uint32_t i = 0; i < numObjects; ++i) {
       busAddr[i].surface_bus_address = surfBusAddr[i];
       busAddr[i].marker_bus_address = markerBusAddr[i];
     }

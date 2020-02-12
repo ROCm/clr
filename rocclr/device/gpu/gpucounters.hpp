@@ -81,9 +81,9 @@ class PerfCounter : public device::PerfCounter {
   //! Constructor for the GPU PerfCounter object
   PerfCounter(const Device& device,   //!< A GPU device object
               const VirtualGPU& gpu,  //!< Virtual GPU device object
-              cl_uint blockIndex,     //!< HW block index
-              cl_uint counterIndex,   //!< Counter index within the block
-              cl_uint eventIndex)     //!< Event index for profiling
+              uint32_t blockIndex,     //!< HW block index
+              uint32_t counterIndex,   //!< Counter index within the block
+              uint32_t eventIndex)     //!< Event index for profiling
       : gpuDevice_(device),
         gpu_(gpu),
         calRef_(NULL),

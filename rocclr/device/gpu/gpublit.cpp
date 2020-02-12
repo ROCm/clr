@@ -761,8 +761,8 @@ bool KernelBlitManager::createProgram(Device& device) {
 // The following data structures will be used for the view creations.
 // Some formats has to be converted before a kernel blit operation
 struct FormatConvertion {
-  cl_uint clOldType_;
-  cl_uint clNewType_;
+  uint32_t clOldType_;
+  uint32_t clNewType_;
 };
 
 // The list of rejected data formats and corresponding conversion
@@ -949,7 +949,7 @@ bool KernelBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Mem
   return result;
 }
 
-void CalcRowSlicePitches(cl_ulong* pitch, const cl_int* copySize, size_t rowPitch,
+void CalcRowSlicePitches(uint64_t* pitch, const int32_t* copySize, size_t rowPitch,
                          size_t slicePitch, const Memory& mem) {
   size_t memFmtSize = memoryFormatSize(mem.cal()->format_).size_;
   bool img1Darray = (mem.cal()->dimension_ == GSL_MOA_TEXTURE_1D_ARRAY) ? true : false;
@@ -1115,18 +1115,18 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   const MemFormatStruct& memFmt = memoryFormatSize(gpuMem(dstMemory).cal()->format_);
 
   // 1 element granularity for writes by default
-  cl_int granularity = 1;
+  int32_t granularity = 1;
   if (memFmt.size_ == 2) {
     granularity = 2;
   } else if (memFmt.size_ >= 4) {
     granularity = 4;
   }
   CondLog(((srcOrigin[0] % granularity) != 0), "Unaligned offset in blit!");
-  cl_ulong srcOrg[4] = {srcOrigin[0] / granularity, srcOrigin[1], srcOrigin[2], 0};
+  uint64_t srcOrg[4] = {srcOrigin[0] / granularity, srcOrigin[1], srcOrigin[2], 0};
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
-  cl_int dstOrg[4] = {(cl_int)dstOrigin[0], (cl_int)dstOrigin[1], (cl_int)dstOrigin[2], 0};
-  cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
+  int32_t dstOrg[4] = {(int32_t)dstOrigin[0], (int32_t)dstOrigin[1], (int32_t)dstOrigin[2], 0};
+  int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
 
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
   setArgument(kernels_[blitType], 4, sizeof(copySize), copySize);
@@ -1134,11 +1134,11 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   // Program memory format
   uint multiplier = memFmt.size_ / sizeof(uint32_t);
   multiplier = (multiplier == 0) ? 1 : multiplier;
-  cl_uint format[4] = {memFmt.components_, memFmt.size_ / memFmt.components_, multiplier, 0};
+  uint32_t format[4] = {memFmt.components_, memFmt.size_ / memFmt.components_, multiplier, 0};
   setArgument(kernels_[blitType], 5, sizeof(format), format);
 
   // Program row and slice pitches
-  cl_ulong pitch[4] = {0};
+  uint64_t pitch[4] = {0};
   CalcRowSlicePitches(pitch, copySize, rowPitch, slicePitch, gpuMem(dstMemory));
   setArgument(kernels_[blitType], 6, sizeof(pitch), pitch);
 
@@ -1424,31 +1424,31 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   setArgument(kernels_[blitType], 2, sizeof(cl_mem), &mem);
   setArgument(kernels_[blitType], 3, sizeof(cl_mem), &mem);
 
-  cl_int srcOrg[4] = {(cl_int)srcOrigin[0], (cl_int)srcOrigin[1], (cl_int)srcOrigin[2], 0};
-  cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
+  int32_t srcOrg[4] = {(int32_t)srcOrigin[0], (int32_t)srcOrigin[1], (int32_t)srcOrigin[2], 0};
+  int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
   setArgument(kernels_[blitType], 4, sizeof(srcOrg), srcOrg);
   const MemFormatStruct& memFmt = memoryFormatSize(gpuMem(srcMemory).cal()->format_);
 
   // 1 element granularity for writes by default
-  cl_int granularity = 1;
+  int32_t granularity = 1;
   if (memFmt.size_ == 2) {
     granularity = 2;
   } else if (memFmt.size_ >= 4) {
     granularity = 4;
   }
   CondLog(((dstOrigin[0] % granularity) != 0), "Unaligned offset in blit!");
-  cl_ulong dstOrg[4] = {dstOrigin[0] / granularity, dstOrigin[1], dstOrigin[2], 0};
+  uint64_t dstOrg[4] = {dstOrigin[0] / granularity, dstOrigin[1], dstOrigin[2], 0};
   setArgument(kernels_[blitType], 5, sizeof(dstOrg), dstOrg);
   setArgument(kernels_[blitType], 6, sizeof(copySize), copySize);
 
   // Program memory format
   uint multiplier = memFmt.size_ / sizeof(uint32_t);
   multiplier = (multiplier == 0) ? 1 : multiplier;
-  cl_uint format[4] = {memFmt.components_, memFmt.size_ / memFmt.components_, multiplier, 0};
+  uint32_t format[4] = {memFmt.components_, memFmt.size_ / memFmt.components_, multiplier, 0};
   setArgument(kernels_[blitType], 7, sizeof(format), format);
 
   // Program row and slice pitches
-  cl_ulong pitch[4] = {0};
+  uint64_t pitch[4] = {0};
   CalcRowSlicePitches(pitch, copySize, rowPitch, slicePitch, gpuMem(srcMemory));
   setArgument(kernels_[blitType], 8, sizeof(pitch), pitch);
 
@@ -1565,14 +1565,14 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
 
   // Program source origin
-  cl_int srcOrg[4] = {(cl_int)srcOrigin[0], (cl_int)srcOrigin[1], (cl_int)srcOrigin[2], 0};
+  int32_t srcOrg[4] = {(int32_t)srcOrigin[0], (int32_t)srcOrigin[1], (int32_t)srcOrigin[2], 0};
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
   // Program destinaiton origin
-  cl_int dstOrg[4] = {(cl_int)dstOrigin[0], (cl_int)dstOrigin[1], (cl_int)dstOrigin[2], 0};
+  int32_t dstOrg[4] = {(int32_t)dstOrigin[0], (int32_t)dstOrigin[1], (int32_t)dstOrigin[2], 0};
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
 
-  cl_int copySize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
+  int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
   setArgument(kernels_[blitType], 4, sizeof(copySize), copySize);
 
   // Create ND range object for the kernel's execution
@@ -1806,11 +1806,11 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem);
   mem = &gpuMem(dstMemory);
   setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
-  cl_ulong src[4] = {srcRect.rowPitch_, srcRect.slicePitch_, srcRect.start_, 0};
+  uint64_t src[4] = {srcRect.rowPitch_, srcRect.slicePitch_, srcRect.start_, 0};
   setArgument(kernels_[blitType], 2, sizeof(src), src);
-  cl_ulong dst[4] = {dstRect.rowPitch_, dstRect.slicePitch_, dstRect.start_, 0};
+  uint64_t dst[4] = {dstRect.rowPitch_, dstRect.slicePitch_, dstRect.start_, 0};
   setArgument(kernels_[blitType], 3, sizeof(dst), dst);
-  cl_ulong copySize[4] = {size[0], size[1], size[2], CopyRectAlignment[i]};
+  uint64_t copySize[4] = {size[0], size[1], size[2], CopyRectAlignment[i]};
   setArgument(kernels_[blitType], 4, sizeof(copySize), copySize);
 
   // Create ND range object for the kernel's execution
@@ -2036,7 +2036,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   } else {
     uint fillType = FillBuffer;
     size_t globalWorkOffset[3] = {0, 0, 0};
-    cl_ulong fillSize = size[0] / patternSize;
+    uint64_t fillSize = size[0] / patternSize;
     size_t globalWorkSize = amd::alignUp(fillSize, 256);
     size_t localWorkSize = 256;
     bool dwordAligned = ((patternSize % sizeof(uint32_t)) == 0) ? true : false;
@@ -2058,12 +2058,12 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     memcpy(constBuf, pattern, patternSize);
     gpuCB->unmap(&gpu());
     setArgument(kernels_[fillType], 2, sizeof(cl_mem), &gpuCB);
-    cl_ulong offset = origin[0];
+    uint64_t offset = origin[0];
     if (dwordAligned) {
       patternSize /= sizeof(uint32_t);
       offset /= sizeof(uint32_t);
     }
-    setArgument(kernels_[fillType], 3, sizeof(cl_uint), &patternSize);
+    setArgument(kernels_[fillType], 3, sizeof(uint32_t), &patternSize);
     setArgument(kernels_[fillType], 4, sizeof(offset), &offset);
     setArgument(kernels_[fillType], 5, sizeof(fillSize), &fillSize);
 
@@ -2114,7 +2114,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
       }
     }
 
-    cl_uint remain;
+    uint32_t remain;
     if (blitType == BlitCopyBufferAligned) {
       size.c[0] /= CopyBuffAlignment[i];
     } else {
@@ -2146,20 +2146,20 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     mem = &gpuMem(dstMemory);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
     // Program source origin
-    cl_ulong srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
+    uint64_t srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
     ;
     setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
-    cl_ulong dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
+    uint64_t dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
     ;
     setArgument(kernels_[blitType], 3, sizeof(dstOffset), &dstOffset);
 
-    cl_ulong copySize = size[0];
+    uint64_t copySize = size[0];
     setArgument(kernels_[blitType], 4, sizeof(copySize), &copySize);
 
     if (blitType == BlitCopyBufferAligned) {
-      cl_int alignment = CopyBuffAlignment[i];
+      int32_t alignment = CopyBuffAlignment[i];
       setArgument(kernels_[blitType], 5, sizeof(alignment), &alignment);
     } else {
       setArgument(kernels_[blitType], 5, sizeof(remain), &remain);
@@ -2206,7 +2206,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   dim = 3;
 
   void* newpattern = const_cast<void*>(pattern);
-  cl_uint4 iFillColor;
+  uint32_t4 iFillColor;
 
   bool rejected = false;
   bool releaseView = false;
@@ -2235,7 +2235,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
       iFillColor.s[0] = sRGBmap(fColor[0]);
       iFillColor.s[1] = sRGBmap(fColor[1]);
       iFillColor.s[2] = sRGBmap(fColor[2]);
-      iFillColor.s[3] = (cl_uint)(fColor[3] * 255.0f);
+      iFillColor.s[3] = (uint32_t)(fColor[3] * 255.0f);
       newpattern = static_cast<void*>(&iFillColor);
       for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
         if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
@@ -2281,12 +2281,12 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   // Program kernels arguments for the blit operation
   Memory* mem = memView;
   setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-  setArgument(kernels_[fillType], 1, sizeof(cl_float4), newpattern);
-  setArgument(kernels_[fillType], 2, sizeof(cl_int4), newpattern);
-  setArgument(kernels_[fillType], 3, sizeof(cl_uint4), newpattern);
+  setArgument(kernels_[fillType], 1, sizeof(float4), newpattern);
+  setArgument(kernels_[fillType], 2, sizeof(int32_t4), newpattern);
+  setArgument(kernels_[fillType], 3, sizeof(uint32_t4), newpattern);
 
-  cl_int fillOrigin[4] = {(cl_int)origin[0], (cl_int)origin[1], (cl_int)origin[2], 0};
-  cl_int fillSize[4] = {(cl_int)size[0], (cl_int)size[1], (cl_int)size[2], 0};
+  int32_t fillOrigin[4] = {(int32_t)origin[0], (int32_t)origin[1], (int32_t)origin[2], 0};
+  int32_t fillSize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
   setArgument(kernels_[fillType], 4, sizeof(fillOrigin), fillOrigin);
   setArgument(kernels_[fillType], 5, sizeof(fillSize), fillSize);
 

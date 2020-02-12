@@ -596,17 +596,17 @@ bool HostBlitManager::fillImage(device::Memory& memory, const void* pattern,
   size_t devSlicePitch;
 
   void* newpattern = const_cast<void*>(pattern);
-  cl_float4 fFillColor;
+  float fFillColor[4];
 
   // Converting a linear RGB floating-point color value to a normalized 8-bit unsigned integer sRGB
   // value so that the cpu path can treat sRGB as RGB for host transfer.
   if (memory.owner()->asImage()->getImageFormat().image_channel_order == CL_sRGBA) {
     float* fColor = static_cast<float*>(newpattern);
-    fFillColor.s[0] = sRGBmap(fColor[0]) / 255.0f;
-    fFillColor.s[1] = sRGBmap(fColor[1]) / 255.0f;
-    fFillColor.s[2] = sRGBmap(fColor[2]) / 255.0f;
-    fFillColor.s[3] = fColor[3];
-    newpattern = static_cast<void*>(&fFillColor);
+    fFillColor[0] = sRGBmap(fColor[0]) / 255.0f;
+    fFillColor[1] = sRGBmap(fColor[1]) / 255.0f;
+    fFillColor[2] = sRGBmap(fColor[2]) / 255.0f;
+    fFillColor[3] = fColor[3];
+    newpattern = static_cast<void*>(&fFillColor[0]);
   }
 
   // Map memory
@@ -657,7 +657,7 @@ bool HostBlitManager::fillImage(device::Memory& memory, const void* pattern,
   return true;
 }
 
-cl_uint HostBlitManager::sRGBmap(float fc) const {
+uint32_t HostBlitManager::sRGBmap(float fc) const {
   double c = (double)fc;
 
 #ifdef ATI_OS_LINUX
@@ -675,6 +675,6 @@ cl_uint HostBlitManager::sRGBmap(float fc) const {
   else
     c = (1055.0 / 1000.0) * pow(c, 5.0 / 12.0) - (55.0 / 1000.0);
 
-  return (cl_uint)(c * 255.0 + 0.5);
+  return (uint32_t)(c * 255.0 + 0.5);
 }
 }  // namespace gpu

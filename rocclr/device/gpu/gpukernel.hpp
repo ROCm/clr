@@ -425,7 +425,7 @@ class NullKernel : public device::Kernel {
   const NullProgram& nullProg() const { return reinterpret_cast<const NullProgram&>(prog_); }
 
   //! Returns the kernel's build error
-  const cl_int buildError() const { return buildError_; }
+  const int32_t buildError() const { return buildError_; }
 
   //! Returns the kernel's flags
   uint flags() const { return flags_; }
@@ -467,7 +467,7 @@ class NullKernel : public device::Kernel {
   //! Returns UAV raw index for this kernel
   uint uavRaw() const { return uavRaw_; }
 
-  cl_int buildError_;     //!< Kernel's build error
+  int32_t buildError_;     //!< Kernel's build error
   std::string ilSource_;  //!< IL source code of this kernel
 
   const NullDevice& gpuDev_;  //!< GPU device object

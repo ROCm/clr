@@ -419,9 +419,9 @@ static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 139
 
   //! Constructor for the ROC PerfCounter object
 PerfCounter::PerfCounter(const Device& device,   //!< A ROC device object
-  cl_uint blockIndex,     //!< HW block index
-  cl_uint counterIndex,   //!< Counter index (Counter register) within the block
-  cl_uint eventIndex)     //!< Event index (Counter selection) for profiling
+  uint32_t blockIndex,     //!< HW block index
+  uint32_t counterIndex,   //!< Counter index (Counter register) within the block
+  uint32_t eventIndex)     //!< Event index (Counter selection) for profiling
       : roc_device_(device),
         profileRef_(nullptr) {
 

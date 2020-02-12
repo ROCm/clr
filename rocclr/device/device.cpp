@@ -389,10 +389,10 @@ size_t Device::numDevices(cl_device_type type, bool offlineDevices) {
   return result;
 }
 
-bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_device_id* devices,
-                          cl_uint* numDevices, bool offlineDevices) {
+bool Device::getDeviceIDs(cl_device_type deviceType, uint32_t numEntries, cl_device_id* devices,
+                          uint32_t* numDevices, bool offlineDevices) {
   if (numDevices != nullptr && devices == nullptr) {
-    *numDevices = (cl_uint)amd::Device::numDevices(deviceType, offlineDevices);
+    *numDevices = (uint32_t)amd::Device::numDevices(deviceType, offlineDevices);
     return (*numDevices > 0) ? true : false;
   }
   assert(devices != nullptr && "check the code above");
@@ -404,7 +404,7 @@ bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_devi
   }
 
   auto it = ret.cbegin();
-  cl_uint count = std::min(numEntries, (cl_uint)ret.size());
+  uint32_t count = std::min(numEntries, (uint32_t)ret.size());
 
   while (count--) {
     *devices++ = as_cl(*it++);
@@ -414,7 +414,7 @@ bool Device::getDeviceIDs(cl_device_type deviceType, cl_uint numEntries, cl_devi
     *devices++ = (cl_device_id)0;
   }
 
-  *not_null(numDevices) = (cl_uint)ret.size();
+  *not_null(numDevices) = (uint32_t)ret.size();
   return true;
 }
 
@@ -673,7 +673,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
   } else {
     // char OpenCLVersion[256];
     // size_t sz;
-    // cl_int ret= clGetPlatformInfo(AMD_PLATFORM, CL_PLATFORM_VERSION, 256, OpenCLVersion, &sz);
+    // int32_t ret= clGetPlatformInfo(AMD_PLATFORM, CL_PLATFORM_VERSION, 256, OpenCLVersion, &sz);
     // if (ret == CL_SUCCESS) {
     //     buildVerInfo.append(OpenCLVersion, sz);
     // }

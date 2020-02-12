@@ -77,15 +77,15 @@ class Agent : public _vdi_agent {
   //! Post an event destruction event
   static void postEventFree(cl_event event);
   //! Post and event status change event.
-  static void postEventStatusChanged(cl_event event, cl_int execution_status,
-                                     cl_long epoch_timestamp);
+  static void postEventStatusChanged(cl_event event, int32_t execution_status,
+                                     int64_t epoch_timestamp);
 
   //! Post a memory object creation event
   static void postMemObjectCreate(cl_mem memobj);
   //! Post a memory object destruction event
   static void postMemObjectFree(cl_mem memobj);
   //! Post a memory transfer (acquired by device) event
-  static void postMemObjectAcquired(cl_mem memobj, cl_device_id device, cl_long elapsed_time);
+  static void postMemObjectAcquired(cl_mem memobj, cl_device_id device, int64_t elapsed_time);
 
   //! Post a sampler creation event
   static void postSamplerCreate(cl_sampler sampler);
@@ -104,7 +104,7 @@ class Agent : public _vdi_agent {
   //! Post a kernel destruction event
   static void postKernelFree(cl_kernel kernel);
   //! Post a kernel set argument event
-  static void postKernelSetArg(cl_kernel kernel, cl_int arg_index, size_t size,
+  static void postKernelSetArg(cl_kernel kernel, int32_t arg_index, size_t size,
                                const void* value_ptr);
 
  private:
@@ -140,12 +140,12 @@ class Agent : public _vdi_agent {
   bool isReady() const { return ready_; }
 
   //! Set the callback vector for this agent
-  cl_int setCallbacks(const vdi_agent_callbacks* callbacks, size_t size);
+  int32_t setCallbacks(const vdi_agent_callbacks* callbacks, size_t size);
 
   //! Return the current capabilities.
-  cl_int getCapabilities(vdi_agent_capabilities* caps);
+  int32_t getCapabilities(vdi_agent_capabilities* caps);
   //! Set the current capabilities.
-  cl_int setCapabilities(const vdi_agent_capabilities* caps, bool install);
+  int32_t setCapabilities(const vdi_agent_capabilities* caps, bool install);
 
   //! Return the Agent instance from the given cl_agent
   inline static Agent* get(vdi_agent* agent) {
