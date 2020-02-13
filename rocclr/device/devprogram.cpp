@@ -1757,21 +1757,16 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
       optionsVec.push_back("-DFP_FAST_FMA=1");
     }
   } else {
-    int major, minor;
-    ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
 
-    // FIXME: HIP MINOR/MANJOR needs to be defined
     if (isHIP()) {
-      scratchStr.clear();
-      optionsVec.push_back(scratchStr.append("-DHIP_VERSION_MAJOR=").append(std::to_string(major * 100)));
-      scratchStr.clear();
-      optionsVec.push_back(scratchStr.append("-DHIP_VERSION_MINOR=").append(std::to_string(minor * 10)));
-      optionsVec.push_back("-DHIP_VERSION_PATCH=19245");
+      optionsVec.push_back("-D__HIP_VDI__=1");
       scratchStr.clear();
       std::string target(machineTarget_);
       std::transform(target.begin(), target.end(), target.begin(), ::toupper);
       optionsVec.push_back(scratchStr.append("-D__HIP_ARCH_").append(target).append("__=1"));
     } else {
+      int major, minor;
+      ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
       std::stringstream ss;
       ss << "-D__OPENCL_VERSION__=" << (major * 100 + minor * 10);
       optionsVec.push_back(ss.str());
