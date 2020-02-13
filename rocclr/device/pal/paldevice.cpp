@@ -400,7 +400,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vramBusBitWidth_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth;
   info_.l2CacheSize_ = palProp.gfxipProperties.shaderCore.tccSizeInBytes;
   info_.maxParameterSize_ = 1024;
-  info_.minDataTypeAlignSize_ = sizeof(int64_t16);
+  info_.minDataTypeAlignSize_ = sizeof(int64_t[16]);
   info_.singleFPConfig_ =
       CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 

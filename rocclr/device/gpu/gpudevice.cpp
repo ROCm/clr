@@ -351,7 +351,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   info_.vramBusBitWidth_ = calAttr.memBusWidth;
   info_.l2CacheSize_ = 0;
   info_.maxParameterSize_ = 1024;
-  info_.minDataTypeAlignSize_ = sizeof(int64_t16);
+  info_.minDataTypeAlignSize_ = sizeof(int64_t[16]);
   info_.singleFPConfig_ =
       CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 

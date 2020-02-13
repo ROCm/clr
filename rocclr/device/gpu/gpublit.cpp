@@ -2206,7 +2206,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   dim = 3;
 
   void* newpattern = const_cast<void*>(pattern);
-  uint32_t4 iFillColor;
+  uint32_t iFillColor[4];
 
   bool rejected = false;
   bool releaseView = false;
@@ -2232,11 +2232,11 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
       // Converting a linear RGB floating-point color value to a 8-bit unsigned integer sRGB value
       // because hw is not support write_imagef for sRGB.
       float* fColor = static_cast<float*>(newpattern);
-      iFillColor.s[0] = sRGBmap(fColor[0]);
-      iFillColor.s[1] = sRGBmap(fColor[1]);
-      iFillColor.s[2] = sRGBmap(fColor[2]);
-      iFillColor.s[3] = (uint32_t)(fColor[3] * 255.0f);
-      newpattern = static_cast<void*>(&iFillColor);
+      iFillColor[0] = sRGBmap(fColor[0]);
+      iFillColor[1] = sRGBmap(fColor[1]);
+      iFillColor[2] = sRGBmap(fColor[2]);
+      iFillColor[3] = (uint32_t)(fColor[3] * 255.0f);
+      newpattern = static_cast<void*>(&iFillColor[0]);
       for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
         if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
           newFormat.image_channel_order = RejectedOrder[i].clNewType_;
@@ -2281,9 +2281,9 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   // Program kernels arguments for the blit operation
   Memory* mem = memView;
   setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-  setArgument(kernels_[fillType], 1, sizeof(float4), newpattern);
-  setArgument(kernels_[fillType], 2, sizeof(int32_t4), newpattern);
-  setArgument(kernels_[fillType], 3, sizeof(uint32_t4), newpattern);
+  setArgument(kernels_[fillType], 1, sizeof(float[4]), newpattern);
+  setArgument(kernels_[fillType], 2, sizeof(int32_t[4]), newpattern);
+  setArgument(kernels_[fillType], 3, sizeof(uint32_t[4]), newpattern);
 
   int32_t fillOrigin[4] = {(int32_t)origin[0], (int32_t)origin[1], (int32_t)origin[2], 0};
   int32_t fillSize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
