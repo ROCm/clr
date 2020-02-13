@@ -1866,6 +1866,9 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   }
   freeMemory[LargestFreeBlock] = static_cast<size_t>(invisible) / Ki;
 
+  freeMemory[TotalFreeMemory] -= (freeMemory[TotalFreeMemory] > HIP_HIDDEN_FREE_MEM * Ki) ?
+                                  HIP_HIDDEN_FREE_MEM * Ki : 0;
+
   if (settings().apuSystem_) {
     Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] -
         resourceCache().cacheSize() + resourceCache().lclCacheSize();

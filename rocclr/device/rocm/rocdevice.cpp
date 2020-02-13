@@ -1475,7 +1475,8 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   const uint LargestFreeBlock = 1;
 
   freeMemory[TotalFreeMemory] = freeMem_ / Ki;
-
+  freeMemory[TotalFreeMemory] -= (freeMemory[TotalFreeMemory] > HIP_HIDDEN_FREE_MEM * Ki) ?
+                                  HIP_HIDDEN_FREE_MEM * Ki : 0;
   // since there is no memory heap on ROCm, the biggest free block is
   // equal to total free local memory
   freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
