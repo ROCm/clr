@@ -331,8 +331,20 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
     return stat;
   }
 
-  if (dev_type == HSA_DEVICE_TYPE_CPU) {
-    Device::cpu_agent_ = agent;
+  if ((dev_type == HSA_DEVICE_TYPE_CPU) && (Device::cpu_agent_.handle == 0)) {
+    hsa_amd_agent_iterate_memory_pools(agent, [](hsa_amd_memory_pool_t pool, void* agent) {
+      hsa_region_segment_t segment_type;
+      hsa_status_t stat =
+        hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_SEGMENT, &segment_type);
+      if (stat != HSA_STATUS_SUCCESS) {
+        return stat;
+      }
+      if( segment_type == HSA_REGION_SEGMENT_GLOBAL) {
+        Device::cpu_agent_ = *(reinterpret_cast<hsa_agent_t*>(agent));
+        return HSA_STATUS_INFO_BREAK;
+      }
+      return HSA_STATUS_SUCCESS;
+    }, &agent);
   } else if (dev_type == HSA_DEVICE_TYPE_GPU) {
     gpu_agents_.push_back(agent);
   }
