@@ -33,20 +33,21 @@ find_library( OpenCL REQUIRED CONFIG
       /opt/rocm
 )
 
-find_path(OPENCL_INCLUDE_DIR
-  NAMES OpenCL/cl.h CL/cl.h
-  PATH_SUFFIXES include opencl/include inc include/x86_64 include/x64
-  PATHS /opt/rocm
-  DOC "OpenCL include header OpenCL/cl.h or CL/cl.h"
-)
+if( NOT OPENCL_DIR )
+   find_path(OPENCL_INCLUDE_DIR
+      NAMES OpenCL/cl.h CL/cl.h
+      PATH_SUFFIXES include opencl/include inc include/x86_64 include/x64
+      PATHS /opt/rocm
+      DOC "OpenCL include header OpenCL/cl.h or CL/cl.h"
+   )
 
-if( NOT OPENCL_INCLUDE_DIR )
-   unset(OPENCL_INCLUDE_DIR CACHE)
-   set(OPENCL_INCLUDE_DIR "" CACHE PATH "" FORCE )
-else()
-   set(OPENCL_ICD_LOADER_HEADERS_DIR "${OPENCL_INCLUDE_DIR}")
+   if( NOT OPENCL_INCLUDE_DIR )
+      unset(OPENCL_INCLUDE_DIR CACHE)
+      set(OPENCL_INCLUDE_DIR "" CACHE PATH "" FORCE )
+   endif()
+      MESSAGE(STATUS "Opencl found at ${OPENCL_INCLUDE_DIR}.")
 endif()
-   MESSAGE(STATUS "Opencl found at ${OPENCL_INCLUDE_DIR}.")
+
 
 
 find_package(ROCT REQUIRED)
@@ -192,6 +193,14 @@ FILE(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
 INSTALL (
     FILES ${headerfiles}
     DESTINATION include)
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
+INSTALL (
+   DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/elf"
+   DESTINATION include
+   FILES_MATCHING PATTERN "*.h*")
 INSTALL (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/compiler"
    DESTINATION include
