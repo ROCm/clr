@@ -1123,7 +1123,11 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
-bool Kernel::GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode) {
+bool Kernel::GetAttrCodePropMetadata() {
+  amd_comgr_metadata_node_t kernelMetaNode;
+  if (!prog().getKernelMetadata(name(), &kernelMetaNode)) {
+    return false;
+  }
 
   InitParameters(kernelMetaNode);
 

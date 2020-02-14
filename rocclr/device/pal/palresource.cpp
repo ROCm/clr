@@ -472,10 +472,10 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   switch (memoryType()) {
     case Local:
     case Scratch:
-      createInfo->mallPolicy = static_cast<Pal::GpuMemMallPolicy>(dev().settings().mallPolicy_);
+//      createInfo->mallPolicy = static_cast<Pal::GpuMemMallPolicy>(dev().settings().mallPolicy_);
       break;
     default:
-      createInfo->mallPolicy = Pal::GpuMemMallPolicy::Never;
+//      createInfo->mallPolicy = Pal::GpuMemMallPolicy::Never;
       break;
   }
 }
@@ -1951,7 +1951,7 @@ bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.heapCount = 1;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
   createInfo.flags.peerWritable = device_->P2PAccessAllowed();
-  createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
+//  createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     return InitAllocator(mem_ref);
@@ -1971,7 +1971,7 @@ bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.heapCount = 2;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
   createInfo.heaps[1] = Pal::GpuHeapLocal;
-  createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
+//  createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     return InitAllocator(mem_ref);
@@ -1987,7 +1987,7 @@ bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.alignment = MaxGpuAlignment;
   createInfo.flags.useReservedGpuVa = (reserved_va != nullptr);
   createInfo.pReservedGpuVaOwner = reserved_va;
-  createInfo.mallPolicy = Pal::GpuMemMallPolicy::Never;
+//  createInfo.mallPolicy = Pal::GpuMemMallPolicy::Never;
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if ((mem_ref != nullptr) && InitAllocator(mem_ref)) {
     mem_ref->iMem()->Map(&mem_ref->cpuAddress_);

@@ -511,7 +511,7 @@ class Kernel : public amd::HeapObject {
   void InitParameters(const amd_comgr_metadata_node_t kernelMD);
 
   //! Retrieve kernel attribute and code properties metadata
-  bool GetAttrCodePropMetadata(const amd_comgr_metadata_node_t kernelMetaNode);
+  bool GetAttrCodePropMetadata();
 
   //! Retrieve the available SGPRs and VGPRs
   bool SetAvailableSgprVgpr(const std::string& targetIdent);

@@ -72,17 +72,13 @@ target_compile_definitions(vdipal PRIVATE PAL_BUILD_RENOIR=1)
 
 # GFX10 targets
 target_compile_definitions(vdipal PRIVATE PAL_BUILD_GFX10=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_GFX103=1)
 target_compile_definitions(vdipal PRIVATE PAL_BUILD_NAVI12=1)
 target_compile_definitions(vdipal PRIVATE PAL_BUILD_NAVI14=1)
 
 target_compile_definitions(vdipal PRIVATE OPENCL_MAINLINE=1)
 
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
-  target_compile_definitions(vdipal PRIVATE USE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
-  if (DEFINED COMGR_INCLUDES AND NOT ${COMGR_INCLUDES} STREQUAL "")
-    target_include_directories(${COMGR_INCLUDES})
-  endif() # if (DEFINED COMGR_INCLUDES AND NOT ${COMGR_INCLUDES} STREQUAL "")
+  target_compile_definitions(vdipal PRIVATE USE_COMGR_LIBRARY)
 endif()
 
 target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/compiler/sc/HSAIL/include)

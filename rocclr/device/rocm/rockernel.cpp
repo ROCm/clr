@@ -48,13 +48,7 @@ bool LightningKernel::init() {
 
   hsa_agent_t hsaDevice = program()->hsaDevice();
 
-  const amd_comgr_metadata_node_t* kernelMetaNode =
-              static_cast<const LightningProgram*>(program())->getKernelMetadata(name());
-  if (kernelMetaNode == nullptr) {
-    return false;
-  }
-
-  if (!GetAttrCodePropMetadata(*kernelMetaNode)) {
+  if (!GetAttrCodePropMetadata()) {
     return false;
   }
 
