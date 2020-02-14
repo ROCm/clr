@@ -426,12 +426,7 @@ bool LightningKernel::init() {
   flags_.internalKernel_ =
       (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
 
-  const amd_comgr_metadata_node_t* kernelMetaNode = prog().getKernelMetadata(name());
-  if (kernelMetaNode == nullptr) {
-    return false;
-  }
-
-  if (!GetAttrCodePropMetadata(*kernelMetaNode)) {
+  if (!GetAttrCodePropMetadata()) {
     return false;
   }
 

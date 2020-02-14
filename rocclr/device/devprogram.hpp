@@ -220,9 +220,13 @@ class Program : public amd::HeapObject {
   amd_comgr_metadata_node_t metadata() const { return metadata_; }
 
   //! Get the kernel metadata
-  const amd_comgr_metadata_node_t* getKernelMetadata(const std::string name) const {
+  const bool getKernelMetadata(const std::string name, amd_comgr_metadata_node_t* meta) const {
     auto it = kernelMetadataMap_.find(name);
-    return (it == kernelMetadataMap_.end()) ? nullptr : &(it->second);
+    if (it != kernelMetadataMap_.end()) {
+      *meta = it->second;
+      return true;
+    }
+    return false;
   }
 
   const uint32_t codeObjectVer() const { return codeObjectVer_; }

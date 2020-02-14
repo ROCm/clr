@@ -154,7 +154,7 @@ bool PalCounterReference::finalize() {
   }
 }
 
-static const std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
+static const std::array<PCIndexSelect, 46> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // CPF
     PCIndexSelect::ShaderEngine,             // IA
     PCIndexSelect::ShaderEngine,             // VGT
@@ -201,9 +201,11 @@ static const std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // GCR
     PCIndexSelect::None,                     // PH
     PCIndexSelect::ShaderArray,              // UTCL1
+#if 0
     PCIndexSelect::None,                     // GeDist
     PCIndexSelect::ShaderEngine,             // GeSe
     PCIndexSelect::None,                     // Df
+#endif
 }};
 
 static_assert(blockIdToIndexSelect.size() ==  static_cast<size_t>(Pal::GpuBlock::Count), "size of blockIdToIndexSelect does not match GpuBlock::Count");
@@ -690,7 +692,6 @@ void PerfCounter::convertInfo() {
       }
       break;
     case Pal::GfxIpLevel::GfxIp10_1:
-    case Pal::GfxIpLevel::GfxIp10_3:
       if (info_.blockIndex_ < gfx10BlockIdPal.size()) {
         auto p = gfx10BlockIdPal[info_.blockIndex_];
         info_.blockIndex_ = std::get<0>(p);
