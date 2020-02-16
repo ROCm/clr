@@ -476,7 +476,7 @@ Settings::Settings() : value_(0) {
     }
 
     if (flagIsDefault(HIP_HIDDEN_FREE_MEM)) {
-      HIP_HIDDEN_FREE_MEM = 256;
+      HIP_HIDDEN_FREE_MEM = 320;
     }
   }
 }
