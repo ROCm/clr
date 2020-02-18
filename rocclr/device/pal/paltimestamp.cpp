@@ -17,7 +17,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
-
+ 
 #include "os/os.hpp"
 #include "platform/perfctr.hpp"
 #include "device/pal/paldefs.hpp"
@@ -36,7 +36,7 @@ TimeStamp::~TimeStamp() {}
 
 void TimeStamp::begin() {
   if (!flags_.beginIssued_) {
-    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
+    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
                                     memOffset_ + CommandStartTime * sizeof(uint64_t));
     flags_.beginIssued_ = true;
   }
@@ -44,7 +44,7 @@ void TimeStamp::begin() {
 
 void TimeStamp::end() {
   CondLog(!flags_.beginIssued_, "We didn't issue a begin operation!");
-  gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeTop, *iMem_,
+  gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
                                   memOffset_ + CommandEndTime * sizeof(uint64_t));
   flags_.endIssued_ = true;
 }
