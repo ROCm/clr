@@ -707,7 +707,9 @@ bool Buffer::create() {
     if (dev().forceFineGrain(owner()) ||
         dev().isFineGrainedSystem(true)) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
-      flags_ |= HostMemoryDirectAccess;
+      // Don't enable direct access to GPU memory with large bar, because
+      // there is no tracking of HDP flush after CPU writes
+      // flags_ |= HostMemoryDirectAccess;
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
 

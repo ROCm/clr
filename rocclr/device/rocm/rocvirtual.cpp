@@ -452,7 +452,9 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   }
 
   // Make sure the slot is free for usage
-  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
+  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask) {
+    amd::Os::yield();
+  }
 
   // Add blocking command if the original value of read index was behind of the queue size
   if (blocking || (index - read) >= queueMask) {
@@ -485,9 +487,6 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       LogPrintfError("Failed signal [0x%lx] wait", signal.handle);
       return false;
     }
-
-    // Release the pool, since runtime just drained the entire queue
-    resetKernArgPool();
   }
 
   return true;
@@ -750,7 +749,7 @@ bool VirtualGPU::create(bool profilingEna) {
 
 bool VirtualGPU::initPool(size_t kernarg_pool_size, uint signal_pool_count) {
   kernarg_pool_size_ = kernarg_pool_size;
-  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, 1));
+  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, false));
   if (kernarg_pool_base_ == nullptr) {
     return false;
   }
