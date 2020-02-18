@@ -588,9 +588,8 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
   if (flushL1Cache) {
     // Flush cache
-    if (!gpu.profiling()) {
-      gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
-    }
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+
     // Clear memory dependency state
     const static bool All = true;
     clear(!All);
@@ -2514,13 +2513,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);
-    // Note: This a workaround for incorrect results reported with release_mem packet,
-    // when the packet can be processed later after this dispatch and including extra time
-    if (profiling() || state_.profileEnabled_) {
-      addBarrier(RgpSqqtBarrierReason::ProfilingControl);
-      // Clear memory dependency to avoid the second L1 invalidation
-      memoryDependency().clear();
-    }
+
     if (id != gpuEvent.id_) {
       LogError("Something is wrong. ID mismatch!\n");
     }
