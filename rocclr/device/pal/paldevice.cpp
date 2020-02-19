@@ -603,12 +603,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (settings().svmFineGrainSystem_) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
-    if (IS_LINUX) {
-      // Report atomics capability based on GFX IP
-      // The atomic test failed in Windows OS.
-      if (amd::IS_HIP && ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
-        info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
-      }
+    if (amd::IS_HIP && ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
+      info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
     }
     // OpenCL2.0 device info fields
     info_.maxWriteImageArgs_ = MaxReadWriteImage;  //!< For compatibility
