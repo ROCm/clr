@@ -1143,7 +1143,7 @@ bool Image::createView(const Memory& parent) {
     }
 
     // Make sure the row pitch is aligned to pixels
-    rowPitch = elementSize * amd::alignUp(rowPitch, dev().info().imagePitchAlignment_);
+    rowPitch = elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
 
     status = hsa_ext_image_create_with_layout(
         dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
