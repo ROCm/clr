@@ -47,6 +47,7 @@ enum LogMask {
   LOG_AQL2      = 0x00002000, //!< Show raw bytes of AQL packet
   LOG_CODE      = 0x00004000, //!< Show code creation debug
   LOG_CMD2      = 0x00008000, //!< More detailed command info, including barrier commands
+  LOG_LOCATION  = 0x00010000, //!< Log message location
   LOG_ALWAYS    = 0xFFFFFFFF, //!< Log always even mask flag is zero
 };
 
@@ -178,7 +179,11 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
       if (GPU_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
-        amd::log_printf(level, __FILE__, __LINE__, format, ##__VA_ARGS__);                         \
+        if (GPU_LOG_MASK & amd::LOG_LOCATION) {                                                         \
+          amd::log_printf(level, __FILE__, __LINE__, format, ##__VA_ARGS__);                       \
+        } else {                                                                                   \
+          amd::log_printf(level, "", 0, format, ##__VA_ARGS__);                                   \
+        }                                                                                          \
       }                                                                                            \
     }                                                                                              \
   } while (false)
