@@ -86,15 +86,24 @@ bool HostQueue::terminate() {
 }
 
 void HostQueue::finish() {
-  // Send a finish to make sure we finished all commands
-  Command* command = new Marker(*this, false);
-  if (command == NULL) {
-    return;
+  Command* command = nullptr;
+  if (IS_HIP) {
+    command = getLastQueuedCommand(false);
+    if (nullptr != command) {
+      command->awaitCompletion();
+    }
   }
-  ClPrint(LOG_DEBUG, LOG_CMD, "marker is queued");
-  command->enqueue();
-  command->awaitCompletion();
-  command->release();
+  if (nullptr == command) {
+    // Send a finish to make sure we finished all commands
+    command = new Marker(*this, false);
+    if (command == NULL) {
+      return;
+    }
+    ClPrint(LOG_DEBUG, LOG_CMD, "marker is queued");
+    command->enqueue();
+    command->awaitCompletion();
+    command->release();
+  }
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 

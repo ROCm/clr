@@ -85,6 +85,9 @@ uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
   return timeStamp;
 }
 
+// Global epoch time since the first processed command
+uint64_t epoch = 0;
+
 bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   assert(status <= CL_QUEUED && "invalid status");
 
@@ -96,6 +99,9 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
 
   if (profilingInfo().enabled_) {
     timeStamp = recordProfilingInfo(status, timeStamp);
+    if (epoch == 0) {
+      epoch = profilingInfo().queued_;
+    }
   }
 
   if (!make_atomic(status_).compareAndSet(currentStatus, status)) {
@@ -112,8 +118,6 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   }
 
   if (status <= CL_COMPLETE) {
-    ClPrint(LOG_DEBUG, LOG_CMD, "command %p complete", &command());
-
     // Before we notify the waiters that this event reached the CL_COMPLETE
     // status, we release all the resources associated with this instance.
     releaseResources();
@@ -123,6 +127,13 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
     if (referenceCount() > 1) {
       signal();
     }
+
+    ClPrint(LOG_DEBUG, LOG_CMD, "command %p complete (Wall: %ld, CPU: %ld, GPU: %ld us)",
+      &command(),
+      ((profilingInfo().end_ - epoch) / 1000),
+      ((profilingInfo().submitted_ - profilingInfo().queued_) / 1000),
+      ((profilingInfo().end_ - profilingInfo().start_) / 1000));
+
     release();
   }
 
