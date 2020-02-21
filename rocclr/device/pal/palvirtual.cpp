@@ -131,8 +131,9 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
       new (allocSize) VirtualGPU::Queue(gpu, palDev, residency_limit, max_command_buffers);
   if (queue != nullptr) {
     address addrQ = nullptr;
-    if ((qCreateInfo.engineType == Pal::EngineTypeCompute) ||
-        (qCreateInfo.engineType == Pal::EngineTypeDma)) {
+    if (((qCreateInfo.engineType == Pal::EngineTypeCompute) ||
+         (qCreateInfo.engineType == Pal::EngineTypeDma)) &&
+         (qCreateInfo.priority != Pal::QueuePriority::Realtime)) {
       uint32_t index = AllocedQueues(gpu, qCreateInfo.engineType);
       // Create PAL queue object
       if (index < GPU_MAX_HW_QUEUES) {
