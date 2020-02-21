@@ -88,9 +88,10 @@ bool HostQueue::terminate() {
 void HostQueue::finish() {
   Command* command = nullptr;
   if (IS_HIP) {
-    command = getLastQueuedCommand(false);
+    command = getLastQueuedCommand(true);
     if (nullptr != command) {
       command->awaitCompletion();
+      command->release();
     }
   }
   if (nullptr == command) {
