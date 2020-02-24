@@ -167,10 +167,6 @@ else()
   )
 endif()
 
-#add_library(oclelf STATIC IMPORTED)
-#set_target_properties(oclelf PROPERTIES IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/libelf/liboclelf.a")
-#target_link_libraries(oclruntime_static PRIVATE oclelf)
-
 if (UNIX)
     set(VDI_DEFAULT_INSTALL_PREFIX "/opt/rocm/vdi")
 endif()
@@ -225,11 +221,3 @@ INSTALL (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/device"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-   #set(AMDGCN_DEP_LIST)
-   #if(AMDGCN_TARGETS_LIB_DEPS)
-   #set(${AMDGCN_TARGETS_LIB_DEPS} ${AMDGCN_DEP_LIST} PARENT_SCOPE)
-   #endif()
-
-   #foreach(AMDGCN_DEP_TARGET ${AMDGCN_DEP_TARGETS})
-   #add_dependencies(oclruntime ${AMDGCN_DEP_TARGET})
-   #endforeach()
