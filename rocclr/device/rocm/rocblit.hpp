@@ -58,7 +58,7 @@ class DmaBlitManager : public device::HostBlitManager {
   //! Creates DmaBlitManager object
   virtual bool create(amd::Device& device) {
     if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &completion_signal_)) {
-      false;
+      return false;
     }
     return true;
   }
