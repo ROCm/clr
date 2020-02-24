@@ -8,7 +8,7 @@ endif()
 project(opencl)
 
 #example command:
-#cmake -DVDI_DIR=/home/pghafari/git-vdi/opencl -DUSE_COMGR_LIBRARY=yes -DCMAKE_PREFIX_PATH="/home/pghafari/rocmgitvdi/support/lib/comgr;/home/pghafari/rocmgitvdi/support/lib/comgr/build;" -DLLVM_INCLUDES=/home/pghafari/rocmgit/llvm-project/llvm/include -DLIBVDI_STATIC_DIR=/home/pghafari/git-vdi/opencl/build -DCMAKE_MODULE_PATH=/home/pghafari/rocmgit/opencl/cmake/modules ..
+#cmake -DVDI_DIR=/vdi -DUSE_COMGR_LIBRARY=yes -DLIBVDI_STATIC_DIR=/build ..
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 set(BUILD_SHARED_LIBS "Build shared libs" ON)
