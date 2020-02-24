@@ -332,7 +332,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         supportDepthsRGB_ = true;
       }
       if (use64BitPtr_) {
-        if (amd::IS_HIP || (GPU_ENABLE_LARGE_ALLOCATION && wscaps.workStationBoard)) {
+        if (GPU_ENABLE_LARGE_ALLOCATION) {
           maxAllocSize_ = 64ULL * Gi;
         } else {
           maxAllocSize_ = 4048 * Mi;
