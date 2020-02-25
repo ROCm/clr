@@ -175,8 +175,8 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
     /* Lexa */      {"gfx804", "gfx803", 16, 256, 32, 803, 804, false},
 };
 
-// Ordering as per AsicRevision# in //depot/stg/pal/inc/core/palDevice.h and
-// http://confluence.amd.com/pages/viewpage.action?spaceKey=ASLC&title=AMDGPU+Target+Names
+// Ordering as per AsicRevision# in palDevice.h & AMDGPU Target Names
+
 static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10          */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false},
     /* Vega10 XNACK    */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true},
