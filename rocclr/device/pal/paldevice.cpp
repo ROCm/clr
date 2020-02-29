@@ -902,27 +902,24 @@ bool Device::create(Pal::IDevice* device) {
     return false;
   }
 
+  const auto& computeProp = properties().engineProperties[Pal::EngineTypeCompute];
   // Find the number of available engines
-  for (uint i = 0; i < properties().engineProperties[Pal::EngineTypeCompute].engineCount; ++i) {
-    if (properties().engineProperties[Pal::EngineTypeCompute].capabilities[i].flags.exclusive) {
-      if ((properties()
-               .engineProperties[Pal::EngineTypeCompute]
-               .capabilities[i]
-               .queuePrioritySupport == Pal::SupportQueuePriorityRealtime) &&
-          (properties().engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu > 0)) {
-        if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
-            exclusiveComputeEnginesId_.end()) {
-          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
-        } else {
-          exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
-        }
-      } else if (properties()
-                     .engineProperties[Pal::EngineTypeCompute]
-                     .capabilities[i]
-                     .queuePrioritySupport == Pal::SupportQueuePriorityMedium) {
-        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
+  for (uint i = 0; i < computeProp.engineCount; ++i) {
+    const auto& computeCaps = computeProp.capabilities[i];
+    if ((computeCaps.queuePrioritySupport & Pal::SupportQueuePriorityRealtime) &&
+        (computeProp.maxNumDedicatedCu > 0)) {
+      if (exclusiveComputeEnginesId_.find(ExclusiveQueueType::RealTime0) !=
+          exclusiveComputeEnginesId_.end()) {
+        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime1, i});
+      } else {
+        exclusiveComputeEnginesId_.insert({ExclusiveQueueType::RealTime0, i});
       }
-    } else {
+    }
+    if (computeCaps.queuePrioritySupport & Pal::SupportQueuePriorityMedium) {
+      exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
+    }
+
+    if (computeCaps.queuePrioritySupport & Pal::SupportQueuePriorityNormal) {
       computeEnginesId_.push_back(i);
     }
   }

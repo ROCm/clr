@@ -86,7 +86,11 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
     qCreateInfo.priority = Pal::QueuePriority::Medium;
   } else if (amd::CommandQueue::RealTimeDisabled != rtCU) {
     qCreateInfo.numReservedCu = rtCU;
-    if (priority == amd::CommandQueue::Priority::Medium) {
+    if ((priority == amd::CommandQueue::Priority::Medium)  &&
+         // If Windows HWS is enabled, then the both real time queues are allocated
+         // on the same engine
+         (gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime1) !=
+          gpu.dev().exclusiveComputeEnginesId().end())) {
       it = gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime1);
     } else {
       it = gpu.dev().exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime0);
