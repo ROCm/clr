@@ -6,7 +6,7 @@ file(STRINGS palcdefs GPUOPEN_MAJOR_VERSION REGEX "^GPUOPEN_MAJOR_VERSION = [0-9
 string(REGEX REPLACE "GPUOPEN_MAJOR_VERSION = " "" GPUOPEN_MAJOR_VERSION ${GPUOPEN_MAJOR_VERSION})
 
 ### Create PAL backend library for VDI
-add_library(vdipal STATIC "")
+add_library(vdipal OBJECT "")
 
 # Add defines necessary for PAL build
 set(PAL_CLIENT_INTERFACE_MAJOR_VERSION ${PAL_MAJOR_VERSION}
@@ -53,7 +53,6 @@ target_compile_definitions(vdipal PRIVATE
     GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION=${GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION})
 
 target_compile_definitions(vdipal PRIVATE PAL_CLIENT_OCL=1)
-
 target_compile_definitions(vdipal PRIVATE PAL_GPUOPEN_OCL=1)
 target_compile_definitions(vdipal PRIVATE PAL_BUILD_GPUOPEN=1)
 target_compile_definitions(vdipal PRIVATE PAL_BUILD_SCPC=0)
@@ -79,6 +78,10 @@ target_compile_definitions(vdipal PRIVATE OPENCL_MAINLINE=1)
 
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
   target_compile_definitions(vdipal PRIVATE USE_COMGR_LIBRARY)
+endif()
+
+if(UNIX)
+  target_compile_definitions(vdipal PRIVATE PAL_AMDGPU_BUILD)
 endif()
 
 target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/compiler/sc/HSAIL/include)
@@ -115,8 +118,6 @@ target_sources(vdipal PRIVATE
   paltimestamp.cpp
   palvirtual.cpp
 )
-
-target_link_libraries(vdipal PUBLIC pal)
 
 set_target_properties(vdipal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

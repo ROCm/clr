@@ -57,7 +57,7 @@ find_package(Threads REQUIRED)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
-add_definitions(-DLINUX -D__x86_64__ -D__AMD64__ -DUNIX_OS -DqLittleEndian -DOPENCL_MAJOR=2 -DOPENCL_MINOR=1 -DWITH_AQL -DWITH_ONLINE_COMPILER -DATI_OS_LINUX -DATI_ARCH_X86 -DLITTLEENDIAN_CPU -DATI_BITS_64 -DATI_COMP_GCC -DWITH_HSA_DEVICE -DWITH_TARGET_AMDGCN -DOPENCL_EXPORTS -DCL_USE_DEPRECATED_OPENCL_1_0_APIS -DCL_USE_DEPRECATED_OPENCL_1_1_APIS -DCL_USE_DEPRECATED_OPENCL_1_2_APIS -DCL_USE_DEPRECATED_OPENCL_2_0_APIS -DVEGA10_ONLY=false -DWITH_LIGHTNING_COMPILER)
+add_definitions(-DLINUX -D__x86_64__ -D__AMD64__ -DUNIX_OS -DqLittleEndian -DOPENCL_MAJOR=2 -DOPENCL_MINOR=1 -DWITH_AQL -DWITH_ONLINE_COMPILER -DATI_OS_LINUX -DATI_ARCH_X86 -DLITTLEENDIAN_CPU -DATI_BITS_64 -DATI_COMP_GCC -DWITH_TARGET_AMDGCN -DOPENCL_EXPORTS -DCL_USE_DEPRECATED_OPENCL_1_0_APIS -DCL_USE_DEPRECATED_OPENCL_1_1_APIS -DCL_USE_DEPRECATED_OPENCL_1_2_APIS -DCL_USE_DEPRECATED_OPENCL_2_0_APIS -DVEGA10_ONLY=false -DWITH_LIGHTNING_COMPILER)
 add_definitions(-DOPENCL_C_MAJOR=2 -DOPENCL_C_MINOR=0)
 
 set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic -Wl,--unresolved-symbols=report-all")
@@ -98,8 +98,11 @@ if (BUILD_PAL)
 
   add_definitions(-DAMD_LIBELF)
   add_subdirectory(compiler/sc/HSAIL)
+else ()
+  add_definitions(-DWITH_HSA_DEVICE)
+  add_subdirectory(device/rocm)
 endif()
-add_subdirectory(device/rocm)
+
 
 #find_package(amd_comgr REQUIRED CONFIG)
 include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
@@ -146,7 +149,6 @@ set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(amdvdi_static STATIC
   	   $<TARGET_OBJECTS:oclruntime>
-  	   $<TARGET_OBJECTS:oclrocm>
   	   $<TARGET_OBJECTS:oclelf_obj>
   	   )
 
@@ -156,12 +158,14 @@ target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
 target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
 
 if (BUILD_PAL)
-  target_link_libraries(amdvdi_static PRIVATE vdipal)
+  target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:vdipal>)
   target_link_libraries(amdvdi_static PRIVATE amdhsaloader)
+  target_link_libraries(amdvdi_static PRIVATE pal)
   export(TARGETS amdvdi_static vdipal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
     FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
   )
 else()
+  target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
   export(TARGETS amdvdi_static
     FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
   )
