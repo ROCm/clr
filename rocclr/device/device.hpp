@@ -1113,6 +1113,9 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns the virtual device unique index
   uint index() const { return index_; }
 
+  //! Returns true if device has active wait setting
+  bool ActiveWait() const;
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
@@ -1420,13 +1423,25 @@ class Device : public RuntimeObject {
     return false;
   }
 
+  //! Returns active wait state for this device
+  bool ActiveWait() const { return activeWait_; }
+
+  void SetActiveWait(bool state) { activeWait_ = state; }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
 
   device::Info info_;             //!< Device info structure
   device::Settings* settings_;    //!< Device settings
-  bool online_;                   //!< The device in online
+  union {
+    struct {
+      uint32_t online_: 1;        //!< The device in online
+      uint32_t activeWait_: 1;    //!< If true device requires active wait
+    };
+    uint32_t  state_;             //!< State bit mask
+  };
+
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
