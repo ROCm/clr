@@ -69,6 +69,11 @@ extern void DeviceUnload();
 
 namespace device {
 extern const char* BlitSourceCode;
+
+bool VirtualDevice::ActiveWait() const {
+  return device_().ActiveWait();
+}
+
 }
 
 namespace amd {
@@ -223,6 +228,7 @@ void Device::tearDown() {
 Device::Device()
     : settings_(nullptr),
       online_(true),
+      activeWait_(false),
       blitProgram_(nullptr),
       hwDebugMgr_(nullptr),
       vaCacheAccess_(nullptr),
