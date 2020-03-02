@@ -287,7 +287,7 @@ struct Info : public amd::EmbeddedObject {
   size_t image3DMaxDepth_;
 
   //! Describes whether images are supported
-  bool imageSupport_;
+  uint32_t imageSupport_;
 
   //! Max size in bytes of the arguments that can be passed to a kernel.
   size_t maxParameterSize_;
@@ -336,11 +336,11 @@ struct Info : public amd::EmbeddedObject {
 
   //! If enabled, implies that all the memories, caches, registers etc. in
   //  the device implement error correction.
-  bool errorCorrectionSupport_;
+  uint32_t errorCorrectionSupport_;
 
   //! CL_TRUE if the device and the host have a unified memory subsystem and
   //  is CL_FALSE otherwise.
-  bool hostUnifiedMemory_;
+  uint32_t hostUnifiedMemory_;
 
   //! Describes the resolution of device timer.
   size_t profilingTimerResolution_;
@@ -349,15 +349,15 @@ struct Info : public amd::EmbeddedObject {
   uint64_t profilingTimerOffset_;
 
   //! CL_TRUE if device is a little endian device.
-  bool littleEndian_;
+  uint32_t littleEndian_;
 
   //! If enabled, implies that commands can be submitted to command-queues
   //  created on this device.
-  bool available_;
+  uint32_t available_;
 
   //! if the implementation does not have a compiler available to compile
   //  the program source.
-  bool compilerAvailable_;
+  uint32_t compilerAvailable_;
 
   //! Describes the execution capabilities of the device.
   cl_device_exec_capabilities executionCapabilities_;
@@ -402,7 +402,7 @@ struct Info : public amd::EmbeddedObject {
   const char* extensions_;
 
   //! Returns if device linker is available
-  bool linkerAvailable_;
+  uint32_t linkerAvailable_;
 
   //! Returns the list of built-in kernels, supported by the device
   const char* builtInKernels_;
@@ -415,7 +415,7 @@ struct Info : public amd::EmbeddedObject {
 
   //! Returns CL_TRUE if the devices preference is for the user to be
   //! responsible for synchronization
-  bool preferredInteropUserSync_;
+  uint32_t preferredInteropUserSync_;
 
   //! Returns maximum size of the internal buffer that holds the output
   //! of printf calls from a kernel
@@ -467,9 +467,9 @@ struct Info : public amd::EmbeddedObject {
   //! Number of available real time compute units
   uint32_t numRTCUs_;
   //! Thread trace enable
-  bool threadTraceEnable_;
+  uint32_t threadTraceEnable_;
   //! ECC protected GPRs support (only available Vega20+)
-  bool sramEccEnabled_;
+  uint32_t sramEccEnabled_;
 
   //! Image pitch alignment for image2d_from_buffer
   uint32_t imagePitchAlignment_;
@@ -477,7 +477,7 @@ struct Info : public amd::EmbeddedObject {
   uint32_t imageBaseAddressAlignment_;
 
   //! Describes whether buffers from images are supported
-  bool bufferFromImageSupport_;
+  uint32_t bufferFromImageSupport_;
 
   //! Returns the supported SPIR versions for the device
   const char* spirVersions_;
@@ -516,9 +516,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t maxThreadsPerCU_;
 
   //! GPU device supports a launch of cooperative groups
-  bool cooperativeGroups_;
+  uint32_t cooperativeGroups_;
   //! GPU device supports a launch of cooperative groups on multiple devices
-  bool cooperativeMultiDeviceGroups_;
+  uint32_t cooperativeMultiDeviceGroups_;
 };
 
 //! Device settings
