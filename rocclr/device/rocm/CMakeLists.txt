@@ -20,6 +20,8 @@ add_library(oclrocm OBJECT
   rocappprofile.cpp
   rocsettings.cpp
   rocschedcl.cpp
+  rochcmessages.cpp
+  rochcprintf.cpp
   rochostcall.cpp
 )
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)

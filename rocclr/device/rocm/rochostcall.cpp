@@ -18,7 +18,13 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
+#include "utils/debug.hpp"
 #include "top.hpp"
+#include "utils/flags.hpp"
+
+#include "rochostcall.hpp"
+#include "rochcmessages.hpp"
+
 #include "os/os.hpp"
 #include "thread/monitor.hpp"
 #include "utils/util.hpp"
@@ -34,11 +40,6 @@
 #include <set>
 
 namespace {  // anonymous
-
-enum ServiceID {
-  SERVICE_RESERVED = 0,
-  SERVICE_FUNCTION_CALL,
-};
 
 enum SignalValue { SIGNAL_DONE = 0, SIGNAL_INIT = 1 };
 
@@ -111,7 +112,7 @@ class HostcallBuffer {
   Payload* getPayload(uint64_t ptr) const;
 
  public:
-  void processPackets();
+  void processPackets(MessageHandler& messages);
   void initialize(uint32_t num_packets);
   void setDoorbell(hsa_signal_t doorbell) { doorbell_ = doorbell; };
 };
@@ -150,30 +151,31 @@ static uint32_t resetReadyFlag(uint32_t control) {
  */
 typedef void (*HostcallFunctionCall)(uint64_t* output, const uint64_t* input);
 
-static void handleFunctionCall(void* state, uint32_t service, uint64_t* payload) {
-  uint64_t output[2];
-
-  auto fptr = reinterpret_cast<HostcallFunctionCall>(payload[0]);
-  fptr(output, payload + 1);
-  memcpy(payload, output, sizeof(output));
-}
-
-static bool handlePayload(uint32_t service, uint64_t* payload) {
+static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* payload) {
   switch (service) {
-    case SERVICE_FUNCTION_CALL:
-      handleFunctionCall(nullptr, service, payload);
-      return true;
-      break;
+    case SERVICE_FUNCTION_CALL: {
+      uint64_t output[2];
+      auto fptr = reinterpret_cast<HostcallFunctionCall>(payload[0]);
+      fptr(output, payload + 1);
+      memcpy(payload, output, sizeof(output));
+      return;
+    }
+    case SERVICE_PRINTF:
+      if (!messages.handlePayload(service, payload)) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: invalid request for service \"%d\".",
+                service);
+        amd::report_fatal(__FILE__, __LINE__, "Hostcall: invalid service request.");
+      }
+      return;
     default:
       ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: no handler found for service ID \"%d\".",
               service);
       amd::report_fatal(__FILE__, __LINE__, "Hostcall service not supported.");
-      return false;
-      break;
+      return;
   }
 }
 
-void HostcallBuffer::processPackets() {
+void HostcallBuffer::processPackets(MessageHandler& messages) {
   // Grab the entire ready stack and set the top to 0. New requests from the
   // device will continue pushing on the stack while we process the packets that
   // we have grabbed.
@@ -198,7 +200,7 @@ void HostcallBuffer::processPackets() {
       auto wi = amd::leastBitSet(activemask);
       activemask ^= static_cast<decltype(activemask)>(1) << wi;
       auto slot = payload->slots[wi];
-      handlePayload(service, slot);
+      handlePayload(messages, service, slot);
     }
 
     __atomic_store_n(&header->control_, resetReadyFlag(header->control_),
@@ -262,6 +264,7 @@ void HostcallBuffer::initialize(uint32_t num_packets) {
 class HostcallListener {
   std::set<HostcallBuffer*> buffers_;
   hsa_signal_t doorbell_;
+  MessageHandler messages_;
 
   class Thread : public amd::Thread {
    public:
@@ -329,7 +332,7 @@ void HostcallListener::consumePackets() {
     amd::ScopedLock lock{listenerLock};
 
     for (auto ii : buffers_) {
-      ii->processPackets();
+      ii->processPackets(messages_);
     }
   }
 
