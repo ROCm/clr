@@ -637,7 +637,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.deviceTopology_.pcie.device = palProp.pciProperties.deviceNumber;
     info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
 
-    info_.simdPerCU_ = palProp.gfxipProperties.shaderCore.numSimdsPerCu;
+    info_.simdPerCU_ = settings().enableWgpMode_
+                       ? palProp.gfxipProperties.shaderCore.numSimdsPerCu
+                       : (2 * palProp.gfxipProperties.shaderCore.numSimdsPerCu);
     info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
     info_.simdWidth_ = hwInfo()->simdWidth_;
     info_.simdInstructionWidth_ = 1;
