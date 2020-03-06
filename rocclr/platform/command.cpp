@@ -190,7 +190,8 @@ bool Event::awaitCompletion() {
     }
 
     ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status_);
-    if (command().queue()->vdev()->ActiveWait()) {
+    auto* queue = command().queue();
+    if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
       while (status_ > CL_COMPLETE) {
         amd::Os::yield();
       }
