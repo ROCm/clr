@@ -921,7 +921,9 @@ bool Device::create(Pal::IDevice* device) {
       exclusiveComputeEnginesId_.insert({ExclusiveQueueType::Medium, i});
     }
 
-    if (computeCaps.queuePrioritySupport & Pal::SupportQueuePriorityNormal) {
+    if ((computeCaps.queuePrioritySupport & Pal::SupportQueuePriorityNormal) ||
+        // In Linux all queues have 0 for priority
+        (computeCaps.queuePrioritySupport == 0)) {
       computeEnginesId_.push_back(i);
     }
   }
