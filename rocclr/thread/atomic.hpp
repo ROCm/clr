@@ -21,7 +21,7 @@
 /*! \file atomic.hpp
  *  \brief  Declarations for Memory order access and Atomic operations.
  *
- *  \author Laurent Morichetti (laurent.morichetti@amd.com)
+ *  \author Laurent Morichetti
  *  \date   October 2008
  */
 

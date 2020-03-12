@@ -22,7 +22,7 @@
  * \file command.cpp
  * \brief  Definitions for Event, Command and HostQueue objects.
  *
- * \author Laurent Morichetti (laurent.morichetti@amd.com)
+ * \author Laurent Morichetti
  * \date   October 2008
  */
 
