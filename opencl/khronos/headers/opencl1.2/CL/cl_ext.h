@@ -375,32 +375,6 @@ typedef CL_API_ENTRY cl_program (CL_API_CALL * clCreateProgramWithAssemblyAMD_fn
 /*   cl_kernel_exec_info for DVR DOPP texture support   */
 #define CL_KERNEL_EXEC_INFO_NEW_VCOP_AMD            0x4120
 #define CL_KERNEL_EXEC_INFO_PFPA_VCOP_AMD           0x4121
-
-/*************************
-* cl_amd_object_metadata *
-**************************/
-#define cl_amd_object_metadata 1
-
-typedef size_t cl_key_amd;
-
-#define CL_INVALID_OBJECT_AMD    0x403A
-#define CL_INVALID_KEY_AMD       0x403B
-#define CL_PLATFORM_MAX_KEYS_AMD 0x403C
-
-typedef CL_API_ENTRY cl_key_amd (CL_API_CALL * clCreateKeyAMD_fn)(
-    cl_platform_id      /* platform */,
-    void (CL_CALLBACK * /* destructor */)( void* /* old_value */),
-    cl_int *            /* errcode_ret */) CL_API_SUFFIX__VERSION_1_1;
-
-typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectGetValueForKeyAMD_fn)(
-    void *               /* object */,
-    cl_key_amd           /* key */,
-    void **              /* ret_val */) CL_API_SUFFIX__VERSION_1_1;
-
-typedef CL_API_ENTRY cl_int (CL_API_CALL * clObjectSetValueForKeyAMD_fn)(
-    void *               /* object */,
-    cl_key_amd           /* key */,
-    void *               /* value */) CL_API_SUFFIX__VERSION_1_1;
 // </amd_internal>
 
 /*********************************

@@ -114,24 +114,6 @@ cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue,
 
 extern "C" {
 
-extern CL_API_ENTRY cl_key_amd CL_API_CALL
-clCreateKeyAMD(
-    cl_platform_id platform,
-    void (CL_CALLBACK * destructor)( void * ),
-    cl_int * errcode_ret);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clObjectGetValueForKeyAMD(
-    void * object,
-    cl_key_amd key,
-    void ** ret_val);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clObjectSetValueForKeyAMD(
-    void * object,
-    cl_key_amd key,
-    void * value);
-
 #if defined(CL_VERSION_1_1)
 extern CL_API_ENTRY cl_int CL_API_CALL
 clSetCommandQueueProperty(
