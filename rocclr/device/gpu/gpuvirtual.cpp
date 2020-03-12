@@ -680,8 +680,28 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
         result = blitMgr().copyBuffer(*memory, *hostMemory, origin, dstOrigin, size,
                                       vcmd.isEntireMemory());
       } else {
-        result =
-            blitMgr().readBuffer(*memory, vcmd.destination(), origin, size, vcmd.isEntireMemory());
+        // The logic below will perform 2 step copy to make sure memory pinning doesn't
+        // occur on the first unaligned page, because in Windows memory manager can
+        // have CPU access to the allocation header in another thread
+        // and a race condition is possible.
+        char* tmpHost =
+            amd::alignUp(reinterpret_cast<char*>(vcmd.destination()), PinnedMemoryAlignment);
+
+        // Find the partial size for unaligned copy
+        size_t partial = tmpHost - reinterpret_cast<char*>(vcmd.destination());
+        result = true;
+        // Check if it's staging copy, then ignore unaligned address
+        if (size[0] <= dev().settings().pinnedMinXferSize_) {
+          partial = size[0];
+        }
+        // Make first step transfer
+        if (partial > 0) {
+          result = blitMgr().readBuffer(*memory, vcmd.destination(), origin, partial);
+        }
+        // Second step transfer if something left to copy
+        if (partial < size[0]) {
+          result &= blitMgr().readBuffer(*memory, tmpHost, origin[0] + partial, size[0] - partial);
+        }
       }
       if (NULL != bufferFromImage) {
         bufferFromImage->release();
@@ -777,7 +797,28 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd) {
         result = blitMgr().copyBuffer(*hostMemory, *memory, srcOrigin, origin, size,
                                       vcmd.isEntireMemory());
       } else {
-        result = blitMgr().writeBuffer(vcmd.source(), *memory, origin, size, vcmd.isEntireMemory());
+        // The logic below will perform 2 step copy to make sure memory pinning doesn't
+        // occur on the first unaligned page, because in Windows memory manager can
+        // have CPU access to the allocation header in another thread
+        // and a race condition is possible.
+        const char* tmpHost =
+            amd::alignUp(reinterpret_cast<const char*>(vcmd.source()), PinnedMemoryAlignment);
+
+        // Find the partial size for unaligned copy
+        size_t partial = tmpHost - reinterpret_cast<const char*>(vcmd.source());
+        result = true;
+        // Check if it's staging copy, then ignore unaligned address
+        if (size[0] <= dev().settings().pinnedMinXferSize_) {
+          partial = size[0];
+        }
+        // Make first step transfer
+        if (partial > 0) {
+          result = blitMgr().writeBuffer(vcmd.source(), *memory, origin, partial);
+        }
+        // Second step transfer if something left to copy
+        if (partial < size[0]) {
+          result &= blitMgr().writeBuffer(tmpHost, *memory, origin[0] + partial, size[0] - partial);
+        }
       }
       if (NULL != bufferFromImage) {
         bufferFromImage->release();
