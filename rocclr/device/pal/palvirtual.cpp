@@ -358,14 +358,22 @@ bool VirtualGPU::Queue::flush() {
     return false;
   }
 
-  Pal::SubmitInfo submitInfo = {};
-  submitInfo.cmdBufferCount = 1;
-  submitInfo.ppCmdBuffers = &iCmdBuffs_[cmdBufIdSlot_];
-  submitInfo.pFence = iCmdFences_[cmdBufIdSlot_];
-  submitInfo.doppRefCount = palDoppRefs_.size();
-  submitInfo.pDoppRefs = palDoppRefs_.data();
-  submitInfo.externPhysMemCount = palSdiRefs_.size();
-  submitInfo.ppExternPhysMem = palSdiRefs_.data();
+  Pal::PerSubQueueSubmitInfo perSubQueueSubmitInfo = {};
+  perSubQueueSubmitInfo.cmdBufferCount  = 1;
+  perSubQueueSubmitInfo.ppCmdBuffers    = &iCmdBuffs_[cmdBufIdSlot_];
+
+  Pal::MultiSubmitInfo submitInfo = {};
+  submitInfo.perSubQueueInfoCount = 1;
+  submitInfo.pPerSubQueueInfo     = &perSubQueueSubmitInfo;
+
+  submitInfo.doppRefCount         = palDoppRefs_.size();
+  submitInfo.pDoppRefs            = palDoppRefs_.data();
+
+  submitInfo.externPhysMemCount   = palSdiRefs_.size();
+  submitInfo.ppExternPhysMem      = palSdiRefs_.data();
+
+  submitInfo.fenceCount           = 1;
+  submitInfo.ppFences             = &iCmdFences_[cmdBufIdSlot_];
 
   // Submit command buffer to OS
   Pal::Result result;

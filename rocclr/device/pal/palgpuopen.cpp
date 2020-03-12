@@ -510,8 +510,8 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu) {
 
     // Fill GPU commands
     gpu->eventBegin(MainEngine);
-    trace_.gpa_sample_id_ =
-        trace_.gpa_session_->BeginSample(gpu->queue(MainEngine).iCmd(), sampleConfig);
+    result = trace_.gpa_session_->BeginSample(
+      gpu->queue(MainEngine).iCmd(), sampleConfig, &trace_.gpa_sample_id_);
     gpu->eventEnd(MainEngine, trace_.begin_sqtt_event_);
   }
 
