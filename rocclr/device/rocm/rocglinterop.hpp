@@ -77,18 +77,24 @@ class image_metadata {
     return true;
   }
 
-  bool setLayer(uint32_t layer) {
-    data->word3.bits.type = SQ_RSRC_IMG_2D_ARRAY;
-    data->word5.bits.last_array = layer;
-    data->word5.bits.base_array = layer;
-    return true;
-  }
 
-  bool setFace(GLenum face) {
+  bool setFace(GLenum face, int32_t gfxipMajor) {
     int index = face - GL_TEXTURE_CUBE_MAP_POSITIVE_X;
-    if (index < 0 || index > 5) return false;
-    if (data->word3.bits.type != SQ_RSRC_IMG_CUBE) return false;
-    return setLayer(index);
+    if (index < 0 || index > 5) {
+      return false;
+    }
+    if (data->word3.bits.type != SQ_RSRC_IMG_CUBE) {
+      return false;
+    }
+    data->word3.bits.type = SQ_RSRC_IMG_2D_ARRAY;
+    if (gfxipMajor >= 10) {
+      // The base array is moved to word4 for gfx10
+      data->word4.u32_all = index << 16;
+    } else {
+      data->word5.bits.last_array = index;
+      data->word5.bits.base_array = index;
+    }
+    return true;
   }
 };
 
