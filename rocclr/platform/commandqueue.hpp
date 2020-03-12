@@ -21,7 +21,7 @@
 /*! \file commandqueue.hpp
  *  \brief  Declarations CommandQueue object.
  *
- * \author Laurent Morichetti (laurent.morichetti@amd.com)
+ * \author Laurent Morichetti
  * \date   October 2008
  */
 

@@ -21,7 +21,7 @@
 /*! \file program.hpp
  *  \brief  Declarations for Program and ProgramBinary objects.
  *
- *  \author Laurent Morichetti (laurent.morichetti@amd.com)
+ *  \author Laurent Morichetti
  *  \date   October 2008
  */
 

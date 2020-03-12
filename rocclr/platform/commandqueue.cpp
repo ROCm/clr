@@ -27,7 +27,7 @@
  * \file commandQueue.cpp
  * \brief  Definitions for HostQueue object.
  *
- * \author Laurent Morichetti (laurent.morichetti@amd.com)
+ * \author Laurent Morichetti
  * \date   October 2008
  */
 
