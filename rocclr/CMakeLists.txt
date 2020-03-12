@@ -129,7 +129,6 @@ add_library(oclruntime OBJECT
   platform/command.cpp
   platform/ndrange.cpp
   platform/runtime.cpp
-  platform/object.cpp
   platform/memory.cpp
   platform/program.cpp
   platform/commandqueue.cpp
