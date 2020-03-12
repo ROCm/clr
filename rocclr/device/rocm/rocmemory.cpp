@@ -1028,11 +1028,17 @@ bool Image::createInteropImage() {
   }
 
   image_metadata desc;
-  if (!desc.create(amdImageDesc_)) return false;
+  if (!desc.create(amdImageDesc_)) {
+    return false;
+  }
 
-  if (!desc.setMipLevel(obj->getGLMipLevel())) return false;
+  if (!desc.setMipLevel(obj->getGLMipLevel())) {
+    return false;
+  }
 
-  if (obj->getGLTarget() == GL_TEXTURE_CUBE_MAP) desc.setFace(obj->getCubemapFace());
+  if (obj->getGLTarget() == GL_TEXTURE_CUBE_MAP) {
+    desc.setFace(obj->getCubemapFace(), dev().deviceInfo().gfxipVersion_ / 100);
+  }
 
   hsa_status_t err =
       hsa_amd_image_create(dev().getBackendDevice(), &imageDescriptor_, amdImageDesc_,
