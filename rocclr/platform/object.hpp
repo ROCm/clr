@@ -128,42 +128,9 @@ struct ICDDispatchedObject {
   }
 };
 
-#define OCL_MAX_KEYS 8
-
-/*! The object metadata container.
- */
-class ObjectMetadata {
- public:
-  typedef size_t Key;
-  typedef void* Value;
-
- private:
-  typedef void(CL_CALLBACK* Destructor)(Value);
-
-  static Atomic<Key> nextKey_;
-  static Destructor destructors_[OCL_MAX_KEYS];
-
-  Atomic<Value*> values_;
-
- public:
-  static bool check(Key key);
-
-  static Key createKey(Destructor destructor = NULL);
-
-  ObjectMetadata() : values_(NULL) {}
-  ~ObjectMetadata();
-
-  Value getValueForKey(Key key) const;
-
-  bool setValueForKey(Key key, Value value);
-};
-
 /*! \brief For all OpenCL/Runtime objects.
  */
 class RuntimeObject : public ReferenceCountedObject, public ICDDispatchedObject {
- private:
-  ObjectMetadata metadata_;
-
  public:
   enum ObjectType {
     ObjectTypeContext = 0,
@@ -180,7 +147,6 @@ class RuntimeObject : public ReferenceCountedObject, public ICDDispatchedObject 
     ObjectTypeLiquidFlashFile = 11
   };
 
-  ObjectMetadata& metadata() { return metadata_; }
   virtual ObjectType objectType() const = 0;
 };
 
