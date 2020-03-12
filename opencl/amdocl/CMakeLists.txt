@@ -64,7 +64,6 @@ add_library(amdocl64_obj OBJECT
   cl_svm.cpp
   cl_sampler.cpp
   cl_thread_trace_amd.cpp
-  cl_object.cpp
   cl_counter.cpp
   cl_d3d10.cpp
   cl_d3d9.cpp

@@ -142,10 +142,6 @@ RUNTIME_ENTRY(cl_int, clGetPlatformInfo,
     case CL_PLATFORM_ICD_SUFFIX_KHR:
       value = "AMD";
       break;
-    case CL_PLATFORM_MAX_KEYS_AMD: {
-      size_t max_keys = OCL_MAX_KEYS;
-      return amd::clGetInfo(max_keys, param_value_size, param_value, param_value_size_ret);
-    }
     case CL_PLATFORM_HOST_TIMER_RESOLUTION: {
       cl_ulong resolution = (cl_ulong)amd::Os::timerResolutionNanos();
       return amd::clGetInfo(resolution, param_value_size, param_value, param_value_size_ret);

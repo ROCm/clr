@@ -485,7 +485,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromD3D10Texture3DKHR);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromDX9MediaSurfaceKHR);
 #endif  //_WIN32
-      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateKeyAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clConvertImageAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateBufferFromImageAMD);
 #if defined(cl_khr_il_program) || defined(CL_VERSION_2_1)
@@ -573,10 +572,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       break;
     case 'I':
       CL_EXTENSION_ENTRYPOINT_CHECK(clIcdGetPlatformIDsKHR);
-      break;
-    case 'O':
-      CL_EXTENSION_ENTRYPOINT_CHECK(clObjectGetValueForKeyAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clObjectSetValueForKeyAMD);
       break;
     case 'R':
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleasePerfCounterAMD);
