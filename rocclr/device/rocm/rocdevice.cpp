@@ -1395,8 +1395,8 @@ bool Device::populateOCLDeviceConstants() {
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
     info_.simdPerCU_ = settings().enableWgpMode_
-                       ? deviceInfo_.simdPerCU_
-                       : (2 * deviceInfo_.simdPerCU_);
+                       ? (2 * deviceInfo_.simdPerCU_)
+                       : deviceInfo_.simdPerCU_;
     info_.simdWidth_ = deviceInfo_.simdWidth_;
     info_.simdInstructionWidth_ = deviceInfo_.simdInstructionWidth_;
     if (HSA_STATUS_SUCCESS !=
