@@ -149,6 +149,9 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
           info->engineType_ = qCreateInfo.engineType;
           // Save uniqueue index for scratch buffer access
           info->index_ = index;
+        } else {
+          delete queue;
+          return nullptr;
         }
       } else {
         int usage = std::numeric_limits<int>::max();
@@ -157,7 +160,7 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueTy
         for (const auto& it : gpu.dev().QueuePool()) {
           if ((qCreateInfo.engineType == it.second->engineType_) &&
               (it.second->counter_ <= usage)) {
-            if ((it.second->counter_ < usage) || 
+            if ((it.second->counter_ < usage) ||
                 // Preserve the order of allocations, because SDMA engines
                 // should be used in round-robin manner
                 ((it.second->counter_ == usage) && (it.second->index_ < indexBase))) {
