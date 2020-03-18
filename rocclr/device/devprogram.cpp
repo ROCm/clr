@@ -2633,6 +2633,15 @@ const bool Program::getLoweredNames(std::vector<std::string>* mangledNames) cons
   return false;
 #endif
 }
+
+bool Program::getGlobalFuncFromCodeObj(std::vector<std::string>* func_names) const {
+#if defined(USE_COMGR_LIBRARY)
+  return getSymbolsFromCodeObj(func_names, AMD_COMGR_SYMBOL_TYPE_FUNC);
+#else
+  return true;
+#endif
+}
+
 bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const {
 #if defined(USE_COMGR_LIBRARY)
   return getSymbolsFromCodeObj(var_names, AMD_COMGR_SYMBOL_TYPE_OBJECT);

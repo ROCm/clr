@@ -247,6 +247,7 @@ class Program : public amd::HeapObject {
   //! Get mangled name of a name expresion
   const bool getLoweredNames(std::vector<std::string>* mangledNames) const;
 
+  bool getGlobalFuncFromCodeObj(std::vector<std::string>* func_names) const;
   bool getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const;
   bool getUndefinedVarFromCodeObj(std::vector<std::string>* var_names) const;
 
