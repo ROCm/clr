@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.5.1)
+project(rocm-opencl-dev)
+
+install(DIRECTORY @opencl_SOURCE_DIR@/khronos/headers/opencl2.2/CL
+        DESTINATION include
+        USE_SOURCE_PERMISSIONS
+        PATTERN cl_d3d10.h EXCLUDE
+        PATTERN cl_d3d11.h EXCLUDE
+        PATTERN cl_dx9_media_sharing.h EXCLUDE
+        PATTERN cl_egl.h EXCLUDE)
+install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so DESTINATION lib)
+
+#############################
+# Packaging steps
+#############################
+# Generic CPACK variables
+set(CPACK_GENERATOR "DEB;RPM")
+set(CPACK_PACKAGE_NAME "rocm-opencl-dev")
+set(CPACK_PACKAGE_CONTACT "Advanced Micro Devices Inc.")
+set(CPACK_PACKAGE_VENDOR "AMD")
+set(CPACK_PACKAGING_INSTALL_PREFIX @CPACK_PACKAGING_INSTALL_PREFIX@)
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenCL: Open Computing Language on ROCclr")
+set(CPACK_PACKAGE_VERSION_MAJOR @OPENCL_VERSION_MAJOR@)
+set(CPACK_PACKAGE_VERSION_MINOR @OPENCL_VERSION_MINOR@)
+set(CPACK_PACKAGE_VERSION_PATCH @OPENCL_VERSION_PATCH@)
+set(CPACK_PACKAGE_VERSION @OPENCL_VERSION_MAJOR@.@OPENCL_VERSION_MINOR@.@OPENCL_VERSION_PATCH@)
+set(CPACK_PACKAGE_FILE_NAME ${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION})
+
+# Debian CPACK variables
+set(CPACK_BINARY_DEB "ON")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl")
+
+# RPM CPACK variables
+set(CPACK_BINARY_RPM "ON")
+set(CPACK_RPM_PACKAGE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
+set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
+set(CPACK_RPM_PACKAGE_REQUIRES "rocm-opencl")
+
+include(CPack)
