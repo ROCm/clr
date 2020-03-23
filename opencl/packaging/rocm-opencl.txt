@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5.1)
 project(rocm-opencl)
 
-install(FILES @PROJECT_BINARY_DIR@/bin/clinfo DESTINATION bin)
+install(DIRECTORY @PROJECT_BINARY_DIR@/bin DESTINATION . USE_SOURCE_PERMISSIONS)
 install(FILES @PROJECT_BINARY_DIR@/lib/libamdocl64.so DESTINATION lib)
 install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@ DESTINATION lib)
 install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@ DESTINATION lib)
