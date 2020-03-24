@@ -399,7 +399,7 @@ bool Device::getDeviceIDs(cl_device_type deviceType, uint32_t numEntries, cl_dev
                           uint32_t* numDevices, bool offlineDevices) {
   if (numDevices != nullptr && devices == nullptr) {
     *numDevices = (uint32_t)amd::Device::numDevices(deviceType, offlineDevices);
-    return (*numDevices > 0) ? true : false;
+    return true;
   }
   assert(devices != nullptr && "check the code above");
 
