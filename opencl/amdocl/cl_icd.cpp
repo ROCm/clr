@@ -58,7 +58,7 @@ static cl_int CL_API_CALL icdGetDeviceInfo(cl_device_id device, cl_device_info p
   return clGetDeviceInfo(device, param_name, param_value_size, param_value, param_value_size_ret);
 }
 
-KHRicdVendorDispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
+cl_icd_dispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
     {NULL /* should not get called */, icdGetPlatformInfo, icdGetDeviceIDs, icdGetDeviceInfo,
      clCreateContext, clCreateContextFromType, clRetainContext, clReleaseContext, clGetContextInfo,
      clCreateCommandQueue, clRetainCommandQueue, clReleaseCommandQueue, clGetCommandQueueInfo,
