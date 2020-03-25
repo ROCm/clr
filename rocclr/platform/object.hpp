@@ -61,11 +61,11 @@ CL_TYPES_DO(DECLARE_CL_TYPES);
 
 #undef DECLARE_CL_TYPES
 
-struct KHRicdVendorDispatchRec;
+typedef struct _cl_icd_dispatch cl_icd_dispatch;
 
 #define DECLARE_CL_TYPES(CL, AMD)                                                                  \
   typedef struct _##CL {                                                                           \
-    struct KHRicdVendorDispatchRec* dispatch;                                                      \
+    cl_icd_dispatch* dispatch;                                                             \
   } * CL;
 
 AMD_CL_TYPES_DO(DECLARE_CL_TYPES);
@@ -108,8 +108,8 @@ CL_TYPES_DO(DEFINE_CL_TRAITS);
 //! \endcond
 
 struct ICDDispatchedObject {
-  static struct KHRicdVendorDispatchRec icdVendorDispatch_[];
-  const struct KHRicdVendorDispatchRec* const dispatch_;
+  static cl_icd_dispatch icdVendorDispatch_[];
+  const cl_icd_dispatch* const dispatch_;
 
  protected:
   ICDDispatchedObject() : dispatch_(icdVendorDispatch_) {}
