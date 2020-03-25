@@ -149,7 +149,7 @@ struct ParamInfo<char[N]>
 
 } // namespace detail
 
-struct PlatformIDS { const struct KHRicdVendorDispatchRec* dispatch_; };
+struct PlatformIDS { const cl_icd_dispatch* dispatch_; };
 class PlatformID {
 public:
     static PlatformIDS Platform;
