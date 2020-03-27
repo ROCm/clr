@@ -2187,7 +2187,7 @@ bool ResourceCache::free(size_t minCacheEntries) {
   if (minCacheEntries < resCache_.size()) {
     result = true;
     // Clear the cache
-    while (static_cast<int>(cacheSize_) > 0) {
+    while (static_cast<int64_t>(cacheSize_) > 0) {
       removeLast();
     }
     CondLog((cacheSize_ != 0), "Incorrect size for cache release!");
@@ -2201,14 +2201,16 @@ void ResourceCache::removeLast() {
   {
     // Protect access to the global data
     amd::ScopedLock l(&lockCacheOps_);
-    entry = resCache_.back();
-    resCache_.pop_back();
-    cacheSize_ -= entry.second->iMem()->Desc().size;
-    if (entry.first->type_ == Resource::Local) {
-      lclCacheSize_ -= entry.second->iMem()->Desc().size;
+    if (resCache_.size() > 0) {
+      entry = resCache_.back();
+      resCache_.pop_back();
+      cacheSize_ -= entry.second->iMem()->Desc().size;
+      if (entry.first->type_ == Resource::Local) {
+        lclCacheSize_ -= entry.second->iMem()->Desc().size;
+      }
+      // Delete Descriptor
+      delete entry.first;
     }
-    // Delete Descriptor
-    delete entry.first;
   }
 
   // Destroy PAL resource

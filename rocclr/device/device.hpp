@@ -1423,6 +1423,9 @@ class Device : public RuntimeObject {
     return false;
   }
 
+  // Notifies device about context destroy
+  virtual void ContextDestroy() {}
+
   //! Returns active wait state for this device
   bool ActiveWait() const { return activeWait_; }
 

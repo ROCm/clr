@@ -75,12 +75,18 @@ Context::Context(const std::vector<Device*>& devices, const Info& info)
 Context::~Context() {
   static const bool VALIDATE_ONLY = false;
 
-  // Dissociate OCL context with any external device
-  if (info_.flags_ & (GLDeviceKhr | D3D10DeviceKhr | D3D11DeviceKhr)) {
-    // Loop through all devices
-    for (const auto& it : devices_) {
+  // Loop through all devices
+  for (const auto& it : devices_) {
+    // Dissociate OCL context with any external device
+    if (info_.flags_ & (GLDeviceKhr | D3D10DeviceKhr | D3D11DeviceKhr)) {
       it->unbindExternalDevice(info_.flags_, info_.hDev_, info_.hCtx_, VALIDATE_ONLY);
     }
+
+    // Notify device about context destroy
+    it->ContextDestroy();
+
+    // Release device
+    it->release();
   }
 
   if (properties_ != NULL) {
@@ -90,8 +96,6 @@ Context::~Context() {
     delete glenv_;
     glenv_ = NULL;
   }
-
-  std::for_each(devices_.begin(), devices_.end(), std::mem_fun(&Device::release));
 
 #ifdef WITH_LIQUID_FLASH 
   lfTerminate();
