@@ -365,6 +365,11 @@ class Device : public NullDevice {
   virtual bool unbindExternalDevice(uint flags, void* const pDevice[], void* pContext,
                                     bool validateOnly);
 
+  //! Free resource cache on device if OCL context was destroyed.
+  //! @note: Backend device doesn't track resources per context and releases all resources, regardless
+  //! the number of still active contexts
+  virtual void ContextDestroy() { resourceCache().free(); }
+
   //! Validates kernel before execution
   virtual bool validateKernel(const amd::Kernel& kernel,  //!< AMD kernel object
                               const device::VirtualDevice* vdev, bool coop_group = false);
