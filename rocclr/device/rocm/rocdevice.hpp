@@ -432,7 +432,7 @@ class Device : public NullDevice {
 
   //! Acquire HSA queue. This method can create a new HSA queue or
   //! share previously created
-  hsa_queue_t* acquireQueue(uint32_t queue_size_hint);
+  hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false);
 
   //! Release HSA queue
   void releaseQueue(hsa_queue_t*);
