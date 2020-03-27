@@ -584,8 +584,9 @@ bool VirtualGPU::releaseGpuMemoryFence() {
   return true;
 }
 
-VirtualGPU::VirtualGPU(Device& device)
+VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative)
     : device::VirtualDevice(device),
+      state_(0),
       gpu_queue_(nullptr),
       roc_device_(device),
       virtualQueue_(nullptr),
@@ -603,6 +604,8 @@ VirtualGPU::VirtualGPU(Device& device)
   // Initialize the last signal and dispatch flags
   timestamp_ = nullptr;
   hasPendingDispatch_ = false;
+  profiling_ = profiling;
+  cooperative_ = cooperative;
 
   kernarg_pool_base_ = nullptr;
   kernarg_pool_size_ = 0;
@@ -690,7 +693,7 @@ VirtualGPU::~VirtualGPU() {
   }
 }
 
-bool VirtualGPU::create(bool profilingEna) {
+bool VirtualGPU::create() {
   // Checking Virtual gpu unique index for ROCm backend
   if (index() > device().settings().commandQueues_) {
     return false;
@@ -698,10 +701,10 @@ bool VirtualGPU::create(bool profilingEna) {
 
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
-  gpu_queue_ = roc_device_.acquireQueue(queue_size);
+  gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_);
   if (!gpu_queue_) return false;
 
-  if (!initPool(dev().settings().kernargPoolSize_, (profilingEna) ? queue_size : 0)) {
+  if (!initPool(dev().settings().kernargPoolSize_, (profiling_) ? queue_size : 0)) {
     LogError("Couldn't allocate arguments/signals for the queue");
     return false;
   }

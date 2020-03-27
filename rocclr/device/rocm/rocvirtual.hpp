@@ -163,10 +163,10 @@ class VirtualGPU : public device::VirtualDevice {
     size_t maxMemObjectsInQueue_;     //!< Maximum number of mem objects in the queue
   };
 
-  VirtualGPU(Device& device);
+  VirtualGPU(Device& device, bool profiling = false, bool cooperative = false);
   ~VirtualGPU();
 
-  bool create(bool profilingEna);
+  bool create();
   bool terminate() { return true; }
   const Device& dev() const { return roc_device_; }
 
@@ -311,13 +311,17 @@ class VirtualGPU : public device::VirtualDevice {
   std::vector<Memory*> xferWriteBuffers_;  //!< Stage write buffers
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
-  /**
-   * @brief Indicates if a kernel dispatch is outstanding. This flag is
-   * used to synchronized on kernel outputs.
-   */
-  bool hasPendingDispatch_;
+  //! Queue state flags
+  union {
+    struct {
+      uint32_t hasPendingDispatch_ : 1; //!< A kernel dispatch is outstanding
+      uint32_t imageBufferWrtBack_ : 1; //!< Image buffer write back is required
+      uint32_t profiling_          : 1; //!< Profiling is enabled
+      uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
+    };
+    uint32_t  state_;
+  };
 
-  bool imageBufferWrtBack_;  //!< Enable image buffer write back
   std::vector<device::Memory*> wrtBackImageBuffer_;  //!< Array of images for write back
 
   Timestamp* timestamp_;

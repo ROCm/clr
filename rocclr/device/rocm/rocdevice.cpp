@@ -1457,14 +1457,20 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   amd::ScopedLock lock(vgpusAccess());
 
   bool profiling = (queue != nullptr) && queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
+  bool cooperative = false;
 
-  profiling |= (queue == nullptr) ? true : false;
+  // If amd command queue is null, then it's an internal device queue
+  if (queue == nullptr) {
+    // In HIP mode the device queue will be allocated for the cooperative launches only
+    cooperative = amd::IS_HIP;
+    profiling = amd::IS_HIP;
+  }
 
   // Initialization of heap and other resources occur during the command
   // queue creation time.
-  VirtualGPU* virtualDevice = new VirtualGPU(*this);
+  VirtualGPU* virtualDevice = new VirtualGPU(*this, profiling, cooperative);
 
-  if (!virtualDevice->create(profiling)) {
+  if (!virtualDevice->create()) {
     delete virtualDevice;
     return nullptr;
   }
@@ -1874,12 +1880,13 @@ VirtualGPU* Device::xferQueue() const {
   return xferQueue_;
 }
 
-bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
+bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+  cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
   bool result = true;
   return result;
 }
 
-hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
+hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
   assert(queuePool_.size() <= GPU_MAX_HW_QUEUES);
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "number of allocated hardware queues: %d, maximum: %d",
           queuePool_.size(), GPU_MAX_HW_QUEUES);
@@ -1907,8 +1914,15 @@ hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
   }
   auto queue_size = (queue_max_packets < queue_size_hint) ? queue_max_packets : queue_size_hint;
 
-  hsa_queue_t *queue;
-  while (hsa_queue_create(_bkendDevice, queue_size, HSA_QUEUE_TYPE_MULTI, nullptr, nullptr,
+  hsa_queue_t* queue;
+  auto queue_type = HSA_QUEUE_TYPE_MULTI;
+
+  // Enable cooperative queue for the device queue
+  if (coop_queue) {
+    queue_type = HSA_QUEUE_TYPE_COOPERATIVE;
+  }
+
+  while (hsa_queue_create(_bkendDevice, queue_size, queue_type, nullptr, nullptr,
                           std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
                           &queue) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
@@ -1919,6 +1933,11 @@ hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d",
                 queue, queue_size);
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
+  if (coop_queue) {
+    // Skip queue recycling for cooperative queues, since it should be just one
+    // per device.
+    return queue;
+  }
   auto result = queuePool_.emplace(std::make_pair(queue, QueueInfo()));
   assert(result.second && "QueueInfo already exists");
   auto &qInfo = result.first->second;
@@ -1928,26 +1947,26 @@ hsa_queue_t *Device::acquireQueue(uint32_t queue_size_hint) {
 
 void Device::releaseQueue(hsa_queue_t* queue) {
   auto qIter = queuePool_.find(queue);
-  assert(qIter != queuePool_.end());
+  if (qIter != queuePool_.end()) {
+    auto &qInfo = qIter->second;
+    assert(qInfo.refCount > 0);
+    qInfo.refCount--;
+    if (qInfo.refCount != 0) {
+        return;
+    }
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
 
-  auto &qInfo = qIter->second;
-  assert(qInfo.refCount > 0);
-  qInfo.refCount--;
-  if (qInfo.refCount != 0) {
-      return;
+    if (qInfo.hostcallBuffer_) {
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
+              qInfo.hostcallBuffer_, queue);
+      disableHostcalls(qInfo.hostcallBuffer_, queue);
+      context().svmFree(qInfo.hostcallBuffer_);
+    }
+
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
+    queuePool_.erase(qIter);
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
-
-  if (qInfo.hostcallBuffer_) {
-    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
-            qInfo.hostcallBuffer_, queue);
-    disableHostcalls(qInfo.hostcallBuffer_, queue);
-    context().svmFree(qInfo.hostcallBuffer_);
-  }
-
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
   hsa_queue_destroy(queue);
-  queuePool_.erase(qIter);
 }
 
 void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
