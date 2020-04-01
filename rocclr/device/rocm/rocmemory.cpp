@@ -1138,22 +1138,26 @@ bool Image::createView(const Memory& parent) {
 
   hsa_status_t status;
   if (linearLayout) {
-    size_t rowPitch;
-    amd::Image& ownerImage = *owner()->asImage();
-    size_t elementSize = ownerImage.getImageFormat().getElementSize();
-    // First get the row pitch in pixels
-    if (ownerImage.getRowPitch() != 0) {
-      rowPitch = ownerImage.getRowPitch() / elementSize;
+    if (nullptr != copyImageBuffer_ ) {
+      status = HSA_STATUS_SUCCESS;
     } else {
-      rowPitch = ownerImage.getWidth();
-    }
+      size_t rowPitch;
+      amd::Image& ownerImage = *owner()->asImage();
+      size_t elementSize = ownerImage.getImageFormat().getElementSize();
+      // First get the row pitch in pixels
+      if (ownerImage.getRowPitch() != 0) {
+        rowPitch = ownerImage.getRowPitch() / elementSize;
+      } else {
+        rowPitch = ownerImage.getWidth();
+      }
 
-    // Make sure the row pitch is aligned to pixels
-    rowPitch = elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
+      // Make sure the row pitch is aligned to pixels
+      rowPitch = elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
 
-    status = hsa_ext_image_create_with_layout(
+      status = hsa_ext_image_create_with_layout(
         dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
         HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
+    }
   } else if (kind_ == MEMORY_KIND_INTEROP) {
     amdImageDesc_ = static_cast<Image*>(parent.owner()->getDeviceMemory(dev()))->amdImageDesc_;
     status = hsa_amd_image_create(dev().getBackendDevice(), &imageDescriptor_, amdImageDesc_,
