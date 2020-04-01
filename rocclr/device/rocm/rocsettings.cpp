@@ -89,7 +89,7 @@ Settings::Settings() {
   imageBufferWar_ = false;
 }
 
-bool Settings::create(bool fullProfile, int gfxipVersion) {
+bool Settings::create(bool fullProfile, int gfxipVersion, bool coop_groups) {
   customHostAllocator_ = false;
 
   if (fullProfile) {
@@ -134,8 +134,8 @@ bool Settings::create(bool fullProfile, int gfxipVersion) {
     // enable subnormals for gfx900 and later
     if (gfxipVersion >= 900) {
       singleFpDenorm_ = true;
-      enableCoopGroups_ = true;
-      enableCoopMultiDeviceGroups_ = true;
+      enableCoopGroups_ = coop_groups;
+      enableCoopMultiDeviceGroups_ = coop_groups;
     }
   } else {
     // Also enable AMD double precision extension?
