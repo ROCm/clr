@@ -145,8 +145,9 @@ bool Settings::create(bool fullProfile, int gfxipVersion, bool coop_groups) {
   if (gfxipVersion >= 1000) {
      enableWave32Mode_ = true;
      enableWgpMode_ = GPU_ENABLE_WGP_MODE;
-     if (gfxipVersion == 1001) {
+     if (gfxipVersion >= 1010) {
        // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
+       // TODO: This should be updated when ROCr support custom pitch
        imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
      }
   }

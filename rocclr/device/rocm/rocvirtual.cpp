@@ -366,7 +366,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
               // If it's not a read only resource, then runtime has to write back
               if (!desc.info_.readOnly_) {
-                wrtBackImageBuffer_.push_back(devCpImg);
+                wrtBackImageBuffer_.push_back(mem->getDeviceMemory(dev()));
                 imageBufferWrtBack_ = true;
               }
             }
