@@ -911,6 +911,8 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image::Format newFormat(dstImage->getImageFormat());
+  bool swapLayer =
+    (dstImage->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) && (dev().info().gfxipVersion_ >= 1000);
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -968,6 +970,14 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
     globalWorkSize[2] = amd::alignUp(size[2], 1);
     localWorkSize[0] = localWorkSize[1] = 16;
     localWorkSize[2] = 1;
+    // Swap the Y and Z components, apparently gfx10 HW expects
+    // layer in Z
+    if (swapLayer) {
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
+    }
   } else {
     globalWorkSize[0] = amd::alignUp(size[0], 8);
     globalWorkSize[1] = amd::alignUp(size[1], 8);
@@ -997,6 +1007,12 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
 
   int32_t dstOrg[4] = {(int32_t)dstOrigin[0], (int32_t)dstOrigin[1], (int32_t)dstOrigin[2], 0};
   int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
+  if (swapLayer) {
+    dstOrg[2] = dstOrg[1];
+    dstOrg[1] = 0;
+    copySize[2] = copySize[1];
+    copySize[1] = 1;
+  }
 
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
   setArgument(kernels_[blitType], 4, sizeof(copySize), copySize);
@@ -1087,6 +1103,8 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   bool result = false;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image::Format newFormat(srcImage->getImageFormat());
+  bool swapLayer =
+    (srcImage->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) && (dev().info().gfxipVersion_ >= 1000);
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1144,6 +1162,14 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
     globalWorkSize[2] = amd::alignUp(size[2], 1);
     localWorkSize[0] = localWorkSize[1] = 16;
     localWorkSize[2] = 1;
+    // Swap the Y and Z components, apparently gfx10 HW expects
+    // layer in Z
+    if (swapLayer) {
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
+    }
   } else {
     globalWorkSize[0] = amd::alignUp(size[0], 8);
     globalWorkSize[1] = amd::alignUp(size[1], 8);
@@ -1166,6 +1192,13 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
 
   int32_t srcOrg[4] = {(int32_t)srcOrigin[0], (int32_t)srcOrigin[1], (int32_t)srcOrigin[2], 0};
   int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
+  if (swapLayer) {
+    srcOrg[2] = srcOrg[1];
+    srcOrg[1] = 0;
+    copySize[2] = copySize[1];
+    copySize[1] = 1;
+  }
+
   setArgument(kernels_[blitType], 4, sizeof(srcOrg), srcOrg);
   uint32_t memFmtSize = srcImage->getImageFormat().getElementSize();
   uint32_t components = srcImage->getImageFormat().getNumChannels();
@@ -1309,10 +1342,16 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
 
   // Program source origin
   int32_t srcOrg[4] = {(int32_t)srcOrigin[0], (int32_t)srcOrigin[1], (int32_t)srcOrigin[2], 0};
+  if ((srcImage->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) && (dev().info().gfxipVersion_ >= 1000)) {
+    srcOrg[3] = 1;
+  }
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
   // Program destinaiton origin
   int32_t dstOrg[4] = {(int32_t)dstOrigin[0], (int32_t)dstOrigin[1], (int32_t)dstOrigin[2], 0};
+  if ((dstImage->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) && (dev().info().gfxipVersion_ >= 1000)) {
+    dstOrg[3] = 1;
+  }
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
 
   int32_t copySize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
@@ -1929,6 +1968,8 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   Memory* memView = &gpuMem(memory);
   amd::Image* image = static_cast<amd::Image*>(memory.owner());
   amd::Image::Format newFormat(image->getImageFormat());
+  bool swapLayer =
+    (image->getType() == CL_MEM_OBJECT_IMAGE1D_ARRAY) && (dev().info().gfxipVersion_ >= 1000);
 
   // Program the kernels workload depending on the fill dimensions
   fillType = FillImage;
@@ -1997,6 +2038,14 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
     globalWorkSize[2] = amd::alignUp(size[2], 1);
     localWorkSize[0] = localWorkSize[1] = 16;
     localWorkSize[2] = 1;
+    // Swap the Y and Z components, apparently gfx10 HW expects
+    // layer in Z
+    if (swapLayer) {
+      globalWorkSize[2] = globalWorkSize[1];
+      globalWorkSize[1] = 1;
+      localWorkSize[2] = localWorkSize[1];
+      localWorkSize[1] = 1;
+    }
   } else {
     globalWorkSize[0] = amd::alignUp(globalWorkSize[0], 8);
     globalWorkSize[1] = amd::alignUp(size[1], 8);
@@ -2014,6 +2063,12 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
 
   int32_t fillOrigin[4] = {(int32_t)origin[0], (int32_t)origin[1], (int32_t)origin[2], 0};
   int32_t fillSize[4] = {(int32_t)size[0], (int32_t)size[1], (int32_t)size[2], 0};
+  if (swapLayer) {
+    fillOrigin[2] = fillOrigin[1];
+    fillOrigin[1] = 0;
+    fillSize[2] = fillSize[1];
+    fillSize[1] = 1;
+  }
   setArgument(kernels_[fillType], 4, sizeof(fillOrigin), fillOrigin);
   setArgument(kernels_[fillType], 5, sizeof(fillSize), fillSize);
 
