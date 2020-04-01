@@ -77,7 +77,7 @@ class Settings : public device::Settings {
   Settings();
 
   //! Creates settings
-  bool create(bool fullProfile, int gfxipVersion);
+  bool create(bool fullProfile, int gfxipVersion, bool coop_groups = false);
 
  private:
   //! Disable copy constructor

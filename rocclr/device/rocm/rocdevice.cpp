@@ -639,11 +639,20 @@ bool Device::create(bool sramEccEnabled) {
     return false;
   }
 
+  uint32_t coop_groups = 0;
+  // Check cooperative groups for HIP only
+  if (amd::IS_HIP && (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice,
+        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES), &coop_groups))) {
+    return false;
+  }
+
   // Create HSA settings
   settings_ = new Settings();
   roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
   if ((hsaSettings == nullptr) ||
-      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipVersion_)) {
+      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL),
+        deviceInfo_.gfxipVersion_, coop_groups)) {
     return false;
   }
 
@@ -658,7 +667,8 @@ bool Device::create(bool sramEccEnabled) {
 
   uint32_t hsa_bdf_id = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_BDFID, &hsa_bdf_id)) {
+      hsa_agent_get_info(_bkendDevice,
+        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_BDFID), &hsa_bdf_id)) {
     return false;
   }
 
