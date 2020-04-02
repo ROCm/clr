@@ -563,8 +563,7 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
   bool flushL1Cache = false;
 
   if (maxMemObjectsInQueue_ == 0) {
-    // Flush cache
-    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+    // Return earlier if tracking is disabled
     return;
   }
 
@@ -3548,6 +3547,9 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     }
     addVmMemory(scratch->memObj_);
   }
+
+  // Synchronize dispatches unconditionally in case memory tracking is disabled
+  memoryDependency().sync(*this);
 
   return true;
 }

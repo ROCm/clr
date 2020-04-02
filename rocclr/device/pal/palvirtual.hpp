@@ -251,6 +251,13 @@ class VirtualGPU : public device::VirtualDevice {
     //! Validates memory object on dependency
     void validate(VirtualGPU& gpu, const Memory* memory, bool readOnly);
 
+    //! Invalidates GPU caches if memory dependency tracking is disabled
+    void sync(VirtualGPU& gpu) const {
+      if (maxMemObjectsInQueue_ == 0) {
+        gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+      }
+    }
+
     //! Clear memory dependency
     void clear(bool all = true);
 
