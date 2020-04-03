@@ -49,6 +49,7 @@ bool LightningKernel::init() {
   hsa_agent_t hsaDevice = program()->hsaDevice();
 
   if (!GetAttrCodePropMetadata()) {
+    LogError("[ROC][Kernel] Could not get Code Prop Meta Data \n");
     return false;
   }
 
@@ -75,6 +76,8 @@ bool LightningKernel::init() {
   }
 
   if (!SetAvailableSgprVgpr(targetIdent)) {
+    LogError(("[ROC][Kernel] Cannot set available SGPR/VGPR for target Ident" + targetIdent).c_str());
+    LogError("\n");
     return false;
   }
 
@@ -85,11 +88,17 @@ bool LightningKernel::init() {
   hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
                                                 symbolName().c_str(),
                                                 &agent, &symbol);
-  if (hsaStatus == HSA_STATUS_SUCCESS) {
-    hsaStatus = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
-                                               &kernelCodeHandle_);
-  }
   if (hsaStatus != HSA_STATUS_SUCCESS) {
+    LogError(("[ROC][Kernel] Cannot Get Symbol : " + symbolName()).c_str());
+    LogError("\n");
+    return false;
+  }
+
+  hsaStatus = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
+                                             &kernelCodeHandle_);
+  if (hsaStatus != HSA_STATUS_SUCCESS) {
+    LogError(("[ROC][Kernel] Cannot Get Symbol Info : " + symbolName()).c_str());
+    LogError("\n");
     return false;
   }
 
@@ -106,28 +115,38 @@ bool LightningKernel::init() {
     hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
                                                   RuntimeHandle().c_str(),
                                                   &agent, &kernelSymbol);
-    if (hsaStatus == HSA_STATUS_SUCCESS) {
-      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
-                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
-                                                 &variable_size);
-    }
-    if (hsaStatus == HSA_STATUS_SUCCESS) {
-      hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
-                                                 HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
-                                                 &variable_address);
+    if (hsaStatus != HSA_STATUS_SUCCESS) {
+      LogError(("[ROC][Kernel] Cannot get Kernel Symbol by name" + RuntimeHandle()).c_str());
+      LogError("\n");
+      return false;
     }
 
-    if (hsaStatus == HSA_STATUS_SUCCESS) {
-      const struct RuntimeHandle runtime_handle = {
-        kernelCodeHandle_,
-        WorkitemPrivateSegmentByteSize(),
-        WorkgroupGroupSegmentByteSize()
-      };
-      hsaStatus = hsa_memory_copy(reinterpret_cast<void*>(variable_address),
-                                  &runtime_handle, variable_size);
+    hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
+                                               HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                                               &variable_size);
+    if (hsaStatus != HSA_STATUS_SUCCESS) {
+      LogError("[ROC][Kernel] Cannot get Kernel Symbol Info \n");
+      return false;
     }
+
+    hsaStatus = hsa_executable_symbol_get_info(kernelSymbol,
+                                               HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
+                                               &variable_address);
+    if (hsaStatus != HSA_STATUS_SUCCESS) {
+      LogError("[ROC][Kernel] Cannot get Kernel Address \n");
+      return false;
+    }
+
+    const struct RuntimeHandle runtime_handle = {
+      kernelCodeHandle_,
+      WorkitemPrivateSegmentByteSize(),
+      WorkgroupGroupSegmentByteSize()
+    };
+    hsaStatus = hsa_memory_copy(reinterpret_cast<void*>(variable_address),
+                                &runtime_handle, variable_size);
 
     if (hsaStatus != HSA_STATUS_SUCCESS) {
+      LogError("[ROC][Kernel] HSA Memory copy failed \n");
       return false;
     }
   }
@@ -135,6 +154,7 @@ bool LightningKernel::init() {
   uint32_t wavefront_size = 0;
   if (hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
       HSA_STATUS_SUCCESS) {
+   LogError("[ROC][Kernel] Cannot get Wavefront Size \n");
     return false;
   }
   assert(wavefront_size > 0);
@@ -175,12 +195,16 @@ bool HSAILKernel::init() {
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
+    LogError("[ROC][Kernel] Query Info failed with error code: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
   std::unique_ptr<char[]> argList(new char[sizeOfArgList]);
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), argList.get(), &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
+    LogError("[ROC][Kernel] Query Info failed with error code: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
 
@@ -197,18 +221,24 @@ bool HSAILKernel::init() {
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
+    LogError("[ROC][Kernel] Query Info failed with error code: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_WORK_GROUP_SIZE,
                                          openClKernelName.c_str(), workGroupInfo_.compileSize_,
                                          &sizeOfWorkGroupSize);
   if (errorCode != ACL_SUCCESS) {
+    LogError("[ROC][Kernel] Query Info failed with error code: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
 
   uint32_t wavefront_size = 0;
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size)) {
+    LogError("[ROC][Kernel] Could not get Wave Info Size: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
   assert(wavefront_size > 0);
@@ -247,6 +277,8 @@ bool HSAILKernel::init() {
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_GPU_PRINTF_ARRAY,
                                          openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
   if (errorCode != ACL_SUCCESS) {
+    LogError("[ROC][Kernel] Query Info failed with error code: " + itoa(errorCode));
+    LogError("\n");
     return false;
   }
 

@@ -104,6 +104,8 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   char* decryptedBin;
   size_t decryptedSize;
   if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
+    buildLog_ += "Decrypting ELF Failed ";
+    buildLog_ += "\n";
     return false;
   }
   if (decryptedBin != nullptr) {
@@ -118,6 +120,8 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
     if (decryptedBin != nullptr) {
       delete[] decryptedBin;
     }
+    buildLog_ += "Elf Magic failed";
+    buildLog_ += "\n";
     return false;
   }
 
@@ -419,6 +423,8 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
                                            workitemPrivateSegmentByteSize,
                                            kernargSegmentByteSize, kernargSegmentAlignment);
     if (!aKernel->init()) {
+      buildLog_ += "Error: Kernel Init Failed ";
+      buildLog_ += "\n";
       return false;
     }
     aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
@@ -476,6 +482,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 #if defined(USE_COMGR_LIBRARY)
   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
+    buildLog_ += "Error: Cannot Global Var Sizes ";
+    buildLog_ += "\n";
     return false;
   }
 
