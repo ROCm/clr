@@ -88,7 +88,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
 
-  fprintf(stderr, ":%d:%s:%d: %s\n", level, file, line, message);
+  fprintf(stderr, ":%d:%-25s:%-4d: %010lld: %s\n", level, file, line, Os::timeNanos() / 100ULL, message);
 }
 
 }  // namespace amd

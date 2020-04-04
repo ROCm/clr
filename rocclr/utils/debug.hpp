@@ -23,7 +23,7 @@
 
 
 #include <cassert>
-
+#include <string.h>
 //! \addtogroup Utils
 
 namespace amd { /*@{*/
@@ -124,6 +124,8 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define Untested(msg) (void)(0)
 #endif /*NDEBUG*/
 
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
 #define Log(level, msg)                                                                            \
   do {                                                                                             \
     if (LOG_LEVEL >= level) {                                                                      \
@@ -180,7 +182,7 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     if (LOG_LEVEL >= level) {                                                                      \
       if (GPU_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
         if (GPU_LOG_MASK & amd::LOG_LOCATION) {                                                         \
-          amd::log_printf(level, __FILE__, __LINE__, format, ##__VA_ARGS__);                       \
+          amd::log_printf(level, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                       \
         } else {                                                                                   \
           amd::log_printf(level, "", 0, format, ##__VA_ARGS__);                                   \
         }                                                                                          \
