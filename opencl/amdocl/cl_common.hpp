@@ -21,6 +21,13 @@
 #ifndef CL_COMMON_HPP_
 #define CL_COMMON_HPP_
 
+#ifdef _WIN32
+#include <CL/cl_d3d11.h>
+#include <CL/cl_d3d10.h>
+#include <CL/cl_dx9_media_sharing.h>
+#endif
+#include <CL/cl_icd.h>
+
 #include "top.hpp"
 #include "vdi_common.hpp"
 

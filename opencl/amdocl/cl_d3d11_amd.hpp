@@ -21,64 +21,11 @@
 #ifndef CL_D3D11_AMD_HPP_
 #define CL_D3D11_AMD_HPP_
 
-#include "CL/cl_d3d11.h"
-
 #include "cl_d3d10_amd.hpp"
 #include "platform/context.hpp"
 #include "platform/memory.hpp"
 
 #include <utility>
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetDeviceIDsFromD3D11KHR(
-    cl_platform_id              /*platform*/,
-    cl_d3d11_device_source_khr  /*d3d_device_source*/,
-    void *                      /*d3d_object*/,
-    cl_d3d11_device_set_khr     /*d3d_device_set*/,
-    cl_uint                     /*num_entries*/, 
-    cl_device_id *              /*devices*/, 
-    cl_uint *                   /*num_devices*/);
-
-extern CL_API_ENTRY cl_mem CL_API_CALL
-clCreateFromD3D11BufferKHR(
-    cl_context     /* context */,
-    cl_mem_flags   /* flags */,
-    ID3D11Buffer * /* buffer */,
-    cl_int *       /* errcode_ret */);
-
-extern CL_API_ENTRY cl_mem CL_API_CALL
-clCreateFromD3D11Texture2DKHR(
-    cl_context        /* context */,
-    cl_mem_flags      /* flags */,
-    ID3D11Texture2D * /* resource */,
-    UINT              /* subresource */,
-    cl_int *          /* errcode_ret */);
-
-extern CL_API_ENTRY cl_mem CL_API_CALL
-clCreateFromD3D11Texture3DKHR(
-    cl_context        /* context */,
-    cl_mem_flags      /* flags */,
-    ID3D11Texture3D * /* resource */,
-    UINT              /* subresource */,
-    cl_int *          /* errcode_ret */);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueAcquireD3D11ObjectsKHR(
-    cl_command_queue /* command_queue */,
-    cl_uint          /* num_objects */,
-    const cl_mem *   /* mem_objects */,
-    cl_uint          /* num_events_in_wait_list */,
-    const cl_event * /* event_wait_list */,
-    cl_event *       /* event */);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueReleaseD3D11ObjectsKHR(
-    cl_command_queue /* command_queue */,
-    cl_uint          /* num_objects */,
-    const cl_mem *   /* mem_objects */,
-    cl_uint          /* num_events_in_wait_list */,
-    const cl_event * /* event_wait_list */,
-    cl_event *       /* event */);
 
 extern CL_API_ENTRY cl_mem CL_API_CALL
 clGetPlaneFromImageAMD(
