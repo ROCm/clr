@@ -294,7 +294,7 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
         supportDepthsRGB_ = true;
       }
       if (use64BitPtr_) {
-        if ((GPU_ENABLE_LARGE_ALLOCATION) && (oclVersion_ == OpenCL20)) {
+        if (GPU_ENABLE_LARGE_ALLOCATION && (viPlus_ || (oclVersion_ == OpenCL20))) {
           maxAllocSize_ = 64ULL * Gi;
         } else {
           maxAllocSize_ = 4048 * Mi;
