@@ -22,9 +22,6 @@
 
 #include "top.hpp"
 
-#include <d3d10_1.h>
-#include <dxgi.h>
-
 #include "cl_common.hpp"
 #include "cl_d3d10_amd.hpp"
 #include "runtime/platform/command.hpp"

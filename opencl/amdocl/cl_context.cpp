@@ -25,9 +25,6 @@
 #include "platform/runtime.hpp"
 #include "platform/agent.hpp"
 #ifdef _WIN32
-#include <d3d10_1.h>
-#include "CL/cl_d3d10.h"
-#include "CL/cl_d3d11.h"
 #include "cl_d3d9_amd.hpp"
 #include "cl_d3d10_amd.hpp"
 #include "cl_d3d11_amd.hpp"

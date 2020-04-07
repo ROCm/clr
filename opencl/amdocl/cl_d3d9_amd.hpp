@@ -23,8 +23,7 @@
 #ifndef __OPENCL_CL_D3D9_AMD_H
 #define __OPENCL_CL_D3D9_AMD_H
 
-#include "CL/cl_dx9_media_sharing.h"
-#include <d3d9.h>
+#include "cl_common.hpp"
 #include "platform/context.hpp"
 #include "platform/memory.hpp"
 
@@ -39,44 +38,6 @@
 
 /* cl_amd_d3d9_sharing enumerations */
 #define CL_CONTEXT_D3D9_DEVICE_KHR              0x4039
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clGetDeviceIDsFromDX9MediaAdapterKHR(
-    cl_platform_id,
-    cl_uint,
-    cl_dx9_media_adapter_type_khr *,
-    void *,
-    cl_dx9_media_adapter_set_khr,
-    cl_uint,
-    cl_device_id *,
-    cl_uint *);
-
-extern CL_API_ENTRY cl_mem CL_API_CALL
-clCreateFromDX9MediaSurfaceKHR(
-    cl_context,
-    cl_mem_flags,
-    cl_dx9_media_adapter_type_khr,
-    void *,
-    cl_uint,                                               
-    cl_int *);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueAcquireDX9MediaSurfacesKHR(
-    cl_command_queue,
-    cl_uint,
-    const cl_mem *,
-    cl_uint,
-    const cl_event *,
-    cl_event *);
-
-extern CL_API_ENTRY cl_int CL_API_CALL
-clEnqueueReleaseDX9MediaSurfacesKHR(
-    cl_command_queue,
-    cl_uint,
-    const cl_mem *,
-    cl_uint,
-    const cl_event *,
-    cl_event *);
 
 namespace amd
 {
