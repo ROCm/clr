@@ -179,7 +179,7 @@ bool Agent::init() {
   //    potentialCapabilities_.canGenerateProgramEvents      = 1;
   //    potentialCapabilities_.canGenerateKernelEvents       = 1;
 
-  const char* envVar = ::getenv("VDI_AGENT");
+  const char* envVar = ::getenv("CL_AGENT");
   if (envVar == NULL) {
     return true;
   }
