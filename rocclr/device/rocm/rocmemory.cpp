@@ -650,7 +650,8 @@ void Buffer::destroy() {
       dev().memFree(deviceMemory_, size());
     }
 
-    if (dev().settings().apuSystem_ || !isFineGrain) {
+    if ((deviceMemory_ != nullptr) &&
+        (dev().settings().apuSystem_ || !isFineGrain)) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), true);
     }
 
@@ -739,7 +740,8 @@ bool Buffer::create() {
       owner()->parent()->commitSvmMemory();
     }
 
-    if (dev().settings().apuSystem_ || !isFineGrain) {
+    if ((deviceMemory_ != nullptr) &&
+        (dev().settings().apuSystem_ || !isFineGrain)) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
 
@@ -805,7 +807,7 @@ bool Buffer::create() {
       deviceMemory_ = dev().hostAlloc(size(), 1, false);
       owner()->setHostMem(deviceMemory_);
 
-      if (dev().settings().apuSystem_) {
+      if ((deviceMemory_ != nullptr) && dev().settings().apuSystem_) {
         const_cast<Device&>(dev()).updateFreeMemory(size(), false);
       }
     }
@@ -1091,7 +1093,7 @@ bool Image::create() {
 
   if (originalDeviceMemory_ == nullptr) {
     originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, false);
-    if (dev().settings().apuSystem_) {
+    if ((originalDeviceMemory_ != nullptr) && dev().settings().apuSystem_) {
       const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
     }
   }
