@@ -187,6 +187,7 @@ enum Elf_Error {
 #define	ELF_F_ARCHIVE	   0x100U /* archive creation */
 #define	ELF_F_ARCHIVE_SYSV 0x200U /* SYSV style archive */
 
+#pragma GCC visibility push(hidden)
 __BEGIN_DECLS
 Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf, Elf_Mem *_mem);
 int		elf_cntl(Elf *_elf, Elf_Cmd _cmd);
@@ -258,5 +259,6 @@ Elf_Data	*elf64_xlatetof(Elf_Data *_dst, const Elf_Data *_src,
 Elf_Data	*elf64_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
 			unsigned int _enc);
 __END_DECLS
+#pragma GCC visibility pop
 
 #endif	/* _LIBELF_H_ */
