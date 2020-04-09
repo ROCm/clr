@@ -72,6 +72,7 @@ typedef Elf64_Syminfo	GElf_Syminfo;	/* Symbol information */
 #define	GELF_ST_TYPE			ELF64_ST_TYPE
 #define	GELF_ST_VISIBILITY		ELF64_ST_VISIBILITY
 
+#pragma GCC visibility push(hidden)
 __BEGIN_DECLS
 long		gelf_checksum(Elf *_elf);
 size_t		gelf_fsize(Elf *_elf, Elf_Type _type, size_t _count,
@@ -110,5 +111,6 @@ int		gelf_update_move(Elf_Data *_dst, int _index, GElf_Move *_src);
 int		gelf_update_syminfo(Elf_Data *_dst, int _index, GElf_Syminfo *_src);
 #endif
 __END_DECLS
+#pragma GCC visibility pop
 
 #endif	/* _GELF_H_ */
