@@ -198,7 +198,7 @@ bool HSAILKernel::init() {
   errorCode = aclQueryInfo(compileHandle, program()->binaryElf(), RT_ARGUMENT_ARRAY,
                                          openClKernelName.c_str(), argList.get(), &sizeOfArgList);
   if (errorCode != ACL_SUCCESS) {
-    LogPrintfError("Query Info failed with error code: %d \n"errorCode);
+    LogPrintfError("Query Info failed with error code: %d \n", errorCode);
     return false;
   }
 
