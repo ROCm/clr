@@ -571,6 +571,7 @@ bool TransferBufferFileCommand::validateMemory() {
       staging_[i] = new (memory_->getContext())
           Buffer(memory_->getContext(), StagingBufferMemType, StagingBufferSize);
       if (NULL == staging_[i] || !staging_[i]->create(nullptr)) {
+        DevLogPrintfError("Staging Create failed, Staging[%d]: 0x%x", i, staging_[i]);
         return false;
       }
       device::Memory* mem = staging_[i]->getDeviceMemory(queue()->device());
@@ -623,6 +624,8 @@ bool CopyMemoryP2PCommand::validateMemory() {
     for (uint d = 0; d < devices[0]->GlbCtx().devices().size(); ++d) {
       device::Memory* mem = devices[0]->P2PStage()->getDeviceMemory(*devices[0]->GlbCtx().devices()[d]);
       if (nullptr == mem) {
+        DevLogPrintfError("Cannot get P2P stage Device Memory for device: 0x%x \n",
+                          devices[0]->GlbCtx().devices()[d]);
         return false;
       }
     }

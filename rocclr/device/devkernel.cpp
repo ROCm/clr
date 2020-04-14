@@ -1126,6 +1126,8 @@ static inline cl_kernel_arg_type_qualifier GetOclTypeQualOCL(const aclArgData* a
 bool Kernel::GetAttrCodePropMetadata() {
   amd_comgr_metadata_node_t kernelMetaNode;
   if (!prog().getKernelMetadata(name(), &kernelMetaNode)) {
+    DevLogPrintfError("Cannot get program kernel metadata for %s \n",
+                      name().c_str());
     return false;
   }
 
@@ -1184,6 +1186,7 @@ bool Kernel::GetAttrCodePropMetadata() {
 
 
   if (status != AMD_COMGR_STATUS_SUCCESS) {
+    LogError("Comgr Api failed with Status: \n");
     return false;
   }
 
@@ -1265,6 +1268,7 @@ bool Kernel::GetPrintfStr(std::vector<std::string>* printfStr) {
       }
 
       if (status != AMD_COMGR_STATUS_SUCCESS) {
+        DevLogPrintfError("Comgr API failed with status: %d \n", status);
         amd::Comgr::destroy_metadata(printfMeta);
         return false;
       }

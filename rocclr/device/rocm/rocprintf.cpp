@@ -398,7 +398,8 @@ bool PrintfDbg::init(bool printfEnabled) {
     // into the corresponding location in the debug buffer
     hsa_status_t err = hsa_memory_copy(dbgBuffer_, sysMem, 2 * sizeof(uint32_t));
     if (err != HSA_STATUS_SUCCESS) {
-      LogError("\n Can't copy offset and bytes available data to dgbBuffer_!");
+      LogPrintfError("\n Can't copy offset and bytes available data to dgbBuffer_,"
+                     "failed with status: %d \n!", err);
       return false;
     }
   }

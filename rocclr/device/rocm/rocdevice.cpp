@@ -995,6 +995,7 @@ bool Sampler::create(const amd::Sampler& owner) {
   hsa_status_t status = hsa_ext_sampler_create(dev_.getBackendDevice(), &samplerDescriptor, &hsa_sampler);
 
   if (HSA_STATUS_SUCCESS != status) {
+    DevLogPrintfError("Sampler creation failed with status: %d \n", status);
     return false;
   }
 
@@ -1707,6 +1708,7 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 
   if (!result) {
     delete memory;
+    DevLogError("Cannot Write Image \n");
     return nullptr;
   }
 
@@ -1740,6 +1742,8 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
   const hsa_amd_memory_pool_t& pool = (atomics)? gpu_fine_grained_segment_ : gpuvm_segment_;
 
   if (pool.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
+    DevLogPrintfError("Invalid argument, pool_handle: 0x%x , max_alloc: %u \n",
+                      pool.handle, gpuvm_segment_max_alloc_);
     return nullptr;
   }
 
@@ -1790,19 +1794,19 @@ amd::Memory *Device::IpcAttach(const void* handle, size_t mem_size, unsigned int
                                 mem_size, (1 + p2p_agents_.size()), p2p_agents_list_, dev_ptr);
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] HSA failed to attach IPC memory");
+    LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
     return nullptr;
   }
 
   /* Create an amd Memory object for the pointer */
   amd_mem_obj = new (context()) amd::Buffer(context(), flags, mem_size, *dev_ptr);
   if (amd_mem_obj == nullptr) {
-    LogError("[OCL] failed to create a mem object!");
+    LogError("failed to create a mem object!");
     return nullptr;
   }
 
   if (!amd_mem_obj->create(nullptr)) {
-    LogError("[OCL] failed to create a svm hidden buffer!");
+    LogError("failed to create a svm hidden buffer!");
     amd_mem_obj->release();
     return nullptr;
   }
@@ -1825,7 +1829,7 @@ void Device::IpcDetach (amd::Memory& memory) const {
   /*Detach the memory from HSA */
   hsa_status = hsa_amd_ipc_memory_detach(dev_ptr);
   if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] HSA failed to detach memory !");
+    LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
     return;
   }
 
@@ -1859,6 +1863,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     // Find the existing amd::mem object
     mem = amd::MemObjMap::FindMemObj(svmPtr);
     if (nullptr == mem) {
+      DevLogPrintfError("Cannot find svm_ptr: 0x%x \n", svmPtr);
       return nullptr;
     }
 
@@ -1920,6 +1925,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
   uint32_t queue_max_packets = 0;
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_max_packets)) {
+    DevLogError("Cannot get hsa agent info \n");
     return nullptr;
   }
   auto queue_size = (queue_max_packets < queue_size_hint) ? queue_max_packets : queue_size_hint;

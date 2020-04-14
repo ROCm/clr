@@ -120,6 +120,7 @@ class Sampler : public RuntimeObject {
       device::Sampler* sampler = NULL;
       Device* dev = context_.devices()[i];
       if (!dev->createSampler(*this, &sampler)) {
+        DevLogPrintfError("Sampler creation failed for device: 0x%x \n", dev);
         return false;
       }
       deviceSamplers_[dev] = sampler;
