@@ -2142,6 +2142,7 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
   amdMemory = new (*context_) amd::Buffer(*context_, CL_MEM_USE_HOST_PTR, pinAllocSize);
   amdMemory->setVirtualDevice(&gpu());
   if ((amdMemory != nullptr) && !amdMemory->create(tmpHost, SysMem)) {
+    DevLogPrintfError("Buffer create failed, Buffer: 0x%x \n", amdMemory);
     amdMemory->release();
     return nullptr;
   }

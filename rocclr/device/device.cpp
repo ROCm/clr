@@ -158,6 +158,7 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
   }
   if (CL_SUCCESS !=
       program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS)) {
+    DevLogPrintfError("Build failed for Kernel: %s \n", kernels.c_str());
     return false;
   }
 
@@ -185,6 +186,7 @@ bool Device::init() {
       // that KFD is not installed.
       // Ignore the failure and assume KFD is not installed.
       // abort();
+      DevLogError("KFD is not installed \n");
     }
     ret |= roc::NullDevice::init();
   }
@@ -629,6 +631,7 @@ bool ClBinary::isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatfo
            to check it here.
    */
   if (llvmBinary.empty()) {
+    DevLogError("LLVM Binary string is empty \n");
     return false;
   }
 
@@ -648,6 +651,7 @@ bool ClBinary::isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatfo
     }
   }
 
+  DevLogPrintfError("LLVM_Binary: %s is not recompilable \n", llvmBinary.c_str());
   return false;
 }
 
@@ -716,6 +720,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
   }
 
   if (!elfOut_->dumpImage(&image, &imageSize)) {
+    DevLogError("Dump Image failed \n");
     return false;
   }
 
@@ -734,6 +739,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
     delete[] image;
     if (!success) {
       delete[] outBuf;
+      DevLogError("Cannot succesfully OCL Encrypt Image");
       return false;
     }
     image = outBuf;
@@ -784,6 +790,7 @@ bool ClBinary::decryptElf(const char* binaryIn, size_t size, char** decryptBin, 
     int outDataSize = 0;
     if (!amd::oclDecrypt(binaryIn, (int)size, outBuf, outBufSize, &outDataSize)) {
       delete[] outBuf;
+      DevLogError("Cannot Decrypt Image \n");
       return false;
     }
 
@@ -858,6 +865,7 @@ bool ClBinary::loadLlvmBinary(std::string& llvmBinary,
     }
   }
 
+  DevLogPrintfError("Cannot Load LLVM Binary: %s \n", llvmBinary.c_str());
   return false;
 }
 
@@ -872,6 +880,8 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
     }
     return true;
   }
+  DevLogPrintfError("Cannot Load Compilation Options: %s \n",
+                    compileOptions.c_str());
   return false;
 }
 
@@ -886,6 +896,7 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
     }
     return true;
   }
+  DevLogPrintfError("Cannot Load Link Options: %s \n", linkOptions.c_str());
   return false;
 }
 

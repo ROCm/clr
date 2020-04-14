@@ -373,6 +373,8 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   amd_comgr_language_t langver;
   setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
+    DevLogPrintfError("Cannot set Langauge version for %s \n",
+                      amdOptions->oVariables->CLStd);
     return false;
   }
 
@@ -430,6 +432,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
   amd_comgr_language_t langver;
   setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
+    DevLogPrintfError("Cannot set Langauge version for %s \n",
+                      amdOptions->oVariables->CLStd);
     return false;
   }
 
@@ -1370,6 +1374,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
 
   // Call the device layer to setup all available kernels on the actual device
   if (!setKernels(options, binary, binSize)) {
+    buildLog_ += "Error: Cannot set kernel \n";
     return false;
   }
 
@@ -1413,6 +1418,7 @@ bool Program::initBuild(amd::option::Options* options) {
   }
   buildLog_.clear();
   if (!initClBinary()) {
+    DevLogError("Init CL Binary failed \n");
     return false;
   }
 
@@ -1903,7 +1909,11 @@ bool Program::getCompileOptionsAtLinking(const std::vector<Program*>& inputProgr
 bool isSPIRVMagicL(const void* Image, size_t Length) {
   const unsigned SPRVMagicNumber = 0x07230203;
   if (Image == nullptr || Length < sizeof(unsigned))
+  {
+    DevLogPrintfError("Invalid Argument, Image: 0x%x Length: %u \n",
+                      Image, Length);
     return false;
+  }
   auto Magic = static_cast<const unsigned*>(Image);
   return *Magic == SPRVMagicNumber;
 }
@@ -1911,6 +1921,7 @@ bool isSPIRVMagicL(const void* Image, size_t Length) {
 // ================================================================================================
 bool Program::initClBinary(const char* binaryIn, size_t size) {
   if (!initClBinary()) {
+    DevLogError("Init CL Binary failed \n");
     return false;
   }
 
@@ -1982,6 +1993,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
   } else {
     size_t decryptedSize;
     if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
+      DevLogError("Cannot Decrypt Elf \n");
       return false;
     }
     if (decryptedBin != nullptr) {
@@ -1995,6 +2007,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
       if (decryptedBin != nullptr) {
         delete[] decryptedBin;
       }
+      DevLogError("Bin is not ELF \n");
       return false;
     }
   }
@@ -2007,6 +2020,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 // ================================================================================================
 bool Program::setBinary(const char* binaryIn, size_t size) {
   if (!initClBinary(binaryIn, size)) {
+    DevLogError("Init CL Binary failed \n");
     return false;
   }
 
@@ -2623,6 +2637,7 @@ const bool Program::getLoweredNames(std::vector<std::string>* mangledNames) cons
 
   /* Itrate thru global vars */
   if (!getSymbolsFromCodeObj(mangledNames, AMD_COMGR_SYMBOL_TYPE_OBJECT)) {
+    DevLogError("Cannot get Symbols from Code Obj \n");
     return false;
   }
 
@@ -2677,6 +2692,7 @@ bool Program::defineUndefinedVars() {
   std::vector<std::string> var_names;
 
   if (!getUndefinedVarFromCodeObj(&var_names)) {
+    DevLogError("Cannot get Undefined Var from Code Object \n");
     return false;
   }
 

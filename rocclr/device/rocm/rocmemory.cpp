@@ -126,6 +126,8 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
   if (indirectMapCount_ == 1) {
     if (!allocateMapMemory(owner()->getSize())) {
       decIndMapCount();
+      DevLogPrintfError("Cannot allocate Map memory for size: %u \n",
+                        owner()->getSize());
       return nullptr;
     }
   } else {
@@ -180,6 +182,7 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
   if (!isHostMemDirectAccess() && !IsPersistentDirectMap()) {
     if (!vDev.blitMgr().readBuffer(*this, mapTarget, amd::Coord3D(0), amd::Coord3D(size()), true)) {
       decIndMapCount();
+      DevLogError("Cannot read buffer \n");
       return nullptr;
     }
   }
@@ -209,7 +212,7 @@ void Memory::IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
                                          reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] Failed to create memory for IPC");
+    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
     return;
   }
 }
@@ -863,6 +866,7 @@ bool Buffer::create() {
       hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(), owner()->getSize(), nullptr,
                                                 0, pool, 0, &deviceMemory_);
       if (status != HSA_STATUS_SUCCESS) {
+        DevLogPrintfError("Failed to lock memory to pool, failed with hsa_status: %d \n", status);
         deviceMemory_ = nullptr;
       }
     } else {
@@ -1076,7 +1080,7 @@ bool Image::create() {
                                                     permission_, &deviceImageInfo_);
 
   if (status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] Fail to allocate image memory");
+    LogPrintfError("[OCL] Fail to allocate image memory, failed with hsa_status: %d \n", status);
     return false;
   }
 
@@ -1110,7 +1114,7 @@ bool Image::create() {
                                 permission_, &hsaImageObject_);
 
   if (status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] Fail to allocate image memory");
+    LogPrintfError("[OCL] Fail to allocate image memory, failed with hsa_status: %d \n", status);
     return false;
   }
 
@@ -1170,7 +1174,7 @@ bool Image::createView(const Memory& parent) {
   }
 
   if (status != HSA_STATUS_SUCCESS) {
-    LogError("[OCL] Fail to allocate image memory");
+    LogPrintfError("[OCL] Fail to allocate image memory with status: %d \n", status);
     return false;
   }
 
@@ -1208,7 +1212,7 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
     } else {
       // Did the map resource allocation fail?
       if (mapMemory_ == nullptr) {
-        LogError("Could not map target resource");
+        DevLogError("Could not map target resource");
         return nullptr;
       }
     }

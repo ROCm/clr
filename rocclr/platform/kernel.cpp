@@ -58,6 +58,7 @@ bool KernelParameters::check() {
 
   for (size_t i = 0; i < signature_.numParameters(); ++i) {
     if (!test(i)) {
+      DevLogPrintfError("Kernel Parameter test failed for idx: %d \n", i);
       return false;
     }
   }
@@ -236,6 +237,7 @@ address KernelParameters::capture(const Device& device, uint64_t lclMemSize, int
 bool KernelParameters::boundToSvmPointer(const Device& device, const_address capturedParameter,
                                          size_t index) const {
   if (!device.info().svmCapabilities_) {
+    DevLogPrintfError("The device: 0x%x does not have SVM Capabilities \n", &device);
     return false;
   }
   //! Information about which arguments are SVM pointers is stored after

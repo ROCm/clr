@@ -76,7 +76,7 @@ bool LightningKernel::init() {
   }
 
   if (!SetAvailableSgprVgpr(targetIdent)) {
-    LogPrintfError("Cannot set available SGPR/VGPR for target Ident:%s \n", targetIdent.c_str());
+    DevLogPrintfError("Cannot set available SGPR/VGPR for target Ident:%s \n", targetIdent.c_str());
     return false;
   }
 
@@ -88,14 +88,16 @@ bool LightningKernel::init() {
                                                 symbolName().c_str(),
                                                 &agent, &symbol);
   if (hsaStatus != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Cannot Get Symbol : %s \n",symbolName().c_str());
+    DevLogPrintfError("Cannot Get Symbol : %s, failed with hsa_status: %d \n",
+                      symbolName().c_str(), hsaStatus);
     return false;
   }
 
   hsaStatus = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT,
                                              &kernelCodeHandle_);
   if (hsaStatus != HSA_STATUS_SUCCESS) {
-    LogPrintfError(" Cannot Get Symbol Info: %s \n ", symbolName().c_str());
+    DevLogPrintfError(" Cannot Get Symbol Info: %s, failed with hsa_status: %d \n ",
+                      symbolName().c_str(), hsaStatus);
     return false;
   }
 
@@ -113,7 +115,8 @@ bool LightningKernel::init() {
                                                   RuntimeHandle().c_str(),
                                                   &agent, &kernelSymbol);
     if (hsaStatus != HSA_STATUS_SUCCESS) {
-      LogPrintfError("Cannot get Kernel Symbol by name: %s \n", RuntimeHandle().c_str());
+      DevLogPrintfError("Cannot get Kernel Symbol by name: %s, failed with hsa_status: %d \n",
+                        RuntimeHandle().c_str(), hsaStatus);
       return false;
     }
 
@@ -121,7 +124,8 @@ bool LightningKernel::init() {
                                                HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
                                                &variable_size);
     if (hsaStatus != HSA_STATUS_SUCCESS) {
-      LogError("[ROC][Kernel] Cannot get Kernel Symbol Info \n");
+      DevLogPrintfError("[ROC][Kernel] Cannot get Kernel Symbol Info, failed with hsa_status: %d \n",
+                        hsaStatus);
       return false;
     }
 
@@ -129,7 +133,8 @@ bool LightningKernel::init() {
                                                HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS,
                                                &variable_address);
     if (hsaStatus != HSA_STATUS_SUCCESS) {
-      LogError("[ROC][Kernel] Cannot get Kernel Address \n");
+      DevLogPrintfError("[ROC][Kernel] Cannot get Kernel Address, failed with hsa_status: %d \n",
+                        hsaStatus);
       return false;
     }
 
@@ -142,7 +147,8 @@ bool LightningKernel::init() {
                                 &runtime_handle, variable_size);
 
     if (hsaStatus != HSA_STATUS_SUCCESS) {
-      LogError("[ROC][Kernel] HSA Memory copy failed \n");
+      DevLogPrintfError("[ROC][Kernel] HSA Memory copy failed, failed with hsa_status: %d \n",
+                        hsaStatus);
       return false;
     }
   }
@@ -150,7 +156,8 @@ bool LightningKernel::init() {
   uint32_t wavefront_size = 0;
   if (hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
       HSA_STATUS_SUCCESS) {
-    LogError("[ROC][Kernel] Cannot get Wavefront Size \n");
+    DevLogPrintfError("[ROC][Kernel] Cannot get Wavefront Size, failed with hsa_status: %d \n",
+                      hsaStatus);
     return false;
   }
   assert(wavefront_size > 0);
@@ -229,7 +236,8 @@ bool HSAILKernel::init() {
   uint32_t wavefront_size = 0;
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size)) {
-    LogPrintfError("Could not get Wave Info Size: %d \n", errorCode);
+    DevLogPrintfError("Could not get Wave Info Size: %d, failed with hsa_status: %d \n",
+                      errorCode, hsaStatus);
     return false;
   }
   assert(wavefront_size > 0);
