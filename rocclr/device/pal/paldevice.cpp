@@ -1852,10 +1852,11 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
 
   Pal::gpusize local = allocedMem[Pal::GpuHeapLocal];
   Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
+  Pal::gpusize total_alloced = local + invisible;
 
   // Fill free memory info
-  freeMemory[TotalFreeMemory] =
-      static_cast<size_t>((info().globalMemSize_ - (local + invisible)) / Ki);
+  freeMemory[TotalFreeMemory] = (total_alloced > info().globalMemSize_ ) ? 0 :
+      static_cast<size_t>((info().globalMemSize_ - total_alloced) / Ki);
   if (invisible >= heaps_[Pal::GpuHeapInvisible].heapSize) {
     invisible = 0;
   } else {
