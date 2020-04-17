@@ -49,16 +49,16 @@ class Memory : public device::Memory {
 
   // Gets a pointer to a region of host-visible memory for use as the target
   // of an indirect map for a given memory object
-  virtual void* allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& region,
-                               uint mapFlags, size_t* rowPitch, size_t* slicePitch);
+  void* allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& region,
+                       uint mapFlags, size_t* rowPitch, size_t* slicePitch) override;
 
   // Create device memory according to OpenCL memory flag.
   virtual bool create() = 0;
 
   // Pins system memory associated with this memory object.
-  virtual bool pinSystemMemory(void* hostPtr,  // System memory address
-                               size_t size     // Size of allocated system memory
-                               );
+  bool pinSystemMemory(void* hostPtr,  // System memory address
+                       size_t size     // Size of allocated system memory
+                      ) override;
 
   //! Updates device memory from the owner's host allocation
   void syncCacheFromHost(VirtualGPU& gpu,  //!< Virtual GPU device object
@@ -67,31 +67,31 @@ class Memory : public device::Memory {
 
   // Immediate blocking write from device cache to owners's backing store.
   // Marks owner as "current" by resetting the last writer to nullptr.
-  virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags());
+  void syncHostFromCache(SyncFlags syncFlags = SyncFlags()) override;
 
   //! Allocates host memory for synchronization with MGPU context
   void mgpuCacheWriteBack();
 
   // Releases indirect map surface
-  void releaseIndirectMap() { decIndMapCount(); }
+  void releaseIndirectMap() override { decIndMapCount(); }
 
   //! Map the device memory to CPU visible
-  virtual void* cpuMap(device::VirtualDevice& vDev,  //!< Virtual device for map operaiton
-                       uint flags = 0,               //!< flags for the map operation
-                       // Optimization for multilayer map/unmap
-                       uint startLayer = 0,          //!< Start layer for multilayer map
-                       uint numLayers = 0,           //!< End layer for multilayer map
-                       size_t* rowPitch = nullptr,   //!< Row pitch for the device memory
-                       size_t* slicePitch = nullptr  //!< Slice pitch for the device memory
-                       );
+  void* cpuMap(device::VirtualDevice& vDev,  //!< Virtual device for map operaiton
+               uint flags = 0,               //!< flags for the map operation
+               // Optimization for multilayer map/unmap
+               uint startLayer = 0,          //!< Start layer for multilayer map
+               uint numLayers = 0,           //!< End layer for multilayer map
+               size_t* rowPitch = nullptr,   //!< Row pitch for the device memory
+               size_t* slicePitch = nullptr  //!< Slice pitch for the device memory
+      ) override;
 
   //! Unmap the device memory
-  virtual void cpuUnmap(device::VirtualDevice& vDev  //!< Virtual device for unmap operaiton
-                        );
+  void cpuUnmap(device::VirtualDevice& vDev  //!< Virtual device for unmap operaiton
+      ) override;
 
   // Mesa has already decomressed if needed and also does acquire at the start of every command
   // batch.
-  virtual bool processGLResource(GLResourceOP operation) { return true; }
+  bool processGLResource(GLResourceOP operation) override { return true; }
 
   virtual uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
 
@@ -108,7 +108,7 @@ class Memory : public device::Memory {
 
   void* PersistentHostPtr() const { return persistent_host_ptr_; }
 
-  virtual void IpcCreate (size_t offset, size_t* mem_size, void* handle) const;
+  void IpcCreate (size_t offset, size_t* mem_size, void* handle) const override;
 
   //! Validates allocated memory for possible workarounds
   virtual bool ValidateMemory() { return true; }
@@ -117,7 +117,7 @@ class Memory : public device::Memory {
   bool allocateMapMemory(size_t allocationSize);
 
   // Decrement map count
-  virtual void decIndMapCount();
+  void decIndMapCount() override;
 
   // Free / deregister device memory.
   virtual void destroy() = 0;
