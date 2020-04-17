@@ -89,30 +89,30 @@ class HSAILProgram : public roc::Program {
   virtual ~HSAILProgram();
 
  protected:
-  virtual bool createBinary(amd::option::Options* options) { return true; }
+  bool createBinary(amd::option::Options* options) override { return true; }
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
 
 private:
   std::string codegenOptions(amd::option::Options* options);
 
-  bool saveBinaryAndSetType(type_t type);
+  bool saveBinaryAndSetType(type_t type) override;
 };
 
-class LightningProgram : public roc::Program {
+class LightningProgram final : public roc::Program {
 public:
   LightningProgram(roc::NullDevice& device, amd::Program& owner);
   virtual ~LightningProgram() {}
 
 protected:
-  virtual bool createBinary(amd::option::Options* options) final;
+  bool createBinary(amd::option::Options* options) final;
 
-  bool saveBinaryAndSetType(type_t type) { return true; }
+  bool saveBinaryAndSetType(type_t type) final { return true; }
 
 private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
 
-  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
+  bool setKernels(amd::option::Options* options, void* binary, size_t binSize) final;
 };
 
 /*@}*/} // namespace roc

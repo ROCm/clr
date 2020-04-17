@@ -133,10 +133,10 @@ class WLAlgorithmSmooth : public WaveLimiter {
   void clearData();
 
   //! Call back from Event::recordProfilingInfo to get execution time.
-  virtual void callback(ulong duration, uint32_t waves) override;
+  void callback(ulong duration, uint32_t waves) override;
 
   //! Output trace of measurement/adaptation.
-  void outputTrace();
+  void outputTrace() override;
 };
 
 // Create wave limiter for each virtual device for a kernel and manages the wave limiters.
