@@ -324,9 +324,8 @@ inline void Os::ThreadAffinityMask::clear(uint cpu) { CPU_CLR(cpu, &mask_); }
 inline bool Os::ThreadAffinityMask::isSet(uint cpu) const { return CPU_ISSET(cpu, &mask_); }
 
 inline bool Os::ThreadAffinityMask::isEmpty() const {
-  const uint32_t* bits = (const uint32_t*)mask_.__bits;
-  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
-    if (bits[i] != 0) {
+  for (__cpu_mask bits : mask_.__bits) {
+    if (bits != 0) {
       return false;
     }
   }
@@ -336,36 +335,33 @@ inline bool Os::ThreadAffinityMask::isEmpty() const {
 inline void Os::ThreadAffinityMask::set(const cpu_set_t& mask) { mask_ = mask; }
 
 inline void Os::ThreadAffinityMask::clear(const cpu_set_t& mask) {
-  const uint32_t* bitsClear = (const uint32_t*)mask.__bits;
-  uint32_t* bits = (uint32_t*)mask_.__bits;
-  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
-    bits[i] &= ~bitsClear[i];
+  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(mask_.__bits[0]); ++i) {
+    mask_.__bits[i] &= ~mask.__bits[i];
   }
 }
 
 inline void Os::ThreadAffinityMask::adjust(cpu_set_t& mask) const {
-  uint32_t* bitsOut = (uint32_t*)mask.__bits;
-  const uint32_t* bits = (const uint32_t*)mask_.__bits;
-  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
-    bitsOut[i] &= bits[i];
+  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(mask_.__bits[0]); ++i) {
+    mask.__bits[i] &= mask_.__bits[i];
   }
 }
 
 inline uint Os::ThreadAffinityMask::countSet() const {
   uint count = 0;
-  const uint32_t* bits = (const uint32_t*)mask_.__bits;
-  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
-    count += countBitsSet(bits[i]);
+  for (__cpu_mask bits : mask_.__bits) {
+    count += countBitsSet(bits);
   }
   return count;
 }
 
 inline uint Os::ThreadAffinityMask::getFirstSet() const {
-  const uint32_t* bits = (const uint32_t*)mask_.__bits;
-  for (uint i = 0; i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
-    if (bits[i] != 0) {
-      return leastBitSet(bits[i]) + (i * (8 * sizeof(uint32_t)));
+  uint i = 0;
+  for (__cpu_mask bits : mask_.__bits) {
+    if (bits != 0) {
+      return leastBitSet(bits) + (i * (8 * sizeof(__cpu_mask)));
     }
+
+    ++i;
   }
   return (uint)-1;
 }
@@ -374,7 +370,7 @@ inline uint Os::ThreadAffinityMask::getNextSet(uint cpu) const {
   const uint32_t* bits = (const uint32_t*)mask_.__bits;
   ++cpu;
   uint j = cpu % (8 * sizeof(uint32_t));
-  for (uint i = cpu / (8 * sizeof(uint32_t)); i < sizeof(mask_.__bits) / sizeof(uint32_t); ++i) {
+  for (uint i = cpu / (8 * sizeof(uint32_t)); i < sizeof(mask_.__bits) / (sizeof(uint32_t)); ++i) {
     if (bits[i] != 0) {
       for (; j < (8 * sizeof(uint32_t)); ++j) {
         if (0 != (bits[i] & ((uint32_t)1 << j))) {
