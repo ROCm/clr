@@ -1841,6 +1841,13 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
+static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
+  if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
+    // Abort on device exceptions.
+    abort();
+  }
+}
+
 bool VirtualGPU::createSchedulerParam()
 {
   if (nullptr != schedulerParam_) {
@@ -1856,7 +1863,7 @@ bool VirtualGPU::createSchedulerParam()
 
     // The queue is written by multiple threads of the scheduler kernel
     if (HSA_STATUS_SUCCESS != hsa_queue_create(gpu_device(), 2048, HSA_QUEUE_TYPE_MULTI,
-        nullptr, nullptr, std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
+        callbackQueue, this, std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
         &schedulerQueue_)) {
       break;
     }

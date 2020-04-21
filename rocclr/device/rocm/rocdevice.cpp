@@ -1901,6 +1901,13 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
   return result;
 }
 
+static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
+  if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
+    // Abort on device exceptions.
+    abort();
+  }
+}
+
 hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
   assert(queuePool_.size() <= GPU_MAX_HW_QUEUES);
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "number of allocated hardware queues: %d, maximum: %d",
@@ -1938,7 +1945,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
     queue_type = HSA_QUEUE_TYPE_COOPERATIVE;
   }
 
-  while (hsa_queue_create(_bkendDevice, queue_size, queue_type, nullptr, nullptr,
+  while (hsa_queue_create(_bkendDevice, queue_size, queue_type, callbackQueue, this,
                           std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
                           &queue) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
