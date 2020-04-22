@@ -1,12 +1,3 @@
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${ROCM_OCL_INCLUDES})
-
-if(${USE_COMGR_LIBRARY} MATCHES "yes")
-  add_definitions(-DUSE_COMGR_LIBRARY)
-endif()
-
 add_library(oclrocm OBJECT
   roccounters.cpp
   rocprintf.cpp
@@ -24,5 +15,23 @@ add_library(oclrocm OBJECT
   rochcprintf.cpp
   rochostcall.cpp
 )
+
+
+target_include_directories(oclrocm
+  PUBLIC
+    $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
+    ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${ROCM_OCL_INCLUDES})
+
+
+# FIXME: Move this to config header.
+if(${USE_COMGR_LIBRARY} MATCHES "yes")
+  target_compile_definitions(oclrocm
+    PUBLIC USE_COMGR_LIBRARY)
+endif()
+
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

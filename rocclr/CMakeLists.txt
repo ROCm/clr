@@ -22,12 +22,7 @@ find_package(amd_comgr REQUIRED CONFIG
 )
 MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
-find_path(COMGR_INCLUDE
-   NAMES amd_comgr.h
-   PATH_SUFFIXES include
-   PATHS /opt/rocm
-)
-
+# FIXME: Use find_package(OpenCL)
 find_library( OpenCL REQUIRED CONFIG
    PATHS
       /opt/rocm
@@ -84,7 +79,6 @@ include_directories(${OPENCL_DIR}/khronos)
 include_directories(${OPENCL_DIR}/khronos/headers)
 include_directories(${OPENCL_DIR}/khronos/headers/opencl2.2)
 include_directories(${OPENCL_INCLUDE_DIR})
-include_directories(${COMGR_INCLUDE})
 
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib)
@@ -106,9 +100,6 @@ else ()
   add_subdirectory(device/rocm)
 endif()
 
-
-#find_package(amd_comgr REQUIRED CONFIG)
-include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
 set(COMGR_CPP device/comgrctx.cpp)
 
 add_subdirectory( elf/utils/libelf "${CMAKE_CURRENT_BINARY_DIR}/libelf" )
@@ -146,6 +137,9 @@ add_library(oclruntime OBJECT
   #${CMAKE_CURRENT_SOURCE_DIR}/compiler/tools/caching/cache.cpp
   ${COMGR_CPP}
 )
+
+target_include_directories(oclruntime PUBLIC
+    $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>)
 
 set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
