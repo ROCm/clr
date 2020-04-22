@@ -7,7 +7,6 @@ cmake_minimum_required(VERSION 3.5)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 set(USE_COMGR_LIBRARY "yes")
 add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
-add_definitions(-DBSD_LIBELF)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options("-Wno-ignored-attributes")
@@ -140,6 +139,8 @@ add_library(oclruntime OBJECT
 
 target_include_directories(oclruntime PUBLIC
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>)
+
+target_compile_definitions(oclruntime PRIVATE BSD_LIBELF)
 
 set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
