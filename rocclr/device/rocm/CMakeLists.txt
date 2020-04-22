@@ -28,10 +28,9 @@ target_include_directories(oclrocm
     ${ROCR_INCLUDES})
 
 
-# FIXME: Move this to config header.
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
   target_compile_definitions(oclrocm
-    PUBLIC USE_COMGR_LIBRARY)
+    PRIVATE USE_COMGR_LIBRARY)
 endif()
 
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
