@@ -24,7 +24,8 @@ target_include_directories(oclrocm
     ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
     ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${ROCM_OCL_INCLUDES})
+    ${ROCM_OCL_INCLUDES}
+    ${ROCR_INCLUDES})
 
 
 # FIXME: Move this to config header.
