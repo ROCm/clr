@@ -20,7 +20,7 @@ find_package(amd_comgr REQUIRED CONFIG
      cmake/amd_comgr
      lib/cmake/amd_comgr
 )
-MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
+message(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
 # FIXME: Use find_package(OpenCL)
 find_library( OpenCL REQUIRED CONFIG
@@ -40,7 +40,7 @@ if( NOT OPENCL_DIR )
       unset(OPENCL_INCLUDE_DIR CACHE)
       set(OPENCL_INCLUDE_DIR "" CACHE PATH "" FORCE )
    endif()
-      MESSAGE(STATUS "Opencl found at ${OPENCL_INCLUDE_DIR}.")
+      message(STATUS "Opencl found at ${OPENCL_INCLUDE_DIR}.")
 endif()
 
 
@@ -184,39 +184,39 @@ if(NOT CMAKE_INSTALL_PREFIX)
 endif()
 
 install( TARGETS amdvdi_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
-FILE(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
-INSTALL (
+file(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
+install (
     FILES ${headerfiles}
     DESTINATION include)
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/elf"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/compiler"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/utils"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/platform"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/thread"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/os"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
-INSTALL (
+install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/device"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
