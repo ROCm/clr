@@ -64,7 +64,6 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
-include_directories(${ROCR_INCLUDES})
 if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
   include_directories(${LLVM_INCLUDES})
 endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
@@ -136,7 +135,8 @@ add_library(oclruntime OBJECT
 )
 
 target_include_directories(oclruntime PUBLIC
-    $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>)
+  $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE ${ROCR_INCLUDES} ${ROCT_INCLUDES})
 
 target_compile_definitions(oclruntime PRIVATE BSD_LIBELF)
 
