@@ -5,8 +5,9 @@ cmake_minimum_required(VERSION 3.5)
 #cmake   -DOPENCL_DIR=/path to/opencl ..
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
+# FIXME: Should be option and ON/OFF, not yes/no variable.
 set(USE_COMGR_LIBRARY "yes")
-add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options("-Wno-ignored-attributes")
@@ -148,6 +149,15 @@ add_library(amdvdi_static STATIC
   	   )
 
 set_target_properties(amdvdi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+
+if(${USE_COMGR_LIBRARY} MATCHES "yes")
+  # FIXME: This should not be part of the public interface. Downstream
+  # users need to add these definitions. This should be defined in a
+  # config header here so other builds don't need to be aware of this.
+  target_compile_definitions(oclruntime PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  target_compile_definitions(amdvdi_static INTERFACE USE_COMGR_LIBRARY COMGR_DYN_DLL)
+endif()
 
 target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
 target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
