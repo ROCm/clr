@@ -41,7 +41,7 @@ option(PAL_DEVELOPER_BUILD "No developer build" OFF)
 set(PYTHON_EXECUTABLE /usr/bin/python3)
 
 # Build PAL . . .
-set(GLOBAL_ROOT_SRC_DIR ${CMAKE_SOURCE_DIR})
+set(GLOBAL_ROOT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(palbe)
 
 # Setup defines for the client compilation
@@ -84,15 +84,15 @@ if(UNIX)
   target_compile_definitions(vdipal PRIVATE PAL_AMDGPU_BUILD)
 endif()
 
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/compiler/sc/HSAIL/include)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/../asic_reg)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/compiler/sc/HSAIL/include)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../asic_reg)
 
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe/inc)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe/inc/core)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe/inc/util)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/inc)
-target_include_directories(vdipal PRIVATE ${CMAKE_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/third_party/metrohash/src)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/core)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/util)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/inc)
+target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/third_party/metrohash/src)
 target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 target_sources(vdipal PRIVATE
