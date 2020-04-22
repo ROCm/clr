@@ -75,9 +75,9 @@ if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
   include_directories(${LLVM_INCLUDES})
 endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
 
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/device/rocm)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/device/rocm)
 include_directories(${OPENCL_DIR})
 include_directories(${OPENCL_DIR}/amdocl)
 include_directories(${OPENCL_DIR}/khronos)
@@ -87,12 +87,12 @@ include_directories(${OPENCL_INCLUDE_DIR})
 include_directories(${COMGR_INCLUDE})
 
 
-include_directories(${CMAKE_SOURCE_DIR}/compiler/lib)
-include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/include)
-include_directories(${CMAKE_SOURCE_DIR}/compiler/lib/backends/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/backends/common)
 
-include_directories(${CMAKE_SOURCE_DIR}/elf/utils/common)
-include_directories(${CMAKE_SOURCE_DIR}/elf/utils/libelf)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/common)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/libelf)
 
 option(BUILD_PAL "Build PAL backend" OFF)
 if (BUILD_PAL)
@@ -143,7 +143,7 @@ add_library(oclruntime OBJECT
   compiler/lib/utils/options.cpp
   elf/elf.cpp
   elf/elf_utils.cpp
-  #${CMAKE_SOURCE_DIR}/compiler/tools/caching/cache.cpp
+  #${CMAKE_CURRENT_SOURCE_DIR}/compiler/tools/caching/cache.cpp
   ${COMGR_CPP}
 )
 
