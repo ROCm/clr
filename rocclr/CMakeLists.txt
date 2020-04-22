@@ -182,7 +182,6 @@ if(NOT CMAKE_INSTALL_PREFIX)
    endif()
 #endif()
 endif()
-message("cmake install path  ${CMAKE_INSTALL_PREFIX}")
 
 install( TARGETS amdvdi_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
 FILE(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
