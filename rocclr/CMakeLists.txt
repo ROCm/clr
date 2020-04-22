@@ -89,13 +89,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/libelf)
 
 option(BUILD_PAL "Build PAL backend" OFF)
 if (BUILD_PAL)
-  add_definitions(-DWITH_PAL_DEVICE)
   add_subdirectory(device/pal)
 
   add_definitions(-DAMD_LIBELF)
   add_subdirectory(compiler/sc/HSAIL)
 else ()
-  add_definitions(-DWITH_HSA_DEVICE)
   add_subdirectory(device/rocm)
 endif()
 
@@ -158,10 +156,15 @@ if (BUILD_PAL)
   target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:vdipal>)
   target_link_libraries(amdvdi_static PRIVATE amdhsaloader)
   target_link_libraries(amdvdi_static PRIVATE pal)
+
+  target_compile_definitions(oclruntime PRIVATE WITH_PAL_DEVICE)
+
   export(TARGETS amdvdi_static vdipal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
     FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
   )
 else()
+  target_compile_definitions(oclruntime PRIVATE WITH_HSA_DEVICE)
+
   target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
   export(TARGETS amdvdi_static
     FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
