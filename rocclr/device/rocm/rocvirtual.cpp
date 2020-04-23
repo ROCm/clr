@@ -2300,14 +2300,14 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
  */
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   if (vcmd.cooperativeGroups() || vcmd.cooperativeMultiDeviceGroups()) {
+    // Wait for the execution on the current queue, since the coop groups will use the device queue
+    releaseGpuMemoryFence();
+
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
 
     // Lock the queue, using the blit manager lock
     amd::ScopedLock lock(queue->blitMgr().lockXfer());
-
-    // Wait for the execution on the current queue, since the coop groups will use the device queue
-    releaseGpuMemoryFence();
 
     queue->profilingBegin(vcmd);
 

@@ -396,6 +396,8 @@ class KernelBlitManager : public DmaBlitManager {
   bool RunGwsInit(uint32_t value             //!< Initial value for GWS resource
                   ) const;
 
+  virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
+
  private:
   static const size_t MaxXferBuffers = 2;
   static const uint TransferSplitSize = 1;
@@ -448,7 +450,7 @@ class KernelBlitManager : public DmaBlitManager {
   amd::Kernel* kernels_[BlitTotal];           //!< GPU kernels for blit
   amd::Memory* constantBuffer_;               //!< An internal CB for blits
   size_t xferBufferSize_;                     //!< Transfer buffer size
-  amd::Monitor* lockXferOps_;                 //!< Lock transfer operation
+  mutable amd::Monitor  lockXferOps_;         //!< Lock transfer operation
 };
 
 static const char* BlitName[KernelBlitManager::BlitTotal] = {
