@@ -707,7 +707,7 @@ KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
       program_(nullptr),
       constantBuffer_(nullptr),
       xferBufferSize_(0),
-      lockXferOps_(nullptr) {
+      lockXferOps_("Transfer Ops Lock", true) {
   for (uint i = 0; i < BlitTotal; ++i) {
     kernels_[i] = nullptr;
   }
@@ -733,8 +733,6 @@ KernelBlitManager::~KernelBlitManager() {
   if (nullptr != constantBuffer_) {
     constantBuffer_->release();
   }
-
-  delete lockXferOps_;
 }
 
 bool KernelBlitManager::create(amd::Device& device) {
@@ -794,11 +792,6 @@ bool KernelBlitManager::createProgram(Device& device) {
     constantBuffer_ = nullptr;
     return false;
   } else if (constantBuffer_ == nullptr) {
-    return false;
-  }
-
-  lockXferOps_ = new amd::Monitor("Transfer Ops Lock", true);
-  if (nullptr == lockXferOps_) {
     return false;
   }
 
