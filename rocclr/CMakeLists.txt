@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.5)
 
 #cmake   -DOPENCL_DIR=/path to/opencl ..
 
+set(ROCCLR_EXPORTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake")
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 # FIXME: Should be option and ON/OFF, not yes/no variable.
@@ -99,8 +101,9 @@ endif()
 
 set(COMGR_CPP device/comgrctx.cpp)
 
-add_subdirectory( elf/utils/libelf "${CMAKE_CURRENT_BINARY_DIR}/libelf" )
-add_library(oclruntime OBJECT
+add_subdirectory(elf/utils/libelf "${CMAKE_CURRENT_BINARY_DIR}/libelf" )
+
+set(oclruntime_src
   thread/thread.cpp
   thread/monitor.cpp
   thread/semaphore.cpp
@@ -132,31 +135,29 @@ add_library(oclruntime OBJECT
   elf/elf.cpp
   elf/elf_utils.cpp
   #${CMAKE_CURRENT_SOURCE_DIR}/compiler/tools/caching/cache.cpp
-  ${COMGR_CPP}
 )
 
-target_include_directories(oclruntime PUBLIC
-  $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
-  PRIVATE ${ROCR_INCLUDES} ${ROCT_INCLUDES})
-
-target_compile_definitions(oclruntime PRIVATE BSD_LIBELF)
-
-set_target_properties(oclruntime PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
 add_library(amdvdi_static STATIC
-  	   $<TARGET_OBJECTS:oclruntime>
-  	   $<TARGET_OBJECTS:oclelf_obj>
-  	   )
+  ${oclruntime_src} ${COMGR_CPP}
+  $<TARGET_OBJECTS:oclelf_obj>)
 
 set_target_properties(amdvdi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+target_include_directories(amdvdi_static
+  PUBLIC
+    $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE
+    $<TARGET_PROPERTY:oclelf_obj,INTERFACE_INCLUDE_DIRECTORIES>
+    ${ROCR_INCLUDES}
+    ${ROCT_INCLUDES})
+
+target_compile_definitions(amdvdi_static PRIVATE BSD_LIBELF)
 
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
   # FIXME: This should not be part of the public interface. Downstream
   # users need to add these definitions. This should be defined in a
   # config header here so other builds don't need to be aware of this.
-  target_compile_definitions(oclruntime PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
-  target_compile_definitions(amdvdi_static INTERFACE USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  target_compile_definitions(amdvdi_static PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
 endif()
 
 target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
@@ -167,17 +168,17 @@ if (BUILD_PAL)
   target_link_libraries(amdvdi_static PRIVATE amdhsaloader)
   target_link_libraries(amdvdi_static PRIVATE pal)
 
-  target_compile_definitions(oclruntime PRIVATE WITH_PAL_DEVICE)
+  target_compile_definitions(amdvdi_static PRIVATE WITH_PAL_DEVICE)
 
   export(TARGETS amdvdi_static vdipal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
+    FILE ${ROCCLR_EXPORTS_FILE}
   )
 else()
-  target_compile_definitions(oclruntime PRIVATE WITH_HSA_DEVICE)
+  target_compile_definitions(amdvdi_static PRIVATE WITH_HSA_DEVICE)
 
   target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
   export(TARGETS amdvdi_static
-    FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake"
+    FILE ${ROCCLR_EXPORTS_FILE}
   )
 endif()
 
