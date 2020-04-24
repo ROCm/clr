@@ -73,6 +73,8 @@ class Settings : public device::Settings {
   size_t pinnedXferSize_;     //!< Pinned buffer size for transfer
   size_t pinnedMinXferSize_;  //!< Minimal buffer size for pinned transfer
 
+  size_t sdmaCopyThreshold_;  //!< Use SDMA to copy above this size
+
   //! Default constructor
   Settings();
 

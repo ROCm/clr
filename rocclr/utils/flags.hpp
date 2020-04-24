@@ -72,6 +72,8 @@ release(bool, GPU_FLUSH_ON_EXECUTION, false,                                  \
         "Submit commands to HW on every operation. 0 - Disable, 1 - Enable")  \
 release(bool, GPU_USE_SYNC_OBJECTS, true,                                     \
         "If enabled, use sync objects instead of polling")                    \
+release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
+        "Size in KB of the threshold below which to force blit instead for sdma") \
 release(bool, CL_KHR_FP64, true,                                              \
         "Enable/Disable support for double precision")                        \
 release(cstring, AMD_OCL_BUILD_OPTIONS, 0,                                    \
