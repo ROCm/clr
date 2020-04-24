@@ -258,6 +258,9 @@ bool NullDevice::init() {
       case 1033:
         ShouldNotReachHere();
         break;
+      case 1034:
+        ShouldNotReachHere();
+        break;
       case 1040:
         ShouldNotReachHere();
         break;
