@@ -6,9 +6,7 @@ file(GLOB sources
 )
 
 add_library(oclelf_obj OBJECT ${sources})
-add_library(oclelf STATIC $<TARGET_OBJECTS:oclelf_obj>)
 set_target_properties(oclelf_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
-set_target_properties(oclelf PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(oclelf_obj
   PRIVATE
@@ -17,9 +15,5 @@ target_include_directories(oclelf_obj
      ${CMAKE_CURRENT_SOURCE_DIR}/../common/win32/sys)
 
 target_compile_definitions(oclelf_obj
-  PUBLIC
-  BSD_LIBELF USE_MEMFILE)
-
-target_compile_definitions(oclelf
   PUBLIC
     BSD_LIBELF USE_MEMFILE)
