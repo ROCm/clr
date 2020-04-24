@@ -734,7 +734,7 @@ bool Device::create(bool sramEccEnabled) {
       return false;
     }
 
-    if ((p2p_agents_.size() == 0) && (devices.size() > 1)) {
+    if ((p2p_agents_.size() < (devices.size()-1)) && (devices.size() > 1)) {
       amd::Buffer* buf = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
       if ((buf != nullptr) && buf->create()) {
         p2p_stage_ = buf;
