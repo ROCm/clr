@@ -22,6 +22,9 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
+# FIXME: Use find_package
+include(${LIBVDI_STATIC_DIR}/amdvdi_staticTargets.cmake)
+
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/khronos)
 include_directories(${CMAKE_SOURCE_DIR}/khronos/headers)
@@ -58,7 +61,7 @@ else()
     set(ADDITIONAL_LIBRARIES "")
 endif()
 
-add_library(amdocl64_obj OBJECT
+set(amdocl64_src
   cl_memobj.cpp
   cl_program.cpp
   cl_sdi_amd.cpp
@@ -86,14 +89,9 @@ add_library(amdocl64_obj OBJECT
   ${ADDITIONAL_LIBRARIES}
 )
 
-add_library(amdocl64 SHARED
-  $<TARGET_OBJECTS:amdocl64_obj>
-)
+add_library(amdocl64 SHARED ${amdocl64_src})
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-include(${LIBVDI_STATIC_DIR}/amdvdi_staticTargets.cmake)
-
 target_link_libraries(amdocl64 amdvdi_static Threads::Threads dl)
-
