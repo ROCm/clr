@@ -1915,7 +1915,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
 
   // If we have reached the max number of queues, reuse an existing queue,
   // choosing the one with the least number of users.
-  if (queuePool_.size() == GPU_MAX_HW_QUEUES) {
+  // Note: Don't attempt to reuse the cooperative queue, since it's single per device
+  if (!coop_queue && (queuePool_.size() == GPU_MAX_HW_QUEUES)) {
     typedef decltype(queuePool_)::const_reference PoolRef;
     auto lowest = std::min_element(queuePool_.begin(), queuePool_.end(),
                                    [] (PoolRef A, PoolRef B) {
