@@ -599,6 +599,13 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     dstAgent = dstMemory.dev().getBackendDevice();
   }
 
+  // This workaround is needed for performance to get around the slowdown
+  // caused to SDMA engine powering down if its not active. Forcing agents
+  // to amdgpu device causes rocr to take blit path internally.
+  if (size[0] <= dev().settings().sdmaCopyThreshold_) {
+    srcAgent = dstAgent = dev().getBackendDevice();
+  }
+
   const hsa_signal_value_t kInitVal = 1;
   hsa_signal_store_relaxed(completion_signal_, kInitVal);
 
@@ -656,13 +663,19 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
   // Allocate requested size of memory
   while (totalSize > 0) {
     size = std::min(totalSize, dev().settings().stagedXferSize_);
-    hsa_signal_store_relaxed(completion_signal_, kInitVal);
+    hsa_signal_silent_store_relaxed(completion_signal_, kInitVal);
 
     // Copy data from Host to Device
     if (hostToDev) {
+      // This workaround is needed for performance to get around the slowdown
+      // caused to SDMA engine powering down if its not active. Forcing agents
+      // to amdgpu device causes rocr to take blit path internally.
+      const hsa_agent_t srcAgent =
+          (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() : dev().getCpuAgent();
+
       memcpy(hsaBuffer, hostSrc + offset, size);
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
-                                         dev().getCpuAgent(), size, 0, nullptr, completion_signal_);
+                                         srcAgent, size, 0, nullptr, completion_signal_);
       if (status == HSA_STATUS_SUCCESS) {
         hsa_signal_value_t val = hsa_signal_wait_acquire(
             completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
@@ -680,9 +693,15 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       continue;
     }
 
+    // This workaround is needed for performance to get around the slowdown
+    // caused to SDMA engine powering down if its not active. Forcing agents
+    // to amdgpu device causes rocr to take blit path internally.
+    const hsa_agent_t dstAgent =
+        (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() : dev().getCpuAgent();
+
     // Copy data from Device to Host
     status =
-        hsa_amd_memory_async_copy(hsaBuffer, dev().getCpuAgent(), hostSrc + offset,
+        hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
                                   dev().getBackendDevice(), size, 0, nullptr, completion_signal_);
     if (status == HSA_STATUS_SUCCESS) {
       hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ,

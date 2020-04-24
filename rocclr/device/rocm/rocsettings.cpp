@@ -74,6 +74,8 @@ Settings::Settings() {
   pinnedXferSize_ = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
   pinnedMinXferSize_ = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
 
+  sdmaCopyThreshold_ = GPU_FORCE_BLIT_COPY_SIZE * Ki;
+
   // Don't support Denormals for single precision by default
   singleFpDenorm_ = false;
 
