@@ -1,0 +1,3 @@
+@ROCCLR_PREFIX_CODE@
+
+include("@ROCCLR_TARGETS_PATH@")

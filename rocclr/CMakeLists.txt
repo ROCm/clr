@@ -1,10 +1,31 @@
-project(ROCclr)
 cmake_minimum_required(VERSION 3.5)
+
+project(ROCclr VERSION "1.0.0" LANGUAGES C CXX)
+
+include(CMakePackageConfigHelpers)
+
 #example command:
 
 #cmake   -DOPENCL_DIR=/path to/opencl ..
 
-set(ROCCLR_EXPORTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/amdrocclr_staticTargets.cmake")
+set(ROCCLR_CONFIG_NAME ROCclrConfig.cmake)
+set(ROCCLR_TARGETS_NAME rocclr-targets.cmake)
+set(ROCCLR_VERSION_NAME rocclr-config-version.cmake)
+set(ROCCLR_PACKAGE_PREFIX lib/cmake/rocclr)
+set(ROCCLR_PREFIX_CODE)
+set(ROCCLR_TARGETS_PATH
+  "${CMAKE_CURRENT_BINARY_DIR}/${ROCCLR_PACKAGE_PREFIX}/${ROCCLR_TARGETS_NAME}")
+set(ROCCLR_VERSION_PATH
+  "${CMAKE_CURRENT_BINARY_DIR}/${ROCCLR_PACKAGE_PREFIX}/${ROCCLR_VERSION_NAME}")
+
+# Generate the build-tree package.
+configure_file("cmake/${ROCCLR_CONFIG_NAME}.in"
+  "${ROCCLR_PACKAGE_PREFIX}/${ROCCLR_CONFIG_NAME}"
+  @ONLY)
+
+write_basic_package_version_file("${ROCCLR_VERSION_PATH}"
+  VERSION "${ROCclr_VERSION}"
+  COMPATIBILITY SameMajorVersion)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
@@ -170,15 +191,13 @@ if (BUILD_PAL)
   target_compile_definitions(amdrocclr_static PRIVATE WITH_PAL_DEVICE)
 
   export(TARGETS amdrocclr_static rocclrpal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
-    FILE ${ROCCLR_EXPORTS_FILE}
-  )
+    FILE ${ROCCLR_TARGETS_PATH})
 else()
   target_compile_definitions(amdrocclr_static PRIVATE WITH_HSA_DEVICE)
 
   target_sources(amdrocclr_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
   export(TARGETS amdrocclr_static
-    FILE ${ROCCLR_EXPORTS_FILE}
-  )
+         FILE ${ROCCLR_TARGETS_PATH})
 endif()
 
 if (UNIX)
@@ -197,7 +216,13 @@ if(NOT CMAKE_INSTALL_PREFIX)
 #endif()
 endif()
 
-install( TARGETS amdrocclr_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
+
+install( TARGETS amdrocclr_static
+  EXPORT rocclr
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  COMPONENT applications)
+
 install (
    DIRECTORY include/
    DESTINATION include)
@@ -229,3 +254,28 @@ install (
    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/device"
    DESTINATION include
    FILES_MATCHING PATTERN "*.h*")
+
+# Generate the install-tree package.
+set(ROCCLR_PREFIX_CODE "
+# Derive absolute install prefix from config file path.
+get_filename_component(ROCCLR_PREFIX \"\${CMAKE_CURRENT_LIST_FILE}\" PATH)")
+string(REGEX REPLACE "/" ";" count "${ROCCLR_PACKAGE_PREFIX}")
+foreach(p ${count})
+  set(ROCCLR_PREFIX_CODE "${ROCCLR_PREFIX_CODE}
+get_filename_component(ROCCLR_PREFIX \"\${ROCCLR_PREFIX}\" PATH)")
+endforeach()
+
+configure_file("cmake/${ROCCLR_CONFIG_NAME}.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${ROCCLR_CONFIG_NAME}.install"
+  @ONLY)
+
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/${ROCCLR_CONFIG_NAME}.install"
+  DESTINATION "${ROCCLR_PACKAGE_PREFIX}"
+  RENAME "${ROCCLR_CONFIG_NAME}")
+install(EXPORT rocclr
+  DESTINATION "${ROCCLR_PACKAGE_PREFIX}"
+  FILE "${ROCCLR_TARGETS_NAME}")
+install(FILES
+  "${ROCCLR_VERSION_PATH}"
+  DESTINATION "${ROCCLR_PACKAGE_PREFIX}")
