@@ -1259,6 +1259,9 @@ class Device : public RuntimeObject {
                                                                                       : false;
   }
 
+  //! check large bar support.
+  virtual bool isLargeBar() const { return false; }
+
   //! Return this device's type.
   cl_device_type type() const { return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT); }
 

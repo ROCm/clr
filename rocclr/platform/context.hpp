@@ -205,12 +205,15 @@ class Context : public RuntimeObject {
   void setDefDeviceQueue(const Device& dev, DeviceQueue* queue)
       { deviceQueues_[&dev].defDeviceQueue_ = queue; };
 
+  bool isLargeBar() { return largeBar_; }
+
  private:
   const Info info_;                      //!< Context info structure
   cl_context_properties* properties_;    //!< Original properties
   GLFunctions* glenv_;                   //!< OpenGL context
   Device* customHostAllocDevice_;        //!< Device responsible for host allocations
   std::vector<Device*> svmAllocDevice_;  //!< Devices can support SVM allocations
+  bool largeBar_;                        //!< Devices supports large bar
   std::unordered_map<const Device*, DeviceQueueInfo> deviceQueues_;  //!< Device queues mapping
   mutable Monitor ctxLock_;                                          //!< Lock for the context access
 };
