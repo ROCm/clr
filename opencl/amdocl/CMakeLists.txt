@@ -22,8 +22,21 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
-# FIXME: Use find_package
-include(${LIBVDI_STATIC_DIR}/amdvdi_staticTargets.cmake)
+# FIXME: VDI_DIR and LIBVDI_STATIC_DIR are for compatability with
+# current build scripts. Instead they should install, or use
+# CMAKE_PREFIX_PATH
+find_package(ROCclr CONFIG
+  PATHS
+  ${VDI_DIR}
+  ${LIBVDI_STATIC_DIR})
+
+if(NOT ROCclr_FOUND)
+  # FIXME: Make ROCclr find required and remove this.
+  #
+  # This is to break the dependency on patch to start producing find
+  # module.
+  include(${LIBVDI_STATIC_DIR}/amdvdi_staticTargets.cmake)
+endif()
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/khronos)
