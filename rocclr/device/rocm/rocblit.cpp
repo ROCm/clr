@@ -28,6 +28,8 @@
 #include <algorithm>
 
 namespace roc {
+constexpr size_t max_h2d_std_memcpy_sz{8 * 1024}; // 8 KiB.
+constexpr size_t max_d2h_std_memcpy_sz{64};       // 1 cacheline.
 
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
@@ -1605,6 +1607,21 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                    bool entire) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
+
+  if (amd::IS_HIP && context_->isLargeBar() && size[0] <= max_d2h_std_memcpy_sz && size[1] == 0 && size[2] == 0) {
+    if ((srcMemory.owner()->getHostMem() == nullptr) && (srcMemory.owner()->getSvmPtr() != nullptr)) {
+      void* src = srcMemory.owner()->getSvmPtr();
+      hsa_agent_t agents[1];
+      agents[0] = dev().getCpuAgent();
+
+      if (HSA_STATUS_SUCCESS == hsa_amd_agents_allow_access(1, agents, NULL, src)) {
+        synchronize();
+        std::memcpy(dstHost, src, size[0]);
+        return true;
+      }
+    }
+  }
+
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     result = HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire);
@@ -1697,6 +1714,24 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
                                     bool entire) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
+
+  if (amd::IS_HIP && context_->isLargeBar() && size[0] <= max_h2d_std_memcpy_sz && size[1] == 0 && size[2] == 0) {
+    if ((dstMemory.owner()->getHostMem() == nullptr) && (dstMemory.owner()->getSvmPtr() != nullptr)) {
+      void* dst = dstMemory.owner()->getSvmPtr();
+      hsa_agent_t agents[1];
+      agents[0] = dev().getCpuAgent();
+
+      if (HSA_STATUS_SUCCESS == hsa_amd_agents_allow_access(1, agents, NULL, dst)) {
+        synchronize();
+        std::memcpy(dst, srcHost, size[0]);
+        if (AMD_OPT_FLUSH) {
+          gpu().hasPendingDispatch(); // Set hasPendingDispatch_ flag. So synchronize() use a barrier to invalidate cache
+          synchronize();
+        }
+        return true;
+      }
+    }
+  }
 
   // Use host copy if memory has direct access
   if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||

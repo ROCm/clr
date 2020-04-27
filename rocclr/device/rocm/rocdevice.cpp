@@ -894,6 +894,18 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           dev->gpu_fine_grained_segment_ = pool;
         } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0) {
           dev->gpuvm_segment_ = pool;
+
+          // If cpu agent cannot access this pool, the device does not support large bar.
+          hsa_amd_memory_pool_access_t tmp{};
+          hsa_amd_agent_memory_pool_get_info(
+            cpu_agent_,
+            pool,
+            HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
+            &tmp);
+
+          if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED){
+            dev->largeBar_ = false;
+          }
         }
 
         if (dev->gpuvm_segment_.handle == 0) {
@@ -1096,7 +1108,7 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   assert(system_segment_.handle != 0);
-
+  largeBar_ = true; // This value will be updated in the pool call back function.
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(
                                 _bkendDevice, Device::iterateGpuMemoryPoolCallback, this)) {
     return false;

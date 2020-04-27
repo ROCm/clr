@@ -261,6 +261,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void enableSyncBlit() const;
 
+  void hasPendingDispatch() { hasPendingDispatch_ = true;}
 
   // } roc OpenCL integration
  private:
