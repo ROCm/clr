@@ -16,6 +16,7 @@ set(BUILD_SHARED_LIBS "Build shared libs" ON)
 add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
+add_subdirectory(tools/cltrace)
 
 # get date information based on UTC
 # use the last two digits of year + week number + day in the week as OPENCL_VERSION_GITDATE
@@ -46,6 +47,9 @@ get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
 # MAIN package
 install(PROGRAMS $<TARGET_FILE:clinfo>
         DESTINATION bin
+        COMPONENT MAIN)
+install(PROGRAMS $<TARGET_FILE:cltrace>
+        DESTINATION lib
         COMPONENT MAIN)
 install(PROGRAMS $<TARGET_FILE:amdocl64>
         DESTINATION lib
