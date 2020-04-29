@@ -519,6 +519,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t cooperativeGroups_;
   //! GPU device supports a launch of cooperative groups on multiple devices
   uint32_t cooperativeMultiDeviceGroups_;
+
+  //! large bar support.
+  bool largeBar_;
 };
 
 //! Device settings
@@ -1258,9 +1261,6 @@ class Device : public RuntimeObject {
     return FGSOPT && (info().svmCapabilities_ & CL_DEVICE_SVM_FINE_GRAIN_SYSTEM) != 0 ? true
                                                                                       : false;
   }
-
-  //! check large bar support.
-  virtual bool isLargeBar() const { return false; }
 
   //! Return this device's type.
   cl_device_type type() const { return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT); }

@@ -903,8 +903,10 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
             HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
             &tmp);
 
-          if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED){
-            dev->largeBar_ = false;
+          if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED) {
+            dev->info_.largeBar_ = false;
+          } else {
+            dev->info_.largeBar_ = true;
           }
         }
 
@@ -1108,7 +1110,6 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   assert(system_segment_.handle != 0);
-  largeBar_ = true; // This value will be updated in the pool call back function.
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(
                                 _bkendDevice, Device::iterateGpuMemoryPoolCallback, this)) {
     return false;

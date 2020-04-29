@@ -50,8 +50,7 @@ Context::Context(const std::vector<Device*>& devices, const Info& info)
       info_(info),
       properties_(NULL),
       glenv_(NULL),
-      customHostAllocDevice_(NULL),
-      largeBar_(true) {
+      customHostAllocDevice_(NULL) {
   for (const auto& device : devices) {
     device->retain();
     if (customHostAllocDevice_ == NULL && device->customHostAllocator()) {
@@ -59,9 +58,6 @@ Context::Context(const std::vector<Device*>& devices, const Info& info)
     }
     if (device->svmSupport()) {
       svmAllocDevice_.push_back(device);
-    }
-    if (!device->isLargeBar()) {
-      largeBar_ = false;
     }
   }
 
