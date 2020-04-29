@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <tuple>
 #include <utility>
 
 namespace amd {
@@ -79,7 +80,7 @@ class Context;
 //! A collection of binaries for devices in the associated context.
 class Program : public RuntimeObject {
  public:
-  typedef std::pair<uint8_t*, size_t> binary_t;
+  typedef std::tuple<const uint8_t* /*image*/, size_t /*size*/,  bool /*allocated*/> binary_t;
   typedef std::set<Device const*> devicelist_t;
   typedef std::unordered_map<Device const*, binary_t> devicebinary_t;
   typedef std::unordered_map<Device const*, device::Program*> deviceprograms_t;
@@ -167,7 +168,7 @@ class Program : public RuntimeObject {
 
   //! Add a new device program with or without binary image and options.
   int32_t addDeviceProgram(Device&, const void* image = NULL, size_t len = 0,
-                          amd::option::Options* options = NULL);
+                          bool make_copy = true, amd::option::Options* options = NULL);
 
   //! Find the section for the given device. Return NULL if not found.
   device::Program* getDeviceProgram(const Device& device) const;
