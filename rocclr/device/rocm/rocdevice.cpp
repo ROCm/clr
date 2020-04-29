@@ -1963,6 +1963,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
                           &queue) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
     if (queue_size < 64) {
+      DevLogError("Device::acquireQueue: hsa_queue_create failed!");
       return nullptr;
     }
   }
