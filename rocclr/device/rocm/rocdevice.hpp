@@ -451,7 +451,6 @@ class Device : public NullDevice {
   roc::Memory* getGpuMemory(amd::Memory* mem  //!< Pointer to AMD memory object
                             ) const;
 
-  bool isLargeBar() const { return largeBar_; }
  private:
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -491,7 +490,6 @@ class Device : public NullDevice {
     void* hostcallBuffer_;
   };
   std::map<hsa_queue_t*, QueueInfo> queuePool_;  //!< Pool of HSA queues for recycling
-  bool largeBar_; //!< is this device a large bar device
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
