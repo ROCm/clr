@@ -694,11 +694,6 @@ VirtualGPU::~VirtualGPU() {
 }
 
 bool VirtualGPU::create() {
-  // Checking Virtual gpu unique index for ROCm backend
-  if (index() > device().settings().commandQueues_) {
-    return false;
-  }
-
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
   gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_);

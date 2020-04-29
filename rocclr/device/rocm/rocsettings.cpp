@@ -57,9 +57,6 @@ Settings::Settings() {
   nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
   enableNCMode_ = (nonCoherentMode) ? true : false;
 
-  commandQueues_ = 200;  //!< Field value set to maximum number
-                         //!< concurrent Virtual GPUs for ROCm backend
-
   // Disable image DMA by default (ROCM runtime doesn't support it)
   imageDMA_ = false;
 
@@ -186,10 +183,6 @@ void Settings::override() {
   }
   if (GPU_MAX_WORKGROUP_SIZE_3D_Z != 0) {
     maxWorkGroupSize3DZ_ = GPU_MAX_WORKGROUP_SIZE_3D_Z;
-  }
-
-  if (!flagIsDefault(GPU_MAX_COMMAND_QUEUES)) {
-    commandQueues_ = GPU_MAX_COMMAND_QUEUES;
   }
 
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
