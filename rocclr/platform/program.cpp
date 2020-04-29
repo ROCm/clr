@@ -62,8 +62,8 @@ Program::~Program() {
 
   for (const auto& it : binary_) {
     const binary_t& Bin = it.second;
-    if (Bin.first) {
-      delete[] Bin.first;
+    if (std::get<2>(Bin)) {
+      delete[] std::get<0>(Bin);
     }
   }
 
@@ -82,7 +82,7 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
 }
 
 int32_t Program::addDeviceProgram(Device& device, const void* image, size_t length,
-                                 amd::option::Options* options) {
+                                 bool make_copy, amd::option::Options* options) {
   if (image != NULL &&  !amd::isElfMagic((const char*)image)) {
     if (device.settings().useLightning_) {
       return CL_INVALID_BINARY;
@@ -148,22 +148,28 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
   }
 
   if (image != NULL) {
-    uint8_t* memory = binary(rootDev).first;
+    const uint8_t* memory = std::get<0>(binary(rootDev));
     // clone 'binary' (it is owned by the host thread).
     if (memory == NULL) {
-      memory = new (std::nothrow) uint8_t[length];
-      if (memory == NULL) {
-        delete program;
-        return CL_OUT_OF_HOST_MEMORY;
+      if (make_copy) {
+        auto *image_copy = new (std::nothrow) uint8_t[length];
+        if (image_copy == NULL) {
+          delete program;
+          return CL_OUT_OF_HOST_MEMORY;
+        }
+
+        ::memcpy(image_copy, image, length);
+        memory = image_copy;
+      }
+      else {
+        memory = static_cast<const uint8_t*>(image);
       }
 
-      ::memcpy(memory, image, length);
-
       // Save the original image
-      binary_[&rootDev] = std::make_pair(memory, length);
+      binary_[&rootDev] = std::make_tuple(memory, length, make_copy);
     }
 
-    if (!program->setBinary(reinterpret_cast<char*>(memory), length)) {
+    if (!program->setBinary(reinterpret_cast<const char*>(memory), length)) {
       delete program;
       return CL_INVALID_BINARY;
     }
@@ -230,7 +236,7 @@ int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
     device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
       const binary_t& bin = binary(*it);
-      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
+      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
@@ -358,7 +364,7 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
     device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
       const binary_t& bin = binary(*it);
-      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
+      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
@@ -506,11 +512,11 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
     device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
       const binary_t& bin = binary(*it);
-      if (sourceCode_.empty() && (bin.first == NULL)) {
+      if (sourceCode_.empty() && (std::get<0>(bin) == NULL)) {
         retval = false;
         continue;
       }
-      retval = addDeviceProgram(*it, bin.first, bin.second, &parsedOptions);
+      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
