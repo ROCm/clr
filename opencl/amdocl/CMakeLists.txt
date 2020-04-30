@@ -22,20 +22,21 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
-# FIXME: VDI_DIR and LIBVDI_STATIC_DIR are for compatability with
+# FIXME: ROCclr_DIR and LIBROCclr_STATIC_DIR are for compatability with
 # current build scripts. Instead they should install, or use
 # CMAKE_PREFIX_PATH
-find_package(ROCclr CONFIG
-  PATHS
-  ${VDI_DIR}
-  ${LIBVDI_STATIC_DIR})
+#Uncomment once fixed
+#find_package(ROCclr CONFIG
+#  PATHS
+#  ${ROCclr_DIR}
+#  ${LIBROCclr_STATIC_DIR})
 
 if(NOT ROCclr_FOUND)
   # FIXME: Make ROCclr find required and remove this.
   #
   # This is to break the dependency on patch to start producing find
   # module.
-  include(${LIBVDI_STATIC_DIR}/amdvdi_staticTargets.cmake)
+  include(${LIBROCclr_STATIC_DIR}/amdrocclr_staticTargets.cmake)
 endif()
 
 include_directories(${CMAKE_SOURCE_DIR})
@@ -55,14 +56,14 @@ if(${USE_COMGR_LIBRARY} MATCHES "yes")
 
   include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
 endif()
-include_directories(${VDI_DIR})
-include_directories(${VDI_DIR}/include)
-include_directories(${VDI_DIR}/compiler/lib)
-include_directories(${VDI_DIR}/compiler/lib/include)
-include_directories(${VDI_DIR}/compiler/lib/backends/common)
+include_directories(${ROCclr_DIR})
+include_directories(${ROCclr_DIR}/include)
+include_directories(${ROCclr_DIR}/compiler/lib)
+include_directories(${ROCclr_DIR}/compiler/lib/include)
+include_directories(${ROCclr_DIR}/compiler/lib/backends/common)
 
-include_directories(${VDI_DIR}/elf/utils/libelf)
-include_directories(${VDI_DIR}/elf/utils/common)
+include_directories(${ROCclr_DIR}/elf/utils/libelf)
+include_directories(${ROCclr_DIR}/elf/utils/common)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options("-Wno-ignored-attributes")
@@ -107,4 +108,4 @@ add_library(amdocl64 SHARED ${amdocl64_src})
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(amdocl64 amdvdi_static Threads::Threads dl)
+target_link_libraries(amdocl64 amdrocclr_static Threads::Threads dl)

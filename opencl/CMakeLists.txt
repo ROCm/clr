@@ -8,7 +8,7 @@ endif()
 project(opencl)
 
 #example command:
-#cmake -DVDI_DIR=/vdi -DUSE_COMGR_LIBRARY=yes -DLIBVDI_STATIC_DIR=/build ..
+#cmake -DROCclr_DIR=/rocclr -DUSE_COMGR_LIBRARY=yes -DLIBROCclr_STATIC_DIR=/build ..
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 set(BUILD_SHARED_LIBS "Build shared libs" ON)
