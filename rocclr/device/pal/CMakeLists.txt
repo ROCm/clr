@@ -5,8 +5,8 @@ string(REGEX REPLACE "PAL_MAJOR_VERSION = " "" PAL_MAJOR_VERSION ${PAL_MAJOR_VER
 file(STRINGS palcdefs GPUOPEN_MAJOR_VERSION REGEX "^GPUOPEN_MAJOR_VERSION = [0-9]+")
 string(REGEX REPLACE "GPUOPEN_MAJOR_VERSION = " "" GPUOPEN_MAJOR_VERSION ${GPUOPEN_MAJOR_VERSION})
 
-### Create PAL backend library for VDI
-add_library(vdipal OBJECT "")
+### Create PAL backend library for ROCclr
+add_library(rocclrpal OBJECT "")
 
 # Add defines necessary for PAL build
 set(PAL_CLIENT_INTERFACE_MAJOR_VERSION ${PAL_MAJOR_VERSION}
@@ -45,57 +45,57 @@ set(GLOBAL_ROOT_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(palbe)
 
 # Setup defines for the client compilation
-target_compile_definitions(vdipal PRIVATE
+target_compile_definitions(rocclrpal PRIVATE
     PAL_CLIENT_INTERFACE_MAJOR_VERSION=${PAL_CLIENT_INTERFACE_MAJOR_VERSION})
-target_compile_definitions(vdipal PRIVATE
+target_compile_definitions(rocclrpal PRIVATE
     GPUOPEN_CLIENT_INTERFACE_MAJOR_VERSION=${GPUOPEN_CLIENT_INTERFACE_MAJOR_VERSION})
-target_compile_definitions(vdipal PRIVATE
+target_compile_definitions(rocclrpal PRIVATE
     GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION=${GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION})
 
-target_compile_definitions(vdipal PRIVATE PAL_CLIENT_OCL=1)
-target_compile_definitions(vdipal PRIVATE PAL_GPUOPEN_OCL=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_GPUOPEN=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_SCPC=0)
-target_compile_definitions(vdipal PRIVATE PAL_CLOSED_SOURCE=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_GPUOPEN=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_CLIENT_OCL=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_GPUOPEN_OCL=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_GPUOPEN=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_SCPC=0)
+target_compile_definitions(rocclrpal PRIVATE PAL_CLOSED_SOURCE=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_GPUOPEN=1)
 
 # GFX9 targets
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_POLARIS22=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_GFX9=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_OSS4=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_VEGA12=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_VEGA20=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_RAVEN1=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_RAVEN2=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_RENOIR=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_POLARIS22=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_GFX9=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_OSS4=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_VEGA12=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_VEGA20=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_RAVEN1=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_RAVEN2=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_RENOIR=1)
 
 # GFX10 targets
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_GFX10=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_NAVI12=1)
-target_compile_definitions(vdipal PRIVATE PAL_BUILD_NAVI14=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_GFX10=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_NAVI12=1)
+target_compile_definitions(rocclrpal PRIVATE PAL_BUILD_NAVI14=1)
 
-target_compile_definitions(vdipal PRIVATE OPENCL_MAINLINE=1)
+target_compile_definitions(rocclrpal PRIVATE OPENCL_MAINLINE=1)
 
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
-  target_compile_definitions(vdipal PRIVATE USE_COMGR_LIBRARY)
+  target_compile_definitions(rocclrpal PRIVATE USE_COMGR_LIBRARY)
 endif()
 
 if(UNIX)
-  target_compile_definitions(vdipal PRIVATE PAL_AMDGPU_BUILD)
+  target_compile_definitions(rocclrpal PRIVATE PAL_AMDGPU_BUILD)
 endif()
 
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/compiler/sc/HSAIL/include)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../asic_reg)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/compiler/sc/HSAIL/include)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../asic_reg)
 
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/core)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/util)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/inc)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/third_party/metrohash/src)
-target_include_directories(vdipal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/core)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/inc/util)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/inc)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/third_party/metrohash/src)
+target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
-target_sources(vdipal PRIVATE
+target_sources(rocclrpal PRIVATE
   palappprofile.cpp
   palblit.cpp
   palconstbuf.cpp
@@ -119,6 +119,6 @@ target_sources(vdipal PRIVATE
   palvirtual.cpp
 )
 
-set_target_properties(vdipal PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(rocclrpal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
