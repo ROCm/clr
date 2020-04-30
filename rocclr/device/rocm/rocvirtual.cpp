@@ -922,9 +922,6 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
   profilingBegin(cmd);
 
   size_t offset = 0;
@@ -1029,9 +1026,6 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
 void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
 
   profilingBegin(cmd);
 
@@ -1229,9 +1223,6 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
   profilingBegin(cmd);
 
   cl_command_type type = cmd.type();
@@ -1248,9 +1239,6 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
 void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // in-order semantics: previous commands need to be done before we start
-  releaseGpuMemoryFence();
 
   profilingBegin(cmd);
   // no op for FGS supported device
@@ -1286,6 +1274,9 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
     if ((nullptr == srcMem && nullptr == dstMem) || // both not in svm space
         dev().forceFineGrain(srcMem) ||
         dev().forceFineGrain(dstMem)) {
+      // Wait on a kernel if one is outstanding
+      releaseGpuMemoryFence();
+
       // If these are from different contexts, then one of them could be in the device memory
       // This is fine, since spec doesn't allow for copies with pointers from different contexts
       amd::Os::fastMemcpy(cmd.dst(), cmd.src(), cmd.srcSize());
@@ -1327,9 +1318,6 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
 void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
 
   profilingBegin(cmd);
 
@@ -1424,9 +1412,6 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
   profilingBegin(cmd);
 
   // no op for FGS supported device
@@ -1447,6 +1432,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
           LogError("submitSVMMapMemory() - copy failed");
           cmd.setStatus(CL_MAP_FAILURE);
         }
+        // Wait on a kernel if one is outstanding
         releaseGpuMemoryFence();
         const void* mappedPtr = hsaMapMemory->owner()->getHostMem();
         amd::Os::fastMemcpy(cmd.svmPtr(), mappedPtr, cmd.size()[0]);
@@ -1463,9 +1449,6 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
   profilingBegin(cmd);
 
   // no op for FGS supported device
@@ -1476,6 +1459,8 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
 
     if (memory->mapMemory() != nullptr) {
       if (writeMapInfo->isUnmapWrite()) {
+        // Wait on a kernel if one is outstanding
+        releaseGpuMemoryFence();
         amd::Coord3D srcOrigin(0, 0, 0);
         Memory* hsaMapMemory = dev().getRocMemory(memory->mapMemory());
 
@@ -1502,9 +1487,6 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
 void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
 
   profilingBegin(cmd);
 
@@ -1563,8 +1545,8 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
         result = blitMgr().copyBuffer(*hsaMemory, *hsaMapMemory, origin, dstOrigin, size,
                                       cmd.isEntireMemory());
         void* svmPtr = devMemory->owner()->getSvmPtr();
-        if ((svmPtr != nullptr) &&
-            (hostPtr != svmPtr)) {
+        if ((svmPtr != nullptr) && (hostPtr != svmPtr)) {
+          // Wait on a kernel if one is outstanding
           releaseGpuMemoryFence();
           amd::Os::fastMemcpy(svmPtr, hostPtr, size[0]);
         }
@@ -1608,8 +1590,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
     LogError("Unmap without map call");
     return;
   }
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
+
   profilingBegin(cmd);
 
   // Force buffer write for IMAGE1D_BUFFER
@@ -1663,8 +1644,9 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
 
           const void* svmPtr = devMemory->owner()->getSvmPtr();
           void* hostPtr = mapMemory->getHostMem();
-          if ((svmPtr != nullptr) &&
-              (hostPtr != svmPtr)) {
+          if ((svmPtr != nullptr) && (hostPtr != svmPtr)) {
+            // Wait on a kernel if one is outstanding
+            releaseGpuMemoryFence();
             amd::Os::fastMemcpy(hostPtr, svmPtr, size[0]);
           }
           result = blitMgr().copyBuffer(*hsaMapMemory, *devMemory, mapInfo->origin_, mapInfo->origin_,
@@ -1751,9 +1733,6 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
-
   profilingBegin(cmd);
 
   if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(), cmd.origin(),
@@ -1766,9 +1745,6 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
 void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // in-order semantics: previous commands need to be done before we start
-  releaseGpuMemoryFence();
 
   profilingBegin(cmd);
 
@@ -1810,9 +1786,6 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
 void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-
-  // Wait on a kernel if one is outstanding
-  releaseGpuMemoryFence();
 
   profilingBegin(vcmd);
 

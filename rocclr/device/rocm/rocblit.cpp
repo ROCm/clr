@@ -35,11 +35,8 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
       context_(nullptr) {}
 
 inline void DmaBlitManager::synchronize() const {
-  // todo TS tracking isn't implemented
-  gpu().releaseGpuMemoryFence();
-
   if (syncOperation_) {
-    //        gpu().waitAllEngines();
+    gpu().releaseGpuMemoryFence();
     gpu().releasePinnedMem();
   }
 }
@@ -65,6 +62,9 @@ bool DmaBlitManager::readMemoryStaged(Memory& srcMemory, void* dstHost, Memory& 
 bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
@@ -149,6 +149,9 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
                                     const amd::BufferRect& bufRect, const amd::BufferRect& hostRect,
                                     const amd::Coord3D& size, bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
@@ -184,6 +187,9 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 bool DmaBlitManager::readImage(device::Memory& srcMemory, void* dstHost, const amd::Coord3D& origin,
                                const amd::Coord3D& size, size_t rowPitch, size_t slicePitch,
                                bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   if (setup_.disableReadImage_) {
     return HostBlitManager::readImage(srcMemory, dstHost, origin, size, rowPitch, slicePitch,
                                       entire);
@@ -213,6 +219,9 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
 bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   // Use host copy if memory has direct access
   if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
       gpuMem(dstMemory).IsPersistentDirectMap()) {
@@ -300,6 +309,9 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
                                      const amd::BufferRect& hostRect,
                                      const amd::BufferRect& bufRect, const amd::Coord3D& size,
                                      bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   // Use host copy if memory has direct access
   if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
       gpuMem(dstMemory).IsPersistentDirectMap()) {
@@ -335,6 +347,9 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
 bool DmaBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 size_t rowPitch, size_t slicePitch, bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   if (setup_.disableWriteImage_) {
     return HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch,
                                        entire);
@@ -350,6 +365,9 @@ bool DmaBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
 bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                 const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                 const amd::Coord3D& size, bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   if (setup_.disableCopyBuffer_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
       (dev().agent_profile() != HSA_PROFILE_FULL) && dstMemory.isHostMemDirectAccess())) {
@@ -364,6 +382,9 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
 bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& dstMemory,
                                     const amd::BufferRect& srcRect, const amd::BufferRect& dstRect,
                                     const amd::Coord3D& size, bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   if (setup_.disableCopyBufferRect_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
        dstMemory.isHostMemDirectAccess())) {
@@ -471,6 +492,9 @@ bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   bool result = false;
 
   if (setup_.disableCopyImageToBuffer_) {
@@ -512,6 +536,9 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   bool result = false;
 
   if (setup_.disableCopyBufferToImage_) {
@@ -550,6 +577,9 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
 bool DmaBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMemory,
                                const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                const amd::Coord3D& size, bool entire) const {
+  // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
+  gpu().releaseGpuMemoryFence();
+
   bool result = false;
 
   if (setup_.disableCopyImage_) {
@@ -1626,6 +1656,8 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize) {
     if ((srcMemory.owner()->getHostMem() == nullptr) && (srcMemory.owner()->getSvmPtr() != nullptr)) {
+      // CPU read ahead, hence release GPU memory
+      gpu().releaseGpuMemoryFence();
       void* src = srcMemory.owner()->getSvmPtr();
       std::memcpy(dstHost, src, size[0]);
       // Set HASPENDINGDISPATCH_ FLAG. That will force L2 invalidation on flush
@@ -1729,11 +1761,13 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
 
   if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize) {
     if ((dstMemory.owner()->getHostMem() == nullptr) && (dstMemory.owner()->getSvmPtr() != nullptr)) {
+      // CPU read ahead, hence release GPU memory
+      gpu().releaseGpuMemoryFence();
       void* dst = dstMemory.owner()->getSvmPtr();
       std::memcpy(dst, srcHost, size[0]);
-      // Set HASPENDINGDISPATCH_ FLAG. Then synchronize() will use barrier to invalidate cache
+      // Set HASPENDINGDISPATCH_ FLAG. Then releaseGpuMemoryFence() will use barrier to invalidate cache
       gpu().hasPendingDispatch();
-      synchronize();
+      gpu().releaseGpuMemoryFence();
       return true;
     }
   }
@@ -1972,6 +2006,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
   } else {
+    //printf("rocm!\n");
     result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire);
   }
 
