@@ -1765,7 +1765,7 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
   } else {
 
     if (isHIP()) {
-      optionsVec.push_back("-D__HIP_VDI__=1");
+      optionsVec.push_back("-D__HIP_ROCclr__=1");
       scratchStr.clear();
       std::string target(machineTarget_);
       std::transform(target.begin(), target.end(), target.begin(), ::toupper);

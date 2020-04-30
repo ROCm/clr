@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.5)
 
 #cmake   -DOPENCL_DIR=/path to/opencl ..
 
-set(ROCCLR_EXPORTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/amdvdi_staticTargets.cmake")
+set(ROCCLR_EXPORTS_FILE "${CMAKE_CURRENT_BINARY_DIR}/amdrocclr_staticTargets.cmake")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
@@ -141,13 +141,13 @@ set(oclruntime_src
   #${CMAKE_CURRENT_SOURCE_DIR}/compiler/tools/caching/cache.cpp
 )
 
-add_library(amdvdi_static STATIC
+add_library(amdrocclr_static STATIC
   ${oclruntime_src} ${COMGR_CPP}
   $<TARGET_OBJECTS:oclelf_obj>)
 
-set_target_properties(amdvdi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(amdrocclr_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(amdvdi_static
+target_include_directories(amdrocclr_static
   PUBLIC
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
@@ -155,54 +155,54 @@ target_include_directories(amdvdi_static
     ${ROCR_INCLUDES}
     ${ROCT_INCLUDES})
 
-target_compile_definitions(amdvdi_static PRIVATE BSD_LIBELF)
+target_compile_definitions(amdrocclr_static PRIVATE BSD_LIBELF)
 
 if(${USE_COMGR_LIBRARY} MATCHES "yes")
   # FIXME: This should not be part of the public interface. Downstream
   # users need to add these definitions. This should be defined in a
   # config header here so other builds don't need to be aware of this.
-  target_compile_definitions(amdvdi_static PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  target_compile_definitions(amdrocclr_static PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
 endif()
 
-target_link_libraries(amdvdi_static PUBLIC Threads::Threads)
-target_link_libraries(amdvdi_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
+target_link_libraries(amdrocclr_static PUBLIC Threads::Threads)
+target_link_libraries(amdrocclr_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
 
 if (BUILD_PAL)
-  target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:vdipal>)
-  target_link_libraries(amdvdi_static PRIVATE amdhsaloader)
-  target_link_libraries(amdvdi_static PRIVATE pal)
+  target_sources(amdrocclr_static PRIVATE $<TARGET_OBJECTS:rocclrpal>)
+  target_link_libraries(amdrocclr_static PRIVATE amdhsaloader)
+  target_link_libraries(amdrocclr_static PRIVATE pal)
 
-  target_compile_definitions(amdvdi_static PRIVATE WITH_PAL_DEVICE)
+  target_compile_definitions(amdrocclr_static PRIVATE WITH_PAL_DEVICE)
 
-  export(TARGETS amdvdi_static vdipal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
+  export(TARGETS amdrocclr_static rocclrpal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
     FILE ${ROCCLR_EXPORTS_FILE}
   )
 else()
-  target_compile_definitions(amdvdi_static PRIVATE WITH_HSA_DEVICE)
+  target_compile_definitions(amdrocclr_static PRIVATE WITH_HSA_DEVICE)
 
-  target_sources(amdvdi_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
-  export(TARGETS amdvdi_static
+  target_sources(amdrocclr_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
+  export(TARGETS amdrocclr_static
     FILE ${ROCCLR_EXPORTS_FILE}
   )
 endif()
 
 if (UNIX)
-    set(VDI_DEFAULT_INSTALL_PREFIX "/opt/rocm/vdi")
+    set(ROCclr_DEFAULT_INSTALL_PREFIX "/opt/rocm/rocclr")
 endif()
 #comment out as it's not available in cmake 3.5
 #if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 if(NOT CMAKE_INSTALL_PREFIX)
     if(CMAKE_BUILD_TYPE MATCHES Debug)
-        set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Installation path for vdi" FORCE)
+        set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Installation path for rocclr" FORCE)
     #elseif(CMAKE_BUILD_TYPE MATCHES Release)
     else()
-        set(CMAKE_INSTALL_PREFIX ${VDI_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for vdi" FORCE)
+        set(CMAKE_INSTALL_PREFIX ${ROCclr_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for rocclr" FORCE)
    #    message(FATAL_ERROR "Invalid CMAKE_BUILD_TYPE specified. Valid values are Debug and Release")
    endif()
 #endif()
 endif()
 
-install( TARGETS amdvdi_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
+install( TARGETS amdrocclr_static ARCHIVE DESTINATION lib LIBRARY DESTINATION lib COMPONENT applications)
 file(GLOB headerfiles "${CMAKE_CURRENT_SOURCE_DIR}/*.h*")
 install (
     FILES ${headerfiles}
