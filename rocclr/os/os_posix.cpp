@@ -707,6 +707,45 @@ void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName
   return;
 }
 
+bool Os::MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size) {
+  if(munmap(const_cast<void*>(mmap_ptr), mmap_size) != 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_size) {
+  if ((mmap_ptr == nullptr) || (mmap_size == nullptr)) {
+    return false;
+  }
+
+  FILE* fp = fopen(fname, "r");
+  if (fp == nullptr) {
+    return false;
+  }
+
+  int fd = fileno(fp);
+  if (fd < 0 ) {
+    fclose(fp);
+    return false;
+  }
+
+  fseek(fp, 0L, SEEK_END);
+  *mmap_size = ftell(fp);
+  fseek(fp, 0L, SEEK_SET);
+
+  *mmap_ptr = mmap(NULL, *mmap_size, PROT_READ, MAP_SHARED, fd, 0);
+
+  fclose(fp);
+
+  if (*mmap_ptr == nullptr) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace amd
 
 #endif  // !defined(_WIN32) && !defined(__CYGWIN__)

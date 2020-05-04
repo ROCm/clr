@@ -80,6 +80,7 @@ class Context;
 //! A collection of binaries for devices in the associated context.
 class Program : public RuntimeObject {
  public:
+  typedef std::pair<const void* /* mmap_ptr */, const size_t /* mmap_size */> mmap_t;
   typedef std::tuple<const uint8_t* /*image*/, size_t /*size*/,  bool /*allocated*/> binary_t;
   typedef std::set<Device const*> devicelist_t;
   typedef std::unordered_map<Device const*, binary_t> devicebinary_t;
@@ -113,6 +114,7 @@ class Program : public RuntimeObject {
   //! The device program objects included in this program
   deviceprograms_t devicePrograms_;
   devicelist_t deviceList_;
+  const mmap_t mmap_;
 
   std::string programLog_;  //!< Log for parsing options, etc.
 
@@ -133,11 +135,16 @@ class Program : public RuntimeObject {
         sourceCode_(sourceCode),
         language_(language),
         symbolTable_(NULL),
-        programLog_() {}
+        mmap_({nullptr, 0}),
+        programLog_() {
+  }
 
   //! Construct a new program associated with a context.
-  Program(Context& context, Language language = Binary)
-      : context_(context), language_(language), symbolTable_(NULL) {}
+  Program(Context& context, Language language = Binary,
+          const void* mmap_ptr = nullptr, const size_t mmap_size = 0)
+      : context_(context), language_(language),
+        mmap_({mmap_ptr, mmap_size}),
+        symbolTable_(NULL) {}
 
   //! Returns context, associated with the current program.
   const Context& context() const { return context_(); }

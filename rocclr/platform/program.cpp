@@ -67,6 +67,10 @@ Program::~Program() {
     }
   }
 
+  if (std::get<1>(mmap_) > 0) {
+    amd::Os::MemoryUnmapFile(std::get<0>(mmap_), std::get<1>(mmap_));
+  }
+
   delete symbolTable_;
   //! @todo Make sure we have destroyed all CPU specific objects
 }
