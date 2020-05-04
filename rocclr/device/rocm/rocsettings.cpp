@@ -88,7 +88,7 @@ Settings::Settings() {
   imageBufferWar_ = false;
 }
 
-bool Settings::create(bool fullProfile, int gfxipVersion, bool coop_groups) {
+bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups) {
   customHostAllocator_ = false;
 
   if (fullProfile) {
@@ -131,7 +131,7 @@ bool Settings::create(bool fullProfile, int gfxipVersion, bool coop_groups) {
   if (useLightning_) {
     enableExtension(ClAmdAssemblyProgram);
     // enable subnormals for gfx900 and later
-    if (gfxipVersion >= 900) {
+    if (gfxipMajor >= 9) {
       singleFpDenorm_ = true;
       enableCoopGroups_ = coop_groups;
       enableCoopMultiDeviceGroups_ = coop_groups;
@@ -141,10 +141,10 @@ bool Settings::create(bool fullProfile, int gfxipVersion, bool coop_groups) {
     enableExtension(ClAmdFp64);
   }
 
-  if (gfxipVersion >= 1000) {
+  if (gfxipMajor >= 10) {
      enableWave32Mode_ = true;
      enableWgpMode_ = GPU_ENABLE_WGP_MODE;
-     if (gfxipVersion >= 1010) {
+     if (gfxipMinor >= 10) {
        // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
        // TODO: This should be updated when ROCr support custom pitch
        imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;

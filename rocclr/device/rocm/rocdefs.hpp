@@ -44,7 +44,9 @@ struct AMDDeviceInfo {
   uint memChannelBankWidth_;   //!< Memory channel bank width
   uint localMemSizePerCU_;     //!< Local memory size per CU
   uint localMemBanks_;         //!< Number of banks of local memory
-  uint gfxipVersion_;          //!< The core engine GFXIP version
+  uint gfxipMajor_;            //!< The core engine GFXIP Major version
+  uint gfxipMinor_;            //!< The core engine GFXIP Minor version
+  uint gfxipStepping_;         //!< The core engine GFXIP Stepping version
   uint pciDeviceId_;           //!< PCIe device id
 };
 
