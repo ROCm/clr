@@ -91,6 +91,9 @@ class Os : AllStatic {
 #endif
   };
 
+  static bool MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_size);
+  static bool MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size);
+
  private:
   static const size_t FILE_PATH_MAX_LENGTH = 1024;
 
