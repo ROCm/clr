@@ -133,7 +133,7 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
 
   settings_ = new Settings();
   roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-  if ((hsaSettings == nullptr) || !hsaSettings->create(false, deviceInfo_.gfxipVersion_)) {
+  if ((hsaSettings == nullptr) || !hsaSettings->create(false, deviceInfo_.gfxipMajor_, deviceInfo_.gfxipMinor_)) {
     LogError("Error creating settings for nullptr HSA device");
     return false;
   }
@@ -526,7 +526,6 @@ bool Device::init() {
 
     std::string str(isaName);
 
-    unsigned gfxipVersionNum = (unsigned)-1;
     if (str.find("amdgcn-") == 0) {
       // New way.
       std::vector<std::string> tokens;
@@ -548,38 +547,35 @@ bool Device::init() {
       }
 
       std::string gfxipVersionStr = tokens[4].substr(tokens[4].find("gfx") + 3);
-      gfxipVersionNum = std::atoi(gfxipVersionStr.c_str());
+
+      std::string steppingStr(&gfxipVersionStr.back());
+      roc_device->deviceInfo_.gfxipStepping_ = std::stoi(steppingStr, nullptr, 16);
+      gfxipVersionStr.pop_back();
+
+      std::string minorStr(&gfxipVersionStr.back());
+      roc_device->deviceInfo_.gfxipMinor_ = std::stoi(minorStr);
+      gfxipVersionStr.pop_back();
+
+      roc_device->deviceInfo_.gfxipMajor_ = std::stoi(gfxipVersionStr);
+
     } else {
-      // FIXME(kzhuravl): Old way. Remove.
-      std::vector<std::string> tokens;
-      size_t end, pos = 0;
-      do {
-        end = str.find_first_of(':', pos);
-        tokens.push_back(str.substr(pos, end - pos));
-        pos = end + 1;
-      } while (end != std::string::npos);
-
-      if (tokens.size() != 5 || tokens[0] != "AMD" || tokens[1] != "AMDGPU") {
-        LogError("Not an AMD:AMDGPU ISA name");
-        continue;
-      }
-
-      uint major = atoi(tokens[2].c_str());
-      uint minor = atoi(tokens[3].c_str());
-      uint stepping = atoi(tokens[4].c_str());
-      if (minor >= 10 && stepping >= 10) {
-        LogError("Invalid ISA string");
-        continue;
-      }
-      gfxipVersionNum = major * 100 + minor * 10 + stepping;
+      ShouldNotReachHere();
     }
-    assert(gfxipVersionNum != (unsigned)-1);
-
-    roc_device->deviceInfo_.gfxipVersion_ = gfxipVersionNum;
 
     // TODO: set sramEccEnabled flag based on target string suffix
     //       when ROCr resumes reporting sram-ecc support
-    bool sramEccEnabled = (gfxipVersionNum == 906 || gfxipVersionNum == 908) ? true : false;
+    bool sramEccEnabled = false;
+    if ((roc_device->deviceInfo_.gfxipMajor_ == 9) && (roc_device->deviceInfo_.gfxipMinor_ == 0)) {
+      switch (roc_device->deviceInfo_.gfxipStepping_) {
+      case 6:
+      case 8:
+        sramEccEnabled = true;
+        break;
+      default:
+        break;
+      }
+    }
+
     if (!roc_device->create(sramEccEnabled)) {
       LogError("Error creating new instance of Device.");
       continue;
@@ -646,7 +642,7 @@ bool Device::create(bool sramEccEnabled) {
   roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
   if ((hsaSettings == nullptr) ||
       !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL),
-        deviceInfo_.gfxipVersion_, coop_groups)) {
+        deviceInfo_.gfxipMajor_, deviceInfo_.gfxipMinor_, coop_groups)) {
     return false;
   }
 
@@ -1026,12 +1022,10 @@ bool Device::populateOCLDeviceConstants() {
 
   roc::Settings* hsa_settings = static_cast<roc::Settings*>(settings_);
 
-  int gfxipMajor = deviceInfo_.gfxipVersion_ / 100;
-  int gfxipMinor = deviceInfo_.gfxipVersion_ / 10 % 10;
-  int gfxipStepping = deviceInfo_.gfxipVersion_ % 10;
-
   std::ostringstream oss;
-  oss << "gfx" << gfxipMajor << gfxipMinor << gfxipStepping;
+
+  oss << "gfx" << deviceInfo_.gfxipMajor_ << deviceInfo_.gfxipMinor_ << std::hex << deviceInfo_.gfxipStepping_;
+
   if (settings().useLightning_ && hsa_settings->enableXNACK_) {
     oss << "+xnack";
   }
@@ -1088,7 +1082,7 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   //TODO: add the assert statement for Raven
-  if (deviceInfo_.gfxipVersion_ != 902) {
+  if ((deviceInfo_.gfxipMajor_*100 + deviceInfo_.gfxipMinor_*10 + deviceInfo_.gfxipStepping_) != 902) {
     assert(info_.maxEngineClockFrequency_ > 0);
   }
 
@@ -1270,7 +1264,7 @@ bool Device::populateOCLDeviceConstants() {
   strcpy(info_.driverVersion_, ss.str().c_str());
 
   // Enable OpenCL 2.0 for Vega10+
-  if (deviceInfo_.gfxipVersion_ >= 900) {
+  if (deviceInfo_.gfxipMajor_ >= 9) {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.0" " ";
   } else {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"1.2" " ";
@@ -1397,15 +1391,14 @@ bool Device::populateOCLDeviceConstants() {
     }
     if (amd::IS_HIP) {
       // Report atomics capability based on GFX IP, control on Hawaii
-      if (info_.hostUnifiedMemory_ || deviceInfo_.gfxipVersion_ >= 800) {
+      if (info_.hostUnifiedMemory_ || deviceInfo_.gfxipMajor_ >= 8) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
     else if (!settings().useLightning_) {
       // Report atomics capability based on GFX IP, control on Hawaii
       // and Vega10.
-      if (info_.hostUnifiedMemory_ ||
-          ((deviceInfo_.gfxipVersion_ >= 800) && (deviceInfo_.gfxipVersion_ < 900))) {
+      if (info_.hostUnifiedMemory_ || (deviceInfo_.gfxipMajor_ == 8)) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
@@ -1445,7 +1438,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
     info_.localMemBanks_ = deviceInfo_.localMemBanks_;
-    info_.gfxipVersion_ = deviceInfo_.gfxipVersion_;
+    info_.gfxipVersion_ = deviceInfo_.gfxipMajor_ * 100 + deviceInfo_.gfxipMinor_ * 10 + deviceInfo_.gfxipStepping_;
     info_.numAsyncQueues_ = kMaxAsyncQueues;
     info_.numRTQueues_ = info_.numAsyncQueues_;
     info_.numRTCUs_ = info_.maxComputeUnits_;
