@@ -67,6 +67,10 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
   add_definitions(-DDEBUG)
 endif()
 
+if(DEV_LOG_ENABLE MATCHES "yes")
+  add_definitions(-DDEV_LOG_ENABLE=1)
+endif()
+
 if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
   include_directories(${LLVM_INCLUDES})
 endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
