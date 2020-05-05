@@ -234,8 +234,8 @@ bool HSAILKernel::init() {
   }
 
   uint32_t wavefront_size = 0;
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size)) {
+  hsa_status_t hsaStatus = hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size);
+  if (HSA_STATUS_SUCCESS != hsaStatus) {
     DevLogPrintfError("Could not get Wave Info Size: %d, failed with hsa_status: %d \n",
                       errorCode, hsaStatus);
     return false;
