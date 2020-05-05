@@ -1658,8 +1658,8 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
     if ((srcMemory.owner()->getHostMem() == nullptr) && (srcMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory
       gpu().releaseGpuMemoryFence();
-      void* src = srcMemory.owner()->getSvmPtr();
-      std::memcpy(dstHost, src, size[0]);
+      char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
+      std::memcpy(dstHost, src + origin[0], size[0]);
       // Set HASPENDINGDISPATCH_ FLAG. That will force L2 invalidation on flush
       gpu().hasPendingDispatch();
       return true;
@@ -1763,8 +1763,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
     if ((dstMemory.owner()->getHostMem() == nullptr) && (dstMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory
       gpu().releaseGpuMemoryFence();
-      void* dst = dstMemory.owner()->getSvmPtr();
-      std::memcpy(dst, srcHost, size[0]);
+      char* dst = reinterpret_cast<char*>(dstMemory.owner()->getSvmPtr());
+      std::memcpy(dst + origin[0], srcHost, size[0]);
       // Set HASPENDINGDISPATCH_ FLAG. Then releaseGpuMemoryFence() will use barrier to invalidate cache
       gpu().hasPendingDispatch();
       gpu().releaseGpuMemoryFence();
