@@ -143,8 +143,8 @@ class Program : public RuntimeObject {
   Program(Context& context, Language language = Binary,
           const void* mmap_ptr = nullptr, const size_t mmap_size = 0)
       : context_(context), language_(language),
-        mmap_({mmap_ptr, mmap_size}),
-        symbolTable_(NULL) {}
+        symbolTable_(NULL),
+        mmap_({mmap_ptr, mmap_size}) {}
 
   //! Returns context, associated with the current program.
   const Context& context() const { return context_(); }
