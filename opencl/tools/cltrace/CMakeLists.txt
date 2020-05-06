@@ -13,6 +13,6 @@ include_directories(${ROCclr_DIR}/include)
 
 add_definitions(-DHAVE_CL2_HPP -DCL_TARGET_OPENCL_VERSION=220)
 
-add_library(cltrace cltrace.cpp)
+add_library(cltrace SHARED cltrace.cpp cltrace.def)
 
 target_link_libraries(cltrace OpenCL)
