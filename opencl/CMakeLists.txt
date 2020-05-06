@@ -79,6 +79,12 @@ install(PROGRAMS $<TARGET_LINKER_FILE:OpenCL>
 #############################
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl" CACHE PATH "Package Installation path for OpenCL")
 
+#ROCM_PATH is needed to create symlink of libraries
+if (NOT DEFINED ROCM_PATH )
+     string(REPLACE "/opencl" "" ROCM_PATH ${CPACK_PACKAGING_INSTALL_PREFIX})
+endif ()
+message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
+
 # Package: rocm-opencl
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-opencl)
 configure_file(packaging/rocm-opencl.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)

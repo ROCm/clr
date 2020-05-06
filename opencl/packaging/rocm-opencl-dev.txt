@@ -8,7 +8,6 @@ install(DIRECTORY @opencl_SOURCE_DIR@/khronos/headers/opencl2.2/CL
         PATTERN cl_d3d11.h EXCLUDE
         PATTERN cl_dx9_media_sharing.h EXCLUDE
         PATTERN cl_egl.h EXCLUDE)
-install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so DESTINATION lib)
 
 #############################
 # Packaging steps
