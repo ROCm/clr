@@ -23,6 +23,7 @@
 
 #include <CL/cl.h>
 #include "amdocl/cl_icd_amd.h"
+#include <stdint.h>
 
 #define cl_amd_agent 1
 
