@@ -884,8 +884,6 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
     }
     return true;
   }
-  DevLogPrintfError("Cannot Load Compilation Options: %s \n",
-                    compileOptions.c_str());
   return false;
 }
 
@@ -900,7 +898,6 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
     }
     return true;
   }
-  DevLogPrintfError("Cannot Load Link Options: %s \n", linkOptions.c_str());
   return false;
 }
 
