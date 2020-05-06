@@ -11,6 +11,11 @@ case "$1" in
   purge)
   ;;
   remove)
+    rm -f @ROCM_PATH@/lib/libOpenCL.so
+    rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
+    rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
+    rmdir --ignore-fail-on-non-empty @ROCM_PATH@/lib
+    rmdir --ignore-fail-on-non-empty @ROCM_PATH@
     rm_ldconfig
   ;;
   *)

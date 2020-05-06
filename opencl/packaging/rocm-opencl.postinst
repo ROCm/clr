@@ -9,11 +9,18 @@ do_ldconfig() {
   mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)
 }
 
+INSTALL_PATH=@CPACK_PACKAGING_INSTALL_PREFIX@
+ROCM_LIBPATH=@ROCM_PATH@/lib
+
 case "$1" in
   abort-deconfigure|abort-remove|abort-upgrade)
     echo "$1"
   ;;
   configure)
+    mkdir -p ${ROCM_LIBPATH}
+    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so ${ROCM_LIBPATH}/libOpenCL.so
+    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@ ${ROCM_LIBPATH}/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
+    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@ ${ROCM_LIBPATH}/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
     do_ldconfig
   ;;
   *)
