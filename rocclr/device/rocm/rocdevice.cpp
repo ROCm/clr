@@ -896,7 +896,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED) {
             dev->info_.largeBar_ = false;
           } else {
-            dev->info_.largeBar_ = true;
+            dev->info_.largeBar_ = ROC_ENABLE_LARGE_BAR;
           }
         }
 
