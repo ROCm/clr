@@ -1486,7 +1486,7 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   // If amd command queue is null, then it's an internal device queue
   if (queue == nullptr) {
     // In HIP mode the device queue will be allocated for the cooperative launches only
-    cooperative = amd::IS_HIP;
+    cooperative = amd::IS_HIP && settings().enableCoopGroups_;
     profiling = amd::IS_HIP;
   }
 
@@ -1968,8 +1968,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
       return nullptr;
     }
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d",
-                queue, queue_size);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d, cooperative: %i",
+                queue, queue_size, coop_queue);
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
   if (coop_queue) {
     // Skip queue recycling for cooperative queues, since it should be just one
