@@ -450,16 +450,12 @@ bool Device::init() {
     return false;
   }
 
-  std::unordered_map<int, bool> selectedDevices;
-  bool useDeviceList = false;
-
   std::string ordinals = amd::IS_HIP ? ((HIP_VISIBLE_DEVICES[0] != '\0') ?
                          HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
                          : GPU_DEVICE_ORDINAL;
   if (ordinals[0] != '\0') {
-    useDeviceList = true;
-
     size_t end, pos = 0;
+    std::vector<hsa_agent_t> valid_agents;
     do {
       bool deviceIdValid = true;
       end = ordinals.find_first_of(',', pos);
@@ -472,14 +468,14 @@ bool Device::init() {
         // Exit the loop as anything to the right of invalid deviceId
         // has to be discarded
         break;
+      } else {
+        valid_agents.push_back(gpu_agents_[index]);
       }
-
-      selectedDevices[index] = deviceIdValid;
       pos = end + 1;
     } while (end != std::string::npos);
+    gpu_agents_ = valid_agents;
   }
 
-  size_t ordinal = 0;
   for (auto agent : gpu_agents_) {
     std::unique_ptr<Device> roc_device(new Device(agent));
 
@@ -600,9 +596,7 @@ bool Device::init() {
       }
     }
 
-    if (!useDeviceList || selectedDevices[ordinal++]) {
-      roc_device.release()->registerDevice();
-    }
+    roc_device.release()->registerDevice();
   }
 
   if (0 != Device::numDevices(CL_DEVICE_TYPE_GPU, false)) {
