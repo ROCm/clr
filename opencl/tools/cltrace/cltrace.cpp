@@ -4361,12 +4361,12 @@ cleanup(void)
 #define SET_ORIGINAL(DISPATCH) \
     modified_dispatch.DISPATCH = original_dispatch.DISPATCH;
 
-cl_int CL_CALLBACK
+int32_t CL_CALLBACK
 vdiAgent_OnLoad(vdi_agent * agent)
 {
     char *clTraceLogEnv;
     
-    cl_int err = agent->GetICDDispatchTable(
+    int32_t err = agent->GetICDDispatchTable(
             agent, &original_dispatch, sizeof(original_dispatch));
     if (err != CL_SUCCESS) {
         return err;
