@@ -32,8 +32,8 @@ bool Comgr::LoadLib() {
 #if defined(COMGR_DYN_DLL)
   ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Loading COMGR library.");
   static const char* ComgrLibName =
-    LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so"),
-                WINDOWS_SWITCH("amd_comgr.dll", "libamd_comgr.so"));
+    LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so.1"),
+                WINDOWS_SWITCH("amd_comgr.dll", "libamd_comgr.so.1"));
   cep_.handle = Os::loadLibrary(ComgrLibName);
   if (nullptr == cep_.handle) {
     return false;
