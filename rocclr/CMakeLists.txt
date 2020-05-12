@@ -29,8 +29,16 @@ write_basic_package_version_file("${ROCCLR_VERSION_PATH}"
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
-# FIXME: Should be option and ON/OFF, not yes/no variable.
-set(USE_COMGR_LIBRARY "yes")
+# FIXME: Handling legacy custom boolean matching "yes" or "no"
+if(DEFINED USE_COMGR_LIBRARY)
+  if(${USE_COMGR_LIBRARY} MATCHES "yes")
+    set(USE_COMGR_LIBRARY ON)
+  elseif(${USE_COMGR_LIBRARY} MATCHES "no")
+    set(USE_COMGR_LIBRARY OFF)
+  endif()
+endif()
+
+option(USE_COMGR_LIBRARY "Use comgr library" ON)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options("-Wno-ignored-attributes")
