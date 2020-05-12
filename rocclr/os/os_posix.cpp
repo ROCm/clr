@@ -720,24 +720,21 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
     return false;
   }
 
-  FILE* fp = fopen(fname, "r");
-  if (fp == nullptr) {
-    return false;
-  }
-
-  int fd = fileno(fp);
+  struct stat stat_buf;
+  int fd = open(fname, O_RDONLY);
   if (fd < 0 ) {
-    fclose(fp);
     return false;
   }
 
-  fseek(fp, 0L, SEEK_END);
-  *mmap_size = ftell(fp);
-  fseek(fp, 0L, SEEK_SET);
+  if(fstat(fd, &stat_buf) != 0) {
+    close(fd);
+    return false;
+  }
 
-  *mmap_ptr = mmap(NULL, *mmap_size, PROT_READ, MAP_SHARED, fd, 0);
+  *mmap_size = stat_buf.st_size;
+  *mmap_ptr = mmap(NULL, stat_buf.st_size, PROT_READ, MAP_SHARED, fd, 0);
 
-  fclose(fp);
+  close(fd);
 
   if (*mmap_ptr == nullptr) {
     return false;
