@@ -13,6 +13,47 @@ project(opencl)
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 set(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
+
+if(${USE_COMGR_LIBRARY} MATCHES "yes")
+  add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
+  find_package(amd_comgr REQUIRED CONFIG
+     PATHS
+       /opt/rocm/
+     PATH_SUFFIXES
+      cmake/amd_comgr
+      lib/cmake/amd_comgr
+   )
+   MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
+
+  include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
+endif()
+
+
+# FIXME: ROCclr_DIR and LIBROCclr_STATIC_DIR are for compatability with
+# current build scripts. Instead they should install, or use
+# CMAKE_PREFIX_PATH
+# FIXME: Make this required and remove the legacy handling below
+set(save_rocclr_dir ${ROCclr_DIR})
+set(save_rocclr_static_dir ${LIBROCclr_STATIC_DIR})
+
+find_package(ROCclr CONFIG
+  PATHS
+    ${ROCclr_DIR}
+    ${LIBROCclr_STATIC_DIR})
+
+if(NOT ROCclr_FOUND)
+  # FIXME: Make ROCclr find required and remove this.
+  #
+  # This is to break the dependency on patch to start producing find
+  # module.
+  set(LIBROCclr_STATIC_DIR ${save_rocclr_static_dir} CACHE PATH "" FORCE)
+  set(ROCclr_DIR ${save_rocclr_dir} CACHE PATH "" FORCE)
+  include(${LIBROCclr_STATIC_DIR}/amdrocclr_staticTargets.cmake)
+endif()
+
 add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
