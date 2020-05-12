@@ -15,7 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # cmake -DCMAKE_PREFIX_PATH=/path/to/ROCclr/build/or/install ..
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
-set(BUILD_SHARED_LIBS "Build shared libs" ON)
+option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
 # FIXME: Handling legacy custom boolean matching "yes" or "no"
 if(DEFINED USE_COMGR_LIBRARY)
