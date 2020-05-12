@@ -1479,7 +1479,7 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
 
   // Initialization of heap and other resources occur during the command
   // queue creation time.
-  VirtualGPU* virtualDevice = new VirtualGPU(*this, profiling, cooperative);
+  VirtualGPU* virtualDevice = new VirtualGPU(*this, profiling, cooperative, queue->cuMask());
 
   if (!virtualDevice->create()) {
     delete virtualDevice;
@@ -1908,7 +1908,8 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   }
 }
 
-hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
+hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
+                                  const std::vector<uint32_t>& cuMask) {
   assert(queuePool_.size() <= GPU_MAX_HW_QUEUES);
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "number of allocated hardware queues: %d, maximum: %d",
           queuePool_.size(), GPU_MAX_HW_QUEUES);
@@ -1916,7 +1917,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
   // If we have reached the max number of queues, reuse an existing queue,
   // choosing the one with the least number of users.
   // Note: Don't attempt to reuse the cooperative queue, since it's single per device
-  if (!coop_queue && (queuePool_.size() == GPU_MAX_HW_QUEUES)) {
+  if (!coop_queue && (cuMask.size() == 0) && (queuePool_.size() == GPU_MAX_HW_QUEUES)) {
     typedef decltype(queuePool_)::const_reference PoolRef;
     auto lowest = std::min_element(queuePool_.begin(), queuePool_.end(),
                                    [] (PoolRef A, PoolRef B) {
@@ -1958,6 +1959,24 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue) {
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d, cooperative: %i",
                 queue, queue_size, coop_queue);
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
+  if (cuMask.size() != 0) {
+    std::stringstream ss;
+    ss << std::hex;
+    for (int i = cuMask.size() - 1; i >= 0; i--) {
+      ss << cuMask[i];
+    }
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "setting custom CU mask 0x%s for hardware queue %p",
+            ss.str().c_str(), queue);
+    hsa_status_t status = HSA_STATUS_SUCCESS;
+    status = hsa_amd_queue_cu_set_mask(queue, cuMask.size() * 32, cuMask.data());
+    if (status != HSA_STATUS_SUCCESS) {
+      DevLogError("Device::acquireQueue: hsa_amd_queue_cu_set_mask failed!");
+      hsa_queue_destroy(queue);
+      return nullptr;
+    }
+    // Skip queue recycling for queues with custom CU mask
+    return queue;
+  }
   if (coop_queue) {
     // Skip queue recycling for cooperative queues, since it should be just one
     // per device.

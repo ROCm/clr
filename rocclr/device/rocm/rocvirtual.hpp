@@ -163,7 +163,8 @@ class VirtualGPU : public device::VirtualDevice {
     size_t maxMemObjectsInQueue_;     //!< Maximum number of mem objects in the queue
   };
 
-  VirtualGPU(Device& device, bool profiling = false, bool cooperative = false);
+  VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
+             const std::vector<uint32_t>& cuMask = {});
   ~VirtualGPU();
 
   bool create();
@@ -362,6 +363,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   uint16_t dispatchPacketHeaderNoSync_;
   uint16_t dispatchPacketHeader_;
+
+  const std::vector<uint32_t>& cuMask_;  //!< The CU mask
 };
 
 template <typename T>
