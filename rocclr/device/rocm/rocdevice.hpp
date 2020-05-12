@@ -432,7 +432,8 @@ class Device : public NullDevice {
 
   //! Acquire HSA queue. This method can create a new HSA queue or
   //! share previously created
-  hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false);
+  hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false,
+                            const std::vector<uint32_t>& cuMask = {});
 
   //! Release HSA queue
   void releaseQueue(hsa_queue_t*);

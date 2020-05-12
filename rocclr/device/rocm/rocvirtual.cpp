@@ -590,7 +590,8 @@ bool VirtualGPU::releaseGpuMemoryFence() {
   return true;
 }
 
-VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative)
+VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
+                       const std::vector<uint32_t>& cuMask)
     : device::VirtualDevice(device),
       state_(0),
       gpu_queue_(nullptr),
@@ -601,7 +602,8 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative)
       schedulerThreads_(0),
       schedulerParam_(nullptr),
       schedulerQueue_(nullptr),
-      schedulerSignal_({0})
+      schedulerSignal_({0}),
+      cuMask_(cuMask)
 {
   index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();
@@ -643,6 +645,7 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative)
   // Note: Virtual GPU device creation must be a thread safe operation
   roc_device_.vgpus_.resize(roc_device_.numOfVgpus_);
   roc_device_.vgpus_[index()] = this;
+
 }
 
 VirtualGPU::~VirtualGPU() {
@@ -702,7 +705,7 @@ VirtualGPU::~VirtualGPU() {
 bool VirtualGPU::create() {
   // Pick a reasonable queue size
   uint32_t queue_size = 1024;
-  gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_);
+  gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_, cuMask_);
   if (!gpu_queue_) return false;
 
   if (!initPool(dev().settings().kernargPoolSize_, (profiling_) ? queue_size : 0)) {
