@@ -8,16 +8,27 @@ endif()
 project(opencl)
 
 #example command:
-#cmake -DROCclr_DIR=/rocclr -DUSE_COMGR_LIBRARY=yes -DLIBROCclr_STATIC_DIR=/build ..
+#cmake -DROCclr_DIR=/rocclr -DUSE_COMGR_LIBRARY=ON -DLIBROCclr_STATIC_DIR=/build ..
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 set(BUILD_SHARED_LIBS "Build shared libs" ON)
+
+# FIXME: Handling legacy custom boolean matching "yes" or "no"
+if(DEFINED USE_COMGR_LIBRARY)
+  if(${USE_COMGR_LIBRARY} MATCHES "yes")
+    set(USE_COMGR_LIBRARY ON)
+  elseif(${USE_COMGR_LIBRARY} MATCHES "no")
+    set(USE_COMGR_LIBRARY OFF)
+  endif()
+endif()
+
+option(USE_COMGR_LIBRARY "Use comgr library" ON)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 
-if(${USE_COMGR_LIBRARY} MATCHES "yes")
+if(USE_COMGR_LIBRARY)
   add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
   find_package(amd_comgr REQUIRED CONFIG
      PATHS
