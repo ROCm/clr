@@ -7,6 +7,10 @@ endif()
 
 project(opencl)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 #example command:
 # cmake -DCMAKE_PREFIX_PATH=/path/to/ROCclr/build/or/install ..
 
