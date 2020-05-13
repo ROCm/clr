@@ -711,14 +711,15 @@ bool Buffer::create() {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (owner()->getSvmPtr() != nullptr) {
-    if (dev().forceFineGrain(owner()) ||
-        dev().isFineGrainedSystem(true)) {
+    if (dev().forceFineGrain(owner()) || dev().isFineGrainedSystem(true)) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
-      // Don't enable direct access to GPU memory with large bar, because
-      // there is no tracking of HDP flush after CPU writes
-      // flags_ |= HostMemoryDirectAccess;
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
+
+    if (isFineGrain) {
+      // Use CPU direct access for the fine grain buffer
+      flags_ |= HostMemoryDirectAccess;
+    }
 
     if (owner()->getSvmPtr() == reinterpret_cast<void*>(1)) {
       if (isFineGrain) {
@@ -728,8 +729,8 @@ bool Buffer::create() {
         else {
           deviceMemory_ = dev().hostAlloc(size(), 1, false);
         }
-        flags_ |= HostMemoryDirectAccess;
       } else {
+        assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
         deviceMemory_ = dev().deviceLocalAlloc(size(), (memFlags & CL_MEM_SVM_ATOMICS) != 0);
       }
       owner()->setSvmPtr(deviceMemory_);
@@ -737,14 +738,12 @@ bool Buffer::create() {
       deviceMemory_ = owner()->getSvmPtr();
     }
 
-    if (!isFineGrain &&
-        (owner()->parent() != nullptr) &&
+    if (!isFineGrain && (owner()->parent() != nullptr) &&
         (owner()->parent()->getSvmPtr() != nullptr)) {
       owner()->parent()->commitSvmMemory();
     }
 
-    if ((deviceMemory_ != nullptr) &&
-        (dev().settings().apuSystem_ || !isFineGrain)) {
+    if ((deviceMemory_ != nullptr) && (dev().settings().apuSystem_ || !isFineGrain)) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
 
