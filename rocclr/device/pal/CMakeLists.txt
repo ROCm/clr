@@ -95,6 +95,25 @@ target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/
 target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pal/palbe/shared/gpuopen/third_party/metrohash/src)
 target_include_directories(rocclrpal PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
+target_include_directories(rocclrpal
+  PUBLIC
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
+  PRIVATE
+    ${OPENCL_DIR}
+    ${OPENCL_DIR}/khronos/headers/opencl2.2
+    ${PROJECT_SOURCE_DIR}/compiler/lib
+    ${PROJECT_SOURCE_DIR}/compiler/lib/include
+    ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common
+    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
+    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${ROCM_OCL_INCLUDES}
+    ${ROCR_INCLUDES})
+
+
 target_sources(rocclrpal PRIVATE
   palappprofile.cpp
   palblit.cpp
