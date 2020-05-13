@@ -20,7 +20,7 @@
 
 #include "os/os.hpp"
 #include "utils/flags.hpp"
-#include "include/aclTypes.h"
+#include "aclTypes.h"
 #include "device/pal/palprogram.hpp"
 #include "device/pal/palblit.hpp"
 #include <fstream>
