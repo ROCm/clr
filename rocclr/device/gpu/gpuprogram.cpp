@@ -20,7 +20,7 @@
 
 #include "os/os.hpp"
 #include "utils/flags.hpp"
-#include "include/aclTypes.h"
+#include "aclTypes.h"
 #include "utils/amdilUtils.hpp"
 #include "utils/bif_section_labels.hpp"
 #include "device/gpu/gpuprogram.hpp"
