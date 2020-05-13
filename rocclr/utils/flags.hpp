@@ -196,7 +196,7 @@ release(bool, GPU_ENABLE_LC, true,                                            \
         "Enables LC path")                                                    \
 release(bool, GPU_ENABLE_HW_P2P, false,                                       \
         "Enables HW P2P path")                                                \
-release(bool, GPU_ENABLE_COOP_GROUPS, false,                                  \
+release(bool, GPU_ENABLE_COOP_GROUPS, true,                                   \
          "Enables cooperative group launch")                                  \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
