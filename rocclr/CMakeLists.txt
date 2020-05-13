@@ -75,24 +75,6 @@ if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
   include_directories(${LLVM_INCLUDES})
 endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/device/rocm)
-include_directories(${OPENCL_DIR})
-include_directories(${OPENCL_DIR}/amdocl)
-include_directories(${OPENCL_DIR}/khronos)
-include_directories(${OPENCL_DIR}/khronos/headers)
-include_directories(${OPENCL_DIR}/khronos/headers/opencl2.2)
-include_directories(${OPENCL_INCLUDE_DIR})
-
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/backends/common)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/common)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/libelf)
-
 option(BUILD_PAL "Build PAL backend" OFF)
 if (BUILD_PAL)
   add_subdirectory(device/pal)
@@ -149,6 +131,17 @@ set_target_properties(amdrocclr_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(amdrocclr_static
   PUBLIC
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/device/rocm>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/compiler/lib/include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/compiler/lib>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/compiler/lib/backends/common>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/common>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/libelf>
+    $<BUILD_INTERFACE:${OPENCL_DIR}>
+    $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers/opencl2.2>
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
     $<TARGET_PROPERTY:oclelf_obj,INTERFACE_INCLUDE_DIRECTORIES>

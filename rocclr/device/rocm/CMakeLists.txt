@@ -16,13 +16,20 @@ add_library(oclrocm OBJECT
   rochostcall.cpp
 )
 
-
 target_include_directories(oclrocm
   PUBLIC
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
-    ${CMAKE_CURRENT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
+    ${OPENCL_DIR}
+    ${OPENCL_DIR}/khronos/headers/opencl2.2
+    ${PROJECT_SOURCE_DIR}/compiler/lib
+    ${PROJECT_SOURCE_DIR}/compiler/lib/include
+    ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common
+    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
+    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
     ${CMAKE_CURRENT_BINARY_DIR}
     ${ROCM_OCL_INCLUDES}
     ${ROCR_INCLUDES})
