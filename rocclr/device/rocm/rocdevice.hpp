@@ -411,7 +411,7 @@ class Device : public NullDevice {
   void updateFreeMemory(size_t size, bool free);
 
   virtual amd::Memory* IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const;
-  virtual void IpcDetach (amd::Memory& memory) const;
+  virtual bool IpcDetach (amd::Memory& memory) const;
 
   bool AcquireExclusiveGpuAccess();
   void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;

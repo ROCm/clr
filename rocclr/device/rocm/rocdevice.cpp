@@ -1817,7 +1817,7 @@ amd::Memory *Device::IpcAttach(const void* handle, size_t mem_size, unsigned int
   return amd_mem_obj;
 }
 
-void Device::IpcDetach (amd::Memory& memory) const {
+bool Device::IpcDetach (amd::Memory& memory) const {
   void* dev_ptr = nullptr;
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
 
@@ -1833,10 +1833,11 @@ void Device::IpcDetach (amd::Memory& memory) const {
   hsa_status = hsa_amd_ipc_memory_detach(dev_ptr);
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
-    return;
+    return false;
   }
 
   memory.release();
+  return true;
 }
 
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
