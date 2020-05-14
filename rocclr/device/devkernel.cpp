@@ -1305,7 +1305,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
     amd::KernelParameterDescriptor desc = {};
 
     amd_comgr_metadata_node_t argsNode;
-    amd_comgr_metadata_kind_t kind;
+    amd_comgr_metadata_kind_t kind = AMD_COMGR_METADATA_KIND_NULL;
     bool hsaArgsNode = false;
 
     status = amd::Comgr::index_list_metadata(argsMeta, i, &argsNode);
