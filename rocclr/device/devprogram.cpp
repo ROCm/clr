@@ -2644,7 +2644,7 @@ const bool Program::getLoweredNames(std::vector<std::string>* mangledNames) cons
   return true;
 
 #else
-  assert("No COMGR loaded");
+  assert(!"No COMGR loaded");
   return false;
 #endif
 }
