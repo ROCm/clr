@@ -87,7 +87,7 @@ endif()
 
 set(COMGR_CPP device/comgrctx.cpp)
 
-add_subdirectory(elf/utils/libelf "${CMAKE_CURRENT_BINARY_DIR}/libelf" )
+add_subdirectory(elf/utils/libelf)
 
 set(oclruntime_src
   thread/thread.cpp
