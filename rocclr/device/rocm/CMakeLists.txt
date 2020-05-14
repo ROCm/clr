@@ -21,10 +21,12 @@ target_include_directories(oclrocm
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+    # GL and EGL headers
+    $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers>
+    $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers/opencl2.2>
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
     ${OPENCL_DIR}
-    ${OPENCL_DIR}/khronos/headers/opencl2.2
     ${PROJECT_SOURCE_DIR}/compiler/lib
     ${PROJECT_SOURCE_DIR}/compiler/lib/include
     ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common

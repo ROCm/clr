@@ -141,6 +141,8 @@ target_include_directories(amdrocclr_static
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/common>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/elf/utils/libelf>
     $<BUILD_INTERFACE:${OPENCL_DIR}>
+    # GL and EGL headers.
+    $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers>
     $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers/opencl2.2>
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
