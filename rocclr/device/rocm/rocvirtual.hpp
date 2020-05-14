@@ -261,7 +261,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void enableSyncBlit() const;
 
-  void hasPendingDispatch() { hasPendingDispatch_ = true;}
+  void hasPendingDispatch() { hasPendingDispatch_ = true; }
+  void addSystemScope() { addSystemScope_ = true; }
 
   // } roc OpenCL integration
  private:
@@ -319,6 +320,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t imageBufferWrtBack_ : 1; //!< Image buffer write back is required
       uint32_t profiling_          : 1; //!< Profiling is enabled
       uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
+      uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
     };
     uint32_t  state_;
   };

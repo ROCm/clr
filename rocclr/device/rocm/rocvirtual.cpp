@@ -436,6 +436,12 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
   hsa_signal_t signal;
 
+  if (addSystemScope_) {
+    header &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE);
+    header |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE);
+    addSystemScope_ = false;
+  }
+
   // TODO: placeholder to setup the kernel to populate start and end timestamp.
   if (timestamp_ != nullptr) {
     // Find signal slot
