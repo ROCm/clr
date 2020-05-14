@@ -661,7 +661,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       LogError("Async copy failed");
       status = HSA_STATUS_ERROR;
     } else {
-      gpu().hasPendingDispatch();
+      gpu().addSystemScope();
     }
   } else {
     LogPrintfError("Hsa copy from host to device failed with code %d", status);
@@ -749,7 +749,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     offset += size;
   }
 
-  gpu().hasPendingDispatch();
+  gpu().addSystemScope();
 
   return true;
 }
