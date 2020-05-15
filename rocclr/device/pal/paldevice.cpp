@@ -908,7 +908,7 @@ bool Device::create(Pal::IDevice* device) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
   } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
     // For compiler sub targets
-    subtarget = (static_cast<uint>(asicRevision_) % static_cast<uint>(Pal::AsicRevision::Vega10))
+    subtarget = (static_cast<uint>(asicRevision_) - static_cast<uint>(Pal::AsicRevision::Vega10))
             << 1 |
         subtarget;
     hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
