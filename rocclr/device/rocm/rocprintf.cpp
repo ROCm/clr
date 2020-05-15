@@ -47,7 +47,7 @@ bool PrintfDbg::allocate(bool realloc) {
     // Double the buffer size if it's not big enough
     dev().hostFree(dbgBuffer_, dbgBuffer_size_);
     dbgBuffer_size_ = dbgBuffer_size_ << 1;
-    dbgBuffer_ = reinterpret_cast<address>(dbgBuffer_size_, sizeof(void*));
+    dbgBuffer_ = reinterpret_cast<address>(dev().hostAlloc(dbgBuffer_size_, sizeof(void*)));
   }
 
   return (nullptr != dbgBuffer_) ? true : false;
