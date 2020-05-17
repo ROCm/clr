@@ -1439,6 +1439,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
     info_.localMemBanks_ = deviceInfo_.localMemBanks_;
     info_.gfxipVersion_ = deviceInfo_.gfxipMajor_ * 100 + deviceInfo_.gfxipMinor_ * 10 + deviceInfo_.gfxipStepping_;
+    info_.gfxipMajor_ = deviceInfo_.gfxipMajor_;
+    info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
+    info_.gfxipStepping_ = deviceInfo_.gfxipStepping_;
     info_.numAsyncQueues_ = kMaxAsyncQueues;
     info_.numRTQueues_ = info_.numAsyncQueues_;
     info_.numRTCUs_ = info_.maxComputeUnits_;
