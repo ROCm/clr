@@ -666,6 +666,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.gfxipVersion_ =
         settings().useLightning_ ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
 
+    info_.gfxipMajor_ = info_.gfxipVersion_ / 100;
+    info_.gfxipMinor_ = info_.gfxipVersion_ / 10 % 10;
+    info_.gfxipStepping_ = info_.gfxipVersion_ % 10;
+
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;
 

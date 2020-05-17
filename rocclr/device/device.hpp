@@ -460,6 +460,10 @@ struct Info : public amd::EmbeddedObject {
   uint32_t localMemBanks_;
   //! The core engine GFXIP version
   uint32_t gfxipVersion_;
+  //! The core engine major/minor/stepping
+  uint32_t gfxipMajor_;
+  uint32_t gfxipMinor_;
+  uint32_t gfxipStepping_;
   //! Number of available async queues
   uint32_t numAsyncQueues_;
   //! Number of available real time queues
