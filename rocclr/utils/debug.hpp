@@ -128,21 +128,21 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 
 #define Log(level, msg)                                                                            \
   do {                                                                                             \
-    if (LOG_LEVEL >= level) {                                                                      \
+    if (AMD_LOG_LEVEL >= level) {                                                                      \
       amd::log_entry(level, __FILE__, __LINE__, msg);                                              \
     }                                                                                              \
   } while (false)
 
 #define LogTS(level, msg)                                                                          \
   do {                                                                                             \
-    if (LOG_LEVEL >= level) {                                                                      \
+    if (AMD_LOG_LEVEL >= level) {                                                                      \
       amd::log_timestamped(level, __FILE__, __LINE__, msg);                                        \
     }                                                                                              \
   } while (false)
 
 #define Logf(level, format, ...)                                                                   \
   do {                                                                                             \
-    if (LOG_LEVEL >= level) {                                                                      \
+    if (AMD_LOG_LEVEL >= level) {                                                                      \
       amd::log_printf(level, __FILE__, __LINE__, format, __VA_ARGS__);                             \
     }                                                                                              \
   } while (false)
@@ -156,7 +156,7 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 
 #define LogGuarantee(cond, level, msg)                                                             \
   do {                                                                                             \
-    if (LOG_LEVEL >= level) {                                                                      \
+    if (AMD_LOG_LEVEL >= level) {                                                                      \
       guarantee(cond);                                                                             \
     }                                                                                              \
   } while (false)
@@ -168,9 +168,9 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 
 #define DebugInfoGuarantee(cond) LogGuarantee(cond, amd::LOG_INFO, "Warning")
 
-/* backend and compiler use LOG_LEVEL macro from makefile. Define GPU_LOG_MASK for them. */
-#if defined(LOG_LEVEL)
-#define GPU_LOG_MASK 0x7FFFFFFF
+/* backend and compiler use AMD_LOG_LEVEL macro from makefile. Define AMD_LOG_MASK for them. */
+#if defined(AMD_LOG_LEVEL)
+#define AMD_LOG_MASK 0x7FFFFFFF
 #endif
 
 // You may define CL_LOG to enable following log functions even for release build
@@ -179,9 +179,9 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #ifdef CL_LOG
 #define ClPrint(level, mask, format, ...)                                                          \
   do {                                                                                             \
-    if (LOG_LEVEL >= level) {                                                                      \
-      if (GPU_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
-        if (GPU_LOG_MASK & amd::LOG_LOCATION) {                                                         \
+    if (AMD_LOG_LEVEL >= level) {                                                                      \
+      if (AMD_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
+        if (AMD_LOG_MASK & amd::LOG_LOCATION) {                                                         \
           amd::log_printf(level, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                       \
         } else {                                                                                   \
           amd::log_printf(level, "", 0, format, ##__VA_ARGS__);                                   \
@@ -192,8 +192,8 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 
 #define ClCondPrint(level, mask, condition, format, ...)                                           \
   do {                                                                                             \
-    if (LOG_LEVEL >= level && (condition)) {                                                       \
-      if (GPU_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
+    if (AMD_LOG_LEVEL >= level && (condition)) {                                                       \
+      if (AMD_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
         amd::log_printf(level, __FILE__, __LINE__, format, ##__VA_ARGS__);                         \
       }                                                                                            \
     }                                                                                              \
