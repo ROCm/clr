@@ -24,9 +24,9 @@
 
 #define RUNTIME_FLAGS(debug,release,release_on_stg)                           \
                                                                               \
-release(int, LOG_LEVEL, 0,                                                    \
+release(int, AMD_LOG_LEVEL, 0,                                                \
         "The default log level")                                              \
-release(uint, GPU_LOG_MASK, 0X7FFFFFFF,                                       \
+release(uint, AMD_LOG_MASK, 0X7FFFFFFF,                                       \
         "The mask to enable specific kinds of logs")                          \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \

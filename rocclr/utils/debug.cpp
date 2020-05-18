@@ -22,7 +22,7 @@
 #include "utils/debug.hpp"
 #include "os/os.hpp"
 
-#if !defined(LOG_LEVEL)
+#if !defined(AMD_LOG_LEVEL)
 #include "utils/flags.hpp"
 #endif
 
