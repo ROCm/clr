@@ -158,7 +158,13 @@ void khrIcdOsVendorsEnumerateOnce(void)
 // dynamically load a library.  returns NULL on failure
 void *khrIcdOsLibraryLoad(const char *libraryName)
 {
-    return dlopen (libraryName, RTLD_NOW);
+    void *retVal = dlopen (libraryName, RTLD_NOW);
+
+    if (NULL == retVal) {
+        printf("dlerror: %s\n", dlerror());
+    }
+
+    return retVal;
 }
 
 // get a function pointer from a loaded library.  returns NULL on failure.
