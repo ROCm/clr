@@ -1318,6 +1318,8 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
       cmd.setStatus(CL_INVALID_OPERATION);
     }
   } else {
+    // Stall GPU for CPU access to memory
+    releaseGpuMemoryFence();
     // direct memcpy for FGS enabled system
     amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1);
   }
@@ -1785,6 +1787,8 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
     // Mark this as the most-recently written cache of the destination
     dstMemory->signalWrite(&dev());
   } else {
+    // Stall GPU for CPU access to memory
+    releaseGpuMemoryFence();
     // for FGS capable device, fill CPU memory directly
     amd::SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
   }
