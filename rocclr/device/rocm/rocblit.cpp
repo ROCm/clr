@@ -758,6 +758,7 @@ KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup),
       program_(nullptr),
       constantBuffer_(nullptr),
+      constantBufferOffset_(0),
       xferBufferSize_(0),
       lockXferOps_("Transfer Ops Lock", true) {
   for (uint i = 0; i < BlitTotal; ++i) {
@@ -1900,11 +1901,13 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     if (gpuCB == nullptr) {
       return false;
     }
-    void* constBuf = constantBuffer_->getHostMem();
+    // Find offset in the current constant buffer to allow multipel fills
+    uint32_t  constBufOffset = ConstantBufferOffset();
+    auto constBuf = reinterpret_cast<address>(constantBuffer_->getHostMem()) + constBufOffset;
     memcpy(constBuf, pattern, patternSize);
 
     mem = as_cl<amd::Memory>(gpuCB->owner());
-    setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
+    setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem, constBufOffset);
     uint64_t offset = origin[0];
     if (dwordAligned) {
       patternSize /= sizeof(uint32_t);

@@ -440,7 +440,22 @@ class KernelBlitManager : public DmaBlitManager {
   address captureArguments(const amd::Kernel* kernel) const;
   void releaseArguments(address args) const;
 
-  inline void setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) const;
+  inline void setArgument(amd::Kernel* kernel, size_t index,
+                          size_t size, const void* value, uint32_t offset = 0) const;
+
+  uint32_t ConstantBufferOffset() const {
+    // Make sure it can fit at least 128 bytes for OCL memory fill of double16
+    constexpr uint32_t kManagedSize = 0x80;
+    // Adjust the ofset to the new location
+    constantBufferOffset_ += kManagedSize;
+    // Check if the allocation exceeds the limit
+    if ((constantBufferOffset_ + kManagedSize) > constantBuffer_->getSize()) {
+      // Stall GPU and reset the ofset
+      gpu().releaseGpuMemoryFence();
+      constantBufferOffset_ = 0;
+    }
+    return constantBufferOffset_;
+  }
 
   //! Disable copy constructor
   KernelBlitManager(const KernelBlitManager&);
@@ -448,11 +463,12 @@ class KernelBlitManager : public DmaBlitManager {
   //! Disable operator=
   KernelBlitManager& operator=(const KernelBlitManager&);
 
-  amd::Program* program_;                     //!< GPU program obejct
-  amd::Kernel* kernels_[BlitTotal];           //!< GPU kernels for blit
-  amd::Memory* constantBuffer_;               //!< An internal CB for blits
-  size_t xferBufferSize_;                     //!< Transfer buffer size
-  mutable amd::Monitor  lockXferOps_;         //!< Lock transfer operation
+  amd::Program* program_;             //!< GPU program obejct
+  amd::Kernel* kernels_[BlitTotal];   //!< GPU kernels for blit
+  amd::Memory* constantBuffer_;       //!< An internal CB for blits
+  mutable uint32_t constantBufferOffset_; //!< Current offset in the constant buffer
+  size_t xferBufferSize_;             //!< Transfer buffer size
+  mutable amd::Monitor  lockXferOps_; //!< Lock transfer operation
 };
 
 static const char* BlitName[KernelBlitManager::BlitTotal] = {
@@ -462,7 +478,8 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "fillImage",         "scheduler",         "gwsInit"
 };
 
-inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) const {
+inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
+                                          size_t size, const void* value, uint32_t offset) const {
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
   void* param = kernel->parameters().values() + desc.offset_;
@@ -483,7 +500,8 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, si
       // convert cl_mem to amd::Memory*, return false if invalid.
       reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = mem;
-      LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(mem->getDeviceMemory(dev())->virtualAddress());
+      LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
+        mem->getDeviceMemory(dev())->virtualAddress()) + offset;
     }
   } else if (desc.type_ == T_SAMPLER) {
     assert(false && "No sampler support in blit manager! Use internal samplers!");
