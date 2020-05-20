@@ -1482,7 +1482,9 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
 
   // Initialization of heap and other resources occur during the command
   // queue creation time.
-  VirtualGPU* virtualDevice = new VirtualGPU(*this, profiling, cooperative, queue->cuMask());
+  const std::vector<uint32_t> defaultCuMask = {};
+  VirtualGPU* virtualDevice = new VirtualGPU(*this, profiling, cooperative,
+                                            (queue != nullptr) ? queue->cuMask() : defaultCuMask);
 
   if (!virtualDevice->create()) {
     delete virtualDevice;
