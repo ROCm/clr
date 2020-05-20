@@ -1404,7 +1404,10 @@ class Device : public RuntimeObject {
     return nullptr;
   }
 
-  virtual bool IpcDetach(amd::Memory& memory) const { ShouldNotReachHere(); }
+  virtual bool IpcDetach(amd::Memory& memory) const {
+    ShouldNotReachHere();
+    return false;
+  }
 
   //! Return private global device context for P2P allocations
   amd::Context& GlbCtx() const { return *glb_ctx_; }
