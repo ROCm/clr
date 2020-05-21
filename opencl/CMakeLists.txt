@@ -39,7 +39,6 @@ if(USE_COMGR_LIBRARY)
    )
    MESSAGE(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
-  include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
 endif()
 
 
@@ -69,6 +68,10 @@ add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
 add_subdirectory(tools/cltrace)
+
+if(USE_COMGR_LIBRARY)
+  include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
+endif()
 
 # get date information based on UTC
 # use the last two digits of year + week number + day in the week as OPENCL_VERSION_GITDATE
