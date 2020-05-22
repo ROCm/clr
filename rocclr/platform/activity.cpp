@@ -30,10 +30,10 @@ const char* getOclCommandKindString(uint32_t op) {
   switch(static_cast<cl_command_type>(op)) {
     CASE_STRING(CL_COMMAND_NDRANGE_KERNEL, KernelExecution)
     CASE_STRING(CL_COMMAND_READ_BUFFER, CopyDeviceToHost)
-    CASE_STRING(CL_COMMAND_WRITE_BUFFER, CopyoHostToDevice)
+    CASE_STRING(CL_COMMAND_WRITE_BUFFER, CopyHostToDevice)
     CASE_STRING(CL_COMMAND_COPY_BUFFER, CopyDeviceToDevice)
     CASE_STRING(CL_COMMAND_READ_BUFFER_RECT, CopyDeviceToHost2D)
-    CASE_STRING(CL_COMMAND_WRITE_BUFFER_RECT, CopyoHostToDevice2D)
+    CASE_STRING(CL_COMMAND_WRITE_BUFFER_RECT, CopyHostToDevice2D)
     CASE_STRING(CL_COMMAND_COPY_BUFFER_RECT, CopyDeviceToDevice2D)
     CASE_STRING(CL_COMMAND_FILL_BUFFER, FillBuffer)
     default: case_string = "Unknown command type";
