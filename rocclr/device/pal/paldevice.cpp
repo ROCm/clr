@@ -203,12 +203,14 @@ bool NullDevice::init() {
             ShouldNotReachHere();
             break;
         }
+        break;
       case 11:
         switch (ipLevelMinor) {
           case 0:
             ShouldNotReachHere();
             break;
         }
+        break;
     }
 
     Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
