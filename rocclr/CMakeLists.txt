@@ -92,10 +92,6 @@ if(DEV_LOG_ENABLE MATCHES "yes")
   add_definitions(-DDEV_LOG_ENABLE)
 endif()
 
-if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
-  include_directories(${LLVM_INCLUDES})
-endif() # if (DEFINED LLVM_INCLUDES AND NOT ${LLVM_INCLUDES} STREQUAL "")
-
 option(BUILD_PAL "Build PAL backend" OFF)
 if (BUILD_PAL)
   add_subdirectory(device/pal)
