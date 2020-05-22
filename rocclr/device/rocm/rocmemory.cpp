@@ -190,7 +190,7 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
   return mapTarget;
 }
 
-void Memory::IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
+bool Memory::IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
 
   void* dev_ptr = nullptr;
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
@@ -213,8 +213,10 @@ void Memory::IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
-    return;
+    return false;
   }
+
+  return true;
 }
 
 void Memory::cpuUnmap(device::VirtualDevice& vDev) {

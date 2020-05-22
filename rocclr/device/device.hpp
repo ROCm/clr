@@ -761,7 +761,7 @@ class Memory : public amd::HeapObject {
   //! Returns CPU pointer to HW state
   virtual const address cpuSrd() const { return nullptr; }
 
-  virtual void IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
+  virtual bool IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
     ShouldNotReachHere();
   }
 
