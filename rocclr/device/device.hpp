@@ -763,6 +763,7 @@ class Memory : public amd::HeapObject {
 
   virtual bool IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
     ShouldNotReachHere();
+    return false;
   }
 
  protected:
