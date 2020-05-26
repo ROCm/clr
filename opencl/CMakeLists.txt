@@ -8,7 +8,7 @@ endif()
 project(opencl)
 
 #example command:
-#cmake -DROCclr_DIR=/rocclr -DUSE_COMGR_LIBRARY=ON -DLIBROCclr_STATIC_DIR=/build ..
+# cmake -DCMAKE_PREFIX_PATH=/path/to/ROCclr/build/or/install ..
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 set(BUILD_SHARED_LIBS "Build shared libs" ON)
@@ -42,27 +42,10 @@ if(USE_COMGR_LIBRARY)
 endif()
 
 
-# FIXME: ROCclr_DIR and LIBROCclr_STATIC_DIR are for compatability with
-# current build scripts. Instead they should install, or use
-# CMAKE_PREFIX_PATH
-# FIXME: Make this required and remove the legacy handling below
-set(save_rocclr_dir ${ROCclr_DIR})
-set(save_rocclr_static_dir ${LIBROCclr_STATIC_DIR})
-
-find_package(ROCclr CONFIG
+find_package(ROCclr REQUIRED CONFIG
   PATHS
     ${ROCclr_DIR}
     ${LIBROCclr_STATIC_DIR})
-
-if(NOT ROCclr_FOUND)
-  # FIXME: Make ROCclr find required and remove this.
-  #
-  # This is to break the dependency on patch to start producing find
-  # module.
-  set(LIBROCclr_STATIC_DIR ${save_rocclr_static_dir} CACHE PATH "" FORCE)
-  set(ROCclr_DIR ${save_rocclr_dir} CACHE PATH "" FORCE)
-  include(${LIBROCclr_STATIC_DIR}/amdrocclr_staticTargets.cmake)
-endif()
 
 add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)

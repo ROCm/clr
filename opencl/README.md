@@ -1,4 +1,4 @@
-# ROCm OpenCL™ Runtime 
+# ROCm OpenCL™ Runtime
 
 Please build/install ROCclr first.
 
@@ -11,7 +11,7 @@ cd $OPENCL_DIR
 
 mkdir -p build; cd build
 
-cmake -DVDI_DIR="$VDI_DIR" -DLIBVDI_STATIC_DIR="$VDI_DIR/build" ..
+cmake -DCMAKE_PREFIX_PATH=/path/to/rocclr/build/or/install ..
 
 make
 
