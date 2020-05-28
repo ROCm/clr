@@ -234,6 +234,12 @@ class NullDevice : public amd::Device {
   static const bool offlineDevice_;
 };
 
+struct AgentInfo {
+  hsa_agent_t agent;
+  hsa_amd_memory_pool_t fine_grain_pool;
+  hsa_amd_memory_pool_t coarse_grain_pool;
+};
+
 //! A HSA device ordinal (physical HSA device)
 class Device : public NullDevice {
  public:
@@ -292,16 +298,21 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
+  bool getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
+                   uint32_t* link_type, uint32_t* numa_distance) const;
+
   bool create(bool sramEccEnabled);
 
   //! Construct a new physical HSA device
   Device(hsa_agent_t bkendDevice);
   virtual hsa_agent_t getBackendDevice() const { return _bkendDevice; }
+  const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
+
 
   static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
+  static const std::vector<AgentInfo>& getCpuAgents() { return cpu_agents_; }
 
-  static hsa_agent_t getCpuAgent() { return cpu_agent_; }
-
+  void setupCpuAgent(); // Setup the CPU agent which has the least NUMA distance to this GPU
   //! Destructor for the physical HSA device
   virtual ~Device();
 
@@ -460,8 +471,10 @@ class Device : public NullDevice {
 
   bool populateOCLDeviceConstants();
   static bool isHsaInitialized_;
-  static hsa_agent_t cpu_agent_;
   static std::vector<hsa_agent_t> gpu_agents_;
+  static std::vector<AgentInfo> cpu_agents_;
+
+  hsa_agent_t cpu_agent_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   hsa_agent_t _bkendDevice;
   hsa_agent_t* p2p_agents_list_;

@@ -62,8 +62,9 @@ extern const char* BlitSourceCode;
 namespace roc {
 amd::Device::Compiler* NullDevice::compilerHandle_;
 bool roc::Device::isHsaInitialized_ = false;
-hsa_agent_t roc::Device::cpu_agent_ = {0};
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
+std::vector<AgentInfo> roc::Device::cpu_agents_;
+
 const bool roc::Device::offlineDevice_ = false;
 const bool roc::NullDevice::offlineDevice_ = true;
 address Device::mg_sync_ = nullptr;
@@ -176,6 +177,30 @@ Device::Device(hsa_agent_t bkendDevice)
   system_coarse_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
+}
+
+void Device::setupCpuAgent() {
+  uint32_t numaDistance = std::numeric_limits<uint32_t>::max();
+  int index = 0; // 0 as default
+  auto size = cpu_agents_.size();
+  for (int i = 0; i < size; i++) {
+    uint32_t hops = 0;
+    uint32_t link_type = 0;
+    uint32_t distance = 0;
+    if (getNumaInfo(cpu_agents_[i].fine_grain_pool, &hops, &link_type, &distance)) {
+      if (distance < numaDistance) {
+        numaDistance = distance;
+        index = i;
+      }
+    }
+  }
+
+  cpu_agent_ = cpu_agents_[index].agent;
+  system_segment_ = cpu_agents_[index].fine_grain_pool;
+  system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
+  LogPrintfInfo("Numa select cpu agent[%d]=0x%llx(fine=0x%llx,coarse=0x%llx) for gpu agent=0x%llx",
+     index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
+     _bkendDevice.handle);
 }
 
 Device::~Device() {
@@ -331,25 +356,19 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
     return stat;
   }
 
-  if ((dev_type == HSA_DEVICE_TYPE_CPU) && (Device::cpu_agent_.handle == 0)) {
-    hsa_amd_agent_iterate_memory_pools(agent, [](hsa_amd_memory_pool_t pool, void* agent) {
-      hsa_region_segment_t segment_type;
-      hsa_status_t stat =
-        hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_SEGMENT, &segment_type);
-      if (stat != HSA_STATUS_SUCCESS) {
-        return stat;
-      }
-      if( segment_type == HSA_REGION_SEGMENT_GLOBAL) {
-        Device::cpu_agent_ = *(reinterpret_cast<hsa_agent_t*>(agent));
-        return HSA_STATUS_INFO_BREAK;
-      }
-      return HSA_STATUS_SUCCESS;
-    }, &agent);
+  if (dev_type == HSA_DEVICE_TYPE_CPU) {
+    AgentInfo info = { agent, { 0 }, { 0 }};
+    stat = hsa_amd_agent_iterate_memory_pools(agent, Device::iterateCpuMemoryPoolCallback,
+                                              reinterpret_cast<void*>(&info));
+    if (stat == HSA_STATUS_INFO_BREAK) {
+      cpu_agents_.push_back(info);
+      stat = HSA_STATUS_SUCCESS;
+    }
   } else if (dev_type == HSA_DEVICE_TYPE_GPU) {
     gpu_agents_.push_back(agent);
   }
 
-  return HSA_STATUS_SUCCESS;
+  return stat;
 }
 
 hsa_ven_amd_loader_1_00_pfn_t Device::amd_loader_ext_table = {nullptr};
@@ -888,7 +907,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           // If cpu agent cannot access this pool, the device does not support large bar.
           hsa_amd_memory_pool_access_t tmp{};
           hsa_amd_agent_memory_pool_get_info(
-            cpu_agent_,
+            dev->cpu_agent_,
             pool,
             HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
             &tmp);
@@ -927,21 +946,25 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   if (stat != HSA_STATUS_SUCCESS) {
     return stat;
   }
+  AgentInfo* agentInfo = reinterpret_cast<AgentInfo*>(data);
 
-  Device* dev = reinterpret_cast<Device*>(data);
   switch (segment_type) {
     case HSA_REGION_SEGMENT_GLOBAL: {
       uint32_t global_flag = 0;
-      hsa_status_t stat =
-          hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS, &global_flag);
+      stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS,
+                                          &global_flag);
       if (stat != HSA_STATUS_SUCCESS) {
-        return stat;
+        break;
       }
 
       if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
-        dev->system_segment_ = pool;
+        agentInfo->fine_grain_pool = pool;
       } else {
-        dev->system_coarse_segment_ = pool;
+        agentInfo->coarse_grain_pool = pool;
+      }
+
+      if (agentInfo->fine_grain_pool.handle != 0 && agentInfo->coarse_grain_pool.handle != 0) {
+        stat = HSA_STATUS_INFO_BREAK;
       }
       break;
     }
@@ -949,7 +972,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
       break;
   }
 
-  return HSA_STATUS_SUCCESS;
+  return stat;
 }
 
 bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) const {
@@ -1092,10 +1115,7 @@ bool Device::populateOCLDeviceConstants() {
       return false;
   }
 
-  if (HSA_STATUS_SUCCESS !=
-      hsa_amd_agent_iterate_memory_pools(cpu_agent_, Device::iterateCpuMemoryPoolCallback, this)) {
-    return false;
-  }
+  setupCpuAgent();
 
   assert(system_segment_.handle != 0);
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(
@@ -2055,25 +2075,56 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
 
 bool Device::findLinkTypeAndHopCount(amd::Device* other_device,
                                      uint32_t* link_type, uint32_t* hop_count) {
-  hsa_amd_memory_pool_link_info_t link_info;
-  hsa_amd_memory_pool_t pool = (static_cast<roc::Device*>(other_device))->gpuvm_segment_;
+  uint32_t distance = 0;
+  return getNumaInfo((dynamic_cast<roc::Device*>(other_device))->gpuvm_segment_,
+                     hop_count, link_type, &distance);
+}
 
-  if (pool.handle != 0) {
-    if (HSA_STATUS_SUCCESS
-        != hsa_amd_agent_memory_pool_get_info(this->getBackendDevice(), pool,
-                                              HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO,
-                                              &link_info)) {
-      return false;
-    }
+bool Device::getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
+                         uint32_t* link_type, uint32_t* numa_distance) const {
+  uint32_t hops = 0;
 
-    *link_type = link_info.link_type;
-    if (link_info.numa_distance < 30) {
-      *hop_count = 1;
-    } else {
-      *hop_count = 2;
-    }
+  if (!pool.handle) {
+    return false;
   }
-  return true;
+
+  hsa_status_t res = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+      HSA_AMD_AGENT_MEMORY_POOL_INFO_NUM_LINK_HOPS, &hops);
+  if (res != HSA_STATUS_SUCCESS) {
+    return false;
+  }
+
+  if (hops < 0) {
+    return false;
+  } else if (hops == 0) {
+    //This pool is on its agent
+    *hop_count = 0;  // No hop
+    *link_type = -1; // No link, so type is meaningless, caller should ignore it.
+    *numa_distance = 0;
+    return true;
+  }
+
+  hsa_amd_memory_pool_link_info_t *link_info = new hsa_amd_memory_pool_link_info_t[hops];
+
+  res = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+        HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info);
+
+  if (res == HSA_STATUS_SUCCESS) {
+    *hop_count = hops;
+
+    // Now RocR always set hops=1 between two different devices.
+    // If RocR changes the behavior, we need revisit here.
+    *link_type = link_info[0].link_type;
+
+    uint32_t distance = 0;
+    for (int i = 0; i < hops; i++) {
+      distance += link_info[i].numa_distance;
+    }
+    *numa_distance = distance;
+  }
+
+  delete [] link_info;
+  return res == HSA_STATUS_SUCCESS;
 }
 
 } // namespace roc
