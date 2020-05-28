@@ -192,7 +192,7 @@ bool HostQueue::isEmpty() {
 
 void HostQueue::setLastQueuedCommand(Command* lastCommand) {
   // Set last submitted command
-  ScopedLock sl(queueLock_);
+  ScopedLock l(lastCmdLock_);
   if (lastEnqueueCommand_ != nullptr) {
     lastEnqueueCommand_->release();
   }
@@ -204,14 +204,12 @@ void HostQueue::setLastQueuedCommand(Command* lastCommand) {
 
 Command* HostQueue::getLastQueuedCommand(bool retain) {
   // Get last submitted command
-  ScopedLock sl(queueLock_);
-  if (lastEnqueueCommand_ == nullptr) {
-    return nullptr;
-  }
+  ScopedLock l(lastCmdLock_);
 
-  if (retain) {
+  if (retain && lastEnqueueCommand_ != nullptr) {
     lastEnqueueCommand_->retain();
   }
+
   return lastEnqueueCommand_;
 }
 
