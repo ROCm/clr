@@ -192,25 +192,27 @@ bool HostQueue::isEmpty() {
 
 void HostQueue::setLastQueuedCommand(Command* lastCommand) {
   // Set last submitted command
-  ScopedLock l(lastCmdLock_);
-  if (lastEnqueueCommand_ != nullptr) {
-    lastEnqueueCommand_->release();
+  Command* lastEnqueueCommand =
+    lastEnqueueCommand_.exchange(lastCommand, std::memory_order_acq_rel);
+  if (lastEnqueueCommand != nullptr) {
+    lastEnqueueCommand->release();
   }
-  lastEnqueueCommand_ = lastCommand;
   if (lastCommand != nullptr) {
-    lastEnqueueCommand_->retain();
+    lastCommand->retain();
   }
 }
 
 Command* HostQueue::getLastQueuedCommand(bool retain) {
   // Get last submitted command
-  ScopedLock l(lastCmdLock_);
-
-  if (retain && lastEnqueueCommand_ != nullptr) {
-    lastEnqueueCommand_->retain();
+  Command* lastEnqueueCommand = lastEnqueueCommand_.load(std::memory_order_acquire);
+  if (lastEnqueueCommand == nullptr) {
+    return nullptr;
   }
 
-  return lastEnqueueCommand_;
+  if (retain) {
+    lastEnqueueCommand->retain();
+  }
+  return lastEnqueueCommand;
 }
 
 DeviceQueue::~DeviceQueue() {
