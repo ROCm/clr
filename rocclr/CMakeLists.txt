@@ -198,6 +198,11 @@ endif()
 
 if (UNIX)
     set(ROCclr_DEFAULT_INSTALL_PREFIX "/opt/rocm/rocclr")
+
+    find_library(LIBRT rt)
+    if (LIBRT)
+        target_link_libraries(amdrocclr_static PUBLIC ${LIBRT})
+    endif()
 endif()
 #comment out as it's not available in cmake 3.5
 #if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
