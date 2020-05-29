@@ -126,7 +126,6 @@ class CommandQueue : public RuntimeObject {
         rtCUs_(rtCUs),
         priority_(priority),
         queueLock_("CommandQueue::queueLock"),
-        lastCmdLock_("LastQueuedCommand"),
         device_(device),
         context_(context),
         cuMask_(cuMask){}
@@ -135,7 +134,6 @@ class CommandQueue : public RuntimeObject {
   uint rtCUs_;                        //!< The number of used RT compute units
   Priority priority_;                 //!< Queue priority
   Monitor queueLock_;                 //!< Lock protecting the queue
-  Monitor lastCmdLock_;               //!< Lock protecting the last queued command
   Device& device_;                    //!< The device
   SharedReference<Context> context_;  //!< The context of this command queue
   const std::vector<uint32_t>& cuMask_;  //!< The CU mask
@@ -187,7 +185,7 @@ class HostQueue : public CommandQueue {
  private:
   ConcurrentLinkedQueue<Command*> queue_;  //!< The queue.
 
-  Command* lastEnqueueCommand_;  //!< The last submitted command
+  std::atomic<Command*> lastEnqueueCommand_;  //!< The last submitted command
 
   //! Await commands and execute them as they become ready.
   void loop(device::VirtualDevice* virtualDevice);
