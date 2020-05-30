@@ -71,18 +71,13 @@ execute_process(COMMAND git show -s --format=@%ct
     OUTPUT_VARIABLE OPENCL_VERSION_GITDATE
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-# get commit short hash
-execute_process(COMMAND git rev-parse --short HEAD
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    OUTPUT_VARIABLE OPENCL_VERSION_GITHASH
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-set(OPENCL_VERSION_MAJOR "2")
-set(OPENCL_VERSION_MINOR "0")
-set(OPENCL_VERSION_PATCH ${OPENCL_VERSION_GITDATE})
-
 get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
 get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
+
+find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
+include(ROCMSetupVersion)
+
+rocm_setup_version( VERSION "2.0.0" )
 
 ###--- Packaging ------------------------------------------------------------###
 
@@ -159,8 +154,8 @@ if(POLICY CMP0037)
     cmake_policy(SET CMP0037 OLD)
 endif()
 file(GENERATE OUTPUT ${PROJECT_BINARY_DIR}/fixnames
-	CONTENT "pwd; for i in *.deb; do mv \"\$i\" \"\${i/.deb/-${OPENCL_VERSION_GITHASH}-amd64.deb}\" ; done
-	for i in *.rpm ; do mv \"\$i\" \"\${i/.rpm/-${OPENCL_VERSION_GITHASH}.x86_64.rpm}\" ; done
+	CONTENT "pwd; for i in *.deb; do mv \"\$i\" \"\${i/.deb/-amd64.deb}\" ; done
+	for i in *.rpm ; do mv \"\$i\" \"\${i/.rpm/.x86_64.rpm}\" ; done
 ")
 add_custom_target(package
     COMMAND bash ${PROJECT_BINARY_DIR}/fixnames
