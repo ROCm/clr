@@ -469,7 +469,7 @@ void Program::StubProgramSource(const std::string& app_name) {
 
 int32_t Program::build(const std::vector<Device*>& devices, const char* options,
                       void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
-                      bool optionChangable) {
+                      bool optionChangable, bool newDevProg) {
   ScopedLock sl(buildLock_);
   int32_t retval = CL_SUCCESS;
 
@@ -485,8 +485,10 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
     StubProgramSource(devices[0]->appProfile()->appFileName());
   }
 
-  // Clear the program object
-  clear();
+  if (newDevProg) {
+    // Clear the program object
+    clear();
+  }
 
   // Process build options.
   std::string cppstr(options ? options : "");

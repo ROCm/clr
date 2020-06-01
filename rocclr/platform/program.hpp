@@ -205,7 +205,7 @@ class Program : public RuntimeObject {
   //! Build the program for the given devices.
   int32_t build(const std::vector<Device*>& devices, const char* options = NULL,
                void(CL_CALLBACK* notifyFptr)(cl_program, void*) = NULL, void* data = NULL,
-               bool optionChangable = true);
+               bool optionChangable = true, bool newDevProg = true);
 
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeProgram; }
