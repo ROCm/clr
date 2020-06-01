@@ -23,6 +23,7 @@ if(DEFINED USE_COMGR_LIBRARY)
 endif()
 
 option(USE_COMGR_LIBRARY "Use comgr library" ON)
+option(BUILD_TESTS "Enable building OpenCL tests" OFF)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -51,6 +52,9 @@ add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
 add_subdirectory(tools/cltrace)
+if(BUILD_TESTS)
+  add_subdirectory(tests/ocltst)
+endif()
 
 if(USE_COMGR_LIBRARY)
   include_directories("$<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>")
