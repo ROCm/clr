@@ -1,4 +1,4 @@
-add_library(oclperf SHARED
+set(OCLPERF_SOURCES
     OCLPerf3DImageWriteSpeed.cpp
     OCLPerfAES256.cpp
     OCLPerfAtomicSpeed20.cpp
@@ -55,7 +55,6 @@ add_library(oclperf SHARED
     OCLPerfSampleRate.cpp
     OCLPerfScalarReplArrayElem.cpp
     OCLPerfSdiP2PCopy.cpp
-    OCLPerfSepia.cpp
     OCLPerfSHA256.cpp
     OCLPerfSVMAlloc.cpp
     OCLPerfSVMKernelArguments.cpp
@@ -69,7 +68,16 @@ add_library(oclperf SHARED
     OCLPerfUAVWriteSpeedHostMem.cpp
     OCLPerfUncoalescedRead.cpp
     OCLPerfVerticalFetch.cpp
-    TestList.cpp
+    TestList.cpp)
+
+if(OPENGL_FOUND AND GLEW_FOUND)
+    set(OCLPERF_SOURCES
+        ${OCLPERF_SOURCES}
+        OCLPerfSepia.cpp)
+endif()
+
+add_library(oclperf SHARED
+    ${OCLPERF_SOURCES}
     $<TARGET_OBJECTS:Common>)
 
 set_target_properties(oclperf PROPERTIES
@@ -88,9 +96,14 @@ target_include_directories(oclperf
 
 target_link_libraries(oclperf
     PRIVATE
-        OpenCL
-        ${GLEW_LIBRARIES}
-        ${OPENGL_LIBRARIES})
+        OpenCL)
+
+if(OPENGL_FOUND AND GLEW_FOUND)
+    target_link_libraries(oclperf
+        PRIVATE
+            ${GLEW_LIBRARIES}
+            ${OPENGL_LIBRARIES})
+endif()
 
 add_custom_command(
     TARGET oclperf POST_BUILD
