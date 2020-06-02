@@ -37,7 +37,7 @@ target_include_directories(oclrocm
     ${ROCR_INCLUDES})
 
 
-if(${USE_COMGR_LIBRARY} MATCHES "yes")
+if(USE_COMGR_LIBRARY)
   target_compile_definitions(oclrocm
     PRIVATE USE_COMGR_LIBRARY)
 endif()
