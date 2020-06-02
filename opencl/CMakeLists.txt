@@ -75,9 +75,13 @@ get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
 get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
 
 find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
-include(ROCMSetupVersion)
 
-rocm_setup_version( VERSION "2.0.0" )
+if(ROCM_FOUND)
+  include(ROCMSetupVersion)
+  rocm_setup_version( VERSION "2.0.0" )
+else()
+  set(PROJECT_VERSION "2.0.0")
+endif()
 
 ###--- Packaging ------------------------------------------------------------###
 
