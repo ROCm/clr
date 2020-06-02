@@ -181,9 +181,9 @@ Device::Device(hsa_agent_t bkendDevice)
 
 void Device::setupCpuAgent() {
   uint32_t numaDistance = std::numeric_limits<uint32_t>::max();
-  int index = 0; // 0 as default
+  uint32_t index = 0; // 0 as default
   auto size = cpu_agents_.size();
-  for (int i = 0; i < size; i++) {
+  for (uint32_t i = 0; i < size; i++) {
     uint32_t hops = 0;
     uint32_t link_type = 0;
     uint32_t distance = 0;
@@ -198,7 +198,7 @@ void Device::setupCpuAgent() {
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
-  LogPrintfInfo("Numa select cpu agent[%d]=0x%llx(fine=0x%llx,coarse=0x%llx) for gpu agent=0x%llx",
+  LogPrintfInfo("Numa select cpu agent[%u]=0x%llx(fine=0x%llx,coarse=0x%llx) for gpu agent=0x%llx",
      index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
      _bkendDevice.handle);
 }
@@ -2076,7 +2076,7 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
 bool Device::findLinkTypeAndHopCount(amd::Device* other_device,
                                      uint32_t* link_type, uint32_t* hop_count) {
   uint32_t distance = 0;
-  return getNumaInfo((dynamic_cast<roc::Device*>(other_device))->gpuvm_segment_,
+  return getNumaInfo((static_cast<roc::Device*>(other_device))->gpuvm_segment_,
                      hop_count, link_type, &distance);
 }
 
@@ -2117,7 +2117,7 @@ bool Device::getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
     *link_type = link_info[0].link_type;
 
     uint32_t distance = 0;
-    for (int i = 0; i < hops; i++) {
+    for (uint32_t i = 0; i < hops; i++) {
       distance += link_info[i].numa_distance;
     }
     *numa_distance = distance;
