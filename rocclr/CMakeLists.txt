@@ -177,7 +177,7 @@ target_include_directories(amdrocclr_static
 
 target_compile_definitions(amdrocclr_static PRIVATE BSD_LIBELF)
 
-if(${USE_COMGR_LIBRARY} MATCHES "yes")
+if(USE_COMGR_LIBRARY)
   # FIXME: This should not be part of the public interface. Downstream
   # users need to add these definitions. This should be defined in a
   # config header here so other builds don't need to be aware of this.
