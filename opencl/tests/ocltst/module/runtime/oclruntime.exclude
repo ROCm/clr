@@ -5,3 +5,5 @@ OCLImageCopyPartial
 OCLCPUGuardPages
 
 OCLRegionDeviceQueries
+
+OCLPerfCounters
