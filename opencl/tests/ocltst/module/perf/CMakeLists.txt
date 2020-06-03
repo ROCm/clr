@@ -84,7 +84,8 @@ set_target_properties(oclperf PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
+    EXCLUDE_FROM_ALL TRUE)
 
 target_compile_definitions(oclperf
     PRIVATE
@@ -112,3 +113,13 @@ add_custom_command(
             ${CMAKE_BINARY_DIR}/tests/ocltst/oclperf.exclude)
 
 add_dependencies(ocltst oclperf)
+
+add_custom_target(test_oclperf
+    COMMAND
+        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+        $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclperf> -A oclperf.exclude
+    DEPENDS
+        ocltst oclperf amdocl64
+    WORKING_DIRECTORY
+        ${CMAKE_BINARY_DIR}/tests/ocltst
+    USES_TERMINAL)
