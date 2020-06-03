@@ -23,7 +23,7 @@ if(DEFINED USE_COMGR_LIBRARY)
 endif()
 
 option(USE_COMGR_LIBRARY "Use comgr library" ON)
-option(BUILD_TESTS "Enable building OpenCL tests" OFF)
+option(BUILD_TESTS "Enable building OpenCL tests" ON)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

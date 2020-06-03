@@ -14,7 +14,8 @@ set_target_properties(oclgl PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
+    EXCLUDE_FROM_ALL TRUE)
 
 target_compile_definitions(oclgl
     PRIVATE
@@ -37,3 +38,13 @@ add_custom_command(
             ${CMAKE_BINARY_DIR}/tests/ocltst/ogl.exclude)
 
 add_dependencies(ocltst oclgl)
+
+add_custom_target(test_oclgl
+    COMMAND
+        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+        $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclgl> -A oclgl.exclude
+    DEPENDS
+        ocltst oclgl amdocl64
+    WORKING_DIRECTORY
+        ${CMAKE_BINARY_DIR}/tests/ocltst
+    USES_TERMINAL)

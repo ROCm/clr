@@ -12,7 +12,8 @@ set_target_properties(ocltst PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
+    EXCLUDE_FROM_ALL TRUE)
 
 target_compile_definitions(ocltst
     PRIVATE
