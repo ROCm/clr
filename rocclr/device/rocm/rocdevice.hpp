@@ -444,7 +444,8 @@ class Device : public NullDevice {
   //! Acquire HSA queue. This method can create a new HSA queue or
   //! share previously created
   hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false,
-                            const std::vector<uint32_t>& cuMask = {});
+                            const std::vector<uint32_t>& cuMask = {},
+                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
 
   //! Release HSA queue
   void releaseQueue(hsa_queue_t*);
@@ -503,10 +504,16 @@ class Device : public NullDevice {
     int refCount;
     void* hostcallBuffer_;
   };
-  std::map<hsa_queue_t*, QueueInfo> queuePool_;  //!< Pool of HSA queues for recycling
+
+  //!< a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
+  std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
 
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
+
+  //!< enum for keeping the total and available queue priorities
+  enum QueuePriority : uint { Low = 0, Normal = 1, High = 2, Total = 3};
+
 };                                // class roc::Device
 }  // namespace roc
 

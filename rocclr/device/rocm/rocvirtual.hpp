@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "platform/commandqueue.hpp"
 #include "rocdevice.hpp"
 #include "utils/util.hpp"
 #include "hsa.h"
@@ -164,7 +165,8 @@ class VirtualGPU : public device::VirtualDevice {
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
-             const std::vector<uint32_t>& cuMask = {});
+             const std::vector<uint32_t>& cuMask = {},
+             amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
   ~VirtualGPU();
 
   bool create();
@@ -364,7 +366,9 @@ class VirtualGPU : public device::VirtualDevice {
   uint16_t dispatchPacketHeaderNoSync_;
   uint16_t dispatchPacketHeader_;
 
-  const std::vector<uint32_t>& cuMask_;  //!< The CU mask
+  //!< bit-vector representing the CU mask. Each active bit represents using one CU
+  const std::vector<uint32_t>& cuMask_;
+  amd::CommandQueue::Priority priority_; //!< The priority for the hsa queue
 };
 
 template <typename T>
