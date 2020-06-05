@@ -297,17 +297,31 @@ void Context::hostFree(void* ptr) const {
   AlignedMemory::deallocate(ptr);
 }
 
-void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags) {
+void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags,
+                        const amd::Device* curDev) {
   unsigned int numSVMDev = svmAllocDevice_.size();
   if (numSVMDev < 1) {
-    return NULL;
+    return nullptr;
   }
 
-  void* svmPtrAlloced = NULL;
-  void* tempPtr = NULL;
+  void* svmPtrAlloced = nullptr;
 
   amd::ScopedLock lock(&ctxLock_);
+
+  if (curDev != nullptr) {
+    if (!(flags & CL_MEM_SVM_ATOMICS) ||
+        (curDev->info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS)) {
+      svmPtrAlloced = curDev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
+      if (svmPtrAlloced == nullptr) {
+        return nullptr;
+      }
+    }
+  }
+
   for (const auto& dev : svmAllocDevice_) {
+    if (dev == curDev) {
+      continue;
+    }
     // check if the device support svm platform atomics,
     // skipped allocation for platform atomics if not supported by this device
     if ((flags & CL_MEM_SVM_ATOMICS) &&
@@ -315,8 +329,8 @@ void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags) {
       continue;
     }
     svmPtrAlloced = dev->svmAlloc(*this, size, alignment, flags, svmPtrAlloced);
-    if (svmPtrAlloced == NULL) {
-      return NULL;
+    if (svmPtrAlloced == nullptr) {
+      return nullptr;
     }
   }
   return svmPtrAlloced;
