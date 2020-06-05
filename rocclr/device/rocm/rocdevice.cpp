@@ -1938,6 +1938,23 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   }
 }
 
+hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
+  if (qIndex < QueuePriority::Total && queuePool_[qIndex].size() > 0) {
+    typedef decltype(queuePool_)::value_type::const_reference PoolRef;
+    auto lowest = std::min_element(queuePool_[qIndex].begin(),
+        queuePool_[qIndex].end(), [] (PoolRef A, PoolRef B) {
+          return A.second.refCount < B.second.refCount;
+        });
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
+        "selected queue with least refCount: %p (%d)", lowest->first,
+        lowest->second.refCount);
+    lowest->second.refCount++;
+    return lowest->first;
+  } else {
+    return nullptr;
+  }
+}
+
 hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
                                   const std::vector<uint32_t>& cuMask,
                                   amd::CommandQueue::Priority priority) {
@@ -1974,15 +1991,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   // choosing the one with the least number of users.
   // Note: Don't attempt to reuse the cooperative queue, since it's single per device
   if (!coop_queue && (cuMask.size() == 0) && (queuePool_[qIndex].size() == GPU_MAX_HW_QUEUES)) {
-    typedef decltype(queuePool_)::value_type::const_reference PoolRef;
-    auto lowest = std::min_element(queuePool_[qIndex].begin(), queuePool_[qIndex].end(),
-                                   [] (PoolRef A, PoolRef B) {
-                                     return A.second.refCount < B.second.refCount;
-                                   });
-    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue with least refCount: %p (%d)",
-                  lowest->first, lowest->second.refCount);
-    lowest->second.refCount++;
-    return lowest->first;
+    return getQueueFromPool(qIndex);
   }
 
   // Else create a new queue. This also includes the initial state where there
@@ -2008,17 +2017,24 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
                           &queue) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
     if (queue_size < 64) {
+      // if a queue with the same requested priority available from the pool, returns it here
+      if (!coop_queue && (cuMask.size() == 0) && (queuePool_[qIndex].size() > 0)) {
+        return getQueueFromPool(qIndex);
+      }
       DevLogError("Device::acquireQueue: hsa_queue_create failed!");
       return nullptr;
     }
   }
 
-  hsa_status_t st = HSA_STATUS_SUCCESS;
-  st = hsa_amd_queue_set_priority(queue, queue_priority);
-  if (st != HSA_STATUS_SUCCESS) {
-    DevLogError("Device::acquireQueue: hsa_amd_queue_set_priority failed!");
-    hsa_queue_destroy(queue);
-    return nullptr;
+  // default priority is normal so no need to set it again
+  if (queue_priority != HSA_AMD_QUEUE_PRIORITY_NORMAL) {
+    hsa_status_t st = HSA_STATUS_SUCCESS;
+    st = hsa_amd_queue_set_priority(queue, queue_priority);
+    if (st != HSA_STATUS_SUCCESS) {
+      DevLogError("Device::acquireQueue: hsa_amd_queue_set_priority failed!");
+      hsa_queue_destroy(queue);
+      return nullptr;
+    }
   }
 
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d with priority %d,"
