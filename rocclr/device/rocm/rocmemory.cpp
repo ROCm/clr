@@ -179,6 +179,9 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
 
   assert(mapTarget != nullptr);
 
+  // CPU access requires a stall of the current queue
+  static_cast<roc::VirtualGPU&>(vDev).releaseGpuMemoryFence();
+
   if (!isHostMemDirectAccess() && !IsPersistentDirectMap()) {
     if (!vDev.blitMgr().readBuffer(*this, mapTarget, amd::Coord3D(0), amd::Coord3D(size()), true)) {
       decIndMapCount();
@@ -371,6 +374,8 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
   // If the last writer was another GPU, then make a writeback
   if (!isHostMemDirectAccess() && (owner()->getLastWriter() != nullptr) &&
       (&dev() != owner()->getLastWriter())) {
+    // Make sure GPU finished operation before synchronization with the backing store
+    gpu.releaseGpuMemoryFence();
     mgpuCacheWriteBack();
   }
 
