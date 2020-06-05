@@ -1525,6 +1525,10 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
   // If we have host memory, use it
   if ((devMemory->owner()->getHostMem() != nullptr) &&
       (devMemory->owner()->getSvmPtr() == nullptr)) {
+    if (!devMemory->isHostMemDirectAccess()) {
+      // Make sure GPU finished operation before synchronization with the backing store
+      releaseGpuMemoryFence();
+    }
     // Target is the backing store, so just ensure that owner is up-to-date
     devMemory->owner()->cacheWriteBack();
 
@@ -1809,6 +1813,10 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
     Memory* memory = dev().getRocMemory(&(*itr));
 
     if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_HOST) {
+      if (!memory->isHostMemDirectAccess()) {
+        // Make sure GPU finished operation before synchronization with the backing store
+        releaseGpuMemoryFence();
+      }
       memory->mgpuCacheWriteBack();
     } else if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) {
       // Synchronize memory from host if necessary.
@@ -1838,7 +1846,8 @@ bool VirtualGPU::createSchedulerParam()
   }
 
   while(true) {
-    schedulerParam_ = new (dev().context()) amd::Buffer(dev().context(), CL_MEM_ALLOC_HOST_PTR, sizeof(SchedulerParam) + sizeof(AmdAqlWrap));
+    schedulerParam_ = new (dev().context()) amd::Buffer(dev().context(),
+      CL_MEM_ALLOC_HOST_PTR, sizeof(SchedulerParam) + sizeof(AmdAqlWrap));
 
     if ((nullptr != schedulerParam_) && !schedulerParam_->create(nullptr)) {
       break;
