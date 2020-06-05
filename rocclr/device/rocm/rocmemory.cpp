@@ -654,10 +654,12 @@ void Buffer::destroy() {
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
 
-    if (isFineGrain) {
-      dev().hostFree(deviceMemory_, size());
-    } else {
-      dev().memFree(deviceMemory_, size());
+    if (kind_ != MEMORY_KIND_PTRGIVEN) {
+      if (isFineGrain) {
+        dev().hostFree(deviceMemory_, size());
+      } else {
+        dev().memFree(deviceMemory_, size());
+      }
     }
 
     if ((deviceMemory_ != nullptr) &&
@@ -743,6 +745,7 @@ bool Buffer::create() {
       owner()->setSvmPtr(deviceMemory_);
     } else {
       deviceMemory_ = owner()->getSvmPtr();
+      kind_ = MEMORY_KIND_PTRGIVEN;
     }
 
     if (!isFineGrain && (owner()->parent() != nullptr) &&
