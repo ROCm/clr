@@ -150,8 +150,10 @@ class Context : public RuntimeObject {
    * @param size Allocation size, in bytes
    * @param alignment Desired alignment, in bytes
    * @param flags The flags to create a svm space
+   * @param curDev The current device
    */
-  void* svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE);
+  void* svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE,
+                 const amd::Device* curDev = nullptr);
 
   /**
    * Release SVM buffer

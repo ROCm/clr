@@ -594,7 +594,8 @@ class Image : public Memory {
 class SvmBuffer : AllStatic {
  public:
   //! Allocate a shared buffer that is accessible by all devices in the context
-  static void* malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment);
+  static void* malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment,
+                      const amd::Device* curDev = nullptr);
 
   //! Release shared buffer
   static void free(const Context& context, void* ptr);

@@ -1454,12 +1454,13 @@ bool SvmBuffer::Contains(uintptr_t ptr) {
 }
 
 // The allocation flags are ignored for now.
-void* SvmBuffer::malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment) {
+void* SvmBuffer::malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment,
+                        const amd::Device* curDev) {
   bool atomics = (flags & CL_MEM_SVM_ATOMICS) != 0;
-  void* ret = context.svmAlloc(size, alignment, flags);
-  if (ret == NULL) {
+  void* ret = context.svmAlloc(size, alignment, flags, curDev);
+  if (ret == nullptr) {
     LogError("Unable to allocate aligned memory");
-    return NULL;
+    return nullptr;
   }
   uintptr_t ret_u = reinterpret_cast<uintptr_t>(ret);
   Add(ret_u, ret_u + size);
