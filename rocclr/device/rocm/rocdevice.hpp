@@ -508,10 +508,13 @@ class Device : public NullDevice {
   //!< a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
   std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
 
+  //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
+  hsa_queue_t* getQueueFromPool(const uint qIndex);
+
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 
-  //!< enum for keeping the total and available queue priorities
+  //! enum for keeping the total and available queue priorities
   enum QueuePriority : uint { Low = 0, Normal = 1, High = 2, Total = 3};
 
 };                                // class roc::Device
