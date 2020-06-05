@@ -35,7 +35,8 @@ class Memory : public device::Memory {
     MEMORY_KIND_NORMAL = 0,
     MEMORY_KIND_LOCK,
     MEMORY_KIND_GART,
-    MEMORY_KIND_INTEROP
+    MEMORY_KIND_INTEROP,
+    MEMORY_KIND_PTRGIVEN
   };
 
   Memory(const roc::Device& dev, amd::Memory& owner);
