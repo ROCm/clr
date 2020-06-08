@@ -171,8 +171,8 @@ Device::Device(hsa_agent_t bkendDevice)
     , freeMem_(0)
     , vgpusAccess_("Virtual GPU List Ops Lock", true)
     , hsa_exclusive_gpu_access_(false)
-    , numOfVgpus_(0)
-    , queuePool_(QueuePriority::Total) {
+    , queuePool_(QueuePriority::Total)
+    , numOfVgpus_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
