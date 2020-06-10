@@ -199,9 +199,10 @@ void Device::setupCpuAgent() {
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
-  LogPrintfInfo("Numa select cpu agent[%u]=0x%llx(fine=0x%llx,coarse=0x%llx) for gpu agent=0x%llx",
-     index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
-     _bkendDevice.handle);
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa select cpu agent[%zu]=0x%zx(fine=0x%zx,coarse=0x%zx) "
+          "for gpu agent=0x%zx",
+          index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
+          _bkendDevice.handle);
 }
 
 Device::~Device() {
