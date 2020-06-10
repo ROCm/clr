@@ -109,10 +109,6 @@ void OCLReadWriteImage::open(unsigned int test, char *units, double &conversion,
     }
   }
 
-#ifdef ATI_OS_LINUX
-  failed_ = true;
-  return;
-#endif
   if (test == 1) {
     program_ = _wrapper->clCreateProgramWithSource(
         context_, 1, &rgba8888_kernel_read, NULL, &error_);
