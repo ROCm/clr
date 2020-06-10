@@ -91,6 +91,10 @@ static const hsa_barrier_and_packet_t kBarrierReleasePacket = {
 
 double Timestamp::ticksToTime_ = 0;
 
+static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
+  return (v >> pos) & ((1 << width) - 1);
+};
+
 bool VirtualGPU::MemoryDependency::create(size_t numMemObj) {
   if (numMemObj > 0) {
     // Allocate the array of memory objects for dependency tracking
@@ -482,7 +486,31 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     if (header != 0) {
       packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
     }
+    ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
+            "[%zx] HWq=0x%zx, Dispatch Header = 0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+            "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
+            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
+            std::this_thread::get_id(), gpu_queue_,
+            header, extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
+            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, 
+                           HSA_PACKET_HEADER_WIDTH_BARRIER),
+            extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                           HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+            extractAqlBits(header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                           HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+            rest, reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_x,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_y,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_z,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_x,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_y,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_z,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->private_segment_size,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal);
   }
+
   //hsa_queue_store_write_index_release(gpu_queue_, index);
   hsa_signal_store_release(gpu_queue_->doorbell_signal, index - 1);
 
@@ -547,9 +575,23 @@ void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
   hsa_barrier_and_packet_t* aql_loc =
     &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
   *aql_loc = *packet;
- __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), kBarrierPacketHeader, __ATOMIC_RELEASE);
+  __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), kBarrierPacketHeader, __ATOMIC_RELEASE);
 
- hsa_signal_store_release(gpu_queue_->doorbell_signal, index);
+  hsa_signal_store_release(gpu_queue_->doorbell_signal, index);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
+          "[%zx] HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+          "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
+          std::this_thread::get_id(), gpu_queue_, kBarrierPacketHeader,
+          extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_TYPE,
+                         HSA_PACKET_HEADER_WIDTH_TYPE),
+          extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_BARRIER,
+                          HSA_PACKET_HEADER_WIDTH_BARRIER),
+          extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+          extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+          packet->dep_signal[0], packet->dep_signal[1], packet->dep_signal[2],
+          packet->dep_signal[3], packet->dep_signal[4], packet->completion_signal);
 }
 
 /**
