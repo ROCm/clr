@@ -1170,6 +1170,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
+// ================================================================================================
 void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -1191,6 +1192,31 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
+// ================================================================================================
+void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
+#if ROCR_HMM_SUPPORT
+  // Initialize signal for the barrier
+  hsa_signal_store_relaxed(barrier_signal_, InitSignalValue);
+
+  // Find the requested agent for the transfer
+  hsa_agent_t agent = cmd.cpu_access() ? dev().cpu_agent() ? gpu_device();
+
+  // Initiate a prefetch command
+  hsa_amd_svm_prefetch_async(cmd.dev_prt(), cmd.count(), agent, 0, nullptr, barrier_signal_);
+
+  // Wait for the prefetch
+  if (hsa_signal_wait_acquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+                              HSA_WAIT_STATE_BLOCKED) != 0) {
+    LogError("Barrier packet submission failed");
+    return false;
+  }
+
+  // Add system scope, since the prefetch scope is unclear
+  addSystemScope();
+#endif // ROCR_HMM_SUPPORT
+}
+
+// ================================================================================================
 bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memory& dstMem,
                             bool entire, const amd::Coord3D& srcOrigin,
                             const amd::Coord3D& dstOrigin, const amd::Coord3D& size,

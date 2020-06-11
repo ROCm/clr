@@ -178,6 +178,7 @@ Device::Device(hsa_agent_t bkendDevice)
   system_coarse_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
+  prefetch_signal_.handle = 0;
 }
 
 void Device::setupCpuAgent() {
@@ -784,6 +785,11 @@ bool Device::create(bool sramEccEnabled) {
         return false;
       }
     }
+  }
+
+  // Create signal for HMM prefetch operation on device
+  if (HSA_STATUS_SUCCESS != hsa_signal_create(InitSignalValue, 0, nullptr, &prefetch_signal_)) {
+    return false;
   }
 
   return true;
@@ -1904,6 +1910,187 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   return svmPtr;
 }
 
+// ================================================================================================
+bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
+                              amd::MemoryAdvice advice, bool first_alloc) const {
+  if ((settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) && !first_alloc) {
+    amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr);
+    if (nullptr == svmMem) {
+      LogPrintfError("SetSvmAttributes received unknown memory for update: %p!", dev_ptr);
+      return false;
+    }
+  }
+#if AMD_HMM_SUPPORT
+  std::vector<hsa_amd_svm_attribute_pair_t> attr;
+  if (first_alloc) {
+    attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, HSA_AMD_SVM_GLOBAL_FLAG_COARSE_GRAINED});
+  }
+
+  switch (advice) {
+    case amd::MemoryAdvice::SetReadMostly:
+      attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, true});
+      break;
+    case amd::MemoryAdvice::UnsetReadMostly:
+      attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, false});
+      break;
+    case amd::MemoryAdvice::SetPreferredLocation:
+      attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getBackendDevice().handle});
+      break;
+    case amd::MemoryAdvice::UnsetPreferredLocation:
+      // Note: The current behavior doesn't match hip spec precisely
+      attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getCpuAgent().handle});
+      break;
+    case amd::MemoryAdvice::SetAccessedBy:
+      attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE, getBackendDevice().handle});
+      break;
+    case amd::MemoryAdvice::UnsetAccessedBy:
+      // @note: The current behavior doesn't match hip spec precisely
+      attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE, getCpuAgent().handle});
+      break;
+    default:
+      return false;
+    break;
+  }
+
+  hsa_status_t status = hsa_amd_svm_attributes_set(const_cast<void*>(dev_ptr), count,
+                                                   attr.data(), attr.size());
+  if (status != HSA_STATUS_SUCCESS) {
+    LogError("hsa_amd_svm_attributes_set() failed");
+    return false;
+  }
+#endif // AMD_HMM_SUPPORT
+  return true;
+}
+
+// ================================================================================================
+bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
+                              size_t num_attributes, const void* dev_ptr, size_t count) const {
+  if (settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) {
+    amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr);
+    if (nullptr == svmMem) {
+      LogPrintfError("GetSvmAttributes received unknown memory %p for state!", dev_ptr);
+      return false;
+    }
+  }
+#if AMD_HMM_SUPPORT
+  std::vector<hsa_amd_svm_attribute_pair_t> attr;
+
+  for (int i = 0; i < num_attributes; ++i) {
+    switch (attributes[i]) {
+      case amd::MemRangeAttribute::ReadMostly:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, 0});
+        break;
+      case amd::MemRangeAttribute::PreferredLocation:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, 0});
+        break;
+      case amd::MemRangeAttribute::AccessedBy:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, 0});
+        break;
+      case amd::MemRangeAttribute::LastPrefetchLocation:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_PREFETCH_LOCATION, 0});
+        break;
+      default:
+        return false;
+      break;
+    }
+  }
+
+  hsa_status_t status = hsa_amd_svm_attributes_get(const_cast<void*>(dev_ptr), count,
+                                                   attr.data(), attr.size());
+  if (status != HSA_STATUS_SUCCESS) {
+    LogError("hsa_amd_svm_attributes_get() failed");
+    return false;
+  }
+
+  uint32_t idx = 0;
+  for (auto& it : attr) {
+    switch (it.attribute) {
+      case HSA_AMD_SVM_ATTRIB_READ_ONLY:
+        if (data_sizes[idx] != sizeof(uint32_t)) {
+          return false;
+        }
+        // Cast ROCr value into the hip format
+        *reinterpret_cast<uint32_t*>(data[idx]) = static_cast<uint32_t>(it.value);
+        break;
+      // The logic should be identical for the both queries
+      case HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION:
+      case HSA_AMD_SVM_ATTRIB_PREFETCH_LOCATION:
+        if (data_sizes[idx] != sizeof(uint32_t)) {
+          return false;
+        }
+        *reinterpret_cast<int32_t*>(data[idx]) = static_cast<int32_t>(amd::InvalidDeviceId);
+        // Find device agent returned by ROCr
+        for (auto& device : devices()) {
+          if (static_cast<Device*>(device)->getBackendDevice().handle == it.value) {
+            *reinterpret_cast<uint32_t*>(data[idx]) = static_cast<uint32_t>(device->index());
+          }
+        }
+        // Find CPU agent returned by ROCr
+        for (auto& agent_info : getCpuAgents()) {
+          if (agent_info.agent.handle == it.value) {
+            *reinterpret_cast<int32_t*>(data[idx]) = static_cast<int32_t>(amd::CpuDeviceId);
+          }
+        }
+        break;
+      case HSA_AMD_SVM_ATTRIB_ACCESS_QUERY:
+        // Make sure it's multiple of 4
+        if (data_sizes[idx] % 4 != 0) {
+          return false;
+        }
+        // @note currently it's a nop
+        break;
+      default:
+        return false;
+      break;
+    }
+    // Find the next location in the query
+    ++idx;
+  }
+#endif // AMD_HMM_SUPPORT
+  return true;
+}
+
+// ================================================================================================
+bool Device::SvmAllocInit(void* memory, size_t size) const {
+  amd::MemoryAdvice advice = amd::MemoryAdvice::SetAccessedBy;
+  constexpr bool kFirstAlloc = true;
+  SetSvmAttributes(memory, size, advice, kFirstAlloc);
+
+  if (settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) {
+    advice = amd::MemoryAdvice::UnsetPreferredLocation;
+    SetSvmAttributes(memory, size, advice);
+  } else {
+    advice = amd::MemoryAdvice::SetPreferredLocation;
+    SetSvmAttributes(memory, size, advice);
+  }
+
+  if ((settings().hmmFlags_ & Settings::Hmm::EnableMallocPrefetch) == 0) {
+    return true;
+  }
+
+#if AMD_HMM_SUPPORT
+  // Initialize signal for the barrier
+  hsa_signal_store_relaxed(prefetch_signal_, InitSignalValue);
+
+  // Initiate a prefetch command which should force memory update in HMM
+  hsa_status_t status = hsa_amd_svm_prefetch_async(memory, size, getBackendDevice(),
+                                                   0, nullptr, prefetch_signal_);
+  if (status != HSA_STATUS_SUCCESS) {
+    LogError("hsa_amd_svm_attributes_get() failed");
+    return false;
+  }
+
+  // Wait for the prefetch
+  if (hsa_signal_wait_acquire(prefetch_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+                              HSA_WAIT_STATE_BLOCKED) != 0) {
+    LogError("Barrier packet submission failed");
+    return false;
+  }
+#endif // AMD_HMM_SUPPORT
+  return true;
+}
+
+// ================================================================================================
 void Device::svmFree(void* ptr) const {
   amd::Memory* svmMem = nullptr;
   svmMem = amd::MemObjMap::FindMemObj(ptr);

@@ -208,6 +208,7 @@ class VirtualGPU : public device::VirtualDevice {
   void submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd);
   void submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd);
   void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
+  void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd);
 
   // { roc OpenCL integration
   // Added these stub (no-ops) implementation of pure virtual methods,

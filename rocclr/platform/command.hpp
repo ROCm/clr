@@ -1364,7 +1364,6 @@ class TransferBufferFileCommand : public OneMemoryArgCommand {
  *              as 1D structures so origin_[0] and size_[0] are
  *              equivalent to offset_ and count_ respectively.
  */
-
 class CopyMemoryP2PCommand : public CopyMemoryCommand {
  public:
   CopyMemoryP2PCommand(HostQueue& queue, cl_command_type cmdType,
@@ -1376,6 +1375,29 @@ class CopyMemoryP2PCommand : public CopyMemoryCommand {
   virtual void submit(device::VirtualDevice& device) { device.submitCopyMemoryP2P(*this); }
 
   bool validateMemory();
+};
+
+/*! \brief      Prefetch command for SVM memory
+ *
+ *  \details    Prefetches SVM memory into the current device or CPU
+ */
+class SvmPrefetchAsyncCommand : public Command {
+  const void* dev_ptr_;   //!< Device pointer to memory for prefetch
+  size_t count_;          //!< the size for prefetch
+  bool   cpu_access_;     //!< Prefetch data into CPU location
+
+ public:
+  SvmPrefetchAsyncCommand(HostQueue& queue, const EventWaitList& eventWaitList,
+                          const void* dev_ptr, size_t count, bool cpu_access)
+      : Command(queue, 1, eventWaitList), dev_ptr_(dev_ptr), count_(count), cpu_access_(cpu_access) {}
+
+  virtual void submit(device::VirtualDevice& device) { device.submitSvmPrefetchAsync(*this); }
+
+  bool validateMemory();
+
+  const void* dev_ptr() const { return dev_ptr_; }
+  size_t count() const { return count_; }
+  size_t cpu_access() const { return cpu_access_; }
 };
 
 /*! @}

@@ -86,6 +86,9 @@ Settings::Settings() {
 
   lcWavefrontSize64_ = true;
   imageBufferWar_ = false;
+
+  hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS :
+      Hmm::EnableSystemMemory | Hmm::EnableMallocPrefetch;
 }
 
 bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups) {
