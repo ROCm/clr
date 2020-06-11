@@ -76,6 +76,7 @@ class SvmCopyMemoryCommand;
 class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
+class SvmPrefetchAsyncCommand;
 class TransferBufferFileCommand;
 class HwDebugManager;
 class Device;
@@ -85,6 +86,30 @@ struct Coord3D;
 namespace option {
 class Options;
 }  // namespace option
+
+//! @note: the defines match hip values
+enum MemoryAdvice : uint32_t {
+  SetReadMostly = 1,          ///< Data will mostly be read and only occassionally be written to
+  UnsetReadMostly = 2,        ///< Undo the effect of hipMemAdviseSetReadMostly
+  SetPreferredLocation = 3,   ///< Set the preferred location for the data as the specified device
+  UnsetPreferredLocation = 4, ///< Clear the preferred location for the data
+  SetAccessedBy = 5,          ///< Data will be accessed by the specified device,
+                              ///< so prevent page faults as much as possible
+  UnsetAccessedBy = 6         ///< Let the Unified Memory subsystem decide on
+                              ///< the page faulting policy for the specified device
+};
+
+enum MemRangeAttribute : uint32_t {
+    ReadMostly = 1,           ///< Whether the range will mostly be read and only
+                              ///< occassionally be written to
+    PreferredLocation = 2,    ///< The preferred location of the range
+    AccessedBy = 3,           ///< Memory range has hipMemAdviseSetAccessedBy
+                              ///< set for specified device
+    LastPrefetchLocation = 4, ///< The last location to which the range was prefetched
+};
+
+constexpr int CpuDeviceId = static_cast<int>(-1);
+constexpr int InvalidDeviceId = static_cast<int>(-2);
 
 }  // namespace amd
 
@@ -1111,7 +1136,9 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd) {
     ShouldNotReachHere();
   }
-
+  virtual void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
+    ShouldNotReachHere();
+  }
   //! Get the blit manager object
   device::BlitManager& blitMgr() const { return *blitMgr_; }
 
@@ -1340,6 +1367,24 @@ class Device : public RuntimeObject {
    * @copydoc amd::Context::svmFree
    */
   virtual void svmFree(void* ptr) const = 0;
+
+  /**
+   * @return True if the device successfully applied the SVM attributes in HMM for device memory
+   */
+  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
+                                amd::MemoryAdvice advice, bool first_alloc = false) const {
+    ShouldNotCallThis();
+    return false;
+  }
+
+  /**
+   * @return True if the device successfully retrieved the SVM attributes from HMM for device memory
+   */
+  virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
+                                size_t num_attributes, const void* dev_ptr, size_t count) const {
+    ShouldNotCallThis();
+    return false;
+  }
 
   //! Validate kernel
   virtual bool validateKernel(const amd::Kernel& kernel,

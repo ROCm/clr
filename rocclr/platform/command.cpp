@@ -203,7 +203,6 @@ bool Event::awaitCompletion() {
         lock_.wait();
       }
     }
-
     ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
   }
 
@@ -631,6 +630,15 @@ bool CopyMemoryP2PCommand::validateMemory() {
     }
   }
   return true;
+}
+
+// ================================================================================================
+bool SvmPrefetchAsyncCommand::validateMemory() {
+  amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr());
+  if (nullptr == svmMem) {
+    LogPrintfError("SvmPrefetchAsync received unknown memory for prefetch: %p!", dev_ptr());
+    return false;
+  }
 }
 
 }  // namespace amd

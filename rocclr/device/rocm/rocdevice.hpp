@@ -79,7 +79,7 @@ class IProDevice;
 class Sampler : public device::Sampler {
  public:
   //! Constructor
-    Sampler(const Device& dev) : dev_(dev) {}
+  Sampler(const Device& dev) : dev_(dev) {}
 
   //! Default destructor for the device memory object
   virtual ~Sampler();
@@ -381,7 +381,13 @@ class Device : public NullDevice {
 
   virtual void svmFree(void* ptr) const;
 
-  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
+  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
+                                amd::MemoryAdvice advice, bool first_alloc = false) const;
+  virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
+                                size_t num_attributes, const void* dev_ptr, size_t count) const;
+
+  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+                            cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }
@@ -464,7 +470,12 @@ class Device : public NullDevice {
   roc::Memory* getGpuMemory(amd::Memory* mem  //!< Pointer to AMD memory object
                             ) const;
 
+  //! Initialize memory in AMD HMM on the current device or keeps it in the host memory
+  bool SvmAllocInit(void* memory, size_t size) const;
+
  private:
+  static const hsa_signal_value_t InitSignalValue = 1;
+
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
   amd::Monitor* mapCacheOps_;            //!< Lock to serialise cache for the map resources
@@ -485,6 +496,8 @@ class Device : public NullDevice {
   hsa_amd_memory_pool_t system_coarse_segment_;
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
+  hsa_signal_t prefetch_signal_;    //!< Prefetch signal, used to explicitly prefetch SVM on device
+
   size_t gpuvm_segment_max_alloc_;
   size_t alloc_granularity_;
   static const bool offlineDevice_;

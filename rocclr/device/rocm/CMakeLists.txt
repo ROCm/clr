@@ -36,6 +36,11 @@ target_include_directories(oclrocm
     ${ROCM_OCL_INCLUDES}
     ${ROCR_INCLUDES})
 
+option(BUILD_HMM "Build HMM support" OFF)
+if (BUILD_HMM)
+  target_compile_definitions(oclrocm
+    PRIVATE AMD_HMM_SUPPORT)
+endif()
 
 if(USE_COMGR_LIBRARY)
   target_compile_definitions(oclrocm
