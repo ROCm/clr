@@ -26,6 +26,7 @@
 #include "utils/flags.hpp"
 #endif
 
+#include <mutex>
 #include <cstdlib>
 #include <cstdio>
 #include <cstdarg>
@@ -80,6 +81,15 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
 #endif
 }
 
+FILE* g_pLogFile = nullptr;
+std::once_flag g_iLogFileInitialized;
+
+void createLogFile() {
+  if (!flagIsDefault(AMD_LOG_FILE) && g_pLogFile == nullptr) {
+    g_pLogFile = fopen("rocclr-trace.log", "w");
+  }
+}
+
 void log_printf(LogLevel level, const char* file, int line, const char* format, ...) {
   va_list ap;
 
@@ -88,7 +98,16 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
 
-  fprintf(stderr, ":%d:%-25s:%-4d: %010lld: %s\n", level, file, line, Os::timeNanos() / 100ULL, message);
+  if (!flagIsDefault(AMD_LOG_FILE)) {
+    std::call_once(amd::g_iLogFileInitialized, amd::createLogFile);
+
+    if (g_pLogFile) {
+      fprintf(g_pLogFile, ":%d:%-25s:%-4d: %010lld: %s\n", level, file, line, Os::timeNanos() / 100ULL, message);
+    }
+  }
+  else {
+    fprintf(stderr, ":%d:%-25s:%-4d: %010lld: %s\n", level, file, line, Os::timeNanos() / 100ULL, message);
+  }
 }
 
 }  // namespace amd

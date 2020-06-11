@@ -26,6 +26,8 @@
                                                                               \
 release(int, AMD_LOG_LEVEL, 0,                                                \
         "The default log level")                                              \
+release(bool, AMD_LOG_FILE, false,                                            \
+        "By default log file is disabled")                                    \
 release(uint, AMD_LOG_MASK, 0X7FFFFFFF,                                       \
         "The mask to enable specific kinds of logs")                          \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
