@@ -1930,8 +1930,8 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
 bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
                               amd::MemoryAdvice advice, bool first_alloc) const {
   if ((settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) && !first_alloc) {
-    amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr);
-    if (nullptr == svmMem) {
+    amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
+    if (nullptr == svm_mem) {
       LogPrintfError("SetSvmAttributes received unknown memory for update: %p!", dev_ptr);
       return false;
     }
@@ -1982,8 +1982,8 @@ bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
 bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                               size_t num_attributes, const void* dev_ptr, size_t count) const {
   if (settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) {
-    amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr);
-    if (nullptr == svmMem) {
+    amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
+    if (nullptr == svm_mem) {
       LogPrintfError("GetSvmAttributes received unknown memory %p for state!", dev_ptr);
       return false;
     }
