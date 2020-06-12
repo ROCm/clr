@@ -538,8 +538,10 @@ struct Info : public amd::EmbeddedObject {
   char driverStore_[200];
   //! Device ID
   uint32_t pcieDeviceId_;
-  //! Revision ID
+  //! PCI Revision ID
   uint32_t pcieRevisionId_;
+  //! ASIC Revision
+  uint32_t asicRevision_;
 
   //! Max numbers of threads per CU
   uint32_t maxThreadsPerCU_;
