@@ -1443,13 +1443,17 @@ bool Device::populateOCLDeviceConstants() {
       return false;
     }
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_WIDTH, &info_.vramBusBitWidth_)) {
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
+                           &info_.vramBusBitWidth_)) {
       return false;
     }
 
     uint32_t max_waves_per_cu;
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU, &max_waves_per_cu)) {
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU),
+                           &max_waves_per_cu)) {
       return false;
     }
 
@@ -1457,9 +1461,21 @@ bool Device::populateOCLDeviceConstants() {
     uint32_t cache_sizes[4];
     /* FIXIT [skudchad] -  Seems like hardcoded in HSA backend so 0*/
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AGENT_INFO_CACHE_SIZE, cache_sizes)) {
-        return false;
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_AGENT_INFO_CACHE_SIZE),
+                           cache_sizes)) {
+      return false;
     }
+
+    uint32_t asic_revision;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_ASIC_REVISION),
+                           &asic_revision)) {
+      return false;
+    }
+    info_.asicRevision_ = asic_revision;
+
     info_.l2CacheSize_ = cache_sizes[1];
     info_.timeStampFrequency_ = 1000000;
     info_.globalMemChannelBanks_ = 4;
