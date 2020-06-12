@@ -639,6 +639,7 @@ bool SvmPrefetchAsyncCommand::validateMemory() {
     LogPrintfError("SvmPrefetchAsync received unknown memory for prefetch: %p!", dev_ptr());
     return false;
   }
+  return true;
 }
 
 }  // namespace amd
