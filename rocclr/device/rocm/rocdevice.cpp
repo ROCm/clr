@@ -2383,8 +2383,6 @@ bool Device::getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
         HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info);
 
   if (res == HSA_STATUS_SUCCESS) {
-    *hop_count = hops;
-
     // Now RocR always set hops=1 between two different devices.
     // If RocR changes the behavior, we need revisit here.
     *link_type = link_info[0].link_type;
@@ -2394,6 +2392,13 @@ bool Device::getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
       distance += link_info[i].numa_distance;
     }
     *numa_distance = distance;
+
+    // The following logics will be subject to change in rocm3.7
+    uint32_t oneHopDistance = 20; // Default to PCIE
+    if (*link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) {
+      oneHopDistance = 15;
+    }
+    *hop_count = distance/oneHopDistance;
   }
 
   delete [] link_info;
