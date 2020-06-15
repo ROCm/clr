@@ -1843,28 +1843,19 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
 
   // Check if memory wasn't mapped yet
   if (++mapCount_ == 1) {
-    if ((desc().dimSize_ == 3) || desc().imageArray_ ||
-        ((desc().type_ == ImageView) && viewOwner_->mipMapped())) {
-      // Save map info for multilayer map/unmap
-      startLayer_ = startLayer;
-      numLayers_ = numLayers;
-      mapFlags_ = flags;
-      // Map with layers
-      address_ = mapLayers(gpu, flags);
+    // Map current resource
+    if (memRef_->cpuAddress_ != nullptr) {
+      // Suballocations are mapped by the memory suballocator
+      address_ = reinterpret_cast<uint8_t*>(memRef_->cpuAddress_) + subOffset_;
     } else {
-      // Map current resource
-      if (memRef_->cpuAddress_ != nullptr) {
-        // Suballocations are mapped by the memory suballocator
-        address_ = reinterpret_cast<uint8_t*>(memRef_->cpuAddress_) + subOffset_;
-      } else {
-        address_ = gpuMemoryMap(&desc_.pitch_, flags, iMem());
-        address_ = reinterpret_cast<address>(address_) + offset_;
-      }
-      if (address_ == nullptr) {
-        LogError("cal::ResMap failed!");
-        --mapCount_;
-        return nullptr;
-      }
+      address_ = gpuMemoryMap(&desc_.pitch_, flags, iMem());
+      address_ = reinterpret_cast<address>(address_) + offset_;
+    }
+
+    if (address_ == nullptr) {
+      LogError("cal::ResMap failed!");
+      --mapCount_;
+      return nullptr;
     }
   }
 
@@ -1882,12 +1873,6 @@ void* Resource::map(VirtualGPU* gpu, uint flags, uint startLayer, uint numLayers
 }
 
 // ================================================================================================
-void* Resource::mapLayers(VirtualGPU* gpu, uint flags) {
-  Unimplemented();
-  return nullptr;
-}
-
-// ================================================================================================
 void Resource::unmap(VirtualGPU* gpu) {
   if (isMemoryType(Pinned)) {
     return;
@@ -1898,14 +1883,8 @@ void Resource::unmap(VirtualGPU* gpu) {
 
   // Check if it's the last unmap
   if (count == 0) {
-    if ((desc().dimSize_ == 3) || desc().imageArray_ ||
-        ((desc().type_ == ImageView) && viewOwner_->mipMapped())) {
-      // Unmap layers
-      unmapLayers(gpu);
-    } else {
-      // Unmap current resource
-      gpuMemoryUnmap(iMem());
-    }
+    // Unmap current resource
+    gpuMemoryUnmap(iMem());
     address_ = nullptr;
   } else if (count < 0) {
     LogError("dev().serialCalResUnmap failed!");
@@ -1913,9 +1892,6 @@ void Resource::unmap(VirtualGPU* gpu) {
     return;
   }
 }
-
-// ================================================================================================
-void Resource::unmapLayers(VirtualGPU* gpu) { Unimplemented(); }
 
 // ================================================================================================
 bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {

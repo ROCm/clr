@@ -460,18 +460,6 @@ class Resource : public amd::HeapObject {
   //! Disable operator=
   Resource& operator=(const Resource&);
 
-  /*! \brief Locks the resource with layers and returns a physical pointer
-   *
-   *  \return Pointer to the physical memory
-   */
-  void* mapLayers(VirtualGPU* gpu,  //!< Virtual GPU device object
-                  uint flags = 0    //!< flags for the map operation
-  );
-
-  //! Unlocks the resource with layers if it was locked
-  void unmapLayers(VirtualGPU* gpu  //!< Virtual GPU device object
-  );
-
   //! Calls PAL to map a resource
   void* gpuMemoryMap(size_t* pitch,             //!< Pitch value for the image
                      uint flags,                //!< Map flags
