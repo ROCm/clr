@@ -40,10 +40,6 @@ endif()
 
 option(USE_COMGR_LIBRARY "Use comgr library" ON)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options("-Wno-ignored-attributes")
-endif()
-
 find_package(amd_comgr REQUIRED CONFIG
    PATHS
      /opt/rocm/
@@ -85,6 +81,21 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
+   (CMAKE_${COMPILER}_COMPILER_ID MATCHES "Clang"))
+  add_definitions(
+    # Enabling -Wextra or -pedantic will cause
+    # thousands of warnings. Keep things simple for now.
+    -Wall
+    # Makefile build adds -fno-strict-aliasing instead.
+    -Wno-strict-aliasing
+    # This one seems impossible to fix for now.
+    # There are hundreds of instances of unused vars/functions
+    # throughout the code base.
+    -Wno-unused-variable
+    -Wno-unused-function)
+endif()
 
 add_definitions(-D__x86_64__ -DOPENCL_MAJOR=2 -DOPENCL_MINOR=1 -DCL_TARGET_OPENCL_VERSION=220 -DATI_OS_LINUX -DATI_ARCH_X86 -DLITTLEENDIAN_CPU -DATI_BITS_64 -DWITH_TARGET_AMDGCN -DOPENCL_EXPORTS -DCL_USE_DEPRECATED_OPENCL_1_0_APIS -DCL_USE_DEPRECATED_OPENCL_1_1_APIS -DCL_USE_DEPRECATED_OPENCL_1_2_APIS -DCL_USE_DEPRECATED_OPENCL_2_0_APIS -DVEGA10_ONLY=false -DWITH_LIGHTNING_COMPILER)
 add_definitions(-DOPENCL_C_MAJOR=2 -DOPENCL_C_MINOR=0)
