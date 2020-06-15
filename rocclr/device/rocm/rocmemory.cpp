@@ -753,11 +753,10 @@ bool Buffer::create() {
 #else
           deviceMemory_ = dev().hostAlloc(size(), 1, false);
 #endif // AMD_HMM_SUPPORT
-        } else if (memFlags & CL_MEM_SVM_ATOMICS) {
-          deviceMemory_ = dev().hostAlloc(size(), 1, true);
-        }
-        else {
-          deviceMemory_ = dev().hostAlloc(size(), 1, false);
+        } else if (memFlags & CL_MEM_FOLLOW_USER_NUMA_POLICY) {
+          deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
+        } else {
+          deviceMemory_ = dev().hostAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
         }
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");

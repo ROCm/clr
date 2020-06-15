@@ -49,6 +49,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <numaif.h>
 #endif  // WITHOUT_HSA_BACKEND
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
@@ -1782,9 +1783,69 @@ void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
   stat = hsa_amd_agents_allow_access(gpu_agents_.size(), &gpu_agents_[0], nullptr, ptr);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail hsa_amd_agents_allow_access");
+    hostFree(ptr, size);
     return nullptr;
   }
 
+  return ptr;
+}
+
+void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics) const {
+  void* ptr = nullptr;
+  const hsa_amd_memory_pool_t segment =
+      (!atomics) ?
+          (agentInfo.coarse_grain_pool.handle != 0) ?
+              agentInfo.coarse_grain_pool : agentInfo.fine_grain_pool
+          : agentInfo.fine_grain_pool;
+  assert(segment.handle != 0);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
+  if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Fail allocation host memory with err %d", stat);
+    return nullptr;
+  }
+
+  stat = hsa_amd_agents_allow_access(gpu_agents_.size(), &gpu_agents_[0], nullptr, ptr);
+  if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Fail hsa_amd_agents_allow_access with err %d", stat);
+    hostFree(ptr, size);
+    return nullptr;
+  }
+
+  return ptr;
+}
+
+void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
+  void* ptr = nullptr;
+  int mode = MPOL_DEFAULT;
+  unsigned long nodeMask = 0;
+  auto cpuCount = cpu_agents_.size();
+
+  constexpr unsigned long maxNode = sizeof(nodeMask) * 8;
+  long res = get_mempolicy(&mode, &nodeMask, maxNode, NULL, 0);
+  if (res) {
+    LogPrintfError("get_mempolicy failed with error %ld", res);
+    return ptr;
+  }
+  ClPrint(amd::LOG_INFO, amd::LOG_RESOURCE,
+          "get_mempolicy() succeed with mode %d, nodeMask 0x%lx, cpuCount %zu",
+          mode, nodeMask, cpuCount);
+
+  switch (mode) {
+    // For details, see "man get_mempolicy".
+    case MPOL_BIND:
+    case MPOL_PREFERRED:
+      // We only care about the first CPU node
+      for (unsigned int i = 0; i < cpuCount; i++) {
+        if ((1u << i) & nodeMask) {
+          ptr = hostAgentAlloc(size, cpu_agents_[i], atomics);
+          break;
+        }
+      }
+      break;
+    default:
+      //  All other modes fall back to default mode
+      ptr = hostAlloc(size, alignment, atomics);
+  }
   return ptr;
 }
 
