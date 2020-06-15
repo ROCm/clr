@@ -308,7 +308,6 @@ class Device : public NullDevice {
   virtual hsa_agent_t getBackendDevice() const { return _bkendDevice; }
   const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
 
-
   static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
   static const std::vector<AgentInfo>& getCpuAgents() { return cpu_agents_; }
 
@@ -388,6 +387,12 @@ class Device : public NullDevice {
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
+
+  //! Allocate host memory in terms of numa policy set by user
+  void* hostNumaAlloc(size_t size, size_t alignment, bool atomics = false) const;
+
+  //! Allocate host memory from agent info
+  void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics = false) const;
 
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }
