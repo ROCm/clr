@@ -1840,7 +1840,6 @@ amd::Memory *Device::IpcAttach(const void* handle, size_t mem_size, unsigned int
 
   /* FIX_ME (SWDEV-215976): Mapping for all devices is not optimal. In future map only for devices on need basis */
   /* Retrieve the devPtr from the handle */
-  hsa_agent_t hsa_agent = getBackendDevice();
   hsa_status
     = hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
                                 mem_size, (1 + p2p_agents_.size()), p2p_agents_list_, dev_ptr);

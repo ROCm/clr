@@ -2334,8 +2334,10 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
 
   address parameters = captureArguments(kernels_[Scheduler]);
 
-  bool result = false;
-  result = gpu().submitKernelInternal(ndrange, *kernels_[Scheduler], parameters, nullptr);
+  if (!gpu().submitKernelInternal(ndrange, *kernels_[Scheduler],
+                                  parameters, nullptr)) {
+    return false;
+  }
   releaseArguments(parameters);
 
   if (hsa_signal_wait_acquire(schedulerSignal, HSA_SIGNAL_CONDITION_LT, 1, (-1),

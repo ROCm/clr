@@ -110,11 +110,13 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
   if (devicePrograms_[&rootDev] != NULL) {
     return CL_SUCCESS;
   }
-  bool emptyOptions = false;
+
+#if defined(WITH_COMPILER_LIB)
+  bool emptyOptions = (options == nulltr);
+#endif
   amd::option::Options emptyOpts;
   if (options == NULL) {
     options = &emptyOpts;
-    emptyOptions = true;
   }
 
 #if defined(WITH_COMPILER_LIB)
@@ -333,11 +335,11 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
         continue;
       }
       inputDevPrograms[i] = findIt->second;
-      device::Program::binary_t binary = inputDevPrograms[i]->binary();
 // Check the binary's target for the first found device program.
 // TODO: Revise these binary's target checks
 // and possibly remove them after switching to HSAIL by default.
 #if defined(WITH_COMPILER_LIB)
+      device::Program::binary_t binary = inputDevPrograms[i]->binary();
       if (!found && binary.first != NULL && binary.second > 0 &&
           aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
         acl_error errorCode = ACL_SUCCESS;
