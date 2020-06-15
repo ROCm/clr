@@ -614,7 +614,11 @@ bool CopyMemoryP2PCommand::validateMemory() {
   // Validate P2P memories on the current device, if any of them is null, then it's p2p staging
   if ((nullptr == memory1_->getDeviceMemory(queue()->device())) ||
       (nullptr == memory2_->getDeviceMemory(queue()->device()))) {
-    p2pStaging = true;
+    // HIP doesn't support emulation
+    p2pStaging = !amd::IS_HIP;
+    if (!p2pStaging) {
+      return false;
+    }
   }
 
   if (devices[0]->P2PStage() != nullptr && p2pStaging) {
