@@ -634,7 +634,7 @@ bool CopyMemoryP2PCommand::validateMemory() {
 
 // ================================================================================================
 bool SvmPrefetchAsyncCommand::validateMemory() {
-  amd::Memory* svmMem = svmMem = amd::MemObjMap::FindMemObj(dev_ptr());
+  amd::Memory* svmMem = amd::MemObjMap::FindMemObj(dev_ptr());
   if (nullptr == svmMem) {
     LogPrintfError("SvmPrefetchAsync received unknown memory for prefetch: %p!", dev_ptr());
     return false;
