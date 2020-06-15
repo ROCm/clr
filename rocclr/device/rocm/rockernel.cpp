@@ -45,9 +45,6 @@ Kernel::Kernel(std::string name, Program* prog)
 
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
-
-  hsa_agent_t hsaDevice = program()->hsaDevice();
-
   if (!GetAttrCodePropMetadata()) {
     LogError("[ROC][Kernel] Could not get Code Prop Meta Data \n");
     return false;
