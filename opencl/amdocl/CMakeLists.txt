@@ -24,8 +24,17 @@ include_directories(${CMAKE_SOURCE_DIR}/khronos)
 include_directories(${CMAKE_SOURCE_DIR}/khronos/headers)
 include_directories(${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  add_compile_options("-Wno-ignored-attributes")
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
+   (CMAKE_${COMPILER}_COMPILER_ID MATCHES "Clang"))
+  add_definitions(
+    # Enabling -Wextra or -pedantic will cause
+    # thousands of warnings. Keep things simple for now.
+    -Wall
+    # This one seems impossible to fix for now.
+    # There are hundreds of instances of unused vars/functions
+    # throughout the code base.
+    -Wno-unused-variable
+    -Wno-unused-function)
 endif()
 
 if(UNIX)
