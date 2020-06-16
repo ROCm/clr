@@ -687,6 +687,8 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
   hwState_[9] = GetHSAILImageOrderType(desc().format_);
   hwState_[10] = static_cast<uint32_t>(desc().width_);
   hwState_[11] = 0;  // one extra reserved field in the argument
+
+  desc_.tiled_ = (Pal::ImageTiling::Linear == image_->GetImageCreateInfo().tiling) ? false : true;
   return true;
 }
 
