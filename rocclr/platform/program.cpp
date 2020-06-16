@@ -112,7 +112,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
   }
 
 #if defined(WITH_COMPILER_LIB)
-  bool emptyOptions = (options == nulltr);
+  bool emptyOptions = (options == nullptr);
 #endif
   amd::option::Options emptyOpts;
   if (options == NULL) {
