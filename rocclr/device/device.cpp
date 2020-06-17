@@ -483,9 +483,6 @@ Settings::Settings() : value_(0) {
       GPU_SINGLE_ALLOC_PERCENT = 100;
     }
 
-    if (flagIsDefault(GPU_FORCE_BLIT_COPY_SIZE)) {
-      GPU_FORCE_BLIT_COPY_SIZE = 1024;
-    }
   }
 }
 
