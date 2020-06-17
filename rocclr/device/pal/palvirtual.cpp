@@ -3636,11 +3636,6 @@ void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispat
     dbgSetting.aclBinary_ = hsaKernel.prog().binaryElf();
     dbgSetting.event_ = enqueueEvent;
 
-    // Call the predispatch callback function & set the trap info
-    AqlCodeInfo aqlCodeInfo;
-    aqlCodeInfo.aqlCode_ = (amd_kernel_code_t*)hsaKernel.cpuAqlCode();
-    aqlCodeInfo.aqlCodeSize_ = hsaKernel.aqlCodeSize();
-
     // Execute the pre-dispatch call back function
     dbgManager->executePreDispatchCallBack(reinterpret_cast<void*>(aqlPkt), &dbgSetting);
 
@@ -3651,7 +3646,7 @@ void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispat
 
     kernelInfo.trapPresent = (kernelInfo.trapHandler) ? true : false;
 
-    // Execption policy
+    // Exception policy
     kernelInfo.excpEn = dbgSetting.exceptionMask_;
     kernelInfo.cacheDisableMask = dbgSetting.cacheDisableMask_;
     kernelInfo.sqDebugMode = dbgSetting.gpuSingleStepMode_;

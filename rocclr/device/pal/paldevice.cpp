@@ -902,10 +902,12 @@ bool Device::create(Pal::IDevice* device) {
   }
   appProfile_.init();
   device_ = device;
-  Pal::Result result;
 
   // Retrive device properties
-  result = iDev()->GetProperties(&properties_);
+  Pal::Result result = iDev()->GetProperties(&properties_);
+  if (result != Pal::Result::Success) {
+    return false;
+  }
 
   // Save the IP level for the offline detection
   ipLevel_ = properties().gfxLevel;
@@ -965,12 +967,14 @@ bool Device::create(Pal::IDevice* device) {
   palSettings->longRunningSubmissions = true;
   palSettings->cmdBufBatchedSubmitChainLimit = 0;
   palSettings->disableResourceProcessingManager = true;
-  palSettings->numScratchWavesPerCu = settings().numScratchWavesPerCu_;
   // Make sure CP DMA can be used for all possible transfers
   palSettings->cpDmaCmdCopyMemoryMaxBytes = 0xFFFFFFFF;
 
   // Commit the new settings for the device
   result = iDev()->CommitSettingsAndInit();
+  if (result != Pal::Result::Success) {
+    return false;
+  }
 
   iDev()->GetGpuMemoryHeapProperties(heaps_);
 
