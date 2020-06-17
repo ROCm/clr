@@ -22,7 +22,7 @@
 #include "top.hpp"
 #include "utils/flags.hpp"
 
-#include "rochcmessages.hpp"
+#include "devhcmessages.hpp"
 
 #include <vector>
 
@@ -132,7 +132,7 @@ void MessageHandler::discardMessage(Message* message) {
   // some busy-ness heuristic.
 }
 
-// Defined in rochcprintf.cpp
+// Defined in devhcprintf.cpp
 void handlePrintf(uint64_t* output, const uint64_t* input, uint64_t len);
 
 bool MessageHandler::handlePayload(uint32_t service, uint64_t* payload) {

@@ -23,7 +23,7 @@
 #include "utils/flags.hpp"
 
 #include "rochostcall.hpp"
-#include "rochcmessages.hpp"
+#include "device/devhcmessages.hpp"
 
 #include "os/os.hpp"
 #include "thread/monitor.hpp"
