@@ -139,6 +139,8 @@ set(oclruntime_src
   device/devkernel.cpp
   device/devwavelimiter.cpp
   device/devprogram.cpp
+  device/devhcprintf.cpp
+  device/devhcmessages.cpp
   platform/activity.cpp
   platform/kernel.cpp
   platform/context.cpp
