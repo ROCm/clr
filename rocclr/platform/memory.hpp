@@ -36,6 +36,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
 
 namespace device {
 class Memory;
