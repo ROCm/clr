@@ -140,9 +140,12 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
     for (const auto& it : events) {
       // Only wait if the command is enqueued into another queue.
       if (it->command().queue() != this) {
-        virtualDevice->flush(head, true);
-        tail = head = NULL;
-        dependencyFailed |= !it->awaitCompletion();
+        // Runtime has to flush the current batch only if the dependent wait is blocking
+        if (it->command().status() != CL_COMPLETE) {
+          virtualDevice->flush(head, true);
+          tail = head = NULL;
+          dependencyFailed |= !it->awaitCompletion();
+        }
       }
     }
 
