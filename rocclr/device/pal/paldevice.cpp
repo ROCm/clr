@@ -2237,6 +2237,10 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     // add the information to context so that we can use it later.
     amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     svmPtr = mem->getSvmPtr();
+
+    if (settings().apuSystem_ && gpuMem->isHostMemDirectAccess()) {
+      mem->commitSvmMemory();
+    }
   } else {
     // find the existing amd::mem object
     mem = amd::MemObjMap::FindMemObj(svmPtr);
