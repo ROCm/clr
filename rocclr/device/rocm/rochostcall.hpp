@@ -72,5 +72,5 @@ size_t getHostcallBufferSize(uint32_t num_packets);
  */
 uint32_t getHostcallBufferAlignment(void);
 
-bool enableHostcalls(void* buffer, uint32_t numPackets, const void* queue);
-void disableHostcalls(void* buffer, const void* queue);
+bool enableHostcalls(void* buffer, uint32_t numPackets);
+void disableHostcalls(void* buffer);
