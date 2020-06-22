@@ -382,7 +382,7 @@ bool HostcallListener::initialize() {
   return true;
 }
 
-bool enableHostcalls(void* bfr, uint32_t numPackets, const void* queue) {
+bool enableHostcalls(void* bfr, uint32_t numPackets) {
   auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
   buffer->initialize(numPackets);
 
@@ -405,7 +405,7 @@ bool enableHostcalls(void* bfr, uint32_t numPackets, const void* queue) {
   return true;
 }
 
-void disableHostcalls(void* bfr, const void* queue) {
+void disableHostcalls(void* bfr) {
   amd::ScopedLock lock(listenerLock);
   if (!hostcallListener) {
     return;

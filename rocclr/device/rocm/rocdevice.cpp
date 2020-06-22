@@ -2353,7 +2353,7 @@ void Device::releaseQueue(hsa_queue_t* queue) {
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
             "deleting hostcall buffer %p for hardware queue %p",
             qInfo.hostcallBuffer_, queue);
-        disableHostcalls(qInfo.hostcallBuffer_, queue);
+        disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
 
@@ -2399,7 +2399,7 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hostcall buffer %p for hardware queue %p", buffer,
           queue);
   qInfo.hostcallBuffer_ = buffer;
-  if (!enableHostcalls(buffer, numPackets, queue)) {
+  if (!enableHostcalls(buffer, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
             buffer);
     return nullptr;
