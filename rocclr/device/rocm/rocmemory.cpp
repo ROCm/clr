@@ -193,34 +193,6 @@ void* Memory::cpuMap(device::VirtualDevice& vDev, uint flags, uint startLayer, u
   return mapTarget;
 }
 
-bool Memory::IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
-
-  void* dev_ptr = nullptr;
-  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
-
-  /* Get the memory size from starting pointer */
-  *mem_size = owner()->getSize() - offset;
-  /* Get the starting pointer from the amd::Memory object */
-  if (owner()->getSvmPtr() != nullptr) {
-    dev_ptr = reinterpret_cast<address>(owner()->getSvmPtr()) + offset;
-  } else if (owner()->getHostMem() != nullptr) {
-    dev_ptr = reinterpret_cast<address>(owner()->getHostMem()) + offset;
-  } else {
-    ShouldNotReachHere();
-  }
-
-  /* Pass the pointer and memory size to retrieve the handle */
-  hsa_status = hsa_amd_ipc_memory_create(dev_ptr, amd::alignUp(*mem_size, dev().alloc_granularity()),
-                                         reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
-
-  if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
-    return false;
-  }
-
-  return true;
-}
-
 void Memory::cpuUnmap(device::VirtualDevice& vDev) {
   if (!isHostMemDirectAccess() && !IsPersistentDirectMap()) {
     if (!vDev.blitMgr().writeBuffer(mapMemory_->getHostMem(), *this, amd::Coord3D(0),

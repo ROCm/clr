@@ -789,11 +789,6 @@ class Memory : public amd::HeapObject {
   //! Returns CPU pointer to HW state
   virtual const address cpuSrd() const { return nullptr; }
 
-  virtual bool IpcCreate(size_t offset, size_t* mem_size, void* handle) const {
-    ShouldNotReachHere();
-    return false;
-  }
-
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -1447,13 +1442,18 @@ class Device : public RuntimeObject {
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
 
-  virtual amd::Memory* IpcAttach(const void* handle, size_t mem_size, unsigned int flags,
-                                 void** dev_ptr) const {
+  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle) {
     ShouldNotReachHere();
-    return nullptr;
+    return false;
   }
 
-  virtual bool IpcDetach(amd::Memory& memory) const {
+  virtual bool IpcAttach(const void* handle, size_t mem_size,
+                         unsigned int flags, void** dev_ptr) const {
+    ShouldNotReachHere();
+    return false;
+  }
+
+  virtual bool IpcDetach(void* dev_ptr) const {
     ShouldNotReachHere();
     return false;
   }

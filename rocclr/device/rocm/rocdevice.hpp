@@ -422,7 +422,7 @@ class Device : public NullDevice {
   //! Create internal blit program
   bool createBlitProgram();
 
-  // Returns AMD GPU Pro interfaces
+  // Returns AMD GPU Pro interfacs
   const IProDevice& iPro() const { return *pro_device_; }
   bool ProEna() const  { return pro_ena_; }
 
@@ -432,8 +432,10 @@ class Device : public NullDevice {
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
 
-  virtual amd::Memory* IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const;
-  virtual bool IpcDetach (amd::Memory& memory) const;
+  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle);
+  virtual bool IpcAttach(const void* handle, size_t mem_size,
+                         unsigned int flags, void** dev_ptr) const;
+  virtual bool IpcDetach (void* dev_ptr) const;
 
   bool AcquireExclusiveGpuAccess();
   void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;
