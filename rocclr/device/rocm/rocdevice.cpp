@@ -1895,57 +1895,97 @@ void Device::updateFreeMemory(size_t size, bool free) {
   }
 }
 
-amd::Memory *Device::IpcAttach(const void* handle, size_t mem_size, unsigned int flags, void** dev_ptr) const {
+bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x \n", dev_ptr);
+    return false;
+  }
+
+  // Get the starting pointer from the amd::Memory object
+  void* orig_dev_ptr = nullptr;
+  if (amd_mem_obj->getSvmPtr() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getSvmPtr();
+  } else if (amd_mem_obj->getHostMem() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getHostMem();
+  } else {
+    ShouldNotReachHere();
+  }
+
+  if (orig_dev_ptr != dev_ptr) {
+    DevLogPrintfError("Handle can only be created for Original Dev Ptr: 0x%x", orig_dev_ptr);
+    return false;
+  }
+
+  *mem_size = amd_mem_obj->getSize();
+
+  // Pass the pointer and memory size to retrieve the handle
+  hsa_status = hsa_amd_ipc_memory_create(dev_ptr, amd::alignUp(*mem_size, alloc_granularity()),
+                                         reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
+
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
+    return false;
+  }
+
+  return true;
+}
+
+bool Device::IpcAttach(const void* handle, size_t mem_size, unsigned int flags,
+                       void** dev_ptr) const {
   amd::Memory* amd_mem_obj = nullptr;
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
 
-  /* FIX_ME (SWDEV-215976): Mapping for all devices is not optimal. In future map only for devices on need basis */
-  /* Retrieve the devPtr from the handle */
+  // Retrieve the devPtr from the handle
   hsa_status
     = hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
                                 mem_size, (1 + p2p_agents_.size()), p2p_agents_list_, dev_ptr);
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
-    return nullptr;
+    return false;
   }
 
-  /* Create an amd Memory object for the pointer */
+  // Create an amd Memory object for the pointer
   amd_mem_obj = new (context()) amd::Buffer(context(), flags, mem_size, *dev_ptr);
   if (amd_mem_obj == nullptr) {
     LogError("failed to create a mem object!");
-    return nullptr;
+    return false;
   }
 
   if (!amd_mem_obj->create(nullptr)) {
     LogError("failed to create a svm hidden buffer!");
     amd_mem_obj->release();
-    return nullptr;
+    return false;
   }
 
-  return amd_mem_obj;
+  // Add the memory to the MemObjMap
+  amd::MemObjMap::AddMemObj(*dev_ptr, amd_mem_obj);
+
+  return true;
 }
 
-bool Device::IpcDetach (amd::Memory& memory) const {
-  void* dev_ptr = nullptr;
+bool Device::IpcDetach (void* dev_ptr) const {
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
 
-  if(memory.getSvmPtr() != nullptr) {
-    dev_ptr = memory.getSvmPtr();
-  } else if (memory.getHostMem() != nullptr) {
-    dev_ptr = memory.getHostMem();
-  } else {
-    ShouldNotReachHere();
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
+    return false;
   }
 
-  /*Detach the memory from HSA */
+  // Detach the memory from HSA
   hsa_status = hsa_amd_ipc_memory_detach(dev_ptr);
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
     return false;
   }
 
-  memory.release();
+  amd::MemObjMap::RemoveMemObj(dev_ptr);
+  amd_mem_obj->release();
+
   return true;
 }
 

@@ -109,8 +109,6 @@ class Memory : public device::Memory {
 
   void* PersistentHostPtr() const { return persistent_host_ptr_; }
 
-  bool IpcCreate (size_t offset, size_t* mem_size, void* handle) const override;
-
   //! Validates allocated memory for possible workarounds
   virtual bool ValidateMemory() { return true; }
 
