@@ -38,8 +38,10 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
 endif()
 
 if(UNIX)
-    set(ADDITIONAL_LIBRARIES glibc_functions.cpp)
+    set(ADDITIONAL_SOURCES glibc_functions.cpp)
+    set(ADDITIONAL_LIBRARIES numa)
 else()
+    set(ADDITIONAL_SOURCES "")
     set(ADDITIONAL_LIBRARIES "")
 endif()
 
@@ -68,9 +70,9 @@ set(amdocl64_src
   cl_context.cpp
   cl_profile_amd.cpp
   cl_p2p_amd.cpp
-  ${ADDITIONAL_LIBRARIES}
+  ${ADDITIONAL_SOURCES}
 )
 
 add_library(amdocl64 SHARED ${amdocl64_src})
 
-target_link_libraries(amdocl64 amdrocclr_static Threads::Threads dl)
+target_link_libraries(amdocl64 amdrocclr_static Threads::Threads dl ${ADDITIONAL_LIBRARIES})
