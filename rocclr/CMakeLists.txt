@@ -49,12 +49,6 @@ find_package(amd_comgr REQUIRED CONFIG
 )
 message(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
-# FIXME: Use find_package(OpenCL)
-find_library( OpenCL REQUIRED CONFIG
-   PATHS
-      /opt/rocm
-)
-
 if( NOT OPENCL_DIR )
    find_path(OPENCL_INCLUDE_DIR
       NAMES OpenCL/cl.h CL/cl.h
