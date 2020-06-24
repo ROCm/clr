@@ -448,7 +448,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       }
 
 
-      hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
                                                       uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
       if (val != 0) {
         LogError("Async copy failed");
@@ -476,7 +476,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
         }
       }
 
-      hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
                                                       uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
       if (val != 0) {
         LogError("Async copy failed");
@@ -651,10 +651,10 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
     constexpr size_t small_transfer_size = 4 * Mi;
     if (size[0] < small_transfer_size) {
-      val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+      val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
                                     std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_ACTIVE);
     } else {
-      val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
+      val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
                                     std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_BLOCKED);
     }
     if (val != (kInitVal - 1)) {
@@ -706,7 +706,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, completion_signal_);
       if (status == HSA_STATUS_SUCCESS) {
-        hsa_signal_value_t val = hsa_signal_wait_acquire(
+        hsa_signal_value_t val = hsa_signal_wait_scacquire(
             completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
 
         if (val != (kInitVal - 1)) {
@@ -733,7 +733,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
                                   dev().getBackendDevice(), size, 0, nullptr, completion_signal_);
     if (status == HSA_STATUS_SUCCESS) {
-      hsa_signal_value_t val = hsa_signal_wait_acquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ,
+      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ,
                                                        0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
 
       if (val != (kInitVal - 1)) {
@@ -2340,7 +2340,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   }
   releaseArguments(parameters);
 
-  if (hsa_signal_wait_acquire(schedulerSignal, HSA_SIGNAL_CONDITION_LT, 1, (-1),
+  if (hsa_signal_wait_scacquire(schedulerSignal, HSA_SIGNAL_CONDITION_LT, 1, (-1),
                                 HSA_WAIT_STATE_BLOCKED) != 0) {
     LogWarning("Failed schedulerSignal wait");
     return false;
