@@ -316,7 +316,7 @@ void HostcallListener::consumePackets() {
 
   while (true) {
     while (true) {
-      uint64_t new_value = hsa_signal_wait_acquire(doorbell_, HSA_SIGNAL_CONDITION_NE, signal_value, timeout,
+      uint64_t new_value = hsa_signal_wait_scacquire(doorbell_, HSA_SIGNAL_CONDITION_NE, signal_value, timeout,
                                                    HSA_WAIT_STATE_BLOCKED);
       if (new_value != signal_value) {
         signal_value = new_value;
@@ -344,7 +344,7 @@ void HostcallListener::terminate() {
     return;
   }
 
-  hsa_signal_store_release(doorbell_, SIGNAL_DONE);
+  hsa_signal_store_screlease(doorbell_, SIGNAL_DONE);
 
   // FIXME_lmoriche: fix termination handshake
   while (thread_.state() < Thread::FINISHED) {

@@ -512,11 +512,11 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   }
 
   //hsa_queue_store_write_index_release(gpu_queue_, index);
-  hsa_signal_store_release(gpu_queue_->doorbell_signal, index - 1);
+  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index - 1);
 
   // Wait on signal ?
   if (blocking) {
-    if (hsa_signal_wait_acquire(signal, HSA_SIGNAL_CONDITION_LT, 1, uint64_t(-1),
+    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, 1, uint64_t(-1),
                                 HSA_WAIT_STATE_BLOCKED) != 0) {
       LogPrintfError("Failed signal [0x%lx] wait", signal.handle);
       return false;
@@ -577,7 +577,7 @@ void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
   *aql_loc = *packet;
   __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), kBarrierPacketHeader, __ATOMIC_RELEASE);
 
-  hsa_signal_store_release(gpu_queue_->doorbell_signal, index);
+  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "[%zx] HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
           "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
@@ -612,7 +612,7 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
   // Dispatch barrier packet into the queue and wait till it finishes.
   dispatchBarrierPacket(&barrier_packet_);
-  if (hsa_signal_wait_acquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+  if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
                               HSA_WAIT_STATE_BLOCKED) != 0) {
     LogError("Barrier packet submission failed");
     return false;
@@ -849,7 +849,7 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
 
       // Dispatch barrier packet into the queue and wait till it finishes.
       dispatchBarrierPacket(&barrier_packet_);
-      if (hsa_signal_wait_acquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+      if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
                                   HSA_WAIT_STATE_BLOCKED) != 0) {
         LogError("Kernel arguments reset failed");
       }
@@ -1205,7 +1205,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
   hsa_amd_svm_prefetch_async(cmd.dev_prt(), cmd.count(), agent, 0, nullptr, barrier_signal_);
 
   // Wait for the prefetch
-  if (hsa_signal_wait_acquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+  if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
                               HSA_WAIT_STATE_BLOCKED) != 0) {
     LogError("Barrier packet submission failed");
     return false;

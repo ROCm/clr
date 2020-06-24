@@ -2157,7 +2157,7 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
   }
 
   // Wait for the prefetch
-  if (hsa_signal_wait_acquire(prefetch_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+  if (hsa_signal_wait_scacquire(prefetch_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
                               HSA_WAIT_STATE_BLOCKED) != 0) {
     LogError("Barrier packet submission failed");
     return false;
