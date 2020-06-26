@@ -189,75 +189,75 @@ enum Elf_Error {
 
 #pragma GCC visibility push(hidden)
 __BEGIN_DECLS
-Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf, Elf_Mem *_mem);
-int		elf_cntl(Elf *_elf, Elf_Cmd _cmd);
-int		elf_end(Elf *_elf);
-const char	*elf_errmsg(int _error);
-int		elf_errno(void);
-void		elf_fill(int _fill);
+Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf, Elf_Mem *_mem) asm ("rocclr_elf_begin");
+int		elf_cntl(Elf *_elf, Elf_Cmd _cmd) asm ("rocclr_elf_cntl");
+int		elf_end(Elf *_elf) asm ("rocclr_elf_end");
+const char	*elf_errmsg(int _error) asm ("rocclr_elf_errmsg");
+int		elf_errno(void) asm ("rocclr_elf_errno");
+void		elf_fill(int _fill) asm ("rocclr_elf_fill");
 unsigned int	elf_flagarhdr(Elf_Arhdr *_arh, Elf_Cmd _cmd,
-			unsigned int _flags);
+			unsigned int _flags) asm ("rocclr_elf_flagarhdr");
 unsigned int	elf_flagdata(Elf_Data *_data, Elf_Cmd _cmd,
-			unsigned int _flags);
-unsigned int	elf_flagehdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
-unsigned int	elf_flagelf(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
-unsigned int	elf_flagphdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags);
-unsigned int	elf_flagscn(Elf_Scn *_scn, Elf_Cmd _cmd, unsigned int _flags);
-unsigned int	elf_flagshdr(Elf_Scn *_scn, Elf_Cmd _cmd, unsigned int _flags);
-Elf_Arhdr	*elf_getarhdr(Elf *_elf);
-Elf_Arsym	*elf_getarsym(Elf *_elf, size_t *_ptr);
-off_t		elf_getbase(Elf *_elf);
-Elf_Data	*elf_getdata(Elf_Scn *, Elf_Data *);
-void		elf_removedata(Elf_Scn *s, Elf_Data *d);
-char		*elf_getident(Elf *_elf, size_t *_ptr);
-int		elf_getphdrnum(Elf *_elf, size_t *_dst);
-int		elf_getphnum(Elf *_elf, size_t *_dst);	/* Deprecated */
-Elf_Scn		*elf_getscn(Elf *_elf, size_t _index);
-int		elf_getshdrnum(Elf *_elf, size_t *_dst);
-int		elf_getshnum(Elf *_elf, size_t *_dst);	/* Deprecated */
-int		elf_getshdrstrndx(Elf *_elf, size_t *_dst);
-int		elf_getshstrndx(Elf *_elf, size_t *_dst); /* Deprecated */
-unsigned long	elf_hash(const char *_name);
-Elf_Kind	elf_kind(Elf *_elf);
-Elf		*elf_memory(char *_image, size_t _size, Elf_Mem *mem);
-size_t		elf_ndxscn(Elf_Scn *_scn);
-Elf_Data	*elf_newdata(Elf_Scn *_scn);
-Elf_Scn		*elf_newscn(Elf *_elf);
-Elf_Scn		*elf_nextscn(Elf *_elf, Elf_Scn *_scn);
-Elf_Cmd		elf_next(Elf *_elf);
-off_t		elf_rand(Elf *_elf, off_t _off);
-Elf_Data	*elf_rawdata(Elf_Scn *_scn, Elf_Data *_data);
-char		*elf_rawfile(Elf *_elf, size_t *_size);
-int		elf_setshstrndx(Elf *_elf, size_t _shnum);
-char		*elf_strptr(Elf *_elf, size_t _section, size_t _offset);
-off_t		elf_update(Elf *_elf, Elf_Cmd _cmd);
-unsigned int	elf_version(unsigned int _version);
+			unsigned int _flags) asm ("rocclr_elf_flagdata");
+unsigned int	elf_flagehdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags) asm ("rocclr_elf_flagehdr");
+unsigned int	elf_flagelf(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags) asm ("rocclr_elf_flagelf");
+unsigned int	elf_flagphdr(Elf *_elf, Elf_Cmd _cmd, unsigned int _flags) asm ("rocclr_elf_flagphdr");
+unsigned int	elf_flagscn(Elf_Scn *_scn, Elf_Cmd _cmd, unsigned int _flags) asm ("rocclr_elf_flagscn");
+unsigned int	elf_flagshdr(Elf_Scn *_scn, Elf_Cmd _cmd, unsigned int _flags) asm ("rocclr_elf_flagshdr");
+Elf_Arhdr	*elf_getarhdr(Elf *_elf) asm ("rocclr_elf_getarhdr");
+Elf_Arsym	*elf_getarsym(Elf *_elf, size_t *_ptr) asm ("rocclr_elf_getarsym");
+off_t		elf_getbase(Elf *_elf) asm ("rocclr_elf_getbase");
+Elf_Data	*elf_getdata(Elf_Scn *, Elf_Data *) asm ("rocclr_elf_getdata");
+void		elf_removedata(Elf_Scn *s, Elf_Data *d) asm ("rocclr_elf_removedata");
+char		*elf_getident(Elf *_elf, size_t *_ptr) asm ("rocclr_elf_getident");
+int		elf_getphdrnum(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getphdrnum");
+int		elf_getphnum(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getphnum");	/* Deprecated */
+Elf_Scn	*elf_getscn(Elf *_elf, size_t _index) asm ("rocclr_elf_getscn");
+int		elf_getshdrnum(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getshdrnum");
+int		elf_getshnum(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getshnum");	/* Deprecated */
+int		elf_getshdrstrndx(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getshdrstrndx");
+int		elf_getshstrndx(Elf *_elf, size_t *_dst) asm ("rocclr_elf_getshstrndx"); /* Deprecated */
+unsigned long	elf_hash(const char *_name) asm ("rocclr_elf_hash");
+Elf_Kind	elf_kind(Elf *_elf) asm ("rocclr_elf_kind");
+Elf		*elf_memory(char *_image, size_t _size, Elf_Mem *mem) asm ("rocclr_elf_memory");
+size_t		elf_ndxscn(Elf_Scn *_scn) asm ("rocclr_elf_ndxscn");
+Elf_Data	*elf_newdata(Elf_Scn *_scn) asm ("rocclr_elf_newdata");
+Elf_Scn		*elf_newscn(Elf *_elf) asm ("rocclr_elf_newscn");
+Elf_Scn		*elf_nextscn(Elf *_elf, Elf_Scn *_scn) asm ("rocclr_elf_nextscn");
+Elf_Cmd		elf_next(Elf *_elf) asm ("rocclr_elf_next");
+off_t		elf_rand(Elf *_elf, off_t _off) asm ("rocclr_elf_rand");
+Elf_Data	*elf_rawdata(Elf_Scn *_scn, Elf_Data *_data) asm ("rocclr_elf_rawdata");
+char		*elf_rawfile(Elf *_elf, size_t *_size) asm ("rocclr_elf_rawfile");
+int		elf_setshstrndx(Elf *_elf, size_t _shnum) asm ("rocclr_elf_setshstrndx");
+char		*elf_strptr(Elf *_elf, size_t _section, size_t _offset) asm ("rocclr_elf_strptr");
+off_t		elf_update(Elf *_elf, Elf_Cmd _cmd) asm ("rocclr_elf_update");
+unsigned int	elf_version(unsigned int _version) asm ("rocclr_elf_version");
 
-long		elf32_checksum(Elf *_elf);
+long		elf32_checksum(Elf *_elf) asm ("rocclr_elf32_checksum");
 size_t		elf32_fsize(Elf_Type _type, size_t _count,
-			unsigned int _version);
-Elf32_Ehdr	*elf32_getehdr(Elf *_elf);
-Elf32_Phdr	*elf32_getphdr(Elf *_elf);
-Elf32_Shdr	*elf32_getshdr(Elf_Scn *_scn);
-Elf32_Ehdr	*elf32_newehdr(Elf *_elf);
-Elf32_Phdr	*elf32_newphdr(Elf *_elf, size_t _count);
+			unsigned int _version) asm ("rocclr_elf32_fsize");
+Elf32_Ehdr	*elf32_getehdr(Elf *_elf) asm ("rocclr_elf32_getehdr");
+Elf32_Phdr	*elf32_getphdr(Elf *_elf) asm ("rocclr_elf32_getphdr");
+Elf32_Shdr	*elf32_getshdr(Elf_Scn *_scn) asm ("rocclr_elf32_getshdr");
+Elf32_Ehdr	*elf32_newehdr(Elf *_elf) asm ("rocclr_elf32_newehdr");
+Elf32_Phdr	*elf32_newphdr(Elf *_elf, size_t _count) asm ("rocclr_elf32_newphdr");
 Elf_Data	*elf32_xlatetof(Elf_Data *_dst, const Elf_Data *_src,
-			unsigned int _enc);
+			unsigned int _enc) asm ("rocclr_elf32_xlatetof");
 Elf_Data	*elf32_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
-			unsigned int _enc);
+			unsigned int _enc) asm ("rocclr_elf32_xlatetom");
 
-long		elf64_checksum(Elf *_elf);
+long		elf64_checksum(Elf *_elf) asm ("rocclr_elf64_checksum");
 size_t		elf64_fsize(Elf_Type _type, size_t _count,
-			unsigned int _version);
-Elf64_Ehdr	*elf64_getehdr(Elf *_elf);
-Elf64_Phdr	*elf64_getphdr(Elf *_elf);
-Elf64_Shdr	*elf64_getshdr(Elf_Scn *_scn);
-Elf64_Ehdr	*elf64_newehdr(Elf *_elf);
-Elf64_Phdr	*elf64_newphdr(Elf *_elf, size_t _count);
+			unsigned int _version) asm ("rocclr_elf64_fsize");
+Elf64_Ehdr	*elf64_getehdr(Elf *_elf) asm ("rocclr_elf64_getehdr");
+Elf64_Phdr	*elf64_getphdr(Elf *_elf) asm ("rocclr_elf64_getphdr");
+Elf64_Shdr	*elf64_getshdr(Elf_Scn *_scn) asm ("rocclr_elf64_getshdr");
+Elf64_Ehdr	*elf64_newehdr(Elf *_elf) asm ("rocclr_elf64_newehdr");
+Elf64_Phdr	*elf64_newphdr(Elf *_elf, size_t _count) asm ("rocclr_elf64_newphdr");
 Elf_Data	*elf64_xlatetof(Elf_Data *_dst, const Elf_Data *_src,
-			unsigned int _enc);
+			unsigned int _enc) asm ("rocclr_elf64_xlatetof");
 Elf_Data	*elf64_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
-			unsigned int _enc);
+			unsigned int _enc) asm ("rocclr_elf64_xlatetom");
 __END_DECLS
 #pragma GCC visibility pop
 
