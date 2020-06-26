@@ -74,41 +74,41 @@ typedef Elf64_Syminfo	GElf_Syminfo;	/* Symbol information */
 
 #pragma GCC visibility push(hidden)
 __BEGIN_DECLS
-long		gelf_checksum(Elf *_elf);
+long		gelf_checksum(Elf *_elf) asm ("rocclr_gelf_checksum");
 size_t		gelf_fsize(Elf *_elf, Elf_Type _type, size_t _count,
-			unsigned int _version);
-int		gelf_getclass(Elf *_elf);
-GElf_Dyn	*gelf_getdyn(Elf_Data *_data, int _index, GElf_Dyn *_dst);
-GElf_Ehdr	*gelf_getehdr(Elf *_elf, GElf_Ehdr *_dst);
-GElf_Phdr	*gelf_getphdr(Elf *_elf, int _index, GElf_Phdr *_dst);
-GElf_Rel	*gelf_getrel(Elf_Data *_src, int _index, GElf_Rel *_dst);
-GElf_Rela	*gelf_getrela(Elf_Data *_src, int _index, GElf_Rela *_dst);
-GElf_Shdr	*gelf_getshdr(Elf_Scn *_scn, GElf_Shdr *_dst);
-GElf_Sym	*gelf_getsym(Elf_Data *_src, int _index, GElf_Sym *_dst);
+			unsigned int _version) asm ("rocclr_gelf_fsize");
+int		gelf_getclass(Elf *_elf) asm ("rocclr_gelf_getclass");
+GElf_Dyn	*gelf_getdyn(Elf_Data *_data, int _index, GElf_Dyn *_dst) asm ("rocclr_gelf_getdyn");
+GElf_Ehdr	*gelf_getehdr(Elf *_elf, GElf_Ehdr *_dst) asm ("rocclr_gelf_getehdr");
+GElf_Phdr	*gelf_getphdr(Elf *_elf, int _index, GElf_Phdr *_dst) asm ("rocclr_gelf_getphdr");
+GElf_Rel	*gelf_getrel(Elf_Data *_src, int _index, GElf_Rel *_dst) asm ("rocclr_gelf_getrel");
+GElf_Rela	*gelf_getrela(Elf_Data *_src, int _index, GElf_Rela *_dst) asm ("rocclr_gelf_getrela");
+GElf_Shdr	*gelf_getshdr(Elf_Scn *_scn, GElf_Shdr *_dst) asm ("rocclr_gelf_getshdr");
+GElf_Sym	*gelf_getsym(Elf_Data *_src, int _index, GElf_Sym *_dst) asm ("rocclr_gelf_getsym");
 GElf_Sym	*gelf_getsymshndx(Elf_Data *_src, Elf_Data *_shindexsrc,
-			int _index, GElf_Sym *_dst, Elf32_Word *_shindexdst);
-void *		gelf_newehdr(Elf *_elf, int _class);
-void *		gelf_newphdr(Elf *_elf, size_t _phnum);
-int		gelf_update_dyn(Elf_Data *_dst, int _index, GElf_Dyn *_src);
-int		gelf_update_ehdr(Elf *_elf, GElf_Ehdr *_src);
-int		gelf_update_phdr(Elf *_elf, int _index, GElf_Phdr *_src);
-int		gelf_update_rel(Elf_Data *_dst, int _index, GElf_Rel *_src);
-int		gelf_update_rela(Elf_Data *_dst, int _index, GElf_Rela *_src);
-int		gelf_update_shdr(Elf_Scn *_dst, GElf_Shdr *_src);
-int		gelf_update_sym(Elf_Data *_dst, int _index, GElf_Sym *_src);
+			int _index, GElf_Sym *_dst, Elf32_Word *_shindexdst) asm ("rocclr_gelf_getsymshndx");
+void *		gelf_newehdr(Elf *_elf, int _class) asm ("rocclr_gelf_newehdr");
+void *		gelf_newphdr(Elf *_elf, size_t _phnum) asm ("rocclr_gelf_newphdr");
+int		gelf_update_dyn(Elf_Data *_dst, int _index, GElf_Dyn *_src) asm ("rocclr_gelf_update_dyn");
+int		gelf_update_ehdr(Elf *_elf, GElf_Ehdr *_src) asm ("rocclr_gelf_update_ehdr");
+int		gelf_update_phdr(Elf *_elf, int _index, GElf_Phdr *_src) asm ("rocclr_gelf_update_phdr");
+int		gelf_update_rel(Elf_Data *_dst, int _index, GElf_Rel *_src) asm ("rocclr_gelf_update_rel");
+int		gelf_update_rela(Elf_Data *_dst, int _index, GElf_Rela *_src) asm ("rocclr_gelf_update_rela");
+int		gelf_update_shdr(Elf_Scn *_dst, GElf_Shdr *_src) asm ("rocclr_gelf_update_shdr");
+int		gelf_update_sym(Elf_Data *_dst, int _index, GElf_Sym *_src) asm ("rocclr_gelf_update_sym");
 int		gelf_update_symshndx(Elf_Data *_symdst, Elf_Data *_shindexdst,
-			int _index, GElf_Sym *_symsrc, Elf32_Word _shindexsrc);
-Elf_Data 	*gelf_xlatetof(Elf *_elf, Elf_Data *_dst, const Elf_Data *_src, unsigned int _encode);
-Elf_Data 	*gelf_xlatetom(Elf *_elf, Elf_Data *_dst, const Elf_Data *_src, unsigned int _encode);
+			int _index, GElf_Sym *_symsrc, Elf32_Word _shindexsrc) asm ("rocclr_gelf_update_symshndx");
+Elf_Data 	*gelf_xlatetof(Elf *_elf, Elf_Data *_dst, const Elf_Data *_src, unsigned int _encode) asm ("rocclr_gelf_xlatetof");
+Elf_Data 	*gelf_xlatetom(Elf *_elf, Elf_Data *_dst, const Elf_Data *_src, unsigned int _encode) asm ("rocclr_gelf_xlatetom");
 
 #if (defined(__FreeBSD_version) && __FreeBSD_version >= 700025) || \
     (defined(__NetBSD_Version) && __NetBSD_Version > 400000003)
-GElf_Cap	*gelf_getcap(Elf_Data *_data, int _index, GElf_Cap *_cap);
-GElf_Move	*gelf_getmove(Elf_Data *_src, int _index, GElf_Move *_dst);
-GElf_Syminfo	*gelf_getsyminfo(Elf_Data *_src, int _index, GElf_Syminfo *_dst);
-int		gelf_update_cap(Elf_Data *_dst, int _index, GElf_Cap *_src);
-int		gelf_update_move(Elf_Data *_dst, int _index, GElf_Move *_src);
-int		gelf_update_syminfo(Elf_Data *_dst, int _index, GElf_Syminfo *_src);
+GElf_Cap	*gelf_getcap(Elf_Data *_data, int _index, GElf_Cap *_cap) asm ("rocclr_gelf_getcap");
+GElf_Move	*gelf_getmove(Elf_Data *_src, int _index, GElf_Move *_dst) asm ("rocclr_gelf_getmove");
+GElf_Syminfo	*gelf_getsyminfo(Elf_Data *_src, int _index, GElf_Syminfo *_dst) asm ("rocclr_gelf_getsyminfo");
+int		gelf_update_cap(Elf_Data *_dst, int _index, GElf_Cap *_src) asm ("rocclr_gelf_update_cap");
+int		gelf_update_move(Elf_Data *_dst, int _index, GElf_Move *_src) asm ("rocclr_gelf_update_move");
+int		gelf_update_syminfo(Elf_Data *_dst, int _index, GElf_Syminfo *_src) asm ("rocclr_gelf_update_syminfo");
 #endif
 __END_DECLS
 #pragma GCC visibility pop
