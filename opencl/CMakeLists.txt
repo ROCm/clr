@@ -161,12 +161,8 @@ if(POLICY CMP0037)
     cmake_policy(PUSH)
     cmake_policy(SET CMP0037 OLD)
 endif()
-file(GENERATE OUTPUT ${PROJECT_BINARY_DIR}/fixnames
-	CONTENT "pwd; for i in *.deb; do mv \"\$i\" \"\${i/.deb/-amd64.deb}\" ; done
-	for i in *.rpm ; do mv \"\$i\" \"\${i/.rpm/.x86_64.rpm}\" ; done
-")
+
 add_custom_target(package
-    COMMAND bash ${PROJECT_BINARY_DIR}/fixnames
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
     DEPENDS pkg_rocm_opencl pkg_rocm_opencl_dev)
 if(POLICY CMP0037)
