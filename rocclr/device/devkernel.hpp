@@ -97,16 +97,15 @@ enum class ArgField : uint8_t {
   Size          = 2,
   Align         = 3,
   ValueKind     = 4,
-  ValueType     = 5,
-  PointeeAlign  = 6,
-  AddrSpaceQual = 7,
-  AccQual       = 8,
-  ActualAccQual = 9,
-  IsConst       = 10,
-  IsRestrict    = 11,
-  IsVolatile    = 12,
-  IsPipe        = 13,
-  Offset        = 14
+  PointeeAlign  = 5,
+  AddrSpaceQual = 6,
+  AccQual       = 7,
+  ActualAccQual = 8,
+  IsConst       = 9,
+  IsRestrict    = 10,
+  IsVolatile    = 11,
+  IsPipe        = 12,
+  Offset        = 13
 };
 
 enum class AttrField : uint8_t {
@@ -139,7 +138,6 @@ static const std::map<std::string, ArgField> ArgFieldMap =
   {"Size",          ArgField::Size},
   {"Align",         ArgField::Align},
   {"ValueKind",     ArgField::ValueKind},
-  {"ValueType",     ArgField::ValueType},
   {"PointeeAlign",  ArgField::PointeeAlign},
   {"AddrSpaceQual", ArgField::AddrSpaceQual},
   {"AccQual",       ArgField::AccQual},
@@ -167,21 +165,6 @@ static const std::map<std::string, uint32_t> ArgValueKind = {
   {"HiddenCompletionAction",  amd::KernelParameterDescriptor::HiddenCompletionAction},
   {"HiddenMultigridSyncArg",  amd::KernelParameterDescriptor::HiddenMultiGridSync},
   {"HiddenHostcallBuffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer}
-};
-
-static const std::map<std::string, std::pair<uint32_t, uint32_t>> ArgValueType = {
-  {"Struct",  {0, 0}},
-  {"I8",      {0, 1}},
-  {"U8",      {0, 1}},
-  {"I16",     {1, 2}},
-  {"U16",     {1, 2}},
-  {"F16",     {4, 2}},
-  {"I32",     {2, 4}},
-  {"U32",     {2, 4}},
-  {"F32",     {4, 4}},
-  {"I64",     {3, 8}},
-  {"U64",     {3, 8}},
-  {"F64",     {5, 8}}
 };
 
 static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQual = {
@@ -250,7 +233,6 @@ static const std::map<std::string,ArgField> ArgFieldMapV3 =
   {".size",           ArgField::Size},
   {".offset",         ArgField::Offset},
   {".value_kind",     ArgField::ValueKind},
-  {".value_type",     ArgField::ValueType},
   {".pointee_align",  ArgField::PointeeAlign},
   {".address_space",  ArgField::AddrSpaceQual},
   {".access",         ArgField::AccQual},
@@ -278,21 +260,6 @@ static const std::map<std::string, uint32_t> ArgValueKindV3 = {
   {"hidden_completion_action",  amd::KernelParameterDescriptor::HiddenCompletionAction},
   {"hidden_multigrid_sync_arg", amd::KernelParameterDescriptor::HiddenMultiGridSync},
   {"hidden_hostcall_buffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer}
-};
-
-static const std::map<std::string, std::pair<uint32_t, uint32_t>> ArgValueTypeV3 = {
-  {"struct",  {0, 0}},
-  {"i8",      {0, 1}},
-  {"u8",      {0, 1}},
-  {"i16",     {1, 2}},
-  {"u16",     {1, 2}},
-  {"f16",     {4, 2}},
-  {"i32",     {2, 4}},
-  {"u32",     {2, 4}},
-  {"f32",     {4, 4}},
-  {"i64",     {3, 8}},
-  {"u64",     {3, 8}},
-  {"f64",     {5, 8}}
 };
 
 static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQualV3 = {

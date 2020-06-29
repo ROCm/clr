@@ -62,26 +62,6 @@ amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta,
 }
 
 // ================================================================================================
-inline static clk_value_type_t UpdateArgType(uint sizeType, uint numElements) {
-  switch (numElements) {
-    case 1:
-      return ClkValueMapType[sizeType][0];
-    case 2:
-      return ClkValueMapType[sizeType][1];
-    case 3:
-      return ClkValueMapType[sizeType][2];
-    case 4:
-      return ClkValueMapType[sizeType][3];
-    case 8:
-      return ClkValueMapType[sizeType][4];
-    case 16:
-      return ClkValueMapType[sizeType][5];
-    default:
-      return T_VOID;
-  }
-}
-
-// ================================================================================================
 static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
                                        const amd_comgr_metadata_node_t value,
                                        void *data) {
@@ -149,15 +129,6 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
             lcArg->info_.hidden_ = true;
             break;
         }
-      }
-      break;
-    case ArgField::ValueType:
-      {
-        auto itValueType = ArgValueType.find(buf);
-        if (itValueType == ArgValueType.end()) {
-          return AMD_COMGR_STATUS_ERROR;
-        }
-        lcArg->type_ = UpdateArgType(itValueType->second.first, itValueType->second.second);
       }
       break;
     case ArgField::PointeeAlign:
@@ -435,15 +406,6 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
             lcArg->info_.hidden_ = true;
           break;
         }
-      }
-      break;
-    case ArgField::ValueType:
-      {
-        auto itValueType = ArgValueTypeV3.find(buf);
-        if (itValueType == ArgValueTypeV3.end()) {
-          return AMD_COMGR_STATUS_ERROR;
-        }
-        lcArg->type_ = UpdateArgType(itValueType->second.first, itValueType->second.second);
       }
       break;
     case ArgField::PointeeAlign:
