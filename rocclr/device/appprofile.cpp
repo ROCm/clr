@@ -42,13 +42,13 @@ extern int SearchProfileOfAnApplication(const wchar_t* fileName,
                                         ADLApplicationProfile** lppProfile);
 #endif  // BRAHMA
 
-static void* __stdcall adlMallocCallback(int n) { return malloc(n); }
-
 #define GETPROCADDRESS(_adltype_, _adlfunc_) (_adltype_) amd::Os::getSymbol(adlHandle_, #_adlfunc_);
 
 namespace amd {
 
 #if !defined(BRAHMA) && !defined(WITH_LIGHTNING_COMPILER)
+
+static void* __stdcall adlMallocCallback(int n) { return malloc(n); }
 
 class ADL {
  public:
