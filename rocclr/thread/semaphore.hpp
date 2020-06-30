@@ -50,13 +50,15 @@ class Semaphore : public HeapObject {
   static constexpr size_t state_size = sizeof(std::atomic_int) +
                                        alignof(std::atomic_int);
 
+  union {
 #ifdef _WIN32
-  void* handle_;  //!< The semaphore object's handle.
-  char padding_[64 - state_size - sizeof(handle_)];
+    void* handle_;  //!< The semaphore object's handle.
 #else  // !_WIN32
-  sem_t sem_;  //!< The semaphore object's identifier.
-  char padding_[64 - state_size - sizeof(sem_)];
+    sem_t sem_;  //!< The semaphore object's identifier.
 #endif /*!_WIN32*/
+
+    char padding_[64 - state_size];
+  };
 
  public:
   Semaphore();
