@@ -87,8 +87,7 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
     # This one seems impossible to fix for now.
     # There are hundreds of instances of unused vars/functions
     # throughout the code base.
-    -Wno-unused-variable
-    -Wno-unused-function)
+    -Wno-unused-variable)
 endif()
 
 add_definitions(-D__x86_64__ -DOPENCL_MAJOR=2 -DOPENCL_MINOR=1 -DCL_TARGET_OPENCL_VERSION=220 -DATI_OS_LINUX -DATI_ARCH_X86 -DLITTLEENDIAN_CPU -DATI_BITS_64 -DWITH_TARGET_AMDGCN -DOPENCL_EXPORTS -DCL_USE_DEPRECATED_OPENCL_1_0_APIS -DCL_USE_DEPRECATED_OPENCL_1_1_APIS -DCL_USE_DEPRECATED_OPENCL_1_2_APIS -DCL_USE_DEPRECATED_OPENCL_2_0_APIS -DVEGA10_ONLY=false -DWITH_LIGHTNING_COMPILER)
