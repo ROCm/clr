@@ -133,49 +133,6 @@ bool Program::compileImpl(const std::string& sourceCode,
 }
 
 // ================================================================================================
-#if defined(USE_COMGR_LIBRARY)
-static std::string llvmBin_(amd::Os::getEnvironment("LLVM_BIN"));
-
-#if defined(ATI_OS_LINUX)
-static pthread_once_t once = PTHREAD_ONCE_INIT;
-
-static void checkLLVM_BIN() {
-  if (llvmBin_.empty()) {
-    Dl_info info;
-    if (dladdr((const void*)&amd::Device::init, &info)) {
-      char* str = strdup(info.dli_fname);
-      if (str) {
-        llvmBin_ = dirname(str);
-        free(str);
-        size_t pos = llvmBin_.rfind("lib");
-        if (pos != std::string::npos) {
-          llvmBin_.replace(pos, 3, "bin");
-        }
-      }
-    }
-  }
-#if defined(DEBUG)
-  static const std::string tools[] = { "clang", "llvm-link", "ld.lld" };
-
-  for (const std::string tool : tools) {
-    std::string exePath(llvmBin_ + "/" + tool);
-    struct stat buf;
-    if (stat(exePath.c_str(), &buf)) {
-      std::string msg(exePath + " not found");
-      LogWarning(msg.c_str());
-    }
-    else if ((buf.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) == 0) {
-      std::string msg("Cannot execute " + exePath);
-      LogWarning(msg.c_str());
-    }
-  }
-#endif  // defined(DEBUG)
-}
-#endif  // defined(ATI_OS_LINUX)
-
-#endif // defined(USE_COMGR_LIBRARY)
-
-// ================================================================================================
 
 #if defined(USE_COMGR_LIBRARY)
 // If buildLog is not null, and dataSet contains a log object, extract the

@@ -63,11 +63,6 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t exec, hsa_agent_t ag
   return HSA_STATUS_SUCCESS;
 }
 
-/* Temporary log function for the compiler library */
-static void logFunction(const char* msg, size_t size) {
-  std::cout << "Compiler Library log :" << msg << std::endl;
-}
-
 static inline const char* hsa_strerror(hsa_status_t status) {
   const char* str = nullptr;
   if (hsa_status_string(status, &str) == HSA_STATUS_SUCCESS) {
