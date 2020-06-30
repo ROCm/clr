@@ -132,8 +132,12 @@ class ActivityProf {
         record_id_,                    // activity correlation id
         begin_ts,                      // begin timestamp, ns
         end_ts,                        // end timestamp, ns
-        static_cast<int>(device_id_),  // device id
-        queue_id_,                     // queue id
+        {
+          {
+            static_cast<int>(device_id_), // device id
+            queue_id_                     // queue id
+          }
+        },
         bytes                          // copied data size, for memcpy
     };
     (CallbacksTable::get_op_callback())(op_id, &record, CallbacksTable::get_arg());
