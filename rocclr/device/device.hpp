@@ -581,7 +581,8 @@ class Settings : public amd::HeapObject {
       uint enableCoopGroups_ : 1;     //!< Enable cooperative groups feature
       uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
-      uint reserved_ : 11;
+      uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
+      uint reserved_ : 10;
     };
     uint value_;
   };

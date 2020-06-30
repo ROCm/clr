@@ -590,6 +590,13 @@ bool TransferBufferFileCommand::validateMemory() {
 }
 
 bool CopyMemoryP2PCommand::validateMemory() {
+  amd::Device* queue_device = &queue()->device();
+  // Rocr backend maps memory from different devices by default and runtime doesn't need to track
+  // extra memory objects. Also P2P staging buffer always allocated
+  if (queue_device->settings().rocr_backend_) {
+    return true;
+  }
+
   const std::vector<Device*>& devices = memory1_->getContext().devices();
   if (devices.size() != 1) {
     LogError("Can't allocate memory object for P2P extension");
@@ -614,11 +621,7 @@ bool CopyMemoryP2PCommand::validateMemory() {
   // Validate P2P memories on the current device, if any of them is null, then it's p2p staging
   if ((nullptr == memory1_->getDeviceMemory(queue()->device())) ||
       (nullptr == memory2_->getDeviceMemory(queue()->device()))) {
-    // HIP doesn't support emulation
-    p2pStaging = !amd::IS_HIP;
-    if (!p2pStaging) {
-      return false;
-    }
+    p2pStaging = true;
   }
 
   if (devices[0]->P2PStage() != nullptr && p2pStaging) {

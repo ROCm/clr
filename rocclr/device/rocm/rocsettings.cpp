@@ -89,6 +89,8 @@ Settings::Settings() {
 
   hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS :
       Hmm::EnableSystemMemory | Hmm::EnableMallocPrefetch;
+
+  rocr_backend_ = true;
 }
 
 bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups) {
