@@ -309,7 +309,6 @@ private:
     std::string OptionsLog;
 
     // One bit for each flag.
-    const int flagsSize;
     uint32_t flags[(OID_LAST + 31)/32];
 
     int    llvmargc;
