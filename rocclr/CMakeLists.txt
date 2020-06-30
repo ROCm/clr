@@ -77,7 +77,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") OR
-   (CMAKE_${COMPILER}_COMPILER_ID MATCHES "Clang"))
+    (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
   add_definitions(
     # Enabling -Wextra or -pedantic will cause
     # thousands of warnings. Keep things simple for now.
