@@ -41,6 +41,7 @@
 
 namespace roc {
 
+#if defined(WITH_COMPILER_LIB)
 static hsa_status_t GetKernelNamesCallback(hsa_executable_t exec, hsa_agent_t agent,
                                            hsa_executable_symbol_t symbol, void* data) {
   std::vector<std::string>* symNameList = reinterpret_cast<std::vector<std::string>*>(data);
@@ -62,6 +63,7 @@ static hsa_status_t GetKernelNamesCallback(hsa_executable_t exec, hsa_agent_t ag
 
   return HSA_STATUS_SUCCESS;
 }
+#endif
 
 static inline const char* hsa_strerror(hsa_status_t status) {
   const char* str = nullptr;

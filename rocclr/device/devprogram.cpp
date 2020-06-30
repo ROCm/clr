@@ -727,9 +727,12 @@ bool Program::compileImplLC(const std::string& sourceCode,
 
 
 // ================================================================================================
+
+#if  defined(WITH_COMPILER_LIB)
 static void logFunction(const char* msg, size_t size) {
   std::cout << "Compiler Log: " << msg << std::endl;
 }
+#endif
 
 // ================================================================================================
 bool Program::compileImplHSAIL(const std::string& sourceCode,
