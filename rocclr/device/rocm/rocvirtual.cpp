@@ -84,10 +84,10 @@ static const uint16_t kBarrierPacketReleaseHeader =
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
 static const hsa_barrier_and_packet_t kBarrierAcquirePacket = {
-    kBarrierPacketAcquireHeader, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    kBarrierPacketAcquireHeader, 0, 0, {{0}}, 0, {0}};
 
 static const hsa_barrier_and_packet_t kBarrierReleasePacket = {
-    kBarrierPacketReleaseHeader, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    kBarrierPacketReleaseHeader, 0, 0, {{0}}, 0, {0}};
 
 double Timestamp::ticksToTime_ = 0;
 
