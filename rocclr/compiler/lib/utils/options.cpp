@@ -1345,7 +1345,6 @@ Options::Options() :
     kernelArgAlign(0),
     basename_max(0),
     OptionsLog(),
-    flagsSize (((OID_LAST + 31)/32) * 32),
     llvmargc(0),
     llvmargv(NULL),
     buildNo(0),
