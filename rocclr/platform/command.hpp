@@ -794,6 +794,7 @@ class NDRangeKernelCommand : public Command {
   enum {
     CooperativeGroups = 0x01,
     CooperativeMultiDeviceGroups = 0x02,
+    AnyOrderLaunch = 0x04,
   };
 
   //! Construct an ExecuteKernel command
@@ -826,6 +827,9 @@ class NDRangeKernelCommand : public Command {
   bool cooperativeMultiDeviceGroups() const {
     return (extraParam_ & CooperativeMultiDeviceGroups) ? true : false;
   }
+
+  //! Returns extra Param, set when using anyorder launch
+  bool getAnyOrderLaunchFlag() const { return (extraParam_ & AnyOrderLaunch) ? true : false; }
 
   //! Return the current grid ID for multidevice launch
   uint32_t gridId() const { return gridId_; }

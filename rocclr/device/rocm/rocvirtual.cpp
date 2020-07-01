@@ -2305,9 +2305,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchPacket.group_segment_size = ldsUsage + sharedMemBytes;
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
+    // Pass the header accordingly
+    auto aqlHeaderWithOrder = aqlHeader_;
+    if (vcmd != nullptr && vcmd->getAnyOrderLaunchFlag()) {
+      constexpr uint32_t kAqlHeaderMask = ~(1 << HSA_PACKET_HEADER_BARRIER);
+      aqlHeaderWithOrder &= kAqlHeaderMask;
+    }
+
     // Dispatch the packet
     if (!dispatchAqlPacket(
-            &dispatchPacket, aqlHeader_,
+            &dispatchPacket, aqlHeaderWithOrder,
             (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
             GPU_FLUSH_ON_EXECUTION)) {
       return false;
@@ -2406,7 +2413,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
-      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes())) {
+      static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), &vcmd)) {
       LogError("AQL dispatch failed!");
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
