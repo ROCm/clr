@@ -24,7 +24,13 @@
 
 #include <cassert>
 #include <string.h>
+#include <cstdint>
 //! \addtogroup Utils
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace amd { /*@{*/
 
@@ -69,6 +75,7 @@ extern void log_timestamped(LogLevel level, const char* file, int line, const ch
 
 //! \brief Insert a printf-style log entry.
 extern void log_printf(LogLevel level, const char* file, int line, const char* format, ...);
+extern void log_printf(LogLevel level, const char* file, int line, uint64_t *start, const char* format, ...);
 
 /*@}*/} // namespace amd
 
@@ -185,6 +192,20 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
           amd::log_printf(level, __FILENAME__, __LINE__, format, ##__VA_ARGS__);                       \
         } else {                                                                                   \
           amd::log_printf(level, "", 0, format, ##__VA_ARGS__);                                   \
+        }                                                                                          \
+      }                                                                                            \
+    }                                                                                              \
+  } while (false)
+
+//called on entry and exit, calculates duration with local starttime variable defined in HIP_INIT_API
+#define HIPPrintDuration(level, mask, startTimeUs, format, ...)                                    \
+  do {                                                                                             \
+    if (AMD_LOG_LEVEL >= level) {                                                                  \
+      if (AMD_LOG_MASK & mask || mask == amd::LOG_ALWAYS) {                                        \
+        if (AMD_LOG_MASK & amd::LOG_LOCATION) {                                                    \
+          amd::log_printf(level, __FILENAME__, __LINE__, startTimeUs,format, ##__VA_ARGS__);       \
+        } else {                                                                                   \
+           amd::log_printf(level, "", 0, startTimeUs, format, ##__VA_ARGS__);                      \
         }                                                                                          \
       }                                                                                            \
     }                                                                                              \
