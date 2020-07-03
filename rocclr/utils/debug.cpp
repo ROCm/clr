@@ -87,8 +87,26 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   char message[4096];
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
+  uint64_t timeUs = Os::timeNanos() / 1000ULL;
+  fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs, message);
 
-  fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, Os::timeNanos() / 1000ULL, message);
+}
+void log_printf(LogLevel level, const char* file, int line, uint64_t* start, const char* format, ...) {
+  va_list ap;
+
+  va_start(ap, format);
+  char message[4096];
+  vsnprintf(message, sizeof(message), format, ap);
+  va_end(ap);
+  uint64_t timeUs = Os::timeNanos() / 1000ULL;
+  if (start == 0 || *start == 0) {
+     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs, message);
+  } else {
+     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s: duration: %d us\n", level, file, line, timeUs, message,timeUs - *start);
+  }
+  if (*start == 0) {
+     *start = timeUs;
+  }
 }
 
 }  // namespace amd
