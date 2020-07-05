@@ -1430,8 +1430,8 @@ void Image::Format::formatColor(const void* colorRGBA, void* colorFormat) const 
   }
 }
 
-std::map<uintptr_t, uintptr_t> SvmBuffer::Allocated_;
-Monitor SvmBuffer::AllocatedLock_("Guards SVM allocation list");
+Monitor SvmBuffer::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards SVM allocation list");
+std::map<uintptr_t, uintptr_t> SvmBuffer::Allocated_ ROCCLR_INIT_PRIORITY(101);
 
 void SvmBuffer::Add(uintptr_t k, uintptr_t v) {
   ScopedLock lock(AllocatedLock_);
