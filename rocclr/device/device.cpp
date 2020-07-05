@@ -85,8 +85,8 @@ Context* Device::glb_ctx_ = nullptr;
 Monitor Device::p2p_stage_ops_("P2P Staging Lock", true);
 Memory* Device::p2p_stage_ = nullptr;
 
-amd::Monitor MemObjMap::AllocatedLock_("Guards SVM allocation list");
-std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_;
+Monitor MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
+std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 
 size_t MemObjMap::size() {
   amd::ScopedLock lock(AllocatedLock_);

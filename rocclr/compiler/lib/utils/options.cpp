@@ -88,10 +88,12 @@ OptionDescriptor OptDescTable[] = {
    Any prefix option (-f/-fno, -m/-mno) has no long name, and must have
    a value separator if it requires a value.
 */
-std::map <std::string, int> OptionNameMap[2];
-std::map <std::string, int> NoneSeparatorOptionMap[2];
-std::map <std::string, int> FOptionMap;   // prefix -f/-fno- options
-std::map <std::string, int> MOptionMap;   // prefix -m/-mno- options
+std::map <std::string, int> OptionNameMap[2] ROCCLR_INIT_PRIORITY(101);
+std::map <std::string, int> NoneSeparatorOptionMap[2] ROCCLR_INIT_PRIORITY(101);
+// prefix -f/-fno- options
+std::map <std::string, int> FOptionMap ROCCLR_INIT_PRIORITY(101);
+// prefix -m/-mno- options
+std::map <std::string, int> MOptionMap ROCCLR_INIT_PRIORITY(101);
 
 bool setOptionVariable (
     OptionDescriptor* oDesc,

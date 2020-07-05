@@ -71,9 +71,11 @@ typedef __int32 ssize_t;
 #if _MSC_VER < 1900
 #define snprintf sprintf_s
 #endif
+#define ROCCLR_INIT_PRIORITY(priority)
 #else /*!_WIN32*/
 #define SIZE_T_FMT "%zu"
 #define PTR_FMT "%p"
+#define ROCCLR_INIT_PRIORITY(priority) __attribute__ ((init_priority (priority)))
 #endif /*!_WIN32*/
 
 typedef uint32_t cl_mem_fence_flags;
