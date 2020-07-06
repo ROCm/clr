@@ -166,6 +166,8 @@ class Program : public amd::HeapObject {
   //! Return the compiler options used to build the program.
   const std::string& compileOptions() const { return compileOptions_; }
 
+  const std::string& linkOptions() const { return linkOptions_; }
+
   //! Return the option arg passed in to clCompileProgram(), clLinkProgram(),
   //! or clBuildProgram(), whichever is called last
   const std::string lastBuildOptionsArg() const { return lastBuildOptionsArg_; }
@@ -191,7 +193,7 @@ class Program : public amd::HeapObject {
   ClBinary* clBinary() { return clBinary_; }
   const ClBinary* clBinary() const { return clBinary_; }
 
-  bool setBinary(const char* binaryIn, size_t size);
+  bool setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog = nullptr);
 
   type_t type() const { return type_; }
 

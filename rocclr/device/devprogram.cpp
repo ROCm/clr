@@ -1978,7 +1978,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 }
 
 // ================================================================================================
-bool Program::setBinary(const char* binaryIn, size_t size) {
+bool Program::setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog) {
   if (!initClBinary(binaryIn, size)) {
     DevLogError("Init CL Binary failed \n");
     return false;
@@ -2025,8 +2025,13 @@ bool Program::setBinary(const char* binaryIn, size_t size) {
       return false;
   }
 
-  clBinary()->loadCompileOptions(compileOptions_);
-  clBinary()->loadLinkOptions(linkOptions_);
+  if (same_dev_prog != nullptr) {
+    compileOptions_ = same_dev_prog->compileOptions();
+    linkOptions_ = same_dev_prog->linkOptions();
+  } else {
+    clBinary()->loadCompileOptions(compileOptions_);
+    clBinary()->loadLinkOptions(linkOptions_);
+  }
 
   clBinary()->resetElfIn();
   return true;

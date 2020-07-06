@@ -86,7 +86,8 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
 }
 
 int32_t Program::addDeviceProgram(Device& device, const void* image, size_t length,
-                                 bool make_copy, amd::option::Options* options) {
+                                 bool make_copy, amd::option::Options* options,
+                                 const amd::Program* same_prog) {
   if (image != NULL &&  !amd::isElfMagic((const char*)image)) {
     if (device.settings().useLightning_) {
       return CL_INVALID_BINARY;
@@ -175,7 +176,14 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
       binary_[&rootDev] = std::make_tuple(memory, length, make_copy);
     }
 
-    if (!program->setBinary(reinterpret_cast<const char*>(memory), length)) {
+    const device::Program* same_dev_prog = nullptr;
+    if ((amd::IS_HIP) && (same_prog != nullptr)) {
+      auto same_dev_prog_map_ = same_prog->devicePrograms();
+      guarantee(same_dev_prog_map_.size() == 1);
+      same_dev_prog = same_dev_prog_map_.begin()->second;
+    }
+
+    if (!program->setBinary(reinterpret_cast<const char*>(memory), length, same_dev_prog)) {
       delete program;
       return CL_INVALID_BINARY;
     }
