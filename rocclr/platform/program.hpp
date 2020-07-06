@@ -175,7 +175,8 @@ class Program : public RuntimeObject {
 
   //! Add a new device program with or without binary image and options.
   int32_t addDeviceProgram(Device&, const void* image = NULL, size_t len = 0,
-                          bool make_copy = true, amd::option::Options* options = NULL);
+                          bool make_copy = true, amd::option::Options* options = NULL,
+                          const amd::Program* same_prog = nullptr);
 
   //! Find the section for the given device. Return NULL if not found.
   device::Program* getDeviceProgram(const Device& device) const;
