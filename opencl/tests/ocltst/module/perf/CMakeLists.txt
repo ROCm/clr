@@ -1,84 +1,90 @@
-set(OCLPERF_SOURCES
-    OCLPerf3DImageWriteSpeed.cpp
-    OCLPerfAES256.cpp
-    OCLPerfAtomicSpeed20.cpp
-    OCLPerfAtomicSpeed.cpp
-    OCLPerfBufferCopyOverhead.cpp
-    OCLPerfBufferCopySpeed.cpp
-    OCLPerfBufferReadSpeed.cpp
-    OCLPerfBufferWriteSpeed.cpp
-    OCLPerfCommandQueue.cpp
-    OCLPerfConcurrency.cpp
-    OCLPerfCPUMemSpeed.cpp
-    OCLPerfDeviceConcurrency.cpp
-    OCLPerfDeviceEnqueue2.cpp
-    OCLPerfDeviceEnqueue.cpp
-    OCLPerfDeviceEnqueueEvent.cpp
-    OCLPerfDeviceEnqueueSier.cpp
-    OCLPerfDevMemReadSpeed.cpp
-    OCLPerfDevMemWriteSpeed.cpp
-    OCLPerfDispatchSpeed.cpp
-    OCLPerfDoubleDMA.cpp
-    OCLPerfDoubleDMASeq.cpp
-    OCLPerfFillBuffer.cpp
-    OCLPerfFillImage.cpp
-    OCLPerfFlush.cpp
-    OCLPerfGenericBandwidth.cpp
-    OCLPerfGenoilSiaMiner.cpp
-    OCLPerfImageCopyCorners.cpp
-    OCLPerfImageCopySpeed.cpp
-    OCLPerfImageCreate.cpp
-    OCLPerfImageMapUnmap.cpp
-    OCLPerfImageReadSpeed.cpp
-    OCLPerfImageReadsRGBA.cpp
-    OCLPerfImageReadWrite.cpp
-    OCLPerfImageSampleRate.cpp
-    OCLPerfImageWriteSpeed.cpp
-    OCLPerfKernelArguments.cpp
-    OCLPerfKernelThroughput.cpp
-    OCLPerfLDSLatency.cpp
-    OCLPerfLDSReadSpeed.cpp
-    OCLPerfMandelbrot.cpp
-    OCLPerfMapBufferReadSpeed.cpp
-    OCLPerfMapBufferWriteSpeed.cpp
-    OCLPerfMapImageReadSpeed.cpp
-    OCLPerfMapImageWriteSpeed.cpp
-    OCLPerfMatrixTranspose.cpp
-    OCLPerfMemCombine.cpp
-    OCLPerfMemCreate.cpp
-    OCLPerfMemLatency.cpp
-    OCLPerfPinnedBufferReadSpeed.cpp
-    OCLPerfPinnedBufferWriteSpeed.cpp
-    OCLPerfPipeCopySpeed.cpp
-    OCLPerfProgramGlobalRead.cpp
-    OCLPerfProgramGlobalWrite.cpp
-    OCLPerfSampleRate.cpp
-    OCLPerfScalarReplArrayElem.cpp
-    OCLPerfSdiP2PCopy.cpp
-    OCLPerfSHA256.cpp
-    OCLPerfSVMAlloc.cpp
-    OCLPerfSVMKernelArguments.cpp
-    OCLPerfSVMMap.cpp
-    OCLPerfSVMMemcpy.cpp
-    OCLPerfSVMMemFill.cpp
-    OCLPerfSVMSampleRate.cpp
-    OCLPerfTextureMemLatency.cpp
-    OCLPerfUAVReadSpeed.cpp
-    OCLPerfUAVReadSpeedHostMem.cpp
-    OCLPerfUAVWriteSpeedHostMem.cpp
-    OCLPerfUncoalescedRead.cpp
-    OCLPerfVerticalFetch.cpp
-    TestList.cpp)
-
-if(OPENGL_FOUND AND GLEW_FOUND)
-    set(OCLPERF_SOURCES
-        ${OCLPERF_SOURCES}
-        OCLPerfSepia.cpp)
-endif()
+set(TESTS
+    OCLPerf3DImageWriteSpeed
+    OCLPerfAES256
+    OCLPerfAtomicSpeed20
+    OCLPerfAtomicSpeed
+    OCLPerfBufferCopyOverhead
+    OCLPerfBufferCopySpeed
+    OCLPerfBufferReadSpeed
+    OCLPerfBufferWriteSpeed
+    OCLPerfCommandQueue
+    OCLPerfConcurrency
+    OCLPerfCPUMemSpeed
+    OCLPerfDeviceConcurrency
+    OCLPerfDeviceEnqueue
+    OCLPerfDeviceEnqueue2
+    OCLPerfDeviceEnqueueEvent
+    OCLPerfDeviceEnqueueSier
+    OCLPerfDevMemReadSpeed
+    OCLPerfDevMemWriteSpeed
+    OCLPerfDispatchSpeed
+    OCLPerfDoubleDMA
+    OCLPerfDoubleDMASeq
+    OCLPerfFillBuffer
+    OCLPerfFillImage
+    OCLPerfFlush
+    OCLPerfGenericBandwidth
+    OCLPerfGenoilSiaMiner
+    OCLPerfImageCopyCorners
+    OCLPerfImageCopySpeed
+    OCLPerfImageCreate
+    OCLPerfImageMapUnmap
+    OCLPerfImageReadSpeed
+    OCLPerfImageReadsRGBA
+    OCLPerfImageReadWrite
+    OCLPerfImageSampleRate
+    OCLPerfImageWriteSpeed
+    OCLPerfKernelArguments
+    OCLPerfKernelThroughput
+    OCLPerfLDSLatency
+    OCLPerfLDSReadSpeed
+    OCLPerfMandelbrot
+    OCLPerfMapBufferReadSpeed
+    OCLPerfMapBufferWriteSpeed
+    OCLPerfMapImageReadSpeed
+    OCLPerfMapImageWriteSpeed
+    OCLPerfMatrixTranspose
+    OCLPerfMemCombine
+    OCLPerfMemCreate
+    OCLPerfMemLatency
+    OCLPerfPinnedBufferReadSpeed
+    OCLPerfPinnedBufferWriteSpeed
+    OCLPerfPipeCopySpeed
+    OCLPerfProgramGlobalRead
+    OCLPerfProgramGlobalWrite
+    OCLPerfSampleRate
+    OCLPerfScalarReplArrayElem
+    OCLPerfSdiP2PCopy
+    OCLPerfSHA256
+    OCLPerfSVMAlloc
+    OCLPerfSVMKernelArguments
+    OCLPerfSVMMap
+    OCLPerfSVMMemcpy
+    OCLPerfSVMMemFill
+    OCLPerfSVMSampleRate
+    OCLPerfTextureMemLatency
+    OCLPerfUAVReadSpeed
+    OCLPerfUAVReadSpeedHostMem
+    OCLPerfUAVWriteSpeedHostMem
+    OCLPerfUncoalescedRead
+    OCLPerfVerticalFetch
+)
 
 add_library(oclperf SHARED
-    ${OCLPERF_SOURCES}
+    TestList.cpp
     $<TARGET_OBJECTS:Common>)
+
+foreach(TEST ${TESTS})
+    target_sources(oclperf
+        PRIVATE
+            ${TEST}.cpp)
+endforeach()
+
+if(OPENGL_FOUND AND GLEW_FOUND)
+    target_sources(oclperf
+        PRIVATE
+            OCLPerfSepia.cpp)
+endif()
 
 set_target_properties(oclperf PROPERTIES
     CXX_STANDARD 14
@@ -112,9 +118,7 @@ add_custom_command(
             ${CMAKE_CURRENT_SOURCE_DIR}/oclperf.exclude
             ${CMAKE_BINARY_DIR}/tests/ocltst/oclperf.exclude)
 
-add_dependencies(ocltst oclperf)
-
-add_custom_target(test_oclperf
+add_custom_target(test.ocltst.oclperf
     COMMAND
         ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
         $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclperf> -A oclperf.exclude
@@ -123,3 +127,15 @@ add_custom_target(test_oclperf
     WORKING_DIRECTORY
         ${CMAKE_BINARY_DIR}/tests/ocltst
     USES_TERMINAL)
+
+foreach(TEST ${TESTS})
+    add_custom_target(test.ocltst.oclperf.${TEST}
+        COMMAND
+            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+            $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclperf> -t ${TEST}
+        DEPENDS
+            ocltst oclperf amdocl64
+        WORKING_DIRECTORY
+            ${CMAKE_BINARY_DIR}/tests/ocltst
+        USES_TERMINAL)
+endforeach()

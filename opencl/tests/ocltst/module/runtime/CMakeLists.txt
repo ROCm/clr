@@ -1,49 +1,58 @@
+set(TESTS
+    OCLAsyncMap
+    OCLAsyncTransfer
+    OCLAtomicCounter
+    OCLBlitKernel
+    OCLBufferFromImage
+    OCLCPUGuardPages
+    OCLCreateBuffer
+    OCLCreateContext
+    OCLCreateImage
+    OCLDeviceAtomic
+    OCLDeviceQueries
+    OCLDynamic
+    OCLDynamicBLines
+    OCLGenericAddressSpace
+    OCLGetQueueThreadID
+    OCLGlobalOffset
+    OCLImage2DFromBuffer
+    OCLImageCopyPartial
+    OCLKernelBinary
+    OCLLDS32K
+    OCLLinearFilter
+    OCLLiquidFlash
+    OCLMapCount
+    OCLMemDependency
+    OCLMemObjs
+    OCLMemoryInfo
+    OCLMultiQueue
+    OCLOfflineCompilation
+    OCLP2PBuffer
+    OCLPartialWrkgrp
+    OCLPerfCounters
+    OCLPersistent
+    OCLPinnedMemory
+    OCLPlatformAtomics
+    OCLProgramScopeVariables
+    OCLReadWriteImage
+    OCLRTQueue
+    OCLSDI
+    OCLSemaphore
+    OCLStablePState
+    OCLSVM
+    OCLThreadTrace
+    OCLUnalignedCopy
+)
+
 add_library(oclruntime SHARED
-    OCLAsyncMap.cpp
-    OCLAsyncTransfer.cpp
-    OCLAtomicCounter.cpp
-    OCLBlitKernel.cpp
-    OCLBufferFromImage.cpp
-    OCLCPUGuardPages.cpp
-    OCLCreateBuffer.cpp
-    OCLCreateContext.cpp
-    OCLCreateImage.cpp
-    OCLDeviceAtomic.cpp
-    OCLDeviceQueries.cpp
-    OCLDynamic.cpp
-    OCLDynamicBLines.cpp
-    OCLGenericAddressSpace.cpp
-    OCLGetQueueThreadID.cpp
-    OCLGlobalOffset.cpp
-    OCLImage2DFromBuffer.cpp
-    OCLImageCopyPartial.cpp
-    OCLKernelBinary.cpp
-    OCLLDS32K.cpp
-    OCLLinearFilter.cpp
-    OCLLiquidFlash.cpp
-    OCLMapCount.cpp
-    OCLMemDependency.cpp
-    OCLMemObjs.cpp
-    OCLMemoryInfo.cpp
-    OCLMultiQueue.cpp
-    OCLOfflineCompilation.cpp
-    OCLP2PBuffer.cpp
-    OCLPartialWrkgrp.cpp
-    OCLPerfCounters.cpp
-    OCLPersistent.cpp
-    OCLPinnedMemory.cpp
-    OCLPlatformAtomics.cpp
-    OCLProgramScopeVariables.cpp
-    OCLReadWriteImage.cpp
-    OCLRTQueue.cpp
-    OCLSDI.cpp
-    OCLSemaphore.cpp
-    OCLStablePState.cpp
-    OCLSVM.cpp
-    OCLThreadTrace.cpp
-    OCLUnalignedCopy.cpp
     TestList.cpp
     $<TARGET_OBJECTS:Common>)
+
+foreach(TEST ${TESTS})
+    target_sources(oclruntime
+        PRIVATE
+            ${TEST}.cpp)
+endforeach()
 
 set_target_properties(oclruntime PROPERTIES
     CXX_STANDARD 14
@@ -77,9 +86,7 @@ add_custom_command(
             ${CMAKE_CURRENT_SOURCE_DIR}/oclruntime.exclude
             ${CMAKE_BINARY_DIR}/tests/ocltst/oclruntime.exclude)
 
-add_dependencies(ocltst oclruntime)
-
-add_custom_target(test_oclruntime
+add_custom_target(test.ocltst.oclruntime
     COMMAND
         ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
         $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclruntime> -A oclruntime.exclude
@@ -88,3 +95,15 @@ add_custom_target(test_oclruntime
     WORKING_DIRECTORY
         ${CMAKE_BINARY_DIR}/tests/ocltst
     USES_TERMINAL)
+
+foreach(TEST ${TESTS})
+    add_custom_target(test.ocltst.oclruntime.${TEST}
+        COMMAND
+            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+            $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclruntime> -t ${TEST}
+        DEPENDS
+            ocltst oclruntime amdocl64
+        WORKING_DIRECTORY
+            ${CMAKE_BINARY_DIR}/tests/ocltst
+        USES_TERMINAL)
+endforeach()

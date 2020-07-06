@@ -1,14 +1,23 @@
+set(TESTS
+    OCLGLBuffer
+    OCLGLBufferMultipleQueues
+    OCLGLDepthBuffer
+    OCLGLDepthTex
+    OCLGLFenceSync
+    OCLGLMsaaTexture
+    OCLGLMultiContext
+    OCLGLTexture
+)
+
 add_library(oclgl SHARED
-    OCLGLBuffer.cpp
-    OCLGLBufferMultipleQueues.cpp
-    OCLGLDepthBuffer.cpp
-    OCLGLDepthTex.cpp
-    OCLGLFenceSync.cpp
-    OCLGLMsaaTexture.cpp
-    OCLGLMultiContext.cpp
-    OCLGLTexture.cpp
     TestList.cpp
     $<TARGET_OBJECTS:Common>)
+
+foreach(TEST ${TESTS})
+    target_sources(oclgl
+        PRIVATE
+            ${TEST}.cpp)
+endforeach()
 
 set_target_properties(oclgl PROPERTIES
     CXX_STANDARD 14
@@ -37,9 +46,7 @@ add_custom_command(
             ${CMAKE_CURRENT_SOURCE_DIR}/oclgl.exclude
             ${CMAKE_BINARY_DIR}/tests/ocltst/ogl.exclude)
 
-add_dependencies(ocltst oclgl)
-
-add_custom_target(test_oclgl
+add_custom_target(test.ocltst.oclgl
     COMMAND
         ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
         $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclgl> -A oclgl.exclude
@@ -48,3 +55,15 @@ add_custom_target(test_oclgl
     WORKING_DIRECTORY
         ${CMAKE_BINARY_DIR}/tests/ocltst
     USES_TERMINAL)
+
+foreach(TEST ${TESTS})
+    add_custom_target(test.ocltst.oclgl.${TEST}
+        COMMAND
+            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+            $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclgl> -t ${TEST}
+        DEPENDS
+            ocltst oclgl amdocl64
+        WORKING_DIRECTORY
+            ${CMAKE_BINARY_DIR}/tests/ocltst
+        USES_TERMINAL)
+endforeach()
