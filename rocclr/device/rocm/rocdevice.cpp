@@ -2198,7 +2198,8 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     // Abort on device exceptions.
-    DevLogPrintfError("Device::callbackQueue aborting with status: %d \n", status);
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "Device::callbackQueue aborting with status: 0x%x",
+            status);
     abort();
   }
 }
