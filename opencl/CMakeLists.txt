@@ -17,6 +17,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
+#set a name for icd file
+set(OPENCL_AMD_ICD_FILE "amdocl64.icd")
+if (DEFINED ROCM_PATCH_VERSION)
+    set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
+endif()
+
 # FIXME: Handling legacy custom boolean matching "yes" or "no"
 if(DEFINED USE_COMGR_LIBRARY)
   if(${USE_COMGR_LIBRARY} MATCHES "yes")

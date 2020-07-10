@@ -1,6 +1,6 @@
 if [ $1 -eq 0 ]; then
   rm -f /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
-  rm -f /etc/OpenCL/vendors/amdocl64.icd
+  rm -f /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
   rm -f @ROCM_PATH@/lib/libOpenCL.so
   rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
   rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
