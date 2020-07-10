@@ -1893,6 +1893,7 @@ void Device::updateFreeMemory(size_t size, bool free) {
   else {
     freeMem_ -= size;
   }
+  ClPrint(amd::LOG_INFO, amd::LOG_MEM, "device=0x%lx, freeMem_ = 0x%x", this, freeMem_.load());
 }
 
 bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle) {
