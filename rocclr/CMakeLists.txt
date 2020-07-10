@@ -4,6 +4,9 @@ project(ROCclr VERSION "1.0.0" LANGUAGES C CXX)
 
 include(CMakePackageConfigHelpers)
 
+#decide whether .so is to be build or .a
+set(BUILD_SHARED_LIBS ON CACHE BOOL "Build shared library (.so) or not.")
+
 #example command:
 
 #cmake   -DOPENCL_DIR=/path to/opencl ..
@@ -187,7 +190,11 @@ if(USE_COMGR_LIBRARY)
   # FIXME: This should not be part of the public interface. Downstream
   # users need to add these definitions. This should be defined in a
   # config header here so other builds don't need to be aware of this.
-  target_compile_definitions(amdrocclr_static PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  if(${BUILD_SHARED_LIBS})
+     target_compile_definitions(amdrocclr_static PUBLIC USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  else()
+     target_compile_definitions(amdrocclr_static PUBLIC USE_COMGR_LIBRARY)
+  endif()
 endif()
 
 target_link_libraries(amdrocclr_static PUBLIC Threads::Threads)
