@@ -49,8 +49,10 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#ifdef ROCCLR_SUPPORT_NUMA_POLICY
 #include <numaif.h>
-#endif  // WITHOUT_HSA_BACKEND
+#endif // ROCCLR_SUPPORT_NUMA_POLICY
+#endif // WITHOUT_HSA_BaCKEND
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
@@ -1732,6 +1734,9 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
 
 void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
   void* ptr = nullptr;
+#ifndef ROCCLR_SUPPORT_NUMA_POLICY
+  ptr = hostAlloc(size, alignment, atomics);
+#else
   int mode = MPOL_DEFAULT;
   unsigned long nodeMask = 0;
   auto cpuCount = cpu_agents_.size();
@@ -1762,6 +1767,7 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
       //  All other modes fall back to default mode
       ptr = hostAlloc(size, alignment, atomics);
   }
+#endif // ROCCLR_SUPPORT_NUMA_POLICY
   return ptr;
 }
 
