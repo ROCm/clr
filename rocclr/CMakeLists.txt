@@ -224,6 +224,13 @@ if (UNIX)
     if (LIBRT)
         target_link_libraries(amdrocclr_static PUBLIC ${LIBRT})
     endif()
+
+    find_library(LIBNUMA numa)
+    if (LIBNUMA)
+        target_compile_definitions(amdrocclr_static PUBLIC ROCCLR_SUPPORT_NUMA_POLICY)
+        target_link_libraries(amdrocclr_static PUBLIC ${LIBNUMA})
+        message(STATUS "Found: ${LIBNUMA}")
+    endif()
 endif()
 #comment out as it's not available in cmake 3.5
 #if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
