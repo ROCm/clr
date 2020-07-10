@@ -1,7 +1,7 @@
 if [ -e "/opt/rocm/opencl" ] ; then
   echo /opt/rocm/opencl/lib > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
 fi
-mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/amdocl64.icd)
+mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@)
 INSTALL_PATH=@CPACK_PACKAGING_INSTALL_PREFIX@
 ROCM_LIBPATH=@ROCM_PATH@/lib
 
