@@ -214,8 +214,9 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
       }
     }
   }
-  // Allocate host memory buffer if needed
-  else if (allocHostMem && !isInterop()) {
+  // Allocate host memory buffer if needed.
+  // @note: SVM host memory allocation should be done in the device backend
+  else if (allocHostMem && !isInterop() && !(getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
     if (!hostMemRef_.allocateMemory(size_, context_())) {
       DevLogError("Cannot allocate Host Memory Buffer \n");
       return false;
