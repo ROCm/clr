@@ -185,24 +185,22 @@ void HostQueue::append(Command& command) {
   }
   command.retain();
   command.setStatus(CL_QUEUED);
+  ScopedLock l(lastCmdLock_);
   queue_.enqueue(&command);
+  if (!IS_HIP) {
+    return;
+  }
+  // Set last submitted command
+  if (lastEnqueueCommand_ != nullptr) {
+    lastEnqueueCommand_->release();
+  }
+  lastEnqueueCommand_ = &command;
+  lastEnqueueCommand_->retain();
 }
 
 bool HostQueue::isEmpty() {
   // Get a snapshot of queue size
   return queue_.empty();
-}
-
-void HostQueue::setLastQueuedCommand(Command* lastCommand) {
-  // Set last submitted command
-  ScopedLock l(lastCmdLock_);
-  if (lastEnqueueCommand_ != nullptr) {
-    lastEnqueueCommand_->release();
-  }
-  lastEnqueueCommand_ = lastCommand;
-  if (lastCommand != nullptr) {
-    lastEnqueueCommand_->retain();
-  }
 }
 
 Command* HostQueue::getLastQueuedCommand(bool retain) {
