@@ -258,9 +258,6 @@ void Command::enqueue() {
 
   ClPrint(LOG_DEBUG, LOG_CMD, "command is enqueued: %p", this);
   queue_->append(*this);
-  if (IS_HIP) {
-    queue_->setLastQueuedCommand(this);
-  }
   queue_->flush();
   if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||
       ((commandWaitBits_ & 0x2) != 0)) {
