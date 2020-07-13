@@ -82,48 +82,17 @@ static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {
     return HSA_INVALID_DEVICE_ID;
   }
 
-  if (strncmp(agent_name, "gfx", 3) != 0) {
+  if (::strncmp(agent_name, "gfx", 3) != 0) {
     return HSA_INVALID_DEVICE_ID;
   }
 
-
-  uint gfxipVersion = atoi(&agent_name[3]);
-  if (gfxipVersion < 900 && GPU_VEGA10_ONLY) {
-    return  HSA_INVALID_DEVICE_ID;
+  for (uint i = 0; i < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++i) {
+    if (::strcmp(agent_name, DeviceInfo[i].machineTargetLC_) == 0) {
+      return i;
+    }
   }
 
-  switch (gfxipVersion) {
-    case 701:
-      return HSA_HAWAII_ID;
-    case 801:
-      return HSA_CARRIZO_ID;
-    case 802:
-      return HSA_TONGA_ID;
-    case 803:
-      return HSA_FIJI_ID;
-    case 900:
-      return HSA_VEGA10_ID;
-    case 901:
-      return HSA_VEGA10_HBCC_ID;
-    case 902:
-      return HSA_RAVEN_ID;
-    case 904:
-      return HSA_VEGA12_ID;
-    case 906:
-      return HSA_VEGA20_ID;
-    case 908:
-      return HSA_MI100_ID;
-    case 1000:
-      return HSA_ARIEL_ID;
-    case 1010:
-      return HSA_NAVI10_ID;
-    case 1011:
-      return HSA_NAVI12_ID;
-    case 1012:
-      return HSA_NAVI14_ID;
-    default:
-      return HSA_INVALID_DEVICE_ID;
-  }
+  return HSA_INVALID_DEVICE_ID;
 }
 
 bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
@@ -513,93 +482,11 @@ bool Device::init() {
       LogPrintfError("Invalid HSA device %x", pci_id);
       continue;
     }
-    // Find device id in the table
-    uint id = HSA_INVALID_DEVICE_ID;
-    for (uint i = 0; i < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++i) {
-      if (DeviceInfo[i].hsaDeviceId_ == deviceId) {
-        id = i;
-        break;
-      }
-    }
-    // If the AmdDeviceInfo for the HsaDevice Id could not be found return false
-    if (id == HSA_INVALID_DEVICE_ID) {
-      ClPrint(amd::LOG_WARNING, amd::LOG_INIT, "Could not find a DeviceInfo entry for %d", deviceId);
-      continue;
-    }
-    roc_device->deviceInfo_ = DeviceInfo[id];
+
+    roc_device->deviceInfo_ = DeviceInfo[deviceId];
     roc_device->deviceInfo_.pciDeviceId_ = pci_id;
 
-    // Query the agent's ISA name to fill deviceInfo.gfxipVersion_. We can't
-    // have a static mapping as some marketing names cover multiple gfxip.
-    hsa_isa_t isa = {0};
-    if (hsa_agent_get_info(agent, HSA_AGENT_INFO_ISA, &isa) != HSA_STATUS_SUCCESS) {
-      continue;
-    }
-
-    uint32_t isaNameLength = 0;
-    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME_LENGTH, &isaNameLength) != HSA_STATUS_SUCCESS) {
-      continue;
-    }
-
-    char* isaName = (char*)alloca((size_t)isaNameLength + 1);
-    if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, isaName) != HSA_STATUS_SUCCESS) {
-      continue;
-    }
-    isaName[isaNameLength] = '\0';
-
-    std::string str(isaName);
-
-    if (str.find("amdgcn-") == 0) {
-      // New way.
-      std::vector<std::string> tokens;
-      size_t end, pos = 0;
-      do {
-        end = str.find_first_of('-', pos);
-        tokens.push_back(str.substr(pos, end - pos));
-        pos = end + 1;
-      } while (end != std::string::npos);
-
-      if (tokens.size() != 5 && tokens.size() != 6) {
-        LogError("Not an amdgcn name");
-        continue;
-      }
-
-      if (tokens[4].find("gfx") != 0) {
-        LogError("Invalid ISA string");
-        continue;
-      }
-
-      std::string gfxipVersionStr = tokens[4].substr(tokens[4].find("gfx") + 3);
-
-      std::string steppingStr(&gfxipVersionStr.back());
-      roc_device->deviceInfo_.gfxipStepping_ = std::stoi(steppingStr, nullptr, 16);
-      gfxipVersionStr.pop_back();
-
-      std::string minorStr(&gfxipVersionStr.back());
-      roc_device->deviceInfo_.gfxipMinor_ = std::stoi(minorStr);
-      gfxipVersionStr.pop_back();
-
-      roc_device->deviceInfo_.gfxipMajor_ = std::stoi(gfxipVersionStr);
-
-    } else {
-      ShouldNotReachHere();
-    }
-
-    // TODO: set sramEccEnabled flag based on target string suffix
-    //       when ROCr resumes reporting sram-ecc support
-    bool sramEccEnabled = false;
-    if ((roc_device->deviceInfo_.gfxipMajor_ == 9) && (roc_device->deviceInfo_.gfxipMinor_ == 0)) {
-      switch (roc_device->deviceInfo_.gfxipStepping_) {
-      case 6:
-      case 8:
-        sramEccEnabled = true;
-        break;
-      default:
-        break;
-      }
-    }
-
-    if (!roc_device->create(sramEccEnabled)) {
+    if (!roc_device->create()) {
       LogError("Error creating new instance of Device.");
       continue;
     }
@@ -646,7 +533,7 @@ void Device::tearDown() {
   hsa_shut_down();
 }
 
-bool Device::create(bool sramEccEnabled) {
+bool Device::create() {
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
     return false;
@@ -689,7 +576,6 @@ bool Device::create(bool sramEccEnabled) {
   info_.deviceTopology_.pcie.bus = (hsa_bdf_id & (0xFF << 8)) >> 8;
   info_.deviceTopology_.pcie.device = (hsa_bdf_id & (0x1F << 3)) >> 3;
   info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
-  info_.sramEccEnabled_ = sramEccEnabled;
 
 #ifdef WITH_AMDGPU_PRO
   // Create amdgpu-pro device interface for SSG support
@@ -705,6 +591,7 @@ bool Device::create(bool sramEccEnabled) {
 #endif
 
   if (populateOCLDeviceConstants() == false) {
+    LogError("populateOCLDeviceConstants failed!");
     return false;
   }
 
@@ -1054,17 +941,50 @@ bool Device::populateOCLDeviceConstants() {
 
   roc::Settings* hsa_settings = static_cast<roc::Settings*>(settings_);
 
-  std::ostringstream oss;
-
-  oss << "gfx" << deviceInfo_.gfxipMajor_ << deviceInfo_.gfxipMinor_ << std::hex << deviceInfo_.gfxipStepping_;
-
-  if (settings().useLightning_ && hsa_settings->enableXNACK_) {
-    oss << "+xnack";
+  hsa_isa_t isa = {0};
+  if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_ISA, &isa) != HSA_STATUS_SUCCESS) {
+    return false;
   }
-  if (info_.sramEccEnabled_) {
-    oss << "+sram-ecc";
+
+  uint32_t isaNameLength = 0;
+  if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME_LENGTH, &isaNameLength) != HSA_STATUS_SUCCESS) {
+    return false;
   }
-  ::strcpy(info_.name_, oss.str().c_str());
+
+  if ((isaNameLength + 1) > sizeof(info_.targetId_)) {
+    return false;
+  }
+
+  if (hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, info_.targetId_) != HSA_STATUS_SUCCESS) {
+    return false;
+  }
+  info_.targetId_[isaNameLength] = '\0';
+
+  char *gfxSubString = ::strstr(info_.targetId_, "gfx");
+  if (nullptr == gfxSubString) {
+    return false;
+  }
+  ::strcpy(info_.name_, gfxSubString);
+
+  info_.gfxipMajor_ = deviceInfo_.gfxipMajor_;
+  info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
+  info_.gfxipStepping_ = deviceInfo_.gfxipStepping_;
+
+  // TODO: gfxipVersion_ and sramEccEnabled_ will be removed when Target ID
+  // feature is fully implemented
+  info_.gfxipVersion_ = info_.gfxipMajor_ * 100 + info_.gfxipMinor_ * 10 + info_.gfxipStepping_;
+
+  if ((info_.gfxipMajor_ == 9) && (info_.gfxipMinor_ == 0)) {
+    switch (info_.gfxipStepping_) {
+    case 6:
+    case 8:
+      info_.sramEccEnabled_ = true;
+      break;
+    default:
+      info_.sramEccEnabled_ = false;
+      break;
+    }
+  }
 
   char device_name[64] = {0};
   if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
@@ -1114,7 +1034,7 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   //TODO: add the assert statement for Raven
-  if ((deviceInfo_.gfxipMajor_*100 + deviceInfo_.gfxipMinor_*10 + deviceInfo_.gfxipStepping_) != 902) {
+  if ((info_.gfxipMajor_*100 + info_.gfxipMinor_*10 + info_.gfxipStepping_) != 902) {
     assert(info_.maxEngineClockFrequency_ > 0);
   }
 
@@ -1483,10 +1403,6 @@ bool Device::populateOCLDeviceConstants() {
     info_.globalMemChannelBankWidth_ = deviceInfo_.memChannelBankWidth_;
     info_.localMemSizePerCU_ = deviceInfo_.localMemSizePerCU_;
     info_.localMemBanks_ = deviceInfo_.localMemBanks_;
-    info_.gfxipVersion_ = deviceInfo_.gfxipMajor_ * 100 + deviceInfo_.gfxipMinor_ * 10 + deviceInfo_.gfxipStepping_;
-    info_.gfxipMajor_ = deviceInfo_.gfxipMajor_;
-    info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
-    info_.gfxipStepping_ = deviceInfo_.gfxipStepping_;
     info_.numAsyncQueues_ = kMaxAsyncQueues;
     info_.numRTQueues_ = info_.numAsyncQueues_;
     info_.numRTCUs_ = info_.maxComputeUnits_;

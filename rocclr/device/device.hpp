@@ -553,6 +553,9 @@ struct Info : public amd::EmbeddedObject {
 
   //! large bar support.
   bool largeBar_;
+
+  //! Target ID string
+  char targetId_[0x40];
 };
 
 //! Device settings

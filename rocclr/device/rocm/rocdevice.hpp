@@ -301,7 +301,7 @@ class Device : public NullDevice {
   bool getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
                    uint32_t* link_type, uint32_t* numa_distance) const;
 
-  bool create(bool sramEccEnabled);
+  bool create();
 
   //! Construct a new physical HSA device
   Device(hsa_agent_t bkendDevice);
