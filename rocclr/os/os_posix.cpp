@@ -369,6 +369,16 @@ const void* Os::createOsThread(amd::Thread* thread) {
 
   // We never plan the use join, so free the resources now.
   ::pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
+  cpu_set_t cpuset;
+  if (processorCount_ > 0) {
+    CPU_ZERO(&cpuset);
+    for (uint i = 0; i < processorCount_; i++) {
+      CPU_SET(i, &cpuset);
+    }
+    if (0 != pthread_attr_setaffinity_np(&threadAttr, sizeof(cpu_set_t), &cpuset)) {
+      fatal("pthread_attr_setaffinity_np failed to set affinity");
+    }
+  }
 
   pthread_t handle = 0;
   if (0 != ::pthread_create(&handle, &threadAttr, (void* (*)(void*)) & Thread::entry, thread)) {
