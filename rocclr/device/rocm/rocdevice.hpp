@@ -231,7 +231,7 @@ class NullDevice : public amd::Device {
   AMDDeviceInfo deviceInfo_;
 
  private:
-  static const bool offlineDevice_;
+  static constexpr bool offlineDevice_ = true;
 };
 
 struct AgentInfo {
@@ -481,7 +481,7 @@ class Device : public NullDevice {
   bool SvmAllocInit(void* memory, size_t size) const;
 
  private:
-  static const hsa_signal_value_t InitSignalValue = 1;
+  static constexpr hsa_signal_value_t InitSignalValue = 1;
 
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
 
@@ -507,7 +507,7 @@ class Device : public NullDevice {
 
   size_t gpuvm_segment_max_alloc_;
   size_t alloc_granularity_;
-  static const bool offlineDevice_;
+  static constexpr bool offlineDevice_ = false;
   amd::Context* context_;  //!< A dummy context for internal data transfer
   VirtualGPU* xferQueue_;  //!< Transfer queue, created on demand
 

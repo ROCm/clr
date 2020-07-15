@@ -61,7 +61,7 @@ int getLibDescs (
     int&                LibDescSize   // output -- LibDesc[0:LibDescSize-1]
 );
 
-static const char* amdRTFuns[] = {
+static constexpr const char* amdRTFuns[] = {
       "__amdrt_div_i64",
       "__amdrt_div_u64",
       "__amdrt_mod_i64",

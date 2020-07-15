@@ -95,7 +95,7 @@ class Os : AllStatic {
   static bool MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size);
 
  private:
-  static const size_t FILE_PATH_MAX_LENGTH = 1024;
+  static constexpr size_t FILE_PATH_MAX_LENGTH = 1024;
 
   static size_t pageSize_;     //!< The default os page size.
   static int processorCount_;  //!< The number of active processors.

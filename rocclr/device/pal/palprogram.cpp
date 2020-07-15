@@ -170,7 +170,7 @@ bool Segment::freeze(bool destroySysmem) {
   return result;
 }
 
-const static char* Carrizo = "Carrizo";
+static constexpr const char* Carrizo = "Carrizo";
 HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
     : Program(device, owner),
       rawBinary_(nullptr),

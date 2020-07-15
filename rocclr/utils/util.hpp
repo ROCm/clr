@@ -55,13 +55,13 @@ template <> struct NextPowerOfTwoFunction<1> {
 };
 
 template <uint N, int S> struct NextPowerOfTwoHelper {
-  static const uint prev = NextPowerOfTwoHelper<N, S / 2>::value;
-  static const uint value = (prev >> S) | prev;
+  static constexpr uint prev = NextPowerOfTwoHelper<N, S / 2>::value;
+  static constexpr uint value = (prev >> S) | prev;
 };
-template <uint N> struct NextPowerOfTwoHelper<N, 1> { static const int value = (N >> 1) | N; };
+template <uint N> struct NextPowerOfTwoHelper<N, 1> { static constexpr int value = (N >> 1) | N; };
 
 template <uint N> struct NextPowerOfTwo {
-  static const uint value = NextPowerOfTwoHelper<N - 1, 16>::value + 1;
+  static constexpr uint value = NextPowerOfTwoHelper<N - 1, 16>::value + 1;
 };
 
 //! \endcond
@@ -83,10 +83,10 @@ template <typename T> inline T nextPowerOfTwo(T val) {
 }
 
 // Compute log2(N)
-template <uint N> struct Log2 { static const uint value = Log2<N / 2>::value + 1; };
+template <uint N> struct Log2 { static constexpr uint value = Log2<N / 2>::value + 1; };
 
 // Break the recursion
-template <> struct Log2<1> { static const uint value = 0; };
+template <> struct Log2<1> { static constexpr uint value = 0; };
 
 /*! \brief Return the log2 for a value of type T.
  *
@@ -190,7 +190,7 @@ inline uint leastBitSet64(uint64_t value) {
 #elif defined(__GNUC__)
   return value ? __builtin_ctzll(value) : (uint)-1;
 #else
-  static const uint8_t lookup67[67 + 1] = {
+  static constexpr uint8_t lookup67[67 + 1] = {
       64, 0,  1,  39, 2,  15, 40, 23, 3,  12, 16, 59, 41, 19, 24, 54, 4,  -1, 13, 10, 17, 62, 60,
       28, 42, 30, 20, 51, 25, 44, 55, 47, 5,  32, -1, 38, 14, 22, 11, 58, 18, 53, 63, 9,  61, 27,
       29, 50, 43, 46, 31, 37, 21, 57, 52, 8,  26, 49, 45, 36, 56, 7,  48, 35, 6,  34, 33, -1};

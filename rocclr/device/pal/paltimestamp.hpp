@@ -114,8 +114,8 @@ class TimeStampCache : public amd::HeapObject {
   void freeTimeStamp(TimeStamp* ts) { freedTS_.push_back(ts); }
 
  private:
-  static const uint TimerSlotSize = TimeStamp::CommandTotal * sizeof(uint64_t);
-  static const uint TimerBufSize = TimerSlotSize * 4096;
+  static constexpr uint TimerSlotSize = TimeStamp::CommandTotal * sizeof(uint64_t);
+  static constexpr uint TimerBufSize = TimerSlotSize * 4096;
 
   //! Disable copy constructor
   TimeStampCache(const TimeStampCache&);

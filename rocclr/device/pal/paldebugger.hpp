@@ -28,7 +28,7 @@
 #include "device/hwdebug.hpp"
 #include "acl.h"
 
-static const int NumberReserveVgprs = 4;
+static constexpr int NumberReserveVgprs = 4;
 
 namespace pal {
 

@@ -900,7 +900,7 @@ typedef struct ChannelTypeMap {
   hsa_ext_image_channel_type_t hsa_channel_type;
 } ChannelTypeMap;
 
-static const ChannelOrderMap kChannelOrderMapping[] = {
+static constexpr ChannelOrderMap kChannelOrderMapping[] = {
     {CL_R, HSA_EXT_IMAGE_CHANNEL_ORDER_R},
     {CL_A, HSA_EXT_IMAGE_CHANNEL_ORDER_A},
     {CL_RG, HSA_EXT_IMAGE_CHANNEL_ORDER_RG},
@@ -923,7 +923,7 @@ static const ChannelOrderMap kChannelOrderMapping[] = {
     {CL_ABGR, HSA_EXT_IMAGE_CHANNEL_ORDER_ABGR},
 };
 
-static const ChannelTypeMap kChannelTypeMapping[] = {
+static constexpr ChannelTypeMap kChannelTypeMapping[] = {
     {CL_SNORM_INT8, HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT8},
     {CL_SNORM_INT16, HSA_EXT_IMAGE_CHANNEL_TYPE_SNORM_INT16},
     {CL_UNORM_INT8, HSA_EXT_IMAGE_CHANNEL_TYPE_UNORM_INT8},

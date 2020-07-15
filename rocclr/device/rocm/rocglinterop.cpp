@@ -41,7 +41,7 @@ static PFNMESAGLINTEROPEGLEXPORTOBJECTPROC*    EglExport = nullptr;
 static MESA_INTEROP_KIND loadedGLAPITypes(MESA_INTEROP_NONE);
 #endif
 
-static const char* errorStrings[] = {"MESA_GLINTEROP_SUCCESS",
+static constexpr const char* errorStrings[] = {"MESA_GLINTEROP_SUCCESS",
                                      "MESA_GLINTEROP_OUT_OF_RESOURCES",
                                      "MESA_GLINTEROP_OUT_OF_HOST_MEMORY",
                                      "MESA_GLINTEROP_INVALID_OPERATION",

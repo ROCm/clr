@@ -93,7 +93,7 @@ class CallbacksTable {
 class ActivityProf {
  public:
   // Domain ID
-  static const int ACTIVITY_DOMAIN_ID = ACTIVITY_DOMAIN_HIP_VDI;
+  static constexpr int ACTIVITY_DOMAIN_ID = ACTIVITY_DOMAIN_HIP_VDI;
 
   ActivityProf() : command_id_(0), queue_id_(0), device_id_(0), record_id_(0), enabled_(false) {}
 

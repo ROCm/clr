@@ -25,10 +25,10 @@
 namespace roc {
 
 //! Alignment restriciton for the pinned memory
-const static size_t PinnedMemoryAlignment = 4 * Ki;
+static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
 
 //! Specific defines for images for Dynamic Parallelism
-const static uint DeviceQueueMaskSize = 32;
+static constexpr uint DeviceQueueMaskSize = 32;
 
 typedef uint HsaDeviceId;
 
@@ -51,28 +51,28 @@ struct AMDDeviceInfo {
 };
 
 // The device ID must match with the device's index into DeviceInfo
-const HsaDeviceId HSA_SPECTRE_ID = 0;
-const HsaDeviceId HSA_SPOOKY_ID = 1;
-const HsaDeviceId HSA_TONGA_ID = 2;
-const HsaDeviceId HSA_CARRIZO_ID = 3;
-const HsaDeviceId HSA_ICELAND_ID = 4;
-const HsaDeviceId HSA_FIJI_ID = 5;
-const HsaDeviceId HSA_HAWAII_ID = 6;
-const HsaDeviceId HSA_ELLESMERE_ID = 7;
-const HsaDeviceId HSA_BAFFIN_ID = 8;
-const HsaDeviceId HSA_VEGA10_ID = 9;
-const HsaDeviceId HSA_VEGA10_HBCC_ID = 10;
-const HsaDeviceId HSA_RAVEN_ID = 11;
-const HsaDeviceId HSA_VEGA12_ID = 12;
-const HsaDeviceId HSA_VEGA20_ID = 13;
-const HsaDeviceId HSA_ARIEL_ID = 14;
-const HsaDeviceId HSA_NAVI10_ID = 15;
-const HsaDeviceId HSA_MI100_ID = 16;
-const HsaDeviceId HSA_NAVI12_ID = 17;
-const HsaDeviceId HSA_NAVI14_ID = 18;
-const HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
+constexpr HsaDeviceId HSA_SPECTRE_ID = 0;
+constexpr HsaDeviceId HSA_SPOOKY_ID = 1;
+constexpr HsaDeviceId HSA_TONGA_ID = 2;
+constexpr HsaDeviceId HSA_CARRIZO_ID = 3;
+constexpr HsaDeviceId HSA_ICELAND_ID = 4;
+constexpr HsaDeviceId HSA_FIJI_ID = 5;
+constexpr HsaDeviceId HSA_HAWAII_ID = 6;
+constexpr HsaDeviceId HSA_ELLESMERE_ID = 7;
+constexpr HsaDeviceId HSA_BAFFIN_ID = 8;
+constexpr HsaDeviceId HSA_VEGA10_ID = 9;
+constexpr HsaDeviceId HSA_VEGA10_HBCC_ID = 10;
+constexpr HsaDeviceId HSA_RAVEN_ID = 11;
+constexpr HsaDeviceId HSA_VEGA12_ID = 12;
+constexpr HsaDeviceId HSA_VEGA20_ID = 13;
+constexpr HsaDeviceId HSA_ARIEL_ID = 14;
+constexpr HsaDeviceId HSA_NAVI10_ID = 15;
+constexpr HsaDeviceId HSA_MI100_ID = 16;
+constexpr HsaDeviceId HSA_NAVI12_ID = 17;
+constexpr HsaDeviceId HSA_NAVI14_ID = 18;
+constexpr HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
-static const AMDDeviceInfo DeviceInfo[] = {
+static constexpr AMDDeviceInfo DeviceInfo[] = {
     //  targetName  machineTarget
     /* TARGET_KAVERI_SPECTRE */ {HSA_SPECTRE_ID, "", "kaveri", "", "Spectre",
                                  4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
@@ -115,5 +115,5 @@ static const AMDDeviceInfo DeviceInfo[] = {
 };
 }
 
-const uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
+constexpr uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
 #endif

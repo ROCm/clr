@@ -207,7 +207,7 @@ enum EngineType
 
 struct GpuEvent
 {
-    static const unsigned int InvalidID  = ((1<<30) - 1);
+    static constexpr unsigned int InvalidID  = ((1<<30) - 1);
 
     EngineType      engineId_;  ///< type of the id
     unsigned int    id;         ///< actual event id

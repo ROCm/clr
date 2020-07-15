@@ -39,7 +39,7 @@ enum EQManagerConfig
 
 class EventQueue {
 public:
-    static const unsigned int  c_staticQueueSize  = EQManager_HIGH;
+    static constexpr unsigned int c_staticQueueSize = EQManager_HIGH;
     EventQueue();
     ~EventQueue();
 

@@ -89,13 +89,13 @@ const pointer badPointer = (pointer)(intptr_t)_BAD_INTPTR;
 const address badAddress = (address)(intptr_t)_BAD_INTPTR;
 //! \endcond
 
-const size_t Ki = 1024;
-const size_t Mi = Ki * Ki;
-const size_t Gi = Ki * Ki * Ki;
+constexpr size_t Ki = 1024;
+constexpr size_t Mi = Ki * Ki;
+constexpr size_t Gi = Ki * Ki * Ki;
 
-const size_t K = 1000;
-const size_t M = K * K;
-const size_t G = K * K * K;
+constexpr size_t K = 1000;
+constexpr size_t M = K * K;
+constexpr size_t G = K * K * K;
 
 #include "utils/debug.hpp"
 

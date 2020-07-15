@@ -164,17 +164,17 @@ typedef struct _HwDispatch {
     uint    padd41;         // 0x00000021
 } HwDispatch;
 \n
-static const uint WavefrontSize     = 64;
-static const uint MaxWaveSize       = 0x400;
-static const uint UsrRegOffset      = 0x240;
-static const uint Pm4Nop            = 0xC0001002;
-static const uint Pm4UserRegs       = 0xC0007602;
-static const uint Pm4CopyReg        = 0xC0044000;
-static const uint PrivateSegEna     = 0x1;
-static const uint DispatchEna       = 0x2;
-static const uint QueuePtrEna       = 0x4;
-static const uint KernelArgEna      = 0x8;
-static const uint FlatScratchEna    = 0x20;
+static constexpr uint WavefrontSize     = 64;
+static constexpr uint MaxWaveSize       = 0x400;
+static constexpr uint UsrRegOffset      = 0x240;
+static constexpr uint Pm4Nop            = 0xC0001002;
+static constexpr uint Pm4UserRegs       = 0xC0007602;
+static constexpr uint Pm4CopyReg        = 0xC0044000;
+static constexpr uint PrivateSegEna     = 0x1;
+static constexpr uint DispatchEna       = 0x2;
+static constexpr uint QueuePtrEna       = 0x4;
+static constexpr uint KernelArgEna      = 0x8;
+static constexpr uint FlatScratchEna    = 0x20;
 \n
 uint GetCmdTemplateHeaderSize() { return sizeof(HwDispatchHeader); }
 \n

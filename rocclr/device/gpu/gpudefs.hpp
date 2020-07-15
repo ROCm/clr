@@ -41,44 +41,44 @@ extern bool getFuncInfoFromImage(CALimage image, CALfuncInfo* pFuncInfo);
 namespace gpu {
 
 //! Maximum number of the supported global atomic counters
-const static uint MaxAtomicCounters = 8;
+static constexpr uint MaxAtomicCounters = 8;
 //! Maximum number of the supported samplers
-const static uint MaxSamplers = 16;
+static constexpr uint MaxSamplers = 16;
 //! Maximum number of supported read images
-const static uint MaxReadImage = 128;
+static constexpr uint MaxReadImage = 128;
 //! Maximum number of supported write images
-const static uint MaxWriteImage = 8;
+static constexpr uint MaxWriteImage = 8;
 //! Maximum number of supported read/write images for OCL20
-const static uint MaxReadWriteImage = 64;
+static constexpr uint MaxReadWriteImage = 64;
 //! Maximum number of supported constant arguments
-const static uint MaxConstArguments = 8;
+static constexpr uint MaxConstArguments = 8;
 //! Maximum number of supported kernel UAV arguments
-const static uint MaxUavArguments = 1024;
+static constexpr uint MaxUavArguments = 1024;
 //! Maximum number of pixels for a 1D image created from a buffer
-const static size_t MaxImageBufferSize = 1 << 27;
+static constexpr size_t MaxImageBufferSize = 1 << 27;
 //! Maximum number of pixels for a 1D image created from a buffer
-const static size_t MaxImageArraySize = 2048;
+static constexpr size_t MaxImageArraySize = 2048;
 
 //! Maximum number of supported constant buffers
-const static uint MaxConstBuffers = MaxConstArguments + 8;
+static constexpr uint MaxConstBuffers = MaxConstArguments + 8;
 
 //! Maximum number of constant buffers for arguments
-const static uint MaxConstBuffersArguments = 2;
+static constexpr uint MaxConstBuffersArguments = 2;
 
 //! Define offline CAL implementation
-const static uint CalOfflineImpl = 0xffffffff;
+static constexpr uint CalOfflineImpl = 0xffffffff;
 
 //! Alignment restriciton for the pinned memory
-const static size_t PinnedMemoryAlignment = 4 * Ki;
+static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
 
 //! HSA path specific defines for images
-const static uint HsaImageObjectSize = 48;
-const static uint HsaImageObjectAlignment = 16;
-const static uint HsaSamplerObjectSize = 32;
-const static uint HsaSamplerObjectAlignment = 16;
+static constexpr uint HsaImageObjectSize = 48;
+static constexpr uint HsaImageObjectAlignment = 16;
+static constexpr uint HsaSamplerObjectSize = 32;
+static constexpr uint HsaSamplerObjectAlignment = 16;
 
 //! HSA path specific defines for images
-const static uint DeviceQueueMaskSize = 32;
+static constexpr uint DeviceQueueMaskSize = 32;
 
 //! Defines all supported ASIC families
 enum AsicFamilies { Family7xx, Family8xx, FamilyTotal };
@@ -97,7 +97,7 @@ struct AMDDeviceInfo {
 };
 
 
-static const AMDDeviceInfo DeviceInfo[] = {
+static constexpr AMDDeviceInfo DeviceInfo[] = {
     // Machine                      targetName  machineTarget
     /* CAL_TARGET_600 */ {ED_ATI_CAL_MACHINE_R600_ISA, "", "", 0, 0, 0, 0, 0, 0, 0},
     /* CAL_TARGET_610 */ {ED_ATI_CAL_MACHINE_R610_ISA, "", "", 0, 0, 0, 0, 0, 0, 0},
@@ -199,17 +199,17 @@ enum gfx_handle {
   gfx906 = 906
 };
 
-static const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
-static const char* Gfx701 = "amdgcn-amd-amdhsa--gfx701";
-static const char* Gfx800 = "amdgcn-amd-amdhsa--gfx800";
-static const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801+xnack";
-static const char* Gfx804 = "amdgcn-amd-amdhsa--gfx804";
-static const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810+xnack";
-static const char* Gfx900 = "amdgcn-amd-amdhsa--gfx900";
-static const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902+xnack";
-static const char* Gfx903 = "amdgcn-amd-amdhsa--gfx902";  // NOTE: gfx903 is gfx902 with xnack
-static const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
-static const char* Gfx906 = "amdgcn-amd-amdhsa--gfx906";
+static constexpr const char* Gfx700 = "amdgcn-amd-amdhsa--gfx700";
+static constexpr const char* Gfx701 = "amdgcn-amd-amdhsa--gfx701";
+static constexpr const char* Gfx800 = "amdgcn-amd-amdhsa--gfx800";
+static constexpr const char* Gfx801 = "amdgcn-amd-amdhsa--gfx801+xnack";
+static constexpr const char* Gfx804 = "amdgcn-amd-amdhsa--gfx804";
+static constexpr const char* Gfx810 = "amdgcn-amd-amdhsa--gfx810+xnack";
+static constexpr const char* Gfx900 = "amdgcn-amd-amdhsa--gfx900";
+static constexpr const char* Gfx902 = "amdgcn-amd-amdhsa--gfx902+xnack";
+static constexpr const char* Gfx903 = "amdgcn-amd-amdhsa--gfx902";  // NOTE: gfx903 is gfx902 with xnack
+static constexpr const char* Gfx904 = "amdgcn-amd-amdhsa--gfx904";
+static constexpr const char* Gfx906 = "amdgcn-amd-amdhsa--gfx906";
 
 // Supported OpenCL versions
 enum OclVersion { OpenCL10, OpenCL11, OpenCL12, OpenCL20, OpenCL21 };
@@ -224,7 +224,7 @@ struct MemoryFormat {
   CalFormat calFormat_;       //!< CAL image format
 };
 
-static const MemoryFormat MemoryFormatMap[] = {
+static constexpr MemoryFormat MemoryFormatMap[] = {
     // R
     {{CL_R, CL_UNORM_INT8}, {GSL_CHANNEL_ORDER_R, CM_SURF_FMT_INTENSITY8}},
     {{CL_R, CL_UNORM_INT16}, {GSL_CHANNEL_ORDER_R, CM_SURF_FMT_R16}},
@@ -384,7 +384,7 @@ struct MemFormatStruct {
   uint components_;
 };
 
-static const MemFormatStruct MemoryFormatSize[] = {
+static constexpr MemFormatStruct MemoryFormatSize[] = {
     {CM_SURF_FMT_INTENSITY8, 1,
      1}, /**< 1 component, normalized unsigned 8-bit integer value per component */
     {CM_SURF_FMT_RG8, 2,

@@ -51,7 +51,7 @@ class Device;
 class PrintfDbg : public amd::HeapObject {
  public:
   //! Debug buffer size per workitem
-  static const uint WorkitemDebugSize = 4096;
+  static constexpr uint WorkitemDebugSize = 4096;
 
   //! constructor
   PrintfDbg(Device& device, FILE* file = nullptr);

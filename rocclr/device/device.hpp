@@ -160,7 +160,7 @@ enum OclExtensions {
   ClExtTotal
 };
 
-static const char* OclExtensionsString[] = {"cl_khr_fp64 ",
+static constexpr const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_amd_fp64 ",
                                             "cl_khr_select_fprounding_mode ",
                                             "cl_khr_global_int32_base_atomics ",

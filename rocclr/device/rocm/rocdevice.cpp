@@ -68,8 +68,6 @@ bool roc::Device::isHsaInitialized_ = false;
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
 
-const bool roc::Device::offlineDevice_ = false;
-const bool roc::NullDevice::offlineDevice_ = true;
 address Device::mg_sync_ = nullptr;
 
 static HsaDeviceId getHsaDeviceId(hsa_agent_t device, uint32_t& pci_id) {

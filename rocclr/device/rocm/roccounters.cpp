@@ -45,7 +45,7 @@ namespace roc {
  Note that some blocks are not defined in cmndefs.h
 */
 
-static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 97> viBlockIdOrcaToRocr = {{
+static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 97> viBlockIdOrcaToRocr = {{
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0 - 0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1 - 1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2 - 2
@@ -148,7 +148,7 @@ static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 97>
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
 // of them
 // as compute may not use all of them.
-static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 125> gfx9BlockIdOrcaToRocr = {{
+static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 125> gfx9BlockIdOrcaToRocr = {{
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2
@@ -275,7 +275,7 @@ static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 125
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 7},     // RMI - 124
 }};
 
-static const std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 139> gfx10BlockIdOrcaToRocr = {{
+static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 139> gfx10BlockIdOrcaToRocr = {{
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0      - 0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1      - 1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2      - 2

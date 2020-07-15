@@ -30,7 +30,7 @@ namespace gpu {
 class ConstBuffer : public Memory {
  public:
   //! Vector size of the constant buffer
-  static const size_t VectorSize = 16;
+  static constexpr size_t VectorSize = 16;
 
   //! Constructor for the ConstBuffer class
   ConstBuffer(VirtualGPU& gpu,  //!< Virtual GPU device object

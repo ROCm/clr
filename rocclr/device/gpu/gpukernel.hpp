@@ -294,7 +294,7 @@ struct KernelArg : public amd::HeapObject {
   }
 
   //! Special case for vectors with component size <= 16bit
-  const static uint VectorSizeLimit = 4;
+  static constexpr uint VectorSizeLimit = 4;
   size_t specialVector() const;
 };
 
@@ -360,7 +360,7 @@ class NullKernel : public device::Kernel {
  public:
   typedef std::vector<KernelArg*> arguments_t;
 
-  const static uint UavIdUndefined = 0xffff;
+  static constexpr uint UavIdUndefined = 0xffff;
 
   enum Flags {
     LimitWorkgroup = 1 << 0,  //!< Limits the workgroup size
@@ -782,7 +782,7 @@ class HSAILKernel : public device::Kernel {
   };
 
   // Max number of possible extra (hidden) kernel arguments
-  static const uint MaxExtraArgumentsNum = 6;
+  static constexpr uint MaxExtraArgumentsNum = 6;
 
   HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions, uint extraArgsNum);
 
