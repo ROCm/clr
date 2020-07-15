@@ -305,9 +305,9 @@ acl_error ACL_API_ENTRY
   aclInsertKernelStatistics(aclCompiler *cl,
     aclBinary *bin);
 //! Define hardware info constants for SI and above devices
-const static unsigned SI_sgprs_avail = 102;
-const static unsigned SI_vgprs_avail = 256;
-const static unsigned SI_ldssize_avail = 32*1024;
+static constexpr unsigned SI_sgprs_avail = 102;
+static constexpr unsigned SI_vgprs_avail = 256;
+static constexpr unsigned SI_ldssize_avail = 32*1024;
 
 //!--------------------------------------------------------------------------!//
 // Functions that deal with memory.

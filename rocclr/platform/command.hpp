@@ -551,7 +551,7 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
 
 class FillMemoryCommand : public OneMemoryArgCommand {
  public:
-  const static size_t MaxFillPatterSize = sizeof(double[16]);
+  static constexpr size_t MaxFillPatterSize = sizeof(double[16]);
 
  private:
   Coord3D origin_;                   //!< Origin of the region to write to.
@@ -1309,9 +1309,9 @@ class SvmUnmapMemoryCommand : public Command {
  */
 class TransferBufferFileCommand : public OneMemoryArgCommand {
  public:
-  static const uint NumStagingBuffers = 2;
-  static const size_t StagingBufferSize = 4 * Mi;
-  static const uint StagingBufferMemType = CL_MEM_USE_PERSISTENT_MEM_AMD;
+  static constexpr uint NumStagingBuffers = 2;
+  static constexpr size_t StagingBufferSize = 4 * Mi;
+  static constexpr uint StagingBufferMemType = CL_MEM_USE_PERSISTENT_MEM_AMD;
 
  protected:
   const Coord3D origin_;                     //!< Origin of the region to write to

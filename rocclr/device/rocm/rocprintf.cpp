@@ -123,8 +123,8 @@ int PrintfDbg::checkVectorSpecifier(const std::string& fmt, size_t startPos, siz
   return vectorSize;
 }
 
-static const size_t ConstStr = 0xffffffff;
-static const char Separator[] = ",\0";
+static constexpr size_t ConstStr = 0xffffffff;
+static constexpr char Separator[] = ",\0";
 
 size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t size,
                                  const uint32_t* argument) const {

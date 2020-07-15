@@ -46,7 +46,7 @@ class DeviceQueue;
 
 class CommandQueue : public RuntimeObject {
  public:
-  static const uint RealTimeDisabled = 0xffffffff;
+  static constexpr uint RealTimeDisabled = 0xffffffff;
   enum class Priority : uint { Low = 0, Normal , Medium, High };
 
   struct Properties {

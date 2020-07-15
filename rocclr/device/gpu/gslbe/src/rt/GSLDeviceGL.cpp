@@ -42,7 +42,7 @@ typedef struct cmFormatXlateRec{
 } cmFormatXlateParams;
 
 // relates full range of cm surface formats to those supported by CAL
-static const   cmFormatXlateParams cmFormatXlateTable [] = {
+static constexpr cmFormatXlateParams cmFormatXlateTable [] = {
     {CM_SURF_FMT_LUMINANCE8,            CM_SURF_FMT_R8I,        GSL_CHANNEL_ORDER_R},
     {CM_SURF_FMT_LUMINANCE16,           CM_SURF_FMT_R16,        GSL_CHANNEL_ORDER_R},
     {CM_SURF_FMT_LUMINANCE16F,          CM_SURF_FMT_R16F,       GSL_CHANNEL_ORDER_R},

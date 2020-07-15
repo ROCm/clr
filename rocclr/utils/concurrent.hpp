@@ -34,7 +34,7 @@ namespace amd { /*@{*/
 namespace details {
 
 template <typename T, int N> struct TaggedPointerHelper {
-  static const uintptr_t TagMask = (1u << N) - 1;
+  static constexpr uintptr_t TagMask = (1u << N) - 1;
 
  private:
   TaggedPointerHelper();        // Cannot instantiate

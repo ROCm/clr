@@ -159,7 +159,7 @@ struct BufDataConst {
   };
 };
 
-static const BufDataConst BufType[] = {{"g", KernelArg::PointerGlobal, {1, 0, 0, 0}},
+static constexpr BufDataConst BufType[] = {{"g", KernelArg::PointerGlobal, {1, 0, 0, 0}},
                                        {"p", KernelArg::PointerPrivate, {1, 1, 1, 0}},
                                        {"l", KernelArg::PointerLocal, {1, 1, 1, 0}},
                                        {"uav", KernelArg::PointerGlobal, {1, 1, 1, 0}},
@@ -167,10 +167,10 @@ static const BufDataConst BufType[] = {{"g", KernelArg::PointerGlobal, {1, 0, 0,
                                        {"hl", KernelArg::PointerHwLocal, {1, 1, 1, 0}},
                                        {"hp", KernelArg::PointerHwPrivate, {1, 1, 1, 0}},
                                        {"hc", KernelArg::PointerHwConst, {1, 1, 1, 0}}};
-static const uint BufTypeTotal = sizeof(BufType) / sizeof(BufDataConst);
+static constexpr uint BufTypeTotal = sizeof(BufType) / sizeof(BufDataConst);
 
 //! The mathlib constants for each kernel execution
-static const float MathLibConst[4] = {0.0f, 0.5f, 1.0f, 2.0f};
+static constexpr float MathLibConst[4] = {0.0f, 0.5f, 1.0f, 2.0f};
 
 bool expect(const std::string& str, size_t* pos, const std::string& sym) {
   bool result = true;

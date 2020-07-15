@@ -24,15 +24,15 @@
 #include "device.hpp"
 #include "amdocl/cl_debugger_amd.h"
 
-static const int TbaStartOffset = 256;
+static constexpr int TbaStartOffset = 256;
 
-static const int RtTrapBufferWaveSize = 64;
-static const int RtTrapBufferSeNum = 4;
-static const int RtTrapBufferShNum = 2;
-static const int RtTrapBufferCuNum = 16;
-static const int RtTrapBufferSimdNum = 4;
-static const int RtTrapBufferWaveNum = 16;
-static const int RtTrapBufferTotalWaveNum =
+static constexpr int RtTrapBufferWaveSize = 64;
+static constexpr int RtTrapBufferSeNum = 4;
+static constexpr int RtTrapBufferShNum = 2;
+static constexpr int RtTrapBufferCuNum = 16;
+static constexpr int RtTrapBufferSimdNum = 4;
+static constexpr int RtTrapBufferWaveNum = 16;
+static constexpr int RtTrapBufferTotalWaveNum =
     ((RtTrapBufferSeNum) * (RtTrapBufferShNum) * (RtTrapBufferCuNum) * (RtTrapBufferSimdNum) *
      (RtTrapBufferWaveNum));
 

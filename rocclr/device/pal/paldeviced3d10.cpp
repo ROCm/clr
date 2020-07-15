@@ -49,9 +49,9 @@ static bool queryD3D10DeviceGPUMask(ID3D10Device* pd3d10Device, UINT* pd3d10Devi
 
 // Get a handle to the DXX DLL with extension API support
 #if defined _WIN64
-  static const CHAR dxxModuleName[13] = "atidxx64.dll";
+  static constexpr CHAR dxxModuleName[13] = "atidxx64.dll";
 #else
-  static const CHAR dxxModuleName[13] = "atidxx32.dll";
+  static constexpr CHAR dxxModuleName[13] = "atidxx32.dll";
 #endif
 
   hDLL = GetModuleHandle(dxxModuleName);

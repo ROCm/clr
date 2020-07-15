@@ -862,7 +862,7 @@ bool Image::Format::isValid() const {
 }
 
 // definition of list of supported formats
-cl_image_format Image::supportedFormats[] = {
+const cl_image_format Image::supportedFormats[]= {
     // R
     {CL_R, CL_SNORM_INT8},
     {CL_R, CL_SNORM_INT16},
@@ -975,14 +975,14 @@ const uint32_t NUM_CHANNEL_ORDER_OF_DEPTH =
     2;  // The number of channel orders of DEPTH at the end of the table supportedFormats above.
 
 // definition of list of supported RA formats
-cl_image_format Image::supportedFormatsRA[] = {
+const cl_image_format Image::supportedFormatsRA[] = {
     {CL_RA, CL_SNORM_INT8},     {CL_RA, CL_SNORM_INT16},   {CL_RA, CL_UNORM_INT8},
     {CL_RA, CL_UNORM_INT16},    {CL_RA, CL_SIGNED_INT8},   {CL_RA, CL_SIGNED_INT16},
     {CL_RA, CL_SIGNED_INT32},   {CL_RA, CL_UNSIGNED_INT8}, {CL_RA, CL_UNSIGNED_INT16},
     {CL_RA, CL_UNSIGNED_INT32}, {CL_RA, CL_HALF_FLOAT},    {CL_RA, CL_FLOAT},
 };
 
-cl_image_format Image::supportedDepthStencilFormats[] = {
+const cl_image_format Image::supportedDepthStencilFormats[] = {
     // DEPTH STENCIL
     {CL_DEPTH_STENCIL, CL_FLOAT},
     {CL_DEPTH_STENCIL, CL_UNORM_INT24}};

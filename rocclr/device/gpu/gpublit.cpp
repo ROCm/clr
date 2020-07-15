@@ -766,7 +766,7 @@ struct FormatConvertion {
 };
 
 // The list of rejected data formats and corresponding conversion
-static const FormatConvertion RejectedData[] = {
+static constexpr FormatConvertion RejectedData[] = {
     {CL_UNORM_INT8, CL_UNSIGNED_INT8},       {CL_UNORM_INT16, CL_UNSIGNED_INT16},
     {CL_SNORM_INT8, CL_UNSIGNED_INT8},       {CL_SNORM_INT16, CL_UNSIGNED_INT16},
     {CL_HALF_FLOAT, CL_UNSIGNED_INT16},      {CL_FLOAT, CL_UNSIGNED_INT32},
@@ -774,7 +774,7 @@ static const FormatConvertion RejectedData[] = {
     {CL_UNORM_INT_101010, CL_UNSIGNED_INT8}, {CL_SIGNED_INT32, CL_UNSIGNED_INT32}};
 
 // The list of rejected channel's order and corresponding conversion
-static const FormatConvertion RejectedOrder[] = {
+static constexpr FormatConvertion RejectedOrder[] = {
     {CL_A, CL_R},        {CL_RA, CL_RG},      {CL_LUMINANCE, CL_R}, {CL_INTENSITY, CL_R},
     {CL_RGB, CL_RGBA},   {CL_BGRA, CL_RGBA},  {CL_ARGB, CL_RGBA},   {CL_sRGB, CL_RGBA},
     {CL_sRGBx, CL_RGBA}, {CL_sRGBA, CL_RGBA}, {CL_sBGRA, CL_RGBA}};

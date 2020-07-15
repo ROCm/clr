@@ -74,10 +74,10 @@ class Monitor : public HeapObject {
   typedef details::SimplyLinkedNode<Semaphore*, StackObject> LinkedNode;
 
  private:
-  static const intptr_t kLockBit = 0x1;
+  static constexpr intptr_t kLockBit = 0x1;
 
-  static const int kMaxSpinIter = 55;      //!< Total number of spin iterations.
-  static const int kMaxReadSpinIter = 50;  //!< Read iterations before yielding
+  static constexpr int kMaxSpinIter = 55;      //!< Total number of spin iterations.
+  static constexpr int kMaxReadSpinIter = 50;  //!< Read iterations before yielding
 
   /*! Linked list of semaphores the contending threads are waiting on
    *  and main lock.

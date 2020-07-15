@@ -71,7 +71,7 @@ struct oclBIFSymbolStruct {
 // TODO: analyze the changes since 30 and remove unused anymore symbols,
 // for example, symISAMeta, update convert functions, check backward compatibility.
 // These are the symbols that are defined by the BIF 3.1 spec
-static const oclBIFSymbolStruct BIF31[28] =
+static constexpr oclBIFSymbolStruct BIF31[28] =
 {
   // 0: BIF 3.0 compiler options, .comment section via library support.
   {symOpenclCompilerOptions,
@@ -136,7 +136,7 @@ static const oclBIFSymbolStruct BIF31[28] =
 }; // BIF31
 
 // These are the symbols that are defined by the BIF 3.0 spec
-static const oclBIFSymbolStruct BIF30[28] =
+static constexpr oclBIFSymbolStruct BIF30[28] =
 {
   // 0: BIF 3.0 compiler options, .comment section via library support.
   {symOpenclCompilerOptions,
@@ -202,7 +202,7 @@ static const oclBIFSymbolStruct BIF30[28] =
 
 
 // These are the sections that are defined by the BIF 2.0 spec
-static const oclBIFSymbolStruct BIF20[13] =
+static constexpr oclBIFSymbolStruct BIF20[13] =
 {
   {symOpenclCompilerOptions,
    { "__OpenCL_compile_options", "" }, {aclCOMMENT, aclCOMMENT}},

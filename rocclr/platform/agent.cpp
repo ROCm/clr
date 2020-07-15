@@ -276,7 +276,7 @@ static int32_t CL_API_CALL SetICDDispatchTable(vdi_agent* agent, const cl_icd_di
 
 }  // namespace agent
 
-vdi_agent Agent::entryPoints_ = {agent::GetVersionNumber,
+const vdi_agent Agent::entryPoints_ = {agent::GetVersionNumber,
                                 agent::GetPlatform,
                                 agent::GetTime,
                                 agent::SetCallbacks,

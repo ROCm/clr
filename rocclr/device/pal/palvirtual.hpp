@@ -59,11 +59,11 @@ class VirtualGPU : public device::VirtualDevice {
  public:
   class Queue : public amd::HeapObject {
    public:
-    static const uint MaxCommands = 256;
-    static const uint StartCmdBufIdx = 1;
-    static const uint FirstMemoryReference = 0x80000000;
-    static const uint64_t WaitTimeoutInNsec = 6000000000;
-    static const uint64_t PollIntervalInNsec = 200000;
+    static constexpr uint MaxCommands = 256;
+    static constexpr uint StartCmdBufIdx = 1;
+    static constexpr uint FirstMemoryReference = 0x80000000;
+    static constexpr uint64_t WaitTimeoutInNsec = 6000000000;
+    static constexpr uint64_t PollIntervalInNsec = 200000;
 
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;

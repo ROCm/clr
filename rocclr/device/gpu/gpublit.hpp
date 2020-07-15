@@ -157,7 +157,7 @@ class DmaBlitManager : public device::HostBlitManager {
                          ) const;
 
  protected:
-  const static uint MaxPinnedBuffers = 4;
+  static constexpr uint MaxPinnedBuffers = 4;
 
   //! Synchronizes the blit operations if necessary
   inline void synchronize() const;
@@ -365,8 +365,8 @@ class KernelBlitManager : public DmaBlitManager {
                             ) const;
 
  private:
-  static const size_t MaxXferBuffers = 2;
-  static const uint TransferSplitSize = 3;
+  static constexpr size_t MaxXferBuffers = 2;
+  static constexpr uint TransferSplitSize = 3;
 
   //! Copies a buffer object to an image object
   bool copyBufferToImageKernel(device::Memory& srcMemory,      //!< Source memory object
@@ -413,7 +413,7 @@ class KernelBlitManager : public DmaBlitManager {
   amd::Monitor* lockXferOps_;                 //!< Lock transfer operation
 };
 
-static const char* BlitName[KernelBlitManager::BlitTotal] = {
+static constexpr const char* BlitName[KernelBlitManager::BlitTotal] = {
     "copyImage",         "copyImage1DA",      "copyImageToBuffer",
     "copyBufferToImage", "copyBufferRect",    "copyBufferRectAligned",
     "copyBuffer",        "copyBufferAligned", "fillBuffer",

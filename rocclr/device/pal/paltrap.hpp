@@ -136,7 +136,7 @@ end
 *******************************************************************************/
 
 ///  shader codes with "asic(TAHITI)" instruction
-static const uint32_t RuntimeTrapCode[] = {
+static constexpr uint32_t RuntimeTrapCode[] = {
     0x7e008200, 0xbf8c0000, 0xbef8036c, 0x8779ff6d, 0x0000ffff, 0x8879ff79, 0x01000000, 0xbefa03ff,
     0x00002000, 0xbefb03ff, 0x00024fac, 0x80f8ff78, 0x00000100, 0xbef70300, 0xc2007900, 0xbf8c0000,
     0xbeee0300, 0xc2007901, 0xbf8c0000, 0xbeef0300, 0xbe800377, 0xbef60398, 0x8078766e, 0x8779ff6f,
@@ -148,7 +148,7 @@ static const uint32_t RuntimeTrapCode[] = {
 
 
 ///  shader codes with "asic(VI)" instruction
-static const uint32_t RuntimeTrapCodeVi[] = {
+static constexpr uint32_t RuntimeTrapCodeVi[] = {
     0x7e006a00, 0xbf8c0000, 0xbef8006c, 0x8679ff6d, 0x0000ffff, 0x8779ff79, 0x01000000, 0xbefa00ff,
     0x00002000, 0xbefb00ff, 0x00024fac, 0x80f8ff78, 0x00000100, 0xbef70000, 0xc022003c, 0x00000000,
     0xbf8c0000, 0xbeee0000, 0xc022003c, 0x00000004, 0xbf8c0000, 0xbeef0000, 0xbe800077, 0xbef60098,

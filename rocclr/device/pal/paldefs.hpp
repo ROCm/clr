@@ -96,41 +96,41 @@ struct GpuEvent {
 namespace pal {
 
 //! Maximum number of the supported global atomic counters
-const static uint MaxAtomicCounters = 8;
+static constexpr uint MaxAtomicCounters = 8;
 //! Maximum number of the supported samplers
-const static uint MaxSamplers = 16;
+static constexpr uint MaxSamplers = 16;
 //! Maximum number of supported read images
-const static uint MaxReadImage = 128;
+static constexpr uint MaxReadImage = 128;
 //! Maximum number of supported write images
-const static uint MaxWriteImage = 8;
+static constexpr uint MaxWriteImage = 8;
 //! Maximum number of supported read/write images for OCL20
-const static uint MaxReadWriteImage = 64;
+static constexpr uint MaxReadWriteImage = 64;
 //! Maximum number of supported constant arguments
-const static uint MaxConstArguments = 8;
+static constexpr uint MaxConstArguments = 8;
 //! Maximum number of supported kernel UAV arguments
-const static uint MaxUavArguments = 1024;
+static constexpr uint MaxUavArguments = 1024;
 //! Maximum number of pixels for a 1D image created from a buffer
-const static size_t MaxImageBufferSize = 1 << 27;
+static constexpr size_t MaxImageBufferSize = 1 << 27;
 //! Maximum number of pixels for a 1D image created from a buffer
-const static size_t MaxImageArraySize = 2048;
+static constexpr size_t MaxImageArraySize = 2048;
 
 //! Maximum number of supported constant buffers
-const static uint MaxConstBuffers = MaxConstArguments + 8;
+static constexpr uint MaxConstBuffers = MaxConstArguments + 8;
 
 //! Maximum number of constant buffers for arguments
-const static uint MaxConstBuffersArguments = 2;
+static constexpr uint MaxConstBuffersArguments = 2;
 
 //! Alignment restriciton for the pinned memory
-const static size_t PinnedMemoryAlignment = 4 * Ki;
+static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
 
 //! HSA path specific defines for images
-const static uint HsaImageObjectSize = 48;
-const static uint HsaImageObjectAlignment = 16;
-const static uint HsaSamplerObjectSize = 32;
-const static uint HsaSamplerObjectAlignment = 16;
+static constexpr uint HsaImageObjectSize = 48;
+static constexpr uint HsaImageObjectAlignment = 16;
+static constexpr uint HsaSamplerObjectSize = 32;
+static constexpr uint HsaSamplerObjectAlignment = 16;
 
 //! HSA path specific defines for images
-const static uint DeviceQueueMaskSize = 32;
+static constexpr uint DeviceQueueMaskSize = 32;
 
 struct AMDDeviceInfo {
   const char* machineTarget_;    //!< Machine target
@@ -237,7 +237,7 @@ struct MemoryFormat {
   Pal::ChannelMapping palChannel_;  //!< PAL channel mapping
 };
 
-static const MemoryFormat MemoryFormatMap[] = {
+static constexpr MemoryFormat MemoryFormatMap[] = {
     // R
     {{CL_R, CL_UNORM_INT8},
      Pal::ChNumFormat::X8_Unorm,

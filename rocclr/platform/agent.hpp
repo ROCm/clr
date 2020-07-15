@@ -33,7 +33,7 @@ class Agent : public _vdi_agent {
   //! Linked list of agent instances
   static Agent* list_;
   //! Agent API entry points
-  static vdi_agent entryPoints_;
+  static const vdi_agent entryPoints_;
   //! Capabilities supported by this Agent implementation
   static vdi_agent_capabilities potentialCapabilities_;
   //! Union of all agent's enabled capabilities
