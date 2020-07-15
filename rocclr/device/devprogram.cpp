@@ -246,8 +246,7 @@ amd_comgr_status_t Program::addCodeObjData(const char *source,
   return status;
 }
 
-void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* langver,
-                                  std::string& targetIdent) {
+void Program::setLanguage(const char* clStd, amd_comgr_language_t* langver) {
 
   if (isHIP()) {
     if (langver != nullptr) {
@@ -272,20 +271,10 @@ void Program::setLangAndTargetStr(const char* clStd, amd_comgr_language_t* langv
       }
     }
   }
-  // Set target triple and CPU
-  targetIdent = std::string("amdgcn-amd-amdhsa--") + machineTarget_;
-  // Set xnack option if needed
-  if (xnackEnabled_) {
-    targetIdent.append("+xnack");
-  }
-  if (sramEccEnabled_) {
-    targetIdent.append("+sram-ecc");
-  }
 }
 
 
 amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
-                                         const std::string& targetIdent,
                                          const std::vector<std::string>& options,
                                          amd_comgr_action_info_t* action,
                                          bool* hasAction) {
@@ -300,8 +289,8 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
     }
   }
 
-  if (!targetIdent.empty() && (status == AMD_COMGR_STATUS_SUCCESS)) {
-    status = amd::Comgr::action_info_set_isa_name(*action, targetIdent.c_str());
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::action_info_set_isa_name(*action, device().info().targetId_);
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
@@ -325,10 +314,8 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
                               char* binaryData[], size_t* binarySize) {
 
-  // get the language and target name
-  std::string targetIdent;
   amd_comgr_language_t langver;
-  setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
+  setLanguage(amdOptions->oVariables->CLStd, &langver);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
     DevLogPrintfError("Cannot set Langauge version for %s \n",
                       amdOptions->oVariables->CLStd);
@@ -341,7 +328,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   bool hasAction = false;
   bool hasDataSetDevLibs = false;
 
-  amd_comgr_status_t status = createAction(langver, targetIdent, options, &action, &hasAction);
+  amd_comgr_status_t status = createAction(langver, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&dataSetDevLibs);
@@ -381,13 +368,12 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 }
 
 bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
-                                   const std::vector<std::string>& options, amd::option::Options* amdOptions,
+                                   const std::vector<std::string>& options,
+                                   amd::option::Options* amdOptions,
                                    char* binaryData[], size_t* binarySize) {
 
-  //  get the lanuage and target name
-  std::string targetIdent;
   amd_comgr_language_t langver;
-  setLangAndTargetStr(amdOptions->oVariables->CLStd, &langver, targetIdent);
+  setLanguage(amdOptions->oVariables->CLStd, &langver);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
     DevLogPrintfError("Cannot set Langauge version for %s \n",
                       amdOptions->oVariables->CLStd);
@@ -404,7 +390,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
   bool hasOutput = false;
   bool hasDataSetPCH = false;
 
-  amd_comgr_status_t status = createAction(langver, targetIdent, options, &action, &hasAction);
+  amd_comgr_status_t status = createAction(langver, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
@@ -494,12 +480,9 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
 //  the input data set is converted to relocatable code, then executable binary.
 //  If assembly code is required, the input data set is converted to assembly.
 bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
-                                       const std::vector<std::string>& options, amd::option::Options* amdOptions,
+                                       const std::vector<std::string>& options,
+                                       amd::option::Options* amdOptions,
                                        char* executable[], size_t* executableSize) {
-
-  //  get the language and target name
-  std::string targetIdent;
-  setLangAndTargetStr(amdOptions->oVariables->CLStd, nullptr, targetIdent);
 
   // create the linked output
   amd_comgr_action_info_t action;
@@ -509,8 +492,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   bool hasOutput = false;
   bool hasRelocatableData = false;
 
-  amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, targetIdent, options,
-                                           &action, &hasAction);
+  amd_comgr_status_t status = createAction(AMD_COMGR_LANGUAGE_NONE, options, &action, &hasAction);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&output);
@@ -1188,8 +1170,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
   codegenOptions.insert(codegenOptions.end(),
       options->clangOptions.begin(), options->clangOptions.end());
 
-  // Set SRAM ECC option if needed
-  if (sramEccEnabled_) {
+  // TODO: SRAM ECC option will be removed when Target ID feature is fully implemented
+  if (device().info().sramEccEnabled_) {
     codegenOptions.push_back("-msram-ecc");
   }
   else {

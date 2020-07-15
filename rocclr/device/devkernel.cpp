@@ -1155,7 +1155,7 @@ bool Kernel::GetAttrCodePropMetadata() {
   return true;
 }
 
-bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
+bool Kernel::SetAvailableSgprVgpr() {
   std::string buf;
 
   amd_comgr_metadata_node_t isaMeta;
@@ -1165,7 +1165,8 @@ bool Kernel::SetAvailableSgprVgpr(const std::string& targetIdent) {
   bool hasSgprMeta = false;
   bool hasVgprMeta = false;
 
-  amd_comgr_status_t status = amd::Comgr::get_isa_metadata(targetIdent.c_str(), &isaMeta);
+  amd_comgr_status_t status = amd::Comgr::get_isa_metadata(
+                                prog().device().info().targetId_, &isaMeta);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hasIsaMeta = true;
@@ -1300,7 +1301,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       return;
     }
 
-    // COMGR has unclear/undefined order of the fields filling. 
+    // COMGR has unclear/undefined order of the fields filling.
     // Correct the types for the abstraciton layer after all fields are available
     if (desc.info_.oclObject_ != amd::KernelParameterDescriptor::ValueObject) {
       switch (desc.info_.oclObject_) {
@@ -1350,7 +1351,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       hiddenParams.push_back(desc);
       continue;
     }
- 
+
     // These objects have forced data size to uint64_t
     if (codeObjectVer() == 2) {
       if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||

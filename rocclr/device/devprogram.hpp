@@ -96,8 +96,6 @@ class Program : public amd::HeapObject {
        uint32_t internal_ : 1;        //!< Internal blit program
        uint32_t isLC_ : 1;            //!< LC was used for the program compilation
        uint32_t hasGlobalStores_ : 1; //!< Program has writable program scope variables
-       uint32_t xnackEnabled_ : 1;    //!< Xnack was enabled during compilation
-       uint32_t sramEccEnabled_ : 1;  //!< SRAM ECC was enabled during compilation
        uint32_t isHIP_          : 1;  //!< Determine if the program is for HIP
      };
      uint32_t flags_;  //!< Program flags
@@ -237,12 +235,6 @@ class Program : public amd::HeapObject {
   //! Get the machine target for the program
   const char* machineTarget() const { return machineTarget_; }
 
-  //! Check if xnack is enable
-  const bool xnackEnable() const { return (xnackEnabled_ == 1); }
-
-  //! Check if SRAM ECC is enable
-  const bool sramEccEnable() const { return (sramEccEnabled_ == 1); }
-
   //! Check if program is HIP based
   const bool isHIP() const { return (isHIP_ == 1); }
 
@@ -378,9 +370,8 @@ class Program : public amd::HeapObject {
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
     char* outBinary[] = nullptr, size_t* outSize = nullptr);
 
-  //! Set the OCL language and target triples with feature
-  void setLangAndTargetStr(const char* clStd, amd_comgr_language_t* oclver,
-                           std::string& targetIdent);
+  //! Set the OCL language
+  void setLanguage(const char* clStd, amd_comgr_language_t* oclver);
 
   //! Create code object and add it into the data set
   amd_comgr_status_t addCodeObjData(const char *source,
@@ -389,8 +380,8 @@ class Program : public amd::HeapObject {
 
   //! Create action for the specified language, target and options
   amd_comgr_status_t createAction(const amd_comgr_language_t oclvar,
-    const std::string& targetIdent, const std::vector<std::string>& options,
-    amd_comgr_action_info_t* action, bool* hasAction);
+    const std::vector<std::string>& options, amd_comgr_action_info_t* action,
+    bool* hasAction);
 
   //! Create the bitcode of the linked input dataset
   bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
