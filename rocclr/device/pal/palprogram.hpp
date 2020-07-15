@@ -246,8 +246,6 @@ class LightningProgram : public HSAILProgram {
   LightningProgram(Device& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
     isHIP_ = (owner.language() == amd::Program::HIP);
-    xnackEnabled_ = dev().hwInfo()->xnackEnabled_;
-    machineTarget_ = dev().hwInfo()->machineTargetLC_;
   }
   virtual ~LightningProgram() {}
 

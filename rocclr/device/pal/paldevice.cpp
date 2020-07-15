@@ -576,6 +576,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (info_.sramEccEnabled_) {
       ::strcat(info_.name_, "+sram-ecc");
     }
+    ::strcpy(info_.targetId_, "amdgcn-amd-amdhsa--");
+    ::strcat(info_.targetId_, info_.name_);
   } else {
     ::strcpy(info_.name_, hwInfo()->machineTarget_);
   }

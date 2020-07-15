@@ -63,17 +63,8 @@ bool LightningKernel::init() {
   workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
 
-  // Get the available SGPRs and VGPRs
-  std::string targetIdent = std::string("amdgcn-amd-amdhsa--")+program()->machineTarget();
-  if (program()->xnackEnable()) {
-    targetIdent.append("+xnack");
-  }
-  if (program()->sramEccEnable()) {
-    targetIdent.append("+sram-ecc");
-  }
-
-  if (!SetAvailableSgprVgpr(targetIdent)) {
-    DevLogPrintfError("Cannot set available SGPR/VGPR for target Ident:%s \n", targetIdent.c_str());
+  if (!SetAvailableSgprVgpr()) {
+    DevLogError("Cannot set available SGPR/VGPR\n");
     return false;
   }
 

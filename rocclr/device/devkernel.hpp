@@ -61,7 +61,7 @@ struct KernelParameterDescriptor {
       uint32_t defined_ : 1;      //!< The argument was defined by the app
       uint32_t hidden_ : 1;       //!< It's a hidden argument
       uint32_t shared_ : 1;       //!< Dynamic shared memory
-      uint32_t reserved_ : 3;     //!< Reserved       
+      uint32_t reserved_ : 3;     //!< Reserved
       uint32_t arrayIndex_ : 20;  //!< Index in the objects array or LDS alignment
     };
     uint32_t allValues_;
@@ -463,7 +463,7 @@ class Kernel : public amd::HeapObject {
 
   const uint32_t WorkitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
   void SetWorkitemPrivateSegmentByteSize(uint32_t size) { workitemPrivateSegmentByteSize_ = size; }
-  
+
   const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   void SetKernargSegmentByteSize(uint32_t size) { kernargSegmentByteSize_ = size; }
 
@@ -481,7 +481,7 @@ class Kernel : public amd::HeapObject {
   bool GetAttrCodePropMetadata();
 
   //! Retrieve the available SGPRs and VGPRs
-  bool SetAvailableSgprVgpr(const std::string& targetIdent);
+  bool SetAvailableSgprVgpr();
 
   //! Retrieve the printf string metadata
   bool GetPrintfStr(std::vector<std::string>* printfStr);
