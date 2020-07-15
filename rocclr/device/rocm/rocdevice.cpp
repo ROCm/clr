@@ -1044,6 +1044,14 @@ bool Device::populateOCLDeviceConstants() {
       return false;
   }
 
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice,
+                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
+                         &info_.globalMemChannels_)) {
+    return false;
+  }
+  assert(info_.globalMemChannels_ > 0);
+
   setupCpuAgent();
 
   assert(system_segment_.handle != 0);
