@@ -27,20 +27,32 @@ endif()
 if(DEFINED USE_COMGR_LIBRARY)
   if(${USE_COMGR_LIBRARY} MATCHES "yes")
     set(USE_COMGR_LIBRARY ON)
+    if(DEFINED LINK_COMGR_STATIC)
+      if(${LINK_COMGR_STATIC} MATCHES "yes")
+        set(LINK_COMGR_STATIC ON)
+      elseif(${LINK_COMGR_STATIC} MATCHES "no")
+        set(LINK_COMGR_STATIC OFF)
+      endif()
+    endif()
   elseif(${USE_COMGR_LIBRARY} MATCHES "no")
     set(USE_COMGR_LIBRARY OFF)
   endif()
 endif()
 
 option(USE_COMGR_LIBRARY "Use comgr library" ON)
+option(LINK_COMGR_STATIC "Link comgr static library" OFF)
 option(BUILD_TESTS "Enable building OpenCL tests" ON)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+MESSAGE(STATUS "LINK_COMGR_STATIC :${LINK_COMGR_STATIC}")
 
 if(USE_COMGR_LIBRARY)
-  add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL)
+  add_definitions(-DUSE_COMGR_LIBRARY)
+  if(NOT LINK_COMGR_STATIC)
+    add_definitions(-DCOMGR_DYN_DLL)
+  endif()
   find_package(amd_comgr REQUIRED CONFIG
      PATHS
        /opt/rocm/
