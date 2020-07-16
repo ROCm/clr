@@ -52,7 +52,7 @@ class Semaphore : public HeapObject {
 
 #ifdef _WIN32
   void* handle_;  //!< The semaphore object's handle.
-  char padding_[64 - state_size - sizeof(handle_))];
+  char padding_[64 - state_size - sizeof(handle_)];
 #else  // !_WIN32
   sem_t sem_;  //!< The semaphore object's identifier.
   char padding_[64 - state_size - sizeof(sem_)];
