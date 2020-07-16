@@ -34,27 +34,27 @@ const char* BlitSourceCode = BLIT_KERNELS(
     extern void __amd_fillBuffer(__global uchar*, __global uint*, __constant uchar*, uint, ulong,
                                  ulong);
 
-    __kernel void copyBufferRect(__global uchar* src, __global uchar* dst, ulong4 srcRect,
+    __kernel void __amd_rocclr_copyBufferRect(__global uchar* src, __global uchar* dst, ulong4 srcRect,
                                  ulong4 dstRect, ulong4 size) {
       __amd_copyBufferRect(src, dst, srcRect, dstRect, size);
     }
 
-    __kernel void copyBufferRectAligned(__global uint* src, __global uint* dst, ulong4 srcRect,
+    __kernel void __amd_rocclr_copyBufferRectAligned(__global uint* src, __global uint* dst, ulong4 srcRect,
                                         ulong4 dstRect, ulong4 size) {
       __amd_copyBufferRectAligned(src, dst, srcRect, dstRect, size);
     }
 
-    __kernel void copyBuffer(__global uchar* srcI, __global uchar* dstI, ulong srcOrigin,
+    __kernel void __amd_rocclr_copyBuffer(__global uchar* srcI, __global uchar* dstI, ulong srcOrigin,
                              ulong dstOrigin, ulong size, uint remain) {
       __amd_copyBuffer(srcI, dstI, srcOrigin, dstOrigin, size, remain);
     }
 
-    __kernel void copyBufferAligned(__global uint* src, __global uint* dst, ulong srcOrigin,
+    __kernel void __amd_rocclr_copyBufferAligned(__global uint* src, __global uint* dst, ulong srcOrigin,
                                     ulong dstOrigin, ulong size, uint alignment) {
       __amd_copyBufferAligned(src, dst, srcOrigin, dstOrigin, size, alignment);
     }
 
-    __kernel void fillBuffer(__global uchar* bufUChar, __global uint* bufUInt,
+    __kernel void __amd_rocclr_fillBuffer(__global uchar* bufUChar, __global uint* bufUInt,
                              __constant uchar* pattern, uint patternSize, ulong offset,
                              ulong size) {
       __amd_fillBuffer(bufUChar, bufUInt, pattern, patternSize, offset, size);
@@ -75,13 +75,13 @@ const char* BlitSourceCode = BLIT_KERNELS(
                                 uint);
 
 
-    __kernel void copyBufferToImage(__global uint* src, __write_only image2d_array_t dst,
+    __kernel void __amd_rocclr_copyBufferToImage(__global uint* src, __write_only image2d_array_t dst,
                                     ulong4 srcOrigin, int4 dstOrigin, int4 size, uint4 format,
                                     ulong4 pitch) {
       __amd_copyBufferToImage(src, dst, srcOrigin, dstOrigin, size, format, pitch);
     }
 
-    __kernel void copyImageToBuffer(__read_only image2d_array_t src, __global uint* dstUInt,
+    __kernel void __amd_rocclr_copyImageToBuffer(__read_only image2d_array_t src, __global uint* dstUInt,
                                     __global ushort* dstUShort, __global uchar* dstUChar,
                                     int4 srcOrigin, ulong4 dstOrigin, int4 size, uint4 format,
                                     ulong4 pitch) {
@@ -89,16 +89,16 @@ const char* BlitSourceCode = BLIT_KERNELS(
                               pitch);
     }
 
-    __kernel void copyImage(__read_only image2d_array_t src, __write_only image2d_array_t dst,
+    __kernel void __amd_rocclr_copyImage(__read_only image2d_array_t src, __write_only image2d_array_t dst,
                             int4 srcOrigin, int4 dstOrigin,
                             int4 size) { __amd_copyImage(src, dst, srcOrigin, dstOrigin, size); }
 
-    __kernel void copyImage1DA(__read_only image2d_array_t src, __write_only image2d_array_t dst,
+    __kernel void __amd_rocclr_copyImage1DA(__read_only image2d_array_t src, __write_only image2d_array_t dst,
                                int4 srcOrigin, int4 dstOrigin, int4 size) {
       __amd_copyImage1DA(src, dst, srcOrigin, dstOrigin, size);
     }
 
-    __kernel void fillImage(__write_only image2d_array_t image, float4 patternFLOAT4,
+    __kernel void __amd_rocclr_fillImage(__write_only image2d_array_t image, float4 patternFLOAT4,
                             int4 patternINT4, uint4 patternUINT4, int4 origin, int4 size,
                             uint type) {
       __amd_fillImage(image, patternFLOAT4, patternINT4, patternUINT4, origin, size, type);
