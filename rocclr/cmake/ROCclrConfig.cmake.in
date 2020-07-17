@@ -1,3 +1,6 @@
 @ROCCLR_PREFIX_CODE@
 
+include( CMakeFindDependencyMacro )
+find_dependency(hsa-runtime64)
+find_dependency(amd_comgr)
 include("@ROCCLR_TARGETS_PATH@")

@@ -52,6 +52,16 @@ find_package(amd_comgr REQUIRED CONFIG
 )
 message(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
+find_package(hsa-runtime64 REQUIRED CONFIG
+   PATHS
+     /opt/rocm/
+   PATH_SUFFIXES
+     cmake/hsa-runtime64
+     lib/cmake/hsa-runtime64
+     lib64/cmake/hsa-runtime64
+)
+message(STATUS "HSA Runtime found at ${hsa-runtime64_DIR}.")
+
 if( NOT OPENCL_DIR )
    find_path(OPENCL_INCLUDE_DIR
       NAMES OpenCL/cl.h CL/cl.h
@@ -69,8 +79,6 @@ endif()
 
 
 
-find_package(ROCT REQUIRED)
-find_package(ROCR REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -180,9 +188,7 @@ target_include_directories(amdrocclr_static
     $<BUILD_INTERFACE:${OPENCL_DIR}/khronos/headers/opencl2.2>
     $<TARGET_PROPERTY:amd_comgr,INTERFACE_INCLUDE_DIRECTORIES>
   PRIVATE
-    $<TARGET_PROPERTY:oclelf_obj,INTERFACE_INCLUDE_DIRECTORIES>
-    ${ROCR_INCLUDES}
-    ${ROCT_INCLUDES})
+    $<TARGET_PROPERTY:oclelf_obj,INTERFACE_INCLUDE_DIRECTORIES>)
 
 target_compile_definitions(amdrocclr_static PRIVATE BSD_LIBELF)
 
@@ -195,10 +201,13 @@ if(USE_COMGR_LIBRARY)
   else()
      target_compile_definitions(amdrocclr_static PUBLIC USE_COMGR_LIBRARY)
   endif()
+  #Needed here to export as transitive dependency in rocclr-targets.cmake
+  target_link_libraries(amdrocclr_static PRIVATE amd_comgr)
 endif()
 
 target_link_libraries(amdrocclr_static PUBLIC Threads::Threads)
-target_link_libraries(amdrocclr_static PUBLIC dl ${ROCT_LIBRARIES} ${ROCR_LIBRARIES} )
+target_link_libraries(amdrocclr_static PUBLIC dl)
+
 
 if (BUILD_PAL)
   target_sources(amdrocclr_static PRIVATE $<TARGET_OBJECTS:rocclrpal>)
@@ -212,6 +221,9 @@ if (BUILD_PAL)
 else()
   target_compile_definitions(amdrocclr_static PRIVATE WITH_HSA_DEVICE)
 
+  #ROCclr being static lib shall not link hsa-runtime64.
+  #Needed here to export as transitive dependency in rocclr-targets.cmake
+  target_link_libraries(amdrocclr_static PRIVATE hsa-runtime64::hsa-runtime64)
   target_sources(amdrocclr_static PRIVATE $<TARGET_OBJECTS:oclrocm>)
   export(TARGETS amdrocclr_static
          FILE ${ROCCLR_TARGETS_PATH})

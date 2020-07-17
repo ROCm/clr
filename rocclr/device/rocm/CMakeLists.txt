@@ -32,7 +32,7 @@ target_include_directories(oclrocm
     ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
     ${CMAKE_CURRENT_BINARY_DIR}
     ${ROCM_OCL_INCLUDES}
-    ${ROCR_INCLUDES})
+    $<TARGET_PROPERTY:hsa-runtime64::hsa-runtime64,INTERFACE_INCLUDE_DIRECTORIES>)
 
 option(BUILD_HMM "Build HMM support" OFF)
 if (BUILD_HMM)
