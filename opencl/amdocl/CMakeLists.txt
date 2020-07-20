@@ -39,7 +39,6 @@ endif()
 
 if(UNIX)
     set(ADDITIONAL_SOURCES glibc_functions.cpp)
-    set(ADDITIONAL_LIBRARIES numa)
 else()
     set(ADDITIONAL_SOURCES "")
     set(ADDITIONAL_LIBRARIES "")
