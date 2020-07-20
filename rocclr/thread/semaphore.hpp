@@ -42,25 +42,17 @@ namespace amd {
 class Thread;
 
 //! \brief Counting semaphore
-class Semaphore : public HeapObject {
+class alignas(64) Semaphore : public HeapObject {
  private:
   std::atomic_int state_;  //!< This semaphore's value.
 
-  // The base class size is 1, so padding alignment is needed.
-  static constexpr size_t state_size = sizeof(std::atomic_int) +
-                                       alignof(std::atomic_int);
-
-  union {
 #ifdef _WIN32
-    void* handle_;  //!< The semaphore object's handle.
+  void* handle_;  //!< The semaphore object's handle.
 #else  // !_WIN32
-    sem_t sem_;  //!< The semaphore object's identifier.
+  sem_t sem_;  //!< The semaphore object's identifier.
 #endif /*!_WIN32*/
 
-    char padding_[64 - state_size];
-  };
-
- public:
+public:
   Semaphore();
   ~Semaphore();
 
