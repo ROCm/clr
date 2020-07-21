@@ -88,7 +88,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
-  fprintf(stderr, ":%d:%-25s:%-4d: %010lu us: %s\n", level, file, line, timeUs, message);
+  fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
 
 }
 void log_printf(LogLevel level, const char* file, int line, uint64_t* start, const char* format, ...) {
@@ -100,9 +100,9 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start, con
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
   if (start == 0 || *start == 0) {
-     fprintf(stderr, ":%d:%-25s:%-4d: %010lu us: %s\n", level, file, line, timeUs, message);
+     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
   } else {
-     fprintf(stderr, ":%d:%-25s:%-4d: %010lu us: %s: duration: %lu us\n", level, file, line, timeUs, message, timeUs - *start);
+     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s: duration: %lld us\n", level, file, line, timeUs/1ULL, message, (timeUs - *start)/1ULL);
   }
   if (*start == 0) {
      *start = timeUs;
