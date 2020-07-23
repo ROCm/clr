@@ -211,8 +211,27 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
     setAqlHeader(dispatchPacketHeaderNoSync_);
   }
 
-  // Mark the tracker with a new kernel,
-  // so we can avoid checks of the aliased objects
+  amd::Memory* const* memories =
+    reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
+
+  // HIP shouldn't use cache coherency layer at any time
+  if (!amd::IS_HIP) {
+    // Process cache coherency first, since the extra transfers may affect
+    // other mem dependency tracking logic: TS and signalWrite()
+    for (uint i = 0; i < signature.numMemories(); ++i) {
+      amd::Memory* mem = memories[i];
+      if (mem != nullptr) {
+        roc::Memory* gpuMem = dev().getGpuMemory(mem);
+        // Don't sync for internal objects, since they are not shared between devices
+        if (gpuMem->owner()->getVirtualDevice() == nullptr) {
+          // Synchronize data with other memory instances if necessary
+          gpuMem->syncCacheFromHost(*this);
+        }
+      }
+    }
+  }
+
+  // Mark the tracker with a new kernel, so it can avoid checks of the aliased objects
   memoryDependency().newKernel();
 
   bool deviceSupportFGS = 0 != dev().isFineGrainedSystem(true);
@@ -268,9 +287,6 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
     }
   }
 
-  amd::Memory* const* memories =
-    reinterpret_cast<amd::Memory* const*>(params + kernelParams.memoryObjOffset());
-
   // Check all parameters for the current kernel
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
@@ -314,12 +330,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         }
         else {
           gpuMem = static_cast<Memory*>(mem->getDeviceMemory(dev()));
-          // Don't sync for internal objects,
-          // since they are not shared between devices
-          if (gpuMem->owner()->getVirtualDevice() == nullptr) {
-            // Synchronize data with other memory instances if necessary
-            gpuMem->syncCacheFromHost(*this);
-          }
+
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
           ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
             desc.typeName_.c_str(), desc.name_.c_str(),
