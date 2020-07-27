@@ -296,6 +296,11 @@ bool NullDevice::init() {
 
 bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
                         uint xNACKSupported) {
+  if (IS_HIP && IS_MAINLINE &&
+      (asicRevision != Pal::AsicRevision::Vega20)) {
+    return false;
+  }
+
   online_ = false;
   Pal::DeviceProperties properties = {};
 
