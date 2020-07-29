@@ -237,7 +237,9 @@ release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
 release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Size in KB of the threshold below which to force blit instead for sdma") \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
-        "Enable Large Bar if supported by the device")
+        "Enable Large Bar if supported by the device")                        \
+release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
+        "Force command queue profiling by default")
 
 namespace amd {
 
