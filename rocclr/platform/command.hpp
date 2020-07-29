@@ -100,7 +100,7 @@ class Event : public RuntimeObject {
     ProfilingInfo(bool enabled = false) : enabled_(enabled), waves_(0) {
       if (enabled) {
         clear();
-        callback_ = NULL;
+        callback_ = nullptr;
       }
     }
 
@@ -801,7 +801,8 @@ class NDRangeKernelCommand : public Command {
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,
                        const NDRangeContainer& sizes, uint32_t sharedMemBytes = 0,
                        uint32_t extraParam = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
-                       uint64_t prevGridSum = 0, uint64_t allGridSum = 0, uint32_t firstDevice = 0);
+                       uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
+                       uint32_t firstDevice = 0, bool forceProfiling = false);
 
   virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
 

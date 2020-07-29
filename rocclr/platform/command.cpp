@@ -76,7 +76,7 @@ uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
       break;
     default:
       profilingInfo_.end_ = timeStamp;
-      if (profilingInfo_.callback_ != NULL) {
+      if (profilingInfo_.callback_ != nullptr) {
         profilingInfo_.callback_->callback(timeStamp - profilingInfo_.start_,
             profilingInfo_.waves_);
       }
@@ -270,7 +270,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
                                            Kernel& kernel, const NDRangeContainer& sizes,
                                            uint32_t sharedMemBytes, uint32_t extraParam,
                                            uint32_t gridId, uint32_t numGrids,
-                                           uint64_t prevGridSum, uint64_t allGridSum, uint32_t firstDevice) :
+                                           uint64_t prevGridSum, uint64_t allGridSum,
+                                           uint32_t firstDevice, bool forceProfiling) :
     Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL),
     kernel_(kernel),
     sizes_(sizes),
@@ -285,6 +286,11 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   profilingInfo_.setCallback(devKernel->getProfilingCallback(
     queue.vdev()), devKernel->getWavesPerSH(queue.vdev()));
+  if (forceProfiling) {
+    profilingInfo_.enabled_ = true;
+    profilingInfo_.clear();
+    profilingInfo_.callback_ = nullptr;
+  }
   kernel_.retain();
 }
 
