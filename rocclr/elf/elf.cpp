@@ -29,202 +29,167 @@
 #endif
 
 #include "os/os.hpp"
-#include "_libelf.h"
-namespace amd {
+#include <thread>
+#include <utils/flags.hpp>
+#include <utils/debug.hpp>
+#include <random>
+#include <sstream>
 
-using namespace oclelfutils;
+
+//#define DEBUG_DETAIL // For detailed debug log
+
+#ifdef DEBUG_DETAIL
+
+#define ElfTrace(level) ClPrint(level, amd::LOG_CODE, "%-5d: [%zx] %p %s: ", \
+                                getpid(), std::this_thread::get_id(), this, __func__)
+
+#define logElfInfo(msg) \
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "%-5d: [%zx] %p %s: " msg, \
+          getpid(), std::this_thread::get_id(), this, __func__)
+
+#define logElfWarning(msg) \
+  ClPrint(amd::LOG_WARNING, amd::LOG_CODE, "%-5d: [%zx] %p %s: " msg, \
+          getpid(), std::this_thread::get_id(), this, __func__)
+
+#define LogElfDebug(format, ...) \
+  ClPrint(amd::LOG_DEBUG, amd::LOG_CODE, "%-5d: [%zx] %p %s: " format, \
+          getpid(), std::this_thread::get_id(), this, __func__, __VA_ARGS__)
+
+#define LogElfWarning(format, ...) \
+  ClPrint(amd::LOG_WARNING, amd::LOG_CODE, "%-5d: [%zx] %p %s: " format, \
+          getpid(), std::this_thread::get_id(), this, __func__, __VA_ARGS__)
+
+#define LogElfInfo(format, ...) \
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "%-5d: [%zx] %p %s: " format, \
+          getpid(), std::this_thread::get_id(), this, __func__, __VA_ARGS__)
+#else
+#define ElfTrace(level)
+#define logElfInfo(msg)
+#define logElfWarning(msg)
+#define LogElfDebug(format, ...)
+#define LogElfWarning(format, ...)
+#define LogElfInfo(format, ...)
+#endif
+
+#define logElfError(msg) \
+  ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "%-5d: [%zx] %p %s: " msg, \
+          getpid(), std::this_thread::get_id(), this, __func__)
+
+#define LogElfError(format, ...) \
+  ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "%-5d: [%zx] %p %s: " format, \
+          getpid(), std::this_thread::get_id(), this, __func__, __VA_ARGS__)
+
+namespace amd {
+using namespace amd::ELFIO;
 
 #if !defined(ELFMAG)
 #define ELFMAG  "\177ELF"
 #define SELFMAG 4
 #endif
 
-/*
-   Opague data type definition.
-*/
-struct symbol_handle {
-  union {
-    Elf64_Sym sym64;
-    Elf32_Sym sym32;
-  } u;
-};
-
 typedef struct {
-  OclElf::oclElfSections id;
+  Elf::ElfSections id;
   const char  *name;
-  Elf_Type    d_type;
   uint64_t    d_align;  // section alignment in bytes
   Elf32_Word  sh_type;  // section type
-  Elf32_Word  sh_flags; // section flags 
+  Elf32_Word  sh_flags; // section flags
   const char  *desc;
-} OclElfSectionsDesc;
+} ElfSectionsDesc;
 
 namespace {
   // Objects that are visible only within this module
-
-  const OclElfSectionsDesc oclElfSecDesc[] =
+  constexpr ElfSectionsDesc ElfSecDesc[] =
   {
-    { OclElf::LLVMIR,         ".llvmir",         ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
+    { Elf::LLVMIR,         ".llvmir",         1, SHT_PROGBITS, 0,
       "ASIC-independent LLVM IR" },
-    { OclElf::SOURCE,         ".source",         ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
+    { Elf::SOURCE,         ".source",         1, SHT_PROGBITS, 0,
       "OpenCL source" },
-    { OclElf::ILTEXT,         ".amdil",          ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
-      "AMD IL text" },            
-    { OclElf::ASTEXT,         ".astext",         ELF_T_BYTE, 1, SHT_PROGBITS, 0, 
-      "X86 assembly text" },            
-    { OclElf::CAL,            ".text",           ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
+    { Elf::ILTEXT,         ".amdil",          1, SHT_PROGBITS, 0,
+      "AMD IL text" },
+    { Elf::ASTEXT,         ".astext",         1, SHT_PROGBITS, 0,
+      "X86 assembly text" },
+    { Elf::CAL,            ".text",           1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "AMD CalImage" },
-    { OclElf::DLL,            ".text",           ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
+    { Elf::DLL,            ".text",           1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "x86 dll" },
-    { OclElf::STRTAB,         ".strtab",         ELF_T_BYTE, 1, SHT_STRTAB,   SHF_STRINGS,
+    { Elf::STRTAB,         ".strtab",         1, SHT_STRTAB,   SHF_STRINGS,
       "String table" },
-    { OclElf::SYMTAB,         ".symtab",         ELF_T_SYM,  sizeof(Elf64_Xword), SHT_SYMTAB,   0,  
+    { Elf::SYMTAB,         ".symtab",         sizeof(Elf64_Xword), SHT_SYMTAB,   0,
       "Symbol table" },
-    { OclElf::RODATA,         ".rodata",         ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC,
+    { Elf::RODATA,         ".rodata",         1, SHT_PROGBITS, SHF_ALLOC,
       "Read-only data" },
-    { OclElf::SHSTRTAB,       ".shstrtab",       ELF_T_BYTE, 1, SHT_STRTAB,   SHF_STRINGS,
+    { Elf::SHSTRTAB,       ".shstrtab",       1, SHT_STRTAB,   SHF_STRINGS,
       "Section names" },
-    { OclElf::NOTES,          ".note",          ELF_T_NOTE, 1, SHT_NOTE,     0,
+    { Elf::NOTES,          ".note",           1, SHT_NOTE,     0,
       "used by loader for notes" },
-    { OclElf::COMMENT,        ".comment",        ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::COMMENT,        ".comment",        1, SHT_PROGBITS, 0,
       "Version string" },
-    { OclElf::ILDEBUG,        ".debugil",        ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::ILDEBUG,        ".debugil",        1, SHT_PROGBITS, 0,
       "AMD Debug IL" },
-    { OclElf::DEBUG_INFO,     ".debug_info",     ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_INFO,     ".debug_info",     1, SHT_PROGBITS, 0,
       "Dwarf debug info" },
-    { OclElf::DEBUG_ABBREV,   ".debug_abbrev",   ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_ABBREV,   ".debug_abbrev",   1, SHT_PROGBITS, 0,
       "Dwarf debug abbrev" },
-    { OclElf::DEBUG_LINE,     ".debug_line",     ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_LINE,     ".debug_line",     1, SHT_PROGBITS, 0,
       "Dwarf debug line" },
-    { OclElf::DEBUG_PUBNAMES, ".debug_pubnames", ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_PUBNAMES, ".debug_pubnames", 1, SHT_PROGBITS, 0,
       "Dwarf debug pubnames" },
-    { OclElf::DEBUG_PUBTYPES, ".debug_pubtypes", ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_PUBTYPES, ".debug_pubtypes", 1, SHT_PROGBITS, 0,
       "Dwarf debug pubtypes" },
-    { OclElf::DEBUG_LOC,      ".debug_loc",      ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_LOC,      ".debug_loc",      1, SHT_PROGBITS, 0,
       "Dwarf debug loc" },
-    { OclElf::DEBUG_ARANGES,  ".debug_aranges",  ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_ARANGES,  ".debug_aranges",  1, SHT_PROGBITS, 0,
       "Dwarf debug aranges" },
-    { OclElf::DEBUG_RANGES,   ".debug_ranges",   ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_RANGES,   ".debug_ranges",   1, SHT_PROGBITS, 0,
       "Dwarf debug ranges" },
-    { OclElf::DEBUG_MACINFO,  ".debug_macinfo",  ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_MACINFO,  ".debug_macinfo",  1, SHT_PROGBITS, 0,
       "Dwarf debug macinfo" },
-    { OclElf::DEBUG_STR,      ".debug_str",      ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_STR,      ".debug_str",      1, SHT_PROGBITS, 0,
       "Dwarf debug str" },
-    { OclElf::DEBUG_FRAME,    ".debug_frame",    ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::DEBUG_FRAME,    ".debug_frame",    1, SHT_PROGBITS, 0,
       "Dwarf debug frame" },
-    { OclElf::JITBINARY,      ".text",           ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
+    { Elf::JITBINARY,      ".text",           1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "x86 JIT Binary" },
-    { OclElf::CODEGEN,         ".cg",            ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::CODEGEN,         ".cg",            1, SHT_PROGBITS, 0,
       "Target dependent IL" },
-    { OclElf::TEXT,            ".text",          ELF_T_BYTE, 1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
+    { Elf::TEXT,            ".text",          1, SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR,
       "Device specific ISA" },
-    { OclElf::INTERNAL,        ".internal",      ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::INTERNAL,        ".internal",      1, SHT_PROGBITS, 0,
       "Internal usage" },
-    { OclElf::SPIR,            ".spir",          ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::SPIR,            ".spir",          1, SHT_PROGBITS, 0,
       "Vendor/Device-independent LLVM IR" },
-    { OclElf::SPIRV,           ".spirv",         ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::SPIRV,           ".spirv",         1, SHT_PROGBITS, 0,
       "SPIR-V Binary" },
-    { OclElf::RUNTIME_METADATA,".AMDGPU.runtime_metadata",  ELF_T_BYTE, 1, SHT_PROGBITS, 0,
+    { Elf::RUNTIME_METADATA,".AMDGPU.runtime_metadata",  1, SHT_PROGBITS, 0,
       "AMDGPU runtime metadata" },
   };
-
-  // index 0 is reserved and must be there (NULL section)
-  const char shstrtab[] = {
-    /* index  0 */ '\0',
-    /* index  1 */ '.', 's', 'h', 's', 't', 'r', 't', 'a', 'b', '\0',
-    /* index 11 */ '.', 's', 't', 'r', 't', 'a', 'b', '\0'
-  };
-
-#define SHSTRTAB_NAME_NDX  1
-#define STRTAB_NAME_NDX   11
-
-  // index 0 is reserved and must be there (NULL name)
-  const char strtab[] = {
-    /* index 0 */ '\0'
-  };
-
 }
-
-  bool
-isElfMagic(const char* p)
-{
-  if (p==NULL || strncmp(p, ELFMAG, SELFMAG) != 0) {
-    return false;
-  }
-  return true;
-}
-
-//
-  bool
-isElfHeader(const char* p, signed char ec)
-{
-  if (!isElfMagic(p)) {
-    return false;
-  }
-  signed char libVersion  = elf_version(EV_CURRENT);
-  signed char fileVersion = p[EI_VERSION];    
-  signed char elfClass    = p[EI_CLASS];
-  if( fileVersion > libVersion) {
-    return false;
-  }
-
-  // class check:
-  if ( elfClass != ec) {
-    return false;
-  }    
-
-  return true;
-}    
-
-  bool
-isCALTarget(const char* p, signed char ec)
-{
-  if (!isElfMagic(p)) {
-    return false;
-  }
-
-  Elf64_Half machine;
-  if (ec == ELFCLASS32) {
-    machine = ((Elf32_Ehdr*)p)->e_machine;
-
-  }
-  else {
-    machine = ((Elf64_Ehdr*)p)->e_machine;
-  }
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-  if ( (machine >= OclElf::CAL_FIRST) && (machine <= OclElf::CAL_LAST) ) {
-    return true;
-  }    
-#endif // !defined(WITH_LIGHTNING_COMPILER)
-
-  return false;
-}    
-
 
 ///////////////////////////////////////////////////////////////
 ////////////////////// elf initializers ///////////////////////
 ///////////////////////////////////////////////////////////////
 
-OclElf::OclElf (
+Elf::Elf (
     unsigned char eclass,
     const char*   rawElfBytes,
     uint64_t      rawElfSize,
     const char*   elfFileName,
-    Elf_Cmd       elfcmd
+    ElfCmd        elfcmd
     )
-: _fd (-1),
-  _fname (elfFileName),
-  _e (0),
-  _err (),
+: _fname (elfFileName ? elfFileName : ""),
   _eclass (eclass),
   _rawElfBytes (rawElfBytes),
   _rawElfSize (rawElfSize),
   _elfCmd (elfcmd),
   _elfMemory(),
-  _shstrtab_ndx (0),
-  _strtab_ndx (0)
+  _shstrtab_ndx (SHN_UNDEF),
+  _strtab_ndx (SHN_UNDEF),
+  _symtab_ndx (SHN_UNDEF),
+  _successful (false)
 {
+  LogElfInfo("fname=%s, rawElfSize=%lu, elfcmd=%d, %s",
+             _fname.c_str(), _rawElfSize, _elfCmd, _elfCmd == ELF_C_WRITE ? "writer" : "reader");
+
   if (rawElfBytes != NULL) {
     /*
        In general, 'eclass' should be the same as rawElfBytes's. 'eclass' is what the runtime
@@ -238,405 +203,229 @@ OclElf::OclElf (
   (void)Init();
 }
 
-OclElf::~OclElf()
+Elf::~Elf()
 {
-#if 0
-  Elf_Cmd c = (_errCmd == ELF_C_READ) ? ELF_C_NULL : _errCmd;
-  if (elf_update(_e, c < 0) {
-      _err.xfail("OclElf::Fini() : elf_update() failed: %s", elf_errmsg(-1);
-        return;
-        }
-#endif
-        _err.Fini();
-
-        elf_end(_e);
-        _e = 0;
-
-        if (_fd != -1) {
-        xclose(_err, _fname, _fd);
-        char* tname= const_cast<char*>(_fname);
-        if (tname) {
-        unlink(tname);
-        free(tname);
-        }
-        _fd = -1;
-        _fname = NULL;
-
-        }
-
-        elfMemoryRelease();
+  LogElfInfo("fname=%s, rawElfSize=%lu, elfcmd=%d",
+             _fname.c_str(), _rawElfSize, _elfCmd);
+  elfMemoryRelease();
 }
 
-  bool
-OclElf::Clear()
+bool Elf::Clear()
 {
-  if (_e) {
-    elf_end(_e);
-    _e = NULL;
-  }
+  ElfTrace(amd::LOG_INFO);
 
-  if (_fd != -1) {
-    if (xclose(_err, _fname, _fd) < 0) {
-      return false;
-    }
-    _fd = -1;
-  }
-
+  _elfio.clean();
   elfMemoryRelease();
-
-  _err.Fini();
 
   // Re-initialize the object
   Init();
 
-  return !hasError();
+  return isSuccessful();
 }
 
-
 /*
-   Initialize OclElf object 
-   */
-  bool
-OclElf::Init()
+ Initialize Elf object
+ */
+bool Elf::Init()
 {
-  _err.Init();
+  _successful = false;
 
-  // Create a temporary file if it is needed
-  if (_elfCmd != ELF_C_READ) {
-    if (_fname != NULL) {
-      size_t  sz = strlen(_fname) + 1;
+  switch (_elfCmd) {
+    case ELF_C_WRITE:
+      _elfio.create(_eclass, ELFDATA2LSB);
+      break;
 
-      char* tname = (char*)xmalloc(_err, sz);
-      if (tname == 0) {
-        _err.xfail("OclElf::Init() failed to malloc()");
+    case ELF_C_READ:
+      if(_rawElfBytes == nullptr || _rawElfSize == 0) {
+        logElfError("failed: _rawElfBytes = nullptr or _rawElfSize = 0");
         return false;
       }
-      strcpy(tname, _fname);
-      _fname = static_cast<const char*>(tname);
-    }
-  }
-
-  if (elf_version(EV_CURRENT) == EV_NONE) {
-    _err.xfail("OclElf::Init(): Application expects CURRENT elf version");
-    return false;
-  }
-  int oflag, pmode;
-#if defined(_MSC_VER)
-  if (_elfCmd == ELF_C_READ) {
-    oflag = _O_RDONLY | _O_BINARY;
-  }
-  else {
-    oflag = _O_CREAT | _O_RDWR | _O_TRUNC | _O_BINARY;
-  }
-  pmode = _S_IREAD  | _S_IWRITE;
-#else
-  if (_elfCmd == ELF_C_READ) {
-    oflag = O_RDONLY;
-  }
-  else {
-    oflag = O_CREAT | O_RDWR | O_TRUNC;
-  }
-  pmode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH; // 0644
-#endif
-  if ((_fd == -1) && (_rawElfBytes == NULL)) {
-    // case 1: elf object is in file '_fname'
-
-    _fd = xopen(_err, _fname, oflag, pmode);
-    if (_fd == -1) {
-      _err.xfail("OclElf::Init(): Cannot Open File %s!", _fname);
-      return false;
-    }
-
-    _e = elf_begin(_fd, _elfCmd, NULL, NULL);
-    if (_e == NULL) {
-      _err.xfail ("OclElf::Init(): elf_begin failed");
-      return false;
-    }
-  }
-  else if (_fd == -1) {
-    // case 2: elf object is in memory
-    if (_elfCmd == ELF_C_READ) {
-      assert ((_fname == NULL) && "ELF file name should not be provided for a read only elf.");
-    } else {
-      _fd = xopen(_err, _fname, oflag, pmode);
-      if (_fd == -1) {
-        _err.xfail("OclElf::Init(): Cannot Open File %s!", _fname);
-        return false;
+      {
+        std::istringstream is { std::string(_rawElfBytes, _rawElfSize) };
+        if (!_elfio.load(is)) {
+          LogElfError("failed in _elfio.load(%p, %lu)", _rawElfBytes, _rawElfSize);
+          return false;
+        }
       }
-    }
+      break;
 
-    // const_cast is safe
-    _e = elf_memory(const_cast<char*>(_rawElfBytes), _rawElfSize, NULL);
-    if ( _e == NULL) {
-      _err.xfail("OclElf::Init(): elf_memory failed: %s",
-          elf_errmsg(-1));
-      return false;
-    }
-    // If _fd != -1, then we are a read/write and not just a read, so change accordingly.
-    if (_fd != -1) {
-        _e->e_fd = _fd;
-        _e->e_cmd = _elfCmd;
-    }
-  }
-  else { // _fd != -1
-    // case 3: elf object is in a file with file descriptor '_fd'
-
-    _e = elf_begin(_fd, _elfCmd, NULL, NULL);
-    if (_e == NULL) {
-      _err.xfail ("OclElf::Init(): elf_begin failed: %s",
-          elf_errmsg(-1));
-      return false;
-    }
+    default:
+      LogElfError("failed: unexpected cmd %d", _elfCmd);
+      return false; // Don't support other mode
   }
 
   if (!InitElf()) {
     return false;
   }
 
-  // Success 
+  // Success
+  _successful = true;
+
   return true;
 }
 
-/*
-   Return  true:  if InitElf() is successful
-   Return false:  if InitElf() failed.
-   */
-  bool
-OclElf::InitElf ()
+bool Elf::InitElf ()
 {
-  assert (_e && "libelf object should have been created already");
+  if (_elfCmd == ELF_C_READ) {
+    assert(_elfio.sections.size() > 0 && "elfio object should have been created already");
 
-  if (_elfCmd != ELF_C_WRITE) {
-    // Set up _shstrtab_ndx and _strtab_ndx
-    GElf_Ehdr gehdr;
-    if (gelf_getehdr(_e, &gehdr) == NULL) {
-      _err.xfail("OclElf::InitElf() failed in gelf_getehdr()- %s",
-          elf_errmsg(-1));
+    // Set up _shstrtab_ndx
+    _shstrtab_ndx = _elfio.get_section_name_str_index();
+    if(_shstrtab_ndx == SHN_UNDEF) {
+      logElfError("failed: _shstrtab_ndx = SHN_UNDEF");
       return false;
     }
 
-    _shstrtab_ndx = gehdr.e_shstrndx;
-
-    Elf_Scn* scn;
-    if (!getSectionDesc(scn, STRTAB)) {
-      _err.xfail("OclElf::InitElf() failed in getSectionDesc(STRTAB)");
+    // Set up _strtab_ndx
+    section* strtab_sec = _elfio.sections[ElfSecDesc[STRTAB].name];
+    if (strtab_sec == nullptr) {
+      logElfError("failed: null sections(STRTAB)");
       return false;
     }
 
-    // Sanity check.  Each ELF binary should have STRTAB !
-    if (scn != NULL) {
-      _strtab_ndx = elf_ndxscn(scn);
+    _strtab_ndx = strtab_sec->get_index();
+
+    section* symtab_sec = _elfio.sections[ElfSecDesc[SYMTAB].name];
+
+    if (symtab_sec != nullptr) {
+      _symtab_ndx = symtab_sec->get_index();
     }
+    // It's ok for empty SYMTAB
+  } else if(_elfCmd == ELF_C_WRITE) {
+    /*********************************/
+    /******** ELF_C_WRITE ************/
+    /*********************************/
 
-    return true;
-  }
+    //
+    // 1. Create ELF header
+    //
+    _elfio.create(_eclass, ELFDATA2LSB);
 
-
-  /*********************************/
-  /******** ELF_C_WRITE ************/
-  /*********************************/
-
-  //
-  // 1. Create ELF header
-  //
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_newehdr(_e);
-    if (ehdr32 == NULL) {
-      _err.xfail("OclElf::InitElf() failed in elf32_newehdr: %s.",
-          elf_errmsg(-1));
+    //
+    // 2. Check created ELF shstrtab
+    //
+    section* shstrtab_sec = _elfio.sections[ElfSecDesc[SHSTRTAB].name];
+    if (shstrtab_sec == nullptr) {
+      logElfError("failed: shstrtab_sec = nullptr");
       return false;
     }
-  } 
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_newehdr(_e);
-    if (ehdr64 == NULL) {
-      _err.xfail("OclElf::InitElf() failed in elf32_newehdr : %s.",
-          elf_errmsg(-1));
+
+    if (!setupShdr(SHSTRTAB, shstrtab_sec)) {
       return false;
     }
-  }
 
-#if 0
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("elf_update() failed");
-    return -1;
-  }
-#endif
+    // Save shstrtab section index
+    _shstrtab_ndx = shstrtab_sec->get_index();
 
-  //
-  // 2. Create ELF shstrtab
-  //
-  Elf_Scn* scn_shstrtab = elf_newscn(_e);
-  if (scn_shstrtab == NULL) {
-    _err.xfail("Elf::InitElf() failed in elf_newscn : %s", elf_errmsg(-1));
+    //
+    // 3. Create .strtab section
+    //
+    auto *strtab_sec = _elfio.sections.add(ElfSecDesc[STRTAB].name);
+    if (strtab_sec == nullptr) {
+      logElfError("failed to add section STRTAB");
+      return false;
+    }
+
+    // adding null string data associated with section
+    // index 0 is reserved and must be there (NULL name)
+    constexpr char strtab[] = {
+      /* index 0 */ '\0'
+    };
+    strtab_sec->set_data(const_cast<char*>(strtab), sizeof(strtab));
+
+    if (!setupShdr(STRTAB, strtab_sec)) {
+      return false;
+    }
+
+    // Save strtab section index
+    _strtab_ndx = strtab_sec->get_index();
+
+    //
+    // 4. Create the symbol table
+    //
+
+    // Create the first reserved dummy symbol (undefined symbol)
+    size_t sym_sz = (_eclass == ELFCLASS32) ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
+    char* sym = static_cast<char *>(::calloc(1, sym_sz));
+    if (sym == nullptr) {
+      logElfError("failed to calloc memory for SYMTAB section");
+      return false;
+    }
+
+    auto* symtab_sec = newSection(SYMTAB, sym, sym_sz);
+    free(sym);
+
+    if (symtab_sec == nullptr) {
+      logElfError("failed to create SYMTAB");
+      return false;
+    }
+
+    _symtab_ndx = symtab_sec->get_index();
+  } else {
+    LogElfError("failed: wrong cmd %d", _elfCmd);
     return false;
   }
 
-  /* addng ELF_Data descriptor associated with section scn */
-  Elf_Data* data_shstrtab = createElfData(scn_shstrtab, SHSTRTAB, 
-      const_cast<char*>(shstrtab), (uint64_t)sizeof(shstrtab), false);            
-  if (data_shstrtab == NULL) {
-    return false;
-  }
-
-  if (!createShdr(SHSTRTAB, scn_shstrtab, SHSTRTAB_NAME_NDX)) {
-    return false;
-  } 
-
-  // Save shstrtab section index
-  _shstrtab_ndx = elf_ndxscn(scn_shstrtab);
-#if defined(BSD_LIBELF)
-  elf_setshstrndx(_e, _shstrtab_ndx);
-#else
-  elfx_update_shstrndx(_e, _shstrtab_ndx);
-#endif
-
-#if 0
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("elf_update() failed");
-    return -1;
-  }
-#endif
-
-  //
-  // 3. Create .strtab section
-  //
-  Elf_Scn* scn_strtab = elf_newscn(_e);
-  if (scn_strtab == NULL) {
-    _err.xfail("Elf::InitElf() failed in elf_newscn : %s", elf_errmsg(-1));
-    return false;
-  }
-
-  /* addng ELF_Data descriptor associated with section scn */
-  Elf_Data* data_strtab = createElfData(scn_strtab, STRTAB,
-      const_cast<char*>(strtab), (uint64_t)sizeof(strtab), false);
-  if (data_strtab == NULL) {
-    return false;
-  }
-
-  if (!createShdr(STRTAB, scn_strtab, STRTAB_NAME_NDX)) {
-    return false;
-  }
-
-  // Save strtab section index
-  _strtab_ndx = elf_ndxscn(scn_strtab);
-
-  // Need to update section header
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("elf_update() failed");
-    return false;
-  }
-
-  //
-  // 4. Create the symbol table
-  //
-
-  // Create the first reserved symbol (undefined symbol)
-  size_t sym_sz = (_eclass == ELFCLASS32) ? sizeof(Elf32_Sym) : sizeof(Elf64_Sym);
-  void*  sym = oclelf_calloc(sym_sz);
-  if (sym == NULL) {
-    _err.xfail("OclElf::InitElf() failed to alloc memory");
-    return false;
-  }
-
-  Elf_Scn* scn_symtab = newSection(SYMTAB, sym, sym_sz, false);
-  if (scn_symtab == NULL) {
-    // Use newSection()'s error message.
-    return false;
-  }
-
+  LogElfInfo("succeeded: secs=%d, segs=%d, _shstrtab_ndx=%u, _strtab_ndx=%u, _symtab_ndx=%u",
+       _elfio.sections.size(), _elfio.segments.size(), _shstrtab_ndx, _strtab_ndx, _symtab_ndx);
   return true;
 }
 
-Elf_Data*
-OclElf::createElfData(
-    Elf_Scn*&      scn,
-    oclElfSections id,
-    void*          d_buf,
-    uint64_t       d_size,
-    bool           do_copy
+bool Elf::createElfData(
+    section*&   sec,
+    ElfSections id,
+    const char* d_buf,
+    size_t      d_size
     )
 {
-  /* addng Elf_Data descriptor associated with section scn */
-  Elf_Data*   data = elf_newdata(scn);
-  if (data == NULL) {
-    _err.xfail("OclElf::createElfData() failed in elf_newdata() - %s",
-        elf_errmsg(-1));
-    return NULL;
+  assert((ElfSecDesc[id].id == id) &&
+      "ElfSecDesc[] should be in the same order as enum ElfSections");
+
+  sec = _elfio.sections[ElfSecDesc[id].name];
+  if (sec == nullptr) {
+    LogElfError("failed: null sections(%s)", ElfSecDesc[id].name);
+    return false;
   }
 
-  void* newbuf;
-  if (do_copy) {
-    newbuf = oclelf_allocAndCopy((void*)d_buf, d_size);
-  }
-  else {
-    newbuf = d_buf;
-  }
-
-  data->d_align   = oclElfSecDesc[id].d_align;
-  data->d_off     = 0LL;
-  data->d_buf     = newbuf;
-  data->d_type    = oclElfSecDesc[id].d_type;
-  data->d_size    = d_size;
-  data->d_version = EV_CURRENT ;
-
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("elf_update() failed");
-    return NULL;
-  }
-  return data;
+  sec->set_data(d_buf, d_size);
+  return true;
 }
 
-bool
-OclElf::createShdr (
-    oclElfSections id,
-    Elf_Scn*&      scn,
-    Elf64_Word     shname,
-    Elf64_Word     shlink
+bool Elf::setupShdr (
+    ElfSections id,
+    section* section,
+    Elf64_Word shlink
     )
 {
-  if (_eclass == ELFCLASS32) {
-    Elf32_Shdr* shdr32 = elf32_getshdr(scn);
-    if (shdr32 == NULL) {
-      _err.xfail("Elf::createShdr() failed in elf32_getshdr(): %s.", elf_errmsg(-1));
-      return false;
-    }
+  section->set_addr_align(ElfSecDesc[id].d_align);
+  section->set_type(ElfSecDesc[id].sh_type);
+  section->set_flags(ElfSecDesc[id].sh_flags);
+  section->set_link(shlink);
 
-    shdr32->sh_name  = (Elf32_Word)shname;
-    shdr32->sh_type  = (Elf32_Word)oclElfSecDesc[id].sh_type;
-    shdr32->sh_flags = (Elf32_Word)oclElfSecDesc[id].sh_flags;
-
-    shdr32->sh_link  = (Elf32_Word)shlink;
+  auto class_num = _elfio.get_class();
+  size_t entry_size = 0;
+  switch(id) {
+    case SYMTAB:
+      if (class_num == ELFCLASS32) {
+        entry_size = sizeof(Elf32_Sym);
+      }
+      else {
+        entry_size = sizeof(Elf64_Sym);
+      }
+      break;
+    default:
+      // .dynsym and .relaNAME also have table entries
+      break;
   }
-  else {
-    Elf64_Shdr* shdr64 = elf64_getshdr(scn);
-    if (shdr64 == NULL) {
-      _err.xfail("Elf::InitElf() failed in elf64_getshdr(): %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    shdr64->sh_name  = (Elf64_Word)shname;
-    shdr64->sh_type  = (Elf64_Word)oclElfSecDesc[id].sh_type;
-    shdr64->sh_flags = (Elf64_Xword)oclElfSecDesc[id].sh_flags;
-
-    shdr64->sh_link  = (Elf64_Word)shlink;
+  if(entry_size > 0) {
+    section->set_entry_size(entry_size);
   }
   return true;
 }
 
-
-  bool
-OclElf::getTarget(uint16_t& machine, oclElfPlatform& platform)
+bool Elf::getTarget(uint16_t& machine, ElfPlatform& platform) const
 {
-  assert(_e != 0);
-
-  GElf_Ehdr ehdrO;
-  GElf_Ehdr *ehdr = gelf_getehdr(_e, &ehdrO);
-  if (ehdr == NULL) {
-    return false;
-  }
-
-  Elf64_Half mach = ehdr->e_machine;
+  Elf64_Half mach = _elfio.get_machine();
   if ((mach >= CPU_FIRST) && (mach <= CPU_LAST)) {
     platform = CPU_PLATFORM;
     machine = mach - CPU_BASE;
@@ -657,17 +446,15 @@ OclElf::getTarget(uint16_t& machine, oclElfPlatform& platform)
     machine = mach;
   } else {
     // Invalid machine
+    LogElfError("failed: Invalid machine=0x%04x(%d)", mach, mach);
     return false;
   }
-
+  LogElfInfo("succeeded: machine=0x%04x, platform=%d", machine, platform);
   return true;
 }
 
-  bool
-OclElf::setTarget(uint16_t machine, oclElfPlatform platform)
+bool Elf::setTarget(uint16_t machine, ElfPlatform platform)
 {
-  assert(_e != 0);
-
   Elf64_Half mach;
   if (platform == CPU_PLATFORM) 
     mach = machine + CPU_BASE;
@@ -676,870 +463,589 @@ OclElf::setTarget(uint16_t machine, oclElfPlatform platform)
   else
     mach = machine;
 
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_getehdr(_e);
-
-    if (ehdr32 == NULL) {
-      _err.xfail("setTarget() : failed in elf32_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr32->e_ident[EI_DATA] = ELFDATA2LSB;
-    ehdr32->e_type = ET_NONE;
-    ehdr32->e_machine = (Elf32_Half)mach;
-  }
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_getehdr(_e);
-
-    if (ehdr64 == NULL) {
-      _err.xfail("setTarget() : failed in elf64_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr64->e_ident[EI_DATA] = ELFDATA2LSB;
-    ehdr64->e_type = ET_NONE;
-    ehdr64->e_machine = mach;
-  }
+  _elfio.set_machine(mach);
+  LogElfInfo("succeeded: machine=0x%04x(%d), platform=%d", machine, machine, platform);
 
   return true;
 }
 
-bool
-OclElf::getType(uint16_t &type) {
-  assert(_e != 0);
-
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_getehdr(_e);
-
-    if (ehdr32 == NULL) {
-      _err.xfail("setTarget() : failed in elf32_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    type = ehdr32->e_type;
-  }
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_getehdr(_e);
-
-    if (ehdr64 == NULL) {
-      _err.xfail("setTarget() : failed in elf64_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    type = ehdr64->e_type;
-  }
-
+bool Elf::getType(uint16_t &type) {
+  type = _elfio.get_type();
   return true;
 }
 
-bool
-OclElf::setType(uint16_t type) {
-  assert(_e != 0);
-
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_getehdr(_e);
-
-    if (ehdr32 == NULL) {
-      _err.xfail("setTarget() : failed in elf32_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr32->e_type = type;
-  }
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_getehdr(_e);
-
-    if (ehdr64 == NULL) {
-      _err.xfail("setTarget() : failed in elf64_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr64->e_type = type;
-  }
-
+bool Elf::setType(uint16_t  type) {
+  _elfio.set_type(type);
   return true;
 }
 
-bool
-OclElf::getFlags(uint32_t &flag) {
-  assert(_e != 0);
-
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_getehdr(_e);
-
-    if (ehdr32 == NULL) {
-      _err.xfail("setTarget() : failed in elf32_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    flag = ehdr32->e_flags;
-  }
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_getehdr(_e);
-
-    if (ehdr64 == NULL) {
-      _err.xfail("setTarget() : failed in elf64_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    flag = ehdr64->e_flags;
-  }
-
+bool Elf::getFlags(uint32_t &flag) {
+  flag = _elfio.get_flags();
   return true;
 }
 
-bool
-OclElf::setFlags(uint32_t flag) {
-  assert(_e != 0);
-
-  if (_eclass == ELFCLASS32) {
-    Elf32_Ehdr* ehdr32 = elf32_getehdr(_e);
-
-    if (ehdr32 == NULL) {
-      _err.xfail("setTarget() : failed in elf32_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr32->e_flags = flag;
-  }
-  else {
-    Elf64_Ehdr* ehdr64 = elf64_getehdr(_e);
-
-    if (ehdr64 == NULL) {
-      _err.xfail("setTarget() : failed in elf64_getehdr()- %s.", elf_errmsg(-1));
-      return false;
-    }
-
-    ehdr64->e_flags = flag;
-  }
-
+bool Elf::setFlags(uint32_t  flag) {
+  _elfio.set_flags(flag);
   return true;
 }
 
-/*
-   returns true if success; return false if fail.
-   scn will return scn for 'id'.
-   */
-  bool 
-OclElf::getSectionDesc(Elf_Scn*& scn, OclElf::oclElfSections id) const
+bool Elf::getSection(Elf::ElfSections id, char** dst, size_t* sz) const
 {
-  if ( ((id == SHSTRTAB) && (_shstrtab_ndx != 0)) || 
-      ((id == STRTAB)   && (_strtab_ndx != 0)) ) {
-    // Special (efficient) processing of SHSTRTAB/STRTAB
-    size_t idx = (id == SHSTRTAB) ? _shstrtab_ndx : _strtab_ndx;
-    if ((scn = elf_getscn(_e, idx)) == NULL) {
-      _err.xfail("OclElf::addSectionDesc(): elf_getscn() failed - %s",
-          elf_errmsg(-1));
-      return false;
-    }
-  }
-  else {
-    /* Search sections */
-    const char* sname = oclElfSecDesc[id].name;
-    for (scn = elf_nextscn(_e, 0);
-        scn != NULL;
-        scn = elf_nextscn(_e, scn))
-    {
-      size_t idx = elf_ndxscn(scn);
-      if ( ((idx == _shstrtab_ndx) && (_shstrtab_ndx != 0)) ||
-          ((idx == _strtab_ndx)   && (_strtab_ndx   != 0)) ) {
-        continue;
-      }
+  assert((ElfSecDesc[id].id == id) &&
+      "ElfSecDesc[] should be in the same order as enum ElfSections");
 
-      GElf_Shdr shdr;
-      if (gelf_getshdr(scn, &shdr) != &shdr) {
-        _err.xfail("OclElf::getSectionDesc() : failed in gelf_getshdr()- %s.",
-            elf_errmsg(-1));
-        return false;
-      }
-
-      /* Convert an index (to the shdr string table) to a char pointer */
-      char *nm = elf_strptr(_e, _shstrtab_ndx, shdr.sh_name);
-      if (strcmp(sname, nm ? nm : "") == 0) {
-        // Found !
-        break;
-      }
-    }
-  }
-  return true;
-}
-
-/*
-   Return true if success; return false if fail.
-   data will return Elf_Data.
-   */
-  bool
-OclElf::getSectionData(Elf_Data*& data, OclElf::oclElfSections id) const
-{
-  assert(_e != 0);
-
-  data = NULL;
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, id)) {
+  section* sec = _elfio.sections[ElfSecDesc[id].name];
+  if (sec == nullptr) {
+    LogElfError("failed: null sections(%s)", ElfSecDesc[id].name);
     return false;
   }
-  if (scn != NULL) {
-    // There is only one data descriptor (we are reading!)
-    data = elf_getdata(scn, 0);
-  }
+
+  // There is only one data descriptor (we are reading!)
+  *dst = const_cast<char*>(sec->get_data());
+  *sz = sec->get_size();
+
+  LogElfInfo("succeeded: *dst=%p, *sz=%zu", *dst, *sz);
   return true;
 }
 
-/*
-   Get the whole section, assuming that there is only one data descriptor
-   */
-  bool
-OclElf::getSection(OclElf::oclElfSections id, char** dst, size_t* sz) const
-{
-  assert((oclElfSecDesc[id].id == id) &&
-      "oclElfSecDesc[] should be in the same order as enum oclElfSections");
-
-  Elf_Data* data;
-  if (!getSectionData(data, id)) {
-    _err.xfail("OclElf::getSection() failed in getSectionData()");
-    return false;
+unsigned int Elf::getSymbolNum() const {
+  if (_symtab_ndx == SHN_UNDEF) {
+    logElfError(" failed: _symtab_ndx = SHN_UNDEF");
+    return 0; // No SYMTAB
   }
-  if (data == NULL) {
-    *dst = NULL;
-    *sz  = 0;
-  }
-  else {
-    *sz = (size_t)data->d_size;
-    *dst = (char*)data->d_buf;
-  }
-
-  return true;
+  symbol_section_accessor symbol_reader(_elfio, _elfio.sections[_symtab_ndx]);
+  auto num = symbol_reader.get_symbols_num() - 1;  // Exclude the first dummy symbol
+  LogElfInfo(": num=%lu", num);
+  return num;
 }
 
-
-/*
-   API routines for manipulating symbols
-   */
-  Sym_Handle
-OclElf::nextSymbol(Sym_Handle symHandle) const
-{
-  size_t sz;
-  char*  beg, *end;
-
-  if (!getSection(SYMTAB, &beg, &sz)) {
-    _err.xfail("OclElf::nextSymbol() failed in getSection()");
-    return NULL;
-  }
-
-  if ( (beg == 0) || (sz == 0) ) {
-    return NULL;
-  }
-
-  end = beg + sz;
-  if (_eclass == ELFCLASS64) {
-    // Skip the first dummy symbol (STT_NOTYPE)
-    beg += sizeof(Elf64_Sym);
-
-    if (beg == end) { // No valid symbols in the table
-      return NULL;
-    }
-
-    if (symHandle == NULL) {
-      // Return the first symbol
-      return reinterpret_cast<Sym_Handle>(beg);
-    }
-
-    // Return the next symbol
-    Elf64_Sym* sym64 = reinterpret_cast<Elf64_Sym*>(symHandle);
-    sym64++;
-    if (reinterpret_cast<char*>(sym64) == end) {
-      return NULL;
-    }
-    return reinterpret_cast<Sym_Handle>(sym64);
-  }
-  else {
-    // Skip the first dummy symbol (STT_NOTYPE)
-    beg += sizeof(Elf32_Sym);
-
-    if (beg == end) { // No valid symbols in the table
-      return NULL;
-    }
-
-    if (symHandle == NULL) {
-      // Return the first symbol
-      return reinterpret_cast<Sym_Handle>(beg);
-    }
-
-    Elf32_Sym* sym32 = reinterpret_cast<Elf32_Sym*>(symHandle);
-    sym32++;
-    if (reinterpret_cast<char*>(sym32) == end) {
-      return NULL;
-    }
-    return reinterpret_cast<Sym_Handle>(sym32);
-  }
-
-  // UNREACHABLE
-  return NULL;
+unsigned int Elf::getSegmentNum() const {
+  return _elfio.segments.size();
 }
 
-/*
-   Given a symbol handle, return info for this symbol
+bool Elf::getSegment(const unsigned int index, segment*& seg) {
+  bool ret = false;
+  if (index < _elfio.segments.size()) {
+    seg = _elfio.segments[index];
+    ret = true;
+  }
+  return ret;
+}
 
-   Fails with symbols which have special section indexes (like absolute symbols).
-   It is impossible to return valid SymbolInfo for such symbols because
-   correct section names are unknown (unspecified in ELF).
-   */
-  bool
-OclElf::getSymbolInfo(Sym_Handle  symHandle, SymbolInfo* symInfo) const
+bool Elf::getSymbolInfo(unsigned int index, SymbolInfo* symInfo) const
 {
-  assert(_e != 0);
-
-  Elf_Scn *scn;
-  char*       sym_name;
-  Elf64_Addr  st_value;    /* visibility */
-  Elf64_Xword st_size;     /* index of related section */
-
-  if (_eclass == ELFCLASS64) {
-    Elf64_Sym* sym64 = reinterpret_cast<Elf64_Sym*>(symHandle);
-    if (sym64->st_shndx >= SHN_LORESERVE && sym64->st_shndx <= SHN_HIRESERVE) {
-      return false;
-    }
-
-    sym_name = elf_strptr(_e, _strtab_ndx, sym64->st_name);
-    st_value = (Elf64_Addr)(sym64->st_value);
-    st_size  = (Elf64_Xword)(sym64->st_size);
-
-    // get section
-    scn = elf_getscn(_e, sym64->st_shndx);
+  if(_symtab_ndx == SHN_UNDEF) {
+    logElfError(" failed: _symtab_ndx = SHN_UNDEF");
+    return false; // No SYMTAB
   }
-  else {
-    Elf32_Sym* sym32 = reinterpret_cast<Elf32_Sym*>(symHandle);
-    if (sym32->st_shndx >= SHN_LORESERVE && sym32->st_shndx <= SHN_HIRESERVE) {
-      return false;
-    }
+  symbol_section_accessor symbol_reader(_elfio, _elfio.sections[_symtab_ndx]);
 
-    sym_name = elf_strptr(_e, _strtab_ndx, sym32->st_name);
-    st_value = (Elf64_Addr)(sym32->st_value);
-    st_size  = (Elf64_Xword)(sym32->st_size);
+  auto num = getSymbolNum();
 
-    // get section
-    scn = elf_getscn(_e, sym32->st_shndx);
-  }
-
-  GElf_Shdr gshdr;
-  if (gelf_getshdr(scn, &gshdr) == NULL) {
-    _err.xfail("OclElf::getSymbolInfo() failed in gelf_getshdr() - %s.",
-        elf_errmsg(-1));
+  if (index >= num) {
+    LogElfError(" failed: wrong index %u >= symbols num %lu", index, num);
     return false;
   }
-  char* sec_name = elf_strptr(_e, _shstrtab_ndx, gshdr.sh_name);
 
-  // Assume there is only one Elf_Data. For reading, it's always true
-  Elf_Data* data = elf_getdata(scn, 0);
-  if (data == NULL) {
-      symInfo->sec_addr = (char*)NULL;
-      symInfo->sec_size = 0;
-      symInfo->address  = (char*)NULL;
-      symInfo->size     = (uint64_t)0;
+  std::string   sym_name;
+  Elf64_Addr    value = 0;
+  Elf_Xword     size = 0;
+  unsigned char bind = 0;
+  unsigned char type = 0;
+  Elf_Half      sec_index = 0;
+  unsigned char other = 0;
+
+  // index++ for real index on top of the first dummy symbol
+  bool ret = symbol_reader.get_symbol(++index, sym_name, value, size, bind, type,
+                                      sec_index, other);
+  if (!ret) {
+    LogElfError("failed to get_symbol(%u)", index);
+    return false;
   }
-  else {
-      symInfo->sec_addr = (char*)data->d_buf;
-      symInfo->sec_size = data->d_size;
-      symInfo->address  = symInfo->sec_addr + (size_t)st_value;
-      symInfo->size     = (uint64_t)st_size;
+  section* sec = _elfio.sections[sec_index];
+  if (sec == nullptr) {
+    LogElfError("failed: null section at %u", sec_index);
+    return false;
   }
-  symInfo->sec_name = sec_name;
+
+  symInfo->sec_addr = sec->get_data();
+  symInfo->sec_size = sec->get_size();
+  symInfo->address = symInfo->sec_addr + (size_t) value;
+  symInfo->size = (uint64_t) size;
+
+  symInfo->sec_name = sec->get_name();
   symInfo->sym_name = sym_name;
-
+#if 0
+  // For debug purpose
+  LogElfDebug("succeeded at index=%u: sec_addr=%p, sec_size=%lu, address=%p,"
+              " size=%lu, sec_name=%s, sym_name=%s",
+              index, symInfo->sec_addr, symInfo->sec_size, symInfo->address, symInfo->size,
+              symInfo->sec_name.c_str(), symInfo->sym_name.c_str());
+#endif
   return true;
 }
 
-/*
-   AddSectionData() will add data into a section. Return the offset
-   of the data in this section if success; return -1 if fail.
-   */
-bool
-OclElf::addSectionData (
-    Elf64_Xword&   outOffset,
-    oclElfSections id, 
-    const void*    buffer, 
-    size_t         size,
-    bool           do_copy    // true if buffer needs to be copied   
+bool Elf::addSectionData (
+    Elf_Xword&  outOffset,
+    ElfSections id,
+    const void* buffer,
+    size_t      size
     )
 {
+  assert(ElfSecDesc[id].id == id &&
+      "struct ElfSecDesc should be ordered by id same as enum Elf::ElfSections");
+
   outOffset = 0;
-  const char* secName = oclElfSecDesc[id].name;
-  GElf_Shdr shdr;
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, id)) {
+  section* sec = _elfio.sections[ElfSecDesc[id].name];
+  if (sec == nullptr) {
+    LogElfError("failed: null sections(%s)", ElfSecDesc[id].name);
     return false;
   }
-  assert (scn && "Elf_Scn should have been created already");
 
-  if (gelf_getshdr(scn, &shdr) != &shdr) {
-    _err.xfail("OclElf::addSectionData(): gelf_getshdr() failed - %s",
-        elf_errmsg(-1));
-    return false;
-  }
-  outOffset = (Elf64_Xword)shdr.sh_size;
+  outOffset = sec->get_size();
 
-  /* addng Elf_Data descriptor associated with section scn */
-  Elf_Data* data = createElfData(scn, id, const_cast<void*>(buffer),
-      (uint64_t)size, do_copy);
-  if (data == NULL) {
-    return false;
-  }
+  sec->append_data(static_cast<const char *>(buffer), size);
+  LogElfInfo("succeeded: buffer=%p, size=%zu", buffer, size);
 
   return true;
 }
 
-/*
-   getShdrNdx() returns an index to the .shstrtab in 'outNdx' for "name" if it
-   is in .shstrtab (outNdx == 0 means it is not in .shstrtab). It return true if
-   it is successful; return false if en error occured.
-   */
-  bool
-OclElf::getShstrtabNdx(Elf64_Word& outNdx, const char* name)
+bool Elf::getShstrtabNdx(Elf64_Word& outNdx, const char* name)
 {
   outNdx = 0;
+  auto *section = _elfio.sections[name];
+  if (section == nullptr) {
+    LogElfError("failed: sections[%s] = nullptr", name);
+    return false;
+  }
 
   // .shstrtab must be created already
-  Elf_Scn* scn = elf_getscn(_e, _shstrtab_ndx);
-  if (scn == NULL) {
-    _err.xfail("OclElf::getShdrNdx() failed in elf_getscn for section .shstrtab - %s",
-        elf_errmsg(-1));
+  auto idx = section->get_name_string_offset();
+
+  if (idx <= 0) {
+    LogElfError("failed: idx=%d", idx);
     return false;
   }
-
-  Elf_Data* data = elf_getdata(scn, NULL);
-  if (data == NULL) {
-    _err.xfail("Elf::getShdrNdx() failed in elf_getdata for section .shstrtab - %s",
-        elf_errmsg(-1));
-    return false;
-  }
-
-  size_t name_sz = strlen(name);
-  uint64_t data_offset = 0;
-  do {
-    if (data->d_size > name_sz) {
-      char* base = (char*)data->d_buf;
-      char* end = base + (size_t)data->d_size;
-      char* b = base;
-      char* e;
-
-      while ( b != end) {
-        e = b;
-
-        // find the next 0 char
-        while ( (e != end) && (*e != 0) ) {
-          e++;
-        }
-
-        if ((e != end) && ((size_t)(e - b) == name_sz) &&
-            (strcmp(b, name) == 0)) {
-          outNdx = (Elf64_Word)((b - base) + data_offset);
-          return true;
-        }
-        b = e+1;
-      }
-    }
-    data_offset += data->d_size;
-  } while ((data = elf_getdata(scn, data)) != NULL);
-
+  outNdx = idx;
+  LogElfDebug("Succeeded: name=%s, idx=%d", name, idx);
   return true;
 }
 
-/*
-   newSection() assumes that .shstrtab and .strtab have been created already.
-   Return the pointer to the new section if success;  return 0 if fail.
-   */
-Elf_Scn*
-OclElf::newSection (
-    OclElf::oclElfSections id,
-    const void*            d_buf,
-    size_t                 d_size,
-    bool                   do_copy
+section* Elf::newSection (
+    Elf::ElfSections id,
+    const char*            d_buf,
+    size_t                 d_size
     )
 {
-  Elf64_Word sh_name;
-  if (!getShstrtabNdx(sh_name, oclElfSecDesc[id].name)) {
-    _err.xfail("OclElf::newSection() failed in getShstrtabNdx() for section %s",
-        oclElfSecDesc[id].name);
-    return NULL;
+  assert(ElfSecDesc[id].id == id &&
+      "struct ElfSecDesc should be ordered by id same as enum Elf::ElfSections");
+
+  section* sec = _elfio.sections[ElfSecDesc[id].name];
+  if (sec == nullptr) {
+    sec = _elfio.sections.add(ElfSecDesc[id].name);
+  }
+  if (sec == nullptr) {
+    LogElfError("failed: sections.add(%s) = nullptr", ElfSecDesc[id].name);
+    return sec;
   }
 
-  if (sh_name == 0) { // Need to create a new entry for this section name
-    Elf64_Xword offset;
-    if (!addSectionData(offset, SHSTRTAB, oclElfSecDesc[id].name,
-          strlen(oclElfSecDesc[id].name) + 1, false)) {
-      _err.xfail("OclElf::newSection() failed in getSectionData() for section %s",
-          oclElfSecDesc[id].name);
-      return NULL;
-    }
-    sh_name = (Elf64_Word)offset;
+  if (d_buf != nullptr && d_size > 0) {
+    sec->set_data(d_buf, d_size);
   }
 
-  // Create a new section
-  Elf_Scn* scn = elf_newscn(_e);
-  if (scn == NULL) {
-    _err.xfail("OclElf::newSection() failed in elf_newscn() - %s.",
-        elf_errmsg(-1));
-    return NULL;
+  if (!setupShdr(id, sec, (id == SYMTAB) ? _strtab_ndx : 0)) {
+    return nullptr;
   }
 
-  // If there is no data, skip creating Elf_Data
-  if ((d_buf != NULL) && (d_size != 0)) {
-    Elf_Data* data = createElfData(scn, id, 
-        const_cast<void*>(d_buf), (uint64_t)d_size, do_copy);
-    if (data == NULL) {
-      return NULL;
-    }
-  }
-
-  if (!createShdr(id, scn, sh_name, (id == SYMTAB) ? _strtab_ndx : 0)) {
-    return NULL;
-  }
-
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("OclElf::newSection(): elf_update() failed");
-    return NULL;
-  }
-
-  return scn;
+  LogElfDebug("succeeded: name=%s, d_buf=%p, d_size=%zu",
+              ElfSecDesc[id].name, d_buf, d_size);
+  return sec;
 }
 
-/*
-   Return  true:  success
-false:  fail
-*/
-bool
-OclElf::addSection (
-    oclElfSections id,
+bool Elf::addSection (
+    ElfSections id,
     const void*    d_buf,
-    size_t         d_size,
-    bool           do_copy
+    size_t         d_size
     )
 {
-  assert(oclElfSecDesc[id].id == id &&
-      "struct oclElfSecDesc should be ordered by id same as enum Elf::oclElfSections");
+  assert(ElfSecDesc[id].id == id &&
+      "struct ElfSecDesc should be ordered by id same as enum Elf::ElfSections");
 
-  /* If section is already in elf object, simply return its address */
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, id)) {
-    // Failed
-    return false;
-  }
+  section* sec = _elfio.sections[ElfSecDesc[id].name];
 
-  if (scn != NULL) {
-    Elf64_Xword sec_offset;
-    if (!addSectionData(sec_offset, id, d_buf, d_size, do_copy)) {
-      _err.xfail("OclElf::addSection() failed in addSectionData() for section name %s.",
-          oclElfSecDesc[id].name);
+  if (sec != nullptr) {
+    Elf_Xword sec_offset = 0;
+    if (!addSectionData(sec_offset, id, d_buf, d_size)) {
+      LogElfError("failed in addSectionData(name=%s, d_buf=%p, d_size=%zu)",
+                  ElfSecDesc[id].name, d_buf, d_size);
       return false;
     }
   }
   else {
-    scn = newSection(id, d_buf, d_size, do_copy);
-    if (scn == NULL) {
-      _err.xfail("OclElf::addSection() failed in newSection() for section name %s.",
-          oclElfSecDesc[id].name);
+    sec = newSection(id, static_cast<const char*>(d_buf), d_size);
+    if (sec == nullptr) {
+      LogElfError("failed in newSection(name=%s, d_buf=%p, d_size=%zu)",
+                  ElfSecDesc[id].name, d_buf, d_size);
       return false;
     }
   }
+
+  LogElfDebug("succeeded: name=%s, d_buf=%p, d_size=%zu", ElfSecDesc[id].name, d_buf, d_size);
   return true;
 }
 
-bool
-OclElf::addSymbol(
-    oclElfSections id,
+bool Elf::addSymbol(
+    ElfSections id,
     const char* symbolName,
     const void* buffer,
-    size_t size,
-    bool do_copy
+    size_t size
     )
 {
-  assert(oclElfSecDesc[id].id == id &&
-      "The order of oclElfSecDesc[] and Elf::oclElfSections mismatches.");
+  assert(ElfSecDesc[id].id == id &&
+      "The order of ElfSecDesc[] and Elf::ElfSections mismatches.");
 
-  const char* sectionName = oclElfSecDesc[id].name;
-
-  bool isFunction = ((id == OclElf::CAL) || (id == OclElf::DLL) || (id == OclElf::JITBINARY)) ? true : false;
-
-  // Get section index                 
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, id)) {
-    _err.xfail("OclElf::addSymbol() failed in getSectionDesc");
-    return false;
+  if(_symtab_ndx == SHN_UNDEF) {
+    logElfError("failed: _symtab_ndx = SHN_UNDEF");
+    return false; // No SYMTAB
   }
-  if (scn == NULL) {
+
+  const char* sectionName = ElfSecDesc[id].name;
+
+  bool isFunction = ((id == Elf::CAL) || (id == Elf::DLL) || (id == Elf::JITBINARY)) ? true : false;
+
+  // Get section index
+  section* sec = _elfio.sections[sectionName];
+  if (sec == nullptr) {
     // Create a new section.
-    if ((scn = newSection(id, NULL, 0, false)) == NULL) {
-      _err.xfail("OclElf::addSymbol() failed in newSection");
+    if ((sec = newSection(id, nullptr, 0)) == NULL) {
+      LogElfError("failed in newSection(name=%s)", sectionName);
       return false;
     }
   }
-  size_t sec_ndx = elf_ndxscn(scn);
+  size_t sec_ndx = sec->get_index();
   if (sec_ndx == SHN_UNDEF) {
-    _err.xfail("OclElf::addSymbol() failed in elf_ndxscn() - %s.",
-        elf_errmsg(-1));
+    logElfError("failed: sec->get_index() = SHN_UNDEF");
     return false;
   }
 
-  // Put symbolName into .strtab section 
-  Elf64_Xword strtab_offset;
-  if (!addSectionData(strtab_offset, STRTAB, (void*)symbolName,
-        strlen(symbolName)+1, true)) {
-    _err.xfail("OclElf::addSymbol() failed in addSectionData(.strtab)");
+  // Put symbolName into .strtab section
+  Elf_Xword strtab_offset = 0;
+  if (!addSectionData(strtab_offset, STRTAB, symbolName,
+        strlen(symbolName)+1)) {
+    LogElfError("failed in addSectionData(name=%s, symbolName=%s, length=%zu)",
+                ElfSecDesc[STRTAB].name, symbolName, strlen(symbolName)+1);
     return false;
   }
 
   // Put buffer into section
-  Elf64_Xword sec_offset = 0;
-  if ( (buffer != NULL) && (size != 0) ) {
-    if (!addSectionData(sec_offset, id, buffer, size, do_copy)) {
-      _err.xfail("OclElf::addSymbol() failed in addSectionData(%s)", sectionName);
+  Elf_Xword sec_offset = 0;
+  if ( (buffer != nullptr) && (size != 0) ) {
+    if (!addSectionData(sec_offset, id, buffer, size)) {
+      LogElfError("failed in addSectionData(name=%s, buffer=%p, size=%zu)",
+                  sectionName, buffer, size);
       return false;
     }
   }
 
-  bool retvalue;
-  Elf64_Xword symtab_offset;
-  if (_eclass == ELFCLASS64) {
-    Elf64_Sym* sym64 = (Elf64_Sym*)oclelf_calloc(sizeof(Elf64_Sym));
+  symbol_section_accessor symbol_writter(_elfio, _elfio.sections[_symtab_ndx]);
 
-    sym64->st_name  = (Elf64_Word)strtab_offset;
-    sym64->st_value = (Elf64_Addr)sec_offset;
-    sym64->st_size  = (Elf64_Xword)size;
-    sym64->st_info  = (isFunction)? STT_FUNC : STT_OBJECT;
-    sym64->st_shndx = (Elf64_Section)sec_ndx;
+  auto ret = symbol_writter.add_symbol(strtab_offset, sec_offset, size, 0,
+                     (isFunction)? STT_FUNC : STT_OBJECT, 0, sec_ndx);
 
-    retvalue = addSectionData(symtab_offset, SYMTAB, sym64, sizeof(Elf64_Sym), false);
-  }
-  else {  // _eclass == ELFCLASS32
-    Elf32_Sym* sym32 = (Elf32_Sym*)oclelf_calloc(sizeof(Elf32_Sym));
-
-    sym32->st_name  = (Elf32_Word)strtab_offset;
-    sym32->st_value = (Elf32_Addr)sec_offset;
-    sym32->st_size  = (Elf32_Word)size;
-    sym32->st_info  = (isFunction)? STT_FUNC : STT_OBJECT;
-    sym32->st_shndx = (Elf32_Section)sec_ndx;
-
-    retvalue = addSectionData(symtab_offset, SYMTAB, sym32, sizeof(Elf32_Sym), false);
-  }
-
-  if (!retvalue) {
-    _err.xfail("OclElf::addSymbol() failed in addSectionData(.symtab)");
-    return false;
-  }
-
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("OclElf::addSymbol() : elf_update() failed");
-    return false;
-  }
-
-  return true;
+  LogElfDebug("%s: sectionName=%s symbolName=%s strtab_offset=%lu, sec_offset=%lu, "
+      "size=%zu, sec_ndx=%zu, ret=%d", ret >= 1 ? "succeeded" : "failed",
+          sectionName, symbolName, strtab_offset, sec_offset, size, sec_ndx, ret);
+  return ret >= 1;
 }
 
-bool
-OclElf::getSymbol(
-    oclElfSections id,
+bool Elf::getSymbol(
+    ElfSections id,
     const char* symbolName,
     char** buffer,
     size_t* size
     ) const
 {
-  assert(oclElfSecDesc[id].id == id &&
-      "The order of oclElfSecDesc[] and Elf::oclElfSections mismatches.");
+  assert(ElfSecDesc[id].id == id &&
+      "The order of ElfSecDesc[] and Elf::ElfSections mismatches.");
+
   if (!size || !buffer || !symbolName) {
+    logElfError("failed: invalid parameters");
     return false;
   }
-  // Initialize the size and buffer to invalid data points.
-  (*size) = 0;
-  (*buffer) = NULL;
-  for (amd::Sym_Handle s = nextSymbol(NULL); s; s = nextSymbol(s)) {
-    amd::OclElf::SymbolInfo si;
-    // Continue if symbol information is not retrieved.
-    if (!getSymbolInfo(s, &si)) {
-      continue;
-    }
-    // Continue if the symbol is in the wrong section.
-    if (strcmp(oclElfSecDesc[id].name, si.sec_name)) {
-      continue;
-    }
-    // Continue if the symbol name doesn't match.
-    if (strcmp(symbolName, si.sym_name)) {
-      continue;
-    }
-    // Set the size and the address and return true.
-    (*size) = si.size;
-    (*buffer) = si.address;
-    return true;
+  if (_symtab_ndx == SHN_UNDEF) {
+    logElfError("failed: _symtab_ndx = SHN_UNDEF");
+    return false; // No SYMTAB
   }
-  return false;
+
+  *size = 0;
+  *buffer = nullptr;
+  symbol_section_accessor symbol_reader(_elfio, _elfio.sections[_symtab_ndx]);
+
+  Elf64_Addr value = 0;
+  Elf_Xword  size0 = 0;
+  unsigned char bind = 0;
+  unsigned char type = 0;
+  unsigned char other = 0;
+  Elf_Half sec_ndx = SHN_UNDEF;
+
+  // Search by symbolName, sectionName
+  bool ret = symbol_reader.get_symbol(symbolName, ElfSecDesc[id].name, value, size0,
+                    bind, type, sec_ndx, other);
+
+  if (ret) {
+    *buffer = const_cast<char*>(_elfio.sections[sec_ndx]->get_data() + value);
+    *size = static_cast<size_t>(size0);
+  }
+#if 0
+  // For debug purpose
+  LogElfDebug("%s: sectionName=%s symbolName=%s value=%lu, buffer=%p, size=%zu, sec_ndx=%u",
+              ret ? "succeeded" : "failed",
+              ElfSecDesc[id].name, symbolName, value, *buffer, *size, sec_ndx);
+#endif
+  return ret;
 }
 
-bool
-OclElf::addNote(
+bool Elf::addNote(
     const char* noteName,
     const char* noteDesc,
-    size_t nameSize,
     size_t descSize
     )
 {
-  if ((nameSize == 0 && descSize == 0)
-      || (nameSize != 0 && noteName == NULL)
-      || (descSize != 0 && noteDesc == NULL)) {
-    _err.xfail("OclElf::addNote() empty note");
+  if (descSize == 0
+      || noteName == nullptr
+      || (descSize != 0 && noteDesc == nullptr)) {
+    logElfError("failed: empty note");
     return false;
   }
-
-  const oclElfSections sid = NOTES;
-  assert(oclElfSecDesc[sid].id == sid &&
-      "The order of oclElfSecDesc[] and Elf::oclElfSections mismatches.");
 
   // Get section
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, sid)) {
-    _err.xfail("OclElf::addNote() failed in getSectionDesc");
-    return false;
-  }
-  if (scn == NULL) {
+  section* sec = _elfio.sections[ElfSecDesc[NOTES].name];
+  if (sec == nullptr) {
     // Create a new section.
-    if ((scn = newSection(sid, NULL, 0, false)) == NULL) {
-      _err.xfail("OclElf::addNote() failed in newSection");
+    if ((sec = newSection(NOTES, nullptr, 0)) == nullptr) {
+      logElfError("failed in newSection(NOTES)");
       return false;
     }
   }
 
-  // Put note into section
-  Elf64_Xword sec_offset = 0;
-  size_t bufsize = sizeof(Elf_Note) + nameSize + descSize;
-  char* buffer = (char*)oclelf_calloc(bufsize);
-  if (buffer == NULL) return false;
+  note_section_accessor note_writer(_elfio, sec);
+  // noteName is null terminated
+  note_writer.add_note(0, noteName, noteDesc, descSize);
 
-  Elf_Note* en = reinterpret_cast<Elf_Note*>(buffer);
-  en->n_namesz = nameSize;
-  en->n_descsz = descSize;
-  en->n_type = 0;
-  memcpy(buffer+sizeof(Elf_Note), noteName, nameSize);
-  memcpy(buffer+sizeof(Elf_Note)+nameSize, noteDesc, descSize);
-  if (!addSectionData(sec_offset, sid, buffer, bufsize, false/*not copy*/)) {
-    const char* sectionName = oclElfSecDesc[sid].name;
-    _err.xfail("OclElf::addNote() failed in addSectionData(%s)", sectionName);
-    return false;
-  }
-
-  if (elf_update(_e,  ELF_C_NULL) < 0) {
-    _err.xfail("OclElf::addNote() : elf_update() failed");
-    return false;
-  }
+  LogElfDebug("Succeed: add_note(%s, %s)", noteName, std::string(noteDesc, descSize).c_str());
 
   return true;
 }
 
-bool
-OclElf::getNote(
+bool Elf::getNote(
     const char* noteName,
     char** noteDesc,
     size_t *descSize
     )
 {
   if (!descSize || !noteDesc || !noteName) {
+    logElfError("failed: empty note");
     return false;
   }
-
-  const oclElfSections sid = NOTES;
-  assert(oclElfSecDesc[sid].id == sid &&
-      "The order of oclElfSecDesc[] and Elf::oclElfSections mismatches.");
 
   // Get section
-  Elf_Scn* scn;
-  if (!getSectionDesc(scn, sid)) {
-    _err.xfail("OclElf::getNote() failed in getSectionDesc");
+  section* sec = _elfio.sections[ElfSecDesc[NOTES].name];
+  if (sec == nullptr) {
+    logElfError("failed: null sections(NOTES)");
     return false;
   }
-  if (scn == NULL) {
-    _err.xfail("OclElf::getNote() failed: .note section not found");
-    return false;
-  }
-
-  // read the whole .note section
-  Elf_Data* data = elf_getdata(scn, 0);
 
   // Initialize the size and buffer to invalid data points.
   *descSize = 0;
-  *noteDesc = NULL;
+  *noteDesc = nullptr;
 
-  // look for the specified note
-  char* ptr = (char*)data->d_buf;
-  while (ptr < (char*)data->d_buf + data->d_size) {
-    Elf_Note* note = reinterpret_cast<Elf_Note*>(ptr);
+  note_section_accessor note_reader(_elfio, sec);
 
-    // Continue if the note name doesn't match.
-    if (strlen(noteName) != note->n_namesz
-        || strncmp(noteName, ptr+sizeof(Elf_Note), note->n_namesz) != 0) {
-      ptr += sizeof(Elf_Note) + note->n_namesz + note->n_descsz;
-      continue;
+  auto num = note_reader.get_notes_num();
+  Elf_Word type = 0;
+  void* desc = nullptr;
+  Elf_Word descSize1 = 0;
+
+  for (unsigned int i = 0; i < num; i++) {
+    std::string name;
+    if(note_reader.get_note(i, type, name, desc, descSize1)) {
+      if(name == noteName) {
+        *noteDesc = static_cast<char *>(desc);
+        *descSize = descSize1;
+        LogElfDebug("Succeed: get_note(%s, %s)", name.c_str(),
+                    std::string(*noteDesc, *descSize).c_str());
+        return true;
+      }
     }
-    // Set the size and the address and return true.
-    *descSize = note->n_descsz;
-    *noteDesc = ptr + sizeof(Elf_Note) + note->n_namesz;
-    return true;
   }
+
   return false;
 }
 
-  bool
-OclElf::dumpImage(char** buff, size_t* len)
+std::string Elf::generateUUIDV4() {
+  static std::random_device rd;
+  static std::mt19937 gen(rd());
+  static std::uniform_int_distribution<> dis(0, 15);
+  static std::uniform_int_distribution<> dis2(8, 11);
+  std::stringstream ss;
+  int i;
+  ss << std::hex;
+  for (i = 0; i < 8; i++) {
+    ss << dis(gen);
+  }
+  ss << "-";
+  for (i = 0; i < 4; i++) {
+    ss << dis(gen);
+  }
+  ss << "-4";
+  for (i = 0; i < 3; i++) {
+    ss << dis(gen);
+  }
+  ss << "-";
+  ss << dis2(gen);
+  for (i = 0; i < 3; i++) {
+    ss << dis(gen);
+  }
+  ss << "-";
+  for (i = 0; i < 12; i++) {
+    ss << dis(gen);
+  };
+  return ss.str();
+}
+
+bool Elf::dumpImage(char** buff, size_t* len)
 {
-  if (buff == NULL || len == NULL ) {
+  bool ret = false;
+  std::string dumpFile = _fname;
+  if (_fname.empty()) {
+    dumpFile = generateUUIDV4();
+    dumpFile += ".bin";
+    LogElfInfo("Generated temporary dump file: %s", dumpFile.c_str());
+  }
+
+  if (!_elfio.save(dumpFile)) {
+    LogElfError("failed in _elfio.save(%s)", dumpFile.c_str());
     return false;
   }
 
-  assert ((_fd != -1) && "_fd in Elf::dumpImage should be defined");
-
-  // Now, write the ELF into the file
-  if (elf_update(_e, ELF_C_WRITE) < 0) {
-    _err.xfail("OclElf::dumpImage() : elf_update() failed - %s",
-        elf_errmsg(-1));
-    return false;
+  if (buff != nullptr && len != nullptr) {
+    std::ifstream is;
+    is.open(dumpFile);  // open input file
+    if (!is.good()) {
+      LogElfError("failed in is.open(%s)", dumpFile.c_str());
+      return false;
+    }
+    ret = dumpImage(is, buff, len);
+    is.close();  // close file
   }
 
-  int buff_sz = xlseek(_err, _fname, _fd, 0, SEEK_END);
-  if (buff_sz == -1) {
+  if (_fname.empty()) {
+    std::remove(dumpFile.c_str());
+  }
+  LogElfInfo("%s: buff=%p, len=%zu\n", ret ? "Succeed" : "failed", *buff, *len);
+  return ret;
+}
+
+bool Elf::dumpImage(std::istream &is, char **buff, size_t *len) {
+  if (buff == nullptr || len == nullptr) {
     return false;
   }
-
-  /*
-     The memory is owned by caller, and caller assumes that the memory is new'ed.
-     So, use new instead of malloc
-     */
-  *buff = new char[buff_sz];
-  if (*buff == NULL) {
-    _err.xfail("OclElf::dumpImage() : new char[sz] failed");
-    return false;
-  }
-
-  if (xlseek(_err, _fname, _fd, 0, SEEK_SET) == -1) {
-    _err.xfail("OclElf::dumpImage() failed in xlseek()");   
-    delete [] *buff;
-    return false;
-  }
-
-  if (xread(_err, _fname, _fd, *buff, buff_sz) != buff_sz) {
-    _err.xfail("OclElf::dumpImage() failed in xread()");   
-    delete [] *buff;
-    *buff = 0;
-    return false;
-  }
-
-  *len = buff_sz;
+  is.seekg(0, std::ios::end);  // go to the end
+  *len = is.tellg();           // report location (this is the length)
+  is.seekg(0, std::ios::beg);  // go back to the beginning
+  *buff = new char[*len];      // allocate memory which should be deleted by caller
+  is.read(*buff, *len);        // read the whole file into the buffer
   return true;
 }
 
-  void*
-OclElf::oclelf_allocAndCopy(void* p, size_t sz)
+uint64_t Elf::getElfSize(const void *emi) {
+  const unsigned char eclass = static_cast<const unsigned char*>(emi)[EI_CLASS];
+  uint64_t total_size = 0;
+  if (eclass == ELFCLASS32) {
+    auto ehdr = static_cast<const Elf32_Ehdr*>(emi);
+    auto shdr = reinterpret_cast<const Elf32_Shdr*>(static_cast<const char*>(emi) + ehdr->e_shoff);
+
+    auto max_offset = ehdr->e_shoff;
+    total_size = max_offset + ehdr->e_shentsize * ehdr->e_shnum;
+
+    for (decltype(ehdr->e_shnum) i = 0; i < ehdr->e_shnum; ++i) {
+      auto cur_offset = shdr[i].sh_offset;
+      if (max_offset < cur_offset) {
+        max_offset = cur_offset;
+        total_size = max_offset;
+        if (SHT_NOBITS != shdr[i].sh_type) {
+          total_size += shdr[i].sh_size;
+        }
+      }
+    }
+  } else if (eclass == ELFCLASS64) {
+    auto ehdr = static_cast<const Elf64_Ehdr*>(emi);
+    auto shdr = reinterpret_cast<const Elf64_Shdr*>(static_cast<const char*>(emi) + ehdr->e_shoff);
+
+    auto max_offset = ehdr->e_shoff;
+    total_size = max_offset + ehdr->e_shentsize * ehdr->e_shnum;
+
+    for (decltype(ehdr->e_shnum) i = 0; i < ehdr->e_shnum; ++i) {
+      auto cur_offset = shdr[i].sh_offset;
+      if (max_offset < cur_offset) {
+        max_offset = cur_offset;
+        total_size = max_offset;
+        if (SHT_NOBITS != shdr[i].sh_type) {
+          total_size += shdr[i].sh_size;
+        }
+      }
+    }
+  }
+  return total_size;
+}
+
+bool Elf::isElfMagic(const char* p)
+{
+  if (p == nullptr || strncmp(p, ELFMAG, SELFMAG) != 0) {
+    return false;
+  }
+  return true;
+}
+
+bool Elf::isCALTarget(const char* p, signed char ec)
+{
+  if (!isElfMagic(p)) {
+    return false;
+  }
+
+#if !defined(WITH_LIGHTNING_COMPILER)
+  Elf64_Half machine;
+  if (ec == ELFCLASS32) {
+    machine = ((Elf32_Ehdr*)p)->e_machine;
+  }
+  else {
+    machine = ((Elf64_Ehdr*)p)->e_machine;
+  }
+
+  if ( (machine >= Elf::CAL_FIRST) && (machine <= Elf::CAL_LAST) ) {
+    return true;
+  }
+#endif // !defined(WITH_LIGHTNING_COMPILER)
+
+  return false;
+}
+
+void* Elf::xmalloc(const size_t len) {
+  void *retval = ::calloc(1, len);
+  if (retval == nullptr) {
+    logElfError("failed: out of memory");
+    return nullptr;
+  }
+  return retval;
+}
+
+void* Elf::allocAndCopy(void* p, size_t sz)
 {
   if (p == 0 || sz == 0) return p;
 
-  void* buf = xmalloc(_err, sz);
-  if (buf == 0) {
-    _err.xfail("OclElf::oclelf_allocAndCopy() failed");
+  void* buf = xmalloc(sz);
+  if (buf == nullptr) {
+    logElfError("failed: out of memory");
     return 0;
   }
 
@@ -1548,12 +1054,11 @@ OclElf::oclelf_allocAndCopy(void* p, size_t sz)
   return buf;
 }
 
-  void*
-OclElf::oclelf_calloc(size_t sz)
+void* Elf::calloc(size_t sz)
 {
-  void* buf = xmalloc(_err, sz);
-  if (buf == 0) {
-    _err.xfail("OclElf::oclelf_calloc() failed");
+  void* buf = xmalloc(sz);
+  if (buf == nullptr) {
+    logElfError("failed: out of memory");
     return 0;
   }
   _elfMemory.insert( std::make_pair(buf, sz));
@@ -1561,7 +1066,7 @@ OclElf::oclelf_calloc(size_t sz)
 }
 
   void
-OclElf::elfMemoryRelease()
+Elf::elfMemoryRelease()
 {
   for(EMemory::iterator it = _elfMemory.begin(); it != _elfMemory.end(); it++) {
     free(it->first);

@@ -554,7 +554,7 @@ bool ClBinary::setElfTarget() {
   static const uint32_t Target = 21;
   assert(((0xFFFF8000 & Target) == 0) && "ASIC target ID >= 2^15");
   uint16_t elf_target = static_cast<uint16_t>(0x7FFF & Target);
-  return elfOut()->setTarget(elf_target, amd::OclElf::CAL_PLATFORM);
+  return elfOut()->setTarget(elf_target, amd::Elf::CAL_PLATFORM);
   return true;
 }
 
@@ -630,7 +630,7 @@ void ClBinary::init(amd::option::Options* optionsObj, bool amdilRequired) {
   }
 }
 
-bool ClBinary::isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatform thePlatform) {
+bool ClBinary::isRecompilable(std::string& llvmBinary, amd::Elf::ElfPlatform thePlatform) {
   /* It is recompilable if there is llvmir that was generated for
      the same platform (CPU or GPU) and with the same bitness.
 
@@ -643,16 +643,16 @@ bool ClBinary::isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatfo
   }
 
   uint16_t elf_target;
-  amd::OclElf::oclElfPlatform platform;
+  amd::Elf::ElfPlatform platform;
   if (elfIn()->getTarget(elf_target, platform)) {
     if (platform == thePlatform) {
       return true;
     }
-    if ((platform == amd::OclElf::COMPLIB_PLATFORM) &&
-        (((thePlatform == amd::OclElf::CAL_PLATFORM) &&
+    if ((platform == amd::Elf::COMPLIB_PLATFORM) &&
+        (((thePlatform == amd::Elf::CAL_PLATFORM) &&
           ((elf_target == (uint16_t)EM_AMDIL) || (elf_target == (uint16_t)EM_HSAIL) ||
            (elf_target == (uint16_t)EM_HSAIL_64))) ||
-         ((thePlatform == amd::OclElf::CPU_PLATFORM) &&
+         ((thePlatform == amd::Elf::CPU_PLATFORM) &&
           ((elf_target == (uint16_t)EM_386) || (elf_target == (uint16_t)EM_X86_64))))) {
       return true;
     }
@@ -704,7 +704,7 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
     buildVerInfo.append("OpenCL 1.1" AMD_PLATFORM_INFO);
   }
 
-  elfOut_->addSection(amd::OclElf::COMMENT, buildVerInfo.data(), buildVerInfo.size());
+  elfOut_->addSection(amd::Elf::COMMENT, buildVerInfo.data(), buildVerInfo.size());
   switch (type) {
     case Program::TYPE_NONE: {
       elfOut_->setType(ET_NONE);
@@ -815,8 +815,8 @@ bool ClBinary::setElfIn() {
   if (binary_ == nullptr) {
     return false;
   }
-  elfIn_ = new amd::OclElf(ELFCLASSNONE, binary_, size_, nullptr, ELF_C_READ);
-  if ((elfIn_ == nullptr) || elfIn_->hasError()) {
+  elfIn_ = new amd::Elf(ELFCLASSNONE, binary_, size_, nullptr, amd::Elf::ELF_C_READ);
+  if ((elfIn_ == nullptr) || !elfIn_->isSuccessful()) {
     if (elfIn_) {
       delete elfIn_;
       elfIn_ = nullptr;
@@ -836,8 +836,8 @@ void ClBinary::resetElfIn() {
 }
 
 bool ClBinary::setElfOut(unsigned char eclass, const char* outFile) {
-  elfOut_ = new amd::OclElf(eclass, nullptr, 0, outFile, ELF_C_WRITE);
-  if ((elfOut_ == nullptr) || elfOut_->hasError()) {
+  elfOut_ = new amd::Elf(eclass, nullptr, 0, outFile, amd::Elf::ELF_C_WRITE);
+  if ((elfOut_ == nullptr) || !elfOut_->isSuccessful()) {
     if (elfOut_) {
       delete elfOut_;
       elfOut_ = nullptr;
@@ -857,12 +857,12 @@ void ClBinary::resetElfOut() {
 }
 
 bool ClBinary::loadLlvmBinary(std::string& llvmBinary,
-                              amd::OclElf::oclElfSections& elfSectionType) const {
+                              amd::Elf::ElfSections& elfSectionType) const {
   // Check if current binary already has LLVMIR
   char* section = nullptr;
   size_t sz = 0;
-  const amd::OclElf::oclElfSections SectionTypes[] = {amd::OclElf::LLVMIR, amd::OclElf::SPIR,
-                                                      amd::OclElf::SPIRV};
+  const amd::Elf::ElfSections SectionTypes[] = {amd::Elf::LLVMIR, amd::Elf::SPIR,
+                                                      amd::Elf::SPIRV};
 
   for (int i = 0; i < 3; ++i) {
     if (elfIn_->getSection(SectionTypes[i], &section, &sz) && section && sz > 0) {
@@ -880,7 +880,7 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
   char* options = nullptr;
   size_t sz;
   compileOptions.clear();
-  if (elfIn_->getSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
+  if (elfIn_->getSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
                         &options, &sz)) {
     if (sz > 0) {
       compileOptions.append(options, sz);
@@ -894,7 +894,7 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
   char* options = nullptr;
   size_t sz;
   linkOptions.clear();
-  if (elfIn_->getSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
+  if (elfIn_->getSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
                         &options, &sz)) {
     if (sz > 0) {
       linkOptions.append(options, sz);
@@ -905,21 +905,21 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
 }
 
 void ClBinary::storeCompileOptions(const std::string& compileOptions) {
-  elfOut()->addSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
+  elfOut()->addSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
                       compileOptions.c_str(), compileOptions.length());
 }
 
 void ClBinary::storeLinkOptions(const std::string& linkOptions) {
-  elfOut()->addSymbol(amd::OclElf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
+  elfOut()->addSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
                       linkOptions.c_str(), linkOptions.length());
 }
 
 bool ClBinary::isSPIR() const {
   char* section = nullptr;
   size_t sz = 0;
-  if (elfIn_->getSection(amd::OclElf::LLVMIR, &section, &sz) && section && sz > 0) return false;
+  if (elfIn_->getSection(amd::Elf::LLVMIR, &section, &sz) && section && sz > 0) return false;
 
-  if (elfIn_->getSection(amd::OclElf::SPIR, &section, &sz) && section && sz > 0) return true;
+  if (elfIn_->getSection(amd::Elf::SPIR, &section, &sz) && section && sz > 0) return true;
 
   return false;
 }
@@ -928,7 +928,7 @@ bool ClBinary::isSPIRV() const {
   char* section = nullptr;
   size_t sz = 0;
 
-  if (elfIn_->getSection(amd::OclElf::SPIRV, &section, &sz) && section && sz > 0) {
+  if (elfIn_->getSection(amd::Elf::SPIRV, &section, &sz) && section && sz > 0) {
     return true;
   }
   return false;

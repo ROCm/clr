@@ -28,8 +28,7 @@ target_include_directories(oclrocm
     ${PROJECT_SOURCE_DIR}/compiler/lib
     ${PROJECT_SOURCE_DIR}/compiler/lib/include
     ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common
-    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
-    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
+    ${PROJECT_SOURCE_DIR}/elf
     ${CMAKE_CURRENT_BINARY_DIR}
     ${ROCM_OCL_INCLUDES}
     $<TARGET_PROPERTY:hsa-runtime64::hsa-runtime64,INTERFACE_INCLUDE_DIRECTORIES>)

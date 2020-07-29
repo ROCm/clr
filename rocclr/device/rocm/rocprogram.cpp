@@ -24,9 +24,6 @@
 
 #include "utils/options.hpp"
 #include "rockernel.hpp"
-#if defined(USE_COMGR_LIBRARY)
-#include <gelf.h>
-#endif  // defined(USE_COMGR_LIBRARY)
 
 #include "utils/bif_section_labels.hpp"
 #include "amd_hsa_kernel_code.h"
@@ -112,7 +109,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   }
 
   // Both 32-bit and 64-bit are allowed!
-  if (!amd::isElfMagic(bin)) {
+  if (!amd::Elf::isElfMagic(bin)) {
     // Invalid binary.
     if (decryptedBin != nullptr) {
       delete[] decryptedBin;

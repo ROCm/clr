@@ -92,7 +92,7 @@ class ClBinary : public device::ClBinary {
     uint32_t target = static_cast<uint32_t>(dev().calTarget());
     assert(((0xFFFF8000 & target) == 0) && "ASIC target ID >= 2^15");
     uint16_t elf_target = (uint16_t)(0x7FFF & target);
-    return elfOut()->setTarget(elf_target, amd::OclElf::CAL_PLATFORM);
+    return elfOut()->setTarget(elf_target, amd::Elf::CAL_PLATFORM);
   }
 
   //! Clear elf out.

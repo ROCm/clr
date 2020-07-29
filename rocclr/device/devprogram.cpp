@@ -74,7 +74,7 @@ Program::Program(amd::Device& device, amd::Program& owner)
       flags_(0),
       clBinary_(nullptr),
       llvmBinary_(),
-      elfSectionType_(amd::OclElf::LLVMIR),
+      elfSectionType_(amd::Elf::LLVMIR),
       compileOptions_(),
       linkOptions_(),
       binaryElf_(nullptr),
@@ -579,7 +579,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
   const char* xLang = options->oVariables->XLang;
   if (xLang != nullptr) {
     if (strcmp(xLang,"asm") == 0) {
-      clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
+      clBinary()->elfOut()->addSection(amd::Elf::SOURCE, sourceCode.data(), sourceCode.size());
       return true;
     } else if (!strcmp(xLang,"cl")) {
       buildLog_ += "Unsupported language: \"" + std::string(xLang) + "\".\n";
@@ -684,14 +684,13 @@ bool Program::compileImplLC(const std::string& sourceCode,
     // Destroy the original LLVM binary, received after compilation
     delete[] binaryData;
 
-    elfSectionType_ = amd::OclElf::LLVMIR;
+    elfSectionType_ = amd::Elf::LLVMIR;
 
     if (clBinary()->saveSOURCE()) {
-      clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
+      clBinary()->elfOut()->addSection(amd::Elf::SOURCE, sourceCode.data(), sourceCode.size());
     }
     if (clBinary()->saveLLVMIR()) {
-      clBinary()->elfOut()->addSection(amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-                                       false);
+      clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size());
       // store the original compile options
       clBinary()->storeCompileOptions(compileOptions_);
     }
@@ -857,7 +856,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
     }
 
     if (result) {
-      result = (program->elfSectionType_ == amd::OclElf::LLVMIR);
+      result = (program->elfSectionType_ == amd::Elf::LLVMIR);
     }
 
     if (result) {
@@ -908,11 +907,10 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   // Destroy llvm binary, received after compilation
   delete[] binaryData;
 
-  elfSectionType_ = amd::OclElf::LLVMIR;
+  elfSectionType_ = amd::Elf::LLVMIR;
 
   if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-                                     false);
+    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size());
     // store the original link options
     clBinary()->storeLinkOptions(linkOptions_);
     // store the original compile options
@@ -1075,7 +1073,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
     case ACL_TYPE_ASM_TEXT: {
       char* section;
       size_t sz;
-      clBinary()->elfOut()->getSection(amd::OclElf::SOURCE, &section, &sz);
+      clBinary()->elfOut()->getSection(amd::Elf::SOURCE, &section, &sz);
 
       if (addCodeObjData(section, sz, AMD_COMGR_DATA_KIND_BC, "Assembly Text",
                          &inputs) != AMD_COMGR_STATUS_SUCCESS) {
@@ -2382,33 +2380,32 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   size_t dynamicSize = 0;
   size_t progvarsWriteSize = 0;
 
-  // Begin the Elf image from memory
-  Elf* e = elf_memory((char*)binary, binSize, nullptr);
-  if (elf_kind(e) != ELF_K_ELF) {
-    buildLog_ += "Error while reading the ELF program binary\n";
+  amd::Elf elfIn(ELFCLASSNONE, reinterpret_cast<const char *>(binary), binSize,
+                    nullptr, amd::Elf::ELF_C_READ);
+
+  if (!elfIn.isSuccessful()) {
+    buildLog_ += "Creating input amd::Elf object failed\n";
     return false;
   }
 
-  size_t numpHdrs;
-  if (elf_getphdrnum(e, &numpHdrs) != 0) {
-    buildLog_ += "Error while reading the ELF program binary\n";
-    return false;
-  }
+  auto numpHdrs = elfIn.getSegmentNum();
   bool metadata_found = false;
-  for (size_t i = 0; i < numpHdrs; ++i) {
-    GElf_Phdr pHdr;
-    if (gelf_getphdr(e, i, &pHdr) != &pHdr) {
+  for (unsigned int i = 0; i < numpHdrs; ++i) {
+    amd::ELFIO::segment* seg = nullptr;
+    if (!elfIn.getSegment(i, seg)) {
       continue;
     }
     // Look for the runtime metadata note
-    if (pHdr.p_type == PT_NOTE && pHdr.p_align >= sizeof(int)) {
+    if (seg->get_type() == PT_NOTE && seg->get_align() >= sizeof(int)) {
       // Iterate over the notes in this segment
-      address ptr = (address)binary + pHdr.p_offset;
-      address segmentEnd = ptr + pHdr.p_filesz;
+      address ptr = (address)binary + seg->get_offset();
+      address segmentEnd = ptr + seg->get_file_size();
 
       while (ptr < segmentEnd) {
-        Elf_Note* note = (Elf_Note*)ptr;
-        address name = (address)&note[1];
+        // see spec of note:
+        // https://docs.oracle.com/cd/E19683-01/816-1386/6m7qcoblj/index.html#chapter6-18048
+        auto note = reinterpret_cast<amd::Elf::ElfNote*>(ptr);
+        address name = reinterpret_cast<address>(&note[1]);
         address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
 
         if (note->n_type == 7 ||
@@ -2447,20 +2444,18 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
       }
     }
     // Accumulate the size of R & !X loadable segments
-    else if (pHdr.p_type == PT_LOAD && !(pHdr.p_flags & PF_X)) {
-      if (pHdr.p_flags & PF_R) {
-        progvarsTotalSize += pHdr.p_memsz;
+    else if (seg->get_type() == PT_LOAD && !(seg->get_flags() & PF_X)) {
+      if (seg->get_flags() & PF_R) {
+        progvarsTotalSize += seg->get_memory_size();
       }
-      if (pHdr.p_flags & PF_W) {
-        progvarsWriteSize += pHdr.p_memsz;
+      if (seg->get_flags() & PF_W) {
+        progvarsWriteSize += seg->get_memory_size();
       }
     }
-    else if (pHdr.p_type == PT_DYNAMIC) {
-      dynamicSize += pHdr.p_memsz;
+    else if (seg->get_type() == PT_DYNAMIC) {
+      dynamicSize += seg->get_memory_size();
     }
   }
-
-  elf_end(e);
 
   if (!metadata_found) {
     buildLog_ += "Error: runtime metadata section not present in ELF program binary\n";

@@ -103,7 +103,7 @@ class Program : public amd::HeapObject {
 
   ClBinary* clBinary_;                          //!< The CL program binary file
   std::string llvmBinary_;                      //!< LLVM IR binary code
-  amd::OclElf::oclElfSections elfSectionType_;  //!< LLVM IR binary code is in SPIR format
+  amd::Elf::ElfSections elfSectionType_;        //!< LLVM IR binary code is in SPIR format
   std::string compileOptions_;                  //!< compile/build options.
   std::string linkOptions_;                     //!< link options.
                                                 //!< the option arg passed in to clCompileProgram(), clLinkProgram(),
@@ -324,7 +324,7 @@ class Program : public amd::HeapObject {
   //! Finds the total size of all global variables in the program
   bool FindGlobalVarSize(void* binary, size_t binSize);
 
-  bool isElf(const char* bin) const { return amd::isElfMagic(bin); }
+  bool isElf(const char* bin) const { return amd::Elf::isElfMagic(bin); }
 
   virtual bool defineGlobalVar(const char* name, void* dptr) {
     ShouldNotReachHere();

@@ -43,7 +43,6 @@
 
 #include <link.h>
 #include <time.h>
-#include <elf.h>
 #ifndef DT_GNU_HASH
 #define DT_GNU_HASH 0x6ffffef5
 #endif  // DT_GNU_HASH

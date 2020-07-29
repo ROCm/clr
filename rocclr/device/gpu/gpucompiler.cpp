@@ -226,7 +226,7 @@ bool NullProgram::compileImpl(const std::string& src,
   }
 
   llvmBinary_.assign(reinterpret_cast<const char*>(ir), len);
-  elfSectionType_ = amd::OclElf::LLVMIR;
+  elfSectionType_ = amd::Elf::LLVMIR;
   aclBinaryFini(bin);
 
   for (size_t i = 0; i < headerFileNames.size(); ++i) {
@@ -241,10 +241,10 @@ bool NullProgram::compileImpl(const std::string& src,
 #endif
 
   if (clBinary()->saveSOURCE()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::SOURCE, sourceCode.data(), sourceCode.size());
+    clBinary()->elfOut()->addSection(amd::Elf::SOURCE, sourceCode.data(), sourceCode.size());
   }
   if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::OclElf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
+    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
                                      false);
     // store the original compile options
     clBinary()->storeCompileOptions(compileOptions_);
@@ -272,11 +272,11 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   aclSections_0_8 spirFlag;
   _acl_type_enum_0_8 aclTypeBinaryUsed;
   if (std::string::npos != options->clcOptions.find("--spirv") ||
-      elfSectionType_ == amd::OclElf::SPIRV) {
+      elfSectionType_ == amd::Elf::SPIRV) {
     spirFlag = aclSPIRV;
     aclTypeBinaryUsed = ACL_TYPE_SPIRV_BINARY;
   } else if (std::string::npos != options->clcOptions.find("--spir") ||
-             elfSectionType_ == amd::OclElf::SPIR) {
+             elfSectionType_ == amd::Elf::SPIR) {
     spirFlag = aclSPIR;
     aclTypeBinaryUsed = ACL_TYPE_SPIR_BINARY;
   } else {

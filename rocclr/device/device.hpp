@@ -887,11 +887,11 @@ class ClBinary : public amd::HeapObject {
   virtual bool setElfTarget();
 
   // class used in for loading images in new format
-  amd::OclElf* elfIn() { return elfIn_; }
+  amd::Elf* elfIn() { return elfIn_; }
 
   // classes used storing and loading images in new format
-  amd::OclElf* elfOut() { return elfOut_; }
-  void elfOut(amd::OclElf* v) { elfOut_ = v; }
+  amd::Elf* elfOut() { return elfOut_; }
+  void elfOut(amd::Elf* v) { elfOut_ = v; }
 
   //! Create and save ELF binary image
   bool createElfBinary(bool doencrypt, Program::type_t type);
@@ -908,7 +908,7 @@ class ClBinary : public amd::HeapObject {
   //! Loads llvmir binary from OCL binary file
   bool loadLlvmBinary(
       std::string& llvmBinary,                     //!< LLVMIR binary code
-      amd::OclElf::oclElfSections& elfSectionType  //!< LLVMIR binary is in SPIR format
+      amd::Elf::ElfSections& elfSectionType  //!< LLVMIR binary is in SPIR format
       ) const;
 
   //! Loads compile options from OCL binary file
@@ -928,7 +928,7 @@ class ClBinary : public amd::HeapObject {
   );
 
   //! Check if the binary is recompilable
-  bool isRecompilable(std::string& llvmBinary, amd::OclElf::oclElfPlatform thePlatform);
+  bool isRecompilable(std::string& llvmBinary, amd::Elf::ElfPlatform thePlatform);
 
   void saveOrigBinary(const char* origBinary, size_t origSize) {
     origBinary_ = origBinary;
@@ -1024,8 +1024,8 @@ class ClBinary : public amd::HeapObject {
   int encryptCode_;  //!< Encryption Code for input binary (0 for not encrypted)
 
  protected:
-  amd::OclElf* elfIn_;        //!< ELF object for input ELF binary
-  amd::OclElf* elfOut_;       //!< ELF object for output ELF binary
+  amd::Elf* elfIn_;        //!< ELF object for input ELF binary
+  amd::Elf* elfOut_;       //!< ELF object for output ELF binary
   BinaryImageFormat format_;  //!< which binary image format to use
 };
 
