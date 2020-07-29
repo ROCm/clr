@@ -109,8 +109,6 @@ target_include_directories(rocclrpal
     ${PROJECT_SOURCE_DIR}/compiler/lib
     ${PROJECT_SOURCE_DIR}/compiler/lib/include
     ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common
-    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/common
-    ${PROJECT_SOURCE_DIR}/compiler/lib/loaders/elf/utils/libelf
     ${CMAKE_CURRENT_BINARY_DIR}
     ${ROCM_OCL_INCLUDES}
     ${ROCR_INCLUDES})

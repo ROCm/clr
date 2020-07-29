@@ -38,7 +38,7 @@ typedef struct {
      SymInfo[NDX_HEADER]   :  SymbolInfo for kernel header
      SymInfo[NDX_AMDIL]    :  SymbolInfo for kernel's amdil
    */
-  amd::OclElf::SymbolInfo SymInfo[NDX_LAST];
+  amd::Elf::SymbolInfo SymInfo[NDX_LAST];
 } ElfSymbol_t;
 }
 
@@ -58,12 +58,12 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
   // Target should be 15 bit maximum. Should check this somewhere.
   uint32_t target = static_cast<uint32_t>(dev().calTarget());
   uint16_t elf_target;
-  amd::OclElf::oclElfPlatform platform;
+  amd::Elf::ElfPlatform platform;
   if (!elfIn()->getTarget(elf_target, platform)) {
     LogError("The OCL binary image loading failed: incorrect format");
     return false;
   }
-  if (platform == amd::OclElf::COMPLIB_PLATFORM) {
+  if (platform == amd::Elf::COMPLIB_PLATFORM) {
     // BIF 3.0
     uint32_t flag;
     aclTargetInfo tgtInfo = aclGetTargetInfo("amdil", dev().hwInfo()->targetName_, NULL);
@@ -76,7 +76,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       return false;
     }
   } else {
-    if (((platform != amd::OclElf::CAL_PLATFORM) || ((uint32_t)target != elf_target))) {
+    if (((platform != amd::Elf::CAL_PLATFORM) || ((uint32_t)target != elf_target))) {
       LogError("The OCL binary image loading failed: different target");
       return false;
     }
@@ -109,10 +109,10 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
    */
   bool usedebugil = program.getCompilerOptions()->oVariables->UseDebugIL;
 
-  for (amd::Sym_Handle sym = elfIn()->nextSymbol(NULL); sym != NULL;
-       sym = elfIn()->nextSymbol(sym)) {
-    amd::OclElf::SymbolInfo symInfo;
-    if (!elfIn()->getSymbolInfo(sym, &symInfo)) {
+  int num = elfIn()->getSymbolNum();
+  for (int index = 0; index < num; index++) {
+    amd::Elf::SymbolInfo symInfo;
+    if (!elfIn()->getSymbolInfo(index, &symInfo)) {
       LogError("LoadKernelFromElf: getSymbolInfo() fails");
       return false;
     }
@@ -131,7 +131,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
     FName.append("_kernel");  // make the kernel's linkage name
 
     ElfSymbol_t* elfsymbol = tempObj.functionNameMap[FName];
-    amd::OclElf::SymbolInfo* sinfo = (elfsymbol != NULL) ? &(elfsymbol->SymInfo[0]) : NULL;
+    amd::Elf::SymbolInfo* sinfo = (elfsymbol != NULL) ? &(elfsymbol->SymInfo[0]) : NULL;
 
     // Add info for this elf symbol into tempobj's functionNameMap[]
     int index = -1;
@@ -168,7 +168,6 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       if (elfsymbol == NULL) {
         elfsymbol = new ElfSymbol_t();
         sinfo = &(elfsymbol->SymInfo[0]);
-        ::memset(sinfo, 0, NDX_LAST * sizeof(amd::OclElf::SymbolInfo));
         tempObj.functionNameMap[FName] = elfsymbol;
 
         elfsymbol->IsKernel = isKernel;
@@ -182,7 +181,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
     char* section;
     size_t sz;
 
-    if (elfIn_->getSection(amd::OclElf::ILDEBUG, &section, &sz)) {
+    if (elfIn_->getSection(amd::Elf::ILDEBUG, &section, &sz)) {
       // Get debugIL
       programil.append(section, sz);
     } else {
@@ -221,10 +220,9 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       ElfSymbol_t* elfsymbol = tempObj.functionNameMap[kn];
       if (elfsymbol == NULL) {
         elfsymbol = new ElfSymbol_t();
-        ::memset(elfsymbol->SymInfo, 0, NDX_LAST * sizeof(amd::OclElf::SymbolInfo));
         tempObj.functionNameMap[kn] = elfsymbol;
       }
-      amd::OclElf::SymbolInfo* sinfo = &(elfsymbol->SymInfo[0]);
+      amd::Elf::SymbolInfo* sinfo = &(elfsymbol->SymInfo[0]);
 
       elfsymbol->IsKernel = true;
       sinfo[NDX_AMDIL].address = const_cast<char*>(ilstr.data());
@@ -248,7 +246,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
         fmetadata.append(it.first);
         fmetadata.append("_fmetadata");
 
-        if (!elfOut()->addSymbol(amd::OclElf::RODATA, fmetadata.c_str(),
+        if (!elfOut()->addSymbol(amd::Elf::RODATA, fmetadata.c_str(),
                                  elfsymbol->SymInfo[NDX_METADATA].address,
                                  elfsymbol->SymInfo[NDX_METADATA].size)) {
           LogError("AddSymbol() failed to add fmetadata");
@@ -257,7 +255,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
       }
       continue;
     }
-    amd::OclElf::SymbolInfo* sinfo = &(elfsymbol->SymInfo[0]);
+    amd::Elf::SymbolInfo* sinfo = &(elfsymbol->SymInfo[0]);
     std::string FName = it.first;
 
     // For this kernel, get the demangled kernel name, which is used to identify each kernel.
@@ -297,7 +295,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
         }
 
         assert((func->metadata_.end_ == 0) && "ILFunc init failed");
-        amd::OclElf::SymbolInfo* si = &(sym->SymInfo[0]);
+        amd::Elf::SymbolInfo* si = &(sym->SymInfo[0]);
         if (si[NDX_METADATA].size > 0) {
           std::string meta(si[NDX_METADATA].address, si[NDX_METADATA].size);
           if (!program.parseFuncMetadata(meta, 0, std::string::npos)) {
@@ -383,7 +381,7 @@ bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel
   if (saveAMDIL() && (ilSource.size() > 0)) {
     // Save IL (this is the per-kernel IL)
     std::string ilName = "__OpenCL_" + name + "_amdil";
-    if (!elfOut()->addSymbol(amd::OclElf::ILTEXT, ilName.c_str(), ilSource.data(),
+    if (!elfOut()->addSymbol(amd::Elf::ILTEXT, ilName.c_str(), ilSource.data(),
                              ilSource.size())) {
       LogError("AddElfSymbol failed");
       return false;
@@ -391,7 +389,7 @@ bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel
 
     std::string metaName = "__OpenCL_" + name + "_metadata";
     // Save metadata symbols in .rodata
-    if (!elfOut()->addSymbol(amd::OclElf::RODATA, metaName.c_str(), metadata.data(),
+    if (!elfOut()->addSymbol(amd::Elf::RODATA, metaName.c_str(), metadata.data(),
                              metadata.size())) {
       LogError("AddElfSymbol failed");
       return false;
@@ -408,7 +406,7 @@ bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel
     if (!kernelMetaStored) {
       std::string metaName = "__OpenCL_" + name + "_metadata";
       // Save metadata symbols in .rodata
-      if (!elfOut()->addSymbol(amd::OclElf::RODATA, metaName.c_str(), metadata.data(),
+      if (!elfOut()->addSymbol(amd::Elf::RODATA, metaName.c_str(), metadata.data(),
                                metadata.size())) {
         LogError("AddSymbol failed");
         return false;
@@ -422,7 +420,7 @@ bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel
       delete[] isacode;
       return false;
     }
-    if (!elfOut()->addSymbol(amd::OclElf::CAL, kernelName.c_str(), isacode, binarySize)) {
+    if (!elfOut()->addSymbol(amd::Elf::CAL, kernelName.c_str(), isacode, binarySize)) {
       LogError("AddElfSymbol failed");
       return false;
     }
@@ -446,7 +444,7 @@ bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel
     // VERSION_1
     kHeader.version_ = VERSION_CURRENT;
 
-    if (!elfOut()->addSymbol(amd::OclElf::RODATA, headerName.c_str(), &kHeader, sizeof(kHeader))) {
+    if (!elfOut()->addSymbol(amd::Elf::RODATA, headerName.c_str(), &kHeader, sizeof(kHeader))) {
       LogError("AddElfSymbol failed");
       return false;
     }
@@ -458,10 +456,10 @@ bool ClBinary::loadGlobalData(Program& program) {
   const char __OpenCL_[] = "__OpenCL_";
   const char _global[] = "_global";
 
-  for (amd::Sym_Handle sym = elfIn()->nextSymbol(NULL); sym != NULL;
-       sym = elfIn()->nextSymbol(sym)) {
-    amd::OclElf::SymbolInfo symInfo;
-    if (!elfIn()->getSymbolInfo(sym, &symInfo)) {
+  int num = elfIn()->getSymbolNum();
+  for (int index = 0; index < num; index++) {
+    amd::Elf::SymbolInfo symInfo;
+    if (!elfIn()->getSymbolInfo(index, &symInfo)) {
       LogError("LoadGlobalDataFromElf: getSymbolInfo() fails");
       return false;
     }
@@ -495,7 +493,7 @@ bool ClBinary::storeGlobalData(const void* globalData, size_t dataSize, uint ind
   std::stringstream glbName;
   glbName << "__OpenCL_" << index << "_global";
 
-  if (!elfOut()->addSymbol(amd::OclElf::RODATA, glbName.str().c_str(), globalData, dataSize)) {
+  if (!elfOut()->addSymbol(amd::Elf::RODATA, glbName.str().c_str(), globalData, dataSize)) {
     LogError("addSymbol() failed");
     return false;
   }

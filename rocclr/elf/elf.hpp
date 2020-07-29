@@ -24,13 +24,14 @@
 #include <map>
 
 #include "top.hpp"
-#include "elf_utils.hpp"
 #if !defined(WITH_LIGHTNING_COMPILER)
 #include "caltarget.h" // using CALtargetEnum
 #endif // !defined(WITH_LIGHTNING_COMPILER)
 
-#include "libelf.h"
-#include "gelf.h"
+#include "elfio/elfio.hpp"
+#include <sstream>
+using amd::ELFIO::Elf64_Ehdr;
+using amd::ELFIO::Elf64_Shdr;
 
 // Not sure where to put these in the libelf
 #define AMD_BIF2 2 // AMD BIF Version 2.0
@@ -47,6 +48,9 @@
 #endif
 #ifndef EM_AMDIL
 #define EM_AMDIL 0x4154
+#endif
+#ifndef EM_AMDIL_64
+#define EM_AMDIL_64 0x4155
 #endif
 #ifndef EM_ATI_CALIMAGE_BINARY
 #define EM_ATI_CALIMAGE_BINARY 125
@@ -66,19 +70,11 @@
 #ifndef ELFOSABI_CALIMAGE
 #define ELFOSABI_CALIMAGE 100
 #endif
+
 namespace amd {
+using namespace amd::ELFIO;
 
-// Test: is it ELF file (with a given bitness) ?
-bool isElfHeader(const char* p, signed char ec);
-bool isElfMagic(const char* p);
-
-// Test: is it ELF for CAL ?
-bool isCALTarget(const char* p, signed char ec);
-
-// Symbol handle
-typedef struct symbol_handle *Sym_Handle;
-
-class OclElf
+class Elf
 {
 public:
     enum {
@@ -86,7 +82,7 @@ public:
            CPU_BASE = 2001,
            CPU_FEATURES_FIRST = 0,  // Never generated, but keep it for simplicity.
            CPU_FEATURES_LAST  = 0xF // This should be consistent with cpudevice.hpp
-        } oclElfBase;
+        } ElfBase;
 
     typedef enum {
         // NOTE!!! Never remove an entry or change the order.
@@ -102,7 +98,7 @@ public:
         CPU_LAST       = CPU_FEATURES_LAST  + CPU_BASE,
 
         OCL_TARGETS_LAST,
-    } oclElfTargets;
+    } ElfTargets;
 
     typedef enum {
         CAL_PLATFORM = 0,
@@ -110,7 +106,7 @@ public:
         COMPLIB_PLATFORM = 2,
         LC_PLATFORM = 3,
         LAST_PLATFORM = 4
-    } oclElfPlatform;
+    } ElfPlatform;
 
     typedef enum {
         LLVMIR = 0,
@@ -144,71 +140,93 @@ public:
         SPIR,
         SPIRV,
         RUNTIME_METADATA,
-        OCL_ELF_SECTIONS_LAST
-    } oclElfSections;
+        ELF_SECTIONS_LAST
+    } ElfSections;
 
-    typedef struct {
-        char*     sec_name;    //!   section name
-        char*     sec_addr;    //!   section address
-        uint64_t  sec_size;    //!   section size
-        char*     sym_name;    //!   symbol name
-        char*     address;     //!   address of corresponding to symbol data
-        uint64_t  size;        //!   size of data corresponding to symbol
-    } SymbolInfo;
+    typedef enum {
+        ELF_C_NULL = 0,
+        ELF_C_CLR,
+        ELF_C_FDDONE,
+        ELF_C_FDREAD,
+        ELF_C_RDWR,
+        ELF_C_READ,
+        ELF_C_SET,
+        ELF_C_WRITE,
+        ELF_C_NUM
+    } ElfCmd;
+
+    struct SymbolInfo {
+        std::string sec_name;  //!   section name
+        const char* sec_addr;  //!   section address
+        uint64_t    sec_size;  //!   section size
+        std::string sym_name;  //!   symbol name
+        const char* address;   //!   address of corresponding to symbol data
+        uint64_t    size;      //!   size of data corresponding to symbol
+        SymbolInfo():
+          sec_name(), sec_addr(nullptr), sec_size(0), sym_name(), address(nullptr), size(0) { }
+
+        SymbolInfo(const char* sename,  const char* seaddr, uint64_t sesize, const char* syname,
+                   const char* syaddr, uint64_t sysize): sec_name(sename), sec_addr(seaddr),
+                   sec_size(sesize), sym_name(syname), address(syaddr), size(sysize) { }
+    };
+
+    /*
+     * Note descriptors.
+     * Follow https://docs.oracle.com/cd/E19683-01/816-1386/6m7qcoblj/index.html#chapter6-18048
+     */
+    struct ElfNote {
+      uint32_t  n_namesz;    /* Length of note's name. */
+      uint32_t  n_descsz;    /* Length of note's value. */
+      uint32_t  n_type;      /* Type of note. */
+    };
 
 private:
-
-    // file descriptor 
-    int        _fd;
+    // elfio object for reading and writting
+    elfio _elfio;
 
     // file name
-    const char* _fname;
-
-    // pointer to libelf structure
-    ::Elf*     _e;
-
-    // Error Object
-    mutable OclElfErr  _err;
+    std::string _fname;
 
     // Bitness of the Elf object.
     unsigned char _eclass;
 
     // Raw ELF bytes in memory from which Elf object is initialized
-    // The memory is owned by the client, not this OclElf object !
+    // The memory is owned by the client, not this Elf object !
     const char* _rawElfBytes;
     uint64_t    _rawElfSize;
 
     // Read, write, or read and write for this Elf object
-    const Elf_Cmd  _elfCmd;
+    const ElfCmd  _elfCmd;
 
     // Memory management
     typedef std::map<void*, size_t> EMemory;
     EMemory  _elfMemory;
 
-    // Indexes of .shstrtab and .strtab (for convenience)
-    Elf64_Word    _shstrtab_ndx;
-    Elf64_Word    _strtab_ndx;
+    Elf64_Word    _shstrtab_ndx; // Indexes of .shstrtab. Must be valid.
+    Elf64_Word    _strtab_ndx; // Indexes of .strtab. Must be valid.
+    Elf64_Word    _symtab_ndx; // Indexes of .symtab. May be SHN_UNDEF.
+
+    bool _successful;
 
 public: 
 
     /*
-       OclElf object can be created for reading or writing (it could be created for
+       Elf object can be created for reading or writing (it could be created for
        both reading and writing, which is not supported yet at this time). Currently,
        it has two forms:
 
-        1)  OclElf(eclass, rawElfBytes, rawElfSize, 0, ELF_C_READ)
+        1)  Elf(eclass, rawElfBytes, rawElfSize, 0, ELF_C_READ)
 
-            To load ELF from raw bytes in memory and generate OclElf object. And this
+            To load ELF from raw bytes in memory and generate Elf object. And this
             object is for reading only.
 
-        2)  OclElf(eclass,  NULL, 0, elfFileName|NULL, ELF_C_WRITE)
+        2)  Elf(eclass,  nullptr, 0, elfFileName|nullptr, ELF_C_WRITE)
 
             To create an ELF for writing and save it into a file 'elfFileName' (if it
-            is NULL, the OclElf will create a temporary file and set it to 'elfFileName'.
+            is nullptr, the Elf will create a stream in memory.
 
-            Since we need to read the ELF into memory, this file 'elfFileName' is created
-            with both read and write, so that the runtime can use dumpImage() to get ELF
-            raw bytes by reading this file.
+            Since we need to read the ELF into memory, the runtime can use dumpImage() to get ELF
+            raw bytes by reading this file/stream.
 
         'eclass' is ELF's bitness and it must be the same as the eclass of ELF to
         be loaded (for example, rawElfBytes).
@@ -218,209 +236,193 @@ public:
            true  : on success;
            false : on error.
      */
-    OclElf (
+    Elf (
         unsigned char eclass,       // eclass for this ELF
         const char*   rawElfBytes,  // raw ELF bytes to be loaded
         uint64_t      rawElfSize,   // size of the ELF raw bytes
         const char*   elfFileName,  // File to save this ELF.
-        Elf_Cmd       elfcmd        // ELF_C_READ/ELF_C_WRITE
+        ElfCmd        elfcmd        // ELF_C_READ/ELF_C_WRITE
         );
 
-    ~OclElf ();
+    ~Elf ();
 
     /*
-       dumpImage() will finalize the ELF and write it into the file. It then reads
-       it into the memory; and returns it via <buff, len>.
-
-       The memory pointed by buff is owned by OclElf object.
+     * dumpImage() will finalize the ELF and write it into the file/stream. It then reads
+     * it into the memory; and returns it via <buff, len>.
+     * The memory pointed by buff is new'ed in Elf and should be deleted by caller
+     * if dumpImage() succeeds.
      */
     bool dumpImage(char** buff, size_t* len);
+    bool dumpImage(std::istream& is, char** buff, size_t* len);
 
     /*
-       addSection() is used to create a single ELF section with data <d_buf, d_size>. If
-       do_copy is true, the OclElf object will make a copy of d_buf and uses that copy to
-       create an ELF section.
-
-       When setting do_copy = false,  the caller should make sure that <d_buf, d_size> will
-       be unchanged and available during the lifetime of this OclElf object; ie before
-       calling dumpImage().
+     * If the session doesn't exist, create a new ELF section with data <d_buf, d_size>;
+     * otherwise, append the data.
      */
     bool addSection (
-        oclElfSections id,
-        const void*    d_buf,
-        size_t         d_size,
-        bool           do_copy = true
+        ElfSections id,
+        const void* d_buf,
+        size_t      d_size
         );
 
     /*
-       getSection() will return the whole section in <dst, sz>.
-
-       The memory pointed by <dst, sz> is owned by the OclElf object.
+     * Return the whole section in <dst, sz>.
+     * The memory pointed by <dst, sz> is owned by the Elf object.
      */
-    bool getSection(oclElfSections id, char** dst, size_t* sz) const;
-
+    bool getSection(ElfSections id, char** dst, size_t* sz) const;
 
     /*
-        addSymbol() adds a symbol with name 'symbolName' and data <buffer, size>
-        into the ELF.  'id' indicates which section  <buffer, size> will go
-        into.  The meaning of 'do_copy' is the same as addSection().
+     * Add a symbol with name 'symbolName' and data <buffer, size>
+     * into the ELF.  'id' indicates which section  <buffer, size> will go
+     * into.
      */
     bool addSymbol(
-        oclElfSections id,             // Section in which symbol is added
+        ElfSections id,             // Section in which symbol is added
         const char*    symbolName,     // Name of symbol
         const void*    buffer,         // Symbol's data
-        size_t         size,           // Symbol's size
-        bool           do_copy = true  // If true, add a copy of buffer into the section
-        );       
+        size_t         size           // Symbol's size
+        );
 
     /*
-     * getSymbol() will return the data associated with
-     * the symbol from the Elf.
-     *
-     * The memory pointed by <buffer, size> is owned by the OclElf object
+     * Return the data associated with the symbol from the Elf.
+     * The memory pointed by <buffer, size> is owned by the Elf object
      */
     bool getSymbol(
-        oclElfSections id,        // Section in which symbol is in
+        ElfSections id,        // Section in which symbol is in
         const char* symbolName,   // Name of the symbol to retrieve
         char** buffer,            // Symbol's data
         size_t* size              // Symbol's size
         ) const;
 
+    /* Return number of symbols in SYMTAB section */
+    unsigned int getSymbolNum() const;
+
+    /* Return SymbolInfo of the index-th symbol in SYMTAB section */
+    bool getSymbolInfo(unsigned int index, SymbolInfo* symInfo) const;
+
     /*
-       nextSymbol() and getSymbolInfo() use the symbol handle to access symbols
-
-       For example:
-          for( Sym_Handle s = nextSymbol(NULL); s ; s = nextSymbol(s)) {
-              SymbolInfo si;
-              if (!getSymbolInfo(s, &si)) {
-                  Error;
-              }
-              use si
-          }
-
-          where nextSymbol(NULL) will return the first symbol.
-    
-       Note that memory space pointed to by si is owned by OclElf.
+     * Adds a note with name 'noteName' and description "noteDesc"
+     * into the .note section of ELF. Length of note description is "descSize'.
      */
-    bool getSymbolInfo(Sym_Handle sym, SymbolInfo* symInfo) const;
-    Sym_Handle nextSymbol(Sym_Handle symhandle) const;
+    bool addNote(const char* noteName, const char* noteDesc, size_t descSize);
 
     /*
-        Adds a note with name 'noteName' and description "noteDesc"
-        into the .note section of ELF. Length of note name is 'nameSize'.
-        Length of note description is "descSize'.
-    */
-    bool addNote(const char* noteName, const char* noteDesc,
-                 size_t nameSize, size_t descSize);
-
-    /*
-        Returns the description of a note whose name is 'noteName'
-        in 'noteDesc'.
-        Returns the length of the description in 'descSize'.
-    */
+     * Return the description of a note whose name is 'noteName'
+     * in 'noteDesc'.
+     * Return the length of the description in 'descSize'.
+     * The memory pointed by <noteDesc, descSize> is owned by the Elf object.
+     */
     bool getNote(const char* noteName, char** noteDesc, size_t *descSize);
 
 
-    /*
-       Get/set machine and platform (target) for which elf is built.
-     */
-    bool getTarget(uint16_t& machine, oclElfPlatform& platform);
-    bool setTarget(uint16_t machine, oclElfPlatform platform);
+    /* Get/set machine and platform (target) for which elf is built */
+    bool getTarget(uint16_t& machine, ElfPlatform& platform) const;
+    bool setTarget(uint16_t machine, ElfPlatform platform);
 
-    /*
-       Get/set elf type field from header
-     */
+    /* Get/set elf type field from header */
     bool getType(uint16_t &type);
     bool setType(uint16_t  type);
 
-    /*
-       Get/set elf flag field from header.
-     */
+    /* Get/set elf flag field from header */
     bool getFlags(uint32_t &flag);
     bool setFlags(uint32_t  flag);
 
     /*
-       Clear() will return the status of OclElf to just after ctor() is invoked.
-       However, it will not regenerate a temporary file name like ctor() does. 
-
-       It is useful when the ELF content needs to be discarded for some reason.
+     * Clear() will return the status of Elf to just after ctor() is invoked.
+     * It is useful when the ELF content needs to be discarded for some reason.
      */
     bool Clear();
 
-    bool              hasError() { return (_err.getOclElfError())[0] != 0; }
-    const char*      getErrMsg() { return _err.getOclElfError(); }
     unsigned char  getELFClass() { return _eclass; }
 
-    bool isHsaCo() const { return (_eclass == ELFCLASS32) ?
-      (elf32_getehdr(_e)->e_machine == EM_AMDGPU) : (elf64_getehdr(_e)->e_machine == EM_AMDGPU); }
+    bool isSuccessful() { return _successful; }
 
+    bool isHsaCo() const { return _elfio.get_machine() == EM_AMDGPU; }
+
+    /* Return number of segments */
+    unsigned int getSegmentNum() const;
+
+    /* Return segment at index */
+    bool getSegment(const unsigned int index, segment*& seg);
+
+    /* Return size of elf file */
+    static uint64_t getElfSize(const void *emi);
+
+    /* is it ELF */
+    static bool isElfMagic(const char* p);
+
+    // is it ELF for CAL ?
+    static bool isCALTarget(const char* p, signed char ec);
 private:
 
     /* Initialization */
     bool Init();
 
     /*
-       Initialize ELF object by creating ELF header and key sections such as
-      .shstrtab, .strtab, and .symtab.
+     * Initialize ELF object by creating ELF header and key sections such as
+     * .shstrtab, .strtab, and .symtab.
      */
     bool InitElf ();
 
-    // Wraper for creating a section header and Elf_Data
-    bool createShdr (
-        oclElfSections id,
-        Elf_Scn*&      scn,
-        Elf64_Word     shname,
-        Elf64_Word     shlink = 0
+    /* Setup a section header */
+    bool setupShdr (
+        ElfSections id,
+        section*    section,
+        Elf64_Word  shlink = 0
         );
-
-    Elf_Data* createElfData(
-        Elf_Scn*&      scn,
-        oclElfSections id,
-        void*          d_buf,
-        uint64_t       d_size,
-        bool           do_copy
-        );
-
 
     /*
-       Create a new section (id) with data <d_buf, d_size>. If do_copy is true,
-       make a copy of d_buf and create a new section with that copy.
-
-       Return the valid Elf_Scn on success; return NULL on error.
-
-       Note that newSection() uses Section Header's size, so make sure elf_update()
-       is invoked properly before invoking newSection().
+     * Create a new data into an existing section.
+     * And the section is returned in 'sec'.
      */
-    Elf_Scn* newSection (
-        oclElfSections id,
-        const void*    d_buf,
-        size_t         d_size,
-        bool           do_copy = true  // if true, add a copy of d_buf
+    bool createElfData(
+        section*&   sec,
+        ElfSections id,
+        const char* d_buf,
+        size_t      d_size
         );
 
     /*
-        Add a new data into a section by creating a new data descriptor.
-        And the new data's offset is returned in 'outOffset'.
+     * Assumes that .shstrtab and .strtab have been created already.
+     * Create a new section (id) with data <d_buf, d_size>.
+     * Return the valid section* on success; nullptr on error.
+     */
+    section* newSection (
+        ElfSections id,
+        const char* d_buf,
+        size_t      d_size
+        );
+
+    /*
+     * Add a new data into the existing section.
+     * And the new data's offset is returned in 'outOffset'.
      */
     bool addSectionData(
-        Elf64_Xword&   outOffset,
-        oclElfSections id,
+        Elf_Xword&   outOffset,
+        ElfSections id,
         const void*    buffer,
-        size_t         size,
-        bool           do_copy=true  // if true, add a copy of buffer
+        size_t         size
         );
 
-    // Return Elf_Data for this section 'id'
-    bool getSectionData(Elf_Data*& data, oclElfSections id) const;
-
-    // Return Elf_Scn for this section 'id'
-    bool getSectionDesc(Elf_Scn*& scn, oclElfSections id) const;
-
-    // 
+    /*
+     * Return an index to the .shstrtab in 'outNdx' for "name" if it
+     * is in .shstrtab (outNdx == 0 means it is not in .shstrtab).
+     */
     bool getShstrtabNdx(Elf64_Word& outNdx, const char*);
 
-    void* oclelf_allocAndCopy(void* p, size_t sz);
-    void* oclelf_calloc(size_t sz);
+    /*
+     * Generate UUID string
+     */
+    static std::string generateUUIDV4();
+
+    /*
+     * Return newly-allocated memory or nullptr
+     * The allocated memory is guaranteed to be initialized to zero.
+     */
+    void* xmalloc(const size_t len);
+
+    void* allocAndCopy(void* p, size_t sz);
+    void* calloc(size_t sz);
 
     void elfMemoryRelease();
 };

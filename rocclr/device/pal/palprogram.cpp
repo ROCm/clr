@@ -32,9 +32,6 @@
 #include "hsa.h"
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
-#if defined(USE_COMGR_LIBRARY)
-#include "gelf.h"
-#endif  // defined(USE_COMGR_LIBRARY)
 
 namespace pal {
 

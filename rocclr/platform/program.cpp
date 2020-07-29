@@ -88,7 +88,7 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
 int32_t Program::addDeviceProgram(Device& device, const void* image, size_t length,
                                  bool make_copy, amd::option::Options* options,
                                  const amd::Program* same_prog) {
-  if (image != NULL &&  !amd::isElfMagic((const char*)image)) {
+  if (image != nullptr &&  !amd::Elf::isElfMagic((const char*)image)) {
     if (device.settings().useLightning_) {
       return CL_INVALID_BINARY;
     }
