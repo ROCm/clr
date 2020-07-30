@@ -532,8 +532,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.maxConstantBufferSize_ = info_.maxMemAllocSize_;
   info_.maxConstantArgs_ = MaxConstArguments;
 
-  info_.sramEccEnabled_ = palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs;
-
   // Image support fields
   if (settings().imageSupport_) {
     info_.imageSupport_ = CL_TRUE;
@@ -578,7 +576,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (hwInfo()->xnackEnabled_) {
       ::strcat(info_.name_, "+xnack");
     }
-    if (info_.sramEccEnabled_) {
+    if (palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs) {
       ::strcat(info_.name_, "+sram-ecc");
     }
     ::strcpy(info_.targetId_, "amdgcn-amd-amdhsa--");

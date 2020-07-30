@@ -1170,14 +1170,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
   codegenOptions.insert(codegenOptions.end(),
       options->clangOptions.begin(), options->clangOptions.end());
 
-  // TODO: SRAM ECC option will be removed when Target ID feature is fully implemented
-  if (device().info().sramEccEnabled_) {
-    codegenOptions.push_back("-msram-ecc");
-  }
-  else {
-    codegenOptions.push_back("-mno-sram-ecc");
-  }
-
   // Set whole program mode
   codegenOptions.push_back("-mllvm");
   codegenOptions.push_back("-amdgpu-internalize-symbols");
@@ -2476,8 +2468,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   }
 
   if (!createKernelMetadataMap()) {
-    buildLog_ +=
-      "Error: create kernel metadata map using COMgr\n";
+    buildLog_ += "Error: create kernel metadata map using COMgr\n";
     return false;
   }
 
@@ -2562,7 +2553,7 @@ bool Program::getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_com
     sym_info.sym_type = sym_type;
     sym_info.var_names = var_names;
 
-  /* Iterate through list of symbols */
+    /* Iterate through list of symbols */
     status = amd::Comgr::iterate_symbols(dataObject, getSymbolFromModule, &sym_info);
     if (status != AMD_COMGR_STATUS_SUCCESS) {
       buildLog_ += "COMGR:  Cannot iterate comgr symbols \n";
