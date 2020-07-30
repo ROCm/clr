@@ -970,21 +970,8 @@ bool Device::populateOCLDeviceConstants() {
   info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
   info_.gfxipStepping_ = deviceInfo_.gfxipStepping_;
 
-  // TODO: gfxipVersion_ and sramEccEnabled_ will be removed when Target ID
-  // feature is fully implemented
+  // TODO: gfxipVersion_ will be removed when Target ID feature is fully implemented
   info_.gfxipVersion_ = info_.gfxipMajor_ * 100 + info_.gfxipMinor_ * 10 + info_.gfxipStepping_;
-
-  if ((info_.gfxipMajor_ == 9) && (info_.gfxipMinor_ == 0)) {
-    switch (info_.gfxipStepping_) {
-    case 6:
-    case 8:
-      info_.sramEccEnabled_ = true;
-      break;
-    default:
-      info_.sramEccEnabled_ = false;
-      break;
-    }
-  }
 
   char device_name[64] = {0};
   if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
