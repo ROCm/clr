@@ -368,7 +368,7 @@ class VirtualGPU : public device::VirtualDevice {
   uint16_t dispatchPacketHeader_;
 
   //!< bit-vector representing the CU mask. Each active bit represents using one CU
-  const std::vector<uint32_t>& cuMask_;
+  const std::vector<uint32_t> cuMask_;
   amd::CommandQueue::Priority priority_; //!< The priority for the hsa queue
 };
 
