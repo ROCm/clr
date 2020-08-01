@@ -492,7 +492,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   // NOTE: need multiple packets to dispatch the performance counter
   //       packet blob of the legacy devices (gfx8)
   for (uint i = 0; i < size; i++, index++, packet++) {
-    AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask]; 
+    AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
     *aql_loc = *packet;
     if (header != 0) {
       packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
@@ -503,7 +503,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
             "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
             std::this_thread::get_id(), gpu_queue_,
             header, extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
-            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, 
+            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER,
                            HSA_PACKET_HEADER_WIDTH_BARRIER),
             extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
                            HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),

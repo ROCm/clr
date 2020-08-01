@@ -131,14 +131,14 @@ class CommandQueue : public RuntimeObject {
         context_(context),
         cuMask_(cuMask){}
 
-  Properties properties_;             //!< Queue properties
-  uint rtCUs_;                        //!< The number of used RT compute units
-  Priority priority_;                 //!< Queue priority
-  Monitor queueLock_;                 //!< Lock protecting the queue
-  Monitor lastCmdLock_;               //!< Lock protecting the last queued command
-  Device& device_;                    //!< The device
-  SharedReference<Context> context_;  //!< The context of this command queue
-  const std::vector<uint32_t>& cuMask_;  //!< The CU mask
+  Properties properties_;               //!< Queue properties
+  uint rtCUs_;                          //!< The number of used RT compute units
+  Priority priority_;                   //!< Queue priority
+  Monitor queueLock_;                   //!< Lock protecting the queue
+  Monitor lastCmdLock_;                 //!< Lock protecting the last queued command
+  Device& device_;                      //!< The device
+  SharedReference<Context> context_;    //!< The context of this command queue
+  const std::vector<uint32_t> cuMask_;  //!< The CU mask
 
  private:
   //! Disable copy constructor
