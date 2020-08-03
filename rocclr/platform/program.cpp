@@ -67,10 +67,6 @@ Program::~Program() {
     }
   }
 
-  if (std::get<1>(mmap_) > 0) {
-    amd::Os::MemoryUnmapFile(std::get<0>(mmap_), std::get<1>(mmap_));
-  }
-
   delete symbolTable_;
   //! @todo Make sure we have destroyed all CPU specific objects
 }
@@ -86,9 +82,10 @@ const Symbol* Program::findSymbol(const char* kernelName) const {
 }
 
 int32_t Program::addDeviceProgram(Device& device, const void* image, size_t length,
-                                 bool make_copy, amd::option::Options* options,
-                                 const amd::Program* same_prog) {
-  if (image != nullptr &&  !amd::Elf::isElfMagic((const char*)image)) {
+                                  bool make_copy, amd::option::Options* options,
+                                  const amd::Program* same_prog, amd::Os::FileDesc fdesc,
+                                  size_t foffset, std::string uri) {
+  if (image != NULL &&  !amd::Elf::isElfMagic((const char*)image)) {
     if (device.settings().useLightning_) {
       return CL_INVALID_BINARY;
     }
@@ -167,8 +164,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
 
         ::memcpy(image_copy, image, length);
         memory = image_copy;
-      }
-      else {
+      } else {
         memory = static_cast<const uint8_t*>(image);
       }
 
@@ -183,7 +179,8 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
       same_dev_prog = same_dev_prog_map_.begin()->second;
     }
 
-    if (!program->setBinary(reinterpret_cast<const char*>(memory), length, same_dev_prog)) {
+    if (!program->setBinary(reinterpret_cast<const char*>(memory), length, same_dev_prog,
+                            fdesc, foffset, uri)) {
       delete program;
       return CL_INVALID_BINARY;
     }

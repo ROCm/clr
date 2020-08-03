@@ -716,8 +716,69 @@ void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName
   return;
 }
 
+
+bool Os::GetURIFromMemory(const void* image, size_t image_size, std::string& uri) {
+  pid_t pid = getpid();
+  std::ostringstream uri_stream;
+  //Create a unique resource indicator to the memory address
+  uri_stream << "memory://" << pid
+             << "#offset=0x" << std::hex << (uintptr_t)image << std::dec
+             << "&size=" << image_size;
+  uri = uri_stream.str();
+  return true;
+}
+
+bool Os::CloseFileHandle(FileDesc fdesc) {
+  // Return false if close system call fails
+  if(close(fdesc) < 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Os::GetFileHandle(const char* fname, FileDesc* fd_ptr, size_t* sz_ptr) {
+  if ((fd_ptr == nullptr) || (sz_ptr == nullptr)) {
+    return false;
+  }
+
+  // open system function call, return false on fail
+  struct stat stat_buf;
+  *fd_ptr = open(fname, O_RDONLY);
+  if (*fd_ptr < 0) {
+    return false;
+  }
+
+  //Retrieve stat info and size
+  if (fstat(*fd_ptr, &stat_buf) != 0) {
+    close(*fd_ptr);
+    return false;
+  }
+
+  *sz_ptr = stat_buf.st_size;
+
+  return true;
+}
+
+bool Os::MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const void** mmap_ptr) {
+  if (fdesc <= 0) {
+    return false;
+  }
+
+  // If the offset is not aligned then align it
+  // and recalculate the new size
+  if (foffset > 0) {
+    size_t old_foffset = foffset;
+    foffset = alignUp(foffset, pageSize());
+    fsize += (foffset - old_foffset);
+  }
+
+  *mmap_ptr = mmap(NULL, fsize, PROT_READ, MAP_SHARED, fdesc, foffset);
+  return true;
+}
+
 bool Os::MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size) {
-  if(munmap(const_cast<void*>(mmap_ptr), mmap_size) != 0) {
+  if (munmap(const_cast<void*>(mmap_ptr), mmap_size) != 0) {
     return false;
   }
 
@@ -735,7 +796,7 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
     return false;
   }
 
-  if(fstat(fd, &stat_buf) != 0) {
+  if (fstat(fd, &stat_buf) != 0) {
     close(fd);
     return false;
   }

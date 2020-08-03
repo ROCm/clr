@@ -238,7 +238,8 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
   return vec;
 }
 
-bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
+bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+                              amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(WITH_COMPILER_LIB)
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
@@ -735,7 +736,8 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
   return true;
 }
 
-bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
+bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+                                  amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   hsa_agent_t agent;
   agent.handle = 1;

@@ -70,7 +70,8 @@ struct SymbolLoweredName {
 //! A program object for a specific device.
 class Program : public amd::HeapObject {
  public:
-  typedef std::pair<const void*, size_t> binary_t;
+  typedef std::pair<const void* /* binary_image */, size_t /* binary size */> binary_t;
+  typedef std::pair<amd::Os::FileDesc /* file_desc */, size_t /* file_offset */> finfo_t;
   typedef std::unordered_map<std::string, Kernel*> kernels_t;
   // type of the program
   typedef enum {
@@ -186,12 +187,15 @@ class Program : public amd::HeapObject {
   //! Return the binary image.
   inline const binary_t binary() const;
   inline binary_t binary();
+  inline finfo_t BinaryFd() const;
+  inline std::string BinaryURI() const;
 
   //! Returns the CL program binary file
   ClBinary* clBinary() { return clBinary_; }
   const ClBinary* clBinary() const { return clBinary_; }
 
-  bool setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog = nullptr);
+  bool setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog = nullptr,
+                 amd::Os::FileDesc fdesc = -1, size_t foffset = 0, std::string uri = std::string());
 
   type_t type() const { return type_; }
 
@@ -279,7 +283,8 @@ class Program : public amd::HeapObject {
   virtual bool createBinary(amd::option::Options* options) = 0;
 
   //! Initialize Binary (used only for clCreateProgramWithBinary()).
-  bool initClBinary(const char* binaryIn, size_t size);
+  bool initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc fdesc = -1,
+                    size_t foffset = 0, std::string uri = std::string());
 
   //! Initialize Binary
   virtual bool initClBinary();
@@ -293,7 +298,9 @@ class Program : public amd::HeapObject {
   virtual const aclTargetInfo& info(const char* str = "") = 0;
 
   virtual bool setKernels(
-    amd::option::Options* options, void* binary, size_t binSize) { return true; }
+    amd::option::Options* options, void* binary, size_t binSize,
+    amd::Os::FileDesc fdesc = -1, size_t foffset = 0,
+    std::string uri = std::string()) { return true; }
 
   //! Returns all the options to be appended while passing to the compiler library
   std::vector<std::string> ProcessOptions(amd::option::Options* options);

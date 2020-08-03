@@ -264,7 +264,8 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   return true;
 }
 
-bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
+bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+                              amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(WITH_COMPILER_LIB)
   // Stop compilation if it is an offline device - HSA runtime does not
   // support ISA compiled offline
@@ -467,7 +468,8 @@ bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t
   return true;
 }
 
-bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize) {
+bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+                                  amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
@@ -488,7 +490,9 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  // Load the code object.
+  // Load the code object, either with file descriptor and offset
+  // or binary image and binary size with URI
+  // or binary image and binary size
   status = hsa_code_object_reader_create_from_memory(binary, binSize, &hsaCodeObjectReader_);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object Reader create failed: ";
