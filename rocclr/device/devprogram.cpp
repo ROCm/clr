@@ -1089,10 +1089,12 @@ bool Program::linkImplLC(amd::option::Options* options) {
     case ACL_TYPE_ISA: {
       amd::Comgr::destroy_data_set(inputs);
       binary_t isaBinary = binary();
+      finfo_t isaFdesc = BinaryFd();
       if (GPU_DUMP_CODE_OBJECT) {
         dumpCodeObject(std::string{(const char*)isaBinary.first, isaBinary.second});
       }
-      return setKernels(options, const_cast<void *>(isaBinary.first), isaBinary.second);
+      return setKernels(options, const_cast<void *>(isaBinary.first), isaBinary.second,
+                        isaFdesc.first, isaFdesc.second, BinaryURI());
       break;
     }
     default:
@@ -1852,7 +1854,8 @@ bool isSPIRVMagicL(const void* Image, size_t Length) {
 }
 
 // ================================================================================================
-bool Program::initClBinary(const char* binaryIn, size_t size) {
+bool Program::initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc fdesc,
+                           size_t foffset, std::string uri) {
   if (!initClBinary()) {
     DevLogError("Init CL Binary failed \n");
     return false;
@@ -1947,12 +1950,13 @@ bool Program::initClBinary(const char* binaryIn, size_t size) {
 
   clBinary()->setFlags(encryptCode);
 
-  return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr));
+  return clBinary()->setBinary(bin, sz, (decryptedBin != nullptr), fdesc, foffset, uri);
 }
 
 // ================================================================================================
-bool Program::setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog) {
-  if (!initClBinary(binaryIn, size)) {
+bool Program::setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog,
+                        amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
+  if (!initClBinary(binaryIn, size, fdesc, foffset, uri)) {
     DevLogError("Init CL Binary failed \n");
     return false;
   }
@@ -2187,6 +2191,8 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
 aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options) {
   aclType continueCompileFrom = ACL_TYPE_DEFAULT;
   binary_t binary = this->binary();
+  finfo_t finfo = this->BinaryFd();
+  std::string uri = this->BinaryURI();
   // If the binary already exists
   if ((binary.first != nullptr) && (binary.second > 0)) {
 #if defined(WITH_COMPILER_LIB)
@@ -2207,7 +2213,8 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 
     // Saving binary in the interface class,
     // which also load compile & link options from binary
-    setBinary(static_cast<const char*>(binary.first), binary.second);
+    setBinary(static_cast<const char*>(binary.first), binary.second, nullptr,
+              finfo.first, finfo.second, uri);
 
     // Calculate the next stage to compile from, based on sections in binaryElf_;
     // No any validity checks here

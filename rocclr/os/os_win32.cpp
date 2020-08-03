@@ -822,6 +822,50 @@ void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName
   return;
 }
 
+bool Os::GetURIFromMemory(const void* image, size_t image_size, std::string& uri_) {
+  // Not implemented yet for windows
+  uri = std::string();
+  return true;
+}
+
+bool Os::CloseFileHandle(FileDesc fdesc) {
+  // return false on failure
+  if (CloseHandle(fdesc) < 0) {
+    return false;
+  }
+  return true;
+}
+
+bool GetFileHandle(const char* fname, FileDesc* fd_ptr, size_t* sz_ptr) {
+  if ((fd_ptr == nullptr) || (sz_ptr == nullptr)) {
+    return false;
+  }
+
+  *fd_ptr = INVALID_HANDLE_VALUE;
+  *fd_ptr = CreateFileA(fname, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                        FILE_ATTRIBUTE_READONLY, NULL);
+  if (*fd_ptr == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  *sz_ptr = GetFileSize(*fd_ptr, NULL);
+  return true;
+}
+
+bool MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const void** mmap_ptr) {
+  if (fdesc < 0) {
+    return false;
+  }
+
+  *mmap_ptr = INVALID_HANDLE_VALUE;
+  *mmap_ptr = CreateFileMappingA(fdesc, NULL, PAGE_READONLY, 0, 0, NULL);
+  if (*mmap_ptr == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  return true;
+}
+
 bool Os::MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size) {
   if(!UnmapViewOfFile(mmap_ptr)) {
     return false;

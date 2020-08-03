@@ -869,9 +869,9 @@ class ClBinary : public amd::HeapObject {
 
   void init(amd::option::Options* optionsObj, bool amdilRequired = false);
 
-  /** called only in loading image routines,
-      never called in storing routines */
-  bool setBinary(const char* theBinary, size_t theBinarySize, bool allocated = false);
+  /** called only in loading image routines, never storing routines */
+  bool setBinary(const char* theBinary, size_t theBinarySize, bool allocated = false,
+                 amd::Os::FileDesc fd = -1, size_t foffset = 0, std::string uri = std::string());
 
   //! setin elfIn_
   bool setElfIn();
@@ -900,8 +900,10 @@ class ClBinary : public amd::HeapObject {
   bool decryptElf(const char* binaryIn, size_t size, char** decryptBin, size_t* decryptSize,
                   int* encryptCode);
 
-  //! Returns the binary pair for the abstraction layer
+  //! Returns the binary pair, fdesc pair, uri for the abstraction layer
   Program::binary_t data() const;
+  Program::finfo_t Datafd() const;
+  std::string DataURI() const;
 
   //! Loads llvmir binary from OCL binary file
   bool loadLlvmBinary(
@@ -1016,6 +1018,10 @@ class ClBinary : public amd::HeapObject {
   size_t size_;         //!< binary size
   uint flags_;          //!< CL binary object flags
 
+  amd::Os::FileDesc fdesc_; //!< file descriptor
+  size_t foffset_;          //!< file offset
+  std::string uri_;         //!< memory URI
+
   const char* origBinary_;  //!< original binary data
   size_t origSize_;         //!< original binary size
 
@@ -1032,6 +1038,20 @@ inline const Program::binary_t Program::binary() const {
     return {(const void*)0, 0};
   }
   return clBinary()->data();
+}
+
+inline std::string Program::BinaryURI() const {
+  if (clBinary() == NULL) {
+    return std::string();
+  }
+  return clBinary()->DataURI();
+}
+
+inline Program::finfo_t Program::BinaryFd() const {
+  if (clBinary() == NULL) {
+    return {-1, 0};
+  }
+  return clBinary()->Datafd();
 }
 
 inline Program::binary_t Program::binary() {

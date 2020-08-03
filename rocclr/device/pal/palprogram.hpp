@@ -195,7 +195,9 @@ class HSAILProgram : public device::Program {
 
   virtual const aclTargetInfo& info(const char* str = "");
 
-  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize) override;
+  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
+                          amd::Os::FileDesc fdesc = -1, size_t foffset = 0,
+                          std::string uri = std::string()) override;
 
   //! Destroys CPU allocations in the code segment
   void DestroySegmentCpuAccess() const {

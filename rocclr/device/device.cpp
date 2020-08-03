@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-present Advanced Micro Devices, Inc.
+/* Copyright (c) 2008-presenet Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -759,7 +759,12 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
 
 Program::binary_t ClBinary::data() const { return {binary_, size_}; }
 
-bool ClBinary::setBinary(const char* theBinary, size_t theBinarySize, bool allocated) {
+Program::finfo_t ClBinary::Datafd() const { return {fdesc_, foffset_}; }
+
+std::string ClBinary::DataURI() const { return uri_; }
+
+bool ClBinary::setBinary(const char* theBinary, size_t theBinarySize, bool allocated,
+                         amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
   release();
 
   size_ = theBinarySize;
@@ -767,6 +772,11 @@ bool ClBinary::setBinary(const char* theBinary, size_t theBinarySize, bool alloc
   if (allocated) {
     flags_ |= BinaryAllocated;
   }
+
+  fdesc_ = fdesc;
+  foffset_ = foffset;
+  uri_ = uri;
+
   return true;
 }
 
