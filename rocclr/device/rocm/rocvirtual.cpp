@@ -1451,6 +1451,9 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
                                         size, cmd.isEntireMemory());
       }
       else {
+          // Sync the current queue, since P2P staging uses the device queues for transfer
+          releaseGpuMemoryFence();
+
           amd::ScopedLock lock(dev().P2PStageOps());
           Memory* dstStgMem = static_cast<Memory*>(
               dev().P2PStage()->getDeviceMemory(*cmd.source().getContext().devices()[0]));
