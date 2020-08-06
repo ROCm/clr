@@ -35,27 +35,11 @@ Run these commands:
 ```bash
 cd "$OPENCL_DIR"
 mkdir -p build; cd build
-cmake -DUSE_COMGR_LIBRARY=ON -DCMAKE_PREFIX_PATH="$ROCclr_DIR/build" ..
+cmake -DUSE_COMGR_LIBRARY=ON -DCMAKE_PREFIX_PATH="$ROCclr_DIR/build;/opt/rocm/" ..
 make -j$(nproc)
 ```
 
-For release build, add "-DCMAKE_BUILD_TYPE=Release" to the cmake command line.
-
-### Obsolete
-These building instructions should be used for ROCm 3.5 release branch and earlier.
-
-```bash
-cd $OPENCL_DIR
-mkdir -p build; cd build
-cmake -DVDI_DIR="$ROCclr_DIR" -DLIBVDI_STATIC_DIR="$ROCclr_DIR/build" ..
-make -j$(nproc)
-```
-
-Previously, the environment variable VDI_DIR was defined in [ROCclr](https://github.com/ROCm-Developer-Tools/ROCclr). We did not use environment variable ROCclr_DIR. The cmake command was:
-
-```bash
-cmake -DVDI_DIR="$VDI_DIR" -DLIBVDI_STATIC_DIR="$VDI_DIR/build" ..
-```
+Note: For release build, add "-DCMAKE_BUILD_TYPE=Release" to the cmake command line.
 
 ---
 OpenCL™ is registered Trademark of Apple
