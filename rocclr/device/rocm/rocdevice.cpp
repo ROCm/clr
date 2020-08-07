@@ -288,8 +288,8 @@ bool NullDevice::init() {
     bool isOnline = false;
     // Check if the particular device is online
     for (unsigned int i = 0; i < devices.size(); i++) {
-      if (static_cast<NullDevice*>(devices[i])->deviceInfo_.hsaDeviceId_ ==
-          DeviceInfo[id].hsaDeviceId_) {
+      if (::strcmp(static_cast<NullDevice*>(devices[i])->deviceInfo_.machineTarget_,
+          DeviceInfo[id].machineTarget_) == 0) {
         isOnline = true;
       }
     }
