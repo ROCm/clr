@@ -230,7 +230,7 @@ bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
 }
 
 HSAILProgram::HSAILProgram(roc::NullDevice& device, amd::Program& owner) : roc::Program(device, owner) {
-  machineTarget_ = dev().deviceInfo().complibTarget_;
+  machineTarget_ = dev().deviceInfo().machineTarget_;
 }
 
 
