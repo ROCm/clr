@@ -33,11 +33,8 @@ static constexpr uint DeviceQueueMaskSize = 32;
 typedef uint HsaDeviceId;
 
 struct AMDDeviceInfo {
-  HsaDeviceId hsaDeviceId_;    //!< Machine id
-  const char* targetName_;     //!< Target name for compilation
   const char* machineTarget_;  //!< Machine target
   const char* machineTargetLC_;//!< Machine target for LC
-  const char* complibTarget_;  //!< Compiler library target name
   uint simdPerCU_;             //!< Number of SIMDs per CU
   uint simdWidth_;             //!< Number of workitems processed per SIMD
   uint simdInstructionWidth_;  //!< Number of instructions processed per SIMD
@@ -50,69 +47,29 @@ struct AMDDeviceInfo {
   uint pciDeviceId_;           //!< PCIe device id
 };
 
-// The device ID must match with the device's index into DeviceInfo
-constexpr HsaDeviceId HSA_SPECTRE_ID = 0;
-constexpr HsaDeviceId HSA_SPOOKY_ID = 1;
-constexpr HsaDeviceId HSA_TONGA_ID = 2;
-constexpr HsaDeviceId HSA_CARRIZO_ID = 3;
-constexpr HsaDeviceId HSA_ICELAND_ID = 4;
-constexpr HsaDeviceId HSA_FIJI_ID = 5;
-constexpr HsaDeviceId HSA_HAWAII_ID = 6;
-constexpr HsaDeviceId HSA_ELLESMERE_ID = 7;
-constexpr HsaDeviceId HSA_BAFFIN_ID = 8;
-constexpr HsaDeviceId HSA_VEGA10_ID = 9;
-constexpr HsaDeviceId HSA_VEGA10_HBCC_ID = 10;
-constexpr HsaDeviceId HSA_RAVEN_ID = 11;
-constexpr HsaDeviceId HSA_VEGA12_ID = 12;
-constexpr HsaDeviceId HSA_VEGA20_ID = 13;
-constexpr HsaDeviceId HSA_ARIEL_ID = 14;
-constexpr HsaDeviceId HSA_NAVI10_ID = 15;
-constexpr HsaDeviceId HSA_MI100_ID = 16;
-constexpr HsaDeviceId HSA_NAVI12_ID = 17;
-constexpr HsaDeviceId HSA_NAVI14_ID = 18;
 constexpr HsaDeviceId HSA_INVALID_DEVICE_ID = -1;
 
 static constexpr AMDDeviceInfo DeviceInfo[] = {
-    //  targetName  machineTarget
-    /* TARGET_KAVERI_SPECTRE */ {HSA_SPECTRE_ID, "", "kaveri", "", "Spectre",
-                                 4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
-    /* TARGET_KAVERI_SPOOKY */  {HSA_SPOOKY_ID, "", "kaveri", "", "Spooky",
-                                 4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
-    /* TARGET_TONGA */          {HSA_TONGA_ID, "", "tonga", "gfx802", "Tonga",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 2, 0},
-    /* TARGET_CARRIZO */        {HSA_CARRIZO_ID, "", "carrizo", "gfx801", "Carrizo",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 1, 0},
-    /* TARGET_ICELAND */        {HSA_ICELAND_ID, "", "iceland", "gfx802", "Iceland",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 2, 0},
-    /* TARGET_FIJI */           {HSA_FIJI_ID, "", "fiji", "gfx803", "Fiji",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
-    /* TARGET HAWAII */         {HSA_HAWAII_ID, "", "hawaii", "gfx701", "Hawaii",
-                                 4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
-    /* TARGET ELLESMERE */      {HSA_ELLESMERE_ID, "", "polaris10", "gfx803", "Ellesmere",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
-    /* TARGET BAFFIN */         {HSA_BAFFIN_ID, "", "polaris11", "gfx803", "Baffin",
-                                 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
-    /* TARGET VEGA10 */         {HSA_VEGA10_ID, "", "gfx900", "gfx900", "gfx900",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 0, 0},
-    /* TARGET VEGA10_HBCC */    {HSA_VEGA10_HBCC_ID, "", "gfx901", "gfx901", "gfx901",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 1, 0},
-    /* TARGET RAVEN */          {HSA_RAVEN_ID, "", "gfx902", "gfx902", "gfx902",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 2, 0},
-    /* TARGET VEGA12 */         {HSA_VEGA12_ID, "", "gfx904", "gfx904", "gfx904",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 4, 0},
-    /* TARGET VEGA20 */         {HSA_VEGA20_ID, "", "gfx906", "gfx906", "gfx906",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 6, 0},
-    /* TARGET ARIEL */          {HSA_ARIEL_ID, "", "gfx1000", "gfx1000", "gfx1000",
-                                 2, 32, 1, 256, 64 * Ki, 32, 10, 0, 0, 0},
-    /* TARGET NAVI10 */         {HSA_NAVI10_ID, "", "gfx1010", "gfx1010", "gfx1010",
-                                 2, 32, 1, 256, 64 * Ki, 32, 10, 1, 0, 0},
-    /* TARGET MI100 */          {HSA_MI100_ID, "", "gfx908", "gfx908", "gfx908",
-                                 4, 16, 1, 256, 64 * Ki, 32, 9, 0, 8, 0},
-    /* TARGET NAVI12 */         {HSA_NAVI12_ID, "", "gfx1011", "gfx1011", "gfx1011",
-                                 2, 32, 1, 256, 64 * Ki, 32, 10, 1, 1, 0},
-    /* TARGET NAVI14 */         {HSA_NAVI14_ID, "", "gfx1012", "gfx1012", "gfx1012",
-                                 2, 32, 1, 256, 64 * Ki, 32, 10, 1, 2, 0}
+  /* KAVERI_SPECTRE */ {"Spectre", "",         4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
+  /* KAVERI_SPOOKY */  {"Spooky", "",          4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
+  /* HAWAII */         {"Hawaii", "gfx701",    4, 16, 1, 256, 64 * Ki, 32, 7, 0, 1, 0},
+  /* CARRIZO */        {"Carrizo", "gfx801",   4, 16, 1, 256, 64 * Ki, 32, 8, 0, 1, 0},
+  /* TONGA */          {"Tonga", "gfx802",     4, 16, 1, 256, 64 * Ki, 32, 8, 0, 2, 0},
+  /* ICELAND */        {"Iceland", "gfx802",   4, 16, 1, 256, 64 * Ki, 32, 8, 0, 2, 0},
+  /* FIJI */           {"Fiji", "gfx803",      4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
+  /* ELLESMERE */      {"Ellesmere", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
+  /* BAFFIN */         {"Baffin", "gfx803",    4, 16, 1, 256, 64 * Ki, 32, 8, 0, 3, 0},
+  /* VEGA10 */         {"gfx900", "gfx900",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 0, 0},
+  /* VEGA10_HBCC */    {"gfx901", "gfx901",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 1, 0},
+  /* RAVEN */          {"gfx902", "gfx902",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 2, 0},
+  /* VEGA12 */         {"gfx904", "gfx904",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 4, 0},
+  /* VEGA20 */         {"gfx906", "gfx906",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 6, 0},
+  /* ARCTURUS */       {"gfx908", "gfx908",    4, 16, 1, 256, 64 * Ki, 32, 9, 0, 8, 0},
+  /* NAVI10 */         {"gfx1010", "gfx1010",  2, 32, 1, 256, 64 * Ki, 32, 10, 1, 0, 0},
+  /* NAVI12 */         {"gfx1011", "gfx1011",  2, 32, 1, 256, 64 * Ki, 32, 10, 1, 1, 0},
+  /* NAVI14 */         {"gfx1012", "gfx1012",  2, 32, 1, 256, 64 * Ki, 32, 10, 1, 2, 0}
 };
+
 }
 
 constexpr uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
