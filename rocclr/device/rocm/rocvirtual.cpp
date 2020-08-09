@@ -763,7 +763,8 @@ bool VirtualGPU::create() {
   gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_, cuMask_, priority_);
   if (!gpu_queue_) return false;
 
-  if (!initPool(dev().settings().kernargPoolSize_, (amd::IS_HIP) ? queue_size : 0)) {
+  if (!initPool(dev().settings().kernargPoolSize_,
+                (profiling_ || (amd::IS_HIP)) ? queue_size : 0)) {
     LogError("Couldn't allocate arguments/signals for the queue");
     return false;
   }
