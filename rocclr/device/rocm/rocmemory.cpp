@@ -748,11 +748,6 @@ bool Buffer::create() {
 #endif // AMD_HMM_SUPPORT
     }
 
-    if (!isFineGrain && (owner()->parent() != nullptr) &&
-        (owner()->parent()->getSvmPtr() != nullptr)) {
-      owner()->parent()->commitSvmMemory();
-    }
-
     if ((deviceMemory_ != nullptr) && (dev().settings().apuSystem_ || !isFineGrain)) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
