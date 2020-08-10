@@ -1206,26 +1206,30 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
 
 // ================================================================================================
 void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
-#if ROCR_HMM_SUPPORT
+#if AMD_HMM_SUPPORT
   // Initialize signal for the barrier
   hsa_signal_store_relaxed(barrier_signal_, InitSignalValue);
 
   // Find the requested agent for the transfer
-  hsa_agent_t agent = cmd.cpu_access() ? dev().cpu_agent() ? gpu_device();
+  hsa_agent_t agent = (cmd.cpu_access() ||
+      (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory)) ?
+      dev().getCpuAgent() : gpu_device();
 
   // Initiate a prefetch command
-  hsa_amd_svm_prefetch_async(cmd.dev_prt(), cmd.count(), agent, 0, nullptr, barrier_signal_);
+  hsa_status_t status = hsa_amd_svm_prefetch_async(
+      const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, 0, nullptr, barrier_signal_);
 
   // Wait for the prefetch
-  if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-                              HSA_WAIT_STATE_BLOCKED) != 0) {
-    LogError("Barrier packet submission failed");
-    return false;
+  if ((status != HSA_STATUS_SUCCESS) ||
+      hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
+                                HSA_WAIT_STATE_BLOCKED) != 0) {
+    LogError("hsa_amd_svm_prefetch_async failed");
+    cmd.setStatus(CL_INVALID_OPERATION);
   }
 
   // Add system scope, since the prefetch scope is unclear
   addSystemScope();
-#endif // ROCR_HMM_SUPPORT
+#endif // AMD_HMM_SUPPORT
 }
 
 // ================================================================================================
