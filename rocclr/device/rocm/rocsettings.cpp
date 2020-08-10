@@ -87,8 +87,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   imageBufferWar_ = false;
 
-  hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS :
-      Hmm::EnableSystemMemory | Hmm::EnableMallocPrefetch;
+  hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : Hmm::EnableSystemMemory;
 
   rocr_backend_ = true;
 }

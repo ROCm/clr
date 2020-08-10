@@ -2007,7 +2007,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
 #if AMD_HMM_SUPPORT
   std::vector<hsa_amd_svm_attribute_pair_t> attr;
 
-  for (int i = 0; i < num_attributes; ++i) {
+  for (size_t i = 0; i < num_attributes; ++i) {
     switch (attributes[i]) {
       case amd::MemRangeAttribute::ReadMostly:
         attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, 0});
