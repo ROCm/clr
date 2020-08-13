@@ -1302,10 +1302,11 @@ bool Image::ValidateMemory() {
        owner()->asImage()->getRowPitch())) {
     constexpr bool ForceLinear = true;
     amd::Image* img = owner()->asImage();
-    // Create a native image without pitch for validation 
+    // Create a native image without pitch for validation
     copyImageBuffer_ =
-        new (dev().context()) amd::Image(dev().context(), CL_MEM_OBJECT_IMAGE2D, img->getMemFlags(),
-        img->getImageFormat(), img->getWidth(), img->getHeight(), 1, 0, 0);
+        new (dev().context()) amd::Image(
+                                dev().context(), CL_MEM_OBJECT_IMAGE2D, 0, img->getImageFormat(),
+                                img->getWidth(), img->getHeight(), 1, 0, 0);
 
     if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
       return false;
