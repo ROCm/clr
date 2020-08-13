@@ -570,9 +570,9 @@ class Device : public NullDevice {
   std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() { return queue_pool_; }
   const std::map<Pal::IQueue*, QueueRecycleInfo*>& QueuePool() const { return queue_pool_; }
 
-  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
-                                       uint32_t* hop_count) {
-    /* Not Supported in PAL yet */
+  virtual bool findLinkInfo(const amd::Device& other_device,
+                            std::vector<LinkAttrType>* link_attr) {
+    // Not implemented in PAL yet
     ShouldNotReachHere();
     return false;
   }

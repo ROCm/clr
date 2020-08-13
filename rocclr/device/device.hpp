@@ -1211,6 +1211,16 @@ class Device : public RuntimeObject {
     uint64_t all_sum;
   };
 
+  //Attributes that could be retrived from hsa_amd_memory_pool_link_info_t.
+  typedef enum LinkAttribute {
+    kLinkLinkType = 0,
+    kLinkHopCount,
+    kLinkDistance,
+    kLinkAtomicSupport
+  } LinkAttribute;
+
+  typedef std::pair<LinkAttribute, int32_t /* value */> LinkAttrType;
+
   static constexpr size_t kP2PStagingSize = 4 * Mi;
   static constexpr size_t kMGSyncDataSize = sizeof(MGSyncData);
   static constexpr size_t kMGInfoSizePerDevice = kMGSyncDataSize + sizeof(MGSyncInfo);
@@ -1477,8 +1487,9 @@ class Device : public RuntimeObject {
   //! Returns index of current device
   uint32_t index() const { return index_; }
 
-  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
-                                       uint32_t* hop_count) {
+  //! Returns value for LinkAttribute for lost of vectors
+  virtual bool findLinkInfo(const amd::Device& other_device,
+                            std::vector<LinkAttrType>* link_attr) {
     ShouldNotReachHere();
     return false;
   }
