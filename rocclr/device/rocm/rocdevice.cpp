@@ -455,11 +455,18 @@ bool Device::init() {
   if (ordinals[0] != '\0') {
     size_t end, pos = 0;
     std::vector<hsa_agent_t> valid_agents;
+    std::set<size_t> valid_indexes;
     do {
       bool deviceIdValid = true;
       end = ordinals.find_first_of(',', pos);
-      int index = atoi(ordinals.substr(pos, end - pos).c_str());
-      if (index < 0 || static_cast<size_t>(index) >= gpu_agents_.size()) {
+      if (end == std::string::npos) {
+        end = ordinals.size();
+      }
+      std::string strIndex = ordinals.substr(pos, end - pos);
+      int index = atoi(strIndex.c_str());
+      if (index < 0 ||
+          static_cast<size_t>(index) >= gpu_agents_.size() ||
+          strIndex != std::to_string(index)) {
         deviceIdValid = false;
       }
 
@@ -468,10 +475,13 @@ bool Device::init() {
         // has to be discarded
         break;
       } else {
-        valid_agents.push_back(gpu_agents_[index]);
+        if (valid_indexes.find(index) == valid_indexes.end()) {
+          valid_agents.push_back(gpu_agents_[index]);
+          valid_indexes.insert(index);
+        }
       }
       pos = end + 1;
-    } while (end != std::string::npos);
+    } while (pos < ordinals.size());
     gpu_agents_ = valid_agents;
   }
 
