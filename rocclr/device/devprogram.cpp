@@ -2002,7 +2002,7 @@ bool Program::setBinary(const char* binaryIn, size_t size, const device::Program
   if (same_dev_prog != nullptr) {
     compileOptions_ = same_dev_prog->compileOptions();
     linkOptions_ = same_dev_prog->linkOptions();
-  } else {
+  } else if (!amd::IS_HIP) {
     clBinary()->loadCompileOptions(compileOptions_);
     clBinary()->loadLinkOptions(linkOptions_);
   }
