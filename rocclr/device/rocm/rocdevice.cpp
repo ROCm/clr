@@ -153,16 +153,15 @@ Device::Device(hsa_agent_t bkendDevice)
 }
 
 void Device::setupCpuAgent() {
-  uint32_t numaDistance = std::numeric_limits<uint32_t>::max();
+  int32_t numaDistance = std::numeric_limits<int32_t>::max();
   uint32_t index = 0; // 0 as default
   auto size = cpu_agents_.size();
   for (uint32_t i = 0; i < size; i++) {
-    uint32_t hops = 0;
-    uint32_t link_type = 0;
-    uint32_t distance = 0;
-    if (getNumaInfo(cpu_agents_[i].fine_grain_pool, &hops, &link_type, &distance)) {
-      if (distance < numaDistance) {
-        numaDistance = distance;
+    std::vector<amd::Device::LinkAttrType> link_attrs;
+    link_attrs.push_back(std::make_pair(LinkAttribute::kLinkDistance, 0));
+    if (findLinkInfo(cpu_agents_[i].fine_grain_pool, &link_attrs)) {
+      if (link_attrs[0].second < numaDistance) {
+        numaDistance = link_attrs[0].second;
         index = i;
       }
     }
@@ -2391,63 +2390,122 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue) {
   return buffer;
 }
 
-bool Device::findLinkTypeAndHopCount(amd::Device* other_device,
-                                     uint32_t* link_type, uint32_t* hop_count) {
-  uint32_t distance = 0;
-  return getNumaInfo((static_cast<roc::Device*>(other_device))->gpuvm_segment_,
-                     hop_count, link_type, &distance);
+bool Device::findLinkInfo(const amd::Device& other_device,
+                          std::vector<LinkAttrType>* link_attrs) {
+  return findLinkInfo((static_cast<const roc::Device*>(&other_device))->gpuvm_segment_,
+                       link_attrs);
 }
 
-bool Device::getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
-                         uint32_t* link_type, uint32_t* numa_distance) const {
-  uint32_t hops = 0;
+bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
+                          std::vector<LinkAttrType>* link_attrs) {
 
-  if (!pool.handle) {
+  if ((!pool.handle) || (link_attrs == nullptr)) {
     return false;
   }
 
-  hsa_status_t res = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
-      HSA_AMD_AGENT_MEMORY_POOL_INFO_NUM_LINK_HOPS, &hops);
-  if (res != HSA_STATUS_SUCCESS) {
+  // Retrieve the hops between 2 devices.
+  int32_t hops = 0;
+  hsa_status_t hsa_status = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+                            HSA_AMD_AGENT_MEMORY_POOL_INFO_NUM_LINK_HOPS, &hops);
+
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    DevLogPrintfError("Cannot get hops info, hsa failed with status: %d", hsa_status);
     return false;
   }
 
   if (hops < 0) {
     return false;
-  } else if (hops == 0) {
-    //This pool is on its agent
-    *hop_count = 0;  // No hop
-    *link_type = -1; // No link, so type is meaningless, caller should ignore it.
-    *numa_distance = 0;
+  }
+
+  // The pool is on its agent
+  if (hops == 0) {
+    for (auto& link_attr : (*link_attrs)) {
+      switch (link_attr.first) {
+        case kLinkLinkType: {
+          // No link, so type is meaningless,
+          // caller should ignore it
+          link_attr.second = -1;
+          break;
+        }
+        case kLinkHopCount: {
+          // no hop
+          link_attr.second = 0;
+          break;
+        }
+        case kLinkDistance: {
+          // distance is zero, if no hops
+          link_attr.second = 0;
+          break;
+        }
+        case kLinkAtomicSupport: {
+          // atomic support if its on the same agent
+          link_attr.second = 1;
+          break;
+        }
+        default: {
+          DevLogPrintfError("Invalid LinkAttribute: %d ", link_attr.first);
+          return false;
+        }
+      }
+    }
     return true;
   }
 
-  hsa_amd_memory_pool_link_info_t *link_info = new hsa_amd_memory_pool_link_info_t[hops];
+  // Retrieve link info on the pool.
+  hsa_amd_memory_pool_link_info_t* link_info = new hsa_amd_memory_pool_link_info_t[hops];
+  hsa_status = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+               HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info);
 
-  res = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
-        HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info);
-
-  if (res == HSA_STATUS_SUCCESS) {
-    // Now RocR always set hops=1 between two different devices.
-    // If RocR changes the behavior, we need revisit here.
-    *link_type = link_info[0].link_type;
-
-    uint32_t distance = 0;
-    for (uint32_t i = 0; i < hops; i++) {
-      distance += link_info[i].numa_distance;
-    }
-    *numa_distance = distance;
-
-    // The following logics will be subject to change in rocm3.7
-    uint32_t oneHopDistance = 20; // Default to PCIE
-    if (*link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) {
-      oneHopDistance = 15;
-    }
-    *hop_count = distance/oneHopDistance;
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    DevLogPrintfError("Cannot retrieve link info, hsa failed with status: %d", hsa_status);
+    delete[] link_info;
+    return false;
   }
 
-  delete [] link_info;
-  return res == HSA_STATUS_SUCCESS;
+  for (auto& link_attr : (*link_attrs)) {
+    switch (link_attr.first) {
+      case kLinkLinkType: {
+        link_attr.second = static_cast<int32_t>(link_info[0].link_type);
+        break;
+      }
+      case kLinkHopCount: {
+        uint32_t distance = 0;
+        // Because of Rocrs limitation hops is set to 1 always between two different devices
+        // If Rocr Changes the behaviour revisit this logic
+        for (size_t hop_idx = 0; hop_idx < static_cast<size_t>(hops); ++hop_idx) {
+          distance += link_info[hop_idx].numa_distance;
+        }
+        uint32_t oneHopDistance
+          = (link_info[0].link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) ? 15 : 20;
+        link_attr.second = static_cast<int32_t>(distance/oneHopDistance);
+        break;
+      }
+      case kLinkDistance: {
+        uint32_t distance = 0;
+        // Sum of distances between hops
+        for (size_t hop_idx = 0; hop_idx < static_cast<size_t>(hops); ++hop_idx) {
+          distance += link_info[hop_idx].numa_distance;
+        }
+        link_attr.second = static_cast<int32_t>(distance);
+        break;
+      }
+      case kLinkAtomicSupport: {
+        // if either of the atomic is supported
+        link_attr.second = static_cast<int32_t>(link_info[0].atomic_support_64bit
+                                                || link_info[0].atomic_support_32bit);
+        break;
+      }
+      default: {
+        DevLogPrintfError("Invalid LinkAttribute: %d ", link_attr.first);
+        delete[] link_info;
+        return false;
+      }
+    }
+  }
+
+  delete[] link_info;
+
+  return true;
 }
 
 } // namespace roc

@@ -298,9 +298,6 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
-  bool getNumaInfo(const hsa_amd_memory_pool_t& pool, uint32_t* hop_count,
-                   uint32_t* link_type, uint32_t* numa_distance) const;
-
   bool create();
 
   //! Construct a new physical HSA device
@@ -470,8 +467,9 @@ class Device : public NullDevice {
   //! Return multi GPU grid launch sync buffer
   address MGSync() const { return mg_sync_; }
 
-  virtual bool findLinkTypeAndHopCount(amd::Device* other_device, uint32_t* link_type,
-                                       uint32_t* hop_count);
+  //! Returns value for corresponding Link Attributes in a vector, given other device
+  virtual bool findLinkInfo(const amd::Device& other_device,
+                            std::vector<LinkAttrType>* link_attr);
 
   //! Returns a GPU memory object from AMD memory object
   roc::Memory* getGpuMemory(amd::Memory* mem  //!< Pointer to AMD memory object
@@ -532,6 +530,10 @@ class Device : public NullDevice {
   hsa_queue_t* getQueueFromPool(const uint qIndex);
 
   void* coopHostcallBuffer_;
+  //! returns value for corresponding LinkAttrbutes in a vector given Memory pool.
+  virtual bool findLinkInfo(const hsa_amd_memory_pool_t& pool,
+                            std::vector<LinkAttrType>* link_attr);
+
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 
