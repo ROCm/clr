@@ -451,6 +451,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
   hsa_signal_t signal;
 
+  assert(header != 0);
   if (addSystemScope_) {
     header &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE);
     header |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE);
@@ -2454,8 +2455,6 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(vcmd);
-  auto fence = kBarrierAcquirePacket;
-  dispatchAqlPacket(&fence, 0, 0, false);
   profilingEnd(vcmd);
 }
 
@@ -2463,8 +2462,6 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
-  auto fence = kBarrierReleasePacket;
-  dispatchAqlPacket(&fence, 0, 0, false);
   profilingEnd(vcmd);
 }
 
