@@ -142,6 +142,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , vgpusAccess_("Virtual GPU List Ops Lock", true)
     , hsa_exclusive_gpu_access_(false)
     , queuePool_(QueuePriority::Total)
+    , coopHostcallBuffer_(nullptr)
     , numOfVgpus_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
@@ -233,6 +234,12 @@ Device::~Device() {
   }
 
   delete[] p2p_agents_list_;
+
+  if (coopHostcallBuffer_) {
+    disableHostcalls(coopHostcallBuffer_);
+    context().svmFree(coopHostcallBuffer_);
+    coopHostcallBuffer_ = nullptr;
+  }
 }
 bool NullDevice::initCompiler(bool isOffline) {
 #if defined(WITH_COMPILER_LIB)
@@ -2323,20 +2330,26 @@ void Device::releaseQueue(hsa_queue_t* queue) {
   hsa_queue_destroy(queue);
 }
 
-void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
+void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue) {
   decltype(queuePool_)::value_type::iterator qIter;
-  for (auto& it : queuePool_) {
-    qIter = it.find(queue);
-    if (qIter != it.end()) {
-      break;
+
+  if (!coop_queue) {
+    for (auto &it : queuePool_) {
+      qIter = it.find(queue);
+      if (qIter != it.end()) {
+        break;
+      }
     }
-  }
 
-  assert(qIter != queuePool_[QueuePriority::High].end());
+    assert(qIter != queuePool_[QueuePriority::High].end());
 
-  auto& qInfo = qIter->second;
-  if (qInfo.hostcallBuffer_) {
-    return qInfo.hostcallBuffer_;
+    if (qIter->second.hostcallBuffer_) {
+      return qIter->second.hostcallBuffer_;
+    }
+  } else {
+    if (coopHostcallBuffer_) {
+      return coopHostcallBuffer_;
+    }
   }
 
   // The number of packets required in each buffer is at least equal to the
@@ -2355,7 +2368,11 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue) {
   }
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hostcall buffer %p for hardware queue %p", buffer,
           queue);
-  qInfo.hostcallBuffer_ = buffer;
+  if (!coop_queue) {
+    qIter->second.hostcallBuffer_ = buffer;
+  } else {
+    coopHostcallBuffer_ = buffer;
+  }
   if (!enableHostcalls(buffer, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
             buffer);
