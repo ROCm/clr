@@ -465,7 +465,7 @@ class Device : public NullDevice {
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
-  void* getOrCreateHostcallBuffer(hsa_queue_t* queue);
+  void* getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue = false);
 
   //! Return multi GPU grid launch sync buffer
   address MGSync() const { return mg_sync_; }
@@ -531,6 +531,7 @@ class Device : public NullDevice {
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
   hsa_queue_t* getQueueFromPool(const uint qIndex);
 
+  void* coopHostcallBuffer_;
  public:
   amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 

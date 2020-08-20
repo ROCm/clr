@@ -2226,7 +2226,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         }
         case amd::KernelParameterDescriptor::HiddenHostcallBuffer: {
           if (amd::IS_HIP) {
-            auto buffer = roc_device_.getOrCreateHostcallBuffer(gpu_queue_);
+            auto buffer = roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups);
             if (!buffer) {
               ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
                       "Kernel expects a hostcall buffer, but none found");
