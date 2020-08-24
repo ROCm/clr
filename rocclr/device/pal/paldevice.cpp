@@ -679,12 +679,13 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = palProp.gfxipProperties.shaderCore.ldsSizePerCu;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipVersion_ =
+
+    uint gfxipVersion =
         settings().useLightning_ ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
 
-    info_.gfxipMajor_ = info_.gfxipVersion_ / 100;
-    info_.gfxipMinor_ = info_.gfxipVersion_ / 10 % 10;
-    info_.gfxipStepping_ = info_.gfxipVersion_ % 10;
+    info_.gfxipMajor_ = gfxipVersion / 100;
+    info_.gfxipMinor_ = gfxipVersion / 10 % 10;
+    info_.gfxipStepping_ = gfxipVersion % 10;
 
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;

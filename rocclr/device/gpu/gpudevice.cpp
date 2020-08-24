@@ -593,7 +593,9 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipVersion_ = hwInfo()->gfxipVersion_;
+    info_.gfxipMajor_ = hwInfo()->gfxipVersion_ / 100;
+    info_.gfxipMinor_ = hwInfo()->gfxipVersion_ / 10 % 10;
+    info_.gfxipStepping_ = hwInfo()->gfxipVersion_ % 10;
 
     info_.numAsyncQueues_ = numComputeRings;
 
@@ -1351,7 +1353,7 @@ gpu::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
       (owner.forceSysMemAlloc() || (owner.getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER))
       ? Resource::Remote
       : Resource::Local;
-  
+
   // Check if runtime can force a tiny buffer into USWC memory
   if ((size <= (GPU_MAX_REMOTE_MEM_SIZE * Ki)) && (type == Resource::Local) &&
     (owner.getMemFlags() & CL_MEM_READ_ONLY)) {
