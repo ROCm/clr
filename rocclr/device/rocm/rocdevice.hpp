@@ -219,6 +219,16 @@ class NullDevice : public amd::Device {
     return false;
   }
 
+  virtual bool disableP2P(amd::Device* peerDev) {
+    ShouldNotReachHere();
+    return true;
+  }
+
+  virtual bool enableP2P(amd::Device* peerDev) {
+    ShouldNotReachHere();
+    return true;
+  }
+
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
 
  protected:
@@ -369,6 +379,11 @@ class Device : public NullDevice {
 
   virtual void hostFree(void* ptr, size_t size = 0) const;
 
+  virtual bool enableP2P(amd::Device* peerDev);
+  virtual bool disableP2P(amd::Device* peerDev);
+
+  bool deviceAllowAccess(void* dst) const;
+
   void* deviceLocalAlloc(size_t size, bool atomics = false) const;
 
   void memFree(void* ptr, size_t size) const;
@@ -426,6 +441,9 @@ class Device : public NullDevice {
 
   // P2P agents avaialble for this device
   const std::vector<hsa_agent_t>& p2pAgents() const { return p2p_agents_; }
+
+  // User enabled peer devices
+  const bool isP2pEnabled() const { return (enabled_p2p_devices_.size() > 0) ? true : false; }
 
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
@@ -497,6 +515,8 @@ class Device : public NullDevice {
 
   hsa_agent_t cpu_agent_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
+  std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
+  mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
   hsa_agent_t _bkendDevice;
   hsa_agent_t* p2p_agents_list_;
   hsa_profile_t agent_profile_;
