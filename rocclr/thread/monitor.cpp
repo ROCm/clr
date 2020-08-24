@@ -205,6 +205,10 @@ void Monitor::finishUnlock() {
       return;
     }
 
+    // A StoreLoad barrier is required to make sure the onDeck_ store is published before
+    // the contendersList_ micro-lock check.
+    std::atomic_thread_fence(std::memory_order_seq_cst);
+
     // We do not have an on-deck thread (semaphore == NULL). Return if
     // the contention list is empty or if the lock got acquired again.
     head = contendersList_;
