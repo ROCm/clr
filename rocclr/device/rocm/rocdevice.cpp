@@ -986,9 +986,6 @@ bool Device::populateOCLDeviceConstants() {
   info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
   info_.gfxipStepping_ = deviceInfo_.gfxipStepping_;
 
-  // TODO: gfxipVersion_ will be removed when Target ID feature is fully implemented
-  info_.gfxipVersion_ = info_.gfxipMajor_ * 100 + info_.gfxipMinor_ * 10 + info_.gfxipStepping_;
-
   char device_name[64] = {0};
   if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,

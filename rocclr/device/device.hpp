@@ -483,8 +483,6 @@ struct Info : public amd::EmbeddedObject {
   uint32_t localMemSizePerCU_;
   //! Number of banks of local memory
   uint32_t localMemBanks_;
-  //! The core engine GFXIP version
-  uint32_t gfxipVersion_;
   //! The core engine major/minor/stepping
   uint32_t gfxipMajor_;
   uint32_t gfxipMinor_;
