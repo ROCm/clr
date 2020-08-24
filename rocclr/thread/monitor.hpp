@@ -228,6 +228,11 @@ inline void Monitor::unlock() {
   while (!contendersList_.compare_exchange_weak(ptr, ptr & ~kLockBit, std::memory_order_acq_rel,
                                                 std::memory_order_acquire))
     ;
+
+  // A StoreLoad barrier is required to make sure future loads do not happen before the
+  // contendersList_ store is published.
+  std::atomic_thread_fence(std::memory_order_seq_cst);
+
   //
   // We succeeded the CAS from locked to unlocked.
   // This is the end of the critical region.
