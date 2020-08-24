@@ -1666,6 +1666,9 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
     return nullptr;
   }
 
+  if (isP2pEnabled()) {
+    memory->setAllowedPeerAccess(true);
+  }
   // Initialize if the memory is a pipe object
   if (owner.getType() == CL_MEM_OBJECT_PIPE) {
     // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
@@ -1816,6 +1819,44 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
 
 void Device::hostFree(void* ptr, size_t size) const { memFree(ptr, size); }
 
+bool Device::enableP2P(amd::Device* ptrDev) {
+  assert(ptrDev != nullptr);
+
+  Device* peerDev = static_cast<Device*>(ptrDev);
+  if (std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev) ==
+      enabled_p2p_devices_.end()) {
+    enabled_p2p_devices_.push_back(peerDev);
+    // Update access to all old allocations
+    amd::MemObjMap::UpdateAccess(static_cast<amd::Device*>(this));
+  }
+  return true;
+}
+
+bool Device::disableP2P(amd::Device* ptrDev) {
+  assert(ptrDev != nullptr);
+
+  Device* peerDev = static_cast<Device*>(ptrDev);
+  //if device is present then remove
+  auto it = std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev);
+  if (it != enabled_p2p_devices_.end()) {
+    enabled_p2p_devices_.erase(it);
+  }
+  return true;
+}
+
+bool Device::deviceAllowAccess(void* ptr) const {
+  std::lock_guard<std::mutex> lock(lock_allow_access_);
+  if (!p2pAgents().empty()) {
+    hsa_status_t stat = hsa_amd_agents_allow_access(p2pAgents().size(),
+                                                    p2pAgents().data(), nullptr, ptr);
+    if (stat != HSA_STATUS_SUCCESS) {
+      LogError("Allow p2p access");
+      return false;
+    }
+  }
+  return true;
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
   const hsa_amd_memory_pool_t& pool = (atomics)? gpu_fine_grained_segment_ : gpuvm_segment_;
 
@@ -1832,15 +1873,11 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
     return nullptr;
   }
 
-  if (p2pAgents().size() > 0) {
-    stat = hsa_amd_agents_allow_access(p2pAgents().size(), p2pAgents().data(), nullptr, ptr);
-    if (stat != HSA_STATUS_SUCCESS) {
-      LogError("Allow p2p access for memory allocation");
-      memFree(ptr, size);
-      return nullptr;
-    }
+  if (isP2pEnabled() && deviceAllowAccess(ptr) == false) {
+    LogError("Allow p2p access for memory allocation");
+    memFree(ptr, size);
+    return nullptr;
   }
-
   return ptr;
 }
 

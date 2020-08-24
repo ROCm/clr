@@ -130,6 +130,25 @@ amd::Memory* MemObjMap::FindMemObj(const void* k) {
   }
 }
 
+void MemObjMap::UpdateAccess(amd::Device *peerDev) {
+  if (peerDev == nullptr) {
+    return;
+  }
+
+  // Provides access to all memory allocated on peerDev but
+  // hsa_amd_agents_allow_access was not called because there was no peer
+  amd::ScopedLock lock(AllocatedLock_);
+  for (auto it : MemObjMap_) {
+    const std::vector<Device*>& devices = it.second->getContext().devices();
+    if (devices.size() == 1 && devices[0] == peerDev) {
+      device::Memory* devMem = it.second->getDeviceMemory(*devices[0]);
+      if (!devMem->getAllowedPeerAccess()) {
+        peerDev->deviceAllowAccess(reinterpret_cast<void*>(it.first));
+        devMem->setAllowedPeerAccess(true);
+      }
+    }
+  }
+}
 
 Device::BlitProgram::~BlitProgram() {
   if (program_ != nullptr) {

@@ -792,6 +792,16 @@ class Memory : public amd::HeapObject {
   //! Returns CPU pointer to HW state
   virtual const address cpuSrd() const { return nullptr; }
 
+  bool getAllowedPeerAccess() const { return (flags_ & AllowedPeerAccess) ? true : false; }
+  void setAllowedPeerAccess(bool flag) {
+    if (flag == true) {
+      flags_ |= AllowedPeerAccess;
+    }
+    else {
+      flags_ &= ~AllowedPeerAccess;
+    }
+  }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -799,7 +809,8 @@ class Memory : public amd::HeapObject {
     PinnedMemoryAlloced = 0x00000004,     //!< An extra pinned resource was allocated
     SubMemoryObject = 0x00000008,         //!< Memory is sub-memory
     HostMemoryRegistered = 0x00000010,    //!< Host memory was registered
-    MemoryCpuUncached = 0x00000020        //!< Memory is uncached on CPU access(slow read)
+    MemoryCpuUncached = 0x00000020,       //!< Memory is uncached on CPU access(slow read)
+    AllowedPeerAccess = 0x00000040        //!< Memory can be accessed from peer
   };
   uint flags_;  //!< Memory object flags
 
@@ -1203,6 +1214,7 @@ class MemObjMap : public AllStatic {
   static void RemoveMemObj(const void* k);  //!< Remove an entry of mem object from the container
   static amd::Memory* FindMemObj(
       const void* k);  //!< find the mem object based on the input pointer
+  static void UpdateAccess(amd::Device *peerDev);
  private:
   static std::map<uintptr_t, amd::Memory*>
       MemObjMap_;                      //!< the mem object<->hostptr information container
@@ -1383,6 +1395,21 @@ class Device : public RuntimeObject {
   virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const {
     ShouldNotCallThis();
     return NULL;
+  }
+
+  virtual bool deviceAllowAccess(void* dst) const {
+    ShouldNotCallThis();
+    return true;
+  }
+
+  virtual bool enableP2P(amd::Device* ptrDev) {
+    ShouldNotCallThis();
+    return true;
+  }
+
+  virtual bool disableP2P(amd::Device* ptrDev) {
+    ShouldNotCallThis();
+    return true;
   }
 
   /**
