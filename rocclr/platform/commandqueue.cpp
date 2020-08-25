@@ -185,17 +185,26 @@ void HostQueue::append(Command& command) {
   }
   command.retain();
   command.setStatus(CL_QUEUED);
-  ScopedLock l(lastCmdLock_);
   queue_.enqueue(&command);
   if (!IS_HIP) {
     return;
   }
   // Set last submitted command
-  if (lastEnqueueCommand_ != nullptr) {
-    lastEnqueueCommand_->release();
+  Command* prevLastEnqueueCommand;
+  command.retain();
+  {
+    // lastCmdLock_ ensures that lastEnqueueCommand() can retain the command before it is swapped
+    // out. We want to keep this critical section as short as possible, so the command should be
+    // released outside this section.
+    ScopedLock l(lastCmdLock_);
+
+    prevLastEnqueueCommand = lastEnqueueCommand_;
+    lastEnqueueCommand_ = &command;
   }
-  lastEnqueueCommand_ = &command;
-  lastEnqueueCommand_->retain();
+
+  if (prevLastEnqueueCommand != nullptr) {
+    prevLastEnqueueCommand->release();
+  }
 }
 
 bool HostQueue::isEmpty() {
@@ -207,6 +216,8 @@ Command* HostQueue::getLastQueuedCommand(bool retain) {
   // Get last submitted command
   ScopedLock l(lastCmdLock_);
 
+  // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand. It is
+  // guaranteed that the pointer will not change.
   if (retain && lastEnqueueCommand_ != nullptr) {
     lastEnqueueCommand_->retain();
   }
