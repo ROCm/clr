@@ -356,6 +356,8 @@ class VirtualGPU : public device::VirtualDevice {
   uint kernarg_pool_cur_offset_;
 
   std::vector<ProfilingSignal> signal_pool_;  //!< Pool of signals for profiling
+  uint32_t current_signal_ = 0;               //!< Current avaialble signal in the pool
+
   friend class Timestamp;
 
   //  PM4 packet for gfx8 performance counter
