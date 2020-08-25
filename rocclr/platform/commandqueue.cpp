@@ -35,8 +35,8 @@ namespace amd {
 
 HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properties properties,
                      uint queueRTCUs, Priority priority, const std::vector<uint32_t>& cuMask)
-    : CommandQueue(context, device, properties, device.info().queueProperties_,
-                   queueRTCUs, priority, cuMask),
+    : CommandQueue(context, device, properties, device.info().queueProperties_, queueRTCUs,
+                   priority, cuMask),
       lastEnqueueCommand_(nullptr) {
   if (thread_.state() >= Thread::INITIALIZED) {
     ScopedLock sl(queueLock_);
