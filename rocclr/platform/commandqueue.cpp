@@ -50,10 +50,14 @@ bool HostQueue::terminate() {
     Command* marker = nullptr;
 
     // Send a finish if the queue is still accepting commands.
-    if (thread_.acceptingCommands_) {
-      marker = new Marker(*this, false);
-      if (marker != nullptr) {
-        append(*marker);
+    {
+      ScopedLock sl(queueLock_);
+      if (thread_.acceptingCommands_) {
+        marker = new Marker(*this, false);
+        if (marker != nullptr) {
+          append(*marker);
+          queueLock_.notify();
+        }
       }
     }
     if (marker != nullptr) {
@@ -182,10 +186,8 @@ void HostQueue::append(Command& command) {
   command.retain();
   command.setStatus(CL_QUEUED);
   ScopedLock l(lastCmdLock_);
-  ScopedLock l2(queueLock_);
   queue_.enqueue(&command);
   if (!IS_HIP) {
-    queueLock_.notify();
     return;
   }
   // Set last submitted command
@@ -194,7 +196,6 @@ void HostQueue::append(Command& command) {
   }
   lastEnqueueCommand_ = &command;
   lastEnqueueCommand_->retain();
-  queueLock_.notify();
 }
 
 bool HostQueue::isEmpty() {
