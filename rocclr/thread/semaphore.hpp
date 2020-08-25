@@ -58,6 +58,7 @@ public:
 
   //! \brief Decrement this semaphore
   void wait();
+  void timedWait(int millis);
 
   //! \brief Increment this semaphore
   void post();
