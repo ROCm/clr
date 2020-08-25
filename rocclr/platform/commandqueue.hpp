@@ -47,7 +47,7 @@ class DeviceQueue;
 class CommandQueue : public RuntimeObject {
  public:
   static constexpr uint RealTimeDisabled = 0xffffffff;
-  enum class Priority : uint { Low = 0, Normal , Medium, High };
+  enum class Priority : uint { Low = 0, Normal, Medium, High };
 
   struct Properties {
     typedef cl_command_queue_properties value_type;
@@ -114,13 +114,13 @@ class CommandQueue : public RuntimeObject {
  protected:
   //! CommandQueue constructor is protected
   //! to keep the CommandQueue class as a virtual interface
-  CommandQueue(Context& context,                        //!< Context object
-               Device& device,                          //!< Device object
-               cl_command_queue_properties properties,  //!< Queue properties
-               cl_command_queue_properties propMask,    //!< Queue properties mask
-               uint rtCUs = RealTimeDisabled,           //!< Avaialble real time compute units
-               Priority priority = Priority::Normal,    //!< Queue priority
-               const std::vector<uint32_t>& cuMask = {} //!< CU mask
+  CommandQueue(Context& context,                         //!< Context object
+               Device& device,                           //!< Device object
+               cl_command_queue_properties properties,   //!< Queue properties
+               cl_command_queue_properties propMask,     //!< Queue properties mask
+               uint rtCUs = RealTimeDisabled,            //!< Avaialble real time compute units
+               Priority priority = Priority::Normal,     //!< Queue priority
+               const std::vector<uint32_t>& cuMask = {}  //!< CU mask
                )
       : properties_(propMask, properties),
         rtCUs_(rtCUs),
@@ -129,7 +129,7 @@ class CommandQueue : public RuntimeObject {
         lastCmdLock_("LastQueuedCommand"),
         device_(device),
         context_(context),
-        cuMask_(cuMask){}
+        cuMask_(cuMask) {}
 
   Properties properties_;               //!< Queue properties
   uint rtCUs_;                          //!< The number of used RT compute units
@@ -247,8 +247,9 @@ class DeviceQueue : public CommandQueue {
               cl_command_queue_properties properties,  //!< Queue properties
               uint size                                //!< Device queue size
               )
-      : CommandQueue(context, device, properties, device.info().queueOnDeviceProperties_ |
-                         CL_QUEUE_ON_DEVICE | CL_QUEUE_ON_DEVICE_DEFAULT),
+      : CommandQueue(context, device, properties,
+                     device.info().queueOnDeviceProperties_ | CL_QUEUE_ON_DEVICE |
+                         CL_QUEUE_ON_DEVICE_DEFAULT),
         size_(size),
         virtualDevice_(NULL) {}
 
