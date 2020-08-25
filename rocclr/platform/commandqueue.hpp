@@ -234,9 +234,6 @@ class HostQueue : public CommandQueue {
 
   //! Get last enqueued command
   Command* getLastQueuedCommand(bool retain);
-
-  //! Set last enqueued command
-  void setLastQueuedCommand(Command* lastCommand) {}
 };
 
 
