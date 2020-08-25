@@ -251,7 +251,7 @@ void Monitor::wait() {
     }
     // now go to sleep
     else {
-      suspend.wait();
+      suspend.timedWait(10);
     }
     spinCount++;
   }

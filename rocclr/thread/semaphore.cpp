@@ -74,7 +74,7 @@ void Semaphore::post() {
 // We have threads waiting on this event.
 #ifdef _WIN32
     ReleaseSemaphore(static_cast<HANDLE>(handle_), 1, NULL);
-#else  // !_WIN32
+#else   // !_WIN32
     if (0 != sem_post(&sem_)) {
       fatal("sem_post() failed");
     }
@@ -94,6 +94,42 @@ void Semaphore::wait() {
 #else   // !_WIN32
   while (0 != sem_wait(&sem_)) {
     if (EINTR != errno) {
+      fatal("sem_wait() failed");
+    }
+  }
+#endif  // !_WIN32
+}
+
+void Semaphore::timedWait(int millis) {
+  if (state_-- > 0) {
+    return;
+  }
+
+#ifdef _WIN32
+  DWORD status = WaitForSingleObject(static_cast<HANDLE>(handle_), millis);
+  if (WAIT_OBJECT_0 != status && WAIT_TIMEOUT != status) {
+    fatal("WaitForSingleObject failed");
+  }
+#else   // !_WIN32
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_REALTIME, &ts) == -1) {
+    fatal("clock_gettime() failed");
+  }
+
+  ts.tv_sec += millis / 1000;
+  ts.tv_nsec += ((long)millis % 1000) * 1000000;
+
+  if (ts.tv_nsec >= 1000000000) {
+    ts.tv_sec += 1;
+    ts.tv_nsec -= 1000000000;
+  }
+
+  int status;
+  while ((status = sem_timedwait(&sem_, &ts)) != 0) {
+    if (ETIMEDOUT == errno) {
+      break;
+    } else if (EINTR != errno) {
       fatal("sem_wait() failed");
     }
   }
