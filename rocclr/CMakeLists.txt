@@ -206,7 +206,7 @@ if (BUILD_PAL)
 
   target_compile_definitions(amdrocclr_static PRIVATE WITH_PAL_DEVICE)
 
-  export(TARGETS amdrocclr_static rocclrpal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore mpack rapidjson
+  export(TARGETS amdrocclr_static rocclrpal amdhsaloader amdhsacode pal addrlib vam metrohash cwpack gpuopen ddCore tiny_printf mpack rapidjson
     FILE ${ROCCLR_TARGETS_PATH})
 else()
   target_compile_definitions(amdrocclr_static PRIVATE WITH_HSA_DEVICE)
