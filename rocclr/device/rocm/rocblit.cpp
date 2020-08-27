@@ -522,6 +522,9 @@ bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory
                                                dstHost, rowPitch, slicePitch, &image_region);
     result = (status == HSA_STATUS_SUCCESS) ? true : false;
 
+    // hsa_ext_image_export need a system scope fence
+    gpu().addSystemScope();
+
     // Check if a HostBlit transfer is required
     if (completeOperation_ && !result) {
       result = HostBlitManager::copyImageToBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size,
@@ -563,6 +566,9 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
     hsa_status_t status = hsa_ext_image_import(gpu().gpu_device(), srcHost, rowPitch, slicePitch,
                                                dstImage.getHsaImageObject(), &image_region);
     result = (status == HSA_STATUS_SUCCESS) ? true : false;
+
+    // hsa_ext_image_import need a system scope fence
+    gpu().addSystemScope();
 
     // Check if a HostBlit tran sfer is required
     if (completeOperation_ && !result) {
