@@ -19,7 +19,6 @@
  THE SOFTWARE. */
 
 #include "device/device.hpp"
-#include "thread/atomic.hpp"
 #include "thread/monitor.hpp"
 #include "utils/options.hpp"
 #include "comgrctx.hpp"

@@ -30,6 +30,7 @@
 #include "comgrctx.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -1345,7 +1346,7 @@ bool Program::initBuild(amd::option::Options* options) {
   programOptions_ = options;
 
   if (options->oVariables->DumpFlags > 0) {
-    static amd::Atomic<unsigned> build_num = 0;
+    static std::atomic<uint> build_num{0};
     options->setBuildNo(build_num++);
   }
   buildLog_.clear();

@@ -146,7 +146,7 @@ class Memory : public amd::RuntimeObject {
   DeviceMemory* deviceMemories_;
 
   //! The device alloced state
-  std::unordered_map<const Device*, AllocState> deviceAlloced_;
+  std::unordered_map<const Device*, std::atomic<AllocState>> deviceAlloced_;
 
   //! Linked list of destructor callbacks.
   std::atomic<DestructorCallBackEntry*> destructorCallbacks_;

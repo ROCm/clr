@@ -25,6 +25,7 @@
 #include "device/pal/paldefs.hpp"
 #include "util/palBuddyAllocatorImpl.h"
 
+#include <atomic>
 #include <unordered_map>
 
 //! \namespace pal PAL Resource Implementation
@@ -479,7 +480,7 @@ class Resource : public amd::HeapObject {
 
   const Device& gpuDevice_;     //!< GPU device
   Descriptor desc_;             //!< Descriptor for this resource
-  amd::Atomic<int> mapCount_;   //!< Total number of maps
+  std::atomic<int> mapCount_;   //!< Total number of maps
   void* address_;               //!< Physical address of this resource
   size_t offset_;               //!< Resource offset
   GpuMemoryReference* memRef_;  //!< PAL resource reference

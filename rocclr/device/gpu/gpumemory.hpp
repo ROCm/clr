@@ -22,7 +22,6 @@
 #define GPUMEMORY_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "device/gpu/gpuresource.hpp"
 #include <map>
 

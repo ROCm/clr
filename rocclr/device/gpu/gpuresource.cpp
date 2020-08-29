@@ -34,7 +34,6 @@
 #include "device/gpu/gpudevice.hpp"
 #include "device/gpu/gpublit.hpp"
 #include "device/gpu/gputimestamp.hpp"
-#include "thread/atomic.hpp"
 #include "hsa_ext_image.h"
 
 #include <string>

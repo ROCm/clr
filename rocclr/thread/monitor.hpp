@@ -22,7 +22,6 @@
 #define MONITOR_HPP_
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "thread/semaphore.hpp"
 #include "thread/thread.hpp"
 

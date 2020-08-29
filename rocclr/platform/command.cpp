@@ -36,6 +36,7 @@
 #include "platform/agent.hpp"
 #include "os/alloc.hpp"
 
+#include <atomic>
 #include <cstring>
 #include <algorithm>
 
@@ -91,7 +92,7 @@ uint64_t epoch = 0;
 bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   assert(status <= CL_QUEUED && "invalid status");
 
-  int32_t currentStatus = status_;
+  int32_t currentStatus = this->status();
   if (currentStatus <= CL_COMPLETE || currentStatus <= status) {
     // We can only move forward in the execution status.
     return false;
@@ -104,7 +105,7 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
     }
   }
 
-  if (!make_atomic(status_).compareAndSet(currentStatus, status)) {
+  if (!status_.compare_exchange_strong(currentStatus, status, std::memory_order_relaxed)) {
     // Somebody else beat us to it, let them deal with the release/signal.
     return false;
   }
@@ -154,7 +155,7 @@ bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* 
     ;  // Someone else is also updating the head of the linked list! reload.
 
   // Check if the event has already reached 'status'
-  if (status_ <= status && entry->callback_ != CallBackFunction(0)) {
+  if (this->status() <= status && entry->callback_ != CallBackFunction(0)) {
     if (entry->callback_.exchange(NULL) != NULL) {
       callback(as_cl(this), status, entry->data_);
     }
@@ -183,30 +184,30 @@ void Event::processCallbacks(int32_t status) const {
 }
 
 bool Event::awaitCompletion() {
-  if (status_ > CL_COMPLETE) {
+  if (status() > CL_COMPLETE) {
     // Notifies current command queue about waiting
     if (!notifyCmdQueue()) {
       return false;
     }
 
-    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status_);
+    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status());
     auto* queue = command().queue();
     if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
-      while (status_ > CL_COMPLETE) {
+      while (status() > CL_COMPLETE) {
         amd::Os::yield();
       }
     } else {
       ScopedLock lock(lock_);
 
       // Wait until the status becomes CL_COMPLETE or negative.
-      while (status_ > CL_COMPLETE) {
+      while (status() > CL_COMPLETE) {
         lock_.wait();
       }
     }
     ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
   }
 
-  return status_ == CL_COMPLETE;
+  return status() == CL_COMPLETE;
 }
 
 bool Event::notifyCmdQueue() {

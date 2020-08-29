@@ -20,11 +20,11 @@
 
 #pragma once
 
+#include "thread/monitor.hpp"
+
 #include <atomic>
 #include <mutex>
 #include <thread>
-
-#include "thread/monitor.hpp"
 
 #define USE_PROF_API 1
 

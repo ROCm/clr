@@ -21,7 +21,6 @@
 #pragma once
 
 #include "top.hpp"
-#include "thread/atomic.hpp"
 #include "device/pal/palresource.hpp"
 #include <map>
 
