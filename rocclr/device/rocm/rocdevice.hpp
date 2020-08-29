@@ -45,6 +45,7 @@
 #include "hsa_ext_amd.h"
 #include "hsa_ven_amd_loader.h"
 
+#include <atomic>
 #include <iostream>
 #include <vector>
 #include <memory>
@@ -281,7 +282,7 @@ class Device : public NullDevice {
 
     size_t bufSize_;                  //!< Staged buffer size
     std::list<Memory*> freeBuffers_;  //!< The list of free buffers
-    amd::Atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
+    std::atomic_uint acquiredCnt_;   //!< The total number of acquired buffers
     amd::Monitor lock_;               //!< Stgaed buffer acquire/release lock
     const Device& gpuDevice_;         //!< GPU device object
   };
@@ -535,7 +536,7 @@ class Device : public NullDevice {
                             std::vector<LinkAttrType>* link_attr);
 
  public:
-  amd::Atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
+  std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 
   //! enum for keeping the total and available queue priorities
   enum QueuePriority : uint { Low = 0, Normal = 1, High = 2, Total = 3};

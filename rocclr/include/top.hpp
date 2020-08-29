@@ -45,6 +45,7 @@
 #include <xmmintrin.h>
 #endif /*!ATI_ARCH_ARM*/
 
+#include <atomic>
 #include <cstdint>
 #include <cstddef>
 #include <new>
@@ -169,7 +170,7 @@ class HeapObject {
 /*! \brief For all reference counted objects.
  */
 class ReferenceCountedObject {
-  volatile uint referenceCount_;
+  std::atomic<uint> referenceCount_;
 
  protected:
   virtual ~ReferenceCountedObject() {}
@@ -185,7 +186,7 @@ class ReferenceCountedObject {
   };
   void operator delete(void* obj, size_t extSize) { ReferenceCountedObject::operator delete(obj); }
 
-  uint referenceCount() const { return referenceCount_; }
+  uint referenceCount() const { return referenceCount_.load(std::memory_order_relaxed); }
 
   uint retain();
   uint release();

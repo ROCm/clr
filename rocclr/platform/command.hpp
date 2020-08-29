@@ -90,7 +90,7 @@ class Event : public RuntimeObject {
   Monitor lock_;
 
   std::atomic<CallBackEntry*> callbacks_;  //!< linked list of callback entries.
-  volatile int32_t status_;                 //!< current execution status.
+  std::atomic<int32_t> status_;            //!< current execution status.
   std::atomic_flag notified_;              //!< Command queue was notified
 
  protected:
@@ -163,7 +163,7 @@ class Event : public RuntimeObject {
   const ProfilingInfo& profilingInfo() const { return profilingInfo_; }
 
   //! Return this command's execution status.
-  int32_t status() const { return status_; }
+  int32_t status() const { return status_.load(std::memory_order_relaxed); }
 
   //! Insert the given \a callback into the callback stack.
   bool setCallback(int32_t status, CallBackFunction callback, void* data);

@@ -28,7 +28,6 @@
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palblit.hpp"
 #include "device/pal/paltimestamp.hpp"
-#include "thread/atomic.hpp"
 #include "hsa_ext_image.h"
 #ifdef _WIN32
 #include <d3d10_1.h>

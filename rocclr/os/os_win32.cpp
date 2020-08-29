@@ -29,6 +29,7 @@
 #include <time.h>
 #include <intrin.h>
 
+#include <atomic>
 #include <vector>
 #include <string>
 #include <sstream>

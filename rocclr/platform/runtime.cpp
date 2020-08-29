@@ -102,10 +102,12 @@ public:
   ~RuntimeTearDown() { /*Runtime::tearDown();*/ }
 } runtime_tear_down;
 
-uint ReferenceCountedObject::retain() { return ++make_atomic(referenceCount_); }
+uint ReferenceCountedObject::retain() {
+  return referenceCount_.fetch_add(1, std::memory_order_relaxed) + 1;
+}
 
 uint ReferenceCountedObject::release() {
-  uint newCount = --make_atomic(referenceCount_);
+  uint newCount = referenceCount_.fetch_sub(1, std::memory_order_relaxed) - 1;
   if (newCount == 0) {
     if (terminate()) {
       delete this;

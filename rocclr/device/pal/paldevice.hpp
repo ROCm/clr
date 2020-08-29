@@ -39,6 +39,7 @@
 #include "acl.h"
 #include "memory"
 
+#include <atomic>
 #include <unordered_set>
 
 /*! \addtogroup PAL
@@ -258,7 +259,7 @@ class Device : public NullDevice {
     Resource::MemoryType type_;       //!< The buffer's type
     size_t bufSize_;                  //!< Staged buffer size
     std::list<Memory*> freeBuffers_;  //!< The list of free buffers
-    amd::Atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
+    std:atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
     amd::Monitor lock_;               //!< Stgaed buffer acquire/release lock
     const Device& gpuDevice_;         //!< GPU device object
   };

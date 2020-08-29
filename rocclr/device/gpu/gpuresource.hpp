@@ -25,6 +25,8 @@
 #include "platform/program.hpp"
 #include "device/gpu/gpudefs.hpp"
 
+#include <atomic>
+
 //! \namespace gpu GPU Resource Implementation
 namespace gpu {
 
@@ -412,7 +414,7 @@ class Resource : public amd::HeapObject {
 
   const Device& gpuDevice_;       //!< GPU device
   CalResourceDesc cal_;           //!< CAL descriptor for this resource
-  amd::Atomic<int> mapCount_;     //!< Total number of maps
+  std::atomic<int> mapCount_;     //!< Total number of maps
   void* address_;                 //!< Physical address of this resource
   size_t offset_;                 //!< Resource offset
   size_t curRename_;              //!< Current active rename in the list

@@ -19,11 +19,11 @@
  THE SOFTWARE. */
 
 #include "thread/monitor.hpp"
-#include "thread/atomic.hpp"
 #include "thread/semaphore.hpp"
 #include "thread/thread.hpp"
 #include "utils/util.hpp"
 
+#include <atomic>
 #include <cstring>
 #include <tuple>
 #include <utility>

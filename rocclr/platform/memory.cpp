@@ -26,6 +26,8 @@
 #include "platform/memory.hpp"
 #include "device/device.hpp"
 
+#include <atomic>
+
 namespace amd {
 
 bool BufferRect::create(const size_t* bufferOrigin, const size_t* region, size_t bufferRowPitch,
@@ -277,7 +279,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
 
   // Create memory on all available devices
   for (size_t i = 0; i < devices.size(); i++) {
-    deviceAlloced_[devices[i]] = AllocInit;
+    deviceAlloced_[devices[i]].store(AllocInit, std::memory_order_relaxed);
 
     deviceMemories_[i].ref_ = devices[i];
     deviceMemories_[i].value_ = NULL;
@@ -301,11 +303,11 @@ bool Memory::addDeviceMemory(const Device* dev) {
   AllocState create = AllocCreate;
   AllocState init = AllocInit;
 
-  if (make_atomic(deviceAlloced_[dev]).compareAndSet(init, create)) {
+  if (deviceAlloced_[dev].compare_exchange_strong(init, create, std::memory_order_acq_rel)) {
     // Check if runtime already allocated all available slots for device memory
     if (numDevices() == NumDevicesWithP2P()) {
       // Mark the allocation as an empty
-      deviceAlloced_[dev] = AllocInit;
+      deviceAlloced_[dev].store(AllocInit, std::memory_order_release);
       return false;
     }
     device::Memory* dm = dev->createMemory(*this);
@@ -325,17 +327,17 @@ bool Memory::addDeviceMemory(const Device* dev) {
     } else {
       LogError("Video memory allocation failed!");
       // Mark the allocation as an empty
-      deviceAlloced_[dev] = AllocInit;
+      deviceAlloced_[dev].store(AllocInit, std::memory_order_release);
     }
   }
 
   // Make sure runtime finished memory allocation.
   // Loop if in the create state
-  while (deviceAlloced_[dev] == AllocCreate) {
+  while (deviceAlloced_[dev].load(std::memory_order_acquire) == AllocCreate) {
     Os::yield();
   }
 
-  if (deviceAlloced_[dev] == AllocComplete) {
+  if (deviceAlloced_[dev].load(std::memory_order_acquire) == AllocComplete) {
     result = true;
   }
 
@@ -357,7 +359,7 @@ void Memory::replaceDeviceMemory(const Device* dev, device::Memory* dm) {
   }
 
   deviceMemories_[i].value_ = dm;
-  deviceAlloced_[dev] = AllocRealloced;
+  deviceAlloced_[dev].store(AllocRealloced, std::memory_order_release);
 }
 
 device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {

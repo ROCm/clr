@@ -37,6 +37,7 @@
 #include "device/gpu/gpusettings.hpp"
 #include "device/gpu/gpuappprofile.hpp"
 
+#include <atomic>
 
 #include "acl.h"
 #include "vaminterface.h"
@@ -316,7 +317,7 @@ class Device : public NullDevice, public CALGSLDevice {
     Resource::MemoryType type_;       //!< The buffer's type
     size_t bufSize_;                  //!< Staged buffer size
     std::list<Memory*> freeBuffers_;  //!< The list of free buffers
-    amd::Atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
+    std::atomic<uint> acquiredCnt_;   //!< The total number of acquired buffers
     amd::Monitor lock_;               //!< Staged buffer acquire/release lock
     const Device& gpuDevice_;         //!< GPU device object
   };
