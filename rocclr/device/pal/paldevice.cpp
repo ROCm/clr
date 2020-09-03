@@ -197,7 +197,7 @@ bool NullDevice::init() {
             ShouldNotReachHere();
             break;
           case 3:
-            ShouldNotReachHere();
+            ipLevel = Pal::GfxIpLevel::GfxIp10_3;
             break;
           case 4:
             ShouldNotReachHere();
@@ -258,7 +258,7 @@ bool NullDevice::init() {
         ShouldNotReachHere();
         break;
       case 1030:
-        ShouldNotReachHere();
+        revision = Pal::AsicRevision::Navi21;
         break;
       case 1031:
         ShouldNotReachHere();
