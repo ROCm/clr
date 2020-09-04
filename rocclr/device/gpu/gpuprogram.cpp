@@ -176,7 +176,7 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
             if (clBinary()->loadLlvmBinary(llvmBinary_, elfSectionType_) &&
                 (!llvmBinary_.empty())) {
               clBinary()->elfOut()->addSection(elfSectionType_, llvmBinary_.data(),
-                                               llvmBinary_.size(), false);
+                                               llvmBinary_.size());
             }
           }
 
@@ -209,8 +209,7 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
           clBinary()->elfOut()->addSection(amd::Elf::SOURCE, section, sz);
         }
         if (clBinary()->saveLLVMIR()) {
-          clBinary()->elfOut()->addSection(elfSectionType_, llvmBinary_.data(), llvmBinary_.size(),
-                                           false);
+          clBinary()->elfOut()->addSection(elfSectionType_, llvmBinary_.data(), llvmBinary_.size());
         }
       } else {
         buildLog_ += "Internal error: Input OpenCL binary is not for the target!\n";
@@ -567,8 +566,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
   }
 
   if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-                                     false);
+    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size());
     // store the original link options
     clBinary()->storeLinkOptions(linkOptions_);
 

@@ -110,9 +110,9 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
   bool usedebugil = program.getCompilerOptions()->oVariables->UseDebugIL;
 
   int num = elfIn()->getSymbolNum();
-  for (int index = 0; index < num; index++) {
+  for (int ndx = 0; ndx < num; ndx++) {
     amd::Elf::SymbolInfo symInfo;
-    if (!elfIn()->getSymbolInfo(index, &symInfo)) {
+    if (!elfIn()->getSymbolInfo(ndx, &symInfo)) {
       LogError("LoadKernelFromElf: getSymbolInfo() fails");
       return false;
     }
@@ -457,9 +457,9 @@ bool ClBinary::loadGlobalData(Program& program) {
   const char _global[] = "_global";
 
   int num = elfIn()->getSymbolNum();
-  for (int index = 0; index < num; index++) {
+  for (int ndx = 0; ndx < num; ndx++) {
     amd::Elf::SymbolInfo symInfo;
-    if (!elfIn()->getSymbolInfo(index, &symInfo)) {
+    if (!elfIn()->getSymbolInfo(ndx, &symInfo)) {
       LogError("LoadGlobalDataFromElf: getSymbolInfo() fails");
       return false;
     }

@@ -244,8 +244,7 @@ bool NullProgram::compileImpl(const std::string& src,
     clBinary()->elfOut()->addSection(amd::Elf::SOURCE, sourceCode.data(), sourceCode.size());
   }
   if (clBinary()->saveLLVMIR()) {
-    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size(),
-                                     false);
+    clBinary()->elfOut()->addSection(amd::Elf::LLVMIR, llvmBinary_.data(), llvmBinary_.size());
     // store the original compile options
     clBinary()->storeCompileOptions(compileOptions_);
   }
