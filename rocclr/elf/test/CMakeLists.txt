@@ -38,9 +38,6 @@ target_include_directories(elf_test
 
 add_definitions(-DUSE_COMGR_LIBRARY -DCOMGR_DYN_DLL -DWITH_LIGHTNING_COMPILER -DDEBUG)
 
-#target_link_libraries(elf_test PUBLIC pthread)
-#target_link_libraries(elf_test PRIVATE amdrocclr_static pthread hsa-runtime64::hsa-runtime64)
 target_link_libraries(elf_test PRIVATE amdrocclr_static)
 
-#install(TARGETS elf_test RUNTIME DESTINATION bin)
 #-------------------------------------elf_test--------------------------------------#
