@@ -901,6 +901,7 @@ RUNTIME_ENTRY(cl_int, clGetEventProfilingInfo,
     cl_ulong value = 0;
     switch (param_name) {
       case CL_PROFILING_COMMAND_END:
+      case CL_PROFILING_COMMAND_COMPLETE:
         value = as_amd(event)->profilingInfo().end_;
         break;
 
