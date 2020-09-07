@@ -570,34 +570,32 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
     }
   }
 
-  if (retval != CL_SUCCESS) {
-    return retval;
-  }
+  if (retval == CL_SUCCESS) {
+    // Rebuild the symbol table
+    for (const auto& it : devicePrograms_) {
+      const Device& device = *(it.first);
+      const device::Program& program = *(it.second);
 
-  // Rebuild the symbol table
-  for (const auto& it : devicePrograms_) {
-    const Device& device = *(it.first);
-    const device::Program& program = *(it.second);
+      const device::Program::kernels_t& kernels = program.kernels();
+      for (const auto& kit : kernels) {
+        const std::string& name = kit.first;
+        const device::Kernel* devKernel = kit.second;
 
-    const device::Program::kernels_t& kernels = program.kernels();
-    for (const auto& kit : kernels) {
-      const std::string& name = kit.first;
-      const device::Kernel* devKernel = kit.second;
-
-      Symbol& symbol = (*symbolTable_)[name];
-      if (!symbol.setDeviceKernel(device, devKernel)) {
-        retval = CL_BUILD_PROGRAM_FAILURE;
+        Symbol& symbol = (*symbolTable_)[name];
+        if (!symbol.setDeviceKernel(device, devKernel)) {
+          retval = CL_BUILD_PROGRAM_FAILURE;
+        }
       }
     }
-  }
 
-  // Create a string with all kernel names from the program
-  if (kernelNames_.length() == 0) {
-    for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
-      if (it != symbols().cbegin()) {
-        kernelNames_.append(1, ';');
+    // Create a string with all kernel names from the program
+    if (kernelNames_.length() == 0) {
+      for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
+        if (it != symbols().cbegin()) {
+          kernelNames_.append(1, ';');
+        }
+        kernelNames_.append(it->first.c_str());
       }
-      kernelNames_.append(it->first.c_str());
     }
   }
 
