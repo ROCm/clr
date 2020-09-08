@@ -26,6 +26,7 @@
 #else  // !_WIN32
 #include <semaphore.h>
 #include <errno.h>
+#include <time.h>
 #endif  // !_WIN32
 
 namespace amd {
