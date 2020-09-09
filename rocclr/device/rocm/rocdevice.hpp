@@ -459,11 +459,12 @@ class Device : public NullDevice {
                             amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
 
   //! Release HSA queue
-  void releaseQueue(hsa_queue_t*);
+  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {});
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
-  void* getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue = false);
+  void* getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue = false,
+                                  const std::vector<uint32_t>& cuMask = {});
 
   //! Return multi GPU grid launch sync buffer
   address MGSync() const { return mg_sync_; }
@@ -524,7 +525,7 @@ class Device : public NullDevice {
     void* hostcallBuffer_;
   };
 
-  //!< a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
+  //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
   std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
 
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
@@ -534,6 +535,9 @@ class Device : public NullDevice {
   //! returns value for corresponding LinkAttrbutes in a vector given Memory pool.
   virtual bool findLinkInfo(const hsa_amd_memory_pool_t& pool,
                             std::vector<LinkAttrType>* link_attr);
+
+  //! Pool of HSA queues with custom CU masks
+  std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index

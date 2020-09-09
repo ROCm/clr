@@ -761,7 +761,7 @@ VirtualGPU::~VirtualGPU() {
   }
 
   if (gpu_queue_) {
-    roc_device_.releaseQueue(gpu_queue_);
+    roc_device_.releaseQueue(gpu_queue_, cuMask_);
   }
 }
 
@@ -2238,7 +2238,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         }
         case amd::KernelParameterDescriptor::HiddenHostcallBuffer: {
           if (amd::IS_HIP) {
-            auto buffer = roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups);
+            auto buffer = roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups, cuMask_);
             if (!buffer) {
               ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
                       "Kernel expects a hostcall buffer, but none found");
