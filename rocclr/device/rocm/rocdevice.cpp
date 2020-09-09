@@ -143,6 +143,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , hsa_exclusive_gpu_access_(false)
     , queuePool_(QueuePriority::Total)
     , coopHostcallBuffer_(nullptr)
+    , queueWithCUMaskPool_(QueuePriority::Total)
     , numOfVgpus_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
@@ -2300,7 +2301,13 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
       hsa_queue_destroy(queue);
       return nullptr;
     }
-    // Skip queue recycling for queues with custom CU mask
+    // add queues with custom CU mask into their special pool to keep track
+    // of mapping of these queues to their associated queueInfo (i.e., hostcall buffers)
+    auto result = queueWithCUMaskPool_[qIndex].emplace(std::make_pair(queue, QueueInfo()));
+    assert(result.second && "QueueInfo already exists");
+    auto &qInfo = result.first->second;
+    qInfo.refCount = 1;
+
     return queue;
   }
   if (coop_queue) {
@@ -2315,8 +2322,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   return queue;
 }
 
-void Device::releaseQueue(hsa_queue_t* queue) {
-  for (auto& it : queuePool_) {
+void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMask) {
+  for (auto& it : cuMask.size() == 0 ? queuePool_ : queueWithCUMaskPool_) {
     auto qIter = it.find(queue);
     if (qIter != it.end()) {
       auto &qInfo = qIter->second;
@@ -2345,18 +2352,22 @@ void Device::releaseQueue(hsa_queue_t* queue) {
   hsa_queue_destroy(queue);
 }
 
-void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue) {
+void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
+                                        const std::vector<uint32_t>& cuMask) {
   decltype(queuePool_)::value_type::iterator qIter;
 
   if (!coop_queue) {
-    for (auto &it : queuePool_) {
+    for (auto &it : cuMask.size() == 0 ? queuePool_ : queueWithCUMaskPool_) {
       qIter = it.find(queue);
       if (qIter != it.end()) {
         break;
       }
     }
-
-    assert(qIter != queuePool_[QueuePriority::High].end());
+    if (cuMask.size() == 0) {
+      assert(qIter != queuePool_[QueuePriority::High].end());
+    } else {
+      assert(qIter != queueWithCUMaskPool_[QueuePriority::High].end());
+    }
 
     if (qIter->second.hostcallBuffer_) {
       return qIter->second.hostcallBuffer_;
