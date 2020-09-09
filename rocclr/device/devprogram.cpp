@@ -2556,6 +2556,7 @@ bool Program::getSymbolsFromCodeObj(std::vector<std::string>* var_names, amd_com
       ret_val = false;
       break;
     }
+    amd::Comgr::release_data(dataObject);
   } while (0);
 
   return ret_val;
