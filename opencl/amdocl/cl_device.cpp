@@ -337,6 +337,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
       CASE(CL_DEVICE_MAX_SEMAPHORE_SIZE_AMD, maxSemaphoreSize_);
       CASE(CL_DEVICE_BOARD_NAME_AMD, boardName_);
       CASE(CL_DEVICE_SPIR_VERSIONS, spirVersions_);
+      CASE(CL_DEVICE_IL_VERSION, spirVersions_);
       CASE(CL_DEVICE_MAX_PIPE_ARGS, maxPipeArgs_);
       CASE(CL_DEVICE_PIPE_MAX_ACTIVE_RESERVATIONS, maxPipeActiveReservations_);
       CASE(CL_DEVICE_PIPE_MAX_PACKET_SIZE, maxPipePacketSize_);
