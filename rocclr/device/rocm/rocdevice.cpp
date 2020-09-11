@@ -1142,13 +1142,12 @@ bool Device::populateOCLDeviceConstants() {
 
   freeMem_ = info_.globalMemSize_;
 
-  // Make sure the max allocation size is not larger than the available
-  // memory size.
+  // Make sure the max allocation size is not larger than the available memory size.
   info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
+  info_.maxMemAllocSize_ = amd::alignDown(info_.maxMemAllocSize_, sizeof(uint64_t));
 
-  /*make sure we don't run anything over 8 params for now*/
-  info_.maxParameterSize_ = 1024;  // [TODO]: CAL stack values: 1024*
-  // constant
+  // make sure we don't run anything over 8 params for now
+  info_.maxParameterSize_ = 1024;
 
   uint32_t max_work_group_size = 0;
   if (HSA_STATUS_SUCCESS !=
