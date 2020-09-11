@@ -3,10 +3,10 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
 endif()
 
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic -Wl,--unresolved-symbols=report-all -Wl,--version-script=${CMAKE_SOURCE_DIR}/tools/cltrace/cltrace.map")
+set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-Bsymbolic -Wl,--unresolved-symbols=report-all -Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/cltrace.map")
 
-include_directories(${CMAKE_SOURCE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/../../khronos/headers/opencl2.2)
 
 # FIXME: Remove this
 include_directories(${ROCclr_DIR}/include)
