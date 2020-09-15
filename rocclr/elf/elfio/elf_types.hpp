@@ -378,7 +378,7 @@ typedef uint64_t Elf64_Off;
 
 // AMDGPU specific e_flags
 #define EF_AMDGPU_MACH  0x0ff // AMDGPU processor selection mask.
-#define EF_AMDGPU_XNACK 0x100 // Indicates if the XNACK target feature is
+//#define EF_AMDGPU_XNACK 0x100 // Indicates if the XNACK target feature is
                               // enabled for all code contained in the ELF.
 // AMDGPU processors
 #define EF_AMDGPU_MACH_NONE                0x000 // Unspecified processor.
@@ -506,7 +506,7 @@ typedef uint64_t Elf64_Off;
 #define STT_COMMON             5
 #define STT_TLS                6
 #define STT_LOOS              10
-#define STT_AMDGPU_HSA_KERNEL 10
+#define STT_AMDGPU_HSA_KERNEL            (STT_LOOS + 0)
 #define STT_HIOS              12
 #define STT_LOPROC            13
 #define STT_HIPROC            15
