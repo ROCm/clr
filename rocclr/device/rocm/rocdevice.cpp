@@ -1818,6 +1818,16 @@ void Device::updateFreeMemory(size_t size, bool free) {
     freeMem_ += size;
   }
   else {
+    if (size > freeMem_) {
+      // To avoid underflow of the freeMem_
+      // This can happen if the free mem tracked is inaccurate, as some allocations can happen
+      // directly via ROCr
+      ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS,
+             "Free memory set to zero on device 0x%lx, requested size = 0x%x, freeMem_ = 0x%x",
+             this, size, freeMem_.load());
+      freeMem_ = 0;
+      return;
+    }
     freeMem_ -= size;
   }
   ClPrint(amd::LOG_INFO, amd::LOG_MEM, "device=0x%lx, freeMem_ = 0x%x", this, freeMem_.load());
