@@ -195,7 +195,8 @@ class Program : public amd::HeapObject {
   const ClBinary* clBinary() const { return clBinary_; }
 
   bool setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog = nullptr,
-                 amd::Os::FileDesc fdesc = -1, size_t foffset = 0, std::string uri = std::string());
+                 amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
+                 std::string uri = std::string());
 
   type_t type() const { return type_; }
 
@@ -283,7 +284,8 @@ class Program : public amd::HeapObject {
   virtual bool createBinary(amd::option::Options* options) = 0;
 
   //! Initialize Binary (used only for clCreateProgramWithBinary()).
-  bool initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc fdesc = -1,
+  bool initClBinary(const char* binaryIn, size_t size,
+                    amd::Os::FileDesc fdesc = amd::Os::FDescInit(),
                     size_t foffset = 0, std::string uri = std::string());
 
   //! Initialize Binary
@@ -299,7 +301,7 @@ class Program : public amd::HeapObject {
 
   virtual bool setKernels(
     amd::option::Options* options, void* binary, size_t binSize,
-    amd::Os::FileDesc fdesc = -1, size_t foffset = 0,
+    amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
     std::string uri = std::string()) { return true; }
 
   //! Returns all the options to be appended while passing to the compiler library

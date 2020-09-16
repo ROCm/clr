@@ -33,6 +33,7 @@
 
 #ifdef _WIN32
 #include <Basetsd.h>  // For KAFFINITY
+#include <windows.h>
 #endif                // _WIN32
 
 // Smallest supported VM page size.
@@ -98,6 +99,14 @@ class Os : AllStatic {
     inline void adjust(size_t group, KAFFINITY& affinity) const;
 #endif
   };
+
+  static FileDesc FDescInit() {
+#if defined(__linux__)
+    return -1;
+#else
+    return INVALID_HANDLE_VALUE;
+#endif
+  }
 
   // Returns unique resource indicator for a particular memory
   static bool GetURIFromMemory(const void* image, size_t image_size, std::string& uri);
