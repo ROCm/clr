@@ -92,7 +92,7 @@ class HSAILProgram : public roc::Program {
   bool createBinary(amd::option::Options* options) override { return true; }
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
-                          amd::Os::FileDesc fdesc = -1, size_t foffset = 0,
+                          amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
                           std::string uri = std::string()) override;
 
 private:
@@ -115,7 +115,7 @@ private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
 
   bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
-                  amd::Os::FileDesc fdesc = -1, size_t foffset = 0,
+                  amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
                   std::string uri = std::string()) final;
 };
 

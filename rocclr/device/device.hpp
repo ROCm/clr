@@ -871,7 +871,8 @@ class ClBinary : public amd::HeapObject {
 
   /** called only in loading image routines, never storing routines */
   bool setBinary(const char* theBinary, size_t theBinarySize, bool allocated = false,
-                 amd::Os::FileDesc fd = -1, size_t foffset = 0, std::string uri = std::string());
+                 amd::Os::FileDesc fd = amd::Os::FDescInit(), size_t foffset = 0,
+                 std::string uri = std::string());
 
   //! setin elfIn_
   bool setElfIn();
@@ -1049,7 +1050,7 @@ inline std::string Program::BinaryURI() const {
 
 inline Program::finfo_t Program::BinaryFd() const {
   if (clBinary() == NULL) {
-    return {-1, 0};
+    return {amd::Os::FDescInit(), 0};
   }
   return clBinary()->Datafd();
 }
