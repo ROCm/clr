@@ -33,7 +33,6 @@
 
 #ifdef _WIN32
 #include <Basetsd.h>  // For KAFFINITY
-#include <windows.h>
 #endif                // _WIN32
 
 // Smallest supported VM page size.
@@ -56,7 +55,7 @@ class Os : AllStatic {
 
 // File Desc abstraction between OS
 #if defined(_WIN32)
-  typedef HANDLE FileDesc;
+  typedef void* FileDesc;
 #else
   typedef int FileDesc;
 #endif
@@ -104,7 +103,7 @@ class Os : AllStatic {
 #if defined(__linux__)
     return -1;
 #else
-    return INVALID_HANDLE_VALUE;
+    return reinterpret_cast<void*>(-1);
 #endif
   }
 
