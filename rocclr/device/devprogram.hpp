@@ -129,8 +129,6 @@ class Program : public amd::HeapObject {
   std::map<std::string, amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
 #endif
 
-  std::vector<amd::Memory*> undef_mem_obj_;
-
  public:
   //! Construct a section.
   Program(amd::Device& device, amd::Program& owner);
@@ -218,8 +216,6 @@ class Program : public amd::HeapObject {
 
   //! Global variables are a part of the code segment
   bool hasGlobalStores() const { return hasGlobalStores_; }
-
-  std::vector<amd::Memory*> getUndefMemObj() const { return undef_mem_obj_; }
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t metadata() const { return metadata_; }
