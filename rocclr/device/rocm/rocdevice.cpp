@@ -31,6 +31,7 @@
 #include "CL/cl_ext.h"
 
 #include "vdi_common.hpp"
+#include "device/comgrctx.hpp"
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
@@ -58,6 +59,31 @@
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
+namespace {
+inline bool getIsaMeta(const char* targetId, amd_comgr_metadata_node_t& isaMeta) {
+  amd_comgr_status_t status;
+  status = amd::Comgr::get_isa_metadata(targetId, &isaMeta);
+  return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
+}
+bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
+                         std::string& retValue) {
+  amd_comgr_status_t status;
+  amd_comgr_metadata_node_t valMeta;
+  size_t size = 0;
+
+  status = amd::Comgr::metadata_lookup(isaMeta, key, &valMeta);
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::get_metadata_string(valMeta, &size, NULL);
+  }
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    retValue.resize(size - 1);
+    status = amd::Comgr::get_metadata_string(valMeta, &size, &(retValue[0]));
+  }
+
+  return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
+}
+}  // namespace
+
 namespace device {
 extern const char* BlitSourceCode;
 }
@@ -1433,6 +1459,21 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxOnDeviceQueues_ = 1;
   info_.maxOnDeviceEvents_ = settings().numDeviceEvents_;
 
+  // Get Values from from Comgr
+  amd_comgr_metadata_node_t isaMeta;
+  if (getIsaMeta(info_.targetId_, isaMeta)) {
+    std::string vgprValue;
+    info_.availableVGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumVGPRs", vgprValue))
+        ? (atoi(vgprValue.c_str()) * info_.simdPerCU_)
+        : 0;
+
+    info_.availableRegistersPerCU_ = info_.availableVGPRs_ * 64;  // 64 registers per VGPR
+
+    std::string sgprValue;
+    info_.availableSGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumSGPRs", sgprValue))
+        ? (atoi(sgprValue.c_str()))
+        : 0;
+  }
   return true;
 }
 

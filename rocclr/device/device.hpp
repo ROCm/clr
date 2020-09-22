@@ -473,6 +473,10 @@ struct Info : public amd::EmbeddedObject {
   uint32_t wavefrontWidth_;
   //! Available number of SGPRs
   uint32_t availableSGPRs_;
+  //! Available number of VGPRs
+  uint32_t availableVGPRs_;
+  //! Available number of registers per CU
+  uint32_t availableRegistersPerCU_;
   //! Number of global memory channels
   uint32_t globalMemChannels_;
   //! Number of banks in each global memory channel
