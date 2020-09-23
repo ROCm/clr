@@ -28,6 +28,7 @@ const char* getOclCommandKindString(uint32_t op) {
   const char* case_string;
 
   switch(static_cast<cl_command_type>(op)) {
+    CASE_STRING(CL_COMMAND_MARKER, Marker)
     CASE_STRING(CL_COMMAND_NDRANGE_KERNEL, KernelExecution)
     CASE_STRING(CL_COMMAND_READ_BUFFER, CopyDeviceToHost)
     CASE_STRING(CL_COMMAND_WRITE_BUFFER, CopyHostToDevice)
