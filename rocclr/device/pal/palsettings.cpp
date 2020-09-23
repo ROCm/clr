@@ -356,6 +356,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       return false;
   }
 
+  if (0 == palProp.engineProperties[Pal::EngineTypeDma].engineCount) {
+    disableSdma_ = true;
+  }
+
   // Image DMA must be disabled if SDMA is disabled
   imageDMA_ &= !disableSdma_;
 
