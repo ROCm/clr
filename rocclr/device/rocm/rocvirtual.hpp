@@ -42,6 +42,26 @@ struct ProfilingSignal : public amd::HeapObject {
   ProfilingSignal() : ts_(nullptr) { signal_.handle = 0; }
 };
 
+// Initial HSA signal value
+constexpr hsa_signal_value_t kInitSignalValueOne = 1;
+
+inline bool WaitForSignal(hsa_signal_t signal) {
+  constexpr uint64_t Timeout30us = 30000;
+  constexpr uint64_t UnlimitedWait = std::numeric_limits<uint64_t>::max();
+  uint64_t timeout = (ROC_ACTIVE_WAIT) ? UnlimitedWait : Timeout30us;
+
+  // Active wait with a timeout
+  if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+    // Wait until the completion with CPU suspend
+    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                  UnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Timestamp for keeping track of some profiling information for various commands
 // including EnqueueNDRangeKernel and clEnqueueCopyBuffer.
 class Timestamp {
@@ -53,6 +73,7 @@ class Timestamp {
   static double ticksToTime_;
   bool splittedDispatch_;
   std::vector<hsa_signal_t> splittedSignals_;
+  bool wait_for_signal_;      //!< Wait for signal before gathering the timestamp values
 
  public:
   uint64_t getStart() {
@@ -75,7 +96,12 @@ class Timestamp {
 
   void setAgent(hsa_agent_t agent) { agent_ = agent; }
 
-  Timestamp() : start_(0), end_(0), profilingSignal_(nullptr), splittedDispatch_(false) {
+  Timestamp(bool wait_for_signal = false)
+    : start_(0)
+    , end_(0)
+    , profilingSignal_(nullptr)
+    , splittedDispatch_(false)
+    , wait_for_signal_(wait_for_signal) {
     agent_.handle = 0;
   }
 
@@ -90,6 +116,9 @@ class Timestamp {
         uint64_t start = UINT64_MAX;
         uint64_t end = 0;
         for (auto it = splittedSignals_.begin(); it < splittedSignals_.end(); it++) {
+          if (wait_for_signal_) {
+            WaitForSignal(*it);
+          }
           hsa_amd_profiling_get_dispatch_time(agent_, *it, &time);
           if (time.start < start) {
             start = time.start;
@@ -101,6 +130,9 @@ class Timestamp {
         start_ = start * ticksToTime_;
         end_ = end * ticksToTime_;
       } else {
+        if (wait_for_signal_) {
+          WaitForSignal(profilingSignal_->signal_);
+        }
         hsa_amd_profiling_get_dispatch_time(agent_, profilingSignal_->signal_, &time);
         start_ = time.start * ticksToTime_;
         end_ = time.end * ticksToTime_;
@@ -125,9 +157,6 @@ class Timestamp {
 
 class VirtualGPU : public device::VirtualDevice {
  public:
-  //! Initial signal value
-  static const hsa_signal_value_t InitSignalValue = 1;
-
   class MemoryDependency : public amd::EmbeddedObject {
    public:
     //! Default constructor
@@ -227,10 +256,9 @@ class VirtualGPU : public device::VirtualDevice {
    * @brief Waits on an outstanding kernel without regard to how
    * it was dispatched - with or without a signal
    *
-   * @return bool true if Wait returned successfully, false
-   * otherwise
+   * @return bool true if Wait returned successfully, false otherwise
    */
-  bool releaseGpuMemoryFence();
+  bool releaseGpuMemoryFence(bool force_barrier    = false);
 
   hsa_agent_t gpu_device() { return gpu_device_; }
   hsa_queue_t* gpu_queue() { return gpu_queue_; }
@@ -314,6 +342,9 @@ class VirtualGPU : public device::VirtualDevice {
   //! Updates AQL header for the upcomming dispatch
   void setAqlHeader(uint16_t header) { aqlHeader_ = header; }
 
+  //! Resets the current queue state. Note: should be called after AQL queue becomes idle
+  void ResetQueueStates();
+
   std::vector<Memory*> xferWriteBuffers_;  //!< Stage write buffers
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
@@ -336,6 +367,7 @@ class VirtualGPU : public device::VirtualDevice {
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
   hsa_barrier_and_packet_t barrier_packet_;
   hsa_signal_t barrier_signal_;
+  hsa_signal_t last_signal_ = {};  //!< Last submitted signal
   uint32_t dispatch_id_;  //!< This variable must be updated atomically.
   Device& roc_device_;    //!< roc device object
   PrintfDbg* printfdbg_;

@@ -379,6 +379,7 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
   return true;
 }
 
+// ================================================================================================
 bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& dstMemory,
                                     const amd::BufferRect& srcRect, const amd::BufferRect& dstRect,
                                     const amd::Coord3D& size, bool entire) const {
@@ -435,8 +436,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     }
 
     if (isSubwindowRectCopy ) {
-      const hsa_signal_value_t kInitVal = 1;
-      hsa_signal_store_relaxed(completion_signal_, kInitVal);
+      hsa_signal_store_relaxed(completion_signal_, kInitSignalValueOne);
 
       // Copy memory line by line
       hsa_status_t status =
@@ -447,10 +447,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
         return false;
       }
 
-
-      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                                      uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
-      if (val != 0) {
+      if (!WaitForSignal(completion_signal_)) {
         LogError("Async copy failed");
         return false;
       }
@@ -476,9 +473,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
         }
       }
 
-      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                                      uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
-      if (val != 0) {
+      if (!WaitForSignal(completion_signal_)) {
         LogError("Async copy failed");
         return false;
       }
@@ -488,6 +483,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
   return true;
 }
 
+// ================================================================================================
 bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                        const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
@@ -598,6 +594,7 @@ bool DmaBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMem
   return result;
 }
 
+// ================================================================================================
 bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                              const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                              const amd::Coord3D& size, bool enableCopyRect, bool flushDMA) const {
@@ -639,8 +636,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     srcAgent = dstAgent = dev().getBackendDevice();
   }
 
-  const hsa_signal_value_t kInitVal = 1;
-  hsa_signal_store_relaxed(completion_signal_, kInitVal);
+  hsa_signal_store_relaxed(completion_signal_, kInitSignalValueOne);
 
   // Use SDMA to transfer the data
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent, size[0], 0, nullptr,
@@ -649,21 +645,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   if (status == HSA_STATUS_SUCCESS) {
     hsa_signal_value_t val;
 
-    // Use ACTIVE wait for small transfers.
-    // Might want to be dependent on also having an idle GPU
-    // or, if queue is busy, may want to enqueue a blank barrier
-    // before this and wait BLOCKED on its completion signal, followed
-    // by ACTIVE on this.
-
-    constexpr size_t small_transfer_size = 4 * Mi;
-    if (size[0] < small_transfer_size) {
-      val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                    std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_ACTIVE);
-    } else {
-      val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0,
-                                    std::numeric_limits<uint64_t>::max(), HSA_WAIT_STATE_BLOCKED);
-    }
-    if (val != (kInitVal - 1)) {
+    if (!WaitForSignal(completion_signal_)) {
       LogError("Async copy failed");
       status = HSA_STATUS_ERROR;
     } else {
@@ -676,6 +658,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   return (status == HSA_STATUS_SUCCESS);
 }
 
+// ================================================================================================
 bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_t size,
                                    address staging, bool hostToDev) const {
   // No allocation is necessary for Full Profile
@@ -693,12 +676,10 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
 
   address hsaBuffer = staging;
 
-  const hsa_signal_value_t kInitVal = 1;
-
   // Allocate requested size of memory
   while (totalSize > 0) {
     size = std::min(totalSize, dev().settings().stagedXferSize_);
-    hsa_signal_silent_store_relaxed(completion_signal_, kInitVal);
+    hsa_signal_silent_store_relaxed(completion_signal_, kInitSignalValueOne);
 
     // Copy data from Host to Device
     if (hostToDev) {
@@ -712,10 +693,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, completion_signal_);
       if (status == HSA_STATUS_SUCCESS) {
-        hsa_signal_value_t val = hsa_signal_wait_scacquire(
-            completion_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
-
-        if (val != (kInitVal - 1)) {
+        if (!WaitForSignal(completion_signal_)) {
           LogError("Async copy failed");
           return false;
         }
@@ -739,10 +717,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
                                   dev().getBackendDevice(), size, 0, nullptr, completion_signal_);
     if (status == HSA_STATUS_SUCCESS) {
-      hsa_signal_value_t val = hsa_signal_wait_scacquire(completion_signal_, HSA_SIGNAL_CONDITION_EQ,
-                                                       0, uint64_t(-1), HSA_WAIT_STATE_BLOCKED);
-
-      if (val != (kInitVal - 1)) {
+      if (!WaitForSignal(completion_signal_)) {
         LogError("Async copy failed");
         return false;
       }
@@ -760,6 +735,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
   return true;
 }
 
+// ================================================================================================
 KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup),
       program_(nullptr),
@@ -1659,6 +1635,7 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                    const amd::Coord3D& origin, const amd::Coord3D& size,
                                    bool entire) const {
@@ -1667,12 +1644,13 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize) {
     if ((srcMemory.owner()->getHostMem() == nullptr) && (srcMemory.owner()->getSvmPtr() != nullptr)) {
-      // CPU read ahead, hence release GPU memory
-      gpu().releaseGpuMemoryFence();
+      // CPU read ahead, hence release GPU memory and force barrier to make sure L2 flush
+      constexpr bool ForceBarrier = true;
+      gpu().releaseGpuMemoryFence(ForceBarrier);
       char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
       std::memcpy(dstHost, src + origin[0], size[0]);
-      // Set HASPENDINGDISPATCH_ FLAG. That will force L2 invalidation on flush
-      gpu().hasPendingDispatch();
+      // The first dispatch will invalidate L2
+      gpu().addSystemScope();
       return true;
     }
   }
@@ -1717,6 +1695,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
                                        const amd::BufferRect& bufRect,
                                        const amd::BufferRect& hostRect, const amd::Coord3D& size,
@@ -1764,6 +1743,7 @@ bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                     const amd::Coord3D& origin, const amd::Coord3D& size,
                                     bool entire) const {
@@ -1773,12 +1753,13 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize) {
     if ((dstMemory.owner()->getHostMem() == nullptr) && (dstMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory
-      gpu().releaseGpuMemoryFence();
+      constexpr bool ForceBarrier = true;
+      gpu().releaseGpuMemoryFence(ForceBarrier);
       char* dst = reinterpret_cast<char*>(dstMemory.owner()->getSvmPtr());
       std::memcpy(dst + origin[0], srcHost, size[0]);
       // Set HASPENDINGDISPATCH_ FLAG. Then releaseGpuMemoryFence() will use barrier to invalidate cache
       gpu().hasPendingDispatch();
-      gpu().releaseGpuMemoryFence();
+      gpu().releaseGpuMemoryFence(ForceBarrier);
       return true;
     }
   }
@@ -1825,6 +1806,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMemory,
                                         const amd::BufferRect& hostRect,
                                         const amd::BufferRect& bufRect, const amd::Coord3D& size,
@@ -2284,6 +2266,7 @@ address KernelBlitManager::captureArguments(const amd::Kernel* kernel) const {
 void KernelBlitManager::releaseArguments(address args) const {
 }
 
+// ================================================================================================
 bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
                                      hsa_queue_t* schedulerQueue,
                                      hsa_signal_t& schedulerSignal,
@@ -2310,7 +2293,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   sp->child_queue = reinterpret_cast<uint64_t>(schedulerQueue);
   sp->complete_signal = schedulerSignal;
 
-  hsa_signal_store_relaxed(schedulerSignal, 1);
+  hsa_signal_store_relaxed(schedulerSignal, kInitSignalValueOne);
 
   sp->scheduler_aql.header = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
                              (1 << HSA_PACKET_HEADER_BARRIER) |
@@ -2346,8 +2329,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   }
   releaseArguments(parameters);
 
-  if (hsa_signal_wait_scacquire(schedulerSignal, HSA_SIGNAL_CONDITION_LT, 1, (-1),
-                                HSA_WAIT_STATE_BLOCKED) != 0) {
+  if (!WaitForSignal(schedulerSignal)) {
     LogWarning("Failed schedulerSignal wait");
     return false;
   }
@@ -2355,6 +2337,7 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   return true;
 }
 
+// ================================================================================================
 bool KernelBlitManager::RunGwsInit(
   uint32_t value) const {
   amd::ScopedLock k(lockXferOps_);

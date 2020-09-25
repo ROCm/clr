@@ -236,6 +236,10 @@ release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
         "0 = Disable")                                                        \
 release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Size in KB of the threshold below which to force blit instead for sdma") \
+release(bool, ROC_BARRIER_SYNC, true,                                         \
+        "Enable AQL barrier packet for synchronization")                      \
+release(bool, ROC_ACTIVE_WAIT, false,                                         \
+        "Forces unconditional active wait for GPU")                           \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
 release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
