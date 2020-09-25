@@ -51,7 +51,8 @@ class Settings : public device::Settings {
       uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
-      uint reserved_ : 24;
+      uint barrier_sync_ : 1;           //!< Use AQL barrier command to sync with CPU
+      uint reserved_ : 23;
     };
     uint value_;
   };
@@ -82,7 +83,7 @@ class Settings : public device::Settings {
 
   size_t sdmaCopyThreshold_;  //!< Use SDMA to copy above this size
 
-  uint32_t      hmmFlags_;    //!< HMM functionality control flags
+  uint32_t  hmmFlags_;        //!< HMM functionality control flags
 
   //! Default constructor
   Settings();

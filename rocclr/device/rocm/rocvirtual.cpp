@@ -436,10 +436,12 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
   return true;
 }
 
+// ================================================================================================
 static inline void packet_store_release(uint32_t* packet, uint16_t header, uint16_t rest) {
   __atomic_store_n(packet, header | (rest << 16), __ATOMIC_RELEASE);
 }
 
+// ================================================================================================
 template <typename AqlPacket>
 bool VirtualGPU::dispatchGenericAqlPacket(
   AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size) {
@@ -478,8 +480,17 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     }
     signal = packet->completion_signal;
     // Initialize signal for a wait
-    hsa_signal_store_relaxed(signal, InitSignalValue);
+    hsa_signal_store_relaxed(signal, kInitSignalValueOne);
     blocking = true;
+  }
+
+  // If runtime doesn't use the barrier, then make sure it tracks the last submitted command
+  if (!dev().settings().barrier_sync_) {
+    // Initialize signal for a wait
+    assert(packet->completion_signal.handle != 0 &&
+        "There is no HSA signal associated with the last command!");
+    hsa_signal_store_relaxed(packet->completion_signal, kInitSignalValueOne);
+    last_signal_ = packet->completion_signal;
   }
 
   // Insert packet(s)
@@ -521,8 +532,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   // Wait on signal ?
   if (blocking) {
-    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, 1, uint64_t(-1),
-                                HSA_WAIT_STATE_BLOCKED) != 0) {
+    if (!WaitForSignal(signal)) {
       LogPrintfError("Failed signal [0x%lx] wait", signal.handle);
       return false;
     }
@@ -531,16 +541,19 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   return true;
 }
 
+// ================================================================================================
 bool VirtualGPU::dispatchAqlPacket(
   hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest, bool blocking) {
   return dispatchGenericAqlPacket(packet, header, rest, blocking);
 }
 
+// ================================================================================================
 bool VirtualGPU::dispatchAqlPacket(
   hsa_barrier_and_packet_t* packet, uint16_t header, uint16_t rest, bool blocking) {
   return dispatchGenericAqlPacket(packet, header, rest, blocking);
 }
 
+// ================================================================================================
 bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
                                           const uint32_t gfxVersion, bool blocking,
                                           const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi) {
@@ -599,32 +612,8 @@ void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
           packet->dep_signal[3], packet->dep_signal[4], packet->completion_signal);
 }
 
-/**
- * @brief Waits on an outstanding kernel without regard to how
- * it was dispatched - with or without a signal
- *
- * @return bool true if Wait returned successfully, false
- * otherwise
- */
-bool VirtualGPU::releaseGpuMemoryFence() {
-  // Return if there is no pending dispatch
-  if (!hasPendingDispatch_) {
-    return false;
-  }
-
-  // Initialize signal for the barrier packet.
-  hsa_signal_store_relaxed(barrier_signal_, InitSignalValue);
-
-  // Dispatch barrier packet into the queue and wait till it finishes.
-  dispatchBarrierPacket(&barrier_packet_);
-  if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-                              HSA_WAIT_STATE_BLOCKED) != 0) {
-    LogError("Barrier packet submission failed");
-    return false;
-  }
-
-  hasPendingDispatch_ = false;
-
+// ================================================================================================
+void VirtualGPU::ResetQueueStates() {
   // Release all transfer buffers on this command queue
   releaseXferWrite();
 
@@ -633,10 +622,42 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
   // Release the pool, since runtime just completed a barrier
   resetKernArgPool();
+}
 
+// ================================================================================================
+bool VirtualGPU::releaseGpuMemoryFence(bool force_barrier) {
+  // Return if there is no pending dispatch
+  if (!hasPendingDispatch_) {
+    return false;
+  }
+  hsa_signal_t wait_signal = barrier_signal_;
+
+  // If barrier sync was requested or runtime didn't provide the last signal
+  if (dev().settings().barrier_sync_ || force_barrier) {
+    // Initialize signal for the barrier packet.
+    hsa_signal_store_relaxed(barrier_signal_, kInitSignalValueOne);
+
+    // Dispatch barrier packet into the queue and wait till it finishes.
+    dispatchBarrierPacket(&barrier_packet_);
+  }
+  else {
+    // Take the signal of the last submitted dispatch
+    wait_signal = last_signal_;
+  }
+
+  // Wait for compute work previously submitted
+  if (!WaitForSignal(wait_signal)) {
+    LogError("Waiting for compute work failed!");
+    return false;
+  }
+
+  hasPendingDispatch_ = false;
+
+  ResetQueueStates();
   return true;
 }
 
+// ================================================================================================
 VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
                        const std::vector<uint32_t>& cuMask,
                        amd::CommandQueue::Priority priority)
@@ -772,7 +793,7 @@ bool VirtualGPU::create() {
 
   // Create signal for the barrier packet.
   hsa_signal_t signal = {0};
-  if (HSA_STATUS_SUCCESS != hsa_signal_create(InitSignalValue, 0, nullptr, &signal)) {
+  if (HSA_STATUS_SUCCESS != hsa_signal_create(kInitSignalValueOne, 0, nullptr, &signal)) {
     return false;
   }
   barrier_signal_ = signal;
@@ -851,12 +872,11 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
       //! We can issue a barrier to avoid expensive extra memory allocations.
 
       // Initialize signal for the barrier packet.
-      hsa_signal_store_relaxed(barrier_signal_, InitSignalValue);
+      hsa_signal_store_relaxed(barrier_signal_, kInitSignalValueOne);
 
       // Dispatch barrier packet into the queue and wait till it finishes.
       dispatchBarrierPacket(&barrier_packet_);
-      if (hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-                                  HSA_WAIT_STATE_BLOCKED) != 0) {
+      if (!WaitForSignal(barrier_signal_)) {
         LogError("Kernel arguments reset failed");
       }
 
@@ -879,7 +899,8 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
                         This could have unintended consequences.");
       return;
     }
-    timestamp_ = new Timestamp;
+    // Without barrier profiling will wait for each individual signal
+    timestamp_ = new Timestamp(!dev().settings().barrier_sync_);
     timestamp_->start();
   }
 }
@@ -1202,7 +1223,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
 void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
 #if AMD_HMM_SUPPORT
   // Initialize signal for the barrier
-  hsa_signal_store_relaxed(barrier_signal_, InitSignalValue);
+  hsa_signal_store_relaxed(barrier_signal_, kInitSignalValueOne);
 
   // Find the requested agent for the transfer
   hsa_agent_t agent = (cmd.cpu_access() ||
@@ -1214,9 +1235,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
       const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, 0, nullptr, barrier_signal_);
 
   // Wait for the prefetch
-  if ((status != HSA_STATUS_SUCCESS) ||
-      hsa_signal_wait_scacquire(barrier_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-                                HSA_WAIT_STATE_BLOCKED) != 0) {
+  if ((status != HSA_STATUS_SUCCESS) || !WaitForSignal(barrier_signal_)) {
     LogError("hsa_amd_svm_prefetch_async failed");
     cmd.setStatus(CL_INVALID_OPERATION);
   }
@@ -2458,20 +2477,38 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
+// ================================================================================================
 void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
+  if (!dev().settings().barrier_sync_) {
+    // Force barrier to make sure L2 flush, since interop can be in sysmem
+    constexpr bool ForceBarrier = true;
+    releaseGpuMemoryFence(ForceBarrier);
+  }
   profilingEnd(vcmd);
 }
 
+// ================================================================================================
 void VirtualGPU::flush(amd::Command* list, bool wait) {
-  releaseGpuMemoryFence();
+  // If barrier is requested, then wait for everything, otherwise
+  // a per disaptch wait will occur later in updateCommandsState()
+  if (dev().settings().barrier_sync_) {
+    releaseGpuMemoryFence();
+  }
   updateCommandsState(list);
+
+  // Add extra clean up for resources if releaseGpuMemoryFence() was skipped
+  if (!dev().settings().barrier_sync_) {
+    ResetQueueStates();
+  }
+
   // Release all pinned memory
   releasePinnedMem();
 }
 
+// ================================================================================================
 void VirtualGPU::addXferWrite(Memory& memory) {
   if (xferWriteBuffers_.size() > 7) {
     dev().xferWrite().release(*this, *xferWriteBuffers_.front());

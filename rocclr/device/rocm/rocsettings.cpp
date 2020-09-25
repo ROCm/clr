@@ -90,6 +90,7 @@ Settings::Settings() {
   hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : Hmm::EnableSystemMemory;
 
   rocr_backend_ = true;
+  barrier_sync_ = (!flagIsDefault(ROC_BARRIER_SYNC)) ? ROC_BARRIER_SYNC : true;
 }
 
 bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups) {

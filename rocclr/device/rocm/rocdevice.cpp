@@ -718,7 +718,7 @@ bool Device::create() {
   }
 
   // Create signal for HMM prefetch operation on device
-  if (HSA_STATUS_SUCCESS != hsa_signal_create(InitSignalValue, 0, nullptr, &prefetch_signal_)) {
+  if (HSA_STATUS_SUCCESS != hsa_signal_create(kInitSignalValueOne, 0, nullptr, &prefetch_signal_)) {
     return false;
   }
 
@@ -1476,6 +1476,12 @@ bool Device::populateOCLDeviceConstants() {
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   amd::ScopedLock lock(vgpusAccess());
 
+  // If barrier is disabled, then profiling should be enabled to make sure HSA signal is
+  // attached for every dispatch
+  if (!settings().barrier_sync_) {
+    queue->properties().set(CL_QUEUE_PROFILING_ENABLE);
+  }
+
   bool profiling = (queue != nullptr) && queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
   bool cooperative = false;
 
@@ -1732,9 +1738,11 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   return memory;
 }
 
+// ================================================================================================
 void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
   void* ptr = nullptr;
-  const hsa_amd_memory_pool_t segment = (!atomics)
+  // If runtime disables barrier, then all host allocations must have L2 disabled
+  const hsa_amd_memory_pool_t segment = (!atomics && settings().barrier_sync_)
       ? (system_coarse_segment_.handle != 0) ? system_coarse_segment_ : system_segment_
       : system_segment_;
   assert(segment.handle != 0);
@@ -1754,10 +1762,12 @@ void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
   return ptr;
 }
 
+// ================================================================================================
 void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics) const {
   void* ptr = nullptr;
   const hsa_amd_memory_pool_t segment =
-      (!atomics) ?
+      // If runtime disables barrier, then all host allocations must have L2 disabled
+      (!atomics && settings().barrier_sync_) ?
           (agentInfo.coarse_grain_pool.handle != 0) ?
               agentInfo.coarse_grain_pool : agentInfo.fine_grain_pool
           : agentInfo.fine_grain_pool;
@@ -1778,6 +1788,7 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
   return ptr;
 }
 
+// ================================================================================================
 void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
   void* ptr = nullptr;
 #ifndef ROCCLR_SUPPORT_NUMA_POLICY
@@ -2215,7 +2226,7 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
 
 #if AMD_HMM_SUPPORT
   // Initialize signal for the barrier
-  hsa_signal_store_relaxed(prefetch_signal_, InitSignalValue);
+  hsa_signal_store_relaxed(prefetch_signal_, kInitSignalValueOne);
 
   // Initiate a prefetch command which should force memory update in HMM
   hsa_status_t status = hsa_amd_svm_prefetch_async(memory, size, getBackendDevice(),
@@ -2226,8 +2237,7 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
   }
 
   // Wait for the prefetch
-  if (hsa_signal_wait_scacquire(prefetch_signal_, HSA_SIGNAL_CONDITION_EQ, 0, uint64_t(-1),
-                              HSA_WAIT_STATE_BLOCKED) != 0) {
+  if (!WaitForSignal(prefetch_signal_)) {
     LogError("Barrier packet submission failed");
     return false;
   }
