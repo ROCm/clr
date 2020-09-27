@@ -1778,6 +1778,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
       : system_segment_;
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation host memory");
     return nullptr;
@@ -1804,6 +1805,7 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
           : agentInfo.fine_grain_pool;
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogPrintfError("Fail allocation host memory with err %d", stat);
     return nullptr;
@@ -1910,6 +1912,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
 
   void* ptr = nullptr;
   hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa device memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation local memory");
     return nullptr;
@@ -1925,6 +1928,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
 
 void Device::memFree(void* ptr, size_t size) const {
   hsa_status_t stat = hsa_amd_memory_pool_free(ptr);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Free hsa memory %p", ptr);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail freeing local memory");
   }
