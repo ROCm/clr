@@ -3528,10 +3528,6 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
   if (hsaKernel.prog().hasGlobalStores()) {
     // Validate code object for a dependency in the queue
     memoryDependency().validate(*this, &hsaKernel.prog().codeSegGpu(), IsReadOnly);
-    std::vector<amd::Memory*> undefined = hsaKernel.prog().getUndefMemObj();
-    for (auto it = undefined.begin(); it != undefined.end(); ++it) {
-      addVmMemory(dev().getGpuMemory(*it));
-    }
   }
 
   addVmMemory(&hsaKernel.prog().codeSegGpu());
