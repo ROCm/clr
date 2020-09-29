@@ -197,7 +197,7 @@ void Device::setupCpuAgent() {
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa select cpu agent[%zu]=0x%zx(fine=0x%zx,coarse=0x%zx) "
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,coarse=0x%zx)"
           "for gpu agent=0x%zx",
           index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
           _bkendDevice.handle);
@@ -366,9 +366,8 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
     AgentInfo info = { agent, { 0 }, { 0 }};
     stat = hsa_amd_agent_iterate_memory_pools(agent, Device::iterateCpuMemoryPoolCallback,
                                               reinterpret_cast<void*>(&info));
-    if (stat == HSA_STATUS_INFO_BREAK) {
+    if (stat == HSA_STATUS_SUCCESS) {
       cpu_agents_.push_back(info);
-      stat = HSA_STATUS_SUCCESS;
     }
   } else if (dev_type == HSA_DEVICE_TYPE_GPU) {
     gpu_agents_.push_back(agent);
@@ -902,9 +901,6 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
         agentInfo->coarse_grain_pool = pool;
       }
 
-      if (agentInfo->fine_grain_pool.handle != 0 && agentInfo->coarse_grain_pool.handle != 0) {
-        stat = HSA_STATUS_INFO_BREAK;
-      }
       break;
     }
     default:
