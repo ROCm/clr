@@ -1696,10 +1696,6 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
 
     if (isHIP()) {
       optionsVec.push_back("-D__HIP_ROCclr__=1");
-      scratchStr.clear();
-      std::string target(machineTarget_);
-      std::transform(target.begin(), target.end(), target.begin(), ::toupper);
-      optionsVec.push_back(scratchStr.append("-D__HIP_ARCH_").append(target).append("__=1"));
     } else {
       int major, minor;
       ::sscanf(device().info().version_, "OpenCL %d.%d ", &major, &minor);
