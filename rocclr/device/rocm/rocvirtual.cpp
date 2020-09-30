@@ -453,17 +453,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   // TODO: placeholder to setup the kernel to populate start and end timestamp.
   if (timestamp_ != nullptr) {
-    if (current_signal_ >= signal_pool_.size()) {
-      ProfilingSignal profilingSignal = {};
-      if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &profilingSignal.signal_)) {
-        LogPrintfError("Failed signal allocation id = %d", current_signal_);
-        return false;
-      }
-      signal_pool_.push_back(profilingSignal);
-      assert(current_signal_ < signal_pool_.size() && "Not enough signals");
-    }
     // Find signal slot
-    ProfilingSignal* profilingSignal = &signal_pool_[current_signal_++];
+    ProfilingSignal* profilingSignal = &signal_pool_[index & queueMask];
     // Make sure we save the old results in the TS structure
     if (profilingSignal->ts_ != nullptr) {
       profilingSignal->ts_->checkGpuTime();
@@ -535,8 +526,6 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       LogPrintfError("Failed signal [0x%lx] wait", signal.handle);
       return false;
     }
-    // Reset the pool of signals
-    current_signal_ = 0;
   }
 
   return true;
@@ -644,9 +633,6 @@ bool VirtualGPU::releaseGpuMemoryFence() {
 
   // Release the pool, since runtime just completed a barrier
   resetKernArgPool();
-
-  // Reset the pool of signals
-  current_signal_ = 0;
 
   return true;
 }
@@ -771,9 +757,8 @@ bool VirtualGPU::create() {
   gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_, cuMask_, priority_);
   if (!gpu_queue_) return false;
 
-  constexpr uint32_t kDefaultSignalPoolSize = 32;
   if (!initPool(dev().settings().kernargPoolSize_,
-                (profiling_ || (amd::IS_HIP)) ? kDefaultSignalPoolSize : 0)) {
+                (profiling_ || (amd::IS_HIP)) ? queue_size : 0)) {
     LogError("Couldn't allocate arguments/signals for the queue");
     return false;
   }
@@ -876,9 +861,6 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
       }
 
       resetKernArgPool();
-
-      // Reset the pool of signals
-      current_signal_ = 0;
     }
   } while (true);
 
