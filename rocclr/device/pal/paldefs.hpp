@@ -220,6 +220,8 @@ static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /*      UnknownDevice XNACK */ UnknownDevice,
     /* 0x2c UnknownDevice       */ UnknownDevice,
     /*      UnknownDevice XNACK */ UnknownDevice,
+    /* 0x2d UnknownDevice       */ UnknownDevice,
+    /*      UnknownDevice XNACK */ UnknownDevice,
 };
 
 // Supported OpenCL versions
