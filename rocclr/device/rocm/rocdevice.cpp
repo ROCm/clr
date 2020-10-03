@@ -2003,8 +2003,8 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
 }
 
 // ================================================================================================
-bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
-                              amd::MemoryAdvice advice, bool first_alloc) const {
+bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
+                              amd::MemoryAdvice advice, bool first_alloc, bool use_cpu) const {
   if ((settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) && !first_alloc) {
     amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
     if (nullptr == svm_mem) {
@@ -2026,18 +2026,26 @@ bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
       attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, false});
       break;
     case amd::MemoryAdvice::SetPreferredLocation:
-      attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getBackendDevice().handle});
+      if (use_cpu) {
+        attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getCpuAgent().handle});
+      } else {
+        attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getBackendDevice().handle});
+      }
       break;
     case amd::MemoryAdvice::UnsetPreferredLocation:
-      // Note: The current behavior doesn't match hip spec precisely
-      attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getCpuAgent().handle});
+      // @note: 0 may cause a failure on old runtimes
+      attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, 0});
       break;
     case amd::MemoryAdvice::SetAccessedBy:
-      attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE, getBackendDevice().handle});
+      if (use_cpu) {
+        attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getCpuAgent().handle});
+      } else {
+        attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getBackendDevice().handle});
+      }
       break;
     case amd::MemoryAdvice::UnsetAccessedBy:
-      // @note: The current behavior doesn't match hip spec precisely
-      attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE, getCpuAgent().handle});
+      // @note: 0 may cause a failure on old runtimes
+      attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, 0});
       break;
     default:
       return false;
@@ -2047,11 +2055,18 @@ bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
   hsa_status_t status = hsa_amd_svm_attributes_set(const_cast<void*>(dev_ptr), count,
                                                    attr.data(), attr.size());
   if (status != HSA_STATUS_SUCCESS) {
-    LogError("hsa_amd_svm_attributes_set() failed");
+    LogPrintfError("hsa_amd_svm_attributes_set() failed. Advice: %d", advice);
     return false;
   }
 #endif // AMD_HMM_SUPPORT
   return true;
+}
+
+// ================================================================================================
+bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
+                              amd::MemoryAdvice advice, bool use_cpu) const {
+  constexpr bool kFirstAlloc = false;
+  return SetSvmAttributesInt(dev_ptr, count, advice, kFirstAlloc, use_cpu);
 }
 
 // ================================================================================================
@@ -2102,7 +2117,8 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
           return false;
         }
         // Cast ROCr value into the hip format
-        *reinterpret_cast<uint32_t*>(data[idx]) = static_cast<uint32_t>(it.value);
+        *reinterpret_cast<uint32_t*>(data[idx]) =
+            (static_cast<uint32_t>(it.value) > 0) ? true : false;
         break;
       // The logic should be identical for the both queries
       case HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION:
@@ -2146,14 +2162,14 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
 bool Device::SvmAllocInit(void* memory, size_t size) const {
   amd::MemoryAdvice advice = amd::MemoryAdvice::SetAccessedBy;
   constexpr bool kFirstAlloc = true;
-  SetSvmAttributes(memory, size, advice, kFirstAlloc);
+  SetSvmAttributesInt(memory, size, advice, kFirstAlloc);
 
   if (settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) {
     advice = amd::MemoryAdvice::UnsetPreferredLocation;
-    SetSvmAttributes(memory, size, advice);
+    SetSvmAttributesInt(memory, size, advice);
   } else {
     advice = amd::MemoryAdvice::SetPreferredLocation;
-    SetSvmAttributes(memory, size, advice);
+    SetSvmAttributesInt(memory, size, advice);
   }
 
   if ((settings().hmmFlags_ & Settings::Hmm::EnableMallocPrefetch) == 0) {
