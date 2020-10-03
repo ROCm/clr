@@ -1404,7 +1404,7 @@ class Device : public RuntimeObject {
    * @return True if the device successfully applied the SVM attributes in HMM for device memory
    */
   virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
-                                amd::MemoryAdvice advice, bool first_alloc = false) const {
+                                amd::MemoryAdvice advice, bool use_cpu = false) const {
     ShouldNotCallThis();
     return false;
   }

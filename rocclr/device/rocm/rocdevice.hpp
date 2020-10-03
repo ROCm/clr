@@ -379,7 +379,7 @@ class Device : public NullDevice {
   virtual void svmFree(void* ptr) const;
 
   virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
-                                amd::MemoryAdvice advice, bool first_alloc = false) const;
+                                amd::MemoryAdvice advice, bool use_cpu = false) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
 
@@ -481,6 +481,8 @@ class Device : public NullDevice {
   bool SvmAllocInit(void* memory, size_t size) const;
 
  private:
+  bool SetSvmAttributesInt(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
+                           bool first_alloc = false, bool use_cpu = false) const;
   static constexpr hsa_signal_value_t InitSignalValue = 1;
 
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
