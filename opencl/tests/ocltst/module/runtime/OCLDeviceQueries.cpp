@@ -42,35 +42,8 @@ struct AMDDeviceInfo {
 
 static const cl_uint Ki = 1024;
 static const AMDDeviceInfo DeviceInfo[] = {
-    // targetName  machineTarget
-    /* CAL_TARGET_600 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_610 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_630 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_670 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_7XX */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_770 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_710 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_730 */ {"", "", 0, 0, 0, 0, 0, 0, 0, 0},
-    /* CAL_TARGET_CYPRESS */
-    {"Cypress", "cypress", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
-    /* CAL_TARGET_JUNIPER */
-    {"Juniper", "juniper", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
-    /* CAL_TARGET_REDWOOD */
-    {"Redwood", "redwood", 1, 16, 5, 256, 32 * Ki, 16, 4, 0},
-    /* CAL_TARGET_CEDAR */ {"Cedar", "cedar", 1, 8, 5, 256, 32 * Ki, 16, 4, 0},
-    /* CAL_TARGET_SUMO */
-    {"WinterPark", "redwood", 1, 16, 5, 256, 32 * Ki, 16, 4, 0},
-    /* CAL_TARGET_SUPERSUMO*/
-    {"BeaverCreek", "redwood", 1, 16, 5, 256, 32 * Ki, 16, 4, 0},
-    /* CAL_TARGET_WRESTLER*/
-    {"Loveland", "cedar", 1, 8, 5, 256, 32 * Ki, 16, 4, 0},
     /* CAL_TARGET_CAYMAN */
     {"Cayman", "cayman", 1, 16, 4, 256, 32 * Ki, 32, 5, 0},
-    /* CAL_TARGET_KAUAI */ {"", "", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
-    /* CAL_TARGET_BARTS */ {"Barts", "barts", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
-    /* CAL_TARGET_TURKS */ {"Turks", "turks", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
-    /* CAL_TARGET_CAICOS */
-    {"Caicos", "caicos", 1, 16, 5, 256, 32 * Ki, 32, 4, 0},
     /* CAL_TARGET_TAHITI */
     {"Tahiti", "tahiti", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
     /* CAL_TARGET_PITCAIRN */
@@ -122,18 +95,12 @@ static const AMDDeviceInfo DeviceInfo[] = {
     {"gfx804", "gfx804", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
     /* Vega10_XNACK */ {"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Raven */ {"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* ROCM Raven_XNACK */
-    {"gfx902-xnack", "gfx902-xnack", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Raven_XNACK */ {"gfx903", "gfx903", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Vega12      */ {"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Vega12_XNACK */ {"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Vega20 */ {"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Vega20 */
-    {"gfx906+sram-ecc", "gfx906+sram-ecc", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Vega20_XNACK */ {"gfx907", "gfx907", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* MI100 */ {"gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* MI100 */
-    {"gfx908+sram-ecc", "gfx908+sram-ecc", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
     /* Navi10 */ {"gfx1010", "gfx1010", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
     /* Navi12 */ {"gfx1011", "gfx1011", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
     /* Navi14 */ {"gfx1012", "gfx1012", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
@@ -188,7 +155,7 @@ void OCLDeviceQueries::open(unsigned int test, char* units, double& conversion,
   int id = 0;
   bool deviceFound = false;
   for (int i = 0; i < DeviceInfoSize; ++i) {
-    if (0 == str.compare(DeviceInfo[i].targetName_)) {
+    if (0 == str.find(DeviceInfo[i].targetName_)) {
       deviceFound = true;
       id = i;
       break;
