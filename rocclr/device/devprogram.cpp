@@ -1580,7 +1580,7 @@ int32_t Program::link(const std::vector<Program*>& inputPrograms, const char* or
 
 // ================================================================================================
 int32_t Program::build(const std::string& sourceCode, const char* origOptions,
-                      amd::option::Options* options) {
+                       amd::option::Options* options) {
   uint64_t start_time = 0;
   if (options->oVariables->EnableBuildTiming) {
     buildLog_ = "\nStart timing major build components.....\n\n";
@@ -1608,10 +1608,17 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
         "specified without device support";
   }
 
-  // Compile the source code if any
   std::vector<const std::string*> headers;
+  std::vector<const char*> headerIncludeNames;
+  const std::vector<std::string>& tmpHeaderNames = owner()->headerNames();
+  const std::vector<std::string>& tmpHeaders = owner()->headers();
+  for (size_t i = 0; i < tmpHeaders.size(); ++i){
+    headers.push_back(&tmpHeaders[i]);
+    headerIncludeNames.push_back(tmpHeaderNames[i].c_str());
+  }
+  // Compile the source code if any
   if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty() &&
-      !compileImpl(sourceCode, headers, nullptr, options)) {
+      !compileImpl(sourceCode, headers, &headerIncludeNames[0], options)) {
     buildStatus_ = CL_BUILD_ERROR;
     if (buildLog_.empty()) {
       buildLog_ = "Internal error: Compilation failed.";

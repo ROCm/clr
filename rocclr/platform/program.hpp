@@ -104,6 +104,8 @@ class Program : public RuntimeObject {
   //! The context this program is part of.
   SharedReference<Context> context_;
 
+  std::vector<std::string> headerNames_;
+  std::vector<std::string> headers_;
   std::string sourceCode_;   //!< Strings that make up the source code
   Language language_;        //!< Input source language
   devicebinary_t binary_;    //!< The binary image, provided by the app
@@ -128,12 +130,17 @@ class Program : public RuntimeObject {
 
  public:
   //! Construct a new program to be compiled from the given source code.
-  Program(Context& context, const std::string& sourceCode, Language language)
+  Program(Context& context, const std::string& sourceCode, Language language,
+          int numHeaders = 0, const char** headers = nullptr, const char** headerNames= nullptr)
       : context_(context),
         sourceCode_(sourceCode),
         language_(language),
         symbolTable_(NULL),
         programLog_() {
+    for (auto i = 0; i != numHeaders; ++i) {
+      headers_.emplace_back(headers[i]);
+      headerNames_.emplace_back(headerNames[i]);
+    }
   }
 
   //! Construct a new program associated with a context.
@@ -158,6 +165,12 @@ class Program : public RuntimeObject {
 
   //! Return the program source code.
   const std::string& sourceCode() const { return sourceCode_; }
+
+  //! Return the program headers.
+  const std::vector<std::string>& headers() const { return headers_; }
+
+  //! Return the program header include names.
+  const std::vector<std::string>& headerNames() const { return headerNames_; }
 
   //! Return the program language.
   const Language language() const { return language_; }
