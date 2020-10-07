@@ -212,7 +212,7 @@ bool Event::awaitCompletion() {
 
 bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
-  if ((NULL != queue) && !notified_.test_and_set()) {
+  if ((status() > CL_COMPLETE) && (NULL != queue) && !notified_.test_and_set()) {
     // Make sure the queue is draining the enqueued commands.
     amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
     if (command == NULL) {
