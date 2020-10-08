@@ -40,9 +40,11 @@ if (BUILD_HMM)
 endif()
 
 if(USE_COMGR_LIBRARY)
-  target_compile_definitions(oclrocm
-    PRIVATE USE_COMGR_LIBRARY)
+  if(${BUILD_SHARED_LIBS})
+    target_compile_definitions(oclrocm PRIVATE USE_COMGR_LIBRARY COMGR_DYN_DLL)
+  else()
+    target_compile_definitions(oclrocm PRIVATE USE_COMGR_LIBRARY)
+  endif()
 endif()
 
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
