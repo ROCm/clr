@@ -1418,7 +1418,7 @@ bool Device::populateOCLDeviceConstants() {
       return false;
     }
 
-    uint32_t asic_revision;
+    uint32_t asic_revision = 0;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_ASIC_REVISION),
@@ -1470,6 +1470,21 @@ bool Device::populateOCLDeviceConstants() {
         ? (atoi(sgprValue.c_str()))
         : 0;
   }
+
+#if AMD_HMM_SUPPORT
+  // Generic support for HMM interfaces
+  if (HSA_STATUS_SUCCESS != hsa_system_get_info(HSA_AMD_SYSTEM_INFO_SVM_SUPPORTED,
+      &info_.hmmSupported_)) {
+    LogError("HSA_AMD_SYSTEM_INFO_SVM_SUPPORTED query failed. HMM will be disabled");
+  }
+
+  // This capability should be available with xnack enabled
+  if (HSA_STATUS_SUCCESS != hsa_system_get_info(HSA_AMD_SYSTEM_INFO_SVM_ACCESSIBLE_BY_DEFAULT,
+      &info_.hmmCpuMemoryAccessible_)) {
+    LogError("HSA_AMD_SYSTEM_INFO_SVM_ACCESSIBLE_BY_DEFAULT query failed.");
+  }
+#endif  // AMD_HMM_SUPPORT
+
   return true;
 }
 
