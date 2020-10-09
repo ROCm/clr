@@ -1341,6 +1341,15 @@ bool Device::populateOCLDeviceConstants() {
 
     info_.imageMaxArraySize_ = max_array_size;
 
+    uint32_t max_image1d_width = 0;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1D_MAX_ELEMENTS),
+                           &max_image1d_width)) {
+      return false;
+    }
+    info_.image1DMaxWidth_ = max_image1d_width;
+
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1DB_MAX_ELEMENTS),
