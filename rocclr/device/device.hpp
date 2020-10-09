@@ -556,6 +556,10 @@ struct Info : public amd::EmbeddedObject {
 
   //! Target ID string
   char targetId_[0x40];
+
+  uint32_t  hmmSupported_;            //!< ROCr supports HMM interfaces
+  uint32_t  hmmCpuMemoryAccessible_;  //!< CPU memory is accessible by GPU without pinning/register
+  uint32_t  hmmDirectHostAccess_;     //!< HMM memory is accessible from the host without migration
 };
 
 //! Device settings
