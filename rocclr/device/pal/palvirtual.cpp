@@ -339,7 +339,7 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
 }
 
 bool VirtualGPU::Queue::flush() {
-  if (palMemRefs_.size() != 0) {
+  if (!gpu_.dev().settings().alwaysResident_ && palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
                                       Pal::GpuMemoryRefCantTrim)) {
@@ -450,7 +450,7 @@ bool VirtualGPU::Queue::flush() {
       }
     }
   }
-  if (palMems_.size() != 0) {
+  if (!gpu_.dev().settings().alwaysResident_ && palMems_.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
     palMems_.clear();
   }
