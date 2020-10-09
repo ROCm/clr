@@ -541,6 +541,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   // OpenCL1.2 device info fields
   info_.builtInKernels_ = "";
   info_.imageMaxBufferSize_ = MaxImageBufferSize;
+  info_.image1DMaxWidth_ = maxTextureSize;
   info_.imageMaxArraySize_ = MaxImageArraySize;
   info_.preferredInteropUserSync_ = true;
   info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;

@@ -432,6 +432,9 @@ struct Info : public amd::EmbeddedObject {
   //! Returns the list of built-in kernels, supported by the device
   const char* builtInKernels_;
 
+  //! Returns max number of pixels for a 1D image
+  size_t image1DMaxWidth_;
+
   //! Returns max number of pixels for a 1D image created from a buffer object
   size_t imageMaxBufferSize_;
 
