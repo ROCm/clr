@@ -911,6 +911,10 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
   return true;
 }
 
+bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t mmap_size) {
+  //TODO: fix with proper implementation
+  return false;
+}
 }  // namespace amd
 
 #endif  // _WIN32 || __CYGWIN__

@@ -813,6 +813,31 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
   return true;
 }
 
+bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t mmap_size) {
+  if ((mmap_ptr == nullptr)) {
+    return false;
+  }
+
+  struct stat stat_buf;
+  int fd = shm_open(fname, O_RDWR|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+  if (fd < 0 ) {
+    return false;
+  }
+
+  if (ftruncate(fd, mmap_size) != 0) {
+    return false;
+  }
+  *mmap_ptr = mmap(NULL, mmap_size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+
+  close(fd);
+
+  if (*mmap_ptr == nullptr) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace amd
 
 #endif  // !defined(_WIN32) && !defined(__CYGWIN__)
