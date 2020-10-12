@@ -243,7 +243,9 @@ release(bool, ROC_ACTIVE_WAIT, false,                                         \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
 release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
-        "Force command queue profiling by default")
+        "Force command queue profiling by default")                           \
+release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
+        "Force a specific asic revision for all devices")
 
 namespace amd {
 
