@@ -1617,14 +1617,20 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
     headerIncludeNames.push_back(tmpHeaderNames[i].c_str());
   }
   // Compile the source code if any
-  if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty() &&
-      !compileImpl(sourceCode, headers, &headerIncludeNames[0], options)) {
+  bool compileStatus = true;
+  if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty()) {
+    if (!headerIncludeNames.empty()) {
+      compileStatus = compileImpl(sourceCode, headers, &headerIncludeNames[0], options);
+    } else {
+      compileStatus = compileImpl(sourceCode, headers, nullptr, options);
+    }
+  }
+  if (!compileStatus) {
     buildStatus_ = CL_BUILD_ERROR;
     if (buildLog_.empty()) {
       buildLog_ = "Internal error: Compilation failed.";
     }
   }
-
   if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !linkImpl(options)) {
     buildStatus_ = CL_BUILD_ERROR;
     if (buildLog_.empty()) {
