@@ -245,7 +245,9 @@ release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
 release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
-        "Force a specific asic revision for all devices")
+        "Force a specific asic revision for all devices")                     \
+release(bool, PAL_EMBED_KERNEL_MD, false,                                     \
+        "Enables writing kernel metadata into command buffers.")
 
 namespace amd {
 

@@ -2428,7 +2428,19 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
   size_t ldsSize;
 
-  ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\tShaderName : %s\n", hsaKernel.name().c_str());
+  ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\tkernel : %s\n", hsaKernel.name().c_str());
+
+  if (PAL_EMBED_KERNEL_MD) {
+    char buf[256];
+    sprintf(buf,
+            "kernel: %s\n"
+            "private mem size: %x\n"
+            "group mem size: %x\n",
+            hsaKernel.name().c_str(),
+            hsaKernel.spillSegSize(),
+            hsaKernel.ldsSize());
+    iCmd()->CmdCommentString(buf);
+  }
 
   // Check memory dependency and SVM objects
   if (!processMemObjectsHSA(kernel, parameters, nativeMem, ldsSize)) {
@@ -3414,11 +3426,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
 
           addVmMemory(gpuMem);
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
-          ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
-                  desc.typeName_.c_str(), desc.name_.c_str(), globalAddress,
-                  reinterpret_cast<void*>(gpuMem->vmAddress()),
-                  reinterpret_cast<void*>(gpuMem->vmAddress() + gpuMem->size()),
-                  std::this_thread::get_id());
+          logVmMemory(desc.name_, gpuMem);
 
           //! Check if compiler expects read/write.
           //! Note: SVM with subbuffers has an issue with tracking.
@@ -3542,6 +3550,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
        memoryDependency().validate(*this, scratch->memObj_, IsReadOnly);
     }
     addVmMemory(scratch->memObj_);
+    logVmMemory("scratch", scratch->memObj_);
   }
 
   // Synchronize dispatches unconditionally in case memory tracking is disabled
