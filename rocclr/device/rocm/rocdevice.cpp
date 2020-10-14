@@ -618,6 +618,13 @@ bool Device::create() {
   info_.deviceTopology_.pcie.bus = (hsa_bdf_id & (0xFF << 8)) >> 8;
   info_.deviceTopology_.pcie.device = (hsa_bdf_id & (0x1F << 3)) >> 3;
   info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
+  uint32_t pci_domain_id = 0;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice,
+        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_DOMAIN), &pci_domain_id)) {
+    return false;
+  }
+  info_.pciDomainID = pci_domain_id;
 
 #ifdef WITH_AMDGPU_PRO
   // Create amdgpu-pro device interface for SSG support
