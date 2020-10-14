@@ -455,6 +455,9 @@ struct Info : public amd::EmbeddedObject {
   //! Returns the topology for the device
   cl_device_topology_amd deviceTopology_;
 
+  //! Returns PCI Bus Domain ID
+  uint32_t pciDomainID;
+
   //! Semaphore information
   uint32_t maxSemaphores_;
   uint32_t maxSemaphoreSize_;
