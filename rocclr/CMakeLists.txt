@@ -234,12 +234,6 @@ if (UNIX)
         message(STATUS "Found: ${LIBNUMA}")
     endif()
 endif()
-
-# strip the shared lib for release build
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND ${BUILD_SHARED_LIBS})
-    add_custom_command(TARGET amdrocclr_static POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE_NAME:amdrocclr_static>)
-endif()
-
 #comment out as it's not available in cmake 3.5
 #if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 if(NOT CMAKE_INSTALL_PREFIX)
