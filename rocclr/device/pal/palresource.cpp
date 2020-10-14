@@ -1925,8 +1925,10 @@ bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.alignment = device_->properties().gpuMemoryProperties.fragmentSize;
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
-  createInfo.heapCount = 1;
+  createInfo.heapCount = 3;
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
+  createInfo.heaps[1] = Pal::GpuHeapLocal;
+  createInfo.heaps[2] = Pal::GpuHeapGartUswc;
   createInfo.flags.peerWritable = device_->P2PAccessAllowed();
   createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
