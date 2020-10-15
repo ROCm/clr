@@ -258,13 +258,13 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
   size_t metadata_size = 0;
   void* metadata;
   hsa_status_t status = hsa_amd_interop_map_buffer(
-      1, &agent, out.dmabuf_fd, 0, &size, &deviceMemory_, &metadata_size, (const void**)&metadata);
+      1, &agent, out.dmabuf_fd, 0, &size, &interop_deviceMemory_,
+      &metadata_size, (const void**)&metadata);
   close(out.dmabuf_fd);
 
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Map GL memory %p, size 0x%zx, offset=0x%llx",
-          deviceMemory_, size, out.buf_offset);
-
-  deviceMemory_ = static_cast<char*>(deviceMemory_) + out.buf_offset;
+          interop_deviceMemory_, size, out.buf_offset);
+  deviceMemory_ = static_cast<char*>(interop_deviceMemory_) + out.buf_offset;
 
   if (status != HSA_STATUS_SUCCESS) return false;
 
@@ -285,7 +285,7 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 
 void Memory::destroyInteropBuffer() {
   assert(kind_ == MEMORY_KIND_INTEROP && "Memory must be interop type.");
-  hsa_amd_interop_unmap_buffer(deviceMemory_);
+  hsa_amd_interop_unmap_buffer(interop_deviceMemory_);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Unmap GL memory %p", deviceMemory_);
   deviceMemory_ = nullptr;
 }

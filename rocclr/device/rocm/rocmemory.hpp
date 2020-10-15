@@ -132,6 +132,9 @@ class Memory : public device::Memory {
   // Pointer to the device memory. This could be in system or device local mem.
   void* deviceMemory_;
 
+  // Pointer to the interop device memory, which has an offset from deviceMemory_
+  void* interop_deviceMemory_;
+
   // Track if this memory is interop, lock, gart, or normal.
   MEMORY_KIND kind_;
 
