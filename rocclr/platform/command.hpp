@@ -213,8 +213,8 @@ class Command : public Event {
   //! Next GPU command in the queue list
   Command* next_;
 
-  const cl_command_type type_;  //!< This command's OpenCL type.
-  volatile int32_t exception_;   //!< The first raised exception.
+  cl_command_type type_;        //!< This command's OpenCL type.
+  volatile int32_t exception_;  //!< The first raised exception.
   void* data_;
 
  protected:
@@ -298,6 +298,8 @@ class Command : public Event {
 
   //! Get command wait bits
   uint32_t getWaitBits() const { return commandWaitBits_; }
+
+  void OverrrideCommandType(cl_command_type type) { type_ = type; }
 };
 
 class UserEvent : public Command {

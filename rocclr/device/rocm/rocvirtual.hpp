@@ -295,6 +295,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void hasPendingDispatch() { hasPendingDispatch_ = true; }
   void addSystemScope() { addSystemScope_ = true; }
+  void SetCopyCommandType(cl_command_type type) { copy_command_type_ = type; }
 
   // } roc OpenCL integration
  private:
@@ -403,6 +404,10 @@ class VirtualGPU : public device::VirtualDevice {
   //!< bit-vector representing the CU mask. Each active bit represents using one CU
   const std::vector<uint32_t> cuMask_;
   amd::CommandQueue::Priority priority_; //!< The priority for the hsa queue
+
+  cl_command_type copy_command_type_;   //!< Type of the copy command, used for ROC profiler
+                                        //!< OCL doesn't distinguish diffrent copy types,
+                                        //!< but ROC profiler expects D2H or H2D detection
 };
 
 template <typename T>

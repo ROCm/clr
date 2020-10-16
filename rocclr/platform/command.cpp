@@ -123,7 +123,7 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
     // status, we release all the resources associated with this instance.
     releaseResources();
 
-    activity_.ReportEventTimestamps(*this);
+    activity_.ReportEventTimestamps(command());
     // Broadcast all the waiters.
     if (referenceCount() > 1) {
       signal();

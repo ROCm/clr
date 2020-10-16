@@ -694,7 +694,8 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       schedulerQueue_(nullptr),
       schedulerSignal_({0}),
       cuMask_(cuMask),
-      priority_(priority)
+      priority_(priority),
+      copy_command_type_(0)
 {
   index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();
@@ -1360,6 +1361,7 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
   return true;
 }
 
+// ================================================================================================
 void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -1374,9 +1376,15 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
     cmd.setStatus(CL_INVALID_OPERATION);
   }
 
+  // Runtime may change the command type to report a more accurate info in ROC profiler
+  if (copy_command_type_ != 0) {
+    cmd.OverrrideCommandType(copy_command_type_);
+    copy_command_type_ = 0;
+  }
   profilingEnd(cmd);
 }
 
+// ================================================================================================
 void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
