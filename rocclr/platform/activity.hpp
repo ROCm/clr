@@ -115,7 +115,7 @@ class ActivityProf {
     if (IsEnabled()) {
       uint64_t start = obj.profilingInfo().start_;
       uint64_t end = obj.profilingInfo().end_;
-      callback(start, end, bytes);
+      callback(obj.type(), start, end, bytes);
     }
   }
 
@@ -123,11 +123,12 @@ class ActivityProf {
 
  private:
   // Activity callback routine
-  void callback(const uint64_t begin_ts, const uint64_t end_ts, const size_t bytes) {
-    activity_op_t op_id = (command_id_ == CL_COMMAND_NDRANGE_KERNEL) ? OP_ID_DISPATCH : OP_ID_COPY;
+  void callback(const command_id_t command_id,
+      const uint64_t begin_ts, const uint64_t end_ts, const size_t bytes) {
+    activity_op_t op_id = (command_id == CL_COMMAND_NDRANGE_KERNEL) ? OP_ID_DISPATCH : OP_ID_COPY;
     activity_record_t record {
         ACTIVITY_DOMAIN_ID,            // domain id
-        (activity_kind_t)command_id_,  // activity kind
+        (activity_kind_t)command_id,   // activity kind
         op_id,                         // operation id
         record_id_,                    // activity correlation id
         begin_ts,                      // begin timestamp, ns

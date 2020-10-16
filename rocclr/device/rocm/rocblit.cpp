@@ -1630,6 +1630,17 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
+
+  if (amd::IS_HIP) {
+    // Update the command type for ROC profiler
+    if (srcMemory.isHostMemDirectAccess()) {
+      gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER_RECT);
+    }
+    if (dstMemory.isHostMemDirectAccess()) {
+      gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER_RECT);
+    }
+  }
+
   synchronize();
 
   return result;
@@ -1857,6 +1868,7 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, size_t patternSize,
                                    const amd::Coord3D& origin, const amd::Coord3D& size,
                                    bool entire) const {
@@ -1919,6 +1931,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                    const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                    const amd::Coord3D& sizeIn, bool entire) const {
@@ -1975,12 +1988,10 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
     // Program source origin
     uint64_t srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
-    ;
     setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
     uint64_t dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
-    ;
     setArgument(kernels_[blitType], 3, sizeof(dstOffset), &dstOffset);
 
     uint64_t copySize = size[0];
@@ -2001,7 +2012,15 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
   } else {
-    //printf("rocm!\n");
+    if (amd::IS_HIP) {
+      // Update the command type for ROC profiler
+      if (srcMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER);
+      }
+      if (dstMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER);
+      }
+    }
     result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire);
   }
 
@@ -2010,6 +2029,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   return result;
 }
 
+// ================================================================================================
 bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
                                   const amd::Coord3D& origin, const amd::Coord3D& size,
                                   bool entire) const {
