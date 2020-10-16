@@ -930,7 +930,7 @@ bool Elf::dumpImage(char** buff, size_t* len)
 
   if (buff != nullptr && len != nullptr) {
     std::ifstream is;
-    is.open(dumpFile);  // open input file
+    is.open(dumpFile, std::ifstream::in | std::ifstream::binary); // open input file
     if (!is.good()) {
       LogElfError("failed in is.open(%s)", dumpFile.c_str());
       return false;
