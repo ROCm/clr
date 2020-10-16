@@ -74,4 +74,9 @@ set(amdocl64_src
 
 add_library(amdocl64 SHARED ${amdocl64_src})
 
+# strip lib for release builds
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(TARGET amdocl64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdocl64>)
+endif()
+
 target_link_libraries(amdocl64 amdrocclr_static Threads::Threads dl ${ADDITIONAL_LIBRARIES})
