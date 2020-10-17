@@ -73,6 +73,11 @@ static constexpr uint16_t kBarrierPacketHeader =
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
+static constexpr uint16_t kNopPacketHeader =
+    (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) |
+    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+
 static constexpr uint16_t kBarrierPacketAcquireHeader =
     (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
@@ -596,7 +601,6 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
 
   return false;
 }
-
 void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
   assert(packet->completion_signal.handle != 0);
   const uint32_t queueSize = gpu_queue_->size;
@@ -622,6 +626,68 @@ void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
           extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
                           HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
           extractAqlBits(kBarrierPacketHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+          packet->dep_signal[0], packet->dep_signal[1], packet->dep_signal[2],
+          packet->dep_signal[3], packet->dep_signal[4], packet->completion_signal);
+}
+
+void VirtualGPU::dispatchGenericBarrierPacket(hsa_barrier_and_packet_t* packet,
+                                       uint16_t packetHeader, hsa_signal_t signal) {
+  const uint32_t queueSize = gpu_queue_->size;
+  const uint32_t queueMask = queueSize - 1;
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
+  uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
+
+  if (signal.handle == 0) {
+    // Pool size must grow to the size of pending AQL packets
+    const uint32_t pool_size = index - read;
+    if (pool_size >= signal_pool_.size()) {
+      ProfilingSignal profiling_signal = {};
+      if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &profiling_signal.signal_)) {
+        LogPrintfError("Failed signal allocation id = %d", pool_size);
+      }
+      signal_pool_.push_back(profiling_signal);
+      assert(queueSize >= signal_pool_.size() && "Pool will be reallocated!");
+    }
+    // Move index inside the valid pool
+    ++current_signal_ %= signal_pool_.size();
+    // Find signal slot
+    ProfilingSignal* profilingSignal = &signal_pool_[current_signal_];
+    // Make sure we save the old results in the TS structure
+    if (profilingSignal->ts_ != nullptr) {
+      profilingSignal->ts_->checkGpuTime();
+    }
+    if (timestamp_ != nullptr) {
+      // Update the new TS with the signal info
+      timestamp_->setProfilingSignal(profilingSignal);
+      profilingSignal->ts_ = timestamp_;
+      timestamp_->setAgent(gpu_device_);
+    }
+    packet->completion_signal = profilingSignal->signal_;
+    hsa_signal_store_relaxed(profilingSignal->signal_, kInitSignalValueOne);
+  } else {
+    assert(signal.handle != 0);
+    packet->completion_signal = signal;
+  }
+
+  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
+  hsa_barrier_and_packet_t* aql_loc =
+    &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
+  *aql_loc = *packet;
+  __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), packetHeader, __ATOMIC_RELEASE);
+
+  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
+          "[%zx] HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+          "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
+          std::this_thread::get_id(), gpu_queue_, packetHeader,
+          extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
+                         HSA_PACKET_HEADER_WIDTH_TYPE),
+          extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER,
+                          HSA_PACKET_HEADER_WIDTH_BARRIER),
+          extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+          extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
                           HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
           packet->dep_signal[0], packet->dep_signal[1], packet->dep_signal[2],
           packet->dep_signal[3], packet->dep_signal[4], packet->completion_signal);
@@ -934,7 +1000,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
       return;
     }
     // Without barrier profiling will wait for each individual signal
-    timestamp_ = new Timestamp(!dev().settings().barrier_sync_);
+    timestamp_ = new Timestamp();
     timestamp_->start();
   }
 }
@@ -2505,8 +2571,22 @@ void VirtualGPU::submitNativeFn(amd::NativeFnCommand& cmd) {
   // std::cout<<__FUNCTION__<<" not implemented"<<"*********"<<std::endl;
 }
 
-void VirtualGPU::submitMarker(amd::Marker& cmd) {
-  // std::cout<<__FUNCTION__<<" not implemented"<<"*********"<<std::endl;
+void VirtualGPU::submitMarker(amd::Marker& vcmd) {
+  if (vcmd.profilingInfo().marker_ts_) {
+    profilingBegin(vcmd);
+    if (timestamp_ != nullptr) {
+      // If there was a pending dispatch use a Barrier packet
+      // with cache flushes. This saves on additional barrier
+      // for cache flushes explicitly and helps wall time
+      uint16_t header = kNopPacketHeader;
+      hsa_signal_t sig { 0 };
+      dispatchGenericBarrierPacket(&barrier_packet_, header, sig);
+      last_signal_ = barrier_packet_.completion_signal;
+      // Restore barrier signal
+      barrier_packet_.completion_signal = barrier_signal_;
+    }
+    profilingEnd(vcmd);
+  }
 }
 
 void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {

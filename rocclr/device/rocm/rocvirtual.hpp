@@ -73,7 +73,6 @@ class Timestamp {
   static double ticksToTime_;
   bool splittedDispatch_;
   std::vector<hsa_signal_t> splittedSignals_;
-  bool wait_for_signal_;      //!< Wait for signal before gathering the timestamp values
 
  public:
   uint64_t getStart() {
@@ -96,12 +95,11 @@ class Timestamp {
 
   void setAgent(hsa_agent_t agent) { agent_ = agent; }
 
-  Timestamp(bool wait_for_signal = false)
+  Timestamp()
     : start_(0)
     , end_(0)
     , profilingSignal_(nullptr)
-    , splittedDispatch_(false)
-    , wait_for_signal_(wait_for_signal) {
+    , splittedDispatch_(false) {
     agent_.handle = 0;
   }
 
@@ -116,7 +114,7 @@ class Timestamp {
         uint64_t start = UINT64_MAX;
         uint64_t end = 0;
         for (auto it = splittedSignals_.begin(); it < splittedSignals_.end(); it++) {
-          if (wait_for_signal_) {
+          if (hsa_signal_load_relaxed(profilingSignal_->signal_) > 0) {
             WaitForSignal(*it);
           }
           hsa_amd_profiling_get_dispatch_time(agent_, *it, &time);
@@ -130,7 +128,8 @@ class Timestamp {
         start_ = start * ticksToTime_;
         end_ = end * ticksToTime_;
       } else {
-        if (wait_for_signal_) {
+        // If the signalValue is the same as initial set value, it means its not written to
+        if (hsa_signal_load_relaxed(profilingSignal_->signal_) > 0) {
           WaitForSignal(profilingSignal_->signal_);
         }
         hsa_amd_profiling_get_dispatch_time(agent_, profilingSignal_->signal_, &time);
@@ -298,12 +297,22 @@ class VirtualGPU : public device::VirtualDevice {
 
   // } roc OpenCL integration
  private:
-  bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest, bool blocking = true);
-  bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header, uint16_t rest, bool blocking = true);
-  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size = 1);
+  bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header,
+                         uint16_t rest, bool blocking = true);
+  bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
+                        uint16_t rest, bool blocking = true);
+  template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
+                                                              uint16_t rest, bool blocking,
+                                                              size_t size = 1);
   void dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet);
-  bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion, bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
-  void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet, amd::NDRangeContainer& sizes);
+  void dispatchGenericBarrierPacket(hsa_barrier_and_packet_t* packet, uint16_t packetHeader,
+                             hsa_signal_t signal);
+  void dispatchBarrierPacket(hsa_barrier_and_packet_t* packet, uint16_t packetHeader,
+                             hsa_signal_t signal);
+  bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
+                                bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
+  void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet,
+                                amd::NDRangeContainer& sizes);
 
   bool initPool(size_t kernarg_pool_size, uint signal_pool_count);
   void destroyPool();
