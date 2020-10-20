@@ -84,7 +84,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   if (!createInfo.flags.sdiExternal) {
     // Update free memory size counters
-    dev.updateAllocedMemory(createInfo.heaps[0], createInfo.size, false);
+    dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
   }
   return memRef;
 }
@@ -111,7 +111,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  dev.updateAllocedMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
+  dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
   return memRef;
 }
 
@@ -136,7 +136,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  dev.updateAllocedMemory(Pal::GpuHeap::GpuHeapGartCacheable, createInfo.size, false);
+  dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
   return memRef;
 }
 
