@@ -3,4 +3,5 @@
 include( CMakeFindDependencyMacro )
 find_dependency(hsa-runtime64)
 find_dependency(amd_comgr)
-include("@ROCCLR_TARGETS_PATH@")
+message(STATUS "ROCclr at ${ROCclr_DIR}")
+include("${ROCclr_DIR}/@ROCCLR_TARGETS_NAME@")
