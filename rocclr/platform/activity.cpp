@@ -28,6 +28,7 @@ const char* getOclCommandKindString(uint32_t op) {
   const char* case_string;
 
   switch(static_cast<cl_command_type>(op)) {
+    CASE_STRING(0, InternalMarker)
     CASE_STRING(CL_COMMAND_MARKER, Marker)
     CASE_STRING(CL_COMMAND_NDRANGE_KERNEL, KernelExecution)
     CASE_STRING(CL_COMMAND_READ_BUFFER, CopyDeviceToHost)
@@ -37,6 +38,22 @@ const char* getOclCommandKindString(uint32_t op) {
     CASE_STRING(CL_COMMAND_WRITE_BUFFER_RECT, CopyHostToDevice2D)
     CASE_STRING(CL_COMMAND_COPY_BUFFER_RECT, CopyDeviceToDevice2D)
     CASE_STRING(CL_COMMAND_FILL_BUFFER, FillBuffer)
+    CASE_STRING(CL_COMMAND_TASK, Task)
+    CASE_STRING(CL_COMMAND_NATIVE_KERNEL, NativeKernel)
+    CASE_STRING(CL_COMMAND_READ_IMAGE, ReadImage)
+    CASE_STRING(CL_COMMAND_WRITE_IMAGE, WriteImage)
+    CASE_STRING(CL_COMMAND_COPY_IMAGE, CopyImage)
+    CASE_STRING(CL_COMMAND_COPY_IMAGE_TO_BUFFER, CopyImageToBuffer)
+    CASE_STRING(CL_COMMAND_COPY_BUFFER_TO_IMAGE, CopyBufferToImage)
+    CASE_STRING(CL_COMMAND_MAP_BUFFER, MapBuffer)
+    CASE_STRING(CL_COMMAND_MAP_IMAGE, MapImage)
+    CASE_STRING(CL_COMMAND_UNMAP_MEM_OBJECT, UnmapMemObject)
+    CASE_STRING(CL_COMMAND_ACQUIRE_GL_OBJECTS, AcquireGLObjects)
+    CASE_STRING(CL_COMMAND_RELEASE_GL_OBJECTS, ReleaseGLObjects)
+    CASE_STRING(CL_COMMAND_USER, User)
+    CASE_STRING(CL_COMMAND_BARRIER, Barrier)
+    CASE_STRING(CL_COMMAND_MIGRATE_MEM_OBJECTS, MigrateMemObjects)
+    CASE_STRING(CL_COMMAND_FILL_IMAGE, FillImage)
     default: case_string = "Unknown command type";
   };
   return case_string;
