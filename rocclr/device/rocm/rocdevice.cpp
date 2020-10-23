@@ -1363,7 +1363,7 @@ bool Device::populateOCLDeviceConstants() {
                            &image_max_dim)) {
       return false;
     }
-    info_.imageMaxBufferSize_ = image_max_dim[0];
+    info_.imageMaxBufferSize_ = (amd::IS_HIP) ? image_max_dim[0] : (1 << 27);
 
     info_.imagePitchAlignment_ = 256;
 
