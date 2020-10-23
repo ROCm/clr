@@ -162,7 +162,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
       continue;
     }
 
-    ClPrint(LOG_DEBUG, LOG_CMD, "command is submitted: %p", command);
+    ClPrint(LOG_DEBUG, LOG_CMD, "command (%s) is submitted: %p", getOclCommandKindString(command->type()), command);
 
     command->setStatus(CL_SUBMITTED);
 
