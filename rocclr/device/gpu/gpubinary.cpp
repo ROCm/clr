@@ -96,7 +96,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
 
     ~TempWrapper() {
       for (const auto& it : functionNameMap) {
-        delete[] it.second;
+        delete it.second;
       }
 
       kernelILs.clear();
