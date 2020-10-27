@@ -69,7 +69,8 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
   /* NAVI12 */         {"gfx1011", "gfx1011",  2, 32, 1, 256, 64 * Ki, 32, 10, 1, 1, 0},
   /* NAVI14 */         {"gfx1012", "gfx1012",  2, 32, 1, 256, 64 * Ki, 32, 10, 1, 2, 0},
   /* SIENNA_CICHILD */ {"gfx1030", "gfx1030",  2, 32, 1, 256, 64 * Ki, 32, 10, 3, 0, 0},
-  /* NAVY_FLOUNDER */  {"gfx1031", "gfx1031",  2, 32, 1, 256, 64 * Ki, 32, 10, 3, 1, 0}
+  /* NAVY_FLOUNDER */  {"gfx1031", "gfx1031",  2, 32, 1, 256, 64 * Ki, 32, 10, 3, 1, 0},
+  /* DIMGREY CAVEFISH*/{"gfx1032", "gfx1032",  2, 32, 1, 256, 64 * Ki, 32, 10, 3, 2, 0}
 };
 
 }
