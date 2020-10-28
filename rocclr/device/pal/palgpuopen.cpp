@@ -51,8 +51,12 @@ RgpCaptureMgr::RgpCaptureMgr(Pal::IPlatform* platform, const Device& device)
       max_sqtt_disp_(device_.settings().rgpSqttDispCount_),
       trace_gpu_mem_limit_(0),
       global_disp_count_(1),  // Must start from 1 according to RGP spec
+      se_mask_(0),
+      perf_counter_mem_limit_(0),
+      perf_counter_frequency_(0),
       trace_enabled_(false),
-      inst_tracing_enabled_(false) {
+      inst_tracing_enabled_(false),
+      perf_counters_enabled_(false) {
   memset(&trace_, 0, sizeof(trace_));
 }
 
@@ -212,6 +216,8 @@ void RgpCaptureMgr::Finalize() {
   if (hw_support_tracing == false) {
     rgp_server_->DisableTraces();
   }
+
+  dev_driver_server_->GetDriverControlServer()->StartLateDeviceInit();
 
   // Finalize the devmode manager
   dev_driver_server_->Finalize();
@@ -436,6 +442,51 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* gpu) {
 
   trace_gpu_mem_limit_ = traceParameters.gpuMemoryLimitInMb * 1024 * 1024;
   inst_tracing_enabled_ = traceParameters.flags.enableInstructionTokens;
+  se_mask_ = traceParameters.seMask;
+
+  // Setup streamed performance counters
+  perf_counters_enabled_ = (traceParameters.flags.enableSpm != 0);
+
+  DevDriver::RGPProtocol::ServerSpmConfig counter_config = {};
+  DevDriver::Vector<DevDriver::RGPProtocol::ServerSpmCounterId> counters(
+      dev_driver_server_->GetMessageChannel()->GetAllocCb());
+  rgp_server_->QuerySpmConfig(&counter_config, &counters);
+
+  Pal::PerfExperimentProperties perf_properties = {};
+
+  result = gpu->dev().iDev()->GetPerfExperimentProperties(&perf_properties);
+
+  // Querying performance properties should never fail
+  assert(result == Pal::Result::Success);
+
+  perf_counter_frequency_ = counter_config.sampleFrequency;
+  perf_counter_mem_limit_ = counter_config.memoryLimitInMb * 1024 * 1024;
+
+  perf_counter_ids_.clear();
+
+  for (size_t idx = 0; idx < counters.Size(); ++idx) {
+    const DevDriver::RGPProtocol::ServerSpmCounterId server_counter = counters[idx];
+    const Pal::GpuBlockPerfProperties& block_perf_prop =
+        perf_properties.blocks[server_counter.blockId];
+
+    if (server_counter.instanceId == DevDriver::RGPProtocol::kSpmAllInstancesId) {
+      for (uint32_t instance = 0; instance < block_perf_prop.instanceCount; ++instance) {
+        GpuUtil::PerfCounterId counter_id = {};
+        counter_id.block = static_cast<Pal::GpuBlock>(server_counter.blockId);
+        counter_id.instance = instance;
+        counter_id.eventId = server_counter.eventId;
+
+        perf_counter_ids_.push_back(counter_id);
+      }
+    } else {
+      GpuUtil::PerfCounterId counter_id = {};
+      counter_id.block = static_cast<Pal::GpuBlock>(server_counter.blockId);
+      counter_id.instance = server_counter.instanceId;
+      counter_id.eventId = server_counter.eventId;
+
+      perf_counter_ids_.push_back(counter_id);
+    }
+  }
 
   // Notify the RGP server that we are starting a trace
   if (rgp_server_->BeginTrace() != DevDriver::Result::Success) {
@@ -504,10 +555,20 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu) {
     GpuUtil::GpaSampleConfig sampleConfig = {};
 
     sampleConfig.type = GpuUtil::GpaSampleType::Trace;
+    // Configure SQTT
     sampleConfig.sqtt.gpuMemoryLimit = trace_gpu_mem_limit_;
-    sampleConfig.sqtt.seMask = 0xF;
+    sampleConfig.sqtt.seMask = se_mask_;
+
     sampleConfig.sqtt.flags.enable = true;
     sampleConfig.sqtt.flags.supressInstructionTokens = (inst_tracing_enabled_ == false);
+
+    // Configure SPM
+    if (perf_counters_enabled_ && !perf_counter_ids_.empty()) {
+      sampleConfig.perfCounters.gpuMemoryLimit = perf_counter_mem_limit_;
+      sampleConfig.perfCounters.spmTraceSampleInterval = perf_counter_frequency_;
+      sampleConfig.perfCounters.numCounters = perf_counter_ids_.size();
+      sampleConfig.perfCounters.pIds = perf_counter_ids_.data();
+    }
 
     // Fill GPU commands
     gpu->eventBegin(MainEngine);

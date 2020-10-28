@@ -59,6 +59,8 @@ enum class RgpSqqtBarrierReason : uint32_t {
 #ifdef PAL_GPUOPEN_OCL
 // gpuopen headers
 #include "gpuopen.h"
+// gpuutil headers
+#include "gpuUtil/palGpaSession.h"
 
 // PAL forward declarations
 namespace Pal {
@@ -67,11 +69,6 @@ class IFence;
 class IQueueSemaphore;
 struct PalPublicSettings;
 }  // namespace Pal
-
-// GpuUtil forward declarations
-namespace GpuUtil {
-class GpaSession;
-};
 
 // GPUOpen forward declarations
 namespace DevDriver {
@@ -375,8 +372,20 @@ class RgpCaptureMgr {
   uint32_t trace_gpu_mem_limit_;
   uint32_t global_disp_count_;
 
-  bool trace_enabled_;         // True if tracing is currently enabled (master flag)
-  bool inst_tracing_enabled_;  // Enable instruction-level SQTT tokens
+  uint32_t se_mask_;                 // Shader engine mask
+  uint64_t perf_counter_mem_limit_;  // Memory limit for perf counters
+  uint32_t perf_counter_frequency_;  // Counter sample frequency
+
+  std::vector<GpuUtil::PerfCounterId> perf_counter_ids_;  // List of perf counter ids
+
+  union {
+    struct {
+      uint32_t trace_enabled_ : 1;      // True if tracing is currently enabled (master flag)
+      uint32_t inst_tracing_enabled_;   // Enable instruction-level SQTT tokens
+      uint32_t perf_counters_enabled_;  // True if perf counters are enabled
+    };
+    uint32_t value_;
+  };
 
   PAL_DISALLOW_DEFAULT_CTOR(RgpCaptureMgr);
   PAL_DISALLOW_COPY_AND_ASSIGN(RgpCaptureMgr);
