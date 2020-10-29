@@ -249,7 +249,10 @@ release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
         "Force a specific asic revision for all devices")                     \
 release(bool, PAL_EMBED_KERNEL_MD, false,                                     \
-        "Enables writing kernel metadata into command buffers.")
+        "Enables writing kernel metadata into command buffers.")              \
+release(cstring, ROC_GLOBAL_CU_MASK, "",                                      \
+        "Sets a global CU mask (entered as hex value) for all queues,"        \
+        "Each active bit represents using one CU (e.g., 0xf enables only 4 CUs)")
 
 namespace amd {
 

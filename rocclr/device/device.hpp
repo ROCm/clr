@@ -566,6 +566,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t  hmmSupported_;            //!< ROCr supports HMM interfaces
   uint32_t  hmmCpuMemoryAccessible_;  //!< CPU memory is accessible by GPU without pinning/register
   uint32_t  hmmDirectHostAccess_;     //!< HMM memory is accessible from the host without migration
+
+  //! global CU mask which will be applied to all queues created on this device
+  std::vector<uint32_t> globalCUMask_;
 };
 
 //! Device settings
