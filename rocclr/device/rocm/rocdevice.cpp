@@ -544,6 +544,11 @@ bool Device::init() {
       }
     }
 
+    // Check to see if a global CU mask is requested
+    if (amd::IS_HIP && ROC_GLOBAL_CU_MASK[0] != '\0') {
+      roc_device->getGlobalCUMask(ROC_GLOBAL_CU_MASK);
+    }
+
     roc_device.release()->registerDevice();
   }
 
@@ -1501,6 +1506,8 @@ bool Device::populateOCLDeviceConstants() {
   }
 #endif  // AMD_HMM_SUPPORT
 
+  info_.globalCUMask_ = {};
+
   return true;
 }
 
@@ -2421,30 +2428,61 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
       " cooperative: %i", queue, queue_size, queue_priority, coop_queue);
 
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
-  if (cuMask.size() != 0) {
+  if (cuMask.size() != 0 || info_.globalCUMask_.size() != 0) {
     std::stringstream ss;
     ss << std::hex;
-    for (int i = cuMask.size() - 1; i >= 0; i--) {
-      ss << cuMask[i];
+    std::vector<uint32_t> mask = {};
+
+    // handle scenarios where cuMask (custom-defined), globalCUMask_ or both are valid and
+    // fill the final mask which will be appiled to the current queue
+    if (cuMask.size() != 0 && info_.globalCUMask_.size() == 0) {
+      mask = cuMask;
+    } else if (cuMask.size() != 0 && info_.globalCUMask_.size() != 0) {
+      for (unsigned int i = 0; i < std::min(cuMask.size(), info_.globalCUMask_.size()); i++) {
+        mask.push_back(cuMask[i] & info_.globalCUMask_[i]);
+      }
+      // check to make sure after ANDing cuMask (custom-defined) with global
+      //CU mask, we have non-zero mask, oterwise just apply global CU mask
+      bool zeroCUMask = true;
+      for (auto m : mask) {
+        if (m != 0) {
+          zeroCUMask = false;
+          break;
+        }
+      }
+      if (zeroCUMask) {
+        mask = info_.globalCUMask_;
+      }
+    } else {
+      mask = info_.globalCUMask_;
     }
-    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "setting custom CU mask 0x%s for hardware queue %p",
+
+
+    for (int i = mask.size() - 1; i >= 0; i--) {
+      ss << mask[i];
+    }
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue);
+
     hsa_status_t status = HSA_STATUS_SUCCESS;
-    status = hsa_amd_queue_cu_set_mask(queue, cuMask.size() * 32, cuMask.data());
+    status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
     if (status != HSA_STATUS_SUCCESS) {
       DevLogError("Device::acquireQueue: hsa_amd_queue_cu_set_mask failed!");
       hsa_queue_destroy(queue);
       return nullptr;
     }
-    // add queues with custom CU mask into their special pool to keep track
-    // of mapping of these queues to their associated queueInfo (i.e., hostcall buffers)
-    auto result = queueWithCUMaskPool_[qIndex].emplace(std::make_pair(queue, QueueInfo()));
-    assert(result.second && "QueueInfo already exists");
-    auto &qInfo = result.first->second;
-    qInfo.refCount = 1;
+    if (cuMask.size() != 0) {
+      // add queues with custom CU mask into their special pool to keep track
+      // of mapping of these queues to their associated queueInfo (i.e., hostcall buffers)
+      auto result = queueWithCUMaskPool_[qIndex].emplace(std::make_pair(queue, QueueInfo()));
+      assert(result.second && "QueueInfo already exists");
+      auto& qInfo = result.first->second;
+      qInfo.refCount = 1;
 
-    return queue;
+      return queue;
+    }
   }
+
   if (coop_queue) {
     // Skip queue recycling for cooperative queues, since it should be just one
     // per device.
@@ -2658,6 +2696,57 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
   delete[] link_info;
 
   return true;
+}
+
+void Device::getGlobalCUMask(std::string cuMaskStr) {
+  if (cuMaskStr.length() != 0) {
+    std::string pre = cuMaskStr.substr(0, 2);
+    if (pre.compare("0x") == 0 || pre.compare("0X") == 0) {
+      cuMaskStr = cuMaskStr.substr(2, cuMaskStr.length());
+    }
+
+    int end = cuMaskStr.length();
+
+    // the number of current physical CUs compressed in 4-bits
+    size_t compPhysicalCUs = static_cast<size_t>((settings().enableWgpMode_ ?
+           info_.maxComputeUnits_ * 2 : info_.maxComputeUnits_)/ 4);
+
+    // the number of final available compute units after applying the requested CU mask
+    uint32_t availCUs = 0;
+
+    // read numCharToRead characters (8 or less) from the cuMask string each time, convert
+    // it into hex, and store it into the globalCUMask_. If the length of the cuMask string
+    // is more than the compressed physical available CUs, ignore the rest
+    for (unsigned i = 0; i < std::min(cuMaskStr.length(), compPhysicalCUs); i += 8) {
+      int numCharToRead = (i + 8 <= compPhysicalCUs) ? 8 : compPhysicalCUs - 8;
+      std::string temp = cuMaskStr.substr(std::max(0, end - numCharToRead),
+          std::min(numCharToRead, end));
+      end -= numCharToRead;
+      unsigned long ul = 0;
+      try {
+        ul = std::stoul(temp, 0, 16);
+      } catch (const std::invalid_argument&) {
+        info_.globalCUMask_ = {};
+        break;
+      }
+      info_.globalCUMask_.push_back(static_cast<uint32_t>(ul));
+      // count number of set bits in ul to find the number of active CUs
+      // in each iteration
+      while (ul) {
+        ul &= (ul - 1);
+        availCUs++;
+      }
+    }
+    //update the maxComputeUnits_ based on the requested CU mask
+    if (availCUs != 0 && availCUs < compPhysicalCUs * 4) {
+      info_.maxComputeUnits_ = settings().enableWgpMode_ ?
+      availCUs / 2 : availCUs;
+    } else {
+      info_.globalCUMask_ = {};
+    }
+  } else {
+    info_.globalCUMask_ = {};
+  }
 }
 
 } // namespace roc
