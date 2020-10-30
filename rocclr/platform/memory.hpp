@@ -215,6 +215,8 @@ class Memory : public amd::RuntimeObject {
   void setSize(size_t size) { size_ = size; }
   void setInteropObj(InteropObject* obj) { interopObj_ = obj; }
 
+  void resetAllocationState();
+
  public:
   //! Placement new operator.
   void* operator new(size_t size,            //!< Original allocation size

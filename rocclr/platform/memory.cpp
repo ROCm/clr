@@ -160,6 +160,15 @@ void Memory::initDeviceMemory() {
   memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
 
+// ================================================================================================
+void Memory::resetAllocationState() {
+  // Reset device memory allocation state
+  for (size_t i = 0; i < context_().devices().size(); i++) {
+    deviceAlloced_[context_().devices()[i]].store(AllocInit, std::memory_order_relaxed);
+  }
+}
+
+// ================================================================================================
 void* Memory::operator new(size_t size, const Context& context) {
   uint32_t devices = context.devices().size();
   if (devices == 1) {
@@ -1150,9 +1159,10 @@ bool Image::Format::isSupported(const Context& context, cl_mem_object_type image
   return false;
 }
 
+// ================================================================================================
 Image* Image::createView(const Context& context, const Format& format, device::VirtualDevice* vDev,
                          uint baseMipLevel, cl_mem_flags flags) {
-  Image* view = NULL;
+  Image* view = nullptr;
 
   // Find the image dimensions and create a corresponding object
   view = new (context) Image(format, *this, baseMipLevel, flags);
@@ -1160,14 +1170,22 @@ Image* Image::createView(const Context& context, const Format& format, device::V
   // Set GPU virtual device for this view
   view->setVirtualDevice(vDev);
 
-  if (view != NULL) {
-    // Initialize view
+  if (view != nullptr) {
+    view->resetAllocationState();
+
+    // Initialize array of the device memory pointers
     view->initDeviceMemory();
+
+    // Check if runtime has to allocate memory
+    if ((context.devices().size() == 1) || DISABLE_DEFERRED_ALLOC) {
+      device::Memory* mem = view->getDeviceMemory(*context.devices()[0]);
+    }
   }
 
   return view;
 }
 
+// ================================================================================================
 bool Image::isEntirelyCovered(const Coord3D& origin, const Coord3D& region) const {
   return (origin[0] == 0 && origin[1] == 0 && origin[2] == 0 && region[0] == getWidth() &&
           region[1] == getHeight() && region[2] == getDepth())
