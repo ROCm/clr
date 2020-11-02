@@ -36,6 +36,7 @@ cd "$ROCclr_DIR"
 mkdir -p build; cd build
 cmake -DOPENCL_DIR="$OPENCL_DIR" -DCMAKE_INSTALL_PREFIX=/opt/rocm/rocclr ..
 make -j$(nproc)
+sudo make install
 ```
 
 ### Optional steps to build HIP runtime
