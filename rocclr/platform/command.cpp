@@ -605,7 +605,7 @@ bool CopyMemoryP2PCommand::validateMemory() {
     if (srcDevices.size() == 1 && dstDevices.size() == 1) {
       device::Memory* mem2 = memory2_->getDeviceMemory(*dstDevices[0]);
       if (!mem2->getAllowedPeerAccess()) {
-        void* dst = mem2->owner()->getSvmPtr();
+        void* dst = reinterpret_cast<void*>(mem2->virtualAddress());
         bool status = dstDevices[0]->deviceAllowAccess(dst);
         mem2->setAllowedPeerAccess(true);
         return status;
