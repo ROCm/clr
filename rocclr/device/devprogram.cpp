@@ -670,6 +670,15 @@ bool Program::compileImplLC(const std::string& sourceCode,
     }
   }
 
+  // Append Options provided by user to driver options
+  if (isHIP()) {
+    if (options->origOptionStr.size()) {
+      std::istringstream userOptions{options->origOptionStr};
+      std::copy(std::istream_iterator<std::string>(userOptions),
+                std::istream_iterator<std::string>(), std::back_inserter(driverOptions));
+    }
+  }
+
   // Compile source to IR
   char* binaryData = nullptr;
   size_t binarySize = 0;
