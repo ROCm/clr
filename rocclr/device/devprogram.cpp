@@ -1166,6 +1166,19 @@ bool Program::linkImplLC(amd::option::Options* options) {
   codegenOptions.insert(codegenOptions.end(),
       options->clangOptions.begin(), options->clangOptions.end());
 
+  // Temporarily disable problematic pass for some Adobe apps.
+  {
+    std::string appName = {};
+    std::string appPathAndName = {};
+    amd::Os::getAppPathAndFileName(appName, appPathAndName);
+    if ((appName == "Adobe Media Encoder.exe") ||
+        (appName == "Adobe Premiere Pro.exe") ||
+        (appName == "AfterFX.exe")) {
+      codegenOptions.push_back("-mllvm");
+      codegenOptions.push_back("-disable-branch-fold");
+    }
+  }
+
   // Set whole program mode
   codegenOptions.push_back("-mllvm");
   codegenOptions.push_back("-amdgpu-internalize-symbols");
