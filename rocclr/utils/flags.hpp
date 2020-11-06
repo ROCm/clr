@@ -231,6 +231,8 @@ release(uint, HIP_HOST_COHERENT, 0,                                           \
 release(uint, AMD_OPT_FLUSH, 1,                                               \
         "Kernel flush option , 0x0 = Use system-scope fence operations."      \
         "0x1 = Use device-scope fence operations when possible.")             \
+release(bool, AMD_DIRECT_DISPATCH, false,                                     \
+        "Enable direct kernel dispatch.")                                     \
 release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
         "Reserve free mem reporting in Mb"                                    \
         "0 = Disable")                                                        \

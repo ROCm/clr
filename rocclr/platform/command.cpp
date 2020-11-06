@@ -258,8 +258,22 @@ void Command::enqueue() {
   }
 
   ClPrint(LOG_DEBUG, LOG_CMD, "command is enqueued: %p", this);
-  queue_->append(*this);
-  queue_->flush();
+  if (AMD_DIRECT_DISPATCH) {
+    if (type() == CL_COMMAND_MARKER || type() == 0) {
+      setStatus(CL_SUBMITTED);
+      queue_->vdev()->flush();
+      retain();
+      setStatus(CL_COMPLETE);
+    } else {
+      setStatus(CL_SUBMITTED);
+      submit(*queue_->vdev());
+      retain();
+      setStatus(CL_COMPLETE);
+    }
+  } else {
+    queue_->append(*this);
+    queue_->flush();
+  }
   if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||
       ((commandWaitBits_ & 0x2) != 0)) {
     awaitCompletion();
