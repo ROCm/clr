@@ -110,7 +110,7 @@ static constexpr uint MaxConstArguments = 8;
 //! Maximum number of supported kernel UAV arguments
 static constexpr uint MaxUavArguments = 1024;
 //! Maximum number of pixels for a 1D image created from a buffer
-static constexpr size_t MaxImageBufferSize = 1 << 27;
+static constexpr size_t MaxImageBufferSize = (1ull << 32) - 1;
 //! Maximum number of pixels for a 1D image created from a buffer
 static constexpr size_t MaxImageArraySize = 2048;
 
