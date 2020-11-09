@@ -8,7 +8,7 @@ extern cl_platform_id  platform;
 
 extern cl_device_id devices;
 
-int ret_val;
+static int ret_val;
 
 struct clRetainContext_st clRetainContextData[NUM_ITEMS_clRetainContext] =
 {
