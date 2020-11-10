@@ -444,8 +444,8 @@ class Device : public NullDevice {
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
 
-  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle);
-  virtual bool IpcAttach(const void* handle, size_t mem_size,
+  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const;
+  virtual bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
                          unsigned int flags, void** dev_ptr) const;
   virtual bool IpcDetach (void* dev_ptr) const;
 
