@@ -375,6 +375,9 @@ typedef uint64_t Elf64_Off;
 #define ELFOSABI_AMDGPU_MESA3D 66 // AMDGPU OS for Mesa3D compatible graphics
                                   // shaders and compute kernels.
 
+#define ELFABIVERSION_AMDGPU_HSA_V2 0
+#define ELFABIVERSION_AMDGPU_HSA_V3 1
+#define ELFABIVERSION_AMDGPU_HSA_V4 2
 
 // AMDGPU specific e_flags
 #define EF_AMDGPU_MACH  0x0ff // AMDGPU processor selection mask.
@@ -417,10 +420,45 @@ typedef uint64_t Elf64_Off;
 #define EF_AMDGPU_MACH_AMDGCN_GFX902       0x02d
 #define EF_AMDGPU_MACH_AMDGCN_GFX904       0x02e
 #define EF_AMDGPU_MACH_AMDGCN_GFX906       0x02f
+#define EF_AMDGPU_MACH_AMDGCN_GFX908       0x030
+#define EF_AMDGPU_MACH_AMDGCN_GFX909       0x031
+#define EF_AMDGPU_MACH_AMDGCN_GFX1010      0x033
+#define EF_AMDGPU_MACH_AMDGCN_GFX1011      0x034
+#define EF_AMDGPU_MACH_AMDGCN_GFX1012      0x035
+#define EF_AMDGPU_MACH_AMDGCN_GFX1030      0x036
+#define EF_AMDGPU_MACH_AMDGCN_GFX1031      0x037
+
 #define EF_AMDGPU_MACH_AMDGCN_RESERVED0    0x027
-#define EF_AMDGPU_MACH_AMDGCN_RESERVED1    0x030
+#define EF_AMDGPU_MACH_AMDGCN_RESERVED1    0x032
+
 #define EF_AMDGPU_MACH_AMDGCN_FIRST        EF_AMDGPU_MACH_AMDGCN_GFX600
-#define EF_AMDGPU_MACH_AMDGCN_LAST         EF_AMDGPU_MACH_AMDGCN_GFX906
+#define EF_AMDGPU_MACH_AMDGCN_LAST         EF_AMDGPU_MACH_AMDGCN_GFX1031
+
+// Indicates if the "xnack" target feature is enabled for all code contained
+// in the object.
+//
+// Only valid for ELFOSABI_AMDGPU_HSA and ELFABIVERSION_AMDGPU_HSA_V3.
+#define EF_AMDGPU_FEATURE_XNACK_V3               0x100
+// Indicates if the "sramecc" target feature is enabled for all code
+// contained in the object.
+//
+// Only valid for ELFOSABI_AMDGPU_HSA and ELFABIVERSION_AMDGPU_HSA_V3.
+#define EF_AMDGPU_FEATURE_SRAMECC_V3             0x200
+
+// Only valid for ELFOSABI_AMDGPU_HSA and ELFABIVERSION_AMDGPU_HSA_V4.
+#define EF_AMDGPU_FEATURE_XNACK_V4               0x300
+#define EF_AMDGPU_FEATURE_XNACK_UNSUPPORTED_V4   0x000
+#define EF_AMDGPU_FEATURE_XNACK_ANY_V4           0x100
+#define EF_AMDGPU_FEATURE_XNACK_OFF_V4           0x200
+#define EF_AMDGPU_FEATURE_XNACK_ON_V4            0x300
+
+// SRAMECC selection mask for EF_AMDGPU_FEATURE_SRAMECC_* values.
+// Only valid for ELFOSABI_AMDGPU_HSA and ELFABIVERSION_AMDGPU_HSA_V4.
+#define EF_AMDGPU_FEATURE_SRAMECC_V4             0xc00
+#define EF_AMDGPU_FEATURE_SRAMECC_UNSUPPORTED_V4 0x000
+#define EF_AMDGPU_FEATURE_SRAMECC_ANY_V4         0x400
+#define EF_AMDGPU_FEATURE_SRAMECC_OFF_V4         0x800
+#define EF_AMDGPU_FEATURE_SRAMECC_ON_V4          0xc00
 
 /////////////////////
 // Sections constants
