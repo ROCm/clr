@@ -1776,12 +1776,12 @@ class Device : public RuntimeObject {
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
 
-  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle) {
+  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
     ShouldNotReachHere();
     return false;
   }
 
-  virtual bool IpcAttach(const void* handle, size_t mem_size,
+  virtual bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
                          unsigned int flags, void** dev_ptr) const {
     ShouldNotReachHere();
     return false;
