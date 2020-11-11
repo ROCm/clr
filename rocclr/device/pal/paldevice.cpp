@@ -315,11 +315,13 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
   } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
-    subtarget = (static_cast<uint>(asicRevision_) - static_cast<uint>(Pal::AsicRevision::Vega10))
-            << 1 |
-        xNACKSupported;
-    hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
-
+    for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
+      if ((Gfx9PlusSubDeviceInfo[id].asicRevision_ == asicRevision_) &&
+          (Gfx9PlusSubDeviceInfo[id].xnackEnabled_ == xNACKSupported)) {
+        hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
+        break;
+      }
+    }
   } else {
     return false;
   }
@@ -932,17 +934,19 @@ bool Device::create(Pal::IDevice* device) {
   uint isXNACKSupported = (ipLevel_ <= Pal::GfxIpLevel::GfxIp10_1) &&
       (static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties_.gpuMemoryProperties.flags.iommuv2Support));
-  uint subtarget = isXNACKSupported;
 
   // Update HW info for the device
   if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Polaris12)) {
     hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
   } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
     // For compiler sub targets
-    subtarget = (static_cast<uint>(asicRevision_) - static_cast<uint>(Pal::AsicRevision::Vega10))
-            << 1 |
-        subtarget;
-    hwInfo_ = &Gfx9PlusSubDeviceInfo[subtarget];
+    for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
+      if ((Gfx9PlusSubDeviceInfo[id].asicRevision_ == asicRevision_) &&
+          (Gfx9PlusSubDeviceInfo[id].xnackEnabled_ == isXNACKSupported)) {
+        hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
+        break;
+      }
+    }
   } else {
     return false;
   }
