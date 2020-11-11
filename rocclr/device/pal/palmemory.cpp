@@ -747,7 +747,8 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
     owner()->commitSvmMemory();
   }
 
-  if (owner()->numDevices() > 1) {
+  constexpr size_t largeAlloc = (1ull << 31);
+  if ((owner()->numDevices() > 1) || (owner()->getSize() > largeAlloc)) {
     if ((nullptr == initHostPtr) && (owner()->getHostMem() == nullptr)) {
       static const bool forceAllocHostMem = true;
       if (!owner()->allocHostMemory(nullptr, forceAllocHostMem)) {
