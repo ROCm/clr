@@ -133,14 +133,15 @@ static constexpr uint HsaSamplerObjectAlignment = 16;
 static constexpr uint DeviceQueueMaskSize = 32;
 
 struct AMDDeviceInfo {
-  const char* machineTarget_;    //!< Machine target
-  const char* machineTargetLC_;  //!< Machine target for LC
-  uint simdWidth_;               //!< Number of workitems processed per SIMD
-  uint memChannelBankWidth_;     //!< Memory channel bank width
-  uint localMemBanks_;           //!< Number of banks of local memory
-  uint gfxipVersionLC_;          //!< The core engine GFXIP version for LC
-  uint gfxipVersion_;            //!< The core engine GFXIP version
-  bool xnackEnabled_;            //!< Enable XNACK feature
+  const char* machineTarget_;       //!< Machine target
+  const char* machineTargetLC_;     //!< Machine target for LC
+  uint simdWidth_;                  //!< Number of workitems processed per SIMD
+  uint memChannelBankWidth_;        //!< Memory channel bank width
+  uint localMemBanks_;              //!< Number of banks of local memory
+  uint gfxipVersionLC_;             //!< The core engine GFXIP version for LC
+  uint gfxipVersion_;               //!< The core engine GFXIP version
+  bool xnackEnabled_;               //!< Enable XNACK feature
+  Pal::AsicRevision asicRevision_;  //!< PAL GpuId
 };
 
 static constexpr AMDDeviceInfo UnknownDevice = {"", "", 16, 256, 32, 0, 0, false};
@@ -178,50 +179,26 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
 // Ordering as per AsicRevision# in palDevice.h & AMDGPU Target Names
 
 static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
-    /* 0x18 Vega10              */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false},
-    /*      Vega10 XNACK        */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true},
-    /* 0x19 Vega12              */ {"gfx904", "gfx904", 16, 256, 32, 904, 904, false},
-    /*      Vega12 XNACK        */ {"gfx905", "gfx904", 16, 256, 32, 904, 905, true},
-    /* 0x1a Vega20              */ {"gfx906", "gfx906", 16, 256, 32, 906, 906, false},
-    /*      Vega20 XNACK        */ {"gfx907", "gfx906", 16, 256, 32, 906, 907, true},
-    /* 0x1b Raven               */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /*      Raven XNACK         */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* 0x1c Raven2              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /*      Raven2 XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* 0x1d Renoir              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false},
-    /*      Renoir XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true},
-    /* 0x1e Navi10_A0           */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
-    /*      Navi10_A0 XNACK     */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
-    /* 0x1f Navi10              */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false},
-    /*      Navi10 XNACK        */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true},
-    /* 0x20 Navi10Lite          */ UnknownDevice,
-    /*      Navi10LiteXNACK     */ UnknownDevice,
-    /* 0x21 Navi12              */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false},
-    /*      Navi12  XNACK       */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true},
-    /* 0x22 Navi12Lite          */ UnknownDevice,
-    /*      Navi12LiteXNACK     */ UnknownDevice,
-    /* 0x23 Navi14              */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false},
-    /*      Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true},
-    /* 0x24 Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false},
-    /*      Navi21 XNACK        */ UnknownDevice,
-    /* 0x25 UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x26 UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x27 UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x28 UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x29 UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x2a UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x2b UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x2c UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
-    /* 0x2d UnknownDevice       */ UnknownDevice,
-    /*      UnknownDevice XNACK */ UnknownDevice,
+    /* Vega10              */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false, Pal::AsicRevision::Vega10},
+    /* Vega10 XNACK        */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true, Pal::AsicRevision::Vega10},
+    /* Vega12              */ {"gfx904", "gfx904", 16, 256, 32, 904, 904, false, Pal::AsicRevision::Vega12},
+    /* Vega12 XNACK        */ {"gfx905", "gfx904", 16, 256, 32, 904, 905, true, Pal::AsicRevision::Vega12},
+    /* Vega20              */ {"gfx906", "gfx906", 16, 256, 32, 906, 906, false, Pal::AsicRevision::Vega20},
+    /* Vega20 XNACK        */ {"gfx907", "gfx906", 16, 256, 32, 906, 907, true, Pal::AsicRevision::Vega20},
+    /* Raven               */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven},
+    /* Raven XNACK         */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven},
+    /* Raven2              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven2},
+    /* Raven2 XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven2},
+    /* Renoir              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Renoir},
+    /* Renoir XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Renoir},
+    /* Navi10              */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false, Pal::AsicRevision::Navi10},
+    /* Navi10 XNACK        */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true, Pal::AsicRevision::Navi10},
+    /* Navi12              */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false, Pal::AsicRevision::Navi12},
+    /* Navi12  XNACK       */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true, Pal::AsicRevision::Navi12},
+    /* Navi14              */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false, Pal::AsicRevision::Navi14},
+    /* Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true, Pal::AsicRevision::Navi14},
+    /* Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false, Pal::AsicRevision::Navi21},
+    /* Navi21 XNACK        */ UnknownDevice,
 };
 
 // Supported OpenCL versions
