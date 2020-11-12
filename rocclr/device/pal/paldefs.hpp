@@ -199,6 +199,8 @@ static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true, Pal::AsicRevision::Navi14},
     /* Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false, Pal::AsicRevision::Navi21},
     /* Navi21 XNACK        */ UnknownDevice,
+    /* Navi22              */ {"gfx1031", "gfx1031", 32, 256, 32, 1031, 1031, false, Pal::AsicRevision::Navi22},
+    /* Navi22 XNACK        */ UnknownDevice,
 };
 
 // Supported OpenCL versions
