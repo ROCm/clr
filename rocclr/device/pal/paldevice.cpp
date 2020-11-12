@@ -264,7 +264,7 @@ bool NullDevice::init() {
         revision = Pal::AsicRevision::Navi22;
         break;
       case 1032:
-        ShouldNotReachHere();
+        revision = Pal::AsicRevision::Navi23;
         break;
       case 1033:
         ShouldNotReachHere();
