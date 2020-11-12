@@ -141,7 +141,7 @@ struct AMDDeviceInfo {
   uint gfxipVersionLC_;             //!< The core engine GFXIP version for LC
   uint gfxipVersion_;               //!< The core engine GFXIP version
   bool xnackEnabled_;               //!< Enable XNACK feature
-  Pal::AsicRevision asicRevision_;  //!< PAL GpuId
+  Pal::AsicRevision asicRevision_;  //!< PAL AsicRevision
 };
 
 static constexpr AMDDeviceInfo UnknownDevice = {"", "", 16, 256, 32, 0, 0, false};
