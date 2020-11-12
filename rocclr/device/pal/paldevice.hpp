@@ -66,7 +66,7 @@ class NullDevice : public amd::Device {
   //! Creates an offline device with the specified target
   bool create(Pal::AsicRevision asicRevision,  //!< GPU ASIC revision
               Pal::GfxIpLevel ipLevel,         //!< GPU ip level
-              uint xNACKSupported = 0          //!< GPU xNACKSupported
+              bool xNACKSupported = false      //!< GPU xNACKSupported
   );
 
   //! Instantiate a new virtual device
@@ -431,9 +431,9 @@ class Device : public NullDevice {
   }
 
   //! Returns the number of available compute rings
-  uint numExclusiveComputeEngines() const { 
+  uint numExclusiveComputeEngines() const {
     return exclusiveComputeEnginesId_.size() +
-     ((exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime1) == 
+     ((exclusiveComputeEnginesId().find(ExclusiveQueueType::RealTime1) ==
        exclusiveComputeEnginesId().end()) ? 1 : 0); }
 
   //! Returns the map of available exclusive compute rings with the engine index
