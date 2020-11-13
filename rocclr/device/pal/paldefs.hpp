@@ -176,8 +176,6 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
     /* Lexa */      {"gfx804", "gfx803", 16, 256, 32, 803, 804, false},
 };
 
-// Ordering as per AsicRevision# in palDevice.h & AMDGPU Target Names
-
 static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Vega10              */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false, Pal::AsicRevision::Vega10},
     /* Vega10 XNACK        */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true, Pal::AsicRevision::Vega10},
@@ -198,11 +196,8 @@ static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
     /* Navi14              */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false, Pal::AsicRevision::Navi14},
     /* Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true, Pal::AsicRevision::Navi14},
     /* Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false, Pal::AsicRevision::Navi21},
-    /* Navi21 XNACK        */ UnknownDevice,
     /* Navi22              */ {"gfx1031", "gfx1031", 32, 256, 32, 1031, 1031, false, Pal::AsicRevision::Navi22},
-    /* Navi22 XNACK        */ UnknownDevice,
     /* Navi23              */ {"gfx1032", "gfx1032", 32, 256, 32, 1032, 1032, false, Pal::AsicRevision::Navi23},
-    /* Navi23 XNACK        */ UnknownDevice,
 };
 
 // Supported OpenCL versions

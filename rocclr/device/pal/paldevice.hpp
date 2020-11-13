@@ -64,9 +64,8 @@ class NullDevice : public amd::Device {
   NullDevice();
 
   //! Creates an offline device with the specified target
-  bool create(Pal::AsicRevision asicRevision,  //!< GPU ASIC revision
-              Pal::GfxIpLevel ipLevel,         //!< GPU ip level
-              bool xNACKSupported = false      //!< GPU xNACKSupported
+  bool create(uint id,                         //!< index in the AMDDeviceInfo[]
+              Pal::GfxIpLevel ipLevel          //!< GPU ip level
   );
 
   //! Instantiate a new virtual device
