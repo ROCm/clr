@@ -117,7 +117,7 @@ bool NullDevice::init() {
 
     NullDevice* dev = new NullDevice();
     if (nullptr != dev) {
-      if (!dev->create(revision, Pal::GfxIpLevel::_None)) {
+      if (!dev->create(id, Pal::GfxIpLevel::_None)) {
         delete dev;
       } else {
         dev->registerDevice();
@@ -166,8 +166,10 @@ bool NullDevice::init() {
       if (pal::Gfx9PlusSubDeviceInfo[j].machineTarget_[0] == '\0') {
         continue;
       }
-      if (strcmp(pal::Gfx9PlusSubDeviceInfo[j].machineTarget_,
-                 pal::Gfx9PlusSubDeviceInfo[id].machineTarget_) == 0) {
+      if ((strcmp(pal::Gfx9PlusSubDeviceInfo[j].machineTarget_,
+                 pal::Gfx9PlusSubDeviceInfo[id].machineTarget_) == 0) &&
+          (pal::Gfx9PlusSubDeviceInfo[j].xnackEnabled_ ==
+           pal::Gfx9PlusSubDeviceInfo[id].xnackEnabled_)) {
         foundDuplicate = true;
         break;
       }
@@ -222,67 +224,9 @@ bool NullDevice::init() {
         break;
     }
 
-    Pal::AsicRevision revision = Pal::AsicRevision::Unknown;
-    uint xNACKSupported = pal::Gfx9PlusSubDeviceInfo[id].xnackEnabled_ ? 1 : 0;
-
-    switch (gfxipVersion) {
-      case 901:
-      case 900:
-        revision = Pal::AsicRevision::Vega10;
-        break;
-      case 903:
-      case 902:
-        revision = Pal::AsicRevision::Raven;
-        break;
-      case 905:
-      case 904:
-        revision = Pal::AsicRevision::Vega12;
-        break;
-      case 907:
-      case 906:
-        revision = Pal::AsicRevision::Vega20;
-        break;
-      case 1000:
-        ShouldNotReachHere();
-        break;
-      case 1010:
-        revision = Pal::AsicRevision::Navi10;
-        break;
-      case 1011:
-        revision = Pal::AsicRevision::Navi12;
-        break;
-      case 1012:
-        revision = Pal::AsicRevision::Navi14;
-        break;
-      case 1020:
-        ShouldNotReachHere();
-        break;
-      case 1030:
-        revision = Pal::AsicRevision::Navi21;
-        break;
-      case 1031:
-        revision = Pal::AsicRevision::Navi22;
-        break;
-      case 1032:
-        revision = Pal::AsicRevision::Navi23;
-        break;
-      case 1033:
-        ShouldNotReachHere();
-        break;
-      case 1034:
-        ShouldNotReachHere();
-        break;
-      case 1040:
-        ShouldNotReachHere();
-        break;
-      case 1100:
-        ShouldNotReachHere();
-        break;
-    }
-
     NullDevice* dev = new NullDevice();
     if (nullptr != dev) {
-      if (!dev->create(revision, ipLevel, xNACKSupported)) {
+      if (!dev->create(id, ipLevel)) {
         delete dev;
       } else {
         dev->registerDevice();
@@ -294,8 +238,18 @@ bool NullDevice::init() {
 }
 
 
-bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
-                        bool xNACKSupported) {
+bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
+  // Update HW info for the device
+  if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
+    hwInfo_ = &DeviceInfo[id];
+  } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
+    hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
+  } else {
+    return false;
+  }
+
+  Pal::AsicRevision asicRevision = hwInfo_->asicRevision_;
+
   if (amd::IS_HIP && IS_MAINLINE &&
       (asicRevision != Pal::AsicRevision::Vega20)) {
     return false;
@@ -310,21 +264,6 @@ bool NullDevice::create(Pal::AsicRevision asicRevision, Pal::GfxIpLevel ipLevel,
   properties.revision = asicRevision;
   properties.gfxLevel = ipLevel;
   uint subtarget = 0;
-
-  // Update HW info for the device
-  if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
-    hwInfo_ = &DeviceInfo[static_cast<uint>(asicRevision)];
-  } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
-    for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
-      if ((Gfx9PlusSubDeviceInfo[id].asicRevision_ == asicRevision_) &&
-          (Gfx9PlusSubDeviceInfo[id].xnackEnabled_ == xNACKSupported)) {
-        hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
-        break;
-      }
-    }
-  } else {
-    return false;
-  }
 
   settings_ = new pal::Settings();
   pal::Settings* palSettings = reinterpret_cast<pal::Settings*>(settings_);
