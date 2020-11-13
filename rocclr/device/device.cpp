@@ -749,6 +749,10 @@ bool ClBinary::createElfBinary(bool doencrypt, Program::type_t type) {
     return false;
   }
 
+  if (tempFile_) {
+    std::remove(fname_.c_str());
+  }
+
 #if defined(HAVE_BLOWFISH_H)
   if (doencrypt) {
     // Increase the size by 64 to accomodate extra headers
@@ -863,7 +867,8 @@ void ClBinary::resetElfIn() {
   }
 }
 
-bool ClBinary::setElfOut(unsigned char eclass, const char* outFile) {
+bool ClBinary::setElfOut(unsigned char eclass,
+                         const char* outFile, bool tempFile) {
   elfOut_ = new amd::Elf(eclass, nullptr, 0, outFile, amd::Elf::ELF_C_WRITE);
   if ((elfOut_ == nullptr) || !elfOut_->isSuccessful()) {
     if (elfOut_) {
@@ -873,6 +878,9 @@ bool ClBinary::setElfOut(unsigned char eclass, const char* outFile) {
     LogError("Creating ouput ELF object failed");
     return false;
   }
+
+  fname_ = outFile;
+  tempFile_ = tempFile;
 
   return setElfTarget();
 }

@@ -907,7 +907,7 @@ class ClBinary : public amd::HeapObject {
   void resetElfIn();
 
   //! set out elf
-  bool setElfOut(unsigned char eclass, const char* outFile);
+  bool setElfOut(unsigned char eclass, const char* outFile, bool tempFile);
   void resetElfOut();
 
   //! Set elf header information
@@ -1055,6 +1055,9 @@ class ClBinary : public amd::HeapObject {
   size_t origSize_;         //!< original binary size
 
   int encryptCode_;  //!< Encryption Code for input binary (0 for not encrypted)
+
+  std::string fname_; //!< name of elf dump file
+  bool tempFile_;     //!< Is the elf dump file temporary
 
  protected:
   amd::Elf* elfIn_;        //!< ELF object for input ELF binary

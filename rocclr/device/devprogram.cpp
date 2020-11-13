@@ -1371,15 +1371,20 @@ bool Program::initBuild(amd::option::Options* options) {
 
   // Elf Binary setup
   std::string outFileName;
+  bool tempFile = false;
 
   // true means hsail required
   clBinary()->init(options, true);
   if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
     outFileName = options->getDumpFileName(".bin");
+  } else {
+    // elf lib needs a writable temp file
+    outFileName = amd::Os::getTempFileName();
+    tempFile = true;
   }
 
   if (!clBinary()->setElfOut(LP64_SWITCH(ELFCLASS32, ELFCLASS64),
-    (outFileName.size() > 0) ? outFileName.c_str() : nullptr)) {
+    (outFileName.size() > 0) ? outFileName.c_str() : nullptr, tempFile)) {
     LogError("Setup elf out for gpu failed");
     return false;
   }
