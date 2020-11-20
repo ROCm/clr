@@ -2727,6 +2727,7 @@ void Device::getGlobalCUMask(std::string cuMaskStr) {
         ul = std::stoul(temp, 0, 16);
       } catch (const std::invalid_argument&) {
         info_.globalCUMask_ = {};
+        availCUs = 0;
         break;
       }
       info_.globalCUMask_.push_back(static_cast<uint32_t>(ul));
