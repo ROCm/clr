@@ -367,6 +367,9 @@ typedef uint64_t Elf64_Off;
 #define ELFOSABI_NSK           14 // Hewlett-Packard Non-Stop Kernel
 #define ELFOSABI_AROS          15 // Amiga Research OS
 #define ELFOSABI_FENIXOS       16 // The FenixOS highly scalable multi-core OS
+
+#if defined(__HIP_ROCclr__)
+
 //                             64-255 Architecture-specific value range
 #define ELFOSABI_AMDGPU_HSA    64 // AMDGPU OS for HSA compatible compute
                                   // kernels.
@@ -464,6 +467,8 @@ typedef uint64_t Elf64_Off;
 #define EF_AMDGPU_FEATURE_SRAMECC_ANY_V4         0x400
 #define EF_AMDGPU_FEATURE_SRAMECC_OFF_V4         0x800
 #define EF_AMDGPU_FEATURE_SRAMECC_ON_V4          0xc00
+
+#endif //__HIP_ROCclr__
 
 /////////////////////
 // Sections constants
