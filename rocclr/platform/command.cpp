@@ -258,17 +258,21 @@ void Command::enqueue() {
   }
 
   ClPrint(LOG_DEBUG, LOG_CMD, "command is enqueued: %p", this);
+
+  // Direct dispatch logic below will submit the command immediately, but the command status
+  // update will occur later after flush() with a wait
   if (AMD_DIRECT_DISPATCH) {
+    // The batch update must be lock protected to avoid a race condition
+    // when multiple threads submit/flush/update the batch at the same time
+    ScopedLock sl(queue_->lock());
+    queue_->FormSubmissionBatch(this);
     if (type() == CL_COMMAND_MARKER || type() == 0) {
-      setStatus(CL_SUBMITTED);
-      queue_->vdev()->flush();
-      retain();
-      setStatus(CL_COMPLETE);
+      // Flush the current batch and wait for the results, since it's a marker.
+      // @todo: The condition requires a reevaluation to determine if any marker needs a wait.
+      queue_->vdev()->flush(queue_->GetSubmittionBatch());
+      queue_->ResetSubmissionBatch();
     } else {
-      setStatus(CL_SUBMITTED);
       submit(*queue_->vdev());
-      retain();
-      setStatus(CL_COMPLETE);
     }
   } else {
     queue_->append(*this);
