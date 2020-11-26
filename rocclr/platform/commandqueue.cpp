@@ -37,9 +37,11 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
                      uint queueRTCUs, Priority priority, const std::vector<uint32_t>& cuMask)
     : CommandQueue(context, device, properties, device.info().queueProperties_, queueRTCUs,
                    priority, cuMask),
-      lastEnqueueCommand_(nullptr) {
+      lastEnqueueCommand_(nullptr),
+      head_(nullptr),
+      tail_(nullptr) {
   if (AMD_DIRECT_DISPATCH) {
-    // Initialize the queue 
+    // Initialize the queue
     thread_.Init(this);
   } else {
     if (thread_.state() >= Thread::INITIALIZED) {
@@ -222,13 +224,25 @@ bool HostQueue::isEmpty() {
 }
 
 Command* HostQueue::getLastQueuedCommand(bool retain) {
-  // Get last submitted command
-  ScopedLock l(lastCmdLock_);
+  if (AMD_DIRECT_DISPATCH) {
+    // The batch update must be lock protected to avoid a race condition
+    // when multiple threads submit/flush/update the batch at the same time
+    ScopedLock sl(lock());
 
-  // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand. It is
-  // guaranteed that the pointer will not change.
-  if (retain && lastEnqueueCommand_ != nullptr) {
-    lastEnqueueCommand_->retain();
+    // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand.
+    // It is guaranteed that the pointer will not change.
+    if (retain && lastEnqueueCommand_ != nullptr) {
+      lastEnqueueCommand_->retain();
+    }
+  } else {
+    // Get last submitted command
+    ScopedLock l(lastCmdLock_);
+
+    // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand.
+    // It is guaranteed that the pointer will not change.
+    if (retain && lastEnqueueCommand_ != nullptr) {
+      lastEnqueueCommand_->retain();
+    }
   }
 
   return lastEnqueueCommand_;

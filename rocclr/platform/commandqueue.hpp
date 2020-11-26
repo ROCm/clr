@@ -111,6 +111,9 @@ class CommandQueue : public RuntimeObject {
   //! Returns the CU mask array
   const std::vector<uint32_t>& cuMask() const { return cuMask_; }
 
+  //! Returns the queue lock
+  Monitor& lock() { return queueLock_; }
+
  protected:
   //! CommandQueue constructor is protected
   //! to keep the CommandQueue class as a virtual interface
@@ -241,6 +244,43 @@ class HostQueue : public CommandQueue {
 
   //! Get last enqueued command
   Command* getLastQueuedCommand(bool retain);
+
+  //! Get the submitted batch
+  Command* GetSubmittionBatch() const { return head_; }
+
+  //! Insert a command into the linked list of submitted commands
+  void FormSubmissionBatch(Command* command) {
+    // Insert the command to the linked list.
+    if (nullptr == head_) {  // if the list is empty
+      head_ = tail_ = command;
+    } else {
+      tail_->setNext(command);
+      tail_ = command;
+    }
+    command->setStatus(CL_SUBMITTED);
+    command->retain();
+    // @note: runtime needs double retain in order to maintain the batch,
+    // because setStatus(COMPLETE) releases command and batch update may have
+    // an invalid access
+    command->retain();
+
+    // Release the last command in the batch
+    if (lastEnqueueCommand_ != nullptr) {
+      lastEnqueueCommand_->release();
+    }
+
+    // Extra retain for the last command
+    command->retain();
+
+    lastEnqueueCommand_ = command;
+  }
+
+  //! Reset the command batch list
+  void ResetSubmissionBatch() { head_ = nullptr; }
+
+private:
+  Command* head_;   //!< Head of the batch list
+  Command* tail_;   //!< Tail of the batch list
 };
 
 
@@ -270,9 +310,6 @@ class DeviceQueue : public CommandQueue {
 
   //! Returns virtual device for this device queue
   device::VirtualDevice* vDev() const { return virtualDevice_; }
-
-  //! Returns the queue lock
-  Monitor& lock() { return queueLock_; }
 
  private:
   uint size_;                             //!< Device queue size
