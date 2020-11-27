@@ -235,15 +235,9 @@ Device::~Device() {
   delete xferWrite_;
 
   // Destroy transfer queue
-  if (xferQueue_ && xferQueue_->terminate()) {
-    delete xferQueue_;
-    xferQueue_ = nullptr;
-  }
+  delete xferQueue_;
 
-  if (blitProgram_) {
-    delete blitProgram_;
-    blitProgram_ = nullptr;
-  }
+  delete blitProgram_;
 
   if (context_ != nullptr) {
     context_->release();

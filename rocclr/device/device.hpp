@@ -1151,9 +1151,6 @@ class VirtualDevice : public amd::HeapObject {
   //! Destroy this virtual device.
   virtual ~VirtualDevice() {}
 
-  //! Prepare this virtual device for destruction.
-  virtual bool terminate() = 0;
-
   //! Return the physical device for this virtual device.
   const amd::Device& device() const { return device_(); }
 

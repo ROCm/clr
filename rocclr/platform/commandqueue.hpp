@@ -167,9 +167,7 @@ class HostQueue : public CommandQueue {
       virtualDevice_ = queue->device().createVirtualDevice(queue);
       if (virtualDevice_ != NULL) {
         queue->loop(virtualDevice_);
-        if (virtualDevice_->terminate()) {
-          delete virtualDevice_;
-        }
+        delete virtualDevice_;
       } else {
         acceptingCommands_ = false;
         queue->flush();

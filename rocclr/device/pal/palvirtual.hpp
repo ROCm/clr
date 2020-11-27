@@ -351,7 +351,6 @@ class VirtualGPU : public device::VirtualDevice {
   void releaseMemory(GpuMemoryReference* mem);
 
   void flush(amd::Command* list = nullptr, bool wait = false);
-  bool terminate() { return true; }
 
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
