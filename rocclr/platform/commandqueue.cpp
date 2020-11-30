@@ -38,43 +38,52 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
     : CommandQueue(context, device, properties, device.info().queueProperties_, queueRTCUs,
                    priority, cuMask),
       lastEnqueueCommand_(nullptr) {
-  if (thread_.state() >= Thread::INITIALIZED) {
-    ScopedLock sl(queueLock_);
-    thread_.start(this);
-    queueLock_.wait();
+  if (AMD_DIRECT_DISPATCH) {
+    // Initialize the queue 
+    thread_.Init(this);
+  } else {
+    if (thread_.state() >= Thread::INITIALIZED) {
+      ScopedLock sl(queueLock_);
+      thread_.start(this);
+      queueLock_.wait();
+    }
   }
 }
 
 bool HostQueue::terminate() {
-  if (Os::isThreadAlive(thread_)) {
-    Command* marker = nullptr;
+  if (AMD_DIRECT_DISPATCH) {
+    thread_.Release();
+  } else {
+    if (Os::isThreadAlive(thread_)) {
+      Command* marker = nullptr;
 
-    // Send a finish if the queue is still accepting commands.
-    {
-      ScopedLock sl(queueLock_);
-      if (thread_.acceptingCommands_) {
-        marker = new Marker(*this, false);
-        if (marker != nullptr) {
-          append(*marker);
-          queueLock_.notify();
+      // Send a finish if the queue is still accepting commands.
+      {
+        ScopedLock sl(queueLock_);
+        if (thread_.acceptingCommands_) {
+          marker = new Marker(*this, false);
+          if (marker != nullptr) {
+            append(*marker);
+            queueLock_.notify();
+          }
         }
       }
-    }
-    if (marker != nullptr) {
-      marker->awaitCompletion();
-      marker->release();
-    }
+      if (marker != nullptr) {
+        marker->awaitCompletion();
+        marker->release();
+      }
 
-    // Wake-up the command loop, so it can exit
-    {
-      ScopedLock sl(queueLock_);
-      thread_.acceptingCommands_ = false;
-      queueLock_.notify();
-    }
+      // Wake-up the command loop, so it can exit
+      {
+        ScopedLock sl(queueLock_);
+        thread_.acceptingCommands_ = false;
+        queueLock_.notify();
+      }
 
-    // FIXME_lmoriche: fix termination handshake
-    while (thread_.state() < Thread::FINISHED) {
-      Os::yield();
+      // FIXME_lmoriche: fix termination handshake
+      while (thread_.state() < Thread::FINISHED) {
+        Os::yield();
+      }
     }
   }
 
