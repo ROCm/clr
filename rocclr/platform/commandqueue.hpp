@@ -157,7 +157,7 @@ class HostQueue : public CommandQueue {
 
     //! Create a new thread
     Thread()
-        : amd::Thread("Command Queue Thread", CQ_THREAD_STACK_SIZE),
+        : amd::Thread("Command Queue Thread", CQ_THREAD_STACK_SIZE, !AMD_DIRECT_DISPATCH),
           acceptingCommands_(false),
           virtualDevice_(NULL) {}
 
@@ -167,12 +167,21 @@ class HostQueue : public CommandQueue {
       virtualDevice_ = queue->device().createVirtualDevice(queue);
       if (virtualDevice_ != NULL) {
         queue->loop(virtualDevice_);
-        delete virtualDevice_;
+        Release();
       } else {
         acceptingCommands_ = false;
         queue->flush();
       }
     }
+
+    void Init(HostQueue* queue) {
+      virtualDevice_ = queue->device().createVirtualDevice(queue);
+      if (virtualDevice_ != nullptr) {
+        acceptingCommands_ = true;
+      }
+    }
+
+    void Release() const { delete virtualDevice_; }
 
     //! Get virtual device for the current thread
     device::VirtualDevice* vdev() const { return virtualDevice_; }
