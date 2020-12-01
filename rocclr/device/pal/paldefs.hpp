@@ -142,6 +142,8 @@ struct AMDDeviceInfo {
   uint gfxipVersion_;               //!< The core engine GFXIP version
   bool xnackEnabled_;               //!< Enable XNACK feature
   Pal::AsicRevision asicRevision_;  //!< PAL AsicRevision
+  bool xnackSupported_;             //!< XNACK is supported
+  bool srameccSumpported_;          //!< SRAMECC is supported
 };
 
 static constexpr AMDDeviceInfo UnknownDevice = {"", "", 16, 256, 32, 0, 0, false};
@@ -177,27 +179,27 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
 };
 
 static constexpr AMDDeviceInfo Gfx9PlusSubDeviceInfo[] = {
-    /* Vega10              */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false, Pal::AsicRevision::Vega10},
-    /* Vega10 XNACK        */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true, Pal::AsicRevision::Vega10},
-    /* Vega12              */ {"gfx904", "gfx904", 16, 256, 32, 904, 904, false, Pal::AsicRevision::Vega12},
-    /* Vega12 XNACK        */ {"gfx905", "gfx904", 16, 256, 32, 904, 905, true, Pal::AsicRevision::Vega12},
-    /* Vega20              */ {"gfx906", "gfx906", 16, 256, 32, 906, 906, false, Pal::AsicRevision::Vega20},
-    /* Vega20 XNACK        */ {"gfx907", "gfx906", 16, 256, 32, 906, 907, true, Pal::AsicRevision::Vega20},
-    /* Raven               */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven},
-    /* Raven XNACK         */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven},
-    /* Raven2              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven2},
-    /* Raven2 XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven2},
-    /* Renoir              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Renoir},
-    /* Renoir XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Renoir},
-    /* Navi10              */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false, Pal::AsicRevision::Navi10},
-    /* Navi10 XNACK        */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true, Pal::AsicRevision::Navi10},
-    /* Navi12              */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false, Pal::AsicRevision::Navi12},
-    /* Navi12  XNACK       */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true, Pal::AsicRevision::Navi12},
-    /* Navi14              */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false, Pal::AsicRevision::Navi14},
-    /* Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true, Pal::AsicRevision::Navi14},
-    /* Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false, Pal::AsicRevision::Navi21},
-    /* Navi22              */ {"gfx1031", "gfx1031", 32, 256, 32, 1031, 1031, false, Pal::AsicRevision::Navi22},
-    /* Navi23              */ {"gfx1032", "gfx1032", 32, 256, 32, 1032, 1032, false, Pal::AsicRevision::Navi23},
+    /* Vega10              */ {"gfx900", "gfx900", 16, 256, 32, 900, 900, false, Pal::AsicRevision::Vega10, true, false},
+    /* Vega10 XNACK        */ {"gfx901", "gfx900", 16, 256, 32, 900, 901, true, Pal::AsicRevision::Vega10, true, false},
+    /* Vega12              */ {"gfx904", "gfx904", 16, 256, 32, 904, 904, false, Pal::AsicRevision::Vega12, true, false},
+    /* Vega12 XNACK        */ {"gfx905", "gfx904", 16, 256, 32, 904, 905, true, Pal::AsicRevision::Vega12, true, false},
+    /* Vega20              */ {"gfx906", "gfx906", 16, 256, 32, 906, 906, false, Pal::AsicRevision::Vega20, true, true},
+    /* Vega20 XNACK        */ {"gfx907", "gfx906", 16, 256, 32, 906, 907, true, Pal::AsicRevision::Vega20, true, true},
+    /* Raven               */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven, true, false},
+    /* Raven XNACK         */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven, true, false},
+    /* Raven2              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Raven2, true, false},
+    /* Raven2 XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Raven2, true, false},
+    /* Renoir              */ {"gfx902", "gfx902", 16, 256, 32, 902, 902, false, Pal::AsicRevision::Renoir, true, false},
+    /* Renoir XNACK        */ {"gfx903", "gfx902", 16, 256, 32, 902, 903, true, Pal::AsicRevision::Renoir, true, false},
+    /* Navi10              */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, false, Pal::AsicRevision::Navi10, true, false},
+    /* Navi10 XNACK        */ {"gfx1010", "gfx1010", 32, 256, 32, 1010, 1010, true, Pal::AsicRevision::Navi10, true, false},
+    /* Navi12              */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, false, Pal::AsicRevision::Navi12, true, false},
+    /* Navi12  XNACK       */ {"gfx1011", "gfx1011", 32, 256, 32, 1011, 1011, true, Pal::AsicRevision::Navi12, true, false},
+    /* Navi14              */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, false, Pal::AsicRevision::Navi14, true, false},
+    /* Navi14 XNACK        */ {"gfx1012", "gfx1012", 32, 256, 32, 1012, 1012, true, Pal::AsicRevision::Navi14, true, false},
+    /* Navi21              */ {"gfx1030", "gfx1030", 32, 256, 32, 1030, 1030, false, Pal::AsicRevision::Navi21, false, false},
+    /* Navi22              */ {"gfx1031", "gfx1031", 32, 256, 32, 1031, 1031, false, Pal::AsicRevision::Navi22, false, false},
+    /* Navi23              */ {"gfx1032", "gfx1032", 32, 256, 32, 1032, 1032, false, Pal::AsicRevision::Navi23, false, false},
 };
 
 // Supported OpenCL versions
