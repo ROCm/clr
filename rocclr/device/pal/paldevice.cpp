@@ -514,12 +514,23 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   if (settings().useLightning_) {
     ::strcpy(info_.name_, hwInfo()->machineTargetLC_);
-    if (hwInfo()->xnackEnabled_) {
-      ::strcat(info_.name_, ":xnack+");
+
+    if (hwInfo()->srameccSumpported_) {
+      if (palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs) {
+        ::strcat(info_.name_, ":sramecc+");
+      } else {
+        ::strcat(info_.name_, ":sramecc-");
+      }
     }
-    if (palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs) {
-      ::strcat(info_.name_, ":sramecc+");
+
+    if (hwInfo()->xnackSupported_) {
+      if (hwInfo()->xnackEnabled_) {
+        ::strcat(info_.name_, ":xnack+");
+      } else {
+        ::strcat(info_.name_, ":xnack-");
+      }
     }
+
     ::strcpy(info_.targetId_, "amdgcn-amd-amdhsa--");
     ::strcat(info_.targetId_, info_.name_);
   } else {
