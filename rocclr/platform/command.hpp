@@ -360,6 +360,7 @@ class OneMemoryArgCommand : public Command {
   }
 
   bool validateMemory();
+  bool validatePeerMemory();
 };
 
 //! A memory command that holds a single memory object reference.
@@ -387,6 +388,7 @@ class TwoMemoryArgsCommand : public Command {
   }
 
   bool validateMemory();
+  bool validatePeerMemory();
 };
 
 /*!  \brief     A generic read memory command.

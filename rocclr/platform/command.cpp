@@ -358,6 +358,27 @@ int32_t NativeFnCommand::invoke() {
   return CL_SUCCESS;
 }
 
+bool OneMemoryArgCommand::validatePeerMemory() {
+  amd::Device* queue_device = &queue()->device();
+  // Rocr backend maps memory from different devices by default and runtime doesn't need to track
+  // extra memory objects.
+  if (queue_device->settings().rocr_backend_) {
+    const std::vector<Device*>& srcDevices = memory_->getContext().devices();
+    if (srcDevices.size() == 1 && queue_device != srcDevices[0]) {
+      // current device and source device are not same hence
+      // explicit allow access is needed for P2P access
+      device::Memory* mem = memory_->getDeviceMemory(*srcDevices[0]);
+      if (!mem->getAllowedPeerAccess()) {
+        void* dst = reinterpret_cast<void*>(mem->virtualAddress());
+        bool status = srcDevices[0]->deviceAllowAccess(dst);
+        mem->setAllowedPeerAccess(true);
+        return status;
+      }
+    }
+  }
+  return true;
+}
+
 bool OneMemoryArgCommand::validateMemory() {
   // Runtime disables deferred memory allocation for single device.
   // Hence ignore memory validations
@@ -370,6 +391,47 @@ bool OneMemoryArgCommand::validateMemory() {
     return false;
   }
   return true;
+}
+
+bool TwoMemoryArgsCommand::validatePeerMemory(){
+  bool accessAllowed = true;
+  amd::Device* queue_device = &queue()->device();
+  // Explicite Allow access is needed when first time memory is accessed from other device.
+  // Rules : Remote device has to provide access to current device
+  // --------------------------------------------------------------------
+  // Crr_Dev = src  | Allow access will be called for dst memory        |
+  // --------------------------------------------------------------------
+  // Crr_Dev = dst  | Allow access will be called for src memory        |
+  // --------------------------------------------------------------------
+  // Crr_dev = other| Allow access will be called for dst and src memory|
+  // --------------------------------------------------------------------
+  if (queue_device->settings().rocr_backend_) {
+    const std::vector<Device*>& srcDevices = memory1_->getContext().devices();
+    const std::vector<Device*>& dstDevices = memory2_->getContext().devices();
+    // destination and source devices are not same hence
+    // explicit allow access is needed for P2P access
+    if (srcDevices.size() == 1 &&
+        dstDevices.size() == 1 &&
+        srcDevices[0] != dstDevices[0]) {
+      device::Memory* mem1 = memory1_->getDeviceMemory(*srcDevices[0]);
+      if (queue_device != srcDevices[0]) {
+        if (!mem1->getAllowedPeerAccess()) {
+          void* src = reinterpret_cast<void*>(mem1->virtualAddress());
+          accessAllowed = srcDevices[0]->deviceAllowAccess(src);
+          mem1->setAllowedPeerAccess(true);
+        }
+      }
+      device::Memory* mem2 = memory2_->getDeviceMemory(*dstDevices[0]);
+      if (queue_device != dstDevices[0] && accessAllowed == true) {
+        if (!mem2->getAllowedPeerAccess()) {
+          void* dst = reinterpret_cast<void*>(mem2->virtualAddress());
+          accessAllowed = dstDevices[0]->deviceAllowAccess(dst);
+          mem2->setAllowedPeerAccess(true);
+        }
+      }
+    }
+  }
+  return accessAllowed;
 }
 
 bool TwoMemoryArgsCommand::validateMemory() {
@@ -617,19 +679,7 @@ bool CopyMemoryP2PCommand::validateMemory() {
   // Rocr backend maps memory from different devices by default and runtime doesn't need to track
   // extra memory objects. Also P2P staging buffer always allocated
   if (queue_device->settings().rocr_backend_) {
-    // Explicit allow access is needed for P2P access
-    const std::vector<Device*>& srcDevices = memory1_->getContext().devices();
-    const std::vector<Device*>& dstDevices = memory2_->getContext().devices();
-    if (srcDevices.size() == 1 && dstDevices.size() == 1) {
-      device::Memory* mem2 = memory2_->getDeviceMemory(*dstDevices[0]);
-      if (!mem2->getAllowedPeerAccess()) {
-        void* dst = reinterpret_cast<void*>(mem2->virtualAddress());
-        bool status = dstDevices[0]->deviceAllowAccess(dst);
-        mem2->setAllowedPeerAccess(true);
-        return status;
-      }
-    }
-    return true;
+    return validatePeerMemory();
   }
 
   const std::vector<Device*>& devices = memory1_->getContext().devices();
