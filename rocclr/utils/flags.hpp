@@ -86,6 +86,8 @@ release(cstring, AMD_OCL_LINK_OPTIONS_APPEND, 0,                              \
         "Append clLinkProgram()'s options")                                   \
 release(cstring, AMD_OCL_SC_LIB, 0,                                           \
         "Set shader compiler shared library name or path")                    \
+debug(cstring, AMD_OCL_SUBST_OBJFILE, 0,                                      \
+        "Specify binary substitution config file for OpenCL")                 \
 debug(bool, AMD_OCL_ENABLE_MESSAGE_BOX, false,                                \
         "Enable the error dialog on Windows")                                 \
 release(size_t, GPU_PINNED_XFER_SIZE, 32,                                     \

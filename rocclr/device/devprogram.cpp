@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <sstream>
 #include <cstdio>
@@ -605,6 +606,17 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
 }
 #endif  // defined(USE_COMGR_LIBRARY)
 
+static std::size_t getOCLSourceHash(const std::string& sourceCode) {
+  return std::hash<std::string>()(sourceCode);
+}
+
+static std::size_t getOCLOptionsHash(const amd::option::Options &options) {
+  std::string opts;
+  for (const std::string& S : options.clangOptions)
+    opts.append(S);
+  return std::hash<std::string>()(opts);
+}
+
 bool Program::compileImplLC(const std::string& sourceCode,
                             const std::vector<const std::string*>& headers,
                             const char** headerIncludeNames, amd::option::Options* options,
@@ -705,9 +717,15 @@ bool Program::compileImplLC(const std::string& sourceCode,
 
     std::ofstream f(options->getDumpFileName(".cl").c_str(), std::ios::trunc);
     if (f.is_open()) {
+      auto srcHash = getOCLSourceHash(sourceCode);
+      auto optHash = getOCLOptionsHash(*options);
+
       f << "/* Compiler options:\n"
            "-c -emit-llvm -target amdgcn-amd-amdhsa -x cl "
         << driverOptionsOStrStr.str() << " -include opencl-c.h "
+        << "\nHash to override:"
+        << "\n  Source: 0x" << std::setbase(16) << srcHash
+        << "\n  Source + clang options: 0x" << (srcHash ^ optHash)
         << "\n*/\n\n"
         << sourceCode;
       f.close();
@@ -1664,9 +1682,89 @@ int32_t Program::link(const std::vector<Program*>& inputPrograms, const char* or
 }
 
 // ================================================================================================
+static std::pair<std::string, size_t>
+getSubstBinFileName(const char *SubstCfgFile, size_t srcHash, size_t optHash) {
+  using namespace std;
+  const size_t srcAndOptHash = srcHash ^ optHash;
+  ifstream cfgFile(SubstCfgFile);
+  if (cfgFile.good()) {
+    string line;
+    while(getline(cfgFile, line)) {
+      istringstream ss(line);
+      size_t hash;
+      ss >> setbase(16) >> hash;
+      if (ss.fail() || !isspace(ss.peek()))
+        continue;
+
+      if (hash == srcAndOptHash || hash == srcHash) {
+        ss >> ws;
+        string objFileName;
+        getline(ss, objFileName); // get the rest of line with spaces
+        return make_pair(objFileName, hash);
+      }
+    }
+  } else
+    return make_pair(string(), (size_t)1);
+  return make_pair(string(), (size_t)0);
+}
+
+bool Program::trySubstObjFile(const char *SubstCfgFile,
+                              const std::string& sourceCode,
+                              const amd::option::Options* options) {
+  std::string buffer;
+  std::ostringstream str(buffer);
+
+  size_t srcHash = getOCLSourceHash(sourceCode);
+  size_t optHash = getOCLOptionsHash(*options);
+  auto substRes  = getSubstBinFileName(SubstCfgFile, srcHash, optHash);
+  if (substRes.first.empty()) {
+    switch(substRes.second) {
+    default: break;
+    case 1:
+      str << "Subst failure: cannot open config file " << SubstCfgFile << std::endl;
+    break;
+    }
+    buildLog_ += str.str();
+    return false;
+  }
+
+  uint8_t *binary = nullptr;
+  size_t binSize = 0;
+  std::ifstream binFile(substRes.first, std::ios::binary | std::ios::ate);
+  if (binFile.good()) {
+    binSize = binFile.tellg();
+    binFile.seekg(0, std::ios::beg);
+    binary = new (std::nothrow) uint8_t[binSize];
+    if (binary && !binFile.read(reinterpret_cast<char*>(binary), binSize)) {
+      delete[] binary;
+      binary = nullptr;
+    }
+  }
+
+  if (!binary) {
+    buildStatus_ = CL_BUILD_ERROR;
+    buildError_ = CL_BUILD_PROGRAM_FAILURE;
+    str << "Subst failure: cannot read binary file " << substRes.first << '\n';
+  } else {
+    setKernels(binary, binSize);
+    buildStatus_ = CL_BUILD_SUCCESS;
+    buildError_ = 0;
+    str << "Substituted program hash 0x"
+        << std::setbase(16) << substRes.second
+        << " with " << substRes.first << '\n';
+  }
+  buildLog_ += str.str();
+  return true;
+}
+
 int32_t Program::build(const std::string& sourceCode, const char* origOptions,
                        amd::option::Options* options,
                        const std::vector<std::string>& preCompiledHeaders) {
+  if (AMD_OCL_SUBST_OBJFILE != NULL &&
+      trySubstObjFile(AMD_OCL_SUBST_OBJFILE, sourceCode, options)) {
+    return buildError();
+  }
+
   uint64_t start_time = 0;
   if (options->oVariables->EnableBuildTiming) {
     buildLog_ = "\nStart timing major build components.....\n\n";
