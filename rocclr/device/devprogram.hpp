@@ -457,6 +457,10 @@ class Program : public amd::HeapObject {
   bool createKernelMetadataMap();
 #endif
 
+  bool trySubstObjFile(const char *SubstCfgFile,
+                       const std::string& sourceCode,
+                       const amd::option::Options* options);
+
   //! Disable default copy constructor
   Program(const Program&);
 
