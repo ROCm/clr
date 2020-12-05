@@ -2340,12 +2340,72 @@ bool Program::createKernelMetadataMap() {
     codeObjectVer_ = 2;
   }
   else {
+    amd_comgr_metadata_node_t versionMD, versionNode;
+    char major_version, minor_version;
+
+    status = amd::Comgr::metadata_lookup(metadata_, "amdhsa.version", &versionMD);
+
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "No amdhsa.version metadata found.");
+      return false;
+    }
+
+    status = amd::Comgr::index_list_metadata(versionMD, 0, &versionNode);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Cannot get code object metadata major version node.");
+      amd::Comgr::destroy_metadata(versionMD);
+      return false;
+    }
+
+    size = 1;
+    status = amd::Comgr::get_metadata_string(versionNode, &size, &major_version);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Cannot get code object metadata major version.");
+      amd::Comgr::destroy_metadata(versionNode);
+      amd::Comgr::destroy_metadata(versionMD);
+      return false;
+    }
+    amd::Comgr::destroy_metadata(versionNode);
+
+    status = amd::Comgr::index_list_metadata(versionMD, 1, &versionNode);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Cannot get code object metadata minor version node.");
+      amd::Comgr::destroy_metadata(versionMD);
+      return false;
+    }
+
+    size = 1;
+    status = amd::Comgr::get_metadata_string(versionNode, &size, &minor_version);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Cannot get code object metadata minor version.");
+      amd::Comgr::destroy_metadata(versionNode);
+      amd::Comgr::destroy_metadata(versionMD);
+      return false;
+    }
+    amd::Comgr::destroy_metadata(versionNode);
+
+    amd::Comgr::destroy_metadata(versionMD);
+
+    if (major_version == '1') {
+      if (minor_version == '0') {
+        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V3.");
+        codeObjectVer_ = 3;
+      } else if (minor_version == '1') {
+        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V4.");
+        codeObjectVer_ = 4;
+      } else {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+          "Unknown code object metadata minor version [%s.%s].", major_version, minor_version);
+      }
+    } else {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+        "Unknown code object metadata major version [%s.%s].", major_version, minor_version);
+    }
+
     status = amd::Comgr::metadata_lookup(metadata_, "amdhsa.kernels", &kernelsMD);
 
     if (status == AMD_COMGR_STATUS_SUCCESS) {
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V3.");
       hasKernelMD = true;
-      codeObjectVer_ = 3;
     }
   }
 
