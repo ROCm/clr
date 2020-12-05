@@ -1136,7 +1136,8 @@ bool Kernel::GetAttrCodePropMetadata() {
         }
       }
       break;
-    case 3: {
+    case 3:
+    case 4: {
         status = amd::Comgr::iterate_map_metadata(kernelMetaNode, populateKernelMetaV3,
                                                   static_cast<void*>(this));
       }
@@ -1284,7 +1285,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       if (codeObjectVer() == 2) {
         status = amd::Comgr::iterate_map_metadata(argsNode, populateArgs, data);
       }
-      else if (codeObjectVer() == 3) {
+      else if ((codeObjectVer() == 3) || (codeObjectVer() == 4)) {
         status = amd::Comgr::iterate_map_metadata(argsNode, populateArgsV3, data);
       }
     }
