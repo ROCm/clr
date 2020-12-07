@@ -675,11 +675,13 @@ void Buffer::destroy() {
         const_cast<Device&>(dev()).updateFreeMemory(size(), true);
       }
     }
-    else if (dev().settings().apuSystem_) {
+    else {
       if (!(memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR | CL_MEM_COPY_HOST_PTR))) {
         dev().memFree(deviceMemory_, size());
+        if (dev().settings().apuSystem_) {
+          const_cast<Device&>(dev()).updateFreeMemory(size(), true);
+        }
       }
-      const_cast<Device&>(dev()).updateFreeMemory(size(), true);
     }
   }
 
