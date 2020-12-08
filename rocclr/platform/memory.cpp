@@ -1167,10 +1167,10 @@ Image* Image::createView(const Context& context, const Format& format, device::V
   // Find the image dimensions and create a corresponding object
   view = new (context) Image(format, *this, baseMipLevel, flags);
 
-  // Set GPU virtual device for this view
-  view->setVirtualDevice(vDev);
-
   if (view != nullptr) {
+    // Set GPU virtual device for this view
+    view->setVirtualDevice(vDev);
+
     view->resetAllocationState();
 
     // Initialize array of the device memory pointers
@@ -1178,7 +1178,14 @@ Image* Image::createView(const Context& context, const Format& format, device::V
 
     // Check if runtime has to allocate memory
     if ((context.devices().size() == 1) || DISABLE_DEFERRED_ALLOC) {
-      device::Memory* mem = view->getDeviceMemory(*context.devices()[0]);
+      for (uint i = 0; i < numDevices_; ++i) {
+        // Make sure the parent's device memory is avaialbe
+        if ((deviceMemories_[i].ref_ == context.devices()[i]) &&
+            (deviceMemories_[i].value_ != nullptr)) {
+          device::Memory* mem = view->getDeviceMemory(*context.devices()[i]);
+          break;
+        }
+      }
     }
   }
 

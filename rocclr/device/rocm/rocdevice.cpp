@@ -1681,7 +1681,7 @@ Memory* Device::getRocMemory(amd::Memory* mem) const {
   return static_cast<roc::Memory*>(mem->getDeviceMemory(*this));
 }
 
-
+// ================================================================================================
 device::Memory* Device::createMemory(amd::Memory& owner) const {
   roc::Memory* memory = nullptr;
   if (owner.asBuffer()) {
@@ -1712,17 +1712,18 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
     // Pipe initialize in order read_idx, write_idx, end_idx. Refer clk_pipe_t structure.
     // Init with 3 DWORDS for 32bit addressing and 6 DWORDS for 64bit
     size_t pipeInit[3] = { 0, 0, owner.asPipe()->getMaxNumPackets() };
-    xferMgr().writeBuffer((void *)pipeInit, *memory, amd::Coord3D(0), amd::Coord3D(sizeof(pipeInit)));
+    xferMgr().writeBuffer(pipeInit, *memory, amd::Coord3D(0), amd::Coord3D(sizeof(pipeInit)));
   }
 
   // Transfer data only if OCL context has one device.
   // Cache coherency layer will update data for multiple devices
   if (!memory->isHostMemDirectAccess() && owner.asImage() && (owner.parent() == nullptr) &&
-      (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) && (owner.getContext().devices().size() == 1)) {
+      (owner.getMemFlags() & CL_MEM_COPY_HOST_PTR) &&
+      (owner.getContext().devices().size() == 1)) {
     // To avoid recurssive call to Device::createMemory, we perform
-    // data transfer to the view of the image.
-    amd::Image* imageView = owner.asImage()->createView(
-        owner.getContext(), owner.asImage()->getImageFormat(), xferQueue());
+    // data transfer to the view of the image
+    amd::Image* imageView = owner.asImage()->createView(owner.getContext(),
+        owner.asImage()->getImageFormat(), xferQueue());
 
     if (imageView == nullptr) {
       LogError("[OCL] Fail to allocate view of image object");
