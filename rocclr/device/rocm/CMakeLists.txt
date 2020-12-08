@@ -47,4 +47,12 @@ if(USE_COMGR_LIBRARY)
   endif()
 endif()
 
+if (UNIX)
+  find_library(LIBNUMA numa)
+  if (LIBNUMA)
+    target_compile_definitions(oclrocm PRIVATE ROCCLR_SUPPORT_NUMA_POLICY)
+    message(STATUS "Found: ${LIBNUMA}")
+  endif()
+endif()
+
 set_target_properties(oclrocm PROPERTIES POSITION_INDEPENDENT_CODE ON)
