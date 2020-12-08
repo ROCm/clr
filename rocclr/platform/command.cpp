@@ -266,7 +266,7 @@ void Command::enqueue() {
     // when multiple threads submit/flush/update the batch at the same time
     ScopedLock sl(queue_->lock());
     queue_->FormSubmissionBatch(this);
-    if (type() == CL_COMMAND_MARKER || type() == 0) {
+    if ((type() == CL_COMMAND_MARKER || type() == 0) && !profilingInfo().marker_ts_) {
       // Flush the current batch and wait for the results, since it's a marker.
       // @todo: The condition requires a reevaluation to determine if any marker needs a wait.
       queue_->vdev()->flush(queue_->GetSubmittionBatch());
