@@ -1654,14 +1654,21 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   bool result = false;
 
   if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize) {
-    if ((srcMemory.owner()->getHostMem() == nullptr) && (srcMemory.owner()->getSvmPtr() != nullptr)) {
+    if ((srcMemory.owner()->getHostMem() == nullptr) &&
+        (srcMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory and force barrier to make sure L2 flush
       constexpr bool ForceBarrier = true;
       gpu().releaseGpuMemoryFence(ForceBarrier);
       char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
       std::memcpy(dstHost, src + origin[0], size[0]);
-      // The first dispatch will invalidate L2
-      gpu().addSystemScope();
+      // Force L2 invalidation/flush, because CPU read goes through L2, but SDMA(Gfx9) doesn't.
+      // The sequence below can produce incorrect result without explicit flush:
+      // 1. H->D: SDMA
+      // 2. D->H: CPU Read  L2 updated
+      // 3. H->D: SDMA      Memory updated, SDMA doesn't use L2
+      // 4. D->H: CPU Read  L2 flush above (releaseGpuMemoryFence()) corrupts memory with stale
+      //                    data from step 2 and then CPU reads invalid data
+      gpu().hasPendingDispatch();
       return true;
     }
   }
