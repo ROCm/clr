@@ -234,6 +234,7 @@ Command* HostQueue::getLastQueuedCommand(bool retain) {
     if (retain && lastEnqueueCommand_ != nullptr) {
       lastEnqueueCommand_->retain();
     }
+    return lastEnqueueCommand_;
   } else {
     // Get last submitted command
     ScopedLock l(lastCmdLock_);
@@ -243,9 +244,8 @@ Command* HostQueue::getLastQueuedCommand(bool retain) {
     if (retain && lastEnqueueCommand_ != nullptr) {
       lastEnqueueCommand_->retain();
     }
+    return lastEnqueueCommand_;
   }
-
-  return lastEnqueueCommand_;
 }
 
 DeviceQueue::~DeviceQueue() {
