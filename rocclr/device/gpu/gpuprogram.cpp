@@ -1838,6 +1838,7 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
       return isa;
   }
 
+  LogPrintfError("Couldn't find: %s!", name);
   return isa;
 }
 
@@ -1847,10 +1848,11 @@ bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa)
       LogError("Unsupported gfxip version");
       return false;
     case gfx700:
+      return isa.handle == gfx700;
     case gfx701:
     case gfx702:
-      // gfx701 only differs from gfx700 by faster fp operations and can be loaded on either device.
-      return isa.handle == gfx700 || isa.handle == gfx701;
+      // gfx701 only differs from gfx702 by faster fp operations and can be loaded on either device.
+      return isa.handle == gfx701 || isa.handle == gfx702;
     case gfx800:
       switch (program_->dev().hwInfo()->machine_) {
         case ED_ATI_CAL_MACHINE_ICELAND_ISA:
