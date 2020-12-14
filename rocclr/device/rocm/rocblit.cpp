@@ -466,6 +466,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
               hsa_amd_memory_async_copy((reinterpret_cast<address>(dst) + dstOffset), dstAgent,
                                         (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
                                         size[0], 0, nullptr, completion_signal_);
+          gpu().setLastCommandSDMA(true) ;
           if (status != HSA_STATUS_SUCCESS) {
             LogPrintfError("DMA buffer failed with code %d", status);
             return false;
@@ -489,7 +490,11 @@ bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
   // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
-  gpu().releaseGpuMemoryFence();
+  if (!dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA()) {
+    gpu().releaseGpuMemoryFence(true);
+  } else {
+    gpu().releaseGpuMemoryFence();
+  }
 
   bool result = false;
 
@@ -536,7 +541,11 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
   // HSA copy functionality with a possible async operaiton, hence make sure GPU is done
-  gpu().releaseGpuMemoryFence();
+  if (!dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA()) {
+    gpu().releaseGpuMemoryFence(true);
+  } else {
+    gpu().releaseGpuMemoryFence();
+  }
 
   bool result = false;
 
@@ -601,6 +610,10 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   address src = reinterpret_cast<address>(srcMemory.getDeviceMemory());
   address dst = reinterpret_cast<address>(dstMemory.getDeviceMemory());
 
+  if (!dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA()) {
+    gpu().releaseGpuMemoryFence(true);
+  }
+
   src += srcOrigin[0];
   dst += dstOrigin[0];
 
@@ -641,7 +654,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   // Use SDMA to transfer the data
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent, size[0], 0, nullptr,
                                      completion_signal_);
-
+  gpu().setLastCommandSDMA(true);
   if (status == HSA_STATUS_SUCCESS) {
     hsa_signal_value_t val;
 
@@ -675,6 +688,9 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
   size_t offset = 0;
 
   address hsaBuffer = staging;
+  if (!dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA()) {
+    gpu().releaseGpuMemoryFence(true);
+  }
 
   // Allocate requested size of memory
   while (totalSize > 0) {
@@ -692,6 +708,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       memcpy(hsaBuffer, hostSrc + offset, size);
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, completion_signal_);
+      gpu().setLastCommandSDMA(true);
       if (status == HSA_STATUS_SUCCESS) {
         if (!WaitForSignal(completion_signal_)) {
           LogError("Async copy failed");
@@ -716,6 +733,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     status =
         hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
                                   dev().getBackendDevice(), size, 0, nullptr, completion_signal_);
+    gpu().setLastCommandSDMA(true);
     if (status == HSA_STATUS_SUCCESS) {
       if (!WaitForSignal(completion_signal_)) {
         LogError("Async copy failed");
@@ -1065,7 +1083,11 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    if(!dev().settings().barrier_sync_) {
+      gpu().releaseGpuMemoryFence(true);
+   } else {
+     gpu().releaseGpuMemoryFence();
+   }
     dstView->owner()->release();
   }
 
@@ -1263,7 +1285,11 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    if(!dev().settings().barrier_sync_) {
+      gpu().releaseGpuMemoryFence(true);
+    } else {
+      gpu().releaseGpuMemoryFence();
+    }
     srcView->owner()->release();
   }
 
