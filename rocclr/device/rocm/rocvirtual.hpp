@@ -290,6 +290,8 @@ class VirtualGPU : public device::VirtualDevice {
   amd::Memory* findPinnedMem(void* addr, size_t size);
 
   void enableSyncBlit() const;
+  bool isLastCommandSDMA() const { return isLastCommandSDMA_; }
+  void setLastCommandSDMA(bool s) { isLastCommandSDMA_ = s; }
 
   void hasPendingDispatch() { hasPendingDispatch_ = true; }
   void addSystemScope() { addSystemScope_ = true; }
@@ -365,6 +367,8 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t profiling_          : 1; //!< Profiling is enabled
       uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
       uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
+      uint32_t isLastCommandSDMA_  : 1; //!< Keep track if the last command was SDMA and 
+                                               //!< not send Barrier packets if barrier_sync is 0
     };
     uint32_t  state_;
   };

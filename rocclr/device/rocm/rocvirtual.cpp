@@ -715,7 +715,9 @@ void VirtualGPU::ResetQueueStates() {
 bool VirtualGPU::releaseGpuMemoryFence(bool force_barrier) {
   // Return if there is no pending dispatch
   if (!hasPendingDispatch_) {
-    return false;
+    if (dev().settings().barrier_sync_ || !force_barrier) {
+      return false;
+    }
   }
   hsa_signal_t wait_signal = barrier_signal_;
 
