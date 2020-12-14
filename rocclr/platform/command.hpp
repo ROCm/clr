@@ -152,6 +152,8 @@ class Event : public RuntimeObject {
   //! Process the callbacks for the given \a status change.
   void processCallbacks(int32_t status) const;
 
+  void waitForCompletion();
+
  public:
   //! Return the context for this event.
   virtual const Context& context() const = 0;
@@ -193,7 +195,7 @@ class Event : public RuntimeObject {
 
   /*! \brief Notifies current command queue about execution status
    */
-  bool notifyCmdQueue();
+  Command* notifyCmdQueue(bool retain = false);
 
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeEvent; }
