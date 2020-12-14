@@ -7,3 +7,5 @@ OCLCPUGuardPages
 OCLRegionDeviceQueries
 
 OCLPerfCounters
+
+OCLDynamic
