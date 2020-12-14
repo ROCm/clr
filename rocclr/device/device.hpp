@@ -1276,7 +1276,7 @@ class Device : public RuntimeObject {
   typedef std::list<CommandQueue*> CommandQueues;
 
   struct BlitProgram : public amd::HeapObject {
-    Program* program_;  //!< GPU program obejct
+    Program* program_;  //!< GPU program object
     Context* context_;  //!< A dummy context
 
     BlitProgram(Context* context) : program_(NULL), context_(context) {}

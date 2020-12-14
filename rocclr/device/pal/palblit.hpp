@@ -417,7 +417,7 @@ class KernelBlitManager : public DmaBlitManager {
   //! Disable operator=
   KernelBlitManager& operator=(const KernelBlitManager&);
 
-  amd::Program* program_;                     //!< GPU program obejct
+  amd::Program* program_;                     //!< GPU program object
   amd::Kernel* kernels_[BlitTotal];           //!< GPU kernels for blit
   amd::Memory* xferBuffers_[MaxXferBuffers];  //!< Transfer buffers for images
   size_t xferBufferSize_;                     //!< Transfer buffer size

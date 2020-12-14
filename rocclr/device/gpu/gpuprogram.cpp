@@ -1793,6 +1793,18 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
 
 hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
   hsa_isa_t isa = {0};
+  if (!strcmp(Gfx600, name)) {
+    isa.handle = gfx600;
+    return isa;
+  }
+  if (!strcmp(Gfx601, name)) {
+    isa.handle = gfx601;
+    return isa;
+  }
+  if (!strcmp(Gfx602, name)) {
+    isa.handle = gfx602;
+    return isa;
+  }
   if (!strcmp(Gfx700, name)) {
     isa.handle = gfx700;
     return isa;
@@ -1801,16 +1813,24 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
     isa.handle = gfx701;
     return isa;
   }
-  if (!strcmp(Gfx800, name)) {
-    isa.handle = gfx800;
+  if (!strcmp(Gfx702, name)) {
+    isa.handle = gfx702;
+    return isa;
+  }
+  if (!strcmp(Gfx705, name)) {
+    isa.handle = gfx702;
     return isa;
   }
   if (!strcmp(Gfx801, name)) {
     isa.handle = gfx801;
     return isa;
   }
-  if (!strcmp(Gfx804, name)) {
-    isa.handle = gfx804;
+  if (!strcmp(Gfx802, name)) {
+    isa.handle = gfx802;
+    return isa;
+  }
+  if (!strcmp(Gfx803, name)) {
+    isa.handle = gfx803;
     return isa;
   }
   if (!strcmp(Gfx810, name)) {
@@ -1825,10 +1845,6 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
       isa.handle = gfx902;
       return isa;
   }
-  if (!strcmp(Gfx903, name)) {
-      isa.handle = gfx903;
-      return isa;
-  }
   if (!strcmp(Gfx904, name)) {
       isa.handle = gfx904;
       return isa;
@@ -1837,62 +1853,45 @@ hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
       isa.handle = gfx906;
       return isa;
   }
+  if (!strcmp(Gfx909, name)) {
+      isa.handle = gfx909;
+      return isa;
+  }
+  if (!strcmp(Gfx90c, name)) {
+      isa.handle = gfx90c;
+      return isa;
+  }
 
-  LogPrintfError("Couldn't find: %s!", name);
   return isa;
 }
 
 bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  switch (program_->dev().hwInfo()->gfxipVersion_) {
-    default:
-      LogError("Unsupported gfxip version");
-      return false;
+  uint dev_gfxip = program_->dev().hwInfo()->gfxipVersion_;
+  uint isa_gfxip = isa.handle;
+  switch (dev_gfxip) {
     case gfx700:
-      return isa.handle == gfx700;
+    case gfx704:
+    case gfx801:
+    case gfx802:
+    case gfx803:
+    case gfx810:
+    case gfx900:
+    case gfx902:
+    case gfx904:
+    case gfx906:
+    case gfx909:
+    case gfx90c:
+      return isa_gfxip == dev_gfxip;
     case gfx701:
     case gfx702:
       // gfx701 only differs from gfx702 by faster fp operations and can be loaded on either device.
-      return isa.handle == gfx701 || isa.handle == gfx702;
-    case gfx800:
-      switch (program_->dev().hwInfo()->machine_) {
-        case ED_ATI_CAL_MACHINE_ICELAND_ISA:
-        case ED_ATI_CAL_MACHINE_TONGA_ISA:
-          return isa.handle == gfx800;
-        case ED_ATI_CAL_MACHINE_CARRIZO_ISA:
-          return isa.handle == gfx801;
-        case ED_ATI_CAL_MACHINE_FIJI_ISA:
-        case ED_ATI_CAL_MACHINE_ELLESMERE_ISA:
-        case ED_ATI_CAL_MACHINE_BAFFIN_ISA:
-        case ED_ATI_CAL_MACHINE_LEXA_ISA:
-        case ED_ATI_CAL_MACHINE_POLARIS22_ISA:
-          // gfx800 ISA has only sgrps limited and can be loaded.
-          // gfx801 ISA has XNACK limitations and can be loaded.
-          return isa.handle == gfx800 || isa.handle == gfx801 || isa.handle == gfx804;
-        case ED_ATI_CAL_MACHINE_STONEY_ISA:
-          return isa.handle == gfx810;
-        default:
-          assert(0);
-          return false;
-      }
-    case gfx900:
-    case gfx902:
-    case gfx903:
-    case gfx904:
-    case gfx906:
-      switch (program_->dev().hwInfo()->machine_) {
-        case ED_ATI_CAL_MACHINE_GREENLAND_ISA:
-          return isa.handle == gfx900;
-        case ED_ATI_CAL_MACHINE_RAVEN_ISA:
-        case ED_ATI_CAL_MACHINE_RENOIR_ISA:
-            return isa.handle == gfx902 || isa.handle == gfx903;
-        case ED_ATI_CAL_MACHINE_VEGA12_ISA:
-            return isa.handle == gfx904;
-        case ED_ATI_CAL_MACHINE_VEGA20_ISA:
-            return isa.handle == gfx906;
-        default:
-          assert(0);
-          return false;
-      }
+      return isa_gfxip == gfx701|| isa_gfxip == gfx702;
+    case gfx600:
+    case gfx601:
+    case gfx602:
+    default:
+      LogPrintfError("Unsupported gfxip version gfx%d", dev_gfxip);
+      return false;
   }
 }
 

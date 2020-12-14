@@ -594,9 +594,9 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
     info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
     info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipMajor_ = hwInfo()->gfxipVersion_ / 100;
-    info_.gfxipMinor_ = hwInfo()->gfxipVersion_ / 10 % 10;
-    info_.gfxipStepping_ = hwInfo()->gfxipVersion_ % 10;
+    info_.gfxipMajor_ = hwInfo()->gfxipMajor_;
+    info_.gfxipMinor_ = hwInfo()->gfxipMinor_;
+    info_.gfxipStepping_ = hwInfo()->gfxipStepping_;
 
     info_.numAsyncQueues_ = numComputeRings;
 

@@ -463,7 +463,7 @@ class KernelBlitManager : public DmaBlitManager {
   //! Disable operator=
   KernelBlitManager& operator=(const KernelBlitManager&);
 
-  amd::Program* program_;             //!< GPU program obejct
+  amd::Program* program_;             //!< GPU program object
   amd::Kernel* kernels_[BlitTotal];   //!< GPU kernels for blit
   amd::Memory* constantBuffer_;       //!< An internal CB for blits
   mutable uint32_t constantBufferOffset_; //!< Current offset in the constant buffer
