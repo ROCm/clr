@@ -570,7 +570,11 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   // OpenCL1.2 device info fields
   info_.builtInKernels_ = "";
-  info_.imageMaxBufferSize_ = MaxImageBufferSize;
+  // Clamp max image buffer size to the maximum buffer size we can create.
+  // Image format has max 4 channels per pixel, 1 DWORD per channel.
+  constexpr size_t kPixelRgbaSize = 4 * sizeof(int);
+  info_.imageMaxBufferSize_ = std::min(MaxImageBufferSize,
+                                       info_.maxMemAllocSize_ / kPixelRgbaSize);
   info_.image1DMaxWidth_ = maxTextureSize;
   info_.imageMaxArraySize_ = MaxImageArraySize;
   info_.preferredInteropUserSync_ = true;
