@@ -1687,13 +1687,16 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
       gpu().releaseGpuMemoryFence(ForceBarrier);
       char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
       std::memcpy(dstHost, src + origin[0], size[0]);
-      // Force L2 invalidation/flush, because CPU read goes through L2, but SDMA(Gfx9) doesn't.
-      // The sequence below can produce incorrect result without explicit flush:
+      // Force HDP Read cache invalidation somewhere in the AQL barrier flags...
+      // @note: This is a workaround for an issue in ROCr/ucode, when the following SDMA transfer
+      //        won't invalidate HDP read and later CPU will receive the old values.
+      //        It's unclear if AQL has the same issue and runtime needs to track extra AQL flags
+      //        if this workaround will be removed in the future
       // 1. H->D: SDMA
-      // 2. D->H: CPU Read  L2 updated
-      // 3. H->D: SDMA      Memory updated, SDMA doesn't use L2
-      // 4. D->H: CPU Read  L2 flush above (releaseGpuMemoryFence()) corrupts memory with stale
-      //                    data from step 2 and then CPU reads invalid data
+      // 2. D->H: CPU Read  HDP read cache was updated
+      // 3. H->D: SDMA      Memory updated, ROCr/ucode doesn't invalidate HDP read cache after
+      //                    transfer
+      // 4. D->H: CPU Read  CPU receives the old values from HDP read cache
       gpu().hasPendingDispatch();
       return true;
     }
