@@ -46,7 +46,11 @@ extern "C" void breakpoint(void) {
 
 void report_fatal(const char* file, int line, const char* message) {
   // FIXME_lmoriche: Obfuscate the message string
-  fprintf(stderr, "%s:%d: %s\n", file, line, message);
+  #if (defined(DEBUG))
+    fprintf(stderr, "%s:%d: %s\n", file, line, message);
+  #else
+    fprintf(stderr, "%s\n", message);
+  #endif
   ::abort();
 }
 
