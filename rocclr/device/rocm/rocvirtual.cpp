@@ -922,6 +922,16 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size, uint signal_pool_count) {
     return false;
   }
 
+  // Optimization :
+  // For better resource utilization runtime should create them only when required
+  // In case of HIP, Apps create short live streams which do not need more signals
+  // hence starting with smaller number 32. There is code inplace to grow the pool
+  // later when it is needed.
+  bool forced_default_pool_sz = false;
+  if (!profiling_ && (amd::IS_HIP)) {
+    forced_default_pool_sz = true;
+  }
+
   if (signal_pool_count != 0) {
     // Reserve signal pool for all entries in the queue, since profiling logic will save the
     // pointer in timestamp info for the future references
@@ -930,7 +940,8 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size, uint signal_pool_count) {
     // @note: the optimization requires a wait for signal on reuse, which is only available when
     // the barrier is disabled
     constexpr uint32_t kDefaultSignalPoolSize = 32;
-    const uint32_t default_signal_pool_size = (dev().settings().barrier_sync_) ?
+    const uint32_t default_signal_pool_size =
+    (dev().settings().barrier_sync_ && !forced_default_pool_sz) ?
         signal_pool_count : kDefaultSignalPoolSize;
     signal_pool_.resize(default_signal_pool_size);
     for (uint i = 0; i < default_signal_pool_size; ++i) {
