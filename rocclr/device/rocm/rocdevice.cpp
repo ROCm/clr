@@ -260,7 +260,12 @@ Device::~Device() {
     context().svmFree(coopHostcallBuffer_);
     coopHostcallBuffer_ = nullptr;
   }
+
+  if (0 != prefetch_signal_.handle) {
+    hsa_signal_destroy(prefetch_signal_);
+  }
 }
+
 bool NullDevice::initCompiler(bool isOffline) {
 #if defined(WITH_COMPILER_LIB)
   // Initialize the compiler handle if has already not been initialized
