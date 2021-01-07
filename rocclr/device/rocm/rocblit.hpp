@@ -40,6 +40,9 @@ class Kernel;
 class Memory;
 class VirtualGPU;
 
+constexpr bool kSkipCpuWait = true;
+constexpr bool kIgnoreBarrier = false;
+
 //! DMA Blit Manager
 class DmaBlitManager : public device::HostBlitManager {
  public:
@@ -49,19 +52,10 @@ class DmaBlitManager : public device::HostBlitManager {
                  );
 
   //! Destructor
-  virtual ~DmaBlitManager() {
-    if (completion_signal_.handle != 0) {
-      hsa_signal_destroy(completion_signal_);
-    }
-  }
+  virtual ~DmaBlitManager() {}
 
   //! Creates DmaBlitManager object
-  virtual bool create(amd::Device& device) {
-    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &completion_signal_)) {
-      return false;
-    }
-    return true;
-  }
+  virtual bool create(amd::Device& device) { return true; }
 
   //! Copies a buffer object to system memory
   virtual bool readBuffer(device::Memory& srcMemory,   //!< Source memory object
@@ -224,9 +218,6 @@ class DmaBlitManager : public device::HostBlitManager {
                          size_t& totalSize,    //!< Total size for the copy region
                          size_t xferSize       //!< Transfer size
                          ) const;
-
-  //! Handle of ROC Device object
-  hsa_signal_t completion_signal_;
 
   //! Assits in transferring data from Host to Local or vice versa
   //! taking into account the Hsail profile supported by Hsa Agent

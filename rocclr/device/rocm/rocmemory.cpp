@@ -199,8 +199,9 @@ void Memory::cpuUnmap(device::VirtualDevice& vDev) {
                                     amd::Coord3D(size()), true)) {
       LogError("[OCL] Fail sync the device memory on cpuUnmap");
     }
+    // Wait on CPU for the transfer
+    static_cast<roc::VirtualGPU&>(vDev).releaseGpuMemoryFence();
   }
-
   decIndMapCount();
 }
 
