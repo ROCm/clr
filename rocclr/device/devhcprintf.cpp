@@ -27,10 +27,10 @@
 #include <cstring>
 #include <string>
 
-static void checkPrintf(int* outCount, const char* fmt, ...) {
+static void checkPrintf(FILE* stream, int* outCount, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
-  int retval = vprintf(fmt, args);
+  int retval = vfprintf(stream, fmt, args);
   *outCount = retval < 0 ? retval : *outCount + retval;
 }
 
@@ -45,40 +45,40 @@ static int countStars(const std::string& spec) {
 }
 
 template <typename... Args>
-static const uint64_t* consumeInteger(int* outCount, const std::string& spec, const uint64_t* ptr,
-                                      Args... args) {
-  checkPrintf(outCount, spec.c_str(), args..., ptr[0]);
+static const uint64_t* consumeInteger(FILE* stream, int* outCount, const std::string& spec,
+                                      const uint64_t* ptr, Args... args) {
+  checkPrintf(stream, outCount, spec.c_str(), args..., ptr[0]);
   return ptr + 1;
 }
 
 template <typename... Args>
-static const uint64_t* consumeFloatingPoint(int* outCount, const std::string& spec,
+static const uint64_t* consumeFloatingPoint(FILE* stream, int* outCount, const std::string& spec,
                                             const uint64_t* ptr, Args... args) {
   double d;
   memcpy(&d, ptr, 8);
-  checkPrintf(outCount, spec.c_str(), args..., d);
+  checkPrintf(stream, outCount, spec.c_str(), args..., d);
   return ptr + 1;
 }
 
 template <typename... Args>
-static const uint64_t* consumeCstring(int* outCount, const std::string& spec, const uint64_t* ptr,
-                                      Args... args) {
+static const uint64_t* consumeCstring(FILE* stream, int* outCount, const std::string& spec,
+                                      const uint64_t* ptr, Args... args) {
   auto str = reinterpret_cast<const char*>(ptr);
-  checkPrintf(outCount, spec.c_str(), args..., str);
+  checkPrintf(stream, outCount, spec.c_str(), args..., str);
   return ptr + (strlen(str) + 7) / 8;
 }
 
 template <typename... Args>
-static const uint64_t* consumePointer(int* outCount, const std::string& spec, const uint64_t* ptr,
-                                      Args... args) {
+static const uint64_t* consumePointer(FILE* stream, int* outCount, const std::string& spec,
+                                      const uint64_t* ptr, Args... args) {
   auto vptr = reinterpret_cast<void*>(*ptr);
-  checkPrintf(outCount, spec.c_str(), args..., vptr);
+  checkPrintf(stream, outCount, spec.c_str(), args..., vptr);
   return ptr + 1;
 }
 
 template <typename... Args>
-static const uint64_t* consumeArgument(int* outCount, const std::string& spec, const uint64_t* ptr,
-                                       const uint64_t* end, Args... args) {
+static const uint64_t* consumeArgument(FILE* stream, int* outCount, const std::string& spec,
+                                       const uint64_t* ptr, const uint64_t* end, Args... args) {
   switch (spec.back()) {
     case 'd':
     case 'i':
@@ -87,7 +87,7 @@ static const uint64_t* consumeArgument(int* outCount, const std::string& spec, c
     case 'x':
     case 'X':
     case 'c':
-      return consumeInteger(outCount, spec, ptr, args...);
+      return consumeInteger(stream, outCount, spec, ptr, args...);
     case 'f':
     case 'F':
     case 'e':
@@ -96,11 +96,11 @@ static const uint64_t* consumeArgument(int* outCount, const std::string& spec, c
     case 'G':
     case 'a':
     case 'A':
-      return consumeFloatingPoint(outCount, spec, ptr, args...);
+      return consumeFloatingPoint(stream, outCount, spec, ptr, args...);
     case 's':
-      return consumeCstring(outCount, spec, ptr, args...);
+      return consumeCstring(stream, outCount, spec, ptr, args...);
     case 'p':
-      return consumePointer(outCount, spec, ptr, args...);
+      return consumePointer(stream, outCount, spec, ptr, args...);
     case 'n':
       return ptr + 1;
   }
@@ -109,25 +109,25 @@ static const uint64_t* consumeArgument(int* outCount, const std::string& spec, c
   return end;
 }
 
-static const uint64_t* processSpec(int* outCount, const std::string& spec, const uint64_t* ptr,
-                                   const uint64_t* end) {
+static const uint64_t* processSpec(FILE* stream, int* outCount, const std::string& spec,
+                                   const uint64_t* ptr, const uint64_t* end) {
   auto stars = countStars(spec);
   assert(stars < 3 && "cannot have more than two placeholders");
   switch (stars) {
     case 0:
-      return consumeArgument(outCount, spec, ptr, end);
+      return consumeArgument(stream, outCount, spec, ptr, end);
     case 1:
       // Undefined behaviour if there are not enough arguments.
       if (end - ptr < 2) {
         return end;
       }
-      return consumeArgument(outCount, spec, ptr + 1, end, ptr[0]);
+      return consumeArgument(stream, outCount, spec, ptr + 1, end, ptr[0]);
     case 2:
       // Undefined behaviour if there are not enough arguments.
       if (end - ptr < 3) {
         return end;
       }
-      return consumeArgument(outCount, spec, ptr + 2, end, ptr[0], ptr[1]);
+      return consumeArgument(stream, outCount, spec, ptr + 2, end, ptr[0], ptr[1]);
   }
 
   // Undefined behaviour if three are more than two stars.
@@ -159,7 +159,7 @@ static const uint64_t* processSpec(int* outCount, const std::string& spec, const
  * - Behaviour is undefined with wide characters and strings.
  * - %n specifier is ignored and the corresponding argument is skipped.
  */
-static int format(const uint64_t* begin, const uint64_t* end) {
+static int format(FILE* stream, const uint64_t* begin, const uint64_t* end) {
   const char convSpecifiers[] = "diouxXfFeEgGaAcspn";
   auto ptr = begin;
 
@@ -178,10 +178,10 @@ static int format(const uint64_t* begin, const uint64_t* end) {
     // 1. When the point reaches the end of the format string.
     // 2. When the point is at the start of a format specifier.
     if (point == std::string::npos) {
-      checkPrintf(&outCount, "%s", &fmt[mark]);
+      checkPrintf(stream, &outCount, "%s", &fmt[mark]);
       return outCount;
     }
-    checkPrintf(&outCount, "%.*s", (int)(point - mark), &fmt[mark]);
+    checkPrintf(stream, &outCount, "%.*s", (int)(point - mark), &fmt[mark]);
     if (outCount < 0) {
       return outCount;
     }
@@ -191,7 +191,7 @@ static int format(const uint64_t* begin, const uint64_t* end) {
 
     // Handle the simplest specifier, '%%'.
     if (fmt[point] == '%') {
-      checkPrintf(&outCount, "%%");
+      checkPrintf(stream, &outCount, "%%");
       if (outCount < 0) {
         return outCount;
       }
@@ -214,7 +214,7 @@ static int format(const uint64_t* begin, const uint64_t* end) {
 
     // [mark,point) now contains a complete specifier.
     const std::string spec(fmt, mark, point - mark);
-    ptr = processSpec(&outCount, spec, ptr, end);
+    ptr = processSpec(stream, &outCount, spec, ptr, end);
     if (outCount < 0) {
       return outCount;
     }
@@ -222,11 +222,22 @@ static int format(const uint64_t* begin, const uint64_t* end) {
 }
 
 void handlePrintf(uint64_t* output, const uint64_t* input, uint64_t len) {
-  auto version = *input;
-  if (version != 0) {
+  auto end = input + len;
+  auto control = *input++;
+  FILE* stream = stdout;
+
+  // Only the LSB in the control word is used.
+  uint64_t CTRL_MASK = 1;
+  if (control & ~CTRL_MASK) {
+    // Unknown control value.
     *output = -1;
     return;
   }
 
-  *output = format(input + 1, input + len);
+  // Output goes to stderr if LSB is set.
+  if (control & CTRL_MASK) {
+    stream = stderr;
+  }
+
+  *output = format(stream, input, end);
 }
