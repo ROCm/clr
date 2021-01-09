@@ -25,6 +25,7 @@
 #include <sstream>
 #include <iterator>
 #include <cassert>
+#include <regex>
 #include "options.hpp"
 
 namespace {
@@ -1552,7 +1553,9 @@ Options::setDumpFileName(const char* val)
     }
 
     std::stringstream prefix;
-    prefix << dumpPrefix << "_" << buildNo << "_" << val;
+    // Replace characters in the file name that are not legal with '_'.
+    prefix << dumpPrefix << "_" << buildNo << "_"
+           << std::regex_replace(val, std::regex("[:]"), "_");
     dumpFileRoot = prefix.str();
 
     // Check whether the length of path meets the system limits
