@@ -470,11 +470,6 @@ class HSAILProgram : public device::Program {
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
-  //! Return a typecasted GPU null device.
-  gpu::NullDevice& gpuNullDevice() {
-    return const_cast<gpu::NullDevice&>(static_cast<const gpu::NullDevice&>(device()));
-  }
-
   //! Return a typecasted GPU device. The device must not be the NullDevice.
   gpu::Device& gpuDevice() {
     assert(!isNull());
@@ -518,6 +513,11 @@ class HSAILProgram : public device::Program {
 
   //! Allocate kernel table
   bool allocKernelTable();
+
+  //! Return a typecasted GPU null device.
+  gpu::NullDevice& gpuNullDevice() {
+    return const_cast<gpu::NullDevice&>(static_cast<const gpu::NullDevice&>(device()));
+  }
 
   void* rawBinary_;                    //!< Pointer to the raw binary
   std::vector<Memory*> globalStores_;  //!< Global memory for the program
