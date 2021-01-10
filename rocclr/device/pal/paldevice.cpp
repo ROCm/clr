@@ -512,7 +512,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.platform_ = AMD_PLATFORM;
 
   if (settings().useLightning_) {
-    ::strcpy(info_.name_, hwInfo()->machineTargetLC_);
+    ::strncpy(info_.name_, hwInfo()->machineTargetLC_, sizeof(info_.name_) - 1);
 
     if (hwInfo()->srameccSumpported_) {
       if (palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs) {
@@ -530,13 +530,13 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       }
     }
 
-    ::strcpy(info_.targetId_, "amdgcn-amd-amdhsa--");
+    ::strncpy(info_.targetId_, "amdgcn-amd-amdhsa--", sizeof(info_.targetId_) - 1);
     ::strcat(info_.targetId_, info_.name_);
   } else {
-    ::strcpy(info_.name_, hwInfo()->machineTarget_);
+    ::strncpy(info_.name_, hwInfo()->machineTarget_, sizeof(info_.name_) - 1);
   }
 
-  ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
+  ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)",
              settings().useLightning_ ? ",LC" : ",HSAIL");
 
@@ -614,7 +614,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
     ::strncpy(info_.boardName_, palProp.gpuName,
-              ::strnlen(palProp.gpuName, sizeof(info_.boardName_)));
+              ::strnlen(palProp.gpuName, sizeof(info_.boardName_) - 1));
 
     info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
     info_.deviceTopology_.pcie.bus = palProp.pciProperties.busNumber;

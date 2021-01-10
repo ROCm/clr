@@ -145,13 +145,13 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
   }
 
   // Report the device name
-  ::strcpy(info_.name_, "AMD HSA Device");
+  ::strncpy(info_.name_, "AMD HSA Device", sizeof(info_.name_) - 1);
   info_.extensions_ = getExtensionString();
   info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
-  ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
+  ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
   info_.oclcVersion_ = "OpenCL C " OPENCL_C_VERSION_STR " ";
   info_.spirVersions_ = "";
-  strcpy(info_.driverVersion_, "1.0 Provisional (hsa)");
+  ::strncpy(info_.driverVersion_, "1.0 Provisional (hsa)", sizeof(info_.driverVersion_) - 1);
   info_.version_ = "OpenCL " OPENCL_VERSION_STR " ";
   return true;
 }
@@ -1018,7 +1018,7 @@ bool Device::populateOCLDeviceConstants() {
   if (nullptr == gfxSubString) {
     return false;
   }
-  ::strcpy(info_.name_, gfxSubString);
+  ::strncpy(info_.name_, gfxSubString, sizeof(info_.name_) - 1);
 
   info_.gfxipMajor_ = deviceInfo_.gfxipMajor_;
   info_.gfxipMinor_ = deviceInfo_.gfxipMinor_;
@@ -1028,7 +1028,7 @@ bool Device::populateOCLDeviceConstants() {
   if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,
                                                device_name)) {
-    ::strcpy(info_.boardName_, device_name);
+    ::strncpy(info_.boardName_, device_name, sizeof(info_.boardName_) - 1);
   }
 
   if (HSA_STATUS_SUCCESS !=
@@ -1236,7 +1236,7 @@ bool Device::populateOCLDeviceConstants() {
   info_.queueProperties_ = CL_QUEUE_PROFILING_ENABLE;
   info_.platform_ = AMD_PLATFORM;
   info_.profile_ = "FULL_PROFILE";
-  strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
+  ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
 
   info_.addressBits_ = LP64_SWITCH(32, 64);
   info_.maxSamplers_ = 16;
@@ -1255,7 +1255,7 @@ bool Device::populateOCLDeviceConstants() {
   ss << AMD_BUILD_STRING " (HSA" << major << "." << minor << "," << (settings().useLightning_ ? "LC" : "HSAIL");
   ss <<  ")";
 
-  strcpy(info_.driverVersion_, ss.str().c_str());
+  ::strncpy(info_.driverVersion_, ss.str().c_str(), sizeof(info_.driverVersion_) - 1);
 
   // Enable OpenCL 2.0 for Vega10+
   if (deviceInfo_.gfxipMajor_ >= 9) {
