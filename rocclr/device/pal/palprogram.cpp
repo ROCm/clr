@@ -385,7 +385,7 @@ bool HSAILProgram::defineGlobalVar(const char* name, void* dptr) {
 
   agent.handle = 1;
   hsa_status = executable_->DefineAgentExternalVariable(name, agent, HSA_VARIABLE_SEGMENT_GLOBAL, dptr);
-  if(HSA_STATUS_SUCCESS != hsa_status) {
+  if (HSA_STATUS_SUCCESS != hsa_status) {
     buildLog_ += "Could not define Program External Variable";
     buildLog_ += "\n";
   }

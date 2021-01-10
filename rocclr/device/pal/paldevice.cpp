@@ -237,7 +237,6 @@ bool NullDevice::init() {
   return true;
 }
 
-
 bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
   // Update HW info for the device
   if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
@@ -883,8 +882,8 @@ bool Device::create(Pal::IDevice* device) {
                   properties().revision :
                   static_cast<Pal::AsicRevision>(PAL_FORCE_ASIC_REVISION);
 
-  // XNACK flag should be set for  PageMigration | IOMMUv2 Support
-  // Note: Navi2x should have a fix in HW
+  // XNACK flag should be set for PageMigration or IOMMUv2 support.
+  // Note: Navi2x should have a fix in HW.
   bool isXNACKSupported = (ipLevel_ <= Pal::GfxIpLevel::GfxIp10_1) &&
       (static_cast<uint>(properties_.gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties_.gpuMemoryProperties.flags.iommuv2Support));

@@ -522,7 +522,7 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
     }
   }
 
-  //  Create the relocatiable data set
+  //  Create the relocatable data set
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::create_data_set(&relocatableData);
   }
