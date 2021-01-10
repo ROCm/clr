@@ -131,9 +131,10 @@ bool NullDevice::create(const AMDDeviceInfo& deviceInfo) {
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = 0x1002;
 
-  settings_ = new Settings();
-  roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-  if ((hsaSettings == nullptr) || !hsaSettings->create(false, deviceInfo_.gfxipMajor_, deviceInfo_.gfxipMinor_)) {
+  roc::Settings* hsaSettings = new roc::Settings();
+  settings_ = hsaSettings;
+  if (!hsaSettings ||
+      !hsaSettings->create(false, deviceInfo_.gfxipMajor_, deviceInfo_.gfxipMinor_)) {
     LogError("Error creating settings for nullptr HSA device");
     return false;
   }
@@ -599,11 +600,11 @@ bool Device::create() {
 
   // Create HSA settings
   assert(!settings_);
-  settings_ = new Settings();
-  roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
-  if ((hsaSettings == nullptr) ||
-      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL),
-        deviceInfo_.gfxipMajor_, deviceInfo_.gfxipMinor_, coop_groups)) {
+  roc::Settings* hsaSettings = new roc::Settings();
+  settings_ = hsaSettings;
+  if (!hsaSettings ||
+      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), deviceInfo_.gfxipMajor_,
+                           deviceInfo_.gfxipMinor_, coop_groups)) {
     return false;
   }
 
@@ -994,8 +995,6 @@ Memory* Device::getGpuMemory(amd::Memory* mem) const {
 bool Device::populateOCLDeviceConstants() {
   info_.available_ = true;
 
-  roc::Settings* hsa_settings = static_cast<roc::Settings*>(settings_);
-
   hsa_isa_t isa = {0};
   if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_ISA, &isa) != HSA_STATUS_SUCCESS) {
     return false;
@@ -1278,12 +1277,12 @@ bool Device::populateOCLDeviceConstants() {
   info_.singleFPConfig_ =
       CL_FP_ROUND_TO_NEAREST | CL_FP_ROUND_TO_ZERO | CL_FP_ROUND_TO_INF | CL_FP_INF_NAN | CL_FP_FMA;
 
-  if (hsa_settings->doublePrecision_) {
+  if (settings().doublePrecision_) {
     info_.doubleFPConfig_ = info_.singleFPConfig_ | CL_FP_DENORM;
     info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
   }
 
-  if (hsa_settings->singleFpDenorm_) {
+  if (settings().singleFpDenorm_) {
     info_.singleFPConfig_ |= CL_FP_DENORM;
   }
 
@@ -1386,7 +1385,7 @@ bool Device::populateOCLDeviceConstants() {
   // Enable SVM Capabilities of Hsa device. Ensure
   // user has not setup memory to be non-coherent
   info_.svmCapabilities_ = 0;
-  if (hsa_settings->enableNCMode_ == false) {
+  if (!settings().enableNCMode_) {
     info_.svmCapabilities_ = CL_DEVICE_SVM_COARSE_GRAIN_BUFFER;
     info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_BUFFER;
     // Report fine-grain system only on full profile

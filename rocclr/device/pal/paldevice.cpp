@@ -264,8 +264,8 @@ bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
   properties.gfxLevel = ipLevel;
   uint subtarget = 0;
 
-  settings_ = new pal::Settings();
-  pal::Settings* palSettings = reinterpret_cast<pal::Settings*>(settings_);
+  pal::Settings* palSettings = new pal::Settings();
+  settings_ = palSettings;
 
   // Report 512MB for all offline devices
   Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
