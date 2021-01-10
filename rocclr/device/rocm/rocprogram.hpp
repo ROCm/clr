@@ -74,7 +74,7 @@ class Program : public device::Program {
                            );
   virtual bool createBinary(amd::option::Options* options) = 0;
 
-  virtual const aclTargetInfo& info(const char* str = "") { return info_; }
+  virtual const aclTargetInfo& info() { return info_; }
 
  protected:
   //! Disable default copy constructor

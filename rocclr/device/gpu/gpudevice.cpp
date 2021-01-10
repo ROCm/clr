@@ -58,6 +58,93 @@
 #include <iostream>
 #include <sstream>
 
+namespace {
+
+//! Define the mapping from CAL asic enumeration values to the
+//! compiler gfx major/minor/stepping version.
+struct CalDevice {
+  uint32_t gfxipMajor_;       //!< The core engine GFXIP Major version
+  uint32_t gfxipMinor_;       //!< The core engine GFXIP Minor version
+  uint32_t gfxipStepping_;    //!< The core engine GFXIP Stepping version
+  CALMachineType calMachine_; //!< CAL machine type
+  const char* calName_;       //!< CAL device name
+  CALtarget calTarget_;       //!< CAL target
+  bool preferPal_;            //!< Prefer to use PAL if GPU_ENABLE_PAL=2
+  bool nullUseDouble_;        //!< Use double precision for a NullDevice
+  bool nullUseOpenCL200_;     //!< Use OpenCL 2.0 for a NullDevice
+};
+
+static constexpr CalDevice supportedCalDevices[] = {
+//                                                                                  Prefer - NullDevice -
+// GFX Version GSL Machine                       CAL Name     CAL Target            PAL    double  OCL200
+  {6,  0,  0,  ED_ATI_CAL_MACHINE_TAHITI_ISA,    "Tahiti",    CAL_TARGET_TAHITI,    false, true,   false},
+  {6,  0,  1,  ED_ATI_CAL_MACHINE_PITCAIRN_ISA,  "Pitcairn",  CAL_TARGET_PITCAIRN,  false, true,   false},
+  {6,  0,  1,  ED_ATI_CAL_MACHINE_CAPEVERDE_ISA, "Capeverde", CAL_TARGET_CAPEVERDE, false, true,   false},
+  {6,  0,  2,  ED_ATI_CAL_MACHINE_OLAND_ISA,     "Oland",     CAL_TARGET_OLAND,     false, true,   false},
+  {6,  0,  2,  ED_ATI_CAL_MACHINE_HAINAN_ISA,    "Hainan",    CAL_TARGET_HAINAN,    false, true,   false},
+  {7,  0,  0,  ED_ATI_CAL_MACHINE_KALINDI_ISA,   "Kalindi",   CAL_TARGET_KALINDI,   false, true,   true },
+  {7,  0,  0,  ED_ATI_CAL_MACHINE_SPECTRE_ISA,   "Spectre",   CAL_TARGET_SPECTRE,   false, true,   true },
+  {7,  0,  0,  ED_ATI_CAL_MACHINE_SPOOKY_ISA,    "Spooky",    CAL_TARGET_SPOOKY,    false, true,   true },
+  {7,  0,  2,  ED_ATI_CAL_MACHINE_HAWAII_ISA,    "Hawaii",    CAL_TARGET_HAWAII,    false, true,   true }, // Also Hawaiipro (generated code is for Hawaiipro)
+  {7,  0,  4,  ED_ATI_CAL_MACHINE_BONAIRE_ISA,   "Bonaire",   CAL_TARGET_BONAIRE,   false, true,   true },
+  {7,  0,  5,  ED_ATI_CAL_MACHINE_GODAVARI_ISA,  "Mullins",   CAL_TARGET_GODAVARI,  false, true,   true }, // FIXME: Why is this compiled as Mullins yet reported as Godavari? Add gfx703 to support Mullins.
+  {8,  0,  1,  ED_ATI_CAL_MACHINE_CARRIZO_ISA,   "Carrizo",   CAL_TARGET_CARRIZO,   false, true,   true }, // Also Bristol Ridge
+  {8,  0,  2,  ED_ATI_CAL_MACHINE_ICELAND_ISA,   "Iceland",   CAL_TARGET_ICELAND,   false, true,   true },
+  {8,  0,  2,  ED_ATI_CAL_MACHINE_TONGA_ISA,     "Tonga",     CAL_TARGET_TONGA,     false, true,   true }, // Also Tongapro (generated code is for Tonga)
+  {8,  0,  3,  ED_ATI_CAL_MACHINE_FIJI_ISA,      "Fiji",      CAL_TARGET_FIJI,      false, true,   true },
+  {8,  0,  3,  ED_ATI_CAL_MACHINE_ELLESMERE_ISA, "Ellesmere", CAL_TARGET_ELLESMERE, false, true,   true }, // Polaris10
+  {8,  0,  3,  ED_ATI_CAL_MACHINE_BAFFIN_ISA,    "Baffin",    CAL_TARGET_BAFFIN,    false, true,   true }, // Polaris11
+  {8,  0,  3,  ED_ATI_CAL_MACHINE_LEXA_ISA,      "gfx803",    CAL_TARGET_LEXA,      false, true,   true }, // Polaris12
+#if !defined(BRAHMA)
+  {8,  0,  3,  ED_ATI_CAL_MACHINE_POLARIS22_ISA, "gfx803",    CAL_TARGET_POLARIS22, false, true,   true },
+#endif
+  {8,  1,  0,  ED_ATI_CAL_MACHINE_STONEY_ISA,    "Stoney",    CAL_TARGET_STONEY,    false, true,   true },
+#if !defined(BRAHMA)
+  {9,  0,  0,  ED_ATI_CAL_MACHINE_GREENLAND_ISA, "gfx900",    CAL_TARGET_GREENLAND, true,  true,   true }, // Vega10
+  {9,  0,  2,  ED_ATI_CAL_MACHINE_RAVEN_ISA,     "gfx902",    CAL_TARGET_RAVEN,     true,  true,   true },
+  {9,  0,  4,  ED_ATI_CAL_MACHINE_VEGA12_ISA,    "gfx904",    CAL_TARGET_VEGA12,    true,  true,   true },
+  {9,  0,  6,  ED_ATI_CAL_MACHINE_VEGA20_ISA,    "gfx906",    CAL_TARGET_VEGA20,    true,  true,   true },
+  {9,  0,  9,  ED_ATI_CAL_MACHINE_RAVEN2_ISA,    "gfx909",    CAL_TARGET_RAVEN2,    true,  true,   true },
+  {9,  0, 12,  ED_ATI_CAL_MACHINE_RENOIR_ISA,    "gfx90c",    CAL_TARGET_RENOIR,    true,  true,   true },
+#endif
+};
+static_assert(CAL_TARGET_LAST == CAL_TARGET_VEGA20, "Add new CAL targets to mapping");
+
+static std::tuple<const amd::Isa*, CALMachineType, const char*, bool, bool, bool> findIsa(
+    CALtarget calTarget, bool sramecc, bool xnack) {
+  auto calDeviceIter =
+      std::find_if(std::begin(supportedCalDevices), std::end(supportedCalDevices),
+                   [&](const CalDevice& calDevice) { return calDevice.calTarget_ == calTarget; });
+  if (calDeviceIter == std::end(supportedCalDevices)) {
+    return std::make_tuple(nullptr, static_cast<CALMachineType>(0), nullptr, false, false, false);
+  }
+  const amd::Isa* isa = amd::Isa::findIsa(
+      calDeviceIter->gfxipMajor_, calDeviceIter->gfxipMinor_, calDeviceIter->gfxipStepping_,
+      sramecc ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled,
+      xnack ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled);
+  return std::make_tuple(isa, calDeviceIter->calMachine_, calDeviceIter->calName_,
+                         calDeviceIter->preferPal_, calDeviceIter->nullUseDouble_,
+                         calDeviceIter->nullUseOpenCL200_);
+}
+
+static std::tuple<bool, CALMachineType, CALtarget, const char*, bool, bool, bool> findCal(
+    uint32_t gfxipMajor, uint32_t gfxipMinor, uint32_t gfxipStepping) {
+  auto calDeviceIter = std::find_if(std::begin(supportedCalDevices), std::end(supportedCalDevices),
+                                    [&](const CalDevice& calDevice) {
+                                      return calDevice.gfxipMajor_ == gfxipMajor &&
+                                          calDevice.gfxipMinor_ == gfxipMinor &&
+                                          calDevice.gfxipStepping_ == gfxipStepping;
+                                    });
+  if (calDeviceIter == std::end(supportedCalDevices)) {
+    return std::make_tuple(false, static_cast<CALMachineType>(0), static_cast<CALtarget>(0),
+                           nullptr, false, false, false);
+  }
+  return std::make_tuple(true, calDeviceIter->calMachine_, calDeviceIter->calTarget_,
+                         calDeviceIter->calName_, calDeviceIter->preferPal_,
+                         calDeviceIter->nullUseDouble_, calDeviceIter->nullUseOpenCL200_);
+}
+
+}  // namespace
 
 bool DeviceLoad() {
   bool ret = false;
@@ -79,126 +166,102 @@ aclCompiler* NullDevice::hsaCompiler_;
 AppProfile Device::appProfile_;
 
 NullDevice::NullDevice()
-    : amd::Device(), calTarget_(static_cast<CALtarget>(0)), hwInfo_(NULL) {}
+    : amd::Device(),
+      calTarget_(static_cast<CALtarget>(0)),
+      calMachine_(static_cast<CALMachineType>(0)),
+      calName_(nullptr) {}
 
 bool NullDevice::init() {
-  std::vector<Device*> devices;
-
-  devices = getDevices(CL_DEVICE_TYPE_GPU, false);
-
-  // Loop through all supported devices and create each of them
-  for (uint id = CAL_TARGET_TAHITI; id <= CAL_TARGET_LAST; ++id) {
-    bool foundActive = false;
-    bool foundDuplicate = false;
-
-    if (gpu::DeviceInfo[id].targetName_[0] == '\0') {
+  // Create offline devices for all ISAs not already associated with an online
+  // device. This allows code objects to be compiled for all supported ISAs.
+  std::vector<Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, false);
+  for (const amd::Isa *isa = amd::Isa::begin(); isa != amd::Isa::end(); isa++) {
+    if (!isa->runtimeGslSupported()) {
       continue;
     }
-
-    // Loop through all active devices and see if we match one
-    for (uint i = 0; i < devices.size(); ++i) {
-      if (static_cast<NullDevice*>(devices[i])->calTarget() == static_cast<CALtarget>(id)) {
-        foundActive = true;
+    bool isOnline = false;
+    // Check if the particular device is online
+    for (size_t i = 0; i < devices.size(); i++) {
+      if (&(devices[i]->isa()) == isa) {
+        isOnline = true;
         break;
       }
     }
-
-    // Don't report an offline device if it's active
-    if (foundActive) {
+    if (isOnline) {
       continue;
     }
 
-    // Loop through all previous devices in the DeviceInfo list and compare them with the
-    // current entry to see if the current entry was listed previously in the DeviceInfo,
-    // if so, then it means the current entry already has been added in the offline device list
-    for (uint j = 0; j < id; ++j) {
-      if (gpu::DeviceInfo[j].targetName_[0] == '\0') {
-        continue;
-      }
-      if (strcmp(gpu::DeviceInfo[j].targetName_, gpu::DeviceInfo[id].targetName_) == 0) {
-        foundDuplicate = true;
-        break;
-      }
+    bool found;
+    CALMachineType calMachine;
+    CALtarget calTarget;
+    const char* calName;
+    bool preferPal;
+    bool nullUseDouble;
+    bool nullUseOpenCL200;
+    std::tie(found, calMachine, calTarget, calName, preferPal, nullUseDouble, nullUseOpenCL200) =
+        findCal(isa->versionMajor(), isa->versionMinor(), isa->versionStepping());
+    if (!found) {
+      // GSL does not support this asic.
+      continue;
     }
 
-    // Don't report an offline device twice
-    if (foundDuplicate) {
-        continue;
+    std::unique_ptr<NullDevice> nullDevice(new NullDevice());
+    if (!nullDevice) {
+      LogPrintfError("Error allocating new instance of offline CAL Device %s", isa->targetId());
+      return false;
     }
-
-    NullDevice* dev = new NullDevice();
-    if (NULL != dev) {
-      if (!dev->create(static_cast<CALtarget>(id))) {
-        delete dev;
-      } else {
-        dev->registerDevice();
-      }
+    if (!nullDevice->create(calName, *isa, calTarget, preferPal, nullUseDouble, nullUseOpenCL200)) {
+      // Skip over unsupported devices
+      LogPrintfError("Skipping creating new instance of offline CAL Device %s", isa->targetId());
+      continue;
     }
+    nullDevice.release()->registerDevice();
   }
-
   return true;
 }
 
-bool NullDevice::create(CALtarget target) {
-  CALdeviceattribs calAttr = {0};
-  gslMemInfo memInfo = {0};
-
-  online_ = false;
-
-  calTarget_ = calAttr.target = target;
-  hwInfo_ = &DeviceInfo[calTarget_];
-
-  assert((target >= CAL_TARGET_TAHITI) && (target != CAL_TARGET_SCRAPPER) &&
-         (target != CAL_TARGET_DEVASTATOR));
-
-  if ((GPU_ENABLE_PAL == 2) && usePal()) {
+bool NullDevice::create(const char* calName, const amd::Isa& isa, CALtarget target,
+                        bool preferPal, bool doublePrecision, bool openCL200) {
+  if (!isa.runtimeGslSupported()) {
+    LogPrintfError("Offline CAL device %s is not supported", isa.targetId());
+    return false;
+  }
+  if ((GPU_ENABLE_PAL == 2) && isa.runtimePalSupported() && preferPal) {
+    LogPrintfError("Skipping as GPU_ENABLE_PAL=2 indicating to use PAL for offline CAL device %s",
+                   isa.targetId());
     return false;
   }
 
+  online_ = false;
+  calTarget_ = target;
+  calName_ = calName;
+
+  // sets up vaCacheAccess_ and vaCacheMap_.
+  if (!amd::Device::create(isa)) {
+    LogPrintfError("Unable to setup offline device for CAL device %s", isa.targetId());
+    return false;
+  }
+
+  CALdeviceattribs calAttr = {0};
+  calAttr.target = calTarget();
   // Force double if it could be supported
-  switch (target) {
-    case CAL_TARGET_PITCAIRN:
-    case CAL_TARGET_CAPEVERDE:
-    case CAL_TARGET_TAHITI:
-    case CAL_TARGET_OLAND:
-    case CAL_TARGET_HAINAN:
-      calAttr.doublePrecision = CAL_TRUE;
-      break;
-    case CAL_TARGET_BONAIRE:
-    case CAL_TARGET_SPECTRE:
-    case CAL_TARGET_SPOOKY:
-    case CAL_TARGET_KALINDI:
-    case CAL_TARGET_HAWAII:
-    case CAL_TARGET_ICELAND:
-    case CAL_TARGET_TONGA:
-    case CAL_TARGET_FIJI:
-    case CAL_TARGET_GODAVARI:
-    case CAL_TARGET_CARRIZO:
-    case CAL_TARGET_ELLESMERE:
-    case CAL_TARGET_BAFFIN:
-    case CAL_TARGET_GREENLAND:
-    case CAL_TARGET_STONEY:
-    case CAL_TARGET_LEXA:
-    case CAL_TARGET_RAVEN:
-    case CAL_TARGET_RAVEN2:
-    case CAL_TARGET_RENOIR:
-    case CAL_TARGET_POLARIS22:
-    case CAL_TARGET_VEGA12:
-    case CAL_TARGET_VEGA20:
-      calAttr.doublePrecision = CAL_TRUE;
-      calAttr.isOpenCL200Device = CAL_TRUE;
-      break;
-    default:
-      break;
+  if (doublePrecision) {
+    calAttr.doublePrecision = CAL_TRUE;
+  }
+  // Use OpenCL 2.0 if supported
+  if (openCL200) {
+    calAttr.isOpenCL200Device = CAL_TRUE;
   }
 
   settings_ = new gpu::Settings();
   gpu::Settings* gpuSettings = reinterpret_cast<gpu::Settings*>(settings_);
   // Create setting for the offline target
   if ((gpuSettings == NULL) || !gpuSettings->create(calAttr)) {
+    LogPrintfError("GPU settings failed for offline device for CAL device %s", isa.targetId());
     return false;
   }
 
+  gslMemInfo memInfo = {0};
   // Report 512MB for all offline devices
   memInfo.cardMemAvailableBytes = 512 * Mi;
   memInfo.cardLargestFreeBlockBytes = 512 * Mi;
@@ -243,7 +306,7 @@ bool NullDevice::create(CALtarget target) {
       acl_error error;
       hsaCompiler_ = aclCompilerInit(&opts, &error);
       if (error != ACL_SUCCESS) {
-        LogError("Error initializing the compiler");
+        LogPrintfError("Error initializing the compiler for offline CAL device %s", isa.targetId());
         return false;
       }
     }
@@ -494,14 +557,11 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
   info_.platform_ = AMD_PLATFORM;
 
-  if ((calTarget() == CAL_TARGET_CARRIZO) && ASICREV_IS_CARRIZO_BRISTOL(calAttr.asicRevision)) {
-    const static char* bristol = "Bristol Ridge";
-    ::strncpy(info_.name_, bristol, sizeof(info_.name_) - 1);
-  } else {
-    ::strncpy(info_.name_, hwInfo()->targetName_, sizeof(info_.name_) - 1);
-  }
+  ::strncpy(info_.name_, calName_, sizeof(info_.name_) - 1);
+  ::strncpy(info_.targetId_, isa().isaName().c_str(), sizeof(info_.targetId_) - 1);
   ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
-  ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING);
+  ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (GSL)%s",
+             isOnline() ? "" : " [Offline]");
 
   info_.profile_ = "FULL_PROFILE";
   if (settings().oclVersion_ >= OpenCL20) {
@@ -584,19 +644,19 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.deviceTopology_.pcie.device = (calAttr.pciTopologyInformation & (0x1F << 3)) >> 3;
     info_.deviceTopology_.pcie.function = (calAttr.pciTopologyInformation & 0x07);
 
-    info_.simdPerCU_ = hwInfo()->simdPerCU_;
+    info_.simdPerCU_ = isa().simdPerCU();
     info_.cuPerShaderArray_ = calAttr.numberOfCUsperShaderArray;
-    info_.simdWidth_ = hwInfo()->simdWidth_;
-    info_.simdInstructionWidth_ = hwInfo()->simdInstructionWidth_;
+    info_.simdWidth_ = isa().simdWidth();
+    info_.simdInstructionWidth_ = isa().simdInstructionWidth();
     info_.wavefrontWidth_ = calAttr.wavefrontSize;
 
     info_.globalMemChannelBanks_ = calAttr.numMemBanks;
-    info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
-    info_.localMemSizePerCU_ = hwInfo()->localMemSizePerCU_;
-    info_.localMemBanks_ = hwInfo()->localMemBanks_;
-    info_.gfxipMajor_ = hwInfo()->gfxipMajor_;
-    info_.gfxipMinor_ = hwInfo()->gfxipMinor_;
-    info_.gfxipStepping_ = hwInfo()->gfxipStepping_;
+    info_.globalMemChannelBankWidth_ = isa().memChannelBankWidth();
+    info_.localMemSizePerCU_ = isa().localMemSizePerCU();
+    info_.localMemBanks_ = isa().localMemBanks();
+    info_.gfxipMajor_ = isa().versionMajor();
+    info_.gfxipMinor_ = isa().versionMinor();
+    info_.gfxipStepping_ = isa().versionStepping();
 
     info_.numAsyncQueues_ = numComputeRings;
 
@@ -607,7 +667,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
     info_.pcieDeviceId_ = calAttr.pcieDeviceID;
     info_.pcieRevisionId_ = calAttr.pcieRevisionID;
-    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * hwInfo()->simdPerCU_ * 10;
+    info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * isa().simdPerCU() * 10;
   }
 }
 
@@ -849,10 +909,6 @@ Device::~Device() {
 extern const char* SchedulerSourceCode;
 
 bool Device::create(CALuint ordinal, CALuint numOfDevices) {
-  if (!amd::Device::create()) {
-    return false;
-  }
-
   appProfile_.init();
 
   bool smallMemSystem = false;
@@ -882,19 +938,40 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
 
   // Update CAL target
   calTarget_ = getAttribs().target;
-  hwInfo_ = &DeviceInfo[calTarget_];
 
-  if ((GPU_ENABLE_PAL == 2) && usePal()) {
+  // XNACK should be set for PageMigration or IOMMUv2 support.
+  bool isXNACKSupported = false;
+
+  // SRAMECC should be set for ecc protected GPRs.
+  bool isSRAMECCSupported = false;
+
+  const amd::Isa* isa;
+  bool preferPal;
+  std::tie(isa, calMachine_, calName_, preferPal, std::ignore, std::ignore) =
+      findIsa(calTarget(), isSRAMECCSupported, isXNACKSupported);
+
+  if ((calTarget() == CAL_TARGET_CARRIZO) && ASICREV_IS_CARRIZO_BRISTOL(getAttribs().asicRevision)) {
+    calName_ = "Bristol Ridge";
+  }
+
+  if (!isa) {
+    LogPrintfError("Unsupported CAL device #%d", calTarget());
+    return false;
+  }
+  if (!isa->runtimeGslSupported()) {
+    LogPrintfError("Unsupported CAL device with ISA %s", isa->targetId());
+    return false;
+  }
+  if ((GPU_ENABLE_PAL == 2) && isa->runtimePalSupported() && preferPal) {
+    LogPrintfError("Skipping as GPU_ENABLE_PAL=2 indicating to use PAL for CAL device %s",
+                   isa->targetId());
     return false;
   }
 
-#if defined(BRAHMA)
-  if (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-      calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_POLARIS22 ||
-      calTarget_ == CAL_TARGET_RENOIR) {
+  if (!amd::Device::create(*isa)) {
+    LogPrintfError("Unable to setup device for CAL device %s", isa->targetId());
     return false;
   }
-#endif
 
   // Creates device settings
   settings_ = new gpu::Settings();

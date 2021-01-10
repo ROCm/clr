@@ -64,8 +64,10 @@ class NullDevice : public amd::Device {
   NullDevice();
 
   //! Creates an offline device with the specified target
-  bool create(uint id,                         //!< index in the AMDDeviceInfo[]
-              Pal::GfxIpLevel ipLevel          //!< GPU ip level
+  bool create(const char* palName,             //!< Device name
+              const amd::Isa& isa,             //!< Device ISA
+              Pal::GfxIpLevel ipLevel,         //!< GPU ip level
+              Pal::AsicRevision asicRevision   //!< PAL ASIC revision
   );
 
   //! Instantiate a new virtual device
@@ -114,8 +116,6 @@ class NullDevice : public amd::Device {
   Pal::GfxIpLevel ipLevel() const { return ipLevel_; }
   Pal::AsicRevision asicRevision() const { return asicRevision_; }
 
-  const AMDDeviceInfo* hwInfo() const { return hwInfo_; }
-
   //! Empty implementation on Null device
   virtual bool globalFreeMemory(size_t* freeMemory) const { return false; }
 
@@ -139,7 +139,7 @@ class NullDevice : public amd::Device {
 
   Pal::AsicRevision asicRevision_;  //!< ASIC revision
   Pal::GfxIpLevel ipLevel_;         //!< Device IP level
-  const AMDDeviceInfo* hwInfo_;     //!< Device HW info structure
+  const char* palName_;             //!< Device name
 
   //! Fills OpenCL device info structure
   void fillDeviceInfo(const Pal::DeviceProperties& palProp,  //!< PAL device properties

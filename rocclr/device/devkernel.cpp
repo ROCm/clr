@@ -1166,7 +1166,7 @@ bool Kernel::SetAvailableSgprVgpr() {
   bool hasVgprMeta = false;
 
   amd_comgr_status_t status = amd::Comgr::get_isa_metadata(
-                                prog().device().info().targetId_, &isaMeta);
+                                prog().device().isa().isaName().c_str(), &isaMeta);
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hasIsaMeta = true;

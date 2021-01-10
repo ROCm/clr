@@ -37,6 +37,7 @@
 #include "acl.h"
 #include "hwdebug.hpp"
 
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -79,6 +80,7 @@ class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
 class TransferBufferFileCommand;
 class HwDebugManager;
+class Isa;
 class Device;
 struct KernelParameterDescriptor;
 struct Coord3D;
@@ -408,7 +410,7 @@ struct Info : public amd::EmbeddedObject {
   //! Device name string
   char name_[0x40];
 
-  //! Target ID string
+  //! Target triple plus target ID string
   char targetId_[0x40];
 
   //! Vendor name string
@@ -1238,6 +1240,214 @@ class MemObjMap : public AllStatic {
   static amd::Monitor AllocatedLock_;  //!< amd monitor locker
 };
 
+/// @brief Instruction Set Architecture properties.
+class Isa {
+ public:
+
+  /// @brief Isa's target feature setting type.
+  enum class Feature : uint8_t {
+    Unsupported,
+    Any,
+    Disabled,
+    Enabled,
+  };
+
+  //! Return a non-zero uint64_t value that uniquely identifies the device.
+  //! This can be used when a scalar value handle to the device is require.
+  static uint64_t toHandle(const Isa *isa) {
+    static_assert(reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0,
+                  "nullptr value is not 0");
+    static_assert(sizeof(isa) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    return isa ? reinterpret_cast<uint64_t>(isa) : 0;
+  }
+
+  //! Return the device corresponding to a handle returned by Isa::handle,
+  //! or nullptr if the handle is 0. This can be used when a scalar value
+  //! handle for a device is provided.
+  static const Isa* fromHandle(uint64_t handle) {
+    static_assert(reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0,
+                  "nullptr value is not 0");
+    static_assert(sizeof(handle) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    return handle ? reinterpret_cast<const Isa*>(handle) : nullptr;
+  }
+
+  /// @returns This Isa's target triple and target ID name.
+  std::string isaName() const;
+
+  /// @returns This Isa's processor name.
+  std::string processorName() const;
+
+  /// @returns This Isa's target ID name.
+  const char *targetId() const {
+    return targetId_;
+  }
+
+  /// @returns This Isa's name to use with the HSAIL compiler.
+  const char *hsailName() const {
+    return hsailId_;
+  }
+
+  /// @returns This Isa's name to use with the AMD IL compiler.
+  const char *amdIlName() const {
+    return amdIlId_;
+  }
+
+  /// @returns If the ROCm runtime supports the ISA.
+  bool runtimeRocSupported() const {
+    return runtimeRocSupported_;
+  }
+
+  /// @returns If the PAL runtime supports the ISA.
+  bool runtimePalSupported() const {
+    return runtimePalSupported_;
+  }
+
+  /// @returns If the GSL runtime supports the ISA.
+  bool runtimeGslSupported() const {
+    return runtimeGslSupported_;
+  }
+
+  /// @returns SRAM ECC feature status.
+  const Feature &sramecc() const {
+    return sramecc_;
+  }
+
+  /// @returns XNACK feature status.
+  const Feature &xnack() const {
+    return xnack_;
+  }
+
+  /// @returns True if SRAMECC feature is supported, false otherwise.
+  bool isSrameccSupported() const {
+    return sramecc_ != Feature::Unsupported;
+  }
+
+  /// @returns True if XNACK feature is supported, false otherwise.
+  bool isXnackSupported() const {
+    return xnack_ != Feature::Unsupported;
+  }
+
+  /// @returns This Isa's major version.
+  uint32_t versionMajor() const {
+    return versionMajor_;
+  }
+
+  /// @returns This Isa's minor version.
+  uint32_t versionMinor() const {
+    return versionMinor_;
+  }
+
+  /// @returns This Isa's stepping version.
+  uint32_t versionStepping() const {
+    return versionStepping_;
+  }
+
+  /// @returns This Isa's number of SIMDs per CU.
+  uint32_t simdPerCU() const {
+    return simdPerCU_;
+  }
+
+  /// @returns This Isa's
+  uint32_t simdWidth() const {
+    return simdWidth_;
+  }
+
+  /// @returns This Isa's number of instructions processed per SIMD.
+  uint32_t simdInstructionWidth() const {
+    return simdInstructionWidth_;
+  }
+
+  /// @returns This Isa's memory channel bank width.
+  uint32_t memChannelBankWidth() const {
+    return memChannelBankWidth_;
+  }
+
+  /// @returns This Isa's local memory size per CU.
+  uint32_t localMemSizePerCU() const {
+    return localMemSizePerCU_;
+  }
+
+  /// @returns This Isa's number of banks of local memory.
+  uint32_t localMemBanks() const {
+    return localMemBanks_;
+  }
+
+  /// @returns True if @p codeObjectIsa and @p agentIsa are compatible,
+  /// false otherwise.
+  static bool isCompatible(const Isa &codeObjectIsa, const Isa &agentIsa);
+
+  /// @returns Isa for requested @p isaName, null pointer if not supported.
+  static const Isa* findIsa(const char *isaName);
+
+  /// @returns Isa for requested @p version, null pointer if not supported.
+  static const Isa* findIsa(uint32_t versionMajor, uint32_t versionMinor, uint32_t versionStepping,
+                            Feature sramecc = Feature::Any, Feature xnack = Feature::Any);
+
+  /// @returns Iterator for first isa.
+  static const Isa* begin();
+
+  /// @returns Iterator for one past the end isa.
+  static const Isa* end();
+
+ private:
+
+  constexpr Isa(const char* targetId, const char* hsailId, const char* amdIlId,
+                bool runtimeRocSupported, bool runtimePalSupported, bool runtimeGslSupported,
+                uint32_t versionMajor, uint32_t versionMinor, uint32_t versionStepping,
+                Feature sramecc, Feature xnack, uint32_t simdPerCU, uint32_t simdWidth,
+                uint32_t simdInstructionWidth, uint32_t memChannelBankWidth,
+                uint32_t localMemSizePerCU, uint32_t localMemBanks)
+      : targetId_(targetId),
+        hsailId_(hsailId),
+        amdIlId_(amdIlId),
+        runtimeRocSupported_(runtimeRocSupported),
+        runtimePalSupported_(runtimePalSupported),
+        runtimeGslSupported_(runtimeGslSupported),
+        versionMajor_(versionMajor),
+        versionMinor_(versionMinor),
+        versionStepping_(versionStepping),
+        sramecc_(sramecc),
+        xnack_(xnack),
+        simdPerCU_(simdPerCU),
+        simdWidth_(simdWidth),
+        simdInstructionWidth_(simdInstructionWidth),
+        memChannelBankWidth_(memChannelBankWidth),
+        localMemSizePerCU_(localMemSizePerCU),
+        localMemBanks_(localMemBanks) {}
+
+  // @brief Returns the begin and end iterators for the suppported ISAs.
+  static std::pair<const Isa*, const Isa*> supportedIsas();
+
+  // @brief Isa's target ID name. Used for LLVM COde Object Manager
+  // compilations.
+  const char* targetId_;
+
+  // @brief Isa's HSAIL name. Used for the Compiler Library for HSAIL
+  // compilation using the Shader Compiler Finalizer. Empty string if
+  // unsupported.
+  const char* hsailId_;
+
+  // @brief Isa's AMD IL name. Used for the Compiler Library for AMD IL
+  // compilation using the Shader Compiler. Empty string if unsupported.
+  const char* amdIlId_;
+
+  bool runtimeRocSupported_;       //!< ROCm runtime is supported.
+  bool runtimePalSupported_;       //!< PAL runtime is supported.
+  bool runtimeGslSupported_;       //!< GSL runtime is supported.
+  uint32_t versionMajor_;          //!< Isa's major version.
+  uint32_t versionMinor_;          //!< Isa's minor version.
+  uint32_t versionStepping_;       //!< Isa's stepping version.
+  Feature sramecc_;                //!< SRAMECC feature.
+  Feature xnack_;                  //!< XNACK feature.
+  uint32_t simdPerCU_;             //!< Number of SIMDs per CU.
+  uint32_t simdWidth_;             //!< Number of workitems processed per SIMD.
+  uint32_t simdInstructionWidth_;  //!< Number of instructions processed per SIMD.
+  uint32_t memChannelBankWidth_;   //!< Memory channel bank width.
+  uint32_t localMemSizePerCU_;     //!< Local memory size per CU.
+  uint32_t localMemBanks_;         //!< Number of banks of local memory.
+
+}; // class Isa
+
 /*! \addtogroup Runtime
  *  @{
  *
@@ -1300,7 +1510,7 @@ class Device : public RuntimeObject {
   virtual ~Device();
 
   //! Initializes abstraction layer device object
-  bool create();
+  bool create(const Isa &isa);
 
   uint retain() {
     // Overwrite the RuntimeObject::retain().
@@ -1476,6 +1686,12 @@ class Device : public RuntimeObject {
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
 
+  //! Returns device isa.
+  const Isa &isa() const {
+    assert(isa_);
+    return *isa_;
+  }
+
   //! Return a non-zero uint64_t value that uniquely identifies the device.
   //! This can be used when a scalar value handle to the device is require.
   static uint64_t toHandle(const Device *device) {
@@ -1611,6 +1827,7 @@ class Device : public RuntimeObject {
   static Memory* p2p_stage_;          //!< Staging resources
 
  private:
+  const Isa *isa_;                //!< Device isa
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);
 
 #if defined(WITH_HSA_DEVICE)

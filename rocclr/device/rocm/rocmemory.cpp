@@ -1049,7 +1049,7 @@ bool Image::createInteropImage() {
   }
 
   if (obj->getGLTarget() == GL_TEXTURE_CUBE_MAP) {
-    desc.setFace(obj->getCubemapFace(), dev().deviceInfo().gfxipMajor_);
+    desc.setFace(obj->getCubemapFace(), dev().isa().versionMajor());
   }
 
   hsa_status_t err =

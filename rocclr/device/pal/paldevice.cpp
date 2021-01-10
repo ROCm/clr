@@ -48,11 +48,100 @@
 #endif  // _WIN32
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <ctype.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <tuple>
+
+namespace {
+
+//! Define the mapping from PAL asic revision enumeration values to the
+//! compiler gfx major/minor/stepping version.
+struct PalDevice {
+  uint32_t gfxipMajor_;             //!< The core engine GFXIP Major version
+  uint32_t gfxipMinor_;             //!< The core engine GFXIP Minor version
+  uint32_t gfxipStepping_;          //!< The core engine GFXIP Stepping version
+  Pal::GfxIpLevel gfxIpLevel_;      //!< PAL gfx IP level
+  const char* palName_;             //!< PAL device name
+  Pal::AsicRevision asicRevision_;  //!< PAL AsicRevision
+};
+
+static constexpr PalDevice supportedPalDevices[] = {
+// GFX Version PAL GFX IP Level            PAL Name         PAL ASIC Revision
+  {6,  0,  0,  Pal::GfxIpLevel::GfxIp6,    "Tahiti",        Pal::AsicRevision::Tahiti},
+  {6,  0,  1,  Pal::GfxIpLevel::GfxIp6,    "Pitcairn",      Pal::AsicRevision::Pitcairn},
+  {6,  0,  1,  Pal::GfxIpLevel::GfxIp6,    "Capeverde",     Pal::AsicRevision::Capeverde},
+  {6,  0,  2,  Pal::GfxIpLevel::GfxIp6,    "Oland",         Pal::AsicRevision::Oland},
+  {6,  0,  2,  Pal::GfxIpLevel::GfxIp6,    "Hainan",        Pal::AsicRevision::Hainan},
+  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Kalindi",       Pal::AsicRevision::Kalindi},
+  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spectre",       Pal::AsicRevision::Spectre},
+  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spooky",        Pal::AsicRevision::Spooky},
+  {7,  0,  1,  Pal::GfxIpLevel::GfxIp7,    "Hawaii",        Pal::AsicRevision::HawaiiPro},
+  {7,  0,  2,  Pal::GfxIpLevel::GfxIp7,    "Hawaii",        Pal::AsicRevision::Hawaii},
+  {7,  0,  4,  Pal::GfxIpLevel::GfxIp7,    "Bonaire",       Pal::AsicRevision::Bonaire},
+  {7,  0,  5,  Pal::GfxIpLevel::GfxIp7,    "Mullins",       Pal::AsicRevision::Godavari}, // FIXME: Why is this compiled as Mullins yet reported as Godavari? Add gfx703 to support Mullins.
+  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Carrizo",       Pal::AsicRevision::Carrizo},
+  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Bristol Ridge", Pal::AsicRevision::Bristol},
+  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Iceland",       Pal::AsicRevision::Iceland},
+  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Tonga",         Pal::AsicRevision::Tonga}, // Also Tongapro (generated code is for Tonga)
+  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Fiji",          Pal::AsicRevision::Fiji},
+  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Ellesmere",     Pal::AsicRevision::Polaris10}, // Ellesmere
+  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Baffin",        Pal::AsicRevision::Polaris11}, // Baffin
+  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris12}, // Lexa
+  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris22},
+  {8,  1,  0,  Pal::GfxIpLevel::GfxIp8_1,  "Stoney",        Pal::AsicRevision::Stoney},
+  {9,  0,  0,  Pal::GfxIpLevel::GfxIp9,    "gfx900",        Pal::AsicRevision::Vega10},
+  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven},
+  {9,  0,  4,  Pal::GfxIpLevel::GfxIp9,    "gfx904",        Pal::AsicRevision::Vega12},
+  {9,  0,  6,  Pal::GfxIpLevel::GfxIp9,    "gfx906",        Pal::AsicRevision::Vega20},
+  {9,  0,  9,  Pal::GfxIpLevel::GfxIp9,    "gfx909",        Pal::AsicRevision::Raven2},
+  {9,  0, 12,  Pal::GfxIpLevel::GfxIp9,    "gfx90c",        Pal::AsicRevision::Renoir},
+  {10, 1,  0,  Pal::GfxIpLevel::GfxIp10_1, "gfx1010",       Pal::AsicRevision::Navi10},
+  {10, 1,  1,  Pal::GfxIpLevel::GfxIp10_1, "gfx1011",       Pal::AsicRevision::Navi12},
+  {10, 1,  2,  Pal::GfxIpLevel::GfxIp10_1, "gfx1012",       Pal::AsicRevision::Navi14},
+  {10, 3,  0,  Pal::GfxIpLevel::GfxIp10_3, "gfx1030",       Pal::AsicRevision::Navi21},
+  {10, 3,  1,  Pal::GfxIpLevel::GfxIp10_3, "gfx1031",       Pal::AsicRevision::Navi22},
+  {10, 3,  2,  Pal::GfxIpLevel::GfxIp10_3, "gfx1032",       Pal::AsicRevision::Navi23},
+#if PAL_BUILD_VAN_GOGH
+  {10, 3,  3,  Pal::GfxIpLevel::GfxIp10_3, "",       Pal::AsicRevision::VanGogh},
+#endif
+};
+
+static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,
+                                                        bool sramecc, bool xnack) {
+  auto palDeviceIter = std::find_if(
+      std::begin(supportedPalDevices), std::end(supportedPalDevices),
+      [&](const PalDevice& palDevice) { return palDevice.asicRevision_ == asicRevision; });
+  if (palDeviceIter == std::end(supportedPalDevices)) {
+    return std::make_tuple(nullptr, nullptr);
+  }
+  const amd::Isa* isa = amd::Isa::findIsa(
+      palDeviceIter->gfxipMajor_, palDeviceIter->gfxipMinor_, palDeviceIter->gfxipStepping_,
+      sramecc ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled,
+      xnack ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled);
+  return std::make_tuple(isa, palDeviceIter->palName_);
+}
+
+static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint32_t gfxipMajor,
+                                                                           uint32_t gfxipMinor,
+                                                                           uint32_t gfxipStepping) {
+  auto palDeviceIter = std::find_if(std::begin(supportedPalDevices), std::end(supportedPalDevices),
+                                    [&](const PalDevice& palDevice) {
+                                      return palDevice.gfxipMajor_ == gfxipMajor &&
+                                          palDevice.gfxipMinor_ == gfxipMinor &&
+                                          palDevice.gfxipStepping_ == gfxipStepping;
+                                    });
+  if (palDeviceIter == std::end(supportedPalDevices)) {
+    return std::make_tuple(Pal::GfxIpLevel::None, Pal::AsicRevision::Unknown, nullptr);
+  }
+  return std::make_tuple(palDeviceIter->gfxIpLevel_, palDeviceIter->asicRevision_,
+                         palDeviceIter->palName_);
+}
+
+}  // namespace
 
 bool PalDeviceLoad() {
   bool ret = false;
@@ -76,185 +165,63 @@ Pal::IPlatform* Device::platform_;
 NullDevice::Compiler* NullDevice::compiler_;
 AppProfile Device::appProfile_;
 
-NullDevice::NullDevice() : amd::Device(), ipLevel_(Pal::GfxIpLevel::None), hwInfo_(nullptr) {}
+NullDevice::NullDevice() : amd::Device(), ipLevel_(Pal::GfxIpLevel::None), palName_(nullptr) {}
 
 bool NullDevice::init() {
-  std::vector<Device*> devices;
-  std::string driverVersion;
 
-  devices = getDevices(CL_DEVICE_TYPE_GPU, false);
-
-// TODO: Currently PAL only supports for GFXIP9+.
-//       Comment out this section for SWDEV-146950 since Kalindi and Mullins
-//       does not works for LC offline compilation without knowing which GFXIP
-//       should be used for them.
-#if defined(WITH_COMPILER_LIB)
-
-  // Loop through all supported devices and create each of them
-  for (uint id = 0; id < sizeof(DeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
-    bool foundActive = false;
-    Pal::AsicRevision revision = static_cast<Pal::AsicRevision>(id);
-
-    if (pal::DeviceInfo[id].machineTarget_[0] == '\0') {
+  // Create offline devices for all ISAs not already associated with an online
+  // device. This allows code objects to be compiled for all supported ISAs.
+  std::vector<Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, false);
+  for (const amd::Isa *isa = amd::Isa::begin(); isa != amd::Isa::end(); isa++) {
+    if (!isa->runtimePalSupported()) {
+      continue;
+    }
+    bool isOnline = false;
+    // Check if the particular device is online
+    for (size_t i = 0; i < devices.size(); i++) {
+      if (&(devices[i]->isa()) == isa) {
+        isOnline = true;
+        break;
+      }
+    }
+    if (isOnline) {
       continue;
     }
 
-    // Loop through all active PAL devices and see if we match one
-    for (uint i = 0; i < devices.size(); ++i) {
-      driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
-      if (driverVersion.find("PAL") != std::string::npos) {
-        if (static_cast<NullDevice*>(devices[i])->asicRevision() == revision) {
-          foundActive = true;
-          break;
-        }
-      }
-    }
-
-    // Don't report an offline device if it's active
-    if (foundActive) {
+    Pal::GfxIpLevel gfxIpLevel;
+    Pal::AsicRevision asicRevision;
+    const char* palName;
+    std::tie(gfxIpLevel, asicRevision, palName) =
+        findPal(isa->versionMajor(), isa->versionMinor(), isa->versionStepping());
+    if (asicRevision == Pal::AsicRevision::Unknown) {
+      // PAL does not support this asic.
       continue;
     }
 
-    NullDevice* dev = new NullDevice();
-    if (nullptr != dev) {
-      if (!dev->create(id, Pal::GfxIpLevel::_None)) {
-        delete dev;
-      } else {
-        dev->registerDevice();
-      }
+    std::unique_ptr<NullDevice> nullDevice(new NullDevice());
+    if (!nullDevice) {
+      LogPrintfError("Error allocating new instance of offline PAL Device %s", isa->targetId());
+      return false;
     }
+    if (!nullDevice->create(palName, *isa, gfxIpLevel, asicRevision)) {
+      // Skip over unsupported devices
+      LogPrintfError("Skipping creating new instance of offline PAL Device %s", isa->targetId());
+      continue;
+    }
+    nullDevice.release()->registerDevice();
   }
-#endif  // defined(WITH_COMPILER_LIB)
-
-  // Loop through all supported devices and create each of them
-  for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
-    bool foundActive = false;
-    bool foundDuplicate = false;
-    uint gfxipVersion = pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
-
-    if (pal::Gfx9PlusSubDeviceInfo[id].machineTarget_[0] == '\0') {
-      continue;
-    }
-
-    // Loop through all active PAL devices and see if we match one
-    for (uint i = 0; i < devices.size(); ++i) {
-      driverVersion = static_cast<amd::Device*>(devices[i])->info().driverVersion_;
-      if (driverVersion.find("PAL") != std::string::npos) {
-        gfxipVersion = devices[i]->settings().useLightning_
-            ? pal::Gfx9PlusSubDeviceInfo[id].gfxipVersionLC_
-            : pal::Gfx9PlusSubDeviceInfo[id].gfxipVersion_;
-        uint gfxIpCurrent = devices[i]->settings().useLightning_
-            ? static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersionLC_
-            : static_cast<NullDevice*>(devices[i])->hwInfo()->gfxipVersion_;
-        if (gfxIpCurrent == gfxipVersion) {
-          foundActive = true;
-          break;
-        }
-      }
-    }
-
-    // Don't report an offline device if it's active
-    if (foundActive) {
-      continue;
-    }
-
-    // Loop through all previous devices in the Gfx9PlusSubDeviceInfo list
-    // and compare them with the current entry to see if the current entry
-    // was listed previously in the Gfx9PlusSubDeviceInfo, if so, then it
-    // means the current entry already has been added in the offline device list
-    for (uint j = 0; j < id; ++j) {
-      if (pal::Gfx9PlusSubDeviceInfo[j].machineTarget_[0] == '\0') {
-        continue;
-      }
-      if ((strcmp(pal::Gfx9PlusSubDeviceInfo[j].machineTarget_,
-                 pal::Gfx9PlusSubDeviceInfo[id].machineTarget_) == 0) &&
-          (pal::Gfx9PlusSubDeviceInfo[j].xnackEnabled_ ==
-           pal::Gfx9PlusSubDeviceInfo[id].xnackEnabled_)) {
-        foundDuplicate = true;
-        break;
-      }
-    }
-
-    // Don't report an offline device twice
-    if (foundDuplicate) {
-      continue;
-    }
-
-    Pal::GfxIpLevel ipLevel = Pal::GfxIpLevel::_None;
-    uint ipLevelMajor = round(gfxipVersion / 100);
-    uint ipLevelMinor = round(gfxipVersion / 10 % 10);
-    switch (ipLevelMajor) {
-      case 9:
-        ipLevel = Pal::GfxIpLevel::GfxIp9;
-        break;
-      case 10:
-        switch (ipLevelMinor) {
-          case 0:
-            ShouldNotReachHere();
-            break;
-          case 1:
-            ipLevel = Pal::GfxIpLevel::GfxIp10_1;
-            break;
-          case 2:
-            ShouldNotReachHere();
-            break;
-          case 3:
-            ipLevel = Pal::GfxIpLevel::GfxIp10_3;
-            break;
-          case 4:
-            ShouldNotReachHere();
-            break;
-          default:
-            ShouldNotReachHere();
-            break;
-        }
-        break;
-      case 11:
-        switch (ipLevelMinor) {
-          case 0:
-            ShouldNotReachHere();
-            break;
-          default:
-            ShouldNotReachHere();
-            break;
-        }
-        break;
-      default:
-        ShouldNotReachHere();
-        break;
-    }
-
-    NullDevice* dev = new NullDevice();
-    if (nullptr != dev) {
-      if (!dev->create(id, ipLevel)) {
-        delete dev;
-      } else {
-        dev->registerDevice();
-      }
-    }
-  }
-
   return true;
 }
 
-bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
-  // Update HW info for the device
-  if ((GPU_ENABLE_PAL == 1) && (ipLevel == Pal::GfxIpLevel::_None)) {
-    hwInfo_ = &DeviceInfo[id];
-  } else if (ipLevel >= Pal::GfxIpLevel::GfxIp9) {
-    hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
-  } else {
-    return false;
-  }
-
-  Pal::AsicRevision asicRevision = hwInfo_->asicRevision_;
-
-  if (amd::IS_HIP && IS_MAINLINE &&
-      (asicRevision != Pal::AsicRevision::Vega20)) {
+bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLevel ipLevel,
+                        Pal::AsicRevision asicRevision) {
+  if (!isa.runtimePalSupported()) {
+    LogPrintfError("Offline PAL device %s is not supported", isa.targetId());
     return false;
   }
 
   online_ = false;
+  palName_ = palName;
   Pal::DeviceProperties properties = {};
 
   // Use fake GFX IP for the device init
@@ -274,12 +241,19 @@ bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
   Pal::WorkStationCaps wscaps = {};
 
   // Create setting for the offline target
-  if ((palSettings == nullptr) || !palSettings->create(properties, heaps, wscaps)) {
+  if ((palSettings == nullptr) ||
+      !palSettings->create(properties, heaps, wscaps, isa.xnack() == amd::Isa::Feature::Enabled)) {
+    LogPrintfError("Unable to create PAL setting for offline PAL device %s", isa.targetId());
     return false;
   }
 
   if (!ValidateComgr()) {
-    LogError("Code object manager initialization failed!");
+    LogPrintfError("Code object manager initialization failed for offline PAL device %s", isa.targetId());
+    return false;
+  }
+
+  if (!amd::Device::create(isa)) {
+    LogPrintfError("Unable to setup device for PAL offline device %s", isa.targetId());
     return false;
   }
 
@@ -306,7 +280,7 @@ bool NullDevice::create(uint id, Pal::GfxIpLevel ipLevel) {
     acl_error error;
     compiler_ = aclCompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
-      LogError("Error initializing the compiler");
+      LogPrintfError("Error initializing the compiler for offline PAL device %s", isa.targetId());
       return false;
     }
 #endif  // defined(WITH_COMPILER_LIB)
@@ -511,34 +485,12 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   info_.platform_ = AMD_PLATFORM;
 
-  if (settings().useLightning_) {
-    ::strncpy(info_.name_, hwInfo()->machineTargetLC_, sizeof(info_.name_) - 1);
-
-    if (hwInfo()->srameccSumpported_) {
-      if (palProp.gfxipProperties.shaderCore.flags.eccProtectedGprs) {
-        ::strcat(info_.name_, ":sramecc+");
-      } else {
-        ::strcat(info_.name_, ":sramecc-");
-      }
-    }
-
-    if (hwInfo()->xnackSupported_) {
-      if (hwInfo()->xnackEnabled_) {
-        ::strcat(info_.name_, ":xnack+");
-      } else {
-        ::strcat(info_.name_, ":xnack-");
-      }
-    }
-
-    ::strncpy(info_.targetId_, "amdgcn-amd-amdhsa--", sizeof(info_.targetId_) - 1);
-    ::strcat(info_.targetId_, info_.name_);
-  } else {
-    ::strncpy(info_.name_, hwInfo()->machineTarget_, sizeof(info_.name_) - 1);
-  }
-
+  ::strncpy(info_.name_, settings().useLightning_ ? isa().targetId() : palName_,
+            sizeof(info_.name_));
+  ::strncpy(info_.targetId_, isa().isaName().c_str(), sizeof(info_.targetId_) - 1);
   ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
-  ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)",
-             settings().useLightning_ ? ",LC" : ",HSAIL");
+  ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)%s",
+             settings().useLightning_ ? ",LC" : ",HSAIL", isOnline() ? "" : " [Offline]");
 
   info_.profile_ = "FULL_PROFILE";
   if (settings().oclVersion_ >= OpenCL20) {
@@ -625,23 +577,20 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                        ? (2 * palProp.gfxipProperties.shaderCore.numSimdsPerCu)
                        : palProp.gfxipProperties.shaderCore.numSimdsPerCu;
     info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
-    info_.simdWidth_ = hwInfo()->simdWidth_;
+    info_.simdWidth_ = isa().simdWidth();
     info_.simdInstructionWidth_ = 1;
     info_.wavefrontWidth_ =
         settings().enableWave32Mode_ ? 32 : palProp.gfxipProperties.shaderCore.nativeWavefrontSize;
     info_.availableSGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableSgprs;
 
     info_.globalMemChannelBanks_ = 4;
-    info_.globalMemChannelBankWidth_ = hwInfo()->memChannelBankWidth_;
+    info_.globalMemChannelBankWidth_ = isa().memChannelBankWidth();
     info_.localMemSizePerCU_ = palProp.gfxipProperties.shaderCore.ldsSizePerCu;
-    info_.localMemBanks_ = hwInfo()->localMemBanks_;
+    info_.localMemBanks_ = isa().localMemBanks();
 
-    uint gfxipVersion =
-        settings().useLightning_ ? hwInfo()->gfxipVersionLC_ : hwInfo()->gfxipVersion_;
-
-    info_.gfxipMajor_ = gfxipVersion / 100;
-    info_.gfxipMinor_ = gfxipVersion / 10 % 10;
-    info_.gfxipStepping_ = gfxipVersion % 10;
+    info_.gfxipMajor_ = isa().versionMajor();
+    info_.gfxipMinor_ = isa().versionMinor();
+    info_.gfxipStepping_ = isa().versionStepping();
 
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;
@@ -860,9 +809,6 @@ uint32_t gStartDevice = 0;
 uint32_t gNumDevices = 0;
 
 bool Device::create(Pal::IDevice* device) {
-  if (!amd::Device::create()) {
-    return false;
-  }
   resourceList_ = new std::unordered_set<Resource*>();
   if (nullptr == resourceList_) {
     return false;
@@ -884,23 +830,25 @@ bool Device::create(Pal::IDevice* device) {
 
   // XNACK flag should be set for PageMigration or IOMMUv2 support.
   // Note: Navi2x should have a fix in HW.
-  bool isXNACKSupported = (ipLevel_ <= Pal::GfxIpLevel::GfxIp10_1) &&
+  bool isXNACKEnabled =
       (static_cast<uint>(properties().gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties().gpuMemoryProperties.flags.iommuv2Support));
 
-  // Update HW info for the device
-  if ((GPU_ENABLE_PAL == 1) && (properties().revision <= Pal::AsicRevision::Polaris12)) {
-    hwInfo_ = &DeviceInfo[static_cast<uint>(properties().revision)];
-  } else if (ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
-    // For compiler sub targets
-    for (uint id = 0; id < sizeof(Gfx9PlusSubDeviceInfo) / sizeof(AMDDeviceInfo); ++id) {
-      if ((Gfx9PlusSubDeviceInfo[id].asicRevision_ == asicRevision_) &&
-          (Gfx9PlusSubDeviceInfo[id].xnackEnabled_ == isXNACKSupported)) {
-        hwInfo_ = &Gfx9PlusSubDeviceInfo[id];
-        break;
-      }
-    }
-  } else {
+  bool isSRAMECCEnabled = properties().gfxipProperties.shaderCore.flags.eccProtectedGprs;
+
+  const amd::Isa* isa;
+  std::tie(isa, palName_) = findIsa(asicRevision_, isSRAMECCEnabled, isXNACKEnabled);
+  if (!isa) {
+    LogPrintfError("Unsupported PAL device with ASIC revision #%d", asicRevision_);
+    return false;
+  }
+  if (!isa->runtimePalSupported()) {
+    LogPrintfError("Unsupported PAL device with ISA %s", isa->targetId());
+    return false;
+  }
+
+  if (!amd::Device::create(*isa)) {
+    LogPrintfError("Unable to setup device for PAL device %s", isa->targetId());
     return false;
   }
 
@@ -953,8 +901,9 @@ bool Device::create(Pal::IDevice* device) {
   iDev()->QueryWorkStationCaps(&wscaps);
 
   pal::Settings* gpuSettings = reinterpret_cast<pal::Settings*>(settings_);
-  if ((gpuSettings == nullptr) ||
-      !gpuSettings->create(properties(), heaps_, wscaps, appProfile_.reportAsOCL12Device())) {
+  if (!gpuSettings ||
+      !gpuSettings->create(properties(), heaps_, wscaps, isa->xnack() == amd::Isa::Feature::Enabled,
+                           appProfile_.reportAsOCL12Device())) {
     return false;
   }
 

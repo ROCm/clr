@@ -202,7 +202,7 @@ class HSAILProgram : public device::Program {
 
   virtual bool createBinary(amd::option::Options* options);
 
-  virtual const aclTargetInfo& info(const char* str = "");
+  virtual const aclTargetInfo& info();
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
                           amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
@@ -250,7 +250,6 @@ class LightningProgram : public HSAILProgram {
   LightningProgram(NullDevice& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
     isHIP_ = (owner.language() == amd::Program::HIP);
-    machineTarget_ = palNullDevice().hwInfo()->machineTargetLC_;
   }
 
   LightningProgram(Device& device, amd::Program& owner) : HSAILProgram(device, owner) {

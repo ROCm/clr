@@ -93,7 +93,8 @@ Settings::Settings() {
   barrier_sync_ = (!flagIsDefault(ROC_BARRIER_SYNC)) ? ROC_BARRIER_SYNC : true;
 }
 
-bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups) {
+bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, bool enableXNACK,
+                      bool coop_groups) {
   customHostAllocator_ = false;
 
   if (fullProfile) {
@@ -105,7 +106,8 @@ bool Settings::create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coo
     pinnedXferSize_ = std::max(pinnedXferSize_, pinnedMinXferSize_);
     stagedXferSize_ = std::max(stagedXferSize_, pinnedMinXferSize_ + 4 * Ki);
   }
-  enableXNACK_ = apuSystem_ ? 1 : 0 ;   // enable xnack for APU system
+  enableXNACK_ = enableXNACK;
+  hsailExplicitXnack_ = enableXNACK;
 
   // Enable extensions
   enableExtension(ClKhrByteAddressableStore);

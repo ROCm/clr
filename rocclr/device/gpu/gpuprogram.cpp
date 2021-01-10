@@ -41,14 +41,10 @@
 
 namespace gpu {
 
-const aclTargetInfo& NullProgram::info(const char* str) {
+const aclTargetInfo& NullProgram::info() {
   acl_error err;
-  std::string arch = "amdil";
-  if (dev().settings().use64BitPtr_) {
-    arch += "64";
-  }
-  info_ = aclGetTargetInfo(arch.c_str(),
-                           (str && str[0] == '\0' ? dev().hwInfo()->targetName_ : str), &err);
+  info_ = aclGetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "amdil64" : "amdil",
+                           device().isa().amdIlName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -1507,7 +1503,6 @@ HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
       executable_(NULL),
       loaderContext_(this) {
   assert(device.isOnline());
-  machineTarget_ = gpuNullDevice().hwInfo()->targetName_;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
@@ -1520,7 +1515,6 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       loaderContext_(this) {
   assert(!device.isOnline());
   isNull_ = true;
-  machineTarget_ = gpuNullDevice().hwInfo()->targetName_;
 
   // Cannot load onto a NullDevice.
   loader_ = nullptr;
@@ -1769,14 +1763,10 @@ void HSAILProgram::fillResListWithKernels(std::vector<const Memory*>& memList) c
   }
 }
 
-const aclTargetInfo& HSAILProgram::info(const char* str) {
+const aclTargetInfo& HSAILProgram::info() {
   acl_error err;
-  std::string arch = "hsail";
-  if (dev().settings().use64BitPtr_) {
-    arch = "hsail64";
-  }
-  info_ = aclGetTargetInfo(arch.c_str(),
-                           (str && str[0] == '\0' ? gpuNullDevice().hwInfo()->targetName_ : str), &err);
+  info_ = aclGetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
+                           device().isa().hsailName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -1802,107 +1792,23 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
 }
 
 hsa_isa_t ORCAHSALoaderContext::IsaFromName(const char* name) {
-  hsa_isa_t isa = {0};
-  if (!strcmp(Gfx600, name)) {
-    isa.handle = gfx600;
-    return isa;
-  }
-  if (!strcmp(Gfx601, name)) {
-    isa.handle = gfx601;
-    return isa;
-  }
-  if (!strcmp(Gfx602, name)) {
-    isa.handle = gfx602;
-    return isa;
-  }
-  if (!strcmp(Gfx700, name)) {
-    isa.handle = gfx700;
-    return isa;
-  }
-  if (!strcmp(Gfx701, name)) {
-    isa.handle = gfx701;
-    return isa;
-  }
-  if (!strcmp(Gfx702, name)) {
-    isa.handle = gfx702;
-    return isa;
-  }
-  if (!strcmp(Gfx705, name)) {
-    isa.handle = gfx702;
-    return isa;
-  }
-  if (!strcmp(Gfx801, name)) {
-    isa.handle = gfx801;
-    return isa;
-  }
-  if (!strcmp(Gfx802, name)) {
-    isa.handle = gfx802;
-    return isa;
-  }
-  if (!strcmp(Gfx803, name)) {
-    isa.handle = gfx803;
-    return isa;
-  }
-  if (!strcmp(Gfx810, name)) {
-    isa.handle = gfx810;
-    return isa;
-  }
-  if (!strcmp(Gfx900, name)) {
-    isa.handle = gfx900;
-    return isa;
-  }
-  if (!strcmp(Gfx902, name)) {
-      isa.handle = gfx902;
-      return isa;
-  }
-  if (!strcmp(Gfx904, name)) {
-      isa.handle = gfx904;
-      return isa;
-  }
-  if (!strcmp(Gfx906, name)) {
-      isa.handle = gfx906;
-      return isa;
-  }
-  if (!strcmp(Gfx909, name)) {
-      isa.handle = gfx909;
-      return isa;
-  }
-  if (!strcmp(Gfx90c, name)) {
-      isa.handle = gfx90c;
-      return isa;
-  }
-
-  return isa;
+  const amd::Isa* isa_p = amd::Isa::findIsa(name);
+  return {amd::Isa::toHandle(isa_p)};
 }
 
 bool ORCAHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
- uint dev_gfxip = program_->gpuNullDevice().hwInfo()->gfxipVersion_;
-  uint isa_gfxip = isa.handle;
-  switch (dev_gfxip) {
-    case gfx700:
-    case gfx704:
-    case gfx801:
-    case gfx802:
-    case gfx803:
-    case gfx810:
-    case gfx900:
-    case gfx902:
-    case gfx904:
-    case gfx906:
-    case gfx909:
-    case gfx90c:
-      return isa_gfxip == dev_gfxip;
-    case gfx701:
-    case gfx702:
-      // gfx701 only differs from gfx702 by faster fp operations and can be loaded on either device.
-      return isa_gfxip == gfx701|| isa_gfxip == gfx702;
-    case gfx600:
-    case gfx601:
-    case gfx602:
-    default:
-      LogPrintfError("Unsupported gfxip version gfx%d", dev_gfxip);
+  // The HSA loader uses a handle value of 0 to indicate the ISA is invalid.
+  const amd::Isa* code_object_isa_p = amd::Isa::fromHandle(isa.handle);
+  if (!code_object_isa_p || !code_object_isa_p->runtimeGslSupported()) {
+    // The ISA is either not supported because ORCAHSALoaderContext::IsaFromName
+    // could not find it, or the PAL runtime does not support it.
     return false;
   }
+  if (program_->isNull()) {
+    // Cannot load code onto offline devices.
+    return false;
+  }
+  return amd::Isa::isCompatible(*code_object_isa_p, program_->device().isa());
 }
 
 void* ORCAHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,

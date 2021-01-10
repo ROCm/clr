@@ -89,7 +89,8 @@ class Settings : public device::Settings {
   Settings();
 
   //! Creates settings
-  bool create(bool fullProfile, int gfxipMajor, int gfxipMinor, bool coop_groups = false);
+  bool create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, bool enableXNACK,
+              bool coop_groups = false);
 
  private:
   //! Disable copy constructor

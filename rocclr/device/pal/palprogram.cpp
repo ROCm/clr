@@ -174,7 +174,6 @@ bool Segment::freeze(bool destroySysmem) {
   return result;
 }
 
-static constexpr const char* Carrizo = "Carrizo";
 HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
     : Program(device, owner),
       rawBinary_(nullptr),
@@ -185,11 +184,6 @@ HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
       executable_(nullptr),
       loaderContext_(this) {
   assert(device.isOnline());
-  if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
-    machineTarget_ = Carrizo;
-  } else {
-    machineTarget_ = dev().hwInfo()->machineTarget_;
-  }
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
@@ -204,11 +198,6 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       loaderContext_(this) {
   assert(!device.isOnline());
   isNull_ = true;
-  if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
-    machineTarget_ = Carrizo;
-  } else {
-    machineTarget_ = dev().hwInfo()->machineTarget_;
-  }
   // Cannot load onto a NullDevice.
   loader_ = nullptr;
 }
@@ -368,15 +357,11 @@ bool HSAILProgram::allocKernelTable() {
 
 void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const { gpu.addVmMemory(&codeSegGpu()); }
 
-const aclTargetInfo& HSAILProgram::info(const char* str) {
+const aclTargetInfo& HSAILProgram::info() {
 #if defined(WITH_COMPILER_LIB)
   acl_error err;
-  std::string arch = "hsail";
-  if (dev().settings().use64BitPtr_) {
-    arch = "hsail64";
-  }
-  info_ = aclGetTargetInfo(arch.c_str(),
-                           (str && str[0] == '\0' ? palNullDevice().hwInfo()->machineTarget_ : str), &err);
+  info_ = aclGetTargetInfo(palNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
+                           device().isa().hsailName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -531,49 +516,23 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
 }
 
 hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
-  hsa_isa_t isa = {0};
-  uint32_t gfxip = 0;
-  std::string gfx_target(name);
-  if (gfx_target.find("amdgcn-") == 0) {
-    std::string gfxip_version_str = gfx_target.substr(gfx_target.find("gfx") + 3);
-    gfxip = std::atoi(gfxip_version_str.c_str());
-  } else {
-    // FIXME: Old way. To be remove.
-    uint32_t shift = 1;
-    size_t last = gfx_target.length();
-    std::string ver;
-    do {
-      size_t first = gfx_target.find_last_of(':', last);
-      ver = gfx_target.substr(first + 1, last - first);
-      last = first - 1;
-      gfxip += static_cast<uint32_t>(atoi(ver.c_str())) * shift;
-      shift *= 10;
-    } while (shift <= 100);
-  }
-  isa.handle = gfxip;
-  return isa;
+  const amd::Isa* isa_p = amd::Isa::findIsa(name);
+  return {amd::Isa::toHandle(isa_p)};
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  uint32_t gfxipVersion = program_->palNullDevice().settings().useLightning_
-      ? program_->palNullDevice().hwInfo()->gfxipVersionLC_
-      : program_->palNullDevice().hwInfo()->gfxipVersion_;
-  uint32_t majorSrc = gfxipVersion / 10;
-  uint32_t minorSrc = gfxipVersion % 10;
-
-  uint32_t majorTrg = isa.handle / 10;
-  uint32_t minorTrg = isa.handle % 10;
-
-  if (majorSrc != majorTrg) {
+  // The HSA loader uses a handle value of 0 to indicate the ISA is invalid.
+  const amd::Isa* code_object_isa_p = amd::Isa::fromHandle(isa.handle);
+  if (!code_object_isa_p || !code_object_isa_p->runtimePalSupported()) {
+    // The ISA is either not supported because PALHSALoaderContext::IsaFromName
+    // could not find it, or the PAL runtime does not support it.
     return false;
-  } else if (minorTrg == minorSrc) {
-    return true;
-  } else if (minorTrg < minorSrc) {
-    LogWarning("ISA downgrade for execution!");
-    return true;
   }
-
-  return false;
+  if (program_->isNull()) {
+    // Cannot load code onto offline devices.
+    return false;
+  }
+  return amd::Isa::isCompatible(*code_object_isa_p, program_->device().isa());
 }
 
 void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,
@@ -584,7 +543,7 @@ void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_ag
     // Note: In Linux ::posix_memalign() requires at least 16 bytes for the alignment.
     align = amd::alignUp(align, 16);
     void* ptr = amd::Os::alignedMalloc(size, align);
-    if ((ptr != nullptr) && zero) {
+    if (ptr && zero) {
       memset(ptr, 0, size);
     }
     return ptr;
@@ -777,9 +736,6 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
   if (!device().isOnline()) {
     return true;
   }
-
-  hsa_agent_t agent;
-  agent.handle = 1;
 
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
