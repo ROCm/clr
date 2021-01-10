@@ -127,12 +127,6 @@ class NullDevice : public amd::Device {
   //! Construct an HSAIL program object from the ELF assuming it is valid
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
   const AMDDeviceInfo& deviceInfo() const { return deviceInfo_; }
-  //! Gets the backend device for the Null device type
-  virtual hsa_agent_t getBackendDevice() const {
-    ShouldNotReachHere();
-    const hsa_agent_t kInvalidAgent = {0};
-    return kInvalidAgent;
-  }
 
   // List of dummy functions which are disabled for NullDevice
 
@@ -309,7 +303,7 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
-  virtual hsa_agent_t getBackendDevice() const { return _bkendDevice; }
+  hsa_agent_t getBackendDevice() const { return _bkendDevice; }
   const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
 
   static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
