@@ -1619,8 +1619,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     }
   }
   // ACL_TYPE_CG stage is not performed for offline compilation
-  hsa_agent_t agent;
-  agent.handle = 1;
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
   if (hsaLoad) {
     executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, NULL);
     if (executable_ == NULL) {

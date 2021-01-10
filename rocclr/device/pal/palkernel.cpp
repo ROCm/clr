@@ -438,10 +438,9 @@ bool LightningKernel::init() {
   }
 
   // Copy codeobject of this kernel from the program CPU segment
-  hsa_agent_t agent;
-  agent.handle = 1;
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
 
-  auto sym = prog().GetSymbol(symbolName().c_str(), const_cast<hsa_agent_t*>(&agent));
+  auto sym = prog().GetSymbol(symbolName().c_str(), &agent);
 
   if (!setKernelCode(sym, &akc_)) {
     return false;
@@ -452,13 +451,10 @@ bool LightningKernel::init() {
 
     // handle device enqueue
     if (!RuntimeHandle().empty()) {
-      hsa_agent_t agent;
-      agent.handle = 1;
       amd::hsa::loader::Symbol* rth_symbol;
 
       // Get the runtime handle symbol GPU address
-      rth_symbol = prog().GetSymbol(const_cast<char*>(RuntimeHandle().c_str()),
-                                    const_cast<hsa_agent_t*>(&agent));
+      rth_symbol = prog().GetSymbol(RuntimeHandle().c_str(), &agent);
       uint64_t symbol_address;
       rth_symbol->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_ADDRESS, &symbol_address);
 
