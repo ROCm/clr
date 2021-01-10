@@ -47,12 +47,12 @@
 #include "CL/cl_dx9_media_sharing.h"
 #endif  // _WIN32
 
-#include <cstring>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <ctype.h>
 #include <algorithm>
+#include <cstring>
+#include <ctype.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 bool PalDeviceLoad() {
   bool ret = false;

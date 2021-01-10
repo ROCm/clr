@@ -23,15 +23,16 @@
 #include "aclTypes.h"
 #include "device/pal/palprogram.hpp"
 #include "device/pal/palblit.hpp"
-#include <fstream>
-#include <sstream>
-#include <cstdio>
-#include <algorithm>
-#include <iterator>
 #include "utils/options.hpp"
 #include "hsa.h"
 #include "hsa_ext_image.h"
 #include "amd_hsa_loader.hpp"
+
+#include <algorithm>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <sstream>
 
 namespace pal {
 
