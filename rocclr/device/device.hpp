@@ -408,6 +408,9 @@ struct Info : public amd::EmbeddedObject {
   //! Device name string
   char name_[0x40];
 
+  //! Target ID string
+  char targetId_[0x40];
+
   //! Vendor name string
   char vendor_[0x20];
 
@@ -559,9 +562,6 @@ struct Info : public amd::EmbeddedObject {
 
   //! large bar support.
   bool largeBar_;
-
-  //! Target ID string
-  char targetId_[0x40];
 
   uint32_t  hmmSupported_;            //!< ROCr supports HMM interfaces
   uint32_t  hmmCpuMemoryAccessible_;  //!< CPU memory is accessible by GPU without pinning/register
