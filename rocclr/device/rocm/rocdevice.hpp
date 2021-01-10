@@ -122,7 +122,7 @@ class NullDevice : public amd::Device {
 
   Compiler* compiler() const { return compilerHandle_; }
 
-  const Settings& settings() const { return reinterpret_cast<Settings&>(*settings_); }
+  const Settings& settings() const { return static_cast<Settings&>(*settings_); }
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);

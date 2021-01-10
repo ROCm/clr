@@ -598,6 +598,7 @@ bool Device::create() {
   }
 
   // Create HSA settings
+  assert(!settings_);
   settings_ = new Settings();
   roc::Settings* hsaSettings = static_cast<roc::Settings*>(settings_);
   if ((hsaSettings == nullptr) ||

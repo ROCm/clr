@@ -1505,6 +1505,7 @@ HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
       maxScratchRegs_(0),
       executable_(NULL),
       loaderContext_(this) {
+  assert(device.isOnline());
   machineTarget_ = gpuNullDevice().hwInfo()->targetName_;
   loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
@@ -1516,9 +1517,12 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       maxScratchRegs_(0),
       executable_(NULL),
       loaderContext_(this) {
+  assert(!device.isOnline());
   isNull_ = true;
   machineTarget_ = gpuNullDevice().hwInfo()->targetName_;
-  loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
+
+  // Cannot load onto a NullDevice.
+  loader_ = nullptr;
 }
 
 HSAILProgram::~HSAILProgram() {
@@ -1736,6 +1740,11 @@ std::string HSAILProgram::hsailOptions() {
 }
 
 bool HSAILProgram::allocKernelTable() {
+  if (isNull()) {
+    // Cannot create a kernel table for offline devices.
+    return false;
+  }
+
   uint size = kernels().size() * sizeof(size_t);
 
   kernels_ = new gpu::Memory(gpuDevice(), size);

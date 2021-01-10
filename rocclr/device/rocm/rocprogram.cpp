@@ -126,6 +126,10 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
 
 
 bool Program::defineGlobalVar(const char* name, void* dptr) {
+  if (!device().isOnline()) {
+    return false;
+  }
+
   hsa_status_t status = HSA_STATUS_SUCCESS;
   hsa_agent_t hsa_device = rocDevice().getBackendDevice();
 
@@ -141,6 +145,10 @@ bool Program::defineGlobalVar(const char* name, void* dptr) {
 
 bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
                                  size_t* bytes, const char* global_name) const {
+  if (!device().isOnline()) {
+    return false;
+  }
+
   hsa_status_t status = HSA_STATUS_SUCCESS;
   const roc::Device* roc_device = nullptr;
   hsa_agent_t hsa_device;
@@ -470,6 +478,12 @@ bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
                                   amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
+  // Stop compilation if it is an offline device - HSA runtime does not
+  // support ISA compiled offline
+  if (!device().isOnline()) {
+    return true;
+  }
+
   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
     buildLog_ += "Error: Cannot Global Var Sizes ";

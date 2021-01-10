@@ -68,6 +68,9 @@ void HSAILKernel::setWorkGroupInfo(const uint32_t privateSegmentSize,
 }
 
 bool HSAILKernel::setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc) {
+  if (prog().isNull()) {
+    return false;
+  }
   if (!sym) {
     return false;
   }
