@@ -32,15 +32,14 @@ namespace amd {
 
 Monitor::Monitor(const char* name, bool recursive)
     : contendersList_(0), onDeck_(0), waitersList_(NULL), owner_(NULL), recursive_(recursive) {
-  const size_t maxNameLen = sizeof(name_);
   if (name == NULL) {
     const char* unknownName = "@unknown@";
-    assert(sizeof(unknownName) < maxNameLen && "just checking");
-    strcpy(name_, unknownName);
+    assert(sizeof(unknownName) < sizeof(name_) && "just checking");
+    ::strncpy(name_, unknownName, sizeof(name_) - 1);
   } else {
-    strncpy(name_, name, maxNameLen - 1);
-    name_[maxNameLen - 1] = '\0';
+    ::strncpy(name_, name, sizeof(name_) - 1);
   }
+  name_[sizeof(name_) - 1] = '\0';
 }
 
 bool Monitor::trySpinLock() {

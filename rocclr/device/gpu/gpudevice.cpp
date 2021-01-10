@@ -496,11 +496,11 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
   if ((calTarget() == CAL_TARGET_CARRIZO) && ASICREV_IS_CARRIZO_BRISTOL(calAttr.asicRevision)) {
     const static char* bristol = "Bristol Ridge";
-    ::strcpy(info_.name_, bristol);
+    ::strncpy(info_.name_, bristol, sizeof(info_.name_) - 1);
   } else {
-    ::strcpy(info_.name_, hwInfo()->targetName_);
+    ::strncpy(info_.name_, hwInfo()->targetName_, sizeof(info_.name_) - 1);
   }
-  ::strcpy(info_.vendor_, "Advanced Micro Devices, Inc.");
+  ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING);
 
   info_.profile_ = "FULL_PROFILE";
@@ -536,7 +536,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
   info_.extensions_ = getExtensionString();
 
-  ::strncpy(info_.driverStore_, calAttr.driverStore, sizeof(info_.driverStore_));
+  ::strncpy(info_.driverStore_, calAttr.driverStore, sizeof(info_.driverStore_) - 1);
 
   // OpenCL1.2 device info fields
   info_.builtInKernels_ = "";
@@ -577,7 +577,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   }
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
-    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_));
+    ::strncpy(info_.boardName_, calAttr.boardName, sizeof(info_.boardName_) - 1);
 
     info_.deviceTopology_.pcie.type = CL_DEVICE_TOPOLOGY_TYPE_PCIE_AMD;
     info_.deviceTopology_.pcie.bus = (calAttr.pciTopologyInformation & (0xFF << 8)) >> 8;

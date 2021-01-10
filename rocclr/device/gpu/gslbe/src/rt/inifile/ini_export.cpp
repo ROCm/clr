@@ -62,7 +62,7 @@ getConfigFromFile(gslStaticRuntimeConfig&  scfg,
     // Check if location string is longer than 128 then assign, if not default location will be C:\packet.txt in gsl_ctx.cpp: gsCtxManager::PacketDump()
     uintp length = commandbufferDumpFilename.length();
     if (length > 0 && length < sizeof(dcfg.CommandbufferDumpFilename))
-        strcpy(dcfg.CommandbufferDumpFilename, commandbufferDumpFilename.c_str());
+        ::strncpy(dcfg.CommandbufferDumpFilename, commandbufferDumpFilename.c_str(), sizeof(dcfg.CommandbufferDumpFilename) - 1);
 
     iniFile.getValue(section, CAL_ENABLEPATCHDUMP,        (CALint*)     &dcfg.nPatchDumpLevel.value);
     iniFile.getValue(section, CAL_ENABLEMACROTILE,        (CALboolean*) &macro);
