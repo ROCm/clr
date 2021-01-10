@@ -30,6 +30,9 @@ static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
 //! Specific defines for images for Dynamic Parallelism
 static constexpr uint DeviceQueueMaskSize = 32;
 
+//! Set to match the number of pipes, which is 8.
+static constexpr uint kMaxAsyncQueues = 8;
+
 typedef uint HsaDeviceId;
 
 struct AMDDeviceInfo {
@@ -75,5 +78,4 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
 
 } // namespace roc
 
-constexpr uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
 #endif
