@@ -309,10 +309,6 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
-  bool create();
-
-  //! Construct a new physical HSA device
-  Device(hsa_agent_t bkendDevice);
   virtual hsa_agent_t getBackendDevice() const { return _bkendDevice; }
   const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
 
@@ -501,6 +497,11 @@ class Device : public NullDevice {
   void getGlobalCUMask(std::string cuMaskStr);
 
  private:
+  bool create();
+
+  //! Construct a new physical HSA device
+  Device(hsa_agent_t bkendDevice);
+
   bool SetSvmAttributesInt(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
                            bool first_alloc = false, bool use_cpu = false) const;
   static constexpr hsa_signal_value_t InitSignalValue = 1;
