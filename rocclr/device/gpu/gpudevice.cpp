@@ -49,15 +49,15 @@
 #endif  // _WIN32
 
 #include "os_if.h"  // for osInit()
+#include "gpudebugmanager.hpp"
 
+#include <algorithm>
+#include <ctype.h>
 #include <cstring>
 #include <fstream>
-#include <sstream>
 #include <iostream>
-#include <ctype.h>
-#include <algorithm>
+#include <sstream>
 
-#include "gpudebugmanager.hpp"
 
 bool DeviceLoad() {
   bool ret = false;

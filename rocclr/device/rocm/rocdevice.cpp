@@ -44,15 +44,15 @@
 #include "platform/sampler.hpp"
 #include "rochostcall.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <fstream>
-#include <sstream>
 #include <iostream>
-#include <vector>
-#include <algorithm>
 #ifdef ROCCLR_SUPPORT_NUMA_POLICY
 #include <numaif.h>
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
+#include <sstream>
+#include <vector>
 #endif // WITHOUT_HSA_BaCKEND
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
