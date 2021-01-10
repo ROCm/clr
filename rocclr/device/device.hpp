@@ -1476,6 +1476,25 @@ class Device : public RuntimeObject {
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
 
+  //! Return a non-zero uint64_t value that uniquely identifies the device.
+  //! This can be used when a scalar value handle to the device is require.
+  static uint64_t toHandle(const Device *device) {
+    static_assert(reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0,
+                  "nullptr value is not 0");
+    static_assert(sizeof(device) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    return device ? reinterpret_cast<uint64_t>(device) : 0;
+  }
+
+  //! Return the device corresponding to a handle returned by Device::handle,
+  //! or nullptr if the handle is 0. This can be used when a scalar value
+  //! handle for a device is provided.
+  static const Device* fromHhandle(uint64_t handle) {
+    static_assert(reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0,
+                  "nullptr value is not 0");
+    static_assert(sizeof(handle) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    return handle ? reinterpret_cast<const Device*>(handle) : nullptr;
+  }
+
   //! Returns device settings
   const device::Settings& settings() const { return *settings_; }
 

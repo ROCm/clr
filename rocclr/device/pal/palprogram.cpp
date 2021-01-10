@@ -262,8 +262,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   // ACL_TYPE_CG stage is not performed for offline compilation
-  hsa_agent_t agent;
-  agent.handle = 1;
+
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
     buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
@@ -273,6 +272,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
 
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
@@ -409,17 +409,17 @@ bool HSAILProgram::defineGlobalVar(const char* name, void* dptr) {
     return false;
   }
 
-  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
-  hsa_agent_t agent;
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
 
-  agent.handle = 1;
-  hsa_status = executable_->DefineAgentExternalVariable(name, agent, HSA_VARIABLE_SEGMENT_GLOBAL, dptr);
+  hsa_status_t hsa_status =
+      executable_->DefineAgentExternalVariable(name, agent, HSA_VARIABLE_SEGMENT_GLOBAL, dptr);
   if (HSA_STATUS_SUCCESS != hsa_status) {
     buildLog_ += "Could not define Program External Variable";
     buildLog_ += "\n";
+    return false;
   }
 
-  return (hsa_status == HSA_STATUS_SUCCESS);
+  return true;
 }
 
 bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr, size_t* bytes,
@@ -432,7 +432,6 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
   size_t offset = 0;
   uint32_t flags = 0;
   amd::Memory* parent = nullptr;
-  hsa_agent_t agent;
   hsa_symbol_kind_t type;
   hsa_status_t status = HSA_STATUS_SUCCESS;
   amd::hsa::loader::Symbol* symbol = nullptr;
@@ -443,8 +442,9 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
     return false;
   }
 
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
+
   /* Retrieve the Symbol obj from global name*/
-  agent.handle = 1;
   symbol = executable_->GetSymbol(global_name, &agent);
   if (!symbol) {
     buildLog_ += "Error: Getting Global Var Symbol";
@@ -789,6 +789,8 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   hsa_code_object_t code_object;
   code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
