@@ -272,7 +272,7 @@ class NullProgram : public device::Program {
   std::vector<device::PrintfInfo> printf_;  //!< Format strings for GPU printf support
   std::vector<uint> glbCb_;         //!< Global constant buffers
 
-  virtual const aclTargetInfo& info(const char* str = "");
+  virtual const aclTargetInfo& info();
 
   virtual bool saveBinaryAndSetType(type_t type) { return true; }
 
@@ -503,7 +503,7 @@ class HSAILProgram : public device::Program {
 
   virtual bool createBinary(amd::option::Options* options);
 
-  virtual const aclTargetInfo& info(const char* str = "");
+  virtual const aclTargetInfo& info();
 
  private:
   //! Disable default copy constructor

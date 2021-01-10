@@ -174,7 +174,7 @@ Settings::Settings() {
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
                       const Pal::GpuMemoryHeapProperties* heaps, const Pal::WorkStationCaps& wscaps,
-                      bool reportAsOCL12Device) {
+                      bool enableXNACK, bool reportAsOCL12Device) {
   uint32_t osVer = 0x0;
 
   // Disable thread trace by default for all devices
@@ -202,19 +202,19 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     apuSystem_ = true;
   }
 
+  enableXNACK_ = enableXNACK;
+  hsailExplicitXnack_ = enableXNACK;
+
   switch (palProp.revision) {
-    case Pal::AsicRevision::Navi23:
-    case Pal::AsicRevision::Navi22:
-    case Pal::AsicRevision::Navi21:
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
+    case Pal::AsicRevision::Navi23:
+    case Pal::AsicRevision::Navi22:
+    case Pal::AsicRevision::Navi21:
       gfx10Plus_ = true;
       useLightning_ = GPU_ENABLE_LC;
-      hsailExplicitXnack_ =
-          static_cast<uint>(palProp.gpuMemoryProperties.flags.pageMigrationEnabled ||
-                            palProp.gpuMemoryProperties.flags.iommuv2Support);
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
@@ -264,6 +264,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Polaris10:
     case Pal::AsicRevision::Polaris11:
     case Pal::AsicRevision::Polaris12:
+    case Pal::AsicRevision::Polaris22:
       // Disable tiling aperture on VI+
       linearPersistentImage_ = true;
       // Keep this false even though we have support
@@ -289,6 +290,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     // Fall through ...
     case Pal::AsicRevision::Bonaire:
     case Pal::AsicRevision::Hawaii:
+    case Pal::AsicRevision::HawaiiPro:
       threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
       reportFMAF_ = false;
       if ((palProp.revision == Pal::AsicRevision::Hawaii) || aiPlus_) {

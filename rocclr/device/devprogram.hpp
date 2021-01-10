@@ -117,7 +117,6 @@ class Program : public amd::HeapObject {
   int32_t buildStatus_;              //!< build status.
   int32_t buildError_;               //!< build error
 
-  const char* machineTarget_;       //!< Machine target for this program
   aclTargetInfo info_;              //!< The info target for this binary.
   size_t globalVariableTotalSize_;
   amd::option::Options* programOptions_;
@@ -233,9 +232,6 @@ class Program : public amd::HeapObject {
   const uint32_t codeObjectVer() const { return codeObjectVer_; }
 #endif
 
-  //! Get the machine target for the program
-  const char* machineTarget() const { return machineTarget_; }
-
   //! Check if program is HIP based
   const bool isHIP() const { return (isHIP_ == 1); }
 
@@ -293,7 +289,7 @@ class Program : public amd::HeapObject {
   void releaseClBinary();
 
   //! return target info
-  virtual const aclTargetInfo& info(const char* str = "") = 0;
+  virtual const aclTargetInfo& info() = 0;
 
   virtual bool setKernels(
     amd::option::Options* options, void* binary, size_t binSize,

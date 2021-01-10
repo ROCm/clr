@@ -122,7 +122,7 @@ bool NullKernel::siCreateHwInfo(const void* shader, AMUabiAddEncoding& encoding)
   i++;
 
   newInfos[i].address = AMU_ABI_WAVEFRONT_SIZE;
-  newInfos[i].value = nullDev().hwInfo()->simdWidth_ * 4;  // options.WavefrontSize;
+  newInfos[i].value = nullDev().isa().simdWidth() * 4;  // options.WavefrontSize;
   i++;
 
   newInfos[i].address = AMU_ABI_LDS_SIZE_AVAIL;

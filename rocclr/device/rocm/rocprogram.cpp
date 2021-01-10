@@ -234,9 +234,8 @@ bool Program::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
   return true;
 }
 
-HSAILProgram::HSAILProgram(roc::NullDevice& device, amd::Program& owner) : roc::Program(device, owner) {
-  machineTarget_ = rocNullDevice().deviceInfo().machineTarget_;
-}
+HSAILProgram::HSAILProgram(roc::NullDevice& device, amd::Program& owner)
+    : roc::Program(device, owner) {}
 
 HSAILProgram::~HSAILProgram() {
 #if defined(WITH_COMPILER_LIB)
@@ -440,7 +439,6 @@ LightningProgram::LightningProgram(roc::NullDevice& device, amd::Program& owner)
   : roc::Program(device, owner) {
   isLC_ = true;
   isHIP_ = (owner.language() == amd::Program::HIP);
-  machineTarget_ = rocNullDevice().deviceInfo().machineTargetLC_;
 }
 
 bool LightningProgram::createBinary(amd::option::Options* options) {

@@ -110,7 +110,7 @@ class NullDevice : public amd::Device {
   NullDevice(){};
 
   //! create the device
-  bool create(const AMDDeviceInfo& deviceInfo);
+  bool create(const amd::Isa &isa);
 
   //! Initialise all the offline devices that can be used for compilation
   static bool init();
@@ -126,7 +126,6 @@ class NullDevice : public amd::Device {
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
-  const AMDDeviceInfo& deviceInfo() const { return deviceInfo_; }
 
   // List of dummy functions which are disabled for NullDevice
 
@@ -232,8 +231,6 @@ class NullDevice : public amd::Device {
   static bool destroyCompiler();
   //! Handle to the the compiler
   static Compiler* compilerHandle_;
-  //! Device Id for an HsaDevice
-  AMDDeviceInfo deviceInfo_;
 
  private:
   static constexpr bool offlineDevice_ = true;
@@ -515,6 +512,7 @@ class Device : public NullDevice {
   std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
   hsa_agent_t _bkendDevice;
+  uint32_t pciDeviceId_;
   hsa_agent_t* p2p_agents_list_;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;

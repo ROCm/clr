@@ -67,7 +67,12 @@ class NullDevice : public amd::Device {
   NullDevice();
 
   //! Creates an offline device with the specified target
-  bool create(CALtarget target  //!< GPU device identifier
+  bool create(const char* calName,  //!< GPU device name
+              const amd::Isa& isa,  //!< GPU device isa
+              CALtarget target,     //!< GPU device identifier
+              bool preferPal,       //!< GPU prefer to use PAL if GPU_ENABLE_PAL=2
+              bool doublePrecision, //!< Use double precision
+              bool openCL200        //!< Use OpenCL 2.0
               );
 
   //! Instantiate a new virtual device
@@ -115,7 +120,7 @@ class NullDevice : public amd::Device {
 
   CALtarget calTarget() const { return calTarget_; }
 
-  const AMDDeviceInfo* hwInfo() const { return hwInfo_; }
+  CALMachineType calMachine() const { return calMachine_; }
 
   //! Empty implementation on Null device
   virtual bool globalFreeMemory(size_t* freeMemory) const { return false; }
@@ -131,12 +136,6 @@ class NullDevice : public amd::Device {
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
 
  protected:
-  bool usePal() const {
-    return (calTarget_ == CAL_TARGET_GREENLAND || calTarget_ == CAL_TARGET_RAVEN ||
-            calTarget_ == CAL_TARGET_RAVEN2 || calTarget_ == CAL_TARGET_RENOIR ||
-            calTarget_ >= CAL_TARGET_VEGA12);
-  }
-
   //! Answer the question: "Should HSAIL Program be created?",
   //! based on the given options.
   bool isHsailProgram(amd::option::Options* options = NULL);
@@ -150,7 +149,8 @@ class NullDevice : public amd::Device {
                       );
 
   CALtarget calTarget_;          //!< GPU device identifier
-  const AMDDeviceInfo* hwInfo_;  //!< Device HW info structure
+  CALMachineType calMachine_;    //!< GPU machine identifier
+  const char* calName_;          //!< GPU device name
 };
 
 //! Forward declarations
