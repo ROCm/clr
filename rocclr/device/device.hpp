@@ -609,6 +609,10 @@ class Settings : public amd::HeapObject {
   //! Default constructor
   Settings();
 
+  //! Virtual destructor as this class is used as a base class and is also used
+  //! to delete the derived classes.
+  virtual ~Settings() {};
+
   //! Check the specified extension
   bool checkExtension(uint name) const {
     return (extensions_ & (static_cast<uint64_t>(1) << name)) ? true : false;
