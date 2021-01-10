@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <fstream>
+#include <memory>
 #include <iterator>
 #include <sstream>
 
@@ -588,11 +589,12 @@ void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_ag
     }
     return ptr;
   }
-  Segment* seg = new Segment();
-  if (seg != nullptr && !seg->alloc(*program_, segment, size, align, zero)) {
+
+  std::unique_ptr<Segment> seg(new Segment());
+  if (!seg || !seg->alloc(*program_, segment, size, align, zero)) {
     return nullptr;
   }
-  return seg;
+  return seg.release();
 }
 
 bool PALHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,
@@ -655,11 +657,13 @@ hsa_status_t PALHSALoaderContext::SamplerCreate(
   if (!sampler_descriptor || !sampler_handle) {
     return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
+
   if (program_->isNull()) {
-    // Offline compilation. Provide a fake handle to avoid an assert
+    // Offline compilation. Provide a fake non-null handle.
     sampler_handle->handle = 1;
     return HSA_STATUS_SUCCESS;
   }
+
   uint32_t state = 0;
   switch (sampler_descriptor->coordinate_mode) {
     case HSA_EXT_SAMPLER_COORDINATE_MODE_UNNORMALIZED:
@@ -703,13 +707,12 @@ hsa_status_t PALHSALoaderContext::SamplerCreate(
       assert(false);
       return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
-  pal::Sampler* sampler = new pal::Sampler(program_->palDevice());
+  std::unique_ptr<pal::Sampler> sampler(new pal::Sampler(program_->palDevice()));
   if (!sampler || !sampler->create(state)) {
-    delete sampler;
     return HSA_STATUS_ERROR;
   }
-  program_->addSampler(sampler);
   sampler_handle->handle = sampler->hwSrd();
+  program_->addSampler(sampler.release());
   return HSA_STATUS_SUCCESS;
 }
 
@@ -721,6 +724,7 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
   if (!sampler_handle.handle) {
     return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
+  // Samplers will be destroyed by the pal::HSAILProgam destructor.
   return HSA_STATUS_SUCCESS;
 }
 
