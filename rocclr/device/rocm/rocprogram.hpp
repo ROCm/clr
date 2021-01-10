@@ -57,9 +57,6 @@ class Program : public device::Program {
     return static_cast<const Device&>(device());
   }
 
-  //! Returns the hsaBinary associated with the program
-  hsa_agent_t hsaDevice() const { return rocNullDevice().getBackendDevice(); }
-
   hsa_executable_t hsaExecutable() const {
     assert(!isNull());
     return hsaExecutable_;

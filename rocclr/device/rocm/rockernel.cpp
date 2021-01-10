@@ -71,7 +71,7 @@ bool LightningKernel::init() {
   // Get the kernel code handle
   hsa_status_t hsaStatus;
   hsa_executable_symbol_t symbol;
-  hsa_agent_t agent = program()->hsaDevice();
+  hsa_agent_t agent = program()->rocDevice().getBackendDevice();
   hsaStatus = hsa_executable_get_symbol_by_name(program()->hsaExecutable(),
                                                 symbolName().c_str(),
                                                 &agent, &symbol);
@@ -142,8 +142,8 @@ bool LightningKernel::init() {
   }
 
   uint32_t wavefront_size = 0;
-  if (hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size) !=
-      HSA_STATUS_SUCCESS) {
+  if (hsa_agent_get_info(program()->rocDevice().getBackendDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
+                         &wavefront_size) != HSA_STATUS_SUCCESS) {
     DevLogPrintfError("[ROC][Kernel] Cannot get Wavefront Size, failed with hsa_status: %d \n",
                       hsaStatus);
     return false;
@@ -177,8 +177,6 @@ bool LightningKernel::init() {
 #if defined(WITH_COMPILER_LIB)
 bool HSAILKernel::init() {
   acl_error errorCode;
-  // compile kernel down to ISA
-  hsa_agent_t hsaDevice = program()->hsaDevice();
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
   aclCompiler* compileHandle = program()->rocDevice().compiler();
@@ -222,7 +220,8 @@ bool HSAILKernel::init() {
   }
 
   uint32_t wavefront_size = 0;
-  hsa_status_t hsaStatus = hsa_agent_get_info(program()->hsaDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size);
+  hsa_status_t hsaStatus = hsa_agent_get_info(program()->rocDevice().getBackendDevice(),
+                                              HSA_AGENT_INFO_WAVEFRONT_SIZE, &wavefront_size);
   if (HSA_STATUS_SUCCESS != hsaStatus) {
     DevLogPrintfError("Could not get Wave Info Size: %d, failed with hsa_status: %d \n",
                       errorCode, hsaStatus);
