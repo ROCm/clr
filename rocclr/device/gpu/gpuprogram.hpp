@@ -289,7 +289,7 @@ class NullProgram : public device::Program {
                       );
 
   //! Return a typecasted GPU device
-  gpu::NullDevice& dev() {
+  gpu::NullDevice& gpuNullDevice() {
     return const_cast<gpu::NullDevice&>(static_cast<const gpu::NullDevice&>(device()));
   }
 
@@ -339,16 +339,18 @@ class Program : public NullProgram {
   //! Returns pritnf info array
   const std::vector<device::PrintfInfo>& printfInfo() const { return printf_; }
 
-   //! Return a typecasted GPU device
-  gpu::Device& dev() { return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device())); }
-
-protected:
+ protected:
  private:
   //! Disable copy constructor
   Program(const Program&);
 
   //! Disable operator=
   Program& operator=(const Program&);
+
+  //! Return a typecasted GPU device
+  gpu::Device& gpuDevice() {
+    return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device()));
+  }
 
   HwConstBuffers constBufs_;  //!< Constant buffers for the global store
   gpu::Memory* glbData_;      //!< Global data store
@@ -467,8 +469,15 @@ class HSAILProgram : public device::Program {
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
-  //! Return a typecasted GPU device
-  gpu::Device& dev() { return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device())); }
+  //! Return a typecasted GPU null device.
+  gpu::NullDevice& gpuNullDevice() {
+    return const_cast<gpu::NullDevice&>(static_cast<const gpu::NullDevice&>(device()));
+  }
+
+  //! Return a typecasted GPU device. The device must not be the NullDevice.
+  gpu::Device& gpuDevice() {
+    return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device()));
+  }
 
   //! Returns GPU kernel table
   const Memory* kernelTable() const { return kernels_; }

@@ -49,10 +49,13 @@ class Program : public device::Program {
   virtual bool initClBinary(char* binaryIn, size_t size);
 
   //! Return a typecasted GPU device
-  const NullDevice& dev() const { return static_cast<const NullDevice&>(device()); }
+  const NullDevice& rocNullDevice() const { return static_cast<const NullDevice&>(device()); }
+
+  //! Return a typecasted GPU device
+  const Device& rocDevice() const { return static_cast<const Device&>(device()); }
 
   //! Returns the hsaBinary associated with the program
-  hsa_agent_t hsaDevice() const { return dev().getBackendDevice(); }
+  hsa_agent_t hsaDevice() const { return rocNullDevice().getBackendDevice(); }
 
   hsa_executable_t hsaExecutable() const { return hsaExecutable_; }
 

@@ -407,7 +407,7 @@ class Kernel : public amd::HeapObject {
   };
 
   //! Returns GPU device object, associated with this kernel
-  const amd::Device& dev() const { return dev_; }
+  const amd::Device& device() const { return dev_; }
 
   void setVecTypeHint(const std::string& hint) { workGroupInfo_.compileVecTypeHint_ = hint; }
 
