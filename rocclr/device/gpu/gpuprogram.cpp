@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <sstream>
 
 namespace gpu {
@@ -1977,6 +1978,7 @@ void* ORCAHSALoaderContext::SegmentAddress(amdgpu_hsa_elf_segment_t segment, hsa
 hsa_status_t ORCAHSALoaderContext::SamplerCreate(
     hsa_agent_t agent, const hsa_ext_sampler_descriptor_t* sampler_descriptor,
     hsa_ext_sampler_t* sampler_handle) {
+  sampler_handle->handle = 0;
   if (!agent.handle) {
     return HSA_STATUS_ERROR_INVALID_AGENT;
   }
@@ -1985,7 +1987,7 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
   }
 
   if (program_->isNull()) {
-    // Offline compilation. Provide a fake handle to avoid an assert
+    // Offline compilation. Provide a fake non-null handle.
     sampler_handle->handle = 1;
     return HSA_STATUS_SUCCESS;
   }
@@ -2033,13 +2035,12 @@ hsa_status_t ORCAHSALoaderContext::SamplerCreate(
       assert(false);
       return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
-  gpu::Sampler* sampler = new gpu::Sampler(program_->gpuDevice());
+  std::unique_ptr<gpu::Sampler> sampler(new gpu::Sampler(program_->gpuDevice()));
   if (!sampler || !sampler->create(state)) {
-    delete sampler;
     return HSA_STATUS_ERROR;
   }
-  program_->addSampler(sampler);
   sampler_handle->handle = sampler->hwSrd();
+  program_->addSampler(sampler.release());
   return HSA_STATUS_SUCCESS;
 }
 
@@ -2051,6 +2052,7 @@ hsa_status_t ORCAHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
   if (!sampler_handle.handle) {
     return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
+  // Samplers will be destroyed by the pal::HSAILProgam destructor.
   return HSA_STATUS_SUCCESS;
 }
 
