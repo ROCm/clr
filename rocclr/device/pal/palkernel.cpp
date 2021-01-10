@@ -143,7 +143,9 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     }
   }
 
-  aqlCreateHWInfo(sym);
+  if (!aqlCreateHWInfo(sym)) {
+    return false;
+  }
 
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
