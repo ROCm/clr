@@ -674,7 +674,7 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
   if (workGroupInfo()->compileSize_[0] == 0) {
     // Find the default local workgroup size, if it wasn't specified
     if (lclWorkSize[0] == 0) {
-      if ((dev().settings().overrideLclSet & (1 << (workDim - 1))) == 0) {
+      if ((device().settings().overrideLclSet & (1 << (workDim - 1))) == 0) {
         // Find threads per group
         size_t thrPerGrp = workGroupInfo()->size_;
 
@@ -685,7 +685,7 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
           // and it's 2 or 3-dimensional workload
           (workDim > 1) && (((gblWorkSize[0] % 16) == 0) && ((gblWorkSize[1] % 16) == 0))) {
           // Use 8x8 workgroup size if kernel has image writes
-          if (flags_.imageWriteEna_ || (thrPerGrp != dev().info().preferredWorkGroupSize_)) {
+          if (flags_.imageWriteEna_ || (thrPerGrp != device().info().preferredWorkGroupSize_)) {
             lclWorkSize[0] = 8;
             lclWorkSize[1] = 8;
           }
@@ -709,7 +709,7 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
           }
 
           // Assuming DWORD access
-          const uint cacheLineMatch = dev().info().globalMemCacheLineSize_ >> 2;
+          const uint cacheLineMatch = device().info().globalMemCacheLineSize_ >> 2;
 
           // Check if we couldn't find optimal workload
           if (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
@@ -1095,7 +1095,7 @@ bool Kernel::GetAttrCodePropMetadata() {
   InitParameters(kernelMetaNode);
 
   // Set the workgroup information for the kernel
-  workGroupInfo_.availableLDSSize_ = dev().info().localMemSizePerCU_;
+  workGroupInfo_.availableLDSSize_ = device().info().localMemSizePerCU_;
   workGroupInfo_.availableSGPRs_ = 104;
   workGroupInfo_.availableVGPRs_ = 256;
 

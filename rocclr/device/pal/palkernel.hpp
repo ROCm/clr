@@ -68,8 +68,11 @@ class HSAILKernel : public device::Kernel {
   //! finalizes the kernel if needed
   bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
 
-  //! Returns PAL device object, associated with this kernel
-  const Device& dev() const;
+  //! Returns PAL, possibly null, device object, associated with this kernel.
+  const NullDevice& palNullDevice() const { return reinterpret_cast<const NullDevice&>(dev_); }
+
+  //! Returns PAL device object, associated with this kernel which must not be the null device.
+  const Device& palDevice() const { return reinterpret_cast<const Device&>(dev_); }
 
   //! Returns HSA program associated with this kernel
   const HSAILProgram& prog() const;

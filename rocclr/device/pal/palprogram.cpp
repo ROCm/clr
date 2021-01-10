@@ -70,8 +70,8 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
                     bool zero) {
   align = amd::alignUp(align, sizeof(uint32_t));
 
-  amd::Memory* amd_mem_obj = new (prog.dev().context())
-      amd::Buffer(prog.dev().context(), 0, amd::alignUp(size, align),
+  amd::Memory* amd_mem_obj = new (prog.palDevice().context())
+      amd::Buffer(prog.palDevice().context(), 0, amd::alignUp(size, align),
                   // HIP requires SVM allocation for segment code due to possible global variable
                   // access and global variables are a part of code segment with the latest loader
                   amd::IS_HIP ? reinterpret_cast<void*>(1) : nullptr);
@@ -87,11 +87,11 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
     return false;
   }
 
-  gpuAccess_ = static_cast<pal::Memory*>(amd_mem_obj->getDeviceMemory(prog.dev(), false));
+  gpuAccess_ = static_cast<pal::Memory*>(amd_mem_obj->getDeviceMemory(prog.palDevice(), false));
 
   if (segment == AMDGPU_HSA_SEGMENT_CODE_AGENT) {
     void* ptr = nullptr;
-    cpuAccess_ = new pal::Memory(prog.dev(), amd::alignUp(size, align));
+    cpuAccess_ = new pal::Memory(prog.palDevice(), amd::alignUp(size, align));
     if ((cpuAccess_ == nullptr) || !cpuAccess_->create(pal::Resource::Remote)) {
       delete cpuAccess_;
       cpuAccess_ = nullptr;
@@ -111,8 +111,8 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
   if ((cpuAccess_ == nullptr) && zero && !prog.isInternal()) {
     uint64_t pattern = 0;
     size_t patternSize = ((size % sizeof(pattern)) == 0) ? sizeof(pattern) : 1;
-    prog.dev().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize, amd::Coord3D(0),
-                                    amd::Coord3D(size));
+    prog.palDevice().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize, amd::Coord3D(0),
+                                          amd::Coord3D(size));
   }
 
   switch (segment) {
@@ -266,7 +266,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   size_t kernelNamesSize = 0;
-  acl_error errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
+  acl_error errorCode = aclQueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
                                      nullptr, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
@@ -274,7 +274,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
   if (kernelNamesSize > 0) {
     char* kernelNames = new char[kernelNamesSize];
-    errorCode = aclQueryInfo(dev().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames,
+    errorCode = aclQueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames,
                              &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
@@ -326,7 +326,7 @@ bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
 bool HSAILProgram::allocKernelTable() {
   uint size = kernels().size() * sizeof(size_t);
 
-  kernels_ = new pal::Memory(dev(), size);
+  kernels_ = new pal::Memory(palDevice(), size);
   // Initialize kernel table
   if ((kernels_ == nullptr) || !kernels_->create(Resource::RemoteUSWC)) {
     delete kernels_;
@@ -352,7 +352,7 @@ const aclTargetInfo& HSAILProgram::info(const char* str) {
     arch = "hsail64";
   }
   info_ = aclGetTargetInfo(arch.c_str(),
-                           (str && str[0] == '\0' ? dev().hwInfo()->machineTarget_ : str), &err);
+                           (str && str[0] == '\0' ? palNullDevice().hwInfo()->machineTarget_ : str), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -523,9 +523,9 @@ hsa_isa_t PALHSALoaderContext::IsaFromName(const char* name) {
 }
 
 bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) {
-  uint32_t gfxipVersion = program_->dev().settings().useLightning_
-      ? program_->dev().hwInfo()->gfxipVersionLC_
-      : program_->dev().hwInfo()->gfxipVersion_;
+  uint32_t gfxipVersion = program_->palNullDevice().settings().useLightning_
+      ? program_->palNullDevice().hwInfo()->gfxipVersionLC_
+      : program_->palNullDevice().hwInfo()->gfxipVersion_;
   uint32_t majorSrc = gfxipVersion / 10;
   uint32_t minorSrc = gfxipVersion % 10;
 
@@ -671,7 +671,7 @@ hsa_status_t PALHSALoaderContext::SamplerCreate(
       assert(false);
       return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
-  pal::Sampler* sampler = new pal::Sampler(program_->dev());
+  pal::Sampler* sampler = new pal::Sampler(program_->palDevice());
   if (!sampler || !sampler->create(state)) {
     delete sampler;
     return HSA_STATUS_ERROR;

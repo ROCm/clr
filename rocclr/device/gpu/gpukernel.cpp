@@ -3045,7 +3045,7 @@ void HSAILKernel::initHsailArgs(const aclArgData* aclArg) {
 
 HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions,
                          uint extraArgsNum)
-    : device::Kernel(prog->dev(), name, *prog),
+    : device::Kernel(prog->device(), name, *prog),
       compileOptions_(compileOptions),
       index_(0),
       code_(NULL),

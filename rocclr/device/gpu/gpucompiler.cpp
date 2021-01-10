@@ -42,7 +42,7 @@ bool NullProgram::compileImpl(const std::string& src,
                               const char** headerIncludeNames, amd::option::Options* options) {
   std::string sourceCode = src;
 
-  if (dev().settings().debugFlags_ & Settings::CheckForILSource) {
+  if (gpuNullDevice().settings().debugFlags_ & Settings::CheckForILSource) {
     size_t inc = sourceCode.find("il_cs_", 0);
     if (inc != std::string::npos) {
       // CL program is an IL program
@@ -55,7 +55,7 @@ bool NullProgram::compileImpl(const std::string& src,
   std::string tempFolder = amd::Os::getTempPath();
   std::string tempFileName = amd::Os::getTempFileName();
 
-  if (dev().settings().debugFlags_ & Settings::StubCLPrograms) {
+  if (gpuNullDevice().settings().debugFlags_ & Settings::StubCLPrograms) {
     std::stringstream fileName;
     std::fstream stubRead;
     // Dump the IL function
@@ -130,7 +130,7 @@ bool NullProgram::compileImpl(const std::string& src,
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(dev().amdilCompiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
+      aclInsertSection(gpuNullDevice().amdilCompiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
     LogWarning("aclInsertSection failed");
     aclBinaryFini(bin);
     return false;
@@ -145,7 +145,7 @@ bool NullProgram::compileImpl(const std::string& src,
   opts << options->origOptionStr.c_str();
 
   if (options->origOptionStr.find("-cl-std=CL") == std::string::npos) {
-    switch (dev().settings().oclVersion_) {
+    switch (gpuNullDevice().settings().oclVersion_) {
       case OpenCL10:
         opts << " -cl-std=CL1.0";
         break;
@@ -179,15 +179,15 @@ bool NullProgram::compileImpl(const std::string& src,
     opts << " -I" << tempFolder;
   }
 
-  if (!dev().settings().imageSupport_) {
+  if (!gpuNullDevice().settings().imageSupport_) {
     opts << " -fno-image-support";
   }
 
-  if (dev().settings().reportFMAF_) {
+  if (gpuNullDevice().settings().reportFMAF_) {
     opts << " -mfast-fmaf";
   }
 
-  if (dev().settings().reportFMA_) {
+  if (gpuNullDevice().settings().reportFMA_) {
     opts << " -mfast-fma";
   }
 
@@ -206,10 +206,10 @@ bool NullProgram::compileImpl(const std::string& src,
     pos = newOpt.find("-fno-bin-llvmir");
   }
 
-  err = aclCompile(dev().amdilCompiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
+  err = aclCompile(gpuNullDevice().amdilCompiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
                    NULL);
 
-  buildLog_ += aclGetCompilerLog(dev().amdilCompiler());
+  buildLog_ += aclGetCompilerLog(gpuNullDevice().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
@@ -218,7 +218,7 @@ bool NullProgram::compileImpl(const std::string& src,
   }
 
   size_t len = 0;
-  const void* ir = aclExtractSection(dev().amdilCompiler(), bin, &len, aclLLVMIR, &err);
+  const void* ir = aclExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclLLVMIR, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
     aclBinaryFini(bin);
@@ -284,7 +284,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(dev().amdilCompiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
+      aclInsertSection(gpuNullDevice().amdilCompiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
     LogWarning("aclInsertSection failed");
     aclBinaryFini(bin);
     return CL_BUILD_PROGRAM_FAILURE;
@@ -294,7 +294,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   std::string optionStr = options->origOptionStr;
   if (options->origOptionStr.find("kernel-arg-alignment") == std::string::npos) {
     char s[256];
-    sprintf(s, " -Wb,-kernel-arg-alignment=%d", dev().info().memBaseAddrAlign_ / 8);
+    sprintf(s, " -Wb,-kernel-arg-alignment=%d", gpuNullDevice().info().memBaseAddrAlign_ / 8);
     optionStr += s;
   }
 
@@ -308,8 +308,8 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
     type = ACL_TYPE_ISA;
   }
 
-  err = aclCompile(dev().amdilCompiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
-  buildLog_ += aclGetCompilerLog(dev().amdilCompiler());
+  err = aclCompile(gpuNullDevice().amdilCompiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
+  buildLog_ += aclGetCompilerLog(gpuNullDevice().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
@@ -332,7 +332,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   size_t len = 0;
-  const void* amdil = aclExtractSection(dev().amdilCompiler(), bin, &len, aclCODEGEN, &err);
+  const void* amdil = aclExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclCODEGEN, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
     aclBinaryFini(bin);

@@ -157,8 +157,15 @@ class HSAILProgram : public device::Program {
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
-  //! Return a typecasted PAL device
-  pal::Device& dev() { return const_cast<pal::Device&>(static_cast<const pal::Device&>(device())); }
+  //! Return a typecasted PAL null device.
+  pal::NullDevice& palNullDevice() {
+    return const_cast<pal::NullDevice&>(static_cast<const pal::NullDevice&>(device()));
+  }
+
+  //! Return a typecasted PAL device. The device must not be the NullDevice.
+  pal::Device& palDevice() {
+    return const_cast<pal::Device&>(static_cast<const pal::Device&>(device()));
+  }
 
   //! Returns GPU kernel table
   const Memory* kernelTable() const { return kernels_; }
@@ -241,7 +248,7 @@ class LightningProgram : public HSAILProgram {
   LightningProgram(NullDevice& device, amd::Program& owner) : HSAILProgram(device, owner) {
     isLC_ = true;
     isHIP_ = (owner.language() == amd::Program::HIP);
-    machineTarget_ = dev().hwInfo()->machineTargetLC_;
+    machineTarget_ = palNullDevice().hwInfo()->machineTargetLC_;
   }
 
   LightningProgram(Device& device, amd::Program& owner) : HSAILProgram(device, owner) {
