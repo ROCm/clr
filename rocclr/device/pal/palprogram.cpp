@@ -68,6 +68,11 @@ bool Segment::gpuAddressOffset(uint64_t offAddr, size_t* offset) {
 
 bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t size, size_t align,
                     bool zero) {
+  if (prog.isNull()) {
+    LogError("[OCL] cannot create a mem object on an offline device!");
+    return false;
+  }
+
   align = amd::alignUp(align, sizeof(uint32_t));
 
   amd::Memory* amd_mem_obj = new (prog.palDevice().context())
@@ -178,6 +183,7 @@ HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
       maxScratchRegs_(0),
       executable_(nullptr),
       loaderContext_(this) {
+  assert(device.isOnline());
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {
@@ -195,13 +201,15 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       maxScratchRegs_(0),
       executable_(nullptr),
       loaderContext_(this) {
+  assert(!device.isOnline());
   isNull_ = true;
   if (dev().asicRevision() == Pal::AsicRevision::Bristol) {
     machineTarget_ = Carrizo;
   } else {
     machineTarget_ = dev().hwInfo()->machineTarget_;
   }
-  loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
+  // Cannot load onto a NullDevice.
+  loader_ = nullptr;
 }
 
 HSAILProgram::~HSAILProgram() {
@@ -223,11 +231,15 @@ HSAILProgram::~HSAILProgram() {
   }
 #endif  // defined(WITH_COMPILER_LIB)
   releaseClBinary();
-  if (executable_ != nullptr) {
+  if (executable_) {
     loader_->DestroyExecutable(executable_);
   }
-  delete kernels_;
-  amd::hsa::loader::Loader::Destroy(loader_);
+  if (kernels_) {
+    delete kernels_;
+  }
+  if (loader_) {
+    amd::hsa::loader::Loader::Destroy(loader_);
+  }
 }
 
 
@@ -242,6 +254,12 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
                               amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(WITH_COMPILER_LIB)
+  // Stop compilation if it is an offline device - PAL runtime does not
+  // support ISA compiled offline
+  if (!device().isOnline()) {
+    return true;
+  }
+
   // ACL_TYPE_CG stage is not performed for offline compilation
   hsa_agent_t agent;
   agent.handle = 1;
@@ -324,6 +342,11 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
 bool HSAILProgram::createBinary(amd::option::Options* options) { return true; }
 
 bool HSAILProgram::allocKernelTable() {
+  if (isNull()) {
+    // Cannot create a kernel table for offline devices.
+    return false;
+  }
+
   uint size = kernels().size() * sizeof(size_t);
 
   kernels_ = new pal::Memory(palDevice(), size);
@@ -381,6 +404,10 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
 }
 
 bool HSAILProgram::defineGlobalVar(const char* name, void* dptr) {
+  if (!device().isOnline()) {
+    return false;
+  }
+
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
   hsa_agent_t agent;
 
@@ -396,6 +423,10 @@ bool HSAILProgram::defineGlobalVar(const char* name, void* dptr) {
 
 bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr, size_t* bytes,
                                       const char* global_name) const {
+  if (!device().isOnline()) {
+    return false;
+  }
+
   uint32_t length = 0;
   size_t offset = 0;
   uint32_t flags = 0;
@@ -607,6 +638,7 @@ void* PALHSALoaderContext::SegmentHostAddress(amdgpu_hsa_elf_segment_t segment, 
 
 bool PALHSALoaderContext::SegmentFreeze(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,
                                         void* seg, size_t size) {
+  assert(seg);
   if (program_->isNull()) {
     return true;
   }
@@ -736,6 +768,12 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
 bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
                                   amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
+  // Stop compilation if it is an offline device - PAL runtime does not
+  // support ISA compiled offline
+  if (!device().isOnline()) {
+    return true;
+  }
+
   hsa_agent_t agent;
   agent.handle = 1;
 

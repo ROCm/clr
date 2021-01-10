@@ -349,6 +349,7 @@ class Program : public NullProgram {
 
   //! Return a typecasted GPU device
   gpu::Device& gpuDevice() {
+    assert(!isNull());
     return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device()));
   }
 
@@ -476,6 +477,7 @@ class HSAILProgram : public device::Program {
 
   //! Return a typecasted GPU device. The device must not be the NullDevice.
   gpu::Device& gpuDevice() {
+    assert(!isNull());
     return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device()));
   }
 

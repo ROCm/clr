@@ -268,10 +268,14 @@ Device::Device()
 }
 
 Device::~Device() {
-  CondLog((vaCacheMap_ != nullptr) && (vaCacheMap_->size() != 0),
-          "Application didn't unmap all host memory!");
-  delete vaCacheMap_;
-  delete vaCacheAccess_;
+  if (vaCacheMap_) {
+    CondLog(vaCacheMap_->size() != 0, "Application didn't unmap all host memory!");
+    delete vaCacheMap_;
+  }
+
+  if (vaCacheAccess_) {
+    delete vaCacheAccess_;
+  }
 
   // Destroy device settings
   if (settings_ != nullptr) {
@@ -297,6 +301,7 @@ bool Device::ValidateComgr() {
 }
 
 bool Device::create() {
+  assert(!vaCacheAccess_ && !vaCacheMap_);
   vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
   if (nullptr == vaCacheAccess_) {
     return false;

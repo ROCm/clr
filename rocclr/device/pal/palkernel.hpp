@@ -72,7 +72,10 @@ class HSAILKernel : public device::Kernel {
   const NullDevice& palNullDevice() const { return reinterpret_cast<const NullDevice&>(dev_); }
 
   //! Returns PAL device object, associated with this kernel which must not be the null device.
-  const Device& palDevice() const { return reinterpret_cast<const Device&>(dev_); }
+  const Device& palDevice() const {
+    assert(dev_.isOnline());
+    return reinterpret_cast<const Device&>(dev_);
+  }
 
   //! Returns HSA program associated with this kernel
   const HSAILProgram& prog() const;
