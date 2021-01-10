@@ -230,7 +230,6 @@ HSAILProgram::HSAILProgram(roc::NullDevice& device, amd::Program& owner) : roc::
   machineTarget_ = dev().deviceInfo().machineTarget_;
 }
 
-
 HSAILProgram::~HSAILProgram() {
 #if defined(WITH_COMPILER_LIB)
   acl_error error;

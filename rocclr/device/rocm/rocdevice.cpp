@@ -60,11 +60,13 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 namespace {
+
 inline bool getIsaMeta(const char* targetId, amd_comgr_metadata_node_t& isaMeta) {
   amd_comgr_status_t status;
   status = amd::Comgr::get_isa_metadata(targetId, &isaMeta);
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
 }
+
 bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
                          std::string& retValue) {
   amd_comgr_status_t status;
@@ -82,11 +84,12 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
 }
-}  // namespace
+
+} // namespace
 
 namespace device {
 extern const char* BlitSourceCode;
-}
+} // namespace device
 
 namespace roc {
 amd::Device::Compiler* NullDevice::compilerHandle_;
@@ -300,6 +303,7 @@ bool NullDevice::destroyCompiler() {
 }
 
 void NullDevice::tearDown() { destroyCompiler(); }
+
 bool NullDevice::init() {
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {

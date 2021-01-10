@@ -588,7 +588,7 @@ class Settings : public amd::HeapObject {
       uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
       uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
-      uint hsailExplicitXnack_ : 1;   //!< Xnack in hsail path for this deivce
+      uint hsailExplicitXnack_ : 1;   //!< Xnack in hsail path for this device
       uint useLightning_ : 1;         //!< Enable LC path for this device
       uint enableWgpMode_ : 1;        //!< Enable WGP mode for this device
       uint enableWave32Mode_ : 1;     //!< Enable Wave32 mode for this device

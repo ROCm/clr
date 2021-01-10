@@ -24,7 +24,7 @@
 
 namespace roc {
 
-//! Alignment restriciton for the pinned memory
+//! Alignment restriction for the pinned memory
 static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
 
 //! Specific defines for images for Dynamic Parallelism
@@ -73,7 +73,7 @@ static constexpr AMDDeviceInfo DeviceInfo[] = {
   /* DIMGREY CAVEFISH*/{"gfx1032", "gfx1032",  2, 32, 1, 256, 64 * Ki, 32, 10, 3, 2, 0}
 };
 
-}
+} // namespace roc
 
 constexpr uint kMaxAsyncQueues = 8;   // set to match the number of pipes, which is 8
 #endif

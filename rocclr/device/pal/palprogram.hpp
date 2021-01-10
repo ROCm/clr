@@ -157,7 +157,7 @@ class HSAILProgram : public device::Program {
 
   const std::vector<Memory*>& globalStores() const { return globalStores_; }
 
-  //! Return a typecasted GPU device
+  //! Return a typecasted PAL device
   pal::Device& dev() { return const_cast<pal::Device&>(static_cast<const pal::Device&>(device())); }
 
   //! Returns GPU kernel table

@@ -68,7 +68,7 @@ class HSAILKernel : public device::Kernel {
   //! finalizes the kernel if needed
   bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
 
-  //! Returns GPU device object, associated with this kernel
+  //! Returns PAL device object, associated with this kernel
   const Device& dev() const;
 
   //! Returns HSA program associated with this kernel

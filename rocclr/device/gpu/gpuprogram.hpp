@@ -138,7 +138,7 @@ class NullProgram : public device::Program {
  protected:
   /*! \brief Compiles GPU CL program to LLVM binary (compiler frontend)
    *
-   *  \return True if we successefully compiled a GPU program
+   *  \return True if we successfully compiled a GPU program
    */
   virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
                            const std::vector<const std::string*>& headers,  //!< header souce codes
@@ -168,21 +168,21 @@ class NullProgram : public device::Program {
 
   /*! \brief Parses the GPU program and finds all available kernels
    *
-   *  \return True if we successefully parsed the GPU program
+   *  \return True if we successfully parsed the GPU program
    */
   bool parseKernels(const std::string& source  //! the program's source code
                     );
 
   /*! \brief Parse all functions in the program
    *
-   *  \return True if we successefully parsed all functions
+   *  \return True if we successfully parsed all functions
    */
   bool parseAllILFuncs(const std::string& source  //! the program's source code
                        );
 
   /*! \brief Parse a function's metadata given as source[posBegin:posEnd-1]
    *
-   *  \return True if we successefully parsed the given metadata
+   *  \return True if we successfully parsed the given metadata
    */
   bool parseFuncMetadata(const std::string& source,  //! string that contains metadata
                          size_t posBegin,            //! begin of metadata in 'source'
@@ -192,7 +192,7 @@ class NullProgram : public device::Program {
   /*! \brief Finds functions with the given start and end string in the
    * program
    *
-   *  \return True if we successefully found all functions
+   *  \return True if we successfully found all functions
    */
   bool findILFuncs(const std::string& source,      //! the program's source code
                    const std::string& func_start,  //! the start string of a function
@@ -339,10 +339,10 @@ class Program : public NullProgram {
   //! Returns pritnf info array
   const std::vector<device::PrintfInfo>& printfInfo() const { return printf_; }
 
-  //! Return a typecasted GPU device
+   //! Return a typecasted GPU device
   gpu::Device& dev() { return const_cast<gpu::Device&>(static_cast<const gpu::Device&>(device())); }
 
- protected:
+protected:
  private:
   //! Disable copy constructor
   Program(const Program&);
