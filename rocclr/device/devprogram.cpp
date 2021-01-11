@@ -118,10 +118,11 @@ void Program::clear() {
 
 // ================================================================================================
 bool Program::compileImpl(const std::string& sourceCode,
-  const std::vector<const std::string*>& headers,
-  const char** headerIncludeNames, amd::option::Options* options) {
+                          const std::vector<const std::string*>& headers,
+                          const char** headerIncludeNames, amd::option::Options* options,
+                          const std::vector<std::string>& preCompiledHeaders) {
   if (isLC()) {
-    return compileImplLC(sourceCode, headers, headerIncludeNames, options);
+    return compileImplLC(sourceCode, headers, headerIncludeNames, options, preCompiledHeaders);
   } else {
     return compileImplHSAIL(sourceCode, headers, headerIncludeNames, options);
   }
@@ -210,6 +211,33 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
     delete[] binary;
   }
   return AMD_COMGR_STATUS_SUCCESS;
+}
+
+amd_comgr_status_t Program::addPreCompiledHeader(
+    amd_comgr_data_set_t* dataSet, const std::vector<std::string>& preCompiledHeaders) {
+  amd_comgr_status_t status;
+  if (preCompiledHeaders.size() > 0) {
+    for (auto& i : preCompiledHeaders) {
+      amd_comgr_data_t pch_data;
+      status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_PRECOMPILED_HEADER, &pch_data);
+      if (status != AMD_COMGR_STATUS_SUCCESS) {
+        return status;
+      }
+
+      status = amd::Comgr::set_data(pch_data, i.size(), i.c_str());
+
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        status = amd::Comgr::set_data_name(pch_data, "PreCompiledHeader");
+      }
+
+      if (status == AMD_COMGR_STATUS_SUCCESS) {
+        status = amd::Comgr::data_set_add(*dataSet, pch_data);
+      }
+
+      amd::Comgr::release_data(pch_data);
+    }
+  }
+  return status;
 }
 
 amd_comgr_status_t Program::addCodeObjData(const char *source,
@@ -569,7 +597,8 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
 
 bool Program::compileImplLC(const std::string& sourceCode,
                             const std::vector<const std::string*>& headers,
-                            const char** headerIncludeNames, amd::option::Options* options) {
+                            const char** headerIncludeNames, amd::option::Options* options,
+                            const std::vector<std::string>& preCompiledHeaders) {
 #if  defined(USE_COMGR_LIBRARY)
   const char* xLang = options->oVariables->XLang;
   if (xLang != nullptr) {
@@ -589,6 +618,13 @@ bool Program::compileImplLC(const std::string& sourceCode,
     buildLog_ += "Error: COMGR fails to create output buffer for LLVM bitcode.\n";
     return false;
   }
+
+  if (preCompiledHeaders.size() > 0)
+    if (addPreCompiledHeader(&inputs, preCompiledHeaders) != AMD_COMGR_STATUS_SUCCESS) {
+      buildLog_ += "Error: COMGR failed to add precompiled Headers.\n";
+      amd::Comgr::destroy_data_set(inputs);
+      return false;
+    }
 
   if (addCodeObjData(sourceCode.c_str(), sourceCode.length(), AMD_COMGR_DATA_KIND_SOURCE,
                      "CompileSource", &inputs) != AMD_COMGR_STATUS_SUCCESS) {
@@ -667,6 +703,14 @@ bool Program::compileImplLC(const std::string& sourceCode,
       f.close();
     } else {
       buildLog_ += "Warning: opening the file to dump the OpenCL source failed.\n";
+    }
+  }
+  // Append Options provided by user to driver options
+  if (isHIP()) {
+    if (options->origOptionStr.size()) {
+      std::istringstream userOptions{options->origOptionStr};
+      std::copy(std::istream_iterator<std::string>(userOptions),
+                std::istream_iterator<std::string>(), std::back_inserter(driverOptions));
     }
   }
 
@@ -1451,7 +1495,7 @@ int32_t Program::compile(const std::string& sourceCode,
 
   // Compile the source code if any
   if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty() &&
-      !compileImpl(sourceCode, headers, headerIncludeNames, options)) {
+      !compileImpl(sourceCode, headers, headerIncludeNames, options, {})) {
     buildStatus_ = CL_BUILD_ERROR;
     if (buildLog_.empty()) {
       buildLog_ = "Internal error: Compilation failed.";
@@ -1610,7 +1654,8 @@ int32_t Program::link(const std::vector<Program*>& inputPrograms, const char* or
 
 // ================================================================================================
 int32_t Program::build(const std::string& sourceCode, const char* origOptions,
-                       amd::option::Options* options) {
+                       amd::option::Options* options,
+                       const std::vector<std::string>& preCompiledHeaders) {
   uint64_t start_time = 0;
   if (options->oVariables->EnableBuildTiming) {
     buildLog_ = "\nStart timing major build components.....\n\n";
@@ -1650,9 +1695,10 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
   bool compileStatus = true;
   if ((buildStatus_ == CL_BUILD_IN_PROGRESS) && !sourceCode.empty()) {
     if (!headerIncludeNames.empty()) {
-      compileStatus = compileImpl(sourceCode, headers, &headerIncludeNames[0], options);
+      compileStatus =
+          compileImpl(sourceCode, headers, &headerIncludeNames[0], options, preCompiledHeaders);
     } else {
-      compileStatus = compileImpl(sourceCode, headers, nullptr, options);
+      compileStatus = compileImpl(sourceCode, headers, nullptr, options, preCompiledHeaders);
     }
   }
   if (!compileStatus) {

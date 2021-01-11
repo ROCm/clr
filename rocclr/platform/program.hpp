@@ -106,6 +106,7 @@ class Program : public RuntimeObject {
 
   std::vector<std::string> headerNames_;
   std::vector<std::string> headers_;
+  std::vector<std::string> precompiledHeaders_; //!< Precompiled Headers
   std::string sourceCode_;   //!< Strings that make up the source code
   Language language_;        //!< Input source language
   devicebinary_t binary_;    //!< The binary image, provided by the app
@@ -177,6 +178,8 @@ class Program : public RuntimeObject {
 
   //! Append to source code.
   void appendToSource(const char* newCode) { sourceCode_.append(newCode); }
+
+  void addPreCompiledHeader(const std::string& pch) { precompiledHeaders_.push_back(pch); }
 
   //! Return the program log.
   const std::string& programLog() const { return programLog_; }

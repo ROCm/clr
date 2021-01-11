@@ -555,7 +555,7 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
     if (devProgram->buildStatus() != CL_BUILD_NONE) {
       continue;
     }
-    int32_t result = devProgram->build(sourceCode_, options, &parsedOptions);
+    int32_t result = devProgram->build(sourceCode_, options, &parsedOptions, precompiledHeaders_);
 
     // Check if the previous device failed a build
     if ((result != CL_SUCCESS) && (retval != CL_SUCCESS)) {
