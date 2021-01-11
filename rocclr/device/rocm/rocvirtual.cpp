@@ -568,7 +568,6 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
 
 // ================================================================================================
 void VirtualGPU::dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet) {
-  assert(packet->completion_signal.handle != 0);
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
   uint32_t header = kBarrierPacketHeader;
