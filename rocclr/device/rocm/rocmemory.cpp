@@ -745,14 +745,6 @@ bool Buffer::create() {
     } else {
       deviceMemory_ = owner()->getSvmPtr();
       kind_ = MEMORY_KIND_PTRGIVEN;
-#if AMD_HMM_SUPPORT
-      if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
-        // Currently HMM requires cirtain initial calls to mark sysmem allocation as
-        // GPU accessible or prefetch memory into the current device
-        // @note: Skip any allocaiton here, since sysmem was allocated on another device.
-        dev().SvmAllocInit(deviceMemory_, size());
-      }
-#endif // AMD_HMM_SUPPORT
     }
 
     if ((deviceMemory_ != nullptr) && (dev().settings().apuSystem_ || !isFineGrain)) {

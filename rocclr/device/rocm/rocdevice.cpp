@@ -2130,7 +2130,17 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
       if (use_cpu) {
         attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getCpuAgent().handle});
       } else {
-        attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getBackendDevice().handle});
+        if (first_alloc) {
+          // Provide access to all possible devices.
+          //! @note: HMM should support automatic page table update with xnack enabled,
+          //! but currently it doesn't and runtime explicitly enables access from all devices
+          for (const auto dev : devices()) {
+            attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE,
+                static_cast<Device*>(dev)->getBackendDevice().handle});
+          }
+        } else {
+          attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getBackendDevice().handle});
+        }
       }
       break;
     case amd::MemoryAdvice::UnsetAccessedBy:
@@ -2256,9 +2266,6 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
 
   if (settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) {
     advice = amd::MemoryAdvice::UnsetPreferredLocation;
-    SetSvmAttributesInt(memory, size, advice);
-  } else {
-    advice = amd::MemoryAdvice::SetPreferredLocation;
     SetSvmAttributesInt(memory, size, advice);
   }
 
