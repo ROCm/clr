@@ -428,11 +428,8 @@ class VirtualGPU : public device::VirtualDevice {
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               size_t size = 1);
-  void dispatchBarrierPacket(const hsa_barrier_and_packet_t* packet);
-  void dispatchGenericBarrierPacket(hsa_barrier_and_packet_t* packet, uint16_t packetHeader,
-                             hsa_signal_t signal);
   void dispatchBarrierPacket(hsa_barrier_and_packet_t* packet, uint16_t packetHeader,
-                             hsa_signal_t signal);
+                             bool skipSignal = false);
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet,
@@ -489,7 +486,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t profiling_          : 1; //!< Profiling is enabled
       uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
       uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
-      uint32_t isLastCommandSDMA_  : 1; //!< Keep track if the last command was SDMA and 
+      uint32_t isLastCommandSDMA_  : 1; //!< Keep track if the last command was SDMA and
                                         //!< not send Barrier packets if barrier_sync is 0
     };
     uint32_t  state_;
