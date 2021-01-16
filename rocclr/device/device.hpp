@@ -37,6 +37,7 @@
 #include "acl.h"
 #include "hwdebug.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -1255,9 +1256,9 @@ class Isa {
   //! Return a non-zero uint64_t value that uniquely identifies the device.
   //! This can be used when a scalar value handle to the device is require.
   static uint64_t toHandle(const Isa *isa) {
-    static_assert(reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0,
-                  "nullptr value is not 0");
     static_assert(sizeof(isa) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    assert((reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0) &&
+                  "nullptr value is not 0");
     return isa ? reinterpret_cast<uint64_t>(isa) : 0;
   }
 
@@ -1265,9 +1266,9 @@ class Isa {
   //! or nullptr if the handle is 0. This can be used when a scalar value
   //! handle for a device is provided.
   static const Isa* fromHandle(uint64_t handle) {
-    static_assert(reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0,
-                  "nullptr value is not 0");
     static_assert(sizeof(handle) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    assert((reinterpret_cast<uint64_t>(static_cast<const Isa*>(nullptr)) == 0) &&
+                  "nullptr value is not 0");
     return handle ? reinterpret_cast<const Isa*>(handle) : nullptr;
   }
 
@@ -1695,9 +1696,9 @@ class Device : public RuntimeObject {
   //! Return a non-zero uint64_t value that uniquely identifies the device.
   //! This can be used when a scalar value handle to the device is require.
   static uint64_t toHandle(const Device *device) {
-    static_assert(reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0,
-                  "nullptr value is not 0");
     static_assert(sizeof(device) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    assert((reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0) &&
+                  "nullptr value is not 0");
     return device ? reinterpret_cast<uint64_t>(device) : 0;
   }
 
@@ -1705,9 +1706,9 @@ class Device : public RuntimeObject {
   //! or nullptr if the handle is 0. This can be used when a scalar value
   //! handle for a device is provided.
   static const Device* fromHhandle(uint64_t handle) {
-    static_assert(reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0,
-                  "nullptr value is not 0");
     static_assert(sizeof(handle) <= sizeof(uint64_t), "Handle size does not match pointer size");
+    assert((reinterpret_cast<uint64_t>(static_cast<const Device*>(nullptr)) == 0) &&
+                  "nullptr value is not 0");
     return handle ? reinterpret_cast<const Device*>(handle) : nullptr;
   }
 
