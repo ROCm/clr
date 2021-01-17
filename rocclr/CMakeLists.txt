@@ -32,6 +32,11 @@ write_basic_package_version_file("${ROCCLR_VERSION_PATH}"
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
+option(ADDRESS_SANITIZER "Build Address Sanitizer" OFF)
+if (ADDRESS_SANITIZER)
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+endif()
+
 # FIXME: Handling legacy custom boolean matching "yes" or "no"
 if(DEFINED USE_COMGR_LIBRARY)
   if(${USE_COMGR_LIBRARY} MATCHES "yes")
