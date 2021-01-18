@@ -411,11 +411,11 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
         CASE(CL_DEVICE_LOCAL_MEM_BANKS_AMD, localMemBanks_);
         CASE(CL_DEVICE_THREAD_TRACE_SUPPORTED_AMD, threadTraceEnable_);
       case CL_DEVICE_GFXIP_MAJOR_AMD: {
-        cl_uint major = as_amd(device)->info().gfxipMajor_;
+        cl_uint major = as_amd(device)->isa().versionMajor();
         return amd::clGetInfo(major, param_value_size, param_value, param_value_size_ret);
       }
       case CL_DEVICE_GFXIP_MINOR_AMD: {
-        cl_uint minor = as_amd(device)->info().gfxipMinor_;
+        cl_uint minor = as_amd(device)->isa().versionMinor();
         return amd::clGetInfo(minor, param_value_size, param_value, param_value_size_ret);
       }
         CASE(CL_DEVICE_AVAILABLE_ASYNC_QUEUES_AMD, numAsyncQueues_);
