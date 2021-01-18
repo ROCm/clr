@@ -133,10 +133,6 @@ bool NullDevice::create(const amd::Isa &isa) {
 
   // Report the device name
   ::strncpy(info_.name_, isa.targetId(), sizeof(info_.name_) - 1);
-  info_.gfxipMajor_ = isa.versionMajor();
-  info_.gfxipMinor_ = isa.versionMinor();
-  info_.gfxipStepping_ = isa.versionStepping();
-  ::strncpy(info_.targetId_, isa.isaName().c_str(), sizeof(info_.targetId_) - 1);
   info_.extensions_ = getExtensionString();
   info_.maxWorkGroupSize_ = hsaSettings->maxWorkGroupSize_;
   ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
@@ -1057,10 +1053,6 @@ bool Device::populateOCLDeviceConstants() {
   info_.available_ = true;
 
   ::strncpy(info_.name_, isa().targetId(), sizeof(info_.name_) - 1);
-  info_.gfxipMajor_ = isa().versionMajor();
-  info_.gfxipMinor_ = isa().versionMinor();
-  info_.gfxipStepping_ = isa().versionStepping();
-  ::strncpy(info_.targetId_, isa().isaName().c_str(), sizeof(info_.targetId_) - 1);
   char device_name[64] = {0};
   if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,

@@ -487,7 +487,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   ::strncpy(info_.name_, settings().useLightning_ ? isa().targetId() : palName_,
             sizeof(info_.name_));
-  ::strncpy(info_.targetId_, isa().isaName().c_str(), sizeof(info_.targetId_) - 1);
   ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (PAL%s)%s",
              settings().useLightning_ ? ",LC" : ",HSAIL", isOnline() ? "" : " [Offline]");
@@ -587,10 +586,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.globalMemChannelBankWidth_ = isa().memChannelBankWidth();
     info_.localMemSizePerCU_ = palProp.gfxipProperties.shaderCore.ldsSizePerCu;
     info_.localMemBanks_ = isa().localMemBanks();
-
-    info_.gfxipMajor_ = isa().versionMajor();
-    info_.gfxipMinor_ = isa().versionMinor();
-    info_.gfxipStepping_ = isa().versionStepping();
 
     info_.timeStampFrequency_ = 1000000;
     info_.numAsyncQueues_ = numComputeRings;

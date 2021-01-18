@@ -558,7 +558,6 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   info_.platform_ = AMD_PLATFORM;
 
   ::strncpy(info_.name_, calName_, sizeof(info_.name_) - 1);
-  ::strncpy(info_.targetId_, isa().isaName().c_str(), sizeof(info_.targetId_) - 1);
   ::strncpy(info_.vendor_, "Advanced Micro Devices, Inc.", sizeof(info_.vendor_) - 1);
   ::snprintf(info_.driverVersion_, sizeof(info_.driverVersion_) - 1, AMD_BUILD_STRING " (GSL)%s",
              isOnline() ? "" : " [Offline]");
@@ -654,9 +653,6 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.globalMemChannelBankWidth_ = isa().memChannelBankWidth();
     info_.localMemSizePerCU_ = isa().localMemSizePerCU();
     info_.localMemBanks_ = isa().localMemBanks();
-    info_.gfxipMajor_ = isa().versionMajor();
-    info_.gfxipMinor_ = isa().versionMinor();
-    info_.gfxipStepping_ = isa().versionStepping();
 
     info_.numAsyncQueues_ = numComputeRings;
 

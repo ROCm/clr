@@ -411,9 +411,6 @@ struct Info : public amd::EmbeddedObject {
   //! Device name string
   char name_[0x40];
 
-  //! Target triple plus target ID string
-  char targetId_[0x40];
-
   //! Vendor name string
   char vendor_[0x20];
 
@@ -499,10 +496,6 @@ struct Info : public amd::EmbeddedObject {
   uint32_t localMemSizePerCU_;
   //! Number of banks of local memory
   uint32_t localMemBanks_;
-  //! The core engine major/minor/stepping
-  uint32_t gfxipMajor_;
-  uint32_t gfxipMinor_;
-  uint32_t gfxipStepping_;
   //! Number of available async queues
   uint32_t numAsyncQueues_;
   //! Number of available real time queues
