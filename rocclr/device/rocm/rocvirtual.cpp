@@ -871,7 +871,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
 */
 void VirtualGPU::profilingEnd(amd::Command& command) {
   if (command.profilingInfo().enabled_) {
-    if (timestamp_->getProfilingSignal() == nullptr) {
+    if (!timestamp_->HwProfiling()) {
       timestamp_->end();
     }
     command.setData(reinterpret_cast<void*>(timestamp_));
@@ -1186,6 +1186,8 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
   // Initialize signal for the barrier
   hsa_signal_t wait = Barriers().WaitSignal();
   hsa_signal_t active = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
+  uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
+  hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
 
   // Find the requested agent for the transfer
   hsa_agent_t agent = (cmd.cpu_access() ||
@@ -1194,7 +1196,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
 
   // Initiate a prefetch command
   hsa_status_t status = hsa_amd_svm_prefetch_async(
-      const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, 1, &wait, active);
+      const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, num_wait_events, wait_event, active);
 
   // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution.
   if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
@@ -2134,9 +2136,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         dim = i;
         iteration = sizes.global()[i] / 0xC0000000 + ((sizes.global()[i] % 0xC0000000) ? 1 : 0);
         globalStep = (sizes.global()[i] / sizes.local()[i]) / iteration * sizes.local()[dim];
-        if (timestamp_ != nullptr) {
-          timestamp_->setSplittedDispatch();
-        }
         break;
       }
     }

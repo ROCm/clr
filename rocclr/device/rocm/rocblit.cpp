@@ -443,10 +443,12 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     if (isSubwindowRectCopy ) {
       hsa_signal_t wait = gpu().Barriers().WaitSignal();
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+      uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
+      hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
 
       // Copy memory line by line
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
-          &srcMem, &offset, &dim, agent, direction, 1, &wait, active);
+          &srcMem, &offset, &dim, agent, direction, num_wait_events, wait_event, active);
       if (status != HSA_STATUS_SUCCESS) {
         LogPrintfError("DMA buffer failed with code %d", status);
         return false;
@@ -456,6 +458,8 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       const hsa_signal_value_t kInitVal = size[2] * size[1];
       hsa_signal_t wait = gpu().Barriers().WaitSignal();
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitVal, gpu().timestamp());
+      uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
+      hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
 
       for (size_t z = 0; z < size[2]; ++z) {
         for (size_t y = 0; y < size[1]; ++y) {
@@ -466,7 +470,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
           hsa_status_t status = hsa_amd_memory_async_copy(
               (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
               (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
-              size[0], 1, &wait, active);
+              size[0], num_wait_events, wait_event, active);
           gpu().setLastCommandSDMA(true) ;
           if (status != HSA_STATUS_SUCCESS) {
             LogPrintfError("DMA buffer failed with code %d", status);
@@ -640,8 +644,12 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   hsa_signal_t wait = gpu().Barriers().WaitSignal();
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+  uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
+  hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
+
   // Use SDMA to transfer the data
-  status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent, size[0], 1, &wait, active);
+  status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
+      size[0], num_wait_events, wait_event, active);
   gpu().setLastCommandSDMA(true);
   // Explicit wait for now, until runtime could distinguish compute and sdma operations
   gpu().Barriers().WaitCurrent();

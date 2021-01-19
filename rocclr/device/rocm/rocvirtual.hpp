@@ -21,6 +21,7 @@
 #pragma once
 
 #include "platform/commandqueue.hpp"
+#include "rocdefs.hpp"
 #include "rocdevice.hpp"
 #include "utils/util.hpp"
 #include "hsa.h"
@@ -36,11 +37,15 @@ class Memory;
 class Timestamp;
 
 struct ProfilingSignal : public amd::HeapObject {
-  hsa_signal_t signal_; //!< HSA signal to track profiling information
-  Timestamp* ts_;       //!< Timestamp object associated with the signal
-  bool done_;           //!< True if signal is done
-
-  ProfilingSignal() : ts_(nullptr), done_(true) { signal_.handle = 0; }
+  hsa_signal_t  signal_;  //!< HSA signal to track profiling information
+  Timestamp*    ts_;      //!< Timestamp object associated with the signal
+  HwQueueEngine engine_;  //!< Engine used with this signal
+  bool          done_;    //!< True if signal is done
+  ProfilingSignal()
+    : ts_(nullptr)
+    , engine_(HwQueueEngine::Compute)
+    , done_(true)
+    { signal_.handle = 0; }
 };
 
 // Initial HSA signal value
@@ -67,13 +72,12 @@ inline bool WaitForSignal(hsa_signal_t signal) {
 // including EnqueueNDRangeKernel and clEnqueueCopyBuffer.
 class Timestamp {
  private:
-  uint64_t start_;
-  uint64_t end_;
-  ProfilingSignal* profilingSignal_;
-  hsa_agent_t agent_;
   static double ticksToTime_;
-  bool splittedDispatch_;
-  std::vector<hsa_signal_t> splittedSignals_;
+
+  uint64_t    start_;
+  uint64_t    end_;
+  hsa_agent_t agent_;
+  std::vector<ProfilingSignal*> signals_;
 
  public:
   uint64_t getStart() {
@@ -86,21 +90,15 @@ class Timestamp {
     return end_;
   }
 
-  void setProfilingSignal(ProfilingSignal* signal) {
-    profilingSignal_ = signal;
-    if (splittedDispatch_) {
-      splittedSignals_.push_back(profilingSignal_->signal_);
-    }
-  }
-  const ProfilingSignal* getProfilingSignal() const { return profilingSignal_; }
+  void AddProfilingSignal(ProfilingSignal* signal) { signals_.push_back(signal); }
+
+  const bool HwProfiling() const { return (signals_.size() > 0) ? true : false; }
 
   void setAgent(hsa_agent_t agent) { agent_ = agent; }
 
   Timestamp()
-    : start_(0)
-    , end_(0)
-    , profilingSignal_(nullptr)
-    , splittedDispatch_(false) {
+    : start_(std::numeric_limits<uint64_t>::max())
+    , end_(0) {
     agent_.handle = 0;
   }
 
@@ -108,51 +106,30 @@ class Timestamp {
 
   //! Finds execution ticks on GPU
   void checkGpuTime() {
-    if (profilingSignal_ != nullptr) {
-      hsa_amd_profiling_dispatch_time_t time;
+    if (HwProfiling()) {
+      hsa_amd_profiling_dispatch_time_t time = {};
 
-      if (splittedDispatch_) {
-        uint64_t start = std::numeric_limits<uint64_t>::max();
-        uint64_t end = 0;
-        for (auto it = splittedSignals_.begin(); it < splittedSignals_.end(); it++) {
-          if (hsa_signal_load_relaxed(profilingSignal_->signal_) > 0) {
-            WaitForSignal(*it);
-          }
-          hsa_amd_profiling_get_dispatch_time(agent_, *it, &time);
-          if ((time.end - time.start) == 0) {
-            hsa_amd_profiling_async_copy_time_t time_sdma = {};
-            hsa_amd_profiling_get_async_copy_time(profilingSignal_->signal_, &time_sdma);
-            time.start = time_sdma.start;
-            time.end = time_sdma.end;
-          }
-          if (time.start < start) {
-            start = time.start;
-          }
-          if (time.end > end) {
-            end = time.end;
-          }
+      uint64_t start = std::numeric_limits<uint64_t>::max();
+      uint64_t end = 0;
+      for (auto it : signals_) {
+        if (hsa_signal_load_relaxed(it->signal_) > 0) {
+          WaitForSignal(it->signal_);
         }
-        start_ = start * ticksToTime_;
-        end_ = end * ticksToTime_;
-      } else {
-        // If the signalValue is the same as initial set value, it means its not written to
-        if (hsa_signal_load_relaxed(profilingSignal_->signal_) > 0) {
-          WaitForSignal(profilingSignal_->signal_);
-        }
-        hsa_amd_profiling_get_dispatch_time(agent_, profilingSignal_->signal_, &time);
+        hsa_amd_profiling_get_dispatch_time(agent_, it->signal_, &time);
         if ((time.end - time.start) == 0) {
           hsa_amd_profiling_async_copy_time_t time_sdma = {};
-          hsa_amd_profiling_get_async_copy_time(profilingSignal_->signal_, &time_sdma);
-          start_ = time_sdma.start * ticksToTime_;
-          end_ = time_sdma.end * ticksToTime_;
-        } else {
-          start_ = time.start * ticksToTime_;
-          end_ = time.end * ticksToTime_;
+          hsa_amd_profiling_get_async_copy_time(it->signal_, &time_sdma);
+          time.start = time_sdma.start;
+          time.end = time_sdma.end;
         }
+        start = std::min(time.start, start);
+        end = std::max(time.end, end);
+        it->ts_ = nullptr;
+        it->done_ = true;
       }
-      profilingSignal_->ts_ = nullptr;
-      profilingSignal_->done_ = true;
-      profilingSignal_ = nullptr;
+      signals_.clear();
+      start_ = start * ticksToTime_;
+      end_ = end * ticksToTime_;
     }
   }
 
@@ -161,9 +138,6 @@ class Timestamp {
 
   // End a timestamp (get timestamp from OS)
   void end() { end_ = amd::Os::timeNanos(); }
-
-  bool isSplittedDispatch() const { return splittedDispatch_; }
-  void setSplittedDispatch() { splittedDispatch_ = true; }
 
   static void setGpuTicksToTime(double ticksToTime) { ticksToTime_ = ticksToTime; }
   static double getGpuTicksToTime() { return ticksToTime_; }
@@ -268,7 +242,7 @@ class VirtualGPU : public device::VirtualDevice {
           sdma_profiling_ = true;
         }
         signal_list_[current_id_]->ts_ = ts;
-        ts->setProfilingSignal(signal_list_[current_id_]);
+        ts->AddProfilingSignal(signal_list_[current_id_]);
         ts->setAgent(agent_);
       }
       return signal_list_[current_id_]->signal_;
@@ -278,7 +252,11 @@ class VirtualGPU : public device::VirtualDevice {
     bool WaitCurrent() { return WaitIndex(current_id_); }
 
     //! Returns the last submitted signal for a wait
-    hsa_signal_t WaitSignal() const { return signal_list_[current_id_]->signal_; }
+    hsa_signal_t WaitSignal() {
+      //! @note Currently wait on CPU unconditionally to avoid a negative performance impact
+      WaitCurrent();
+      return hsa_signal_t{};
+    }
 
    private:
     //! Wait for the next active signal
