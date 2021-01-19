@@ -33,6 +33,13 @@ static constexpr uint DeviceQueueMaskSize = 32;
 //! Set to match the number of pipes, which is 8.
 static constexpr uint kMaxAsyncQueues = 8;
 
+enum HwQueueEngine : uint32_t {
+  Compute   = 0,
+  SdmaRead  = 1,
+  SdmaWrite = 2,
+  Unknown   = 3
+};
+
 } // namespace roc
 
 #endif
