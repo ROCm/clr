@@ -450,6 +450,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
           &srcMem, &offset, &dim, agent, direction, num_wait_events, wait_event, active);
       if (status != HSA_STATUS_SUCCESS) {
+        gpu().Barriers().ResetCurrentSignal();
         LogPrintfError("DMA buffer failed with code %d", status);
         return false;
       }
@@ -473,6 +474,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
               size[0], num_wait_events, wait_event, active);
           gpu().setLastCommandSDMA(true) ;
           if (status != HSA_STATUS_SUCCESS) {
+            gpu().Barriers().ResetCurrentSignal();
             LogPrintfError("DMA buffer failed with code %d", status);
             return false;
           }
@@ -656,6 +658,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   if (status == HSA_STATUS_SUCCESS) {
     gpu().addSystemScope();
   } else {
+    gpu().Barriers().ResetCurrentSignal();
     LogPrintfError("Hsa copy from host to device failed with code %d", status);
   }
 
@@ -702,6 +705,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
                                          srcAgent, size, 0, nullptr, active);
       gpu().setLastCommandSDMA(true);
       if (status != HSA_STATUS_SUCCESS) {
+        gpu().Barriers().ResetCurrentSignal();
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
         return false;
       }
