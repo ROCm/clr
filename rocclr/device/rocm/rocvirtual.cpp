@@ -205,6 +205,15 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
   }
 }
 
+// ================================================================================================
+void VirtualGPU::HwQueueTracker::ResetCurrentSignal() {
+  // Reset the signal and return
+  hsa_signal_silent_store_relaxed(signal_list_[current_id_]->signal_, 0);
+  // Fallback to the previous signal
+  current_id_ = (current_id_ == 0) ? (signal_list_.size() - 1) : (current_id_ - 1);
+}
+
+// ================================================================================================
 bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address params,
   size_t& ldsAddress, bool cooperativeGroups) {
   Kernel& hsaKernel = const_cast<Kernel&>(static_cast<const Kernel&>(*(kernel.getDeviceKernel(dev()))));
@@ -1200,6 +1209,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
 
   // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution.
   if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
+    Barriers().ResetCurrentSignal();
     LogError("hsa_amd_svm_prefetch_async failed");
     cmd.setStatus(CL_INVALID_OPERATION);
   }

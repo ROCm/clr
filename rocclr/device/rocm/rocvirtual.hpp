@@ -258,6 +258,9 @@ class VirtualGPU : public device::VirtualDevice {
       return hsa_signal_t{};
     }
 
+    //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
+    void ResetCurrentSignal();
+
    private:
     //! Wait for the next active signal
     void WaitNext() {
@@ -282,6 +285,7 @@ class VirtualGPU : public device::VirtualDevice {
       }
       return true;
     }
+
     std::vector<ProfilingSignal*> signal_list_;  //!< The pool of all signals for processing
     size_t      current_id_ = 0;          //!< Last submitted signal
     hsa_agent_t agent_;                   //!< HSA device agent
