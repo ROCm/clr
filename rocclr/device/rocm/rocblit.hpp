@@ -40,9 +40,6 @@ class Kernel;
 class Memory;
 class VirtualGPU;
 
-constexpr bool kSkipCpuWait = true;
-constexpr bool kIgnoreBarrier = false;
-
 //! DMA Blit Manager
 class DmaBlitManager : public device::HostBlitManager {
  public:
