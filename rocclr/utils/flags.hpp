@@ -244,6 +244,12 @@ release(bool, ROC_ACTIVE_WAIT, false,                                         \
         "Forces unconditional active wait for GPU")                           \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
+release(bool, ROC_CPU_WAIT_FOR_SIGNAL, true,                                  \
+        "Enable CPU wait for dependent HSA signals.")                         \
+release(bool, ROC_SYSTEM_SCOPE_SIGNAL, true,                                  \
+        "Enable system scope for signals (uses interrupts).")                 \
+release(bool, ROC_SKIP_COPY_SYNC, false,                                      \
+        "Skips copy syncs if runtime can predict the same engine.")           \
 release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \

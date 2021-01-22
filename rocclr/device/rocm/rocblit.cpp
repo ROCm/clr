@@ -433,18 +433,27 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     hsa_dim3_t offset = { 0, 0 ,0 };
 
 
-    if ((srcRect.rowPitch_ % 4 != 0)     ||
-        (srcRect.slicePitch_ % 4 != 0)    ||
-        (dstRect.rowPitch_ % 4 != 0)     ||
+    if ((srcRect.rowPitch_ % 4 != 0)    ||
+        (srcRect.slicePitch_ % 4 != 0)  ||
+        (dstRect.rowPitch_ % 4 != 0)    ||
         (dstRect.slicePitch_ % 4 != 0)) {
       isSubwindowRectCopy = false;
     }
 
+    HwQueueEngine engine = HwQueueEngine::Unknown;
+    if ((srcAgent.handle == dev().getCpuAgent().handle) &&
+        (dstAgent.handle != dev().getCpuAgent().handle)) {
+      engine = HwQueueEngine::SdmaWrite;
+    } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
+              (dstAgent.handle == dev().getCpuAgent().handle)) {
+      engine = HwQueueEngine::SdmaRead;
+    }
+
+    hsa_signal_t* wait_event = gpu().Barriers().WaitingSignal(engine);
+    uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
+
     if (isSubwindowRectCopy ) {
-      hsa_signal_t wait = gpu().Barriers().WaitSignal();
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
-      uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
-      hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
 
       // Copy memory line by line
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
@@ -457,10 +466,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     } else {
       // Fall to line by line copies
       const hsa_signal_value_t kInitVal = size[2] * size[1];
-      hsa_signal_t wait = gpu().Barriers().WaitSignal();
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitVal, gpu().timestamp());
-      uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
-      hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
 
       for (size_t z = 0; z < size[2]; ++z) {
         for (size_t y = 0; y < size[1]; ++y) {
@@ -472,18 +478,18 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
               (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
               (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
               size[0], num_wait_events, wait_event, active);
-          gpu().setLastCommandSDMA(true) ;
           if (status != HSA_STATUS_SUCCESS) {
             gpu().Barriers().ResetCurrentSignal();
             LogPrintfError("DMA buffer failed with code %d", status);
             return false;
+          } else {
+            gpu().setLastCommandSDMA(true);
           }
         }
       }
     }
   }
-  // Explicit wait for now, until runtime could distinguish compute and sdma operations
-  gpu().Barriers().WaitCurrent();
+
   return true;
 }
 
@@ -644,18 +650,24 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     srcAgent = dstAgent = dev().getBackendDevice();
   }
 
-  hsa_signal_t wait = gpu().Barriers().WaitSignal();
-  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
-  uint32_t num_wait_events = (wait.handle == 0) ? 0 : 1;
-  hsa_signal_t* wait_event = (wait.handle == 0) ? nullptr : &wait;
+  HwQueueEngine engine = HwQueueEngine::Unknown;
+  if ((srcAgent.handle == dev().getCpuAgent().handle) &&
+      (dstAgent.handle != dev().getCpuAgent().handle)) {
+    engine = HwQueueEngine::SdmaWrite;
+  } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
+             (dstAgent.handle == dev().getCpuAgent().handle)) {
+    engine = HwQueueEngine::SdmaRead;
+  }
+
+  hsa_signal_t* wait_event = gpu().Barriers().WaitingSignal(engine);
+  uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
+  hsa_signal_t      active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   // Use SDMA to transfer the data
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
       size[0], num_wait_events, wait_event, active);
-  gpu().setLastCommandSDMA(true);
-  // Explicit wait for now, until runtime could distinguish compute and sdma operations
-  gpu().Barriers().WaitCurrent();
   if (status == HSA_STATUS_SUCCESS) {
+    gpu().setLastCommandSDMA(true);
     gpu().addSystemScope();
   } else {
     gpu().Barriers().ResetCurrentSignal();
@@ -690,7 +702,6 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
   // Allocate requested size of memory
   while (totalSize > 0) {
     size = std::min(totalSize, dev().settings().stagedXferSize_);
-    hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
     // Copy data from Host to Device
     if (hostToDev) {
@@ -700,14 +711,22 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       const hsa_agent_t srcAgent =
           (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() : dev().getCpuAgent();
 
+      HwQueueEngine engine = HwQueueEngine::Unknown;
+      if (srcAgent.handle == dev().getBackendDevice().handle) {
+        engine = HwQueueEngine::SdmaWrite;
+      }
+      gpu().Barriers().SetActiveEngine(engine);
+      hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+
       memcpy(hsaBuffer, hostSrc + offset, size);
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, active);
-      gpu().setLastCommandSDMA(true);
       if (status != HSA_STATUS_SUCCESS) {
         gpu().Barriers().ResetCurrentSignal();
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
         return false;
+      } else {
+        gpu().setLastCommandSDMA(true);
       }
       gpu().Barriers().WaitCurrent();
       totalSize -= size;
@@ -721,14 +740,22 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     const hsa_agent_t dstAgent =
         (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() : dev().getCpuAgent();
 
+    HwQueueEngine engine = HwQueueEngine::Unknown;
+    if (dstAgent.handle == dev().getBackendDevice().handle) {
+      engine = HwQueueEngine::SdmaRead;
+    }
+    gpu().Barriers().SetActiveEngine(engine);
+    hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+
     // Copy data from Device to Host
     status = hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
         dev().getBackendDevice(), size, 0, nullptr, active);
-    gpu().setLastCommandSDMA(true);
     if (status == HSA_STATUS_SUCCESS) {
+      gpu().setLastCommandSDMA(true);
       gpu().Barriers().WaitCurrent();
       memcpy(hostDst + offset, hsaBuffer, size);
     } else {
+      gpu().Barriers().ResetCurrentSignal();
       LogPrintfError("Hsa copy from device to host failed with code %d", status);
       return false;
     }

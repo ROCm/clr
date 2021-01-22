@@ -52,7 +52,10 @@ class Settings : public device::Settings {
       uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint barrier_sync_ : 1;           //!< Use AQL barrier command to sync with CPU
-      uint reserved_ : 23;
+      uint cpu_wait_for_signal_ : 1;    //!< Wait for HSA signal on CPU
+      uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
+      uint skip_copy_sync_ : 1;         //!< Ignore explicit HSA signal waits for copy functionality
+      uint reserved_ : 20;
     };
     uint value_;
   };

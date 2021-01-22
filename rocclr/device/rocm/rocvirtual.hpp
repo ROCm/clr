@@ -92,46 +92,17 @@ class Timestamp {
 
   void AddProfilingSignal(ProfilingSignal* signal) { signals_.push_back(signal); }
 
-  const bool HwProfiling() const { return (signals_.size() > 0) ? true : false; }
+  const bool HwProfiling() const { return !signals_.empty(); }
 
-  void setAgent(hsa_agent_t agent) { agent_ = agent; }
-
-  Timestamp()
+  Timestamp(hsa_agent_t agent)
     : start_(std::numeric_limits<uint64_t>::max())
-    , end_(0) {
-    agent_.handle = 0;
-  }
+    , end_(0)
+    , agent_(agent) {}
 
   ~Timestamp() {}
 
   //! Finds execution ticks on GPU
-  void checkGpuTime() {
-    if (HwProfiling()) {
-      hsa_amd_profiling_dispatch_time_t time = {};
-
-      uint64_t start = std::numeric_limits<uint64_t>::max();
-      uint64_t end = 0;
-      for (auto it : signals_) {
-        if (hsa_signal_load_relaxed(it->signal_) > 0) {
-          WaitForSignal(it->signal_);
-        }
-        hsa_amd_profiling_get_dispatch_time(agent_, it->signal_, &time);
-        if ((time.end - time.start) == 0) {
-          hsa_amd_profiling_async_copy_time_t time_sdma = {};
-          hsa_amd_profiling_get_async_copy_time(it->signal_, &time_sdma);
-          time.start = time_sdma.start;
-          time.end = time_sdma.end;
-        }
-        start = std::min(time.start, start);
-        end = std::max(time.end, end);
-        it->ts_ = nullptr;
-        it->done_ = true;
-      }
-      signals_.clear();
-      start_ = start * ticksToTime_;
-      end_ = end * ticksToTime_;
-    }
-  }
+  void checkGpuTime();
 
   // Start a timestamp (get timestamp from OS)
   void start() { start_ = amd::Os::timeNanos(); }
@@ -183,113 +154,54 @@ class VirtualGPU : public device::VirtualDevice {
 
   class HwQueueTracker : public amd::EmbeddedObject {
    public:
-    HwQueueTracker() {}
+    HwQueueTracker(const VirtualGPU& gpu): gpu_(gpu) {}
 
-    ~HwQueueTracker() {
-      for (auto& signal: signal_list_) {
-        if (signal->signal_.handle != 0) {
-          hsa_signal_destroy(signal->signal_);
-        }
-        delete signal;
-      }
-    }
+    ~HwQueueTracker();
 
     //! Creates a pool of signals for tracking of HW operations on the queue
-    bool Create(hsa_agent_t agent) {
-      constexpr size_t kSignalListSize = 16;
-      signal_list_.resize(kSignalListSize);
-      for (uint i = 0; i < kSignalListSize; ++i) {
-        ProfilingSignal* signal = new ProfilingSignal();
-        if ((signal == nullptr) || (HSA_STATUS_SUCCESS != hsa_signal_create(
-                                    0, 1, &agent, &signal->signal_))) {
-          return false;
-        }
-        signal_list_[i] = signal;
-      }
-      agent_ = agent;
-      return true;
-    }
+    bool Create();
 
     //! Finds a free signal for the upcomming operation
     hsa_signal_t ActiveSignal(hsa_signal_value_t init_val = kInitSignalValueOne,
-                              Timestamp* ts = nullptr, uint32_t queue_size = 0) {
-      // If queue size grows, then add more signals to avoid more frequent stalls
-      if (queue_size > signal_list_.size()) {
-        ProfilingSignal* signal = new ProfilingSignal();
-        if (signal != nullptr) {
-          if (HSA_STATUS_SUCCESS == hsa_signal_create(
-              0, 1, &agent_, &signal->signal_)) {
-            signal_list_.push_back(signal);
-          }
-        }
-      }
-      // Find valid index
-      ++current_id_ %= signal_list_.size();
-
-      // Make sure the previous operation on the current signal is done
-      WaitCurrent();
-
-      // Have to wait the next signal in the queue to avoid a race condition between
-      // a GPU waiter(which may be not triggered yet) and CPU signal reset below
-      WaitNext();
-
-      // Reset the signal and return
-      hsa_signal_silent_store_relaxed(signal_list_[current_id_]->signal_, init_val);
-      signal_list_[current_id_]->done_ = false;
-      if (ts != 0) {
-        if (!sdma_profiling_) {
-          hsa_amd_profiling_async_copy_enable(true);
-          sdma_profiling_ = true;
-        }
-        signal_list_[current_id_]->ts_ = ts;
-        ts->AddProfilingSignal(signal_list_[current_id_]);
-        ts->setAgent(agent_);
-      }
-      return signal_list_[current_id_]->signal_;
-    }
+                              Timestamp* ts = nullptr, uint32_t queue_size = 0);
 
     //! Wait for the curent active signal. Can idle the queue
-    bool WaitCurrent() { return WaitIndex(current_id_); }
+    bool WaitCurrent() { return CpuWaitForSignal(signal_list_[current_id_]); }
+
+    //! Update current active engine
+    void SetActiveEngine(HwQueueEngine engine = HwQueueEngine::Compute) { engine_ = engine; }
 
     //! Returns the last submitted signal for a wait
-    hsa_signal_t WaitSignal() {
-      //! @note Currently wait on CPU unconditionally to avoid a negative performance impact
-      WaitCurrent();
-      return hsa_signal_t{};
-    }
+    hsa_signal_t* WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
 
     //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
     void ResetCurrentSignal();
 
-   private:
+    //! Inserts an external signal(submission in another queue) for dependency tracking
+    void SetExternalSignal(ProfilingSignal* signal) {
+      external_signal_ = signal;
+      engine_ = HwQueueEngine::External;
+    }
+
+    //! Inserts an external signal(submission in another queue) for dependency tracking
+    ProfilingSignal* GetLastSignal() const { return signal_list_[current_id_]; }
+
+  private:
     //! Wait for the next active signal
     void WaitNext() {
       size_t next = (current_id_ + 1) % signal_list_.size();
-      WaitIndex(next);
+      CpuWaitForSignal(signal_list_[next]);
     }
 
     //! Wait for the provided signal
-    bool WaitIndex(size_t index) {
-      // Wait for the current signal
-      if (!signal_list_[index]->done_) {
-        // Update timestamp values if requested
-        if (signal_list_[index]->ts_ != nullptr) {
-          signal_list_[index]->ts_->checkGpuTime();
-        } else {
-          if (!WaitForSignal(signal_list_[index]->signal_)) {
-            LogPrintfError("Failed signal [0x%lx] wait", signal_list_[index]->signal_);
-            return false;
-          }
-          signal_list_[index]->done_ = true;
-        }
-      }
-      return true;
-    }
+    bool CpuWaitForSignal(ProfilingSignal* signal);
 
-    std::vector<ProfilingSignal*> signal_list_;  //!< The pool of all signals for processing
-    size_t      current_id_ = 0;          //!< Last submitted signal
-    hsa_agent_t agent_;                   //!< HSA device agent
-    bool        sdma_profiling_ = false;  //!< Don't enable SDMA profiling by default
+    HwQueueEngine engine_ = HwQueueEngine::Unknown; //!< Engine used in the current operations
+    std::vector<ProfilingSignal*> signal_list_;     //!< The pool of all signals for processing
+    ProfilingSignal*  external_signal_ = nullptr;   //!< Dependency on external signal
+    size_t current_id_ = 0;       //!< Last submitted signal
+    bool sdma_profiling_ = false; //!< If TRUE, then SDMA profiling is enabled
+    const VirtualGPU& gpu_;       //!< VirtualGPU, associated with this tracker
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
@@ -358,7 +270,7 @@ class VirtualGPU : public device::VirtualDevice {
    */
   bool releaseGpuMemoryFence(bool force_barrier = false, bool skip_copy_wait = false);
 
-  hsa_agent_t gpu_device() { return gpu_device_; }
+  hsa_agent_t gpu_device() const { return gpu_device_; }
   hsa_queue_t* gpu_queue() { return gpu_queue_; }
 
   // Return pointer to PrintfDbg
