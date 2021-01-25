@@ -842,7 +842,7 @@ bool Os::GetFileHandle(const char* fname, FileDesc* fd_ptr, size_t* sz_ptr) {
   }
 
   *fd_ptr = INVALID_HANDLE_VALUE;
-  *fd_ptr = CreateFileA(fname, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+  *fd_ptr = CreateFileA(fname, GENERIC_READ, 0x1, NULL, OPEN_EXISTING,
                         FILE_ATTRIBUTE_READONLY, NULL);
   if (*fd_ptr == INVALID_HANDLE_VALUE) {
     return false;
