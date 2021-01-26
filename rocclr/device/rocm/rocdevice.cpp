@@ -169,6 +169,7 @@ Device::Device(hsa_agent_t bkendDevice)
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
+  system_kernarg_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
   prefetch_signal_.handle = 0;
@@ -192,10 +193,10 @@ void Device::setupCpuAgent() {
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,coarse=0x%zx)"
-          "for gpu agent=0x%zx",
-          index, cpu_agent_.handle, system_segment_.handle, system_coarse_segment_.handle,
-          _bkendDevice.handle);
+  system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
+          "coarse=0x%zx, kern_arg=0x%zx) for gpu agent=0x%zx", index, cpu_agent_.handle,
+          system_segment_.handle, system_coarse_segment_.handle, _bkendDevice.handle);
 }
 
 Device::~Device() {
@@ -360,7 +361,7 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
   }
 
   if (dev_type == HSA_DEVICE_TYPE_CPU) {
-    AgentInfo info = { agent, { 0 }, { 0 }};
+    AgentInfo info = { agent, { 0 }, { 0 }, { 0 }};
     stat = hsa_amd_agent_iterate_memory_pools(agent, Device::iterateCpuMemoryPoolCallback,
                                               reinterpret_cast<void*>(&info));
     if (stat == HSA_STATUS_SUCCESS) {
@@ -974,9 +975,31 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
       }
 
       if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
-        agentInfo->fine_grain_pool = pool;
+        if (agentInfo->fine_grain_pool.handle == 0) {
+          agentInfo->fine_grain_pool = pool;
+        } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) == 0) {
+          // If the fine_grain_pool was already filled, but kern_args flag was not set over-write.
+          // This means this is region-1(fine_grain only), so over-write this with memory pool set
+          // from "fine_grain and kern_args".
+          agentInfo->fine_grain_pool = pool;
+        }
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0)
+                  && ("Memory Segment cannot be both coarse and fine grained"));
       } else {
+        // If the flag is not set to fine grained, then it is coarse_grained by default.
         agentInfo->coarse_grain_pool = pool;
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0)
+                  && ("Memory Segments that are not fine grained has to be coarse grained"));
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) == 0)
+                  && ("Memory Segment cannot be both coarse and fine grained"));
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) == 0)
+                  && ("Coarse grained memory segment cannot have kern_args tag"));
+      }
+
+      if ((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) != 0) {
+        agentInfo->kern_arg_pool = pool;
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0)
+                  && ("Coarse grained memory segment cannot have kern_args tag"));
       }
 
       break;
