@@ -240,6 +240,7 @@ struct AgentInfo {
   hsa_agent_t agent;
   hsa_amd_memory_pool_t fine_grain_pool;
   hsa_amd_memory_pool_t coarse_grain_pool;
+  hsa_amd_memory_pool_t kern_arg_pool;
 };
 
 //! A HSA device ordinal (physical HSA device)
@@ -518,6 +519,7 @@ class Device : public NullDevice {
   hsa_amd_memory_pool_t group_segment_;
   hsa_amd_memory_pool_t system_segment_;
   hsa_amd_memory_pool_t system_coarse_segment_;
+  hsa_amd_memory_pool_t system_kernarg_segment_;
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
   hsa_signal_t prefetch_signal_;    //!< Prefetch signal, used to explicitly prefetch SVM on device
