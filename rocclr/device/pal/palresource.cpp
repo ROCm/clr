@@ -471,6 +471,7 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
   switch (memoryType()) {
     case Local:
     case Scratch:
+    case Persistent:
       createInfo->mallPolicy = static_cast<Pal::GpuMemMallPolicy>(dev().settings().mallPolicy_);
       break;
     default:
