@@ -367,6 +367,8 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
     if (signal->ts_ != nullptr) {
       signal->ts_->checkGpuTime();
     } else {
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx\n",
+              std::this_thread::get_id(), signal->signal_.handle);
       if (!WaitForSignal(signal->signal_)) {
         LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
         return false;
@@ -518,8 +520,9 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
           gpuMem = static_cast<Memory*>(mem->getDeviceMemory(dev()));
 
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
-          ClPrint(amd::LOG_INFO, amd::LOG_KERN, "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n", index,
-            desc.typeName_.c_str(), desc.name_.c_str(),
+          ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+            "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n",
+            index, desc.typeName_.c_str(), desc.name_.c_str(),
             globalAddress, gpuMem->getDeviceMemory(),
             reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize(),
             std::this_thread::get_id());
@@ -668,7 +671,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
     }
     ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-            "[%zx] HWq=0x%zx, Dispatch Header = 0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+            "[%zx] HWq=0x%zx, Dispatch Header = "
+            "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
             "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
             "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
             std::this_thread::get_id(), gpu_queue_,
@@ -2361,7 +2365,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s\n", std::this_thread::get_id(), gpuKernel.name().c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s\n",
+            std::this_thread::get_id(), gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {

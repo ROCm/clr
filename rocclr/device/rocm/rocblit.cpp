@@ -456,6 +456,10 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
       // Copy memory line by line
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+              "[%zx]!\t HSA Asycn Copy Rect  wait_event=0x%zx, completion_signal=0x%zx\n",
+              std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+              active.handle);
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
           &srcMem, &offset, &dim, agent, direction, num_wait_events, wait_event, active);
       if (status != HSA_STATUS_SUCCESS) {
@@ -474,6 +478,10 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
           size_t dstOffset = dstRect.offset(0, y, z);
 
           // Copy memory line by line
+          ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+                  "[%zx]!\t HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx\n",
+                  std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+                  active.handle);
           hsa_status_t status = hsa_amd_memory_async_copy(
               (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
               (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
@@ -664,6 +672,11 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   hsa_signal_t      active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   // Use SDMA to transfer the data
+  ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+          "[%zx]!\t HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx\n",
+          std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+          active.handle);
+
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
       size[0], num_wait_events, wait_event, active);
   if (status == HSA_STATUS_SUCCESS) {
@@ -719,6 +732,9 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
       memcpy(hsaBuffer, hostSrc + offset, size);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+              "[%zx]!\t HSA Async Copy completion_signal=0x%zx\n",
+              std::this_thread::get_id(), active.handle);
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, active);
       if (status != HSA_STATUS_SUCCESS) {
@@ -748,6 +764,9 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
     // Copy data from Device to Host
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+            "[%zx]!\t HSA Async Copy completion_signal=0x%zx\n",
+            std::this_thread::get_id(), active.handle);
     status = hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
         dev().getBackendDevice(), size, 0, nullptr, active);
     if (status == HSA_STATUS_SUCCESS) {
