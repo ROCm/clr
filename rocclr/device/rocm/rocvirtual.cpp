@@ -1226,15 +1226,13 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
         if (nullptr != imageBuffer->CopyImageBuffer()) {
           amd::Memory* memory = imageBuffer->CopyImageBuffer();
           devMem = dev().getGpuMemory(memory);
-          if (nullptr == imageBuffer->owner()->getLastWriter()) {
-            Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
-            amd::Image* image = imageBuffer->owner()->asImage();
-            amd::Coord3D offs(0);
-            // Copy memory from the original image buffer into the backing store image
-            result = blitMgr().copyBufferToImage(*buffer, *devMem, offs,
-                                                 offs, image->getRegion(), true,
-                                                 image->getRowPitch(), image->getSlicePitch());
-          }
+          Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
+          amd::Image* image = imageBuffer->owner()->asImage();
+          amd::Coord3D offs(0);
+          // Copy memory from the original image buffer into the backing store image
+          result = blitMgr().copyBufferToImage(*buffer, *devMem, offs,
+                                               offs, image->getRegion(), true,
+                                               image->getRowPitch(), image->getSlicePitch());
         }
       }
       if (hostMemory != nullptr) {
