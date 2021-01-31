@@ -2595,10 +2595,10 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     if (vcmd.cooperativeGroups()) {
       // Initialize GWS if it's cooperative groups launch
-      uint32_t workgroups = 0;
+      uint32_t workgroups = 1;
       for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
-        if ((vcmd.sizes().local()[i] != 0) && (vcmd.sizes().global()[i] != 1)) {
-          workgroups += (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
+        if (vcmd.sizes().local()[i] != 0) {
+          workgroups *= (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
         }
       }
 
