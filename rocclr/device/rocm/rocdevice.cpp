@@ -1584,12 +1584,6 @@ bool Device::populateOCLDeviceConstants() {
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   amd::ScopedLock lock(vgpusAccess());
 
-  // If barrier is disabled, then profiling should be enabled to make sure HSA signal is
-  // attached for every dispatch
-  if (!settings().barrier_sync_) {
-    queue->properties().set(CL_QUEUE_PROFILING_ENABLE);
-  }
-
   bool profiling = (queue != nullptr) && queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
   bool cooperative = false;
 
@@ -1599,7 +1593,11 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
     cooperative = amd::IS_HIP && settings().enableCoopGroups_;
     profiling = amd::IS_HIP;
   }
-
+  // If barrier is disabled, then profiling should be enabled to make sure HSA signal is
+  // attached for every dispatch
+  else if (!settings().barrier_sync_) {
+    queue->properties().set(CL_QUEUE_PROFILING_ENABLE);
+  }
   // Initialization of heap and other resources occur during the command
   // queue creation time.
   const std::vector<uint32_t> defaultCuMask = {};

@@ -395,7 +395,8 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire);
   } else {
-    gpu().releaseGpuMemoryFence(kIgnoreBarrier, kSkipCpuWait);
+    bool force_barrier = !dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA();
+    gpu().releaseGpuMemoryFence(force_barrier, kSkipCpuWait);
 
     void* src = gpuMem(srcMemory).getDeviceMemory();
     void* dst = gpuMem(dstMemory).getDeviceMemory();
@@ -1117,7 +1118,8 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    bool force_barrier = !dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA();
+    gpu().releaseGpuMemoryFence(force_barrier);
     dstView->owner()->release();
   }
 
@@ -1315,7 +1317,8 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    bool force_barrier = !dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA();
+    gpu().releaseGpuMemoryFence(force_barrier);
     srcView->owner()->release();
   }
 
@@ -1446,7 +1449,8 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    bool force_barrier = !dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA();
+    gpu().releaseGpuMemoryFence(force_barrier);
     srcView->owner()->release();
     dstView->owner()->release();
   }
@@ -2269,7 +2273,8 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   releaseArguments(parameters);
   if (releaseView) {
     // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
+    bool force_barrier = !dev().settings().barrier_sync_ && !gpu().isLastCommandSDMA();
+    gpu().releaseGpuMemoryFence(force_barrier);
     memView->owner()->release();
   }
 
