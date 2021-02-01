@@ -1203,6 +1203,9 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns true if device has active wait setting
   bool ActiveWait() const;
 
+  bool isLastCommandSDMA() const { return isLastCommandSDMA_; }
+  void setLastCommandSDMA(bool s) { isLastCommandSDMA_ = s; }
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
@@ -1216,6 +1219,8 @@ class VirtualDevice : public amd::HeapObject {
  protected:
   device::BlitManager* blitMgr_;  //!< Blit manager
 
+  //!< Keep track if the last command was SDMA and not send Barrier packets if barrier_sync is 0
+  std::atomic_bool isLastCommandSDMA_;
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects
   uint index_;              //!< The virtual device unique index
 };

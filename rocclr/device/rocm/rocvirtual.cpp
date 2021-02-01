@@ -2336,7 +2336,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
-
+  setLastCommandSDMA(false);
   // Check memory dependency and SVM objects
   bool coopGroups = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
   if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups)) {
@@ -2617,7 +2617,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   if (vcmd.cooperativeGroups() || vcmd.cooperativeMultiDeviceGroups()) {
     // Wait for the execution on the current queue, since the coop groups will use the device queue
-    releaseGpuMemoryFence(kIgnoreBarrier, kSkipCpuWait);
+    bool force_barrier = !dev().settings().barrier_sync_ && !isLastCommandSDMA();
+    releaseGpuMemoryFence(force_barrier, kSkipCpuWait);
 
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
@@ -2726,6 +2727,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 void VirtualGPU::flush(amd::Command* list, bool wait) {
   // Direct dispatch relies on HSA signal callback
   bool skip_cpu_wait = AMD_DIRECT_DISPATCH;
+  bool force_barrier = !dev().settings().barrier_sync_ && !isLastCommandSDMA();
 
   if (skip_cpu_wait) {
     // Search for the last command in the batch to track GPU state
@@ -2742,7 +2744,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
     // CPU wait is also forced if pinned buffers were used
     skip_cpu_wait &= hasPendingDispatch_ && (pinnedMems_.size() == 0);
 
-    releaseGpuMemoryFence(kIgnoreBarrier, skip_cpu_wait);
+    releaseGpuMemoryFence(force_barrier, skip_cpu_wait);
     profilingEnd(*current);
   } else {
     // If barrier is requested, then wait for everything, otherwise
@@ -2754,7 +2756,7 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
 
   // If CPU waited for GPU, then the queue is idle
   if (!skip_cpu_wait) {
-      updateCommandsState(list);
+    updateCommandsState(list);
 
     // Add extra clean up for resources if releaseGpuMemoryFence() was skipped
     if (!dev().settings().barrier_sync_) {
