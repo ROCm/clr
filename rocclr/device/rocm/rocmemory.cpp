@@ -696,7 +696,7 @@ void Buffer::destroy() {
 // ================================================================================================
 bool Buffer::create() {
   if (owner() == nullptr) {
-    deviceMemory_ = dev().hostAlloc(size(), 1, false);
+    deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
     if (deviceMemory_ != nullptr) {
       flags_ |= HostMemoryDirectAccess;
       return true;
@@ -730,12 +730,14 @@ bool Buffer::create() {
           // GPU accessible or prefetch memory into GPU
           dev().SvmAllocInit(deviceMemory_, size());
 #else
-          deviceMemory_ = dev().hostAlloc(size(), 1, false);
+          deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
 #endif // AMD_HMM_SUPPORT
         } else if (memFlags & CL_MEM_FOLLOW_USER_NUMA_POLICY) {
           deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
         } else {
-          deviceMemory_ = dev().hostAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
+          deviceMemory_ = dev().hostAlloc(size(), 1, ((memFlags & CL_MEM_SVM_ATOMICS) != 0)
+                                                       ? Device::MemorySegment::kAtomics
+                                                       : Device::MemorySegment::kNoAtomics);
         }
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
@@ -810,7 +812,7 @@ bool Buffer::create() {
         return true;
       }
 
-      deviceMemory_ = dev().hostAlloc(size(), 1, false);
+      deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
       owner()->setHostMem(deviceMemory_);
 
       if ((deviceMemory_ != nullptr) && dev().settings().apuSystem_) {
@@ -1102,7 +1104,7 @@ bool Image::create() {
   }
 
   if (originalDeviceMemory_ == nullptr) {
-    originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, false);
+    originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, Device::MemorySegment::kNoAtomics);
     if ((originalDeviceMemory_ != nullptr) && dev().settings().apuSystem_) {
       const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
     }

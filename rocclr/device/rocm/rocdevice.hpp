@@ -363,7 +363,8 @@ class Device : public NullDevice {
   //! Gets free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;
 
-  virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const;
+  virtual void* hostAlloc(size_t size, size_t alignment,
+                          MemorySegment mem_seg = MemorySegment::kNoAtomics) const;
 
   virtual void hostFree(void* ptr, size_t size = 0) const;
 

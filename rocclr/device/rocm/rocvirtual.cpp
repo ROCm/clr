@@ -1041,7 +1041,8 @@ bool VirtualGPU::create() {
 // ================================================================================================
 bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
-  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, false));
+  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
+                                               Device::MemorySegment::kKernArg));
   if (kernarg_pool_base_ == nullptr) {
     return false;
   }

@@ -1845,12 +1845,27 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 }
 
 // ================================================================================================
-void* Device::hostAlloc(size_t size, size_t alignment, bool atomics) const {
+void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const {
   void* ptr = nullptr;
-  // If runtime disables barrier, then all host allocations must have L2 disabled
-  const hsa_amd_memory_pool_t segment = (!atomics && settings().barrier_sync_)
-      ? (system_coarse_segment_.handle != 0) ? system_coarse_segment_ : system_segment_
-      : system_segment_;
+
+  hsa_amd_memory_pool_t segment;
+  switch (mem_seg) {
+    case kKernArg :
+    case kNoAtomics :
+      // If runtime disables barrier, then all host allocations must have L2 disabled
+      if ((settings().barrier_sync_) && (system_coarse_segment_.handle != 0)) {
+        segment = system_coarse_segment_;
+        break;
+      }
+      // Falls through on else case.
+    case kAtomics :
+      segment = system_segment_;
+      break;
+    default :
+      guarantee(false && "Invalid Memory Segment");
+      break;
+  }
+
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
@@ -1900,7 +1915,8 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
 void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
   void* ptr = nullptr;
 #ifndef ROCCLR_SUPPORT_NUMA_POLICY
-  ptr = hostAlloc(size, alignment, atomics);
+  ptr = hostAlloc(size, alignment, atomics
+                  ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
 #else
   int mode = MPOL_DEFAULT;
   unsigned long nodeMask = 0;
@@ -1930,7 +1946,8 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
       break;
     default:
       //  All other modes fall back to default mode
-      ptr = hostAlloc(size, alignment, atomics);
+      ptr = hostAlloc(size, alignment, atomics
+                      ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
   }
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
   return ptr;

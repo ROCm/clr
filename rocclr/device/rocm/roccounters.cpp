@@ -550,7 +550,8 @@ bool PerfCounterProfile::initialize() {
   }
 
   if (cmd_buf.ptr == nullptr) {
-    void *buf_ptr = roc_device_.hostAlloc(profile_.command_buffer.size, alignment, 1);
+    void *buf_ptr = roc_device_.hostAlloc(profile_.command_buffer.size, alignment,
+                                          Device::MemorySegment::kAtomics);
     if (buf_ptr != nullptr) {
       profile_.command_buffer.ptr = buf_ptr;
     }
@@ -565,7 +566,8 @@ bool PerfCounterProfile::initialize() {
   }
 
   if (out_buf.ptr == nullptr) {
-    void *buf_ptr = roc_device_.hostAlloc(profile_.output_buffer.size, alignment, 1);
+    void *buf_ptr = roc_device_.hostAlloc(profile_.output_buffer.size, alignment,
+                                          Device::MemorySegment::kAtomics);
     if (buf_ptr != nullptr) {
       profile_.output_buffer.ptr = buf_ptr;
     }

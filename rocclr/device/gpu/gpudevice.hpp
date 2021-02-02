@@ -523,7 +523,7 @@ class Device : public NullDevice, public CALGSLDevice {
                      ) const;
 
   //! host memory alloc
-  virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const;
+  virtual void* hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg = kNoAtomics) const;
 
   //! SVM allocation
   virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment,

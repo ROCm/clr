@@ -1486,6 +1486,12 @@ class Device : public RuntimeObject {
     kLinkAtomicSupport
   } LinkAttribute;
 
+  typedef enum MemorySegment {
+    kNoAtomics = 0,
+    kAtomics = 1,
+    kKernArg = 2
+  } MemorySegment;
+
   typedef std::pair<LinkAttribute, int32_t /* value */> LinkAttrType;
 
   static constexpr size_t kP2PStagingSize = 4 * Mi;
@@ -1624,7 +1630,8 @@ class Device : public RuntimeObject {
   /**
    * @copydoc amd::Context::hostAlloc
    */
-  virtual void* hostAlloc(size_t size, size_t alignment, bool atomics = false) const {
+  virtual void* hostAlloc(size_t size, size_t alignment,
+                          MemorySegment mem_seg = kNoAtomics) const {
     ShouldNotCallThis();
     return NULL;
   }

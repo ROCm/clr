@@ -284,7 +284,9 @@ int Context::create(const intptr_t* properties) {
 
 void* Context::hostAlloc(size_t size, size_t alignment, bool atomics) const {
   if (customHostAllocDevice_ != NULL) {
-    return customHostAllocDevice_->hostAlloc(size, alignment, atomics);
+    return customHostAllocDevice_->hostAlloc(size, alignment, atomics
+                                             ? Device::MemorySegment::kAtomics
+                                             : Device::MemorySegment::kNoAtomics);
   }
   return AlignedMemory::allocate(size, alignment);
 }
