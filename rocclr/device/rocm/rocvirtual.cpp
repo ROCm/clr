@@ -114,7 +114,7 @@ void Timestamp::checkGpuTime() {
       }
       hsa_amd_profiling_dispatch_time_t time = {};
       if (it->engine_ == HwQueueEngine::Compute) {
-        hsa_amd_profiling_get_dispatch_time(agent_, it->signal_, &time);
+        hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
       } else {
         hsa_amd_profiling_async_copy_time_t time_sdma = {};
         hsa_amd_profiling_get_async_copy_time(it->signal_, &time_sdma);
@@ -130,6 +130,27 @@ void Timestamp::checkGpuTime() {
     start_ = start * ticksToTime_;
     end_ = end * ticksToTime_;
   }
+}
+
+// ================================================================================================
+bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
+  Timestamp* ts = reinterpret_cast<Timestamp*>(arg);
+  amd::Thread* thread = amd::Thread::current();
+  if (!(thread != nullptr ||
+      ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
+    return false;
+  }
+  // Update the batch, since signal is complete
+  if (ts->Signals().size() > 0) {
+    amd::ScopedLock sl(ts->gpu()->execution());
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(%lx)\n",
+        static_cast<uint32_t>(value), arg, ts->Signals()[0]->signal_.handle);
+    ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
+  } else {
+    LogError("Error: ROCr handler was called for untracked signal!");
+  }
+  // Return false, so the callback will not be called again for this signal
+  return false;
 }
 
 // ================================================================================================
@@ -298,19 +319,32 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   // a GPU waiter(which may be not triggered yet) and CPU signal reset below
   WaitNext();
 
+  ProfilingSignal* prof_signal = signal_list_[current_id_];
   // Reset the signal and return
-  hsa_signal_silent_store_relaxed(signal_list_[current_id_]->signal_, init_val);
-  signal_list_[current_id_]->done_ = false;
-  signal_list_[current_id_]->engine_ = engine_;
+  hsa_signal_silent_store_relaxed(prof_signal->signal_, init_val);
+  prof_signal->done_ = false;
+  prof_signal->engine_ = engine_;
   if (ts != 0) {
+    // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
+    // requires the batch update upon HSA signal completion
+    if (AMD_DIRECT_DISPATCH && (ts->command().GetBatchHead() != nullptr)) {
+      hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
+          HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne, &HsaAmdSignalHandler, ts);
+      if (HSA_STATUS_SUCCESS != result) {
+        LogError("hsa_amd_signal_async_handler() failed to set the handler!");
+      } else {
+        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(%lx), timestamp(%p)\n",
+            prof_signal->signal_.handle, prof_signal);
+      }
+    }
     if (!sdma_profiling_) {
       hsa_amd_profiling_async_copy_enable(true);
       sdma_profiling_ = true;
     }
-    signal_list_[current_id_]->ts_ = ts;
-    ts->AddProfilingSignal(signal_list_[current_id_]);
+    prof_signal->ts_ = ts;
+    ts->AddProfilingSignal(prof_signal);
   }
-  return signal_list_[current_id_]->signal_;
+  return prof_signal->signal_;
 }
 
 // ================================================================================================
@@ -905,8 +939,10 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
 VirtualGPU::~VirtualGPU() {
   delete blitMgr_;
 
-  // Release the resources of signal
-  releaseGpuMemoryFence();
+  if (tracking_created_) {
+    // Release the resources of signal
+    releaseGpuMemoryFence();
+  }
 
   destroyPool();
 
@@ -994,7 +1030,8 @@ bool VirtualGPU::create() {
   }
 
   // Allocate signal tracker for ROCr copy queue
-  if (!Barriers().Create()) {
+  tracking_created_ = Barriers().Create();
+  if (!tracking_created_) {
     LogError("Could not create signal for copy queue!");
     return false;
   }
@@ -1057,7 +1094,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
       return;
     }
     // Without barrier profiling will wait for each individual signal
-    timestamp_ = new Timestamp(dev().getBackendDevice());
+    timestamp_ = new Timestamp(this, command);
     timestamp_->start();
   }
 }
@@ -1073,7 +1110,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
     if (!timestamp_->HwProfiling()) {
       timestamp_->end();
     }
-    command.setData(reinterpret_cast<void*>(timestamp_));
+    command.setData(timestamp_);
     timestamp_ = nullptr;
   }
 }
@@ -1378,6 +1415,8 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
 
 // ================================================================================================
 void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
 #if AMD_HMM_SUPPORT
   profilingBegin(cmd);
   // Initialize signal for the barrier
@@ -2582,6 +2621,11 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
+    if (!queue) {
+      LogError("Runtime failed to acquire a cooperative queue!");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+      return;
+    }
 
     // Lock the queue, using the blit manager lock
     amd::ScopedLock lock(queue->blitMgr().lockXfer());
@@ -2680,20 +2724,46 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
 // ================================================================================================
 void VirtualGPU::flush(amd::Command* list, bool wait) {
-  // If barrier is requested, then wait for everything, otherwise
-  // a per disaptch wait will occur later in updateCommandsState()
-  if (dev().settings().barrier_sync_) {
-    releaseGpuMemoryFence();
-  }
-  updateCommandsState(list);
+  // Direct dispatch relies on HSA signal callback
+  bool skip_cpu_wait = AMD_DIRECT_DISPATCH;
 
-  // Add extra clean up for resources if releaseGpuMemoryFence() was skipped
-  if (!dev().settings().barrier_sync_) {
-    ResetQueueStates();
+  if (skip_cpu_wait) {
+    // Search for the last command in the batch to track GPU state
+    amd::Command* current = list;
+    while (current->getNext() != nullptr) {
+      current = current->getNext();
+    }
+    // Enable profiling, so runtime can track TS
+    profilingBegin(*current);
+
+    // If runtime didn't submit a barrier, then it can't track the completion of the batch.
+    // Hence runtime either has to insert a barrier unconditionally or have a CPU wait.
+    // Due to performance impact of extra barriers CPU wait is selected.
+    // CPU wait is also forced if pinned buffers were used
+    skip_cpu_wait &= hasPendingDispatch_ && (pinnedMems_.size() == 0);
+
+    releaseGpuMemoryFence(kIgnoreBarrier, skip_cpu_wait);
+    profilingEnd(*current);
+  } else {
+    // If barrier is requested, then wait for everything, otherwise
+    // a per disaptch wait will occur later in updateCommandsState()
+    if (dev().settings().barrier_sync_) {
+      releaseGpuMemoryFence();
+    }
   }
 
-  // Release all pinned memory
-  releasePinnedMem();
+  // If CPU waited for GPU, then the queue is idle
+  if (!skip_cpu_wait) {
+      updateCommandsState(list);
+
+    // Add extra clean up for resources if releaseGpuMemoryFence() was skipped
+    if (!dev().settings().barrier_sync_) {
+      ResetQueueStates();
+    }
+
+    // Release all pinned memory
+    releasePinnedMem();
+  }
 }
 
 // ================================================================================================
