@@ -127,7 +127,6 @@ class Event : public RuntimeObject {
       clear();
       callback_ = callback;
     }
-
   } profilingInfo_;
 
   activity_prof::ActivityProf activity_;  //!< Activity profiling
@@ -153,6 +152,13 @@ class Event : public RuntimeObject {
   void processCallbacks(int32_t status) const;
 
   void waitForCompletion();
+
+  //! Enable profiling for this command
+  void EnableProfiling() {
+    profilingInfo_.enabled_ = true;
+    profilingInfo_.clear();
+    profilingInfo_.callback_ = nullptr;
+  }
 
  public:
   //! Return the context for this event.
@@ -207,17 +213,13 @@ class Event : public RuntimeObject {
  *  submitted to a HostQueue for execution. Classes derived from
  *  %Command must implement the submit() function.
  *
-
  */
 class Command : public Event {
  private:
-  //! The command queue this command is enqueue into. NULL if not yet enqueue.
-  HostQueue* queue_;
-  //! Next GPU command in the queue list
-  Command* next_;
-
-  cl_command_type type_;        //!< This command's OpenCL type.
-  volatile int32_t exception_;  //!< The first raised exception.
+  HostQueue* queue_;              //!< The command queue this command is enqueue into
+  Command* next_;                 //!< Next GPU command in the queue list
+  Command* batch_head_ = nullptr; //!< The head of the batch commands
+  cl_command_type     type_;      //!< This command's OpenCL type.
   void* data_;
 
  protected:
@@ -235,11 +237,10 @@ class Command : public Event {
   //! Construct a new command of the given OpenCL type.
   Command(cl_command_type type)
       : Event(),
-        queue_(NULL),
-        next_(NULL),
+        queue_(nullptr),
+        next_(nullptr),
         type_(type),
-        exception_(0),
-        data_(NULL),
+        data_(nullptr),
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
 
@@ -266,12 +267,6 @@ class Command : public Event {
 
   //! Return this command's OpenCL type.
   cl_command_type type() const { return type_; }
-
-  //! Return the first raised exception or 0 if none.
-  int32_t exception() const { return exception_; }
-
-  //! Set the exception for this command.
-  void setException(int32_t exception) { exception_ = exception; }
 
   //! Return the opaque, device specific data for this command.
   void* data() const { return data_; }
@@ -303,6 +298,12 @@ class Command : public Event {
   uint32_t getWaitBits() const { return commandWaitBits_; }
 
   void OverrrideCommandType(cl_command_type type) { type_ = type; }
+
+  //! Updates the batch head, associated with this command(marker)
+  void SetBatchHead(Command* command) { batch_head_ = command; }
+
+  //! Returns the current batch head
+  Command* GetBatchHead() const { return batch_head_; }
 };
 
 class UserEvent : public Command {

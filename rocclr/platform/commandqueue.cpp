@@ -227,7 +227,7 @@ Command* HostQueue::getLastQueuedCommand(bool retain) {
   if (AMD_DIRECT_DISPATCH) {
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time
-    ScopedLock sl(lock());
+    ScopedLock sl(vdev()->execution());
 
     // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand.
     // It is guaranteed that the pointer will not change.

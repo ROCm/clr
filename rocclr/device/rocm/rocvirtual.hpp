@@ -70,16 +70,25 @@ inline bool WaitForSignal(hsa_signal_t signal) {
 
 // Timestamp for keeping track of some profiling information for various commands
 // including EnqueueNDRangeKernel and clEnqueueCopyBuffer.
-class Timestamp {
+class Timestamp : public amd::HeapObject {
  private:
   static double ticksToTime_;
 
   uint64_t    start_;
   uint64_t    end_;
-  hsa_agent_t agent_;
+  VirtualGPU* gpu_;               //!< Virtual GPU, associated with this timestamp
+  const amd::Command& command_;   //!< Command, associated with this timestamp
   std::vector<ProfilingSignal*> signals_;
 
  public:
+  Timestamp(VirtualGPU* gpu, const amd::Command& command)
+    : start_(std::numeric_limits<uint64_t>::max())
+    , end_(0)
+    , gpu_(gpu)
+    , command_(command) {}
+
+  virtual ~Timestamp() {}
+
   uint64_t getStart() {
     checkGpuTime();
     return start_;
@@ -92,14 +101,9 @@ class Timestamp {
 
   void AddProfilingSignal(ProfilingSignal* signal) { signals_.push_back(signal); }
 
+  const std::vector<ProfilingSignal*>& Signals() const { return signals_; }
+
   const bool HwProfiling() const { return !signals_.empty(); }
-
-  Timestamp(hsa_agent_t agent)
-    : start_(std::numeric_limits<uint64_t>::max())
-    , end_(0)
-    , agent_(agent) {}
-
-  ~Timestamp() {}
 
   //! Finds execution ticks on GPU
   void checkGpuTime();
@@ -112,6 +116,12 @@ class Timestamp {
 
   static void setGpuTicksToTime(double ticksToTime) { ticksToTime_ = ticksToTime; }
   static double getGpuTicksToTime() { return ticksToTime_; }
+
+  //! Returns amd::command assigned to this timestamp
+  const amd::Command& command() const { return command_; }
+
+  //! Returns virtual GPU device, used with this timestamp
+  VirtualGPU* gpu() const { return gpu_; }
 };
 
 class VirtualGPU : public device::VirtualDevice {
@@ -382,6 +392,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
       uint32_t isLastCommandSDMA_  : 1; //!< Keep track if the last command was SDMA and
                                         //!< not send Barrier packets if barrier_sync is 0
+      uint32_t tracking_created_   : 1; //!< Enabled if tracking object was properly initialized
     };
     uint32_t  state_;
   };
