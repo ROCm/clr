@@ -461,6 +461,12 @@ struct Info : public amd::EmbeddedObject {
   //! Returns PCI Bus Domain ID
   uint32_t pciDomainID;
 
+  //! Returns sddress of HDP_MEM_COHERENCY_FLUSH_CNTL register
+  uint32_t* hdpMemFlushCntl;
+
+  //! Returns sddress of HDP_REG_COHERENCY_FLUSH_CNTL register
+  uint32_t* hdpRegFlushCntl;
+
   //! Semaphore information
   uint32_t maxSemaphores_;
   uint32_t maxSemaphoreSize_;
