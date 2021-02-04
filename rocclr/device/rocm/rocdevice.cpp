@@ -710,6 +710,17 @@ bool Device::create() {
   }
 #endif
 
+  // Get Agent HDP Flush Register Memory
+  hsa_amd_hdp_flush_t hdpInfo;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice,
+        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_HDP_FLUSH), &hdpInfo)) {
+    LogPrintfError("Unable to determine HDP flush info for HSA device %s", agent_name);
+    return false;
+  }
+  info_.hdpMemFlushCntl = hdpInfo.HDP_MEM_FLUSH_CNTL;
+  info_.hdpRegFlushCntl = hdpInfo.HDP_REG_FLUSH_CNTL;
+
   if (populateOCLDeviceConstants() == false) {
     LogPrintfError("populateOCLDeviceConstants failed for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
