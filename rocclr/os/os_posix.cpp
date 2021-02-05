@@ -480,9 +480,7 @@ int Os::printf(const char* fmt, ...) {
 // command-line arguments with arguments containing spaces between double-quotes.
 //
 // In order to avoid duplication of memory, we use vfork()+exec(). vfork() has
-// potiential security risks; read the following for details:
-//
-//     https://www.securecoding.cert.org/confluence/display/seccode/POS33-C.+Do+not+use+vfork()
+// potiential security risks;
 //
 // In spite of these risks, the alternatives (system() or fork()) create resource
 // issues when running conformance test_allocation which stretches the system
