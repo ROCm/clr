@@ -36,6 +36,7 @@
 #include "amdocl/cl_profile_amd.h"
 #include "acl.h"
 #include "hwdebug.hpp"
+#include "devsignal.hpp"
 
 #include <cassert>
 #include <cstdint>
@@ -1598,6 +1599,9 @@ class Device : public RuntimeObject {
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
       ) const = 0;
+
+  ///! Allocates a device signal object
+  virtual device::Signal* createSignal() const = 0;
 
   //! Return true if initialized external API interop, otherwise false
   virtual bool bindExternalDevice(

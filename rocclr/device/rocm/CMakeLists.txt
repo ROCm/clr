@@ -11,7 +11,7 @@ add_library(oclrocm OBJECT
   rocappprofile.cpp
   rocsettings.cpp
   rocschedcl.cpp
-  rochostcall.cpp
+  rocsignal.cpp
 )
 
 target_include_directories(oclrocm

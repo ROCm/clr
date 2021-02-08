@@ -165,6 +165,11 @@ class NullDevice : public amd::Device {
     return nullptr;
   }
 
+  virtual device::Signal* createSignal() const {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+
   //! Just returns nullptr for the dummy device
   virtual void* svmAlloc(amd::Context& context,   //!< The context used to create a buffer
                          size_t size,             //!< size of svm spaces
@@ -339,6 +344,8 @@ class Device : public NullDevice {
       ) const {
     return nullptr;
   }
+
+  virtual device::Signal* createSignal() const;
 
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device

@@ -18,6 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
+#include "device/devhostcall.hpp"
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rockernel.hpp"
@@ -30,7 +31,6 @@
 #include "platform/command_utils.hpp"
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
-#include "rochostcall.hpp"
 #include "utils/debug.hpp"
 #include "os/os.hpp"
 #include "amd_hsa_kernel_code.h"

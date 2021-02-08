@@ -32,17 +32,18 @@
 
 #include "vdi_common.hpp"
 #include "device/comgrctx.hpp"
+#include "device/devhostcall.hpp"
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
+#include "device/rocm/rocsignal.hpp"
 #ifdef WITH_AMDGPU_PRO
 #include "pro/prodriver.hpp"
 #endif
 #include "platform/sampler.hpp"
-#include "rochostcall.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -2677,7 +2678,7 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   } else {
     coopHostcallBuffer_ = buffer;
   }
-  if (!enableHostcalls(buffer, numPackets)) {
+  if (!enableHostcalls(*this, buffer, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
             buffer);
     return nullptr;
@@ -2853,6 +2854,10 @@ void Device::getGlobalCUMask(std::string cuMaskStr) {
   } else {
     info_.globalCUMask_ = {};
   }
+}
+
+device::Signal* Device::createSignal() const {
+  return new roc::Signal();
 }
 
 } // namespace roc

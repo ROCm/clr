@@ -71,15 +71,15 @@ class NullDevice : public amd::Device {
   );
 
   //! Instantiate a new virtual device
-  virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = NULL) {
-    return NULL;
+  virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr) {
+    return nullptr;
   }
 
   //! Compile the given source code.
-  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = NULL);
+  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
 
   //! Just returns NULL for the dummy device
-  virtual device::Memory* createMemory(amd::Memory& owner) const { return NULL; }
+  virtual device::Memory* createMemory(amd::Memory& owner) const { return nullptr; }
 
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
@@ -94,7 +94,12 @@ class NullDevice : public amd::Device {
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
       ) const {
-    return NULL;
+    return nullptr;
+  }
+
+  //! Signal object allocation
+  virtual device::Signal* createSignal() const {
+    return nullptr;
   }
 
   //! Acquire external graphics API object in the host thread
@@ -353,6 +358,11 @@ class Device : public NullDevice {
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
       ) const;
+
+  //! Signal object allocation
+  virtual device::Signal* createSignal() const {
+    return nullptr;
+  }
 
   //! Create the device program.
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = NULL);
