@@ -64,7 +64,7 @@ struct PacketHeader {
   /** Control bits.
    *  \li 0: \c READY flag. Indicates packet awaiting a host response.
    */
-  uint32_t control_;
+  std::atomic<uint32_t> control_;
 };
 
 static_assert(std::is_standard_layout<PacketHeader>::value,
@@ -104,7 +104,7 @@ class HostcallBuffer {
   /** Stack of free packets. Uses tagged pointers. */
   uint64_t free_stack_;
   /** Stack of ready packets. Uses tagged pointers */
-  uint64_t ready_stack_;
+  std::atomic<int64_t> ready_stack_;
   /** Mask for accessing the packet index in the tagged pointer. */
   uint64_t index_mask_;
 
@@ -179,7 +179,7 @@ void HostcallBuffer::processPackets(MessageHandler& messages) {
   // Grab the entire ready stack and set the top to 0. New requests from the
   // device will continue pushing on the stack while we process the packets that
   // we have grabbed.
-  uint64_t ready_stack = __atomic_exchange_n(&ready_stack_, 0, std::memory_order_acquire);
+  uint64_t ready_stack = std::atomic_exchange_explicit(&ready_stack_, static_cast<int64_t>(0), std::memory_order_acquire);
   if (!ready_stack) {
     return;
   }
@@ -203,8 +203,7 @@ void HostcallBuffer::processPackets(MessageHandler& messages) {
       handlePayload(messages, service, slot);
     }
 
-    __atomic_store_n(&header->control_, resetReadyFlag(header->control_),
-                     std::memory_order_release);
+    header->control_.store(resetReadyFlag(header->control_), std::memory_order_release);
   }
 }
 
