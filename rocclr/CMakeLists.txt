@@ -153,6 +153,7 @@ set(oclruntime_src
   device/devprogram.cpp
   device/devhcprintf.cpp
   device/devhcmessages.cpp
+  device/devhostcall.cpp
   platform/activity.cpp
   platform/kernel.cpp
   platform/context.cpp

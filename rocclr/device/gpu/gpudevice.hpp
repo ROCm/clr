@@ -102,6 +102,11 @@ class NullDevice : public amd::Device {
     return NULL;
   }
 
+  //! Signal object allocation
+  virtual device::Signal* createSignal() const {
+    return nullptr;
+  }
+
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 
@@ -414,6 +419,11 @@ class Device : public NullDevice, public CALGSLDevice {
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
       ) const;
+
+  //! Signal object allocation
+  virtual device::Signal* createSignal() const {
+    return nullptr;
+  }
 
   //! Create the device program.
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = NULL);

@@ -22,18 +22,15 @@
 #include "top.hpp"
 #include "utils/flags.hpp"
 
-#include "rochostcall.hpp"
 #include "device/devhcmessages.hpp"
+#include "device/devhostcall.hpp"
+#include "device/devsignal.hpp"
 
 #include "os/os.hpp"
 #include "thread/monitor.hpp"
 #include "utils/util.hpp"
 #include "utils/debug.hpp"
 #include "utils/flags.hpp"
-
-#include "rochostcall.hpp"
-
-#include <hsa.h>
 
 #include <assert.h>
 #include <string.h>
@@ -100,7 +97,7 @@ class HostcallBuffer {
   /** Array of packet payloads */
   Payload* payloads_;
   /** Signal used by kernels to indicate new work */
-  hsa_signal_t doorbell_;
+  void* doorbell_;
   /** Stack of free packets. Uses tagged pointers. */
   uint64_t free_stack_;
   /** Stack of ready packets. Uses tagged pointers */
@@ -114,7 +111,7 @@ class HostcallBuffer {
  public:
   void processPackets(MessageHandler& messages);
   void initialize(uint32_t num_packets);
-  void setDoorbell(hsa_signal_t doorbell) { doorbell_ = doorbell; };
+  void setDoorbell(void* doorbell) { doorbell_ = doorbell; };
 };
 
 static_assert(std::is_standard_layout<HostcallBuffer>::value,
@@ -262,7 +259,7 @@ void HostcallBuffer::initialize(uint32_t num_packets) {
  */
 class HostcallListener {
   std::set<HostcallBuffer*> buffers_;
-  hsa_signal_t doorbell_;
+  device::Signal* doorbell_;
   MessageHandler messages_;
 
   class Thread : public amd::Thread {
@@ -303,20 +300,19 @@ class HostcallListener {
   }
 
   void terminate();
-  bool initialize();
+  bool initialize(amd::Device &dev);
 };
 
 HostcallListener* hostcallListener = nullptr;
 amd::Monitor listenerLock("Hostcall listener lock");
 
 void HostcallListener::consumePackets() {
-  uint64_t signal_value = SIGNAL_INIT;
   uint64_t timeout = 1024 * 1024;
+  uint64_t signal_value = SIGNAL_INIT;
 
   while (true) {
     while (true) {
-      uint64_t new_value = hsa_signal_wait_scacquire(doorbell_, HSA_SIGNAL_CONDITION_NE, signal_value, timeout,
-                                                   HSA_WAIT_STATE_BLOCKED);
+      uint64_t new_value = doorbell_->Wait(signal_value, device::Signal::Condition::Ne, timeout);
       if (new_value != signal_value) {
         signal_value = new_value;
         break;
@@ -343,19 +339,19 @@ void HostcallListener::terminate() {
     return;
   }
 
-  hsa_signal_store_screlease(doorbell_, SIGNAL_DONE);
+  doorbell_->Reset(SIGNAL_DONE);
 
   // FIXME_lmoriche: fix termination handshake
   while (thread_.state() < Thread::FINISHED) {
     amd::Os::yield();
   }
 
-  hsa_signal_destroy(doorbell_);
+  delete doorbell_;
 }
 
 void HostcallListener::addBuffer(HostcallBuffer* buffer) {
   assert(buffers_.count(buffer) == 0 && "buffer already present");
-  buffer->setDoorbell(doorbell_);
+  buffer->setDoorbell(doorbell_->getHandle());
   buffers_.insert(buffer);
 }
 
@@ -364,16 +360,16 @@ void HostcallListener::removeBuffer(HostcallBuffer* buffer) {
   buffers_.erase(buffer);
 }
 
-bool HostcallListener::initialize() {
-  auto status = hsa_signal_create(SIGNAL_INIT, 0, NULL, &doorbell_);
-  if (status != HSA_STATUS_SUCCESS) {
+bool HostcallListener::initialize(amd::Device &dev) {
+  doorbell_ = dev.createSignal();
+  if ((doorbell_ == nullptr) || !doorbell_->Init(SIGNAL_INIT, device::Signal::WaitState::Blocked)) {
     return false;
   }
 
   // If the listener thread was not successfully initialized, clean
   // everything up and bail out.
   if (thread_.state() < Thread::INITIALIZED) {
-    hsa_signal_destroy(doorbell_);
+    delete doorbell_;
     return false;
   }
 
@@ -381,14 +377,14 @@ bool HostcallListener::initialize() {
   return true;
 }
 
-bool enableHostcalls(void* bfr, uint32_t numPackets) {
+bool enableHostcalls(amd::Device &dev, void* bfr, uint32_t numPackets) {
   auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
   buffer->initialize(numPackets);
 
   amd::ScopedLock lock(listenerLock);
   if (!hostcallListener) {
     hostcallListener = new HostcallListener();
-    if (!hostcallListener->initialize()) {
+    if (!hostcallListener->initialize(dev)) {
       ClPrint(amd::LOG_ERROR, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
               "Failed to launch hostcall listener");
       delete hostcallListener;
