@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <memory>
 #define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
+#define ROCCLR_MEM_HSA_SIGNAL_MEMORY (1u << 30)
 
 namespace device {
 class Memory;

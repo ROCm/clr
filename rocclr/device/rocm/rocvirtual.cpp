@@ -27,6 +27,7 @@
 #include "platform/kernel.hpp"
 #include "platform/context.hpp"
 #include "platform/command.hpp"
+#include "platform/command_utils.hpp"
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "rochostcall.hpp"
@@ -88,6 +89,11 @@ static constexpr uint16_t kBarrierPacketAcquireHeader =
 static constexpr uint16_t kBarrierPacketReleaseHeader =
     (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+
+static constexpr uint16_t kBarrierVendorPacketHeader =
+    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
 static constexpr hsa_barrier_and_packet_t kBarrierAcquirePacket = {
@@ -2069,6 +2075,110 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   profilingEnd(cmd);
 }
 
+void VirtualGPU::dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t* packet,
+                                            hsa_amd_vendor_packet_header_t header) {
+  assert(packet->completion_signal.handle != 0);
+  const uint32_t queueSize = gpu_queue_->size;
+  const uint32_t queueMask = queueSize - 1;
+
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
+  while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask) {
+    amd::Os::yield();
+  }
+  hsa_amd_barrier_value_packet_t* aql_loc = &(reinterpret_cast<hsa_amd_barrier_value_packet_t*>(
+      gpu_queue_->base_address))[index & queueMask];
+  *aql_loc = *packet;
+  unsigned int* headerPtr = reinterpret_cast<unsigned int*>(&header);
+  __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), *headerPtr, __ATOMIC_RELEASE);
+
+  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
+          "[%zx] HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x ",
+          "(type=%d, barrier=%d, acquire=%d, release=%d), "
+          "completion_signal=0x%zx value = 0x%llx mask = 0x%llx cond: %d (GTE: %d EQ: %d NE: %d)",
+          std::this_thread::get_id(), gpu_queue_, header.header, header.AmdFormat,
+          extractAqlBits(header.header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
+          extractAqlBits(header.header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
+          extractAqlBits(header.header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                         HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+          extractAqlBits(header.header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                         HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+          packet->completion_signal, packet->value, packet->mask, packet->cond,
+          HSA_SIGNAL_CONDITION_GTE, HSA_SIGNAL_CONDITION_EQ, HSA_SIGNAL_CONDITION_NE);
+}
+
+void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+  profilingBegin(cmd);
+
+  const cl_command_type type = cmd.type();
+  const int64_t value = cmd.value();
+  const uint64_t mask = cmd.mask();
+  const unsigned int flags = cmd.flags();
+  const size_t sizeBytes = cmd.sizeBytes();
+  const size_t offset = cmd.offset();
+
+  amd::Memory* amdMemory = &cmd.memory();
+  Memory* memory = dev().getRocMemory(amdMemory);
+
+  if (type == ROCCLR_COMMAND_STREAM_WAIT_VALUE) {
+    hsa_amd_barrier_value_packet_t aqlPacket;
+    hsa_amd_vendor_packet_header_t header;
+    hsa_signal_t signal;
+    Buffer* buff = static_cast<Buffer*>(memory);
+
+    header.header = kBarrierVendorPacketHeader;
+    header.AmdFormat = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
+    aqlPacket.signal = buff->getSignal();
+    aqlPacket.completion_signal = Barriers().ActiveSignal();
+
+    // mask is always applied on value at signal before performing
+    // the comparision defiend by 'condition'
+    switch (flags) {
+      case ROCCLR_STREAM_WAIT_VALUE_GTE:
+        aqlPacket.value = value;
+        aqlPacket.mask = mask;
+        aqlPacket.cond = HSA_SIGNAL_CONDITION_GTE;
+        break;
+      case ROCCLR_STREAM_WAIT_VALUE_EQ:
+        aqlPacket.value = value;
+        aqlPacket.mask = mask;
+        aqlPacket.cond = HSA_SIGNAL_CONDITION_EQ;
+        break;
+      case ROCCLR_STREAM_WAIT_VALUE_AND:
+        aqlPacket.value = 0;
+        aqlPacket.mask = (value & mask);
+        aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
+        break;
+      case ROCCLR_STREAM_WAIT_VALUE_NOR:
+        aqlPacket.value = ~value & mask;
+        aqlPacket.mask = ~value & mask;
+        aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
+        break;
+      default:
+        ShouldNotReachHere();
+        break;
+    }
+    dispatchBarrierValuePacket(&aqlPacket, header);
+  } else if (type == ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
+    amd::Coord3D origin(offset);
+    amd::Coord3D size(sizeBytes);
+    bool entire = amdMemory->isEntirelyCovered(origin, size);
+
+    // Use GPU Blit to write
+    bool result = blitMgr().fillBuffer(*memory, &value, sizeBytes, origin, size, entire, true);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writting value: 0x%lx \n", value);
+
+    if (!result) {
+      LogError("submitStreamOperation: Write failed!");
+    }
+  } else {
+    ShouldNotReachHere();
+  }
+  profilingEnd(cmd);
+}
+
 void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -2900,7 +3010,6 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     // Make sure all performance counter objects to use the same profile
     PerfCounter* counter = nullptr;
     for (uint i = 0; i < vcmd.getNumCounters(); ++i) {
-
       amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[i]);
       counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
 

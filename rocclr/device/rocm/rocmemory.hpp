@@ -165,7 +165,13 @@ class Buffer : public roc::Memory {
   // Recreate the device memory using new size and alignment.
   bool recreate(size_t newSize, size_t newAlignment, bool forceSystem);
 
+  // Returns the HSA signal associated with this Memory object.
+  hsa_signal_t getSignal() const { return signal_; }
+
  private:
+  // signal object used when ROCCLR_MEM_HSA_SIGNAL_MEMORY is set
+  hsa_signal_t signal_;
+
   // Disable copy constructor
   Buffer(const Buffer&);
 

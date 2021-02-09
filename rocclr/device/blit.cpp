@@ -553,8 +553,8 @@ bool HostBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMe
 }
 
 bool HostBlitManager::fillBuffer(device::Memory& memory, const void* pattern, size_t patternSize,
-                                 const amd::Coord3D& origin, const amd::Coord3D& size,
-                                 bool entire) const {
+                                 const amd::Coord3D& origin, const amd::Coord3D& size, bool entire,
+                                 bool forceBlit) const {
   // Map memory
   void* fillMem = memory.cpuMap(vDev_, (entire) ? Memory::CpuWriteOnly : 0);
   if (fillMem == NULL) {

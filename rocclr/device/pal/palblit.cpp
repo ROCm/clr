@@ -2065,12 +2065,12 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
 
 bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, size_t patternSize,
                                    const amd::Coord3D& origin, const amd::Coord3D& size,
-                                   bool entire) const {
+                                   bool entire, bool forceBlit) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
   // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || gpuMem(memory).isHostMemDirectAccess()) {
+  if (setup_.disableFillBuffer_ || (!forceBlit && gpuMem(memory).isHostMemDirectAccess())) {
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, origin, size, entire);
     synchronize();
     return result;
