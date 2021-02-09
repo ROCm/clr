@@ -80,6 +80,7 @@ class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
 class TransferBufferFileCommand;
+class StreamOperationCommand;
 class HwDebugManager;
 class Isa;
 class Device;
@@ -1191,6 +1192,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     ShouldNotReachHere();
   }
+  virtual void submitStreamOperation(amd::StreamOperationCommand& cmd) { ShouldNotReachHere(); }
   //! Get the blit manager object
   device::BlitManager& blitMgr() const { return *blitMgr_; }
 

@@ -42,6 +42,7 @@
 #include "platform/perfctr.hpp"
 #include "platform/threadtrace.hpp"
 #include "platform/activity.hpp"
+#include "platform/command_utils.hpp"
 
 #include "CL/cl_ext.h"
 
@@ -597,6 +598,58 @@ class FillMemoryCommand : public OneMemoryArgCommand {
 
   //! Return true if the entire memory object is written.
   bool isEntireMemory() const;
+};
+
+/*! \brief      A stream operation command.
+ *
+ *  \details    Used to perform a stream wait or strem write operations.
+ *              Wait: All the commands issued after stream wait are not executed until the wait
+ *              condition is true.
+ *              Write: Writes a 32 or 64 bit vaue to the memeory using a GPU Blit.
+ */
+
+class StreamOperationCommand : public OneMemoryArgCommand {
+ private:
+  int64_t value_;       // !< Value to Wait on or to Write.
+  uint64_t mask_;       // !< Mask to be applied on signal value for Wait operation.
+  unsigned int flags_;  // !< Flags defining the Wait condition.
+  size_t offset_;       // !< Offset into memory for Write
+  size_t sizeBytes_;    // !< Size in bytes to Write.
+
+  // NOTE: mask_ is only used for wait operation and
+  // offset and sizeBytes are only used for write.
+
+ public:
+  StreamOperationCommand(HostQueue& queue, cl_command_type cmdType,
+                         const EventWaitList& eventWaitList, Memory& memory, const int64_t value,
+                         const uint64_t mask, unsigned int flags, size_t offset, size_t sizeBytes)
+      : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
+        value_(value),
+        mask_(mask),
+        flags_(flags),
+        offset_(offset),
+        sizeBytes_(sizeBytes) {
+    // Sanity check
+    assert((cmdType == ROCCLR_COMMAND_STREAM_WRITE_VALUE ||
+            (cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE &&
+             memory_->getMemFlags() & ROCCLR_MEM_HSA_SIGNAL_MEMORY)) &&
+           "Invalid Stream Operation");
+  }
+
+  virtual void submit(device::VirtualDevice& device) { device.submitStreamOperation(*this); }
+
+  //! Returns the value
+  const int64_t value() const { return value_; }
+  //! Returns the wait mask
+  const uint64_t mask() const { return mask_; }
+  //! Return the wait flags
+  const unsigned int flags() const { return flags_; }
+  //! Return the memory object.
+  Memory& memory() const { return *memory_; }
+  //! Return the write offset.
+  const size_t offset() const { return offset_; }
+  //! Return the write size.
+  const size_t sizeBytes() const { return sizeBytes_; }
 };
 
 /*! \brief      A generic copy memory command

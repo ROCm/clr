@@ -251,6 +251,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void flush(amd::Command* list = nullptr, bool wait = false);
   void submitFillMemory(amd::FillMemoryCommand& cmd);
+  void submitStreamOperation(amd::StreamOperationCommand& cmd);
   void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
 
   void submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd);
@@ -335,6 +336,8 @@ class VirtualGPU : public device::VirtualDevice {
                              bool skipSignal = false);
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
+  void dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t* packet,
+                                  hsa_amd_vendor_packet_header_t header);
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet,
                                 amd::NDRangeContainer& sizes);
 

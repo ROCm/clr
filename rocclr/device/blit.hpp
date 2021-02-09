@@ -179,9 +179,10 @@ class BlitManager : public amd::HeapObject {
                           const void* pattern,         //!< Pattern data
                           size_t patternSize,          //!< Pattern size
                           const amd::Coord3D& origin,  //!< Destination origin
-                          const amd::Coord3D& size,    //!< Size of the copy region
-                          bool entire = false          //!< Entire buffer will be updated
-                          ) const = 0;
+                          const amd::Coord3D& size,    //!< Size of the fill region
+                          bool entire = false,         //!< Entire buffer will be updated
+                          bool forceBlit = false       //!< Force GPU Blit for fill
+  ) const = 0;
 
   //! Fills an image memory with a pattern data
   virtual bool fillImage(Memory& dstMemory,           //!< Memory object to fill with pattern
@@ -193,7 +194,7 @@ class BlitManager : public amd::HeapObject {
 
   //! Enables synchronization on blit operations
   void enableSynchronization() { syncOperation_ = true; }
-  
+
   //! Returns Xfer queue lock
   virtual amd::Monitor* lockXfer() const { return nullptr; }
 
@@ -331,9 +332,10 @@ class HostBlitManager : public device::BlitManager {
                           const void* pattern,         //!< Pattern data
                           size_t patternSize,          //!< Pattern size
                           const amd::Coord3D& origin,  //!< Destination origin
-                          const amd::Coord3D& size,    //!< Size of the copy region
-                          bool entire = false          //!< Entire buffer will be updated
-                          ) const;
+                          const amd::Coord3D& size,    //!< Size of the fill region
+                          bool entire = false,         //!< Entire buffer will be updated
+                          bool forceBlit = false       //!< Force GPU Blit for fill
+  ) const;
 
   //! Fills an image memory with a pattern data
   virtual bool fillImage(device::Memory& dstMemory,   //!< Memory object to fill with pattern
