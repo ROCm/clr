@@ -54,6 +54,11 @@ const char* getOclCommandKindString(uint32_t op) {
     CASE_STRING(CL_COMMAND_BARRIER, Barrier)
     CASE_STRING(CL_COMMAND_MIGRATE_MEM_OBJECTS, MigrateMemObjects)
     CASE_STRING(CL_COMMAND_FILL_IMAGE, FillImage)
+    CASE_STRING(CL_COMMAND_SVM_FREE, SvmFree)
+    CASE_STRING(CL_COMMAND_SVM_MEMCPY, SvmMemcpy)
+    CASE_STRING(CL_COMMAND_SVM_MEMFILL, SvmMemFill)
+    CASE_STRING(CL_COMMAND_SVM_MAP, SvmMap)
+    CASE_STRING(CL_COMMAND_SVM_UNMAP, SvmUnmap)
     default: case_string = "Unknown command type";
   };
   return case_string;
