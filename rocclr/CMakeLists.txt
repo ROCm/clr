@@ -120,6 +120,12 @@ if(DEV_LOG_ENABLE MATCHES "yes")
   add_definitions(-DDEV_LOG_ENABLE)
 endif()
 
+option(BUILD_LINUXPRO "Build LinuxPro" OFF)
+if (BUILD_LINUXPRO)
+  message(STATUS "Building LinuxPro")
+  add_definitions(-DROCCLR_DISABLE_PREVEGA)
+endif()
+
 option(BUILD_PAL "Build PAL backend" OFF)
 if (BUILD_PAL)
   add_subdirectory(device/pal)
