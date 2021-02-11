@@ -123,15 +123,15 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx703",                 nullptr,     nullptr,     false, false, true,               7,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Mullins
     {"gfx704",                 "Bonaire",   "Bonaire",   false, false, true,               7,  0,  4,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
     {"gfx705",                 "Mullins",   "Mullins",   false, false, true,               7,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Godavari
-    {"gfx801",                 nullptr,     nullptr,     true,  false, true,               8,  0,  1,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx801:xnack-",          "Carrizo",   "Carrizo",   true,  false, true,               8,  0,  1,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx801:xnack+",          nullptr,     nullptr,     true,  false, true,               8,  0,  1,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx802",                 "Tonga",     "Tonga",     true,  false, true,               8,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Iceland
-    {"gfx803",                 "Fiji",      "Fiji",      true,  false, true,               8,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Ellesmere/Polaris10, Baffin/Polaris11, Polaris12, Polaris22/VegaM
-    {"gfx805",                 nullptr,     nullptr,     true,  false, true,               8,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Tongapro
-    {"gfx810",                 nullptr,     nullptr,     true,  false, true,               8,  1,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx810:xnack-",          "Stoney",    "Stoney",    true,  false, true,               8,  1,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx810:xnack+",          nullptr,     nullptr,     true,  false, true,               8,  1,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx801",                 nullptr,     nullptr,     true,  true,  true,               8,  0,  1,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx801:xnack-",          "Carrizo",   "Carrizo",   true,  true,  true,               8,  0,  1,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx801:xnack+",          nullptr,     nullptr,     true,  true,  true,               8,  0,  1,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx802",                 "Tonga",     "Tonga",     true,  true,  true,               8,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Iceland
+    {"gfx803",                 "Fiji",      "Fiji",      true,  true,  true,               8,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Ellesmere/Polaris10, Baffin/Polaris11, Polaris12, Polaris22/VegaM
+    {"gfx805",                 nullptr,     nullptr,     true,  true,  true,               8,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Tongapro
+    {"gfx810",                 nullptr,     nullptr,     true,  true,  true,               8,  1,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx810:xnack-",          "Stoney",    "Stoney",    true,  true,  true,               8,  1,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx810:xnack+",          nullptr,     nullptr,     true,  true,  true,               8,  1,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx900",                 "gfx901",    nullptr,     true,  true,  false,              9,  0,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Greenland
     {"gfx900:xnack-",          "gfx900",    nullptr,     true,  true,  false,              9,  0,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx900:xnack+",          "gfx901",    nullptr,     true,  true,  false,              9,  0,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
