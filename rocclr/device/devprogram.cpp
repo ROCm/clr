@@ -215,7 +215,7 @@ amd_comgr_status_t Program::extractByteCodeBinary(const amd_comgr_data_set_t inD
 
 amd_comgr_status_t Program::addPreCompiledHeader(
     amd_comgr_data_set_t* dataSet, const std::vector<std::string>& preCompiledHeaders) {
-  amd_comgr_status_t status;
+  amd_comgr_status_t status = AMD_COMGR_STATUS_SUCCESS;
   if (preCompiledHeaders.size() > 0) {
     for (auto& i : preCompiledHeaders) {
       amd_comgr_data_t pch_data;
