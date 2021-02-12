@@ -483,8 +483,8 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
 // ================================================================================================
 bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
   Pal::Result result;
-  Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
-  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
+  Pal::SubresId ImgSubresId = {0, 0, 0};
+  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1, 1};
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
 
@@ -705,8 +705,8 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
 // ================================================================================================
 bool Resource::CreateInterop(CreateParams* params) {
   Pal::Result result;
-  Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
-  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1};
+  Pal::SubresId ImgSubresId = {0, 0, 0};
+  Pal::SubresRange ImgSubresRange = {ImgSubresId, 1, 1, 1};
   Pal::ChannelMapping channels;
   Pal::ChNumFormat format = dev().getPalFormat(desc().format_, &channels);
   Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
@@ -1418,7 +1418,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
   gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, dstResource.desc().baseLevel_, 0};
+    Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, 0};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = dstOrigin[0];
@@ -1443,7 +1443,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, desc().baseLevel_, 0};
+    Pal::SubresId ImgSubresId = {0, desc().baseLevel_, 0};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
     copyRegion.imageOffset.y = srcOrigin[1];
@@ -1707,7 +1707,7 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
     amd::ScopedLock lk(dev().lockPAL());
     void* address;
     if (image_ != nullptr) {
-      constexpr Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
+      constexpr Pal::SubresId ImgSubresId = {0, 0, 0};
       Pal::SubresLayout layout;
       image_->GetSubresourceLayout(ImgSubresId, &layout);
       *pitch = layout.rowPitch / elementSize();

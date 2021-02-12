@@ -1135,7 +1135,7 @@ bool Image::ValidateMemory(Resource::MemoryType memType) {
         !copyImageBuffer_->create(Resource::Local, nullptr, ForceLinear)) {
       return false;
     }
-    constexpr Pal::SubresId ImgSubresId = {Pal::ImageAspect::Color, 0, 0};
+    constexpr Pal::SubresId ImgSubresId = {0, 0, 0};
     Pal::SubresLayout layout;
     copyImageBuffer_->image()->GetSubresourceLayout(ImgSubresId, &layout);
     // Destroy temporary linear image, since it was allocated for the pitch validation only
