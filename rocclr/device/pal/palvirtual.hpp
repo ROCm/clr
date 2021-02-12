@@ -488,7 +488,7 @@ class VirtualGPU : public device::VirtualDevice {
     Pal::BarrierTransition trans = {cacheMask,
                                     cacheMask,
                                     {nullptr,
-                                     {{Pal::ImageAspect::Color, 0, 0}, 0, 0},
+                                     {{0, 0, 0}, 0, 0, 0},
                                      Pal::LayoutShaderRead,
                                      Pal::LayoutShaderRead}};
     barrier.pTransitions = &trans;
