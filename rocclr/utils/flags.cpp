@@ -145,6 +145,12 @@ bool Flag::init() {
       flag.setValue(it->second);
     }
   }
+  if (!flagIsDefault(AMD_LOG_LEVEL)) {
+    if (!flagIsDefault(AMD_LOG_LEVEL_FILE)) {
+      std::string fileName = AMD_LOG_LEVEL_FILE;
+      outFile = fopen(fileName.c_str(), "w");
+    }
+  }
 
   return true;
 }
