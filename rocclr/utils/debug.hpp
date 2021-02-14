@@ -23,7 +23,8 @@
 
 
 #include <cassert>
-#include <string.h>
+#include <cstring>
+#include <cstdio>
 #include <cstdint>
 //! \addtogroup Utils
 #ifdef _WIN32
@@ -57,6 +58,9 @@ enum LogMask {
   LOG_MEM       = 0x00020000, //!< Memory allocation
   LOG_ALWAYS    = 0xFFFFFFFF, //!< Log always even mask flag is zero
 };
+
+//! \brief log file output
+extern FILE* outFile;
 
 //! \cond ignore
 extern "C" void breakpoint();

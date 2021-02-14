@@ -36,6 +36,9 @@
 
 namespace amd {
 
+FILE* outFile = stderr;
+
+// ================================================================================================
 //! \cond ignore
 extern "C" void breakpoint(void) {
 #ifdef _MSC_VER
@@ -44,25 +47,29 @@ extern "C" void breakpoint(void) {
 }
 //! \endcond
 
+// ================================================================================================
 void report_fatal(const char* file, int line, const char* message) {
   // FIXME_lmoriche: Obfuscate the message string
   #if (defined(DEBUG))
-    fprintf(stderr, "%s:%d: %s\n", file, line, message);
+    fprintf(outFile, "%s:%d: %s\n", file, line, message);
   #else
-    fprintf(stderr, "%s\n", message);
+    fprintf(outFile, "%s\n", message);
   #endif
   ::abort();
 }
 
-void report_warning(const char* message) { fprintf(stderr, "Warning: %s\n", message); }
+// ================================================================================================
+void report_warning(const char* message) { fprintf(outFile, "Warning: %s\n", message); }
 
+// ================================================================================================
 void log_entry(LogLevel level, const char* file, int line, const char* message) {
   if (level == LOG_NONE) {
     return;
   }
-  fprintf(stderr, ":%d:%s:%d: %s\n", level, file, line, message);
+  fprintf(outFile, ":%d:%s:%d: %s\n", level, file, line, message);
 }
 
+// ================================================================================================
 void log_timestamped(LogLevel level, const char* file, int line, const char* message) {
   static bool gotstart = false;  // not thread-safe, but not scary if fails
   static uint64_t start;
@@ -77,13 +84,14 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
     return;
   }
 #if 0
-    fprintf(stderr, ":%d:%s:%d: (%010lld) %s\n", level, file, line, time, message);
+    fprintf(outFile, ":%d:%s:%d: (%010lld) %s\n", level, file, line, time, message);
 #else  // if you prefer fixed-width fields
-  fprintf(stderr, ":% 2d:%15s:% 5d: (%010lld) us %s\n", level, file, line, time / 1000ULL,
+  fprintf(outFile, ":% 2d:%15s:% 5d: (%010lld) us %s\n", level, file, line, time / 1000ULL,
           message);
 #endif
 }
 
+// ================================================================================================
 void log_printf(LogLevel level, const char* file, int line, const char* format, ...) {
   va_list ap;
 
@@ -92,10 +100,13 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
-  fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
+  fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
 
 }
-void log_printf(LogLevel level, const char* file, int line, uint64_t* start, const char* format, ...) {
+
+// ================================================================================================
+void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
+                const char* format, ...) {
   va_list ap;
 
   va_start(ap, format);
@@ -104,9 +115,10 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start, con
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
   if (start == 0 || *start == 0) {
-     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
+     fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
   } else {
-     fprintf(stderr, ":%d:%-25s:%-4d: %010lld us: %s: duration: %lld us\n", level, file, line, timeUs/1ULL, message, (timeUs - *start)/1ULL);
+     fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %s: duration: %lld us\n", level, file, line,
+             timeUs/1ULL, message, (timeUs - *start)/1ULL);
   }
   if (*start == 0) {
      *start = timeUs;

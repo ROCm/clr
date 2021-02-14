@@ -93,6 +93,9 @@ void Runtime::tearDown() {
   Device::tearDown();
   option::teardown();
   Flag::tearDown();
+  if (outFile != stderr && outFile != nullptr) {
+    fclose(outFile);
+  }
   initialized_ = false;
 }
 
