@@ -4387,6 +4387,22 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillImage,
 
   amd::Coord3D fillOrigin(origin[0], origin[1], origin[2]);
   amd::Coord3D fillRegion(region[0], region[1], region[2]);
+
+  ImageViewRef mip;
+  if (fillImage->getMipLevels() > 1) {
+    // Create a view for the specified mip level
+    mip = fillImage->createView(fillImage->getContext(), fillImage->getImageFormat(), nullptr,
+                                origin[fillImage->getDims()]);
+    if (mip() == nullptr) {
+      return CL_OUT_OF_HOST_MEMORY;
+    }
+    // Reset the mip level value to 0, since a view was created
+    if (fillImage->getDims() < 3) {
+      fillOrigin.c[fillImage->getDims()] = 0;
+    }
+    fillImage = mip();
+  }
+
   if (!fillImage->validateRegion(fillOrigin, fillRegion)) {
     return CL_INVALID_VALUE;
   }
