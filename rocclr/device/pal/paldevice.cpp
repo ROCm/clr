@@ -829,7 +829,11 @@ bool Device::create(Pal::IDevice* device) {
       (static_cast<uint>(properties().gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties().gpuMemoryProperties.flags.iommuv2Support));
 
-  bool isSRAMECCEnabled = properties().gfxipProperties.shaderCore.flags.eccProtectedGprs;
+  // Temporarily disable reporting sramecc support.
+  // PAL currently only reports if the device CAN support it,
+  // not if it is ENABLED. This will cause us to enable the feature on
+  // the HSAIL path, which is not supported.
+  bool isSRAMECCEnabled = false;
 
   const amd::Isa* isa;
   std::tie(isa, palName_) = findIsa(asicRevision_, isSRAMECCEnabled, isXNACKEnabled);
