@@ -17,11 +17,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
-option(ADDRESS_SANITIZER "Build Address Sanitizer" OFF)
-if (ADDRESS_SANITIZER)
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-endif()
-
 #set a name for icd file
 set(OPENCL_AMD_ICD_FILE "amdocl64.icd")
 if (DEFINED ROCM_PATCH_VERSION)
