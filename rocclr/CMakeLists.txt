@@ -72,7 +72,7 @@ find_package(amd_comgr REQUIRED CONFIG
 )
 message(STATUS "Code Object Manager found at ${amd_comgr_DIR}.")
 
-find_package(hsa-runtime64 REQUIRED CONFIG
+find_package(hsa-runtime64 1.3 REQUIRED CONFIG
    PATHS
      /opt/rocm/
    PATH_SUFFIXES
