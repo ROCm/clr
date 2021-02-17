@@ -702,7 +702,6 @@ void Image::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Image));
   memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
 }
-bool Image::create(void* initFrom) { return Memory::create(initFrom); }
 
 size_t Image::Format::getNumChannels() const {
   switch (image_channel_order) {
