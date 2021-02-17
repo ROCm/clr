@@ -388,11 +388,15 @@ hsa_signal_t* VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine) {
     // Early signal status check
     if (hsa_signal_load_relaxed(prof_signal->signal_) > 0) {
       const Settings& settings = gpu_.dev().settings();
-      // Wait on CPU if requested
-      if (settings.cpu_wait_for_signal_) {
-        CpuWaitForSignal(prof_signal);
-      } else {
-        return &prof_signal->signal_;
+      // Actively wait on CPU for 30 us to avoid extra overheads of signal tracking on GPU
+      if (!WaitForSignal<kTimeout30us>(prof_signal->signal_)) {
+        if (settings.cpu_wait_for_signal_) {
+          // Wait on CPU for completion if requested
+          CpuWaitForSignal(prof_signal);
+        } else {
+          // Return HSA signal for tracking on GPU
+          return &prof_signal->signal_;
+        }
       }
     }
   }

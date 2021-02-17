@@ -50,20 +50,30 @@ struct ProfilingSignal : public amd::HeapObject {
 };
 
 // Initial HSA signal value
-constexpr hsa_signal_value_t kInitSignalValueOne = 1;
+constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 
+// Timeouts for HSA signal wait
+constexpr static uint64_t kTimeout30us = 30000;
+constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
+
+template <uint64_t wait_time = 0>
 inline bool WaitForSignal(hsa_signal_t signal) {
-  constexpr uint64_t Timeout30us = 30000;
-  constexpr uint64_t UnlimitedWait = std::numeric_limits<uint64_t>::max();
-  uint64_t timeout = (ROC_ACTIVE_WAIT) ? UnlimitedWait : Timeout30us;
-
-  // Active wait with a timeout
-  if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-    // Wait until the completion with CPU suspend
+  if (wait_time != 0) {
     if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                  UnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+                                  wait_time, HSA_WAIT_STATE_ACTIVE) != 0) {
       return false;
+    }
+  } else {
+    uint64_t timeout = (ROC_ACTIVE_WAIT) ? kUnlimitedWait : kTimeout30us;
+
+    // Active wait with a timeout
+    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                  timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+      // Wait until the completion with CPU suspend
+      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+        return false;
+      }
     }
   }
   return true;
