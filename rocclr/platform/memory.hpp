@@ -584,10 +584,6 @@ class Image : public Memory {
 
   //! Sets the byte pitch obtained from HWL
   void setBytePitch(size_t bytePitch) { impl_.bp_ = bytePitch; }
-
-  //! Creates and initializes device (cache) memory for all devices
-  bool create(void* initFrom = NULL  //!< Pointer to the initialization data
-  );
 };
 
 //! SVM-related functionality.

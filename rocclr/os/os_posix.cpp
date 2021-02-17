@@ -812,7 +812,7 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
 }
 
 bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t mmap_size) {
-  if ((mmap_ptr == nullptr)) {
+  if (mmap_ptr == nullptr) {
     return false;
   }
 
