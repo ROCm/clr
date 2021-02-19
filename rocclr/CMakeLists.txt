@@ -119,6 +119,7 @@ option(BUILD_LINUXPRO "Build LinuxPro" OFF)
 if (BUILD_LINUXPRO)
   message(STATUS "Building LinuxPro")
   add_definitions(-DROCCLR_DISABLE_PREVEGA)
+  add_definitions(-DROCCLR_ENABLE_GL_SHARING)
 endif()
 
 option(BUILD_PAL "Build PAL backend" OFF)
