@@ -220,7 +220,10 @@ bool Event::awaitCompletion() {
 
 Command* Event::notifyCmdQueue(bool retain) {
   HostQueue* queue = command().queue();
-  if ((status() > CL_COMPLETE) && (NULL != queue) && !notified_.test_and_set()) {
+  if ((status() > CL_COMPLETE) &&
+      // Don't need to send notify for notifications, which have 0 type
+      (command().type() != 0) &&
+      (nullptr != queue) && !notified_.test_and_set()) {
     // Make sure the queue is draining the enqueued commands.
     amd::Command* internalCommand = new amd::Marker(*queue, false, nullWaitList, this);
     if (internalCommand == NULL) {
