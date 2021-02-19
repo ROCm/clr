@@ -129,9 +129,13 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
   enableExtension(ClAmdMediaOps);
   enableExtension(ClAmdMediaOps2);
   enableExtension(ClKhrImage2dFromBuffer);
+
+#ifdef ROCCLR_ENABLE_GL_SHARING
   if (MesaInterop::Supported()) {
     enableExtension(ClKhrGlSharing);
   }
+#endif
+
   // Enable platform extension
   enableExtension(ClAmdDeviceAttributeQuery);
 
