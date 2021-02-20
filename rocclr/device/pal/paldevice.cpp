@@ -906,6 +906,9 @@ bool Device::create(Pal::IDevice* device) {
     return false;
   }
 
+  // Fill the device info structure
+  fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines());
+
   if (!ValidateComgr()) {
     LogError("Code object manager initialization failed!");
     return false;
@@ -937,9 +940,6 @@ bool Device::create(Pal::IDevice* device) {
   if (nullptr == resourceCache_) {
     return false;
   }
-
-  // Fill the device info structure
-  fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines());
 
 #ifdef DEBUG
   std::stringstream message;
