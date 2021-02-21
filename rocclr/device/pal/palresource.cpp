@@ -1071,6 +1071,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
     createInfo.isUsedForKernel = desc_.isAllocExecute_;
     createInfo.size = allocSize;
     createInfo.alignment = MaxGpuAlignment;
+    createInfo.flags.gl2Uncached = desc_.gl2CacheDisabled_;
     if (svmPtr != 0) {
       createInfo.flags.useReservedGpuVa = true;
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
