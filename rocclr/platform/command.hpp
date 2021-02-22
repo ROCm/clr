@@ -99,10 +99,8 @@ class Event : public RuntimeObject {
 
   struct ProfilingInfo {
     ProfilingInfo(bool enabled = false) : enabled_(enabled), waves_(0), marker_ts_(false) {
-      if (enabled) {
-        clear();
-        callback_ = nullptr;
-      }
+      clear();
+      callback_ = nullptr;
     }
 
     uint64_t queued_;
