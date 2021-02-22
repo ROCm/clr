@@ -82,6 +82,7 @@ namespace amd {
 #endif  // __APPLE__
 
 bool IS_HIP = false;
+std::atomic_bool IS_PROFILER_ON(false);
 
 #if defined(WITH_GPU_DEVICE)
 bool IS_LEGACY = true;

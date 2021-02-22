@@ -45,7 +45,7 @@ namespace amd {
 Event::Event(HostQueue& queue)
     : callbacks_(NULL),
       status_(CL_INT_MAX),
-      profilingInfo_(queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
+      profilingInfo_(IS_PROFILER_ON || queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
                      Agent::shouldPostEventEvents()) {
   notified_.clear();
 }
