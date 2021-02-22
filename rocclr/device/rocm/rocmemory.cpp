@@ -1133,13 +1133,18 @@ bool Image::create() {
 
   if (originalDeviceMemory_ == nullptr) {
     originalDeviceMemory_ = dev().hostAlloc(alloc_size, 1, Device::MemorySegment::kNoAtomics);
-    if ((originalDeviceMemory_ != nullptr) && dev().settings().apuSystem_) {
-      const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
+    if (originalDeviceMemory_ != nullptr) {
+      kind_ = MEMORY_KIND_HOST;
+      if (dev().settings().apuSystem_) {
+        const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
+      }
     }
   }
   else {
     const_cast<Device&>(dev()).updateFreeMemory(alloc_size, false);
   }
+  //record real size of the buffer so we will release and count it correctly.
+  deviceImageInfo_.size = alloc_size;
 
   deviceMemory_ = reinterpret_cast<void*>(
       amd::alignUp(reinterpret_cast<uintptr_t>(originalDeviceMemory_), deviceImageInfo_.alignment));
@@ -1316,7 +1321,13 @@ void Image::destroy() {
 
   if (originalDeviceMemory_ != nullptr) {
     dev().memFree(originalDeviceMemory_, deviceImageInfo_.size);
-    const_cast<Device&>(dev()).updateFreeMemory(size(), true);
+    if (kind_ == MEMORY_KIND_HOST) {
+      if (dev().settings().apuSystem_) {
+        const_cast<Device&>(dev()).updateFreeMemory(deviceImageInfo_.size, true);
+      }
+    } else {
+      const_cast<Device&>(dev()).updateFreeMemory(deviceImageInfo_.size, true);
+    }
   }
 }
 

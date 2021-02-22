@@ -33,8 +33,11 @@ class Memory : public device::Memory {
  public:
   enum MEMORY_KIND {
     MEMORY_KIND_NORMAL = 0,
-    MEMORY_KIND_LOCK,
-    MEMORY_KIND_GART,
+
+    // The memory is allocated by ROCclr in host memory. This flag is used by
+    // image class now. It may find more use in buffer class in future
+    MEMORY_KIND_HOST,
+
     MEMORY_KIND_INTEROP,
     MEMORY_KIND_PTRGIVEN
   };
