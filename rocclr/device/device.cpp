@@ -162,6 +162,15 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx909",                 nullptr,     nullptr,     false, false, false,              9,  0,  9,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Raven2 (can execute Raven code)
     {"gfx909:xnack-",          nullptr,     nullptr,     false, false, false,              9,  0,  9,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx909:xnack+",          nullptr,     nullptr,     false, false, false,              9,  0,  9,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a",                 nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc-",        nullptr,     nullptr,     true,  false, false,              9,  0,  10,   OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc+",        nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:xnack-",          nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ANY,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:xnack-",          nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ANY,    ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc-:xnack-", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   OFF,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc-:xnack+", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc+:xnack-", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90a:sramecc+:xnack+", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c",                 nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Renoir
     {"gfx90c:xnack-",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack+",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
