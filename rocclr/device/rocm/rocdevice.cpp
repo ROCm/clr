@@ -1857,7 +1857,7 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const {
   void* ptr = nullptr;
 
-  hsa_amd_memory_pool_t segment;
+  hsa_amd_memory_pool_t segment{0};
   switch (mem_seg) {
     case kKernArg :
     case kNoAtomics :
