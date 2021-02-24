@@ -152,8 +152,6 @@ class Event : public RuntimeObject {
   //! Process the callbacks for the given \a status change.
   void processCallbacks(int32_t status) const;
 
-  void waitForCompletion();
-
   //! Enable profiling for this command
   void EnableProfiling() {
     profilingInfo_.enabled_ = true;
@@ -202,7 +200,7 @@ class Event : public RuntimeObject {
 
   /*! \brief Notifies current command queue about execution status
    */
-  Command* notifyCmdQueue(bool retain = false);
+  bool notifyCmdQueue();
 
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeEvent; }
