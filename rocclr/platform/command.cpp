@@ -210,11 +210,15 @@ bool Event::awaitCompletion() {
   return status() == CL_COMPLETE;
 }
 
+// ================================================================================================
 bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
   if ((status() > CL_COMPLETE) &&
-      // Don't need to send notify for notifications, which have 0 type
-      (command().type() != 0) &&
+      // Don't need to notify any marker with direct dispatch,
+      // because all markers are blocking
+      (!AMD_DIRECT_DISPATCH ||
+       ((command().type() != CL_COMMAND_MARKER) &&
+        (command().type() != 0))) &&
       (nullptr != queue) && !notified_.test_and_set()) {
     // Make sure the queue is draining the enqueued commands.
     amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
