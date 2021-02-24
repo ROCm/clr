@@ -183,65 +183,50 @@ void Event::processCallbacks(int32_t status) const {
   }
 }
 
-void Event::waitForCompletion() {
-  ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status());
-  auto* queue = command().queue();
-  if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
-    while (status() > CL_COMPLETE) {
-      amd::Os::yield();
-    }
-  } else {
-    ScopedLock lock(lock_);
-
-    // Wait until the status becomes CL_COMPLETE or negative.
-    while (status() > CL_COMPLETE) {
-      lock_.wait();
-    }
-  }
-  ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
-}
-
 bool Event::awaitCompletion() {
   if (status() > CL_COMPLETE) {
     // Notifies current command queue about waiting
-    Command* command = notifyCmdQueue(true);
-    if (command == nullptr) {
+    if (!notifyCmdQueue()) {
       return false;
-    } else {
-      command->waitForCompletion();
-      auto status = command->status();
-      command->release();
-      return status == CL_COMPLETE;
     }
+
+    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status());
+    auto* queue = command().queue();
+    if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
+      while (status() > CL_COMPLETE) {
+        amd::Os::yield();
+      }
+    } else {
+      ScopedLock lock(lock_);
+
+      // Wait until the status becomes CL_COMPLETE or negative.
+      while (status() > CL_COMPLETE) {
+        lock_.wait();
+      }
+    }
+    ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
   }
-  // Command is already completed
+
   return status() == CL_COMPLETE;
 }
 
-Command* Event::notifyCmdQueue(bool retain) {
+bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
   if ((status() > CL_COMPLETE) &&
       // Don't need to send notify for notifications, which have 0 type
       (command().type() != 0) &&
       (nullptr != queue) && !notified_.test_and_set()) {
     // Make sure the queue is draining the enqueued commands.
-    amd::Command* internalCommand = new amd::Marker(*queue, false, nullWaitList, this);
-    if (internalCommand == NULL) {
+    amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
+    if (command == NULL) {
       notified_.clear();
-      return nullptr;
+      return false;
     }
     ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
-    internalCommand->enqueue();
-    // if retain is false, release the command here, else release in the caller function
-    if (!retain) {
-      internalCommand->release();
-    }
-    return internalCommand;
+    command->enqueue();
+    command->release();
   }
-  if (retain) {
-    this->retain();
-  }
-  return &command();
+  return true;
 }
 
 const Event::EventWaitList Event::nullWaitList(0);
