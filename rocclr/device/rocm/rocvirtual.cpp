@@ -146,15 +146,13 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
       ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
     return false;
   }
+  amd::ScopedLock sl(ts->gpu()->execution());
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(%lx)\n",
+    static_cast<uint32_t>(value), arg, ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
+
   // Update the batch, since signal is complete
-  if (ts->Signals().size() > 0) {
-    amd::ScopedLock sl(ts->gpu()->execution());
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(%lx)\n",
-        static_cast<uint32_t>(value), arg, ts->Signals()[0]->signal_.handle);
-    ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
-  } else {
-    LogError("Error: ROCr handler was called for untracked signal!");
-  }
+  ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
+
   // Return false, so the callback will not be called again for this signal
   return false;
 }
@@ -331,6 +329,10 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   prof_signal->done_ = false;
   prof_signal->engine_ = engine_;
   if (ts != 0) {
+    // Save HSA signal earlier to make sure the possible callback will have a valid
+    // value for processing
+    prof_signal->ts_ = ts;
+    ts->AddProfilingSignal(prof_signal);
     // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
     // requires the batch update upon HSA signal completion
     if (AMD_DIRECT_DISPATCH && (ts->command().GetBatchHead() != nullptr)) {
@@ -347,8 +349,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
       hsa_amd_profiling_async_copy_enable(true);
       sdma_profiling_ = true;
     }
-    prof_signal->ts_ = ts;
-    ts->AddProfilingSignal(prof_signal);
   }
   return prof_signal->signal_;
 }
@@ -1127,7 +1127,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
 }
 
 // ================================================================================================
-void VirtualGPU::updateCommandsState(amd::Command* list) {
+void VirtualGPU::updateCommandsState(amd::Command* list) const {
   Timestamp* ts = nullptr;
 
   amd::Command* current = list;
@@ -2802,6 +2802,7 @@ void VirtualGPU::submitNativeFn(amd::NativeFnCommand& cmd) {
   // std::cout<<__FUNCTION__<<" not implemented"<<"*********"<<std::endl;
 }
 
+// ================================================================================================
 void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   if (vcmd.profilingInfo().marker_ts_) {
     profilingBegin(vcmd);
@@ -2811,11 +2812,16 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
       // for cache flushes explicitly and helps wall time
       uint16_t header = kNopPacketHeader;
       dispatchBarrierPacket(&barrier_packet_, header);
+      // Direct dispatch requires a barrier with callback and hasPendingDispatch_ triggers that
+      if (AMD_DIRECT_DISPATCH) {
+        hasPendingDispatch_ = true;
+      }
     }
     profilingEnd(vcmd);
   }
 }
 
+// ================================================================================================
 void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -2856,8 +2862,9 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
     // If runtime didn't submit a barrier, then it can't track the completion of the batch.
     // Hence runtime either has to insert a barrier unconditionally or have a CPU wait.
     // Due to performance impact of extra barriers CPU wait is selected.
-    // CPU wait is also forced if pinned buffers were used
-    skip_cpu_wait &= hasPendingDispatch_ && (pinnedMems_.size() == 0);
+    // Note: if callback will be selected to update the batch status,
+    // then the host thread can't update it also, otherwise double free may occur
+    skip_cpu_wait &= hasPendingDispatch_;
 
     releaseGpuMemoryFence(force_barrier, skip_cpu_wait);
     profilingEnd(*current);
@@ -2910,14 +2917,18 @@ void VirtualGPU::addPinnedMem(amd::Memory* mem) {
   //! @note: ROCr backend doesn't have per resource busy tracking, hence runtime has to wait
   //!        unconditionally, before it can release pinned memory
   releaseGpuMemoryFence();
-  if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
-    if (pinnedMems_.size() > 7) {
-      pinnedMems_.front()->release();
-      pinnedMems_.erase(pinnedMems_.begin());
-    }
+  if (!AMD_DIRECT_DISPATCH) {
+    if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
+      if (pinnedMems_.size() > 7) {
+        pinnedMems_.front()->release();
+        pinnedMems_.erase(pinnedMems_.begin());
+      }
 
-    // Delay destruction
-    pinnedMems_.push_back(mem);
+      // Delay destruction
+      pinnedMems_.push_back(mem);
+    }
+  } else {
+    mem->release();
   }
 }
 

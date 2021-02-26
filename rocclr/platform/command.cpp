@@ -213,13 +213,17 @@ bool Event::awaitCompletion() {
 // ================================================================================================
 bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
-  if ((status() > CL_COMPLETE) &&
-      // Don't need to notify any marker with direct dispatch,
-      // because all markers are blocking
+  if ((status() > CL_COMPLETE) && (nullptr != queue) &&
       (!AMD_DIRECT_DISPATCH ||
+       // Don't need to notify any marker with direct dispatch,
+       // because all markers are blocking.
        ((command().type() != CL_COMMAND_MARKER) &&
-        (command().type() != 0))) &&
-      (nullptr != queue) && !notified_.test_and_set()) {
+        (command().type() != 0)) ||
+        // Don't need to notify if the current batch is empty,
+        // because that means the command was processed and extra notification
+        // will cause a stall on the host.
+        (queue->GetSubmittionBatch() != nullptr)) &&
+        !notified_.test_and_set()) {
     // Make sure the queue is draining the enqueued commands.
     amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
     if (command == NULL) {

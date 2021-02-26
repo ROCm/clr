@@ -36,7 +36,6 @@ class Device;
 class Memory;
 class Timestamp;
 
-
 struct ProfilingSignal : public amd::HeapObject {
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
@@ -98,7 +97,7 @@ class Timestamp : public amd::HeapObject {
     , gpu_(gpu)
     , command_(command) {}
 
-  virtual ~Timestamp() {}
+  ~Timestamp() {}
 
   uint64_t getStart() {
     checkGpuTime();
@@ -236,7 +235,7 @@ class VirtualGPU : public device::VirtualDevice {
   void profilingBegin(amd::Command& command, bool drmProfiling = false);
   void profilingEnd(amd::Command& command);
 
-  void updateCommandsState(amd::Command* list);
+  void updateCommandsState(amd::Command* list) const;
 
   void submitReadMemory(amd::ReadMemoryCommand& cmd);
   void submitWriteMemory(amd::WriteMemoryCommand& cmd);
