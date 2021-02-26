@@ -750,7 +750,7 @@ bool Buffer::create() {
                     "[ROCclr] ROCCLR_MEM_HSA_SIGNAL_MEMORY signal creation failed");
             return false;
           }
-          volatile hsa_signal_value_t* signalValuePtr;
+          volatile hsa_signal_value_t* signalValuePtr = nullptr;
           if (HSA_STATUS_SUCCESS != hsa_amd_signal_value_pointer(signal_, &signalValuePtr)) {
             ClPrint(amd::LOG_ERROR, amd::LOG_MEM,
                     "[ROCclr] ROCCLR_MEM_HSA_SIGNAL_MEMORY pointer query failed");
