@@ -174,19 +174,19 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx90c",                 nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Renoir
     {"gfx90c:xnack-",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack+",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx1010",                nullptr,     nullptr,     true,  true,  false,              10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1010",                "gfx1010",   nullptr,     true,  true,  false,              10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack-",         "gfx1010",   nullptr,     true,  true,  false,              10, 1,  0,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack+",         nullptr,     nullptr,     true,  true,  false,              10, 1,  0,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1011",                nullptr,     nullptr,     true,  true,  false,              10, 1,  1,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1011",                "gfx1011",   nullptr,     true,  true,  false,              10, 1,  1,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1011:xnack-",         "gfx1011",   nullptr,     true,  true,  false,              10, 1,  1,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1011:xnack+",         nullptr,     nullptr,     true,  true,  false,              10, 1,  1,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1012",                nullptr,     nullptr,     true,  true,  false,              10, 1,  2,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1012",                "gfx1012",   nullptr,     true,  true,  false,              10, 1,  2,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1012:xnack-",         "gfx1012",   nullptr,     true,  true,  false,              10, 1,  2,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1012:xnack+",         nullptr,     nullptr,     true,  true,  false,              10, 1,  2,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1030",                nullptr,     nullptr,     true,  true,  false,              10, 3,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1031",                nullptr,     nullptr,     true,  true,  false,              10, 3,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1032",                nullptr,     nullptr,     true,  true,  false,              10, 3,  2,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1033",                nullptr,     nullptr,     false, true,  false,              10, 3,  3,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32}
+    {"gfx1030",                "gfx1030",   nullptr,     true,  true,  false,              10, 3,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1031",                "gfx1031",   nullptr,     true,  true,  false,              10, 3,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1032",                "gfx1032",   nullptr,     true,  true,  false,              10, 3,  2,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1033",                "gfx1033",   nullptr,     false, true,  false,              10, 3,  3,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32}
   };
   return std::make_pair(std::begin(supportedIsas_), std::end(supportedIsas_));
 }
