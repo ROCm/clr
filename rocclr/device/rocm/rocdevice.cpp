@@ -1859,7 +1859,13 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
 
   hsa_amd_memory_pool_t segment{0};
   switch (mem_seg) {
-    case kKernArg :
+    case kKernArg : {
+      if (::strcmp(isa().processorName().c_str(), "gfx90a") == 0) {
+        segment = system_kernarg_segment_;
+        break;
+      }
+      // Falls through on else case.
+    }
     case kNoAtomics :
       // If runtime disables barrier, then all host allocations must have L2 disabled
       if ((settings().barrier_sync_) && (system_coarse_segment_.handle != 0)) {
