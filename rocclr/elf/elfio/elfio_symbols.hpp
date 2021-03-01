@@ -1,5 +1,6 @@
 /*
 Copyright (C) 2001-2015 by Serge Lamikhov-Center
+Modifications Copyright (C) 2020-2021 Advanced Micro Devices, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
