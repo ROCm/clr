@@ -223,6 +223,7 @@ class Command : public Event {
   Command* batch_head_ = nullptr; //!< The head of the batch commands
   cl_command_type     type_;      //!< This command's OpenCL type.
   void* data_;
+  const Event* waitingEvent_;     //!< Waiting event associated with the marker
 
  protected:
   //! The Events that need to complete before this command is submitted.
@@ -234,7 +235,7 @@ class Command : public Event {
 
   //! Construct a new command of the given OpenCL type.
   Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList = nullWaitList,
-          uint32_t commandWaitBits = 0);
+          uint32_t commandWaitBits = 0, const Event* waitingEvent = nullptr);
 
   //! Construct a new command of the given OpenCL type.
   Command(cl_command_type type)
@@ -243,6 +244,7 @@ class Command : public Event {
         next_(nullptr),
         type_(type),
         data_(nullptr),
+        waitingEvent_(nullptr),
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
 
@@ -306,6 +308,8 @@ class Command : public Event {
 
   //! Returns the current batch head
   Command* GetBatchHead() const { return batch_head_; }
+
+  const Event* waitingEvent() const { return waitingEvent_; }
 };
 
 class UserEvent : public Command {
@@ -946,17 +950,12 @@ class Marker : public Command {
  public:
   //! Create a new Marker
   Marker(HostQueue& queue, bool userVisible, const EventWaitList& eventWaitList = nullWaitList,
-         const Event* waitingEvent = NULL)
-      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList),
-        waitingEvent_(waitingEvent) {}
+         const Event* waitingEvent = nullptr)
+      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent) {}
 
   //! The actual command implementation.
   virtual void submit(device::VirtualDevice& device) { device.submitMarker(*this); }
 
-  const Event* waitingEvent() const { return waitingEvent_; }
-
- private:
-  const Event* waitingEvent_;  //!< Waiting event associated with the marker
 };
 
 /*! \brief  Maps CL objects created from external ones and syncs the contents (blocking).

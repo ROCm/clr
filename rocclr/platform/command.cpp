@@ -254,12 +254,13 @@ const Event::EventWaitList Event::nullWaitList(0);
 
 // ================================================================================================
 Command::Command(HostQueue& queue, cl_command_type type,
-                 const EventWaitList& eventWaitList, uint32_t commandWaitBits)
+                 const EventWaitList& eventWaitList, uint32_t commandWaitBits, const Event* waitingEvent)
     : Event(queue),
       queue_(&queue),
       next_(nullptr),
       type_(type),
       data_(nullptr),
+      waitingEvent_(waitingEvent),
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.
