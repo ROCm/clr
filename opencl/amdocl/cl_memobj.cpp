@@ -230,8 +230,12 @@ static bool validateImageDescriptor(const std::vector<amd::Device*>& devices,
         }
       }
       if (imageRowPitch == 0) {
-        imageRowPitch = amd::alignUp(desc->image_width,
-                                     devices[0]->info().imagePitchAlignment_) * elemSize;
+        if (desc->mem_object != nullptr) {
+          imageRowPitch = amd::alignUp(desc->image_width,
+                                       devices[0]->info().imagePitchAlignment_) * elemSize;
+        } else {
+          imageRowPitch = desc->image_width * elemSize;
+        }
       }
       break;
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
