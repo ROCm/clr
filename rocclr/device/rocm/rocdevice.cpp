@@ -2201,7 +2201,10 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
                               amd::MemoryAdvice advice, bool first_alloc, bool use_cpu) const {
   if ((settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) && !first_alloc) {
     amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
-    if (nullptr == svm_mem) {
+    if ((nullptr == svm_mem) || ((svm_mem->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) == 0) ||
+        // Validate the range of provided memory
+        ((svm_mem->getSize() - (reinterpret_cast<const_address>(dev_ptr) -
+          reinterpret_cast<address>(svm_mem->getSvmPtr()))) < count)) {
       LogPrintfError("SetSvmAttributes received unknown memory for update: %p!", dev_ptr);
       return false;
     }
@@ -2278,7 +2281,10 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                               size_t num_attributes, const void* dev_ptr, size_t count) const {
   if (settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) {
     amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
-    if (nullptr == svm_mem) {
+    if ((nullptr == svm_mem) || ((svm_mem->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) == 0) ||
+        // Validate the range of provided memory
+        ((svm_mem->getSize() - (reinterpret_cast<const_address>(dev_ptr) -
+          reinterpret_cast<address>(svm_mem->getSvmPtr()))) < count)) {
       LogPrintfError("GetSvmAttributes received unknown memory %p for state!", dev_ptr);
       return false;
     }
