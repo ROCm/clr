@@ -186,7 +186,6 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx1030",                "gfx1030",   nullptr,     true,  true,  false,              10, 3,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1031",                "gfx1031",   nullptr,     true,  true,  false,              10, 3,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1032",                "gfx1032",   nullptr,     true,  true,  false,              10, 3,  2,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx1033",                "gfx1033",   nullptr,     false, true,  false,              10, 3,  3,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32}
   };
   return std::make_pair(std::begin(supportedIsas_), std::end(supportedIsas_));
 }
