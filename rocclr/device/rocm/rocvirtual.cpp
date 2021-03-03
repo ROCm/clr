@@ -2853,9 +2853,18 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
   if (skip_cpu_wait) {
     // Search for the last command in the batch to track GPU state
     amd::Command* current = list;
+    // HIP tests expect callbacks processed from another thread, hence force AQL barrier always, so
+    // HSA signal callback will process HIP callback asynchronously
+    if (list->Callback() != nullptr) {
+      hasPendingDispatch_ = true;
+    }
     while (current->getNext() != nullptr) {
       current = current->getNext();
+      if (current->Callback() != nullptr) {
+        hasPendingDispatch_ = true;
+      }
     }
+
     // Enable profiling, so runtime can track TS
     profilingBegin(*current);
 
