@@ -204,6 +204,9 @@ class Event : public RuntimeObject {
 
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeEvent; }
+
+  //! Returns the callback for this event
+  const CallBackEntry* Callback() const { return callbacks_; }
 };
 
 /*! \brief An operation that is submitted to a command queue.
