@@ -1423,7 +1423,12 @@ bool Program::initBuild(amd::option::Options* options) {
     return false;
   }
 
-  options->setPerBuildInfo(device().isa().targetId(), clBinary()->getEncryptCode(), true);
+  std::string targetID = device().isa().targetId();
+#if defined(_WIN32)
+  // Replace special charaters that are not supported by Windows FS.
+  std::replace(targetID.begin(), targetID.end(), ':', '@');
+#endif
+  options->setPerBuildInfo(targetID.c_str(), clBinary()->getEncryptCode(), true);
 
   // Elf Binary setup
   std::string outFileName;
