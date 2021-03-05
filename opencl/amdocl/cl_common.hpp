@@ -56,8 +56,8 @@ clGetInfo(
 
     cl_int ret = CL_SUCCESS;
     if (param_value != NULL && param_value_size < valueSize) {
-        if (!std::is_pointer<T>() || !std::is_same<typename std::remove_const<
-                typename std::remove_pointer<T>::type>::type, char>()) {
+        if ((param_value_size == 0) || !std::is_pointer<T>() || !std::is_same<typename
+            std::remove_const<typename std::remove_pointer<T>::type>::type, char>()) {
             return CL_INVALID_VALUE;
         }
         // For char* and char[] params, we will at least fill up to

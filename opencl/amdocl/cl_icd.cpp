@@ -37,6 +37,10 @@ amd::PlatformIDS amd::PlatformID::Platform =  //{ NULL };
 static cl_int CL_API_CALL icdGetPlatformInfo(cl_platform_id platform, cl_platform_info param_name,
                                              size_t param_value_size, void* param_value,
                                              size_t* param_value_size_ret) {
+  if (platform != reinterpret_cast<cl_platform_id>(&amd::PlatformID::Platform)) {
+    return CL_INVALID_PLATFORM;
+  }
+
   return clGetPlatformInfo(NULL, param_name, param_value_size, param_value, param_value_size_ret);
 }
 
