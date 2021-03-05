@@ -885,6 +885,13 @@ bool Device::create(Pal::IDevice* device) {
   // Make sure CP DMA can be used for all possible transfers
   palSettings->cpDmaCmdCopyMemoryMaxBytes = 0xFFFFFFFF;
 
+  // Create RGP capture manager
+  // Note: RGP initialization in PAL must be performed before CommitSettingsAndInit()
+  rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
+  if (nullptr != rgpCaptureMgr_) {
+    Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
+  }
+
   // Commit the new settings for the device
   result = iDev()->CommitSettingsAndInit();
   if (result != Pal::Result::Success) {
@@ -1121,10 +1128,12 @@ bool Device::initializeHeapResources() {
     }
     xferQueue_->enableSyncedBlit();
 
-    // Create RGP capture manager
-    rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
-    if (nullptr != rgpCaptureMgr_) {
-      Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
+    // Update RGP capture manager
+    if (rgpCaptureMgr_ != nullptr) {
+      if (!rgpCaptureMgr_->Update(platform_)) {
+        delete rgpCaptureMgr_;
+        rgpCaptureMgr_ = nullptr;
+      }
     }
   }
   return true;

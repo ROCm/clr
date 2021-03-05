@@ -81,7 +81,6 @@ bool RgpCaptureMgr::Init(Pal::IPlatform* platform) {
   if (dev_driver_server_ == nullptr) {
     return false;
   }
-  const Settings& settings = device_.settings();
   // Tell RGP that the server (i.e. the driver) supports tracing if requested.
   rgp_server_ = dev_driver_server_->GetRGPServer();
   if (rgp_server_ == nullptr) {
@@ -91,8 +90,14 @@ bool RgpCaptureMgr::Init(Pal::IPlatform* platform) {
   // Finalize RGP settings
   Finalize();
 
+  return true;
+}
+
+// ================================================================================================
+bool RgpCaptureMgr::Update(Pal::IPlatform* platform) {
   bool result = true;
 
+  const Settings& settings = device_.settings();
   // Fail initialization of trace resources if SQTT tracing has been force-disabled from
   // the panel (this will consequently fail the trace), or if the chosen device's gfxip
   // does not support SQTT.

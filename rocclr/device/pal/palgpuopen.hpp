@@ -311,6 +311,7 @@ class RgpCaptureMgr {
   bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const;
   Pal::Result TimedQueueSubmit(Pal::IQueue* queue, uint64_t cmdId,
                                const Pal::SubmitInfo& submitInfo) const;
+  bool Update(Pal::IPlatform* platform);
 
  private:
   // Steps that an RGP trace goes through
