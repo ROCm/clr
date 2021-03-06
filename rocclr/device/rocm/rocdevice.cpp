@@ -2197,6 +2197,7 @@ bool Device::IpcDetach (void* dev_ptr) const {
   return true;
 }
 
+// ================================================================================================
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
   amd::Memory* mem = nullptr;
@@ -2328,6 +2329,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
     }
   }
 #if AMD_HMM_SUPPORT
+  uint32_t accessed_by = 0;
   std::vector<hsa_amd_svm_attribute_pair_t> attr;
 
   for (size_t i = 0; i < num_attributes; ++i) {
@@ -2339,7 +2341,16 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
         attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, 0});
         break;
       case amd::MemRangeAttribute::AccessedBy:
-        attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, 0});
+        accessed_by = attr.size();
+        // Add all GPU devices into the query
+        for (const auto agent : getGpuAgents()) {
+          attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, agent.handle});
+        }
+        // Add CPU devices
+        for (const auto agent_info : getCpuAgents()) {
+          attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, agent_info.agent.handle});
+        }
+        accessed_by = attr.size() - accessed_by;
         break;
       case amd::MemRangeAttribute::LastPrefetchLocation:
         attr.push_back({HSA_AMD_SVM_ATTRIB_PREFETCH_LOCATION, 0});
@@ -2358,9 +2369,11 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
   }
 
   uint32_t idx = 0;
-  for (auto& it : attr) {
-    switch (it.attribute) {
-      case HSA_AMD_SVM_ATTRIB_READ_ONLY:
+  uint32_t rocr_attr = 0;
+  for (size_t i = 0; i < num_attributes; ++i) {
+    const auto& it = attr[rocr_attr];
+    switch (attributes[i]) {
+      case amd::MemRangeAttribute::ReadMostly:
         if (data_sizes[idx] != sizeof(uint32_t)) {
           return false;
         }
@@ -2369,8 +2382,8 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
             (static_cast<uint32_t>(it.value) > 0) ? true : false;
         break;
       // The logic should be identical for the both queries
-      case HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION:
-      case HSA_AMD_SVM_ATTRIB_PREFETCH_LOCATION:
+      case amd::MemRangeAttribute::PreferredLocation:
+      case amd::MemRangeAttribute::LastPrefetchLocation:
         if (data_sizes[idx] != sizeof(uint32_t)) {
           return false;
         }
@@ -2388,13 +2401,50 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
           }
         }
         break;
-      case HSA_AMD_SVM_ATTRIB_ACCESS_QUERY:
+      case amd::MemRangeAttribute::AccessedBy: {
+        uint32_t entry = 0;
+        uint32_t device_count = data_sizes[idx] / 4;
         // Make sure it's multiple of 4
         if (data_sizes[idx] % 4 != 0) {
           return false;
         }
-        // @note currently it's a nop
+        for (uint32_t att = 0; att < accessed_by; ++att) {
+          const auto& it = attr[rocr_attr + att];
+          if (entry >= device_count) {
+            // The size of the array is less than the amount of available devices
+            break;
+          }
+          switch (it.attribute) {
+            case HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE:
+            case HSA_AMD_SVM_ATTRIB_AGENT_NO_ACCESS:
+              break;
+            case HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE:
+              reinterpret_cast<int32_t*>(data[idx])[entry] = static_cast<int32_t>(amd::InvalidDeviceId);
+              // Find device agent returned by ROCr
+              for (auto& device : devices()) {
+                if (static_cast<Device*>(device)->getBackendDevice().handle == it.value) {
+                  reinterpret_cast<uint32_t*>(data[idx])[entry] = static_cast<uint32_t>(device->index());
+                }
+              }
+              // Find CPU agent returned by ROCr
+              for (auto& agent_info : getCpuAgents()) {
+                if (agent_info.agent.handle == it.value) {
+                  reinterpret_cast<int32_t*>(data[idx])[entry] = static_cast<int32_t>(amd::CpuDeviceId);
+                }
+              }
+              ++entry;
+              break;
+            default:
+              assert(!"Unexpected result from HSA_AMD_SVM_ATTRIB_ACCESS_QUERY");
+              break;
+          }
+        }
+        rocr_attr += accessed_by;
+        for (uint32_t idx = entry; idx < device_count; ++idx) {
+          reinterpret_cast<int32_t*>(data[idx])[idx] = static_cast<int32_t>(amd::InvalidDeviceId);
+        }
         break;
+      }
       default:
         return false;
       break;
