@@ -33,7 +33,7 @@ private:
 public:
   ~Signal() override;
 
-  bool Init(uint64_t init, device::Signal::WaitState ws) override;
+  bool Init(const amd::Device& dev, uint64_t init, device::Signal::WaitState ws) override;
 
   uint64_t Wait(uint64_t value, device::Signal::Condition c, uint64_t timeout) override;
 

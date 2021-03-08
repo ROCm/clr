@@ -300,7 +300,7 @@ class HostcallListener {
   }
 
   void terminate();
-  bool initialize(amd::Device &dev);
+  bool initialize(const amd::Device &dev);
 };
 
 HostcallListener* hostcallListener = nullptr;
@@ -360,9 +360,14 @@ void HostcallListener::removeBuffer(HostcallBuffer* buffer) {
   buffers_.erase(buffer);
 }
 
-bool HostcallListener::initialize(amd::Device &dev) {
+bool HostcallListener::initialize(const amd::Device &dev) {
   doorbell_ = dev.createSignal();
-  if ((doorbell_ == nullptr) || !doorbell_->Init(SIGNAL_INIT, device::Signal::WaitState::Blocked)) {
+#ifdef WITH_PAL_DEVICE
+  auto ws = device::Signal::WaitState::Active;
+#elif WITH_HSA_DEVICE
+  auto ws = device::Signal::WaitState::Blocked;
+#endif 
+  if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
     return false;
   }
 
@@ -377,7 +382,7 @@ bool HostcallListener::initialize(amd::Device &dev) {
   return true;
 }
 
-bool enableHostcalls(amd::Device &dev, void* bfr, uint32_t numPackets) {
+bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
   auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
   buffer->initialize(numPackets);
 

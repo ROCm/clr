@@ -22,6 +22,10 @@
 
 #include "top.hpp"
 
+namespace amd {
+  class Device;
+};
+
 namespace device {
 
 // Light abstraction over HSA/PAL signals
@@ -45,7 +49,7 @@ protected:
 public:
   virtual ~Signal() {}
 
-  virtual bool Init(uint64_t init, WaitState ws)
+  virtual bool Init(const amd::Device& dev, uint64_t init, WaitState ws)
   { return false; }
 
   // Blocks the current thread untill the condition c is satisfied

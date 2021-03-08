@@ -552,6 +552,8 @@ class VirtualGPU : public device::VirtualDevice {
     }
   }
 
+  void* getOrCreateHostcallBuffer();
+
  protected:
   void profileEvent(EngineType engine, bool type) const;
 
@@ -673,6 +675,8 @@ class VirtualGPU : public device::VirtualDevice {
   Queue* queues_[AllEngines];               //!< HW queues for all engines
   MemoryRange sdmaRange_;                   //!< SDMA memory range for write access
   std::vector<Image*> wrtBackImageBuffer_;  //!< Array of images for write back
+
+  void* hostcallBuffer_;  //!< Hostcall buffer
 };
 
 inline void VirtualGPU::logVmMemory(const std::string name, const Memory* memory) {
