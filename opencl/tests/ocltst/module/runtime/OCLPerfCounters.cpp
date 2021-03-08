@@ -669,6 +669,13 @@ void OCLPerfCounters::run(void) {
                                   deviceName, NULL);
   CHECK_RESULT(err != CL_SUCCESS, "clGetDeviceInfo failed");
 
+  // Remove target ID features
+  char* targetIdColon = strchr(deviceName, ':');
+  if (targetIdColon != nullptr) {
+    size_t idx = targetIdColon - deviceName;
+    deviceName[idx] = '\0';
+  }
+
   // Begin: to be removed when crash on Kabini is fixed
   if (strcmp(deviceName, "Kalindi") == 0) {
     char msg[256];
