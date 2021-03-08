@@ -153,6 +153,7 @@ target_sources(rocclrpal PRIVATE
   palresource.cpp
   palschedcl.cpp
   palsettings.cpp
+  palsignal.cpp
   palthreadtrace.cpp
   paltimestamp.cpp
   palvirtual.cpp

@@ -32,6 +32,7 @@
 #include "device/pal/palblit.hpp"
 #include "device/pal/paldebugger.hpp"
 #include "device/appprofile.hpp"
+#include "device/devhostcall.hpp"
 #include "hsa.h"
 #include "amd_hsa_kernel_code.h"
 #include "amd_hsa_queue.h"
@@ -1032,6 +1033,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
                                               &dbg_vmid);
   }
 
+  // The hostcall buffer for this vqueue is initialized on demand.
+  hostcallBuffer_ = nullptr;
+
   return true;
 }
 
@@ -1141,6 +1145,14 @@ VirtualGPU::~VirtualGPU() {
     for (auto it : dev().vgpus()) {
       it->execution().unlock();
     }
+  }
+
+  if (hostcallBuffer_ != nullptr) {
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
+            "deleting hostcall buffer %p for virtual queue %p",
+            hostcallBuffer_, this);
+    disableHostcalls(hostcallBuffer_);
+    dev().context().svmFree(hostcallBuffer_);
   }
 }
 
@@ -3780,5 +3792,42 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       copySize -= srcSize;
     }
   }
+}
+
+void* VirtualGPU::getOrCreateHostcallBuffer() {
+  if (hostcallBuffer_ != nullptr) {
+    return hostcallBuffer_;
+  }
+
+  // The number of packets required in each buffer is at least equal to the
+  // maximum number of waves supported by the device.
+  auto wavesPerCu = dev().info().maxThreadsPerCU_ / dev().info().wavefrontWidth_;
+  auto numPackets = dev().info().maxComputeUnits_ * wavesPerCu;
+
+  auto size = getHostcallBufferSize(numPackets);
+  auto align = getHostcallBufferAlignment();
+
+  hostcallBuffer_ = dev().context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
+  if (!hostcallBuffer_) {
+    ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
+            "Failed to create hostcall buffer");
+    return nullptr;
+  }
+
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
+          "Created hostcall buffer %p (numPackets == %d, size == %d, align == %d) for virtual queue %p\n",
+          hostcallBuffer_,
+          numPackets,
+          size,
+          align,
+          this);
+
+  if (!enableHostcalls(dev(), hostcallBuffer_, numPackets)) {
+    ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
+            "Failed to register hostcall buffer %p with listener",
+            hostcallBuffer_);
+    return nullptr;
+  }
+  return hostcallBuffer_;
 }
 }  // namespace pal

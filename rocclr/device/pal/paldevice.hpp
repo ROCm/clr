@@ -36,6 +36,7 @@
 #include "device/pal/palsettings.hpp"
 #include "device/pal/palappprofile.hpp"
 #include "device/pal/palgpuopen.hpp"
+#include "device/pal/palsignal.hpp"
 #include "acl.h"
 #include "memory"
 
@@ -361,7 +362,7 @@ class Device : public NullDevice {
 
   //! Signal object allocation
   virtual device::Signal* createSignal() const {
-    return nullptr;
+    return new pal::Signal();
   }
 
   //! Create the device program.
