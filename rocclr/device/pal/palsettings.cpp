@@ -181,15 +181,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   threadTraceEnable_ = false;
   bool doublePrecision = true;
 
-  if (doublePrecision) {
-    // Report FP_FAST_FMA define if double precision HW
-    reportFMA_ = true;
-    // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
-    // Bonaire, Kalindi, Spectre and Spooky so disable
-    // FP_FMA_FMAF for those parts in switch below
-    reportFMAF_ = true;
-  }
-
   // Update GPU specific settings and info structure if we have any
 #if defined(_WIN32)
   ModifyMaxWorkload modifyMaxWorkload = {0, 1, VER_EQUAL};
@@ -244,6 +235,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         disableSdma_ = true;
         // And LDS is limited to 32KB
         hwLDSSize_ = 32 * Ki;
+        // No fp64 support
+        doublePrecision = false;
       }
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
@@ -407,13 +400,17 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   enableExtension(ClKhrLocalInt32BaseAtomics);
   enableExtension(ClKhrLocalInt32ExtendedAtomics);
   enableExtension(ClKhrByteAddressableStore);
-  enableExtension(ClKhrGlSharing);
-  enableExtension(ClKhrGlEvent);
   enableExtension(ClKhr3DImageWrites);
   enableExtension(ClKhrImage2dFromBuffer);
   enableExtension(ClAmdMediaOps);
   enableExtension(ClAmdMediaOps2);
-  enableExtension(ClAmdCopyBufferP2P);
+
+  {
+    // Not supported by Unknown device
+    enableExtension(ClKhrGlSharing);
+    enableExtension(ClKhrGlEvent);
+    enableExtension(ClAmdCopyBufferP2P);
+  }
 
   if (!useLightning_) {
     enableExtension(ClAmdPopcnt);
@@ -445,6 +442,15 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   // HW doesn't support untiled image writes
   // hostMemDirectAccess_ |= HostMemImage;
 
+  if (doublePrecision) {
+    // Report FP_FAST_FMA define if double precision HW
+    reportFMA_ = true;
+    // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
+    // Bonaire, Kalindi, Spectre and Spooky so disable
+    // FP_FMA_FMAF for those parts in switch below
+    reportFMAF_ = true;
+  }
+
   // Make sure device actually supports double precision
   doublePrecision_ = (doublePrecision) ? doublePrecision_ : false;
   if (doublePrecision_) {
@@ -475,7 +481,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Enable some OpenCL 2.0 extensions
   if (oclVersion_ >= OpenCL20) {
-    enableExtension(ClKhrGLDepthImages);
+    {
+      // Not supported by Unknown device
+      enableExtension(ClKhrGLDepthImages);
+    }
     enableExtension(ClKhrSubGroups);
     enableExtension(ClKhrDepthImages);
 
