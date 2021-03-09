@@ -355,7 +355,6 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
           if (!buffer) {
             ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
                     "Kernel expects a hostcall buffer, but none found");
-            return false;
           }
           assert(it.size_ == sizeof(buffer) && "check the sizes");
           WriteAqlArgAt(const_cast<address>(parameters), &buffer, it.size_, it.offset_);

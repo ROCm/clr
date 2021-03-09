@@ -362,11 +362,11 @@ void HostcallListener::removeBuffer(HostcallBuffer* buffer) {
 
 bool HostcallListener::initialize(const amd::Device &dev) {
   doorbell_ = dev.createSignal();
-#ifdef WITH_PAL_DEVICE
-  auto ws = device::Signal::WaitState::Active;
-#elif WITH_HSA_DEVICE
+#ifdef WITH_HSA_DEVICE
   auto ws = device::Signal::WaitState::Blocked;
-#endif 
+#elif
+  auto ws = device::Signal::WaitState::Active;
+#endif
   if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
     return false;
   }
