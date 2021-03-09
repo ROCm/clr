@@ -364,7 +364,7 @@ bool HostcallListener::initialize(const amd::Device &dev) {
   doorbell_ = dev.createSignal();
 #ifdef WITH_HSA_DEVICE
   auto ws = device::Signal::WaitState::Blocked;
-#elif
+#else
   auto ws = device::Signal::WaitState::Active;
 #endif
   if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
