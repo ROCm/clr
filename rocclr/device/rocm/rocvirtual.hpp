@@ -53,6 +53,7 @@ constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 
 // Timeouts for HSA signal wait
 constexpr static uint64_t kTimeout30us = 30000;
+constexpr static uint64_t kTimeout50us = 50000;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 template <uint64_t wait_time = 0>
