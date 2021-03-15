@@ -753,15 +753,26 @@ RUNTIME_EXIT
 
 RUNTIME_ENTRY_RET(cl_event, clCreateEventFromGLsyncKHR,
                   (cl_context context, cl_GLsync clGLsync, cl_int* errcode_ret)) {
+  if (!is_valid(context)) {
+    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
+    LogWarning("invalid parameter \"context\"");
+    return nullptr;
+  }
   // create event of fence sync type
   amd::ClGlEvent* clglEvent = new amd::ClGlEvent(*as_amd(context));
+  if (clglEvent == nullptr) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    LogWarning("Memory allocation of clglEvent object failed");
+    return nullptr;
+  }
   clglEvent->context().glenv()->glFlush_();
   // initially set the status of fence as queued
   clglEvent->setStatus(CL_SUBMITTED);
   // store GLsync id of the fence in event in order to associate them together
   clglEvent->setData(clGLsync);
-  amd::Event* evt = dynamic_cast<amd::Event*>(clglEvent);
+  amd::Event* evt = clglEvent;
   evt->retain();
+  *not_null(errcode_ret) = CL_SUCCESS;
   return as_cl(evt);
 }
 RUNTIME_EXIT
