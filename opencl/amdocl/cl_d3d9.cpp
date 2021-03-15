@@ -29,6 +29,7 @@
 #include <utility>
 
 #define D3DFMT_NV_12 static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2'))
+#define D3DFMT_P010  static_cast<D3DFORMAT>(MAKEFOURCC('P', '0', '1', '0'))
 #define D3DFMT_YV_12 static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'V', '1', '2'))
 #define D3DFMT_YUY2  static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'U', 'Y', '2'))
 
@@ -187,7 +188,9 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromDX9MediaSurfaceKHR,
   D3DSURFACE_DESC Desc;
   pD3D9Resource->GetDesc(&Desc);
 
-  if ((Desc.Format != D3DFMT_NV_12) && (Desc.Format != D3DFMT_YV_12) && (plane != 0)) {
+  if ((Desc.Format != D3DFMT_NV_12) &&
+      (Desc.Format != D3DFMT_P010) &&
+      (Desc.Format != D3DFMT_YV_12) && (plane != 0)) {
     *not_null(errcode_ret) = CL_INVALID_VALUE;
     LogWarning("The plane has to be Zero if the surface format is non-planar !");
     return clMemObj;
@@ -409,6 +412,13 @@ size_t D3D9Object::getElementBytes(D3DFORMAT d3d9Format, cl_uint plane) {
         bytesPerPixel = 2;
       }  // plane != 0 or != 1 shouldn't happen here
       break;
+    case D3DFMT_P010:
+      if (plane == 0) {
+        bytesPerPixel = 2;
+      } else if (plane == 1) {
+        bytesPerPixel = 4;
+      }  // plane != 0 or != 1 shouldn't happen here
+      break;
     case D3DFMT_YV_12:
       bytesPerPixel = 1;
       break;
@@ -428,6 +438,7 @@ void setObjDesc(amd::D3D9ObjDesc_t& objDesc, D3DSURFACE_DESC& resDesc, cl_uint p
   objDesc.d3dFormat_ = resDesc.Format;
   switch (resDesc.Format) {
     case D3DFMT_NV_12:
+    case D3DFMT_P010:
       objDesc.surfRect_.left = 0;
       objDesc.surfRect_.top = 0;
       if (plane == 0) {
@@ -586,6 +597,7 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
 cl_uint D3D9Object::getMiscFlag() {
   switch (objDescOrig_.d3dFormat_) {
     case D3DFMT_NV_12:
+    case D3DFMT_P010:
       return 1;
       break;
     case D3DFMT_YV_12:
@@ -692,6 +704,14 @@ cl_image_format D3D9Object::getCLFormatFromD3D9(D3DFORMAT d3d9Fmt, cl_uint plane
       break;
     case D3DFMT_NV_12:
       fmt.image_channel_data_type = CL_UNORM_INT8;
+      if (plane == 0) {
+        fmt.image_channel_order = CL_R;
+      } else if (plane == 1) {
+        fmt.image_channel_order = CL_RG;
+      }
+      break;
+    case D3DFMT_P010:
+      fmt.image_channel_data_type = CL_UNORM_INT16;
       if (plane == 0) {
         fmt.image_channel_order = CL_R;
       } else if (plane == 1) {
