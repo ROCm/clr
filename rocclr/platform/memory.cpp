@@ -1179,10 +1179,9 @@ Image* Image::createView(const Context& context, const Format& format, device::V
     if ((context.devices().size() == 1) || DISABLE_DEFERRED_ALLOC) {
       for (uint i = 0; i < numDevices_; ++i) {
         // Make sure the parent's device memory is avaialbe
-        if ((deviceMemories_[i].ref_ == context.devices()[i]) &&
+        if ((deviceMemories_[i].ref_ != nullptr) &&
             (deviceMemories_[i].value_ != nullptr)) {
-          device::Memory* mem = view->getDeviceMemory(*context.devices()[i]);
-          break;
+          device::Memory* mem = view->getDeviceMemory(*(deviceMemories_[i].ref_));
         }
       }
     }
