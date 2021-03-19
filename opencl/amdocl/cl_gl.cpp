@@ -1963,10 +1963,17 @@ cl_int clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue, cl_uint num
   amd::HostQueue& hostQueue = *queue;
 
   if (cmd_type == CL_COMMAND_ACQUIRE_GL_OBJECTS) {
+    GLFunctions* gl_functions = hostQueue.context().glenv();
     // Verify context init'ed for interop
-    if (!hostQueue.context().glenv() || !hostQueue.context().glenv()->isAssociated()) {
+    if (!gl_functions || !gl_functions->isAssociated()) {
       LogWarning("\"amdContext\" is not created from GL context or share list");
       return CL_INVALID_CONTEXT;
+    }
+    // If the cl_khr_gl_event extension is supported, then the OpenCL implementation will ensure
+    // that any such pending OpenGL operations are complete for an OpenGL context bound
+    // to the same thread as the OpenCL context.
+    if (hostQueue.device().settings().checkExtension(ClKhrGlEvent)) {
+      gl_functions->WaitCurrentGlContext(hostQueue.context().info());
     }
   }
 
@@ -2082,6 +2089,21 @@ cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue, cl_uint num
     }
   }
 #endif  //_WIN32
+  // If the cl_khr_gl_event extension is supported, then the OpenCL implementation will ensure
+  // that any pending OpenCL operations are complete for an OpenGL context bound
+  // to the same thread as the OpenCL context.
+  if (cmd_type == CL_COMMAND_RELEASE_GL_OBJECTS) {
+    GLFunctions* gl_functions = hostQueue.context().glenv();
+    // Verify context init'ed for interop
+    if (!gl_functions || !gl_functions->isAssociated()) {
+      LogWarning("\"amdContext\" is not created from GL context or share list");
+      return CL_INVALID_CONTEXT;
+    }
+    if (hostQueue.device().settings().checkExtension(ClKhrGlEvent) &&
+        gl_functions->IsCurrentGlContext(hostQueue.context().info())) {
+      command->awaitCompletion();
+    }
+  }
 
   *not_null(event) = as_cl(&command->event());
 
@@ -2224,6 +2246,8 @@ GLFunctions::GLFunctions(HMODULE h, bool isEGL)
 
   if (isEGL_) {
     GetProcAddress_ = (PFN_xxxGetProcAddress)GETPROCADDRESS(h, "eglGetProcAddress");
+    eglGetCurrentContext_ = (PFN_eglGetCurrentContext)GETPROCADDRESS(h, "eglGetCurrentContext");
+    VERIFY_POINTER(eglGetCurrentContext_)
   } else {
     GetProcAddress_ = (PFN_xxxGetProcAddress)GETPROCADDRESS(h, API_GETPROCADDR);
   }
@@ -2297,6 +2321,12 @@ GLFunctions::~GLFunctions() {
     intDpy_ = NULL;
   }
 #endif  //!_WIN32
+}
+
+void GLFunctions::WaitCurrentGlContext(const amd::Context::Info& info) const {
+  if (IsCurrentGlContext(info)) {
+    glFinish_();
+  }
 }
 
 bool GLFunctions::init(intptr_t hdc, intptr_t hglrc) {
