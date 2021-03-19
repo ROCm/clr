@@ -136,6 +136,11 @@ class Resource : public amd::HeapObject {
     void* glPlatformContext_;
   };
 
+  struct VkInteropParams : public CreateParams {
+    InteropType type_;  //!< Vulkan resource type
+    void* handle_;
+  };
+
 #ifdef _WIN32
   struct D3DInteropParams : public CreateParams {
     InteropType type_;  //!< D3D resource type
@@ -166,7 +171,8 @@ class Resource : public amd::HeapObject {
     D3D9Interop,       //!< resource is a D3D9 memory object
     Scratch,           //!< resource is scratch memory
     Shader,            //!< resource is a shader
-    P2PAccess          //!< resource is a shared resource for P2P access
+    P2PAccess,         //!< resource is a shared resource for P2P access
+    VkInterop          //!< resource is a Vulkan memory object
   };
 
   //! Resource map flags

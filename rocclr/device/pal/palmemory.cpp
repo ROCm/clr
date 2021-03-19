@@ -34,6 +34,7 @@
 #include "amdocl/cl_d3d11_amd.hpp"
 #endif  //_WIN32
 #include "amdocl/cl_gl_amd.hpp"
+#include "amdocl/cl_vk_amd.hpp"
 
 #include <string>
 #include <fstream>
@@ -221,6 +222,7 @@ bool Memory::processGLResource(GLResourceOP operation) {
 bool Memory::createInterop() {
   Resource::MemoryType memType = Resource::Empty;
   Resource::OGLInteropParams oglRes;
+  Resource::VkInteropParams vkRes;
 #ifdef _WIN32
   Resource::D3DInteropParams d3dRes;
 #endif  //_WIN32
@@ -233,6 +235,7 @@ bool Memory::createInterop() {
   amd::InteropObject* interop = owner()->getInteropObj();
   assert((interop != nullptr) && "An invalid interop object is impossible!");
 
+  amd::VkObject* vkObject = interop->asVkObject();
   amd::GLObject* glObject = interop->asGLObject();
 #ifdef _WIN32
   amd::D3D10Object* d3d10Object = interop->asD3D10Object();
@@ -342,7 +345,16 @@ bool Memory::createInterop() {
     }
   } else
 #endif  //_WIN32
-      if (glObject != nullptr) {
+  if (vkObject != nullptr) {
+    createParams = &vkRes;
+    vkRes.owner_ = owner();
+    memType = Resource::VkInterop;
+    vkRes.handle_ = vkObject->getVkSharedHandle();
+    assert(vkRes.handle_ != nullptr);
+    vkRes.type_ = Resource::InteropTypeless;  
+  }
+
+  else if (glObject != nullptr) {
     createParams = &oglRes;
 
     oglRes.owner_ = owner();
