@@ -753,6 +753,10 @@ bool Resource::CreateInterop(CreateParams* params) {
     desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
     format = dev().getPalFormat(desc().format_, &channels);
   }
+  else if (memoryType() == VkInterop) {
+    VkInteropParams* vparams = reinterpret_cast<VkInteropParams*>(params);
+    openInfo.hExternalResource = vparams->handle_;
+  }
 #ifdef ATI_OS_WIN
   else {
     D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
@@ -1174,6 +1178,7 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     case D3D9Interop:
     case D3D10Interop:
     case D3D11Interop:
+    case VkInterop:
       return CreateInterop(params);
     case P2PAccess:
       return CreateP2PAccess(params);
