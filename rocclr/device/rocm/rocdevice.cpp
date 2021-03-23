@@ -2435,7 +2435,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
               ++entry;
               break;
             default:
-              assert(!"Unexpected result from HSA_AMD_SVM_ATTRIB_ACCESS_QUERY");
+              LogWarning("Unexpected result from HSA_AMD_SVM_ATTRIB_ACCESS_QUERY");
               break;
           }
         }
