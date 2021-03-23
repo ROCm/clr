@@ -226,6 +226,8 @@ class VirtualGPU : public device::VirtualDevice {
       uint profileEnabled_ : 1;      //!< Profiling is enabled for WaveLimiter
       uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
       uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
+      uint imageBufferWrtBack_ : 1;  //!< Enable image buffer write back
+      uint hasPendingDispatch_ : 1;  //!< A kernel dispatch is outstanding
     };
     uint value_;
     State() : value_(0) {}
@@ -552,6 +554,13 @@ class VirtualGPU : public device::VirtualDevice {
   }
 
   void* getOrCreateHostcallBuffer();
+
+  //! Waits on an outstanding kernel.
+  void VirtualGPU::releaseGpuMemoryFence();
+
+  //! Returns true if a dispatch is pending.
+  bool isPendingDispatch() const { return state_.hasPendingDispatch_; }
+
 
  protected:
   void profileEvent(EngineType engine, bool type) const;

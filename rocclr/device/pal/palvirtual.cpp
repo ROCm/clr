@@ -1216,7 +1216,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
         if (size[0] <= dev().settings().pinnedMinXferSize_) {
           partial = size[0];
         }
-        // Make first step transfer 
+        // Make first step transfer
         if (partial > 0) {
           result = blitMgr().readBuffer(*memory, vcmd.destination(), origin, partial);
         }
@@ -2596,6 +2596,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dev().rgpCaptureMgr()->PostDispatch(this);
   }
 
+  // Mark the flag indicating if a dispatch is outstanding.
+  state_.hasPendingDispatch_ = true;
+
   return true;
 }
 
@@ -3833,4 +3836,13 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   }
   return hostcallBuffer_;
 }
+
+void VirtualGPU::releaseGpuMemoryFence() {
+  if (isPendingDispatch() && amd::IS_HIP) {
+    WaitForIdleCompute();
+    // Reset the status.
+    state_.hasPendingDispatch_ = false;
+  }
+}
+
 }  // namespace pal
