@@ -644,7 +644,7 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
   if ((binaryCode == NULL) && (binarySize == 0) && !code.empty()) {
     acl_error err;
     aclTargetInfo info = aclGetTargetInfo(nullDev().settings().use64BitPtr_ ? "amdil64" : "amdil",
-                                          nullDev().isa().amdIlName(), &err);
+                                          nullptr, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclGetTargetInfo failed");
       return false;

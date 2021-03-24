@@ -120,9 +120,6 @@ release(bool, GPU_USE_SINGLE_SCRATCH, false,                                  \
         "Use single scratch buffer per device instead of per HW ring")        \
 release(bool, AMD_OCL_WAIT_COMMAND, false,                                    \
         "1 = Enable a wait for every submitted command")                      \
-/* HSAIL is by default, except Linux 32bit, because of known Catalyst 32bit issue */  \
-release(bool, GPU_HSAIL_ENABLE, LP64_SWITCH(LINUX_SWITCH(false,true),true),   \
-        "Enable HSAIL on dGPU stack (requires CI+ HW)")                       \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
 release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \

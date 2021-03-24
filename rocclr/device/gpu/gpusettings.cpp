@@ -136,9 +136,6 @@ Settings::Settings() {
   numDeviceEvents_ = 1024;
   numWaitEvents_ = 8;
 
-  // Disable HSAIL by default
-  hsail_ = false;
-
   // Don't support platform atomics by default.
   svmAtomics_ = false;
 
@@ -229,19 +226,11 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
     case CAL_TARGET_HAWAII:
       ciPlus_ = true;
       sdmaProfiling_ = true;
-      hsail_ = GPU_HSAIL_ENABLE;
       threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
-    // Fall through to SI ...
-    case CAL_TARGET_PITCAIRN:
-    case CAL_TARGET_CAPEVERDE:
-    case CAL_TARGET_OLAND:
-    case CAL_TARGET_HAINAN:
       reportFMAF_ = false;
       if (target == CAL_TARGET_HAWAII) {
         reportFMAF_ = true;
       }
-    // Fall through ...
-    case CAL_TARGET_TAHITI:
       // Cache line size is 64 bytes
       cacheLineSize_ = 64;
       // L1 cache size is 16KB
@@ -282,10 +271,10 @@ bool Settings::create(const CALdeviceattribs& calAttr, bool reportAsOCL12Device,
       // This needs to be cleaned once 64bit addressing is stable
       if (oclVersion_ < OpenCL20) {
         use64BitPtr_ = flagIsDefault(GPU_FORCE_64BIT_PTR)
-            ? LP64_SWITCH(false, calAttr.isWorkstation || hsail_)
+            ? LP64_SWITCH(false, true)
             : GPU_FORCE_64BIT_PTR;
       } else {
-        if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, (hsail_ || (oclVersion_ >= OpenCL20)))) {
+        if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, true)) {
           use64BitPtr_ = true;
         }
       }

@@ -71,11 +71,6 @@ struct PalDevice {
 
 static constexpr PalDevice supportedPalDevices[] = {
 // GFX Version PAL GFX IP Level            PAL Name         PAL ASIC Revision
-  {6,  0,  0,  Pal::GfxIpLevel::GfxIp6,    "Tahiti",        Pal::AsicRevision::Tahiti},
-  {6,  0,  1,  Pal::GfxIpLevel::GfxIp6,    "Pitcairn",      Pal::AsicRevision::Pitcairn},
-  {6,  0,  1,  Pal::GfxIpLevel::GfxIp6,    "Capeverde",     Pal::AsicRevision::Capeverde},
-  {6,  0,  2,  Pal::GfxIpLevel::GfxIp6,    "Oland",         Pal::AsicRevision::Oland},
-  {6,  0,  2,  Pal::GfxIpLevel::GfxIp6,    "Hainan",        Pal::AsicRevision::Hainan},
   {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Kalindi",       Pal::AsicRevision::Kalindi},
   {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spectre",       Pal::AsicRevision::Spectre},
   {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spooky",        Pal::AsicRevision::Spooky},
