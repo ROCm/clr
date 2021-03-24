@@ -44,7 +44,7 @@ namespace gpu {
 const aclTargetInfo& NullProgram::info() {
   acl_error err;
   info_ = aclGetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "amdil64" : "amdil",
-                           device().isa().amdIlName(), &err);
+                           nullptr, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -392,28 +392,6 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
           buildLog_ += "Internal error: adding a kernel into OpenCL binary failed!\n";
           return false;
         }
-      } else {
-        // Non-kernel function, save metadata symbols for recompilation
-        if (clBinary()->saveAMDIL()) {
-          size_t metadataSize = baseFunc->metadata_.end_ - baseFunc->metadata_.begin_;
-          if (metadataSize <= 0) {
-            continue;
-          }
-          std::string metadataStr;
-          // Get the metadata string
-          metadataStr.insert(0, ilProgram_, baseFunc->metadata_.begin_, metadataSize);
-
-          std::stringstream aStream;
-          aStream << "__OpenCL_" << baseFunc->name_ << "_fmetadata";
-          std::string metaName = aStream.str();
-          // Save metadata symbols in .rodata
-          if (!clBinary()->elfOut()->addSymbol(amd::Elf::RODATA, metaName.c_str(),
-                                               metadataStr.data(), metadataStr.size())) {
-            buildLog_ += "Internal error: addSymbol failed!\n";
-            LogError("AddSymbol failed");
-            return false;
-          }
-        }
       }
     }
 
@@ -754,28 +732,6 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
         if (!clBinary()->storeKernel(baseFunc->name_, gpuKernel, &initData, metadataStr, kernel)) {
           buildLog_ += "Internal error: adding a kernel into OpenCL binary failed!\n";
           return false;
-        }
-      } else {
-        // Non-kernel function, save metadata symbols for recompilation
-        if (clBinary()->saveAMDIL()) {
-          size_t metadataSize = baseFunc->metadata_.end_ - baseFunc->metadata_.begin_;
-          if (metadataSize <= 0) {
-            continue;
-          }
-          std::string metadataStr;
-          // Get the metadata string
-          metadataStr.insert(0, ilProgram_, baseFunc->metadata_.begin_, metadataSize);
-
-          std::stringstream aStream;
-          aStream << "__OpenCL_" << baseFunc->name_ << "_fmetadata";
-          std::string metaName = aStream.str();
-          // Save metadata symbols in .rodata
-          if (!clBinary()->elfOut()->addSymbol(amd::Elf::RODATA, metaName.c_str(),
-                                               metadataStr.data(), metadataStr.size())) {
-            buildLog_ += "Internal error: addSymbol failed!\n";
-            LogError("AddSymbol failed");
-            return false;
-          }
         }
       }
     }

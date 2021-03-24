@@ -470,11 +470,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
         // Check resource cache first for an appropriate resource
         gslRef_ = dev().resourceCache().findCalResource(&cal_);
         if (memType == Scratch) {
-          if ((dev().settings().hsail_) || (dev().settings().oclVersion_ >= OpenCL20)) {
-            desc.minAlignment = 64 * Ki;
-          } else {
-            desc.vaBase = static_cast<mcaddr>(0x100000000ULL);
-          }
+          desc.minAlignment = 64 * Ki;
         } else if ((gslRef_ != NULL) && (!dev().settings().use64BitPtr_)) {
           // Make sure runtime didn't pick a resource with > 4GB address
           if ((cal()->dimension_ == GSL_MOA_BUFFER) &&
@@ -947,7 +943,7 @@ bool Resource::create(MemoryType memType, CreateParams* params) {
     }
   }
 
-  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ >= OpenCL20)) && !cal()->buffer_) {
+  if (!cal()->buffer_) {
     hwSrd_ = dev().srds().allocSrdSlot(reinterpret_cast<address*>(&hwState_));
     if (0 == hwSrd_) {
       return false;
@@ -1055,7 +1051,7 @@ void Resource::free() {
   }
 
   // Free SRD for images
-  if ((dev().settings().hsail_ || (dev().settings().oclVersion_ >= OpenCL20)) && !cal()->buffer_) {
+  if (!cal()->buffer_) {
     dev().srds().freeSrdSlot(hwSrd_);
   }
 }

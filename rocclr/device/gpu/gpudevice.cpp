@@ -77,11 +77,6 @@ struct CalDevice {
 static constexpr CalDevice supportedCalDevices[] = {
 //                                                                                  Prefer - NullDevice -
 // GFX Version GSL Machine                       CAL Name     CAL Target            PAL    double  OCL200
-  {6,  0,  0,  ED_ATI_CAL_MACHINE_TAHITI_ISA,    "Tahiti",    CAL_TARGET_TAHITI,    false, true,   false},
-  {6,  0,  1,  ED_ATI_CAL_MACHINE_PITCAIRN_ISA,  "Pitcairn",  CAL_TARGET_PITCAIRN,  false, true,   false},
-  {6,  0,  1,  ED_ATI_CAL_MACHINE_CAPEVERDE_ISA, "Capeverde", CAL_TARGET_CAPEVERDE, false, true,   false},
-  {6,  0,  2,  ED_ATI_CAL_MACHINE_OLAND_ISA,     "Oland",     CAL_TARGET_OLAND,     false, true,   false},
-  {6,  0,  2,  ED_ATI_CAL_MACHINE_HAINAN_ISA,    "Hainan",    CAL_TARGET_HAINAN,    false, true,   false},
   {7,  0,  0,  ED_ATI_CAL_MACHINE_KALINDI_ISA,   "Kalindi",   CAL_TARGET_KALINDI,   false, true,   true },
   {7,  0,  0,  ED_ATI_CAL_MACHINE_SPECTRE_ISA,   "Spectre",   CAL_TARGET_SPECTRE,   false, true,   true },
   {7,  0,  0,  ED_ATI_CAL_MACHINE_SPOOKY_ISA,    "Spooky",    CAL_TARGET_SPOOKY,    false, true,   true },
@@ -270,45 +265,19 @@ bool NullDevice::create(const char* calName, const amd::Isa& isa, CALtarget targ
   // Fill the device info structure
   fillDeviceInfo(calAttr, memInfo, 4096, 1, 0);
 
-  if (NULL == compiler_) {
-#if !defined(ATI_OS_LINUX)
-    char CompilerLibrary[220] = "";
-    strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
-#endif
-    const char* library = getenv("COMPILER_LIBRARY");
+  // Runtime doesn't know what local size could be on the real board
+  info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
+
+  if (NULL == hsaCompiler_) {
+    const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = {
-      sizeof(aclCompilerOptions_0_8),
-#if defined(ATI_OS_LINUX)
-      library ? library : LINUX_ONLY("lib") "amdocl12cl" LP64_SWITCH(LINUX_SWITCH("32", ""), "64")
-                              LINUX_SWITCH(".so", ".dll"),
-#else
-      library ? library : CompilerLibrary,
-#endif
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      AMD_OCL_SC_LIB
-    };
-    compiler_ = aclCompilerInit(&opts, NULL);
-  }
-
-  if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
-    // Runtime doesn't know what local size could be on the real board
-    info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
-
-    if (NULL == hsaCompiler_) {
-      const char* library = getenv("HSA_COMPILER_LIBRARY");
-      aclCompilerOptions opts = {
-          sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
-      // Initialize the compiler handle
-      acl_error error;
-      hsaCompiler_ = aclCompilerInit(&opts, &error);
-      if (error != ACL_SUCCESS) {
-        LogPrintfError("Error initializing the compiler for offline CAL device %s", isa.targetId());
-        return false;
-      }
+        sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
+    // Initialize the compiler handle
+    acl_error error;
+    hsaCompiler_ = aclCompilerInit(&opts, &error);
+    if (error != ACL_SUCCESS) {
+      LogPrintfError("Error initializing the compiler for offline CAL device %s", isa.targetId());
+      return false;
     }
   }
 
@@ -317,7 +286,6 @@ bool NullDevice::create(const char* calName, const amd::Isa& isa, CALtarget targ
 
 bool NullDevice::isHsailProgram(amd::option::Options* options) {
   bool isCIPlus = settings().ciPlus_;
-  bool isHSAILcapable = settings().hsail_;
   bool isBlit = false;
   bool isSPIRV = false;
   bool isClang = false;
@@ -369,10 +337,10 @@ bool NullDevice::isHsailProgram(amd::option::Options* options) {
     }
     isInputOptions = false;
   }
-  if (isSPIRV || (isBlit && isCIPlus && isHSAILcapable) || isClang || isOCL20) {
+  if (isSPIRV || (isBlit && isCIPlus) || isClang || isOCL20) {
     return true;
   }
-  if (isLegacy || !isHSAILcapable || isEDG) {
+  if (isLegacy || isEDG) {
     return false;
   }
   return true;
@@ -1048,51 +1016,15 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
   fillDeviceInfo(getAttribs(), getMemInfo(), static_cast<size_t>(getMaxTextureSize()),
                  engines().numComputeRings(), engines().numComputeRingsRT());
 
-  if (NULL == compiler_) {
-#if !defined(ATI_OS_LINUX)
-    char CompilerLibrary[220] = "";
-    strcat_s(CompilerLibrary, "amdocl12cl" LP64_SWITCH("", "64") ".dll");
-#endif
-
-    const char* library = getenv("COMPILER_LIBRARY");
+  if (NULL == hsaCompiler_) {
+    const char* library = getenv("HSA_COMPILER_LIBRARY");
     aclCompilerOptions opts = {
-      sizeof(aclCompilerOptions_0_8),
-#if defined(ATI_OS_LINUX)
-      library ? library : LINUX_ONLY("lib") "amdocl12cl" LP64_SWITCH(LINUX_SWITCH("32", ""), "64")
-                              LINUX_SWITCH(".so", ".dll"),
-#else
-      library ? library : CompilerLibrary,
-#endif
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      AMD_OCL_SC_LIB
-    };
-    compiler_ = aclCompilerInit(&opts, NULL);
-  }
-
-  if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
-    if (NULL == hsaCompiler_) {
-      const char* library = getenv("HSA_COMPILER_LIBRARY");
-      aclCompilerOptions opts = {
-          sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
-      // Initialize the compiler handle
-      acl_error error;
-      hsaCompiler_ = aclCompilerInit(&opts, &error);
-      if (error != ACL_SUCCESS) {
-        LogError("Error initializing the compiler");
-        return false;
-      }
-    }
-  } else {
-    blitProgram_ = new BlitProgram(context_);
-    // Create blit programs
-    if (blitProgram_ == NULL || !blitProgram_->create(this)) {
-      delete blitProgram_;
-      blitProgram_ = NULL;
-      LogError("Couldn't create blit kernels!");
+        sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
+    // Initialize the compiler handle
+    acl_error error;
+    hsaCompiler_ = aclCompilerInit(&opts, &error);
+    if (error != ACL_SUCCESS) {
+      LogError("Error initializing the compiler");
       return false;
     }
   }
@@ -1694,20 +1626,12 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 
 bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) const {
   *sampler = NULL;
-  if (settings().hsail_ || (settings().oclVersion_ >= OpenCL20)) {
-    Sampler* gpuSampler = new Sampler(*this);
-    if ((NULL == gpuSampler) || !gpuSampler->create(owner)) {
-      delete gpuSampler;
-      return false;
-    }
-    *sampler = gpuSampler;
-  } else {
-    //! Currently allocate the base device class for AMDIL path
-    *sampler = new device::Sampler();
-    if (*sampler == nullptr) {
-      return false;
-    }
+  Sampler* gpuSampler = new Sampler(*this);
+  if ((NULL == gpuSampler) || !gpuSampler->create(owner)) {
+    delete gpuSampler;
+    return false;
   }
+  *sampler = gpuSampler;
   return true;
 }
 

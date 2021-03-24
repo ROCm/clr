@@ -1435,7 +1435,7 @@ bool Program::initBuild(amd::option::Options* options) {
   bool tempFile = false;
 
   // true means hsail required
-  clBinary()->init(options, true);
+  clBinary()->init(options);
   if (options->isDumpFlagSet(amd::option::DUMP_BIF)) {
     outFileName = options->getDumpFileName(".bin");
   } else {
@@ -1773,18 +1773,12 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
 
     std::string processorName = device().isa().processorName();
     const char* hsailName = device().isa().hsailName();
-    const char* amdIlName = device().isa().amdIlName();
 
     optionsVec.push_back(std::string("-D__") + processorName + "__=1");
     optionsVec.push_back(std::string("-D__") + processorName + "=1");
     if (hsailName && (strcmp(hsailName, processorName.c_str()) != 0)) {
       optionsVec.push_back(std::string("-D__") + hsailName + "__=1");
       optionsVec.push_back(std::string("-D__") + hsailName + "=1");
-    }
-    if (amdIlName && (strcmp(amdIlName, processorName.c_str()) != 0) &&
-        (!hsailName || strcmp(amdIlName, hsailName) != 0)) {
-      optionsVec.push_back(std::string("-D__") + amdIlName + "__=1");
-      optionsVec.push_back(std::string("-D__") + amdIlName + "=1");
     }
 
     // Set options for the standard device specific options
@@ -1977,7 +1971,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc 
     aclBinaryOptions binOpts = {0};
     binOpts.struct_size = sizeof(binOpts);
     binOpts.elfclass =
-        (info().arch_id == aclX64 || info().arch_id == aclAMDIL64 || info().arch_id == aclHSAIL64)
+        (info().arch_id == aclX64 || info().arch_id == aclHSAIL64)
         ? ELFCLASS64
         : ELFCLASS32;
     binOpts.bitness = ELFDATA2LSB;

@@ -73,7 +73,6 @@ class Settings : public device::Settings {
       uint linearPersistentImage_ : 1;   //!< Allocates linear images in persistent
       uint useSingleScratch_ : 1;        //!< Allocates single scratch per device
       uint sdmaProfiling_ : 1;           //!< Enables SDMA profiling
-      uint hsail_ : 1;                   //!< Enables HSAIL compilation
       uint svmAtomics_ : 1;              //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;      //!< SVM fine grain system support
       uint useDeviceQueue_ : 1;          //!< Submit to separate device queue

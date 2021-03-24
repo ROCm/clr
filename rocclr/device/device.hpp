@@ -906,7 +906,7 @@ class ClBinary : public amd::HeapObject {
   //! Destructor
   virtual ~ClBinary();
 
-  void init(amd::option::Options* optionsObj, bool amdilRequired = false);
+  void init(amd::option::Options* optionsObj);
 
   /** called only in loading image routines, never storing routines */
   bool setBinary(const char* theBinary, size_t theBinarySize, bool allocated = false,
@@ -986,7 +986,6 @@ class ClBinary : public amd::HeapObject {
 
   bool saveSOURCE() { return ((flags_ & BinarySourceMask) == BinarySaveSource); }
   bool saveLLVMIR() { return ((flags_ & BinaryLlvmirMask) == BinarySaveLlvmir); }
-  bool saveAMDIL() { return ((flags_ & BinaryAmdilMask) == BinarySaveAmdil); }
   bool saveISA() { return ((flags_ & BinaryIsaMask) == BinarySaveIsa); }
 
   bool saveAS() { return ((flags_ & BinaryASMask) == BinarySaveAS); }
@@ -1014,12 +1013,6 @@ class ClBinary : public amd::HeapObject {
     BinaryRemoveLlvmir = 0x8,  // for encrypted binary
     BinaryNoSaveLlvmir = 0x10,
     BinaryLlvmirMask = 0x18,
-
-    // AMDIL control
-    BinarySaveAmdil = 0x0,     // 0: default
-    BinaryRemoveAmdil = 0x20,  // for encrypted binary
-    BinaryNoSaveAmdil = 0x40,
-    BinaryAmdilMask = 0x60,
 
     // ISA control
     BinarySaveIsa = 0x0,     // 0: default
@@ -1293,11 +1286,6 @@ class Isa {
     return hsailId_;
   }
 
-  /// @returns This Isa's name to use with the AMD IL compiler.
-  const char *amdIlName() const {
-    return amdIlId_;
-  }
-
   /// @returns If the ROCm runtime supports the ISA.
   bool runtimeRocSupported() const {
     return runtimeRocSupported_;
@@ -1397,7 +1385,7 @@ class Isa {
 
  private:
 
-  constexpr Isa(const char* targetId, const char* hsailId, const char* amdIlId,
+  constexpr Isa(const char* targetId, const char* hsailId,
                 bool runtimeRocSupported, bool runtimePalSupported, bool runtimeGslSupported,
                 uint32_t versionMajor, uint32_t versionMinor, uint32_t versionStepping,
                 Feature sramecc, Feature xnack, uint32_t simdPerCU, uint32_t simdWidth,
@@ -1405,7 +1393,6 @@ class Isa {
                 uint32_t localMemSizePerCU, uint32_t localMemBanks)
       : targetId_(targetId),
         hsailId_(hsailId),
-        amdIlId_(amdIlId),
         runtimeRocSupported_(runtimeRocSupported),
         runtimePalSupported_(runtimePalSupported),
         runtimeGslSupported_(runtimeGslSupported),
@@ -1432,10 +1419,6 @@ class Isa {
   // compilation using the Shader Compiler Finalizer. Empty string if
   // unsupported.
   const char* hsailId_;
-
-  // @brief Isa's AMD IL name. Used for the Compiler Library for AMD IL
-  // compilation using the Shader Compiler. Empty string if unsupported.
-  const char* amdIlId_;
 
   bool runtimeRocSupported_;       //!< ROCm runtime is supported.
   bool runtimePalSupported_;       //!< PAL runtime is supported.

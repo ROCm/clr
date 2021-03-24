@@ -66,7 +66,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
   if (platform == amd::Elf::COMPLIB_PLATFORM) {
     // BIF 3.0
     uint32_t flag;
-    aclTargetInfo tgtInfo = aclGetTargetInfo("amdil", dev().isa().amdIlName(), NULL);
+    aclTargetInfo tgtInfo = aclGetTargetInfo("amdil", nullptr, NULL);
     if (!elfIn()->getFlags(flag)) {
       LogError("The OCL binary image loading failed: incorrect format");
       return false;
@@ -241,7 +241,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
     } else if (!elfsymbol->IsKernel) {
       // Not a kernel. Add its metadata to the OCL binary in case recompilation happens
       // and the new binary is needed.
-      if (saveAMDIL() && (elfsymbol->SymInfo[NDX_METADATA].size > 0)) {
+      if (false && (elfsymbol->SymInfo[NDX_METADATA].size > 0)) {
         std::string fmetadata = "__OpenCL_";
         fmetadata.append(it.first);
         fmetadata.append("_fmetadata");
@@ -371,14 +371,14 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
 bool ClBinary::storeKernel(const std::string& name, const NullKernel* nullKernel,
                            Kernel::InitData* initData, const std::string& metadata,
                            const std::string& ilSource) {
-  if (!saveISA() && !saveAMDIL()) {
+  if (!saveISA()) {
     return true;
   }
 
   // should we save kernel metadata only under saveAMDIL()?
   bool kernelMetaStored = false;
 
-  if (saveAMDIL() && (ilSource.size() > 0)) {
+  if (false && (ilSource.size() > 0)) {
     // Save IL (this is the per-kernel IL)
     std::string ilName = "__OpenCL_" + name + "_amdil";
     if (!elfOut()->addSymbol(amd::Elf::ILTEXT, ilName.c_str(), ilSource.data(),
