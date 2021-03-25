@@ -52,7 +52,7 @@ namespace amd
   protected:
     //! Initializes the device memory array which is nested
     // after'BufferVk' object in memory layout.
-    void BufferVk::initDeviceMemory() {
+    void initDeviceMemory() {
       deviceMemories_ =
         reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(BufferVk));
       memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
@@ -88,7 +88,7 @@ namespace amd
   protected:
     //! Initializes the device memory array which is nested
     // after'ImageVk' object in memory layout.
-    void ImageVk::initDeviceMemory() {
+    void initDeviceMemory() {
       deviceMemories_ =
         reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(ImageVk));
       memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
