@@ -305,7 +305,9 @@ class VirtualGPU : public device::VirtualDevice {
   bool processMemObjects(const amd::Kernel& kernel,  //!< AMD kernel object for execution
                          const_address params,       //!< Pointer to the param's store
                          size_t& ldsAddress,         //!< LDS usage
-                         bool cooperativeGroups      //!< Dispatch with cooperative groups
+                         bool cooperativeGroups,     //!< Dispatch with cooperative groups
+                         bool& imageBufferWrtBack,   //!< Image buffer write back is required
+                         std::vector<device::Memory*>& wrtBackImageBuffer //!< images for write back
                          );
 
   //! Adds a stage write buffer into a list
@@ -398,7 +400,6 @@ class VirtualGPU : public device::VirtualDevice {
   union {
     struct {
       uint32_t hasPendingDispatch_ : 1; //!< A kernel dispatch is outstanding
-      uint32_t imageBufferWrtBack_ : 1; //!< Image buffer write back is required
       uint32_t profiling_          : 1; //!< Profiling is enabled
       uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
       uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
@@ -406,8 +407,6 @@ class VirtualGPU : public device::VirtualDevice {
     };
     uint32_t  state_;
   };
-
-  std::vector<device::Memory*> wrtBackImageBuffer_;  //!< Array of images for write back
 
   Timestamp* timestamp_;
   hsa_agent_t gpu_device_;  //!< Physical device
