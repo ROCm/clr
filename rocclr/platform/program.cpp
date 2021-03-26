@@ -622,6 +622,28 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
 }
 
 bool Program::load(const std::vector<Device*>& devices) {
+  ScopedLock sl(buildLock_);
+
+  for (const auto& it : devicePrograms_) {
+    const Device& device = *(it.first);
+
+    // If devices is specified, only load code object for those devices
+    if (std::find(devices.begin(), devices.end(), &device) != devices.end()) {
+      continue;
+    }
+
+    device::Program& devProgram = *(it.second);
+
+    // Only load the code object once
+    if (devProgram.isCodeObjectLoaded()) {
+      continue;
+    }
+
+    if (!devProgram.load()) {
+      return false;
+    }
+  }
+
   return true;
 }
 

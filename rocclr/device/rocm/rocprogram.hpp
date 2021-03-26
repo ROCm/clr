@@ -94,7 +94,7 @@ class HSAILProgram : public roc::Program {
  protected:
   bool createBinary(amd::option::Options* options) override { return true; }
 
-  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
+  virtual bool setKernels(void* binary, size_t binSize,
                           amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
                           std::string uri = std::string()) override;
 
@@ -117,9 +117,12 @@ protected:
 private:
   bool saveBinaryAndSetType(type_t type, void* rawBinary, size_t size);
 
-  bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
+  bool createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                     bool internalKernel) override final;
+
+  bool setKernels(void* binary, size_t binSize,
                   amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
-                  std::string uri = std::string()) final;
+                  std::string uri = std::string()) override final;
 };
 
 /*@}*/} // namespace roc

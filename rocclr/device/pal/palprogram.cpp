@@ -243,7 +243,44 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
   return vec;
 }
 
-bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                                 bool internalKernel) {
+  size_t kernelNamesSize = 0;
+  acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_,
+    RT_KERNEL_NAMES, nullptr, nullptr, &kernelNamesSize);
+  if (errorCode != ACL_SUCCESS) {
+    buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
+    return false;
+  }
+  if (kernelNamesSize > 0) {
+    char* kernelNames = new char[kernelNamesSize];
+    errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES,
+      nullptr, kernelNames, &kernelNamesSize);
+    if (errorCode != ACL_SUCCESS) {
+      buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
+      delete[] kernelNames;
+      return false;
+    }
+    std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
+    delete[] kernelNames;
+    for (const auto& it : vKernels) {
+      std::string kernelName(it);
+
+      HSAILKernel* aKernel = new HSAILKernel(kernelName, this, internalKernel);
+      kernels()[kernelName] = aKernel;
+
+      if (!aKernel->init()) {
+        buildLog_ += "Error: Kernel initialization failed.\n";
+        return false;
+      }
+
+      aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
+    }
+  }
+  return true;
+}
+
+bool HSAILProgram::setKernels(void* binary, size_t binSize,
                               amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(WITH_COMPILER_LIB)
   // Stop compilation if it is an offline device - PAL runtime does not
@@ -275,56 +312,23 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
     return false;
   }
 
-  size_t kernelNamesSize = 0;
-  acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
-                                              nullptr, &kernelNamesSize);
-  if (errorCode != ACL_SUCCESS) {
-    buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
-    return false;
+  bool dynamicParallelism = false;
+  for (auto& kit : kernels()) {
+    HSAILKernel* aKernel = static_cast<HSAILKernel*>(kit.second);
+    if (!aKernel->postLoad()) {
+      return false;
+    }
+    dynamicParallelism |= aKernel->dynamicParallelism();
+    // Find max scratch regs used in the program. It's used for scratch buffer preallocation
+    // with dynamic parallelism, since runtime doesn't know which child kernel will be called
+    maxScratchRegs_ =
+        std::max(static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
+    maxVgprs_ = std::max(static_cast<uint>(aKernel->workGroupInfo()->usedVGPRs_), maxVgprs_);
   }
-  if (kernelNamesSize > 0) {
-    char* kernelNames = new char[kernelNamesSize];
-    errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames,
-                                      &kernelNamesSize);
-    if (errorCode != ACL_SUCCESS) {
-      buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
-      delete[] kernelNames;
-      return false;
-    }
-    std::vector<std::string> vKernels = splitSpaceSeparatedString(kernelNames);
-    delete[] kernelNames;
-    bool dynamicParallelism = false;
-    for (const auto& it : vKernels) {
-      std::string kernelName(it);
-      std::string openclKernelName = device::Kernel::openclMangledName(kernelName);
 
-      HSAILKernel* aKernel =
-          new HSAILKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
-      kernels()[kernelName] = aKernel;
-
-      amd::hsa::loader::Symbol* sym = executable_->GetSymbol(openclKernelName.c_str(), &agent);
-      if (!sym) {
-        buildLog_ += "Error: Getting kernel ISA code symbol '" + openclKernelName +
-            "' from AMD HSA Code Object failed. Kernel initialization failed.\n";
-        return false;
-      }
-      if (!aKernel->init(sym, false)) {
-        buildLog_ += "Error: Kernel '" + openclKernelName + "' initialization failed.\n";
-        return false;
-      }
-      buildLog_ += aKernel->buildLog();
-      aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-      dynamicParallelism |= aKernel->dynamicParallelism();
-      // Find max scratch regs used in the program. It's used for scratch buffer preallocation
-      // with dynamic parallelism, since runtime doesn't know which child kernel will be called
-      maxScratchRegs_ =
-          std::max(static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
-      maxVgprs_ = std::max(static_cast<uint>(aKernel->workGroupInfo()->usedVGPRs_), maxVgprs_);
-    }
-    // Allocate kernel table for device enqueuing
-    if (!isNull() && dynamicParallelism && !allocKernelTable()) {
-      return false;
-    }
+  // Allocate kernel table for device enqueuing
+  if (!isNull() && dynamicParallelism && !allocKernelTable()) {
+    return false;
   }
 
   DestroySegmentCpuAccess();
@@ -731,7 +735,34 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
   return true;
 }
 
-bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                                     bool internalKernel) {
+#if defined(USE_COMGR_LIBRARY)
+  // Find the size of global variables from the binary
+  if (!FindGlobalVarSize(binary, binSize)) {
+    buildLog_ += "Error: Cannot Find Global Var Sizes\n";
+    return false;
+  }
+
+  for (const auto& kernelMeta : kernelMetadataMap_) {
+    auto kernelName = kernelMeta.first;
+    auto kernel = new LightningKernel(kernelName, this, internalKernel);
+    if (kernel == nullptr) {
+      return false;
+    }
+    if (!kernel->init()) {
+      buildLog_ += "[ROC][Kernel] Could not get Code Prop Meta Data \n";
+      return false;
+    }
+    kernels()[kernelName] = kernel;
+
+    kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
+  }
+#endif
+  return true;
+}
+
+bool LightningProgram::setKernels(void* binary, size_t binSize,
                                   amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   // Stop compilation if it is an offline device - PAL runtime does not
@@ -742,7 +773,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
-    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
+    LogPrintfError("Error: Executable for AMD HSA Code Object isn't created.\n");
     return false;
   }
 
@@ -753,33 +784,21 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
+    LogPrintfError("Error: AMD HSA Code Object loading failed.\n");
     return false;
   }
 
   status = executable_->Freeze(nullptr);
   if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: Freezing the executable failed: ";
+    LogPrintfError("Error: Freezing the executable failed.\n");
     return false;
   }
 
-  // Find the size of global variables from the binary
-  if (!FindGlobalVarSize(binary, binSize)) {
-    return false;
-  }
-
-  for (const auto& kernelMeta : kernelMetadataMap_) {
-    auto kernelName = kernelMeta.first;
-    auto kernel =
-        new LightningKernel(kernelName, this, options->origOptionStr + ProcessOptionsFlattened(options));
-    kernels()[kernelName] = kernel;
-
-    if (!kernel->init()) {
+  for (auto& kit : kernels()) {
+    LightningKernel* kernel = static_cast<LightningKernel*>(kit.second);
+    if (!kernel->postLoad()) {
       return false;
     }
-
-    kernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-
     // Find max scratch regs used in the program. It's used for scratch buffer preallocation
     // with dynamic parallelism, since runtime doesn't know which child kernel will be called
     maxScratchRegs_ =

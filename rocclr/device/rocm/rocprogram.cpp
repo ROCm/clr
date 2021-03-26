@@ -219,7 +219,7 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   return true;
 }
 
-bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+bool HSAILProgram::setKernels(void* binary, size_t binSize,
                               amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
   return true;
 }
@@ -263,20 +263,34 @@ bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t
   return true;
 }
 
-bool LightningProgram::setKernels(amd::option::Options* options, void* binary, size_t binSize,
+bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                                     bool internalKernel) {
+  // Find the size of global variables from the binary
+  if (!FindGlobalVarSize(binary, binSize)) {
+    buildLog_ += "Error: Cannot Find Global Var Sizes\n";
+    return false;
+  }
+
+  for (const auto &kernelMeta : kernelMetadataMap_) {
+    const std::string kernelName = kernelMeta.first;
+    Kernel* aKernel = new roc::LightningKernel(kernelName, this);
+    if (!aKernel->init()) {
+      return false;
+    }
+    aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
+    aKernel->setInternalKernelFlag(internalKernel);
+    kernels()[kernelName] = aKernel;
+  }
+  return true;
+}
+
+bool LightningProgram::setKernels(void* binary, size_t binSize,
                                   amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   // Stop compilation if it is an offline device - HSA runtime does not
   // support ISA compiled offline
   if (!device().isOnline()) {
     return true;
-  }
-
-  // Find the size of global variables from the binary
-  if (!FindGlobalVarSize(binary, binSize)) {
-    buildLog_ += "Error: Cannot Global Var Sizes ";
-    buildLog_ += "\n";
-    return false;
   }
 
   hsa_agent_t agent = rocDevice().getBackendDevice();
@@ -320,16 +334,11 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     return false;
   }
 
-  for (const auto &kernelMeta : kernelMetadataMap_) {
-    const std::string kernelName = kernelMeta.first;
-    Kernel* aKernel = new roc::LightningKernel(kernelName, this);
-    if (!aKernel->init()) {
+  for (auto& kit : kernels()) {
+    LightningKernel* kernel = static_cast<LightningKernel*>(kit.second);
+    if (!kernel->postLoad()) {
       return false;
     }
-    aKernel->setUniformWorkGroupSize(options->oVariables->UniformWorkGroupSize);
-    aKernel->setInternalKernelFlag(compileOptions_.find("-cl-internal-kernel") !=
-                                   std::string::npos);
-    kernels()[kernelName] = aKernel;
   }
 #endif  // defined(USE_COMGR_LIBRARY)
   return true;

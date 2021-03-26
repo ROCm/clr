@@ -196,7 +196,7 @@ class HSAILProgram : public device::Program {
   }
 
   //! Get symbol by name
-  amd::hsa::loader::Symbol* GetSymbol(const char* symbol_name, const hsa_agent_t* agent) const {
+  amd::hsa::loader::Symbol* getSymbol(const char* symbol_name, const hsa_agent_t* agent) const {
     return executable_->GetSymbol(symbol_name, agent);
   }
 
@@ -208,8 +208,10 @@ class HSAILProgram : public device::Program {
 #if defined(WITH_COMPILER_LIB)
   virtual const aclTargetInfo& info();
 #endif
+  virtual bool createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                             bool internalKernel) override;
 
-  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
+  virtual bool setKernels(void* binary, size_t binSize,
                           amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
                           std::string uri = std::string()) override;
 
@@ -267,7 +269,10 @@ class LightningProgram : public HSAILProgram {
   virtual ~LightningProgram() {}
 
  protected:
-  virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
+  virtual bool createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                             bool internalKernel) override;
+
+  virtual bool setKernels(void* binary, size_t binSize,
                           amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
                           std::string uri = std::string()) override;
 

@@ -123,7 +123,8 @@ class Program : public amd::HeapObject {
        uint32_t internal_ : 1;        //!< Internal blit program
        uint32_t isLC_ : 1;            //!< LC was used for the program compilation
        uint32_t hasGlobalStores_ : 1; //!< Program has writable program scope variables
-       uint32_t isHIP_          : 1;  //!< Determine if the program is for HIP
+       uint32_t isHIP_ : 1;           //!< Determine if the program is for HIP
+       uint32_t coLoaded_ : 1;        //!< Has the code objected been loaded
      };
      uint32_t flags_;  //!< Program flags
    };
@@ -178,15 +179,18 @@ class Program : public amd::HeapObject {
     const char** headerIncludeNames, const char* origOptions,
     amd::option::Options* options);
 
-  //! Builds the device program.
+  //! Link the device program.
   int32_t link(const std::vector<Program*>& inputPrograms, const char* origOptions,
     amd::option::Options* options);
 
-  //! Builds the device program.
+  //! Build the device program.
   int32_t build(const std::string& sourceCode, const char* origOptions,
                 amd::option::Options* options, const std::vector<std::string>& preCompiledHeaders);
 
-  //! Returns the device object, associated with this program.
+  //! Load the device program.
+  bool load();
+
+  //! Return the device object, associated with this program.
   const amd::Device& device() const { return device_(); }
 
   //! Return the compiler options used to build the program.
@@ -247,6 +251,9 @@ class Program : public amd::HeapObject {
 
   //! Global variables are a part of the code segment
   bool hasGlobalStores() const { return hasGlobalStores_; }
+
+  //! Return TRUE if the program has been loaded
+  bool isCodeObjectLoaded() const { return coLoaded_; }
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t metadata() const { return metadata_; }
@@ -324,9 +331,11 @@ class Program : public amd::HeapObject {
   //! return target info
   virtual const aclTargetInfo& info() = 0;
 #endif
+  virtual bool createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
+                             bool internalKernel) { return true; }
 
   virtual bool setKernels(
-    amd::option::Options* options, void* binary, size_t binSize,
+    void* binary, size_t binSize,
     amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,
     std::string uri = std::string()) { return true; }
 
@@ -396,6 +405,12 @@ class Program : public amd::HeapObject {
 
   //! Link the device program with HSAIL path
   bool linkImplHSAIL(amd::option::Options* options);
+
+  //! Load the device program with LC path
+  bool loadLC();
+
+  //! Load the device program with HSAIL path
+  bool loadHSAIL();
 
 #if defined(USE_COMGR_LIBRARY)
   //! Dump the log data object to the build log, if a log data object is present

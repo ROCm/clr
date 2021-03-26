@@ -79,6 +79,9 @@ class LightningKernel : public roc::Kernel {
 
   //! Initializes the metadata required for this kernel
   virtual bool init() final;
+
+  //! Setup after code object loading
+  bool postLoad();
 };
 
 }  // namespace roc

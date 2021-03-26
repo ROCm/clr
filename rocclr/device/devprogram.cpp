@@ -1150,13 +1150,16 @@ bool Program::linkImplLC(amd::option::Options* options) {
     case FILE_TYPE_ISA: {
       amd::Comgr::destroy_data_set(inputs);
       binary_t isaBinary = binary();
-      finfo_t isaFdesc = BinaryFd();
       if (GPU_DUMP_CODE_OBJECT) {
         dumpCodeObject(std::string{(const char*)isaBinary.first, isaBinary.second});
       }
-      return setKernels(options, const_cast<void *>(isaBinary.first), isaBinary.second,
-                        isaFdesc.first, isaFdesc.second, BinaryURI());
-      break;
+
+      if (!createKernels(const_cast<void *>(isaBinary.first), isaBinary.second,
+                           options->oVariables->UniformWorkGroupSize, internal_)) {
+        buildLog_ += "Error: Cannot create kernels.\n";
+        return false;
+      }
+      return true;
     }
     default:
       buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
@@ -1284,8 +1287,9 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Destroy original memory with executable after compilation
   delete[] executable;
 
-  if (!setKernels(options,  const_cast<void*>(clBinary()->data().first),
-                  clBinary()->data().second)) {
+  if (!createKernels(const_cast<void*>(clBinary()->data().first), clBinary()->data().second,
+                     options->oVariables->UniformWorkGroupSize, internal_)) {
+    buildLog_ += "Error: Cannot create kernels.\n";
     return false;
   }
 
@@ -1352,17 +1356,17 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
       fin_options.append(" -sc-xnack-iommu");
     }
 
-  if (device().settings().enableWave32Mode_) {
-    fin_options.append(" -force-wave-size-32");
-  }
+    if (device().settings().enableWave32Mode_) {
+      fin_options.append(" -force-wave-size-32");
+    }
 
-  if (device().settings().enableWgpMode_) {
-    fin_options.append(" -force-wgp-mode");
-  }
+    if (device().settings().enableWgpMode_) {
+      fin_options.append(" -force-wgp-mode");
+    }
 
-  if (device().settings().hsailExplicitXnack_) {
-    fin_options.append(" -xnack");
-  }
+    if (device().settings().hsailExplicitXnack_) {
+      fin_options.append(" -xnack");
+    }
 
     errorCode = amd::Hsail::Compile(device().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
       ACL_TYPE_ISA, logFunction);
@@ -1382,8 +1386,8 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   }
 
   // Call the device layer to setup all available kernels on the actual device
-  if (!setKernels(options, binary, binSize)) {
-    buildLog_ += "Error: Cannot set kernel \n";
+  if (!createKernels(binary, binSize, options->oVariables->UniformWorkGroupSize, internal_)) {
+    buildLog_ += "Error: Cannot create kernel.\n";
     return false;
   }
 
@@ -1770,6 +1774,48 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
   }
 
   return buildError();
+}
+
+// ================================================================================================
+bool Program::loadHSAIL() {
+#if  defined(WITH_COMPILER_LIB)
+  acl_error errorCode;
+  size_t binSize;
+  void* bin = const_cast<void*>(amd::Hsail::ExtractSection(device().compiler(), binaryElf_,
+                                &binSize, aclTEXT, &errorCode));
+  if (errorCode != ACL_SUCCESS) {
+    LogPrintfError("Error: cannot extract ISA from compiled binary.\n");
+    return false;
+  }
+  // Call the device layer to setup all available kernels on the actual device
+  return setKernels(bin, binSize);
+#else
+  return false;
+#endif
+}
+
+// ================================================================================================
+bool Program::loadLC() {
+#if defined(USE_COMGR_LIBRARY)
+  return setKernels(const_cast<void*>(binary().first), binary().second,
+    BinaryFd().first, BinaryFd().second, BinaryURI());
+#else
+  return false;
+#endif
+}
+
+// ================================================================================================
+bool Program::load() {
+  bool ret;
+  if (isLC()) {
+    ret = loadLC();
+  } else {
+    ret = loadHSAIL();
+  }
+  if (ret) {
+    coLoaded_ = 1;
+  }
+  return ret;
 }
 
 // ================================================================================================
