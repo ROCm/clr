@@ -366,6 +366,10 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
     DevLogPrintfError("Build failed for Kernel: %s \n", kernels.c_str());
     return false;
   }
+  if (!program_->load()) {
+    DevLogPrintfError("Could not load the kernels: %s \n", kernels.c_str());
+    return false;
+  }
 
   return true;
 }

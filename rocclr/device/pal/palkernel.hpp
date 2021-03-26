@@ -60,13 +60,15 @@ class LightningProgram;
  */
 class HSAILKernel : public device::Kernel {
  public:
-  HSAILKernel(std::string name, HSAILProgram* prog, std::string compileOptions);
+  HSAILKernel(std::string name, HSAILProgram* prog, bool internalKernel);
 
   virtual ~HSAILKernel();
 
   //! Initializes the metadata required for this kernel,
-  //! finalizes the kernel if needed
-  bool init(amd::hsa::loader::Symbol* sym, bool finalize = false);
+  bool init();
+
+  //! Setup after code object loading
+  bool postLoad();
 
   //! Returns PAL, possibly null, device object, associated with this kernel.
   const NullDevice& palNullDevice() const { return reinterpret_cast<const NullDevice&>(dev_); }
@@ -122,7 +124,7 @@ class HSAILKernel : public device::Kernel {
 
  protected:
   //! Creates AQL kernel HW info
-  bool aqlCreateHWInfo(amd::hsa::loader::Symbol* sym);
+  bool aqlCreateHWInfo();
 
   //! Get the kernel code and copy the code object from the program CPU segment
   bool setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc);
@@ -131,7 +133,6 @@ class HSAILKernel : public device::Kernel {
   void setWorkGroupInfo(const uint32_t privateSegmentSize, const uint32_t groupSegmentSize,
                         const uint16_t numSGPRs, const uint16_t numVGPRs);
 
-  std::string compileOptions_;  //!< compile used for finalizing this kernel
   amd_kernel_code_t akc_;       //!< AQL kernel code on CPU
   uint index_;                  //!< Kernel index in the program
 
@@ -141,18 +142,18 @@ class HSAILKernel : public device::Kernel {
 
 class LightningKernel : public HSAILKernel {
  public:
-  LightningKernel(const std::string& name, HSAILProgram* prog, const std::string& compileOptions)
-      : HSAILKernel(name, prog, compileOptions) {}
+  LightningKernel(const std::string& name, HSAILProgram* prog, bool internalKernel)
+      : HSAILKernel(name, prog, internalKernel) {}
 
   //! Returns Lightning program associated with this kernel
   const LightningProgram& prog() const;
 
-  //! Initializes the metadata required for this kernel,
-  bool init(amd::hsa::loader::Symbol* symbol);
-
 #if defined(USE_COMGR_LIBRARY)
-  //! Initializes the metadata required for this kernel,
+  //! Initializes the metadata required for this kernel
   bool init();
+
+  //! Setup after code object loading
+  bool postLoad();
 #endif
 };
 

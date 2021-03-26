@@ -45,11 +45,10 @@ Kernel::Kernel(std::string name, Program* prog)
 
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
-  if (!GetAttrCodePropMetadata()) {
-    LogError("[ROC][Kernel] Could not get Code Prop Meta Data \n");
-    return false;
-  }
+  return GetAttrCodePropMetadata();
+}
 
+bool LightningKernel::postLoad() {
   // Set the kernel symbol name and size/alignment based on the kernel metadata
   // NOTE: kernel name is used to get the kernel code handle in V2,
   //       but kernel symbol name is used in V3

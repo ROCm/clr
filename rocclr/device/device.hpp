@@ -91,10 +91,6 @@ class Device;
 struct KernelParameterDescriptor;
 struct Coord3D;
 
-namespace option {
-class Options;
-}  // namespace option
-
 //! @note: the defines match hip values
 enum MemoryAdvice : uint32_t {
   SetReadMostly = 1,          ///< Data will mostly be read and only occassionally be written to
