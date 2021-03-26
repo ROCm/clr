@@ -433,7 +433,8 @@ void VirtualGPU::HwQueueTracker::ResetCurrentSignal() {
 
 // ================================================================================================
 bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address params,
-  size_t& ldsAddress, bool cooperativeGroups) {
+  size_t& ldsAddress, bool cooperativeGroups, bool& imageBufferWrtBack,
+  std::vector<device::Memory*>& wrtBackImageBuffer) {
   Kernel& hsaKernel = const_cast<Kernel&>(static_cast<const Kernel&>(*(kernel.getDeviceKernel(dev()))));
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
@@ -614,8 +615,8 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
               // If it's not a read only resource, then runtime has to write back
               if (!desc.info_.readOnly_) {
-                wrtBackImageBuffer_.push_back(mem->getDeviceMemory(dev()));
-                imageBufferWrtBack_ = true;
+                wrtBackImageBuffer.push_back(mem->getDeviceMemory(dev()));
+                imageBufferWrtBack = true;
               }
             }
           }
@@ -2451,10 +2452,14 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
+  bool imageBufferWrtBack = false; // Image buffer write back is required
+  std::vector<device::Memory*> wrtBackImageBuffer; // Array of images for write back
+
   setLastCommandSDMA(false);
   // Check memory dependency and SVM objects
   bool coopGroups = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
-  if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups)) {
+  if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups,
+                         imageBufferWrtBack, wrtBackImageBuffer)) {
     LogError("Wrong memory objects!");
     return false;
   }
@@ -2698,12 +2703,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
 
   // Check if image buffer write back is required
-  if (imageBufferWrtBack_) {
-    // Avoid recursive write back
-    imageBufferWrtBack_ = false;
+  if (imageBufferWrtBack) {
     // Make sure the original kernel execution is done
     releaseGpuMemoryFence();
-    for (const auto imageBuffer : wrtBackImageBuffer_) {
+    for (const auto imageBuffer : wrtBackImageBuffer) {
       Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
       amd::Image* image = imageBuffer->owner()->asImage();
       Image* devImage = static_cast<Image*>(dev().getGpuMemory(imageBuffer->owner()));
@@ -2714,7 +2717,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                                                 offs, image->getRegion(), true,
                                                 image->getRowPitch(), image->getSlicePitch());
     }
-    wrtBackImageBuffer_.clear();
   }
   return true;
 }
