@@ -138,7 +138,7 @@ class Resource : public amd::HeapObject {
 
   struct VkInteropParams : public CreateParams {
     InteropType type_;  //!< Vulkan resource type
-    void* handle_;
+    amd::Os::FileDesc handle_;
   };
 
 #ifdef _WIN32
