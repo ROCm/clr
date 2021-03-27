@@ -350,8 +350,7 @@ bool Memory::createInterop() {
     vkRes.owner_ = owner();
     memType = Resource::VkInterop;
     vkRes.handle_ = vkObject->getVkSharedHandle();
-    assert(vkRes.handle_ != nullptr);
-    vkRes.type_ = Resource::InteropTypeless;  
+    vkRes.type_ = Resource::InteropTypeless;
   }
 
   else if (glObject != nullptr) {
