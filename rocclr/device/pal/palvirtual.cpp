@@ -2454,8 +2454,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     iCmd()->CmdCommentString(buf);
   }
 
+  bool imageBufferWrtBack = false; // Image buffer write back is required
+  std::vector<Image*> wrtBackImageBuffer; // Array of images for write back
+
   // Check memory dependency and SVM objects
-  if (!processMemObjectsHSA(kernel, parameters, nativeMem, ldsSize)) {
+  if (!processMemObjectsHSA(kernel, parameters, nativeMem, ldsSize,
+                            imageBufferWrtBack, wrtBackImageBuffer)) {
     LogError("Wrong memory objects!");
     return false;
   }
@@ -2573,12 +2577,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
 
   // Check if image buffer write back is required
-  if (state_.imageBufferWrtBack_) {
-    // Avoid recursive write back
-    state_.imageBufferWrtBack_ = false;
+  if (imageBufferWrtBack) {
     // Make sure the original kernel execution is done
     addBarrier(RgpSqqtBarrierReason::MemDependency);
-    for (const auto imageBuffer : wrtBackImageBuffer_) {
+    for (const auto imageBuffer : wrtBackImageBuffer) {
       Memory* buffer = dev().getGpuMemory(imageBuffer->owner()->parent());
       amd::Image* image = imageBuffer->owner()->asImage();
       amd::Coord3D offs(0);
@@ -2587,7 +2589,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
                                                 offs, image->getRegion(), true,
                                                 image->getRowPitch(), image->getSlicePitch());
     }
-    wrtBackImageBuffer_.clear();
   }
 
   // Perform post dispatch logic for RGP traces
@@ -3294,7 +3295,9 @@ void VirtualGPU::profileEvent(EngineType engine, bool type) const {
 }
 
 bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address params,
-                                      bool nativeMem, size_t& ldsAddress) {
+                                      bool nativeMem, size_t& ldsAddress,
+                                      bool& imageBufferWrtBack,
+                                      std::vector<Image*>& wrtBackImageBuffer) {
   const amd::KernelParameters& kernelParams = kernel.parameters();
 
   // Mark the tracker with a new kernel,
@@ -3470,8 +3473,8 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
                 addVmMemory(imageBuffer->CopyImageBuffer());
                 // If it's not a read only resource, then runtime has to write back
                 if (!info.readOnly_) {
-                  wrtBackImageBuffer_.push_back(imageBuffer);
-                  state_.imageBufferWrtBack_ = true;
+                  wrtBackImageBuffer.push_back(imageBuffer);
+                  imageBufferWrtBack = true;
                 }
               }
             }
