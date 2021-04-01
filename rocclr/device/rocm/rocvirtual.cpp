@@ -110,7 +110,10 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 
 // ================================================================================================
 void Timestamp::checkGpuTime() {
-  if (HwProfiling()) {
+  if (HwProfiling() &&
+      // Avoid profiling data for the sync barrier, in tiny performance tests the first call
+      // to ROCr is very slow and that also affects the overall performance of the callback thread
+      (command().GetBatchHead() == nullptr)) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
     uint64_t  end = 0;
 
