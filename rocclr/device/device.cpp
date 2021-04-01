@@ -171,9 +171,9 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx90a:sramecc-:xnack+", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc+:xnack-", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc+:xnack+", nullptr,     nullptr,     true,  false, false,              9,  0,  10,   ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx90c",                 nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Renoir
-    {"gfx90c:xnack-",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx90c:xnack+",          nullptr,     nullptr,     false, false, false,              9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90c",                 nullptr,     nullptr,     true,  true,  false,              9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Renoir
+    {"gfx90c:xnack-",          nullptr,     nullptr,     true,  true,  false,              9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx90c:xnack+",          nullptr,     nullptr,     true,  true,  false,              9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx1010",                "gfx1010",   nullptr,     true,  true,  false,              10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack-",         "gfx1010",   nullptr,     true,  true,  false,              10, 1,  0,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack+",         nullptr,     nullptr,     true,  true,  false,              10, 1,  0,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
