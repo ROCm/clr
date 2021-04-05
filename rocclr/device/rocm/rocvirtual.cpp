@@ -110,10 +110,7 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 
 // ================================================================================================
 void Timestamp::checkGpuTime() {
-  if (HwProfiling() &&
-      // Avoid profiling data for the sync barrier, in tiny performance tests the first call
-      // to ROCr is very slow and that also affects the overall performance of the callback thread
-      (command().GetBatchHead() == nullptr)) {
+  if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
     uint64_t  end = 0;
 
@@ -121,23 +118,29 @@ void Timestamp::checkGpuTime() {
       if (hsa_signal_load_relaxed(it->signal_) > 0) {
         WaitForSignal(it->signal_);
       }
-      hsa_amd_profiling_dispatch_time_t time = {};
-      if (it->engine_ == HwQueueEngine::Compute) {
-        hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
-      } else {
-        hsa_amd_profiling_async_copy_time_t time_sdma = {};
-        hsa_amd_profiling_get_async_copy_time(it->signal_, &time_sdma);
-        time.start = time_sdma.start;
-        time.end = time_sdma.end;
+      // Avoid profiling data for the sync barrier, in tiny performance tests the first call
+      // to ROCr is very slow and that also affects the overall performance of the callback thread
+      if (command().GetBatchHead() == nullptr) {
+        hsa_amd_profiling_dispatch_time_t time = {};
+        if (it->engine_ == HwQueueEngine::Compute) {
+          hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
+        } else {
+          hsa_amd_profiling_async_copy_time_t time_sdma = {};
+          hsa_amd_profiling_get_async_copy_time(it->signal_, &time_sdma);
+          time.start = time_sdma.start;
+          time.end = time_sdma.end;
+        }
+        start = std::min(time.start, start);
+        end = std::max(time.end, end);
       }
-      start = std::min(time.start, start);
-      end = std::max(time.end, end);
       it->ts_ = nullptr;
       it->done_ = true;
     }
     signals_.clear();
-    start_ = start * ticksToTime_;
-    end_ = end * ticksToTime_;
+    if (end != 0) {
+      start_ = start * ticksToTime_;
+      end_ = end * ticksToTime_;
+    }
   }
 }
 
@@ -2858,6 +2861,8 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
   if (skip_cpu_wait) {
     // Search for the last command in the batch to track GPU state
     amd::Command* current = list;
+    assert(current != nullptr && "Empty batch for processing!");
+
     // HIP tests expect callbacks processed from another thread, hence force AQL barrier always, so
     // HSA signal callback will process HIP callback asynchronously
     if (list->Callback() != nullptr) {
