@@ -1889,13 +1889,13 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
-    LogError("Fail allocation host memory");
+    LogPrintfError("Fail allocation host memory with err %d", stat);
     return nullptr;
   }
 
   stat = hsa_amd_agents_allow_access(gpu_agents_.size(), &gpu_agents_[0], nullptr, ptr);
   if (stat != HSA_STATUS_SUCCESS) {
-    LogError("Fail hsa_amd_agents_allow_access");
+    LogPrintfError("Fail hsa_amd_agents_alloc_access with err %d", stat);
     hostFree(ptr, size);
     return nullptr;
   }
@@ -2218,8 +2218,10 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     // if the device supports SVM FGS, return the committed CPU address directly.
     Memory* gpuMem = getRocMemory(mem);
 
-    // add the information to context so that we can use it later.
-    amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+    if (mem->getSvmPtr() != nullptr) {
+      // add the information to context so that we can use it later.
+      amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+    }
     svmPtr = mem->getSvmPtr();
   } else {
     // Find the existing amd::mem object
