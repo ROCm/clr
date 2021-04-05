@@ -1721,6 +1721,8 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
     // data check was added for persistent memory that failed to get aperture
     // and therefore are treated like a remote resource
     else if (memory->isPersistentDirectMap() && (memory->data() != nullptr)) {
+      // Map/unmap must be serialized
+      amd::ScopedLock lock(owner->lockMemoryOps());
       memory->unmap(this);
     } else if (memory->mapMemory() != nullptr) {
       if (writeMapInfo->isUnmapWrite()) {
