@@ -290,7 +290,7 @@ class VirtualGPU : public device::VirtualDevice {
    *
    * @return bool true if Wait returned successfully, false otherwise
    */
-  bool releaseGpuMemoryFence(bool force_barrier = false, bool skip_copy_wait = false);
+  bool releaseGpuMemoryFence(bool skip_copy_wait = false);
 
   hsa_agent_t gpu_device() const { return gpu_device_; }
   hsa_queue_t* gpu_queue() { return gpu_queue_; }

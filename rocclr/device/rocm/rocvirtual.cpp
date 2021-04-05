@@ -864,16 +864,15 @@ void VirtualGPU::ResetQueueStates() {
   // Release all memory dependencies
   memoryDependency().clear();
 
-  if (dev().settings().barrier_sync_) {
-    // Release the pool, since runtime just completed a barrier
-    // @note: Runtime can reset kernel arg pool only if the barrier with L2 invalidation was issued
-    resetKernArgPool();
-  }
+  // Release the pool, since runtime just completed a barrier
+  // @note: Runtime can reset kernel arg pool only if the barrier with L2 invalidation was issued
+  resetKernArgPool();
+
 }
 
 // ================================================================================================
-bool VirtualGPU::releaseGpuMemoryFence(bool force_barrier, bool skip_cpu_wait) {
-  if (hasPendingDispatch_ && (dev().settings().barrier_sync_ || force_barrier)) {
+bool VirtualGPU::releaseGpuMemoryFence(bool skip_cpu_wait) {
+  if (hasPendingDispatch_) {
     // Dispatch barrier packet into the queue
     dispatchBarrierPacket(&barrier_packet_, kBarrierPacketHeader);
     hasPendingDispatch_ = false;
@@ -2461,7 +2460,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   bool imageBufferWrtBack = false; // Image buffer write back is required
   std::vector<device::Memory*> wrtBackImageBuffer; // Array of images for write back
 
-  setLastCommandSDMA(false);
   // Check memory dependency and SVM objects
   bool coopGroups = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
   if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups,
@@ -2740,8 +2738,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
   if (vcmd.cooperativeGroups() || vcmd.cooperativeMultiDeviceGroups()) {
     // Wait for the execution on the current queue, since the coop groups will use the device queue
-    bool force_barrier = !dev().settings().barrier_sync_ && !isLastCommandSDMA();
-    releaseGpuMemoryFence(force_barrier, kSkipCpuWait);
+    releaseGpuMemoryFence(kSkipCpuWait);
 
     // Get device queue for exclusive GPU access
     VirtualGPU* queue = dev().xferQueue();
@@ -2781,7 +2778,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
     // Wait for the execution on the device queue. Keep the current queue in-order
-    queue->releaseGpuMemoryFence(kIgnoreBarrier, kSkipCpuWait);
+    queue->releaseGpuMemoryFence(kSkipCpuWait);
 
     // Add a dependency into the current queue on the coop queue
     Barriers().SetExternalSignal(queue->Barriers().GetLastSignal());
@@ -2844,11 +2841,6 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
-  if (!dev().settings().barrier_sync_) {
-    // Force barrier to make sure L2 flush, since interop can be in sysmem
-    constexpr bool kForceBarrier = true;
-    releaseGpuMemoryFence(kForceBarrier);
-  }
   profilingEnd(vcmd);
 }
 
@@ -2856,7 +2848,6 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 void VirtualGPU::flush(amd::Command* list, bool wait) {
   // Direct dispatch relies on HSA signal callback
   bool skip_cpu_wait = AMD_DIRECT_DISPATCH;
-  bool force_barrier = !dev().settings().barrier_sync_ && !isLastCommandSDMA();
 
   if (skip_cpu_wait) {
     // Search for the last command in the batch to track GPU state
@@ -2885,24 +2876,17 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
     // then the host thread can't update it also, otherwise double free may occur
     skip_cpu_wait &= hasPendingDispatch_;
 
-    releaseGpuMemoryFence(force_barrier, skip_cpu_wait);
+    releaseGpuMemoryFence(skip_cpu_wait);
     profilingEnd(*current);
   } else {
     // If barrier is requested, then wait for everything, otherwise
     // a per disaptch wait will occur later in updateCommandsState()
-    if (dev().settings().barrier_sync_) {
-      releaseGpuMemoryFence();
-    }
+    releaseGpuMemoryFence();
   }
 
   // If CPU waited for GPU, then the queue is idle
   if (!skip_cpu_wait) {
     updateCommandsState(list);
-
-    // Add extra clean up for resources if releaseGpuMemoryFence() was skipped
-    if (!dev().settings().barrier_sync_) {
-      ResetQueueStates();
-    }
 
     // Release all pinned memory
     releasePinnedMem();

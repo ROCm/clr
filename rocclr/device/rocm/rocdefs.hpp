@@ -34,7 +34,6 @@ static constexpr uint DeviceQueueMaskSize = 32;
 static constexpr uint kMaxAsyncQueues = 8;
 
 constexpr bool kSkipCpuWait = true;
-constexpr bool kIgnoreBarrier = false;
 
 enum HwQueueEngine : uint32_t {
   Compute   = 0,

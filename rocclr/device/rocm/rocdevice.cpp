@@ -1606,11 +1606,6 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
     cooperative = amd::IS_HIP && settings().enableCoopGroups_;
     profiling = amd::IS_HIP;
   }
-  // If barrier is disabled, then profiling should be enabled to make sure HSA signal is
-  // attached for every dispatch
-  else if (!settings().barrier_sync_) {
-    queue->properties().set(CL_QUEUE_PROFILING_ENABLE);
-  }
   // Initialization of heap and other resources occur during the command
   // queue creation time.
   const std::vector<uint32_t> defaultCuMask = {};
@@ -1872,7 +1867,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
     }
     case kNoAtomics :
       // If runtime disables barrier, then all host allocations must have L2 disabled
-      if ((settings().barrier_sync_) && (system_coarse_segment_.handle != 0)) {
+      if (system_coarse_segment_.handle != 0) {
         segment = system_coarse_segment_;
         break;
       }
@@ -1908,10 +1903,9 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
   void* ptr = nullptr;
   const hsa_amd_memory_pool_t segment =
       // If runtime disables barrier, then all host allocations must have L2 disabled
-      (!atomics && settings().barrier_sync_) ?
-          (agentInfo.coarse_grain_pool.handle != 0) ?
+      !atomics ? (agentInfo.coarse_grain_pool.handle != 0) ?
               agentInfo.coarse_grain_pool : agentInfo.fine_grain_pool
-          : agentInfo.fine_grain_pool;
+               : agentInfo.fine_grain_pool;
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);

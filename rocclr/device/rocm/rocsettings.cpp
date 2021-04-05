@@ -91,7 +91,6 @@ Settings::Settings() {
   hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : Hmm::EnableSvmTracking;
 
   rocr_backend_ = true;
-  barrier_sync_ = (!flagIsDefault(ROC_BARRIER_SYNC)) ? ROC_BARRIER_SYNC : true;
 
   cpu_wait_for_signal_ = !AMD_DIRECT_DISPATCH;
   cpu_wait_for_signal_ = (!flagIsDefault(ROC_CPU_WAIT_FOR_SIGNAL)) ?
