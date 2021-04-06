@@ -257,7 +257,9 @@ release(cstring, ROC_GLOBAL_CU_MASK, "",                                      \
         "Sets a global CU mask (entered as hex value) for all queues,"        \
         "Each active bit represents using one CU (e.g., 0xf enables only 4 CUs)") \
 release(cstring, AMD_LOG_LEVEL_FILE, "",                                       \
-        "Set output file for AMD_LOG_LEVEL, Default is stderr")
+        "Set output file for AMD_LOG_LEVEL, Default is stderr")                \
+release(size_t, PAL_PREPINNED_MEMORY_SIZE, 64,                                 \
+        "Size in KBytes of prepinned memory")
 
 namespace amd {
 

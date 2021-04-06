@@ -120,6 +120,8 @@ class Settings : public device::Settings {
 
   amd::LibrarySelector libSelector_;  //!< Select linking libraries for compiler
 
+  size_t prepinnedMinSize_;           //!< minimal memory size for prepinned transfer
+
   //! Default constructor
   Settings();
 

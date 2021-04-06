@@ -170,6 +170,7 @@ Settings::Settings() {
   disableSdma_ = PAL_DISABLE_SDMA;
   mallPolicy_ = 0;
   alwaysResident_ = amd::IS_HIP ? true : false;
+  prepinnedMinSize_ = 0;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -531,6 +532,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       default:
         break;
     }
+  }
+  // If is Rebar, override prepinned memory size.
+  if ((heaps[Pal::GpuHeapInvisible].heapSize == 0) &&
+      (heaps[Pal::GpuHeapLocal].heapSize > 256 * Mi)) {
+    prepinnedMinSize_ = PAL_PREPINNED_MEMORY_SIZE * Ki;
   }
 
   // Override current device settings
