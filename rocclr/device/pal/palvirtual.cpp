@@ -1327,7 +1327,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd) {
         origin.c[0] *= elemSize;
         size.c[0] *= elemSize;
       }
-      if (hostMemory != nullptr) {
+      if ((hostMemory != nullptr) && (vcmd.size()[0] > dev().settings().prepinnedMinSize_)){
         // Accelerated transfer without pinning
         amd::Coord3D srcOrigin(offset);
         result = blitMgr().copyBuffer(*hostMemory, *memory, srcOrigin, origin, size,
