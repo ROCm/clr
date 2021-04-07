@@ -556,7 +556,7 @@ class VirtualGPU : public device::VirtualDevice {
   void* getOrCreateHostcallBuffer();
 
   //! Waits on an outstanding kernel.
-  void VirtualGPU::releaseGpuMemoryFence();
+  void releaseGpuMemoryFence();
 
   //! Returns true if a dispatch is pending.
   bool isPendingDispatch() const { return state_.hasPendingDispatch_; }
