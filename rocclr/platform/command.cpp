@@ -142,12 +142,15 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       signal();
     }
 
-    ClPrint(LOG_DEBUG, LOG_CMD, "command %p complete (Wall: %ld, CPU: %ld, GPU: %ld us)",
-      &command(),
-      ((profilingInfo().end_ - epoch) / 1000),
-      ((profilingInfo().submitted_ - profilingInfo().queued_) / 1000),
-      ((profilingInfo().end_ - profilingInfo().start_) / 1000));
-
+    if (profilingInfo().enabled_) {
+      ClPrint(LOG_DEBUG, LOG_CMD, "Command %p complete (Wall: %ld, CPU: %ld, GPU: %ld us)",
+        &command(),
+        ((profilingInfo().end_ - epoch) / 1000),
+        ((profilingInfo().submitted_ - profilingInfo().queued_) / 1000),
+        ((profilingInfo().end_ - profilingInfo().start_) / 1000));
+    } else {
+      ClPrint(LOG_DEBUG, LOG_CMD, "Command %p complete", &command());
+    }
     release();
   }
 
