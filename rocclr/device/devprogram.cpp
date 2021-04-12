@@ -1306,7 +1306,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
   // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
   aclType continueCompileFrom = (!binaryElf_) ?
-    getNextCompilationStageFromBinary(options) : ACL_TYPE_LLVMIR_BINARY;
+    static_cast<aclType>(getNextCompilationStageFromBinary(options)) : ACL_TYPE_LLVMIR_BINARY;
 
   switch (continueCompileFrom) {
   case ACL_TYPE_SPIRV_BINARY:
