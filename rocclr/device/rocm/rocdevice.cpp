@@ -2126,8 +2126,8 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
   //Make sure the mem_offset doesnt overflow the allocated memory
   guarantee((mem_offset < mem_size) && "IPC mem offset greater than allocated size");
 
-  // Return offsetted device pointer and maintain offsetted_ptr to orig_dev_ptr in map
-  *dev_ptr = reinterpret_cast<address>(orig_dev_ptr) + mem_offset;
+  // Return orig_dev_ptr
+  *dev_ptr = reinterpret_cast<address>(orig_dev_ptr);
 
   return true;
 }
