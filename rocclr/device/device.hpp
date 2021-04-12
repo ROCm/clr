@@ -34,7 +34,9 @@
 #include "devprogram.hpp"
 #include "devkernel.hpp"
 #include "amdocl/cl_profile_amd.h"
+#if defined(WITH_COMPILER_LIB)
 #include "acl.h"
+#endif
 #include "hwdebug.hpp"
 #include "devsignal.hpp"
 
@@ -1030,9 +1032,11 @@ class ClBinary : public amd::HeapObject {
   //! Returns TRUE if binary file was allocated
   bool isBinaryAllocated() const { return (flags_ & BinaryAllocated) ? true : false; }
 
+#if defined(WITH_COMPILER_LIB)
   //! Returns BIF symbol name by symbolID,
   //! returns empty string if not found or if BIF version is unsupported
   std::string getBIFSymbol(unsigned int symbolID) const;
+#endif
 
  protected:
   const amd::Device& dev_;  //!< Device object
@@ -1445,7 +1449,9 @@ class Isa {
  */
 class Device : public RuntimeObject {
  protected:
+#if defined(WITH_COMPILER_LIB)
   typedef aclCompiler Compiler;
+#endif
 
  public:
   // The structures below for MGPU launch match the device library format
@@ -1498,8 +1504,10 @@ class Device : public RuntimeObject {
     );
   };
 
+#if defined(WITH_COMPILER_LIB)
   virtual Compiler* compiler() const = 0;
   virtual Compiler* binCompiler() const { return compiler(); }
+#endif
 
   Device();
   virtual ~Device();

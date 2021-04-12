@@ -202,7 +202,9 @@ class HSAILProgram : public device::Program {
 
   virtual bool createBinary(amd::option::Options* options);
 
+#if defined(WITH_COMPILER_LIB)
   virtual const aclTargetInfo& info();
+#endif
 
   virtual bool setKernels(amd::option::Options* options, void* binary, size_t binSize,
                           amd::Os::FileDesc fdesc = amd::Os::FDescInit(), size_t foffset = 0,

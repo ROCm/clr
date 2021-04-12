@@ -24,15 +24,19 @@
 #include "devkernel.hpp"
 #include "utils/macros.hpp"
 #include "utils/options.hpp"
+#if defined(WITH_COMPILER_LIB)
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
+#endif
 #include "comgrctx.hpp"
 
 #include <map>
 #include <string>
 #include <sstream>
 
+#if defined(WITH_COMPILER_LIB)
 #include "acl.h"
+#endif
 
 namespace device {
 
@@ -660,11 +664,13 @@ bool Kernel::createSignature(
 Kernel::~Kernel() { delete signature_; }
 
 // ================================================================================================
+#if defined(WITH_COMPILER_LIB)
 std::string Kernel::openclMangledName(const std::string& name) {
   const oclBIFSymbolStruct* bifSym = findBIF30SymStruct(symOpenclKernel);
   assert(bifSym && "symbol not found");
   return std::string("&") + bifSym->str[bif::PRE] + name + bifSym->str[bif::POST];
 }
+#endif
 
 // ================================================================================================
 void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,

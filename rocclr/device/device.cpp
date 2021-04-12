@@ -56,9 +56,11 @@ extern void DeviceUnload();
 #include "blowfish/oclcrypt.hpp"
 #endif
 
+#if defined(WITH_COMPILER_LIB)
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
 #include "spirv/spirvUtils.h"
+#endif
 
 #include <vector>
 #include <string>
@@ -757,6 +759,7 @@ bool ClBinary::setElfTarget() {
   return true;
 }
 
+#if defined(WITH_COMPILER_LIB)
 std::string ClBinary::getBIFSymbol(unsigned int symbolID) const {
   size_t nSymbols = 0;
   // Due to PRE & POST defines in bif_section_labels.hpp conflict with
@@ -791,6 +794,7 @@ std::string ClBinary::getBIFSymbol(unsigned int symbolID) const {
   }
   return "";
 }
+#endif
 
 void ClBinary::init(amd::option::Options* optionsObj) {
   // option has higher priority than environment variable.
@@ -1089,6 +1093,7 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
   char* options = nullptr;
   size_t sz;
   compileOptions.clear();
+#if defined(WITH_COMPILER_LIB)
   if (elfIn_->getSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
                         &options, &sz)) {
     if (sz > 0) {
@@ -1096,6 +1101,7 @@ bool ClBinary::loadCompileOptions(std::string& compileOptions) const {
     }
     return true;
   }
+#endif
   return false;
 }
 
@@ -1103,6 +1109,7 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
   char* options = nullptr;
   size_t sz;
   linkOptions.clear();
+#if defined(WITH_COMPILER_LIB)
   if (elfIn_->getSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
                         &options, &sz)) {
     if (sz > 0) {
@@ -1110,17 +1117,22 @@ bool ClBinary::loadLinkOptions(std::string& linkOptions) const {
     }
     return true;
   }
+#endif
   return false;
 }
 
 void ClBinary::storeCompileOptions(const std::string& compileOptions) {
+#if defined(WITH_COMPILER_LIB)
   elfOut()->addSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclCompilerOptions).c_str(),
                       compileOptions.c_str(), compileOptions.length());
+#endif
 }
 
 void ClBinary::storeLinkOptions(const std::string& linkOptions) {
+#if defined(WITH_COMPILER_LIB)
   elfOut()->addSymbol(amd::Elf::COMMENT, getBIFSymbol(symOpenclLinkerOptions).c_str(),
                       linkOptions.c_str(), linkOptions.length());
+#endif
 }
 
 bool ClBinary::isSPIR() const {

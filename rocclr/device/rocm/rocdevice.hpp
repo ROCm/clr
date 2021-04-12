@@ -120,8 +120,6 @@ class NullDevice : public amd::Device {
   //! Destructor for the Null device
   virtual ~NullDevice();
 
-  Compiler* compiler() const { return compilerHandle_; }
-
   const Settings& settings() const { return static_cast<Settings&>(*settings_); }
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
@@ -234,8 +232,6 @@ class NullDevice : public amd::Device {
   static bool initCompiler(bool isOffline);
   //! destroy compiler instance and handle
   static bool destroyCompiler();
-  //! Handle to the the compiler
-  static Compiler* compilerHandle_;
 
  private:
   static constexpr bool offlineDevice_ = true;
