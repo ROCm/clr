@@ -53,10 +53,14 @@ namespace pal {
 //! A nil device object
 class NullDevice : public amd::Device {
  protected:
+#if defined(WITH_COMPILER_LIB)
   static Compiler* compiler_;
+#endif
 
  public:
+#if defined(WITH_COMPILER_LIB)
   Compiler* compiler() const { return compiler_; }
+#endif
 
  public:
   static bool init(void);

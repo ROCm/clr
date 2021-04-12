@@ -20,7 +20,9 @@
 
 #pragma once
 
+#if defined(WITH_COMPILER_LIB)
 #include "aclTypes.h"
+#endif
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
@@ -82,6 +84,30 @@ class Program : public amd::HeapObject {
     TYPE_INTERMEDIATE  // intermediate
   } type_t;
 
+  //! type of the input file
+  typedef enum {
+    FILE_TYPE_DEFAULT         =  0,
+    FILE_TYPE_OPENCL          =  1,
+    FILE_TYPE_LLVMIR_TEXT     =  2,
+    FILE_TYPE_LLVMIR_BINARY   =  3,
+    FILE_TYPE_SPIR_TEXT       =  4,
+    FILE_TYPE_SPIR_BINARY     =  5,
+    FILE_TYPE_AMDIL_TEXT      =  6,
+    FILE_TYPE_AMDIL_BINARY    =  7,
+    FILE_TYPE_HSAIL_TEXT      =  8,
+    FILE_TYPE_HSAIL_BINARY    =  9,
+    FILE_TYPE_X86_TEXT        = 10,
+    FILE_TYPE_X86_BINARY      = 11,
+    FILE_TYPE_CG              = 12,
+    FILE_TYPE_SOURCE          = 13,
+    FILE_TYPE_ISA             = 14,
+    FILE_TYPE_HEADER          = 15,
+    FILE_TYPE_RSLLVMIR_BINARY = 16,
+    FILE_TYPE_SPIRV_BINARY    = 17,
+    FILE_TYPE_ASM_TEXT        = 18,
+    FILE_TYPE_LAST            = 19
+  } file_type_t;
+
  private:
   //! The device target for this binary.
   amd::SharedReference<amd::Device> device_;
@@ -109,15 +135,19 @@ class Program : public amd::HeapObject {
   std::string linkOptions_;                     //!< link options.
                                                 //!< the option arg passed in to clCompileProgram(), clLinkProgram(),
                                                 //! or clBuildProgram(), whichever is called last
+#if defined(WITH_COMPILER_LIB)
   aclBinaryOptions binOpts_;        //!< Binary options to create aclBinary
   aclBinary* binaryElf_;            //!< Binary for the new compiler library
+#endif
 
   std::string lastBuildOptionsArg_;
   mutable std::string buildLog_;    //!< build log.
   int32_t buildStatus_;              //!< build status.
   int32_t buildError_;               //!< build error
 
+#if defined(WITH_COMPILER_LIB)
   aclTargetInfo info_;              //!< The info target for this binary.
+#endif
   size_t globalVariableTotalSize_;
   amd::option::Options* programOptions_;
 
@@ -201,8 +231,10 @@ class Program : public amd::HeapObject {
 
   size_t globalVariableTotalSize() const { return globalVariableTotalSize_; }
 
+#if defined(WITH_COMPILER_LIB)
   //! Returns the aclBinary associated with the program
   aclBinary* binaryElf() const { return static_cast<aclBinary*>(binaryElf_); }
+#endif
 
   //! Returns TRUE if the program just compiled
   bool isNull() const { return isNull_; }
@@ -288,8 +320,10 @@ class Program : public amd::HeapObject {
   //! Release the Binary
   void releaseClBinary();
 
+#if defined(WITH_COMPILER_LIB)
   //! return target info
   virtual const aclTargetInfo& info() = 0;
+#endif
 
   virtual bool setKernels(
     amd::option::Options* options, void* binary, size_t binSize,
@@ -314,13 +348,13 @@ class Program : public amd::HeapObject {
   *  also returns completeStages in a vector, which contains at least ACL_TYPE_DEFAULT,
   *  sets needOptionsCheck to true if options check is needed to decide whether or not to recompile
   */
-  aclType getCompilationStagesFromBinary(
-    std::vector<aclType>& completeStages,
+  file_type_t getCompilationStagesFromBinary(
+    std::vector<file_type_t>& completeStages,
     bool& needOptionsCheck);
 
   /* \brief Returns the next stage to compile from, based on sections and options in binary
   */
-  aclType getNextCompilationStageFromBinary(amd::option::Options* options);
+  file_type_t getNextCompilationStageFromBinary(amd::option::Options* options);
 
   //! Finds the total size of all global variables in the program
   bool FindGlobalVarSize(void* binary, size_t binSize);

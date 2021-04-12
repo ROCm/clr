@@ -94,7 +94,6 @@ extern const char* BlitSourceCode;
 } // namespace device
 
 namespace roc {
-amd::Device::Compiler* NullDevice::compilerHandle_;
 bool roc::Device::isHsaInitialized_ = false;
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
@@ -264,35 +263,10 @@ Device::~Device() {
 }
 
 bool NullDevice::initCompiler(bool isOffline) {
-#if defined(WITH_COMPILER_LIB)
-  // Initialize the compiler handle if has already not been initialized
-  // This is destroyed in Device::teardown
-  acl_error error;
-  if (!compilerHandle_) {
-    aclCompilerOptions opts = {
-      sizeof(aclCompilerOptions_0_8), "libamdoclcl64.so",
-      NULL, NULL, NULL, NULL, NULL, NULL
-    };
-    compilerHandle_ = aclCompilerInit(&opts, &error);
-    if (!GPU_ENABLE_LC && error != ACL_SUCCESS) {
-      LogError("Error initializing the compiler handle");
-      return false;
-    }
-  }
-#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 
 bool NullDevice::destroyCompiler() {
-#if defined(WITH_COMPILER_LIB)
-  if (compilerHandle_ != nullptr) {
-    acl_error error = aclCompilerFini(compilerHandle_);
-    if (error != ACL_SUCCESS) {
-      LogError("Error closing the compiler");
-      return false;
-    }
-  }
-#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 

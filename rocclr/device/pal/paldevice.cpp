@@ -154,7 +154,9 @@ Util::GenericAllocator NullDevice::allocator_;
 char* Device::platformObj_;
 Pal::IPlatform* Device::platform_;
 
+#if defined(WITH_COMPILER_LIB)
 NullDevice::Compiler* NullDevice::compiler_;
+#endif
 AppProfile Device::appProfile_;
 
 NullDevice::NullDevice() : amd::Device(), ipLevel_(Pal::GfxIpLevel::None), palName_(nullptr) {}

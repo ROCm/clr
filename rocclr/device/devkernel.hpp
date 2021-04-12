@@ -20,7 +20,9 @@
 
 #pragma once
 
+#if defined(WITH_COMPILER_LIB)
 #include "aclTypes.h"
+#endif
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
@@ -421,7 +423,9 @@ class Kernel : public amd::HeapObject {
   //! Return the build log
   const std::string& buildLog() const { return buildLog_; }
 
+#if defined(WITH_COMPILER_LIB)
   static std::string openclMangledName(const std::string& name);
+#endif
 
   const std::unordered_map<size_t, size_t>& patch() const { return patchReferences_; }
 

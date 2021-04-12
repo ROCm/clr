@@ -25,8 +25,10 @@
 #include "devkernel.hpp"
 #include "utils/macros.hpp"
 #include "utils/options.hpp"
+#if defined(WITH_COMPILER_LIB)
 #include "utils/bif_section_labels.hpp"
 #include "utils/libUtils.h"
+#endif
 #include "comgrctx.hpp"
 
 #include <algorithm>
@@ -43,8 +45,10 @@
 #include <libgen.h>
 #endif  // defined(ATI_OS_LINUX)
 
+#if defined(WITH_COMPILER_LIB)
 #include "spirv/spirvUtils.h"
 #include "acl.h"
+#endif
 
 #ifdef EARLY_INLINE
 #define AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-early-inline-all"
@@ -78,19 +82,23 @@ Program::Program(amd::Device& device, amd::Program& owner)
       elfSectionType_(amd::Elf::LLVMIR),
       compileOptions_(),
       linkOptions_(),
+#if defined(WITH_COMPILER_LIB)
       binaryElf_(nullptr),
+#endif
       lastBuildOptionsArg_(),
       buildStatus_(CL_BUILD_NONE),
       buildError_(CL_SUCCESS),
       globalVariableTotalSize_(0),
       programOptions_(nullptr)
 {
+#if defined(WITH_COMPILER_LIB)
   memset(&binOpts_, 0, sizeof(binOpts_));
   binOpts_.struct_size = sizeof(binOpts_);
   binOpts_.elfclass = LP64_SWITCH(ELFCLASS32, ELFCLASS64);
   binOpts_.bitness = ELFDATA2LSB;
   binOpts_.alloc = &::malloc;
   binOpts_.dealloc = &::free;
+#endif
 }
 
 // ================================================================================================
@@ -1103,7 +1111,7 @@ static void dumpCodeObject(const std::string& image) {
 // ================================================================================================
 bool Program::linkImplLC(amd::option::Options* options) {
 #if defined(USE_COMGR_LIBRARY)
-  aclType continueCompileFrom = ACL_TYPE_LLVMIR_BINARY;
+  file_type_t continueCompileFrom = FILE_TYPE_LLVMIR_BINARY;
 
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ?
     true : false;
@@ -1120,11 +1128,11 @@ bool Program::linkImplLC(amd::option::Options* options) {
   }
 
   switch (continueCompileFrom) {
-    case ACL_TYPE_CG:
-    case ACL_TYPE_LLVMIR_BINARY: {
+    case FILE_TYPE_CG:
+    case FILE_TYPE_LLVMIR_BINARY: {
       break;
     }
-    case ACL_TYPE_ASM_TEXT: {
+    case FILE_TYPE_ASM_TEXT: {
       char* section;
       size_t sz;
       clBinary()->elfOut()->getSection(amd::Elf::SOURCE, &section, &sz);
@@ -1139,7 +1147,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
       bLinkLLVMBitcode = false;
       break;
     }
-    case ACL_TYPE_ISA: {
+    case FILE_TYPE_ISA: {
       amd::Comgr::destroy_data_set(inputs);
       binary_t isaBinary = binary();
       finfo_t isaFdesc = BinaryFd();
@@ -1262,7 +1270,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   amd::Comgr::destroy_data_set(inputs);
 
   if (!ret) {
-    if (continueCompileFrom == ACL_TYPE_ASM_TEXT) {
+    if (continueCompileFrom == FILE_TYPE_ASM_TEXT) {
       buildLog_ += "Error: Creating the executable from ISA assembly text failed.\n";
     } else {
       buildLog_ += "Error: Creating the executable from LLVM IRs failed.\n";
@@ -2100,9 +2108,10 @@ bool Program::setBinary(const char* binaryIn, size_t size, const device::Program
 }
 
 // ================================================================================================
-aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeStages,
+Program::file_type_t Program::getCompilationStagesFromBinary(
+  std::vector<Program::file_type_t>& completeStages,
   bool& needOptionsCheck) {
-  aclType from = ACL_TYPE_DEFAULT;
+  Program::file_type_t from = FILE_TYPE_DEFAULT;
   if (isLC()) {
 #if defined(USE_COMGR_LIBRARY)
     completeStages.clear();
@@ -2115,30 +2124,30 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
 
     if (containsLlvmirText && containsOpts) {
       completeStages.push_back(from);
-      from = ACL_TYPE_LLVMIR_BINARY;
+      from = FILE_TYPE_LLVMIR_BINARY;
     }
     if (containsShaderIsa) {
       completeStages.push_back(from);
-      from = ACL_TYPE_ISA;
+      from = FILE_TYPE_ISA;
     }
     std::string sCurOptions = compileOptions_ + linkOptions_;
     amd::option::Options curOptions;
     if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
       buildLog_ += curOptions.optionsLog();
       LogError("Parsing compile options failed.");
-      return ACL_TYPE_DEFAULT;
+      return FILE_TYPE_DEFAULT;
     }
     switch (from) {
-    case ACL_TYPE_CG:
-    case ACL_TYPE_ISA:
+    case FILE_TYPE_CG:
+    case FILE_TYPE_ISA:
       // do not check options, if LLVMIR is absent or might be absent or options are absent
       if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
         needOptionsCheck = false;
       }
       break;
       // recompilation might be needed
-    case ACL_TYPE_LLVMIR_BINARY:
-    case ACL_TYPE_DEFAULT:
+    case FILE_TYPE_LLVMIR_BINARY:
+    case FILE_TYPE_DEFAULT:
     default:
       break;
     }
@@ -2159,7 +2168,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsSpirv) {
       completeStages.push_back(from);
-      from = ACL_TYPE_SPIRV_BINARY;
+      from = FILE_TYPE_SPIRV_BINARY;
     }
     bool containsSpirText = true;
     errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_SPIR, nullptr,
@@ -2169,7 +2178,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsSpirText) {
       completeStages.push_back(from);
-      from = ACL_TYPE_SPIR_BINARY;
+      from = FILE_TYPE_SPIR_BINARY;
     }
     bool containsLlvmirText = true;
     errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, nullptr,
@@ -2186,7 +2195,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsLlvmirText && containsOpts) {
       completeStages.push_back(from);
-      from = ACL_TYPE_LLVMIR_BINARY;
+      from = FILE_TYPE_LLVMIR_BINARY;
     }
     // Checking HSAIL in .cg section
     bool containsHsailText = true;
@@ -2204,11 +2213,11 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsBrig) {
       completeStages.push_back(from);
-      from = ACL_TYPE_HSAIL_BINARY;
+      from = FILE_TYPE_HSAIL_BINARY;
     }
     else if (containsHsailText) {
       completeStages.push_back(from);
-      from = ACL_TYPE_HSAIL_TEXT;
+      from = FILE_TYPE_HSAIL_TEXT;
     }
     // Checking Loader Map symbol from CG section
     bool containsLoaderMap = true;
@@ -2219,7 +2228,7 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsLoaderMap) {
       completeStages.push_back(from);
-      from = ACL_TYPE_CG;
+      from = FILE_TYPE_CG;
     }
     // Checking ISA in .text section
     bool containsShaderIsa = true;
@@ -2230,28 +2239,28 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
     }
     if (containsShaderIsa) {
       completeStages.push_back(from);
-      from = ACL_TYPE_ISA;
+      from = FILE_TYPE_ISA;
     }
     std::string sCurOptions = compileOptions_ + linkOptions_;
     amd::option::Options curOptions;
     if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
       buildLog_ += curOptions.optionsLog();
       LogError("Parsing compile options failed.");
-      return ACL_TYPE_DEFAULT;
+      return FILE_TYPE_DEFAULT;
     }
     switch (from) {
       // compile from HSAIL text, no matter prev. stages and options
-    case ACL_TYPE_HSAIL_TEXT:
+    case FILE_TYPE_HSAIL_TEXT:
       needOptionsCheck = false;
       break;
-    case ACL_TYPE_HSAIL_BINARY:
+    case FILE_TYPE_HSAIL_BINARY:
       // do not check options, if LLVMIR is absent or might be absent or options are absent
       if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
         needOptionsCheck = false;
       }
       break;
-    case ACL_TYPE_CG:
-    case ACL_TYPE_ISA:
+    case FILE_TYPE_CG:
+    case FILE_TYPE_ISA:
       // do not check options, if LLVMIR is absent or might be absent or options are absent
       if (!curOptions.oVariables->BinLLVMIR || !containsLlvmirText || !containsOpts) {
         needOptionsCheck = false;
@@ -2262,8 +2271,8 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
       }
       break;
       // recompilation might be needed
-    case ACL_TYPE_LLVMIR_BINARY:
-    case ACL_TYPE_DEFAULT:
+    case FILE_TYPE_LLVMIR_BINARY:
+    case FILE_TYPE_DEFAULT:
     default:
       break;
     }
@@ -2273,8 +2282,8 @@ aclType Program::getCompilationStagesFromBinary(std::vector<aclType>& completeSt
 }
 
 // ================================================================================================
-aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options) {
-  aclType continueCompileFrom = ACL_TYPE_DEFAULT;
+Program::file_type_t Program::getNextCompilationStageFromBinary(amd::option::Options* options) {
+  Program::file_type_t continueCompileFrom = FILE_TYPE_DEFAULT;
   binary_t binary = this->binary();
   finfo_t finfo = this->BinaryFd();
   std::string uri = this->BinaryURI();
@@ -2303,7 +2312,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
 
     // Calculate the next stage to compile from, based on sections in binaryElf_;
     // No any validity checks here
-    std::vector<aclType> completeStages;
+    std::vector<file_type_t> completeStages;
     bool needOptionsCheck = true;
     continueCompileFrom = getCompilationStagesFromBinary(completeStages, needOptionsCheck);
     if (!options || !needOptionsCheck) {
@@ -2312,9 +2321,9 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
     bool recompile = false;
     //! @todo Should we also check for ACL_TYPE_OPENCL & ACL_TYPE_LLVMIR_TEXT?
     switch (continueCompileFrom) {
-    case ACL_TYPE_HSAIL_BINARY:
-    case ACL_TYPE_CG:
-    case ACL_TYPE_ISA: {
+    case FILE_TYPE_HSAIL_BINARY:
+    case FILE_TYPE_CG:
+    case FILE_TYPE_ISA: {
       // Compare options loaded from binary with current ones, recompile if differ;
       // If compile options are absent in binary, do not compare and recompile
       if (compileOptions_.empty()) break;
@@ -2350,12 +2359,12 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
       if (!amd::option::parseAllOptions(sBinOptions, binOptions, false, isLC())) {
         buildLog_ += binOptions.optionsLog();
         LogError("Parsing compile options from binary failed.");
-        return ACL_TYPE_DEFAULT;
+        return FILE_TYPE_DEFAULT;
       }
       if (!amd::option::parseAllOptions(sCurOptions, curOptions, false, isLC())) {
         buildLog_ += curOptions.optionsLog();
         LogError("Parsing compile options failed.");
-        return ACL_TYPE_DEFAULT;
+        return FILE_TYPE_DEFAULT;
       }
       if (!curOptions.equals(binOptions)) {
         recompile = true;
@@ -2368,10 +2377,10 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
     if (recompile) {
       while (!completeStages.empty()) {
         continueCompileFrom = completeStages.back();
-        if (continueCompileFrom == ACL_TYPE_SPIRV_BINARY ||
-            continueCompileFrom == ACL_TYPE_LLVMIR_BINARY ||
-            continueCompileFrom == ACL_TYPE_SPIR_BINARY ||
-            continueCompileFrom == ACL_TYPE_DEFAULT) {
+        if (continueCompileFrom == FILE_TYPE_SPIRV_BINARY ||
+            continueCompileFrom == FILE_TYPE_LLVMIR_BINARY ||
+            continueCompileFrom == FILE_TYPE_SPIR_BINARY ||
+            continueCompileFrom == FILE_TYPE_DEFAULT) {
           break;
         }
         completeStages.pop_back();
@@ -2381,7 +2390,7 @@ aclType Program::getNextCompilationStageFromBinary(amd::option::Options* options
   else {
     const char* xLang = options->oVariables->XLang;
     if (xLang != nullptr && strcmp(xLang, "asm") == 0) {
-      continueCompileFrom = ACL_TYPE_ASM_TEXT;
+      continueCompileFrom = FILE_TYPE_ASM_TEXT;
     }
   }
   return continueCompileFrom;

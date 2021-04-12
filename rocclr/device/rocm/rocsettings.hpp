@@ -22,8 +22,6 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#include "library.hpp"
-
 /*! \addtogroup HSA OCL Stub Implementation
  *  @{
  */

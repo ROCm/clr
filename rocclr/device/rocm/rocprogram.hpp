@@ -22,7 +22,6 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#include "acl.h"
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -73,8 +72,6 @@ class Program : public device::Program {
   int compileBinaryToHSAIL(amd::option::Options* options  //!< options for compilation
                            );
   virtual bool createBinary(amd::option::Options* options) = 0;
-
-  virtual const aclTargetInfo& info() { return info_; }
 
  protected:
   //! Disable default copy constructor

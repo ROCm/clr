@@ -46,7 +46,6 @@ target_include_directories(oclrocm
   PRIVATE
     ${OPENCL_DIR}
     ${PROJECT_SOURCE_DIR}/compiler/lib
-    ${PROJECT_SOURCE_DIR}/compiler/lib/include
     ${PROJECT_SOURCE_DIR}/compiler/lib/backends/common
     ${PROJECT_SOURCE_DIR}/elf
     ${CMAKE_CURRENT_BINARY_DIR}
