@@ -1515,7 +1515,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   bool hsaLoad = true;
   // If !binaryElf_ then program must have been created using clCreateProgramWithBinary
   if (!binaryElf_) {
-    continueCompileFrom = getNextCompilationStageFromBinary(options);
+    continueCompileFrom = static_cast<aclType>(getNextCompilationStageFromBinary(options));
   }
   switch (continueCompileFrom) {
     case ACL_TYPE_SPIRV_BINARY:
