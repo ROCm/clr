@@ -431,7 +431,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   if (hwLDSSize_ == 0) {
     // Use hardcoded values for now, since PAL properties aren't available with offline devices
-    hwLDSSize_ = (IS_LINUX || gfx10Plus_) ? 64 * Ki: 32 * Ki;
+    hwLDSSize_ = (IS_LINUX || amd::IS_HIP || gfx10Plus_) ? 64 * Ki: 32 * Ki;
   }
 
   imageSupport_ = true;
