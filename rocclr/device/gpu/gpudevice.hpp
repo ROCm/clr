@@ -39,7 +39,7 @@
 
 #include <atomic>
 
-#include "acl.h"
+#include "hsailctx.hpp"
 #include "vaminterface.h"
 
 /*! \addtogroup GPU

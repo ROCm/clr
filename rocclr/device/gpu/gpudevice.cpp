@@ -35,7 +35,7 @@
 #include "device/gpu/gpublit.hpp"
 #include "cz_id.h"
 
-#include "acl.h"
+#include "hsailctx.hpp"
 
 #include "vdi_common.hpp"
 #include "CL/cl_gl.h"
@@ -256,6 +256,11 @@ bool NullDevice::create(const char* calName, const amd::Isa& isa, CALtarget targ
     return false;
   }
 
+  if (!ValidateHsail()) {
+    LogPrintfError("HSAIL initialization failed for offline CAL device %s", isa.targetId());
+    return false;
+  }
+
   gslMemInfo memInfo = {0};
   // Report 512MB for all offline devices
   memInfo.cardMemAvailableBytes = 512 * Mi;
@@ -274,7 +279,7 @@ bool NullDevice::create(const char* calName, const amd::Isa& isa, CALtarget targ
         sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
     // Initialize the compiler handle
     acl_error error;
-    hsaCompiler_ = aclCompilerInit(&opts, &error);
+    hsaCompiler_ = amd::Hsail::CompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
       LogPrintfError("Error initializing the compiler for offline CAL device %s", isa.targetId());
       return false;
@@ -945,6 +950,11 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
     return false;
   }
 
+  if (!ValidateHsail()) {
+    LogError("Hsail initialization failed!");
+    return false;
+  }
+
   engines_.create(m_nEngines, m_engines, settings().numComputeRings_);
 
   amd::Context::Info info = {0};
@@ -1022,7 +1032,7 @@ bool Device::create(CALuint ordinal, CALuint numOfDevices) {
         sizeof(aclCompilerOptions_0_8), library, NULL, NULL, NULL, NULL, NULL, AMD_OCL_SC_LIB};
     // Initialize the compiler handle
     acl_error error;
-    hsaCompiler_ = aclCompilerInit(&opts, &error);
+    hsaCompiler_ = amd::Hsail::CompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
       LogError("Error initializing the compiler");
       return false;
@@ -1271,9 +1281,9 @@ bool Device::init() {
 void Device::tearDown() {
   osExit();
   gslExit();
-  aclCompilerFini(compiler_);
+  amd::Hsail::CompilerFini(compiler_);
   if (hsaCompiler_ != NULL) {
-    aclCompilerFini(hsaCompiler_);
+    amd::Hsail::CompilerFini(hsaCompiler_);
   }
 }
 

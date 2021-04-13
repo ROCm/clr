@@ -66,7 +66,7 @@ bool ClBinary::loadKernels(NullProgram& program, bool* hasRecompiled) {
   if (platform == amd::Elf::COMPLIB_PLATFORM) {
     // BIF 3.0
     uint32_t flag;
-    aclTargetInfo tgtInfo = aclGetTargetInfo("amdil", nullptr, NULL);
+    aclTargetInfo tgtInfo = amd::Hsail::GetTargetInfo("amdil", nullptr, NULL);
     if (!elfIn()->getFlags(flag)) {
       LogError("The OCL binary image loading failed: incorrect format");
       return false;

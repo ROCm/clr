@@ -43,8 +43,8 @@ namespace gpu {
 
 const aclTargetInfo& NullProgram::info() {
   acl_error err;
-  info_ = aclGetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "amdil64" : "amdil",
-                           nullptr, &err);
+  info_ = amd::Hsail::GetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "amdil64" : "amdil",
+                                    nullptr, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -473,7 +473,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
 
   std::vector<aclBinary*> libs(llvmBinaries.size(), NULL);
   for (size_t i = 0; i < libs.size(); ++i) {
-    libs[i] = aclBinaryInit(sizeof(aclBinary), &aclinfo, &binOpts, &err);
+    libs[i] = amd::Hsail::BinaryInit(sizeof(aclBinary), &aclinfo, &binOpts, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclBinaryInit failed");
       break;
@@ -487,8 +487,8 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
     } else {
       aclTypeUsed = aclLLVMIR;
     }
-    err = aclInsertSection(gpuNullDevice().amdilCompiler(), libs[i], llvmBinaries[i]->data(),
-                           llvmBinaries[i]->size(), aclTypeUsed);
+    err = amd::Hsail::InsertSection(gpuNullDevice().amdilCompiler(), libs[i], llvmBinaries[i]->data(),
+                                    llvmBinaries[i]->size(), aclTypeUsed);
     if (err != ACL_SUCCESS) {
       LogWarning("aclInsertSection failed");
       break;
@@ -504,10 +504,10 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       unsigned int numLibs = libs.size() - 1;
 
       if (numLibs > 0) {
-        err = aclLink(gpuNullDevice().amdilCompiler(), libs[0], numLibs, &libs[1], ACL_TYPE_LLVMIR_BINARY,
-                      "-create-library", NULL);
+        err = amd::Hsail::Link(gpuNullDevice().amdilCompiler(), libs[0], numLibs, &libs[1], ACL_TYPE_LLVMIR_BINARY,
+                               "-create-library", NULL);
 
-        buildLog_ += aclGetCompilerLog(gpuNullDevice().amdilCompiler());
+        buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().amdilCompiler());
 
         if (err != ACL_SUCCESS) {
           LogWarning("aclLink failed");
@@ -524,7 +524,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       } else {
         aclTypeUsed = aclLLVMIR;
       }
-      const void* llvmir = aclExtractSection(gpuNullDevice().amdilCompiler(), libs[0], &size, aclTypeUsed, &err);
+      const void* llvmir = amd::Hsail::ExtractSection(gpuNullDevice().amdilCompiler(), libs[0], &size, aclTypeUsed, &err);
       if (err != ACL_SUCCESS) {
         LogWarning("aclExtractSection failed");
         break;
@@ -534,7 +534,7 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
       elfSectionType_ = amd::Elf::LLVMIR;
     } while (0);
 
-  std::for_each(libs.begin(), libs.end(), std::ptr_fun(aclBinaryFini));
+  std::for_each(libs.begin(), libs.end(), std::ptr_fun(amd::Hsail::BinaryFini));
 
   if (err != ACL_SUCCESS) {
     buildLog_ += "Error: linking llvm modules failed!";
@@ -1482,12 +1482,12 @@ HSAILProgram::~HSAILProgram() {
     delete it;
   }
   if (rawBinary_ != NULL) {
-    aclFreeMem(binaryElf_, rawBinary_);
+    amd::Hsail::FreeMem(binaryElf_, rawBinary_);
   }
   acl_error error;
   // Free the elf binary
   if (binaryElf_ != NULL) {
-    error = aclBinaryFini(binaryElf_);
+    error = amd::Hsail::BinaryFini(binaryElf_);
     if (error != ACL_SUCCESS) {
       LogWarning("Error while destroying the acl binary \n");
     }
@@ -1533,9 +1533,9 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     // 1. if the program is created with binary and contains only hsail text
     case ACL_TYPE_HSAIL_TEXT: {
       std::string curOptions = options->origOptionStr + hsailOptions();
-      errorCode = aclCompile(gpuNullDevice().hsaCompiler(), binaryElf_, curOptions.c_str(),
-                             continueCompileFrom, ACL_TYPE_CG, NULL);
-      buildLog_ += aclGetCompilerLog(gpuNullDevice().hsaCompiler());
+      errorCode = amd::Hsail::Compile(gpuNullDevice().hsaCompiler(), binaryElf_, curOptions.c_str(),
+                                      continueCompileFrom, ACL_TYPE_CG, NULL);
+      buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().hsaCompiler());
       if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Error: BRIG code generation failed.\n";
         return false;
@@ -1560,9 +1560,9 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     if (gpuNullDevice().settings().svmFineGrainSystem_) {
       fin_options.append(" -sc-xnack-iommu");
     }
-    errorCode = aclCompile(gpuNullDevice().hsaCompiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
-                           ACL_TYPE_ISA, NULL);
-    buildLog_ += aclGetCompilerLog(gpuNullDevice().hsaCompiler());
+    errorCode = amd::Hsail::Compile(gpuNullDevice().hsaCompiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
+                                    ACL_TYPE_ISA, NULL);
+    buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().hsaCompiler());
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: BRIG finalization to ISA failed.\n";
       return false;
@@ -1579,7 +1579,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     size_t size = 0;
     hsa_code_object_t code_object;
     code_object.handle = reinterpret_cast<uint64_t>(
-        aclExtractSection(gpuNullDevice().hsaCompiler(), binaryElf_, &size, aclTEXT, &errorCode));
+        amd::Hsail::ExtractSection(gpuNullDevice().hsaCompiler(), binaryElf_, &size, aclTEXT, &errorCode));
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Extracting AMD HSA Code Object from binary failed.\n";
       return false;
@@ -1592,15 +1592,15 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   }
   size_t kernelNamesSize = 0;
   errorCode =
-      aclQueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
+      amd::Hsail::QueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, NULL, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
     return false;
   }
   if (kernelNamesSize > 0) {
     char* kernelNames = new char[kernelNamesSize];
-    errorCode = aclQueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames,
-                             &kernelNamesSize);
+    errorCode = amd::Hsail::QueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_KERNEL_NAMES, NULL, kernelNames,
+                                      &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
       delete [] kernelNames;
@@ -1615,9 +1615,9 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
     for (const auto& it : vKernels) {
       std::string kernelName(it);
       std::string openclKernelName = Kernel::openclMangledName(kernelName);
-      errorCode = aclQueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
-                               openclKernelName.c_str(), &md.numHiddenKernelArgs,
-                               &sizeOfnumHiddenKernelArgs);
+      errorCode = amd::Hsail::QueryInfo(gpuNullDevice().hsaCompiler(), binaryElf_, RT_NUM_KERNEL_HIDDEN_ARGS,
+                                        openclKernelName.c_str(), &md.numHiddenKernelArgs,
+                                        &sizeOfnumHiddenKernelArgs);
       if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Error: Querying of kernel '" + openclKernelName +
             "' extra arguments count from AMD HSA Code Object failed. Kernel initialization "
@@ -1652,7 +1652,7 @@ bool HSAILProgram::linkImpl(amd::option::Options* options) {
   }
   // Save the binary in the interface class
   saveBinaryAndSetType(TYPE_EXECUTABLE);
-  buildLog_ += aclGetCompilerLog(gpuNullDevice().hsaCompiler());
+  buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().hsaCompiler());
   return true;
 }
 
@@ -1721,8 +1721,8 @@ void HSAILProgram::fillResListWithKernels(std::vector<const Memory*>& memList) c
 
 const aclTargetInfo& HSAILProgram::info() {
   acl_error err;
-  info_ = aclGetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
-                           device().isa().hsailName(), &err);
+  info_ = amd::Hsail::GetTargetInfo(gpuNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
+                                    device().isa().hsailName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -1733,11 +1733,11 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   // Write binary to memory
   if (rawBinary_ != NULL) {
     // Free memory containing rawBinary
-    aclFreeMem(binaryElf_, rawBinary_);
+    amd::Hsail::FreeMem(binaryElf_, rawBinary_);
     rawBinary_ = NULL;
   }
   size_t size = 0;
-  if (aclWriteToMem(binaryElf_, &rawBinary_, &size) != ACL_SUCCESS) {
+  if (amd::Hsail::WriteToMem(binaryElf_, &rawBinary_, &size) != ACL_SUCCESS) {
     buildLog_ += "Failed to write binary to memory \n";
     return false;
   }

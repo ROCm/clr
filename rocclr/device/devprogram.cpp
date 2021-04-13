@@ -47,7 +47,7 @@
 
 #if defined(WITH_COMPILER_LIB)
 #include "spirv/spirvUtils.h"
-#include "acl.h"
+#include "hsailctx.hpp"
 #endif
 
 #ifdef EARLY_INLINE
@@ -786,7 +786,7 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
     LogPrintfError("HSAIL compiler does not support %s", device().isa().targetId());
     return false;
   }
-  target = aclGetTargetInfo(arch, hsailName, &errorCode);
+  target = amd::Hsail::GetTargetInfo(arch, hsailName, &errorCode);
 
   // end if asic info is ready
   // We dump the source code for each program (param: headers)
@@ -829,7 +829,7 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
   }
 
   // Create Binary
-  binaryElf_ = aclBinaryInit(sizeof(aclBinary), &target, &binOpts_, &errorCode);
+  binaryElf_ = amd::Hsail::BinaryInit(sizeof(aclBinary), &target, &binOpts_, &errorCode);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: aclBinary init failure\n";
     LogWarning("aclBinaryInit failed");
@@ -837,7 +837,7 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
   }
 
   // Insert opencl into binary
-  errorCode = aclInsertSection(device().compiler(), binaryElf_, sourceCode.c_str(),
+  errorCode = amd::Hsail::InsertSection(device().compiler(), binaryElf_, sourceCode.c_str(),
     strlen(sourceCode.c_str()), aclSOURCE);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Inserting openCl Source to binary\n";
@@ -860,9 +860,9 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
 
   // Compile source to IR
   compileOptions_.append(ProcessOptionsFlattened(options));
-  errorCode = aclCompile(device().compiler(), binaryElf_, compileOptions_.c_str(), ACL_TYPE_OPENCL,
+  errorCode = amd::Hsail::Compile(device().compiler(), binaryElf_, compileOptions_.c_str(), ACL_TYPE_OPENCL,
     ACL_TYPE_LLVMIR_BINARY, nullptr /* logFunction */);
-  buildLog_ += aclGetCompilerLog(device().compiler());
+  buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
   if (errorCode != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
     buildLog_ += "Error: Compiling CL to IR\n";
@@ -1017,7 +1017,7 @@ bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
       // We cannot do this at present because we need at least
       // Hsail text to pull the kernels oout
       void* mem = const_cast<void*>(binary.first);
-      binaryElf_ = aclReadFromMem(mem, binary.second, &errorCode);
+      binaryElf_ = amd::Hsail::ReadFromMem(mem, binary.second, &errorCode);
       if (errorCode != ACL_SUCCESS) {
         LogWarning("Error while linking : Could not read from raw binary");
         return false;
@@ -1028,22 +1028,22 @@ bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
     // Check if LLVMIR is in the binary
     size_t boolSize = sizeof(bool);
     bool containsLLLVMIR = false;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR,
       nullptr, &containsLLLVMIR, &boolSize);
 
     if (errorCode != ACL_SUCCESS || !containsLLLVMIR) {
       bool spirv = false;
       size_t boolSize = sizeof(bool);
-      errorCode = aclQueryInfo(
+      errorCode = amd::Hsail::QueryInfo(
         device().compiler(), binaryElf_, RT_CONTAINS_SPIRV, nullptr, &spirv, &boolSize);
       if (errorCode != ACL_SUCCESS) {
         spirv = false;
       }
       if (spirv) {
-        errorCode = aclCompile(
+        errorCode = amd::Hsail::Compile(
           device().compiler(), binaryElf_, options->origOptionStr.c_str(),
           ACL_TYPE_SPIRV_BINARY, ACL_TYPE_LLVMIR_BINARY, nullptr);
-        buildLog_ += aclGetCompilerLog(device().compiler());
+        buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
         if (errorCode != ACL_SUCCESS) {
           buildLog_ += "Error while linking: Could not load SPIR-V";
           return false;
@@ -1055,16 +1055,16 @@ bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
       }
     }
     // Create a new aclBinary for each LLVMIR and save it in a list
-    aclBIFVersion ver = aclBinaryVersion(binaryElf_);
-    aclBinary* bin = aclCreateFromBinary(binaryElf_, ver);
+    aclBIFVersion ver = amd::Hsail::BinaryVersion(binaryElf_);
+    aclBinary* bin = amd::Hsail::CreateFromBinary(binaryElf_, ver);
     binaries_to_link.push_back(bin);
   }
 
-  errorCode = aclLink(device().compiler(), binaries_to_link[0], binaries_to_link.size() - 1,
+  errorCode = amd::Hsail::Link(device().compiler(), binaries_to_link[0], binaries_to_link.size() - 1,
     binaries_to_link.size() > 1 ? &binaries_to_link[1] : nullptr,
     ACL_TYPE_LLVMIR_BINARY, "-create-library", nullptr);
   if (errorCode != ACL_SUCCESS) {
-    buildLog_ += aclGetCompilerLog(device().compiler());
+    buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
     buildLog_ += "Error while linking : aclLink failed";
     return false;
   }
@@ -1072,11 +1072,11 @@ bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
   binaryElf_ = binaries_to_link[0];
   // Free all the other aclBinaries
   for (size_t i = 1; i < binaries_to_link.size(); i++) {
-    aclBinaryFini(binaries_to_link[i]);
+    amd::Hsail::BinaryFini(binaries_to_link[i]);
   }
   if (createLibrary) {
     saveBinaryAndSetType(TYPE_LIBRARY);
-    buildLog_ += aclGetCompilerLog(device().compiler());
+    buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
     return true;
   }
 
@@ -1325,9 +1325,9 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   case ACL_TYPE_HSAIL_TEXT: {
     std::string curOptions =
       options->origOptionStr + ProcessOptionsFlattened(options);
-    errorCode = aclCompile(device().compiler(), binaryElf_, curOptions.c_str(),
+    errorCode = amd::Hsail::Compile(device().compiler(), binaryElf_, curOptions.c_str(),
       continueCompileFrom, ACL_TYPE_CG, logFunction);
-    buildLog_ += aclGetCompilerLog(device().compiler());
+    buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error while BRIG Codegen phase: compilation error \n";
       return false;
@@ -1364,9 +1364,9 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
     fin_options.append(" -xnack");
   }
 
-    errorCode = aclCompile(device().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
+    errorCode = amd::Hsail::Compile(device().compiler(), binaryElf_, fin_options.c_str(), ACL_TYPE_CG,
       ACL_TYPE_ISA, logFunction);
-    buildLog_ += aclGetCompilerLog(device().compiler());
+    buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: BRIG finalization to ISA failed.\n";
       return false;
@@ -1374,7 +1374,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
   }
 
   size_t binSize;
-  void* binary = const_cast<void*>(aclExtractSection(
+  void* binary = const_cast<void*>(amd::Hsail::ExtractSection(
     device().compiler(), binaryElf_, &binSize, aclTEXT, &errorCode));
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: cannot extract ISA from compiled binary.\n";
@@ -1389,7 +1389,7 @@ bool Program::linkImplHSAIL(amd::option::Options* options) {
 
   // Save the binary in the interface class
   saveBinaryAndSetType(TYPE_EXECUTABLE);
-  buildLog_ += aclGetCompilerLog(device().compiler());
+  buildLog_ += amd::Hsail::GetCompilerLog(device().compiler());
 
   return true;
 #else
@@ -1985,38 +1985,38 @@ bool Program::initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc 
     binOpts.bitness = ELFDATA2LSB;
     binOpts.alloc = &::malloc;
     binOpts.dealloc = &::free;
-    aclBinary* aclbin_v30 = aclBinaryInit(sizeof(aclBinary), &info(), &binOpts, &err);
+    aclBinary* aclbin_v30 = amd::Hsail::BinaryInit(sizeof(aclBinary), &info(), &binOpts, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclBinaryInit failed");
-      aclBinaryFini(aclbin_v30);
+      amd::Hsail::BinaryFini(aclbin_v30);
       return false;
     }
-    err = aclInsertSection(device().compiler(), aclbin_v30, binaryIn, size,
-                           isSPIRV ? aclSPIRV : aclSPIR);
+    err = amd::Hsail::InsertSection(device().compiler(), aclbin_v30, binaryIn, size,
+                                    isSPIRV ? aclSPIRV : aclSPIR);
     if (ACL_SUCCESS != err) {
       LogWarning("aclInsertSection failed");
-      aclBinaryFini(aclbin_v30);
+      amd::Hsail::BinaryFini(aclbin_v30);
       return false;
     }
     if (info().arch_id == aclHSAIL || info().arch_id == aclHSAIL64) {
-      err = aclWriteToMem(aclbin_v30, (void**)const_cast<char**>(&bin), &sz);
+      err = amd::Hsail::WriteToMem(aclbin_v30, (void**)const_cast<char**>(&bin), &sz);
       if (err != ACL_SUCCESS) {
         LogWarning("aclWriteToMem failed");
-        aclBinaryFini(aclbin_v30);
+        amd::Hsail::BinaryFini(aclbin_v30);
         return false;
       }
-      aclBinaryFini(aclbin_v30);
+      amd::Hsail::BinaryFini(aclbin_v30);
     } else {
-      aclBinary* aclbin_v21 = aclCreateFromBinary(aclbin_v30, aclBIFVersion21);
-      err = aclWriteToMem(aclbin_v21, (void**)const_cast<char**>(&bin), &sz);
+      aclBinary* aclbin_v21 = amd::Hsail::CreateFromBinary(aclbin_v30, aclBIFVersion21);
+      err = amd::Hsail::WriteToMem(aclbin_v21, (void**)const_cast<char**>(&bin), &sz);
       if (err != ACL_SUCCESS) {
         LogWarning("aclWriteToMem failed");
-        aclBinaryFini(aclbin_v30);
-        aclBinaryFini(aclbin_v21);
+        amd::Hsail::BinaryFini(aclbin_v30);
+        amd::Hsail::BinaryFini(aclbin_v21);
         return false;
       }
-      aclBinaryFini(aclbin_v30);
-      aclBinaryFini(aclbin_v21);
+      amd::Hsail::BinaryFini(aclbin_v30);
+      amd::Hsail::BinaryFini(aclbin_v21);
     }
 #endif  // defined(WITH_COMPILER_LIB)
   } else {
@@ -2161,7 +2161,7 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
     size_t boolSize = sizeof(bool);
     // Checking llvmir in .llvmir section
     bool containsSpirv = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_SPIRV, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_SPIRV, nullptr,
       &containsSpirv, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsSpirv = false;
@@ -2171,7 +2171,7 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
       from = FILE_TYPE_SPIRV_BINARY;
     }
     bool containsSpirText = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_SPIR, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_SPIR, nullptr,
       &containsSpirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsSpirText = false;
@@ -2181,14 +2181,14 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
       from = FILE_TYPE_SPIR_BINARY;
     }
     bool containsLlvmirText = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LLVMIR, nullptr,
       &containsLlvmirText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsLlvmirText = false;
     }
     // Checking compile & link options in .comment section
     bool containsOpts = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_OPTIONS, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_OPTIONS, nullptr,
       &containsOpts, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsOpts = false;
@@ -2199,14 +2199,14 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
     }
     // Checking HSAIL in .cg section
     bool containsHsailText = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_HSAIL, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_HSAIL, nullptr,
       &containsHsailText, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsHsailText = false;
     }
     // Checking BRIG sections
     bool containsBrig = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_BRIG, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_BRIG, nullptr,
       &containsBrig, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsBrig = false;
@@ -2221,7 +2221,7 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
     }
     // Checking Loader Map symbol from CG section
     bool containsLoaderMap = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LOADER_MAP, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_LOADER_MAP, nullptr,
       &containsLoaderMap, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsLoaderMap = false;
@@ -2232,7 +2232,7 @@ Program::file_type_t Program::getCompilationStagesFromBinary(
     }
     // Checking ISA in .text section
     bool containsShaderIsa = true;
-    errorCode = aclQueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, nullptr,
+    errorCode = amd::Hsail::QueryInfo(device().compiler(), binaryElf_, RT_CONTAINS_ISA, nullptr,
       &containsShaderIsa, &boolSize);
     if (errorCode != ACL_SUCCESS) {
       containsShaderIsa = false;
@@ -2290,9 +2290,9 @@ Program::file_type_t Program::getNextCompilationStageFromBinary(amd::option::Opt
   // If the binary already exists
   if ((binary.first != nullptr) && (binary.second > 0)) {
 #if defined(WITH_COMPILER_LIB)
-    if (aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
+    if (amd::Hsail::ValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
       acl_error errorCode;
-      binaryElf_ = aclReadFromMem(binary.first, binary.second, &errorCode);
+      binaryElf_ = amd::Hsail::ReadFromMem(binary.first, binary.second, &errorCode);
       if (errorCode != ACL_SUCCESS) {
         buildLog_ += "Error while BRIG Codegen phase: aclReadFromMem failure \n";
         return continueCompileFrom;
@@ -2338,7 +2338,7 @@ Program::file_type_t Program::getNextCompilationStageFromBinary(amd::option::Opt
         size_t symSize = 0;
         acl_error errorCode;
 
-        const void* opts = aclExtractSymbol(device().compiler(), binaryElf_, &symSize,
+        const void* opts = amd::Hsail::ExtractSymbol(device().compiler(), binaryElf_, &symSize,
           aclCOMMENT, symName.c_str(), &errorCode);
         if (errorCode != ACL_SUCCESS) {
           recompile = true;

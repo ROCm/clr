@@ -25,7 +25,7 @@
 #include "device/pal/palsched.hpp"
 #include "platform/commandqueue.hpp"
 #include "utils/options.hpp"
-#include "acl.h"
+#include "hsailctx.hpp"
 #include <string>
 #include <memory>
 #include <fstream>
@@ -134,9 +134,9 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (palNullDevice().settings().svmFineGrainSystem_) {
       options.append(" -sc-xnack-iommu");
     }
-    error = aclCompile(palNullDevice().compiler(), prog().binaryElf(), options.c_str(), ACL_TYPE_CG,
-                       ACL_TYPE_ISA, nullptr);
-    buildLog_ += aclGetCompilerLog(palNullDevice().compiler());
+    error = amd::Hsail::Compile(palNullDevice().compiler(), prog().binaryElf(), options.c_str(), ACL_TYPE_CG,
+                                ACL_TYPE_ISA, nullptr);
+    buildLog_ += amd::Hsail::GetCompilerLog(palNullDevice().compiler());
     if (error != ACL_SUCCESS) {
       LogError("Failed to finalize kernel");
       return false;
@@ -149,8 +149,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
-                       openClKernelName.c_str(), nullptr, &sizeOfArgList);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
+                                openClKernelName.c_str(), nullptr, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -159,8 +159,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   if (nullptr == aclArgList) {
     return false;
   }
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
-                       openClKernelName.c_str(), aclArgList, &sizeOfArgList);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
+                                openClKernelName.c_str(), aclArgList, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -169,13 +169,13 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   delete[] aclArgList;
 
   size_t sizeOfWorkGroupSize;
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
-                       openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
+                                openClKernelName.c_str(), nullptr, &sizeOfWorkGroupSize);
   if (error != ACL_SUCCESS) {
     return false;
   }
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
-                       openClKernelName.c_str(), workGroupInfo_.compileSize_, &sizeOfWorkGroupSize);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
+                                openClKernelName.c_str(), workGroupInfo_.compileSize_, &sizeOfWorkGroupSize);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -192,8 +192,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   // Pull out printf metadata from the ELF
   size_t sizeOfPrintfList;
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
-                       openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
+                                openClKernelName.c_str(), nullptr, &sizeOfPrintfList);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -204,8 +204,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (nullptr == aclPrintfList) {
       return false;
     }
-    error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
-                         openClKernelName.c_str(), aclPrintfList, &sizeOfPrintfList);
+    error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
+                                  openClKernelName.c_str(), aclPrintfList, &sizeOfPrintfList);
     if (error != ACL_SUCCESS) {
       return false;
     }
@@ -218,8 +218,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   aclMetadata md;
   md.enqueue_kernel = false;
   size_t sizeOfDeviceEnqueue = sizeof(md.enqueue_kernel);
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_DEVICE_ENQUEUE,
-                       openClKernelName.c_str(), &md.enqueue_kernel, &sizeOfDeviceEnqueue);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_DEVICE_ENQUEUE,
+                                openClKernelName.c_str(), &md.enqueue_kernel, &sizeOfDeviceEnqueue);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -227,17 +227,17 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   md.kernel_index = -1;
   size_t sizeOfIndex = sizeof(md.kernel_index);
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_KERNEL_INDEX,
-                       openClKernelName.c_str(), &md.kernel_index, &sizeOfIndex);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_KERNEL_INDEX,
+                                openClKernelName.c_str(), &md.kernel_index, &sizeOfIndex);
   if (error != ACL_SUCCESS) {
     return false;
   }
   index_ = md.kernel_index;
 
   size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WAVES_PER_SIMD_HINT,
-                       openClKernelName.c_str(), &workGroupInfo_.wavesPerSimdHint_,
-                       &sizeOfWavesPerSimdHint);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WAVES_PER_SIMD_HINT,
+                                openClKernelName.c_str(), &workGroupInfo_.wavesPerSimdHint_,
+                                &sizeOfWavesPerSimdHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -245,16 +245,16 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   waveLimiter_.enable();
 
   size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
-                       openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,
-                       &sizeOfWorkGroupSizeHint);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
+                                openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,
+                                &sizeOfWorkGroupSizeHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
 
   size_t sizeOfVecTypeHint;
-  error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
-                       openClKernelName.c_str(), NULL, &sizeOfVecTypeHint);
+  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
+                                openClKernelName.c_str(), NULL, &sizeOfVecTypeHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -264,8 +264,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (NULL == VecTypeHint) {
       return false;
     }
-    error = aclQueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
-                         openClKernelName.c_str(), VecTypeHint, &sizeOfVecTypeHint);
+    error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
+                                  openClKernelName.c_str(), VecTypeHint, &sizeOfVecTypeHint);
     if (error != ACL_SUCCESS) {
       return false;
     }

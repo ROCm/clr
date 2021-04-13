@@ -35,7 +35,7 @@
 #include <sstream>
 
 #if defined(WITH_COMPILER_LIB)
-#include "acl.h"
+#include "hsailctx.hpp"
 #endif
 
 namespace device {

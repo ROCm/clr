@@ -21,7 +21,7 @@
 #include "device/gpu/gpudefs.hpp"
 #include "device/gpu/gpuprogram.hpp"
 #include "device/gpu/gpukernel.hpp"
-#include "acl.h"
+#include "hsailctx.hpp"
 #include "SCShadersSi.h"
 #include "si_ci_vi_merged_offset.h"
 #include "si_ci_vi_merged_registers.h"

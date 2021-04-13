@@ -35,7 +35,7 @@
 #include "devkernel.hpp"
 #include "amdocl/cl_profile_amd.h"
 #if defined(WITH_COMPILER_LIB)
-#include "acl.h"
+#include "hsailctx.hpp"
 #endif
 #include "hwdebug.hpp"
 #include "devsignal.hpp"
@@ -1761,6 +1761,9 @@ class Device : public RuntimeObject {
 
   //! Checks if OCL runtime can use code object manager for compilation
   bool ValidateComgr();
+
+  //! Checks if OCL runtime can use hsail for compilation
+  bool ValidateHsail();
 
   virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
     ShouldNotReachHere();
