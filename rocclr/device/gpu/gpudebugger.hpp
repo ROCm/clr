@@ -27,7 +27,7 @@
 #include "amd_hsa_kernel_code.h"
 #include "device/device.hpp"
 #include "device/hwdebug.hpp"
-#include "acl.h"
+#include "hsailctx.hpp"
 
 static constexpr int NumberReserveVgprs = 4;
 

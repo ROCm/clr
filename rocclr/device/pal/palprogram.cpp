@@ -209,12 +209,12 @@ HSAILProgram::~HSAILProgram() {
   }
 #if defined(WITH_COMPILER_LIB)
   if (rawBinary_ != nullptr) {
-    aclFreeMem(binaryElf_, rawBinary_);
+    amd::Hsail::FreeMem(binaryElf_, rawBinary_);
   }
   acl_error error;
   // Free the elf binary
   if (binaryElf_ != nullptr) {
-    error = aclBinaryFini(binaryElf_);
+    error = amd::Hsail::BinaryFini(binaryElf_);
     if (error != ACL_SUCCESS) {
       LogWarning("Error while destroying the acl binary \n");
     }
@@ -274,16 +274,16 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
   }
 
   size_t kernelNamesSize = 0;
-  acl_error errorCode = aclQueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
-                                     nullptr, &kernelNamesSize);
+  acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr,
+                                              nullptr, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
     return false;
   }
   if (kernelNamesSize > 0) {
     char* kernelNames = new char[kernelNamesSize];
-    errorCode = aclQueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames,
-                             &kernelNamesSize);
+    errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES, nullptr, kernelNames,
+                                      &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
       delete[] kernelNames;
@@ -360,8 +360,8 @@ void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const { gpu.addVmMemo
 const aclTargetInfo& HSAILProgram::info() {
 #if defined(WITH_COMPILER_LIB)
   acl_error err;
-  info_ = aclGetTargetInfo(palNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
-                           device().isa().hsailName(), &err);
+  info_ = amd::Hsail::GetTargetInfo(palNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
+                                    device().isa().hsailName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
@@ -374,11 +374,11 @@ bool HSAILProgram::saveBinaryAndSetType(type_t type) {
   // Write binary to memory
   if (rawBinary_ != nullptr) {
     // Free memory containing rawBinary
-    aclFreeMem(binaryElf_, rawBinary_);
+    amd::Hsail::FreeMem(binaryElf_, rawBinary_);
     rawBinary_ = nullptr;
   }
   size_t size = 0;
-  if (aclWriteToMem(binaryElf_, &rawBinary_, &size) != ACL_SUCCESS) {
+  if (amd::Hsail::WriteToMem(binaryElf_, &rawBinary_, &size) != ACL_SUCCESS) {
     buildLog_ += "Failed to write binary to memory \n";
     return false;
   }

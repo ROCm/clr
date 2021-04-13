@@ -27,7 +27,7 @@
 #include "shader/ComputeProgramObject.h"
 #include "utils/options.hpp"
 
-#include "acl.h"
+#include "hsailctx.hpp"
 #include "SCCommon.h"
 
 #include <string>
@@ -643,8 +643,8 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
 
   if ((binaryCode == NULL) && (binarySize == 0) && !code.empty()) {
     acl_error err;
-    aclTargetInfo info = aclGetTargetInfo(nullDev().settings().use64BitPtr_ ? "amdil64" : "amdil",
-                                          nullptr, &err);
+    aclTargetInfo info = amd::Hsail::GetTargetInfo(nullDev().settings().use64BitPtr_ ? "amdil64" : "amdil",
+                                                   nullptr, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclGetTargetInfo failed");
       return false;
@@ -657,16 +657,16 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
     binOpts.alloc = &::malloc;
     binOpts.dealloc = &::free;
 
-    aclBinary* bin = aclBinaryInit(sizeof(aclBinary), &info, &binOpts, &err);
+    aclBinary* bin = amd::Hsail::BinaryInit(sizeof(aclBinary), &info, &binOpts, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclBinaryInit failed");
       return false;
     }
 
     if (ACL_SUCCESS !=
-        aclInsertSection(nullDev().amdilCompiler(), bin, code.data(), code.size(), aclSOURCE)) {
+        amd::Hsail::InsertSection(nullDev().amdilCompiler(), bin, code.data(), code.size(), aclSOURCE)) {
       LogWarning("aclInsertSection failed");
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return false;
     }
 
@@ -684,37 +684,37 @@ bool NullKernel::create(const std::string& code, const std::string& metadata,
     // pass kernel name to compiler
     Opts->setCurrKernelName(name().c_str());
 
-    err = aclCompile(nullDev().amdilCompiler(), bin, options->origOptionStr.c_str(), ACL_TYPE_AMDIL_TEXT,
-                     ACL_TYPE_ISA, NULL);
+    err = amd::Hsail::Compile(nullDev().amdilCompiler(), bin, options->origOptionStr.c_str(), ACL_TYPE_AMDIL_TEXT,
+                              ACL_TYPE_ISA, NULL);
 
-    buildLog_ += aclGetCompilerLog(nullDev().amdilCompiler());
+    buildLog_ += amd::Hsail::GetCompilerLog(nullDev().amdilCompiler());
 
     if (err != ACL_SUCCESS) {
       LogWarning("aclCompile failed");
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return false;
     }
     if (!options->oVariables->BinEXE) {
       // Early exit if binary doesn't contain EXE
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return true;
     }
     size_t len;
-    const void* isa = aclExtractSection(nullDev().amdilCompiler(), bin, &len, aclTEXT, &err);
+    const void* isa = amd::Hsail::ExtractSection(nullDev().amdilCompiler(), bin, &len, aclTEXT, &err);
     if (err != ACL_SUCCESS) {
       LogWarning("aclExtractSection failed");
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return false;
     }
 
     uint calImageSize;
     if (!createMultiBinary(&calImageSize, reinterpret_cast<void**>(&calImage), isa)) {
       LogWarning("initSrcEncoding failed");
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return false;
     }
 
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
   } else if ((binaryCode != NULL) && (binarySize != 0)) {
     uint size = 0;
     if (!amuABIMultiBinaryGetSize(&size, const_cast<void*>(binaryCode)) || size > binarySize) {
@@ -3083,9 +3083,9 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (dev().settings().svmFineGrainSystem_) {
       options.append(" -sc-xnack-iommu");
     }
-    error = aclCompile(dev().hsaCompiler(), prog().binaryElf(), options.c_str(), ACL_TYPE_CG,
-                       ACL_TYPE_ISA, NULL);
-    buildLog_ += aclGetCompilerLog(dev().hsaCompiler());
+    error = amd::Hsail::Compile(dev().hsaCompiler(), prog().binaryElf(), options.c_str(), ACL_TYPE_CG,
+                                ACL_TYPE_ISA, NULL);
+    buildLog_ += amd::Hsail::GetCompilerLog(dev().hsaCompiler());
     if (error != ACL_SUCCESS) {
       LogError("Failed to finalize kernel");
       return false;
@@ -3098,8 +3098,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
-                       openClKernelName.c_str(), NULL, &sizeOfArgList);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
+                                openClKernelName.c_str(), NULL, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3108,20 +3108,20 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   if (NULL == aclArgList) {
     return false;
   }
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
-                       openClKernelName.c_str(), aclArgList, &sizeOfArgList);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
+                                openClKernelName.c_str(), aclArgList, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }
 
   size_t sizeOfWorkGroupSize;
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
-                       openClKernelName.c_str(), NULL, &sizeOfWorkGroupSize);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
+                                openClKernelName.c_str(), NULL, &sizeOfWorkGroupSize);
   if (error != ACL_SUCCESS) {
     return false;
   }
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
-                       openClKernelName.c_str(), workGroupInfo_.compileSize_, &sizeOfWorkGroupSize);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE,
+                                openClKernelName.c_str(), workGroupInfo_.compileSize_, &sizeOfWorkGroupSize);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3139,8 +3139,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   // Pull out printf metadata from the ELF
   size_t sizeOfPrintfList;
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
-                       openClKernelName.c_str(), NULL, &sizeOfPrintfList);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
+                                openClKernelName.c_str(), NULL, &sizeOfPrintfList);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3151,8 +3151,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (NULL == aclPrintfList) {
       return false;
     }
-    error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
-                         openClKernelName.c_str(), aclPrintfList, &sizeOfPrintfList);
+    error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_GPU_PRINTF_ARRAY,
+                                  openClKernelName.c_str(), aclPrintfList, &sizeOfPrintfList);
     if (error != ACL_SUCCESS) {
       return false;
     }
@@ -3165,8 +3165,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   aclMetadata md;
   md.enqueue_kernel = false;
   size_t sizeOfDeviceEnqueue = sizeof(md.enqueue_kernel);
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_DEVICE_ENQUEUE,
-                       openClKernelName.c_str(), &md.enqueue_kernel, &sizeOfDeviceEnqueue);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_DEVICE_ENQUEUE,
+                                openClKernelName.c_str(), &md.enqueue_kernel, &sizeOfDeviceEnqueue);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3174,17 +3174,17 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
 
   md.kernel_index = -1;
   size_t sizeOfIndex = sizeof(md.kernel_index);
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_KERNEL_INDEX,
-                       openClKernelName.c_str(), &md.kernel_index, &sizeOfIndex);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_KERNEL_INDEX,
+                                openClKernelName.c_str(), &md.kernel_index, &sizeOfIndex);
   if (error != ACL_SUCCESS) {
     return false;
   }
   index_ = md.kernel_index;
 
   size_t sizeOfWavesPerSimdHint = sizeof(workGroupInfo_.wavesPerSimdHint_);
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WAVES_PER_SIMD_HINT,
-                       openClKernelName.c_str(), &workGroupInfo_.wavesPerSimdHint_,
-                       &sizeOfWavesPerSimdHint);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WAVES_PER_SIMD_HINT,
+                                openClKernelName.c_str(), &workGroupInfo_.wavesPerSimdHint_,
+                                &sizeOfWavesPerSimdHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3192,16 +3192,16 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
   waveLimiter_.enable(dev().settings().ciPlus_);
 
   size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
-                       openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,
-                       &sizeOfWorkGroupSizeHint);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
+                                openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,
+                                &sizeOfWorkGroupSizeHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
 
   size_t sizeOfVecTypeHint;
-  error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
-                       openClKernelName.c_str(), NULL, &sizeOfVecTypeHint);
+  error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
+                                openClKernelName.c_str(), NULL, &sizeOfVecTypeHint);
   if (error != ACL_SUCCESS) {
     return false;
   }
@@ -3211,8 +3211,8 @@ bool HSAILKernel::init(amd::hsa::loader::Symbol* sym, bool finalize) {
     if (NULL == VecTypeHint) {
       return false;
     }
-    error = aclQueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
-                         openClKernelName.c_str(), VecTypeHint, &sizeOfVecTypeHint);
+    error = amd::Hsail::QueryInfo(dev().hsaCompiler(), prog().binaryElf(), RT_VEC_TYPE_HINT,
+                                  openClKernelName.c_str(), VecTypeHint, &sizeOfVecTypeHint);
     if (error != ACL_SUCCESS) {
       return false;
     }

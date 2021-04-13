@@ -123,16 +123,16 @@ bool NullProgram::compileImpl(const std::string& src,
   binOpts.alloc = &::malloc;
   binOpts.dealloc = &::free;
 
-  aclBinary* bin = aclBinaryInit(sizeof(aclBinary), &targInfo, &binOpts, &err);
+  aclBinary* bin = amd::Hsail::BinaryInit(sizeof(aclBinary), &targInfo, &binOpts, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclBinaryInit failed");
     return false;
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(gpuNullDevice().amdilCompiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
+      amd::Hsail::InsertSection(gpuNullDevice().amdilCompiler(), bin, sourceCode.c_str(), sourceCode.size(), aclSOURCE)) {
     LogWarning("aclInsertSection failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return false;
   }
 
@@ -206,28 +206,28 @@ bool NullProgram::compileImpl(const std::string& src,
     pos = newOpt.find("-fno-bin-llvmir");
   }
 
-  err = aclCompile(gpuNullDevice().amdilCompiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
-                   NULL);
+  err = amd::Hsail::Compile(gpuNullDevice().amdilCompiler(), bin, newOpt.c_str(), ACL_TYPE_OPENCL, ACL_TYPE_LLVMIR_BINARY,
+                            NULL);
 
-  buildLog_ += aclGetCompilerLog(gpuNullDevice().amdilCompiler());
+  buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return false;
   }
 
   size_t len = 0;
-  const void* ir = aclExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclLLVMIR, &err);
+  const void* ir = amd::Hsail::ExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclLLVMIR, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return false;
   }
 
   llvmBinary_.assign(reinterpret_cast<const char*>(ir), len);
   elfSectionType_ = amd::Elf::LLVMIR;
-  aclBinaryFini(bin);
+  amd::Hsail::BinaryFini(bin);
 
   for (size_t i = 0; i < headerFileNames.size(); ++i) {
     amd::Os::unlink(headerFileNames[i].c_str());
@@ -263,7 +263,7 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   binOpts.alloc = &::malloc;
   binOpts.dealloc = &::free;
 
-  aclBinary* bin = aclBinaryInit(sizeof(aclBinary), &targInfo, &binOpts, &err);
+  aclBinary* bin = amd::Hsail::BinaryInit(sizeof(aclBinary), &targInfo, &binOpts, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclBinaryInit failed");
     return CL_BUILD_PROGRAM_FAILURE;
@@ -284,9 +284,9 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
   }
 
   if (ACL_SUCCESS !=
-      aclInsertSection(gpuNullDevice().amdilCompiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
+      amd::Hsail::InsertSection(gpuNullDevice().amdilCompiler(), bin, llvmBinary_.data(), llvmBinary_.size(), spirFlag)) {
     LogWarning("aclInsertSection failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return CL_BUILD_PROGRAM_FAILURE;
   }
 
@@ -308,12 +308,12 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
     type = ACL_TYPE_ISA;
   }
 
-  err = aclCompile(gpuNullDevice().amdilCompiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
-  buildLog_ += aclGetCompilerLog(gpuNullDevice().amdilCompiler());
+  err = amd::Hsail::Compile(gpuNullDevice().amdilCompiler(), bin, optionStr.c_str(), aclTypeBinaryUsed, type, NULL);
+  buildLog_ += amd::Hsail::GetCompilerLog(gpuNullDevice().amdilCompiler());
 
   if (err != ACL_SUCCESS) {
     LogWarning("aclCompile failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return CL_BUILD_PROGRAM_FAILURE;
   }
 
@@ -321,26 +321,26 @@ int NullProgram::compileBinaryToIL(amd::option::Options* options) {
     acl_error err;
     char* binaryIn = nullptr;
     size_t size;
-    err = aclWriteToMem(bin, reinterpret_cast<void**>(&binaryIn), &size);
+    err = amd::Hsail::WriteToMem(bin, reinterpret_cast<void**>(&binaryIn), &size);
     if (err != ACL_SUCCESS) {
       LogWarning("aclWriteToMem failed");
-      aclBinaryFini(bin);
+      amd::Hsail::BinaryFini(bin);
       return CL_BUILD_PROGRAM_FAILURE;
     }
     clBinary()->saveBIFBinary(binaryIn, size);
-    aclFreeMem(bin, binaryIn);
+    amd::Hsail::FreeMem(bin, binaryIn);
   }
 
   size_t len = 0;
-  const void* amdil = aclExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclCODEGEN, &err);
+  const void* amdil = amd::Hsail::ExtractSection(gpuNullDevice().amdilCompiler(), bin, &len, aclCODEGEN, &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclExtractSection failed");
-    aclBinaryFini(bin);
+    amd::Hsail::BinaryFini(bin);
     return CL_BUILD_PROGRAM_FAILURE;
   }
 
   ilProgram_.assign(reinterpret_cast<const char*>(amdil), len);
-  aclBinaryFini(bin);
+  amd::Hsail::BinaryFini(bin);
 
   return CL_SUCCESS;
 }

@@ -477,6 +477,18 @@ bool Device::ValidateComgr() {
   return true;
 }
 
+bool Device::ValidateHsail() {
+#if defined(WITH_COMPILER_LIB)
+  // Check if HSAIL compiler was requested
+  if (!settings_->useLightning_) {
+    std::call_once(amd::Hsail::initialized, amd::Hsail::LoadLib);
+    // Use Hsail only if it's available
+    return amd::Hsail::IsReady();
+  }
+#endif
+  return true;
+}
+
 bool Device::create(const Isa &isa) {
   assert(!vaCacheAccess_ && !vaCacheMap_);
   isa_ = &isa;

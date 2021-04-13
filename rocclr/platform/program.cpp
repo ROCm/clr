@@ -23,9 +23,11 @@
 #include "platform/program.hpp"
 #include "platform/context.hpp"
 #include "utils/options.hpp"
+#if defined(WITH_COMPILER_LIB)
 #include "utils/libUtils.h"
 #include "utils/bif_section_labels.hpp"
-#include "acl.h"
+#include "hsailctx.hpp"
+#endif
 
 #include <cstdlib>  // for malloc
 #include <cstring>  // for strcmp
@@ -90,7 +92,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
       return CL_INVALID_BINARY;
     }
 #if defined(WITH_COMPILER_LIB)
-    else if (!aclValidateBinaryImage(
+    else if (!amd::Hsail::ValidateBinaryImage(
           image, length, language_ == SPIRV ? BINARY_TYPE_SPIRV : BINARY_TYPE_ELF | BINARY_TYPE_LLVM)) {
       return CL_INVALID_BINARY;
     }
@@ -118,9 +120,9 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
   }
 
 #if defined(WITH_COMPILER_LIB)
-  if (image != NULL && length != 0 && aclValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
+  if (image != NULL && length != 0 && amd::Hsail::ValidateBinaryImage(image, length, BINARY_TYPE_ELF)) {
     acl_error errorCode;
-    aclBinary* binary = aclReadFromMem(image, length, &errorCode);
+    aclBinary* binary = amd::Hsail::ReadFromMem(image, length, &errorCode);
     if (errorCode != ACL_SUCCESS) {
       return CL_INVALID_BINARY;
     }
@@ -128,8 +130,8 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
     assert(symbol && "symbol not found");
     std::string symName = std::string(symbol->str[bif::PRE]) + std::string(symbol->str[bif::POST]);
     size_t symSize = 0;
-    const void* opts = aclExtractSymbol(device.binCompiler(), binary, &symSize, aclCOMMENT,
-                                        symName.c_str(), &errorCode);
+    const void* opts = amd::Hsail::ExtractSymbol(device.binCompiler(), binary, &symSize, aclCOMMENT,
+                                                 symName.c_str(), &errorCode);
     // if we have options from binary and input options was not specified
     if (opts != NULL && emptyOptions) {
       std::string sBinOptions = std::string((char*)opts, symSize);
@@ -142,7 +144,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
     options->oVariables->Legacy = !device.settings().useLightning_ ?
                                      isAMDILTarget(*aclutGetTargetInfo(binary)) :
                                      isHSAILTarget(*aclutGetTargetInfo(binary));
-    aclBinaryFini(binary);
+    amd::Hsail::BinaryFini(binary);
   }
 #endif // defined(WITH_COMPILER_LIB)
   options->oVariables->BinaryIsSpirv = language_ == SPIRV;
@@ -346,10 +348,10 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
 #if defined(WITH_COMPILER_LIB)
       device::Program::binary_t binary = inputDevPrograms[i]->binary();
       if (!found && binary.first != NULL && binary.second > 0 &&
-          aclValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
+          amd::Hsail::ValidateBinaryImage(binary.first, binary.second, BINARY_TYPE_ELF)) {
         acl_error errorCode = ACL_SUCCESS;
         void* mem = const_cast<void*>(binary.first);
-        aclBinary* aclBin = aclReadFromMem(mem, binary.second, &errorCode);
+        aclBinary* aclBin = amd::Hsail::ReadFromMem(mem, binary.second, &errorCode);
         if (errorCode != ACL_SUCCESS) {
           LogWarning("Error while linking: Could not read from raw binary.");
           return CL_INVALID_BINARY;
@@ -360,7 +362,7 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
         } else if (isAMDILTarget(*aclutGetTargetInfo(aclBin))) {
           parsedOptions.oVariables->Frontend = "edg";
         }
-        aclBinaryFini(aclBin);
+        amd::Hsail::BinaryFini(aclBin);
       }
 #endif // defined(WITH_COMPILER_LIB)
       found = true;

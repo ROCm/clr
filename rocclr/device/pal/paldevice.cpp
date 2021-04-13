@@ -35,7 +35,7 @@
 #include "palLib.h"
 #include "palPlatform.h"
 #include "palDevice.h"
-#include "acl.h"
+#include "hsailctx.hpp"
 
 #include "vdi_common.hpp"
 
@@ -246,6 +246,11 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
     return false;
   }
 
+  if (!ValidateHsail()) {
+    LogPrintfError("HSAIL initialization failed for offline PAL device %s", isa.targetId());
+    return false;
+  }
+
   if (!amd::Device::create(isa)) {
     LogPrintfError("Unable to setup device for PAL offline device %s", isa.targetId());
     return false;
@@ -272,7 +277,7 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
                                AMD_OCL_SC_LIB};
     // Initialize the compiler handle
     acl_error error;
-    compiler_ = aclCompilerInit(&opts, &error);
+    compiler_ = amd::Hsail::CompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
       LogPrintfError("Error initializing the compiler for offline PAL device %s", isa.targetId());
       return false;
@@ -915,6 +920,11 @@ bool Device::create(Pal::IDevice* device) {
     return false;
   }
 
+  if (!ValidateHsail()) {
+    LogError("Hsail initialization failed!");
+    return false;
+  }
+
   computeEnginesId_.resize(std::min(numComputeEngines(), settings().numComputeRings_));
 
   amd::Context::Info info = {0};
@@ -972,7 +982,7 @@ bool Device::create(Pal::IDevice* device) {
                                AMD_OCL_SC_LIB};
     // Initialize the compiler handle
     acl_error error;
-    compiler_ = aclCompilerInit(&opts, &error);
+    compiler_ = amd::Hsail::CompilerInit(&opts, &error);
     if (error != ACL_SUCCESS) {
       LogError("Error initializing the compiler");
       return false;
@@ -1327,7 +1337,7 @@ void Device::tearDown() {
 
 #if defined(WITH_COMPILER_LIB)
   if (compiler_ != nullptr) {
-    aclCompilerFini(compiler_);
+    amd::Hsail::CompilerFini(compiler_);
     compiler_ = nullptr;
   }
 #endif  // defined(WITH_COMPILER_LIB)

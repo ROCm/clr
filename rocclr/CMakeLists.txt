@@ -151,8 +151,6 @@ else ()
   add_subdirectory(device/rocm)
 endif()
 
-set(COMGR_CPP device/comgrctx.cpp)
-
 set(oclruntime_src
   thread/thread.cpp
   thread/monitor.cpp
@@ -170,6 +168,8 @@ set(oclruntime_src
   device/devhcprintf.cpp
   device/devhcmessages.cpp
   device/devhostcall.cpp
+  device/comgrctx.cpp
+  device/hsailctx.cpp
   platform/activity.cpp
   platform/kernel.cpp
   platform/context.cpp
@@ -186,11 +186,9 @@ set(oclruntime_src
   os/os_posix.cpp
   compiler/lib/utils/options.cpp
   elf/elf.cpp
-  #${CMAKE_CURRENT_SOURCE_DIR}/compiler/tools/caching/cache.cpp
 )
 
-add_library(amdrocclr_static STATIC
-  ${oclruntime_src} ${COMGR_CPP})
+add_library(amdrocclr_static STATIC ${oclruntime_src})
 
 set_target_properties(amdrocclr_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -199,6 +197,7 @@ target_include_directories(amdrocclr_static
     $<INSTALL_INTERFACE:include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/device>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/device/rocm>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/compiler/lib/include>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/compiler/lib>
