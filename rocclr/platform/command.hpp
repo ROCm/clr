@@ -186,6 +186,9 @@ class Event : public RuntimeObject {
    */
   bool setStatus(int32_t status, uint64_t timeStamp = 0);
 
+  //! Reset the status of the command for reuse
+  bool resetStatus(int32_t status);
+
   //! Signal all threads waiting on this event.
   void signal() {
     ScopedLock lock(lock_);
@@ -268,6 +271,13 @@ class Command : public Event {
 
   //! Return the list of events this command needs to wait on before dispatch
   const EventWaitList& eventWaitList() const { return eventWaitList_; }
+
+  //! Update with the list of events this command needs to wait on before dispatch
+  void updateEventWaitList(const EventWaitList& waitList) {
+    for (auto event : waitList) {
+      eventWaitList_.push_back(event);
+    }
+  }
 
   //! Return this command's OpenCL type.
   cl_command_type type() const { return type_; }

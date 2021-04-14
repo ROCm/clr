@@ -157,6 +157,19 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   return true;
 }
 
+bool Event::resetStatus(int32_t status) {
+  int32_t currentStatus = this->status();
+  if (currentStatus != CL_COMPLETE) {
+    ClPrint(LOG_ERROR, LOG_CMD, "command is reset before complete current status :%d",
+            currentStatus);
+  }
+  if (!status_.compare_exchange_strong(currentStatus, status, std::memory_order_relaxed)) {
+    ClPrint(LOG_ERROR, LOG_CMD, "Failed to reset command status");
+    return false;
+  }
+  notified_.clear();
+  return true;
+}
 
 bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* data) {
   assert(status >= CL_COMPLETE && status <= CL_QUEUED && "invalid status");
