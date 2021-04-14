@@ -133,13 +133,13 @@ struct HsailEntryPoints {
   t_aclFreeMem                      aclFreeMem;
 };
 
-#ifdef HSAIL_DYN_DLL 
-#define DYN(NAME) cep_.NAME
+#ifdef HSAIL_DYN_DLL
+#define HSAIL_DYN(NAME) cep_.NAME
 #define GET_HSAIL_SYMBOL(NAME) cep_.NAME = \
   reinterpret_cast<t_##NAME>(Os::getSymbol(cep_.handle, #NAME)); \
   if (nullptr == cep_.NAME) { return false; }
 #else
-#define DYN(NAME) NAME
+#define HSAIL_DYN(NAME) NAME
 #define GET_HSAIL_SYMBOL(NAME)
 #endif
 
@@ -152,157 +152,157 @@ public:
   static bool IsReady() { return is_ready_; }
 
   static aclCompiler* CompilerInit(aclCompilerOptions *opts, acl_error *error_code) {
-    return DYN(aclCompilerInit)(opts, error_code);
+    return HSAIL_DYN(aclCompilerInit)(opts, error_code);
   }
   static acl_error CompilerFini(aclCompiler *cl) {
-    return DYN(aclCompilerFini)(cl);
+    return HSAIL_DYN(aclCompilerFini)(cl);
   }
   static aclCLVersion CompilerVersion(aclCompiler *cl, acl_error *error_code) {
-    return DYN(aclCompilerVersion)(cl, error_code);
+    return HSAIL_DYN(aclCompilerVersion)(cl, error_code);
   }
   static uint32_t VersionSize(aclCLVersion num, acl_error *error_code) {
-    return DYN(aclVersionSize)(num, error_code);
+    return HSAIL_DYN(aclVersionSize)(num, error_code);
   }
   static const char* GetErrorString(acl_error error_code) {
-    return DYN(aclGetErrorString)(error_code);
+    return HSAIL_DYN(aclGetErrorString)(error_code);
   }
   static acl_error GetArchInfo(const char** arch_names, size_t *arch_size) {
-    return DYN(aclGetArchInfo)(arch_names, arch_size);
+    return HSAIL_DYN(aclGetArchInfo)(arch_names, arch_size);
   }
   static acl_error GetDeviceInfo(const char* arch, const char **names, size_t *device_size) {
-    return DYN(aclGetDeviceInfo)(arch, names, device_size);
+    return HSAIL_DYN(aclGetDeviceInfo)(arch, names, device_size);
   }
   static aclTargetInfo GetTargetInfo(const char *arch, const char *device, acl_error *error_code) {
-    return DYN(aclGetTargetInfo)(arch, device, error_code);
+    return HSAIL_DYN(aclGetTargetInfo)(arch, device, error_code);
   }
   static aclTargetInfo GetTargetInfoFromChipID(const char *arch, const uint32_t chip_id, acl_error *error_code) {
-    return DYN(aclGetTargetInfoFromChipID)(arch, chip_id, error_code);
+    return HSAIL_DYN(aclGetTargetInfoFromChipID)(arch, chip_id, error_code);
   }
   static const char* GetArchitecture(const aclTargetInfo &target) {
-    return DYN(aclGetArchitecture)(target);
+    return HSAIL_DYN(aclGetArchitecture)(target);
   }
   static uint64_t GetChipOptions(const aclTargetInfo &target) {
-    return DYN(aclGetChipOptions)(target);
+    return HSAIL_DYN(aclGetChipOptions)(target);
   }
   static const char* GetFamily(const aclTargetInfo &target) {
-    return DYN(aclGetFamily)(target);
+    return HSAIL_DYN(aclGetFamily)(target);
   }
   static const char* GetChip(const aclTargetInfo &target) {
-    return DYN(aclGetChip)(target);
+    return HSAIL_DYN(aclGetChip)(target);
   }
   static aclBinary* BinaryInit(size_t struct_version, const aclTargetInfo *target, const aclBinaryOptions *options, acl_error *error_code) {
-    return DYN(aclBinaryInit)(struct_version, target, options, error_code);
+    return HSAIL_DYN(aclBinaryInit)(struct_version, target, options, error_code);
   }
   static acl_error BinaryFini(aclBinary *bin) {
-    return DYN(aclBinaryFini)(bin);
+    return HSAIL_DYN(aclBinaryFini)(bin);
   }
   static aclBinary* ReadFromFile(const char *str, acl_error *error_code) {
-    return DYN(aclReadFromFile)(str, error_code);
+    return HSAIL_DYN(aclReadFromFile)(str, error_code);
   }
   static aclBinary* ReadFromMem(const void *mem, size_t size, acl_error *error_code) {
-    return DYN(aclReadFromMem)(mem, size, error_code);
+    return HSAIL_DYN(aclReadFromMem)(mem, size, error_code);
   }
   static acl_error WriteToFile(aclBinary *bin, const char *str) {
-    return DYN(aclWriteToFile)(bin, str);
+    return HSAIL_DYN(aclWriteToFile)(bin, str);
   }
   static acl_error WriteToMem(aclBinary *bin, void **mem, size_t *size) {
-    return DYN(aclWriteToMem)(bin, mem, size);
+    return HSAIL_DYN(aclWriteToMem)(bin, mem, size);
   }
   static aclBinary* CreateFromBinary(const aclBinary *binary, aclBIFVersion version) {
-    return DYN(aclCreateFromBinary)(binary, version);
+    return HSAIL_DYN(aclCreateFromBinary)(binary, version);
   }
   static aclBIFVersion BinaryVersion(const aclBinary *binary) {
-    return DYN(aclBinaryVersion)(binary);
+    return HSAIL_DYN(aclBinaryVersion)(binary);
   }
   static acl_error InsertSection(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id) {
-    return DYN(aclInsertSection)(cl, binary, data, data_size, id);
+    return HSAIL_DYN(aclInsertSection)(cl, binary, data, data_size, id);
   }
   static const acl_error InsertSymbol(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id, const char *symbol) {
-    return DYN(aclInsertSymbol)(cl, binary, data, data_size, id, symbol);
+    return HSAIL_DYN(aclInsertSymbol)(cl, binary, data, data_size, id, symbol);
   }
   static const void* ExtractSection(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, acl_error *error_code) {
-    return DYN(aclExtractSection)(cl, binary, size, id, error_code);
+    return HSAIL_DYN(aclExtractSection)(cl, binary, size, id, error_code);
   }
   static const void* ExtractSymbol(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, const char *symbol, acl_error *error_code) {
-    return DYN(aclExtractSymbol)(cl, binary, size, id, symbol, error_code);
+    return HSAIL_DYN(aclExtractSymbol)(cl, binary, size, id, symbol, error_code);
   }
   static acl_error RemoveSection(aclCompiler *cl, aclBinary *binary, aclSections id) {
-    return DYN(aclRemoveSection)(cl, binary, id);
+    return HSAIL_DYN(aclRemoveSection)(cl, binary, id);
   }
   static acl_error RemoveSymbol(aclCompiler *cl, aclBinary *binary, aclSections id, const char *symbol) {
-    return DYN(aclRemoveSymbol)(cl, binary, id, symbol);
+    return HSAIL_DYN(aclRemoveSymbol)(cl, binary, id, symbol);
   }
   static acl_error QueryInfo(aclCompiler *cl, const aclBinary *binary, aclQueryType query, const char *kernel, void *data_ptr, size_t *ptr_size) {
-    return DYN(aclQueryInfo)(cl, binary, query, kernel, data_ptr, ptr_size);
+    return HSAIL_DYN(aclQueryInfo)(cl, binary, query, kernel, data_ptr, ptr_size);
   }
   static acl_error DbgAddArgument(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name, bool byVal) {
-    return DYN(aclDbgAddArgument)(cl, binary, kernel, name, byVal);
+    return HSAIL_DYN(aclDbgAddArgument)(cl, binary, kernel, name, byVal);
   }
   static acl_error DbgRemoveArgument(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name) {
-    return DYN(aclDbgRemoveArgument)(cl, binary, kernel, name);
+    return HSAIL_DYN(aclDbgRemoveArgument)(cl, binary, kernel, name);
   }
   static acl_error Compile(aclCompiler *cl, aclBinary *bin, const char *options, aclType from, aclType to, aclLogFunction compile_callback) {
-    return DYN(aclCompile)(cl, bin, options, from, to, compile_callback);
+    return HSAIL_DYN(aclCompile)(cl, bin, options, from, to, compile_callback);
   }
   static acl_error Link(aclCompiler *cl, aclBinary *src_bin, unsigned int num_libs, aclBinary **libs, aclType link_mode, const char *options, aclLogFunction link_callback) {
-    return DYN(aclLink)(cl, src_bin, num_libs, libs, link_mode, options, link_callback);
+    return HSAIL_DYN(aclLink)(cl, src_bin, num_libs, libs, link_mode, options, link_callback);
   }
   static const char* GetCompilerLog(aclCompiler *cl) {
-    return DYN(aclGetCompilerLog)(cl);
+    return HSAIL_DYN(aclGetCompilerLog)(cl);
   }
   static const void* RetrieveType(aclCompiler *cl, const aclBinary *bin, const char *name, size_t *data_size, aclType type, acl_error *error_code) {
-    return DYN(aclRetrieveType)(cl, bin, name, data_size, type, error_code);
+    return HSAIL_DYN(aclRetrieveType)(cl, bin, name, data_size, type, error_code);
   }
   static acl_error SetType(aclCompiler *cl, aclBinary *bin, const char *name, aclType type, const void *data, size_t size) {
-    return DYN(aclSetType)(cl, bin, name, type, data, size);
+    return HSAIL_DYN(aclSetType)(cl, bin, name, type, data, size);
   }
   static acl_error ConvertType(aclCompiler *cl, aclBinary *bin, const char *name, aclType type) {
-    return DYN(aclConvertType)(cl, bin, name, type);
+    return HSAIL_DYN(aclConvertType)(cl, bin, name, type);
   }
   static acl_error Disassemble(aclCompiler *cl, aclBinary *bin, const char *kernel, aclLogFunction disasm_callback) {
-    return DYN(aclDisassemble)(cl, bin, kernel, disasm_callback);
+    return HSAIL_DYN(aclDisassemble)(cl, bin, kernel, disasm_callback);
   }
   static const void* GetDeviceBinary(aclCompiler *cl, const aclBinary *bin, const char *kernel, size_t *size, acl_error *error_code) {
-    return DYN(aclGetDeviceBinary)(cl, bin, kernel, size, error_code);
+    return HSAIL_DYN(aclGetDeviceBinary)(cl, bin, kernel, size, error_code);
   }
   static const bool ValidateBinaryImage(const void* binary, size_t length, unsigned type) {
-    return DYN(aclValidateBinaryImage)(binary, length, type);
+    return HSAIL_DYN(aclValidateBinaryImage)(binary, length, type);
   }
   static aclJITObjectImage JITObjectImageCreate(aclCompiler *cl, const void* buffer, size_t length, aclBinary* bin, acl_error* error_code) {
-    return DYN(aclJITObjectImageCreate)(cl, buffer, length, bin, error_code);
+    return HSAIL_DYN(aclJITObjectImageCreate)(cl, buffer, length, bin, error_code);
   }
   static aclJITObjectImage JITObjectImageCopy(aclCompiler *cl, const void* buffer, size_t length, acl_error* error_code) {
-    return DYN(aclJITObjectImageCopy)(cl, buffer, length, error_code);
+    return HSAIL_DYN(aclJITObjectImageCopy)(cl, buffer, length, error_code);
   }
   static acl_error JITObjectImageDestroy(aclCompiler *cl, aclJITObjectImage buffer) {
-    return DYN(aclJITObjectImageDestroy)(cl, buffer);
+    return HSAIL_DYN(aclJITObjectImageDestroy)(cl, buffer);
   }
   static acl_error JITObjectImageFinalize(aclCompiler *cl, aclJITObjectImage image) {
-    return DYN(aclJITObjectImageFinalize)(cl, image);
+    return HSAIL_DYN(aclJITObjectImageFinalize)(cl, image);
   }
   static size_t JITObjectImageSize(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code) {
-    return DYN(aclJITObjectImageSize)(cl, image, error_code);
+    return HSAIL_DYN(aclJITObjectImageSize)(cl, image, error_code);
   }
   static const char* JITObjectImageData(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code) {
-    return DYN(aclJITObjectImageData)(cl, image, error_code);
+    return HSAIL_DYN(aclJITObjectImageData)(cl, image, error_code);
   }
   static size_t JITObjectImageGetGlobalsSize(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code) {
-    return DYN(aclJITObjectImageGetGlobalsSize)(cl, image, error_code);
+    return HSAIL_DYN(aclJITObjectImageGetGlobalsSize)(cl, image, error_code);
   }
   static acl_error JITObjectImageIterateSymbols(aclCompiler *cl, aclJITObjectImage image, aclJITSymbolCallback callback, void* data) {
-    return DYN(aclJITObjectImageIterateSymbols)(cl, image, callback, data);
+    return HSAIL_DYN(aclJITObjectImageIterateSymbols)(cl, image, callback, data);
   }
   static void DumpBinary(const aclBinary *bin) {
-    DYN(aclDumpBinary)(bin);
+    HSAIL_DYN(aclDumpBinary)(bin);
   }
   static void GetKstatsSI(const void* shader, aclKernelStats &kstats) {
-    return DYN(aclGetKstatsSI)(shader, kstats);
+    return HSAIL_DYN(aclGetKstatsSI)(shader, kstats);
   }
   static acl_error InsertKernelStatistics(aclCompiler *cl, aclBinary *bin) {
-    return DYN(aclInsertKernelStatistics)(cl, bin);
+    return HSAIL_DYN(aclInsertKernelStatistics)(cl, bin);
   }
   static acl_error FreeMem(aclBinary *bin, void *mem) {
-    return DYN(aclFreeMem)(bin, mem);
+    return HSAIL_DYN(aclFreeMem)(bin, mem);
   }
 
 private:
