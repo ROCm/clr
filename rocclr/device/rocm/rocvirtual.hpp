@@ -52,8 +52,8 @@ struct ProfilingSignal : public amd::HeapObject {
 constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 
 // Timeouts for HSA signal wait
-constexpr static uint64_t kTimeout30us = 30000;
-constexpr static uint64_t kTimeout50us = 50000;
+constexpr static uint64_t kTimeout100us = 100000;
+constexpr static uint64_t kTimeout750us = 750000;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 template <uint64_t wait_time = 0>
@@ -64,7 +64,7 @@ inline bool WaitForSignal(hsa_signal_t signal) {
       return false;
     }
   } else {
-    uint64_t timeout = (ROC_ACTIVE_WAIT) ? kUnlimitedWait : kTimeout30us;
+    uint64_t timeout = (ROC_ACTIVE_WAIT) ? kUnlimitedWait : kTimeout100us;
 
     // Active wait with a timeout
     if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
