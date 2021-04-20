@@ -2043,17 +2043,22 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
     }
   }
 
-  if (devKernel->hsa()) {
-    const HSAILKernel* hsaKernel = static_cast<const HSAILKernel*>(devKernel);
-    if (hsaKernel->dynamicParallelism()) {
+  const HSAILKernel* hsaKernel = static_cast<const HSAILKernel*>(devKernel);
+  if (hsaKernel->dynamicParallelism()) {
+    if (settings().useDeviceQueue_) {
       amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(*this);
       if (defQueue != nullptr) {
         vgpu = static_cast<VirtualGPU*>(defQueue->vDev());
         if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu,
-                          devKernel->workGroupInfo()->usedVGPRs_)) {
+                          hsaKernel->prog().maxVgprs())) {
           return false;
         }
       } else {
+        return false;
+      }
+    } else {
+      if (!allocScratch(hsaKernel->prog().maxScratchRegs(), vgpu,
+                        hsaKernel->prog().maxVgprs())) {
         return false;
       }
     }

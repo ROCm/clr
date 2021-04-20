@@ -181,6 +181,7 @@ HSAILProgram::HSAILProgram(Device& device, amd::Program& owner)
       codeSegGpu_(nullptr),
       codeSegment_(nullptr),
       maxScratchRegs_(0),
+      maxVgprs_(0),
       executable_(nullptr),
       loaderContext_(this) {
   assert(device.isOnline());
@@ -194,6 +195,7 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       codeSegGpu_(nullptr),
       codeSegment_(nullptr),
       maxScratchRegs_(0),
+      maxVgprs_(0),
       executable_(nullptr),
       loaderContext_(this) {
   assert(!device.isOnline());
@@ -317,6 +319,7 @@ bool HSAILProgram::setKernels(amd::option::Options* options, void* binary, size_
       // with dynamic parallelism, since runtime doesn't know which child kernel will be called
       maxScratchRegs_ =
           std::max(static_cast<uint>(aKernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
+      maxVgprs_ = std::max(static_cast<uint>(aKernel->workGroupInfo()->usedVGPRs_), maxVgprs_);
     }
     // Allocate kernel table for device enqueuing
     if (!isNull() && dynamicParallelism && !allocKernelTable()) {
@@ -781,6 +784,7 @@ bool LightningProgram::setKernels(amd::option::Options* options, void* binary, s
     // with dynamic parallelism, since runtime doesn't know which child kernel will be called
     maxScratchRegs_ =
         std::max(static_cast<uint>(kernel->workGroupInfo()->scratchRegs_), maxScratchRegs_);
+    maxVgprs_ = std::max(static_cast<uint>(kernel->workGroupInfo()->usedVGPRs_), maxVgprs_);
   }
   DestroySegmentCpuAccess();
 #endif  // defined(USE_COMGR_LIBRARY)
