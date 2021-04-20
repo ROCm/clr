@@ -177,6 +177,9 @@ class HSAILProgram : public device::Program {
   //! Returns the maximum number of scratch regs used in the program
   uint maxScratchRegs() const { return maxScratchRegs_; }
 
+  //! Returns the maximum number of VGPR(s) used in the program
+  uint maxVgprs() const { return maxVgprs_; }
+
   //! Add internal static sampler
   void addSampler(Sampler* sampler) { staticSamplers_.push_back(sampler); }
 
@@ -237,8 +240,11 @@ class HSAILProgram : public device::Program {
   Memory* kernels_;                    //!< Table with kernel object pointers
   Memory* codeSegGpu_;                 //!< GPU memory with code objects
   Segment* codeSegment_;               //!< Pointer to the code segment for this program
-  uint
-      maxScratchRegs_;  //!< Maximum number of scratch regs used in the program by individual kernel
+  uint maxScratchRegs_;                //!< Maximum number of scratch regs used
+                                       //!< in the program by individual kernel
+  uint maxVgprs_;                      //!< Maximum number of VGPR(s) used
+                                       //!< in the program by individual kernel
+
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
 
   amd::hsa::loader::Loader* loader_;          //!< Loader object
