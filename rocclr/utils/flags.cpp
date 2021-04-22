@@ -87,7 +87,11 @@ std::atomic_bool IS_PROFILER_ON(false);
 #if defined(WITH_GPU_DEVICE)
 bool IS_LEGACY = true;
 #else
+#if !defined(_WIN32) && defined(WITH_PAL_DEVICE)
+bool IS_LEGACY = true;
+#else
 bool IS_LEGACY = false;
+#endif
 #endif
 
 // static
