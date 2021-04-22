@@ -42,6 +42,7 @@
 #include <thread>
 #include "palQueue.h"
 #include "palFence.h"
+#include "palQueueSemaphore.h"
 
 #ifdef _WIN32
 #include <d3d10_1.h>
@@ -2638,6 +2639,22 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     }
   }
 }
+
+void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
+
+  const Pal::IQueueSemaphore* sem = reinterpret_cast<const Pal::IQueueSemaphore*>(cmd.sem_ptr());
+
+  if (cmd.semaphoreCmd() ==
+      amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE) {
+    queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                       cmd.fence());
+  } else {
+    queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                       cmd.fence());
+  }
+
+}
+
 
 void VirtualGPU::releaseMemory(GpuMemoryReference* mem) {
   queues_[MainEngine]->removeCmdMemRef(mem);

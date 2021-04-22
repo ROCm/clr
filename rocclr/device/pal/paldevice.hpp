@@ -136,6 +136,8 @@ class NullDevice : public amd::Device {
     return NULL;
   }
   virtual void svmFree(void* ptr) const { return; }
+  virtual bool importExtSemaphore(void** extSemaphore, void* handle) { return false; }
+  virtual void DestroyExtSemaphore(void* extSemaphore) { }
 
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
   void Free(const Util::FreeInfo& freeInfo) { allocator_.Free(freeInfo); }
@@ -591,6 +593,9 @@ class Device : public NullDevice {
     ShouldNotReachHere();
     return false;
   }
+
+  virtual bool importExtSemaphore(void** extSemaphore, void* handle);
+  virtual void DestroyExtSemaphore(void* extSemaphore);
 
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
