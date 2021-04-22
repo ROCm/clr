@@ -284,6 +284,7 @@ class VirtualGPU : public device::VirtualDevice {
   void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) {}
   void submitThreadTrace(amd::ThreadTraceCommand& vcmd) {}
 
+  virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd){}
   /**
    * @brief Waits on an outstanding kernel without regard to how
    * it was dispatched - with or without a signal

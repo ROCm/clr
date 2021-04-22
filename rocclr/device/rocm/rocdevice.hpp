@@ -191,6 +191,13 @@ class NullDevice : public amd::Device {
     return !settings().enableCoarseGrainSVM_ || (memory->getContext().devices().size() > 1);
   }
 
+  virtual bool importExtSemaphore(void** extSemahore, void* handle) {
+    ShouldNotReachHere();
+    return false;
+  }
+
+  virtual void DestroyExtSemaphore(void* extSemaphore) { ShouldNotReachHere(); }
+
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 

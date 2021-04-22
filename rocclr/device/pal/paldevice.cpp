@@ -35,6 +35,7 @@
 #include "palLib.h"
 #include "palPlatform.h"
 #include "palDevice.h"
+#include "palQueueSemaphore.h"
 #include "hsailctx.hpp"
 
 #include "vdi_common.hpp"
@@ -2406,6 +2407,35 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
       ? true
       : false;
   return result;
+}
+
+
+bool Device::importExtSemaphore(void** extSemaphore, void* handle) {
+  Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};
+  palOpenInfo.externalSemaphore = handle;
+  palOpenInfo.flags.crossProcess = false;
+  palOpenInfo.flags.isReference = true;
+  Pal::Result result;
+
+  size_t semaphoreSize = iDev()->GetExternalSharedQueueSemaphoreSize(
+          palOpenInfo, &result);
+  if (result != Pal::Result::Success) {
+    return false;
+  }
+  void* mem = amd::Os::alignedMalloc(semaphoreSize, 16);
+  result = iDev()->OpenExternalSharedQueueSemaphore(
+      palOpenInfo, mem, reinterpret_cast<Pal::IQueueSemaphore**> (extSemaphore));
+  if (result != Pal::Result::Success) {
+    amd::Os::alignedFree(mem);
+    return false;
+  }
+  return true;
+}
+
+void Device::DestroyExtSemaphore(void* extSemaphore) {
+  Pal::IQueueSemaphore* sem = reinterpret_cast<Pal::IQueueSemaphore*>(extSemaphore);
+  sem->Destroy();
+  amd::Os::alignedFree(extSemaphore);
 }
 
 }  // namespace pal

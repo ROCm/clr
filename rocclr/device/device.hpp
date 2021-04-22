@@ -84,6 +84,7 @@ class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
 class TransferBufferFileCommand;
 class StreamOperationCommand;
+class ExternalSemaphoreCmd;
 class HwDebugManager;
 class Isa;
 class Device;
@@ -1171,6 +1172,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitKernel(amd::NDRangeKernelCommand& command) = 0;
   virtual void submitNativeFn(amd::NativeFnCommand& cmd) = 0;
   virtual void submitMarker(amd::Marker& cmd) = 0;
+  virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) = 0;
   virtual void submitFillMemory(amd::FillMemoryCommand& cmd) = 0;
   virtual void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd) = 0;
   virtual void submitAcquireExtObjects(amd::AcquireExtObjectsCommand& cmd) = 0;
@@ -1616,6 +1618,8 @@ class Device : public RuntimeObject {
   virtual bool globalFreeMemory(size_t* freeMemory  //!< Free memory information on a GPU device
                                 ) const = 0;
 
+  virtual bool importExtSemaphore(void** extSemaphore, void* handle) = 0;
+  virtual void DestroyExtSemaphore(void* extSemaphore) = 0;
   /**
    * @return True if the device has its own custom host allocator to be used
    * instead of the generic OS allocation routines

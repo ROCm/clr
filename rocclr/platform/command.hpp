@@ -956,6 +956,31 @@ class NativeFnCommand : public Command {
   int32_t invoke();
 };
 
+
+class ExternalSemaphoreCmd : public Command {
+ public:
+  enum ExternalSemaphoreCmdType { COMMAND_WAIT_EXTSEMAPHORE, COMMAND_SIGNAL_EXTSEMAPHORE };
+
+ private:
+  const void* sem_ptr_; //!< Pointer to external semaphore
+  int fence_;           //!< semaphore value to be set
+  ExternalSemaphoreCmdType cmd_type_; //!< Signal or Wait semaphore command
+
+ public:
+  ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, int fence,
+                       ExternalSemaphoreCmdType cmd_type)
+      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
+
+  virtual void submit(device::VirtualDevice& device) {
+    device.submitExternalSemaphoreCmd(*this);
+  }
+  const void* sem_ptr() const { return sem_ptr_; }
+  const int fence() { return fence_; }
+  const ExternalSemaphoreCmdType semaphoreCmd() { return cmd_type_; }
+
+};
+
+
 class Marker : public Command {
  public:
   //! Create a new Marker
