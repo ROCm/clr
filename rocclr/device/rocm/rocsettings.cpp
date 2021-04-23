@@ -88,7 +88,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   imageBufferWar_ = false;
 
-  hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : Hmm::EnableSvmTracking;
+  hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : 0;
 
   rocr_backend_ = true;
 

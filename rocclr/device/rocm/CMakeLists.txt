@@ -52,7 +52,7 @@ target_include_directories(oclrocm
     ${ROCM_OCL_INCLUDES}
     $<TARGET_PROPERTY:hsa-runtime64::hsa-runtime64,INTERFACE_INCLUDE_DIRECTORIES>)
 
-option(BUILD_HMM "Build HMM support" OFF)
+option(BUILD_HMM "Build HMM support" ON)
 if (BUILD_HMM)
   target_compile_definitions(oclrocm
     PRIVATE AMD_HMM_SUPPORT)
