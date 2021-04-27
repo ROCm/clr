@@ -2410,9 +2410,9 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 }
 
 
-bool Device::importExtSemaphore(void** extSemaphore, void* handle) {
+bool Device::importExtSemaphore(void** extSemaphore, amd::Os::FileDesc handle) {
   Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};
-  palOpenInfo.externalSemaphore = static_cast<Pal::OsExternalHandle>(reinterpret_cast<uintptr_t>(handle));
+  palOpenInfo.externalSemaphore = handle;
   palOpenInfo.flags.crossProcess = false;
   palOpenInfo.flags.isReference = true;
   Pal::Result result;

@@ -594,7 +594,7 @@ class Device : public NullDevice {
     return false;
   }
 
-  virtual bool importExtSemaphore(void** extSemaphore, void* handle);
+  virtual bool importExtSemaphore(void** extSemaphore, amd::Os::FileDesc handle);
   virtual void DestroyExtSemaphore(void* extSemaphore);
 
  private:
