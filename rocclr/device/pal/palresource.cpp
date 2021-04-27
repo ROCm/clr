@@ -751,6 +751,7 @@ bool Resource::CreateInterop(CreateParams* params) {
       return false;
     }
     desc_.isDoppTexture_ = (openInfo.doppDesktopInfo.gpuVirtAddr != 0);
+    openInfo.flags.isDopp = desc_.isDoppTexture_;
     format = dev().getPalFormat(desc().format_, &channels);
   }
   else if (memoryType() == VkInterop) {
