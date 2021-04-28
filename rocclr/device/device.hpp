@@ -1618,7 +1618,7 @@ class Device : public RuntimeObject {
   virtual bool globalFreeMemory(size_t* freeMemory  //!< Free memory information on a GPU device
                                 ) const = 0;
 
-  virtual bool importExtSemaphore(void** extSemaphore, amd::Os::FileDesc handle) = 0;
+  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle) = 0;
   virtual void DestroyExtSemaphore(void* extSemaphore) = 0;
   /**
    * @return True if the device has its own custom host allocator to be used

@@ -136,7 +136,7 @@ class NullDevice : public amd::Device {
     return NULL;
   }
   virtual void svmFree(void* ptr) const { return; }
-  virtual bool importExtSemaphore(void** extSemaphore, void* handle) { return false; }
+  virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle) { return false; }
   virtual void DestroyExtSemaphore(void* extSemaphore) { }
 
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
@@ -594,7 +594,7 @@ class Device : public NullDevice {
     return false;
   }
 
-  virtual bool importExtSemaphore(void** extSemaphore, amd::Os::FileDesc handle);
+  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle);
   virtual void DestroyExtSemaphore(void* extSemaphore);
 
  private:
