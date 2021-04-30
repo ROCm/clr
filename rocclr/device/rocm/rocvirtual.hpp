@@ -187,7 +187,12 @@ class VirtualGPU : public device::VirtualDevice {
                               Timestamp* ts = nullptr, uint32_t queue_size = 0);
 
     //! Wait for the curent active signal. Can idle the queue
-    bool WaitCurrent() { return CpuWaitForSignal(signal_list_[current_id_]); }
+    bool WaitCurrent() {
+      ProfilingSignal* signal = signal_list_[current_id_];
+      ClPrint(amd::LOG_DEBUG, amd::LOG_MISC, "[%zx]!\t WaitCurret completion_signal=0x%zx",
+        std::this_thread::get_id(), signal->signal_.handle);
+      return CpuWaitForSignal(signal);
+    }
 
     //! Update current active engine
     void SetActiveEngine(HwQueueEngine engine = HwQueueEngine::Compute) { engine_ = engine; }
@@ -211,7 +216,10 @@ class VirtualGPU : public device::VirtualDevice {
     //! Wait for the next active signal
     void WaitNext() {
       size_t next = (current_id_ + 1) % signal_list_.size();
-      CpuWaitForSignal(signal_list_[next]);
+      ProfilingSignal* signal = signal_list_[next];
+      ClPrint(amd::LOG_DEBUG, amd::LOG_MISC, "[%zx]!\t WaitNext completion_signal=0x%zx",
+        std::this_thread::get_id(), signal->signal_.handle);
+      CpuWaitForSignal(signal);
     }
 
     //! Wait for the provided signal
