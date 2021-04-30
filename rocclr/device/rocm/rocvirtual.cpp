@@ -153,7 +153,7 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
     return false;
   }
   amd::ScopedLock sl(ts->gpu()->execution());
-  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(%lx)\n",
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(0x%lx)",
     static_cast<uint32_t>(value), arg, ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
 
   // Update the batch, since signal is complete
@@ -347,7 +347,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
       if (HSA_STATUS_SUCCESS != result) {
         LogError("hsa_amd_signal_async_handler() failed to set the handler!");
       } else {
-        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(%lx), timestamp(%p)\n",
+        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
             prof_signal->signal_.handle, prof_signal);
       }
     }
@@ -417,7 +417,7 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
     if (signal->ts_ != nullptr) {
       signal->ts_->checkGpuTime();
     } else {
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx\n",
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
               std::this_thread::get_id(), signal->signal_.handle);
       if (!WaitForSignal(signal->signal_)) {
         LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
@@ -572,7 +572,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
           ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-            "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx\n",
+            "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx",
             index, desc.typeName_.c_str(), desc.name_.c_str(),
             globalAddress, gpuMem->getDeviceMemory(),
             reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize(),
@@ -2178,7 +2178,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
 
     // Use GPU Blit to write
     bool result = blitMgr().fillBuffer(*memory, &value, sizeBytes, origin, size, entire, true);
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writting value: 0x%lx \n", value);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writting value: 0x%lx", value);
 
     if (!result) {
       LogError("submitStreamOperation: Write failed!");
@@ -2526,7 +2526,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s\n",
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s",
             std::this_thread::get_id(), gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
