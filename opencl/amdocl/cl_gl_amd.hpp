@@ -273,6 +273,7 @@ private:
     HDC         tempDC_;
     HGLRC       tempGLRC_;
 
+public:
     PFN_wglCreateContext     wglCreateContext_;
     PFN_wglGetCurrentContext wglGetCurrentContext_;
     PFN_wglGetCurrentDC      wglGetCurrentDC_;
