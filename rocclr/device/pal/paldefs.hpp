@@ -138,7 +138,8 @@ enum OclVersion {
   OpenCL11 = 0x11,
   OpenCL12 = 0x12,
   OpenCL20 = 0x20,
-  OpenCL21 = 0x21
+  OpenCL21 = 0x21,
+  OpenCL22 = 0x22,
 };
 
 struct MemoryFormat {
