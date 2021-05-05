@@ -24,7 +24,7 @@
 
 #include "cl_common.hpp"
 #include "cl_d3d10_amd.hpp"
-#include "runtime/platform/command.hpp"
+#include "platform/command.hpp"
 
 #include <cstring>
 #include <utility>

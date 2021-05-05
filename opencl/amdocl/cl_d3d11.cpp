@@ -23,7 +23,7 @@
 #include "top.hpp"
 
 #include "cl_d3d11_amd.hpp"
-#include "runtime/platform/command.hpp"
+#include "platform/command.hpp"
 
 #include <cstring>
 #include <utility>
