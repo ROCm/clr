@@ -34,13 +34,12 @@
 #include "CL/cl_dx9_media_sharing.h"
 #endif  //_WIN32
 
+#ifndef WITH_LIQUID_FLASH
 #if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
       defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
 #define WITH_LIQUID_FLASH 1
-#endif
-
-#ifdef WITH_LIQUID_FLASH 
 #include "lf.h"
+#endif
 #endif
 
 namespace amd {
@@ -98,7 +97,7 @@ Context::~Context() {
     glenv_ = NULL;
   }
 
-#ifdef WITH_LIQUID_FLASH 
+#if WITH_LIQUID_FLASH
   lfTerminate();
 #endif
 }
@@ -275,7 +274,7 @@ int Context::create(const intptr_t* properties) {
     }
   }
 
-#ifdef WITH_LIQUID_FLASH 
+#if WITH_LIQUID_FLASH
   lfInit();
 #endif
 
