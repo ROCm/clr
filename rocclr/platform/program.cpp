@@ -38,6 +38,22 @@
 
 namespace amd {
 
+#if defined(WITH_COMPILER_LIB)
+static aclTargetInfo *aclutGetTargetInfo(aclBinary *binary)
+{
+  aclTargetInfo *tgt = NULL;
+  if (binary->struct_size == sizeof(aclBinary_0_8)) {
+    tgt = &reinterpret_cast<aclBinary_0_8*>(binary)->target;
+  } else if (binary->struct_size == sizeof(aclBinary_0_8_1)) {
+    tgt = &reinterpret_cast<aclBinary_0_8_1*>(binary)->target;
+  } else {
+    assert(!"Binary format not supported!");
+    tgt = &binary->target;
+  }
+  return tgt;
+}
+#endif
+
 static void remove_g_option(std::string &option)
 {
   // Remove " -g " option from application.
@@ -142,8 +158,8 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
       }
     }
     options->oVariables->Legacy = !device.settings().useLightning_ ?
-                                     isAMDILTarget(*aclutGetTargetInfo(binary)) :
-                                     isHSAILTarget(*aclutGetTargetInfo(binary));
+                                     isAMDILTarget(*amd::aclutGetTargetInfo(binary)) :
+                                     isHSAILTarget(*amd::aclutGetTargetInfo(binary));
     amd::Hsail::BinaryFini(binary);
   }
 #endif // defined(WITH_COMPILER_LIB)
@@ -356,10 +372,10 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
           LogWarning("Error while linking: Could not read from raw binary.");
           return CL_INVALID_BINARY;
         }
-        if (isHSAILTarget(*aclutGetTargetInfo(aclBin))) {
+        if (isHSAILTarget(*amd::aclutGetTargetInfo(aclBin))) {
           parsedOptions.oVariables->Frontend = "clang";
           parsedOptions.oVariables->Legacy = it->settings().useLightning_;
-        } else if (isAMDILTarget(*aclutGetTargetInfo(aclBin))) {
+        } else if (isAMDILTarget(*amd::aclutGetTargetInfo(aclBin))) {
           parsedOptions.oVariables->Frontend = "edg";
         }
         amd::Hsail::BinaryFini(aclBin);
