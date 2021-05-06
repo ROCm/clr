@@ -221,6 +221,9 @@ class Program : public RuntimeObject {
                void(CL_CALLBACK* notifyFptr)(cl_program, void*) = NULL, void* data = NULL,
                bool optionChangable = true, bool newDevProg = true);
 
+  //! Load the program. If devices is not specified, then load program for all devices.
+  bool load(const std::vector<Device*>& devices = {});
+
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeProgram; }
 

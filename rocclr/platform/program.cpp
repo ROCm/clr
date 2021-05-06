@@ -621,6 +621,10 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
   return retval;
 }
 
+bool Program::load(const std::vector<Device*>& devices) {
+  return true;
+}
+
 void Program::clear() {
   // Destroy old programs if we have any
   for (const auto& it : devicePrograms_) {
