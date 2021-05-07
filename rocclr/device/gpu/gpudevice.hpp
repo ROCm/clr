@@ -42,6 +42,12 @@
 #include "hsailctx.hpp"
 #include "vaminterface.h"
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+#include "device/devurilocator.hpp"
+#endif
+#endif
+
 /*! \addtogroup GPU
  *  @{
  */
@@ -140,6 +146,13 @@ class NullDevice : public amd::Device {
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const {
+    return nullptr;
+  }
+#endif
+#endif
  protected:
   //! Answer the question: "Should HSAIL Program be created?",
   //! based on the given options.
@@ -548,6 +561,13 @@ class Device : public NullDevice, public CALGSLDevice {
   //! Initial the Hardware Debug Manager
   int32_t hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage);
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const {
+    return nullptr;
+  }
+#endif
+#endif
  private:
   //! Disable copy constructor
   Device(const Device&);

@@ -43,6 +43,11 @@
 #include <atomic>
 #include <unordered_set>
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+#include "device/devurilocator.hpp"
+#endif
+#endif
 /*! \addtogroup PAL
  *  @{
  */
@@ -145,7 +150,13 @@ class NullDevice : public amd::Device {
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
     return true;
   }
-
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const {
+    return nullptr;
+  }
+#endif
+#endif
  protected:
   static Util::GenericAllocator allocator_;  //!< Generic memory allocator in PAL
 
@@ -593,7 +604,13 @@ class Device : public NullDevice {
 
   virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle);
   virtual void DestroyExtSemaphore(void* extSemaphore);
-
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUrilocator() const {
+    return nullptr;
+  }
+#endif
+#endif
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);

@@ -40,6 +40,12 @@
 #include "hwdebug.hpp"
 #include "devsignal.hpp"
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+#include "devurilocator.hpp"
+#endif
+#endif
+
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
@@ -1838,6 +1844,11 @@ class Device : public RuntimeObject {
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset) {
     return nullptr;
   }
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const = 0;
+#endif
+#endif
 
  protected:
   //! Enable the specified extension

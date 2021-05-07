@@ -45,6 +45,12 @@
 #endif
 #include "platform/sampler.hpp"
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+#include "device/rocm/rocurilocator.hpp"
+#endif
+#endif
+
 #include <algorithm>
 #include <cstring>
 #include <fstream>
@@ -3026,5 +3032,12 @@ void Device::ReleaseGlobalSignal(void* signal) const {
   }
 }
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+device::UriLocator* Device::createUriLocator() const {
+  return new roc::UriLocator();
+}
+#endif
+#endif
 } // namespace roc
 #endif  // WITHOUT_HSA_BACKEND
