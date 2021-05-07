@@ -254,6 +254,15 @@ class NullDevice : public amd::Device {
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const { return false; }
   virtual void ReleaseGlobalSignal(void* signal) const {}
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+#endif
+#endif
+
  protected:
   //! Initialize compiler instance and handle
   static bool initCompiler(bool isOffline);
@@ -599,6 +608,11 @@ class Device : public NullDevice {
   //! enum for keeping the total and available queue priorities
   enum QueuePriority : uint { Low = 0, Normal = 1, High = 2, Total = 3};
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  virtual device::UriLocator* createUriLocator() const;
+#endif
+#endif
 };                                // class roc::Device
 }  // namespace roc
 

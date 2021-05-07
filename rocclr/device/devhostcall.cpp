@@ -36,91 +36,11 @@
 #include <string.h>
 #include <set>
 
-namespace {  // anonymous
-
-enum SignalValue { SIGNAL_DONE = 0, SIGNAL_INIT = 1 };
-
-/** \brief Packet payload
- *
- *  Contains 64 slots of 8 ulongs each, one for each workitem in the
- *  wave. A slot with index \c i contains valid data if the
- *  corresponding bit in PacketHeader::activemask is set.
- */
-struct Payload {
-  uint64_t slots[64][8];
-};
-
-/** Packet header */
-struct PacketHeader {
-  /** Tagged pointer to the next packet in an intrusive stack */
-  uint64_t next_;
-  /** Bitmask that represents payload slots with valid data */
-  uint64_t activemask_;
-  /** Service ID requested by the wave */
-  uint32_t service_;
-  /** Control bits.
-   *  \li 0: \c READY flag. Indicates packet awaiting a host response.
-   */
-  std::atomic<uint32_t> control_;
-};
-
-static_assert(std::is_standard_layout<PacketHeader>::value,
-              "the hostcall packet must be useable from other languages");
-
-/** Field offsets in the packet control field */
-enum ControlOffset {
-  CONTROL_OFFSET_READY_FLAG = 0,
-  CONTROL_OFFSET_RESERVED0 = 1,
-};
-
-/** Field widths in the packet control field */
-enum ControlWidth {
-  CONTROL_WIDTH_READY_FLAG = 1,
-  CONTROL_WIDTH_RESERVED0 = 31,
-};
-
-/** \brief Shared buffer submitting hostcall requests.
- *
- *  Holds hostcall packets requested by all kernels executing on the
- *  same device queue. Each hostcall buffer is associated with at most
- *  one device queue.
- *
- *  Packets in the buffer are accessed using 64-bit tagged pointers to mitigate
- *  the ABA problem in lock-free stacks. The index_mask is used to extract the
- *  lower bits of the pointer, which form the index into the packet array. The
- *  remaining higher bits define a tag that is incremented on every pop from a
- *  stack.
- */
-class HostcallBuffer {
-  /** Array of packet headers */
-  PacketHeader* headers_;
-  /** Array of packet payloads */
-  Payload* payloads_;
-  /** Signal used by kernels to indicate new work */
-  void* doorbell_;
-  /** Stack of free packets. Uses tagged pointers. */
-  uint64_t free_stack_;
-  /** Stack of ready packets. Uses tagged pointers */
-  std::atomic<uint64_t> ready_stack_;
-  /** Mask for accessing the packet index in the tagged pointer. */
-  uint64_t index_mask_;
-  /** Some services need a device */
-  const amd::Device* device_;
-
-  PacketHeader* getHeader(uint64_t ptr) const;
-  Payload* getPayload(uint64_t ptr) const;
-
- public:
-  void processPackets(MessageHandler& messages);
-  void initialize(uint32_t num_packets);
-  void setDoorbell(void* doorbell) { doorbell_ = doorbell; };
-  void setDevice(const amd::Device* dptr) { device_ = dptr; }
-};
-
-static_assert(std::is_standard_layout<HostcallBuffer>::value,
-              "the hostcall buffer must be useable from other languages");
-
-};  // namespace
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+#include "device/devsanitizer.hpp"
+#endif
+#endif
 
 PacketHeader* HostcallBuffer::getHeader(uint64_t ptr) const {
   return headers_ + (ptr & index_mask_);
@@ -205,6 +125,7 @@ void HostcallBuffer::processPackets(MessageHandler& messages) {
   // Grab the entire ready stack and set the top to 0. New requests from the
   // device will continue pushing on the stack while we process the packets that
   // we have grabbed.
+
   uint64_t ready_stack = std::atomic_exchange_explicit(&ready_stack_, static_cast<uint64_t>(0), std::memory_order_acquire);
   if (!ready_stack) {
     return;
@@ -222,6 +143,16 @@ void HostcallBuffer::processPackets(MessageHandler& messages) {
     auto service = header->service_;
     auto payload = getPayload(iter);
     auto activemask = header->activemask_;
+
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+    if (service == SERVICE_SANITIZER) {
+      handleSanitizerService(payload, activemask, device_, uri_locator);
+      //activemask zeroed to avoid subsequent handling for each work-item.
+      activemask = 0;
+    }
+#endif
+#endif
     while (activemask) {
       auto wi = amd::leastBitSet(activemask);
       activemask ^= static_cast<decltype(activemask)>(1) << wi;
@@ -290,7 +221,11 @@ class HostcallListener {
   std::set<HostcallBuffer*> buffers_;
   device::Signal* doorbell_;
   MessageHandler messages_;
-
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+   device::UriLocator* urilocator = nullptr;
+#endif
+#endif
   class Thread : public amd::Thread {
    public:
     Thread() : amd::Thread("Hostcall Listener Thread", CQ_THREAD_STACK_SIZE) {}
@@ -338,7 +273,6 @@ amd::Monitor listenerLock("Hostcall listener lock");
 void HostcallListener::consumePackets() {
   uint64_t timeout = 1024 * 1024;
   uint64_t signal_value = SIGNAL_INIT;
-
   while (true) {
     while (true) {
       uint64_t new_value = doorbell_->Wait(signal_value, device::Signal::Condition::Ne, timeout);
@@ -349,7 +283,6 @@ void HostcallListener::consumePackets() {
     }
 
     if (signal_value == SIGNAL_DONE) {
-      ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Hostcall listener received SIGNAL_DONE");
       return;
     }
 
@@ -375,12 +308,23 @@ void HostcallListener::terminate() {
     amd::Os::yield();
   }
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  if (urilocator)
+   delete urilocator;
+#endif
+#endif
   delete doorbell_;
 }
 
 void HostcallListener::addBuffer(HostcallBuffer* buffer) {
   assert(buffers_.count(buffer) == 0 && "buffer already present");
   buffer->setDoorbell(doorbell_->getHandle());
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  buffer->setUriLocator(urilocator);
+#endif
+#endif
   buffers_.insert(buffer);
 }
 
@@ -400,10 +344,21 @@ bool HostcallListener::initialize(const amd::Device &dev) {
     return false;
   }
 
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  urilocator = dev.createUriLocator();
+#endif
+#endif
   // If the listener thread was not successfully initialized, clean
   // everything up and bail out.
   if (thread_.state() < Thread::INITIALIZED) {
     delete doorbell_;
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+    if (urilocator)
+      delete urilocator;
+#endif
+#endif
     return false;
   }
 

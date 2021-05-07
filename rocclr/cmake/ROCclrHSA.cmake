@@ -46,6 +46,7 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/rocm/rocschedcl.cpp
   ${ROCCLR_SRC_DIR}/device/rocm/rocsettings.cpp
   ${ROCCLR_SRC_DIR}/device/rocm/rocsignal.cpp
-  ${ROCCLR_SRC_DIR}/device/rocm/rocvirtual.cpp)
+  ${ROCCLR_SRC_DIR}/device/rocm/rocvirtual.cpp
+  ${ROCCLR_SRC_DIR}/device/rocm/rocurilocator.cpp)
 
 target_compile_definitions(rocclr PUBLIC WITH_HSA_DEVICE)
