@@ -429,8 +429,6 @@ class Device : public NullDevice {
   roc::Memory* getRocMemory(amd::Memory* mem  //!< Pointer to AMD memory object
                             ) const;
 
-  amd::Context& context() const { return *context_; }
-
   //! Create internal blit program
   bool createBlitProgram();
 
@@ -538,7 +536,6 @@ class Device : public NullDevice {
   size_t gpuvm_segment_max_alloc_;
   size_t alloc_granularity_;
   static constexpr bool offlineDevice_ = false;
-  amd::Context* context_;  //!< A dummy context for internal data transfer
   VirtualGPU* xferQueue_;  //!< Transfer queue, created on demand
 
   XferBuffers* xferRead_;   //!< Transfer buffers read

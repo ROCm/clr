@@ -716,7 +716,6 @@ Device::ScopedLockVgpus::~ScopedLockVgpus() {
 Device::Device()
     : NullDevice(),
       numOfVgpus_(0),
-      context_(nullptr),
       lockAsyncOps_("Device Async Ops Lock", true),
       lockForInitHeap_("Initialization of Heap Resource", true),
       lockPAL_("PAL Ops Lock", true),
