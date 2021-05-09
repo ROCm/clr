@@ -453,9 +453,6 @@ class Device : public NullDevice, public CALGSLDevice {
   //! Gets the GPU resource associated with the global heap
   const Memory& globalMem() const { return heap_.resource(); }
 
-  //! Gets the device context object
-  amd::Context& context() const { return *context_; }
-
   //! Gets the global heap object
   const Heap& heap() const { return heap_; }
 
@@ -576,7 +573,6 @@ class Device : public NullDevice, public CALGSLDevice {
                     const VirtualGPU* vgpu  //!< Virtual GPU for the allocation
                     );
 
-  amd::Context* context_;   //!< A dummy context for internal allocations
   Heap heap_;               //!< GPU global heap
   amd::Memory* dummyPage_;  //!< A dummy page for NULL pointer
 

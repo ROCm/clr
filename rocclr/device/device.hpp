@@ -1785,6 +1785,9 @@ class Device : public RuntimeObject {
     return false;
   }
 
+  //! Return context
+  amd::Context& context() const { return *context_; }
+
   //! Return private global device context for P2P allocations
   amd::Context& GlbCtx() const { return *glb_ctx_; }
 
@@ -1835,6 +1838,7 @@ class Device : public RuntimeObject {
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
   HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
+  amd::Context* context_;         //!< Context
 
   static amd::Context* glb_ctx_;      //!< Global context with all devices
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources

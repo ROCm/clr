@@ -517,9 +517,6 @@ class Device : public NullDevice {
   //! Returns PAL device interface
   Pal::IDevice* iDev() const { return device_; }
 
-  //! Return private device context for internal allocations
-  amd::Context& context() const { return *context_; }
-
   RgpCaptureMgr* rgpCaptureMgr() const { return rgpCaptureMgr_; }
 
   //! Update free memory for OCL extension
@@ -640,7 +637,6 @@ class Device : public NullDevice {
   static char* platformObj_;         //!< Memory allocated for PAL platform object
   static Pal::IPlatform* platform_;  //!< Pointer to the PAL platform object
 
-  amd::Context* context_;              //!< A dummy context for internal allocations
   mutable amd::Monitor lockAsyncOps_;  //!< Lock to serialise all async ops on this device
   //! Lock to serialise all async ops on initialization heap operation
   mutable amd::Monitor lockForInitHeap_;

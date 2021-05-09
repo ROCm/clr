@@ -804,7 +804,6 @@ Device::Device()
     : NullDevice(),
       CALGSLDevice(),
       numOfVgpus_(0),
-      context_(NULL),
       heap_(),
       dummyPage_(NULL),
       lockAsyncOps_(NULL),

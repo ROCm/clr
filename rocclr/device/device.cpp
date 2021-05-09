@@ -438,6 +438,7 @@ Device::Device()
       activeWait_(false),
       blitProgram_(nullptr),
       hwDebugMgr_(nullptr),
+      context_(nullptr),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr),
       index_(0) {
