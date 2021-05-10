@@ -1306,6 +1306,12 @@ RUNTIME_ENTRY_RET(cl_kernel, clCreateKernel,
    * }
    */
   amd::Program* amd_program = as_amd(program);
+
+  if (!amd_program->load()) {
+    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+    return (cl_kernel)0;
+  }
+
   const amd::Symbol* symbol = amd_program->findSymbol(kernel_name);
   if (symbol == NULL) {
     *not_null(errcode_ret) = CL_INVALID_KERNEL_NAME;
@@ -1372,7 +1378,13 @@ RUNTIME_ENTRY(cl_int, clCreateKernelsInProgram, (cl_program program, cl_uint num
     return CL_INVALID_PROGRAM;
   }
 
-  cl_uint numKernels = (cl_uint)as_amd(program)->symbols().size();
+  amd::Program* amd_program = as_amd(program);
+
+  if (!amd_program->load()) {
+    return CL_OUT_OF_HOST_MEMORY;
+  }
+
+  cl_uint numKernels = (cl_uint)amd_program->symbols().size();
 
   if (kernels != NULL && num_kernels < numKernels) {
     return CL_INVALID_VALUE;
@@ -1382,11 +1394,11 @@ RUNTIME_ENTRY(cl_int, clCreateKernelsInProgram, (cl_program program, cl_uint num
     return CL_SUCCESS;
   }
 
-  const amd::Program::symbols_t& symbols = as_amd(program)->symbols();
+  const amd::Program::symbols_t& symbols = amd_program->symbols();
   cl_kernel* result = kernels;
 
   for (const auto& it : symbols) {
-    amd::Kernel* kernel = new amd::Kernel(*as_amd(program), it.second, it.first);
+    amd::Kernel* kernel = new amd::Kernel(*amd_program, it.second, it.first);
     if (kernel == NULL) {
       while (--result >= kernels) {
         as_amd(*result)->release();
