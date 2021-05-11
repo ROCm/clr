@@ -370,6 +370,7 @@ const void* Os::createOsThread(amd::Thread* thread) {
   // We never plan the use join, so free the resources now.
   ::pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
   if (!AMD_CPU_AFFINITY) {
+    ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Reseting CPU core affinities");
     cpu_set_t cpuset;
     if (processorCount_ > 0) {
       CPU_ZERO(&cpuset);
