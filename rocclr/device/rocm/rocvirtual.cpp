@@ -147,12 +147,41 @@ void Timestamp::checkGpuTime() {
 // ================================================================================================
 bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   Timestamp* ts = reinterpret_cast<Timestamp*>(arg);
+
   amd::Thread* thread = amd::Thread::current();
   if (!(thread != nullptr ||
       ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
     return false;
   }
   amd::ScopedLock sl(ts->gpu()->execution());
+  if (ts->gpu()->isProfilerAttached()) {
+    amd::Command* head = ts->getParsedCommand();
+    if (head == nullptr) {
+      head = ts->command().GetBatchHead();
+    }
+    while (head != nullptr) {
+      if (head->data() != nullptr) {
+        Timestamp* headTs  = reinterpret_cast<Timestamp*>(head->data());
+        ts->setParsedCommand(head);
+        for (auto it : headTs->Signals()) {
+          if (int64_t val = hsa_signal_load_relaxed(it->signal_) > 0) {
+            hsa_status_t result = hsa_amd_signal_async_handler(headTs->Signals()[0]->signal_,
+                                 HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                 &HsaAmdSignalHandler, ts);
+            if (HSA_STATUS_SUCCESS != result) {
+              LogError("hsa_amd_signal_async_handler() failed to requeue the handler!");
+            } else {
+              ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Requeue handler : value(%d), timestamp(%p),"
+                      "handle(0x%lx)", static_cast<uint32_t>(val), headTs,
+                      headTs->HwProfiling() ? headTs->Signals()[0]->signal_.handle : 0);
+            }
+            return false;
+          }
+        }
+      }
+      head = head->getNext();
+    }
+  }
   ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(0x%lx)",
     static_cast<uint32_t>(value), arg, ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
 

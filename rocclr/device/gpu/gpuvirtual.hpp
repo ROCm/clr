@@ -309,6 +309,9 @@ class VirtualGPU : public device::VirtualDevice, public CALGSLContext {
   //! End the command profiling
   void profilingEnd(amd::Command& command);
 
+  //! Attach profiler
+  void profilerAttach(bool enable = false) {}
+
   //! Collect the profiling results
   bool profilingCollectResults(CommandBatch* cb,               //!< Command batch
                                const amd::Event* waitingEvent  //!< Waiting event
