@@ -89,6 +89,7 @@ class Timestamp : public amd::HeapObject {
   uint64_t    end_;
   VirtualGPU* gpu_;               //!< Virtual GPU, associated with this timestamp
   const amd::Command& command_;   //!< Command, associated with this timestamp
+  amd::Command* parsedCommand_;   //!< Command down the list, considering command_ as head
   std::vector<ProfilingSignal*> signals_;
 
  public:
@@ -96,7 +97,8 @@ class Timestamp : public amd::HeapObject {
     : start_(std::numeric_limits<uint64_t>::max())
     , end_(0)
     , gpu_(gpu)
-    , command_(command) {}
+    , command_(command)
+    , parsedCommand_(nullptr) {}
 
   ~Timestamp() {}
 
@@ -130,6 +132,12 @@ class Timestamp : public amd::HeapObject {
 
   //! Returns amd::command assigned to this timestamp
   const amd::Command& command() const { return command_; }
+
+  //! Sets the parsed command
+  void setParsedCommand(amd::Command* command) { parsedCommand_ = command; }
+
+  //! Gets the parsed command
+  amd::Command* getParsedCommand() const { return parsedCommand_; }
 
   //! Returns virtual GPU device, used with this timestamp
   VirtualGPU* gpu() const { return gpu_; }
@@ -344,6 +352,9 @@ class VirtualGPU : public device::VirtualDevice {
 
   Timestamp* timestamp() const { return timestamp_; }
 
+  void profilerAttach(bool enable = false) { profilerAttached_ = enable; }
+
+  bool isProfilerAttached() { return profilerAttached_; }
   // } roc OpenCL integration
  private:
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header,
@@ -413,6 +424,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
       uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
       uint32_t tracking_created_   : 1; //!< Enabled if tracking object was properly initialized
+      uint32_t profilerAttached_   : 1; //!< Indicates if profiler is attached
     };
     uint32_t  state_;
   };

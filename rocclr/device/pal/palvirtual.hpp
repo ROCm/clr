@@ -355,6 +355,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void flush(amd::Command* list = nullptr, bool wait = false);
 
+  void profilerAttach(bool enable = false) {}
+
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
 
