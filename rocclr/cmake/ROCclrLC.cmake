@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2021 Advanced Micro Devices, Inc. All Rights Reserved.
+# Copyright (c) 2020-2021 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,19 +18,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-# Try to find ROCR (Radeon Open Compute Runtime)
-#
-# Once found, this will define:
-#   - ROCR_FOUND     - ROCR status (found or not found)
-#   - ROCR_INCLUDES  - Required ROCR include directories
-#   - ROCR_LIBRARIES - Required ROCR libraries
-find_path(FIND_ROCR_INCLUDES hsa.h HINTS /opt/rocm/include /opt/rocm/hsa/include PATH_SUFFIXES hsa)
-find_library(FIND_ROCR_LIBRARIES hsa-runtime64 HINTS /opt/rocm/lib /opt/rocm/hsa/lib)
+find_package(amd_comgr REQUIRED CONFIG
+  PATHS
+    /opt/rocm/
+  PATH_SUFFIXES
+    cmake/amd_comgr
+    lib/cmake/amd_comgr)
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(ROCR DEFAULT_MSG
-                                  FIND_ROCR_INCLUDES FIND_ROCR_LIBRARIES)
-mark_as_advanced(FIND_ROCR_INCLUDES FIND_ROCR_LIBRARIES)
-
-set(ROCR_INCLUDES ${FIND_ROCR_INCLUDES})
-set(ROCR_LIBRARIES ${FIND_ROCR_LIBRARIES})
+target_compile_definitions(rocclr PUBLIC WITH_LIGHTNING_COMPILER USE_COMGR_LIBRARY)
+if(BUILD_SHARED_LIBS)
+  target_compile_definitions(rocclr PUBLIC COMGR_DYN_DLL)
+endif()
+target_link_libraries(rocclr PUBLIC amd_comgr)
