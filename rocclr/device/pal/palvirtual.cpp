@@ -3617,6 +3617,7 @@ void VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, const Memory* kernelTable)
 
 void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispatch_packet_t* aqlPkt,
                                  HwDbgKernelInfo& kernelInfo, amd::Event* enqueueEvent) {
+#if defined(WITH_COMPILER_LIB)
   amd::HwDebugManager* dbgManager = dev().hwDebugMgr();
   assert(dbgManager && "No HW Debug Manager!");
 
@@ -3707,6 +3708,7 @@ void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispat
             InvalidateSqCaches();
     */
   }
+#endif
 }
 
 void VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
