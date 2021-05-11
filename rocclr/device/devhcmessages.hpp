@@ -70,6 +70,7 @@ enum ServiceID {
   SERVICE_RESERVED = 0,
   SERVICE_FUNCTION_CALL = 1,
   SERVICE_PRINTF = 2,
+  SERVICE_DEVMEM = 3,
 };
 
 struct Message;
