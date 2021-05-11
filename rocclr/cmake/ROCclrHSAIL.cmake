@@ -1,4 +1,4 @@
-# Copyright (C) 2017-2021 Advanced Micro Devices, Inc. All Rights Reserved.
+# Copyright (c) 2020-2021 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,10 +18,4 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-@ROCCLR_PREFIX_CODE@
-
-include( CMakeFindDependencyMacro )
-find_dependency(hsa-runtime64)
-find_dependency(amd_comgr)
-message(STATUS "ROCclr at ${ROCclr_DIR}")
-include("${ROCclr_DIR}/@ROCCLR_TARGETS_NAME@")
+target_compile_definitions(rocclr PUBLIC WITH_COMPILER_LIB HSAIL_DYN_DLL)
