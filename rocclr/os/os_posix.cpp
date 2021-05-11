@@ -23,6 +23,7 @@
 #include "os/os.hpp"
 #include "thread/thread.hpp"
 #include "utils/util.hpp"
+#include "utils/flags.hpp"
 
 #include <iostream>
 #include <stdarg.h>
@@ -368,14 +369,16 @@ const void* Os::createOsThread(amd::Thread* thread) {
 
   // We never plan the use join, so free the resources now.
   ::pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
-  cpu_set_t cpuset;
-  if (processorCount_ > 0) {
-    CPU_ZERO(&cpuset);
-    for (int i = 0; i < processorCount_; i++) {
-      CPU_SET(i, &cpuset);
-    }
-    if (0 != pthread_attr_setaffinity_np(&threadAttr, sizeof(cpu_set_t), &cpuset)) {
-      fatal("pthread_attr_setaffinity_np failed to set affinity");
+  if (!AMD_CPU_AFFINITY) {
+    cpu_set_t cpuset;
+    if (processorCount_ > 0) {
+      CPU_ZERO(&cpuset);
+      for (int i = 0; i < processorCount_; i++) {
+        CPU_SET(i, &cpuset);
+      }
+      if (0 != pthread_attr_setaffinity_np(&threadAttr, sizeof(cpu_set_t), &cpuset)) {
+        fatal("pthread_attr_setaffinity_np failed to set affinity");
+      }
     }
   }
 

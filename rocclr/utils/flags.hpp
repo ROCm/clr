@@ -233,8 +233,6 @@ release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
         "0 = Disable")                                                        \
 release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Size in KB of the threshold below which to force blit instead for sdma") \
-release(bool, ROC_BARRIER_SYNC, true,                                         \
-        "Enable AQL barrier packet for synchronization")                      \
 release(bool, ROC_ACTIVE_WAIT, false,                                         \
         "Forces unconditional active wait for GPU")                           \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
@@ -254,10 +252,12 @@ release(bool, PAL_EMBED_KERNEL_MD, false,                                     \
 release(cstring, ROC_GLOBAL_CU_MASK, "",                                      \
         "Sets a global CU mask (entered as hex value) for all queues,"        \
         "Each active bit represents using one CU (e.g., 0xf enables only 4 CUs)") \
-release(cstring, AMD_LOG_LEVEL_FILE, "",                                       \
-        "Set output file for AMD_LOG_LEVEL, Default is stderr")                \
-release(size_t, PAL_PREPINNED_MEMORY_SIZE, 64,                                 \
-        "Size in KBytes of prepinned memory")
+release(cstring, AMD_LOG_LEVEL_FILE, "",                                      \
+        "Set output file for AMD_LOG_LEVEL, Default is stderr")               \
+release(size_t, PAL_PREPINNED_MEMORY_SIZE, 64,                                \
+        "Size in KBytes of prepinned memory")                                 \
+release(bool, AMD_CPU_AFFINITY, false,                                        \
+        "Reset CPU affinity of any runtime threads")
 
 namespace amd {
 
