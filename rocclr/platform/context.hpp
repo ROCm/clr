@@ -174,6 +174,11 @@ class Context : public RuntimeObject {
   //! Returns the context info structure
   const Info& info() const { return info_; }
 
+  void setInfo(Info info) {
+    info_ = info;
+    return;
+  }
+
   //! Returns a pointer to the original properties
   const cl_context_properties* properties() const { return properties_; }
 
@@ -208,7 +213,7 @@ class Context : public RuntimeObject {
       { deviceQueues_[&dev].defDeviceQueue_ = queue; };
 
  private:
-  const Info info_;                      //!< Context info structure
+  Info info_;                            //!< Context info structure
   cl_context_properties* properties_;    //!< Original properties
   GLFunctions* glenv_;                   //!< OpenGL context
   Device* customHostAllocDevice_;        //!< Device responsible for host allocations

@@ -683,7 +683,6 @@ char* Device::getExtensionString() {
   return result;
 }
 
-
 }  // namespace amd
 
 namespace device {
