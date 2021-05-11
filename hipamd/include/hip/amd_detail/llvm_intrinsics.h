@@ -22,8 +22,7 @@ THE SOFTWARE.
 
 /**
  *  @file  amd_detail/llvm_intrinsics.h
- *  @brief Contains declarations for wrapper functions for llvm intrinsics
- *         like llvm.amdgcn.s.barrier.
+ *  @brief Contains declarations for wrapper functions for llvm intrinsics.
  */
 
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_LLVM_INTRINSICS_H
@@ -31,11 +30,17 @@ THE SOFTWARE.
 
 #include "hip/amd_detail/host_defines.h"
 
-// FIXME: These should all be removed and proper builtins used.
 __device__
-unsigned __llvm_amdgcn_groupstaticsize() __asm("llvm.amdgcn.groupstaticsize");
+inline
+unsigned __llvm_amdgcn_groupstaticsize() {
+  return __builtin_amdgcn_groupstaticsize();
+}
 
+template<typename __T>
 __device__
-int __llvm_amdgcn_ds_swizzle(int index, int pattern) __asm("llvm.amdgcn.ds.swizzle");
+inline
+__T __llvm_amdgcn_ds_swizzle(__T index, const int pattern) {
+  return __builtin_amdgcn_ds_swizzle(index, pattern);
+}
 
 #endif
