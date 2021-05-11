@@ -360,17 +360,17 @@ bool HSAILProgram::allocKernelTable() {
 
 void HSAILProgram::fillResListWithKernels(VirtualGPU& gpu) const { gpu.addVmMemory(&codeSegGpu()); }
 
-const aclTargetInfo& HSAILProgram::info() {
 #if defined(WITH_COMPILER_LIB)
+const aclTargetInfo& HSAILProgram::info() {
   acl_error err;
   info_ = amd::Hsail::GetTargetInfo(palNullDevice().settings().use64BitPtr_ ? "hsail64" : "hsail",
                                     device().isa().hsailName(), &err);
   if (err != ACL_SUCCESS) {
     LogWarning("aclGetTargetInfo failed");
   }
-#endif  // defined(WITH_COMPILER_LIB)
   return info_;
 }
+#endif
 
 bool HSAILProgram::saveBinaryAndSetType(type_t type) {
 #if defined(WITH_COMPILER_LIB)
