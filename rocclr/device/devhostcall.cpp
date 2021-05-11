@@ -104,6 +104,8 @@ class HostcallBuffer {
   std::atomic<uint64_t> ready_stack_;
   /** Mask for accessing the packet index in the tagged pointer. */
   uint64_t index_mask_;
+  /** Some services need a device */
+  const amd::Device* device_;
 
   PacketHeader* getHeader(uint64_t ptr) const;
   Payload* getPayload(uint64_t ptr) const;
@@ -112,6 +114,7 @@ class HostcallBuffer {
   void processPackets(MessageHandler& messages);
   void initialize(uint32_t num_packets);
   void setDoorbell(void* doorbell) { doorbell_ = doorbell; };
+  void setDevice(const amd::Device* dptr) { device_ = dptr; }
 };
 
 static_assert(std::is_standard_layout<HostcallBuffer>::value,
@@ -148,7 +151,7 @@ static uint32_t resetReadyFlag(uint32_t control) {
  */
 typedef void (*HostcallFunctionCall)(uint64_t* output, const uint64_t* input);
 
-static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* payload) {
+static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* payload, const amd::Device &dev) {
   switch (service) {
     case SERVICE_FUNCTION_CALL: {
       uint64_t output[2];
@@ -164,6 +167,32 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
         amd::report_fatal(__FILE__, __LINE__, "Hostcall: invalid service request.");
       }
       return;
+    case SERVICE_DEVMEM: {
+      if (payload[0]) {
+        amd::Memory* mem = amd::MemObjMap::FindMemObj(reinterpret_cast<void*>(payload[0]));
+        if (mem) {
+          amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(payload[0]));
+          mem->release();
+        } else {
+          ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Unknown pointer in devmem service\n");
+        }
+      } else {
+        amd::Context& ctx = dev.context();
+        amd::Buffer* buf = new(ctx) amd::Buffer(ctx, CL_MEM_READ_WRITE, payload[1]);
+        uint64_t va = 0;
+        if (buf) {
+          if (buf->create()) {
+            device::Memory* dm = buf->getDeviceMemory(dev);
+            va = dm->virtualAddress();
+            amd::MemObjMap::AddMemObj(reinterpret_cast<void*>(va), buf);
+          } else {
+            buf->release();
+          }
+        }
+        payload[0] = va;
+      }
+      return;
+    }
     default:
       ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: no handler found for service ID \"%d\".",
               service);
@@ -197,7 +226,7 @@ void HostcallBuffer::processPackets(MessageHandler& messages) {
       auto wi = amd::leastBitSet(activemask);
       activemask ^= static_cast<decltype(activemask)>(1) << wi;
       auto slot = payload->slots[wi];
-      handlePayload(messages, service, slot);
+      handlePayload(messages, service, slot, *device_);
     }
 
     header->control_.store(resetReadyFlag(header->control_), std::memory_order_release);
@@ -385,6 +414,7 @@ bool HostcallListener::initialize(const amd::Device &dev) {
 bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
   auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
   buffer->initialize(numPackets);
+  buffer->setDevice(&dev);
 
   amd::ScopedLock lock(listenerLock);
   if (!hostcallListener) {
