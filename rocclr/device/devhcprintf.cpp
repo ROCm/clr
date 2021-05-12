@@ -64,8 +64,10 @@ template <typename... Args>
 static const uint64_t* consumeCstring(FILE* stream, int* outCount, const std::string& spec,
                                       const uint64_t* ptr, Args... args) {
   auto str = reinterpret_cast<const char*>(ptr);
+  auto old = *outCount;
   checkPrintf(stream, outCount, spec.c_str(), args..., str);
-  return ptr + (strlen(str) + 7) / 8;
+  auto stringMemSize = *outCount - old + 1;
+  return ptr + (stringMemSize + 7) / 8;
 }
 
 template <typename... Args>
