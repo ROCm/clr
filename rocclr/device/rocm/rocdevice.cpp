@@ -277,10 +277,6 @@ bool NullDevice::init() {
     return false;
   }
 
-  // FIXME: ROC offline device support needs to be corrected.
-  // For now return without initializing offline device list.
-  return true;
-
   // Create offline devices for all ISAs not already associated with an online
   // device. This allows code objects to be compiled for all supported ISAs.
   std::vector<Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, false);
