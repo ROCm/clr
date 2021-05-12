@@ -437,16 +437,6 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
     }
   }
 
-  // Create a string with all kernel names from the program
-  if (kernelNames_.length() == 0) {
-    for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
-      if (it != symbols().cbegin()) {
-        kernelNames_.append(1, ';');
-      }
-      kernelNames_.append(it->first.c_str());
-    }
-  }
-
   if (notifyFptr != NULL) {
     notifyFptr(as_cl(this), data);
   }
@@ -602,16 +592,6 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
         }
       }
     }
-
-    // Create a string with all kernel names from the program
-    if (kernelNames_.length() == 0) {
-      for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
-        if (it != symbols().cbegin()) {
-          kernelNames_.append(1, ';');
-        }
-        kernelNames_.append(it->first.c_str());
-      }
-    }
   }
 
   if (notifyFptr != NULL) {
@@ -645,6 +625,19 @@ bool Program::load(const std::vector<Device*>& devices) {
   }
 
   return true;
+}
+
+const std::string& Program::kernelNames() {
+  // Create a string with all kernel names from the program
+  if (kernelNames_.length() == 0) {
+    for (auto it = symbols().cbegin(); it != symbols().cend(); ++it) {
+      if (it != symbols().cbegin()) {
+        kernelNames_.append(1, ';');
+      }
+      kernelNames_.append(it->first.c_str());
+    }
+  }
+  return kernelNames_;
 }
 
 void Program::clear() {
