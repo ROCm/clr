@@ -201,7 +201,7 @@ class Program : public RuntimeObject {
   const binary_t& binary(const Device& device) { return binary_[&device]; }
 
   //! Return the program kernel names
-  const std::string& kernelNames() const { return kernelNames_; }
+  const std::string& kernelNames();
 
   //! Compile the program for the given devices.
   int32_t compile(const std::vector<Device*>& devices, size_t numHeaders,
