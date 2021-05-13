@@ -1,8 +1,28 @@
+# Copyright (C) 2017-2021 Advanced Micro Devices, Inc. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
 cmake_minimum_required(VERSION 3.5.1)
 
 if (POLICY CMP0048)
-	  cmake_policy(SET CMP0048 NEW)
-	    set(PROJ_VERSION VERSION 1.5.0)
+  cmake_policy(SET CMP0048 NEW)
+  set(PROJ_VERSION VERSION 1.5.0)
 endif()
 
 project(opencl)
@@ -14,7 +34,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #example command:
 # cmake -DCMAKE_PREFIX_PATH=/path/to/ROCclr/build/or/install ..
 
-set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
+if(NOT DEFINED OPENCL_ICD_DIR)
+  set(OPENCL_ICD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../OpenCL-ICD-Loader")
+endif()
+
+if(NOT DEFINED OPENCL_ICD_HEADERS)
+  set(OPENCL_ICD_HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/../OpenCL-Headers")
+endif()
+
+set(OPENCL_ICD_LOADER_HEADERS_DIR "${OPENCL_ICD_HEADERS}" CACHE PATH "")
+
+set(OPENCL_ICD_LOADER_HEADERS_DIR_INTERNAL "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 option(BUILD_SHARED_LIBS "Build shared libs" ON)
 
 #set a name for icd file
@@ -65,12 +95,9 @@ if(USE_COMGR_LIBRARY)
 endif()
 
 
-find_package(ROCclr REQUIRED CONFIG
-  PATHS
-    ${ROCclr_DIR}
-    ${LIBROCclr_STATIC_DIR})
+find_package(ROCclr REQUIRED CONFIG PATHS ${ROCclr_DIR} ${LIBROCclr_STATIC_DIR})
 
-add_subdirectory(khronos/icd)
+add_subdirectory(${OPENCL_ICD_DIR} ${OPENCL_ICD_DIR}/build)
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
 add_subdirectory(tools/cltrace)
@@ -136,6 +163,11 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2/CL"
 install(PROGRAMS $<TARGET_LINKER_FILE:OpenCL>
         DESTINATION lib
         COMPONENT DEV)
+
+add_custom_target(opencl ALL COMMAND echo "copying opencl lib from ${OPENCL_ICD_DIR}/build"
+   COMMAND cp ${OPENCL_ICD_DIR}/build/*.so*  ${CMAKE_CURRENT_BINARY_DIR}/lib
+   WORKING_DIRECTORY ${BUILD_DIR}
+   DEPENDS amdocl64 OpenCL)
 
 #############################
 # Packaging steps

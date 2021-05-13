@@ -35,7 +35,7 @@ endif()
 
 target_include_directories(Common
     PUBLIC
-        ${OPENCL_ICD_LOADER_HEADERS_DIR}
+        ${OPENCL_ICD_LOADER_HEADERS_DIR_INTERNAL}
         ${OCLTST_DIR}/include
         ${OCLTST_DIR}/module/common
         ${OCLTST_DIR}/module/include
