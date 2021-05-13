@@ -1463,34 +1463,36 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
 void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-#if AMD_HMM_SUPPORT
   profilingBegin(cmd);
-  // Initialize signal for the barrier
-  hsa_signal_t* wait_event = Barriers().WaitingSignal(HwQueueEngine::Unknown);
-  hsa_signal_t      active = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
-  uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
 
-  // Find the requested agent for the transfer
-  hsa_agent_t agent = (cmd.cpu_access() ||
-      (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory)) ?
-      dev().getCpuAgent() : gpu_device();
+  if (dev().info().hmmSupported_) {
+    // Initialize signal for the barrier
+    hsa_signal_t* wait_event = Barriers().WaitingSignal(HwQueueEngine::Unknown);
+    hsa_signal_t      active = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
+    uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
 
-  // Initiate a prefetch command
-  hsa_status_t status = hsa_amd_svm_prefetch_async(
-      const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, num_wait_events, wait_event, active);
+    // Find the requested agent for the transfer
+    hsa_agent_t agent = (cmd.cpu_access() ||
+        (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory)) ?
+        dev().getCpuAgent() : gpu_device();
 
-  // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution
-  if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
-    Barriers().ResetCurrentSignal();
-    LogError("hsa_amd_svm_prefetch_async failed");
-    cmd.setStatus(CL_INVALID_OPERATION);
+    // Initiate a prefetch command
+    hsa_status_t status = hsa_amd_svm_prefetch_async(
+        const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent, num_wait_events, wait_event, active);
+
+    // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution
+    if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
+      Barriers().ResetCurrentSignal();
+      LogError("hsa_amd_svm_prefetch_async failed");
+      cmd.setStatus(CL_INVALID_OPERATION);
+    }
+
+    // Add system scope, since the prefetch scope is unclear
+    addSystemScope();
+  } else {
+    LogWarning("hsa_amd_svm_prefetch_async is ignored, because no HMM support");
   }
-
-  // Add system scope, since the prefetch scope is unclear
-  addSystemScope();
-
   profilingEnd(cmd);
-#endif // AMD_HMM_SUPPORT
 }
 
 // ================================================================================================
