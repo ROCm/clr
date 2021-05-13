@@ -23,7 +23,6 @@
 #include <queue>
 #include "device/pal/paldefs.hpp"
 #include "platform/commandqueue.hpp"
-#include "protocols/rgpServer.h"
 #include "device/blit.hpp"
 
 // PAL headers
@@ -57,6 +56,7 @@ enum class RgpSqqtBarrierReason : uint32_t {
 }
 
 #ifdef PAL_GPUOPEN_OCL
+#include "protocols/rgpServer.h"
 // gpuopen headers
 #include "gpuopen.h"
 // gpuutil headers
@@ -405,12 +405,14 @@ namespace pal {
 class RgpCaptureMgr {
  public:
   static RgpCaptureMgr* Create(Pal::IPlatform* platform, const Device& device) { return nullptr; }
-  Pal::Result TimedQueueSubmit(Pal::IQueue* queue, uint64_t cmdId,
-                               const Pal::SubmitInfo& submitInfo) const {}
+  Pal::Result TimedQueueSubmit(
+    Pal::IQueue* queue, uint64_t cmdId, Pal::SubmitInfo& submitInfo) const
+    { return Pal::Result::Success; }
   void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size_t x, size_t y, size_t z) {}
   void PostDispatch(VirtualGPU* gpu) {}
   void FinishRGPTrace(VirtualGPU* gpu, bool aborted) {}
   bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const { return true; }
+  bool Update(Pal::IPlatform* platform) const { return true; }
 };
 }  // namespace pal
 #endif // PAL_GPUOPEN_OCL
