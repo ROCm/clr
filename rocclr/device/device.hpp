@@ -1819,6 +1819,11 @@ class Device : public RuntimeObject {
 
   void SetActiveWait(bool state) { activeWait_ = state; }
 
+  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset) {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1841,6 +1846,8 @@ class Device : public RuntimeObject {
   static amd::Context* glb_ctx_;      //!< Global context with all devices
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
   static Memory* p2p_stage_;          //!< Staging resources
+
+  amd::Memory* arena_mem_obj_;        //!< Arena memory object
 
  private:
   const Isa *isa_;                //!< Device isa

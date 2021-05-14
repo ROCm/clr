@@ -39,7 +39,10 @@ class Memory : public device::Memory {
     MEMORY_KIND_HOST,
 
     MEMORY_KIND_INTEROP,
-    MEMORY_KIND_PTRGIVEN
+
+    MEMORY_KIND_PTRGIVEN,
+
+    MEMORY_KIND_ARENA
   };
 
   Memory(const roc::Device& dev, amd::Memory& owner);

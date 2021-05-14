@@ -790,6 +790,16 @@ bool Device::create() {
     return false;
   }
 
+  // only create arena_mem_object if CPU memory is accessible.
+  if (info_.hmmCpuMemoryAccessible_) {
+    arena_mem_obj_ = new (context()) amd::ArenaMemory(context());
+    if (!arena_mem_obj_->create(nullptr)) {
+      LogError("Arena Memory Creation failed!");
+      arena_mem_obj_->release();
+      arena_mem_obj_ = nullptr;
+    }
+  }
+
   return true;
 }
 
@@ -2166,7 +2176,8 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
 
   if (nullptr == svmPtr) {
     // create a hidden buffer, which will allocated on the device later
-    mem = new (context) amd::Buffer(context, flags, size, reinterpret_cast<void*>(1));
+    mem = new (context) amd::Buffer(context, flags, size,
+                reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr));
     if (mem == nullptr) {
       LogError("failed to create a svm mem object!");
       return nullptr;
@@ -2938,6 +2949,20 @@ void Device::getGlobalCUMask(std::string cuMaskStr) {
 
 device::Signal* Device::createSignal() const {
   return new roc::Signal();
+}
+
+amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset) {
+  // If arena_mem_obj_ is null, then HMM and Xnack is disabled. Return nullptr.
+  if (arena_mem_obj_ == nullptr) {
+    return nullptr;
+  }
+
+  // Calculate the offset of the pointer.
+  const void* dev_ptr = reinterpret_cast<void*>(arena_mem_obj_->getDeviceMemory(
+                          *arena_mem_obj_->getContext().devices()[0])->virtualAddress());
+  offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
+
+  return arena_mem_obj_;
 }
 
 } // namespace roc
