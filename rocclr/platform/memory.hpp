@@ -36,6 +36,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <limits>
 #define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
 #define ROCCLR_MEM_HSA_SIGNAL_MEMORY (1u << 30)
 
@@ -131,6 +132,12 @@ class Memory : public amd::RuntimeObject {
 
     DestructorCallBackEntry(DestructorCallBackFunction callback, void* data)
         : callback_(callback), data_(data) {}
+  };
+
+ public:
+  enum MemoryType {
+    kSvmMemoryPtr = 0x1,
+    kArenaMemoryPtr = 0x2
   };
 
  protected:
@@ -639,6 +646,13 @@ class LiquidFlashFile : public RuntimeObject {
 
   virtual ObjectType objectType() const { return ObjectTypeLiquidFlashFile; }
 };
+
+class ArenaMemory: public Buffer {
+public:
+  ArenaMemory(Context& context)
+    : Buffer(context, 0, std::numeric_limits<uint64_t>::max(), kArenaMemoryPtr) {}
+};
+
 }  // namespace amd
 
 #endif  // MEMORY_H_

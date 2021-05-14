@@ -497,6 +497,8 @@ class Device : public NullDevice {
 
   void getGlobalCUMask(std::string cuMaskStr);
 
+  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset);
+
  private:
   bool create();
 

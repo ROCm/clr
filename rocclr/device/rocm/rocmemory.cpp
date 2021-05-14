@@ -724,7 +724,7 @@ bool Buffer::create() {
       flags_ |= HostMemoryDirectAccess;
     }
 
-    if (owner()->getSvmPtr() == reinterpret_cast<void*>(1)) {
+    if (owner()->getSvmPtr() == reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr)) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
@@ -777,10 +777,16 @@ bool Buffer::create() {
       owner()->setSvmPtr(deviceMemory_);
     } else {
       deviceMemory_ = owner()->getSvmPtr();
-      kind_ = MEMORY_KIND_PTRGIVEN;
+      if (owner()->getSvmPtr() == reinterpret_cast<void*>(amd::Memory::MemoryType
+                                                          ::kArenaMemoryPtr)) {
+        kind_ = MEMORY_KIND_ARENA;
+      } else {
+        kind_ = MEMORY_KIND_PTRGIVEN;
+      }
     }
 
-    if ((deviceMemory_ != nullptr) && (dev().settings().apuSystem_ || !isFineGrain)) {
+    if ((deviceMemory_ != nullptr) && (dev().settings().apuSystem_ || !isFineGrain)
+                                   && (kind_ != MEMORY_KIND_ARENA)) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
 

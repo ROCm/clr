@@ -443,6 +443,7 @@ Device::Device()
       blitProgram_(nullptr),
       hwDebugMgr_(nullptr),
       context_(nullptr),
+      arena_mem_obj_(nullptr),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr),
       index_(0) {
@@ -457,6 +458,10 @@ Device::~Device() {
 
   if (vaCacheAccess_) {
     delete vaCacheAccess_;
+  }
+
+  if (arena_mem_obj_ != nullptr) {
+    arena_mem_obj_->release();
   }
 
   // Destroy device settings
