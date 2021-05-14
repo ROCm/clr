@@ -67,6 +67,7 @@ void log_entry(LogLevel level, const char* file, int line, const char* message) 
     return;
   }
   fprintf(outFile, ":%d:%s:%d: %s\n", level, file, line, message);
+  fflush(outFile);
 }
 
 // ================================================================================================
@@ -89,6 +90,7 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
   fprintf(outFile, ":% 2d:%15s:% 5d: (%010lld) us %s\n", level, file, line, time / 1000ULL,
           message);
 #endif
+  fflush(outFile);
 }
 
 // ================================================================================================
@@ -101,7 +103,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
   fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %s\n", level, file, line, timeUs/1ULL, message);
-
+  fflush(outFile);
 }
 
 // ================================================================================================
@@ -120,6 +122,7 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
      fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %s: duration: %lld us\n", level, file, line,
              timeUs/1ULL, message, (timeUs - *start)/1ULL);
   }
+  fflush(outFile);
   if (*start == 0) {
      *start = timeUs;
   }
