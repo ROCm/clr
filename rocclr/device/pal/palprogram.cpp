@@ -245,6 +245,7 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 
 bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                  bool internalKernel) {
+#if defined(WITH_COMPILER_LIB)
   size_t kernelNamesSize = 0;
   acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_,
     RT_KERNEL_NAMES, nullptr, nullptr, &kernelNamesSize);
@@ -277,6 +278,7 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
       aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
     }
   }
+#endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
 

@@ -86,6 +86,7 @@ bool HSAILKernel::setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t
 }
 
 bool HSAILKernel::aqlCreateHWInfo() {
+#if defined(WITH_COMPILER_LIB)
   hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
   std::string openclKernelName = device::Kernel::openclMangledName(name());
   amd::hsa::loader::Symbol* sym = prog().getSymbol(openclKernelName.c_str(), &agent);
@@ -114,7 +115,7 @@ bool HSAILKernel::aqlCreateHWInfo() {
 
   workgroupGroupSegmentByteSize_ = workGroupInfo_.usedLDSSize_;
   kernargSegmentByteSize_ = akc->kernarg_segment_byte_size;
-
+#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 
@@ -134,7 +135,7 @@ bool HSAILKernel::postLoad() {
   if (!aqlCreateHWInfo()) {
     return false;
   }
-#endif
+#endif // defined(WITH_COMPILER_LIB)
   return true;
 }
 
