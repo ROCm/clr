@@ -99,13 +99,13 @@ bool HSAILKernel::aqlCreateHWInfo() {
   amd_kernel_code_t* akc = &akc_;
 
   if (!setKernelCode(sym, akc)) {
-    LogPrintfError("Error: setKernelCode() failed.\n");
+    LogError("Error: setKernelCode() failed.");
     return false;
   }
 
   if (!sym->GetInfo(HSA_EXT_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT_SIZE,
                     reinterpret_cast<void*>(&codeSize_))) {
-    LogPrintfError("Error: sym->GetInfo() failed.\n");
+    LogError("Error: sym->GetInfo() failed.");
     return false;
   }
 

@@ -1784,7 +1784,7 @@ bool Program::loadHSAIL() {
   void* bin = const_cast<void*>(amd::Hsail::ExtractSection(device().compiler(), binaryElf_,
                                 &binSize, aclTEXT, &errorCode));
   if (errorCode != ACL_SUCCESS) {
-    LogPrintfError("Error: cannot extract ISA from compiled binary.\n");
+    LogError("Error: cannot extract ISA from compiled binary.");
     return false;
   }
   // Call the device layer to setup all available kernels on the actual device
