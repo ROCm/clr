@@ -2240,24 +2240,25 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
         // @note: 0 may cause a failure on old runtimes
         attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, 0});
         break;
-      case amd::MemoryAdvice::SetAccessedBy:
+      case amd::MemoryAdvice::SetAccessedBy: {
+        const uint64_t attrib = (first_alloc) ? HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE :
+                                                HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE;
         if (use_cpu) {
-          attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, getCpuAgent().handle});
+          attr.push_back({attrib, getCpuAgent().handle});
         } else {
           if (first_alloc) {
             // Provide access to all possible devices.
             //! @note: HMM should support automatic page table update with xnack enabled,
             //! but currently it doesn't and runtime explicitly enables access from all devices
             for (const auto dev : devices()) {
-              attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE,
-                  static_cast<Device*>(dev)->getBackendDevice().handle});
+              attr.push_back({attrib, static_cast<Device*>(dev)->getBackendDevice().handle});
             }
           } else {
-            attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE,
-                getBackendDevice().handle});
+            attr.push_back({attrib, getBackendDevice().handle});
           }
         }
         break;
+      }
       case amd::MemoryAdvice::UnsetAccessedBy:
         // @note: 0 may cause a failure on old runtimes
         attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, 0});
@@ -2441,13 +2442,6 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
   constexpr bool kFirstAlloc = true;
   if (!SetSvmAttributesInt(memory, size, advice, kFirstAlloc)) {
     return false;
-  }
-
-  if (settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory) {
-    advice = amd::MemoryAdvice::UnsetPreferredLocation;
-    if (!SetSvmAttributesInt(memory, size, advice)) {
-      return false;
-    }
   }
 
   if ((settings().hmmFlags_ & Settings::Hmm::EnableMallocPrefetch) == 0) {
