@@ -775,7 +775,7 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
 
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
-    LogPrintfError("Error: Executable for AMD HSA Code Object isn't created.\n");
+    LogError("Error: Executable for AMD HSA Code Object isn't created.");
     return false;
   }
 
@@ -786,13 +786,13 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
 
   hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Error: AMD HSA Code Object loading failed.\n");
+    LogError("Error: AMD HSA Code Object loading failed.");
     return false;
   }
 
   status = executable_->Freeze(nullptr);
   if (status != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Error: Freezing the executable failed.\n");
+    LogError("Error: Freezing the executable failed.");
     return false;
   }
 
