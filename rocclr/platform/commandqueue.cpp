@@ -54,6 +54,13 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 
 bool HostQueue::terminate() {
   if (AMD_DIRECT_DISPATCH) {
+    Command* marker = new Marker(*this, true);
+    if (marker != nullptr) {
+      marker->enqueue();
+      marker->awaitCompletion();
+      marker->release();
+    }
+    thread_.acceptingCommands_ = false;
     thread_.Release();
   } else {
     if (Os::isThreadAlive(thread_)) {
