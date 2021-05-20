@@ -85,14 +85,29 @@ bool HSAILKernel::setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t
   return true;
 }
 
-bool HSAILKernel::aqlCreateHWInfo() {
+HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, bool internalKernel)
+    : device::Kernel(prog->device(), name, *prog),
+      index_(0),
+      code_(0),
+      codeSize_(0) {
+  flags_.hsa_ = true;
+  flags_.internalKernel_ = internalKernel;
+}
+
+HSAILKernel::~HSAILKernel() {}
+
+bool HSAILKernel::postLoad() {
+  return true;
+}
+
+bool HSAILKernel::init() {
 #if defined(WITH_COMPILER_LIB)
   hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
-  std::string openclKernelName = device::Kernel::openclMangledName(name());
-  amd::hsa::loader::Symbol* sym = prog().getSymbol(openclKernelName.c_str(), &agent);
+  std::string openClKernelName = openclMangledName(name());
+  amd::hsa::loader::Symbol* sym = prog().getSymbol(openClKernelName.c_str(), &agent);
   if (!sym) {
     LogPrintfError("Error: Getting kernel ISA code symbol %s from AMD HSA Code Object failed.\n",
-                   openclKernelName.c_str());
+                   openClKernelName.c_str());
     return false;
   }
 
@@ -115,34 +130,8 @@ bool HSAILKernel::aqlCreateHWInfo() {
 
   workgroupGroupSegmentByteSize_ = workGroupInfo_.usedLDSSize_;
   kernargSegmentByteSize_ = akc->kernarg_segment_byte_size;
-#endif // defined(WITH_COMPILER_LIB)
-  return true;
-}
 
-HSAILKernel::HSAILKernel(std::string name, HSAILProgram* prog, bool internalKernel)
-    : device::Kernel(prog->device(), name, *prog),
-      index_(0),
-      code_(0),
-      codeSize_(0) {
-  flags_.hsa_ = true;
-  flags_.internalKernel_ = internalKernel;
-}
-
-HSAILKernel::~HSAILKernel() {}
-
-bool HSAILKernel::postLoad() {
-#if defined(WITH_COMPILER_LIB)
-  if (!aqlCreateHWInfo()) {
-    return false;
-  }
-#endif // defined(WITH_COMPILER_LIB)
-  return true;
-}
-
-bool HSAILKernel::init() {
-#if defined(WITH_COMPILER_LIB)
   acl_error error = ACL_SUCCESS;
-  std::string openClKernelName = openclMangledName(name());
 
   // Pull out metadata from the ELF
   size_t sizeOfArgList;

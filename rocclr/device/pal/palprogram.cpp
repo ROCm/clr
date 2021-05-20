@@ -246,6 +246,34 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                  bool internalKernel) {
 #if defined(WITH_COMPILER_LIB)
+  // Stop compilation if it is an offline device - PAL runtime does not
+  // support ISA compiled offline
+  if (!device().isOnline()) {
+    return true;
+  }
+
+  // ACL_TYPE_CG stage is not performed for offline compilation
+  executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
+  if (executable_ == nullptr) {
+    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
+    return false;
+  }
+  size_t size = binSize;
+  hsa_code_object_t code_object;
+  code_object.handle = reinterpret_cast<uint64_t>(binary);
+
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
+  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
+    return false;
+  }
+  status = executable_->Freeze(nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
+    return false;
+  }
+
   size_t kernelNamesSize = 0;
   acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_,
     RT_KERNEL_NAMES, nullptr, nullptr, &kernelNamesSize);
@@ -278,6 +306,8 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
       aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
     }
   }
+
+  DestroySegmentCpuAccess();
 #endif  // defined(WITH_COMPILER_LIB)
   return true;
 }
@@ -285,33 +315,8 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
 bool HSAILProgram::setKernels(void* binary, size_t binSize,
                               amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(WITH_COMPILER_LIB)
-  // Stop compilation if it is an offline device - PAL runtime does not
-  // support ISA compiled offline
   if (!device().isOnline()) {
     return true;
-  }
-
-  // ACL_TYPE_CG stage is not performed for offline compilation
-
-  executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
-  if (executable_ == nullptr) {
-    buildLog_ += "Error: Executable for AMD HSA Code Object isn't created.\n";
-    return false;
-  }
-  size_t size = binSize;
-  hsa_code_object_t code_object;
-  code_object.handle = reinterpret_cast<uint64_t>(binary);
-
-  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
-  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
-    return false;
-  }
-  status = executable_->Freeze(nullptr);
-  if (status != HSA_STATUS_SUCCESS) {
-    buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
-    return false;
   }
 
   bool dynamicParallelism = false;
@@ -332,8 +337,6 @@ bool HSAILProgram::setKernels(void* binary, size_t binSize,
   if (!isNull() && dynamicParallelism && !allocKernelTable()) {
     return false;
   }
-
-  DestroySegmentCpuAccess();
 #endif  // defined(WITH_COMPILER_LIB)
   return true;
 }

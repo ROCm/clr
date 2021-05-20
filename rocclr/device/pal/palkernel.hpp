@@ -123,9 +123,6 @@ class HSAILKernel : public device::Kernel {
   HSAILKernel& operator=(const HSAILKernel&);
 
  protected:
-  //! Creates AQL kernel HW info
-  bool aqlCreateHWInfo();
-
   //! Get the kernel code and copy the code object from the program CPU segment
   bool setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc);
 
