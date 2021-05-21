@@ -206,18 +206,18 @@ class VirtualGPU : public device::VirtualDevice {
     void SetActiveEngine(HwQueueEngine engine = HwQueueEngine::Compute) { engine_ = engine; }
 
     //! Returns the last submitted signal for a wait
-    hsa_signal_t* WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
+    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
 
     //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
     void ResetCurrentSignal();
 
-    //! Inserts an external signal(submission in another queue) for dependency tracking
-    void SetExternalSignal(ProfilingSignal* signal) {
-      external_signal_ = signal;
+    //! Adds an external signal(submission in another queue) for dependency tracking
+    void AddExternalSignal(ProfilingSignal* signal) {
+      external_signals_.push_back(signal);
       engine_ = HwQueueEngine::External;
     }
 
-    //! Inserts an external signal(submission in another queue) for dependency tracking
+    //! Get the last active signal on the queue
     ProfilingSignal* GetLastSignal() const { return signal_list_[current_id_]; }
 
   private:
@@ -235,10 +235,11 @@ class VirtualGPU : public device::VirtualDevice {
 
     HwQueueEngine engine_ = HwQueueEngine::Unknown; //!< Engine used in the current operations
     std::vector<ProfilingSignal*> signal_list_;     //!< The pool of all signals for processing
-    ProfilingSignal*  external_signal_ = nullptr;   //!< Dependency on external signal
     size_t current_id_ = 0;       //!< Last submitted signal
     bool sdma_profiling_ = false; //!< If TRUE, then SDMA profiling is enabled
     const VirtualGPU& gpu_;       //!< VirtualGPU, associated with this tracker
+    std::vector<ProfilingSignal*> external_signals_;  //!< External signals for a wait in this queue
+    std::vector<hsa_signal_t> waiting_signals_;   //!< Current waiting signals in this queue
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
@@ -354,9 +355,12 @@ class VirtualGPU : public device::VirtualDevice {
 
   void profilerAttach(bool enable = false) { profilerAttached_ = enable; }
 
-  bool isProfilerAttached() { return profilerAttached_; }
+  bool isProfilerAttached() const { return profilerAttached_; }
   // } roc OpenCL integration
  private:
+  //! Dispatches a barrier with blocking HSA signals
+  void dispatchBlockingWait();
+
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header,
                          uint16_t rest, bool blocking = true);
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,

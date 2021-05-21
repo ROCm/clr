@@ -93,6 +93,8 @@ class Event : public RuntimeObject {
   std::atomic<CallBackEntry*> callbacks_;  //!< linked list of callback entries.
   std::atomic<int32_t> status_;            //!< current execution status.
   std::atomic_flag notified_;              //!< Command queue was notified
+  void*  hw_event_;                        //!< HW event ID associated with SW event
+  Event* notify_event_;                    //!< Notify event, which should contain HW signal
 
  protected:
   static const EventWaitList nullWaitList;
@@ -210,6 +212,15 @@ class Event : public RuntimeObject {
 
   //! Returns the callback for this event
   const CallBackEntry* Callback() const { return callbacks_; }
+
+  // Saves HW event, associated with the current command
+  void SetHwEvent(void* hw_event) { hw_event_ = hw_event; }
+
+  //! Returns HW event, associated with the current command
+  void* HwEvent() const { return hw_event_; }
+
+  //! Returns notify even associated with the current command
+  Event* NotifyEvent() const { return notify_event_; }
 };
 
 /*! \brief An operation that is submitted to a command queue.

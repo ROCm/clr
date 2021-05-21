@@ -42,16 +42,22 @@
 
 namespace amd {
 
+// ================================================================================================
 Event::Event(HostQueue& queue)
     : callbacks_(NULL),
       status_(CL_INT_MAX),
+      hw_event_(nullptr),
+      notify_event_(nullptr),
       profilingInfo_(IS_PROFILER_ON || queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
                      Agent::shouldPostEventEvents()) {
   notified_.clear();
 }
 
-Event::Event() : callbacks_(NULL), status_(CL_SUBMITTED) { notified_.clear(); }
+// ================================================================================================
+Event::Event() : callbacks_(NULL), status_(CL_SUBMITTED),
+    hw_event_(nullptr), notify_event_(nullptr) { notified_.clear(); }
 
+// ================================================================================================
 Event::~Event() {
   CallBackEntry* callback = callbacks_;
   while (callback != NULL) {
@@ -61,6 +67,7 @@ Event::~Event() {
   }
 }
 
+// ================================================================================================
 uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
   if (timeStamp == 0) {
     timeStamp = Os::timeNanos();
@@ -88,7 +95,7 @@ uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
 
 // Global epoch time since the first processed command
 uint64_t epoch = 0;
-
+// ================================================================================================
 bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   assert(status <= CL_QUEUED && "invalid status");
 
@@ -157,6 +164,7 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   return true;
 }
 
+// ================================================================================================
 bool Event::resetStatus(int32_t status) {
   int32_t currentStatus = this->status();
   if (currentStatus != CL_COMPLETE) {
@@ -171,6 +179,7 @@ bool Event::resetStatus(int32_t status) {
   return true;
 }
 
+// ================================================================================================
 bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* data) {
   assert(status >= CL_COMPLETE && status <= CL_QUEUED && "invalid status");
 
@@ -193,7 +202,7 @@ bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* 
   return true;
 }
 
-
+// ================================================================================================
 void Event::processCallbacks(int32_t status) const {
   cl_event event = const_cast<cl_event>(as_cl(this));
   const int32_t mask = (status > CL_COMPLETE) ? status : CL_COMPLETE;
@@ -212,6 +221,7 @@ void Event::processCallbacks(int32_t status) const {
   }
 }
 
+// ================================================================================================
 bool Event::awaitCompletion() {
   if (status() > CL_COMPLETE) {
     // Notifies current command queue about waiting
@@ -219,7 +229,8 @@ bool Event::awaitCompletion() {
       return false;
     }
 
-    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d", this, status());
+    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d",
+      this, status());
     auto* queue = command().queue();
     if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
       while (status() > CL_COMPLETE) {
@@ -262,6 +273,8 @@ bool Event::notifyCmdQueue() {
     ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
     command->enqueue();
     command->release();
+    // Save notification, associated with the current event
+    notify_event_ = command;
   }
   return true;
 }
@@ -306,10 +319,10 @@ void Command::enqueue() {
   // update will occur later after flush() with a wait
   if (AMD_DIRECT_DISPATCH) {
     setStatus(CL_QUEUED);
-    // The wait should be performed before the lock,
-    // otherwise signal handler may have a deadlock, but awaitCompletion() is thread safe itself
+    // Notify all commands about the waiter. Barrier will be sent in order to obtain
+    // HSA signal for a wait on the current queue
     std::for_each(eventWaitList().begin(), eventWaitList().end(),
-        std::mem_fun(&Command::awaitCompletion));
+        std::mem_fun(&Command::notifyCmdQueue));
 
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time
