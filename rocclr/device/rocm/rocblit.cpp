@@ -449,8 +449,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       engine = HwQueueEngine::SdmaRead;
     }
 
-    hsa_signal_t* wait_event = gpu().Barriers().WaitingSignal(engine);
-    uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
+    auto wait_events = gpu().Barriers().WaitingSignal(engine);
 
     if (isSubwindowRectCopy ) {
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
@@ -458,10 +457,10 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
       // Copy memory line by line
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
               "[%zx]!\t HSA Asycn Copy Rect  wait_event=0x%zx, completion_signal=0x%zx",
-              std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+              std::this_thread::get_id(), (wait_events.size() != 0) ? wait_events[0].handle : 0,
               active.handle);
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
-          &srcMem, &offset, &dim, agent, direction, num_wait_events, wait_event, active);
+          &srcMem, &offset, &dim, agent, direction, wait_events.size(), &wait_events[0], active);
       if (status != HSA_STATUS_SUCCESS) {
         gpu().Barriers().ResetCurrentSignal();
         LogPrintfError("DMA buffer failed with code %d", status);
@@ -480,12 +479,12 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
           // Copy memory line by line
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
                   "[%zx]!\t HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx",
-                  std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+                  std::this_thread::get_id(), (wait_events.size() != 0) ? wait_events[0].handle : 0,
                   active.handle);
           hsa_status_t status = hsa_amd_memory_async_copy(
               (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
               (reinterpret_cast<const_address>(src) + srcOffset), srcAgent,
-              size[0], num_wait_events, wait_event, active);
+              size[0], wait_events.size(), &wait_events[0], active);
           if (status != HSA_STATUS_SUCCESS) {
             gpu().Barriers().ResetCurrentSignal();
             LogPrintfError("DMA buffer failed with code %d", status);
@@ -662,18 +661,17 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     engine = HwQueueEngine::SdmaRead;
   }
 
-  hsa_signal_t* wait_event = gpu().Barriers().WaitingSignal(engine);
-  uint32_t num_wait_events = (wait_event == nullptr) ? 0 : 1;
-  hsa_signal_t      active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+  auto wait_events = gpu().Barriers().WaitingSignal(engine);
+  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   // Use SDMA to transfer the data
   ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
           "[%zx]!\t HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx",
-          std::this_thread::get_id(), (wait_event != nullptr) ? wait_event->handle : 0,
+          std::this_thread::get_id(), (wait_events.size() != 0) ? wait_events[0].handle : 0,
           active.handle);
 
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
-      size[0], num_wait_events, wait_event, active);
+      size[0], wait_events.size(), &wait_events[0], active);
   if (status == HSA_STATUS_SUCCESS) {
     gpu().addSystemScope();
   } else {
