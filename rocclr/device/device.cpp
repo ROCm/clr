@@ -397,7 +397,9 @@ bool Device::init() {
       // abort();
       DevLogError("KFD is not installed \n");
     }
-    ret |= roc::NullDevice::init();
+    if (!amd::IS_HIP) {
+      ret |= roc::NullDevice::init();
+    }
   }
 #endif  // WITH_HSA_DEVICE
 #if defined(WITH_GPU_DEVICE)
