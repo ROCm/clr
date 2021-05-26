@@ -798,20 +798,13 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 void VirtualGPU::dispatchBlockingWait() {
   auto wait_signals = Barriers().WaitingSignal();
   // AQL dispatch doesn't support dependent signals and extra barrier packet must be generated
-  if (wait_signals.size() != 0) {
-    for (uint32_t i = 0; i < wait_signals.size(); ++i) {
-      uint32_t j = i % 5;
-      barrier_packet_.dep_signal[j] = wait_signals[i];
-      constexpr bool kSkipSignal = true;
-      // If runtime reached the packet limit or the count limit, then flush the barrier
-      if ((j == 4) || ((i + 1) == wait_signals.size())) {
-        dispatchBarrierPacket(&barrier_packet_, kNopPacketHeader, kSkipSignal);
-        barrier_packet_.dep_signal[0] = hsa_signal_t{};
-        barrier_packet_.dep_signal[1] = hsa_signal_t{};
-        barrier_packet_.dep_signal[2] = hsa_signal_t{};
-        barrier_packet_.dep_signal[3] = hsa_signal_t{};
-        barrier_packet_.dep_signal[4] = hsa_signal_t{};
-      }
+  for (uint32_t i = 0; i < wait_signals.size(); ++i) {
+    uint32_t j = i % 5;
+    barrier_packet_.dep_signal[j] = wait_signals[i];
+    constexpr bool kSkipSignal = true;
+    // If runtime reached the packet limit or the count limit, then flush the barrier
+    if ((j == 4) || ((i + 1) == wait_signals.size())) {
+      dispatchBarrierPacket(kNopPacketHeader, kSkipSignal);
     }
   }
 }
@@ -860,32 +853,50 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
 }
 
 // ================================================================================================
-void VirtualGPU::dispatchBarrierPacket(hsa_barrier_and_packet_t* packet,
-                                       uint16_t packetHeader, bool skipSignal) {
+void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
-  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
-  uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
-  packet->completion_signal.handle = 0;
 
   if (!skipSignal) {
-    dispatchBlockingWait();
+    // Make sure the wait is issued before queue index reservation
+    auto wait_signals = Barriers().WaitingSignal();
+    for (uint32_t i = 0; i < wait_signals.size(); ++i) {
+      uint32_t j = i % 5;
+      barrier_packet_.dep_signal[j] = wait_signals[i];
+      constexpr bool kSkipSignal = true;
+      // If runtime reached the packet limit and signals left, then flush the barrier
+      if ((j == 4) && ((i + 1) < wait_signals.size())) {
+        dispatchBarrierPacket(kNopPacketHeader, kSkipSignal);
+      }
+    }
+  }
 
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
+  uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
+  barrier_packet_.completion_signal.handle = 0;
+
+  if (!skipSignal) {
     // Pool size must grow to the size of pending AQL packets
     const uint32_t pool_size = index - read;
 
     // Get active signal for current dispatch if profiling is necessary
-    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_,
-                                                        pool_size);
+    barrier_packet_.completion_signal =
+      Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, pool_size);
   }
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_barrier_and_packet_t* aql_loc =
     &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
-  *aql_loc = *packet;
+  *aql_loc = barrier_packet_;
   __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), packetHeader, __ATOMIC_RELEASE);
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
+  // Clear dependent signals for the next packet
+  barrier_packet_.dep_signal[0] = hsa_signal_t{};
+  barrier_packet_.dep_signal[1] = hsa_signal_t{};
+  barrier_packet_.dep_signal[2] = hsa_signal_t{};
+  barrier_packet_.dep_signal[3] = hsa_signal_t{};
+  barrier_packet_.dep_signal[4] = hsa_signal_t{};
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "[%zx] HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
           " release=%d), "
@@ -894,13 +905,14 @@ void VirtualGPU::dispatchBarrierPacket(hsa_barrier_and_packet_t* packet,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
                          HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER,
-                          HSA_PACKET_HEADER_WIDTH_BARRIER),
+                         HSA_PACKET_HEADER_WIDTH_BARRIER),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
-                          HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+                         HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
-                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
-          packet->dep_signal[0], packet->dep_signal[1], packet->dep_signal[2],
-          packet->dep_signal[3], packet->dep_signal[4], packet->completion_signal);
+                         HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+          barrier_packet_.dep_signal[0], barrier_packet_.dep_signal[1],
+          barrier_packet_.dep_signal[2], barrier_packet_.dep_signal[3],
+          barrier_packet_.dep_signal[4], barrier_packet_.completion_signal);
 }
 
 // ================================================================================================
@@ -914,14 +926,13 @@ void VirtualGPU::ResetQueueStates() {
   // Release the pool, since runtime just completed a barrier
   // @note: Runtime can reset kernel arg pool only if the barrier with L2 invalidation was issued
   resetKernArgPool();
-
 }
 
 // ================================================================================================
 bool VirtualGPU::releaseGpuMemoryFence(bool skip_cpu_wait) {
   if (hasPendingDispatch_) {
     // Dispatch barrier packet into the queue
-    dispatchBarrierPacket(&barrier_packet_, kBarrierPacketHeader);
+    dispatchBarrierPacket(kBarrierPacketHeader);
     hasPendingDispatch_ = false;
   }
 
@@ -1134,7 +1145,7 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
       //! We can issue a barrier to avoid expensive extra memory allocations.
 
       // Dispatch barrier packet into the queue and wait till it finishes.
-      dispatchBarrierPacket(&barrier_packet_, kBarrierPacketHeader);
+      dispatchBarrierPacket(kBarrierPacketHeader);
       if (!Barriers().WaitCurrent()) {
         LogError("Kernel arguments reset failed");
       }
@@ -2767,7 +2778,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   }
 
   if (gpuKernel.dynamicParallelism()) {
-    dispatchBarrierPacket(&barrier_packet_, kBarrierPacketHeader, true);
+    dispatchBarrierPacket(kBarrierPacketHeader, true);
     static_cast<KernelBlitManager&>(blitMgr()).runScheduler(
         getVQVirtualAddress(), schedulerParam_, schedulerQueue_, schedulerSignal_, schedulerThreads_);
   }
@@ -2881,8 +2892,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
       // If there was a pending dispatch use a Barrier packet
       // with cache flushes. This saves on additional barrier
       // for cache flushes explicitly and helps wall time
-      uint16_t header = kNopPacketHeader;
-      dispatchBarrierPacket(&barrier_packet_, header);
+      dispatchBarrierPacket(kNopPacketHeader);
       // Direct dispatch requires a barrier with callback and hasPendingDispatch_ triggers that
       if (AMD_DIRECT_DISPATCH) {
         hasPendingDispatch_ = true;
