@@ -1297,6 +1297,9 @@ class Isa {
 
   /// @returns If the PAL runtime supports the ISA.
   bool runtimePalSupported() const {
+    if (IS_LINUX && (GPU_ENABLE_PAL == 2) && (versionMajor_ >= 9)) {
+      return false;
+    }
     return runtimePalSupported_;
   }
 
