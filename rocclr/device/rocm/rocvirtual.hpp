@@ -90,7 +90,11 @@ class Timestamp : public amd::HeapObject {
   VirtualGPU* gpu_;               //!< Virtual GPU, associated with this timestamp
   const amd::Command& command_;   //!< Command, associated with this timestamp
   amd::Command* parsedCommand_;   //!< Command down the list, considering command_ as head
-  std::vector<ProfilingSignal*> signals_;
+  std::vector<ProfilingSignal*> signals_; //!< The list of all signals, associated with the TS
+  hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
+
+  Timestamp(const Timestamp&) = delete;
+  Timestamp& operator=(const Timestamp&) = delete;
 
  public:
   Timestamp(VirtualGPU* gpu, const amd::Command& command)
@@ -98,7 +102,8 @@ class Timestamp : public amd::HeapObject {
     , end_(0)
     , gpu_(gpu)
     , command_(command)
-    , parsedCommand_(nullptr) {}
+    , parsedCommand_(nullptr)
+    , callback_signal_(hsa_signal_t{}) {}
 
   ~Timestamp() {}
 
@@ -141,6 +146,14 @@ class Timestamp : public amd::HeapObject {
 
   //! Returns virtual GPU device, used with this timestamp
   VirtualGPU* gpu() const { return gpu_; }
+
+  //! Updates the callback signal
+  void SetCallbackSignal(hsa_signal_t callback_signal) {
+    callback_signal_ = callback_signal;
+  }
+
+  //! Returns the callback signal
+  hsa_signal_t GetCallbackSignal() const { return callback_signal_; }
 };
 
 class VirtualGPU : public device::VirtualDevice {
