@@ -390,7 +390,8 @@ bool Device::init() {
     // If returned false, error initializing HSA stack.
     // If returned true, either HSA not installed or HSA stack
     //                   successfully initialized.
-    if (!roc::Device::init()) {
+    ret = roc::Device::init();
+    if (!ret) {
       // abort() commentted because this is the only indication
       // that KFD is not installed.
       // Ignore the failure and assume KFD is not installed.
