@@ -30,19 +30,6 @@ if (DEFINED ROCM_PATCH_VERSION)
   set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
 endif()
 
-if(NOT WIN32)
-# get date information based on UTC
-# use the last two digits of year + week number + day in the week as OPENCL_VERSION_GITDATE
-# use the commit date, instead of build date
-# add xargs to remove strange trailing newline character
-execute_process(COMMAND git show -s --format=@%ct
-  COMMAND xargs
-  COMMAND date -f - --utc +%y%U%w
-  WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-  OUTPUT_VARIABLE OPENCL_VERSION_GITDATE
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-endif()
-
 if(TARGET OpenCL)
 get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
 get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
