@@ -7,6 +7,8 @@ endif()
 
 project(opencl)
 
+include(GNUInstallDirs)
+
 option(BUILD_TESTS "Enable building OpenCL tests" ON)
 
 if(NOT WIN32)
@@ -58,19 +60,6 @@ endif()
 ###--- Packaging ------------------------------------------------------------###
 
 # MAIN package
-if(TARGET clinfo)
-install(PROGRAMS $<TARGET_FILE:clinfo>
-        DESTINATION bin
-        COMPONENT MAIN)
-endif()
-if(TARGET cltrace)
-install(PROGRAMS $<TARGET_FILE:cltrace>
-        DESTINATION lib
-        COMPONENT MAIN)
-endif()
-install(PROGRAMS $<TARGET_FILE:amdocl>
-        DESTINATION lib
-        COMPONENT MAIN)
 if(TARGET OpenCL)
 install(PROGRAMS $<TARGET_FILE:OpenCL>
         DESTINATION lib
