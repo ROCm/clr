@@ -2270,6 +2270,12 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
         // @note: 0 may cause a failure on old runtimes
         attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, 0});
         break;
+      case amd::MemoryAdvice::SetCoarseGrain:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, HSA_AMD_SVM_GLOBAL_FLAG_COARSE_GRAINED});
+        break;
+      case amd::MemoryAdvice::UnsetCoarseGrain:
+        attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, HSA_AMD_SVM_GLOBAL_FLAG_FINE_GRAINED});
+        break;
       default:
         return false;
       break;
