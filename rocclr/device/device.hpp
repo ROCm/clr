@@ -97,10 +97,11 @@ enum MemoryAdvice : uint32_t {
   UnsetReadMostly = 2,        ///< Undo the effect of hipMemAdviseSetReadMostly
   SetPreferredLocation = 3,   ///< Set the preferred location for the data as the specified device
   UnsetPreferredLocation = 4, ///< Clear the preferred location for the data
-  SetAccessedBy = 5,          ///< Data will be accessed by the specified device,
-                              ///< so prevent page faults as much as possible
-  UnsetAccessedBy = 6         ///< Let the Unified Memory subsystem decide on
-                              ///< the page faulting policy for the specified device
+  SetAccessedBy = 5,          ///< Data will be accessed by the specified device, reducing
+                              ///< the amount of page faults
+  UnsetAccessedBy = 6,        ///< HMM decides on the page faulting policy for the specified device
+  SetCoarseGrain = 100,       ///< Change cache policy to improve performance (disables coherency)
+  UnsetCoarseGrain = 101      ///< Restore coherent cache policy at the cost of some performance
 };
 
 enum MemRangeAttribute : uint32_t {
