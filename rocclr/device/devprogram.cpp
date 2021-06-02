@@ -713,14 +713,6 @@ bool Program::compileImplLC(const std::string& sourceCode,
       buildLog_ += "Warning: opening the file to dump the OpenCL source failed.\n";
     }
   }
-  // Append Options provided by user to driver options
-  if (isHIP()) {
-    if (options->origOptionStr.size()) {
-      std::istringstream userOptions{options->origOptionStr};
-      std::copy(std::istream_iterator<std::string>(userOptions),
-                std::istream_iterator<std::string>(), std::back_inserter(driverOptions));
-    }
-  }
 
   // Append Options provided by user to driver options
   if (isHIP()) {
