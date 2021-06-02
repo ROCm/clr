@@ -328,14 +328,19 @@ void Command::enqueue() {
     // when multiple threads submit/flush/update the batch at the same time
     ScopedLock sl(queue_->vdev()->execution());
     queue_->FormSubmissionBatch(this);
-    if ((type() == CL_COMMAND_MARKER || type() == 0) && !profilingInfo().marker_ts_) {
+    if ((type() == CL_COMMAND_MARKER || type() == 0)) {
       // The current HSA signal tracking logic requires profiling enabled for the markers
       EnableProfiling();
       // Update batch head for the current marker. Hence the status of all commands can be
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
-      // Flush the current batch, but skip the wait on CPU if possible to avoid a stall
-      queue_->vdev()->flush(queue_->GetSubmittionBatch());
+      if (profilingInfo().marker_ts_) {
+        setStatus(CL_SUBMITTED);
+        submit(*queue_->vdev());
+      } else {
+        // Flush the current batch, but skip the wait on CPU if possible to avoid a stall
+        queue_->vdev()->flush(queue_->GetSubmittionBatch());
+      }
       // The batch will be tracked with the marker now
       queue_->ResetSubmissionBatch();
     } else {
