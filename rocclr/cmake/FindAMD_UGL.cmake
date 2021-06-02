@@ -24,17 +24,18 @@ endif()
 
 find_path(AMD_UGL_INCLUDE_DIR GL/glx.h
   HINTS
-    ${AMD_UGL_PATH}
+    ${AMD_DRIVERS_PATH}
   PATHS
     # p4 repo layout
-    ${CMAKE_SOURCE_DIR}/drivers/ugl/inc
-    ${CMAKE_SOURCE_DIR}/../drivers/ugl/inc
-    ${CMAKE_SOURCE_DIR}/../../drivers/ugl/inc
+    ${CMAKE_SOURCE_DIR}/drivers
+    ${CMAKE_SOURCE_DIR}/../drivers
+    ${CMAKE_SOURCE_DIR}/../../drivers
     # github ent repo layout
-    ${CMAKE_SOURCE_DIR}/drivers/drivers/ugl/inc
-    ${CMAKE_SOURCE_DIR}/../drivers/drivers/ugl/inc
-    ${CMAKE_SOURCE_DIR}/../../drivers/drivers/ugl/inc
-  NO_DEFAULT_PATH)
+    ${CMAKE_SOURCE_DIR}/drivers/drivers
+    ${CMAKE_SOURCE_DIR}/../drivers/drivers
+    ${CMAKE_SOURCE_DIR}/../../drivers/drivers
+  PATH_SUFFIXES
+    ugl/inc)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(AMD_UGL
