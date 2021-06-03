@@ -158,9 +158,9 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx908:sramecc-:xnack+", nullptr,     true,  false, false,              9,  0,  8,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx908:sramecc+:xnack-", nullptr,     true,  false, false,              9,  0,  8,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx908:sramecc+:xnack+", nullptr,     true,  false, false,              9,  0,  8,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx909",                 nullptr,     false, false, false,              9,  0,  9,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Raven2 (can execute Raven code)
-    {"gfx909:xnack-",          nullptr,     false, false, false,              9,  0,  9,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx909:xnack+",          nullptr,     false, false, false,              9,  0,  9,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx902",                 "gfx903",    false, true,  false,              9,  0,  2,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Raven2 (can execute Raven code)
+    {"gfx902:xnack-",          "gfx902",    false, true,  false,              9,  0,  2,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx902:xnack+",          "gfx902",    false, true,  false,              9,  0,  2,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a",                 nullptr,     true,  false, false,              9,  0,  10,   ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc-",        nullptr,     true,  false, false,              9,  0,  10,   OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc+",        nullptr,     true,  false, false,              9,  0,  10,   ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
