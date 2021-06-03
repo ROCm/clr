@@ -2231,10 +2231,10 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
 
     switch (advice) {
       case amd::MemoryAdvice::SetReadMostly:
-        attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, true});
+        attr.push_back({HSA_AMD_SVM_ATTRIB_READ_MOSTLY, true});
         break;
       case amd::MemoryAdvice::UnsetReadMostly:
-        attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, false});
+        attr.push_back({HSA_AMD_SVM_ATTRIB_READ_MOSTLY, false});
         break;
       case amd::MemoryAdvice::SetPreferredLocation:
         if (use_cpu) {
