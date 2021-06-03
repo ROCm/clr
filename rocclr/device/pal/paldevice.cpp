@@ -93,7 +93,7 @@ static constexpr PalDevice supportedPalDevices[] = {
   {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven},
   {9,  0,  4,  Pal::GfxIpLevel::GfxIp9,    "gfx904",        Pal::AsicRevision::Vega12},
   {9,  0,  6,  Pal::GfxIpLevel::GfxIp9,    "gfx906",        Pal::AsicRevision::Vega20},
-  {9,  0,  9,  Pal::GfxIpLevel::GfxIp9,    "gfx909",        Pal::AsicRevision::Raven2},
+  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven2},
   {9,  0, 12,  Pal::GfxIpLevel::GfxIp9,    "gfx90c",        Pal::AsicRevision::Renoir},
   {10, 1,  0,  Pal::GfxIpLevel::GfxIp10_1, "gfx1010",       Pal::AsicRevision::Navi10},
   {10, 1,  1,  Pal::GfxIpLevel::GfxIp10_1, "gfx1011",       Pal::AsicRevision::Navi12},
