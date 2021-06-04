@@ -1523,7 +1523,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
 
     // TODO: Update this to use HSA API when it is ready. For now limiting this to gfx9
-    info_.aqlBarrierValue_ = (isa().versionMajor() == 9 && isa().versionMinor() == 0);
+    info_.aqlBarrierValue_ = (isa().versionMajor() == 9 && isa().versionMinor() == 0 &&
+                             (isa().versionStepping() == 0 || isa().versionStepping() == 4 ||
+                              isa().versionStepping() == 8 || isa().versionStepping() == 10));
   }
 
   info_.maxPipePacketSize_ = info_.maxMemAllocSize_;
