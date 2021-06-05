@@ -11,50 +11,16 @@ include(GNUInstallDirs)
 
 option(BUILD_TESTS "Enable building OpenCL tests" ON)
 
-if(NOT WIN32)
-  set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
-  add_subdirectory(khronos/icd)
-endif()
+set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
+add_subdirectory(khronos/icd)
 add_subdirectory(amdocl)
-if(NOT WIN32)
-  add_subdirectory(tools/clinfo)
-  add_subdirectory(tools/cltrace)
+add_subdirectory(tools/clinfo)
+add_subdirectory(tools/cltrace)
 if(BUILD_TESTS)
   add_subdirectory(tests/ocltst)
 endif()
-endif()
-
-#set a name for icd file
-set(OPENCL_AMD_ICD_FILE "amdocl64.icd")
-if (DEFINED ROCM_PATCH_VERSION)
-  set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
-endif()
-
-if(TARGET OpenCL)
-get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
-get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
-endif()
-
-find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
-
-if(ROCM_FOUND)
-  include(ROCMSetupVersion)
-  rocm_setup_version( VERSION "2.0.0" )
-else()
-  set(PROJECT_VERSION "2.0.0")
-endif()
 
 ###--- Packaging ------------------------------------------------------------###
-
-# MAIN package
-if(TARGET OpenCL)
-install(PROGRAMS $<TARGET_FILE:OpenCL>
-        DESTINATION lib
-        COMPONENT MAIN)
-install(PROGRAMS $<TARGET_SONAME_FILE:OpenCL>
-        DESTINATION lib
-        COMPONENT MAIN)
-endif()
 
 # DEV package
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2/CL"
@@ -65,16 +31,28 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2/CL"
         PATTERN cl_d3d11.h EXCLUDE
         PATTERN cl_dx9_media_sharing.h EXCLUDE
         PATTERN cl_egl.h EXCLUDE)
-if(TARGET OpenCL)
-install(PROGRAMS $<TARGET_LINKER_FILE:OpenCL>
-        DESTINATION lib
-        COMPONENT DEV)
-endif()
 
 #############################
 # Packaging steps
 #############################
 if(NOT WIN32)
+find_package(ROCM QUIET CONFIG PATHS /opt/rocm)
+if(ROCM_FOUND)
+  include(ROCMSetupVersion)
+  rocm_setup_version( VERSION "2.0.0" )
+else()
+  set(PROJECT_VERSION "2.0.0")
+endif()
+
+#set a name for icd file
+set(OPENCL_AMD_ICD_FILE "amdocl64.icd")
+if (DEFINED ROCM_PATCH_VERSION)
+  set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
+endif()
+
+get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
+get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
+
 set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl" CACHE PATH "Package Installation path for OpenCL")
 
 #ROCM_PATH is needed to create symlink of libraries
