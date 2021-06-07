@@ -107,10 +107,6 @@ void HostQueue::finish() {
   Command* command = nullptr;
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
-    if (nullptr != command) {
-      command->awaitCompletion();
-      command->release();
-    }
   }
   if (nullptr == command) {
     // Send a finish to make sure we finished all commands
@@ -120,9 +116,13 @@ void HostQueue::finish() {
     }
     ClPrint(LOG_DEBUG, LOG_CMD, "marker is queued");
     command->enqueue();
-    command->awaitCompletion();
-    command->release();
   }
+  // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
+  static constexpr bool kWaitCompletion = true;
+  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+    command->awaitCompletion();
+  }
+  command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 

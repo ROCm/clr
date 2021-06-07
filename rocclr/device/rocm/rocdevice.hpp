@@ -232,7 +232,11 @@ class NullDevice : public amd::Device {
     return true;
   }
 
-  virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
+  virtual bool SetClockMode(
+      const cl_set_device_clock_mode_input_amd setClockModeInput,
+      cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
+
+  virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const { return false; }
 
  protected:
   //! Initialize compiler instance and handle
@@ -399,6 +403,8 @@ class Device : public NullDevice {
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
+
+  virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const;
 
   //! Allocate host memory in terms of numa policy set by user
   void* hostNumaAlloc(size_t size, size_t alignment, bool atomics = false) const;

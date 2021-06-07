@@ -65,6 +65,10 @@ Event::~Event() {
     delete callback;
     callback = next;
   }
+  // Release the notify event
+  if (notify_event_ != nullptr) {
+    notify_event_->release();
+  }
 }
 
 // ================================================================================================
@@ -272,7 +276,6 @@ bool Event::notifyCmdQueue() {
     }
     ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
     command->enqueue();
-    command->release();
     // Save notification, associated with the current event
     notify_event_ = command;
   }

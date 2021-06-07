@@ -1696,6 +1696,15 @@ class Device : public RuntimeObject {
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
     return true;
   };
+
+  // Returns the status of HW event, associated with amd::Event
+  virtual bool IsHwEventReady(
+      const amd::Event& event,  //!< AMD event for HW status validation
+      bool wait = false         //!< If true then forces the event completion
+      ) const {
+    return false;
+  };
+
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
 
