@@ -327,6 +327,20 @@ void MemObjMap::UpdateAccess(amd::Device *peerDev) {
   }
 }
 
+void MemObjMap::Purge(amd::Device* dev) {
+  assert(dev != nullptr);
+
+  amd::ScopedLock lock(AllocatedLock_);
+  for (auto it = MemObjMap_.cbegin() ; it != MemObjMap_.cend() ;) {
+    const std::vector<Device*>& devices = it->second->getContext().devices();
+    if (devices.size() == 1 && devices[0] == dev) {
+      it = MemObjMap_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 Device::BlitProgram::~BlitProgram() {
   if (program_ != nullptr) {
     program_->release();
