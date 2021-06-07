@@ -97,6 +97,9 @@ if(BUILD_SHARED_LIBS)
   if(WIN32)
     target_sources(amdocl PRIVATE amdocl.def)
   else()
+    # -Bsymbolic is required to make sure all AMD OpenCL runtime symbols are resolved internally
+    # Otherwise ld might resolve them using symbols from the OpenCL ICD
+    target_link_libraries(amdocl PRIVATE "-Wl,-Bsymbolic")
     target_link_libraries(amdocl PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/amdocl.map")
     set_target_properties(amdocl PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/amdocl.map")
   endif()
