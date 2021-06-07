@@ -2517,6 +2517,20 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
   return result;
 }
 
+// ================================================================================================
+bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
+  void* hw_event = (event.NotifyEvent() != nullptr) ?
+    event.NotifyEvent()->HwEvent() : event.HwEvent();
+  if (hw_event == nullptr) {
+    return false;
+  } else if (wait) {
+    WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_);
+    return true;
+  }
+  return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) <= 0);
+}
+
+// ================================================================================================
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     // Abort on device exceptions.
@@ -2528,6 +2542,7 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   }
 }
 
+// ================================================================================================
 hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
   if (qIndex < QueuePriority::Total && queuePool_[qIndex].size() > 0) {
     typedef decltype(queuePool_)::value_type::const_reference PoolRef;
