@@ -88,10 +88,10 @@ add_custom_command(
 
 add_custom_target(test.ocltst.oclruntime
     COMMAND
-        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:amdocl>:$ENV{LD_LIBRARY_PATH}"
         $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclruntime> -A oclruntime.exclude
     DEPENDS
-        ocltst oclruntime amdocl64
+        ocltst oclruntime amdocl
     WORKING_DIRECTORY
         ${CMAKE_BINARY_DIR}/tests/ocltst
     USES_TERMINAL)
@@ -99,10 +99,10 @@ add_custom_target(test.ocltst.oclruntime
 foreach(TEST ${TESTS})
     add_custom_target(test.ocltst.oclruntime.${TEST}
         COMMAND
-            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}"
+            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:amdocl>:$ENV{LD_LIBRARY_PATH}"
             $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclruntime> -t ${TEST}
         DEPENDS
-            ocltst oclruntime amdocl64
+            ocltst oclruntime amdocl
         WORKING_DIRECTORY
             ${CMAKE_BINARY_DIR}/tests/ocltst
         USES_TERMINAL)
