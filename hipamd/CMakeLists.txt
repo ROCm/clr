@@ -157,8 +157,7 @@ if(__HIP_ENABLE_PCH)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
   set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
 
-  #  execute_process(COMMAND sh -c "${CMAKE_CURRENT_SOURCE_DIR}/../bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${HIP_LLVM_ROOT}" COMMAND_ECHO STDERR RESULT_VARIABLE EMBED_PCH_RC)
-  execute_process(COMMAND sh -c "${CMAKE_CURRENT_SOURCE_DIR}/../../bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/hipamd/include ${HIP_LLVM_ROOT}" COMMAND_ECHO STDERR RESULT_VARIABLE EMBED_PCH_RC)
+  execute_process(COMMAND sh -c "${HIP_COMMON_DIR}/bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${HIP_LLVM_ROOT}" COMMAND_ECHO STDERR RESULT_VARIABLE EMBED_PCH_RC)
   if (EMBED_PCH_RC AND NOT EMBED_PCH_RC EQUAL 0)
     message(FATAL_ERROR "Failed to embed PCH")
   endif()
@@ -181,7 +180,7 @@ if(__HIP_ENABLE_RTC)
     set(HIPRTC_LIB_NAME "libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR}")
   endif()
   execute_process(
-    COMMAND sh -c "mkdir -p ${PROJECT_BINARY_DIR}/lib; ${CMAKE_CURRENT_SOURCE_DIR}/../../bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src/hipamd/include ${HIP_LLVM_ROOT} -r ${PROJECT_BINARY_DIR}/lib/${HIPRTC_LIB_NAME}"
+	  COMMAND sh -c "mkdir -p ${PROJECT_BINARY_DIR}/lib; ${HIP_COMMON_DIR}/bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${HIP_LLVM_ROOT} -r ${PROJECT_BINARY_DIR}/lib/${HIPRTC_LIB_NAME}"
     COMMAND_ECHO STDERR
     RESULT_VARIABLE EMBED_RTC_RC
   )
