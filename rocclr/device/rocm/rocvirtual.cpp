@@ -122,7 +122,7 @@ void Timestamp::checkGpuTime() {
       }
       // Avoid profiling data for the sync barrier, in tiny performance tests the first call
       // to ROCr is very slow and that also affects the overall performance of the callback thread
-      if (command().GetBatchHead() == nullptr) {
+      if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_) {
         hsa_amd_profiling_dispatch_time_t time = {};
         if (it->engine_ == HwQueueEngine::Compute) {
           hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
@@ -132,8 +132,11 @@ void Timestamp::checkGpuTime() {
           time.start = time_sdma.start;
           time.end = time_sdma.end;
         }
+
         start = std::min(time.start, start);
         end = std::max(time.end, end);
+        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
+          "end = %ld", it->signal_.handle, start, end);
       }
       it->ts_ = nullptr;
       it->done_ = true;
@@ -452,8 +455,8 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
       // Early signal status check
       if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
         const Settings& settings = gpu_.dev().settings();
-        // Actively wait on CPU for 750 us to avoid extra overheads of signal tracking on GPU
-        if (!WaitForSignal<kTimeout750us>(external_signals_[i]->signal_)) {
+        // Actively wait on CPU to avoid extra overheads of signal tracking on GPU
+        if (!WaitForSignal<true>(external_signals_[i]->signal_)) {
           if (settings.cpu_wait_for_signal_) {
             // Wait on CPU for completion if requested
             CpuWaitForSignal(external_signals_[i]);

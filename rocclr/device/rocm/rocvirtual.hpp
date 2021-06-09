@@ -52,30 +52,42 @@ struct ProfilingSignal : public amd::HeapObject {
 constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 
 // Timeouts for HSA signal wait
-constexpr static uint64_t kTimeout100us = 100000;
-constexpr static uint64_t kTimeout750us = 750000;
+constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
-template <uint64_t wait_time = 0>
+template <bool active_wait_timeout = false>
 inline bool WaitForSignal(hsa_signal_t signal) {
-  if (wait_time != 0) {
-    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                  wait_time, HSA_WAIT_STATE_ACTIVE) != 0) {
-      return false;
-    }
-  } else {
-    uint64_t timeout = (ROC_ACTIVE_WAIT) ? kUnlimitedWait : kTimeout100us;
-
-    // Active wait with a timeout
-    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                  timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-      // Wait until the completion with CPU suspend
-      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+  if (hsa_signal_load_relaxed(signal) > 0) {
+    if (active_wait_timeout) {
+      uint64_t timeout = ROC_ACTIVE_WAIT_TIMEOUT * K;
+      if (timeout == 0) {
         return false;
+      }
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d us",
+              signal.handle, ROC_ACTIVE_WAIT_TIMEOUT);
+
+      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                    timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+        return false;
+      }
+    } else {
+
+      uint64_t timeout = kTimeout100us;
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host wait until Signal = (0x%lx) decremented",
+              signal.handle);
+
+      // Active wait with a timeout
+      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                    timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+        // Wait until the completion with CPU suspend
+        if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                      kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+          return false;
+        }
       }
     }
   }
+
   return true;
 }
 
