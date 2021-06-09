@@ -1834,7 +1834,6 @@ class Device : public RuntimeObject {
   void SetActiveWait(bool state) { activeWait_ = state; }
 
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset) {
-    ShouldNotReachHere();
     return nullptr;
   }
 
