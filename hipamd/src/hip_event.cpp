@@ -150,10 +150,9 @@ void Event::addMarker(amd::HostQueue* queue, amd::Command* command, bool record)
   amd::ScopedLock lock(lock_);
 
   if (command == nullptr) {
-    bool recordExplicitGpuTs = !queue->properties().test(CL_QUEUE_PROFILING_ENABLE) &&
-                               !(flags & hipEventDisableTiming);
-    // Always submit a EventMarker. This would submit a NOP with a signal.
-    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, recordExplicitGpuTs);
+    static constexpr bool kRecordExplicitGpuTs = true;
+    // Always submit a EventMarker.
+    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, kRecordExplicitGpuTs);
     command->enqueue();
   }
 
