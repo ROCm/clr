@@ -202,6 +202,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
+    case Pal::AsicRevision::Navi24:
     case Pal::AsicRevision::Navi23:
     case Pal::AsicRevision::Navi22:
     case Pal::AsicRevision::Navi21:
