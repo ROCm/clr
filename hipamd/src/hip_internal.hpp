@@ -211,6 +211,9 @@ namespace hip {
     /// Sync all non-blocking streams
     static void syncNonBlockingStreams();
 
+    /// Destroy all streams on a given device
+    static void destroyAllStreams(int deviceId);
+
     /// Returns capture status of the current stream
     hipStreamCaptureStatus GetCaptureStatus() const { return captureStatus_; }
     /// Returns capture mode of the current stream

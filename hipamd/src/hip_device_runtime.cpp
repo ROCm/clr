@@ -429,7 +429,9 @@ hipError_t hipDeviceGetSharedMemConfig ( hipSharedMemConfig * pConfig ) {
 hipError_t hipDeviceReset ( void ) {
   HIP_INIT_API(hipDeviceReset);
 
-  /* FIXME */
+  hip::Device* dev = hip::getCurrentDevice();
+  hip::Stream::destroyAllStreams(dev->deviceId());
+  amd::MemObjMap::Purge(dev->devices()[0]);
 
   HIP_RETURN(hipSuccess);
 }

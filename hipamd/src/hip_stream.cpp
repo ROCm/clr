@@ -156,6 +156,21 @@ void Stream::syncNonBlockingStreams() {
   }
 }
 
+void Stream::destroyAllStreams(int deviceId) {
+  std::vector<Stream*> toBeDeleted;
+  {
+    amd::ScopedLock lock(streamSetLock);
+    for (auto& it : streamSet) {
+      if (it->Null() == false && it->DeviceId() == deviceId) {
+        toBeDeleted.push_back(it);
+      }
+    }
+  }
+  for (auto& it : toBeDeleted) {
+    delete it;
+  }
+}
+
 // ================================================================================================
 bool isValid(hipStream_t stream) {
   // NULL stream is always valid
