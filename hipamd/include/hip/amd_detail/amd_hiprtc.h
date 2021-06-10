@@ -22,6 +22,12 @@ THE SOFTWARE.
 #ifndef HIPRTC_H
 #define HIPRTC_H
 
+/**
+ *  @addtogroup Runtime Runtime Compilation
+ *  @{
+ *  @ingroup Runtime
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -31,6 +37,12 @@ extern "C" {
 #if !defined(_WIN32)
 #pragma GCC visibility push (default)
 #endif
+
+/*
+ * @brief hiprtcResult
+ * @enum
+ *
+ */
 
 enum hiprtcResult {
     HIPRTC_SUCCESS = 0,
@@ -47,8 +59,19 @@ enum hiprtcResult {
     HIPRTC_ERROR_INTERNAL_ERROR = 11
 };
 
-const char* hiprtcGetErrorString(hiprtcResult result);
+ /**
+ * @brief Return text string message to explain the error which occurred
+ *
+ * @param [in] hiprtcResult result code to convert to string.
+ * @return const char pointer to the NULL-terminated error string
+ *
+ * @warning In HIP, this function returns the name of the error, 
+ *  if the hiprtc result is defined, it will return "Invalid HIPRTC error code"
+ *
+ * @see hiprtcResult
+ */
 
+const char* hiprtcGetErrorString(hiprtcResult result);
 
 hiprtcResult hiprtcVersion(int* major, int* minor);
 
@@ -90,5 +113,8 @@ hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t* codeSizeRet);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
-
+// doxygen end HIPrtc feature
+/**
+ * @}
+ */
 #endif //HIPRTC_H
