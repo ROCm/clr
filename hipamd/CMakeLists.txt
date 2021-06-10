@@ -127,7 +127,7 @@ endif()
 
 target_include_directories(amdhip64
   PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/hipamd/include
+    ${CMAKE_CURRENT_LIST_DIR}/include
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/include)
 
