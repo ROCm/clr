@@ -630,6 +630,11 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
     return hipSuccess;
   }
 
+  if (device && !device->info().imageSupport_) {
+    LogPrintfError("Image is not supported on device %p \n", device);
+    return hipErrorInvalidValue;
+  }
+
   const amd::Image::Format imageFormat(*image_format);
 
   *pitch = amd::alignUp(width * imageFormat.getElementSize(), device->info().imagePitchAlignment_);
