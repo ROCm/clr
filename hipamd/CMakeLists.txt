@@ -107,7 +107,8 @@ target_sources(amdhip64 PRIVATE
   src/hip_stream_ops.cpp
   src/hip_stream.cpp
   src/hip_surface.cpp
-  src/hip_texture.cpp)
+  src/hip_texture.cpp
+  src/hip_gl.cpp)
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
