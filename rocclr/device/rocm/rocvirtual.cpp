@@ -2920,14 +2920,8 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   if (vcmd.profilingInfo().marker_ts_) {
     profilingBegin(vcmd);
     if (timestamp_ != nullptr) {
-      // If there was a pending dispatch use a Barrier packet
-      // with cache flushes. This saves on additional barrier
-      // for cache flushes explicitly and helps wall time
-      dispatchBarrierPacket(kNopPacketHeader);
-      // Direct dispatch requires a barrier with callback and hasPendingDispatch_ triggers that
-      if (AMD_DIRECT_DISPATCH) {
-        hasPendingDispatch_ = true;
-      }
+      // Submit a barrier with a cache flushes.
+      dispatchBarrierPacket(kBarrierPacketHeader);
     }
     profilingEnd(vcmd);
   }
