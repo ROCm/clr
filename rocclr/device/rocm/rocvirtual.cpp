@@ -109,12 +109,14 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 };
 
 // ================================================================================================
-void Timestamp::checkGpuTime() {
+void Timestamp::checkGpuTime(bool event_recycle) {
   if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
     uint64_t  end = 0;
 
     for (auto it : signals_) {
+      amd::ScopedLock lock(it->LockSignalOps());
+
       // Ignore the wait if runtime processes API callback, because the signal value is bigger
       // than expected and the value reset will occur after API callback is done
       if (GetCallbackSignal().handle == 0) {
@@ -137,6 +139,10 @@ void Timestamp::checkGpuTime() {
         end = std::max(time.end, end);
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
           "end = %ld", it->signal_.handle, start, end);
+      }
+      // The signal is reused and the upper layer can't rely on it.
+      if (event_recycle) {
+        const_cast<amd::Command&>(it->ts_->command_).SetHwEvent(nullptr);
       }
       it->ts_ = nullptr;
       it->done_ = true;
@@ -325,7 +331,7 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::Create() {
-  constexpr size_t kSignalListSize = 16;
+  constexpr size_t kSignalListSize = 32;
   signal_list_.resize(kSignalListSize);
 
   hsa_agent_t agent = gpu_.gpu_device();
@@ -475,11 +481,13 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
+  amd::ScopedLock lock(signal->LockSignalOps());
   // Wait for the current signal
   if (!signal->done_) {
     // Update timestamp values if requested
     if (signal->ts_ != nullptr) {
-      signal->ts_->checkGpuTime();
+      static constexpr bool kEventRecycle = true;
+      signal->ts_->checkGpuTime(kEventRecycle);
     } else {
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
               std::this_thread::get_id(), signal->signal_.handle);

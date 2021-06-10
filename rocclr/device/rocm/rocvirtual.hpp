@@ -37,15 +37,18 @@ class Memory;
 class Timestamp;
 
 struct ProfilingSignal : public amd::HeapObject {
+  amd::Monitor  lock_;    //!< Signal lock for update
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
   bool          done_;    //!< True if signal is done
   ProfilingSignal()
-    : ts_(nullptr)
+    : lock_("Signal Ops Lock", true)
+    , ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
     , done_(true)
     { signal_.handle = 0; }
+  amd::Monitor& LockSignalOps() { return lock_; }
 };
 
 // Initial HSA signal value
@@ -136,7 +139,7 @@ class Timestamp : public amd::HeapObject {
   const bool HwProfiling() const { return !signals_.empty(); }
 
   //! Finds execution ticks on GPU
-  void checkGpuTime();
+  void checkGpuTime(bool event_recycle = false);
 
   // Start a timestamp (get timestamp from OS)
   void start() { start_ = amd::Os::timeNanos(); }
