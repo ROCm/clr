@@ -44,7 +44,7 @@ extern "C" {
  *
  */
 
-enum hiprtcResult {
+typedef enum hiprtcResult {
     HIPRTC_SUCCESS = 0,
     HIPRTC_ERROR_OUT_OF_MEMORY = 1,
     HIPRTC_ERROR_PROGRAM_CREATION_FAILURE = 2,
@@ -57,7 +57,7 @@ enum hiprtcResult {
     HIPRTC_ERROR_NO_LOWERED_NAMES_BEFORE_COMPILATION = 9,
     HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID = 10,
     HIPRTC_ERROR_INTERNAL_ERROR = 11
-};
+} hiprtcResult;
 
  /**
  * @brief Return text string message to explain the error which occurred
