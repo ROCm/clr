@@ -1,5 +1,4 @@
-# Copyright (c) 2020-2021 Advanced Micro Devices, Inc. All rights reserved.
-#
+# Copyright (C) 2016-2021 Advanced Micro Devices, Inc. All Rights Reserved.
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
@@ -18,329 +17,510 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.10)
+project(hip)
 
-include(GNUInstallDirs)
+# sample command for hip-rocclr runtime, you'll need to have rocclr built
+#  For shared lib of hip-rocclr runtime
+#    For release version
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#    For debug version
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#  For static lib of hip-rocclr runtime
+#    For release version
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#    For debug version
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "/opt/rocm/hip".
+#  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
+#  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HIP_COMMON_DIR}/cmake")
+#############################
+# Options
+#############################
+option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
+option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
+option(__HIP_ENABLE_RTC "Enable/Disable pre-processed hiprtc shared lib" ON)
 
-if(ADDRESS_SANITIZER)
-  set(ASAN_LINKER_FLAGS "-fsanitize=address")
-  set(ASAN_COMPILER_FLAGS "-fno-omit-frame-pointer -fsanitize=address")
-
-  if(NOT CMAKE_COMPILER_IS_GNUCC)
-    if(BUILD_SHARED_LIBS)
-      set(ASAN_LINKER_FLAGS "${ASAN_LINKER_FLAGS} -shared-libsan")
-    else()
-      set(ASAN_LINKER_FLAGS "${ASAN_LINKER_FLAGS} -static-libsan")
-    endif()
-  endif()
-
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_COMPILER_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_COMPILER_FLAGS}")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ASAN_LINKER_FLAGS} -s")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_LINKER_FLAGS}")
-endif()
-
-option(BUILD_SHARED_LIBS "Build the shared library" ON)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-find_package(ROCclr)
-
-if(BUILD_SHARED_LIBS)
-  add_library(amdhip64 SHARED)
-  # Windows doesn't have a strip utility, so CMAKE_STRIP won't be set.
-  if((CMAKE_BUILD_TYPE STREQUAL "Release") AND NOT ("${CMAKE_STRIP}" STREQUAL ""))
-    add_custom_command(TARGET amdhip64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdhip64>)
-  endif()
-else()
-  add_library(amdhip64 STATIC $<TARGET_OBJECTS:rocclr>)
-endif()
-
-set_target_properties(amdhip64 PROPERTIES
-  CXX_STANDARD 14
-  CXX_STANDARD_REQUIRED ON
-  CXX_EXTENSIONS OFF
-  POSITION_INDEPENDENT_CODE ON
-  # Workaround for many places in the HIP project
-  # having hardcoded references to build/lib/libamdhip64.so
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set_target_properties(amdhip64 PROPERTIES OUTPUT_NAME "amdhip64")
-else()
-  set_target_properties(amdhip64 PROPERTIES OUTPUT_NAME "amdhip32")
-endif()
-
-# Disable versioning for Windows
-# as currently HIP_LIB_VERSION_STRING and HIP_LIB_VERSION_MAJOR
-# are not being populated
-if(NOT WIN32)
-  if(BUILD_SHARED_LIBS)
-    set_target_properties(amdhip64 PROPERTIES
-      VERSION ${HIP_LIB_VERSION_STRING}
-      SOVERSION ${HIP_LIB_VERSION_MAJOR})
-  endif()
-endif()
-
-target_sources(amdhip64 PRIVATE
-  src/cl_gl.cpp
-  src/cl_lqdflash_amd.cpp
-  src/fixme.cpp
-  src/hip_activity.cpp
-  src/hip_code_object.cpp
-  src/hip_context.cpp
-  src/hip_device_runtime.cpp
-  src/hip_device.cpp
-  src/hip_error.cpp
-  src/hip_event.cpp
-  src/hip_fatbin.cpp
-  src/hip_global.cpp
-  src/hip_graph_internal.cpp
-  src/hip_graph.cpp
-  src/hip_hmm.cpp
-  src/hip_intercept.cpp
-  src/hip_memory.cpp
-  src/hip_module.cpp
-  src/hip_peer.cpp
-  src/hip_platform.cpp
-  src/hip_profile.cpp
-  src/hip_rtc.cpp
-  src/hip_stream_ops.cpp
-  src/hip_stream.cpp
-  src/hip_surface.cpp
-  src/hip_texture.cpp
-  src/hip_gl.cpp)
-
-if(WIN32)
-  target_sources(amdhip64 PRIVATE
-    src/cl_d3d9.cpp
-    src/cl_d3d10.cpp
-    src/cl_d3d11.cpp)
-endif()
-
-if(BUILD_SHARED_LIBS)
-  if(WIN32)
-    target_sources(amdhip64 PRIVATE src/amdhip.def)
-  else()
-    target_link_libraries(amdhip64 PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/src/hip_hcc.map.in")
-    set_target_properties(amdhip64 PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/src/hip_hcc.map.in")
-  endif()
-endif()
-
-target_include_directories(amdhip64
-  PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/include
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/include)
-
-target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
-
-target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
-# Additional dependencies for hipRTC
-if(WIN32)
-  target_link_libraries(amdhip64 PRIVATE Dbghelp.lib)
-endif()
-
-# Note in static case we cannot link against rocclr.
-# If we would, we'd also have to export rocclr and have hipcc pass it to the linker.
-if(BUILD_SHARED_LIBS)
-  target_link_libraries(amdhip64 PRIVATE rocclr)
-else()
-  target_compile_definitions(amdhip64 PRIVATE $<TARGET_PROPERTY:rocclr,COMPILE_DEFINITIONS>)
-  target_include_directories(amdhip64 PRIVATE $<TARGET_PROPERTY:rocclr,INCLUDE_DIRECTORIES>)
-endif()
-
-# Short-Term solution for pre-compiled headers for online compilation
-# Enable pre compiled header
 if(__HIP_ENABLE_PCH)
-  find_package(LLVM REQUIRED CONFIG
-    PATHS
-      /opt/rocm/llvm)
-  # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
-  if(NOT DEFINED HIP_LLVM_ROOT)
-    set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
-  endif()
-
-  execute_process(COMMAND sh -c "${HIP_COMMON_DIR}/bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${HIP_LLVM_ROOT}" COMMAND_ECHO STDERR RESULT_VARIABLE EMBED_PCH_RC)
-  if (EMBED_PCH_RC AND NOT EMBED_PCH_RC EQUAL 0)
-    message(FATAL_ERROR "Failed to embed PCH")
-  endif()
-
-  target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_PCH)
-  target_sources(amdhip64 PRIVATE ${CMAKE_BINARY_DIR}/hip_pch.o)
+  set(_pchStatus 1)
+else()
+  set(_pchStatus 0)
 endif()
 
-# Enable preprocessed hiprtc-builtins library
-if(__HIP_ENABLE_RTC)
-  message(STATUS "HIP RTC enabled.")
-  include(HIPRTC RESULT_VARIABLE HIPRTC_CMAKE)
-  # Requires clang and llvm-mc to create this library.
-  find_package(LLVM REQUIRED CONFIG PATHS /opt/rocm/llvm)
-  find_package(Clang REQUIRED CONFIG PATHS /opt/rocm/llvm)
-  set(HIPRTC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/hip_rtc_gen")
-  set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
-  set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
-  set(HIPRTC_GEN_PREPROCESSED "${HIPRTC_GEN_DIR}/hipRTC")
-  set(HIPRTC_GEN_OBJ "${HIPRTC_GEN_DIR}/hipRTC_header${CMAKE_CXX_OUTPUT_EXTENSION}")
+message (STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}" )
+set(HIP_COMMON_INCLUDE_DIR ${HIP_COMMON_DIR}/include)
+set(HIP_COMMON_BIN_DIR ${HIP_COMMON_DIR}/bin)
+set(HIP_HIPCC_EXECUTABLE ${HIP_COMMON_DIR}/bin/hipcc)
+set(HIP_HIPCONFIG_EXECUTABLE ${HIP_COMMON_DIR}/bin/hipconfig)
 
-  # Generate required HIPRTC files.
-  FILE(MAKE_DIRECTORY ${HIPRTC_GEN_DIR})
-  generate_hiprtc_header("${HIPRTC_GEN_HEADER}")
-  generate_hiprtc_mcin("${HIPRTC_GEN_MCIN}" "${HIPRTC_GEN_PREPROCESSED}")
+#############################
+# Setup config generation
+#############################
+string(TIMESTAMP _timestamp UTC)
+set(_versionInfo "# Auto-generated by cmake\n")
+set(_buildInfo "# Auto-generated by cmake on ${_timestamp} UTC\n")
+macro(add_to_config _configfile _variable)
+    set(${_configfile} "${${_configfile}}${_variable}=${${_variable}}\n")
+endmacro()
 
-  # Generate HIPRTC Builtins Preprocessed Object.
-  # Note: second command appends define macros at build time.
-  # FIXME: --hip-version forced to 3.6 to use clang headers, until Windows versioning is fixed.
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_PREPROCESSED}
-    COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib --hip-version=3.6 -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -x hip ${HIPRTC_GEN_HEADER} -E -o ${HIPRTC_GEN_PREPROCESSED}
-    COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
-    DEPENDS clang ${HIPRTC_GEN_HEADER})
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_OBJ}
-    COMMAND $<TARGET_FILE:llvm-mc> -o ${HIPRTC_GEN_OBJ} ${HIPRTC_GEN_MCIN} --filetype=obj
-    DEPENDS llvm-mc ${HIPRTC_GEN_PREPROCESSED} ${HIPRTC_GEN_MCIN})
+#############################
+# Setup version information
+#############################
+# hipconfig is a perl script and is not trivially invokable on Windows.
+if(NOT WIN32)
+# Determine HIP_BASE_VERSION
+set(ENV{HIP_PATH} "")
+execute_process(COMMAND ${HIP_HIPCONFIG_EXECUTABLE} --version
+    OUTPUT_VARIABLE HIP_BASE_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+string(REPLACE "." ";" VERSION_LIST ${HIP_BASE_VERSION})
+list(GET VERSION_LIST 0 HIP_VERSION_MAJOR)
+list(GET VERSION_LIST 1 HIP_VERSION_MINOR)
+set(HIP_VERSION_GITDATE 0)
+endif()
 
-  # Create hiprtc-builtins library.
-  add_library(hiprtc-builtins ${HIPRTC_GEN_OBJ})
-  set_target_properties(hiprtc-builtins PROPERTIES
-    CXX_STANDARD 14
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
-    POSITION_INDEPENDENT_CODE ON
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    LINKER_LANGUAGE CXX
-    VERSION ${HIP_LIB_VERSION_STRING})
+find_package(Git)
 
-  # Windows and Linux have different naming conventions.
-  if(WIN32)
-    # Windows uses DEF file to determine which symbols to expose.
-    target_sources(hiprtc-builtins PRIVATE src/hiprtc-builtins.def)
-    set_target_properties(hiprtc-builtins PROPERTIES
-      OUTPUT_NAME "hiprtc-builtins64_${HIP_LIB_VERSION_MAJOR}${HIP_LIB_VERSION_MINOR}")
-    # Since ${HIPRTC_GEN_OBJ} was manually generated with llvm-mc, /MT did not embed
-    # libcmt.lib inside of the obj. So we need to manually set it as defaultlib.
-    target_link_options(hiprtc-builtins PRIVATE "LINKER:/DEFAULTLIB:libcmt")
-  else()
-    # SOVERSION is only supported on Linux.
-    set_target_properties(hiprtc-builtins PROPERTIES
-      OUTPUT_NAME "hiprtc-builtins"
-      SOVERSION ${HIP_LIB_VERSION_MAJOR})
+# FIXME: Two different version strings used.
+# Below we use UNIX commands, not compatible with Windows.
+if(GIT_FOUND AND (NOT WIN32))
+  # get date information based on UTC
+  # use the last two digits of year + week number + day in the week as HIP_VERSION_GITDATE
+  # use the commit date, instead of build date
+  # add xargs to remove strange trailing newline character
+  execute_process(COMMAND ${GIT_EXECUTABLE} show -s --format=@%ct
+    COMMAND xargs
+    COMMAND date -f - --utc +%y%U%w
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(git_result EQUAL 0)
+    set(HIP_VERSION_GITDATE ${git_output})
   endif()
 
-  # Test the header file works with simple compilation.
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_DIR}/tmp.bc
-    COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
-    DEPENDS clang ${HIPRTC_GEN_PREPROCESSED})
-
-  # FIXME: As a workaround, add hiprtc object into amdhip64, until we can
-  # figure out how to link hiprtc-builtins into amdhip64. CMake approach is not working:
-  # target_link_libraries(amdhip64 PUBLIC hiprtc-builtins)
-  target_link_libraries(amdhip64 PRIVATE ${HIPRTC_GEN_OBJ})
-  target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
-  add_dependencies(amdhip64 hiprtc-builtins)
-  # Windows will install the library to the bin directory instead.
-  if(WIN32)
-    install(TARGETS hiprtc-builtins DESTINATION ${CMAKE_INSTALL_BINDIR})
-  else()
-    install(TARGETS hiprtc-builtins DESTINATION lib)
+  # get commit short hash
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(git_result EQUAL 0)
+    set(HIP_VERSION_GITHASH ${git_output})
   endif()
+
+  # get commit count
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(git_result EQUAL 0)
+    set(HIP_VERSION_GITCOUNT ${git_output})
+  endif()
+
+  set(HIP_VERSION_PATCH ${HIP_VERSION_GITDATE}-${HIP_VERSION_GITHASH})
+
+  if(DEFINED ENV{ROCM_LIBPATCH_VERSION})
+    set(HIP_PACKAGING_VERSION_PATCH ${HIP_VERSION_GITDATE}.${HIP_VERSION_GITCOUNT}.$ENV{ROCM_LIBPATCH_VERSION})
+  else()
+    set(HIP_PACKAGING_VERSION_PATCH ${HIP_VERSION_GITDATE}.${HIP_VERSION_GITCOUNT}-${HIP_VERSION_GITHASH})
+  endif()
+else()
+  # FIXME: Some parts depend on this being set.
+  set(HIP_PACKAGING_VERSION_PATCH "0")
+endif()
+
+## Debian package specific variables
+if ( DEFINED ENV{CPACK_DEBIAN_PACKAGE_RELEASE} )
+  set ( CPACK_DEBIAN_PACKAGE_RELEASE $ENV{CPACK_DEBIAN_PACKAGE_RELEASE} )
+else()
+  set ( CPACK_DEBIAN_PACKAGE_RELEASE "local" )
+endif()
+message (STATUS "Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}" )
+
+## RPM package specific variables
+if ( DEFINED ENV{CPACK_RPM_PACKAGE_RELEASE} )
+  set ( CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE} )
+else()
+  set ( CPACK_RPM_PACKAGE_RELEASE "local" )
+endif()
+
+## 'dist' breaks manual builds on debian systems due to empty Provides
+execute_process( COMMAND rpm --eval %{?dist}
+                 RESULT_VARIABLE PROC_RESULT
+                 OUTPUT_VARIABLE EVAL_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+
+if ( PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "" )
+  string ( APPEND CPACK_RPM_PACKAGE_RELEASE "%{?dist}" )
+endif()
+message(STATUS "CPACK_RPM_PACKAGE_RELEASE: ${CPACK_RPM_PACKAGE_RELEASE}")
+
+add_to_config(_versionInfo HIP_PACKAGING_VERSION_PATCH)
+add_to_config(_versionInfo CPACK_DEBIAN_PACKAGE_RELEASE)
+add_to_config(_versionInfo CPACK_RPM_PACKAGE_RELEASE)
+
+add_to_config(_versionInfo HIP_VERSION_MAJOR)
+add_to_config(_versionInfo HIP_VERSION_MINOR)
+add_to_config(_versionInfo HIP_VERSION_PATCH)
+
+set (HIP_LIB_VERSION_MAJOR ${HIP_VERSION_MAJOR})
+set (HIP_LIB_VERSION_MINOR ${HIP_VERSION_MINOR})
+if (${ROCM_PATCH_VERSION} )
+   set (HIP_LIB_VERSION_PATCH ${ROCM_PATCH_VERSION})
+else ()
+   set (HIP_LIB_VERSION_PATCH ${HIP_VERSION_PATCH})
+endif ()
+set (HIP_LIB_VERSION_STRING "${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR}.${HIP_LIB_VERSION_PATCH}")
+if (DEFINED ENV{ROCM_RPATH})
+    set (CMAKE_INSTALL_RPATH "$ENV{ROCM_RPATH}")
+    set (CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set (CMAKE_SKIP_BUILD_RPATH TRUE)
+endif ()
+
+# overwrite HIP_VERSION_PATCH for packaging
+set(HIP_VERSION ${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_PACKAGING_VERSION_PATCH})
+
+# Remove when CI is updated
+if(HIP_PLATFORM STREQUAL "rocclr")
+   set(HIP_PLATFORM "amd")
+endif()
+#############################
+# Configure variables
+#############################
+# Determine HIP_PLATFORM
+if(NOT DEFINED HIP_PLATFORM)
+    if(NOT DEFINED ENV{HIP_PLATFORM})
+        execute_process(COMMAND ${HIP_HIPCONFIG_EXECUTABLE} --platform
+            OUTPUT_VARIABLE HIP_PLATFORM
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+        set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+    endif()
+endif()
+message(STATUS "HIP Platform: " ${HIP_PLATFORM})
+
+if(HIP_PLATFORM STREQUAL "nvidia")
+    set(HIP_RUNTIME "cuda"  CACHE STRING "HIP Runtime")
+    set(HIP_COMPILER "nvcc" CACHE STRING "HIP Compiler")
+elseif(HIP_PLATFORM STREQUAL "amd")
+    set(HIP_RUNTIME "rocclr" CACHE STRING "HIP Runtime")
+    set(HIP_COMPILER "clang" CACHE STRING "HIP Compiler")
+else()
+    message(FATAL_ERROR "Unexpected HIP_PLATFORM: " ${HIP_PLATFORM})
+endif()
+
+message(STATUS "HIP Runtime: " ${HIP_RUNTIME})
+message(STATUS "HIP Compiler: " ${HIP_COMPILER})
+
+add_to_config(_buildInfo HIP_RUNTIME)
+add_to_config(_buildInfo HIP_COMPILER)
+
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
+# Determine HIP install path
+if (UNIX)
+    set(HIP_DEFAULT_INSTALL_PREFIX "/opt/rocm/hip")
+endif()
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for HIP" FORCE)
+endif()
+
+if(DEV_LOG_ENABLE MATCHES "yes")
+  add_definitions(-DDEV_LOG_ENABLE)
+endif()
+
+# Set default install path as "/opt/rocm/hip", can override the path from cmake build.
+set(CPACK_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Package Installation path for HIP")
+
+if(IS_ABSOLUTE ${CMAKE_INSTALL_PREFIX})
+    message(STATUS "HIP will be installed in: " ${CMAKE_INSTALL_PREFIX})
+else()
+    message(FATAL_ERROR "Don't know where to install HIP. Please specify absolute path using -DCMAKE_INSTALL_PREFIX")
+endif()
+
+if (NOT DEFINED ROCM_PATH )
+     set ( ROCM_PATH "/opt/rocm"  CACHE STRING "Default ROCM installation directory." )
+endif ()
+message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
+
+# set the installation path for the installer package
+set(CPACK_SET_DESTDIR ON CACHE BOOL "Installer package will install hip to CMAKE_INSTALL_PREFIX instead of CPACK_PACKAGING_INSTALL_PREFIX")
+if (NOT CPACK_SET_DESTDIR)
+  set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/hip" CACHE PATH "Default installation path of hcc installer package")
+endif (NOT CPACK_SET_DESTDIR)
+
+#############################
+# Build steps
+#############################
+set(BIN_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/bin)
+set(LIB_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib)
+set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include)
+set(CONFIG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip)
+set(CONFIG_LANG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip-lang)
+
+# Build clang hipify if enabled
+if (BUILD_HIPIFY_CLANG)
+    add_subdirectory(hipify-clang)
+endif()
+
+# Workaround for current versioning logic not being compatible with Windows
+if(WIN32)
+  set(HIP_VERSION_MAJOR 0)
+  set(HIP_VERSION_MINOR 0)
+  set(HIP_VERSION_GITDATE 0)
+endif()
+
+# Generate hip_version.h
+set(_versionInfoHeader
+"// Auto-generated by cmake\n
+#ifndef HIP_VERSION_H
+#define HIP_VERSION_H\n
+#define HIP_VERSION_MAJOR ${HIP_VERSION_MAJOR}
+#define HIP_VERSION_MINOR ${HIP_VERSION_MINOR}
+#define HIP_VERSION_PATCH ${HIP_VERSION_GITDATE}
+#define HIP_VERSION       (HIP_VERSION_MAJOR * 100 + HIP_VERSION_MINOR)\n
+#define __HIP_HAS_GET_PCH ${_pchStatus}\n
+#endif\n
+")
+file(WRITE "${PROJECT_BINARY_DIR}/include/hip/hip_version.h" ${_versionInfoHeader})
+
+if(HIP_RUNTIME STREQUAL "rocclr")
+	add_subdirectory(src)
+endif()
+
+# Generate .hipInfo
+file(WRITE "${PROJECT_BINARY_DIR}/.hipInfo" ${_buildInfo})
+
+# Generate .hipVersion
+file(WRITE "${PROJECT_BINARY_DIR}/.hipVersion" ${_versionInfo})
+
+# Build doxygen documentation
+find_program(DOXYGEN_EXE doxygen)
+if(DOXYGEN_EXE)
+    add_custom_target(doc COMMAND HIP_PATH=${CMAKE_CURRENT_SOURCE_DIR} ${DOXYGEN_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/docs/doxygen-input/doxy.cfg
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs)
 endif()
 
 #############################
-# Profiling API support
+# Install steps
 #############################
-# Generate profiling API macros/structures header
-set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
-set(PROF_API_HDR "${PROJECT_SOURCE_DIR}/include/hip/hip_runtime_api.h")
-set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src")
-set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/src/hip_prof_gen.py")
-set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
 
-find_package(PythonInterp REQUIRED)
-add_custom_command(OUTPUT ${PROF_API_STR}
-  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR}
-  DEPENDS ${PROF_API_HDR} ${PROF_API_GEN}
-  COMMENT "Generating profiling primitives: ${PROF_API_STR}")
+# Install .hipInfo
+install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION lib)
 
-add_custom_target(gen-prof-api-str-header ALL
-  DEPENDS ${PROF_API_STR}
-  SOURCES ${PROF_API_HDR})
+# Install .hipVersion
+install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION bin)
 
-set_target_properties(amdhip64 PROPERTIES PUBLIC_HEADER ${PROF_API_STR})
+# Install src, bin, include & cmake if necessary
+execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
+    RESULT_VARIABLE INSTALL_SOURCE)
+if(NOT ${INSTALL_SOURCE} EQUAL 0)
+    # Exclude .bat files on Linux.
+    if(WIN32)
+      install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS)
+    else()
+      install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS
+              PATTERN *.bat EXCLUDE)
+    endif()
 
-option(USE_PROF_API ON "Enable roctracer integration")
-# Enable profiling API
-if(USE_PROF_API)
-  find_path(PROF_API_HEADER_DIR prof_protocol.h
-    HINTS
-      ${PROF_API_HEADER_PATH}
-    PATHS
-      ${ROCM_PATH}/roctracer
-    PATH_SUFFIXES
-      include/ext)
+    # The following two lines will be removed after upstream updation
+    install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/include\")")
+    install(CODE "file(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/include)")
 
-  if(NOT PROF_API_HEADER_DIR)
-    message(WARNING "Profiling API header not found. Disabling roctracer integration. Use -DPROF_API_HEADER_PATH=<path to prof_protocol.h header>")
-  else()
-    target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
-    target_include_directories(amdhip64 PUBLIC ${PROF_API_HEADER_DIR})
-    message(STATUS "Profiling API: ${PROF_API_HEADER_DIR}")
-  endif()
+    install(DIRECTORY include DESTINATION .)
+    install(DIRECTORY ${HIP_COMMON_INCLUDE_DIR}/hip/ DESTINATION include/hip/)
+    install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION .)
 endif()
 
-add_dependencies(amdhip64 gen-prof-api-str-header)
+# Install generated headers
+# FIXME: Associate with individual targets.
+if(HIP_PLATFORM STREQUAL "amd")
+install(FILES ${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h
+        DESTINATION include/hip/amd_detail)
+endif()
+install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
+        DESTINATION include/hip)
 
-add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
-  ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
-add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
-  ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include)
-
-add_library(host INTERFACE)
-target_link_libraries(host INTERFACE amdhip64)
-  
-add_library(device INTERFACE)
-target_link_libraries(device INTERFACE host)
-
-# Current packaging assumes that HIP runtime will always be installed in /opt/rocm/lib
-# This is false to assume, because some distros like CentOS will use the lib64 directory instead of lib
-# Relying on CMake to choose the library directory for us will default in that case to lib64
-# Hence there will be a mismatch between where HIP is installed and where CMake thinks it is
-
-INSTALL(TARGETS amdhip64 host device
-  EXPORT hip-targets
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-INSTALL(EXPORT hip-targets DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR} NAMESPACE hip::)
-
-INSTALL(TARGETS amdhip64 host device
-  EXPORT hip-lang-targets
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-INSTALL(EXPORT hip-lang-targets DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR} NAMESPACE hip-lang::)
-
+#############################
+# hip-config
+#############################
+# Packaging invokes UNIX commands, which are not available on Windows.
 if(NOT WIN32)
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-  ${PROJECT_SOURCE_DIR}/hip-lang-config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-  INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
-  PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
+    hip-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config.cmake
+    INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+    )
 
 write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
-  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
-  COMPATIBILITY SameMajorVersion)
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
+    VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
+    COMPATIBILITY SameMajorVersion
+    )
 install(
     FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
     DESTINATION
-    ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
+    ${CONFIG_PACKAGE_INSTALL_DIR}
     )
+
+#############################
+# Packaging steps
+#############################
+# Package: hip_base
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-base)
+configure_file(packaging/hip-base.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+configure_file(packaging/hip-base.postinst ${BUILD_DIR}/postinst @ONLY)
+configure_file(packaging/hip-base.prerm ${BUILD_DIR}/prerm @ONLY)
+
+add_custom_target(pkg_hip_base COMMAND ${CMAKE_COMMAND} .
+    COMMAND rm -rf *.deb *.rpm *.tar.gz
+    COMMAND make package
+    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${BUILD_DIR} )
+
+# Packaging needs to wait for hipify-clang to build if it's enabled...
+if (BUILD_HIPIFY_CLANG)
+    add_dependencies(pkg_hip_base hipify-clang)
 endif()
+
+if(HIP_RUNTIME STREQUAL "rocclr")
+    set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/rocclr)
+    configure_file(packaging/hip-rocclr.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+    configure_file(packaging/hip-rocclr.postinst ${BUILD_DIR}/postinst @ONLY)
+    configure_file(packaging/hip-rocclr.prerm ${BUILD_DIR}/prerm @ONLY)
+    add_custom_target(hip_on_rocclr COMMAND ${CMAKE_COMMAND} .
+        COMMAND rm -rf *.deb *.rpm *.tar.gz
+        COMMAND make package
+        COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+        COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+        COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+        WORKING_DIRECTORY ${BUILD_DIR} )
+endif()
+
+# Package: hip_nvcc
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-nvcc)
+configure_file(packaging/hip-nvcc.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(pkg_hip_nvcc COMMAND ${CMAKE_COMMAND} .
+    COMMAND rm -rf *.deb *.rpm *.tar.gz
+    COMMAND make package
+    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${BUILD_DIR})
+
+# Package: hip_doc
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-doc)
+configure_file(packaging/hip-doc.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(pkg_hip_doc  COMMAND ${CMAKE_COMMAND} .
+    COMMAND rm -rf *.deb *.rpm *.tar.gz
+    COMMAND make package
+    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${BUILD_DIR})
+
+# Package: hip_samples
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip_samples)
+configure_file(packaging/hip-samples.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(pkg_hip_samples COMMAND ${CMAKE_COMMAND} .
+    COMMAND rm -rf *.deb *.rpm *.tar.gz
+    COMMAND make package
+    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${BUILD_DIR})
+
+# Package: all
+if(POLICY CMP0037)
+    cmake_policy(PUSH)
+    cmake_policy(SET CMP0037 OLD)
+endif()
+
+if(HIP_RUNTIME STREQUAL "rocclr")
+    add_custom_target(package
+    WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+    DEPENDS pkg_hip_base hip_on_rocclr pkg_hip_nvcc pkg_hip_doc pkg_hip_samples)
+endif()
+
+if(POLICY CMP0037)
+    cmake_policy(POP)
+endif()
+endif()
+
+#############################
+# Code analysis
+#############################
+# Target: cppcheck
+find_program(CPPCHECK_EXE cppcheck)
+if(CPPCHECK_EXE)
+    add_custom_target(cppcheck COMMAND ${CPPCHECK_EXE} --force --quiet --enable=warning,performance,portability,information,missingInclude src include -I /opt/rocm/include/hcc -I /opt/rocm/include --suppress=*:/opt/rocm/include/hcc/hc.hpp
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+#############################
+# Code formatting
+#############################
+# Target: clangformat
+find_program(CLANGFORMAT_EXE clang-format PATHS ${HCC_HOME}/bin)
+if(CLANGFORMAT_EXE)
+    file(GLOB_RECURSE FORMAT_SOURCE_FILE_LIST *.cpp *.hpp *.h)
+    add_custom_target(clangformat COMMAND ${CLANGFORMAT_EXE} -style=file -i ${FORMAT_SOURCE_FILE_LIST}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+#############################
+# Testing steps
+#############################
+# HIT is not compatible with Windows
+if(NOT WIN32)
+set(HIP_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+if(HIP_PLATFORM STREQUAL "nvidia")
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/include" "${HIP_ROOT_DIR}/include" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
+endif()
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_INCLUDE_DIR}/hip/" "${HIP_ROOT_DIR}/include/hip/" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
+execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/cmake" "${HIP_ROOT_DIR}/cmake" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
+if(${RUN_HIT} EQUAL 0)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
+endif()
+if(HIP_CATCH_TEST EQUAL "1")
+    enable_testing()
+    add_subdirectory(${HIP_COMMON_DIR}/tests/catch ${PROJECT_BINARY_DIR}/catch)
+else()
+    if(${RUN_HIT} EQUAL 0)
+        set(CMAKE_MODULE_PATH "${HIP_ROOT_DIR}/cmake" ${CMAKE_MODULE_PATH})
+        include(${HIP_COMMON_DIR}/tests/hit/HIT.cmake)
+        include(${HIP_COMMON_DIR}/tests/Tests.cmake)
+    else()
+        message(STATUS "Testing targets will not be available. To enable them please ensure that the HIP installation directory is writeable. Use -DCMAKE_INSTALL_PREFIX to specify a suitable location")
+    endif()
+endif()
+endif()
+
+#############################
+# Code analysis
+#############################
+# Target: clang
+if(HIP_HIPCC_EXECUTABLE)
+    add_custom_target(analyze
+        COMMAND ${HIP_HIPCC_EXECUTABLE} -fvisibility=hidden -fvisibility-inlines-hidden --analyze --analyzer-outputtext  -isystem /opt/rocm/include -Wno-unused-command-line-argument -I/opt/rocm/include -c  src/*.cpp -Iinclude/ -I./
+    WORKING_DIRECTORY ${HIP_SRC_PATH})
+    if(CPPCHECK_EXE)
+        add_dependencies(analyze cppcheck)
+    endif()
+endif()
+
+# vim: ts=4:sw=4:expandtab:smartindent
