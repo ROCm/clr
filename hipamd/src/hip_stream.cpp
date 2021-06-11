@@ -421,7 +421,12 @@ hipError_t hipStreamQuery(hipStream_t stream) {
   if (command->type() != 0) {
     event.notifyCmdQueue();
   }
-  hipError_t status = (command->status() == CL_COMPLETE) ? hipSuccess : hipErrorNotReady;
+  // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
+  bool ready = command->queue()->device().IsHwEventReady(event);
+  if (!ready) {
+    ready = (command->status() == CL_COMPLETE);
+  }
+  hipError_t status = ready ? hipSuccess : hipErrorNotReady;
   command->release();
   HIP_RETURN(status);
 }

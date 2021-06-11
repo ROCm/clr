@@ -35,8 +35,12 @@ bool Event::ready() {
   if (event_->status() != CL_COMPLETE) {
     event_->notifyCmdQueue();
   }
-
-  return (event_->status() == CL_COMPLETE);
+  // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
+  bool ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_);
+  if (!ready) {
+    ready = (event_->status() == CL_COMPLETE);
+  }
+  return ready;
 }
 
 hipError_t Event::query() {
@@ -58,7 +62,11 @@ hipError_t Event::synchronize() {
     return hipSuccess;
   }
 
-  event_->awaitCompletion();
+  // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
+  static constexpr bool kWaitCompletion = true;
+  if (!g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, kWaitCompletion)) {
+    event_->awaitCompletion();
+  }
 
   return hipSuccess;
 }
@@ -84,8 +92,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
   }
   amd::ScopedLock stopLock(eStop.lock_);
 
-  if (event_ == nullptr ||
-      eStop.event_  == nullptr) {
+  if (event_ == nullptr || eStop.event_  == nullptr) {
     return hipErrorInvalidHandle;
   }
 
@@ -107,6 +114,9 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     ms = static_cast<float>(static_cast<int64_t>(command->event().profilingInfo().end_) - time())/1000000.f;
     command->release();
   } else {
+    // Note: with direct dispatch eStop.ready() relies on HW event, but CPU status can be delayed.
+    // Hence for now make sure CPU status is updated by calling awaitCompletion();
+    eStop.event_->awaitCompletion();
     ms = static_cast<float>(eStop.time() - time())/1000000.f;
   }
   return hipSuccess;
