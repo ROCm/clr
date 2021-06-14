@@ -2930,6 +2930,8 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     if (timestamp_ != nullptr) {
       // Submit a barrier with a cache flushes.
       dispatchBarrierPacket(kBarrierPacketHeader);
+      // Reset this flag since we already enable system scope for kBarrierPacketHeader
+      hasPendingDispatch_ = false;
     }
     profilingEnd(vcmd);
   }
