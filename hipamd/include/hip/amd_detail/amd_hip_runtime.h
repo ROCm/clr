@@ -122,7 +122,7 @@ extern int HIP_TRACE_API;
                    amdgpu_waves_per_eu(minBlocksPerMultiprocessor)))
 #define select_impl_(_1, _2, impl_, ...) impl_
 #define __launch_bounds__(...)                                                                     \
-    select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)
+  select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0, )(__VA_ARGS__)
 
 #if !defined(__HIPCC_RTC__)
 __host__ inline void* __get_dynamicgroupbaseptr() { return nullptr; }
