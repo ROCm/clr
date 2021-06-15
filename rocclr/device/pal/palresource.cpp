@@ -930,6 +930,9 @@ bool Resource::CreateInterop(CreateParams* params) {
     imgOpenInfo.swizzledFormat.swizzle = channels;
     imgOpenInfo.usage.shaderRead = true;
     imgOpenInfo.usage.shaderWrite = true;
+#if defined(__unix__)
+    imgOpenInfo.resourceInfo.handleType = Pal::HandleType::DmaBufFd;
+#endif
     memRef_ = GpuMemoryReference::Create(dev(), imgOpenInfo, &imgCreateInfo, &image_);
     if (nullptr == memRef_) {
       return false;
