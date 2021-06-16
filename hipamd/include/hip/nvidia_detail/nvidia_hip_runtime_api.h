@@ -81,6 +81,10 @@ typedef enum hipMemoryAdvise {
 #define HIP_C_32F CUDA_C_32F
 #define HIP_C_64F CUDA_C_64F
 
+// hip stream operation masks
+#define STREAM_OPS_WAIT_MASK_32 0xFFFFFFFF
+#define STREAM_OPS_WAIT_MASK_64 0xFFFFFFFFFFFFFFFF
+
 // hipLibraryPropertyType
 #define hipLibraryPropertyType libraryPropertyType
 #define HIP_LIBRARY_MAJOR_VERSION MAJOR_VERSION
@@ -2188,6 +2192,50 @@ inline static hipError_t hipArrayDestroy(hiparray hArray){
 inline static hipError_t hipArray3DCreate(hiparray* pHandle,
                                           const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray){
    return hipCUResultTohipError(cuArray3DCreate(pHandle, pAllocateArray));
+}
+
+inline static hipError_t hipStreamWriteValue32(hipStream_t stream,
+                                               void* ptr, int32_t value, unsigned int flags) {
+   if (value < 0) {
+     printf("Warning! value is negative, CUDA accept positive values\n");
+   }
+   return hipCUResultTohipError(cuStreamWriteValue32(stream, reinterpret_cast<CUdeviceptr>(ptr),
+                                                             reinterpret_cast<cuuint32_t>(value),flags));
+}
+
+inline static hipError_t hipStreamWriteValue64(hipStream_t stream,
+                                               void* ptr, int64_t value, unsigned int flags) {
+   if (value < 0) {
+     printf("Warning! value is negative, CUDA accept positive values\n");
+   }
+   return hipCUResultTohipError(cuStreamWriteValue64(stream, reinterpret_cast<CUdeviceptr>(ptr),
+                                                    reinterpret_cast<cuuint64_t>(value),flags));
+}
+
+inline static hipError_t hipStreamWaitValue32(hipStream_t stream,
+                                              void* ptr, int32_t value, unsigned int flags,
+                                              uint32_t mask)) {
+   if (value < 0) {
+     printf("Warning! value is negative, CUDA accept positive values\n");
+   }
+   if (mask != STREAM_OPS_WAIT_MASK_32) {
+     printf("Warning! mask will not have impact as CUDA ignores it.\n");
+   }
+   return hipCUResultTohipError(cuStreamWaitValue32(stream, reinterpret_cast<CUdeviceptr>(ptr),
+                                                    reinterpret_cast<cuuint32_t>(value),flags));
+}
+
+inline static hipError_t hipStreamWaitValue64(hipStream_t stream,
+                                              void* ptr, int64_t value, unsigned int flags,
+                                              uint64_t mask)) {
+   if (value < 0) {
+     printf("Warning! value is negative, CUDA accept positive values\n");
+   }
+   if (mask != STREAM_OPS_WAIT_MASK_64) {
+     printf("Warning! mask will not have impact as CUDA ignores it.\n");
+   }
+   return hipCUResultTohipError(cuStreamWaitValue64(stream, reinterpret_cast<CUdeviceptr>(ptr),
+                                                    reinterpret_cast<cuuint64_t>(value),flags));
 }
 
 #endif  //__CUDACC__
