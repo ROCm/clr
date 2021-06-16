@@ -26,6 +26,10 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
+#ifndef _WIN32
+#include <GL/glx.h>
+#endif
+
 namespace amd {
 static std::once_flag interopOnce;
 }
@@ -108,6 +112,59 @@ static inline bool getDeviceGLContext(HDC& dc, HGLRC& glrc) {
   }
   return false;
 }
+#else
+struct OCLGLHandle_ {
+  static Display* display;
+  static XVisualInfo* vInfo;
+  static int referenceCount;
+  GLXContext context;
+  Window window;
+  Colormap cmap;
+};
+
+
+#define DEFAULT_OPENGL  "libGL.so"
+Display* OCLGLHandle_::display = nullptr;
+XVisualInfo* OCLGLHandle_::vInfo = nullptr;
+int OCLGLHandle_::referenceCount = 0;
+
+static inline bool getDeviceGLContext(OCLGLHandle_* hGL) {
+
+  amd::GLFunctions* glenv_;
+  void* h = amd::Os::loadLibrary(DEFAULT_OPENGL);
+
+  if (h && (glenv_ = new amd::GLFunctions(h, false))) {
+    LogError("\n couldn't load opengl\n");
+    return false;
+  }
+
+
+  hGL->display = XOpenDisplay(nullptr);
+  if (hGL->display == nullptr) {
+    printf("XOpenDisplay() failed\n");
+    return false;
+  }
+
+  if (hGL->vInfo == nullptr) {
+    int dblBuf[] = {GLX_RGBA, GLX_RED_SIZE,   1,  GLX_GREEN_SIZE,   1,   GLX_BLUE_SIZE,
+                  1,        GLX_DEPTH_SIZE, 12, GLX_DOUBLEBUFFER, None};
+
+    hGL->vInfo = glenv_->glXChooseVisual_(hGL->display, DefaultScreen(hGL->display), dblBuf);
+    if (hGL->vInfo == nullptr) {
+      printf("glXChooseVisual() failed\n");
+      return false;
+    }
+  }
+  hGL->referenceCount++;
+
+  hGL->context = glenv_->glXCreateContext_(hGL->display, hGL->vInfo, None, True);
+  if (hGL->context == nullptr) {
+    printf("glXCreateContext() failed\n");
+    return false;
+  }
+
+  return true;
+}
 #endif
 
 // Sets up GL context association with amd context.
@@ -132,6 +189,29 @@ void setupGLInteropOnce() {
                                         (cl_context_properties)dc,
                                         0};
 
+
+
+#else
+  OCLGLHandle_* hGL = new OCLGLHandle_;
+
+  hGL->context = nullptr;
+  hGL->window = 0;
+  hGL->cmap = 0;
+
+  if (!getDeviceGLContext(hGL)) {
+    LogError(" Context setup failed \n");
+    return;
+  }
+
+  cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
+                                        (cl_context_properties)AMD_PLATFORM,
+                                        CL_GL_CONTEXT_KHR,
+                                        (cl_context_properties)hGL->context,
+                                        CL_GLX_DISPLAY_KHR,
+                                        (cl_context_properties)hGL->display,
+                                        0};
+#endif
+
   amd::Context::Info info;
   if (CL_SUCCESS != amd::Context::checkProperties(properties, &info)) {
     LogError("Context setup failed \n");
@@ -142,12 +222,6 @@ void setupGLInteropOnce() {
   if (CL_SUCCESS != amdContext->create(properties)) {
     LogError("Context setup failed \n");
   }
-
- #else
-  // INTEROP_TODO: Add support for Linux
-  LogError(" Only Windows platform is supported \n");
-  return;
-#endif
 }
 
 static inline hipError_t hipSetInteropObjects(int num_objects, void** mem_objects,
