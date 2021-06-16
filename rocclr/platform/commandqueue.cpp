@@ -123,6 +123,14 @@ void HostQueue::finish() {
     command->awaitCompletion();
   }
   command->release();
+  if (IS_HIP) {
+    ScopedLock sl(vdev()->execution());
+    ScopedLock l(lastCmdLock_);
+    if (lastEnqueueCommand_ != nullptr) {
+      lastEnqueueCommand_->release();
+      lastEnqueueCommand_ = nullptr;
+    }
+  }
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 
@@ -238,7 +246,6 @@ Command* HostQueue::getLastQueuedCommand(bool retain) {
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time
     ScopedLock sl(vdev()->execution());
-
     // Since the lastCmdLock_ is acquired, it is safe to read and retain the lastEnqueueCommand.
     // It is guaranteed that the pointer will not change.
     if (retain && lastEnqueueCommand_ != nullptr) {
