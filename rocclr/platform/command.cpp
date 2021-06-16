@@ -145,7 +145,9 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
   if (status <= CL_COMPLETE) {
     // Before we notify the waiters that this event reached the CL_COMPLETE
     // status, we release all the resources associated with this instance.
-    releaseResources();
+    if (!IS_HIP) {
+      releaseResources();
+    }
 
     activity_.ReportEventTimestamps(command());
     // Broadcast all the waiters.

@@ -262,7 +262,10 @@ class Command : public Event {
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
 
-  bool terminate() {
+  virtual bool terminate() {
+    if (IS_HIP) {
+      releaseResources();
+    }
     if (Agent::shouldPostEventEvents() && type() != 0) {
       Agent::postEventFree(as_cl(static_cast<Event*>(this)));
     }
