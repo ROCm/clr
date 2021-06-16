@@ -1239,7 +1239,8 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
       timestamp_->end();
     }
     command.setData(timestamp_);
-    if (AMD_DIRECT_DISPATCH) {
+    // Update HW event only for batches
+    if ((AMD_DIRECT_DISPATCH) && (command.GetBatchHead() != nullptr)) {
       command.SetHwEvent(timestamp_->Signals().back());
     }
     timestamp_ = nullptr;
