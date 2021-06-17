@@ -156,7 +156,9 @@ if(__HIP_ENABLE_PCH)
     PATHS
       /opt/rocm/llvm)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
-  set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
+  if(NOT DEFINED HIP_LLVM_ROOT)
+    set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
+  endif()
 
   execute_process(COMMAND sh -c "${HIP_COMMON_DIR}/bin/hip_embed_pch.sh ${PROJECT_BINARY_DIR}/include ${PROJECT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/include ${HIP_LLVM_ROOT}" COMMAND_ECHO STDERR RESULT_VARIABLE EMBED_PCH_RC)
   if (EMBED_PCH_RC AND NOT EMBED_PCH_RC EQUAL 0)
@@ -173,7 +175,9 @@ if(__HIP_ENABLE_RTC)
     PATHS
       /opt/rocm/llvm)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
-  set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
+  if(NOT DEFINED HIP_LLVM_ROOT)
+    set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
+  endif()
 
   if(WIN32)
     set(HIPRTC_LIB_NAME "hiprtc-builtins64_${HIP_LIB_VERSION_MAJOR}${HIP_LIB_VERSION_MINOR}.dll")
