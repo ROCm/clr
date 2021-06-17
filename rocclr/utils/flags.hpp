@@ -233,7 +233,7 @@ release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
         "0 = Disable")                                                        \
 release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Size in KB of the threshold below which to force blit instead for sdma") \
-release(uint, ROC_ACTIVE_WAIT_TIMEOUT, 750,                                   \
+release(uint, ROC_ACTIVE_WAIT_TIMEOUT, 50,                                    \
         "Forces active wait of GPU interrup for the timeout(us)")             \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
