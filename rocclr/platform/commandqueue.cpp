@@ -120,6 +120,7 @@ void HostQueue::finish() {
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
   if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+    ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
   }
   command->release();
