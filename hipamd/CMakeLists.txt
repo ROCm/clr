@@ -203,8 +203,7 @@ set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
 
 find_package(PythonInterp REQUIRED)
 add_custom_command(OUTPUT ${PROF_API_STR}
-  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${OPT_PROF_API} ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR}
-  OUTPUT_FILE ${PROF_API_LOG}
+  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR}
   DEPENDS ${PROF_API_HDR} ${PROF_API_GEN}
   COMMENT "Generating profiling primitives: ${PROF_API_STR}")
 
