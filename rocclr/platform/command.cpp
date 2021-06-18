@@ -48,6 +48,7 @@ Event::Event(HostQueue& queue)
       status_(CL_INT_MAX),
       hw_event_(nullptr),
       notify_event_(nullptr),
+      device_(&queue.device()),
       profilingInfo_(IS_PROFILER_ON || queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
                      Agent::shouldPostEventEvents()) {
   notified_.clear();
@@ -55,7 +56,7 @@ Event::Event(HostQueue& queue)
 
 // ================================================================================================
 Event::Event() : callbacks_(NULL), status_(CL_SUBMITTED),
-    hw_event_(nullptr), notify_event_(nullptr) { notified_.clear(); }
+    hw_event_(nullptr), notify_event_(nullptr), device_(nullptr) { notified_.clear(); }
 
 // ================================================================================================
 Event::~Event() {
@@ -68,6 +69,10 @@ Event::~Event() {
   // Release the notify event
   if (notify_event_ != nullptr) {
     notify_event_->release();
+  }
+  // Destroy global HW event if available
+  if ((hw_event_ != nullptr) && (device_ != nullptr)) {
+    device_->ReleaseGlobalSignal(hw_event_);
   }
 }
 
@@ -259,21 +264,35 @@ bool Event::awaitCompletion() {
 // ================================================================================================
 bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
-  if ((status() > CL_COMPLETE) && (nullptr != queue) &&
-      (!AMD_DIRECT_DISPATCH ||
-       // If HW event was assigned, then notification can be ignored, since a barrier was issued
-       (HwEvent() == nullptr)) &&
-      !notified_.test_and_set()) {
-    // Make sure the queue is draining the enqueued commands.
-    amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
-    if (command == NULL) {
-      notified_.clear();
-      return false;
+  if (AMD_DIRECT_DISPATCH) {
+    ScopedLock l(lock_);
+    if ((status() > CL_COMPLETE) && (nullptr != queue) &&
+        // If HW event was assigned, then notification can be ignored, since a barrier was issued
+        (HwEvent() == nullptr) &&
+        !notified_.test_and_set()) {
+      // Make sure the queue is draining the enqueued commands.
+      amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
+      if (command == NULL) {
+        notified_.clear();
+        return false;
+      }
+      ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
+      command->enqueue();
+      // Save notification, associated with the current event
+      notify_event_ = command;
     }
-    ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
-    command->enqueue();
-    // Save notification, associated with the current event
-    notify_event_ = command;
+  } else {
+    if ((status() > CL_COMPLETE) && (nullptr != queue) && !notified_.test_and_set()) {
+      // Make sure the queue is draining the enqueued commands.
+      amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
+      if (command == NULL) {
+        notified_.clear();
+        return false;
+      }
+      ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
+      command->enqueue();
+      command->release();
+    }
   }
   return true;
 }
@@ -318,6 +337,7 @@ void Command::enqueue() {
   // update will occur later after flush() with a wait
   if (AMD_DIRECT_DISPATCH) {
     setStatus(CL_QUEUED);
+
     // Notify all commands about the waiter. Barrier will be sent in order to obtain
     // HSA signal for a wait on the current queue
     std::for_each(eventWaitList().begin(), eventWaitList().end(),
@@ -333,13 +353,10 @@ void Command::enqueue() {
       // Update batch head for the current marker. Hence the status of all commands can be
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
-      if (profilingInfo().marker_ts_) {
-        setStatus(CL_SUBMITTED);
-        submit(*queue_->vdev());
-      } else {
-        // Flush the current batch, but skip the wait on CPU if possible to avoid a stall
-        queue_->vdev()->flush(queue_->GetSubmittionBatch());
-      }
+
+      setStatus(CL_SUBMITTED);
+      submit(*queue_->vdev());
+
       // The batch will be tracked with the marker now
       queue_->ResetSubmissionBatch();
     } else {
