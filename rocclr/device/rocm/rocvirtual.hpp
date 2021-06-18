@@ -34,22 +34,8 @@
 namespace roc {
 class Device;
 class Memory;
+struct ProfilingSignal;
 class Timestamp;
-
-struct ProfilingSignal : public amd::HeapObject {
-  amd::Monitor  lock_;    //!< Signal lock for update
-  hsa_signal_t  signal_;  //!< HSA signal to track profiling information
-  Timestamp*    ts_;      //!< Timestamp object associated with the signal
-  HwQueueEngine engine_;  //!< Engine used with this signal
-  bool          done_;    //!< True if signal is done
-  ProfilingSignal()
-    : lock_("Signal Ops Lock", true)
-    , ts_(nullptr)
-    , engine_(HwQueueEngine::Compute)
-    , done_(true)
-    { signal_.handle = 0; }
-  amd::Monitor& LockSignalOps() { return lock_; }
-};
 
 // Initial HSA signal value
 constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
@@ -139,7 +125,7 @@ class Timestamp : public amd::HeapObject {
   const bool HwProfiling() const { return !signals_.empty(); }
 
   //! Finds execution ticks on GPU
-  void checkGpuTime(bool event_recycle = false);
+  void checkGpuTime();
 
   // Start a timestamp (get timestamp from OS)
   void start() { start_ = amd::Os::timeNanos(); }
@@ -225,8 +211,6 @@ class VirtualGPU : public device::VirtualDevice {
     //! Wait for the curent active signal. Can idle the queue
     bool WaitCurrent() {
       ProfilingSignal* signal = signal_list_[current_id_];
-      ClPrint(amd::LOG_DEBUG, amd::LOG_MISC, "[%zx]!\t WaitCurret completion_signal=0x%zx",
-        std::this_thread::get_id(), signal->signal_.handle);
       return CpuWaitForSignal(signal);
     }
 
@@ -253,8 +237,6 @@ class VirtualGPU : public device::VirtualDevice {
     void WaitNext() {
       size_t next = (current_id_ + 1) % signal_list_.size();
       ProfilingSignal* signal = signal_list_[next];
-      ClPrint(amd::LOG_DEBUG, amd::LOG_MISC, "[%zx]!\t WaitNext completion_signal=0x%zx",
-        std::this_thread::get_id(), signal->signal_.handle);
       CpuWaitForSignal(signal);
     }
 
@@ -396,7 +378,8 @@ class VirtualGPU : public device::VirtualDevice {
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               size_t size = 1);
-  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false);
+  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
+                             const ProfilingSignal* global_signal = nullptr);
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
   void dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t* packet,

@@ -95,6 +95,7 @@ class Event : public RuntimeObject {
   std::atomic_flag notified_;              //!< Command queue was notified
   void*  hw_event_;                        //!< HW event ID associated with SW event
   Event* notify_event_;                    //!< Notify event, which should contain HW signal
+  const Device* device_;                   //!< Device, this event associated with
 
  protected:
   static const EventWaitList nullWaitList;

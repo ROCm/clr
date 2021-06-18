@@ -2919,6 +2919,7 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
   return true;
 }
 
+// ================================================================================================
 void Device::getGlobalCUMask(std::string cuMaskStr) {
   if (cuMaskStr.length() != 0) {
     std::string pre = cuMaskStr.substr(0, 2);
@@ -2971,10 +2972,12 @@ void Device::getGlobalCUMask(std::string cuMaskStr) {
   }
 }
 
+// ================================================================================================
 device::Signal* Device::createSignal() const {
   return new roc::Signal();
 }
 
+// ================================================================================================
 amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset) {
   // If arena_mem_obj_ is null, then HMM and Xnack is disabled. Return nullptr.
   if (arena_mem_obj_ == nullptr) {
@@ -2987,6 +2990,40 @@ amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset) {
   offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
 
   return arena_mem_obj_;
+}
+
+// ================================================================================================
+ProfilingSignal* Device::GetGlobalSignal(Timestamp* ts) const {
+  std::unique_ptr<ProfilingSignal> prof_signal(new ProfilingSignal());
+  if (prof_signal != nullptr) {
+    hsa_agent_t agent = getBackendDevice();
+    hsa_agent_t* agents = (settings().system_scope_signal_) ? nullptr : &agent;
+    uint32_t num_agents = (settings().system_scope_signal_) ? 0 : 1;
+
+    if (ts != 0) {
+      // Save HSA signal earlier to make sure the possible callback will have a valid
+      // value for processing
+      prof_signal->ts_ = ts;
+      ts->AddProfilingSignal(prof_signal.get());
+    }
+
+    if (HSA_STATUS_SUCCESS == hsa_signal_create(kInitSignalValueOne,
+                                                num_agents, agents, &prof_signal->signal_)) {
+      return prof_signal.release();
+    }
+  }
+  return nullptr;
+}
+
+// ================================================================================================
+void Device::ReleaseGlobalSignal(void* signal) const {
+  if (signal != nullptr) {
+    ProfilingSignal* prof_signal = reinterpret_cast<ProfilingSignal*>(signal);
+    if (prof_signal->signal_.handle != 0) {
+      hsa_signal_destroy(prof_signal->signal_);
+    }
+    delete prof_signal;
+  }
 }
 
 } // namespace roc

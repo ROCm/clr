@@ -109,7 +109,7 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 };
 
 // ================================================================================================
-void Timestamp::checkGpuTime(bool event_recycle) {
+void Timestamp::checkGpuTime() {
   if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
     uint64_t  end = 0;
@@ -139,10 +139,6 @@ void Timestamp::checkGpuTime(bool event_recycle) {
         end = std::max(time.end, end);
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
           "end = %ld", it->signal_.handle, start, end);
-      }
-      // The signal is reused and the upper layer can't rely on it.
-      if (event_recycle) {
-        const_cast<amd::Command&>(it->ts_->command_).SetHwEvent(nullptr);
       }
       it->ts_ = nullptr;
       it->done_ = true;
@@ -390,23 +386,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
     // requires the batch update upon HSA signal completion
     if (AMD_DIRECT_DISPATCH && (ts->command().GetBatchHead() != nullptr)) {
-      uint32_t init_value = kInitSignalValueOne;
-      // If API callback is enabled, then use a blocking signal for AQL queue.
-      // HSA signal will be acquired in SW and released after HSA signal callback
-      if (ts->command().Callback() != nullptr) {
-        ts->SetCallbackSignal(prof_signal->signal_);
-        // Blocks AQL queue from further processing
-        hsa_signal_add_relaxed(prof_signal->signal_, 1);
-        init_value += 1;
-      }
-      hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
-          HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
-      if (HSA_STATUS_SUCCESS != result) {
-        LogError("hsa_amd_signal_async_handler() failed to set the handler!");
-      } else {
-        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
-            prof_signal->signal_.handle, prof_signal);
-      }
+      assert(false && "Runtime should not have batch command in ActiveSignal!");
     }
     if (!sdma_profiling_) {
       hsa_amd_profiling_async_copy_enable(true);
@@ -486,8 +466,7 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
   if (!signal->done_) {
     // Update timestamp values if requested
     if (signal->ts_ != nullptr) {
-      static constexpr bool kEventRecycle = true;
-      signal->ts_->checkGpuTime(kEventRecycle);
+      signal->ts_->checkGpuTime();
     } else {
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
               std::this_thread::get_id(), signal->signal_.handle);
@@ -892,7 +871,8 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
 }
 
 // ================================================================================================
-void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
+void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader,
+  bool skipSignal, const ProfilingSignal* global_signal) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
 
@@ -915,12 +895,16 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
   barrier_packet_.completion_signal.handle = 0;
 
   if (!skipSignal) {
-    // Pool size must grow to the size of pending AQL packets
-    const uint32_t pool_size = index - read;
+    if (global_signal != nullptr) {
+      barrier_packet_.completion_signal = global_signal->signal_;
+    } else {
+      // Pool size must grow to the size of pending AQL packets
+      const uint32_t pool_size = index - read;
 
-    // Get active signal for current dispatch if profiling is necessary
-    barrier_packet_.completion_signal =
-      Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, pool_size);
+      // Get active signal for current dispatch if profiling is necessary
+      barrier_packet_.completion_signal =
+        Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, pool_size);
+    }
   }
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
@@ -1218,7 +1202,8 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
         (*it)->NotifyEvent()->HwEvent() : (*it)->HwEvent();
       if (hw_event != nullptr) {
         Barriers().AddExternalSignal(reinterpret_cast<ProfilingSignal*>(hw_event));
-      } else if (static_cast<amd::Command*>(*it)->queue() != command.queue()) {
+      } else if (static_cast<amd::Command*>(*it)->queue() != command.queue() &&
+                 ((*it)->status() != CL_COMPLETE)) {
         LogPrintfError("Waiting event(%p) doesn't have a HSA signal!\n", *it);
       } else {
         // Assume serialization on the same queue...
@@ -1239,10 +1224,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
       timestamp_->end();
     }
     command.setData(timestamp_);
-    // Update HW event only for batches
-    if ((AMD_DIRECT_DISPATCH) && (command.GetBatchHead() != nullptr)) {
-      command.SetHwEvent(timestamp_->Signals().back());
-    }
+
     timestamp_ = nullptr;
   }
 }
@@ -2926,13 +2908,46 @@ void VirtualGPU::submitNativeFn(amd::NativeFnCommand& cmd) {
 
 // ================================================================================================
 void VirtualGPU::submitMarker(amd::Marker& vcmd) {
-  if (vcmd.profilingInfo().marker_ts_) {
+  if (AMD_DIRECT_DISPATCH || vcmd.profilingInfo().marker_ts_) {
     profilingBegin(vcmd);
     if (timestamp_ != nullptr) {
+      ProfilingSignal* prof_signal = nullptr;
+      // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
+      // requires the batch update upon HSA signal completion
+      if (AMD_DIRECT_DISPATCH) {
+        assert(vcmd.GetBatchHead() != nullptr && "Marker doesn't have batch!");
+
+        prof_signal = dev().GetGlobalSignal(timestamp_);
+        prof_signal->done_ = false;
+
+        assert(prof_signal != nullptr && "Failed to allocate the global HSA signal!");
+        uint32_t init_value = kInitSignalValueOne;
+        // If API callback is enabled, then use a blocking signal for AQL queue.
+        // HSA signal will be acquired in SW and released after HSA signal callback
+        if (vcmd.Callback() != nullptr) {
+          timestamp_->SetCallbackSignal(prof_signal->signal_);
+          // Blocks AQL queue from further processing
+          hsa_signal_add_relaxed(prof_signal->signal_, 1);
+          init_value += 1;
+        }
+
+        hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
+            HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, timestamp_);
+        if (HSA_STATUS_SUCCESS != result) {
+          LogError("hsa_amd_signal_async_handler() failed to set the handler!");
+        } else {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
+              prof_signal->signal_.handle, prof_signal);
+        }
+        // Update HW event only for batches
+        vcmd.SetHwEvent(timestamp_->Signals().back());
+      }
       // Submit a barrier with a cache flushes.
-      dispatchBarrierPacket(kBarrierPacketHeader);
-      // Reset this flag since we already enable system scope for kBarrierPacketHeader
-      hasPendingDispatch_ = false;
+      dispatchBarrierPacket(kBarrierPacketHeader, false, prof_signal);
+
+      // Don't reset the flag for direct dispatch, because the global signals are out of scope
+      // for internal barrier tracking and SDMA could lose a wait for compute
+      hasPendingDispatch_ = AMD_DIRECT_DISPATCH;
     }
     profilingEnd(vcmd);
   }
@@ -2958,45 +2973,13 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
 
 // ================================================================================================
 void VirtualGPU::flush(amd::Command* list, bool wait) {
-  // Direct dispatch relies on HSA signal callback
-  bool skip_cpu_wait = AMD_DIRECT_DISPATCH;
+  // If barrier is requested, then wait for everything, otherwise
+  // a per disaptch wait will occur later in updateCommandsState()
+  releaseGpuMemoryFence();
+  updateCommandsState(list);
 
-  if (skip_cpu_wait) {
-    // Search for the last command in the batch to track GPU state
-    amd::Command* current = list;
-    assert(current != nullptr && "Empty batch for processing!");
-
-    // Find the last command
-    while (current->getNext() != nullptr) {
-      current = current->getNext();
-    }
-    // Always insert a barrier. Some tests rquire async SDMA wait
-    hasPendingDispatch_ = true;
-    // Enable profiling, so runtime can track TS
-    profilingBegin(*current);
-
-    // If runtime didn't submit a barrier, then it can't track the completion of the batch.
-    // Hence runtime either has to insert a barrier unconditionally or have a CPU wait.
-    // Due to performance impact of extra barriers CPU wait is selected.
-    // Note: if callback will be selected to update the batch status,
-    // then the host thread can't update it also, otherwise double free may occur
-    skip_cpu_wait &= hasPendingDispatch_;
-
-    releaseGpuMemoryFence(skip_cpu_wait);
-    profilingEnd(*current);
-  } else {
-    // If barrier is requested, then wait for everything, otherwise
-    // a per disaptch wait will occur later in updateCommandsState()
-    releaseGpuMemoryFence();
-  }
-
-  // If CPU waited for GPU, then the queue is idle
-  if (!skip_cpu_wait) {
-    updateCommandsState(list);
-
-    // Release all pinned memory
-    releasePinnedMem();
-  }
+  // Release all pinned memory
+  releasePinnedMem();
 }
 
 // ================================================================================================

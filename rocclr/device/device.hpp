@@ -49,6 +49,7 @@
 #include <map>
 #include <list>
 #include <set>
+#include <unordered_set>
 #include <utility>
 
 namespace amd {
@@ -1705,6 +1706,7 @@ class Device : public RuntimeObject {
       ) const {
     return false;
   };
+  virtual void ReleaseGlobalSignal(void* signal) const {}
 
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }
