@@ -30,11 +30,17 @@ THE SOFTWARE.
 
 #include "hip/amd_detail/host_defines.h"
 
+#if __has_builtin(__builtin_amdgcn_groupstaticsize)
 __device__
 inline
 unsigned __llvm_amdgcn_groupstaticsize() {
   return __builtin_amdgcn_groupstaticsize();
 }
+#else
+// FIXME: This should be removed once the above builtin is available.
+__device__
+unsigned __llvm_amdgcn_groupstaticsize() __asm("llvm.amdgcn.groupstaticsize");
+#endif
 
 template<typename __T>
 __device__
