@@ -56,8 +56,8 @@ class api_callbacks_table_t {
 
   // HIP API callbacks table
   struct hip_cb_table_entry_t {
-    volatile std::atomic<bool> sync;
-    volatile std::atomic<uint32_t> sem;
+    volatile std::atomic<bool> sync{false};
+    volatile std::atomic<uint32_t> sem{0};
     act_t act;
     void* a_arg;
     fun_t fun;
@@ -65,12 +65,10 @@ class api_callbacks_table_t {
   };
 
   struct hip_cb_table_t {
-    hip_cb_table_entry_t arr[HIP_API_ID_NUMBER];
+    hip_cb_table_entry_t arr[HIP_API_ID_NUMBER] = {};
   };
 
-  api_callbacks_table_t() {
-     memset(&callbacks_table_, 0, sizeof(callbacks_table_));
-  }
+  api_callbacks_table_t() = default;
 
   bool set_activity(uint32_t id, act_t fun, void* arg) {
     std::lock_guard<mutex_t> lock(mutex_);
