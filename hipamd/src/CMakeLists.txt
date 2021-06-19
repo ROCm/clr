@@ -251,6 +251,7 @@ endif()
 #############################
 # Generate profiling API macros/structures header
 set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
+set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/include/hip/amd_detail/hip_prof_str.h")
 set(PROF_API_HDR "${HIP_COMMON_INCLUDE_DIR}/hip/hip_runtime_api.h")
 set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
 set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
@@ -258,8 +259,8 @@ set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
 
 find_package(PythonInterp REQUIRED)
 add_custom_command(OUTPUT ${PROF_API_STR}
-  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR}
-  DEPENDS ${PROF_API_HDR} ${PROF_API_GEN}
+  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
+  DEPENDS ${PROF_API_STR_IN} ${PROF_API_HDR} ${PROF_API_GEN}
   COMMENT "Generating profiling primitives: ${PROF_API_STR}")
 
 add_custom_target(gen-prof-api-str-header ALL
