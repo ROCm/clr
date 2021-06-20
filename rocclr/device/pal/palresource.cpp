@@ -1930,6 +1930,22 @@ bool MemorySubAllocator::InitAllocator(GpuMemoryReference* mem_ref) {
 }
 
 // ================================================================================================
+void MemorySubAllocator::forceResident(GpuMemoryReference* mem_ref) {
+  if (IS_WINDOWS) {
+    // Write one DWORD using CPDMA to force resident
+    GpuEvent event;
+    auto gpu = device_->xferQueue();
+    uint32_t data = 0;
+
+    gpu->eventBegin(MainEngine);
+    gpu->queue(MainEngine).addCmdMemRef(mem_ref);
+    gpu->iCmd()->CmdUpdateMemory(*mem_ref->iMem(), 0, 4, &data);
+    gpu->eventEnd(MainEngine, event);
+    gpu->waitForEvent(&event);
+  }
+}
+
+// ================================================================================================
 bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = device_->settings().subAllocationChunkSize_;
@@ -1944,6 +1960,8 @@ bool MemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
+    // Workaround: some chunk memory are not guaranteed to be resident during initial allocation.
+    forceResident(mem_ref);
     return InitAllocator(mem_ref);
   }
   return false;
@@ -1964,6 +1982,8 @@ bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
+    // Workaround: some chunk memory are not guaranteed to be resident during initial allocation.
+    forceResident(mem_ref);
     return InitAllocator(mem_ref);
   }
   return false;
@@ -1980,6 +2000,8 @@ bool FineMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.mallPolicy = Pal::GpuMemMallPolicy::Never;
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if ((mem_ref != nullptr) && InitAllocator(mem_ref)) {
+    // Workaround: some chunk memory are not guaranteed to be resident during initial allocation.
+    forceResident(mem_ref);
     mem_ref->iMem()->Map(&mem_ref->cpuAddress_);
     return mem_ref->cpuAddress_ != nullptr;
   }
@@ -1998,6 +2020,8 @@ bool FineUncachedMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved
   createInfo.mallPolicy = Pal::GpuMemMallPolicy::Never;
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if ((mem_ref != nullptr) && InitAllocator(mem_ref)) {
+    // Workaround: some chunk memory are not guaranteed to be resident during initial allocation.
+    forceResident(mem_ref);
     mem_ref->iMem()->Map(&mem_ref->cpuAddress_);
     return mem_ref->cpuAddress_ != nullptr;
   }
