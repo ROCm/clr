@@ -528,6 +528,7 @@ class MemorySubAllocator : public amd::HeapObject {
   //! Allocate new chunk of memory
   virtual bool CreateChunk(const Pal::IGpuMemory* reserved_va);
   bool InitAllocator(GpuMemoryReference* mem_ref);
+  void forceResident(GpuMemoryReference* mem_ref);
 
   Device* device_;
   std::unordered_map<GpuMemoryReference*, MemBuddyAllocator*> heaps_;
