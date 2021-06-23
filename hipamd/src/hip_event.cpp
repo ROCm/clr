@@ -116,6 +116,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
   } else {
     // Note: with direct dispatch eStop.ready() relies on HW event, but CPU status can be delayed.
     // Hence for now make sure CPU status is updated by calling awaitCompletion();
+    event_->awaitCompletion();
     eStop.event_->awaitCompletion();
     ms = static_cast<float>(eStop.time() - time())/1000000.f;
   }
