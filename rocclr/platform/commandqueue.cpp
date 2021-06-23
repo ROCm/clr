@@ -107,6 +107,10 @@ void HostQueue::finish() {
   Command* command = nullptr;
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
+    // Check if the queue has nothing to process and return
+    if (command == nullptr) {
+      return;
+    }
   }
   if (nullptr == command) {
     // Send a finish to make sure we finished all commands
